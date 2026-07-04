@@ -9,6 +9,29 @@ The web app is intentionally simple and self-contained:
 - `index.html` runs directly in a browser and is what Vercel serves.
 - `www/index.html` is the bundled payload Capacitor will copy into native builds.
 - Workout data is stored locally in the user's browser/app storage.
+- `manifest.webmanifest`, `sw.js`, and `resources/icon-*.png` make the Vercel app installable from iPhone Safari.
+
+## Install On iPhone From Vercel
+
+After Vercel redeploys the latest `main` branch:
+
+1. Open the Vercel app URL in Safari on your iPhone.
+2. Tap the Share button.
+3. Tap `Add to Home Screen`.
+4. Name it `Comprehensive Fitness`.
+5. Tap `Add`.
+6. Open the app from the new Home Screen icon.
+
+Workout data is stored locally for that installed web app/site. Export a backup from Settings before switching domains, clearing Safari data, or replacing the phone.
+
+## PWA Maintenance
+
+When the app changes, sync the root web files into the native bundle and verify the PWA files:
+
+```powershell
+npm run sync:web
+npm run verify:pwa
+```
 
 ## Native App Packaging
 
