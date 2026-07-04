@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Track strength workouts, rest timers, travel sessions, and transparent lift progression guidance." />
-    <meta name="theme-color" content="#101418" />
+    <meta name="theme-color" content="#090d0e" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Comprehensive Fitness" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -14,225 +14,389 @@
     <title>Comprehensive Fitness</title>
     <style>
       :root {
-        color: #f6f8f5;
-        background: #101418;
+        --bg: #090d0e;
+        --bg-soft: #0f1516;
+        --panel: #151b1d;
+        --panel-2: #1b2325;
+        --panel-3: #20292b;
+        --line: #2d383b;
+        --line-strong: #3c4b4f;
+        --text: #f4f7f2;
+        --muted: #a9b2ae;
+        --muted-2: #77827e;
+        --green: #7bd342;
+        --green-2: #a1ef66;
+        --green-dark: #23351f;
+        --amber: #ffb12b;
+        --red: #ff7f6b;
+        --shadow: 0 18px 44px rgba(0, 0, 0, 0.38);
+        color: var(--text);
+        background: var(--bg);
         font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       }
 
       * { box-sizing: border-box; }
 
+      html { background: var(--bg); }
+
       body {
         margin: 0;
         min-width: 320px;
         min-height: 100vh;
-        background: #101418;
+        background:
+          linear-gradient(180deg, rgba(19, 26, 27, 0.96), rgba(9, 13, 14, 1) 34%),
+          var(--bg);
       }
 
       button, input, select, textarea { font: inherit; }
 
       button {
         align-items: center;
-        background: #20282f;
-        border: 1px solid #34414a;
-        border-radius: 8px;
-        color: #f6f8f5;
+        background: linear-gradient(180deg, #222c2f, #182022);
+        border: 1px solid var(--line-strong);
+        border-radius: 12px;
+        color: var(--text);
         cursor: pointer;
         display: inline-flex;
+        font-weight: 800;
         gap: 8px;
-        min-height: 44px;
-        padding: 10px 12px;
+        min-height: 48px;
+        padding: 12px 14px;
+        transition: border-color 140ms ease, color 140ms ease, transform 140ms ease, background 140ms ease;
       }
 
-      button:hover { border-color: #78d6a3; }
+      button:hover { border-color: var(--green); }
+      button:active { transform: translateY(1px); }
 
       input, select, textarea {
-        background: #151b20;
-        border: 1px solid #34414a;
-        border-radius: 8px;
-        color: #f6f8f5;
-        min-height: 44px;
-        padding: 10px;
+        background: #0f1516;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        color: var(--text);
+        min-height: 48px;
+        padding: 12px;
         width: 100%;
       }
 
+      input:focus, select:focus, textarea:focus, button:focus-visible {
+        border-color: var(--green);
+        box-shadow: 0 0 0 3px rgba(123, 211, 66, 0.18);
+        outline: none;
+      }
+
+      input[type="number"] {
+        font-size: 1.05rem;
+        font-weight: 800;
+        text-align: center;
+      }
+
       textarea {
-        min-height: 72px;
+        min-height: 80px;
         resize: vertical;
       }
 
       h1, h2, p { margin-top: 0; }
+      h1 {
+        font-size: clamp(1.35rem, 5vw, 1.8rem);
+        letter-spacing: 0;
+        margin-bottom: 2px;
+      }
+      h2 { letter-spacing: 0; }
 
       .app-shell {
         margin: 0 auto;
-        max-width: 880px;
+        max-width: 920px;
         min-height: 100vh;
-        padding-bottom: 82px;
+        padding-bottom: 104px;
       }
 
-      .app-main { padding: 14px; }
-      .loading, .empty-state { color: #aab7af; padding: 24px; }
-      .view { display: grid; gap: 14px; }
+      .brand-bar {
+        align-items: center;
+        border-bottom: 1px solid rgba(60, 75, 79, 0.7);
+        display: grid;
+        gap: 12px;
+        grid-template-columns: auto 1fr auto;
+        margin: 0 14px;
+        min-height: 76px;
+        padding: max(14px, env(safe-area-inset-top)) 0 14px;
+      }
+
+      .brand-mark {
+        align-items: center;
+        background: linear-gradient(180deg, var(--green-2), var(--green));
+        border-radius: 12px;
+        color: #0b110d;
+        display: inline-flex;
+        font-size: 0.9rem;
+        font-weight: 1000;
+        height: 42px;
+        justify-content: center;
+        width: 42px;
+      }
+
+      .brand-title {
+        display: grid;
+        font-size: 0.92rem;
+        font-weight: 1000;
+        letter-spacing: 0.03em;
+        line-height: 1.05;
+        text-transform: uppercase;
+      }
+
+      .brand-title span {
+        color: var(--green);
+        font-size: 0.72rem;
+        letter-spacing: 0.35em;
+      }
+
+      .brand-action {
+        align-items: center;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        color: var(--green);
+        display: inline-flex;
+        font-weight: 1000;
+        gap: 6px;
+        min-height: 38px;
+        padding: 0 12px;
+      }
+
+      .app-main { padding: 16px 14px 0; }
+      .loading, .empty-state {
+        color: var(--muted);
+        padding: 24px;
+      }
+
+      .empty-state {
+        background: var(--panel);
+        border: 1px dashed var(--line-strong);
+        border-radius: 16px;
+      }
+
+      .view { display: grid; gap: 16px; }
+
+      .section-kicker {
+        color: var(--green);
+        font-size: 0.76rem;
+        font-weight: 1000;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
 
       .session-header {
-        background: #151b20;
-        border-bottom: 1px solid #34414a;
+        background: linear-gradient(180deg, rgba(27, 35, 37, 0.96), rgba(18, 24, 25, 0.96));
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        box-shadow: var(--shadow);
         display: grid;
-        gap: 10px;
-        margin: -14px -14px 0;
+        gap: 12px;
         padding: 14px;
         position: sticky;
-        top: 0;
+        top: 8px;
         z-index: 3;
       }
 
       .row {
         align-items: center;
         display: flex;
-        gap: 8px;
+        gap: 10px;
       }
 
       .split { justify-content: space-between; }
       .wrap { flex-wrap: wrap; }
-      .grid { display: grid; gap: 8px; }
+      .grid { display: grid; gap: 10px; }
       .two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 
       .toggle-line, .bodyweight {
         align-items: center;
-        color: #d7ded8;
+        color: var(--muted);
         display: inline-flex;
-        gap: 8px;
+        font-size: 0.92rem;
+        font-weight: 800;
+        gap: 9px;
       }
 
       .toggle-line input, .bodyweight input {
-        height: 20px;
-        min-height: 20px;
-        width: 20px;
+        accent-color: var(--green);
+        height: 22px;
+        min-height: 22px;
+        width: 22px;
       }
 
       .exercise-card, .settings-panel, .recommendation, .template-card, .inline-panel, .workout-advice {
-        background: #151b20;
-        border: 1px solid #2a363d;
-        border-radius: 8px;
+        background: linear-gradient(180deg, rgba(27, 35, 37, 0.98), rgba(16, 22, 23, 0.98));
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        box-shadow: var(--shadow);
         display: grid;
-        gap: 10px;
-        padding: 12px;
+        gap: 12px;
+        padding: 14px;
+      }
+
+      .exercise-card {
+        gap: 14px;
+        overflow: hidden;
       }
 
       .exercise-name {
-        font-size: 1.05rem;
-        font-weight: 700;
+        background: transparent;
+        border-color: transparent;
+        font-size: 1.08rem;
+        font-weight: 1000;
+        padding-left: 0;
       }
+
+      .exercise-name:focus { background: #0f1516; padding-left: 12px; }
 
       .icon-button {
         aspect-ratio: 1;
         justify-content: center;
-        min-width: 44px;
+        min-width: 48px;
         padding: 8px;
-        width: 44px;
+        width: 48px;
       }
 
       .danger, .danger-button {
-        border-color: #694047;
-        color: #ffb8c0;
+        border-color: rgba(255, 127, 107, 0.46);
+        color: #ffc3b8;
       }
 
       .set-head, .set-row, .trend-head, .trend-row {
         align-items: center;
         display: grid;
-        gap: 6px;
+        gap: 7px;
       }
 
       .set-head, .set-row {
-        grid-template-columns: 34px minmax(48px, 1fr) minmax(58px, 1fr) minmax(52px, 1fr) 44px;
+        grid-template-columns: 36px minmax(56px, 1fr) minmax(76px, 1.35fr) minmax(56px, 1fr) 48px;
       }
 
       .set-head, .trend-head {
-        color: #9facaa;
-        font-size: 0.78rem;
+        color: var(--muted);
+        font-size: 0.72rem;
+        font-weight: 900;
+        letter-spacing: 0.06em;
         text-transform: uppercase;
       }
 
       .set-row {
-        background: #101418;
-        border-radius: 8px;
+        background: rgba(9, 13, 14, 0.58);
+        border: 1px solid rgba(45, 56, 59, 0.85);
+        border-radius: 14px;
+        padding: 8px;
+      }
+
+      .set-row strong {
+        color: var(--green);
+        font-size: 1.1rem;
+        text-align: center;
+      }
+
+      .set-row input {
+        border-radius: 10px;
+        min-height: 46px;
         padding: 8px;
       }
 
       .set-row .bodyweight, .set-row .mini-button { grid-column: span 2; }
 
       .mini-button {
-        color: #aab7af;
-        font-size: 0.85rem;
-        min-height: 34px;
-        padding: 6px 8px;
+        color: var(--muted);
+        font-size: 0.82rem;
+        min-height: 38px;
+        padding: 8px 10px;
       }
 
       .check-button {
         aspect-ratio: 1;
+        border-radius: 999px;
+        color: var(--muted-2);
         justify-content: center;
-        min-height: 40px;
+        min-height: 44px;
         padding: 6px;
       }
 
       .check-button.checked {
-        background: #285a3f;
-        border-color: #78d6a3;
+        background: var(--green-dark);
+        border-color: var(--green);
+        color: var(--green-2);
       }
 
       .primary-action {
-        background: #78d6a3;
-        border-color: #78d6a3;
-        color: #0c1410;
-        font-weight: 800;
+        background: linear-gradient(180deg, var(--green-2), var(--green));
+        border-color: var(--green);
+        box-shadow: 0 14px 28px rgba(123, 211, 66, 0.18);
+        color: #10160f;
+        font-size: 1rem;
+        font-weight: 1000;
         justify-content: center;
+        min-height: 58px;
+        text-transform: uppercase;
       }
 
       .secondary-action {
+        color: var(--green);
         justify-content: center;
       }
 
-      .template-card {
-        text-align: left;
-      }
+      .template-card { text-align: left; }
 
       .template-card h2,
       .workout-advice h2,
       .inline-panel h2 {
-        font-size: 1.05rem;
+        font-size: 1.12rem;
         margin: 0;
+      }
+
+      .workout-advice {
+        border-color: rgba(123, 211, 66, 0.55);
+      }
+
+      .workout-advice h2 {
+        color: var(--green-2);
+        font-size: 1.28rem;
       }
 
       .template-meta,
       .advice-detail,
       .template-card small {
-        color: #aab7af;
+        color: var(--muted);
+      }
+
+      .advice-detail {
+        line-height: 1.45;
+        margin: 0;
       }
 
       .template-list,
       .advice-list {
         display: grid;
-        gap: 8px;
+        gap: 9px;
         margin: 0;
         padding: 0;
       }
 
       .template-list li,
       .advice-list li {
-        background: #101418;
-        border-radius: 8px;
+        background: rgba(9, 13, 14, 0.55);
+        border: 1px solid rgba(45, 56, 59, 0.82);
+        border-radius: 14px;
         display: grid;
-        gap: 4px;
+        gap: 6px;
         list-style: none;
-        padding: 9px;
+        padding: 11px;
       }
 
+      .advice-list strong { color: var(--text); }
+      .advice-list span { color: var(--muted); line-height: 1.4; }
+
       .inline-panel {
-        border-color: #78d6a3;
+        border-color: rgba(123, 211, 66, 0.52);
       }
 
       .inline-actions {
         display: grid;
-        gap: 8px;
+        gap: 10px;
         grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       }
 
@@ -243,154 +407,192 @@
 
       .timer-bar {
         align-items: center;
-        background: #24313b;
-        border: 1px solid #78d6a3;
-        border-radius: 8px;
-        bottom: 78px;
+        background: linear-gradient(180deg, rgba(73, 47, 10, 0.96), rgba(37, 26, 11, 0.98));
+        border: 1px solid rgba(255, 177, 43, 0.78);
+        border-radius: 18px;
+        bottom: calc(88px + env(safe-area-inset-bottom));
+        box-shadow: 0 18px 38px rgba(0, 0, 0, 0.45);
         display: grid;
-        gap: 8px;
-        grid-template-columns: 1fr 44px 44px;
+        gap: 10px;
+        grid-template-columns: 1fr 48px 48px;
         left: 14px;
         margin: 0 auto;
-        max-width: 852px;
-        padding: 10px;
+        max-width: 892px;
+        padding: 12px;
         position: fixed;
         right: 14px;
         z-index: 5;
       }
 
       .timer-bar strong {
+        color: var(--amber);
         display: block;
-        font-size: 1.3rem;
+        font-size: 1.75rem;
+        line-height: 1;
       }
 
       .timer-bar span {
-        color: #aab7af;
+        color: #ffd899;
         font-size: 0.82rem;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
       }
 
-      .timer-bar.complete { border-color: #f5ca67; }
+      .timer-bar.complete { border-color: var(--green); }
 
       .session-card {
         align-items: stretch;
+        border-radius: 18px;
         display: grid;
-        gap: 6px;
+        gap: 7px;
         text-align: left;
       }
 
       .session-card p, .session-card small {
-        color: #aab7af;
+        color: var(--muted);
         margin: 0;
       }
 
       .recommendation span {
-        color: #0f1512;
-        justify-self: start;
-        background: #f6f8f5;
+        background: rgba(244, 247, 242, 0.95);
         border-radius: 999px;
-        font-size: 0.78rem;
-        font-weight: 700;
-        padding: 4px 8px;
+        color: #111715;
+        font-size: 0.76rem;
+        font-weight: 900;
+        justify-self: start;
+        padding: 5px 9px;
       }
 
       .recommendation h2 { margin: 0; }
+      .recommendation p { color: var(--muted); margin: 0; }
+      .recommendation strong { color: var(--text); line-height: 1.35; }
       .recommendation ul { color: #d7ded8; margin: 0; padding-left: 18px; }
-      .recommendation.progress { border-color: #78d6a3; }
-      .recommendation.hold { border-color: #f5ca67; }
-      .recommendation.deload, .recommendation.change { border-color: #ff8f70; }
+      .recommendation.progress { border-color: var(--green); }
+      .recommendation.hold { border-color: var(--amber); }
+      .recommendation.deload, .recommendation.change { border-color: var(--red); }
 
       .trend-table {
-        background: #151b20;
-        border: 1px solid #2a363d;
-        border-radius: 8px;
+        background: linear-gradient(180deg, rgba(27, 35, 37, 0.98), rgba(16, 22, 23, 0.98));
+        border: 1px solid var(--line);
+        border-radius: 18px;
         overflow: hidden;
       }
 
       .trend-head, .trend-row {
-        grid-template-columns: 1.6fr 0.7fr 0.7fr 0.7fr;
-        padding: 10px;
+        grid-template-columns: 1.55fr 0.7fr 0.7fr 0.65fr;
+        padding: 11px;
       }
 
-      .trend-row { border-top: 1px solid #2a363d; }
+      .trend-row {
+        border-top: 1px solid var(--line);
+        color: #d9dfdb;
+      }
 
       .settings-panel label {
         color: #d7ded8;
         display: grid;
-        gap: 6px;
+        gap: 7px;
       }
 
       .settings-note,
       .settings-links {
-        color: #aab7af;
+        color: var(--muted);
         font-size: 0.9rem;
+        line-height: 1.4;
         margin: 0;
       }
 
       .settings-links {
         display: flex;
-        gap: 12px;
         flex-wrap: wrap;
+        gap: 12px;
       }
 
-      .settings-links a {
-        color: #78d6a3;
-      }
+      .settings-links a { color: var(--green); }
 
       .import-button {
         align-items: center;
-        background: #20282f;
-        border: 1px solid #34414a;
-        border-radius: 8px;
+        background: linear-gradient(180deg, #222c2f, #182022);
+        border: 1px solid var(--line-strong);
+        border-radius: 12px;
         cursor: pointer;
         display: inline-flex;
         flex-direction: row;
+        font-weight: 800;
         gap: 8px;
-        min-height: 44px;
-        padding: 10px 12px;
+        min-height: 48px;
+        padding: 12px 14px;
       }
 
       .import-button input { display: none; }
 
       .bottom-nav {
-        background: #151b20;
-        border-top: 1px solid #34414a;
+        background: rgba(11, 15, 16, 0.96);
+        border-top: 1px solid rgba(60, 75, 79, 0.86);
         bottom: 0;
         display: grid;
         gap: 4px;
         grid-template-columns: repeat(5, minmax(0, 1fr));
         left: 0;
-        padding: 8px;
+        padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
         position: fixed;
         right: 0;
         z-index: 4;
       }
 
       .nav-button {
+        background: transparent;
         border-color: transparent;
+        border-radius: 14px;
+        color: var(--muted);
         flex-direction: column;
         font-size: 0.68rem;
-        gap: 2px;
+        font-weight: 900;
+        gap: 3px;
         justify-content: center;
-        min-height: 58px;
-        padding: 6px;
+        min-height: 64px;
+        padding: 7px 4px;
+      }
+
+      .nav-icon {
+        align-items: center;
+        border: 1px solid rgba(119, 130, 126, 0.28);
+        border-radius: 999px;
+        display: inline-flex;
+        font-size: 0.66rem;
+        height: 28px;
+        justify-content: center;
+        min-width: 28px;
+        padding: 0 7px;
       }
 
       .nav-button.active {
-        background: #27342d;
-        border-color: #78d6a3;
-        color: #baf0d0;
+        color: var(--green-2);
+      }
+
+      .nav-button.active .nav-icon {
+        background: var(--green-dark);
+        border-color: var(--green);
+        color: var(--green-2);
+      }
+
+      @media (max-width: 390px) {
+        .two { grid-template-columns: 1fr; }
+        .set-head, .set-row {
+          grid-template-columns: 30px minmax(48px, 1fr) minmax(62px, 1.15fr) minmax(48px, 1fr) 44px;
+          gap: 5px;
+        }
+        .set-row { padding: 7px; }
+        .set-row input { font-size: 0.95rem; padding: 7px 5px; }
       }
 
       @media (min-width: 720px) {
-        .app-main { padding: 22px; }
-        .session-header {
-          border: 1px solid #34414a;
-          border-radius: 8px;
-          margin: 0;
-        }
+        .brand-bar { margin: 0 22px; }
+        .app-main { padding: 22px 22px 0; }
         .bottom-nav {
           left: 50%;
-          max-width: 880px;
+          max-width: 920px;
           transform: translateX(-50%);
         }
       }
@@ -430,7 +632,7 @@
       let settingsMessage = "";
 
       const icon = {
-        workout: "Log",
+        workout: "Lift",
         templates: "Plan",
         history: "Past",
         review: "Coach",
@@ -717,6 +919,11 @@
         }
         root.innerHTML = `
           <div class="app-shell">
+            <header class="brand-bar">
+              <div class="brand-mark">CF</div>
+              <div class="brand-title">Comprehensive <span>Fitness</span></div>
+              <div class="brand-action">${data.settings.weightUnit.toUpperCase()}</div>
+            </header>
             <main class="app-main">${renderView()}</main>
             <nav class="bottom-nav" aria-label="Main navigation">
               ${navButton("workout", "Workout")}
@@ -730,7 +937,7 @@
       }
 
       function navButton(target, label) {
-        return '<button class="nav-button ' + (view === target ? "active" : "") + '" data-action="set-view" data-view="' + target + '" type="button"><span>' + icon[target] + '</span><span>' + label + '</span></button>';
+        return '<button class="nav-button ' + (view === target ? "active" : "") + '" data-action="set-view" data-view="' + target + '" type="button"><span class="nav-icon">' + icon[target] + '</span><span>' + label + '</span></button>';
       }
 
       function renderView() {
@@ -745,6 +952,10 @@
         const session = activeSession();
         return `
           <section class="view">
+            <div>
+              <div class="section-kicker">Today's workout</div>
+              <h1>Training log</h1>
+            </div>
             <div class="session-header">
               <div class="row split">
                 <select data-action="change-session" aria-label="Workout session">
@@ -1162,10 +1373,19 @@
         });
       }
 
+      function isNumericEditAction(action) {
+        return ["set-reps", "set-weight", "set-rpe", "template-exercise-sets", "template-exercise-reps", "rest-seconds"].includes(action);
+      }
+
       root.addEventListener("click", (event) => {
         const target = event.target.closest("[data-action]");
         if (!target) return;
         const action = target.dataset.action;
+        if (target.tagName === "INPUT" && isNumericEditAction(action)) {
+          target.dataset.replaceOnNextInput = "true";
+          target.dataset.previousValue = target.value;
+          target.select();
+        }
         if (action === "set-view") { view = target.dataset.view; render(); }
         if (action === "new-session") addSession();
         if (action === "new-template") addTemplate();
@@ -1222,10 +1442,54 @@
         if (action === "import-data" && target.files[0]) importDataFile(target.files[0]);
       });
 
+      root.addEventListener("focusin", (event) => {
+        const target = event.target.closest("[data-action]");
+        if (!target || target.tagName !== "INPUT") return;
+        if (isNumericEditAction(target.dataset.action)) {
+          target.dataset.replaceOnNextInput = "true";
+          target.dataset.previousValue = target.value;
+          target.select();
+        }
+      });
+
+      root.addEventListener("beforeinput", (event) => {
+        const target = event.target.closest("[data-action]");
+        if (!target || target.tagName !== "INPUT" || !isNumericEditAction(target.dataset.action)) return;
+        if (target.dataset.replaceOnNextInput === "true" && event.inputType && event.inputType.startsWith("insert")) {
+          event.preventDefault();
+          target.value = event.data || "";
+          target.dataset.replaceOnNextInput = "false";
+          target.dispatchEvent(new Event("input", { bubbles: true }));
+        } else {
+          target.dataset.replaceOnNextInput = "false";
+        }
+      });
+
+      root.addEventListener("keydown", (event) => {
+        const target = event.target.closest("[data-action]");
+        if (!target || target.tagName !== "INPUT" || !isNumericEditAction(target.dataset.action)) return;
+        if (target.dataset.replaceOnNextInput !== "true") return;
+        if (event.ctrlKey || event.metaKey || event.altKey || event.key.length !== 1 || !/[\d.]/.test(event.key)) {
+          target.dataset.replaceOnNextInput = "false";
+          return;
+        }
+        event.preventDefault();
+        target.value = event.key;
+        target.dataset.replaceOnNextInput = "false";
+        target.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+
       root.addEventListener("input", (event) => {
         const target = event.target.closest("[data-action]");
         if (!target) return;
         const action = target.dataset.action;
+        if (target.tagName === "INPUT" && isNumericEditAction(action) && target.dataset.replaceOnNextInput === "true") {
+          const previousValue = target.dataset.previousValue || "";
+          let replacement = target.value;
+          if (previousValue && replacement.startsWith(previousValue)) replacement = replacement.slice(previousValue.length);
+          target.value = replacement;
+          target.dataset.replaceOnNextInput = "false";
+        }
         if (action === "add-exercise-draft") addExerciseDraft = target.value;
         if (action === "session-title") patchSession({ title: target.value }, false);
         if (action === "session-notes") patchSession({ notes: target.value }, false);
