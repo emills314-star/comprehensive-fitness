@@ -1,0 +1,861 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#101418" />
+    <title>Comprehensive Fitness</title>
+    <style>
+      :root {
+        color: #f6f8f5;
+        background: #101418;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-width: 320px;
+        min-height: 100vh;
+        background: #101418;
+      }
+
+      button, input, select, textarea { font: inherit; }
+
+      button {
+        align-items: center;
+        background: #20282f;
+        border: 1px solid #34414a;
+        border-radius: 8px;
+        color: #f6f8f5;
+        cursor: pointer;
+        display: inline-flex;
+        gap: 8px;
+        min-height: 44px;
+        padding: 10px 12px;
+      }
+
+      button:hover { border-color: #78d6a3; }
+
+      input, select, textarea {
+        background: #151b20;
+        border: 1px solid #34414a;
+        border-radius: 8px;
+        color: #f6f8f5;
+        min-height: 44px;
+        padding: 10px;
+        width: 100%;
+      }
+
+      textarea {
+        min-height: 72px;
+        resize: vertical;
+      }
+
+      h1, h2, p { margin-top: 0; }
+
+      .app-shell {
+        margin: 0 auto;
+        max-width: 880px;
+        min-height: 100vh;
+        padding-bottom: 82px;
+      }
+
+      .app-main { padding: 14px; }
+      .loading, .empty-state { color: #aab7af; padding: 24px; }
+      .view { display: grid; gap: 14px; }
+
+      .session-header {
+        background: #151b20;
+        border-bottom: 1px solid #34414a;
+        display: grid;
+        gap: 10px;
+        margin: -14px -14px 0;
+        padding: 14px;
+        position: sticky;
+        top: 0;
+        z-index: 3;
+      }
+
+      .row {
+        align-items: center;
+        display: flex;
+        gap: 8px;
+      }
+
+      .split { justify-content: space-between; }
+      .wrap { flex-wrap: wrap; }
+      .grid { display: grid; gap: 8px; }
+      .two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+
+      .toggle-line, .bodyweight {
+        align-items: center;
+        color: #d7ded8;
+        display: inline-flex;
+        gap: 8px;
+      }
+
+      .toggle-line input, .bodyweight input {
+        height: 20px;
+        min-height: 20px;
+        width: 20px;
+      }
+
+      .exercise-card, .settings-panel, .recommendation {
+        background: #151b20;
+        border: 1px solid #2a363d;
+        border-radius: 8px;
+        display: grid;
+        gap: 10px;
+        padding: 12px;
+      }
+
+      .exercise-name {
+        font-size: 1.05rem;
+        font-weight: 700;
+      }
+
+      .icon-button {
+        aspect-ratio: 1;
+        justify-content: center;
+        min-width: 44px;
+        padding: 8px;
+        width: 44px;
+      }
+
+      .danger, .danger-button {
+        border-color: #694047;
+        color: #ffb8c0;
+      }
+
+      .set-head, .set-row, .trend-head, .trend-row {
+        align-items: center;
+        display: grid;
+        gap: 6px;
+      }
+
+      .set-head, .set-row {
+        grid-template-columns: 34px minmax(48px, 1fr) minmax(58px, 1fr) minmax(52px, 1fr) 44px;
+      }
+
+      .set-head, .trend-head {
+        color: #9facaa;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+      }
+
+      .set-row {
+        background: #101418;
+        border-radius: 8px;
+        padding: 8px;
+      }
+
+      .set-row .bodyweight, .set-row .mini-button { grid-column: span 2; }
+
+      .mini-button {
+        color: #aab7af;
+        font-size: 0.85rem;
+        min-height: 34px;
+        padding: 6px 8px;
+      }
+
+      .check-button {
+        aspect-ratio: 1;
+        justify-content: center;
+        min-height: 40px;
+        padding: 6px;
+      }
+
+      .check-button.checked {
+        background: #285a3f;
+        border-color: #78d6a3;
+      }
+
+      .primary-action {
+        background: #78d6a3;
+        border-color: #78d6a3;
+        color: #0c1410;
+        font-weight: 800;
+        justify-content: center;
+      }
+
+      .timer-bar {
+        align-items: center;
+        background: #24313b;
+        border: 1px solid #78d6a3;
+        border-radius: 8px;
+        bottom: 78px;
+        display: grid;
+        gap: 8px;
+        grid-template-columns: 1fr 44px 44px;
+        left: 14px;
+        margin: 0 auto;
+        max-width: 852px;
+        padding: 10px;
+        position: fixed;
+        right: 14px;
+        z-index: 5;
+      }
+
+      .timer-bar strong {
+        display: block;
+        font-size: 1.3rem;
+      }
+
+      .timer-bar span {
+        color: #aab7af;
+        font-size: 0.82rem;
+      }
+
+      .timer-bar.complete { border-color: #f5ca67; }
+
+      .session-card {
+        align-items: stretch;
+        display: grid;
+        gap: 6px;
+        text-align: left;
+      }
+
+      .session-card p, .session-card small {
+        color: #aab7af;
+        margin: 0;
+      }
+
+      .recommendation span {
+        color: #0f1512;
+        justify-self: start;
+        background: #f6f8f5;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        padding: 4px 8px;
+      }
+
+      .recommendation h2 { margin: 0; }
+      .recommendation ul { color: #d7ded8; margin: 0; padding-left: 18px; }
+      .recommendation.progress { border-color: #78d6a3; }
+      .recommendation.hold { border-color: #f5ca67; }
+      .recommendation.deload, .recommendation.change { border-color: #ff8f70; }
+
+      .trend-table {
+        background: #151b20;
+        border: 1px solid #2a363d;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .trend-head, .trend-row {
+        grid-template-columns: 1.6fr 0.7fr 0.7fr 0.7fr;
+        padding: 10px;
+      }
+
+      .trend-row { border-top: 1px solid #2a363d; }
+
+      .settings-panel label {
+        color: #d7ded8;
+        display: grid;
+        gap: 6px;
+      }
+
+      .import-button {
+        align-items: center;
+        background: #20282f;
+        border: 1px solid #34414a;
+        border-radius: 8px;
+        cursor: pointer;
+        display: inline-flex;
+        flex-direction: row;
+        gap: 8px;
+        min-height: 44px;
+        padding: 10px 12px;
+      }
+
+      .import-button input { display: none; }
+
+      .bottom-nav {
+        background: #151b20;
+        border-top: 1px solid #34414a;
+        bottom: 0;
+        display: grid;
+        gap: 4px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        left: 0;
+        padding: 8px;
+        position: fixed;
+        right: 0;
+        z-index: 4;
+      }
+
+      .nav-button {
+        border-color: transparent;
+        flex-direction: column;
+        font-size: 0.74rem;
+        gap: 2px;
+        justify-content: center;
+        min-height: 58px;
+        padding: 6px;
+      }
+
+      .nav-button.active {
+        background: #27342d;
+        border-color: #78d6a3;
+        color: #baf0d0;
+      }
+
+      @media (min-width: 720px) {
+        .app-main { padding: 22px; }
+        .session-header {
+          border: 1px solid #34414a;
+          border-radius: 8px;
+          margin: 0;
+        }
+        .bottom-nav {
+          left: 50%;
+          max-width: 880px;
+          transform: translateX(-50%);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      const STORAGE_KEY = "comprehensive-fitness-data-v1";
+      const root = document.getElementById("root");
+      const defaultSettings = { weightUnit: "lb", defaultRestSeconds: 120 };
+      let data = emptyData();
+      let view = "workout";
+      let activeSessionId = "";
+      let timer = null;
+      let timerInterval = 0;
+      let selectedExercise = "";
+      let selectedWeek = "";
+
+      const icon = {
+        workout: "Log",
+        history: "Past",
+        review: "Coach",
+        settings: "Data",
+        add: "+",
+        clock: "Rest",
+        done: "OK",
+        delete: "X",
+        pause: "Pause",
+        play: "Start",
+        duplicate: "Copy",
+        download: "Export",
+        upload: "Import"
+      };
+
+      function emptyData() {
+        return { sessions: [], exercises: [], sets: [], settings: { ...defaultSettings } };
+      }
+
+      function todayIso() {
+        return new Date().toISOString().slice(0, 10);
+      }
+
+      function isoNow() {
+        return new Date().toISOString();
+      }
+
+      function startOfWeekIso(dateIso) {
+        const date = new Date(dateIso + "T00:00:00");
+        const day = date.getDay();
+        const diff = day === 0 ? -6 : 1 - day;
+        date.setDate(date.getDate() + diff);
+        return date.toISOString().slice(0, 10);
+      }
+
+      function formatDate(dateIso) {
+        return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(dateIso + "T00:00:00"));
+      }
+
+      function formatWeek(dateIso) {
+        return "Week of " + formatDate(startOfWeekIso(dateIso));
+      }
+
+      function id() {
+        return crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(16).slice(2);
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;");
+      }
+
+      function loadData() {
+        try {
+          const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+          data = stored ? { ...emptyData(), ...stored, settings: { ...defaultSettings, ...stored.settings } } : emptyData();
+        } catch {
+          data = emptyData();
+        }
+        if (data.sessions.length === 0) data.sessions.push(createSession());
+        activeSessionId = [...data.sessions].sort((a, b) => b.date.localeCompare(a.date))[0].id;
+      }
+
+      function saveData() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      }
+
+      function commit(nextData) {
+        data = nextData;
+        saveData();
+        render();
+      }
+
+      function createSession() {
+        const now = isoNow();
+        return { id: id(), date: todayIso(), title: "Workout", isTravel: false, notes: "", createdAt: now, updatedAt: now };
+      }
+
+      function createSet(exerciseId, setNumber, previous) {
+        return {
+          id: id(),
+          exerciseId,
+          setNumber,
+          reps: previous?.reps ?? 8,
+          weight: previous?.weight ?? 0,
+          weightUnit: previous?.weightUnit ?? data.settings.weightUnit,
+          isBodyweight: previous?.isBodyweight ?? false,
+          rpe: previous?.rpe ?? 7,
+          completed: previous?.completed ?? true
+        };
+      }
+
+      function activeSession() {
+        return data.sessions.find((session) => session.id === activeSessionId) || data.sessions[0];
+      }
+
+      function activeExercises() {
+        const session = activeSession();
+        return session ? data.exercises.filter((exercise) => exercise.sessionId === session.id).sort((a, b) => a.order - b.order) : [];
+      }
+
+      function setsForExercise(exerciseId) {
+        return data.sets.filter((set) => set.exerciseId === exerciseId).sort((a, b) => a.setNumber - b.setNumber);
+      }
+
+      function estimatedOneRepMax(set) {
+        if (set.weight <= 0 || set.reps <= 0) return 0;
+        return set.weight * (1 + set.reps / 30);
+      }
+
+      function roundToIncrement(value, increment) {
+        return Math.max(increment, Math.round(value / increment) * increment);
+      }
+
+      function getExerciseNames() {
+        return Array.from(new Set(data.exercises.map((exercise) => exercise.name.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+      }
+
+      function getExerciseSets(exerciseName) {
+        const normalized = exerciseName.trim().toLowerCase();
+        const exercises = data.exercises.filter((exercise) => exercise.name.trim().toLowerCase() === normalized);
+        const ids = new Set(exercises.map((exercise) => exercise.id));
+        return { exercises, sets: data.sets.filter((set) => ids.has(set.exerciseId)) };
+      }
+
+      function summarizeExerciseByWeek(exerciseName) {
+        const scoped = getExerciseSets(exerciseName);
+        const exerciseById = new Map(scoped.exercises.map((exercise) => [exercise.id, exercise]));
+        const sessionById = new Map(data.sessions.map((session) => [session.id, session]));
+        const grouped = new Map();
+        scoped.sets.forEach((set) => {
+          const exercise = exerciseById.get(set.exerciseId);
+          const session = exercise ? sessionById.get(exercise.sessionId) : null;
+          if (!session) return;
+          const week = startOfWeekIso(session.date);
+          const bucket = grouped.get(week) || { sessions: new Set(), travelCount: 0, sets: [] };
+          if (!bucket.sessions.has(session.id) && session.isTravel) bucket.travelCount += 1;
+          bucket.sessions.add(session.id);
+          bucket.sets.push(set);
+          grouped.set(week, bucket);
+        });
+        return Array.from(grouped.entries()).map(([weekStart, bucket]) => {
+          const completed = bucket.sets.filter((set) => set.completed);
+          const rpeSets = bucket.sets.filter((set) => set.rpe > 0);
+          return {
+            weekStart,
+            travelCount: bucket.travelCount,
+            topWeight: Math.max(0, ...bucket.sets.map((set) => set.weight)),
+            completedSets: completed.length,
+            failedSets: bucket.sets.filter((set) => !set.completed).length,
+            averageRpe: rpeSets.length ? rpeSets.reduce((sum, set) => sum + set.rpe, 0) / rpeSets.length : 0,
+            bestEstimatedOneRepMax: Math.max(0, ...completed.map(estimatedOneRepMax))
+          };
+        }).sort((a, b) => b.weekStart.localeCompare(a.weekStart));
+      }
+
+      function recommendForExerciseWeek(exerciseName, weekStart) {
+        const summaries = summarizeExerciseByWeek(exerciseName);
+        const selectedIndex = summaries.findIndex((summary) => summary.weekStart === weekStart);
+        const current = summaries[selectedIndex >= 0 ? selectedIndex : 0];
+        const previous = summaries[selectedIndex + 1];
+        const older = summaries.slice(selectedIndex + 1, selectedIndex + 5);
+        const increment = data.settings.weightUnit === "kg" ? 2.5 : 5;
+        if (!current) {
+          return {
+            decision: "hold",
+            label: "Need more data",
+            reason: "There is not enough history for this lift yet.",
+            action: "Log at least one complete session, then review again.",
+            evidence: ["No completed sets found for the selected exercise."],
+            confidence: "low"
+          };
+        }
+        const travelAdjusted = current.travelCount > 0;
+        const hardWeek = current.averageRpe >= 9;
+        const failedMultipleSets = current.failedSets >= 2;
+        const performanceDrop = previous && current.bestEstimatedOneRepMax > 0 && current.bestEstimatedOneRepMax < previous.bestEstimatedOneRepMax * 0.92;
+        const repeatedFailures = older.filter((week) => week.failedSets > 0 || week.averageRpe >= 9.5).length >= 2 && current.failedSets > 0;
+        const flatWeeks = older.length >= 3 && older.every((week) => Math.abs(week.bestEstimatedOneRepMax - current.bestEstimatedOneRepMax) <= current.bestEstimatedOneRepMax * 0.025);
+        const evidence = [
+          current.completedSets + " completed set" + (current.completedSets === 1 ? "" : "s") + " and " + current.failedSets + " missed set" + (current.failedSets === 1 ? "" : "s") + ".",
+          "Average RPE " + (current.averageRpe ? current.averageRpe.toFixed(1) : "not logged") + ".",
+          "Best estimated 1RM " + (current.bestEstimatedOneRepMax ? current.bestEstimatedOneRepMax.toFixed(1) : "not available") + "."
+        ];
+        if (travelAdjusted) evidence.push("Travel was logged this week, so the recommendation is less punitive for a dip.");
+        if (flatWeeks && (hardWeek || repeatedFailures)) {
+          return { decision: "change", label: "Consider changing variation", reason: "This lift looks stalled across several recent weeks.", action: "Swap to a close variation for 4-6 weeks, then retest the original lift.", evidence, confidence: "medium" };
+        }
+        if ((failedMultipleSets || repeatedFailures || performanceDrop) && !travelAdjusted) {
+          const target = roundToIncrement(current.topWeight * 0.9, increment);
+          return { decision: "deload", label: "Deload", reason: "Recent performance suggests fatigue or an overly aggressive load.", action: "Reduce working weight about 10% next time, aiming near " + target + " " + data.settings.weightUnit + ", and keep 1-3 reps in reserve.", evidence, confidence: "high" };
+        }
+        if (hardWeek || current.failedSets > 0 || current.completedSets < 3 || travelAdjusted) {
+          return { decision: "hold", label: "Hold", reason: travelAdjusted ? "The travel context makes this a good week to repeat before judging progress." : "The work was close enough to the limit that repeating is the cleaner next step.", action: "Repeat the same load and rep target next time; progress only if RPE settles below 9.", evidence, confidence: travelAdjusted ? "medium" : "high" };
+        }
+        const nextWeight = roundToIncrement(current.topWeight + increment, increment);
+        return { decision: "progress", label: "Progress", reason: "You completed the work without a high-RPE warning or repeated misses.", action: current.topWeight > 0 ? "Add " + increment + " " + data.settings.weightUnit + " next time, targeting about " + nextWeight + " " + data.settings.weightUnit + "." : "Add reps or a harder bodyweight variation next time.", evidence, confidence: previous ? "high" : "medium" };
+      }
+
+      function render() {
+        const session = activeSession();
+        if (!session) {
+          root.innerHTML = '<div class="loading">Loading your training log...</div>';
+          return;
+        }
+        root.innerHTML = `
+          <div class="app-shell">
+            <main class="app-main">${renderView()}</main>
+            <nav class="bottom-nav" aria-label="Main navigation">
+              ${navButton("workout", "Workout")}
+              ${navButton("history", "History")}
+              ${navButton("review", "Review")}
+              ${navButton("settings", "Settings")}
+            </nav>
+          </div>
+        `;
+      }
+
+      function navButton(target, label) {
+        return '<button class="nav-button ' + (view === target ? "active" : "") + '" data-action="set-view" data-view="' + target + '" type="button"><span>' + icon[target] + '</span><span>' + label + '</span></button>';
+      }
+
+      function renderView() {
+        if (view === "history") return renderHistory();
+        if (view === "review") return renderReview();
+        if (view === "settings") return renderSettings();
+        return renderWorkout();
+      }
+
+      function renderWorkout() {
+        const session = activeSession();
+        return `
+          <section class="view">
+            <div class="session-header">
+              <div class="row split">
+                <select data-action="change-session" aria-label="Workout session">
+                  ${data.sessions.map((item) => '<option value="' + item.id + '" ' + (item.id === session.id ? "selected" : "") + '>' + escapeHtml(item.title) + " - " + item.date + '</option>').join("")}
+                </select>
+                <button class="icon-button" type="button" data-action="new-session" title="New workout">${icon.add}</button>
+              </div>
+              <div class="grid two">
+                <input value="${escapeHtml(session.title)}" data-action="session-title" aria-label="Workout title" />
+                <input type="date" value="${session.date}" data-action="session-date" aria-label="Workout date" />
+              </div>
+              <label class="toggle-line"><input type="checkbox" data-action="session-travel" ${session.isTravel ? "checked" : ""} />Travel session</label>
+              <textarea data-action="session-notes" placeholder="Session notes" aria-label="Session notes">${escapeHtml(session.notes)}</textarea>
+            </div>
+            ${activeExercises().map(renderExercise).join("")}
+            <button class="primary-action" type="button" data-action="add-exercise">${icon.add} Add exercise</button>
+            ${renderTimer()}
+          </section>
+        `;
+      }
+
+      function renderExercise(exercise) {
+        return `
+          <article class="exercise-card">
+            <div class="row split">
+              <input class="exercise-name" value="${escapeHtml(exercise.name)}" data-action="exercise-name" data-exercise-id="${exercise.id}" aria-label="Exercise name" />
+              <button class="icon-button danger" type="button" data-action="delete-exercise" data-exercise-id="${exercise.id}" title="Delete exercise">${icon.delete}</button>
+            </div>
+            <div class="set-head"><span>Set</span><span>Reps</span><span>Load</span><span>RPE</span><span>Done</span></div>
+            ${setsForExercise(exercise.id).map(renderSet).join("")}
+            <div class="row wrap">
+              <button type="button" data-action="add-set" data-exercise-id="${exercise.id}">${icon.add} Set</button>
+              <button type="button" data-action="duplicate-set" data-exercise-id="${exercise.id}">${icon.duplicate} Duplicate</button>
+              <button type="button" data-action="start-timer" data-exercise-id="${exercise.id}">${icon.clock}</button>
+            </div>
+            <textarea data-action="exercise-notes" data-exercise-id="${exercise.id}" placeholder="Exercise notes" aria-label="Exercise notes">${escapeHtml(exercise.notes)}</textarea>
+          </article>
+        `;
+      }
+
+      function renderSet(set) {
+        return `
+          <div class="set-row">
+            <strong>${set.setNumber}</strong>
+            <input type="number" min="0" value="${set.reps}" data-action="set-reps" data-set-id="${set.id}" aria-label="Reps" />
+            <input type="number" min="0" value="${set.weight}" data-action="set-weight" data-set-id="${set.id}" aria-label="Weight" />
+            <input type="number" min="0" max="10" step="0.5" value="${set.rpe}" data-action="set-rpe" data-set-id="${set.id}" aria-label="RPE" />
+            <button class="check-button ${set.completed ? "checked" : ""}" type="button" data-action="toggle-set" data-set-id="${set.id}" title="Toggle completed">${icon.done}</button>
+            <label class="bodyweight"><input type="checkbox" data-action="set-bodyweight" data-set-id="${set.id}" ${set.isBodyweight ? "checked" : ""} />BW</label>
+            <button class="mini-button" type="button" data-action="delete-set" data-set-id="${set.id}">Remove</button>
+          </div>
+        `;
+      }
+
+      function renderTimer() {
+        if (!timer) return "";
+        return `
+          <div class="timer-bar ${timer.remainingSeconds === 0 ? "complete" : ""}">
+            <div><strong>${formatTimer(timer.remainingSeconds)}</strong><span>Rest timer</span></div>
+            <button class="icon-button" type="button" data-action="toggle-timer">${timer.isPaused ? icon.play : icon.pause}</button>
+            <button class="icon-button" type="button" data-action="clear-timer">${icon.delete}</button>
+          </div>
+        `;
+      }
+
+      function renderHistory() {
+        const sessions = [...data.sessions].sort((a, b) => b.date.localeCompare(a.date));
+        return `
+          <section class="view">
+            <h1>History</h1>
+            ${sessions.map((session) => {
+              const exercises = data.exercises.filter((exercise) => exercise.sessionId === session.id);
+              return `
+                <button class="session-card" type="button" data-action="open-session" data-session-id="${session.id}">
+                  <div class="row split"><strong>${escapeHtml(session.title || "Workout")}</strong><span>${formatDate(session.date)}</span></div>
+                  <p>${formatWeek(session.date)} ${session.isTravel ? "- Travel" : ""}</p>
+                  <small>${escapeHtml(exercises.map((exercise) => exercise.name).join(", ") || "No exercises yet")}</small>
+                </button>
+              `;
+            }).join("")}
+          </section>
+        `;
+      }
+
+      function renderReview() {
+        const names = getExerciseNames();
+        if (!selectedExercise && names[0]) selectedExercise = names[0];
+        const weeks = selectedExercise ? summarizeExerciseByWeek(selectedExercise) : [];
+        if (!selectedWeek || !weeks.some((week) => week.weekStart === selectedWeek)) selectedWeek = weeks[0]?.weekStart || startOfWeekIso(todayIso());
+        const recommendation = selectedExercise ? recommendForExerciseWeek(selectedExercise, selectedWeek) : null;
+        if (names.length === 0) {
+          return '<section class="view"><h1>Review</h1><div class="empty-state">Log an exercise, then this screen will turn your history into next-step guidance.</div></section>';
+        }
+        return `
+          <section class="view">
+            <h1>Review</h1>
+            <div class="grid two">
+              <select data-action="review-exercise" aria-label="Exercise">${names.map((name) => '<option ' + (name === selectedExercise ? "selected" : "") + '>' + escapeHtml(name) + '</option>').join("")}</select>
+              <select data-action="review-week" aria-label="Week">${weeks.map((week) => '<option value="' + week.weekStart + '" ' + (week.weekStart === selectedWeek ? "selected" : "") + '>' + formatWeek(week.weekStart) + '</option>').join("")}</select>
+            </div>
+            ${recommendation ? renderRecommendation(recommendation) : ""}
+            <div class="trend-table">
+              <div class="trend-head"><span>Week</span><span>Top</span><span>Sets</span><span>RPE</span></div>
+              ${weeks.map((week) => `
+                <div class="trend-row">
+                  <span>${week.weekStart}${week.travelCount ? " - Travel" : ""}</span>
+                  <span>${week.topWeight}</span>
+                  <span>${week.completedSets}/${week.completedSets + week.failedSets}</span>
+                  <span>${week.averageRpe ? week.averageRpe.toFixed(1) : "-"}</span>
+                </div>
+              `).join("")}
+            </div>
+          </section>
+        `;
+      }
+
+      function renderRecommendation(recommendation) {
+        return `
+          <article class="recommendation ${recommendation.decision}">
+            <span>${recommendation.confidence} confidence</span>
+            <h2>${escapeHtml(recommendation.label)}</h2>
+            <p>${escapeHtml(recommendation.reason)}</p>
+            <strong>${escapeHtml(recommendation.action)}</strong>
+            <ul>${recommendation.evidence.map((item) => "<li>" + escapeHtml(item) + "</li>").join("")}</ul>
+          </article>
+        `;
+      }
+
+      function renderSettings() {
+        return `
+          <section class="view">
+            <h1>Settings</h1>
+            <div class="settings-panel">
+              <label>Weight unit
+                <select data-action="weight-unit">
+                  <option value="lb" ${data.settings.weightUnit === "lb" ? "selected" : ""}>Pounds</option>
+                  <option value="kg" ${data.settings.weightUnit === "kg" ? "selected" : ""}>Kilograms</option>
+                </select>
+              </label>
+              <label>Default rest seconds
+                <input type="number" min="15" step="15" value="${data.settings.defaultRestSeconds}" data-action="rest-seconds" />
+              </label>
+              <button type="button" data-action="export-data">${icon.download} data</button>
+              <label class="import-button">${icon.upload} data<input type="file" accept="application/json" data-action="import-data" /></label>
+              <button class="danger-button" type="button" data-action="clear-data">${icon.delete} Clear local data</button>
+            </div>
+          </section>
+        `;
+      }
+
+      function patchSession(patch) {
+        const session = activeSession();
+        commit({ ...data, sessions: data.sessions.map((item) => item.id === session.id ? { ...item, ...patch, updatedAt: isoNow() } : item) });
+      }
+
+      function patchExercise(exerciseId, patch) {
+        commit({ ...data, exercises: data.exercises.map((exercise) => exercise.id === exerciseId ? { ...exercise, ...patch } : exercise) });
+      }
+
+      function patchSet(setId, patch) {
+        commit({ ...data, sets: data.sets.map((set) => set.id === setId ? { ...set, ...patch } : set) });
+      }
+
+      function addSession() {
+        const session = createSession();
+        activeSessionId = session.id;
+        view = "workout";
+        commit({ ...data, sessions: [session, ...data.sessions] });
+      }
+
+      function addExercise() {
+        const session = activeSession();
+        const name = window.prompt("Exercise name");
+        if (!session || !name || !name.trim()) return;
+        const exercise = { id: id(), sessionId: session.id, name: name.trim(), notes: "", order: activeExercises().length };
+        commit({ ...data, exercises: [...data.exercises, exercise], sets: [...data.sets, createSet(exercise.id, 1)] });
+      }
+
+      function addSet(exerciseId, duplicate) {
+        const sets = setsForExercise(exerciseId);
+        commit({ ...data, sets: [...data.sets, createSet(exerciseId, sets.length + 1, duplicate ? sets[sets.length - 1] : undefined)] });
+      }
+
+      function startTimer(exerciseId) {
+        timer = { exerciseId, durationSeconds: data.settings.defaultRestSeconds, remainingSeconds: data.settings.defaultRestSeconds, isActive: true, isPaused: false };
+        startTimerInterval();
+        render();
+      }
+
+      function startTimerInterval() {
+        window.clearInterval(timerInterval);
+        timerInterval = window.setInterval(() => {
+          if (!timer || timer.isPaused || !timer.isActive) return;
+          timer.remainingSeconds = Math.max(0, timer.remainingSeconds - 1);
+          timer.isActive = timer.remainingSeconds > 0;
+          render();
+        }, 1000);
+      }
+
+      function formatTimer(seconds) {
+        const minutes = Math.floor(seconds / 60);
+        return minutes + ":" + String(seconds % 60).padStart(2, "0");
+      }
+
+      function exportData() {
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = "comprehensive-fitness-" + todayIso() + ".json";
+        anchor.click();
+        URL.revokeObjectURL(url);
+      }
+
+      function importDataFile(file) {
+        file.text().then((text) => {
+          try {
+            const imported = JSON.parse(text);
+            if (!Array.isArray(imported.sessions) || !Array.isArray(imported.exercises) || !Array.isArray(imported.sets)) throw new Error("Import must include sessions, exercises, and sets arrays.");
+            data = { ...emptyData(), ...imported, settings: { ...defaultSettings, ...imported.settings } };
+            activeSessionId = data.sessions[0]?.id || "";
+            saveData();
+            render();
+          } catch (error) {
+            window.alert(error instanceof Error ? error.message : "Import failed.");
+          }
+        });
+      }
+
+      root.addEventListener("click", (event) => {
+        const target = event.target.closest("[data-action]");
+        if (!target) return;
+        const action = target.dataset.action;
+        if (action === "set-view") { view = target.dataset.view; render(); }
+        if (action === "new-session") addSession();
+        if (action === "add-exercise") addExercise();
+        if (action === "delete-exercise") commit({ ...data, exercises: data.exercises.filter((exercise) => exercise.id !== target.dataset.exerciseId), sets: data.sets.filter((set) => set.exerciseId !== target.dataset.exerciseId) });
+        if (action === "add-set") addSet(target.dataset.exerciseId, false);
+        if (action === "duplicate-set") addSet(target.dataset.exerciseId, true);
+        if (action === "delete-set") commit({ ...data, sets: data.sets.filter((set) => set.id !== target.dataset.setId) });
+        if (action === "toggle-set") {
+          const set = data.sets.find((item) => item.id === target.dataset.setId);
+          if (set) patchSet(set.id, { completed: !set.completed });
+        }
+        if (action === "start-timer") startTimer(target.dataset.exerciseId);
+        if (action === "toggle-timer" && timer) { timer.isPaused = !timer.isPaused; render(); }
+        if (action === "clear-timer") { timer = null; render(); }
+        if (action === "open-session") { activeSessionId = target.dataset.sessionId; view = "workout"; render(); }
+        if (action === "export-data") exportData();
+        if (action === "clear-data" && window.confirm("Clear all workout data?")) {
+          const session = createSession();
+          activeSessionId = session.id;
+          commit({ ...emptyData(), sessions: [session] });
+        }
+      });
+
+      root.addEventListener("change", (event) => {
+        const target = event.target.closest("[data-action]");
+        if (!target) return;
+        const action = target.dataset.action;
+        if (action === "change-session") { activeSessionId = target.value; render(); }
+        if (action === "session-date") patchSession({ date: target.value });
+        if (action === "session-travel") patchSession({ isTravel: target.checked });
+        if (action === "set-bodyweight") patchSet(target.dataset.setId, { isBodyweight: target.checked });
+        if (action === "review-exercise") { selectedExercise = target.value; selectedWeek = ""; render(); }
+        if (action === "review-week") { selectedWeek = target.value; render(); }
+        if (action === "weight-unit") commit({ ...data, settings: { ...data.settings, weightUnit: target.value } });
+        if (action === "import-data" && target.files[0]) importDataFile(target.files[0]);
+      });
+
+      root.addEventListener("input", (event) => {
+        const target = event.target.closest("[data-action]");
+        if (!target) return;
+        const action = target.dataset.action;
+        if (action === "session-title") patchSession({ title: target.value });
+        if (action === "session-notes") patchSession({ notes: target.value });
+        if (action === "exercise-name") patchExercise(target.dataset.exerciseId, { name: target.value });
+        if (action === "exercise-notes") patchExercise(target.dataset.exerciseId, { notes: target.value });
+        if (action === "set-reps") patchSet(target.dataset.setId, { reps: Number(target.value) });
+        if (action === "set-weight") patchSet(target.dataset.setId, { weight: Number(target.value) });
+        if (action === "set-rpe") patchSet(target.dataset.setId, { rpe: Number(target.value) });
+        if (action === "rest-seconds") commit({ ...data, settings: { ...data.settings, defaultRestSeconds: Number(target.value) } });
+      });
+
+      loadData();
+      saveData();
+      render();
+    </script>
+  </body>
+</html>
