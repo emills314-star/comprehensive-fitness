@@ -109,7 +109,7 @@
         width: 20px;
       }
 
-      .exercise-card, .settings-panel, .recommendation {
+      .exercise-card, .settings-panel, .recommendation, .template-card, .inline-panel, .workout-advice {
         background: #151b20;
         border: 1px solid #2a363d;
         border-radius: 8px;
@@ -185,6 +185,60 @@
         color: #0c1410;
         font-weight: 800;
         justify-content: center;
+      }
+
+      .secondary-action {
+        justify-content: center;
+      }
+
+      .template-card {
+        text-align: left;
+      }
+
+      .template-card h2,
+      .workout-advice h2,
+      .inline-panel h2 {
+        font-size: 1.05rem;
+        margin: 0;
+      }
+
+      .template-meta,
+      .advice-detail,
+      .template-card small {
+        color: #aab7af;
+      }
+
+      .template-list,
+      .advice-list {
+        display: grid;
+        gap: 8px;
+        margin: 0;
+        padding: 0;
+      }
+
+      .template-list li,
+      .advice-list li {
+        background: #101418;
+        border-radius: 8px;
+        display: grid;
+        gap: 4px;
+        list-style: none;
+        padding: 9px;
+      }
+
+      .inline-panel {
+        border-color: #78d6a3;
+      }
+
+      .inline-actions {
+        display: grid;
+        gap: 8px;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      }
+
+      .export-box {
+        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+        min-height: 180px;
       }
 
       .timer-bar {
@@ -303,7 +357,7 @@
         bottom: 0;
         display: grid;
         gap: 4px;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(5, minmax(0, 1fr));
         left: 0;
         padding: 8px;
         position: fixed;
@@ -314,7 +368,7 @@
       .nav-button {
         border-color: transparent;
         flex-direction: column;
-        font-size: 0.74rem;
+        font-size: 0.68rem;
         gap: 2px;
         justify-content: center;
         min-height: 58px;
@@ -347,7 +401,22 @@
     <script>
       const STORAGE_KEY = "comprehensive-fitness-data-v1";
       const root = document.getElementById("root");
-      const defaultSettings = { weightUnit: "lb", defaultRestSeconds: 120 };
+      const defaultSettings = { weightUnit: "lb", defaultRestSeconds: 120, goal: "hypertrophy", trainingStatus: "intermediate" };
+      const researchRules = {
+        volume: {
+          novice: "8-12 hard sets per muscle weekly",
+          intermediate: "12-18 hard sets per muscle weekly",
+          advanced: "15-25 hard sets per muscle weekly"
+        },
+        frequency: "Train each muscle at least 2x/week when possible; frequency mainly helps distribute weekly volume.",
+        effort: "Most productive hypertrophy sets should land around 0-5 reps in reserve, roughly RPE 7-10.",
+        rest: "Rest at least 90 seconds on compound lifts and at least 60 seconds on isolation lifts to preserve volume load.",
+        progression: "Progress by adding load or reps when target work is completed with manageable RPE; hold or deload when performance drops or fatigue accumulates.",
+        deload: "After repeated misses, performance drops, or 4-8 hard weeks, reduce volume 30-50% and/or load 10-20% for about one week.",
+        protein: "For hypertrophy/recomposition, the evidence-based daily protein range is about 1.6-2.2 g/kg; higher may help during aggressive cuts.",
+        recomposition: "For recomposition, keep resistance training, high protein, and a moderate deficit; deficits over about 500 kcal/day tend to impair lean-mass gain.",
+        sleep: "Sleep under 7 hours can limit recovery; 7-9 hours is the practical adult target."
+      };
       let data = emptyData();
       let view = "workout";
       let activeSessionId = "";
@@ -355,9 +424,14 @@
       let timerInterval = 0;
       let selectedExercise = "";
       let selectedWeek = "";
+      let addExerciseDraft = "";
+      let exportText = "";
+      let pendingClearData = false;
+      let settingsMessage = "";
 
       const icon = {
         workout: "Log",
+        templates: "Plan",
         history: "Past",
         review: "Coach",
         settings: "Data",
@@ -373,7 +447,7 @@
       };
 
       function emptyData() {
-        return { sessions: [], exercises: [], sets: [], settings: { ...defaultSettings } };
+        return { sessions: [], exercises: [], sets: [], templates: [], settings: { ...defaultSettings } };
       }
 
       function todayIso() {
@@ -419,6 +493,7 @@
         } catch {
           data = emptyData();
         }
+        data.templates = Array.isArray(data.templates) ? data.templates : [];
         if (data.sessions.length === 0) data.sessions.push(createSession());
         activeSessionId = [...data.sessions].sort((a, b) => b.date.localeCompare(a.date))[0].id;
       }
@@ -427,15 +502,16 @@
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
       }
 
-      function commit(nextData) {
+      function commit(nextData, shouldRender = true) {
         data = nextData;
         saveData();
-        render();
+        if (shouldRender) render();
       }
 
-      function createSession() {
+      function createSession(title) {
         const now = isoNow();
-        return { id: id(), date: todayIso(), title: "Workout", isTravel: false, notes: "", createdAt: now, updatedAt: now };
+        const sameDayCount = data.sessions.filter((session) => session.date === todayIso()).length + 1;
+        return { id: id(), date: todayIso(), title: title || "Workout " + sameDayCount, isTravel: false, notes: "", createdAt: now, updatedAt: now };
       }
 
       function createSet(exerciseId, setNumber, previous) {
@@ -559,6 +635,80 @@
         return { decision: "progress", label: "Progress", reason: "You completed the work without a high-RPE warning or repeated misses.", action: current.topWeight > 0 ? "Add " + increment + " " + data.settings.weightUnit + " next time, targeting about " + nextWeight + " " + data.settings.weightUnit + "." : "Add reps or a harder bodyweight variation next time.", evidence, confidence: previous ? "high" : "medium" };
       }
 
+      function templateExerciseCount(template) {
+        return template.exercises.reduce((sum, exercise) => sum + Number(exercise.sets || 0), 0);
+      }
+
+      function researchVolumeTarget() {
+        return researchRules.volume[data.settings.trainingStatus] || researchRules.volume.intermediate;
+      }
+
+      function goalContext() {
+        if (data.settings.goal === "recomposition") return researchRules.recomposition;
+        if (data.settings.goal === "cut") return "During a cut, protect performance with high protein, controlled volume, and conservative progression.";
+        if (data.settings.goal === "maintain") return "For maintenance, prioritize consistency, sufficient effort, and avoiding unnecessary fatigue.";
+        return "For hypertrophy, prioritize enough weekly hard sets, progressive overload, and recovery.";
+      }
+
+      function getLastCompletedSet(exerciseName) {
+        const scoped = getExerciseSets(exerciseName);
+        const exerciseById = new Map(scoped.exercises.map((exercise) => [exercise.id, exercise]));
+        const sessionById = new Map(data.sessions.map((session) => [session.id, session]));
+        return scoped.sets
+          .filter((set) => set.completed)
+          .map((set) => {
+            const exercise = exerciseById.get(set.exerciseId);
+            const session = exercise ? sessionById.get(exercise.sessionId) : null;
+            return session ? { set, session } : null;
+          })
+          .filter(Boolean)
+          .sort((a, b) => b.session.date.localeCompare(a.session.date))[0];
+      }
+
+      function recommendForTemplate(template) {
+        if (!template || template.exercises.length === 0) {
+          return { label: "Build the plan first", detail: "Add exercises, sets, and target reps before starting this template.", items: [] };
+        }
+        const items = template.exercises.map((exercise) => {
+          const weeks = summarizeExerciseByWeek(exercise.name);
+          const recommendation = weeks[0] ? recommendForExerciseWeek(exercise.name, weeks[0].weekStart) : null;
+          const last = getLastCompletedSet(exercise.name);
+          const loadText = last?.set?.weight > 0 ? "last logged " + last.set.weight + " " + last.set.weightUnit : "choose a load you can control";
+          const base = exercise.sets + " x " + exercise.reps + " target, " + loadText;
+          if (!recommendation) return { name: exercise.name, text: base + "; start around RPE 7-8 and leave 1-3 reps in reserve." };
+          if (recommendation.decision === "progress") return { name: exercise.name, text: base + "; progress with a small load increase or add 1 rep per set if load jumps are too large." };
+          if (recommendation.decision === "deload") return { name: exercise.name, text: base + "; reduce load about 10% or cut one set while keeping clean reps." };
+          if (recommendation.decision === "change") return { name: exercise.name, text: base + "; consider a close variation for 4-6 weeks if this keeps stalling." };
+          return { name: exercise.name, text: base + "; hold the target and improve execution before adding workload." };
+        });
+        const totalSets = templateExerciseCount(template);
+        const hasHistory = items.some((item) => getLastCompletedSet(item.name));
+        const label = hasHistory ? "Session target: progressive overload" : "Session target: establish baseline";
+        const detail = hasHistory
+          ? "Use prior performance first. " + researchRules.progression + " " + goalContext()
+          : "No prior completed sets found for this template. Use controlled sets near RPE 7-8, then let future sessions drive progression. " + goalContext();
+        const context = " Research target: " + researchVolumeTarget() + ". " + researchRules.rest + " " + researchRules.protein;
+        return { label, detail: detail + " Planned volume: " + totalSets + " working sets." + context, items };
+      }
+
+      function createTemplateFromSession(sessionId) {
+        const session = data.sessions.find((item) => item.id === sessionId);
+        if (!session) return null;
+        const exercises = data.exercises
+          .filter((exercise) => exercise.sessionId === session.id)
+          .sort((a, b) => a.order - b.order)
+          .map((exercise) => {
+            const sets = setsForExercise(exercise.id);
+            return {
+              id: id(),
+              name: exercise.name || "Exercise",
+              sets: Math.max(sets.length, 1),
+              reps: sets[0]?.reps || 8
+            };
+          });
+        return { id: id(), name: (session.title || "Workout") + " Template", notes: "", exercises, createdAt: isoNow(), updatedAt: isoNow() };
+      }
+
       function render() {
         const session = activeSession();
         if (!session) {
@@ -570,6 +720,7 @@
             <main class="app-main">${renderView()}</main>
             <nav class="bottom-nav" aria-label="Main navigation">
               ${navButton("workout", "Workout")}
+              ${navButton("templates", "Templates")}
               ${navButton("history", "History")}
               ${navButton("review", "Review")}
               ${navButton("settings", "Settings")}
@@ -583,6 +734,7 @@
       }
 
       function renderView() {
+        if (view === "templates") return renderTemplates();
         if (view === "history") return renderHistory();
         if (view === "review") return renderReview();
         if (view === "settings") return renderSettings();
@@ -607,11 +759,27 @@
               <label class="toggle-line"><input type="checkbox" data-action="session-travel" ${session.isTravel ? "checked" : ""} />Travel session</label>
               <textarea data-action="session-notes" placeholder="Session notes" aria-label="Session notes">${escapeHtml(session.notes)}</textarea>
             </div>
+            ${renderActiveWorkoutAdvice()}
             ${activeExercises().map(renderExercise).join("")}
-            <button class="primary-action" type="button" data-action="add-exercise">${icon.add} Add exercise</button>
+            <div class="inline-panel">
+              <h2>Add exercise</h2>
+              <div class="row">
+                <input value="${escapeHtml(addExerciseDraft)}" data-action="add-exercise-draft" placeholder="Exercise name" aria-label="New exercise name" />
+                <button class="icon-button" type="button" data-action="add-exercise" title="Add exercise">${icon.add}</button>
+              </div>
+            </div>
+            <button class="secondary-action" type="button" data-action="save-template">Save workout as template</button>
             ${renderTimer()}
           </section>
         `;
+      }
+
+      function renderActiveWorkoutAdvice() {
+        const session = activeSession();
+        if (!session?.templateId) return "";
+        const template = data.templates.find((item) => item.id === session.templateId);
+        if (!template) return "";
+        return renderWorkoutAdvice(recommendForTemplate(template));
       }
 
       function renderExercise(exercise) {
@@ -658,11 +826,68 @@
         `;
       }
 
+      function renderWorkoutAdvice(advice) {
+        return `
+          <article class="workout-advice">
+            <h2>${escapeHtml(advice.label)}</h2>
+            <p class="advice-detail">${escapeHtml(advice.detail)}</p>
+            ${advice.items.length ? '<ul class="advice-list">' + advice.items.map((item) => '<li><strong>' + escapeHtml(item.name) + '</strong><span>' + escapeHtml(item.text) + '</span></li>').join("") + '</ul>' : ""}
+          </article>
+        `;
+      }
+
+      function renderTemplates() {
+        return `
+          <section class="view">
+            <h1>Templates</h1>
+            <div class="inline-panel">
+              <h2>New template</h2>
+              <div class="inline-actions">
+                <button type="button" data-action="new-template">Blank template</button>
+                <button type="button" data-action="save-template">Use current workout</button>
+              </div>
+            </div>
+            ${data.templates.length ? data.templates.map(renderTemplateCard).join("") : '<div class="empty-state">Create a leg day, push day, pull day, or any repeatable workout. Templates store exercises, sets, and target reps; you fill in weights during the workout.</div>'}
+          </section>
+        `;
+      }
+
+      function renderTemplateCard(template) {
+        const advice = recommendForTemplate(template);
+        return `
+          <article class="template-card">
+            <div class="row split">
+              <input class="exercise-name" value="${escapeHtml(template.name)}" data-action="template-name" data-template-id="${template.id}" aria-label="Template name" />
+              <button class="icon-button danger" type="button" data-action="delete-template" data-template-id="${template.id}" title="Delete template">${icon.delete}</button>
+            </div>
+            <small>${template.exercises.length} exercises - ${templateExerciseCount(template)} working sets</small>
+            ${renderWorkoutAdvice(advice)}
+            <ul class="template-list">
+              ${template.exercises.map((exercise) => `
+                <li>
+                  <input value="${escapeHtml(exercise.name)}" data-action="template-exercise-name" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" aria-label="Template exercise name" />
+                  <div class="grid two">
+                    <label class="template-meta">Sets<input type="number" min="1" value="${exercise.sets}" data-action="template-exercise-sets" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" /></label>
+                    <label class="template-meta">Reps<input type="number" min="1" value="${exercise.reps}" data-action="template-exercise-reps" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" /></label>
+                  </div>
+                  <button class="mini-button danger" type="button" data-action="delete-template-exercise" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}">Remove exercise</button>
+                </li>
+              `).join("")}
+            </ul>
+            <div class="inline-actions">
+              <button type="button" data-action="add-template-exercise" data-template-id="${template.id}">${icon.add} Exercise</button>
+              <button class="primary-action" type="button" data-action="start-template" data-template-id="${template.id}">Start workout</button>
+            </div>
+          </article>
+        `;
+      }
+
       function renderHistory() {
         const sessions = [...data.sessions].sort((a, b) => b.date.localeCompare(a.date));
         return `
           <section class="view">
             <h1>History</h1>
+            <h2>By session</h2>
             ${sessions.map((session) => {
               const exercises = data.exercises.filter((exercise) => exercise.sessionId === session.id);
               return `
@@ -673,8 +898,34 @@
                 </button>
               `;
             }).join("")}
+            <h2>By exercise</h2>
+            ${renderExerciseHistory()}
           </section>
         `;
+      }
+
+      function renderExerciseHistory() {
+        const names = getExerciseNames();
+        if (!names.length) return '<div class="empty-state">No exercise history yet.</div>';
+        return names.map((name) => {
+          const weeks = summarizeExerciseByWeek(name).slice(0, 4);
+          return `
+            <article class="template-card">
+              <h2>${escapeHtml(name)}</h2>
+              <div class="trend-table">
+                <div class="trend-head"><span>Week</span><span>Top</span><span>Sets</span><span>RPE</span></div>
+                ${weeks.map((week) => `
+                  <div class="trend-row">
+                    <span>${week.weekStart}${week.travelCount ? " - Travel" : ""}</span>
+                    <span>${week.topWeight}</span>
+                    <span>${week.completedSets}/${week.completedSets + week.failedSets}</span>
+                    <span>${week.averageRpe ? week.averageRpe.toFixed(1) : "-"}</span>
+                  </div>
+                `).join("")}
+              </div>
+            </article>
+          `;
+        }).join("");
       }
 
       function renderReview() {
@@ -732,30 +983,48 @@
                   <option value="kg" ${data.settings.weightUnit === "kg" ? "selected" : ""}>Kilograms</option>
                 </select>
               </label>
+              <label>Training goal
+                <select data-action="training-goal">
+                  <option value="hypertrophy" ${data.settings.goal === "hypertrophy" ? "selected" : ""}>Hypertrophy</option>
+                  <option value="recomposition" ${data.settings.goal === "recomposition" ? "selected" : ""}>Body recomposition</option>
+                  <option value="cut" ${data.settings.goal === "cut" ? "selected" : ""}>Cut / preserve muscle</option>
+                  <option value="maintain" ${data.settings.goal === "maintain" ? "selected" : ""}>Maintain</option>
+                </select>
+              </label>
+              <label>Training status
+                <select data-action="training-status">
+                  <option value="novice" ${data.settings.trainingStatus === "novice" ? "selected" : ""}>Novice / returning</option>
+                  <option value="intermediate" ${data.settings.trainingStatus === "intermediate" ? "selected" : ""}>Intermediate</option>
+                  <option value="advanced" ${data.settings.trainingStatus === "advanced" ? "selected" : ""}>Advanced</option>
+                </select>
+              </label>
               <label>Default rest seconds
                 <input type="number" min="15" step="15" value="${data.settings.defaultRestSeconds}" data-action="rest-seconds" />
               </label>
+              <p class="settings-note">Research basis: weekly hard-set volume, progressive overload, 0-5 RIR effort, 60-90+ second rests, planned deloads, 1.6-2.2 g/kg protein, moderate recomposition deficits, and 7-9 hours sleep.</p>
               <p class="settings-note">Progression guidance is informational fitness guidance, not medical advice. Stop if something hurts and use your own judgment.</p>
+              ${settingsMessage ? '<p class="settings-note">' + escapeHtml(settingsMessage) + '</p>' : ""}
               <p class="settings-links"><a href="./privacy.html">Privacy Policy</a><a href="./support.html">Support</a></p>
               <button type="button" data-action="export-data">${icon.download} data</button>
+              ${exportText ? '<textarea class="export-box" readonly aria-label="Exported backup JSON">' + escapeHtml(exportText) + '</textarea>' : ""}
               <label class="import-button">${icon.upload} data<input type="file" accept="application/json" data-action="import-data" /></label>
-              <button class="danger-button" type="button" data-action="clear-data">${icon.delete} Clear local data</button>
+              ${pendingClearData ? '<div class="inline-panel"><strong>Clear all local workout data?</strong><div class="inline-actions"><button class="danger-button" type="button" data-action="confirm-clear-data">Clear data</button><button type="button" data-action="cancel-clear-data">Cancel</button></div></div>' : '<button class="danger-button" type="button" data-action="clear-data">' + icon.delete + ' Clear local data</button>'}
             </div>
           </section>
         `;
       }
 
-      function patchSession(patch) {
+      function patchSession(patch, shouldRender = true) {
         const session = activeSession();
-        commit({ ...data, sessions: data.sessions.map((item) => item.id === session.id ? { ...item, ...patch, updatedAt: isoNow() } : item) });
+        commit({ ...data, sessions: data.sessions.map((item) => item.id === session.id ? { ...item, ...patch, updatedAt: isoNow() } : item) }, shouldRender);
       }
 
-      function patchExercise(exerciseId, patch) {
-        commit({ ...data, exercises: data.exercises.map((exercise) => exercise.id === exerciseId ? { ...exercise, ...patch } : exercise) });
+      function patchExercise(exerciseId, patch, shouldRender = true) {
+        commit({ ...data, exercises: data.exercises.map((exercise) => exercise.id === exerciseId ? { ...exercise, ...patch } : exercise) }, shouldRender);
       }
 
-      function patchSet(setId, patch) {
-        commit({ ...data, sets: data.sets.map((set) => set.id === setId ? { ...set, ...patch } : set) });
+      function patchSet(setId, patch, shouldRender = true) {
+        commit({ ...data, sets: data.sets.map((set) => set.id === setId ? { ...set, ...patch } : set) }, shouldRender);
       }
 
       function addSession() {
@@ -767,10 +1036,69 @@
 
       function addExercise() {
         const session = activeSession();
-        const name = window.prompt("Exercise name");
+        const name = addExerciseDraft;
         if (!session || !name || !name.trim()) return;
         const exercise = { id: id(), sessionId: session.id, name: name.trim(), notes: "", order: activeExercises().length };
+        addExerciseDraft = "";
         commit({ ...data, exercises: [...data.exercises, exercise], sets: [...data.sets, createSet(exercise.id, 1)] });
+      }
+
+      function addTemplate() {
+        const template = { id: id(), name: "New Template", notes: "", exercises: [{ id: id(), name: "Exercise", sets: 3, reps: 8 }], createdAt: isoNow(), updatedAt: isoNow() };
+        view = "templates";
+        commit({ ...data, templates: [template, ...data.templates] });
+      }
+
+      function patchTemplate(templateId, patch, shouldRender = true) {
+        commit({ ...data, templates: data.templates.map((template) => template.id === templateId ? { ...template, ...patch, updatedAt: isoNow() } : template) }, shouldRender);
+      }
+
+      function patchTemplateExercise(templateId, exerciseId, patch, shouldRender = true) {
+        commit({
+          ...data,
+          templates: data.templates.map((template) => template.id === templateId
+            ? { ...template, exercises: template.exercises.map((exercise) => exercise.id === exerciseId ? { ...exercise, ...patch } : exercise), updatedAt: isoNow() }
+            : template)
+        }, shouldRender);
+      }
+
+      function addTemplateExercise(templateId) {
+        commit({
+          ...data,
+          templates: data.templates.map((template) => template.id === templateId
+            ? { ...template, exercises: [...template.exercises, { id: id(), name: "Exercise", sets: 3, reps: 8 }], updatedAt: isoNow() }
+            : template)
+        });
+      }
+
+      function saveActiveSessionAsTemplate() {
+        const template = createTemplateFromSession(activeSessionId);
+        if (!template || template.exercises.length === 0) {
+          view = "templates";
+          addTemplate();
+          return;
+        }
+        view = "templates";
+        commit({ ...data, templates: [template, ...data.templates] });
+      }
+
+      function startTemplate(templateId) {
+        const template = data.templates.find((item) => item.id === templateId);
+        if (!template) return;
+        const session = createSession(template.name);
+        session.templateId = template.id;
+        const exercises = [];
+        const sets = [];
+        template.exercises.forEach((templateExercise, index) => {
+          const exercise = { id: id(), sessionId: session.id, name: templateExercise.name, notes: "", order: index };
+          exercises.push(exercise);
+          for (let setNumber = 1; setNumber <= Number(templateExercise.sets || 1); setNumber += 1) {
+            sets.push(createSet(exercise.id, setNumber, { reps: Number(templateExercise.reps || 8), weight: 0, weightUnit: data.settings.weightUnit, isBodyweight: false, rpe: 7, completed: true }));
+          }
+        });
+        activeSessionId = session.id;
+        view = "workout";
+        commit({ ...data, sessions: [session, ...data.sessions], exercises: [...data.exercises, ...exercises], sets: [...data.sets, ...sets] });
       }
 
       function addSet(exerciseId, duplicate) {
@@ -800,13 +1128,20 @@
       }
 
       function exportData() {
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+        exportText = JSON.stringify(data, null, 2);
+        const blob = new Blob([exportText], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const anchor = document.createElement("a");
         anchor.href = url;
         anchor.download = "comprehensive-fitness-" + todayIso() + ".json";
+        anchor.style.display = "none";
+        document.body.appendChild(anchor);
         anchor.click();
-        URL.revokeObjectURL(url);
+        window.setTimeout(() => {
+          anchor.remove();
+          URL.revokeObjectURL(url);
+        }, 1000);
+        render();
       }
 
       function importDataFile(file) {
@@ -815,11 +1150,14 @@
             const imported = JSON.parse(text);
             if (!Array.isArray(imported.sessions) || !Array.isArray(imported.exercises) || !Array.isArray(imported.sets)) throw new Error("Import must include sessions, exercises, and sets arrays.");
             data = { ...emptyData(), ...imported, settings: { ...defaultSettings, ...imported.settings } };
+            data.templates = Array.isArray(data.templates) ? data.templates : [];
             activeSessionId = data.sessions[0]?.id || "";
+            settingsMessage = "Import complete.";
             saveData();
             render();
           } catch (error) {
-            window.alert(error instanceof Error ? error.message : "Import failed.");
+            settingsMessage = error instanceof Error ? error.message : "Import failed.";
+            render();
           }
         });
       }
@@ -830,6 +1168,19 @@
         const action = target.dataset.action;
         if (action === "set-view") { view = target.dataset.view; render(); }
         if (action === "new-session") addSession();
+        if (action === "new-template") addTemplate();
+        if (action === "save-template") saveActiveSessionAsTemplate();
+        if (action === "start-template") startTemplate(target.dataset.templateId);
+        if (action === "add-template-exercise") addTemplateExercise(target.dataset.templateId);
+        if (action === "delete-template") commit({ ...data, templates: data.templates.filter((template) => template.id !== target.dataset.templateId) });
+        if (action === "delete-template-exercise") {
+          commit({
+            ...data,
+            templates: data.templates.map((template) => template.id === target.dataset.templateId
+              ? { ...template, exercises: template.exercises.filter((exercise) => exercise.id !== target.dataset.templateExerciseId), updatedAt: isoNow() }
+              : template)
+          });
+        }
         if (action === "add-exercise") addExercise();
         if (action === "delete-exercise") commit({ ...data, exercises: data.exercises.filter((exercise) => exercise.id !== target.dataset.exerciseId), sets: data.sets.filter((set) => set.exerciseId !== target.dataset.exerciseId) });
         if (action === "add-set") addSet(target.dataset.exerciseId, false);
@@ -844,9 +1195,13 @@
         if (action === "clear-timer") { timer = null; render(); }
         if (action === "open-session") { activeSessionId = target.dataset.sessionId; view = "workout"; render(); }
         if (action === "export-data") exportData();
-        if (action === "clear-data" && window.confirm("Clear all workout data?")) {
+        if (action === "clear-data") { pendingClearData = true; render(); }
+        if (action === "cancel-clear-data") { pendingClearData = false; render(); }
+        if (action === "confirm-clear-data") {
           const session = createSession();
           activeSessionId = session.id;
+          pendingClearData = false;
+          exportText = "";
           commit({ ...emptyData(), sessions: [session] });
         }
       });
@@ -862,6 +1217,8 @@
         if (action === "review-exercise") { selectedExercise = target.value; selectedWeek = ""; render(); }
         if (action === "review-week") { selectedWeek = target.value; render(); }
         if (action === "weight-unit") commit({ ...data, settings: { ...data.settings, weightUnit: target.value } });
+        if (action === "training-goal") commit({ ...data, settings: { ...data.settings, goal: target.value } });
+        if (action === "training-status") commit({ ...data, settings: { ...data.settings, trainingStatus: target.value } });
         if (action === "import-data" && target.files[0]) importDataFile(target.files[0]);
       });
 
@@ -869,14 +1226,19 @@
         const target = event.target.closest("[data-action]");
         if (!target) return;
         const action = target.dataset.action;
-        if (action === "session-title") patchSession({ title: target.value });
-        if (action === "session-notes") patchSession({ notes: target.value });
-        if (action === "exercise-name") patchExercise(target.dataset.exerciseId, { name: target.value });
-        if (action === "exercise-notes") patchExercise(target.dataset.exerciseId, { notes: target.value });
-        if (action === "set-reps") patchSet(target.dataset.setId, { reps: Number(target.value) });
-        if (action === "set-weight") patchSet(target.dataset.setId, { weight: Number(target.value) });
-        if (action === "set-rpe") patchSet(target.dataset.setId, { rpe: Number(target.value) });
-        if (action === "rest-seconds") commit({ ...data, settings: { ...data.settings, defaultRestSeconds: Number(target.value) } });
+        if (action === "add-exercise-draft") addExerciseDraft = target.value;
+        if (action === "session-title") patchSession({ title: target.value }, false);
+        if (action === "session-notes") patchSession({ notes: target.value }, false);
+        if (action === "exercise-name") patchExercise(target.dataset.exerciseId, { name: target.value }, false);
+        if (action === "exercise-notes") patchExercise(target.dataset.exerciseId, { notes: target.value }, false);
+        if (action === "set-reps") patchSet(target.dataset.setId, { reps: Number(target.value) }, false);
+        if (action === "set-weight") patchSet(target.dataset.setId, { weight: Number(target.value) }, false);
+        if (action === "set-rpe") patchSet(target.dataset.setId, { rpe: Number(target.value) }, false);
+        if (action === "template-name") patchTemplate(target.dataset.templateId, { name: target.value }, false);
+        if (action === "template-exercise-name") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { name: target.value }, false);
+        if (action === "template-exercise-sets") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { sets: Number(target.value) }, false);
+        if (action === "template-exercise-reps") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { reps: Number(target.value) }, false);
+        if (action === "rest-seconds") commit({ ...data, settings: { ...data.settings, defaultRestSeconds: Number(target.value) } }, false);
       });
 
       loadData();
