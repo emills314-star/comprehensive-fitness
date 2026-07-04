@@ -12,23 +12,26 @@ The web app is intentionally simple and self-contained:
 
 ## Native App Packaging
 
-This repository is prepared for Capacitor packaging with app id:
+This repository includes Capacitor native projects with app id:
 
 `com.emills.comprehensivefitness`
 
-On a machine with Node.js installed:
+Node.js/npm dependencies are installed locally with `package-lock.json`. To refresh the bundled web payload and native assets after editing the app:
 
 ```powershell
 npm install
 npm run sync:web
-npm run cap:add:ios
-npm run cap:add:android
 npm run cap:sync
 ```
 
-Then:
+Generated native folders:
 
-- iOS: open the generated iOS project in Xcode with `npm run cap:open:ios`, configure signing, archive, and upload through App Store Connect.
+- `android/`
+- `ios/`
+
+Build and store submission:
+
+- iOS: open the generated iOS project in Xcode with `npm run cap:open:ios` on macOS, install CocoaPods if prompted, configure signing, archive, and upload through App Store Connect.
 - Android: open Android Studio with `npm run cap:open:android`, configure signing, and build a release Android App Bundle for Google Play.
 
 ## Store Notes
