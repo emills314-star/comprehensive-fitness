@@ -404,6 +404,54 @@
         font-size: 1.28rem;
       }
 
+      .recovery-panel {
+        background: linear-gradient(180deg, rgba(18, 34, 55, 0.96), rgba(16, 22, 23, 0.98));
+        border: 1px solid rgba(74, 163, 255, 0.42);
+        border-radius: 18px;
+        box-shadow: var(--shadow);
+        display: grid;
+        gap: 12px;
+        padding: 14px;
+      }
+
+      .recovery-panel h2 {
+        margin: 0;
+      }
+
+      .recovery-status {
+        border-radius: 14px;
+        display: grid;
+        gap: 5px;
+        padding: 11px;
+      }
+
+      .recovery-status.progress { background: rgba(74, 163, 255, 0.14); border: 1px solid rgba(74, 163, 255, 0.5); }
+      .recovery-status.hold { background: rgba(255, 177, 43, 0.12); border: 1px solid rgba(255, 177, 43, 0.46); }
+      .recovery-status.deload, .recovery-status.rest { background: rgba(255, 127, 107, 0.12); border: 1px solid rgba(255, 127, 107, 0.46); }
+
+      .recovery-status strong {
+        color: var(--text);
+      }
+
+      .recovery-status span {
+        color: var(--muted);
+        line-height: 1.4;
+      }
+
+      .recovery-inputs {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+      }
+
+      .recovery-inputs label {
+        color: var(--muted);
+        display: grid;
+        font-size: 0.82rem;
+        font-weight: 800;
+        gap: 5px;
+      }
+
       .quick-template-strip {
         display: grid;
         gap: 10px;
@@ -716,6 +764,7 @@
       let exportText = "";
       let pendingClearData = false;
       let settingsMessage = "";
+      let saveTimer = 0;
 
       const icon = {
         workout: "Lift",
@@ -787,19 +836,34 @@
       }
 
       function saveData() {
+        window.clearTimeout(saveTimer);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      }
+
+      function scheduleSave() {
+        window.clearTimeout(saveTimer);
+        saveTimer = window.setTimeout(saveData, 500);
       }
 
       function commit(nextData, shouldRender = true) {
         data = nextData;
-        saveData();
+        if (shouldRender) saveData();
+        else scheduleSave();
         if (shouldRender) render();
       }
 
       function createSession(title) {
         const now = isoNow();
         const sameDayCount = data.sessions.filter((session) => session.date === todayIso()).length + 1;
-        return { id: id(), date: todayIso(), title: title || "Workout " + sameDayCount, isTravel: false, notes: "", createdAt: now, updatedAt: now };
+        return { id: id(), date: todayIso(), title: title || "Workout " + sameDayCount, isTravel: false, notes: "", recovery: defaultRecovery(), createdAt: now, updatedAt: now };
+      }
+
+      function defaultRecovery() {
+        return { sleepHours: "", sleepQuality: "", hrv: "", hrvBaseline: "", restingHr: "", restingHrBaseline: "", soreness: "", stress: "", energy: "", illness: false };
+      }
+
+      function sessionRecovery(session) {
+        return { ...defaultRecovery(), ...(session?.recovery || {}) };
       }
 
       function createSet(exerciseId, setNumber, previous) {
@@ -823,6 +887,11 @@
       function activeExercises() {
         const session = activeSession();
         return session ? data.exercises.filter((exercise) => exercise.sessionId === session.id).sort((a, b) => a.order - b.order) : [];
+      }
+
+      function workoutSessionOptions(session) {
+        const recent = [...data.sessions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 60);
+        return Array.from(new Map([session, ...recent].filter(Boolean).map((item) => [item.id, item])).values());
       }
 
       function setsForExercise(exerciseId) {
@@ -1154,7 +1223,7 @@
             <div class="session-header">
               <div class="row split">
                 <select data-action="change-session" aria-label="Workout session">
-                  ${data.sessions.map((item) => '<option value="' + item.id + '" ' + (item.id === session.id ? "selected" : "") + '>' + escapeHtml(item.title) + " - " + item.date + '</option>').join("")}
+                  ${workoutSessionOptions(session).map((item) => '<option value="' + item.id + '" ' + (item.id === session.id ? "selected" : "") + '>' + escapeHtml(item.title) + " - " + item.date + '</option>').join("")}
                 </select>
                 <button class="icon-button" type="button" data-action="new-session" title="New workout">${icon.add}</button>
               </div>
@@ -1165,6 +1234,7 @@
               <label class="toggle-line"><input type="checkbox" data-action="session-travel" ${session.isTravel ? "checked" : ""} />Travel session</label>
               <textarea data-action="session-notes" placeholder="Session notes" aria-label="Session notes">${escapeHtml(session.notes)}</textarea>
             </div>
+            ${renderRecoveryPanel(session)}
             ${renderActiveWorkoutAdvice()}
             ${activeExercises().map(renderExercise).join("")}
             <div class="inline-panel">
@@ -1177,6 +1247,36 @@
             <button class="secondary-action" type="button" data-action="save-template">Save workout as template</button>
             ${renderTimer()}
           </section>
+        `;
+      }
+
+      function renderRecoveryPanel(session) {
+        const recovery = sessionRecovery(session);
+        const advice = recoveryRecommendationForSession(session);
+        return `
+          <article class="recovery-panel">
+            <div class="row split">
+              <h2>Recovery readiness</h2>
+              <span class="section-kicker">Today</span>
+            </div>
+            <div class="recovery-status ${advice.decision}">
+              <strong>${escapeHtml(advice.label)}</strong>
+              <span>${escapeHtml(advice.action)}</span>
+              <span>${escapeHtml(advice.evidence.slice(0, 2).join(" "))}</span>
+            </div>
+            <div class="recovery-inputs">
+              <label>Sleep hours<input type="number" min="0" max="14" step="0.25" value="${escapeHtml(recovery.sleepHours)}" data-action="recovery-sleep-hours" /></label>
+              <label>Sleep quality<select data-action="recovery-sleep-quality"><option value="">-</option>${[1,2,3,4,5].map((value) => '<option value="' + value + '" ' + (String(recovery.sleepQuality) === String(value) ? "selected" : "") + '>' + value + '/5</option>').join("")}</select></label>
+              <label>HRV<input type="number" min="0" step="1" value="${escapeHtml(recovery.hrv)}" data-action="recovery-hrv" /></label>
+              <label>HRV baseline<input type="number" min="0" step="1" value="${escapeHtml(recovery.hrvBaseline)}" data-action="recovery-hrv-baseline" /></label>
+              <label>Resting HR<input type="number" min="0" step="1" value="${escapeHtml(recovery.restingHr)}" data-action="recovery-resting-hr" /></label>
+              <label>HR baseline<input type="number" min="0" step="1" value="${escapeHtml(recovery.restingHrBaseline)}" data-action="recovery-resting-hr-baseline" /></label>
+              <label>Soreness<select data-action="recovery-soreness"><option value="">-</option>${[1,2,3,4,5].map((value) => '<option value="' + value + '" ' + (String(recovery.soreness) === String(value) ? "selected" : "") + '>' + value + '/5</option>').join("")}</select></label>
+              <label>Stress<select data-action="recovery-stress"><option value="">-</option>${[1,2,3,4,5].map((value) => '<option value="' + value + '" ' + (String(recovery.stress) === String(value) ? "selected" : "") + '>' + value + '/5</option>').join("")}</select></label>
+              <label>Energy<select data-action="recovery-energy"><option value="">-</option>${[1,2,3,4,5].map((value) => '<option value="' + value + '" ' + (String(recovery.energy) === String(value) ? "selected" : "") + '>' + value + '/5</option>').join("")}</select></label>
+              <label class="toggle-line"><input type="checkbox" data-action="recovery-illness" ${recovery.illness ? "checked" : ""} />Illness or unusual pain</label>
+            </div>
+          </article>
         `;
       }
 
@@ -1313,11 +1413,13 @@
       }
 
       function renderHistory() {
-        const sessions = [...data.sessions].sort((a, b) => b.date.localeCompare(a.date));
+        const totalSessions = data.sessions.length;
+        const sessions = [...data.sessions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 120);
         return `
           <section class="view">
             <h1>History</h1>
             <h2>By session</h2>
+            ${totalSessions > sessions.length ? '<p class="settings-note">Showing the latest ' + sessions.length + ' sessions. Exercise review still uses the full imported history.</p>' : ""}
             ${sessions.map((session) => {
               const exercises = data.exercises.filter((exercise) => exercise.sessionId === session.id);
               return `
@@ -1446,15 +1548,44 @@
 
       function patchSession(patch, shouldRender = true) {
         const session = activeSession();
-        commit({ ...data, sessions: data.sessions.map((item) => item.id === session.id ? { ...item, ...patch, updatedAt: isoNow() } : item) }, shouldRender);
+        if (shouldRender) {
+          commit({ ...data, sessions: data.sessions.map((item) => item.id === session.id ? { ...item, ...patch, updatedAt: isoNow() } : item) }, true);
+          return;
+        }
+        const index = data.sessions.findIndex((item) => item.id === session.id);
+        if (index >= 0) {
+          data.sessions[index] = { ...data.sessions[index], ...patch, updatedAt: isoNow() };
+          scheduleSave();
+        }
+      }
+
+      function patchRecovery(patch, shouldRender = true) {
+        const session = activeSession();
+        patchSession({ recovery: { ...sessionRecovery(session), ...patch } }, shouldRender);
       }
 
       function patchExercise(exerciseId, patch, shouldRender = true) {
-        commit({ ...data, exercises: data.exercises.map((exercise) => exercise.id === exerciseId ? { ...exercise, ...patch } : exercise) }, shouldRender);
+        if (shouldRender) {
+          commit({ ...data, exercises: data.exercises.map((exercise) => exercise.id === exerciseId ? { ...exercise, ...patch } : exercise) }, true);
+          return;
+        }
+        const index = data.exercises.findIndex((exercise) => exercise.id === exerciseId);
+        if (index >= 0) {
+          data.exercises[index] = { ...data.exercises[index], ...patch };
+          scheduleSave();
+        }
       }
 
       function patchSet(setId, patch, shouldRender = true) {
-        commit({ ...data, sets: data.sets.map((set) => set.id === setId ? { ...set, ...patch } : set) }, shouldRender);
+        if (shouldRender) {
+          commit({ ...data, sets: data.sets.map((set) => set.id === setId ? { ...set, ...patch } : set) }, true);
+          return;
+        }
+        const index = data.sets.findIndex((set) => set.id === setId);
+        if (index >= 0) {
+          data.sets[index] = { ...data.sets[index], ...patch };
+          scheduleSave();
+        }
       }
 
       function addSession() {
@@ -1515,13 +1646,18 @@
       function startTemplate(templateId) {
         const template = data.templates.find((item) => item.id === templateId);
         if (!template) return;
-        const session = createSession(template.name);
+        const currentSession = activeSession();
+        const replaceCurrent = currentSession && currentSession.date === todayIso() && currentSession.source !== "strong";
+        const session = replaceCurrent
+          ? { ...currentSession, title: template.name, templateId: template.id, updatedAt: isoNow() }
+          : createSession(template.name);
         session.templateId = template.id;
+        const recoveryAdvice = recoveryRecommendationForSession(session);
         const exercises = [];
         const sets = [];
         template.exercises.forEach((templateExercise, index) => {
           const exercise = { id: id(), sessionId: session.id, name: templateExercise.name, notes: "", order: index };
-          const target = coachTargetForTemplateExercise(templateExercise);
+          const target = adjustTargetForRecovery(coachTargetForTemplateExercise(templateExercise), recoveryAdvice);
           exercise.notes = "Coach target: " + target.text;
           exercises.push(exercise);
           for (let setNumber = 1; setNumber <= target.sets; setNumber += 1) {
@@ -1530,7 +1666,17 @@
         });
         activeSessionId = session.id;
         view = "workout";
-        commit({ ...data, sessions: [session, ...data.sessions], exercises: [...data.exercises, ...exercises], sets: [...data.sets, ...sets] });
+        if (replaceCurrent) {
+          const oldExerciseIds = new Set(data.exercises.filter((exercise) => exercise.sessionId === session.id).map((exercise) => exercise.id));
+          commit({
+            ...data,
+            sessions: data.sessions.map((item) => item.id === session.id ? session : item),
+            exercises: [...data.exercises.filter((exercise) => exercise.sessionId !== session.id), ...exercises],
+            sets: [...data.sets.filter((set) => !oldExerciseIds.has(set.exerciseId)), ...sets]
+          });
+        } else {
+          commit({ ...data, sessions: [session, ...data.sessions], exercises: [...data.exercises, ...exercises], sets: [...data.sets, ...sets] });
+        }
       }
 
       function addSet(exerciseId, duplicate) {
@@ -1611,6 +1757,79 @@
       function numberFrom(value, fallback = 0) {
         const parsed = Number(value);
         return Number.isFinite(parsed) ? parsed : fallback;
+      }
+
+      function recoveryRecommendationForSession(session) {
+        const recovery = sessionRecovery(session);
+        const sleepHours = numberFrom(recovery.sleepHours, 0);
+        const sleepQuality = numberFrom(recovery.sleepQuality, 0);
+        const hrv = numberFrom(recovery.hrv, 0);
+        const hrvBaseline = numberFrom(recovery.hrvBaseline, 0);
+        const restingHr = numberFrom(recovery.restingHr, 0);
+        const restingHrBaseline = numberFrom(recovery.restingHrBaseline, 0);
+        const soreness = numberFrom(recovery.soreness, 0);
+        const stress = numberFrom(recovery.stress, 0);
+        const energy = numberFrom(recovery.energy, 0);
+        let score = 0;
+        const evidence = [];
+
+        if (sleepHours > 0) {
+          if (sleepHours >= 7) { score += 2; evidence.push("Sleep duration supports training."); }
+          else if (sleepHours >= 6) { score += 0; evidence.push("Sleep is usable but not ideal."); }
+          else { score -= 3; evidence.push("Short sleep is a recovery warning."); }
+        }
+        if (sleepQuality > 0) {
+          if (sleepQuality >= 4) score += 1;
+          if (sleepQuality <= 2) { score -= 2; evidence.push("Low sleep quality reduces readiness."); }
+        }
+        if (hrv > 0 && hrvBaseline > 0) {
+          const hrvRatio = hrv / hrvBaseline;
+          if (hrvRatio >= 0.95) score += 1;
+          if (hrvRatio < 0.9) { score -= 2; evidence.push("HRV is meaningfully below baseline."); }
+        }
+        if (restingHr > 0 && restingHrBaseline > 0) {
+          const hrDelta = restingHr - restingHrBaseline;
+          if (hrDelta <= 2) score += 1;
+          if (hrDelta >= 6) { score -= 2; evidence.push("Resting heart rate is elevated versus baseline."); }
+        }
+        if (soreness > 0) {
+          if (soreness <= 2) score += 1;
+          if (soreness >= 4) { score -= 2; evidence.push("High soreness argues against aggressive loading."); }
+        }
+        if (stress > 0) {
+          if (stress <= 2) score += 1;
+          if (stress >= 4) { score -= 2; evidence.push("High stress can reduce recovery capacity."); }
+        }
+        if (energy > 0) {
+          if (energy >= 4) score += 1;
+          if (energy <= 2) { score -= 2; evidence.push("Low energy suggests holding or reducing load."); }
+        }
+        if (recovery.illness) {
+          score -= 5;
+          evidence.push("Illness or unusual pain is a rest warning.");
+        }
+
+        if (![sleepHours, sleepQuality, hrv, hrvBaseline, restingHr, restingHrBaseline, soreness, stress, energy].some(Boolean) && !recovery.illness) {
+          return { decision: "hold", label: "Recovery not logged", action: "Log recovery markers to personalize today.", score, evidence: ["No readiness markers entered yet."] };
+        }
+        if (score <= -5) return { decision: "rest", label: "Rest or very light technique", action: "Skip hard loading today or keep easy movement only.", score, evidence };
+        if (score <= -2) return { decision: "deload", label: "Deload today", action: "Reduce load 10-15% and volume 30-50%, aiming around RPE 6-7.", score, evidence };
+        if (score <= 2) return { decision: "hold", label: "Hold today", action: "Repeat the planned load and avoid chasing PRs.", score, evidence };
+        return { decision: "progress", label: "Ready to progress", action: "Progress only if warmups feel normal and reps stay clean.", score, evidence };
+      }
+
+      function adjustTargetForRecovery(target, recoveryAdvice) {
+        const reducedWeight = (multiplier) => target.weight > 0 ? roundToIncrement(target.weight * multiplier, data.settings.weightUnit === "kg" ? 2.5 : 5) : 0;
+        if (recoveryAdvice.decision === "rest") {
+          return { ...target, sets: Math.max(1, Math.ceil(target.sets * 0.5)), weight: reducedWeight(0.85), rpe: 6, text: target.text + " Recovery override: rest is preferred; if you train, keep this very easy." };
+        }
+        if (recoveryAdvice.decision === "deload") {
+          return { ...target, sets: Math.max(1, Math.ceil(target.sets * 0.65)), weight: reducedWeight(0.9), rpe: 7, text: target.text + " Recovery override: deload today." };
+        }
+        if (recoveryAdvice.decision === "hold") {
+          return { ...target, text: target.text + " Recovery note: hold today unless warmups feel excellent." };
+        }
+        return target;
       }
 
       function createTemplatesFromStrongSessions(importedSessions, importedExercises, importedSets) {
@@ -1756,7 +1975,7 @@
       }
 
       function isNumericEditAction(action) {
-        return ["set-reps", "set-weight", "set-rpe", "template-exercise-sets", "template-exercise-reps", "rest-seconds"].includes(action);
+        return ["set-reps", "set-weight", "set-rpe", "template-exercise-sets", "template-exercise-reps", "rest-seconds", "recovery-sleep-hours", "recovery-hrv", "recovery-hrv-baseline", "recovery-resting-hr", "recovery-resting-hr-baseline"].includes(action);
       }
 
       root.addEventListener("click", (event) => {
@@ -1821,6 +2040,11 @@
         if (action === "weight-unit") commit({ ...data, settings: { ...data.settings, weightUnit: target.value } });
         if (action === "training-goal") commit({ ...data, settings: { ...data.settings, goal: target.value } });
         if (action === "training-status") commit({ ...data, settings: { ...data.settings, trainingStatus: target.value } });
+        if (action === "recovery-sleep-quality") patchRecovery({ sleepQuality: target.value });
+        if (action === "recovery-soreness") patchRecovery({ soreness: target.value });
+        if (action === "recovery-stress") patchRecovery({ stress: target.value });
+        if (action === "recovery-energy") patchRecovery({ energy: target.value });
+        if (action === "recovery-illness") patchRecovery({ illness: target.checked });
         if (action === "import-data" && target.files[0]) importDataFile(target.files[0]);
       });
 
@@ -1885,11 +2109,19 @@
         if (action === "template-exercise-sets") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { sets: Number(target.value) }, false);
         if (action === "template-exercise-reps") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { reps: Number(target.value) }, false);
         if (action === "rest-seconds") commit({ ...data, settings: { ...data.settings, defaultRestSeconds: Number(target.value) } }, false);
+        if (action === "recovery-sleep-hours") patchRecovery({ sleepHours: target.value }, false);
+        if (action === "recovery-hrv") patchRecovery({ hrv: target.value }, false);
+        if (action === "recovery-hrv-baseline") patchRecovery({ hrvBaseline: target.value }, false);
+        if (action === "recovery-resting-hr") patchRecovery({ restingHr: target.value }, false);
+        if (action === "recovery-resting-hr-baseline") patchRecovery({ restingHrBaseline: target.value }, false);
       });
 
       loadData();
       saveData();
       render();
+
+      window.addEventListener("pagehide", saveData);
+      window.addEventListener("beforeunload", saveData);
 
       if ("serviceWorker" in navigator && window.isSecureContext) {
         window.addEventListener("load", () => {
