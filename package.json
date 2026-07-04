@@ -1,0 +1,23 @@
+{
+  "name": "comprehensive-fitness",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A local-first workout tracker with transparent strength progression guidance.",
+  "scripts": {
+    "sync:web": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"Copy-Item -LiteralPath index.html -Destination www/index.html -Force; Copy-Item -LiteralPath privacy.html,support.html -Destination www -Force\"",
+    "cap:init": "npx cap init \"Comprehensive Fitness\" \"com.emills.comprehensivefitness\" --web-dir www",
+    "cap:add:ios": "npx cap add ios",
+    "cap:add:android": "npx cap add android",
+    "cap:sync": "npx cap sync",
+    "cap:open:ios": "npx cap open ios",
+    "cap:open:android": "npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/core": "^7.4.3"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^7.4.3",
+    "@capacitor/cli": "^7.4.3",
+    "@capacitor/ios": "^7.4.3"
+  }
+}
