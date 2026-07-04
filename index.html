@@ -357,6 +357,45 @@
         font-size: 1.28rem;
       }
 
+      .quick-template-strip {
+        display: grid;
+        gap: 10px;
+      }
+
+      .quick-template-list {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(auto-fit, minmax(172px, 1fr));
+      }
+
+      .quick-template-card {
+        align-items: stretch;
+        background: linear-gradient(180deg, rgba(35, 53, 31, 0.92), rgba(18, 24, 25, 0.98));
+        border-color: rgba(123, 211, 66, 0.46);
+        border-radius: 18px;
+        display: grid;
+        gap: 7px;
+        min-height: 126px;
+        padding: 13px;
+        text-align: left;
+      }
+
+      .quick-template-card strong {
+        color: var(--text);
+        font-size: 1rem;
+      }
+
+      .quick-template-card small,
+      .quick-template-card span {
+        color: var(--muted);
+        line-height: 1.35;
+      }
+
+      .quick-template-card span {
+        color: #dce8d4;
+        font-size: 0.86rem;
+      }
+
       .template-meta,
       .advice-detail,
       .template-card small {
@@ -956,6 +995,7 @@
               <div class="section-kicker">Today's workout</div>
               <h1>Training log</h1>
             </div>
+            ${renderQuickStartTemplates()}
             <div class="session-header">
               <div class="row split">
                 <select data-action="change-session" aria-label="Workout session">
@@ -982,6 +1022,29 @@
             <button class="secondary-action" type="button" data-action="save-template">Save workout as template</button>
             ${renderTimer()}
           </section>
+        `;
+      }
+
+      function renderQuickStartTemplates() {
+        if (!data.templates.length) return "";
+        const templates = data.templates.slice(0, 4);
+        return `
+          <div class="quick-template-strip">
+            <div class="section-kicker">Start from template</div>
+            <div class="quick-template-list">
+              ${templates.map((template) => {
+                const advice = recommendForTemplate(template);
+                const firstItem = advice.items[0]?.text || advice.detail;
+                return `
+                  <button class="quick-template-card" type="button" data-action="start-template" data-template-id="${template.id}">
+                    <strong>${escapeHtml(template.name)}</strong>
+                    <small>${template.exercises.length} exercises - ${templateExerciseCount(template)} working sets</small>
+                    <span>${escapeHtml(firstItem)}</span>
+                  </button>
+                `;
+              }).join("")}
+            </div>
+          </div>
         `;
       }
 
