@@ -360,7 +360,7 @@
 
       .danger, .danger-button {
         border-color: rgba(255, 127, 107, 0.46);
-        color: #ffc3b8;
+        color: var(--red);
       }
 
       .set-head, .set-row, .trend-head, .trend-row {
@@ -429,7 +429,7 @@
         background: var(--green);
         border-color: var(--green);
         box-shadow: 0 14px 28px rgba(74, 163, 255, 0.2);
-        color: #10160f;
+        color: var(--bg);
         font-size: 1rem;
         font-weight: 1000;
         justify-content: center;
@@ -555,10 +555,10 @@
 
       .status-pill.low,
       .status-pill.caution,
-      .flag-card.caution { border-color: var(--amber); color: #ffd899; }
+      .flag-card.caution { border-color: var(--amber); color: var(--amber); }
       .status-pill.high,
       .status-pill.over,
-      .flag-card.over { border-color: var(--red); color: #ffc3b8; }
+      .flag-card.over { border-color: var(--red); color: var(--red); }
       .status-pill.good,
       .status-pill.inside,
       .flag-card.good { border-color: var(--green); color: var(--green-2); }
@@ -607,6 +607,7 @@
         background: var(--surface);
         border: 1px solid var(--line);
         border-radius: 0;
+        color: var(--green);
         height: 132px;
         overflow: hidden;
         width: 100%;
@@ -653,7 +654,7 @@
       }
 
       .quick-template-card span {
-        color: #d7eaff;
+        color: var(--text);
         font-size: 0.86rem;
       }
 
@@ -733,7 +734,7 @@
       }
 
       .timer-bar span {
-        color: #ffd899;
+        color: var(--amber);
         font-size: 0.82rem;
         font-weight: 800;
         letter-spacing: 0.05em;
@@ -768,7 +769,7 @@
       .recommendation h2 { margin: 0; }
       .recommendation p { color: var(--muted); margin: 0; }
       .recommendation strong { color: var(--text); line-height: 1.35; }
-      .recommendation ul { color: #d7ded8; margin: 0; padding-left: 18px; }
+      .recommendation ul { color: var(--text); margin: 0; padding-left: 18px; }
       .recommendation.progress { border-color: var(--green); }
       .recommendation.hold { border-color: var(--amber); }
       .recommendation.deload, .recommendation.change { border-color: var(--red); }
@@ -1121,7 +1122,30 @@
         return { exercises, sets: data.sets.filter((set) => ids.has(set.exerciseId)) };
       }
 
-      function summarizeExerciseByWeek(exerciseName) {
+      function progressionProfileForExercise(name) {
+        const key = exerciseKey(name);
+        const unit = data.settings.weightUnit;
+        const small = unit === "kg" ? 1 : 2.5;
+        const standard = unit === "kg" ? 2.5 : 5;
+        if (/lateral raise|rear delt|fly|curl|pushdown|tricep|extension|calf|neck/.test(key)) {
+          return { kind: "isolation", increment: small, lowerRep: /lateral raise|rear delt/.test(key) ? 12 : 10, upperRep: 20, maxJumpRatio: 0.18 };
+        }
+        if (/leg extension|leg curl|pulldown|row/.test(key)) {
+          return { kind: "machine", increment: standard, lowerRep: 8, upperRep: 15, maxJumpRatio: 0.22 };
+        }
+        return { kind: "compound", increment: standard, lowerRep: 5, upperRep: 12, maxJumpRatio: 0.25 };
+      }
+
+      function nextLoadForExercise(name, currentWeight) {
+        const profile = progressionProfileForExercise(name);
+        if (currentWeight <= 0) return 0;
+        const raw = currentWeight + profile.increment;
+        const rounded = roundToIncrement(raw, profile.increment);
+        const jumpRatio = (rounded - currentWeight) / currentWeight;
+        return jumpRatio > profile.maxJumpRatio ? currentWeight : rounded;
+      }
+
+      function summarizeExerciseByWeek(exerciseName, options = {}) {
         const scoped = getExerciseSets(exerciseName);
         const exerciseById = new Map(scoped.exercises.map((exercise) => [exercise.id, exercise]));
         const sessionById = new Map(data.sessions.map((session) => [session.id, session]));
@@ -1130,6 +1154,7 @@
           const exercise = exerciseById.get(set.exerciseId);
           const session = exercise ? sessionById.get(exercise.sessionId) : null;
           if (!session) return;
+          if (options.excludeSessionId && session.id === options.excludeSessionId) return;
           const week = startOfWeekIso(session.date);
           const bucket = grouped.get(week) || { sessions: new Set(), travelCount: 0, sets: [] };
           if (!bucket.sessions.has(session.id) && session.isTravel) bucket.travelCount += 1;
@@ -1140,10 +1165,16 @@
         return Array.from(grouped.entries()).map(([weekStart, bucket]) => {
           const completed = bucket.sets.filter((set) => set.completed);
           const rpeSets = bucket.sets.filter((set) => set.rpe > 0);
+          const topWeight = Math.max(0, ...completed.map((set) => set.weight));
+          const topWeightSets = completed.filter((set) => set.weight === topWeight);
           return {
             weekStart,
             travelCount: bucket.travelCount,
-            topWeight: Math.max(0, ...bucket.sets.map((set) => set.weight)),
+            topWeight,
+            maxRepsAtTopWeight: Math.max(0, ...topWeightSets.map((set) => set.reps)),
+            averageRpeAtTopWeight: topWeightSets.filter((set) => set.rpe > 0).length
+              ? topWeightSets.filter((set) => set.rpe > 0).reduce((sum, set) => sum + set.rpe, 0) / topWeightSets.filter((set) => set.rpe > 0).length
+              : 0,
             completedSets: completed.length,
             failedSets: bucket.sets.filter((set) => !set.completed).length,
             averageRpe: rpeSets.length ? rpeSets.reduce((sum, set) => sum + set.rpe, 0) / rpeSets.length : 0,
@@ -1152,13 +1183,14 @@
         }).sort((a, b) => b.weekStart.localeCompare(a.weekStart));
       }
 
-      function recommendForExerciseWeek(exerciseName, weekStart) {
-        const summaries = summarizeExerciseByWeek(exerciseName);
+      function recommendForExerciseWeek(exerciseName, weekStart, options = {}) {
+        const summaries = summarizeExerciseByWeek(exerciseName, options);
         const selectedIndex = summaries.findIndex((summary) => summary.weekStart === weekStart);
         const current = summaries[selectedIndex >= 0 ? selectedIndex : 0];
         const previous = summaries[selectedIndex + 1];
         const older = summaries.slice(selectedIndex + 1, selectedIndex + 5);
-        const increment = data.settings.weightUnit === "kg" ? 2.5 : 5;
+        const profile = progressionProfileForExercise(exerciseName);
+        const increment = profile.increment;
         if (!current) {
           return {
             decision: "hold",
@@ -1191,8 +1223,17 @@
         if (hardWeek || current.failedSets > 0 || current.completedSets < 3 || travelAdjusted) {
           return { decision: "hold", label: "Hold", reason: travelAdjusted ? "The travel context makes this a good week to repeat before judging progress." : "The work was close enough to the limit that repeating is the cleaner next step.", action: "Repeat the same load and rep target next time; progress only if RPE settles below 9.", evidence, confidence: travelAdjusted ? "medium" : "high" };
         }
-        const nextWeight = roundToIncrement(current.topWeight + increment, increment);
-        return { decision: "progress", label: "Progress", reason: "You completed the work without a high-RPE warning or repeated misses.", action: current.topWeight > 0 ? "Add " + increment + " " + data.settings.weightUnit + " next time, targeting about " + nextWeight + " " + data.settings.weightUnit + "." : "Add reps or a harder bodyweight variation next time.", evidence, confidence: previous ? "high" : "medium" };
+        const canAddLoad = current.topWeight > 0 && current.maxRepsAtTopWeight >= profile.upperRep && current.averageRpeAtTopWeight > 0 && current.averageRpeAtTopWeight <= 8.5;
+        const nextWeight = nextLoadForExercise(exerciseName, current.topWeight);
+        if (profile.kind === "isolation" && !canAddLoad) {
+          const nextReps = Math.min(profile.upperRep, Math.max(profile.lowerRep, current.maxRepsAtTopWeight + 1));
+          return { decision: "progress", label: "Progress reps", reason: "You completed the work, but this is an isolation lift where load jumps are large.", action: "Keep " + current.topWeight + " " + data.settings.weightUnit + " and add reps first, targeting about " + nextReps + " reps before increasing load.", evidence, confidence: previous ? "high" : "medium" };
+        }
+        if (nextWeight === current.topWeight && current.topWeight > 0) {
+          const nextReps = Math.min(profile.upperRep, Math.max(profile.lowerRep, current.maxRepsAtTopWeight + 1));
+          return { decision: "progress", label: "Progress reps", reason: "The next load jump is too large relative to the current working weight.", action: "Keep " + current.topWeight + " " + data.settings.weightUnit + " and add reps toward " + nextReps + "-" + profile.upperRep + " before increasing load.", evidence, confidence: previous ? "high" : "medium" };
+        }
+        return { decision: "progress", label: "Progress load", reason: "You completed the work without a high-RPE warning or repeated misses.", action: current.topWeight > 0 ? "Add " + increment + " " + data.settings.weightUnit + " next time, targeting about " + nextWeight + " " + data.settings.weightUnit + "." : "Add reps or a harder bodyweight variation next time.", evidence, confidence: previous ? "high" : "medium" };
       }
 
       function templateExerciseCount(template) {
@@ -1210,7 +1251,7 @@
         return "For hypertrophy, prioritize enough weekly hard sets, progressive overload, and recovery.";
       }
 
-      function getLastCompletedSet(exerciseName) {
+      function getLastCompletedSet(exerciseName, options = {}) {
         const scoped = getExerciseSets(exerciseName);
         const exerciseById = new Map(scoped.exercises.map((exercise) => [exercise.id, exercise]));
         const sessionById = new Map(data.sessions.map((session) => [session.id, session]));
@@ -1222,10 +1263,11 @@
             return session ? { set, session } : null;
           })
           .filter(Boolean)
+          .filter((entry) => !options.excludeSessionId || entry.session.id !== options.excludeSessionId)
           .sort((a, b) => b.session.date.localeCompare(a.session.date))[0];
       }
 
-      function getMostRecentWorkoutSets(exerciseName) {
+      function getMostRecentWorkoutSets(exerciseName, options = {}) {
         const scoped = getExerciseSets(exerciseName);
         const exerciseById = new Map(scoped.exercises.map((exercise) => [exercise.id, exercise]));
         const sessionById = new Map(data.sessions.map((session) => [session.id, session]));
@@ -1237,35 +1279,48 @@
             return session ? { set, session } : null;
           })
           .filter(Boolean)
+          .filter((entry) => !options.excludeSessionId || entry.session.id !== options.excludeSessionId)
           .sort((a, b) => b.session.date.localeCompare(a.session.date) || a.set.setNumber - b.set.setNumber);
         const latestSessionId = completed[0]?.session.id;
         return latestSessionId ? completed.filter((entry) => entry.session.id === latestSessionId).map((entry) => entry.set).sort((a, b) => a.setNumber - b.setNumber) : [];
       }
 
-      function coachTargetForTemplateExercise(templateExercise) {
+      function coachTargetForTemplateExercise(templateExercise, options = {}) {
         const targetReps = Number(templateExercise.reps || 8);
         const plannedSets = Number(templateExercise.sets || 1);
-        const weeks = summarizeExerciseByWeek(templateExercise.name);
-        const recommendation = weeks[0] ? recommendForExerciseWeek(templateExercise.name, weeks[0].weekStart) : null;
-        const recentSets = getMostRecentWorkoutSets(templateExercise.name);
-        const last = getLastCompletedSet(templateExercise.name);
-        const increment = data.settings.weightUnit === "kg" ? 2.5 : 5;
+        const profile = progressionProfileForExercise(templateExercise.name);
+        const weeks = summarizeExerciseByWeek(templateExercise.name, options);
+        const recommendation = weeks[0] ? recommendForExerciseWeek(templateExercise.name, weeks[0].weekStart, options) : null;
+        const recentSets = getMostRecentWorkoutSets(templateExercise.name, options);
+        const last = getLastCompletedSet(templateExercise.name, options);
+        const increment = profile.increment;
         const recentTop = Math.max(0, ...recentSets.map((set) => set.weight), last?.set?.weight || 0);
         const recentReps = Math.max(0, ...recentSets.map((set) => set.reps), last?.set?.reps || 0);
+        const recentRpe = Math.max(0, ...recentSets.map((set) => set.rpe || 0), last?.set?.rpe || 0);
         let sets = plannedSets;
-        let reps = targetReps;
+        let reps = Math.max(targetReps, Math.min(profile.upperRep, recentReps || targetReps));
         let weight = recentTop;
         let rpe = 8;
         let reason = "No prior completed sets found. Use a controlled load near RPE 7-8.";
 
         if (recommendation?.decision === "progress") {
-          reason = "Prior work supports progressive overload.";
-          if (recentTop > 0) weight = roundToIncrement(recentTop + increment, increment);
-          else reps = Math.max(targetReps, recentReps + 1);
+          const loadCandidate = nextLoadForExercise(templateExercise.name, recentTop);
+          const shouldAddLoad = profile.kind !== "isolation" && recentTop > 0 && recentReps >= profile.upperRep && recentRpe <= 8.5 && loadCandidate > recentTop;
+          if (shouldAddLoad) {
+            reason = "Prior work supports a small load increase while staying in the target rep range.";
+            weight = loadCandidate;
+            reps = Math.max(profile.lowerRep, Math.min(targetReps, profile.upperRep));
+          } else {
+            reason = profile.kind === "isolation"
+              ? "Progress this lift by adding reps first; load jumps are large for isolation work."
+              : "Progress by adding reps before taking the next load jump.";
+            reps = Math.min(profile.upperRep, Math.max(profile.lowerRep, recentReps + 1, targetReps));
+          }
         } else if (recommendation?.decision === "deload") {
           reason = "Recent work suggests fatigue or misses. Reduce load and volume.";
           weight = recentTop > 0 ? roundToIncrement(recentTop * 0.9, increment) : 0;
           sets = Math.max(1, Math.ceil(plannedSets * 0.65));
+          reps = Math.max(profile.lowerRep, Math.min(reps, profile.upperRep));
           rpe = 7;
         } else if (recommendation?.decision === "change") {
           reason = "This pattern looks stalled. Consider swapping the lift for 4-6 weeks.";
@@ -1284,6 +1339,11 @@
           isBodyweight: weight === 0,
           text: "Target " + sets + " x " + reps + " @ " + weightText + ", aim RPE " + rpe + ". " + reason
         };
+      }
+
+      function targetText(target, reason) {
+        const weightText = target.weight > 0 ? target.weight + " " + (target.weightUnit || data.settings.weightUnit) : "bodyweight/control load";
+        return "Target " + target.sets + " x " + target.reps + " @ " + weightText + ", aim RPE " + target.rpe + ". " + reason;
       }
 
       function exerciseGuidanceFor(name) {
@@ -1327,20 +1387,37 @@
         `;
       }
 
-      function recommendForTemplate(template) {
+      function recoverySessionLabel(recoveryAdvice, hasHistory) {
+        if (recoveryAdvice?.decision === "rest") return "Session target: recovery / technique only";
+        if (recoveryAdvice?.decision === "deload") return "Session target: deload";
+        if (recoveryAdvice?.decision === "hold") return hasHistory ? "Session target: hold the plan" : "Session target: establish baseline";
+        return hasHistory ? "Session target: progressive overload" : "Session target: establish baseline";
+      }
+
+      function recoverySessionDetail(recoveryAdvice) {
+        if (recoveryAdvice?.decision === "rest") return "Today's readiness is low enough that hard loading is not the target. Rest is preferred; if you train, use reduced volume, reduced load, and technique-focused sets.";
+        if (recoveryAdvice?.decision === "deload") return "Today's readiness is below your normal band. Use the plan as a structure, but reduce load 10-15%, reduce volume 30-50%, and keep effort around RPE 6-7.";
+        if (recoveryAdvice?.decision === "hold") return "Today's readiness is inside your normal band. Train the plan as written and do not change load just because of normal day-to-day fluctuation.";
+        if (recoveryAdvice?.decision === "progress") return "Today's readiness is above your normal band. You may take planned progressions if warmups move normally, but do not force a max.";
+        return "";
+      }
+
+      function recommendForTemplate(template, recoveryAdvice, options = {}) {
         if (!template || template.exercises.length === 0) {
           return { label: "Build the plan first", detail: "Add exercises, sets, and target reps before starting this template.", items: [] };
         }
         const items = template.exercises.map((exercise) => {
-          const target = coachTargetForTemplateExercise(exercise);
+          const target = recoveryAdvice ? adjustTargetForRecovery(coachTargetForTemplateExercise(exercise, options), recoveryAdvice) : coachTargetForTemplateExercise(exercise, options);
           return { name: exercise.name, text: target.text };
         });
         const totalSets = templateExerciseCount(template);
-        const hasHistory = items.some((item) => getLastCompletedSet(item.name));
-        const label = hasHistory ? "Session target: progressive overload" : "Session target: establish baseline";
-        const detail = hasHistory
+        const hasHistory = items.some((item) => getLastCompletedSet(item.name, options));
+        const label = recoverySessionLabel(recoveryAdvice, hasHistory);
+        const baseDetail = hasHistory
           ? "Use prior performance first. " + researchRules.progression + " " + goalContext()
           : "No prior completed sets found for this template. Use controlled sets near RPE 7-8, then let future sessions drive progression. " + goalContext();
+        const recoveryDetail = recoverySessionDetail(recoveryAdvice);
+        const detail = recoveryDetail ? recoveryDetail + " " + baseDetail : baseDetail;
         const context = " Research target: " + researchVolumeTarget() + ". " + researchRules.rest + " " + researchRules.protein;
         return { label, detail: detail + " Planned volume: " + totalSets + " working sets." + context, items };
       }
@@ -1567,12 +1644,13 @@
       function renderQuickStartTemplates() {
         if (!data.templates.length) return "";
         const templates = data.templates.slice(0, 4);
+        const recoveryAdvice = recoveryRecommendationForSession(activeSession());
         return `
           <div class="quick-template-strip">
             <div class="section-kicker">Start from template</div>
             <div class="quick-template-list">
               ${templates.map((template) => {
-                const advice = recommendForTemplate(template);
+                const advice = recommendForTemplate(template, recoveryAdvice, { excludeSessionId: activeSession()?.id });
                 const firstItem = advice.items[0]?.text || advice.detail;
                 return `
                   <button class="quick-template-card" type="button" data-action="start-template" data-template-id="${template.id}">
@@ -1592,7 +1670,7 @@
         if (!session?.templateId) return "";
         const template = data.templates.find((item) => item.id === session.templateId);
         if (!template) return "";
-        return renderWorkoutAdvice(recommendForTemplate(template));
+        return renderWorkoutAdvice(recommendForTemplate(template, recoveryRecommendationForSession(session), { excludeSessionId: session.id }));
       }
 
       function renderExercise(exercise) {
@@ -1671,7 +1749,7 @@
       }
 
       function renderTemplateCard(template) {
-        const advice = recommendForTemplate(template);
+        const advice = recommendForTemplate(template, recoveryRecommendationForSession(activeSession()), { excludeSessionId: activeSession()?.id });
         return `
           <article class="template-card">
             <div class="row split">
@@ -1796,8 +1874,8 @@
             <header><strong>${escapeHtml(title)}</strong><span class="status-pill">${values.length} points</span></header>
             <div class="chart-svg">
               <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(title)} chart">
-                <polyline points="${polyline}" fill="none" stroke="#4aa3ff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></polyline>
-                ${chartPoints.filter((point) => point.value > 0).map((point) => '<circle cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="4" fill="#9fd0ff"></circle>').join("")}
+                <polyline points="${polyline}" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></polyline>
+                ${chartPoints.filter((point) => point.value > 0).map((point) => '<circle cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="4" fill="var(--green-2)"></circle>').join("")}
               </svg>
             </div>
             <small>${escapeHtml(points[0]?.label || "")} to ${escapeHtml(points[points.length - 1]?.label || "")}. Range ${min}-${max}.</small>
@@ -2056,7 +2134,7 @@
         const sets = [];
         template.exercises.forEach((templateExercise, index) => {
           const exercise = { id: id(), sessionId: session.id, name: templateExercise.name, notes: "", order: index };
-          const target = adjustTargetForRecovery(coachTargetForTemplateExercise(templateExercise), recoveryAdvice);
+          const target = adjustTargetForRecovery(coachTargetForTemplateExercise(templateExercise, { excludeSessionId: session.id }), recoveryAdvice);
           exercise.notes = "Coach target: " + target.text;
           exercises.push(exercise);
           for (let setNumber = 1; setNumber <= target.sets; setNumber += 1) {
@@ -2351,13 +2429,15 @@
       function adjustTargetForRecovery(target, recoveryAdvice) {
         const reducedWeight = (multiplier) => target.weight > 0 ? roundToIncrement(target.weight * multiplier, data.settings.weightUnit === "kg" ? 2.5 : 5) : 0;
         if (recoveryAdvice.decision === "rest") {
-          return { ...target, sets: Math.max(1, Math.ceil(target.sets * 0.5)), weight: reducedWeight(0.85), rpe: 6, text: target.text + " Recovery override: rest is preferred; if you train, keep this very easy." };
+          const adjusted = { ...target, sets: Math.max(1, Math.ceil(target.sets * 0.5)), weight: reducedWeight(0.85), rpe: 6 };
+          return { ...adjusted, text: targetText(adjusted, "Recovery override: rest is preferred; if you train, keep this very easy.") };
         }
         if (recoveryAdvice.decision === "deload") {
-          return { ...target, sets: Math.max(1, Math.ceil(target.sets * 0.65)), weight: reducedWeight(0.9), rpe: 7, text: target.text + " Recovery override: deload today." };
+          const adjusted = { ...target, sets: Math.max(1, Math.ceil(target.sets * 0.65)), weight: reducedWeight(0.9), rpe: 7 };
+          return { ...adjusted, text: targetText(adjusted, "Recovery override: deload today.") };
         }
         if (recoveryAdvice.decision === "hold") {
-          return { ...target, text: target.text + " Recovery note: hold today unless warmups feel excellent." };
+          return { ...target, text: targetText(target, "Recovery note: hold today unless warmups feel excellent.") };
         }
         return target;
       }
