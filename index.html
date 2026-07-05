@@ -932,6 +932,7 @@
       let exportText = "";
       let pendingClearData = false;
       let settingsMessage = "";
+      let importInProgress = false;
       let saveTimer = 0;
 
       const icon = {
@@ -1008,7 +1009,13 @@
 
       function saveData() {
         window.clearTimeout(saveTimer);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+          return true;
+        } catch (error) {
+          settingsMessage = "Storage is full on this device. Export a backup, clear old data, or import a smaller file.";
+          return false;
+        }
       }
 
       function scheduleSave() {
@@ -1904,10 +1911,11 @@
               <p class="settings-note">Research basis: weekly hard-set volume, progressive overload, 0-5 RIR effort, 60-90+ second rests, planned deloads, 1.6-2.2 g/kg protein, moderate recomposition deficits, and 7-9 hours sleep.</p>
               <p class="settings-note">Progression guidance is informational fitness guidance, not medical advice. Stop if something hurts and use your own judgment.</p>
               ${settingsMessage ? '<p class="settings-note">' + escapeHtml(settingsMessage) + '</p>' : ""}
+              ${importInProgress ? '<p class="settings-note">Importing workout history. This can take a moment on iPhone, but navigation will recover automatically when it finishes.</p>' : ""}
               <p class="settings-links"><a href="./privacy.html">Privacy Policy</a><a href="./support.html">Support</a></p>
               <button type="button" data-action="export-data">${icon.download} data</button>
               ${exportText ? '<textarea class="export-box" readonly aria-label="Exported backup JSON">' + escapeHtml(exportText) + '</textarea>' : ""}
-              <label class="import-button">${icon.upload} backup or Strong CSV<input type="file" accept=".json,.csv,application/json,text/csv" data-action="import-data" /></label>
+              <label class="import-button">${icon.upload} ${importInProgress ? "importing..." : "backup or Strong CSV"}<input type="file" accept=".json,.csv,application/json,text/csv" data-action="import-data" ${importInProgress ? "disabled" : ""} /></label>
               ${pendingClearData ? '<div class="inline-panel"><strong>Clear all local workout data?</strong><div class="inline-actions"><button class="danger-button" type="button" data-action="confirm-clear-data">Clear data</button><button type="button" data-action="cancel-clear-data">Cancel</button></div></div>' : '<button class="danger-button" type="button" data-action="clear-data">' + icon.delete + ' Clear local data</button>'}
             </div>
           </section>
@@ -2356,6 +2364,16 @@
 
       function createTemplatesFromStrongSessions(importedSessions, importedExercises, importedSets) {
         const existingTemplateNames = new Set(data.templates.map((template) => template.name.trim().toLowerCase()));
+        const exercisesBySession = new Map();
+        const setsByExercise = new Map();
+        importedExercises.forEach((exercise) => {
+          if (!exercisesBySession.has(exercise.sessionId)) exercisesBySession.set(exercise.sessionId, []);
+          exercisesBySession.get(exercise.sessionId).push(exercise);
+        });
+        importedSets.forEach((set) => {
+          if (!setsByExercise.has(set.exerciseId)) setsByExercise.set(set.exerciseId, []);
+          setsByExercise.get(set.exerciseId).push(set);
+        });
         const sessionsByWorkoutName = new Map();
         importedSessions.forEach((session) => {
           const name = (session.title || "Strong Workout").trim() || "Strong Workout";
@@ -2364,9 +2382,10 @@
         });
         return Array.from(sessionsByWorkoutName.entries()).map(([name, session]) => {
           if (existingTemplateNames.has(name.toLowerCase())) return null;
-          const sessionExercises = importedExercises.filter((exercise) => exercise.sessionId === session.id).sort((a, b) => a.order - b.order);
+          existingTemplateNames.add(name.toLowerCase());
+          const sessionExercises = (exercisesBySession.get(session.id) || []).slice().sort((a, b) => a.order - b.order);
           const templateExercises = sessionExercises.map((exercise) => {
-            const exerciseSets = importedSets.filter((set) => set.exerciseId === exercise.id).sort((a, b) => a.setNumber - b.setNumber);
+            const exerciseSets = (setsByExercise.get(exercise.id) || []).slice().sort((a, b) => a.setNumber - b.setNumber);
             const completedSets = exerciseSets.filter((set) => set.completed && set.reps > 0);
             const representativeReps = completedSets.length
               ? Math.round(completedSets.reduce((sum, set) => sum + set.reps, 0) / completedSets.length)
@@ -2383,8 +2402,33 @@
         }).filter(Boolean);
       }
 
+      function parseStrongDate(rawDate) {
+        const trimmed = String(rawDate || "").trim();
+        const match = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/);
+        if (match) {
+          const month = Number(match[1]) - 1;
+          const day = Number(match[2]);
+          const year = Number(match[3]);
+          const hour = Number(match[4] || 0);
+          const minute = Number(match[5] || 0);
+          const parsed = new Date(year, month, day, hour, minute);
+          if (!Number.isNaN(parsed.getTime())) {
+            return { date: parsed.toISOString().slice(0, 10), createdAt: parsed.toISOString() };
+          }
+        }
+        const parsed = new Date(trimmed.replace(" ", "T"));
+        if (!Number.isNaN(parsed.getTime())) return { date: parsed.toISOString().slice(0, 10), createdAt: parsed.toISOString() };
+        return { date: todayIso(), createdAt: isoNow() };
+      }
+
+      function isStrongWorkSet(row) {
+        const setOrder = String(row["Set Order"] || "").trim().toLowerCase();
+        if (!setOrder || setOrder.includes("rest")) return false;
+        return numberFrom(row.Reps) > 0 || numberFrom(row.Weight) > 0 || numberFrom(row.Distance) > 0 || numberFrom(row.Seconds) > 0;
+      }
+
       function importStrongCsv(text) {
-        const rows = parseCsv(text).filter((row) => row.Date && row["Exercise Name"]);
+        const rows = parseCsv(text).filter((row) => row.Date && row["Exercise Name"] && isStrongWorkSet(row));
         if (!rows.length) throw new Error("No Strong workout rows found.");
         const existingSessionIds = new Set(data.sessions.map((session) => session.externalId).filter(Boolean));
         const sessions = [];
@@ -2392,6 +2436,8 @@
         const sets = [];
         const sessionMap = new Map();
         const exerciseMap = new Map();
+        const setCountsByExercise = new Map();
+        const exerciseCountsBySession = new Map();
         const importStamp = Date.now().toString(36);
         let importCounter = 0;
         const importedId = (prefix) => prefix + importStamp + (importCounter += 1).toString(36);
@@ -2403,44 +2449,49 @@
           if (existingSessionIds.has(sessionExternalId)) return;
           let session = sessionMap.get(sessionExternalId);
           if (!session) {
-            const isoDate = rawDate.slice(0, 10);
-            const parsedDate = new Date(rawDate.replace(" ", "T"));
+            const parsedDate = parseStrongDate(rawDate);
             session = {
               id: importedId("s"),
               externalId: sessionExternalId,
               source: "strong",
-              date: isoDate,
+              date: parsedDate.date,
               title: workoutName,
               isTravel: false,
               notes: row["Workout Notes"] || "",
-              createdAt: Number.isNaN(parsedDate.getTime()) ? isoNow() : parsedDate.toISOString(),
+              createdAt: parsedDate.createdAt,
               updatedAt: isoNow()
             };
             sessionMap.set(sessionExternalId, session);
             sessions.push(session);
+            exerciseCountsBySession.set(session.id, 0);
           }
           const exerciseName = (row["Exercise Name"] || "Exercise").trim() || "Exercise";
           const exerciseExternalId = sessionExternalId + "|" + exerciseName;
           let exercise = exerciseMap.get(exerciseExternalId);
           if (!exercise) {
-            exercise = { id: importedId("e"), externalId: exerciseExternalId, source: "strong", sessionId: session.id, name: exerciseName, notes: row.Notes || "", order: exerciseMap.size };
+            const exerciseOrder = exerciseCountsBySession.get(session.id) || 0;
+            exercise = { id: importedId("e"), externalId: exerciseExternalId, source: "strong", sessionId: session.id, name: exerciseName, notes: row.Notes || "", order: exerciseOrder };
             exerciseMap.set(exerciseExternalId, exercise);
             exercises.push(exercise);
+            exerciseCountsBySession.set(session.id, exerciseOrder + 1);
+            setCountsByExercise.set(exercise.id, 0);
           } else if (!exercise.notes && row.Notes) {
             exercise.notes = row.Notes;
           }
           const reps = numberFrom(row.Reps);
           const weight = numberFrom(row.Weight);
+          const nextSetNumber = (setCountsByExercise.get(exercise.id) || 0) + 1;
+          setCountsByExercise.set(exercise.id, nextSetNumber);
           sets.push({
             id: importedId("t"),
             exerciseId: exercise.id,
-            setNumber: numberFrom(row["Set Order"], sets.filter((set) => set.exerciseId === exercise.id).length + 1),
+            setNumber: numberFrom(row["Set Order"], nextSetNumber),
             reps,
             weight,
             weightUnit: data.settings.weightUnit,
             isBodyweight: weight === 0,
             rpe: numberFrom(row.RPE),
-            completed: reps > 0 || weight > 0 || numberFrom(row.Seconds) > 0 || numberFrom(row.Distance) > 0
+            completed: true
           });
         });
 
@@ -2453,7 +2504,6 @@
           if (templates.length) {
             commit({ ...data, templates: [...templates, ...data.templates] }, false);
             settingsMessage = "Strong CSV already imported. Added " + templates.length + " templates from workout names.";
-            saveData();
           } else {
             settingsMessage = "Strong CSV already imported.";
           }
@@ -2470,12 +2520,16 @@
         }, false);
         activeSessionId = sessions.sort((a, b) => b.date.localeCompare(a.date))[0]?.id || activeSessionId;
         settingsMessage = "Imported " + sessions.length + " Strong workouts, " + exercises.length + " exercises, " + sets.length + " sets, and " + templates.length + " templates.";
-        saveData();
         render();
       }
 
       function importDataFile(file) {
+        if (importInProgress) return;
+        importInProgress = true;
+        settingsMessage = "Importing " + file.name + "...";
+        render();
         file.text().then((text) => {
+          window.setTimeout(() => {
           try {
             if (file.name.toLowerCase().endsWith(".csv") || text.startsWith("Date,Workout Name,Duration,Exercise Name")) {
               importStrongCsv(text);
@@ -2493,7 +2547,15 @@
           } catch (error) {
             settingsMessage = error instanceof Error ? error.message : "Import failed.";
             render();
+          } finally {
+            importInProgress = false;
+            render();
           }
+          }, 20);
+        }).catch(() => {
+          importInProgress = false;
+          settingsMessage = "The selected file could not be read. Try exporting it from Strong again, then import the fresh CSV.";
+          render();
         });
       }
 
