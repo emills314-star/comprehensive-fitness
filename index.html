@@ -14,25 +14,51 @@
     <title>Comprehensive Fitness</title>
     <style>
       :root {
-        --bg: #090d0e;
-        --bg-soft: #0f1516;
-        --panel: #151b1d;
-        --panel-2: #1b2325;
-        --panel-3: #20292b;
-        --line: #2d383b;
-        --line-strong: #3c4b4f;
-        --text: #f4f7f2;
-        --muted: #a9b2ae;
-        --muted-2: #77827e;
+        --bg: #081015;
+        --bg-soft: #101a21;
+        --panel: rgba(13, 22, 29, 0.72);
+        --panel-2: rgba(16, 28, 36, 0.7);
+        --panel-3: rgba(24, 38, 48, 0.78);
+        --line: rgba(132, 162, 184, 0.22);
+        --line-strong: rgba(135, 181, 215, 0.42);
+        --text: #edf7ff;
+        --muted: #9fb4c3;
+        --muted-2: #6f8797;
         --green: #4aa3ff;
-        --green-2: #9fd0ff;
-        --green-dark: #162b46;
-        --amber: #ffb12b;
-        --red: #ff7f6b;
-        --shadow: 0 18px 44px rgba(0, 0, 0, 0.38);
+        --green-2: #a9d7ff;
+        --green-dark: rgba(74, 163, 255, 0.13);
+        --amber: #ffbc4a;
+        --red: #ff7e72;
+        --surface: rgba(255, 255, 255, 0.035);
+        --surface-strong: rgba(255, 255, 255, 0.07);
+        --input-bg: rgba(5, 13, 18, 0.72);
+        --nav-bg: rgba(7, 14, 18, 0.9);
+        --shadow: none;
         color: var(--text);
         background: var(--bg);
         font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      [data-theme="light"] {
+        --bg: #f4f8fb;
+        --bg-soft: #e9f1f7;
+        --panel: rgba(255, 255, 255, 0.78);
+        --panel-2: rgba(255, 255, 255, 0.66);
+        --panel-3: rgba(235, 244, 250, 0.92);
+        --line: rgba(54, 92, 118, 0.18);
+        --line-strong: rgba(32, 112, 178, 0.38);
+        --text: #0b1b27;
+        --muted: #526a7b;
+        --muted-2: #7891a1;
+        --green: #086fc7;
+        --green-2: #0d8bff;
+        --green-dark: rgba(8, 111, 199, 0.1);
+        --amber: #a76200;
+        --red: #c84337;
+        --surface: rgba(255, 255, 255, 0.66);
+        --surface-strong: rgba(255, 255, 255, 0.9);
+        --input-bg: rgba(255, 255, 255, 0.92);
+        --nav-bg: rgba(246, 251, 255, 0.9);
       }
 
       * { box-sizing: border-box; }
@@ -44,7 +70,7 @@
         min-width: 320px;
         min-height: 100vh;
         background:
-          linear-gradient(180deg, rgba(19, 26, 27, 0.96), rgba(9, 13, 14, 1) 34%),
+          linear-gradient(180deg, var(--bg-soft), var(--bg) 36%),
           var(--bg);
       }
 
@@ -52,9 +78,9 @@
 
       button {
         align-items: center;
-        background: linear-gradient(180deg, #222c2f, #182022);
-        border: 1px solid var(--line-strong);
-        border-radius: 12px;
+        background: transparent;
+        border: 1px solid var(--line);
+        border-radius: 10px;
         color: var(--text);
         cursor: pointer;
         display: inline-flex;
@@ -69,18 +95,19 @@
       button:active { transform: translateY(1px); }
 
       input, select, textarea {
-        background: #0f1516;
-        border: 1px solid var(--line);
-        border-radius: 12px;
+        background: var(--input-bg);
+        border: 0;
+        border-bottom: 1px solid var(--line);
+        border-radius: 0;
         color: var(--text);
         min-height: 48px;
-        padding: 12px;
+        padding: 12px 6px;
         width: 100%;
       }
 
       input:focus, select:focus, textarea:focus, button:focus-visible {
         border-color: var(--green);
-        box-shadow: 0 0 0 3px rgba(74, 163, 255, 0.22);
+        box-shadow: 0 1px 0 var(--green);
         outline: none;
       }
 
@@ -112,10 +139,10 @@
 
       .brand-bar {
         align-items: center;
-        border-bottom: 1px solid rgba(60, 75, 79, 0.7);
+        border-bottom: 1px solid var(--line);
         display: grid;
         gap: 12px;
-        grid-template-columns: auto 1fr auto;
+        grid-template-columns: auto 1fr auto auto;
         margin: 0 14px;
         min-height: 76px;
         padding: max(14px, env(safe-area-inset-top)) 0 14px;
@@ -123,9 +150,10 @@
 
       .brand-mark {
         align-items: center;
-        background: linear-gradient(180deg, var(--green-2), var(--green));
-        border-radius: 12px;
-        color: #0b110d;
+        background: var(--green-dark);
+        border: 1px solid var(--line-strong);
+        border-radius: 10px;
+        color: var(--green-2);
         display: inline-flex;
         font-size: 0.9rem;
         font-weight: 1000;
@@ -161,6 +189,13 @@
         padding: 0 12px;
       }
 
+      .theme-toggle {
+        border-color: var(--line-strong);
+        color: var(--green);
+        min-height: 38px;
+        padding: 0 10px;
+      }
+
       .app-main { padding: 16px 14px 0; }
       .loading, .empty-state {
         color: var(--muted);
@@ -168,9 +203,9 @@
       }
 
       .empty-state {
-        background: var(--panel);
+        background: transparent;
         border: 1px dashed var(--line-strong);
-        border-radius: 16px;
+        border-radius: 12px;
       }
 
       .view { display: grid; gap: 16px; }
@@ -184,9 +219,11 @@
       }
 
       .session-header {
-        background: linear-gradient(180deg, rgba(27, 35, 37, 0.96), rgba(18, 24, 25, 0.96));
-        border: 1px solid var(--line);
-        border-radius: 18px;
+        background: transparent;
+        border: 0;
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+        border-radius: 0;
         box-shadow: var(--shadow);
         display: grid;
         gap: 12px;
@@ -221,9 +258,11 @@
       }
 
       .exercise-card, .settings-panel, .recommendation, .template-card, .inline-panel, .workout-advice {
-        background: linear-gradient(180deg, rgba(27, 35, 37, 0.98), rgba(16, 22, 23, 0.98));
-        border: 1px solid var(--line);
-        border-radius: 18px;
+        background: transparent;
+        border: 0;
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+        border-radius: 0;
         box-shadow: var(--shadow);
         display: grid;
         gap: 12px;
@@ -233,12 +272,27 @@
       .exercise-card {
         gap: 14px;
         overflow: hidden;
+        position: relative;
+      }
+
+      .exercise-card::before,
+      .workout-advice::before,
+      .recovery-panel::before {
+        background: var(--green);
+        content: "";
+        height: calc(100% - 22px);
+        left: 0;
+        opacity: 0.52;
+        position: absolute;
+        top: 11px;
+        width: 1px;
       }
 
       .exercise-guidance {
-        background: rgba(10, 18, 28, 0.64);
-        border: 1px solid rgba(74, 163, 255, 0.24);
-        border-radius: 14px;
+        background: transparent;
+        border: 1px solid var(--line);
+        border-left-color: var(--green);
+        border-radius: 0;
         color: var(--muted);
         display: grid;
         gap: 8px;
@@ -257,9 +311,10 @@
       }
 
       .guidance-pill {
-        background: rgba(15, 21, 22, 0.82);
-        border: 1px solid var(--line);
-        border-radius: 12px;
+        background: var(--surface);
+        border: 0;
+        border-bottom: 1px solid var(--line);
+        border-radius: 0;
         display: grid;
         gap: 3px;
         padding: 9px;
@@ -293,7 +348,7 @@
         padding-left: 0;
       }
 
-      .exercise-name:focus { background: #0f1516; padding-left: 12px; }
+      .exercise-name:focus { background: var(--input-bg); padding-left: 12px; }
 
       .icon-button {
         aspect-ratio: 1;
@@ -327,10 +382,11 @@
       }
 
       .set-row {
-        background: rgba(9, 13, 14, 0.58);
-        border: 1px solid rgba(45, 56, 59, 0.85);
-        border-radius: 14px;
-        padding: 8px;
+        background: transparent;
+        border: 0;
+        border-top: 1px solid var(--line);
+        border-radius: 0;
+        padding: 7px 0;
       }
 
       .set-row strong {
@@ -340,7 +396,7 @@
       }
 
       .set-row input {
-        border-radius: 10px;
+        border-radius: 0;
         min-height: 46px;
         padding: 8px;
       }
@@ -356,7 +412,7 @@
 
       .check-button {
         aspect-ratio: 1;
-        border-radius: 999px;
+        border-radius: 10px;
         color: var(--muted-2);
         justify-content: center;
         min-height: 44px;
@@ -370,7 +426,7 @@
       }
 
       .primary-action {
-        background: linear-gradient(180deg, var(--green-2), var(--green));
+        background: var(--green);
         border-color: var(--green);
         box-shadow: 0 14px 28px rgba(74, 163, 255, 0.2);
         color: #10160f;
@@ -397,6 +453,7 @@
 
       .workout-advice {
         border-color: rgba(74, 163, 255, 0.58);
+        position: relative;
       }
 
       .workout-advice h2 {
@@ -405,13 +462,16 @@
       }
 
       .recovery-panel {
-        background: linear-gradient(180deg, rgba(18, 34, 55, 0.96), rgba(16, 22, 23, 0.98));
-        border: 1px solid rgba(74, 163, 255, 0.42);
-        border-radius: 18px;
+        background: transparent;
+        border: 0;
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+        border-radius: 0;
         box-shadow: var(--shadow);
         display: grid;
         gap: 12px;
         padding: 14px;
+        position: relative;
       }
 
       .recovery-panel h2 {
@@ -419,15 +479,15 @@
       }
 
       .recovery-status {
-        border-radius: 14px;
+        border-radius: 0;
         display: grid;
         gap: 5px;
-        padding: 11px;
+        padding: 11px 0;
       }
 
-      .recovery-status.progress { background: rgba(74, 163, 255, 0.14); border: 1px solid rgba(74, 163, 255, 0.5); }
-      .recovery-status.hold { background: rgba(255, 177, 43, 0.12); border: 1px solid rgba(255, 177, 43, 0.46); }
-      .recovery-status.deload, .recovery-status.rest { background: rgba(255, 127, 107, 0.12); border: 1px solid rgba(255, 127, 107, 0.46); }
+      .recovery-status.progress { border-bottom: 1px solid rgba(74, 163, 255, 0.5); }
+      .recovery-status.hold { border-bottom: 1px solid rgba(255, 177, 43, 0.46); }
+      .recovery-status.deload, .recovery-status.rest { border-bottom: 1px solid rgba(255, 127, 107, 0.46); }
 
       .recovery-status strong {
         color: var(--text);
@@ -465,9 +525,10 @@
       .flag-card,
       .chart-card,
       .rule-card {
-        background: rgba(9, 13, 14, 0.55);
-        border: 1px solid rgba(45, 56, 59, 0.82);
-        border-radius: 14px;
+        background: transparent;
+        border: 0;
+        border-top: 1px solid var(--line);
+        border-radius: 0;
         display: grid;
         gap: 8px;
         padding: 11px;
@@ -503,7 +564,7 @@
       .flag-card.good { border-color: var(--green); color: var(--green-2); }
 
       .meter {
-        background: rgba(255, 255, 255, 0.08);
+        background: var(--surface-strong);
         border-radius: 999px;
         height: 8px;
         overflow: hidden;
@@ -531,9 +592,10 @@
       }
 
       .plan-targets span {
-        background: rgba(15, 21, 22, 0.9);
-        border: 1px solid var(--line);
-        border-radius: 12px;
+        background: var(--surface);
+        border: 0;
+        border-bottom: 1px solid var(--line);
+        border-radius: 0;
         color: var(--text);
         font-size: 0.82rem;
         font-weight: 900;
@@ -542,9 +604,9 @@
       }
 
       .chart-svg {
-        background: rgba(15, 21, 22, 0.72);
+        background: var(--surface);
         border: 1px solid var(--line);
-        border-radius: 12px;
+        border-radius: 0;
         height: 132px;
         overflow: hidden;
         width: 100%;
@@ -569,9 +631,9 @@
 
       .quick-template-card {
         align-items: stretch;
-        background: linear-gradient(180deg, rgba(22, 43, 70, 0.94), rgba(18, 24, 25, 0.98));
+        background: transparent;
         border-color: rgba(74, 163, 255, 0.5);
-        border-radius: 18px;
+        border-radius: 0;
         display: grid;
         gap: 7px;
         min-height: 126px;
@@ -616,9 +678,10 @@
 
       .template-list li,
       .advice-list li {
-        background: rgba(9, 13, 14, 0.55);
-        border: 1px solid rgba(45, 56, 59, 0.82);
-        border-radius: 14px;
+        background: transparent;
+        border: 0;
+        border-top: 1px solid var(--line);
+        border-radius: 0;
         display: grid;
         gap: 6px;
         list-style: none;
@@ -645,9 +708,9 @@
 
       .timer-bar {
         align-items: center;
-        background: linear-gradient(180deg, rgba(73, 47, 10, 0.96), rgba(37, 26, 11, 0.98));
+        background: var(--nav-bg);
         border: 1px solid rgba(255, 177, 43, 0.78);
-        border-radius: 18px;
+        border-radius: 12px;
         bottom: calc(88px + env(safe-area-inset-bottom));
         box-shadow: 0 18px 38px rgba(0, 0, 0, 0.45);
         display: grid;
@@ -693,9 +756,9 @@
       }
 
       .recommendation span {
-        background: rgba(244, 247, 242, 0.95);
+        background: var(--surface-strong);
         border-radius: 999px;
-        color: #111715;
+        color: var(--text);
         font-size: 0.76rem;
         font-weight: 900;
         justify-self: start;
@@ -711,9 +774,9 @@
       .recommendation.deload, .recommendation.change { border-color: var(--red); }
 
       .trend-table {
-        background: linear-gradient(180deg, rgba(27, 35, 37, 0.98), rgba(16, 22, 23, 0.98));
+        background: transparent;
         border: 1px solid var(--line);
-        border-radius: 18px;
+        border-radius: 0;
         overflow: hidden;
       }
 
@@ -724,11 +787,11 @@
 
       .trend-row {
         border-top: 1px solid var(--line);
-        color: #d9dfdb;
+        color: var(--text);
       }
 
       .settings-panel label {
-        color: #d7ded8;
+        color: var(--text);
         display: grid;
         gap: 7px;
       }
@@ -751,7 +814,7 @@
 
       .import-button {
         align-items: center;
-        background: linear-gradient(180deg, #222c2f, #182022);
+        background: transparent;
         border: 1px solid var(--line-strong);
         border-radius: 12px;
         cursor: pointer;
@@ -766,8 +829,8 @@
       .import-button input { display: none; }
 
       .bottom-nav {
-        background: rgba(11, 15, 16, 0.96);
-        border-top: 1px solid rgba(60, 75, 79, 0.86);
+        background: var(--nav-bg);
+        border-top: 1px solid var(--line);
         bottom: 0;
         display: grid;
         gap: 4px;
@@ -842,7 +905,7 @@
       const STORAGE_KEY = "comprehensive-fitness-data-v1";
       const root = document.getElementById("root");
       const defaultReadinessBaseline = { sleepHours: 7.5, sleepQuality: 4, hrv: "", restingHr: "", soreness: 2, stress: 2, energy: 4, band: 8 };
-      const defaultSettings = { weightUnit: "lb", defaultRestSeconds: 120, goal: "hypertrophy", trainingStatus: "intermediate", readinessBaseline: { ...defaultReadinessBaseline } };
+      const defaultSettings = { weightUnit: "lb", defaultRestSeconds: 120, goal: "hypertrophy", trainingStatus: "intermediate", theme: "dark", readinessBaseline: { ...defaultReadinessBaseline } };
       const researchRules = {
         volume: {
           novice: "8-12 hard sets per muscle weekly",
@@ -938,6 +1001,7 @@
         }
         data.settings.readinessBaseline = { ...defaultReadinessBaseline, ...(data.settings.readinessBaseline || {}) };
         data.templates = Array.isArray(data.templates) ? data.templates : [];
+        applyTheme();
         if (data.sessions.length === 0) data.sessions.push(createSession());
         activeSessionId = [...data.sessions].sort((a, b) => b.date.localeCompare(a.date))[0].id;
       }
@@ -954,9 +1018,20 @@
 
       function commit(nextData, shouldRender = true) {
         data = nextData;
+        applyTheme();
         if (shouldRender) saveData();
         else scheduleSave();
         if (shouldRender) render();
+      }
+
+      function applyTheme() {
+        const theme = data.settings?.theme === "light" ? "light" : "dark";
+        document.documentElement.dataset.theme = theme;
+        document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "light" ? "#f4f8fb" : "#081015");
+      }
+
+      function themeLabel() {
+        return data.settings.theme === "light" ? "Light" : "Dark";
       }
 
       function createSession(title) {
@@ -1293,6 +1368,7 @@
               <div class="brand-mark">CF</div>
               <div class="brand-title">Comprehensive <span>Fitness</span></div>
               <div class="brand-action">${data.settings.weightUnit.toUpperCase()}</div>
+              <button class="theme-toggle" type="button" data-action="toggle-theme" title="Toggle light and dark theme">${themeLabel()}</button>
             </header>
             <main class="app-main">${renderView()}</main>
             <nav class="bottom-nav" aria-label="Main navigation">
@@ -1384,13 +1460,13 @@
                 const loadText = first.weight > 0 ? first.weight + " " + (first.weightUnit || data.settings.weightUnit) : "BW/control";
                 return `
                   <div class="plan-card">
-                    <header><strong>${escapeHtml(exercise.name)}</strong><span class="status-pill">${sets.length} sets</span></header>
+                    <header><strong>${escapeHtml(exercise.name)}</strong><span class="status-pill" data-plan-count="${exercise.id}">${sets.length} sets</span></header>
                     <div class="plan-targets">
-                      <span>${sets.length || 1} x ${first.reps || 0}</span>
-                      <span>${escapeHtml(loadText)}</span>
-                      <span>${data.settings.defaultRestSeconds}s rest</span>
+                      <span data-plan-reps="${exercise.id}">${sets.length || 1} x ${first.reps || 0}</span>
+                      <span data-plan-load="${exercise.id}">${escapeHtml(loadText)}</span>
+                      <span data-plan-rest="${exercise.id}">${data.settings.defaultRestSeconds}s rest</span>
                     </div>
-                    <div class="plan-meta">Aim RPE ${first.rpe || 8}. ${escapeHtml(exercise.notes || "Use clean reps and stop when positions break.")}</div>
+                    <div class="plan-meta" data-plan-meta="${exercise.id}">Aim RPE ${first.rpe || 8}. ${escapeHtml(exercise.notes || "Use clean reps and stop when positions break.")}</div>
                   </div>
                 `;
               }).join("")}
@@ -1787,6 +1863,12 @@
                   <option value="kg" ${data.settings.weightUnit === "kg" ? "selected" : ""}>Kilograms</option>
                 </select>
               </label>
+              <label>Theme
+                <select data-action="theme-mode">
+                  <option value="dark" ${data.settings.theme !== "light" ? "selected" : ""}>Dark training sheet</option>
+                  <option value="light" ${data.settings.theme === "light" ? "selected" : ""}>Light training sheet</option>
+                </select>
+              </label>
               <label>Training goal
                 <select data-action="training-goal">
                   <option value="hypertrophy" ${data.settings.goal === "hypertrophy" ? "selected" : ""}>Hypertrophy</option>
@@ -1874,8 +1956,27 @@
         const index = data.sets.findIndex((set) => set.id === setId);
         if (index >= 0) {
           data.sets[index] = { ...data.sets[index], ...patch };
+          updatePlanPreview(data.sets[index].exerciseId);
           scheduleSave();
         }
+      }
+
+      function updatePlanPreview(exerciseId) {
+        const exercise = data.exercises.find((item) => item.id === exerciseId);
+        if (!exercise) return;
+        const sets = setsForExercise(exerciseId);
+        const first = sets[0] || createSet(exerciseId, 1);
+        const loadText = first.weight > 0 ? first.weight + " " + (first.weightUnit || data.settings.weightUnit) : "BW/control";
+        const count = document.querySelector('[data-plan-count="' + exerciseId + '"]');
+        const reps = document.querySelector('[data-plan-reps="' + exerciseId + '"]');
+        const load = document.querySelector('[data-plan-load="' + exerciseId + '"]');
+        const rest = document.querySelector('[data-plan-rest="' + exerciseId + '"]');
+        const meta = document.querySelector('[data-plan-meta="' + exerciseId + '"]');
+        if (count) count.textContent = sets.length + " sets";
+        if (reps) reps.textContent = (sets.length || 1) + " x " + (first.reps || 0);
+        if (load) load.textContent = loadText;
+        if (rest) rest.textContent = data.settings.defaultRestSeconds + "s rest";
+        if (meta) meta.textContent = "Aim RPE " + (first.rpe || 8) + ". " + (exercise.notes || "Use clean reps and stop when positions break.");
       }
 
       function addSession() {
@@ -2410,6 +2511,7 @@
           target.select();
         }
         if (action === "set-view") { view = target.dataset.view; render(); }
+        if (action === "toggle-theme") commit({ ...data, settings: { ...data.settings, theme: data.settings.theme === "light" ? "dark" : "light" } });
         if (action === "new-session") addSession();
         if (action === "new-template") addTemplate();
         if (action === "save-template") saveActiveSessionAsTemplate();
@@ -2458,9 +2560,13 @@
         if (action === "session-date") patchSession({ date: target.value });
         if (action === "session-travel") patchSession({ isTravel: target.checked });
         if (action === "set-bodyweight") patchSet(target.dataset.setId, { isBodyweight: target.checked });
+        if (action === "set-reps") patchSet(target.dataset.setId, { reps: Number(target.value) });
+        if (action === "set-weight") patchSet(target.dataset.setId, { weight: Number(target.value) });
+        if (action === "set-rpe") patchSet(target.dataset.setId, { rpe: Number(target.value) });
         if (action === "review-exercise") { selectedExercise = target.value; selectedWeek = ""; render(); }
         if (action === "review-week") { selectedWeek = target.value; render(); }
         if (action === "weight-unit") commit({ ...data, settings: { ...data.settings, weightUnit: target.value } });
+        if (action === "theme-mode") commit({ ...data, settings: { ...data.settings, theme: target.value } });
         if (action === "training-goal") commit({ ...data, settings: { ...data.settings, goal: target.value } });
         if (action === "training-status") commit({ ...data, settings: { ...data.settings, trainingStatus: target.value } });
         if (action === "recovery-sleep-quality") patchRecovery({ sleepQuality: target.value });
@@ -2470,6 +2576,17 @@
         if (action === "recovery-outside-band") patchRecovery({ outsideBand: target.checked });
         if (action === "recovery-illness") patchRecovery({ illness: target.checked });
         if (action === "recovery-outside-note") patchRecovery({ outsideBandNote: target.value });
+        if (action === "recovery-sleep-hours") patchRecovery({ sleepHours: target.value });
+        if (action === "recovery-hrv") patchRecovery({ hrv: target.value });
+        if (action === "recovery-resting-hr") patchRecovery({ restingHr: target.value });
+        if (action === "baseline-sleep-hours") patchReadinessBaseline({ sleepHours: target.value });
+        if (action === "baseline-sleep-quality") patchReadinessBaseline({ sleepQuality: target.value });
+        if (action === "baseline-hrv") patchReadinessBaseline({ hrv: target.value });
+        if (action === "baseline-resting-hr") patchReadinessBaseline({ restingHr: target.value });
+        if (action === "baseline-soreness") patchReadinessBaseline({ soreness: target.value });
+        if (action === "baseline-stress") patchReadinessBaseline({ stress: target.value });
+        if (action === "baseline-energy") patchReadinessBaseline({ energy: target.value });
+        if (action === "baseline-band") patchReadinessBaseline({ band: target.value });
         if (action === "import-data" && target.files[0]) importDataFile(target.files[0]);
       });
 
@@ -2481,6 +2598,28 @@
           target.dataset.previousValue = target.value;
           target.select();
         }
+      });
+
+      root.addEventListener("focusout", (event) => {
+        const target = event.target.closest("[data-action]");
+        if (!target || target.tagName !== "INPUT" || !isNumericEditAction(target.dataset.action)) return;
+        const nextTarget = event.relatedTarget?.closest?.("[data-action]");
+        if (nextTarget && isNumericEditAction(nextTarget.dataset.action)) return;
+        const action = target.dataset.action;
+        if (action === "set-reps") patchSet(target.dataset.setId, { reps: Number(target.value) });
+        if (action === "set-weight") patchSet(target.dataset.setId, { weight: Number(target.value) });
+        if (action === "set-rpe") patchSet(target.dataset.setId, { rpe: Number(target.value) });
+        if (action === "recovery-sleep-hours") patchRecovery({ sleepHours: target.value });
+        if (action === "recovery-hrv") patchRecovery({ hrv: target.value });
+        if (action === "recovery-resting-hr") patchRecovery({ restingHr: target.value });
+        if (action === "baseline-sleep-hours") patchReadinessBaseline({ sleepHours: target.value });
+        if (action === "baseline-sleep-quality") patchReadinessBaseline({ sleepQuality: target.value });
+        if (action === "baseline-hrv") patchReadinessBaseline({ hrv: target.value });
+        if (action === "baseline-resting-hr") patchReadinessBaseline({ restingHr: target.value });
+        if (action === "baseline-soreness") patchReadinessBaseline({ soreness: target.value });
+        if (action === "baseline-stress") patchReadinessBaseline({ stress: target.value });
+        if (action === "baseline-energy") patchReadinessBaseline({ energy: target.value });
+        if (action === "baseline-band") patchReadinessBaseline({ band: target.value });
       });
 
       root.addEventListener("beforeinput", (event) => {
