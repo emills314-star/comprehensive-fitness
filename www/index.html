@@ -534,6 +534,36 @@
         padding: 11px;
       }
 
+      button.volume-card {
+        color: var(--text);
+        text-align: left;
+        width: 100%;
+      }
+
+      .volume-detail {
+        border-top: 1px solid var(--line);
+        display: grid;
+        gap: 8px;
+        padding-top: 9px;
+      }
+
+      .volume-detail div {
+        display: grid;
+        gap: 3px;
+      }
+
+      .volume-detail strong {
+        color: var(--text);
+        font-size: 0.92rem;
+      }
+
+      .volume-detail span,
+      .volume-detail.empty {
+        color: var(--muted);
+        font-size: 0.84rem;
+        line-height: 1.35;
+      }
+
       .volume-card header,
       .plan-card header,
       .chart-card header {
@@ -932,6 +962,8 @@
       let addExerciseDraft = "";
       let exportText = "";
       let pendingClearData = false;
+      let pendingDeleteTemplateId = "";
+      let expandedVolumeMuscle = "";
       let settingsMessage = "";
       let importInProgress = false;
       let saveTimer = 0;
@@ -1167,13 +1199,18 @@
           const rpeSets = bucket.sets.filter((set) => set.rpe > 0);
           const topWeight = Math.max(0, ...completed.map((set) => set.weight));
           const topWeightSets = completed.filter((set) => set.weight === topWeight);
+          const setsBelowTopWeight = topWeight > 0 ? completed.filter((set) => set.weight > 0 && set.weight < topWeight).length : 0;
+          const topWeightRpeSets = topWeightSets.filter((set) => set.rpe > 0);
           return {
             weekStart,
             travelCount: bucket.travelCount,
             topWeight,
+            topWeightSetCount: topWeightSets.length,
+            setsBelowTopWeight,
             maxRepsAtTopWeight: Math.max(0, ...topWeightSets.map((set) => set.reps)),
-            averageRpeAtTopWeight: topWeightSets.filter((set) => set.rpe > 0).length
-              ? topWeightSets.filter((set) => set.rpe > 0).reduce((sum, set) => sum + set.rpe, 0) / topWeightSets.filter((set) => set.rpe > 0).length
+            minRepsAtTopWeight: topWeightSets.length ? Math.min(...topWeightSets.map((set) => set.reps)) : 0,
+            averageRpeAtTopWeight: topWeightRpeSets.length
+              ? topWeightRpeSets.reduce((sum, set) => sum + set.rpe, 0) / topWeightRpeSets.length
               : 0,
             completedSets: completed.length,
             failedSets: bucket.sets.filter((set) => !set.completed).length,
@@ -1210,7 +1247,8 @@
         const evidence = [
           current.completedSets + " completed set" + (current.completedSets === 1 ? "" : "s") + " and " + current.failedSets + " missed set" + (current.failedSets === 1 ? "" : "s") + ".",
           "Average RPE " + (current.averageRpe ? current.averageRpe.toFixed(1) : "not logged") + ".",
-          "Best estimated 1RM " + (current.bestEstimatedOneRepMax ? current.bestEstimatedOneRepMax.toFixed(1) : "not available") + "."
+          "Best estimated 1RM " + (current.bestEstimatedOneRepMax ? current.bestEstimatedOneRepMax.toFixed(1) : "not available") + ".",
+          current.topWeight > 0 ? current.topWeightSetCount + " of " + current.completedSets + " completed sets used the top load of " + current.topWeight + " " + data.settings.weightUnit + "." : "No weighted top load found."
         ];
         if (travelAdjusted) evidence.push("Travel was logged this week, so the recommendation is less punitive for a dip.");
         if (flatWeeks && (hardWeek || repeatedFailures)) {
@@ -1222,6 +1260,16 @@
         }
         if (hardWeek || current.failedSets > 0 || current.completedSets < 3 || travelAdjusted) {
           return { decision: "hold", label: "Hold", reason: travelAdjusted ? "The travel context makes this a good week to repeat before judging progress." : "The work was close enough to the limit that repeating is the cleaner next step.", action: "Repeat the same load and rep target next time; progress only if RPE settles below 9.", evidence, confidence: travelAdjusted ? "medium" : "high" };
+        }
+        if (current.topWeight > 0 && current.setsBelowTopWeight > 0 && (profile.kind === "isolation" || current.topWeightSetCount < Math.max(2, current.completedSets - 1))) {
+          return {
+            decision: "hold",
+            label: "Consolidate load",
+            reason: "Your top set is ahead of your back-off sets, so the next progression is making the current load repeatable.",
+            action: "Keep " + current.topWeight + " " + data.settings.weightUnit + " as the top load and work later sets up to that load before adding weight.",
+            evidence,
+            confidence: "high"
+          };
         }
         const canAddLoad = current.topWeight > 0 && current.maxRepsAtTopWeight >= profile.upperRep && current.averageRpeAtTopWeight > 0 && current.averageRpeAtTopWeight <= 8.5;
         const nextWeight = nextLoadForExercise(exerciseName, current.topWeight);
@@ -1362,11 +1410,11 @@
           { match: /squat|leg press|lunge|split squat/, sets: "3-5 hard sets", reps: "5-12 reps", cues: ["Brace before the descent and keep pressure through midfoot.", "Let knees track with toes; do not dive-bomb the bottom.", "Use a depth you can repeat without lumbar rounding."] },
           { match: /deadlift|rdl|romanian|hinge|good morning/, sets: "2-4 hard sets", reps: "5-10 reps", cues: ["Start by pushing hips back, not by squatting the weight.", "Keep lats tight and the load close to the body.", "End the set when back position or hamstring tension breaks."] },
           { match: /bench|press|push up|dip|chest/, sets: "3-5 hard sets", reps: "6-12 reps", cues: ["Set shoulder blades before the first rep and keep wrists stacked.", "Lower under control to a consistent touch point or depth.", "Press without bouncing or letting shoulders roll forward."] },
-          { match: /row|pulldown|pull up|chin|lat/, sets: "3-5 hard sets", reps: "6-15 reps", cues: ["Lead with elbows and keep ribs down.", "Pause briefly in the shortened position instead of yanking.", "Control the stretch without losing shoulder position."] },
+          { match: /row|pulldown|pull up|chin|lat pulldown|\blat\b/, sets: "3-5 hard sets", reps: "6-15 reps", cues: ["Lead with elbows and keep ribs down.", "Pause briefly in the shortened position instead of yanking.", "Control the stretch without losing shoulder position."] },
           { match: /shoulder|overhead|lateral raise|rear delt/, sets: "2-5 hard sets", reps: "8-20 reps", cues: ["Keep ribs stacked and avoid turning it into a low-back lift.", "Use a smooth path and stop before joint irritation.", "For raises, chase tension and control rather than load."] },
           { match: /curl|tricep|extension|pushdown|skull/, sets: "2-4 hard sets", reps: "8-20 reps", cues: ["Pin the upper arm and move through the elbow.", "Use full range you can control without swinging.", "Add reps before load when jumps are large."] },
           { match: /calf/, sets: "3-5 hard sets", reps: "8-20 reps", cues: ["Use a full stretch and hard top contraction.", "Pause instead of bouncing through the ankle.", "Keep reps consistent before adding load."] },
-          { match: /plank|crunch|raise|ab|core/, sets: "2-4 hard sets", reps: "8-20 reps or timed sets", cues: ["Brace as if resisting motion, not just chasing burn.", "Keep pelvis controlled and avoid low-back takeover.", "Make the range harder before making it sloppy."] }
+          { match: /plank|crunch|leg raise|hanging raise|knee raise|ab|core/, sets: "2-4 hard sets", reps: "8-20 reps or timed sets", cues: ["Brace as if resisting motion, not just chasing burn.", "Keep pelvis controlled and avoid low-back takeover.", "Make the range harder before making it sloppy."] }
         ];
         const found = patterns.find((item) => item.match.test(key));
         return found ? { ...base, ...found } : base;
@@ -1576,12 +1624,14 @@
                   const max = Math.max(bucket.targetHigh, bucket.sets, 1);
                   const meter = Math.min(100, Math.round((bucket.sets / max) * 100));
                   const label = bucket.status === "low" ? "below target" : bucket.status === "over" ? "above target" : "in range";
+                  const expanded = expandedVolumeMuscle === bucket.muscle;
                   return `
-                    <div class="volume-card">
+                    <button class="volume-card" type="button" data-action="toggle-volume-muscle" data-muscle="${escapeHtml(bucket.muscle)}" aria-expanded="${expanded ? "true" : "false"}">
                       <header><strong>${bucket.muscle}</strong><span class="status-pill ${bucket.status}">${label}</span></header>
                       <div class="meter" style="--meter:${meter}%"><span></span></div>
                       <small>${bucket.sets.toFixed(bucket.sets % 1 ? 1 : 0)} sets this week. Target ${bucket.targetLow}-${bucket.targetHigh}. ${bucket.exerciseCount || 0} tracked exercises.</small>
-                    </div>
+                      ${expanded ? renderVolumeDetails(bucket) : ""}
+                    </button>
                   `;
                 }).join("")}
               </div>
@@ -1595,6 +1645,20 @@
               ${renderRecentSessions()}
             </article>
           </section>
+        `;
+      }
+
+      function renderVolumeDetails(bucket) {
+        if (!bucket.details.length) return '<div class="volume-detail empty">No completed sets mapped to this muscle this week.</div>';
+        return `
+          <div class="volume-detail">
+            ${bucket.details.map((detail) => `
+              <div>
+                <strong>${escapeHtml(detail.name)}</strong>
+                <span>${detail.sets.toFixed(detail.sets % 1 ? 1 : 0)} set${detail.sets === 1 ? "" : "s"} - ${escapeHtml(detail.sessions.join(", "))} - ${escapeHtml(detail.dates.join(", "))}</span>
+              </div>
+            `).join("")}
+          </div>
         `;
       }
 
@@ -1750,11 +1814,14 @@
 
       function renderTemplateCard(template) {
         const advice = recommendForTemplate(template, recoveryRecommendationForSession(activeSession()), { excludeSessionId: activeSession()?.id });
+        const confirmingDelete = pendingDeleteTemplateId === template.id;
         return `
           <article class="template-card">
             <div class="row split">
               <input class="exercise-name" value="${escapeHtml(template.name)}" data-action="template-name" data-template-id="${template.id}" aria-label="Template name" />
-              <button class="icon-button danger" type="button" data-action="delete-template" data-template-id="${template.id}" title="Delete template">${icon.delete}</button>
+              ${confirmingDelete
+                ? '<div class="row"><button class="mini-button danger" type="button" data-action="confirm-delete-template" data-template-id="' + template.id + '">Delete?</button><button class="mini-button" type="button" data-action="cancel-delete-template">Cancel</button></div>'
+                : '<button class="icon-button danger" type="button" data-action="request-delete-template" data-template-id="' + template.id + '" title="Delete template">' + icon.delete + '</button>'}
             </div>
             <small>${template.exercises.length} exercises - ${templateExerciseCount(template)} working sets</small>
             ${renderWorkoutAdvice(advice)}
@@ -2267,7 +2334,7 @@
         const matches = [];
         const add = (muscle, weight = 1) => matches.push({ muscle, weight });
         if (/bench|chest|push up|dip|fly|pec/.test(key)) add("Chest");
-        if (/row|pulldown|pull up|chin|lat|shrug/.test(key)) add("Back");
+        if (/row|pulldown|pull up|chin|lat pulldown|shrug|\blat\b/.test(key)) add("Back");
         if (/squat|leg press|lunge|split squat|leg extension/.test(key)) add("Quads");
         if (/deadlift|rdl|romanian|leg curl|hamstring|good morning/.test(key)) add("Hamstrings");
         if (/hip thrust|glute|bridge|deadlift|rdl|squat|lunge|split squat/.test(key)) add("Glutes", /hip thrust|glute|bridge/.test(key) ? 1 : 0.5);
@@ -2275,7 +2342,7 @@
         if (/curl|chin|pulldown|row/.test(key)) add("Biceps", /curl/.test(key) ? 1 : 0.5);
         if (/tricep|pushdown|extension|skull|dip|bench|press/.test(key)) add("Triceps", /tricep|pushdown|extension|skull/.test(key) ? 1 : 0.5);
         if (/calf/.test(key)) add("Calves");
-        if (/plank|crunch|raise|ab|core|pallof|carry/.test(key)) add("Core");
+        if (/plank|crunch|leg raise|hanging raise|knee raise|ab|core|pallof|carry/.test(key)) add("Core");
         const merged = new Map();
         matches.forEach((item) => merged.set(item.muscle, Math.max(merged.get(item.muscle) || 0, item.weight)));
         return Array.from(merged.entries()).map(([muscle, weight]) => ({ muscle, weight }));
@@ -2294,7 +2361,7 @@
       }
 
       function weeklyMuscleVolume(weekStart = startOfWeekIso(todayIso())) {
-        const buckets = new Map(muscleGroups.map((muscle) => [muscle, { muscle, sets: 0, highRpeSets: 0, failedSets: 0, exercises: new Set() }]));
+        const buckets = new Map(muscleGroups.map((muscle) => [muscle, { muscle, sets: 0, highRpeSets: 0, failedSets: 0, exercises: new Set(), exerciseDetails: new Map() }]));
         const end = new Date(weekStart + "T00:00:00");
         end.setDate(end.getDate() + 7);
         const endIso = end.toISOString().slice(0, 10);
@@ -2306,6 +2373,11 @@
             bucket.sets += weight;
             if (entry.set.rpe >= 9) bucket.highRpeSets += weight;
             bucket.exercises.add(entry.exercise.name);
+            const detail = bucket.exerciseDetails.get(entry.exercise.name) || { name: entry.exercise.name, sets: 0, sessions: new Set(), dates: new Set() };
+            detail.sets += weight;
+            detail.sessions.add(entry.session.title || "Workout");
+            detail.dates.add(entry.session.date);
+            bucket.exerciseDetails.set(entry.exercise.name, detail);
           });
         });
         data.sets.filter((set) => !set.completed).forEach((set) => {
@@ -2320,7 +2392,13 @@
         const target = targetRangeForMuscle();
         return Array.from(buckets.values()).map((bucket) => {
           const status = bucket.sets < target.low ? "low" : bucket.sets > target.high ? "over" : "good";
-          return { ...bucket, exerciseCount: bucket.exercises.size, targetLow: target.low, targetHigh: target.high, status };
+          const details = Array.from(bucket.exerciseDetails.values()).map((detail) => ({
+            name: detail.name,
+            sets: detail.sets,
+            sessions: Array.from(detail.sessions),
+            dates: Array.from(detail.dates).sort()
+          })).sort((a, b) => b.sets - a.sets || a.name.localeCompare(b.name));
+          return { ...bucket, details, exerciseCount: bucket.exercises.size, targetLow: target.low, targetHigh: target.high, status };
         });
       }
 
@@ -2659,7 +2737,23 @@
         if (action === "save-template") saveActiveSessionAsTemplate();
         if (action === "start-template") startTemplate(target.dataset.templateId);
         if (action === "add-template-exercise") addTemplateExercise(target.dataset.templateId);
-        if (action === "delete-template") commit({ ...data, templates: data.templates.filter((template) => template.id !== target.dataset.templateId) });
+        if (action === "toggle-volume-muscle") {
+          expandedVolumeMuscle = expandedVolumeMuscle === target.dataset.muscle ? "" : target.dataset.muscle;
+          render();
+        }
+        if (action === "request-delete-template") {
+          pendingDeleteTemplateId = target.dataset.templateId;
+          render();
+        }
+        if (action === "cancel-delete-template") {
+          pendingDeleteTemplateId = "";
+          render();
+        }
+        if (action === "confirm-delete-template") {
+          const templateId = target.dataset.templateId;
+          pendingDeleteTemplateId = "";
+          commit({ ...data, templates: data.templates.filter((template) => template.id !== templateId) });
+        }
         if (action === "delete-template-exercise") {
           commit({
             ...data,
