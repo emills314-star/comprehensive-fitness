@@ -333,6 +333,25 @@
         font-size: 0.92rem;
       }
 
+      .muscle-select-grid {
+        display: grid;
+        gap: 8px;
+        grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+      }
+
+      .muscle-select-grid label {
+        color: var(--muted);
+        display: grid;
+        font-size: 0.78rem;
+        font-weight: 900;
+        gap: 4px;
+      }
+
+      .muscle-select-grid select {
+        min-height: 42px;
+        padding: 8px 4px;
+      }
+
       .cue-list {
         display: grid;
         gap: 5px;
@@ -960,6 +979,8 @@
       let selectedExercise = "";
       let selectedWeek = "";
       let addExerciseDraft = "";
+      let addExercisePrimaryMuscle = "";
+      let addExerciseSecondaryMuscle = "";
       let exportText = "";
       let pendingClearData = false;
       let pendingDeleteTemplateId = "";
@@ -1407,9 +1428,11 @@
           ]
         };
         const patterns = [
+          { match: /neck curl|neck flexion|neck extension|neck harness|neck lateral/, sets: "2-4 controlled sets", reps: "10-20 reps", cues: ["Move slowly through a comfortable range.", "Keep the jaw relaxed and avoid jerking into end range.", "Progress conservatively; small muscles do not need big jumps."] },
+          { match: /seated leg curl|lying leg curl|standing leg curl|nordic curl|hamstring curl|leg curl/, sets: "2-5 hard sets", reps: "8-15 reps", cues: ["Keep hips pinned and control the stretched position.", "Curl without letting the low back or hips pop up.", "Add reps before load when the contraction gets sloppy."] },
           { match: /squat|leg press|lunge|split squat/, sets: "3-5 hard sets", reps: "5-12 reps", cues: ["Brace before the descent and keep pressure through midfoot.", "Let knees track with toes; do not dive-bomb the bottom.", "Use a depth you can repeat without lumbar rounding."] },
           { match: /deadlift|rdl|romanian|hinge|good morning/, sets: "2-4 hard sets", reps: "5-10 reps", cues: ["Start by pushing hips back, not by squatting the weight.", "Keep lats tight and the load close to the body.", "End the set when back position or hamstring tension breaks."] },
-          { match: /bench|press|push up|dip|chest/, sets: "3-5 hard sets", reps: "6-12 reps", cues: ["Set shoulder blades before the first rep and keep wrists stacked.", "Lower under control to a consistent touch point or depth.", "Press without bouncing or letting shoulders roll forward."] },
+          { match: /bench|chest press|push up|pushup|dip|chest|pec/, sets: "3-5 hard sets", reps: "6-12 reps", cues: ["Set shoulder blades before the first rep and keep wrists stacked.", "Lower under control to a consistent touch point or depth.", "Press without bouncing or letting shoulders roll forward."] },
           { match: /row|pulldown|pull up|chin|lat pulldown|\blat\b/, sets: "3-5 hard sets", reps: "6-15 reps", cues: ["Lead with elbows and keep ribs down.", "Pause briefly in the shortened position instead of yanking.", "Control the stretch without losing shoulder position."] },
           { match: /shoulder|overhead|lateral raise|rear delt/, sets: "2-5 hard sets", reps: "8-20 reps", cues: ["Keep ribs stacked and avoid turning it into a low-back lift.", "Use a smooth path and stop before joint irritation.", "For raises, chase tension and control rather than load."] },
           { match: /curl|tricep|extension|pushdown|skull/, sets: "2-4 hard sets", reps: "8-20 reps", cues: ["Pin the upper arm and move through the elbow.", "Use full range you can control without swinging.", "Add reps before load when jumps are large."] },
@@ -1431,6 +1454,31 @@
               <div class="guidance-pill"><span>Effort</span><b>${escapeHtml(guidance.effort)}</b></div>
             </div>
             <ul class="cue-list">${guidance.cues.map((cue) => "<li>" + escapeHtml(cue) + "</li>").join("")}</ul>
+          </div>
+        `;
+      }
+
+      function muscleOptions(selectedValue, includeAuto = false, autoLabel = "Auto") {
+        const selected = selectedValue || "";
+        const options = includeAuto ? ['<option value="" ' + (selected === "" ? "selected" : "") + ">" + escapeHtml(autoLabel) + "</option>"] : [];
+        return options.concat(muscleGroups.map((muscle) => '<option value="' + escapeHtml(muscle) + '" ' + (selected === muscle ? "selected" : "") + ">" + escapeHtml(muscle) + "</option>")).join("");
+      }
+
+      function renderMuscleSelectors(exercise) {
+        const auto = musclesForExercise(exercise.name, { ignoreManual: true });
+        const autoText = auto.length ? auto.map((item) => item.muscle + " " + item.weight + "x").join(", ") : "Unclassified";
+        return `
+          <div class="muscle-select-grid">
+            <label>Primary muscle
+              <select data-action="exercise-primary-muscle" data-exercise-id="${exercise.id}" aria-label="Primary muscle for ${escapeHtml(exercise.name)}">
+                ${muscleOptions(exercise.primaryMuscle || "", true, "Auto: " + autoText)}
+              </select>
+            </label>
+            <label>Secondary muscle
+              <select data-action="exercise-secondary-muscle" data-exercise-id="${exercise.id}" aria-label="Secondary muscle for ${escapeHtml(exercise.name)}">
+                ${muscleOptions(exercise.secondaryMuscle || "", true, "None / auto")}
+              </select>
+            </label>
           </div>
         `;
       }
@@ -1481,6 +1529,8 @@
             return {
               id: id(),
               name: exercise.name || "Exercise",
+              primaryMuscle: exercise.primaryMuscle || "",
+              secondaryMuscle: exercise.secondaryMuscle || "",
               sets: Math.max(sets.length, 1),
               reps: sets[0]?.reps || 8
             };
@@ -1558,6 +1608,18 @@
               <div class="row">
                 <input value="${escapeHtml(addExerciseDraft)}" data-action="add-exercise-draft" placeholder="Exercise name" aria-label="New exercise name" />
                 <button class="icon-button" type="button" data-action="add-exercise" title="Add exercise">${icon.add}</button>
+              </div>
+              <div class="muscle-select-grid">
+                <label>Primary muscle
+                  <select data-action="add-exercise-primary" aria-label="Primary muscle for new exercise">
+                    ${muscleOptions(addExercisePrimaryMuscle, true, "Auto classify")}
+                  </select>
+                </label>
+                <label>Secondary muscle
+                  <select data-action="add-exercise-secondary" aria-label="Secondary muscle for new exercise">
+                    ${muscleOptions(addExerciseSecondaryMuscle, true, "None")}
+                  </select>
+                </label>
               </div>
             </div>
             <button class="secondary-action" type="button" data-action="save-template">Save workout as template</button>
@@ -1755,6 +1817,7 @@
               <button type="button" data-action="duplicate-set" data-exercise-id="${exercise.id}">${icon.duplicate} Duplicate</button>
               <button type="button" data-action="start-timer" data-exercise-id="${exercise.id}">${icon.clock}</button>
             </div>
+            ${renderMuscleSelectors(exercise)}
             ${renderExerciseGuidance(exercise)}
             <textarea data-action="exercise-notes" data-exercise-id="${exercise.id}" placeholder="Exercise notes" aria-label="Exercise notes">${escapeHtml(exercise.notes)}</textarea>
           </article>
@@ -2143,8 +2206,10 @@
         const session = activeSession();
         const name = addExerciseDraft;
         if (!session || !name || !name.trim()) return;
-        const exercise = { id: id(), sessionId: session.id, name: name.trim(), notes: "", order: activeExercises().length };
+        const exercise = { id: id(), sessionId: session.id, name: name.trim(), primaryMuscle: addExercisePrimaryMuscle, secondaryMuscle: addExerciseSecondaryMuscle, notes: "", order: activeExercises().length };
         addExerciseDraft = "";
+        addExercisePrimaryMuscle = "";
+        addExerciseSecondaryMuscle = "";
         commit({ ...data, exercises: [...data.exercises, exercise], sets: [...data.sets, createSet(exercise.id, 1)] });
       }
 
@@ -2200,7 +2265,7 @@
         const exercises = [];
         const sets = [];
         template.exercises.forEach((templateExercise, index) => {
-          const exercise = { id: id(), sessionId: session.id, name: templateExercise.name, notes: "", order: index };
+          const exercise = { id: id(), sessionId: session.id, name: templateExercise.name, primaryMuscle: templateExercise.primaryMuscle || "", secondaryMuscle: templateExercise.secondaryMuscle || "", notes: "", order: index };
           const target = adjustTargetForRecovery(coachTargetForTemplateExercise(templateExercise, { excludeSessionId: session.id }), recoveryAdvice);
           exercise.notes = "Coach target: " + target.text;
           exercises.push(exercise);
@@ -2323,29 +2388,64 @@
         advanced: { low: 12, high: 22 }
       };
 
-      const muscleGroups = ["Chest", "Back", "Quads", "Hamstrings", "Glutes", "Shoulders", "Biceps", "Triceps", "Calves", "Core"];
+      const muscleGroups = ["Chest", "Back", "Quads", "Hamstrings", "Glutes", "Shoulders", "Biceps", "Triceps", "Forearms", "Calves", "Core", "Neck"];
 
-      function targetRangeForMuscle() {
-        return muscleTargets[data.settings.trainingStatus] || muscleTargets.intermediate;
+      function targetRangeForMuscle(muscle) {
+        const base = muscleTargets[data.settings.trainingStatus] || muscleTargets.intermediate;
+        if (muscle === "Neck") return { low: Math.max(2, Math.round(base.low * 0.35)), high: Math.max(6, Math.round(base.high * 0.45)) };
+        if (muscle === "Forearms" || muscle === "Calves") return { low: Math.max(4, Math.round(base.low * 0.55)), high: Math.max(10, Math.round(base.high * 0.7)) };
+        return base;
       }
 
-      function musclesForExercise(name) {
-        const key = exerciseKey(name);
-        const matches = [];
-        const add = (muscle, weight = 1) => matches.push({ muscle, weight });
-        if (/bench|chest|push up|dip|fly|pec/.test(key)) add("Chest");
-        if (/row|pulldown|pull up|chin|lat pulldown|shrug|\blat\b/.test(key)) add("Back");
-        if (/squat|leg press|lunge|split squat|leg extension/.test(key)) add("Quads");
-        if (/deadlift|rdl|romanian|leg curl|hamstring|good morning/.test(key)) add("Hamstrings");
-        if (/hip thrust|glute|bridge|deadlift|rdl|squat|lunge|split squat/.test(key)) add("Glutes", /hip thrust|glute|bridge/.test(key) ? 1 : 0.5);
-        if (/shoulder|overhead|lateral raise|rear delt|face pull|upright row/.test(key)) add("Shoulders");
-        if (/curl|chin|pulldown|row/.test(key)) add("Biceps", /curl/.test(key) ? 1 : 0.5);
-        if (/tricep|pushdown|extension|skull|dip|bench|press/.test(key)) add("Triceps", /tricep|pushdown|extension|skull/.test(key) ? 1 : 0.5);
-        if (/calf/.test(key)) add("Calves");
-        if (/plank|crunch|leg raise|hanging raise|knee raise|ab|core|pallof|carry/.test(key)) add("Core");
+      const exerciseMuscleRules = [
+        { match: /neck curl|neck flexion|neck extension|neck harness|neck lateral/, muscles: [["Neck", 1]] },
+        { match: /seated leg curl|lying leg curl|standing leg curl|nordic curl|hamstring curl|leg curl/, muscles: [["Hamstrings", 1]] },
+        { match: /leg extension/, muscles: [["Quads", 1]] },
+        { match: /wrist curl|wrist extension|forearm curl|grip|gripper|farmer|carry/, muscles: [["Forearms", 1], ["Core", 0.25]] },
+        { match: /reverse curl|hammer curl/, muscles: [["Biceps", 1], ["Forearms", 0.5]] },
+        { match: /preacher curl|incline curl|cable curl|ez bar curl|barbell curl|dumbbell curl|db curl|bicep curl|biceps curl|\bcurl\b/, muscles: [["Biceps", 1]] },
+        { match: /tricep|triceps|pushdown|skull crusher|skullcrusher|french press|overhead extension/, muscles: [["Triceps", 1]] },
+        { match: /lateral raise|front raise/, muscles: [["Shoulders", 1]] },
+        { match: /rear delt|reverse fly|face pull/, muscles: [["Shoulders", 1], ["Back", 0.25]] },
+        { match: /overhead press|shoulder press|military press|arnold press/, muscles: [["Shoulders", 1], ["Triceps", 0.5]] },
+        { match: /bench|chest press|push up|pushup|dip|chest fly|pec deck|cable fly|incline press|decline press/, muscles: [["Chest", 1], ["Triceps", 0.5], ["Shoulders", 0.25]] },
+        { match: /pull up|pullup|chin up|chinup|pulldown|lat pulldown|row|t-bar|t bar|seated cable row|chest supported row/, muscles: [["Back", 1], ["Biceps", 0.5]] },
+        { match: /shrug/, muscles: [["Back", 1], ["Shoulders", 0.25]] },
+        { match: /hip thrust|glute bridge|glute kickback|cable kickback|abductor/, muscles: [["Glutes", 1], ["Hamstrings", 0.25]] },
+        { match: /romanian|rdl|stiff leg|good morning|deadlift|hinge/, muscles: [["Hamstrings", 1], ["Glutes", 0.5], ["Back", 0.25]] },
+        { match: /squat|leg press|hack squat|lunge|split squat|step up|step-up|bulgarian/, muscles: [["Quads", 1], ["Glutes", 0.5]] },
+        { match: /adductor/, muscles: [["Glutes", 0.5], ["Hamstrings", 0.5], ["Quads", 0.25]] },
+        { match: /calf|soleus|gastroc/, muscles: [["Calves", 1]] },
+        { match: /plank|crunch|sit up|sit-up|leg raise|hanging raise|knee raise|ab wheel|pallof|woodchop|core/, muscles: [["Core", 1]] }
+      ];
+
+      function normalizeMuscleMatches(matches) {
         const merged = new Map();
-        matches.forEach((item) => merged.set(item.muscle, Math.max(merged.get(item.muscle) || 0, item.weight)));
+        matches.forEach(([muscle, weight]) => {
+          if (!muscleGroups.includes(muscle) || weight <= 0) return;
+          merged.set(muscle, Math.max(merged.get(muscle) || 0, weight));
+        });
         return Array.from(merged.entries()).map(([muscle, weight]) => ({ muscle, weight }));
+      }
+
+      function automaticMusclesForName(name) {
+        const key = exerciseKey(name);
+        const rule = exerciseMuscleRules.find((item) => item.match.test(key));
+        return rule ? normalizeMuscleMatches(rule.muscles) : [];
+      }
+
+      function musclesForExercise(exerciseOrName, options = {}) {
+        const exercise = typeof exerciseOrName === "string" ? { name: exerciseOrName } : (exerciseOrName || {});
+        if (!options.ignoreManual && exercise.primaryMuscle) {
+          const manual = [[exercise.primaryMuscle, 1]];
+          if (exercise.secondaryMuscle && exercise.secondaryMuscle !== exercise.primaryMuscle) manual.push([exercise.secondaryMuscle, 0.5]);
+          return normalizeMuscleMatches(manual);
+        }
+        const automatic = automaticMusclesForName(exercise.name);
+        if (!options.ignoreManual && exercise.secondaryMuscle && !automatic.some((item) => item.muscle === exercise.secondaryMuscle)) {
+          return normalizeMuscleMatches([...automatic.map((item) => [item.muscle, item.weight]), [exercise.secondaryMuscle, 0.5]]);
+        }
+        return automatic;
       }
 
       function completedWorkoutEntries() {
@@ -2367,7 +2467,7 @@
         const endIso = end.toISOString().slice(0, 10);
         completedWorkoutEntries().forEach((entry) => {
           if (entry.session.date < weekStart || entry.session.date >= endIso) return;
-          musclesForExercise(entry.exercise.name).forEach(({ muscle, weight }) => {
+          musclesForExercise(entry.exercise).forEach(({ muscle, weight }) => {
             const bucket = buckets.get(muscle);
             if (!bucket) return;
             bucket.sets += weight;
@@ -2384,13 +2484,13 @@
           const exercise = data.exercises.find((item) => item.id === set.exerciseId);
           const session = exercise ? data.sessions.find((item) => item.id === exercise.sessionId) : null;
           if (!exercise || !session || session.date < weekStart || session.date >= endIso) return;
-          musclesForExercise(exercise.name).forEach(({ muscle, weight }) => {
+          musclesForExercise(exercise).forEach(({ muscle, weight }) => {
             const bucket = buckets.get(muscle);
             if (bucket) bucket.failedSets += weight;
           });
         });
-        const target = targetRangeForMuscle();
         return Array.from(buckets.values()).map((bucket) => {
+          const target = targetRangeForMuscle(bucket.muscle);
           const status = bucket.sets < target.low ? "low" : bucket.sets > target.high ? "over" : "good";
           const details = Array.from(bucket.exerciseDetails.values()).map((detail) => ({
             name: detail.name,
@@ -2551,6 +2651,8 @@
             return {
               id: id(),
               name: exercise.name,
+              primaryMuscle: exercise.primaryMuscle || "",
+              secondaryMuscle: exercise.secondaryMuscle || "",
               sets: Math.max(completedSets.length || exerciseSets.length, 1),
               reps: Math.max(representativeReps, 1)
             };
@@ -2628,7 +2730,7 @@
           let exercise = exerciseMap.get(exerciseExternalId);
           if (!exercise) {
             const exerciseOrder = exerciseCountsBySession.get(session.id) || 0;
-            exercise = { id: importedId("e"), externalId: exerciseExternalId, source: "strong", sessionId: session.id, name: exerciseName, notes: row.Notes || "", order: exerciseOrder };
+            exercise = { id: importedId("e"), externalId: exerciseExternalId, source: "strong", sessionId: session.id, name: exerciseName, primaryMuscle: "", secondaryMuscle: "", notes: row.Notes || "", order: exerciseOrder };
             exerciseMap.set(exerciseExternalId, exercise);
             exercises.push(exercise);
             exerciseCountsBySession.set(session.id, exerciseOrder + 1);
@@ -2795,6 +2897,10 @@
         if (action === "change-session") { activeSessionId = target.value; render(); }
         if (action === "session-date") patchSession({ date: target.value });
         if (action === "session-travel") patchSession({ isTravel: target.checked });
+        if (action === "add-exercise-primary") addExercisePrimaryMuscle = target.value;
+        if (action === "add-exercise-secondary") addExerciseSecondaryMuscle = target.value;
+        if (action === "exercise-primary-muscle") patchExercise(target.dataset.exerciseId, { primaryMuscle: target.value });
+        if (action === "exercise-secondary-muscle") patchExercise(target.dataset.exerciseId, { secondaryMuscle: target.value });
         if (action === "set-bodyweight") patchSet(target.dataset.setId, { isBodyweight: target.checked });
         if (action === "set-reps") patchSet(target.dataset.setId, { reps: Number(target.value) });
         if (action === "set-weight") patchSet(target.dataset.setId, { weight: Number(target.value) });
