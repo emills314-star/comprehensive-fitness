@@ -1285,9 +1285,9 @@
 
       function isLikelyDeloadWeek(current, previous) {
         if (!current || !previous || current.completedSets < 1 || previous.completedSets < 2) return false;
-        const easyEnough = current.averageRpe === 0 || current.averageRpe <= 8;
+        const easyEnough = current.averageRpe === 0 || current.averageRpe <= 7.5;
         const loadDrop = previous.topWeight > 0 && current.topWeight > 0 && current.topWeight <= previous.topWeight * 0.92;
-        const volumeDrop = current.completedSets <= Math.max(1, Math.floor(previous.completedSets * 0.75));
+        const volumeDrop = current.completedSets <= Math.max(1, Math.floor(previous.completedSets * 0.6));
         const strengthDrop = previous.bestEstimatedOneRepMax > 0 && current.bestEstimatedOneRepMax > 0 && current.bestEstimatedOneRepMax <= previous.bestEstimatedOneRepMax * 0.94;
         return easyEnough && (loadDrop || volumeDrop) && (loadDrop || strengthDrop || volumeDrop);
       }
@@ -2116,7 +2116,7 @@
                 ${chartPoints.filter((point) => point.value > 0).map((point) => '<circle cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="4" fill="var(--green-2)"></circle>').join("")}
               </svg>
             </div>
-            <div class="chart-points">${chartPoints.filter((point) => point.value > 0).map((point, index) => '<button type="button" data-action="show-chart-point" data-chart-title="' + escapeHtml(title) + '" data-chart-point="' + index + '">' + escapeHtml(point.label) + '</button>').join("")}</div>
+            <div class="chart-points">${chartPoints.filter((point) => point.value > 0).map((point, index) => '<button type="button" aria-label="' + escapeHtml(title + " " + point.label) + '" data-action="show-chart-point" data-chart-title="' + escapeHtml(title) + '" data-chart-point="' + index + '">' + escapeHtml(point.label) + '</button>').join("")}</div>
             <small>${escapeHtml(points[0]?.label || "")} to ${escapeHtml(points[points.length - 1]?.label || "")}. Range ${min}-${max}.</small>
           </div>
         `;
