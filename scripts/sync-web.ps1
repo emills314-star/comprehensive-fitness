@@ -15,5 +15,6 @@ Copy-Item -LiteralPath (Join-Path $root "sw.js") -Destination (Join-Path $www "s
 Copy-Item -LiteralPath (Join-Path $root "resources\icon-180.png") -Destination (Join-Path $wwwResources "icon-180.png") -Force
 Copy-Item -LiteralPath (Join-Path $root "resources\icon-192.png") -Destination (Join-Path $wwwResources "icon-192.png") -Force
 Copy-Item -LiteralPath (Join-Path $root "resources\icon-512.png") -Destination (Join-Path $wwwResources "icon-512.png") -Force
+Copy-Item -LiteralPath (Join-Path $root "resources\brand-athlete.png") -Destination (Join-Path $wwwResources "brand-athlete.png") -Force
 
 Write-Host "Synced web app and PWA files into www."

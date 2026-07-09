@@ -162,6 +162,9 @@
         width: 42px;
       }
 
+      .brand-mark { overflow: hidden; }
+      .brand-mark img { height: 100%; object-fit: cover; object-position: 50% 29%; transform: scale(1.55); width: 100%; }
+
       .brand-title {
         display: grid;
         font-size: 0.92rem;
@@ -364,6 +367,7 @@
         border-color: transparent;
         font-size: 1.08rem;
         font-weight: 1000;
+        min-width: 0;
         padding-left: 0;
       }
 
@@ -406,7 +410,26 @@
         border-top: 1px solid var(--line);
         border-radius: 0;
         padding: 7px 0;
+        transition: background 160ms ease, border-color 160ms ease, opacity 160ms ease;
       }
+
+      .set-row.warmup { border-left: 3px solid var(--amber); padding-left: 8px; }
+      .set-row.warmup strong { color: var(--amber); font-size: 0.72rem; }
+      .set-row.completed { background: var(--green-dark); border-color: var(--green); }
+      .set-row.completed input { color: var(--muted); }
+      .set-row.pending { border-left: 3px solid transparent; }
+      .rest-control { align-items: center; color: var(--muted); display: flex; font-size: 0.78rem; font-weight: 800; gap: 7px; }
+      .rest-control input { min-height: 38px; padding: 6px; width: 72px; }
+      .session-submitted, .summary-muted { border: 1px solid var(--line); color: var(--muted); padding: 12px; }
+      .submit-confirmation, .completed-summary { background: var(--surface-strong); border: 1px solid var(--green); display: grid; gap: 10px; padding: 16px; }
+      .submit-confirmation span, .completed-summary p { color: var(--muted); margin: 0; }
+      .pr-celebration { background: var(--green-dark); border-left: 3px solid var(--green-2); display: grid; gap: 6px; padding: 12px; }
+      .pr-celebration strong { color: var(--green-2); }
+      .pr-celebration span, .summary-lifts span { color: var(--muted); font-size: 0.9rem; }
+      .summary-lifts { display: grid; gap: 10px; }
+      .summary-lifts div { border-bottom: 1px solid var(--line); display: grid; gap: 3px; padding-bottom: 8px; }
+      .template-warmups { border-top: 1px solid var(--line); color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px; padding-top: 8px; }
+      .template-warmups strong { color: var(--text); width: 100%; }
 
       .set-row strong {
         color: var(--green);
@@ -667,6 +690,11 @@
         height: 100%;
         width: 100%;
       }
+
+      .chart-points { display: flex; flex-wrap: wrap; gap: 5px; }
+      .chart-points button { color: var(--muted); font-size: 0.7rem; min-height: 30px; padding: 5px 7px; }
+      .chart-detail { border-top: 1px solid var(--green); display: grid; gap: 8px; margin-top: 12px; padding-top: 12px; }
+      .chart-detail p, .chart-detail small { color: var(--muted); margin: 0; }
 
       .quick-template-strip {
         display: grid;
@@ -988,6 +1016,9 @@
       let settingsMessage = "";
       let importInProgress = false;
       let saveTimer = 0;
+      let pendingSubmitSessionId = "";
+      let completedSummarySessionId = "";
+      let chartDetailPoint = null;
 
       const icon = {
         workout: "Lift",
@@ -1098,7 +1129,7 @@
       function createSession(title) {
         const now = isoNow();
         const sameDayCount = data.sessions.filter((session) => session.date === todayIso()).length + 1;
-        return { id: id(), date: todayIso(), title: title || "Workout " + sameDayCount, isTravel: false, notes: "", recovery: defaultRecovery(), createdAt: now, updatedAt: now };
+        return { id: id(), date: todayIso(), title: title || "Workout " + sameDayCount, isTravel: false, notes: "", recovery: defaultRecovery(), submitted: false, createdAt: now, updatedAt: now };
       }
 
       function defaultRecovery() {
@@ -1119,8 +1150,13 @@
           weightUnit: previous?.weightUnit ?? data.settings.weightUnit,
           isBodyweight: previous?.isBodyweight ?? false,
           rpe: previous?.rpe ?? 7,
-          completed: previous?.completed ?? true
+          completed: previous?.completed ?? false,
+          isWarmup: previous?.isWarmup ?? false
         };
+      }
+
+      function isSessionSubmitted(session) {
+        return session && session.submitted !== false;
       }
 
       function activeSession() {
@@ -1180,7 +1216,7 @@
         const unit = data.settings.weightUnit;
         const small = unit === "kg" ? 1 : 2.5;
         const standard = unit === "kg" ? 2.5 : 5;
-        if (/lateral raise|rear delt|fly|curl|pushdown|tricep|extension|calf|neck/.test(key)) {
+        if (/lateral raise|rear delt|fly|crossover|pec deck|curl|pushdown|tricep|extension|calf|neck/.test(key)) {
           return { kind: "isolation", increment: small, lowerRep: /lateral raise|rear delt/.test(key) ? 12 : 10, upperRep: 20, maxJumpRatio: 0.18 };
         }
         if (/leg extension|leg curl|pulldown|row/.test(key)) {
@@ -1206,7 +1242,7 @@
         scoped.sets.forEach((set) => {
           const exercise = exerciseById.get(set.exerciseId);
           const session = exercise ? sessionById.get(exercise.sessionId) : null;
-          if (!session) return;
+          if (!session || !isSessionSubmitted(session) || set.isWarmup) return;
           if (options.excludeSessionId && session.id === options.excludeSessionId) return;
           const week = startOfWeekIso(session.date);
           const bucket = grouped.get(week) || { sessions: new Set(), travelCount: 0, sets: [] };
@@ -1215,7 +1251,7 @@
           bucket.sets.push(set);
           grouped.set(week, bucket);
         });
-        return Array.from(grouped.entries()).map(([weekStart, bucket]) => {
+        const summaries = Array.from(grouped.entries()).map(([weekStart, bucket]) => {
           const completed = bucket.sets.filter((set) => set.completed);
           const rpeSets = bucket.sets.filter((set) => set.rpe > 0);
           const topWeight = Math.max(0, ...completed.map((set) => set.weight));
@@ -1239,14 +1275,43 @@
             bestEstimatedOneRepMax: Math.max(0, ...completed.map(estimatedOneRepMax))
           };
         }).sort((a, b) => b.weekStart.localeCompare(a.weekStart));
+        summaries.forEach((summary, index) => {
+          const previous = summaries[index + 1];
+          summary.isLikelyDeload = isLikelyDeloadWeek(summary, previous);
+          summary.deloadBaselineWeek = summary.isLikelyDeload ? previous?.weekStart || "" : "";
+        });
+        return summaries;
+      }
+
+      function isLikelyDeloadWeek(current, previous) {
+        if (!current || !previous || current.completedSets < 1 || previous.completedSets < 2) return false;
+        const easyEnough = current.averageRpe === 0 || current.averageRpe <= 8;
+        const loadDrop = previous.topWeight > 0 && current.topWeight > 0 && current.topWeight <= previous.topWeight * 0.92;
+        const volumeDrop = current.completedSets <= Math.max(1, Math.floor(previous.completedSets * 0.75));
+        const strengthDrop = previous.bestEstimatedOneRepMax > 0 && current.bestEstimatedOneRepMax > 0 && current.bestEstimatedOneRepMax <= previous.bestEstimatedOneRepMax * 0.94;
+        return easyEnough && (loadDrop || volumeDrop) && (loadDrop || strengthDrop || volumeDrop);
+      }
+
+      function deloadEvidence(deloadWeek, baselineWeek) {
+        if (!deloadWeek || !baselineWeek) return "";
+        const loadText = deloadWeek.topWeight > 0 && baselineWeek.topWeight > 0
+          ? " load moved from " + baselineWeek.topWeight + " to " + deloadWeek.topWeight + " " + data.settings.weightUnit + ","
+          : "";
+        return "Detected " + formatWeek(deloadWeek.weekStart).toLowerCase() + " as a deload/recovery week:" + loadText + " volume/RPE were reduced. The app skipped it as the baseline and used " + formatWeek(baselineWeek.weekStart).toLowerCase() + " for the next target.";
       }
 
       function recommendForExerciseWeek(exerciseName, weekStart, options = {}) {
         const summaries = summarizeExerciseByWeek(exerciseName, options);
         const selectedIndex = summaries.findIndex((summary) => summary.weekStart === weekStart);
-        const current = summaries[selectedIndex >= 0 ? selectedIndex : 0];
-        const previous = summaries[selectedIndex + 1];
-        const older = summaries.slice(selectedIndex + 1, selectedIndex + 5);
+        const rawIndex = selectedIndex >= 0 ? selectedIndex : 0;
+        const rawCurrent = summaries[rawIndex];
+        const skippedDeload = rawCurrent?.isLikelyDeload ? rawCurrent : null;
+        const effectiveIndex = skippedDeload
+          ? summaries.findIndex((summary, index) => index > rawIndex && !summary.isLikelyDeload)
+          : rawIndex;
+        const current = summaries[effectiveIndex >= 0 ? effectiveIndex : rawIndex];
+        const previous = summaries.slice((effectiveIndex >= 0 ? effectiveIndex : rawIndex) + 1).find((summary) => !summary.isLikelyDeload);
+        const older = summaries.slice((effectiveIndex >= 0 ? effectiveIndex : rawIndex) + 1, (effectiveIndex >= 0 ? effectiveIndex : rawIndex) + 6).filter((summary) => !summary.isLikelyDeload);
         const profile = progressionProfileForExercise(exerciseName);
         const increment = profile.increment;
         if (!current) {
@@ -1271,7 +1336,20 @@
           "Best estimated 1RM " + (current.bestEstimatedOneRepMax ? current.bestEstimatedOneRepMax.toFixed(1) : "not available") + ".",
           current.topWeight > 0 ? current.topWeightSetCount + " of " + current.completedSets + " completed sets used the top load of " + current.topWeight + " " + data.settings.weightUnit + "." : "No weighted top load found."
         ];
+        if (skippedDeload && skippedDeload !== current) evidence.unshift(deloadEvidence(skippedDeload, current));
         if (travelAdjusted) evidence.push("Travel was logged this week, so the recommendation is less punitive for a dip.");
+        if (skippedDeload && skippedDeload !== current) {
+          const targetLoad = current.topWeight > 0 ? current.topWeight + " " + data.settings.weightUnit : "the prior normal load";
+          const targetReps = current.maxRepsAtTopWeight > 0 ? " for about " + current.maxRepsAtTopWeight + " reps" : "";
+          return {
+            decision: "hold",
+            label: "Return from deload",
+            reason: "The latest work looks like a planned recovery break, so it should not reset your working weights downward.",
+            action: "Use the prior normal baseline next time: " + targetLoad + targetReps + ". Keep RPE controlled, then resume progression after that session confirms performance.",
+            evidence,
+            confidence: "high"
+          };
+        }
         if (flatWeeks && (hardWeek || repeatedFailures)) {
           return { decision: "change", label: "Consider changing variation", reason: "This lift looks stalled across several recent weeks.", action: "Swap to a close variation for 4-6 weeks, then retest the original lift.", evidence, confidence: "medium" };
         }
@@ -1324,6 +1402,7 @@
         const scoped = getExerciseSets(exerciseName);
         const exerciseById = new Map(scoped.exercises.map((exercise) => [exercise.id, exercise]));
         const sessionById = new Map(data.sessions.map((session) => [session.id, session]));
+        const deloadWeeks = options.includeDeloads ? new Set() : new Set(summarizeExerciseByWeek(exerciseName, options).filter((week) => week.isLikelyDeload).map((week) => week.weekStart));
         return scoped.sets
           .filter((set) => set.completed)
           .map((set) => {
@@ -1332,7 +1411,9 @@
             return session ? { set, session } : null;
           })
           .filter(Boolean)
+          .filter((entry) => isSessionSubmitted(entry.session) && !entry.set.isWarmup)
           .filter((entry) => !options.excludeSessionId || entry.session.id !== options.excludeSessionId)
+          .filter((entry) => !deloadWeeks.has(startOfWeekIso(entry.session.date)))
           .sort((a, b) => b.session.date.localeCompare(a.session.date))[0];
       }
 
@@ -1340,6 +1421,7 @@
         const scoped = getExerciseSets(exerciseName);
         const exerciseById = new Map(scoped.exercises.map((exercise) => [exercise.id, exercise]));
         const sessionById = new Map(data.sessions.map((session) => [session.id, session]));
+        const deloadWeeks = options.includeDeloads ? new Set() : new Set(summarizeExerciseByWeek(exerciseName, options).filter((week) => week.isLikelyDeload).map((week) => week.weekStart));
         const completed = scoped.sets
           .filter((set) => set.completed)
           .map((set) => {
@@ -1348,10 +1430,19 @@
             return session ? { set, session } : null;
           })
           .filter(Boolean)
+          .filter((entry) => isSessionSubmitted(entry.session) && !entry.set.isWarmup)
           .filter((entry) => !options.excludeSessionId || entry.session.id !== options.excludeSessionId)
+          .filter((entry) => !deloadWeeks.has(startOfWeekIso(entry.session.date)))
           .sort((a, b) => b.session.date.localeCompare(a.session.date) || a.set.setNumber - b.set.setNumber);
         const latestSessionId = completed[0]?.session.id;
         return latestSessionId ? completed.filter((entry) => entry.session.id === latestSessionId).map((entry) => entry.set).sort((a, b) => a.setNumber - b.setNumber) : [];
+      }
+
+      function latestSkippedDeloadForExercise(exerciseName, options = {}) {
+        const weeks = summarizeExerciseByWeek(exerciseName, options);
+        if (!weeks[0]?.isLikelyDeload) return null;
+        const baseline = weeks.slice(1).find((week) => !week.isLikelyDeload);
+        return baseline ? { deload: weeks[0], baseline } : null;
       }
 
       function coachTargetForTemplateExercise(templateExercise, options = {}) {
@@ -1362,6 +1453,7 @@
         const recommendation = weeks[0] ? recommendForExerciseWeek(templateExercise.name, weeks[0].weekStart, options) : null;
         const recentSets = getMostRecentWorkoutSets(templateExercise.name, options);
         const last = getLastCompletedSet(templateExercise.name, options);
+        const skippedDeload = latestSkippedDeloadForExercise(templateExercise.name, options);
         const increment = profile.increment;
         const recentTop = Math.max(0, ...recentSets.map((set) => set.weight), last?.set?.weight || 0);
         const recentReps = Math.max(0, ...recentSets.map((set) => set.reps), last?.set?.reps || 0);
@@ -1372,7 +1464,9 @@
         let rpe = 8;
         let reason = "No prior completed sets found. Use a controlled load near RPE 7-8.";
 
-        if (recommendation?.decision === "progress") {
+        if (skippedDeload) {
+          reason = "The most recent week looks like a deload/recovery break, so this target skips that reduced week and returns to the prior normal training baseline before progressing again.";
+        } else if (recommendation?.decision === "progress") {
           const loadCandidate = nextLoadForExercise(templateExercise.name, recentTop);
           const shouldAddLoad = profile.kind !== "isolation" && recentTop > 0 && recentReps >= profile.upperRep && recentRpe <= 8.5 && loadCandidate > recentTop;
           if (shouldAddLoad) {
@@ -1396,7 +1490,6 @@
         } else if (recommendation) {
           reason = "Repeat the target and make it cleaner before adding workload.";
         }
-
         const weightText = weight > 0 ? weight + " " + data.settings.weightUnit : "bodyweight/control load";
         return {
           decision: recommendation?.decision || "hold",
@@ -1531,8 +1624,10 @@
               name: exercise.name || "Exercise",
               primaryMuscle: exercise.primaryMuscle || "",
               secondaryMuscle: exercise.secondaryMuscle || "",
-              sets: Math.max(sets.length, 1),
-              reps: sets[0]?.reps || 8
+              sets: Math.max(sets.filter((set) => !set.isWarmup).length, 1),
+              reps: sets.find((set) => !set.isWarmup)?.reps || 8,
+              restSeconds: exercise.restSeconds || data.settings.defaultRestSeconds,
+              warmups: sets.filter((set) => set.isWarmup).map((set) => ({ reps: set.reps, weight: set.weight, weightUnit: set.weightUnit, isBodyweight: set.isBodyweight, rpe: set.rpe }))
             };
           });
         return { id: id(), name: (session.title || "Workout") + " Template", notes: "", exercises, createdAt: isoNow(), updatedAt: isoNow() };
@@ -1547,9 +1642,9 @@
         root.innerHTML = `
           <div class="app-shell">
             <header class="brand-bar">
-              <div class="brand-mark">CF</div>
+              <div class="brand-mark"><img src="resources/brand-athlete.png" alt="Strength athlete" /></div>
               <div class="brand-title">Comprehensive <span>Fitness</span></div>
-              <div class="brand-action">${data.settings.weightUnit.toUpperCase()}</div>
+              <button class="brand-action" type="button" data-action="toggle-unit" title="Switch pounds and kilograms">${data.settings.weightUnit.toUpperCase()}</button>
               <button class="theme-toggle" type="button" data-action="toggle-theme" title="Toggle light and dark theme">${themeLabel()}</button>
             </header>
             <main class="app-main">${renderView()}</main>
@@ -1584,8 +1679,9 @@
               <div class="section-kicker">Today's workout</div>
               <h1>Training log</h1>
             </div>
-            ${renderQuickStartTemplates()}
+            ${renderRecoveryPanel(session)}
             ${renderTodayPlan()}
+            ${renderQuickStartTemplates()}
             <div class="session-header">
               <div class="row split">
                 <select data-action="change-session" aria-label="Workout session">
@@ -1600,7 +1696,6 @@
               <label class="toggle-line"><input type="checkbox" data-action="session-travel" ${session.isTravel ? "checked" : ""} />Travel session</label>
               <textarea data-action="session-notes" placeholder="Session notes" aria-label="Session notes">${escapeHtml(session.notes)}</textarea>
             </div>
-            ${renderRecoveryPanel(session)}
             ${renderActiveWorkoutAdvice()}
             ${activeExercises().map(renderExercise).join("")}
             <div class="inline-panel">
@@ -1623,6 +1718,11 @@
               </div>
             </div>
             <button class="secondary-action" type="button" data-action="save-template">Save workout as template</button>
+            ${isSessionSubmitted(session)
+              ? '<div class="session-submitted">Workout logged' + (session.submittedAt ? ' ' + formatDate(session.date) : '') + '</div>'
+              : '<button class="primary-action submit-workout" type="button" data-action="request-submit-workout">Submit workout</button>'}
+            ${pendingSubmitSessionId === session.id ? renderSubmitConfirmation(session) : ""}
+            ${completedSummarySessionId === session.id ? renderCompletedWorkoutSummary(session) : ""}
             ${renderTimer()}
           </section>
         `;
@@ -1649,7 +1749,7 @@
             <p class="advice-detail">${escapeHtml(readiness.action)}</p>
             <div class="plan-list">
               ${exercises.map((exercise) => {
-                const sets = setsForExercise(exercise.id);
+                const sets = setsForExercise(exercise.id).filter((set) => !set.isWarmup);
                 const first = sets[0] || createSet(exercise.id, 1);
                 const loadText = first.weight > 0 ? first.weight + " " + (first.weightUnit || data.settings.weightUnit) : "BW/control";
                 return `
@@ -1658,7 +1758,7 @@
                     <div class="plan-targets">
                       <span data-plan-reps="${exercise.id}">${sets.length || 1} x ${first.reps || 0}</span>
                       <span data-plan-load="${exercise.id}">${escapeHtml(loadText)}</span>
-                      <span data-plan-rest="${exercise.id}">${data.settings.defaultRestSeconds}s rest</span>
+                      <span data-plan-rest="${exercise.id}">${exercise.restSeconds || data.settings.defaultRestSeconds}s rest</span>
                     </div>
                     <div class="plan-meta" data-plan-meta="${exercise.id}">Aim RPE ${first.rpe || 8}. ${escapeHtml(exercise.notes || "Use clean reps and stop when positions break.")}</div>
                   </div>
@@ -1725,7 +1825,7 @@
       }
 
       function renderRecentSessions() {
-        const sessions = [...data.sessions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
+        const sessions = [...data.sessions].filter(isSessionSubmitted).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
         if (!sessions.length) return '<div class="empty-state">No saved workouts yet.</div>';
         return '<div class="flag-list">' + sessions.map((session) => {
           const exercises = data.exercises.filter((exercise) => exercise.sessionId === session.id);
@@ -1769,7 +1869,7 @@
 
       function renderQuickStartTemplates() {
         if (!data.templates.length) return "";
-        const templates = data.templates.slice(0, 4);
+        const templates = data.templates;
         const recoveryAdvice = recoveryRecommendationForSession(activeSession());
         return `
           <div class="quick-template-strip">
@@ -1800,10 +1900,12 @@
       }
 
       function renderExercise(exercise) {
+        const exerciseSets = setsForExercise(exercise.id);
+        const restSeconds = Number(exercise.restSeconds || data.settings.defaultRestSeconds);
         return `
           <article class="exercise-card">
             <div class="row split">
-              <input class="exercise-name" value="${escapeHtml(exercise.name)}" data-action="exercise-name" data-exercise-id="${exercise.id}" aria-label="Exercise name" />
+              <input class="exercise-name" value="${escapeHtml(exercise.name)}" data-action="exercise-name" data-exercise-id="${exercise.id}" aria-label="Exercise name" title="${escapeHtml(exercise.name)}" />
               <div class="row">
                 <button class="icon-button" type="button" data-action="move-exercise" data-direction="-1" data-exercise-id="${exercise.id}" title="Move exercise up">Up</button>
                 <button class="icon-button" type="button" data-action="move-exercise" data-direction="1" data-exercise-id="${exercise.id}" title="Move exercise down">Dn</button>
@@ -1811,12 +1913,14 @@
               </div>
             </div>
             <div class="set-head"><span>Set</span><span>Reps</span><span>Load</span><span>RPE</span><span>Done</span></div>
-            ${setsForExercise(exercise.id).map(renderSet).join("")}
+            ${exerciseSets.map(renderSet).join("")}
             <div class="row wrap">
               <button type="button" data-action="add-set" data-exercise-id="${exercise.id}">${icon.add} Set</button>
+              <button type="button" data-action="add-warmup-set" data-exercise-id="${exercise.id}">+ Warm-up</button>
               <button type="button" data-action="duplicate-set" data-exercise-id="${exercise.id}">${icon.duplicate} Duplicate</button>
-              <button type="button" data-action="start-timer" data-exercise-id="${exercise.id}">${icon.clock}</button>
+              <button type="button" data-action="start-timer" data-exercise-id="${exercise.id}">${icon.clock} ${formatTimer(restSeconds)}</button>
             </div>
+            <label class="rest-control">Rest after this lift<input type="number" min="15" step="15" value="${restSeconds}" data-action="exercise-rest-seconds" data-exercise-id="${exercise.id}" /> sec</label>
             ${renderMuscleSelectors(exercise)}
             ${renderExerciseGuidance(exercise)}
             <textarea data-action="exercise-notes" data-exercise-id="${exercise.id}" placeholder="Exercise notes" aria-label="Exercise notes">${escapeHtml(exercise.notes)}</textarea>
@@ -1826,13 +1930,14 @@
 
       function renderSet(set) {
         return `
-          <div class="set-row">
-            <strong>${set.setNumber}</strong>
+          <div class="set-row ${set.completed ? "completed" : "pending"} ${set.isWarmup ? "warmup" : ""}">
+            <strong>${set.isWarmup ? "WU" : set.setNumber}</strong>
             <input type="number" min="0" value="${set.reps}" data-action="set-reps" data-set-id="${set.id}" aria-label="Reps" />
             <input type="number" min="0" value="${set.weight}" data-action="set-weight" data-set-id="${set.id}" aria-label="Weight" />
             <input type="number" min="0" max="10" step="0.5" value="${set.rpe}" data-action="set-rpe" data-set-id="${set.id}" aria-label="RPE" />
-            <button class="check-button ${set.completed ? "checked" : ""}" type="button" data-action="toggle-set" data-set-id="${set.id}" title="Toggle completed">${icon.done}</button>
+            <button class="check-button ${set.completed ? "checked" : ""}" type="button" data-action="toggle-set" data-set-id="${set.id}" title="${set.completed ? "Completed" : "Mark set complete"}">${set.completed ? "Done" : icon.done}</button>
             <label class="bodyweight"><input type="checkbox" data-action="set-bodyweight" data-set-id="${set.id}" ${set.isBodyweight ? "checked" : ""} />BW</label>
+            <label class="bodyweight"><input type="checkbox" data-action="set-warmup" data-set-id="${set.id}" ${set.isWarmup ? "checked" : ""} />Warm-up</label>
             <button class="mini-button" type="button" data-action="delete-set" data-set-id="${set.id}">Remove</button>
           </div>
         `;
@@ -1896,6 +2001,8 @@
                     <label class="template-meta">Sets<input type="number" min="1" value="${exercise.sets}" data-action="template-exercise-sets" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" /></label>
                     <label class="template-meta">Reps<input type="number" min="1" value="${exercise.reps}" data-action="template-exercise-reps" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" /></label>
                   </div>
+                  <label class="template-meta">Rest seconds<input type="number" min="15" step="15" value="${exercise.restSeconds || data.settings.defaultRestSeconds}" data-action="template-exercise-rest" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" /></label>
+                  <div class="template-warmups"><strong>Warm-ups</strong>${(exercise.warmups || []).map((set, warmupIndex) => '<span>' + escapeHtml(set.reps) + ' reps @ ' + escapeHtml(set.weight) + ' ' + escapeHtml(set.weightUnit || data.settings.weightUnit) + '</span><button class="mini-button" type="button" data-action="remove-template-warmup" data-template-id="' + template.id + '" data-template-exercise-id="' + exercise.id + '" data-warmup-index="' + warmupIndex + '">Remove</button>').join("") || '<span>None yet</span>'}<button class="mini-button" type="button" data-action="add-template-warmup" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}">+ Warm-up</button></div>
                   <button class="mini-button danger" type="button" data-action="delete-template-exercise" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}">Remove exercise</button>
                 </li>
               `).join("")}
@@ -1961,16 +2068,17 @@
         const exerciseById = new Map(scoped.exercises.map((exercise) => [exercise.id, exercise]));
         const sessionById = new Map(data.sessions.map((session) => [session.id, session]));
         const byWeek = new Map();
-        scoped.sets.filter((set) => set.completed && set.reps > 0).forEach((set) => {
+        scoped.sets.filter((set) => set.completed && !set.isWarmup && set.reps > 0).forEach((set) => {
           const exercise = exerciseById.get(set.exerciseId);
           const session = exercise ? sessionById.get(exercise.sessionId) : null;
-          if (!session) return;
-          const week = startOfWeekIso(session.date);
-          const bucket = byWeek.get(week) || { week, e1rm: 0, volume: 0, repsByWeight: new Map() };
+          if (!session || !isSessionSubmitted(session)) return;
+          const week = session.date;
+          const bucket = byWeek.get(week) || { week, e1rm: 0, volume: 0, repsByWeight: new Map(), details: [] };
           bucket.e1rm = Math.max(bucket.e1rm, estimatedOneRepMax(set));
           bucket.volume += set.weight * set.reps;
           const weightKey = String(set.weight || 0);
           bucket.repsByWeight.set(weightKey, Math.max(bucket.repsByWeight.get(weightKey) || 0, set.reps));
+          bucket.details.push({ reps: set.reps, weight: set.weight, rpe: set.rpe, setNumber: set.setNumber, sessionTitle: session.title, sessionDate: session.date });
           byWeek.set(week, bucket);
         });
         const weeks = Array.from(byWeek.values()).sort((a, b) => a.week.localeCompare(b.week)).slice(-16);
@@ -1978,9 +2086,9 @@
         weeks.forEach((week) => week.repsByWeight.forEach((reps, weight) => allWeights.set(weight, (allWeights.get(weight) || 0) + 1)));
         const commonWeight = Array.from(allWeights.entries()).sort((a, b) => b[1] - a[1] || Number(b[0]) - Number(a[0]))[0]?.[0] || "0";
         return {
-          e1rm: weeks.map((week) => ({ label: week.week.slice(5), value: Math.round(week.e1rm * 10) / 10 })),
-          volume: weeks.map((week) => ({ label: week.week.slice(5), value: Math.round(week.volume) })),
-          repsAtWeight: weeks.map((week) => ({ label: week.week.slice(5), value: week.repsByWeight.get(commonWeight) || 0 })),
+          e1rm: weeks.map((week) => ({ label: week.week.slice(5), date: week.week, value: Math.round(week.e1rm * 10) / 10, details: week.details })),
+          volume: weeks.map((week) => ({ label: week.week.slice(5), date: week.week, value: Math.round(week.volume), details: week.details })),
+          repsAtWeight: weeks.map((week) => ({ label: week.week.slice(5), date: week.week, value: week.repsByWeight.get(commonWeight) || 0, details: week.details })),
           commonWeight: Number(commonWeight)
         };
       }
@@ -2008,6 +2116,7 @@
                 ${chartPoints.filter((point) => point.value > 0).map((point) => '<circle cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="4" fill="var(--green-2)"></circle>').join("")}
               </svg>
             </div>
+            <div class="chart-points">${chartPoints.filter((point) => point.value > 0).map((point, index) => '<button type="button" data-action="show-chart-point" data-chart-title="' + escapeHtml(title) + '" data-chart-point="' + index + '">' + escapeHtml(point.label) + '</button>').join("")}</div>
             <small>${escapeHtml(points[0]?.label || "")} to ${escapeHtml(points[points.length - 1]?.label || "")}. Range ${min}-${max}.</small>
           </div>
         `;
@@ -2038,6 +2147,7 @@
                 ${renderChart("Volume load", progress.volume, "No volume load yet. Bodyweight-only sets will show once load is added.")}
                 ${renderChart("Reps at " + (progress.commonWeight ? progress.commonWeight + " " + data.settings.weightUnit : "same weight"), progress.repsAtWeight, "Need repeated work at the same load.")}
               </div>
+              ${chartDetailPoint ? '<article class="chart-detail"><div class="row split"><strong>' + escapeHtml(chartDetailPoint.title) + ' - ' + escapeHtml(chartDetailPoint.date) + '</strong><button class="icon-button" type="button" data-action="close-chart-point">X</button></div><p>' + escapeHtml(selectedExercise) + ': ' + chartDetailPoint.details.map((set) => set.reps + ' reps @ ' + set.weight + ' ' + data.settings.weightUnit + (set.rpe ? ' (RPE ' + set.rpe + ')' : '')).join(', ') + '</p><small>' + escapeHtml(chartDetailPoint.details[0]?.sessionTitle || '') + '</small></article>' : ''}
             </article>
             <div class="trend-table">
               <div class="trend-head"><span>Week</span><span>Top</span><span>Sets</span><span>RPE</span></div>
@@ -2214,7 +2324,7 @@
       }
 
       function addTemplate() {
-        const template = { id: id(), name: "New Template", notes: "", exercises: [{ id: id(), name: "Exercise", sets: 3, reps: 8 }], createdAt: isoNow(), updatedAt: isoNow() };
+        const template = { id: id(), name: "New Template", notes: "", exercises: [{ id: id(), name: "Exercise", sets: 3, reps: 8, restSeconds: data.settings.defaultRestSeconds, warmups: [] }], createdAt: isoNow(), updatedAt: isoNow() };
         view = "templates";
         commit({ ...data, templates: [template, ...data.templates] });
       }
@@ -2236,7 +2346,7 @@
         commit({
           ...data,
           templates: data.templates.map((template) => template.id === templateId
-            ? { ...template, exercises: [...template.exercises, { id: id(), name: "Exercise", sets: 3, reps: 8 }], updatedAt: isoNow() }
+            ? { ...template, exercises: [...template.exercises, { id: id(), name: "Exercise", sets: 3, reps: 8, restSeconds: data.settings.defaultRestSeconds, warmups: [] }], updatedAt: isoNow() }
             : template)
         });
       }
@@ -2256,21 +2366,24 @@
         const template = data.templates.find((item) => item.id === templateId);
         if (!template) return;
         const currentSession = activeSession();
-        const replaceCurrent = currentSession && currentSession.date === todayIso() && currentSession.source !== "strong";
+        const replaceCurrent = currentSession && currentSession.date === todayIso() && currentSession.source !== "strong" && !isSessionSubmitted(currentSession);
         const session = replaceCurrent
-          ? { ...currentSession, title: template.name, templateId: template.id, updatedAt: isoNow() }
+          ? { ...currentSession, title: template.name, templateId: template.id, submitted: false, submittedAt: "", prs: [], updatedAt: isoNow() }
           : createSession(template.name);
         session.templateId = template.id;
         const recoveryAdvice = recoveryRecommendationForSession(session);
         const exercises = [];
         const sets = [];
         template.exercises.forEach((templateExercise, index) => {
-          const exercise = { id: id(), sessionId: session.id, name: templateExercise.name, primaryMuscle: templateExercise.primaryMuscle || "", secondaryMuscle: templateExercise.secondaryMuscle || "", notes: "", order: index };
+          const exercise = { id: id(), sessionId: session.id, name: templateExercise.name, primaryMuscle: templateExercise.primaryMuscle || "", secondaryMuscle: templateExercise.secondaryMuscle || "", notes: "", order: index, restSeconds: Number(templateExercise.restSeconds || data.settings.defaultRestSeconds) };
           const target = adjustTargetForRecovery(coachTargetForTemplateExercise(templateExercise, { excludeSessionId: session.id }), recoveryAdvice);
           exercise.notes = "Coach target: " + target.text;
           exercises.push(exercise);
+          (templateExercise.warmups || []).forEach((warmup, warmupIndex) => {
+            sets.push(createSet(exercise.id, -(warmupIndex + 1), { ...warmup, completed: false, isWarmup: true }));
+          });
           for (let setNumber = 1; setNumber <= target.sets; setNumber += 1) {
-            sets.push(createSet(exercise.id, setNumber, { reps: target.reps, weight: target.weight, weightUnit: target.weightUnit, isBodyweight: target.isBodyweight, rpe: target.rpe, completed: true }));
+            sets.push(createSet(exercise.id, setNumber, { reps: target.reps, weight: target.weight, weightUnit: target.weightUnit, isBodyweight: target.isBodyweight, rpe: target.rpe, completed: false, isWarmup: false }));
           }
         });
         activeSessionId = session.id;
@@ -2307,7 +2420,9 @@
       }
 
       function startTimer(exerciseId) {
-        timer = { exerciseId, durationSeconds: data.settings.defaultRestSeconds, remainingSeconds: data.settings.defaultRestSeconds, isActive: true, isPaused: false };
+        const exercise = data.exercises.find((item) => item.id === exerciseId);
+        const seconds = Number(exercise?.restSeconds || data.settings.defaultRestSeconds);
+        timer = { exerciseId, durationSeconds: seconds, remainingSeconds: seconds, isActive: true, isPaused: false };
         startTimerInterval();
         render();
       }
@@ -2325,6 +2440,54 @@
       function formatTimer(seconds) {
         const minutes = Math.floor(seconds / 60);
         return minutes + ":" + String(seconds % 60).padStart(2, "0");
+      }
+
+      function submitWorkoutPrs(session) {
+        const sessionExercises = data.exercises.filter((exercise) => exercise.sessionId === session.id);
+        const priorSessionIds = new Set(data.sessions.filter((item) => item.id !== session.id && isSessionSubmitted(item)).map((item) => item.id));
+        const prs = [];
+        sessionExercises.forEach((exercise) => {
+          const currentSets = setsForExercise(exercise.id).filter((set) => set.completed && !set.isWarmup && set.reps > 0);
+          if (!currentSets.length) return;
+          const priorSets = data.sets.filter((set) => {
+            const priorExercise = data.exercises.find((item) => item.id === set.exerciseId);
+            return set.completed && !set.isWarmup && priorExercise && priorSessionIds.has(priorExercise.sessionId) && exerciseMatches(priorExercise.name, exercise.name);
+          });
+          const maxWeight = Math.max(...currentSets.map((set) => set.weight));
+          const previousMaxWeight = Math.max(0, ...priorSets.map((set) => set.weight));
+          if (maxWeight > previousMaxWeight && maxWeight > 0) prs.push({ exercise: exercise.name, type: "Heaviest load", value: maxWeight + " " + data.settings.weightUnit });
+          currentSets.forEach((set) => {
+            const previousRepsAtLoad = Math.max(0, ...priorSets.filter((prior) => prior.weight === set.weight).map((prior) => prior.reps));
+            if (set.weight > 0 && set.reps > previousRepsAtLoad) prs.push({ exercise: exercise.name, type: "Most reps at load", value: set.reps + " reps @ " + set.weight + " " + data.settings.weightUnit });
+          });
+          const currentE1rm = Math.max(...currentSets.map(estimatedOneRepMax));
+          const previousE1rm = Math.max(0, ...priorSets.map(estimatedOneRepMax));
+          if (currentE1rm > previousE1rm && currentE1rm > 0) prs.push({ exercise: exercise.name, type: "Best estimated performance", value: currentE1rm.toFixed(1) + " e1RM" });
+        });
+        return prs.filter((pr, index, all) => all.findIndex((other) => other.exercise === pr.exercise && other.type === pr.type) === index);
+      }
+
+      function submitWorkout(sessionId) {
+        const session = data.sessions.find((item) => item.id === sessionId);
+        if (!session) return;
+        const prs = submitWorkoutPrs(session);
+        pendingSubmitSessionId = "";
+        completedSummarySessionId = session.id;
+        commit({ ...data, sessions: data.sessions.map((item) => item.id === session.id ? { ...item, submitted: true, submittedAt: isoNow(), prs, updatedAt: isoNow() } : item) });
+      }
+
+      function renderSubmitConfirmation(session) {
+        const completed = data.sets.filter((set) => {
+          const exercise = data.exercises.find((item) => item.id === set.exerciseId);
+          return exercise?.sessionId === session.id && set.completed && !set.isWarmup;
+        }).length;
+        return '<section class="submit-confirmation"><strong>Log this workout as completed?</strong><span>' + completed + ' completed working sets will update history, charts, volume, and PRs.</span><div class="row"><button class="primary-action" type="button" data-action="confirm-submit-workout">Log workout</button><button type="button" data-action="cancel-submit-workout">Keep editing</button></div></section>';
+      }
+
+      function renderCompletedWorkoutSummary(session) {
+        const sessionExercises = data.exercises.filter((exercise) => exercise.sessionId === session.id).sort((a, b) => a.order - b.order);
+        const prs = session.prs || [];
+        return '<section class="completed-summary"><div class="section-kicker">Workout logged</div><h2>Strong work.</h2><p>' + sessionExercises.length + ' lifts completed. Your charts and volume now include this session.</p>' + (prs.length ? '<div class="pr-celebration"><strong>Personal records</strong>' + prs.map((pr) => '<span>' + escapeHtml(pr.exercise) + ': ' + escapeHtml(pr.type) + ' - ' + escapeHtml(pr.value) + '</span>').join("") + '</div>' : '<div class="summary-muted">No new PR today. Clean, repeatable work is still progress.</div>') + '<div class="summary-lifts">' + sessionExercises.map((exercise) => { const sets = setsForExercise(exercise.id); const warmups = sets.filter((set) => set.isWarmup && set.completed); const work = sets.filter((set) => !set.isWarmup && set.completed); return '<div><strong>' + escapeHtml(exercise.name) + '</strong><span>' + warmups.length + ' warm-up, ' + work.length + ' working sets: ' + work.map((set) => set.reps + ' x ' + (set.isBodyweight ? 'BW' : set.weight + ' ' + set.weightUnit) + (set.rpe ? ' @ ' + set.rpe : '')).join(', ') + '</span></div>'; }).join("") + '</div><button type="button" data-action="close-completed-summary">Done</button></section>';
       }
 
       function exportData() {
@@ -2457,7 +2620,7 @@
             const session = exercise ? sessionById.get(exercise.sessionId) : null;
             return exercise && session ? { set, exercise, session } : null;
           })
-          .filter((entry) => entry && entry.set.completed && entry.set.reps > 0);
+          .filter((entry) => entry && isSessionSubmitted(entry.session) && entry.set.completed && !entry.set.isWarmup && entry.set.reps > 0);
       }
 
       function weeklyMuscleVolume(weekStart = startOfWeekIso(todayIso())) {
@@ -2593,7 +2756,7 @@
         if (recovery.illness) evidence.push("Illness or unusual pain is a rest warning.");
         if (recovery.outsideBandNote) evidence.push("Note: " + recovery.outsideBandNote);
         if (!band.outside && !recovery.illness) {
-          return { decision: "hold", label: "Inside readiness band", action: "Train the plan as written. Do not change load just for normal day-to-day fluctuation.", score: band.score, evidence, band };
+          return { decision: "hold", label: "Go as planned", action: "You are in your normal readiness band. Train the plan as written and let performance during the session guide progression.", score: band.score, evidence, band };
         }
         if (recovery.illness || (band.direction === "low" && band.deviation <= -band.band * 2)) {
           return { decision: "rest", label: "Low outside-band readiness", action: "Rest or keep technique work very light. Hard loading is not the target today.", score: band.score, evidence, band };
@@ -2601,7 +2764,7 @@
         if (band.direction === "low") {
           return { decision: "deload", label: "Low outside-band readiness", action: "Reduce load 10-15% and volume 30-50%, aiming around RPE 6-7.", score: band.score, evidence, band };
         }
-        return { decision: "progress", label: "High outside-band readiness", action: "You may take the planned progression if warmups move normally; do not force a max.", score: band.score, evidence, band };
+        return { decision: "hold", label: "Go as planned", action: "Recovery is better than usual, but keep the planned work. Let warmups, reps, and RPE earn any progression.", score: band.score, evidence, band };
       }
 
       function adjustTargetForRecovery(target, recoveryAdvice) {
@@ -2653,8 +2816,10 @@
               name: exercise.name,
               primaryMuscle: exercise.primaryMuscle || "",
               secondaryMuscle: exercise.secondaryMuscle || "",
-              sets: Math.max(completedSets.length || exerciseSets.length, 1),
-              reps: Math.max(representativeReps, 1)
+              sets: Math.max(completedSets.filter((set) => !set.isWarmup).length || exerciseSets.length, 1),
+              reps: Math.max(representativeReps, 1),
+              restSeconds: data.settings.defaultRestSeconds,
+              warmups: exerciseSets.filter((set) => set.isWarmup).map((set) => ({ reps: set.reps, weight: set.weight, weightUnit: set.weightUnit, isBodyweight: set.isBodyweight, rpe: set.rpe }))
             };
           });
           if (!templateExercises.length) return null;
@@ -2820,7 +2985,7 @@
       }
 
       function isNumericEditAction(action) {
-        return ["set-reps", "set-weight", "set-rpe", "template-exercise-sets", "template-exercise-reps", "rest-seconds", "recovery-sleep-hours", "recovery-hrv", "recovery-resting-hr", "baseline-sleep-hours", "baseline-sleep-quality", "baseline-hrv", "baseline-resting-hr", "baseline-soreness", "baseline-stress", "baseline-energy", "baseline-band"].includes(action);
+        return ["set-reps", "set-weight", "set-rpe", "template-exercise-sets", "template-exercise-reps", "template-exercise-rest", "exercise-rest-seconds", "rest-seconds", "recovery-sleep-hours", "recovery-hrv", "recovery-resting-hr", "baseline-sleep-hours", "baseline-sleep-quality", "baseline-hrv", "baseline-resting-hr", "baseline-soreness", "baseline-stress", "baseline-energy", "baseline-band"].includes(action);
       }
 
       root.addEventListener("click", (event) => {
@@ -2834,6 +2999,16 @@
         }
         if (action === "set-view") { view = target.dataset.view; render(); }
         if (action === "toggle-theme") commit({ ...data, settings: { ...data.settings, theme: data.settings.theme === "light" ? "dark" : "light" } });
+        if (action === "toggle-unit") commit({ ...data, settings: { ...data.settings, weightUnit: data.settings.weightUnit === "lb" ? "kg" : "lb" } });
+        if (action === "show-chart-point") {
+          const progress = exerciseProgressSeries(selectedExercise);
+          const title = target.dataset.chartTitle;
+          const points = title === "Estimated 1RM" ? progress.e1rm : title === "Volume load" ? progress.volume : progress.repsAtWeight;
+          const point = points.filter((item) => item.value > 0)[Number(target.dataset.chartPoint)];
+          chartDetailPoint = point ? { ...point, title, date: point.date || point.label } : null;
+          render();
+        }
+        if (action === "close-chart-point") { chartDetailPoint = null; render(); }
         if (action === "new-session") addSession();
         if (action === "new-template") addTemplate();
         if (action === "save-template") saveActiveSessionAsTemplate();
@@ -2868,11 +3043,32 @@
         if (action === "move-exercise") moveExercise(target.dataset.exerciseId, target.dataset.direction);
         if (action === "delete-exercise") commit({ ...data, exercises: data.exercises.filter((exercise) => exercise.id !== target.dataset.exerciseId), sets: data.sets.filter((set) => set.exerciseId !== target.dataset.exerciseId) });
         if (action === "add-set") addSet(target.dataset.exerciseId, false);
+        if (action === "add-warmup-set") {
+          const sets = setsForExercise(target.dataset.exerciseId);
+          const last = sets[sets.length - 1];
+          commit({ ...data, sets: [...data.sets, createSet(target.dataset.exerciseId, -sets.filter((set) => set.isWarmup).length - 1, { ...(last || {}), completed: false, isWarmup: true, rpe: 5 })] });
+        }
         if (action === "duplicate-set") addSet(target.dataset.exerciseId, true);
         if (action === "delete-set") commit({ ...data, sets: data.sets.filter((set) => set.id !== target.dataset.setId) });
         if (action === "toggle-set") {
           const set = data.sets.find((item) => item.id === target.dataset.setId);
           if (set) patchSet(set.id, { completed: !set.completed });
+        }
+        if (action === "request-submit-workout") { pendingSubmitSessionId = activeSessionId; render(); }
+        if (action === "cancel-submit-workout") { pendingSubmitSessionId = ""; render(); }
+        if (action === "confirm-submit-workout") submitWorkout(activeSessionId);
+        if (action === "close-completed-summary") { completedSummarySessionId = ""; render(); }
+        if (action === "add-template-warmup") {
+          const template = data.templates.find((item) => item.id === target.dataset.templateId);
+          const exercise = template?.exercises.find((item) => item.id === target.dataset.templateExerciseId);
+          const warmups = [...(exercise?.warmups || []), { reps: 10, weight: 0, weightUnit: data.settings.weightUnit, isBodyweight: false, rpe: 5 }];
+          patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { warmups });
+        }
+        if (action === "remove-template-warmup") {
+          const template = data.templates.find((item) => item.id === target.dataset.templateId);
+          const exercise = template?.exercises.find((item) => item.id === target.dataset.templateExerciseId);
+          const warmups = (exercise?.warmups || []).filter((_, index) => index !== Number(target.dataset.warmupIndex));
+          patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { warmups });
         }
         if (action === "start-timer") startTimer(target.dataset.exerciseId);
         if (action === "toggle-timer" && timer) { timer.isPaused = !timer.isPaused; render(); }
@@ -2902,9 +3098,14 @@
         if (action === "exercise-primary-muscle") patchExercise(target.dataset.exerciseId, { primaryMuscle: target.value });
         if (action === "exercise-secondary-muscle") patchExercise(target.dataset.exerciseId, { secondaryMuscle: target.value });
         if (action === "set-bodyweight") patchSet(target.dataset.setId, { isBodyweight: target.checked });
+        if (action === "set-warmup") patchSet(target.dataset.setId, { isWarmup: target.checked });
         if (action === "set-reps") patchSet(target.dataset.setId, { reps: Number(target.value) });
         if (action === "set-weight") patchSet(target.dataset.setId, { weight: Number(target.value) });
         if (action === "set-rpe") patchSet(target.dataset.setId, { rpe: Number(target.value) });
+        if (action === "exercise-rest-seconds") patchExercise(target.dataset.exerciseId, { restSeconds: Number(target.value) });
+        if (action === "template-exercise-rest") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { restSeconds: Number(target.value) });
+        if (action === "exercise-rest-seconds") patchExercise(target.dataset.exerciseId, { restSeconds: Number(target.value) });
+        if (action === "template-exercise-rest") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { restSeconds: Number(target.value) });
         if (action === "review-exercise") { selectedExercise = target.value; selectedWeek = ""; render(); }
         if (action === "review-week") { selectedWeek = target.value; render(); }
         if (action === "weight-unit") commit({ ...data, settings: { ...data.settings, weightUnit: target.value } });
@@ -3010,6 +3211,8 @@
         if (action === "set-reps") patchSet(target.dataset.setId, { reps: Number(target.value) }, false);
         if (action === "set-weight") patchSet(target.dataset.setId, { weight: Number(target.value) }, false);
         if (action === "set-rpe") patchSet(target.dataset.setId, { rpe: Number(target.value) }, false);
+        if (action === "exercise-rest-seconds") patchExercise(target.dataset.exerciseId, { restSeconds: Number(target.value) }, false);
+        if (action === "template-exercise-rest") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { restSeconds: Number(target.value) }, false);
         if (action === "template-name") patchTemplate(target.dataset.templateId, { name: target.value }, false);
         if (action === "template-exercise-name") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { name: target.value }, false);
         if (action === "template-exercise-sets") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { sets: Number(target.value) }, false);
