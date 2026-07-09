@@ -991,6 +991,119 @@
           transform: translateX(-50%);
         }
       }
+      /* Compact, utility-first layer for the phone workout flow. */
+      .brand-bar { grid-template-columns: 36px minmax(0, 1fr) auto auto; min-height: 58px; margin: 0 12px; padding: 10px 0; gap: 8px; }
+      .brand-mark { width: 34px; height: 34px; min-width: 34px; border-radius: 8px; border: 1px solid var(--green); background: var(--green); color: #fff; box-shadow: none; font-size: .71rem; font-weight: 900; letter-spacing: .02em; display: grid; place-items: center; }
+      .brand-mark img { display: none; }
+      .brand-title { min-width: 0; font-size: .76rem; line-height: 1.05; }
+      .brand-title span { display: inline; }
+      .brand-title small { display: block; color: var(--muted); font-size: .66rem; font-weight: 700; letter-spacing: 0; line-height: 1.25; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; text-transform: none; white-space: nowrap; }
+      .brand-action, .theme-toggle { min-height: 34px; min-width: 34px; padding: 0 8px; border-radius: 7px; font-size: .69rem; }
+      .app-main { padding: 12px 12px 0; }
+      .view { gap: 12px; padding-bottom: 18px; }
+      .screen-heading, .workout-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+      .screen-heading h1, .workout-heading h1 { margin: 1px 0 0; font-size: 1.42rem; line-height: 1.1; }
+      .section-kicker { font-size: .64rem; }
+      .screen-intro { margin: -5px 0 0; color: var(--muted); font-size: .8rem; line-height: 1.38; }
+      .status-pill { min-height: 23px; padding: 3px 7px; border-radius: 999px; font-size: .64rem; white-space: nowrap; }
+      .workout-status-strip, .dashboard-summary-row, .chart-metric-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; gap: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--surface); }
+      .workout-status-strip > span { min-height: 38px; display: grid; place-items: center; color: var(--muted); font-size: .7rem; font-weight: 800; text-align: center; border-right: 1px solid var(--line); }
+      .workout-status-strip .icon-button { align-self: center; margin: 0 5px; }
+      .quick-template-list { display: flex; gap: 8px; overflow-x: auto; padding: 1px 0 5px; scroll-snap-type: x proximity; }
+      .quick-template-card { flex: 0 0 168px; min-height: 82px; padding: 10px; border-radius: 8px; scroll-snap-align: start; }
+      .quick-template-card h3 { font-size: .82rem; margin: 0 0 5px; }
+      .quick-template-card small, .quick-template-card span { font-size: .67rem; }
+      .exercise-card { padding: 11px 0; border-radius: 0; border-width: 1px 0; background: transparent; box-shadow: none; gap: 9px; }
+      .exercise-card::before { display: none; }
+      .exercise-card header { align-items: center; gap: 7px; }
+      .exercise-card h2 { font-size: .97rem; line-height: 1.2; }
+      .exercise-order { min-width: 31px; min-height: 29px; padding: 0 5px; font-size: .61rem; }
+      .exercise-actions { gap: 6px; }
+      .exercise-actions button, .mini-button { min-height: 31px; padding: 4px 8px; border-radius: 6px; font-size: .68rem; }
+      .set-grid { gap: 4px; }
+      .set-row { min-height: 44px; grid-template-columns: 31px minmax(45px, .9fr) minmax(48px, 1fr) minmax(39px, .8fr) 31px 31px; gap: 5px; padding: 4px 0; }
+      .set-row input, .set-row select { min-width: 0; min-height: 36px; padding: 4px; font-size: .77rem; }
+      .set-row .set-number, .set-row .set-complete { font-size: .68rem; }
+      .compact-disclosure, .history-section, .settings-group { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: transparent; }
+      .compact-disclosure summary, .history-section summary, .settings-group summary, .exercise-options summary { list-style: none; min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; color: var(--text); font-size: .78rem; font-weight: 850; }
+      .compact-disclosure summary::-webkit-details-marker, .history-section summary::-webkit-details-marker, .settings-group summary::-webkit-details-marker, .exercise-options summary::-webkit-details-marker { display: none; }
+      .compact-disclosure summary span, .history-section summary span, .settings-group summary span, .exercise-options summary span { color: var(--muted); font-size: .67rem; font-weight: 700; }
+      .disclosure-body { display: grid; gap: 10px; padding: 0 0 12px; }
+      .exercise-options { border-top: 1px solid var(--line); margin-top: 3px; }
+      .exercise-options .disclosure-body { gap: 9px; }
+      .exercise-options .rest-row { margin: 0; }
+      .add-exercise-panel { margin-top: 2px; }
+      .workout-footer-actions { display: grid; grid-template-columns: 1fr 1.15fr; gap: 8px; align-items: stretch; }
+      .workout-footer-actions > * { width: 100%; min-height: 42px; }
+      .plan-compact, .compact-recovery { padding: 0; border: 0; background: transparent; box-shadow: none; }
+      .plan-list { gap: 0; border-top: 1px solid var(--line); }
+      .plan-card { padding: 9px 0; border-width: 0 0 1px; border-radius: 0; background: transparent; }
+      .plan-card header strong { font-size: .8rem; }
+      .plan-targets { gap: 6px; margin-top: 5px; }
+      .plan-targets span, .plan-meta { font-size: .68rem; }
+      .recovery-status { border-radius: 7px; padding: 9px; }
+      .recovery-inputs { gap: 7px; }
+      .recovery-inputs label { font-size: .68rem; }
+      .recovery-inputs input, .recovery-inputs select { min-height: 36px; }
+      .template-library { display: grid; gap: 8px; }
+      .template-card, .history-exercise { padding: 11px; border-radius: 8px; box-shadow: none; }
+      .template-topline { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+      .template-topline > div { min-width: 0; flex: 1; }
+      .template-topline .exercise-name { min-height: 29px; padding: 0; font-size: .94rem; font-weight: 850; border-color: transparent; background: transparent; }
+      .template-topline small { display: block; margin-top: 2px; color: var(--muted); font-size: .68rem; }
+      .template-start { min-height: 34px; padding: 0 11px; font-size: .69rem; }
+      .template-coach { margin: 8px 0 0; color: var(--muted); font-size: .72rem; line-height: 1.38; }
+      .template-coach strong { color: var(--text); }
+      .template-editor { margin-top: 8px; }
+      .template-delete-row { display: flex; justify-content: flex-end; margin-top: 5px; }
+      .full-width { width: 100%; min-height: 42px; }
+      .screen-section { display: grid; gap: 9px; }
+      .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 10px; }
+      .section-heading h2 { margin: 0; font-size: .94rem; }
+      .section-heading p { margin: 3px 0 0; color: var(--muted); font-size: .7rem; line-height: 1.35; }
+      .section-heading > span { color: var(--muted); font-size: .68rem; white-space: nowrap; }
+      .text-button { min-height: 30px; padding: 0; border: 0; background: transparent; color: var(--green-2); font-size: .72rem; font-weight: 850; }
+      .dashboard-summary-row, .chart-metric-row { grid-template-columns: repeat(3, minmax(0, 1fr)); border-radius: 8px; overflow: hidden; }
+      .dashboard-summary-row > div, .chart-metric-row > div { min-height: 60px; display: flex; flex-direction: column; justify-content: center; padding: 8px; border-right: 1px solid var(--line); }
+      .dashboard-summary-row > div:last-child, .chart-metric-row > div:last-child { border-right: 0; }
+      .dashboard-summary-row strong, .chart-metric-row strong { font-size: 1.05rem; line-height: 1; }
+      .dashboard-summary-row span, .chart-metric-row span { margin-top: 4px; color: var(--muted); font-size: .62rem; font-weight: 750; line-height: 1.15; }
+      .dashboard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+      .volume-card { min-height: 102px; padding: 9px; border-radius: 7px; text-align: left; }
+      .volume-card header { gap: 5px; }
+      .volume-card header strong { font-size: .75rem; }
+      .volume-card small { font-size: .64rem; line-height: 1.35; }
+      .quiet-volume { opacity: .75; }
+      .volume-detail { margin-top: 8px; }
+      .flag-list { gap: 7px; }
+      .flag-card { padding: 9px; border-radius: 7px; }
+      .flag-card strong { font-size: .73rem; }
+      .flag-card span { font-size: .68rem; }
+      .session-card { padding: 10px; border-radius: 7px; text-align: left; }
+      .session-card p { margin: 3px 0; font-size: .68rem; }
+      .session-card small { font-size: .68rem; line-height: 1.35; }
+      .history-section .disclosure-body { padding-bottom: 8px; }
+      .history-exercise { padding: 8px 0; border-radius: 0; border-width: 0 0 1px; background: transparent; }
+      .history-exercise h2 { font-size: .84rem; }
+      .chart-list { gap: 9px; }
+      .chart-card { padding: 10px; border-radius: 8px; }
+      .chart-card header strong { font-size: .8rem; }
+      .chart-svg { min-height: 108px; }
+      .chart-points { gap: 5px; }
+      .chart-points button { min-height: 27px; font-size: .62rem; }
+      .trend-section { margin-top: 2px; }
+      .trend-table { font-size: .68rem; }
+      .trend-head, .trend-row { gap: 6px; padding: 7px 0; }
+      .settings-group .settings-panel { padding: 0 0 2px; }
+      .settings-panel { gap: 10px; }
+      .settings-panel label { font-size: .72rem; }
+      .settings-panel select, .settings-panel input { min-height: 38px; }
+      .settings-links { display: flex; gap: 14px; }
+      body[data-theme="light"] .brand-mark { color: #fff; }
+      body[data-theme="light"] .section-heading p, body[data-theme="light"] .screen-intro, body[data-theme="light"] .template-coach { color: #4c6078; }
+      body[data-theme="light"] .text-button { color: #0759c5; }
+      @media (min-width: 720px) { .app-main { max-width: 760px; padding: 18px 18px 0; } .brand-bar { max-width: 760px; margin: 0 auto; } .dashboard-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .quick-template-card { flex-basis: 180px; } }
+      @media (max-width: 380px) { .brand-title small { max-width: 95px; } .workout-status-strip > span { font-size: .63rem; } .set-row { grid-template-columns: 27px minmax(42px, .85fr) minmax(44px, 1fr) minmax(35px, .7fr) 28px 28px; gap: 3px; } .set-row input, .set-row select { font-size: .69rem; } .dashboard-grid { grid-template-columns: 1fr; } }
     </style>
   </head>
   <body>
@@ -1651,8 +1764,8 @@
         root.innerHTML = `
           <div class="app-shell">
             <header class="brand-bar">
-              <div class="brand-mark"><img src="resources/brand-athlete.png" alt="Strength athlete" /></div>
-              <div class="brand-title">Comprehensive <span>Fitness</span></div>
+              <div class="brand-mark" aria-label="Comprehensive Fitness">CF</div>
+              <div class="brand-title">Comprehensive <span>Fitness</span><small>${escapeHtml(activeSession()?.title || "Training")}</small></div>
               <button class="brand-action" type="button" data-action="toggle-unit" title="Switch pounds and kilograms">${data.settings.weightUnit.toUpperCase()}</button>
               <button class="theme-toggle" type="button" data-action="toggle-theme" title="Toggle light and dark theme">${themeLabel()}</button>
             </header>
@@ -1675,6 +1788,7 @@
       function renderView() {
         if (view === "dashboard") return renderDashboard();
         if (view === "templates") return renderTemplates();
+        if (view === "history") return renderHistory();
         if (view === "review") return renderReview();
         if (view === "settings") return renderSettings();
         return renderWorkout();
@@ -1683,20 +1797,41 @@
       function renderWorkout() {
         const session = activeSession();
         return `
-          <section class="view">
-            <div>
-              <div class="section-kicker">Today's workout</div>
-              <h1>Training log</h1>
+          <section class="view workout-view">
+            <div class="workout-heading">
+              <div><div class="section-kicker">Today</div><h1>${escapeHtml(session.title || "Workout")}</h1></div>
+              <span class="status-pill ${isSessionSubmitted(session) ? "good" : "inside"}">${isSessionSubmitted(session) ? "Logged" : "In progress"}</span>
             </div>
-            ${renderRecoveryPanel(session)}
-            ${renderTodayPlan()}
             ${renderQuickStartTemplates()}
-            <div class="session-header">
+            <div class="workout-status-strip">
+              <span>${activeExercises().length} lifts</span><span>${activeExercises().reduce((sum, exercise) => sum + setsForExercise(exercise.id).filter((set) => !set.isWarmup).length, 0)} working sets</span><span>${session.isTravel ? "Travel" : "Home"}</span>
+              <button class="icon-button" type="button" data-action="new-session" title="New workout">${icon.add}</button>
+            </div>
+            ${activeExercises().map(renderExercise).join("")}
+            <details class="compact-disclosure add-exercise-panel">
+              <summary>Add exercise <span>${icon.add}</span></summary>
+              <div class="disclosure-body">
+                <div class="row">
+                  <input value="${escapeHtml(addExerciseDraft)}" data-action="add-exercise-draft" placeholder="Exercise name" aria-label="New exercise name" />
+                  <button class="icon-button" type="button" data-action="add-exercise" title="Add exercise">${icon.add}</button>
+                </div>
+                <div class="muscle-select-grid">
+                  <label>Primary muscle<select data-action="add-exercise-primary" aria-label="Primary muscle for new exercise">${muscleOptions(addExercisePrimaryMuscle, true, "Auto classify")}</select></label>
+                  <label>Secondary muscle<select data-action="add-exercise-secondary" aria-label="Secondary muscle for new exercise">${muscleOptions(addExerciseSecondaryMuscle, true, "None")}</select></label>
+                </div>
+              </div>
+            </details>
+            <details class="compact-disclosure">
+              <summary>Plan and readiness <span>View</span></summary>
+              <div class="disclosure-body">${renderTodayPlan()}${renderRecoveryPanel(session)}${renderActiveWorkoutAdvice()}</div>
+            </details>
+            <details class="compact-disclosure">
+              <summary>Workout details <span>Edit</span></summary>
+              <div class="disclosure-body session-header">
               <div class="row split">
                 <select data-action="change-session" aria-label="Workout session">
                   ${workoutSessionOptions(session).map((item) => '<option value="' + item.id + '" ' + (item.id === session.id ? "selected" : "") + '>' + escapeHtml(item.title) + " - " + item.date + '</option>').join("")}
                 </select>
-                <button class="icon-button" type="button" data-action="new-session" title="New workout">${icon.add}</button>
               </div>
               <div class="grid two">
                 <input value="${escapeHtml(session.title)}" data-action="session-title" aria-label="Workout title" />
@@ -1704,32 +1839,13 @@
               </div>
               <label class="toggle-line"><input type="checkbox" data-action="session-travel" ${session.isTravel ? "checked" : ""} />Travel session</label>
               <textarea data-action="session-notes" placeholder="Session notes" aria-label="Session notes">${escapeHtml(session.notes)}</textarea>
-            </div>
-            ${renderActiveWorkoutAdvice()}
-            ${activeExercises().map(renderExercise).join("")}
-            <div class="inline-panel">
-              <h2>Add exercise</h2>
-              <div class="row">
-                <input value="${escapeHtml(addExerciseDraft)}" data-action="add-exercise-draft" placeholder="Exercise name" aria-label="New exercise name" />
-                <button class="icon-button" type="button" data-action="add-exercise" title="Add exercise">${icon.add}</button>
               </div>
-              <div class="muscle-select-grid">
-                <label>Primary muscle
-                  <select data-action="add-exercise-primary" aria-label="Primary muscle for new exercise">
-                    ${muscleOptions(addExercisePrimaryMuscle, true, "Auto classify")}
-                  </select>
-                </label>
-                <label>Secondary muscle
-                  <select data-action="add-exercise-secondary" aria-label="Secondary muscle for new exercise">
-                    ${muscleOptions(addExerciseSecondaryMuscle, true, "None")}
-                  </select>
-                </label>
-              </div>
-            </div>
-            <button class="secondary-action" type="button" data-action="save-template">Save workout as template</button>
+            </details>
+            <div class="workout-footer-actions"><button class="secondary-action" type="button" data-action="save-template">Save as template</button>
             ${isSessionSubmitted(session)
               ? '<div class="session-submitted">Workout logged' + (session.submittedAt ? ' ' + formatDate(session.date) : '') + '</div>'
               : '<button class="primary-action submit-workout" type="button" data-action="request-submit-workout">Submit workout</button>'}
+            </div>
             ${pendingSubmitSessionId === session.id ? renderSubmitConfirmation(session) : ""}
             ${completedSummarySessionId === session.id ? renderCompletedWorkoutSummary(session) : ""}
             ${renderTimer()}
@@ -1743,16 +1859,13 @@
         const readiness = recoveryRecommendationForSession(session);
         if (!exercises.length) {
           return `
-            <article class="workout-advice">
-              <h2>Today's plan</h2>
-              <p class="advice-detail">Pick a template above to load exact lifts, target loads, reps, RPE, and rest times. If you build manually, the plan fills in as you add exercises.</p>
-            </article>
+            <div class="compact-plan-empty">Choose a template above, or add an exercise to build today’s workout.</div>
           `;
         }
         return `
-          <article class="workout-advice">
+          <section class="plan-compact">
             <div class="row split">
-              <h2>Today's plan</h2>
+              <strong>Today’s plan</strong>
               <span class="status-pill ${readiness.band?.outside ? readiness.band.direction : "inside"}">${readiness.band?.outside ? readiness.band.direction + " band" : "inside band"}</span>
             </div>
             <p class="advice-detail">${escapeHtml(readiness.action)}</p>
@@ -1774,47 +1887,56 @@
                 `;
               }).join("")}
             </div>
-          </article>
+          </section>
         `;
       }
 
       function renderDashboard() {
         const volumes = weeklyMuscleVolume();
         const flags = fatigueFlags();
+        const trained = volumes.filter((bucket) => bucket.sets > 0);
+        const untrained = volumes.filter((bucket) => bucket.sets === 0);
+        const completedSessions = data.sessions.filter(isSessionSubmitted);
+        const renderBucket = (bucket, quiet = false) => {
+          const max = Math.max(bucket.targetHigh, bucket.sets, 1);
+          const meter = Math.min(100, Math.round((bucket.sets / max) * 100));
+          const label = bucket.status === "low" ? "below target" : bucket.status === "over" ? "above target" : "in range";
+          const expanded = expandedVolumeMuscle === bucket.muscle;
+          return `
+            <button class="volume-card ${quiet ? "quiet-volume" : ""}" type="button" data-action="toggle-volume-muscle" data-muscle="${escapeHtml(bucket.muscle)}" aria-expanded="${expanded ? "true" : "false"}">
+              <header><strong>${bucket.muscle}</strong><span class="status-pill ${bucket.status}">${label}</span></header>
+              <div class="meter" style="--meter:${meter}%"><span></span></div>
+              <small>${bucket.sets.toFixed(bucket.sets % 1 ? 1 : 0)} sets. Target ${bucket.targetLow}-${bucket.targetHigh}. ${bucket.exerciseCount || 0} lifts.</small>
+              ${expanded ? renderVolumeDetails(bucket) : ""}
+            </button>
+          `;
+        };
         return `
-          <section class="view">
-            <div>
+          <section class="view dashboard-view">
+            <div class="screen-heading">
               <div class="section-kicker">Dashboard</div>
               <h1>Volume and fatigue</h1>
             </div>
-            <article class="workout-advice">
-              <h2>Weekly muscle volume</h2>
-              <p class="advice-detail">Completed hard sets are mapped to muscle groups. Target range adjusts with your training status.</p>
+            <div class="dashboard-summary-row" aria-label="Weekly overview">
+              <div><strong>${completedSessions.length}</strong><span>logged sessions</span></div>
+              <div><strong>${trained.length}</strong><span>trained muscles</span></div>
+              <div><strong>${flags.length}</strong><span>fatigue flags</span></div>
+            </div>
+            <section class="screen-section">
+              <div class="section-heading"><div><h2>Weekly muscle volume</h2><p>Tap a muscle to see the contributing lifts.</p></div><span>${formatWeek(todayIso()).replace("Week of ", "")}</span></div>
               <div class="dashboard-grid">
-                ${volumes.map((bucket) => {
-                  const max = Math.max(bucket.targetHigh, bucket.sets, 1);
-                  const meter = Math.min(100, Math.round((bucket.sets / max) * 100));
-                  const label = bucket.status === "low" ? "below target" : bucket.status === "over" ? "above target" : "in range";
-                  const expanded = expandedVolumeMuscle === bucket.muscle;
-                  return `
-                    <button class="volume-card" type="button" data-action="toggle-volume-muscle" data-muscle="${escapeHtml(bucket.muscle)}" aria-expanded="${expanded ? "true" : "false"}">
-                      <header><strong>${bucket.muscle}</strong><span class="status-pill ${bucket.status}">${label}</span></header>
-                      <div class="meter" style="--meter:${meter}%"><span></span></div>
-                      <small>${bucket.sets.toFixed(bucket.sets % 1 ? 1 : 0)} sets this week. Target ${bucket.targetLow}-${bucket.targetHigh}. ${bucket.exerciseCount || 0} tracked exercises.</small>
-                      ${expanded ? renderVolumeDetails(bucket) : ""}
-                    </button>
-                  `;
-                }).join("")}
+                ${trained.length ? trained.map((bucket) => renderBucket(bucket)).join("") : '<div class="empty-state">Log a working set to start your weekly volume dashboard.</div>'}
               </div>
-            </article>
-            <article class="workout-advice">
-              <h2>Fatigue flags</h2>
+              ${untrained.length ? '<details class="compact-disclosure"><summary>All muscles <span>' + untrained.length + ' untouched</span></summary><div class="disclosure-body"><div class="dashboard-grid">' + untrained.map((bucket) => renderBucket(bucket, true)).join("") + '</div></div></details>' : ""}
+            </section>
+            <section class="screen-section">
+              <div class="section-heading"><div><h2>Fatigue flags</h2><p>Lift and muscle signals remain separate from today’s recovery score.</p></div></div>
               ${flags.length ? '<div class="flag-list">' + flags.map((flag) => '<div class="flag-card ' + flag.level + '"><strong>' + escapeHtml(flag.scope + ": " + flag.name) + '</strong><span>' + escapeHtml(flag.reason) + '</span></div>').join("") + '</div>' : '<div class="empty-state">No fatigue flags right now. This can be true even when recovery is low; lift and muscle flags are based on training history.</div>'}
-            </article>
-            <article class="workout-advice">
-              <h2>Recent history</h2>
+            </section>
+            <section class="screen-section">
+              <div class="section-heading"><div><h2>Recent history</h2><p>Your latest completed sessions.</p></div><button class="text-button" type="button" data-action="set-view" data-view="history">View all</button></div>
               ${renderRecentSessions()}
-            </article>
+            </section>
           </section>
         `;
       }
@@ -1847,7 +1969,7 @@
         const advice = recoveryRecommendationForSession(session);
         const band = advice.band || readinessBandStatus(session);
         return `
-          <article class="recovery-panel">
+          <section class="recovery-panel compact-recovery">
             <div class="row split">
               <h2>Recovery readiness</h2>
               <span class="section-kicker">Today</span>
@@ -1855,10 +1977,7 @@
             <div class="recovery-status ${advice.decision}">
               <strong>${escapeHtml(advice.label)}</strong>
               <span>${escapeHtml(advice.action)}</span>
-              <span>${escapeHtml(advice.evidence.slice(0, 2).join(" "))}</span>
-            </div>
-            <div class="rule-card">
-              Baseline readiness is ${band.center}. Normal band is ${band.center - band.band}-${band.center + band.band}. Today is ${band.score}, ${band.outside ? "outside" : "inside"} the band. Normal fluctuation keeps the plan unchanged; low outside-band days reduce work, and high outside-band days may allow progression.
+              <span>${escapeHtml(advice.evidence[0])}</span>
             </div>
             <div class="recovery-inputs">
               <label>Sleep hours<input type="number" min="0" max="14" step="0.25" value="${escapeHtml(recovery.sleepHours)}" data-action="recovery-sleep-hours" /></label>
@@ -1872,7 +1991,7 @@
               <label class="toggle-line"><input type="checkbox" data-action="recovery-illness" ${recovery.illness ? "checked" : ""} />Illness or unusual pain</label>
             </div>
             <textarea data-action="recovery-outside-note" placeholder="Outside-band note, if today is meaningfully different" aria-label="Outside readiness band note">${escapeHtml(recovery.outsideBandNote)}</textarea>
-          </article>
+          </section>
         `;
       }
 
@@ -1883,15 +2002,14 @@
         return `
           <div class="quick-template-strip">
             <div class="section-kicker">Start from template</div>
-            <div class="quick-template-list">
+            <div class="quick-template-list" role="list">
               ${templates.map((template) => {
                 const advice = recommendForTemplate(template, recoveryAdvice, { excludeSessionId: activeSession()?.id });
-                const firstItem = advice.items[0]?.text || advice.detail;
                 return `
-                  <button class="quick-template-card" type="button" data-action="start-template" data-template-id="${template.id}">
+                  <button class="quick-template-card" type="button" role="listitem" data-action="start-template" data-template-id="${template.id}">
                     <strong>${escapeHtml(template.name)}</strong>
-                    <small>${template.exercises.length} exercises - ${templateExerciseCount(template)} working sets</small>
-                    <span>${escapeHtml(firstItem)}</span>
+                    <small>${template.exercises.length} lifts · ${templateExerciseCount(template)} sets</small>
+                    <span>${escapeHtml(advice.label)}</span>
                   </button>
                 `;
               }).join("")}
@@ -1916,8 +2034,8 @@
             <div class="row split">
               <input class="exercise-name" value="${escapeHtml(exercise.name)}" data-action="exercise-name" data-exercise-id="${exercise.id}" aria-label="Exercise name" title="${escapeHtml(exercise.name)}" />
               <div class="row">
-                <button class="icon-button" type="button" data-action="move-exercise" data-direction="-1" data-exercise-id="${exercise.id}" title="Move exercise up">Up</button>
-                <button class="icon-button" type="button" data-action="move-exercise" data-direction="1" data-exercise-id="${exercise.id}" title="Move exercise down">Dn</button>
+                <button class="icon-button exercise-order" type="button" data-action="move-exercise" data-direction="-1" data-exercise-id="${exercise.id}" title="Move exercise up">Up</button>
+                <button class="icon-button exercise-order" type="button" data-action="move-exercise" data-direction="1" data-exercise-id="${exercise.id}" title="Move exercise down">Dn</button>
                 <button class="icon-button danger" type="button" data-action="delete-exercise" data-exercise-id="${exercise.id}" title="Delete exercise">${icon.delete}</button>
               </div>
             </div>
@@ -1930,10 +2048,15 @@
               <button type="button" data-action="duplicate-set" data-exercise-id="${exercise.id}">${icon.duplicate} Duplicate</button>
               <button type="button" data-action="start-timer" data-exercise-id="${exercise.id}">${icon.clock} ${formatTimer(restSeconds)}</button>
             </div>
-            <label class="rest-control">Rest after this lift<input type="number" min="15" step="15" value="${restSeconds}" data-action="exercise-rest-seconds" data-exercise-id="${exercise.id}" /> sec</label>
-            ${renderMuscleSelectors(exercise)}
-            ${renderExerciseGuidance(exercise)}
-            <textarea data-action="exercise-notes" data-exercise-id="${exercise.id}" placeholder="Exercise notes" aria-label="Exercise notes">${escapeHtml(exercise.notes)}</textarea>
+            <details class="exercise-options">
+              <summary>Exercise options <span>${restSeconds}s rest</span></summary>
+              <div class="disclosure-body">
+                <label class="rest-control">Rest after this lift<input type="number" min="15" step="15" value="${restSeconds}" data-action="exercise-rest-seconds" data-exercise-id="${exercise.id}" /> sec</label>
+                ${renderMuscleSelectors(exercise)}
+                ${renderExerciseGuidance(exercise)}
+                <textarea data-action="exercise-notes" data-exercise-id="${exercise.id}" placeholder="Exercise notes" aria-label="Exercise notes">${escapeHtml(exercise.notes)}</textarea>
+              </div>
+            </details>
           </article>
         `;
       }
@@ -1976,16 +2099,14 @@
 
       function renderTemplates() {
         return `
-          <section class="view">
-            <h1>Templates</h1>
-            <div class="inline-panel">
-              <h2>New template</h2>
-              <div class="inline-actions">
-                <button type="button" data-action="new-template">Blank template</button>
-                <button type="button" data-action="save-template">Use current workout</button>
-              </div>
+          <section class="view templates-view">
+            <div class="screen-heading">
+              <div><div class="section-kicker">Plan</div><h1>Templates</h1></div>
+              <button class="icon-button" type="button" data-action="new-template" title="New template">${icon.add}</button>
             </div>
-            ${data.templates.length ? data.templates.map(renderTemplateCard).join("") : '<div class="empty-state">Create a leg day, push day, pull day, or any repeatable workout. Templates store exercises, sets, and target reps; you fill in weights during the workout.</div>'}
+            <p class="screen-intro">Start a familiar workout in one tap. Open a row only when you want to edit its plan.</p>
+            <div class="template-library">${data.templates.length ? data.templates.map(renderTemplateCard).join("") : '<div class="empty-state">Create a leg day, push day, pull day, or any repeatable workout. Templates store exercises, sets, and target reps; you fill in weights during the workout.</div>'}</div>
+            <button class="secondary-action full-width" type="button" data-action="save-template">Save current workout as a template</button>
           </section>
         `;
       }
@@ -1993,58 +2114,70 @@
       function renderTemplateCard(template) {
         const advice = recommendForTemplate(template, recoveryRecommendationForSession(activeSession()), { excludeSessionId: activeSession()?.id });
         const confirmingDelete = pendingDeleteTemplateId === template.id;
+        const duration = Math.max(15, Math.round(templateExerciseCount(template) * 2.5));
+        const coachLine = advice.detail.split(". ").slice(0, 2).join(". ");
         return `
-          <article class="template-card">
-            <div class="row split">
-              <input class="exercise-name" value="${escapeHtml(template.name)}" data-action="template-name" data-template-id="${template.id}" aria-label="Template name" />
+          <article class="template-card compact-template">
+            <div class="template-topline">
+              <div><input class="exercise-name" value="${escapeHtml(template.name)}" data-action="template-name" data-template-id="${template.id}" aria-label="Template name" /><small>${template.exercises.length} lifts · ${templateExerciseCount(template)} working sets · ~${duration} min</small></div>
+              <button class="primary-action template-start" type="button" data-action="start-template" data-template-id="${template.id}">Start</button>
+            </div>
+            <p class="template-coach"><strong>${escapeHtml(advice.label)}</strong> ${escapeHtml(coachLine)}</p>
+            <details class="compact-disclosure template-editor">
+              <summary>Edit template <span>${template.exercises.length} lifts</span></summary>
+              <div class="disclosure-body">
+                <ul class="template-list">
+                  ${template.exercises.map((exercise) => `
+                    <li>
+                      <input value="${escapeHtml(exercise.name)}" data-action="template-exercise-name" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" aria-label="Template exercise name" />
+                      <div class="grid two">
+                        <label class="template-meta">Sets<input type="number" min="1" value="${exercise.sets}" data-action="template-exercise-sets" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" /></label>
+                        <label class="template-meta">Reps<input type="number" min="1" value="${exercise.reps}" data-action="template-exercise-reps" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" /></label>
+                      </div>
+                      <label class="template-meta">Rest seconds<input type="number" min="15" step="15" value="${exercise.restSeconds || data.settings.defaultRestSeconds}" data-action="template-exercise-rest" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" /></label>
+                      <div class="template-warmups"><strong>Warm-ups</strong>${(exercise.warmups || []).map((set, warmupIndex) => '<span>' + escapeHtml(set.reps) + ' reps @ ' + escapeHtml(set.weight) + ' ' + escapeHtml(set.weightUnit || data.settings.weightUnit) + '</span><button class="mini-button" type="button" data-action="remove-template-warmup" data-template-id="' + template.id + '" data-template-exercise-id="' + exercise.id + '" data-warmup-index="' + warmupIndex + '">Remove</button>').join("") || '<span>None yet</span>'}<button class="mini-button" type="button" data-action="add-template-warmup" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}">+ Warm-up</button></div>
+                      <button class="mini-button danger" type="button" data-action="delete-template-exercise" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}">Remove exercise</button>
+                    </li>
+                  `).join("")}
+                </ul>
+                <button type="button" data-action="add-template-exercise" data-template-id="${template.id}">${icon.add} Exercise</button>
+              </div>
+            </details>
+            <div class="template-delete-row">
               ${confirmingDelete
                 ? '<div class="row"><button class="mini-button danger" type="button" data-action="confirm-delete-template" data-template-id="' + template.id + '">Delete?</button><button class="mini-button" type="button" data-action="cancel-delete-template">Cancel</button></div>'
                 : '<button class="icon-button danger" type="button" data-action="request-delete-template" data-template-id="' + template.id + '" title="Delete template">' + icon.delete + '</button>'}
-            </div>
-            <small>${template.exercises.length} exercises - ${templateExerciseCount(template)} working sets</small>
-            ${renderWorkoutAdvice(advice)}
-            <ul class="template-list">
-              ${template.exercises.map((exercise) => `
-                <li>
-                  <input value="${escapeHtml(exercise.name)}" data-action="template-exercise-name" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" aria-label="Template exercise name" />
-                  <div class="grid two">
-                    <label class="template-meta">Sets<input type="number" min="1" value="${exercise.sets}" data-action="template-exercise-sets" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" /></label>
-                    <label class="template-meta">Reps<input type="number" min="1" value="${exercise.reps}" data-action="template-exercise-reps" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" /></label>
-                  </div>
-                  <label class="template-meta">Rest seconds<input type="number" min="15" step="15" value="${exercise.restSeconds || data.settings.defaultRestSeconds}" data-action="template-exercise-rest" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" /></label>
-                  <div class="template-warmups"><strong>Warm-ups</strong>${(exercise.warmups || []).map((set, warmupIndex) => '<span>' + escapeHtml(set.reps) + ' reps @ ' + escapeHtml(set.weight) + ' ' + escapeHtml(set.weightUnit || data.settings.weightUnit) + '</span><button class="mini-button" type="button" data-action="remove-template-warmup" data-template-id="' + template.id + '" data-template-exercise-id="' + exercise.id + '" data-warmup-index="' + warmupIndex + '">Remove</button>').join("") || '<span>None yet</span>'}<button class="mini-button" type="button" data-action="add-template-warmup" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}">+ Warm-up</button></div>
-                  <button class="mini-button danger" type="button" data-action="delete-template-exercise" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}">Remove exercise</button>
-                </li>
-              `).join("")}
-            </ul>
-            <div class="inline-actions">
-              <button type="button" data-action="add-template-exercise" data-template-id="${template.id}">${icon.add} Exercise</button>
-              <button class="primary-action" type="button" data-action="start-template" data-template-id="${template.id}">Start workout</button>
             </div>
           </article>
         `;
       }
 
       function renderHistory() {
-        const totalSessions = data.sessions.length;
-        const sessions = [...data.sessions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 120);
+        const totalSessions = data.sessions.filter(isSessionSubmitted).length;
+        const sessions = [...data.sessions].filter(isSessionSubmitted).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 120);
         return `
-          <section class="view">
-            <h1>History</h1>
-            <h2>By session</h2>
-            ${totalSessions > sessions.length ? '<p class="settings-note">Showing the latest ' + sessions.length + ' sessions. Exercise review still uses the full imported history.</p>' : ""}
-            ${sessions.map((session) => {
+          <section class="view history-view">
+            <div class="screen-heading"><div><div class="section-kicker">History</div><h1>Training log</h1></div><button class="text-button" type="button" data-action="set-view" data-view="dashboard">Dashboard</button></div>
+            <details class="history-section" open>
+              <summary>By session <span>${totalSessions} logged</span></summary>
+              <div class="disclosure-body">
+              ${totalSessions > sessions.length ? '<p class="settings-note">Showing the latest ' + sessions.length + ' sessions. Exercise review still uses the full imported history.</p>' : ""}
+              ${sessions.length ? sessions.map((session) => {
               const exercises = data.exercises.filter((exercise) => exercise.sessionId === session.id);
               return `
                 <button class="session-card" type="button" data-action="open-session" data-session-id="${session.id}">
                   <div class="row split"><strong>${escapeHtml(session.title || "Workout")}</strong><span>${formatDate(session.date)}</span></div>
-                  <p>${formatWeek(session.date)} ${session.isTravel ? "- Travel" : ""}</p>
+                  <p>${session.isTravel ? "Travel" : "Home"}${exercises.some((exercise) => exercise.isDeload) ? " · Deload work" : ""}</p>
                   <small>${escapeHtml(exercises.map((exercise) => exercise.name + (exercise.isDeload ? " (Deload)" : "")).join(", ") || "No exercises yet")}</small>
                 </button>
               `;
-            }).join("")}
-            <h2>By exercise</h2>
-            ${renderExerciseHistory()}
+              }).join("") : '<div class="empty-state">Completed workouts will appear here.</div>'}
+              </div>
+            </details>
+            <details class="history-section">
+              <summary>By exercise <span>${getExerciseNames().length} lifts</span></summary>
+              <div class="disclosure-body">${renderExerciseHistory()}</div>
+            </details>
           </section>
         `;
       }
@@ -2055,7 +2188,7 @@
         return names.map((name) => {
           const weeks = summarizeExerciseByWeek(name).slice(0, 4);
           return `
-            <article class="template-card">
+            <article class="history-exercise">
               <h2>${escapeHtml(name)}</h2>
               <div class="trend-table">
                 <div class="trend-head"><span>Week</span><span>Top</span><span>Sets</span><span>RPE</span></div>
@@ -2140,26 +2273,29 @@
         if (!selectedWeek || !weeks.some((week) => week.weekStart === selectedWeek)) selectedWeek = weeks[0]?.weekStart || startOfWeekIso(todayIso());
         const recommendation = selectedExercise ? recommendForExerciseWeek(selectedExercise, selectedWeek) : null;
         if (names.length === 0) {
-          return '<section class="view"><h1>Charts</h1><div class="empty-state">Log an exercise, then this screen will show progression charts and next-step guidance.</div></section>';
+          return '<section class="view charts-view"><div class="screen-heading"><div><div class="section-kicker">Charts</div><h1>Lift progress</h1></div></div><div class="empty-state">Log an exercise, then this screen will show progression charts and next-step guidance.</div></section>';
         }
+        const latestOneRm = progress.e1rm.filter((point) => point.value > 0).at(-1);
+        const latestVolume = progress.volume.filter((point) => point.value > 0).at(-1);
         return `
-          <section class="view">
-            <h1>Charts</h1>
+          <section class="view charts-view">
+            <div class="screen-heading"><div><div class="section-kicker">Charts</div><h1>Lift progress</h1></div></div>
             <div class="grid two">
               <select data-action="review-exercise" aria-label="Exercise">${names.map((name) => '<option ' + (name === selectedExercise ? "selected" : "") + '>' + escapeHtml(name) + '</option>').join("")}</select>
               <select data-action="review-week" aria-label="Week">${weeks.map((week) => '<option value="' + week.weekStart + '" ' + (week.weekStart === selectedWeek ? "selected" : "") + '>' + formatWeek(week.weekStart) + '</option>').join("")}</select>
             </div>
-            ${recommendation ? renderRecommendation(recommendation) : ""}
-            <article class="workout-advice">
-              <h2>Progress charts</h2>
+            <div class="chart-metric-row"><div><span>Latest e1RM</span><strong>${latestOneRm ? latestOneRm.value : "-"}</strong></div><div><span>Latest volume</span><strong>${latestVolume ? latestVolume.value : "-"}</strong></div><div><span>Data points</span><strong>${progress.e1rm.filter((point) => point.value > 0).length}</strong></div></div>
+            ${recommendation ? '<details class="compact-disclosure"><summary>Coach recommendation <span>' + escapeHtml(recommendation.label) + '</span></summary><div class="disclosure-body">' + renderRecommendation(recommendation) + '</div></details>' : ""}
+            <section class="screen-section">
+              <div class="section-heading"><div><h2>Progress charts</h2><p>Tap a labeled point for the session behind it.</p></div></div>
               <div class="chart-list">
                 ${renderChart("Estimated 1RM", progress.e1rm, "No weighted completed sets yet.")}
                 ${renderChart("Volume load", progress.volume, "No volume load yet. Bodyweight-only sets will show once load is added.")}
                 ${renderChart("Reps at " + (progress.commonWeight ? progress.commonWeight + " " + data.settings.weightUnit : "same weight"), progress.repsAtWeight, "Need repeated work at the same load.")}
               </div>
               ${chartDetailPoint ? '<article class="chart-detail"><div class="row split"><strong>' + escapeHtml(chartDetailPoint.title) + ' - ' + escapeHtml(chartDetailPoint.date) + '</strong><button class="icon-button" type="button" data-action="close-chart-point">X</button></div><p>' + escapeHtml(selectedExercise) + ': ' + chartDetailPoint.details.map((set) => set.reps + ' reps @ ' + set.weight + ' ' + data.settings.weightUnit + (set.rpe ? ' (RPE ' + set.rpe + ')' : '')).join(', ') + '</p><small>' + escapeHtml(chartDetailPoint.details[0]?.sessionTitle || '') + '</small></article>' : ''}
-            </article>
-            <div class="trend-table">
+            </section>
+            <section class="screen-section trend-section"><div class="section-heading"><div><h2>Recent weeks</h2></div></div><div class="trend-table">
               <div class="trend-head"><span>Week</span><span>Top</span><span>Sets</span><span>RPE</span></div>
               ${weeks.map((week) => `
                 <div class="trend-row">
@@ -2169,7 +2305,7 @@
                   <span>${week.averageRpe ? week.averageRpe.toFixed(1) : "-"}</span>
                 </div>
               `).join("")}
-            </div>
+            </div></section>
           </section>
         `;
       }
@@ -2189,9 +2325,9 @@
       function renderSettings() {
         const baseline = readinessBaseline();
         return `
-          <section class="view">
-            <h1>Settings</h1>
-            <div class="settings-panel">
+          <section class="view settings-view">
+            <div class="screen-heading"><div><div class="section-kicker">Settings</div><h1>Training setup</h1></div></div>
+            <details class="settings-group" open><summary>Appearance and units <span>Display</span></summary><div class="disclosure-body settings-panel">
               <label>Weight unit
                 <select data-action="weight-unit">
                   <option value="lb" ${data.settings.weightUnit === "lb" ? "selected" : ""}>Pounds</option>
@@ -2204,6 +2340,8 @@
                   <option value="light" ${data.settings.theme === "light" ? "selected" : ""}>Light training sheet</option>
                 </select>
               </label>
+            </div></details>
+            <details class="settings-group"><summary>Training defaults <span>Goal and rest</span></summary><div class="disclosure-body settings-panel">
               <label>Training goal
                 <select data-action="training-goal">
                   <option value="hypertrophy" ${data.settings.goal === "hypertrophy" ? "selected" : ""}>Hypertrophy</option>
@@ -2222,6 +2360,8 @@
               <label>Default rest seconds
                 <input type="number" min="15" step="15" value="${data.settings.defaultRestSeconds}" data-action="rest-seconds" />
               </label>
+            </div></details>
+            <details class="settings-group"><summary>Readiness baseline <span>Your normal</span></summary><div class="disclosure-body settings-panel">
               <div class="inline-panel">
                 <h2>Average readiness baseline</h2>
                 <p class="settings-note">These are your normal averages. The app treats today as normal unless today leaves the band, repeats outside-band behavior, or you add an outside-band note.</p>
@@ -2236,16 +2376,17 @@
                   <label>Band tolerance<input type="number" min="3" max="20" step="1" value="${escapeHtml(baseline.band)}" data-action="baseline-band" /></label>
                 </div>
               </div>
+            </div></details>
+            <details class="settings-group"><summary>Data and backup <span>Import / export</span></summary><div class="disclosure-body settings-panel">
               <p class="settings-note">Research basis: weekly hard-set volume, progressive overload, 0-5 RIR effort, 60-90+ second rests, planned deloads, 1.6-2.2 g/kg protein, moderate recomposition deficits, and 7-9 hours sleep.</p>
-              <p class="settings-note">Progression guidance is informational fitness guidance, not medical advice. Stop if something hurts and use your own judgment.</p>
               ${settingsMessage ? '<p class="settings-note">' + escapeHtml(settingsMessage) + '</p>' : ""}
               ${importInProgress ? '<p class="settings-note">Importing workout history. This can take a moment on iPhone, but navigation will recover automatically when it finishes.</p>' : ""}
-              <p class="settings-links"><a href="./privacy.html">Privacy Policy</a><a href="./support.html">Support</a></p>
               <button type="button" data-action="export-data">${icon.download} data</button>
               ${exportText ? '<textarea class="export-box" readonly aria-label="Exported backup JSON">' + escapeHtml(exportText) + '</textarea>' : ""}
               <label class="import-button">${icon.upload} ${importInProgress ? "importing..." : "backup or Strong CSV"}<input type="file" accept=".json,.csv,application/json,text/csv" data-action="import-data" ${importInProgress ? "disabled" : ""} /></label>
               ${pendingClearData ? '<div class="inline-panel"><strong>Clear all local workout data?</strong><div class="inline-actions"><button class="danger-button" type="button" data-action="confirm-clear-data">Clear data</button><button type="button" data-action="cancel-clear-data">Cancel</button></div></div>' : '<button class="danger-button" type="button" data-action="clear-data">' + icon.delete + ' Clear local data</button>'}
-            </div>
+            </div></details>
+            <details class="settings-group"><summary>Support and guidance <span>Privacy</span></summary><div class="disclosure-body settings-panel"><p class="settings-note">Progression guidance is informational fitness guidance, not medical advice. Stop if something hurts and use your own judgment.</p><p class="settings-links"><a href="./privacy.html">Privacy Policy</a><a href="./support.html">Support</a></p></div></details>
           </section>
         `;
       }
