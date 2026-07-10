@@ -2,6 +2,8 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 
 const html = fs.readFileSync("index.html", "utf8");
+const inlineScripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((match) => match[1]);
+inlineScripts.forEach((script) => new Function(script));
 
 assert.match(html, /let activeWorkoutId = "";/, "A canonical active workout ID is required");
 assert.match(html, /const runtime = \{ activeSessionId, activeWorkoutId, timer/, "The active workout ID must persist with timer state");
@@ -21,6 +23,23 @@ assert.match(html, /removeWorkoutFromSyncQueue\(session\.id\)/, "Canceled drafts
 assert.match(html, /template-readiness-sleep-quality"\) patchTemplateStartDraft\(\{ sleepQuality: target\.value \}, false\)/, "Readiness selectors must not rebuild and refocus the sheet while entering metrics");
 assert.match(html, /if \(templateStartFlow && !data\.templates\.some/, "Invalid modal state must not leave the application inert");
 assert.match(html, /@media \(max-width: 719px\)[\s\S]{0,180}input, select, textarea \{ font-size: 16px; \}/, "Mobile form controls must prevent iOS focus zoom");
+assert.match(html, /function renderPrescriptionDetails\(exercise\)/, "Recommendation rationale must use the structured readable renderer");
+assert.match(html, /class="rationale-facts"/, "Recommendation rationale must separate confidence, range, and increment");
+assert.match(html, /class="cancel-impact"/, "Workout cancellation must explain removed and preserved data visually");
+assert.match(html, /function beginHistoryEdit\(\)/, "Logged workouts must enter an explicit edit transaction");
+assert.match(html, /originalData: cloneAppData\(data\)/, "Canceling history edits must be able to restore the original workout");
+assert.match(html, /Save Edits/, "History editing must expose a save action");
+assert.match(html, /Cancel Edits/, "History editing must expose a cancel action");
+assert.match(html, /if \(!isEditingHistorySession\(\)\) acknowledgeActiveSet/, "Historical set edits must not start live-workout behavior");
+assert.match(html, /if \(action === "close-completed-summary"\) returnToLiftHome/, "Closing a completed workout must return to the Lift home");
+assert.match(html, /readinessReviewTitle\.textContent = "Today's Readiness Adjustments"/, "Readiness headings must render with encoding-safe apostrophes");
+assert.match(html, /function explainReadinessAdjustmentChoice\(original, adjusted, triggers\)/, "Readiness rationale must explain why load, reps, sets, RPE, and rest were selected");
+assert.match(html, /Why these levers:/, "Readiness explanations must separate the trigger from the adjustment mechanism");
+assert.match(html, /function renderLiftHome\(\)/, "The idle Lift tab must use a dedicated program home view");
+assert.match(html, /Overall Program Hypertrophy Score/, "The Lift home must lead with the overall hypertrophy score");
+assert.match(html, /function hypertrophyScoreTone\(score\)/, "Hypertrophy scores must use stable range-based color coding");
+assert.match(html, /\.brand-bar::before/, "The top header background must extend across the full viewport");
+assert.match(html, /viewingHistorySessionId = isSessionSubmitted/, "Logged workouts must only remain visible when deliberately opened from history");
 assert.match(html, /clearDataFlow\.acknowledged && clearDataFlow\.phrase === "CLEAR"/, "Local clearing must require acknowledgment and typed confirmation");
 assert.match(html, /Permanently Clear Local Data/, "The final device-wide deletion action must be explicit");
 assert.match(html, /enteredReadinessTriggers/, "Readiness adjustments must use explicit entered markers");
