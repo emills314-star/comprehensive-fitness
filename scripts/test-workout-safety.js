@@ -40,6 +40,10 @@ assert.match(html, /Overall Program Hypertrophy Score/, "The Lift home must lead
 assert.match(html, /function hypertrophyScoreTone\(score\)/, "Hypertrophy scores must use stable range-based color coding");
 assert.match(html, /\.brand-bar::before/, "The top header background must extend across the full viewport");
 assert.match(html, /viewingHistorySessionId = isSessionSubmitted/, "Logged workouts must only remain visible when deliberately opened from history");
+assert.match(html, /\.volume-card\.expanded \{ grid-column: 1 \/ -1;/, "Expanded weekly muscle details must span the full dashboard width");
+assert.match(html, /\.volume-exercise-row > span:first-child small \{ display: none; \}/, "Weekly muscle details must omit distracting volume-load strings");
+assert.match(html, /score-very-good \{ --score-color: #3f9239; \}/, "Very-good scores must continue the yellow-to-green scale without a blue detour");
+assert.match(html, /score-good \{ --score-color: #7c9800; \}/, "Good scores must bridge amber and green with a yellow-green tone");
 assert.match(html, /clearDataFlow\.acknowledged && clearDataFlow\.phrase === "CLEAR"/, "Local clearing must require acknowledgment and typed confirmation");
 assert.match(html, /Permanently Clear Local Data/, "The final device-wide deletion action must be explicit");
 assert.match(html, /enteredReadinessTriggers/, "Readiness adjustments must use explicit entered markers");
