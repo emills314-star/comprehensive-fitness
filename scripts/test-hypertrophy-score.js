@@ -22,6 +22,7 @@ function week(index, overrides = {}) {
     repRangeTracked: 19,
     repRangeHits: 17,
     rpeLogged: 18,
+    rpeTargetTracked: 18,
     rpeOnTarget: 16,
     volumeTargetsTracked: 4,
     volumeTargetsHit: 3,
@@ -84,7 +85,7 @@ const noFatigue = score(Array.from({ length: 6 }, (_, index) => week(index)));
 assert.ok(highFatigue.score < moderateFatigue.score, "High fatigue flags should cost more than moderate flags");
 assert.ok(moderateFatigue.score < noFatigue.score, "Moderate fatigue flags should have a smaller but visible effect");
 
-const missingRpe = score(Array.from({ length: 6 }, (_, index) => week(index, { rpeLogged: 0, rpeOnTarget: 0 })));
+const missingRpe = score(Array.from({ length: 6 }, (_, index) => week(index, { rpeLogged: 0, rpeTargetTracked: 0, rpeOnTarget: 0 })));
 assert.notEqual(missingRpe.confidence, "high", "Missing RPE data must lower confidence");
 
 const substitutions = score(Array.from({ length: 6 }, (_, index) => week(index, { exerciseChangeRate: 0.75, comparableComparisons: 2 })));
@@ -116,6 +117,7 @@ const perfectExecution = score(Array.from({ length: 6 }, (_, index) => week(inde
   repRangeTracked: 20,
   repRangeHits: 20,
   rpeLogged: 20,
+  rpeTargetTracked: 20,
   rpeOnTarget: 20,
   volumeTargetsHit: 4,
   progressionWins: 5
@@ -135,6 +137,7 @@ const straightArmPulldown = score(Array.from({ length: 6 }, (_, index) => week(i
   repRangeTracked: 12,
   repRangeHits: 12,
   rpeLogged: 12,
+  rpeTargetTracked: 12,
   rpeOnTarget: 12,
   volumeTargetsTracked: 2,
   volumeTargetsHit: 2,

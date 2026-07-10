@@ -29,7 +29,7 @@ assert.equal(model.formatResistance(external, { name: "Bench Press", resistanceT
 
 assert.doesNotMatch(html, /templateExercise\.isBodyweight[\s\S]{0,160}weight:\s*0/, "Starting a template must not silently erase added load");
 assert.match(html, /createSet\(exercise\.id, 1, \{ resistanceType \}\)/, "A newly added bodyweight exercise must give its first set the inferred resistance type");
-assert.match(html, /addedLoad:\s*target\.addedLoad/, "A template prescription must carry its added-load target into the workout set");
-assert.match(html, /assistanceLoad:\s*target\.assistanceLoad/, "A template prescription must carry its assistance target into the workout set");
+assert.match(html, /addedLoad:\s*target\.resistanceType\s*===\s*"bodyweight_plus_load"\s*\?\s*setWeight\s*:\s*target\.addedLoad/, "A template prescription must carry its resolved added-load target into each workout set");
+assert.match(html, /assistanceLoad:\s*target\.resistanceType\s*===\s*"assisted_bodyweight"\s*\?\s*setWeight\s*:\s*target\.assistanceLoad/, "A template prescription must carry its resolved assistance target into each workout set");
 
 console.log("Resistance model tests passed (weighted, assisted, bodyweight, external, and template preservation).");
