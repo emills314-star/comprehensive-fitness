@@ -4,6 +4,7 @@
   "private": true,
   "description": "A local-first workout tracker with transparent strength progression guidance.",
   "scripts": {
+    "dev": "node scripts/serve-local.js",
     "sync:web": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/sync-web.ps1",
     "verify:pwa": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-pwa.ps1",
     "test:hypertrophy": "node scripts/test-hypertrophy-score.js",

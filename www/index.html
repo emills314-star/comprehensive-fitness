@@ -439,6 +439,10 @@
 
       .exercise-name:focus { background: var(--input-bg); padding-left: 12px; }
 
+      .exercise-header { align-items: start; display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr) auto; }
+      .exercise-name-field { field-sizing: content; line-height: 1.25; min-height: 38px; overflow: hidden; padding: 7px 4px 7px 0; resize: none; white-space: pre-wrap; width: 100%; }
+      .exercise-header .exercise-actions { align-items: center; display: flex; flex: 0 0 auto; gap: 6px; }
+
       .icon-button {
         aspect-ratio: 1;
         justify-content: center;
@@ -493,7 +497,7 @@
       .set-block.completed input { color: var(--text); }
       .set-row.completed { background: transparent; border-color: transparent; }
       .set-row.pending { border-left: 3px solid transparent; }
-      .set-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 6px; padding: 0 7px 8px 43px; }
+      .set-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px 8px 43px; }
       .set-actions .mini-button { min-height: 32px; padding: 5px 9px; }
       .set-rest-button { border-color: color-mix(in srgb, var(--amber) 58%, var(--line)); color: var(--amber); }
       .rest-control { align-items: center; color: var(--muted); display: flex; font-size: 0.78rem; font-weight: 800; gap: 7px; }
@@ -793,10 +797,25 @@
       .chart-control-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; display: grid; gap: 9px; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 10px; }
       .chart-control-lift { grid-column: 1 / -1; }
       .chart-control-field { display: grid; gap: 4px; min-width: 0; position: relative; }
-      .chart-control-field > span { color: var(--muted); font-size: .58rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+      .chart-control-field > span, .chart-control-field > label { color: var(--muted); font-size: .58rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
       .chart-control-field input, .chart-control-field select { appearance: none; background: var(--surface-strong); border-color: var(--line-strong); color: var(--text); font-size: .75rem; font-weight: 850; min-height: 43px; overflow: hidden; padding: 8px 30px 8px 10px; text-overflow: ellipsis; white-space: nowrap; }
       .chart-control-field::after { bottom: 13px; color: var(--current); content: "\2304"; font-size: .78rem; pointer-events: none; position: absolute; right: 10px; }
-      .chart-control-field.chart-control-lift::after { content: "\2315"; }
+      .chart-control-field.chart-control-lift::after { display: none; }
+      .chart-control-lift input { padding-right: 42px; }
+      .chart-search-clear { align-items: center; background: transparent; border: 0; color: var(--muted); display: flex; height: 36px; justify-content: center; min-height: 36px; min-width: 36px; padding: 0; position: absolute; right: 4px; top: 20px; width: 36px; z-index: 2; }
+      .exercise-suggestions { background: var(--surface-strong); border: 1px solid var(--line-strong); border-radius: 8px; box-shadow: 0 14px 34px rgba(8, 24, 38, .18); display: grid; left: 0; max-height: 286px; overflow-y: auto; position: absolute; right: 0; top: calc(100% + 5px); z-index: 18; }
+      .exercise-suggestions[hidden] { display: none; }
+      .exercise-suggestion { align-items: center; background: transparent; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; color: var(--text); display: grid; gap: 2px; min-height: 50px; padding: 8px 10px; text-align: left; width: 100%; }
+      .exercise-suggestion:last-child { border-bottom: 0; }
+      .exercise-suggestion:hover, .exercise-suggestion:focus-visible, .exercise-suggestion.highlighted { background: var(--current-dark); box-shadow: inset 3px 0 0 var(--current); }
+      .exercise-suggestion strong { font-size: .74rem; line-height: 1.3; overflow-wrap: anywhere; }
+      .exercise-suggestion span { color: var(--muted); font-size: .61rem; }
+      .exercise-search-empty { color: var(--muted); font-size: .69rem; padding: 12px; }
+      .score-scope-field { display: grid; gap: 4px; grid-column: 1 / -1; }
+      .score-scope-field > span { color: var(--muted); font-size: .58rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+      .score-scope-control { background: var(--surface-strong); border: 1px solid var(--line); border-radius: 8px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 3px; }
+      .score-scope-control button { background: transparent; border: 0; color: var(--muted); min-height: 38px; padding: 6px 8px; }
+      .score-scope-control button[aria-pressed="true"] { background: var(--current-dark); box-shadow: inset 0 0 0 1px var(--current); color: var(--current); }
       .chart-control-context { color: var(--muted); font-size: .65rem; grid-column: 1 / -1; line-height: 1.35; margin: 0; }
 
       .hypertrophy-score-card { align-items: center; background: var(--surface); border: 1px solid color-mix(in srgb, var(--current) 45%, var(--line)); border-radius: 8px; color: var(--text); display: grid; gap: 9px 12px; grid-template-columns: minmax(0, 1fr) auto; min-height: 116px; padding: 12px; text-align: left; width: 100%; }
@@ -857,6 +876,26 @@
       .dashboard-summary-row .fatigue-summary-text > span { margin: 0; padding: 0; }
       .fatigue-summary-text .high { color: var(--red); }
       .fatigue-summary-text .moderate { color: var(--amber); }
+      .volume-warning-detail { display: grid; gap: 12px; }
+      .volume-warning-hero { background: color-mix(in srgb, var(--amber) 8%, var(--surface)); border-left: 3px solid var(--amber); display: grid; gap: 8px; padding: 11px; }
+      .volume-warning-hero h2, .volume-warning-hero p { margin: 0; }
+      .volume-warning-numbers { display: grid; gap: 6px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .volume-warning-numbers div { display: grid; gap: 2px; }
+      .volume-warning-numbers span { color: var(--muted); font-size: .6rem; }
+      .volume-warning-numbers strong { font-size: .86rem; }
+      .volume-contribution-list { display: grid; gap: 0; }
+      .volume-contribution-row { align-items: center; border-bottom: 1px solid var(--line); display: grid; gap: 6px; grid-template-columns: minmax(0, 1fr) auto; padding: 9px 0; }
+      .volume-contribution-row:last-child { border-bottom: 0; }
+      .volume-contribution-row > div { display: grid; gap: 2px; }
+      .volume-contribution-row > div:last-child { color: var(--muted); font-size: .62rem; justify-items: end; }
+      .volume-contribution-row strong { font-size: .74rem; overflow-wrap: anywhere; }
+      .volume-contribution-row span { color: var(--muted); font-size: .64rem; }
+      .volume-contribution { border-bottom: 1px solid var(--line); display: grid; gap: 4px; padding: 9px 0; }
+      .volume-contribution:last-child { border-bottom: 0; }
+      .volume-contribution header { align-items: start; display: flex; gap: 10px; justify-content: space-between; }
+      .volume-contribution header strong { font-size: .74rem; }
+      .volume-contribution header span { color: var(--current); font-size: .68rem; font-weight: 900; white-space: nowrap; }
+      .volume-contribution small { color: var(--muted); font-size: .64rem; line-height: 1.4; }
 
       .quick-template-strip {
         display: grid;
@@ -1177,11 +1216,16 @@
         color: var(--green-2);
       }
 
+      .nav-button[aria-current="page"] { background: var(--current-dark); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--current) 42%, var(--line)); }
+      .nav-button:focus-visible { border-color: var(--current); box-shadow: inset 0 0 0 1px var(--current); outline: 2px solid color-mix(in srgb, var(--current) 35%, transparent); outline-offset: -2px; }
+
       .nav-button.active .nav-icon {
         background: var(--green-dark);
         border-color: var(--green);
         color: var(--green-2);
       }
+
+      @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; } }
 
       @media (max-width: 390px) {
         .two { grid-template-columns: 1fr; }
@@ -1203,14 +1247,14 @@
         }
       }
       /* Compact, utility-first layer for the phone workout flow. */
-      .brand-bar { grid-template-columns: 36px minmax(0, 1fr) auto auto; min-height: calc(58px + env(safe-area-inset-top)); margin: 0 12px; padding: max(12px, calc(env(safe-area-inset-top) + 10px)) 0 10px; gap: 8px; }
+      .brand-bar { background: var(--bg); box-shadow: 0 1px 0 var(--line), 0 5px 16px rgba(8, 24, 38, .04); grid-template-columns: 36px minmax(0, 1fr) auto auto; min-height: calc(58px + env(safe-area-inset-top)); margin: 0 12px; padding: max(12px, calc(env(safe-area-inset-top) + 10px)) 0 10px; position: sticky; top: 0; z-index: 12; gap: 8px; }
       .brand-mark { width: 34px; height: 34px; min-width: 34px; border-radius: 8px; border: 1px solid var(--green); background: var(--green); color: #fff; box-shadow: none; font-size: .71rem; font-weight: 900; letter-spacing: .02em; display: grid; place-items: center; }
       .brand-mark img { display: none; }
       .brand-title { min-width: 0; font-size: .76rem; line-height: 1.05; }
       .brand-title span { display: inline; }
       .brand-title small { display: block; color: var(--muted); font-size: .66rem; font-weight: 700; letter-spacing: 0; line-height: 1.25; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; text-transform: none; white-space: nowrap; }
       .brand-action, .theme-toggle { min-height: 34px; min-width: 34px; padding: 0 8px; border-radius: 7px; font-size: .69rem; }
-      .app-main { padding: 12px 16px 0 14px; }
+      .app-main { padding: 12px 20px 0 16px; }
       .view { gap: 12px; padding-bottom: 18px; }
       .screen-heading, .workout-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
       .screen-heading h1, .workout-heading h1 { margin: 1px 0 0; font-size: 1.42rem; line-height: 1.1; }
@@ -1224,17 +1268,19 @@
       .quick-template-card { flex: 0 0 168px; min-height: 82px; padding: 10px; border-radius: 8px; scroll-snap-align: start; }
       .quick-template-card h3 { font-size: .82rem; margin: 0 0 5px; }
       .quick-template-card small, .quick-template-card span { font-size: .67rem; }
-      .exercise-card { padding: 11px 0; border-radius: 0; border-width: 1px 0; background: transparent; box-shadow: none; gap: 9px; }
+      .exercise-card { padding: 11px 4px 11px 0; border-radius: 0; border-width: 1px 0; background: transparent; box-shadow: none; gap: 9px; }
       .exercise-card::before { display: none; }
       .exercise-card header { align-items: center; gap: 7px; }
+      .exercise-header { align-items: start; }
       .exercise-card h2 { font-size: .97rem; line-height: 1.2; }
       .exercise-order { min-width: 31px; min-height: 29px; padding: 0 5px; font-size: .61rem; }
       .exercise-actions { gap: 6px; }
       .exercise-actions button, .mini-button { min-height: 31px; padding: 4px 8px; border-radius: 6px; font-size: .68rem; }
       .set-grid { gap: 4px; }
-      .set-row { min-height: 54px; grid-template-columns: 31px minmax(45px, .9fr) minmax(48px, 1fr) minmax(39px, .8fr) 42px; gap: 5px; padding: 5px 0; }
+      .set-row { min-height: 54px; grid-template-columns: 31px minmax(45px, .9fr) minmax(48px, 1fr) minmax(39px, .8fr) 48px; gap: 5px; padding: 5px 8px; }
       .set-row input, .set-row select { min-width: 0; min-height: 36px; padding: 4px; font-size: .77rem; }
       .set-row .set-number, .set-row .set-complete { font-size: .68rem; }
+      .set-status { padding-right: 2px; }
       .compact-disclosure, .history-section, .settings-group { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: transparent; }
       .compact-disclosure summary, .history-section summary, .settings-group summary, .exercise-options summary { list-style: none; min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; color: var(--text); font-size: .78rem; font-weight: 850; }
       .compact-disclosure summary::-webkit-details-marker, .history-section summary::-webkit-details-marker, .settings-group summary::-webkit-details-marker, .exercise-options summary::-webkit-details-marker { display: none; }
@@ -1339,7 +1385,8 @@
       [data-theme="light"] body .section-heading p, [data-theme="light"] body .screen-intro, [data-theme="light"] body .template-coach { color: #4c6078; }
       [data-theme="light"] body .text-button { color: #0759c5; }
       @media (min-width: 720px) { .app-main { max-width: 760px; padding: 18px 18px 0; } .brand-bar { max-width: 760px; margin: 0 auto; } .dashboard-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .quick-template-card { flex-basis: 180px; } }
-      @media (max-width: 380px) { .brand-title small { max-width: 95px; } .workout-status-strip > span { font-size: .6rem; } .set-row { grid-template-columns: 27px minmax(42px, .85fr) minmax(44px, 1fr) minmax(35px, .7fr) 40px; gap: 3px; } .set-row input, .set-row select { font-size: .69rem; } .set-actions, .timer-bar { padding-left: 32px; } .next-set-banner { padding-left: 32px; } .dashboard-grid { grid-template-columns: 1fr; } }
+      @media (max-width: 380px) { .brand-title small { max-width: 95px; } .workout-status-strip > span { font-size: .6rem; } .app-main { padding-left: 14px; padding-right: 18px; } .set-row { grid-template-columns: 27px minmax(42px, .85fr) minmax(44px, 1fr) minmax(35px, .7fr) 46px; gap: 3px; padding-left: 6px; padding-right: 7px; } .set-row input, .set-row select { font-size: .69rem; } .set-actions, .timer-bar { padding-left: 32px; padding-right: 8px; } .next-set-banner { padding-left: 32px; padding-right: 8px; } .dashboard-grid { grid-template-columns: 1fr; } }
+      @media (max-width: 350px) { .bottom-nav { gap: 2px; padding-left: max(5px, env(safe-area-inset-left)); padding-right: max(5px, env(safe-area-inset-right)); } .nav-button { font-size: .6rem; gap: 2px; padding-left: 2px; padding-right: 2px; } .nav-icon { min-width: 26px; padding: 0 5px; } }
       @media (max-width: 380px) { .timer-primary-controls { gap: 5px; } .timer-primary-controls button { font-size: .68rem; padding: 0 5px; } .template-topline { flex-wrap: wrap; } .template-card-actions { margin-left: auto; } .template-delete-confirm button { padding: 0 6px; } .dashboard-summary-row span { font-size: .58rem; } }
     </style>
   </head>
@@ -1387,7 +1434,9 @@
         sleep: "Sleep under 7 hours can limit recovery; 7-9 hours is the practical adult target."
       };
       let data = emptyData();
-      let view = "workout";
+      const primaryTabIds = ["lift", "dashboard", "plan", "charts", "data"];
+      let activeTab = tabFromLocation();
+      const tabScrollPositions = new Map();
       let activeSessionId = "";
       let timer = null;
       let timerInterval = 0;
@@ -1406,7 +1455,11 @@
       let updateAvailable = false;
       let persistenceReady = false;
       let syncFlushTimer = 0;
-      let selectedExercise = "";
+      let selectedExerciseId = "";
+      let chartExerciseDraft = "";
+      let chartExerciseSearchOpen = false;
+      let chartExerciseHighlight = 0;
+      let recentChartExerciseIds = [];
       let selectedWeek = "";
       let addExerciseDraft = "";
       let addExercisePrimaryMuscle = "";
@@ -1417,6 +1470,7 @@
       let expandedVolumeMuscle = "";
       let dashboardWeekStart = startOfWeekIso(todayIso());
       let dashboardDetail = null;
+      let planVolumeDetailId = "";
       let dashboardReturnScroll = 0;
       let settingsMessage = "";
       let importInProgress = false;
@@ -1425,8 +1479,10 @@
       let completedSummarySessionId = "";
       let chartDetailPoint = null;
       let hypertrophyScoreExpanded = false;
+      let hypertrophyScoreScope = "exercise";
+      let hypertrophyScoreLoading = false;
       let hypertrophyWindowOffset = 0;
-      let hypertrophyScoreCache = { dataRef: null, offset: -1, result: null };
+      let hypertrophyScoreCache = { dataRef: null, key: "", result: null };
       let templateStartFlow = null;
 
       const icon = {
@@ -1821,6 +1877,101 @@
           .trim();
       }
 
+      function canonicalExerciseId(name) {
+        return String(name || "")
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, " ")
+          .replace(/\bdb\b/g, "dumbbell")
+          .replace(/\bbb\b/g, "barbell")
+          .replace(/\bpull down\b/g, "pulldown")
+          .replace(/\bpress down\b/g, "pushdown")
+          .replace(/\b(dumbbells|cables|machines|raises|curls|extensions|presses|rows)\b/g, (word) => ({ dumbbells: "dumbbell", cables: "cable", machines: "machine", raises: "raise", curls: "curl", extensions: "extension", presses: "press", rows: "row" })[word])
+          .replace(/\b(flyes|flies)\b/g, "fly")
+          .replace(/\s+/g, " ")
+          .trim();
+      }
+
+      function exerciseCatalog() {
+        const sessions = new Map(data.sessions.filter(isSessionSubmitted).map((session) => [session.id, session]));
+        const catalog = new Map();
+        data.exercises.forEach((exercise) => {
+          const id = canonicalExerciseId(exercise.name);
+          if (!id) return;
+          const session = sessions.get(exercise.sessionId);
+          const current = catalog.get(id) || { id, name: exercise.name.trim(), lastDate: "", submittedUses: 0 };
+          if (session) {
+            current.submittedUses += 1;
+            if (!current.lastDate || session.date >= current.lastDate) { current.lastDate = session.date; current.name = exercise.name.trim(); }
+          }
+          catalog.set(id, current);
+        });
+        return Array.from(catalog.values()).sort((a, b) => a.name.localeCompare(b.name));
+      }
+
+      function selectedExerciseRecord() {
+        const catalog = exerciseCatalog();
+        return catalog.find((exercise) => exercise.id === selectedExerciseId) || null;
+      }
+
+      function selectedExerciseName() {
+        return selectedExerciseRecord()?.name || "";
+      }
+
+      function matchingChartExercises(query = chartExerciseDraft) {
+        const normalized = canonicalExerciseId(query);
+        const recentRank = new Map(recentChartExerciseIds.map((id, index) => [id, index]));
+        return exerciseCatalog()
+          .filter((exercise) => !normalized || exercise.id.includes(normalized) || canonicalExerciseId(exercise.name).includes(normalized))
+          .sort((a, b) => {
+            const aExact = a.id === normalized ? 0 : a.id.startsWith(normalized) ? 1 : 2;
+            const bExact = b.id === normalized ? 0 : b.id.startsWith(normalized) ? 1 : 2;
+            if (aExact !== bExact) return aExact - bExact;
+            const aRecent = recentRank.has(a.id) ? recentRank.get(a.id) : 999;
+            const bRecent = recentRank.has(b.id) ? recentRank.get(b.id) : 999;
+            return aRecent - bRecent || b.lastDate.localeCompare(a.lastDate) || a.name.localeCompare(b.name);
+          })
+          .slice(0, 8);
+      }
+
+      function renderExerciseSuggestions(query = chartExerciseDraft) {
+        const matches = matchingChartExercises(query);
+        if (!matches.length) return '<div class="exercise-search-empty">No matching logged exercise. Keep the current selection or try another name.</div>';
+        return matches.map((exercise, index) => '<button class="exercise-suggestion ' + (index === chartExerciseHighlight ? 'highlighted' : '') + '" type="button" data-action="select-chart-exercise" data-exercise-id="' + escapeHtml(exercise.id) + '"><strong>' + escapeHtml(exercise.name) + '</strong><span>' + exercise.submittedUses + ' submitted workout' + (exercise.submittedUses === 1 ? '' : 's') + (exercise.lastDate ? ' · Last ' + formatDate(exercise.lastDate) : '') + '</span></button>').join('');
+      }
+
+      function updateExerciseSuggestionList() {
+        const list = root.querySelector(".exercise-suggestions");
+        if (!list) return;
+        list.innerHTML = renderExerciseSuggestions(chartExerciseDraft);
+        list.hidden = !chartExerciseSearchOpen;
+      }
+
+      function selectChartExercise(exerciseId) {
+        const exercise = exerciseCatalog().find((item) => item.id === exerciseId);
+        if (!exercise) return false;
+        selectedExerciseId = exercise.id;
+        chartExerciseDraft = exercise.name;
+        selectedWeek = "";
+        hypertrophyWindowOffset = 0;
+        chartExerciseSearchOpen = false;
+        chartExerciseHighlight = 0;
+        recentChartExerciseIds = [exercise.id, ...recentChartExerciseIds.filter((id) => id !== exercise.id)].slice(0, 8);
+        chartDetailPoint = null;
+        hypertrophyScoreExpanded = false;
+        hypertrophyScoreLoading = true;
+        hypertrophyScoreCache = { dataRef: null, key: "", result: null };
+        render();
+        window.setTimeout(() => { hypertrophyScoreLoading = false; render(); }, 80);
+        return true;
+      }
+
+      function confirmChartExerciseDraft() {
+        const matches = matchingChartExercises(chartExerciseDraft);
+        const normalized = canonicalExerciseId(chartExerciseDraft);
+        const exact = matches.find((exercise) => exercise.id === normalized);
+        return selectChartExercise((exact || matches[chartExerciseHighlight] || matches[0])?.id || "");
+      }
+
       function exerciseMatches(storedName, requestedName) {
         const stored = String(storedName || "").trim().toLowerCase();
         const requested = String(requestedName || "").trim().toLowerCase();
@@ -1831,8 +1982,8 @@
         return /body ?weight|push up|pushup|pull up|pullup|chin up|chinup|\bdip\b|inverted row|air squat|pistol squat|plank|crunch|sit up|sit-up|hanging raise|knee raise|ab wheel|burpee/.test(exerciseKey(name));
       }
 
-      function getExerciseSets(exerciseName) {
-        const exercises = data.exercises.filter((exercise) => exerciseMatches(exercise.name, exerciseName));
+      function getExerciseSets(exerciseName, options = {}) {
+        const exercises = data.exercises.filter((exercise) => options.canonicalExerciseId ? canonicalExerciseId(exercise.name) === options.canonicalExerciseId : exerciseMatches(exercise.name, exerciseName));
         const ids = new Set(exercises.map((exercise) => exercise.id));
         return { exercises, sets: data.sets.filter((set) => ids.has(set.exerciseId)) };
       }
@@ -1892,7 +2043,7 @@
       }
 
       function summarizeExerciseByWeek(exerciseName, options = {}) {
-        const scoped = getExerciseSets(exerciseName);
+        const scoped = getExerciseSets(exerciseName, { canonicalExerciseId: options.canonicalExerciseId });
         const exerciseById = new Map(scoped.exercises.map((exercise) => [exercise.id, exercise]));
         const sessionById = new Map(data.sessions.map((session) => [session.id, session]));
         const grouped = new Map();
@@ -2374,6 +2525,40 @@
         return { id: id(), name: (session.title || "Workout") + " Template", notes: "", exercises, createdAt: isoNow(), updatedAt: isoNow() };
       }
 
+      function tabFromLocation() {
+        const hash = window.location.hash.replace(/^#/, "").toLowerCase();
+        if (primaryTabIds?.includes(hash)) return hash;
+        const legacyView = new URLSearchParams(window.location.search).get("view");
+        return legacyView === "settings" ? "data" : "lift";
+      }
+
+      function tabUrl(tab) {
+        const url = new URL(window.location.href);
+        url.hash = tab;
+        return url.pathname + url.search + url.hash;
+      }
+
+      function setActiveTab(nextTab, options = {}) {
+        const next = primaryTabIds.includes(nextTab) ? nextTab : "lift";
+        const previous = activeTab;
+        if (previous === next && !options.force) {
+          if (next === "dashboard" && dashboardDetail) { dashboardDetail = null; render(); }
+          if (next === "plan" && planVolumeDetailId) { planVolumeDetailId = ""; render(); }
+          return;
+        }
+        tabScrollPositions.set(previous, window.scrollY);
+        activeTab = next;
+        if (options.updateUrl !== false) {
+          const state = { ...(window.history.state || {}), tab: next };
+          if (options.replace) window.history.replaceState(state, "", tabUrl(next));
+          else window.history.pushState(state, "", tabUrl(next));
+        }
+        if (options.renderNow !== false) {
+          render();
+          window.setTimeout(() => window.scrollTo({ top: tabScrollPositions.get(next) || 0, behavior: "auto" }), 0);
+        }
+      }
+
       function render() {
         const session = activeSession();
         if (!session) {
@@ -2391,17 +2576,25 @@
             ${renderUpdateBanner()}
             <main class="app-main" ${templateStartFlow ? 'inert aria-hidden="true"' : ""}>${renderView()}</main>
             <nav class="bottom-nav" aria-label="Main navigation" ${templateStartFlow ? 'inert aria-hidden="true"' : ""}>
-              ${navButton("workout", "Workout")}
-              ${navButton("dashboard", "Dashboard")}
-              ${navButton("templates", "Templates")}
-              ${navButton("review", "Charts")}
-              ${navButton("settings", "Settings")}
+              ${navButton("lift", "Workout", "workout")}
+              ${navButton("dashboard", "Dashboard", "dashboard")}
+              ${navButton("plan", "Templates", "templates")}
+              ${navButton("charts", "Charts", "review")}
+              ${navButton("data", "Settings", "settings")}
             </nav>
             ${renderTemplateStartSheet()}
             ${renderTimerCompleteNotice()}
           </div>
         `;
+        resizeExerciseNameFields();
         if (templateStartFlow) window.setTimeout(() => root.querySelector(".bottom-sheet [autofocus]")?.focus(), 0);
+      }
+
+      function resizeExerciseNameFields() {
+        root.querySelectorAll(".exercise-name-field").forEach((field) => {
+          field.style.height = "auto";
+          field.style.height = Math.max(38, field.scrollHeight) + "px";
+        });
       }
 
       function renderUpdateBanner() {
@@ -2410,16 +2603,16 @@
         return '<div class="update-banner" role="status"><span>' + (workoutActive ? 'Update available. It will wait until this workout is logged.' : 'A new app version is ready.') + '</span>' + (workoutActive ? '' : '<button type="button" data-action="apply-update">Update now</button>') + '</div>';
       }
 
-      function navButton(target, label) {
-        return '<button class="nav-button ' + (view === target ? "active" : "") + '" data-action="set-view" data-view="' + target + '" type="button"><span class="nav-icon">' + icon[target] + '</span><span>' + label + '</span></button>';
+      function navButton(tab, label, iconKey) {
+        const active = activeTab === tab;
+        return '<button class="nav-button ' + (active ? "active" : "") + '" data-action="set-tab" data-tab="' + tab + '" type="button"' + (active ? ' aria-current="page"' : '') + ' aria-label="' + escapeHtml(icon[iconKey] + ' ' + label) + '"><span class="nav-icon" aria-hidden="true">' + icon[iconKey] + '</span><span>' + label + '</span></button>';
       }
 
       function renderView() {
-        if (view === "dashboard") return renderDashboard();
-        if (view === "templates") return renderTemplates();
-        if (view === "history") return renderHistory();
-        if (view === "review") return renderReview();
-        if (view === "settings") return renderSettings();
+        if (activeTab === "dashboard") return renderDashboard();
+        if (activeTab === "plan") return renderTemplates();
+        if (activeTab === "charts") return renderReview();
+        if (activeTab === "data") return renderSettings();
         return renderWorkout();
       }
 
@@ -2606,7 +2799,7 @@
               ${flags.length ? '<div class="drilldown-list">' + flags.map((flag) => renderFatigueFlagRow(flag)).join("") + '</div>' : '<div class="empty-state">No fatigue flags for this week. This can be true even when a single day’s recovery is low; lift and muscle flags use training-history rules.</div>'}
             </section>
             <section class="screen-section">
-              <div class="section-heading"><div><h2>Recent history</h2><p>Your latest completed sessions.</p></div><button class="text-button" type="button" data-action="set-view" data-view="history">View all</button></div>
+              <div class="section-heading"><div><h2>Recent history</h2><p>Your latest completed sessions.</p></div><button class="text-button" type="button" data-action="open-history">View all</button></div>
               ${renderRecentSessions()}
             </section>
           </section>
@@ -2643,8 +2836,25 @@
         return '<button class="drilldown-item fatigue-' + concern + '" type="button" data-action="open-fatigue-flag" data-flag-id="' + escapeHtml(flag.id) + '" aria-label="Open ' + escapeHtml(flag.scope + ' ' + flag.name + ' fatigue flag') + '"><strong>' + escapeHtml(flag.scope + ': ' + flag.name) + '</strong><span class="fatigue-severity ' + concern + '">' + escapeHtml(concern.charAt(0).toUpperCase() + concern.slice(1) + ' concern') + '</span><span>' + escapeHtml(flag.reason) + '</span><small>' + escapeHtml(formatDate(flag.triggeredAt)) + '</small><span class="drilldown-chevron" aria-hidden="true">›</span></button>';
       }
 
-      function renderDashboardDetailHeader(title, subtitle, nested = false) {
-        return '<div class="dashboard-detail-header"><button type="button" data-action="' + (nested ? 'dashboard-detail-parent' : 'close-dashboard-detail') + '" aria-label="Back">‹</button><div><h1>' + escapeHtml(title) + '</h1><p>' + escapeHtml(subtitle) + '</p></div></div>';
+      function renderDashboardDetailHeader(title, subtitle, nested = false, backAction = "") {
+        return '<div class="dashboard-detail-header"><button type="button" data-action="' + (backAction || (nested ? 'dashboard-detail-parent' : 'close-dashboard-detail')) + '" aria-label="Back">‹</button><div><h1>' + escapeHtml(title) + '</h1><p>' + escapeHtml(subtitle) + '</p></div></div>';
+      }
+
+      function renderWeeklyVolumeWarningDetail(flag, options = {}) {
+        const detail = flag.volumeDetail;
+        const formatSets = (value) => Number(value || 0).toFixed(Number(value || 0) % 1 ? 1 : 0);
+        const sessionAction = options.sessionAction || "open-volume-session";
+        return `<section class="view dashboard-detail-view">${renderDashboardDetailHeader(detail.muscle + " weekly volume", formatWeek(detail.weekStart), true, options.backAction || "")}
+          <article class="volume-warning-detail ${flag.concern}">
+            <div class="volume-warning-hero"><div><span class="fatigue-severity ${flag.concern}">${escapeHtml(flag.concern.charAt(0).toUpperCase() + flag.concern.slice(1))} concern</span><h2>${formatSets(detail.actual)} weighted sets</h2><p>${formatSets(detail.exceededBy)} above the planned ${detail.targetLow}-${detail.targetHigh} set range.</p></div></div>
+            <div class="volume-warning-numbers"><div><span>Planned</span><strong>${detail.targetLow}-${detail.targetHigh}</strong></div><div><span>Completed</span><strong>${formatSets(detail.actual)}</strong></div><div><span>Direct</span><strong>${formatSets(detail.directSets)}</strong></div><div><span>Indirect</span><strong>${formatSets(detail.indirectSets)}</strong></div></div>
+            <section><h3>What contributed</h3><div class="volume-contribution-list">${detail.contributions.map((item) => '<div class="volume-contribution-row"><div><strong>' + escapeHtml(item.name) + '</strong><span>' + formatSets(item.sets) + ' weighted sets</span></div><div><span>' + formatSets(item.directSets) + ' direct</span><span>' + formatSets(item.indirectSets) + ' indirect</span></div></div>').join('')}</div></section>
+            <section><h3>Submitted workouts included</h3><div class="drilldown-list">${detail.sessions.map((session) => '<button class="drilldown-item compact" type="button" data-action="' + sessionAction + '" data-session-id="' + escapeHtml(session.id) + '"><strong>' + escapeHtml(session.title) + '</strong><span>' + formatDate(session.date) + '</span><span class="drilldown-chevron" aria-hidden="true">›</span></button>').join('') || '<div class="empty-state">No submitted workouts contributed.</div>'}</div></section>
+            <section><h3>Deload handling</h3><p>${detail.excludedDeloadSessions.length ? detail.excludedDeloadSessions.length + ' explicitly marked deload workout' + (detail.excludedDeloadSessions.length === 1 ? ' was' : 's were') + ' excluded: ' + escapeHtml(detail.excludedDeloadSessions.map((session) => session.title + ' (' + formatDate(session.date) + ')').join(', ')) + '.' : 'No explicitly marked deload exercises were present in this week.'}</p></section>
+            <section><h3>Rule used</h3><p>${escapeHtml(flag.rule)}</p></section>
+            <section><h3>Recommended next step</h3><p>${escapeHtml(flag.recommendation)}</p></section>
+          </article>
+        </section>`;
       }
 
       function renderDashboardDetail() {
@@ -2652,6 +2862,7 @@
         const flags = fatigueFlags(dashboardWeekStart);
         const sessions = dashboardSessionsForWeek(dashboardWeekStart);
         const period = formatWeek(dashboardWeekStart);
+        if (dashboardDetail.type === "history") return renderHistory(true);
         if (dashboardDetail.type === "session") {
           const session = data.sessions.find((item) => item.id === dashboardDetail.id);
           if (!session) { dashboardDetail = { type: "sessions" }; return renderDashboardDetail(); }
@@ -2673,6 +2884,7 @@
         if (dashboardDetail.type === "fatigue-flag") {
           const flag = flags.find((item) => item.id === dashboardDetail.id);
           if (!flag) { dashboardDetail = { type: "fatigue" }; return renderDashboardDetail(); }
+          if (flag.detailType === "weekly-volume" && flag.volumeDetail) return renderWeeklyVolumeWarningDetail(flag);
           return `<section class="view dashboard-detail-view">${renderDashboardDetailHeader(flag.scope + ": " + flag.name, formatDate(flag.triggeredAt), true)}<article class="fatigue-explanation ${flag.concern}"><span class="fatigue-severity ${flag.concern}">${escapeHtml(flag.concern.charAt(0).toUpperCase() + flag.concern.slice(1))} concern</span><h2>${escapeHtml(flag.reason)}</h2><div><strong>Data that triggered it</strong><ul>${flag.evidence.map((item) => '<li>' + escapeHtml(item) + '</li>').join('')}</ul></div><div><strong>Rule crossed</strong><p>${escapeHtml(flag.rule)}</p></div><div><strong>Recommended next step</strong><p>${escapeHtml(flag.recommendation)}</p></div><div><strong>What clears the flag</strong><p>${escapeHtml(flag.resolution)}</p></div></article></section>`;
         }
         return `<section class="view dashboard-detail-view">${renderDashboardDetailHeader("Fatigue flags", period)}<div class="drilldown-list">${flags.length ? flags.map(renderFatigueFlagRow).join('') : '<div class="empty-state">No fatigue flags were triggered in this period.</div>'}</div></section>`;
@@ -2843,9 +3055,9 @@
         const restSeconds = Number(exercise.restSeconds || recommendedRestSeconds(exercise.name, { reps: firstWorkSet?.reps, rpe: firstWorkSet?.rpe }));
         return `
           <article class="exercise-card">
-            <div class="row split">
-              <input class="exercise-name" value="${escapeHtml(exercise.name)}" data-action="exercise-name" data-exercise-id="${exercise.id}" aria-label="Exercise name" title="${escapeHtml(exercise.name)}" />
-              <div class="row">
+            <div class="exercise-header">
+              <textarea class="exercise-name exercise-name-field" rows="1" data-action="exercise-name" data-exercise-id="${exercise.id}" aria-label="Exercise name" title="${escapeHtml(exercise.name)}">${escapeHtml(exercise.name)}</textarea>
+              <div class="exercise-actions">
                 <button class="icon-button exercise-order" type="button" data-action="move-exercise" data-direction="-1" data-exercise-id="${exercise.id}" title="Move exercise up">Up</button>
                 <button class="icon-button exercise-order" type="button" data-action="move-exercise" data-direction="1" data-exercise-id="${exercise.id}" title="Move exercise down">Dn</button>
                 <button class="icon-button danger" type="button" data-action="delete-exercise" data-exercise-id="${exercise.id}" title="Delete exercise">${icon.delete}</button>
@@ -2987,6 +3199,13 @@
       }
 
       function renderTemplates() {
+        const weekStart = startOfWeekIso(todayIso());
+        const volumeFlags = fatigueFlags(weekStart).filter((flag) => flag.detailType === "weekly-volume");
+        if (planVolumeDetailId) {
+          const selectedFlag = volumeFlags.find((flag) => flag.id === planVolumeDetailId);
+          if (selectedFlag) return renderWeeklyVolumeWarningDetail(selectedFlag, { backAction: "close-plan-volume-detail", sessionAction: "open-session" });
+          planVolumeDetailId = "";
+        }
         return `
           <section class="view templates-view">
             <div class="screen-heading">
@@ -2994,6 +3213,7 @@
               <button class="icon-button" type="button" data-action="new-template" title="New template">${icon.add}</button>
             </div>
             <p class="screen-intro">Start a familiar workout in one tap. Open a row only when you want to edit its plan.</p>
+            ${volumeFlags.length ? '<section class="plan-volume-alerts"><div class="section-heading"><div><h2>Weekly volume checks</h2><p>Review these before adding more work.</p></div></div><div class="drilldown-list">' + volumeFlags.map((flag) => '<button class="drilldown-item fatigue-' + flag.concern + '" type="button" data-action="open-plan-volume-warning" data-flag-id="' + escapeHtml(flag.id) + '"><strong>' + escapeHtml(flag.name + ': ' + flag.reason) + '</strong><span class="fatigue-severity ' + flag.concern + '">' + escapeHtml(flag.concern.charAt(0).toUpperCase() + flag.concern.slice(1)) + ' concern</span><small>' + escapeHtml(flag.evidence[0]) + ' · Tap for exact contributors</small><span class="drilldown-chevron" aria-hidden="true">›</span></button>').join('') + '</div></section>' : ''}
             <div class="template-library">${data.templates.length ? data.templates.map(renderTemplateCard).join("") : '<div class="empty-state">Create a leg day, push day, pull day, or any repeatable workout. Templates store exercises, sets, and target reps; you fill in weights during the workout.</div>'}</div>
             <button class="secondary-action full-width" type="button" data-action="save-template">Save current workout as a template</button>
           </section>
@@ -3042,12 +3262,12 @@
         `;
       }
 
-      function renderHistory() {
+      function renderHistory(nested = false) {
         const totalSessions = data.sessions.filter(isSessionSubmitted).length;
         const sessions = [...data.sessions].filter(isSessionSubmitted).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 120);
         return `
           <section class="view history-view">
-            <div class="screen-heading"><div><div class="section-kicker">History</div><h1>Training log</h1></div><button class="text-button" type="button" data-action="set-view" data-view="dashboard">Dashboard</button></div>
+            <div class="screen-heading"><div><div class="section-kicker">History</div><h1>Training log</h1></div>${nested ? '<button class="text-button" type="button" data-action="close-dashboard-detail">Back</button>' : ''}</div>
             <details class="history-section" open>
               <summary>By session <span>${totalSessions} logged</span></summary>
               <div class="disclosure-body">
@@ -3191,7 +3411,7 @@
       }
       // HYPERTROPHY_SCORE_ENGINE_END
 
-      function buildHypertrophyWeekAggregates() {
+      function buildHypertrophyWeekAggregates(scope = { type: "overall", exerciseId: "" }) {
         const sessionById = new Map(data.sessions.filter(isSessionSubmitted).map((session) => [session.id, session]));
         const exercisesBySession = new Map();
         data.exercises.forEach((exercise) => {
@@ -3208,6 +3428,11 @@
         });
         const weekMap = new Map();
         sessionById.forEach((session) => {
+          const relevantExercises = (exercisesBySession.get(session.id) || []).filter((exercise) => {
+            if (scope.type === "exercise" && canonicalExerciseId(exercise.name) !== scope.exerciseId) return false;
+            return (setsByExercise.get(exercise.id) || []).some((set) => !set.isWarmup);
+          });
+          if (!relevantExercises.length) return;
           const weekStart = startOfWeekIso(session.date);
           const week = weekMap.get(weekStart) || {
             weekStart, submittedSessions: 0, plannedSets: 0, completedSets: 0, skippedSets: 0, missedSets: 0,
@@ -3217,7 +3442,7 @@
           };
           week.submittedSessions += 1;
           week.explicitSessionDeload ||= Boolean(session.isDeload || session.sessionType === "deload");
-          (exercisesBySession.get(session.id) || []).forEach((exercise) => {
+          relevantExercises.forEach((exercise) => {
             const workingSets = (setsByExercise.get(exercise.id) || []).filter((set) => !set.isWarmup);
             if (!workingSets.length) return;
             week.exerciseCount += 1;
@@ -3229,7 +3454,8 @@
             const prescription = exercise.prescription || {};
             const repLow = Number(prescription.repLow || profile.lowerRep);
             const repHigh = Number(prescription.repHigh || profile.upperRep);
-            const stats = week.exerciseStats.get(exerciseKey(exercise.name)) || { name: exercise.name, completedSets: 0, failedSets: 0, bestEstimatedOneRepMax: 0, topWeight: 0, maxRepsAtTopWeight: 0, rpeSum: 0, rpeCount: 0 };
+            const canonicalId = canonicalExerciseId(exercise.name);
+            const stats = week.exerciseStats.get(canonicalId) || { name: exercise.name, completedSets: 0, failedSets: 0, bestEstimatedOneRepMax: 0, topWeight: 0, maxRepsAtTopWeight: 0, rpeSum: 0, rpeCount: 0 };
             musclesForExercise(exercise).forEach(({ muscle }) => week.intendedMuscles.add(muscle));
             workingSets.forEach((set) => {
               week.plannedSets += 1;
@@ -3256,7 +3482,7 @@
               else if (load === stats.topWeight) stats.maxRepsAtTopWeight = Math.max(stats.maxRepsAtTopWeight, reps);
               musclesForExercise(exercise).forEach(({ muscle, weight }) => week.muscleSets.set(muscle, (week.muscleSets.get(muscle) || 0) + weight));
             });
-            week.exerciseStats.set(exerciseKey(exercise.name), stats);
+            week.exerciseStats.set(canonicalId, stats);
           });
           weekMap.set(weekStart, week);
         });
@@ -3265,14 +3491,22 @@
           const isDeload = week.explicitSessionDeload || (week.exerciseCount > 0 && week.deloadExerciseCount === week.exerciseCount);
           let volumeTargetsTracked = 0;
           let volumeTargetsHit = 0;
-          week.intendedMuscles.forEach((muscle) => {
-            const target = targetRangeForMuscle(muscle);
-            const sets = week.muscleSets.get(muscle) || 0;
-            volumeTargetsTracked += 1;
-            if (sets >= target.low && sets <= target.high) volumeTargetsHit += 1;
-          });
+          if (scope.type === "exercise") {
+            if (week.plannedSets > 0) {
+              volumeTargetsTracked = 1;
+              if (week.completedSets / week.plannedSets >= 0.8) volumeTargetsHit = 1;
+            }
+          } else {
+            week.intendedMuscles.forEach((muscle) => {
+              const target = targetRangeForMuscle(muscle);
+              const sets = week.muscleSets.get(muscle) || 0;
+              volumeTargetsTracked += 1;
+              if (sets >= target.low && sets <= target.high) volumeTargetsHit += 1;
+            });
+          }
           const completionRatio = week.plannedSets > 0 ? week.completedSets / week.plannedSets : 0;
-          return { ...week, isDeload, qualifies: !isDeload && week.completedSets >= 3 && completionRatio >= 0.5, volumeTargetsTracked, volumeTargetsHit, progressionWins: 0, regressions: 0, comparableComparisons: 0, exerciseChangeRate: 0, fatigueHigh: 0, fatigueModerate: 0, volumeChangeRatio: 0 };
+          const minimumSets = scope.type === "exercise" ? 2 : 3;
+          return { ...week, isDeload, qualifies: !isDeload && week.completedSets >= minimumSets && completionRatio >= 0.5, volumeTargetsTracked, volumeTargetsHit, progressionWins: 0, regressions: 0, comparableComparisons: 0, exerciseChangeRate: 0, fatigueHigh: 0, fatigueModerate: 0, volumeChangeRatio: 0 };
         }).sort((a, b) => a.weekStart.localeCompare(b.weekStart));
 
         const previousByExercise = new Map();
@@ -3324,9 +3558,11 @@
         return options;
       }
 
-      function hypertrophyAnalysis(offset = hypertrophyWindowOffset) {
-        if (hypertrophyScoreCache.dataRef === data && hypertrophyScoreCache.offset === offset) return hypertrophyScoreCache.result;
-        const allWeeks = buildHypertrophyWeekAggregates();
+      function hypertrophyAnalysis(offset = hypertrophyWindowOffset, scopeType = hypertrophyScoreScope, exerciseId = selectedExerciseId) {
+        const scope = scopeType === "exercise" && exerciseId ? { type: "exercise", exerciseId } : { type: "overall", exerciseId: "" };
+        const key = scope.type + "|" + scope.exerciseId + "|" + offset;
+        if (hypertrophyScoreCache.dataRef === data && hypertrophyScoreCache.key === key) return hypertrophyScoreCache.result;
+        const allWeeks = buildHypertrophyWeekAggregates(scope);
         const selection = selectHypertrophyWeeks(allWeeks, offset, 6);
         const result = calculateHypertrophyScore(selection);
         const previousSelection = selectHypertrophyWeeks(allWeeks, offset + 6, 6);
@@ -3335,12 +3571,15 @@
         result.trend = result.score != null && previous.score != null ? result.score - previous.score : null;
         result.windowOptions = hypertrophyWindowOptions(allWeeks);
         result.allWeeks = allWeeks;
-        hypertrophyScoreCache = { dataRef: data, offset, result };
+        result.scopeType = scope.type;
+        result.scopeId = scope.exerciseId;
+        result.scopeLabel = scope.type === "exercise" ? (exerciseCatalog().find((item) => item.id === scope.exerciseId)?.name || "Selected exercise") : "Overall program";
+        hypertrophyScoreCache = { dataRef: data, key, result };
         return result;
       }
 
-      function exerciseProgressSeries(exerciseName) {
-        const scoped = getExerciseSets(exerciseName);
+      function exerciseProgressSeries(exerciseName, options = {}) {
+        const scoped = getExerciseSets(exerciseName, { canonicalExerciseId: options.canonicalExerciseId });
         const exerciseById = new Map(scoped.exercises.map((exercise) => [exercise.id, exercise]));
         const sessionById = new Map(data.sessions.map((session) => [session.id, session]));
         const byWeek = new Map();
@@ -3425,6 +3664,7 @@
       }
 
       function renderChartPointDetail(chartKey, title, point, points) {
+        const exerciseName = selectedExerciseName();
         const index = points.findIndex((item) => item.date === point.date && item.value === point.value);
         const previous = index > 0 ? points[index - 1] : null;
         const comparison = previous && previous.value ? ((point.value - previous.value) / previous.value) * 100 : null;
@@ -3433,11 +3673,11 @@
           const best = [...point.details].filter((set) => set.weight > 0).sort((a, b) => estimatedOneRepMax(b) - estimatedOneRepMax(a))[0];
           const priorMax = Math.max(0, ...points.slice(0, Math.max(0, index)).map((item) => item.value));
           const isPr = point.value > priorMax;
-          return '<article class="chart-detail" role="status"><div class="row split"><strong>Estimated 1RM · ' + point.value + ' ' + data.settings.weightUnit + '</strong>' + close + '</div><div class="chart-detail-facts"><div><span>Date</span><strong>' + formatDate(point.date) + '</strong></div><div><span>Exercise</span><strong>' + escapeHtml(selectedExercise) + '</strong></div><div><span>Load × reps</span><strong>' + escapeHtml(best ? best.weight + ' ' + data.settings.weightUnit + ' × ' + best.reps : '-') + '</strong></div><div><span>RPE</span><strong>' + escapeHtml(best?.rpe || '-') + '</strong></div></div><small>Epley estimate: load × (1 + reps ÷ 30).' + (isPr ? ' Personal record for the available history.' : '') + '</small></article>';
+          return '<article class="chart-detail" role="status"><div class="row split"><strong>Estimated 1RM · ' + point.value + ' ' + data.settings.weightUnit + '</strong>' + close + '</div><div class="chart-detail-facts"><div><span>Date</span><strong>' + formatDate(point.date) + '</strong></div><div><span>Exercise</span><strong>' + escapeHtml(exerciseName) + '</strong></div><div><span>Load × reps</span><strong>' + escapeHtml(best ? best.weight + ' ' + data.settings.weightUnit + ' × ' + best.reps : '-') + '</strong></div><div><span>RPE</span><strong>' + escapeHtml(best?.rpe || '-') + '</strong></div></div><small>Epley estimate: load × (1 + reps ÷ 30).' + (isPr ? ' Personal record for the available history.' : '') + '</small></article>';
         }
         if (chartKey === "volume") {
           const contributing = point.details.filter((set) => set.weight > 0).sort((a, b) => a.setNumber - b.setNumber);
-          return '<article class="chart-detail volume-chart-detail" role="status"><div class="row split"><div><span class="section-kicker">Selected exercise volume</span><strong>Volume load · ' + point.value.toLocaleString() + ' ' + data.settings.weightUnit + '</strong></div>' + close + '</div><div class="chart-detail-facts"><div><span>Date</span><strong>' + formatDate(point.date) + '</strong></div><div><span>Exercise</span><strong>' + escapeHtml(selectedExercise) + '</strong></div><div><span>Sets included</span><strong>' + contributing.length + '</strong></div><div><span>Vs previous</span><strong>' + (comparison == null ? 'Baseline' : (comparison >= 0 ? '+' : '') + comparison.toFixed(1) + '%') + '</strong></div></div><div class="volume-set-list">' + contributing.map((set, index) => { const setVolume = Number(set.weight || 0) * Number(set.reps || 0); return '<div class="volume-set-row"><strong>Set ' + (set.setNumber > 0 ? set.setNumber : index + 1) + '</strong><div class="volume-set-main"><strong>' + set.weight + ' ' + data.settings.weightUnit + ' × ' + set.reps + '</strong><span>' + (set.rpe ? 'RPE ' + set.rpe : 'RPE not recorded') + '</span></div><div class="volume-set-total"><span>Set volume</span><strong>' + setVolume.toLocaleString() + ' ' + data.settings.weightUnit + '</strong></div></div>'; }).join('') + '</div><small>' + escapeHtml(contributing[0]?.sessionTitle || '') + ' · Total reflects this exercise only.</small></article>';
+          return '<article class="chart-detail volume-chart-detail" role="status"><div class="row split"><div><span class="section-kicker">Selected exercise volume</span><strong>Volume load · ' + point.value.toLocaleString() + ' ' + data.settings.weightUnit + '</strong></div>' + close + '</div><div class="chart-detail-facts"><div><span>Date</span><strong>' + formatDate(point.date) + '</strong></div><div><span>Exercise</span><strong>' + escapeHtml(exerciseName) + '</strong></div><div><span>Sets included</span><strong>' + contributing.length + '</strong></div><div><span>Vs previous</span><strong>' + (comparison == null ? 'Baseline' : (comparison >= 0 ? '+' : '') + comparison.toFixed(1) + '%') + '</strong></div></div><div class="volume-set-list">' + contributing.map((set, index) => { const setVolume = Number(set.weight || 0) * Number(set.reps || 0); return '<div class="volume-set-row"><strong>Set ' + (set.setNumber > 0 ? set.setNumber : index + 1) + '</strong><div class="volume-set-main"><strong>' + set.weight + ' ' + data.settings.weightUnit + ' × ' + set.reps + '</strong><span>' + (set.rpe ? 'RPE ' + set.rpe : 'RPE not recorded') + '</span></div><div class="volume-set-total"><span>Set volume</span><strong>' + setVolume.toLocaleString() + ' ' + data.settings.weightUnit + '</strong></div></div>'; }).join('') + '</div><small>' + escapeHtml(contributing[0]?.sessionTitle || '') + ' · Total reflects this exercise only.</small></article>';
         }
         return "";
       }
@@ -3473,9 +3713,9 @@
           : analysis.confidence === "moderate"
             ? "The score is useful, but limited RPE coverage, comparable sessions, or exercise continuity reduce precision."
             : "This is provisional. More submitted workouts, RPE entries, and comparable exercise exposures are needed.";
-        return `<section class="hypertrophy-detail" aria-label="Hypertrophy Score explanation">
-          <div><div class="section-kicker">Score summary</div><h2>${analysis.score} / 100 · ${escapeHtml(analysis.interpretation)}</h2></div>
-          <p>This score evaluates how supportive the recorded training process has been for hypertrophy. It does not measure or guarantee actual muscle gain.</p>
+        return `<section class="hypertrophy-detail" aria-label="Hypertrophy Score explanation for ${escapeHtml(analysis.scopeLabel)}">
+          <div><div class="section-kicker">${escapeHtml(analysis.scopeLabel)} · Score summary</div><h2>${analysis.score} / 100 · ${escapeHtml(analysis.interpretation)}</h2></div>
+          <p>This score evaluates how supportive the submitted ${analysis.scopeType === "exercise" ? "training for this exact exercise variation" : "program"} has been for hypertrophy. It does not measure or guarantee actual muscle gain.</p>
           <div><h3>Weeks analyzed</h3><div class="score-week-list">${analysis.included.map((week) => '<span class="score-week-chip">' + formatWeek(week.weekStart).replace('Week of ', '') + '</span>').join('')}</div></div>
           ${analysis.skippedDeloadWeeks.length ? '<div><h3>Skipped deload weeks</h3><div class="score-week-list">' + analysis.skippedDeloadWeeks.map((week) => '<span class="score-week-chip deload">' + formatWeek(week.weekStart).replace('Week of ', '') + ' · Deload</span>').join('') + '</div></div>' : ''}
           ${analysis.incompleteWeeks.length ? '<div><h3>Low-data weeks not counted</h3><div class="score-week-list">' + analysis.incompleteWeeks.map((week) => '<span class="score-week-chip">' + formatWeek(week.weekStart).replace('Week of ', '') + '</span>').join('') + '</div></div>' : ''}
@@ -3488,12 +3728,13 @@
       }
 
       function renderHypertrophyScore(analysis) {
-        if (analysis.score == null) return '<section class="hypertrophy-score-empty"><strong>Hypertrophy Score · Not enough data yet</strong><p>Submit at least one week with three completed working sets and at least half of its planned work finished. The score becomes more useful as six non-deload weeks and consistent RPE data accumulate.</p></section>';
+        if (hypertrophyScoreLoading) return '<section class="hypertrophy-score-empty score-loading" role="status" aria-live="polite"><strong>Recalculating Hypertrophy Score...</strong><p>Loading the submitted history for the selected exercise.</p></section>';
+        if (analysis.score == null) return '<section class="hypertrophy-score-empty"><strong>' + escapeHtml(analysis.scopeLabel) + ' · Not enough data yet</strong><p>' + (analysis.scopeType === 'exercise' ? 'Submit at least one qualifying week with two completed working sets for this exact exercise variation. The app will not substitute the overall-program score.' : 'Submit at least one week with three completed working sets and at least half of its planned work finished.') + '</p></section>';
         const trend = analysis.trend == null ? "No prior six-week window" : (analysis.trend >= 0 ? "+" : "") + analysis.trend + " vs prior window";
         const weekText = analysis.included.length + (analysis.included.length === 1 ? " qualifying week" : " qualifying weeks") + (analysis.provisional ? " · Provisional" : "");
         return `<div class="hypertrophy-score-wrap">
           <button class="hypertrophy-score-card" type="button" data-action="toggle-hypertrophy-score" aria-expanded="${hypertrophyScoreExpanded ? 'true' : 'false'}" style="--score:${analysis.score}">
-            <div><span class="hypertrophy-score-title">Overall program Hypertrophy Score</span><strong class="hypertrophy-score-number">${analysis.score} <small>/ 100</small></strong></div>
+            <div><span class="hypertrophy-score-title">${escapeHtml(analysis.scopeLabel)} Hypertrophy Score</span><strong class="hypertrophy-score-number">${analysis.score} <small>/ 100</small></strong></div>
             <span class="hypertrophy-score-ring" aria-hidden="true"><span>${analysis.score}</span></span>
             <div class="hypertrophy-score-bar"><span></span></div>
             <div class="hypertrophy-score-meta"><strong>${escapeHtml(analysis.interpretation)}</strong><span>${escapeHtml(hypertrophyWindowLabel(analysis))}</span><span>${escapeHtml(weekText)}</span><span>${escapeHtml(trend)}</span><span>${escapeHtml(analysis.confidence)} confidence</span><span>${hypertrophyScoreExpanded ? 'Hide analysis' : 'Open analysis'} ›</span></div>
@@ -3503,14 +3744,19 @@
       }
 
       function renderReview() {
-        const names = getExerciseNames();
-        if (!selectedExercise && names[0]) selectedExercise = names[0];
-        const weeks = selectedExercise ? summarizeExerciseByWeek(selectedExercise) : [];
-        const progress = selectedExercise ? exerciseProgressSeries(selectedExercise) : null;
-        const analysis = hypertrophyAnalysis(hypertrophyWindowOffset);
+        const catalog = exerciseCatalog();
+        if ((!selectedExerciseId || !catalog.some((item) => item.id === selectedExerciseId)) && catalog[0]) {
+          selectedExerciseId = catalog[0].id;
+          chartExerciseDraft = catalog[0].name;
+        }
+        const exercise = selectedExerciseRecord();
+        const selectedName = exercise?.name || "";
+        const weeks = selectedName ? summarizeExerciseByWeek(selectedName, { canonicalExerciseId: selectedExerciseId }) : [];
+        const progress = selectedName ? exerciseProgressSeries(selectedName, { canonicalExerciseId: selectedExerciseId }) : { e1rm: [], volume: [] };
+        const analysis = hypertrophyAnalysis(hypertrophyWindowOffset, hypertrophyScoreScope, selectedExerciseId);
         if (!selectedWeek || !weeks.some((week) => week.weekStart === selectedWeek)) selectedWeek = weeks[0]?.weekStart || startOfWeekIso(todayIso());
-        const recommendation = selectedExercise ? recommendForExerciseWeek(selectedExercise, selectedWeek) : null;
-        if (names.length === 0) {
+        const recommendation = selectedName ? recommendForExerciseWeek(selectedName, selectedWeek, { canonicalExerciseId: selectedExerciseId }) : null;
+        if (catalog.length === 0) {
           return '<section class="view charts-view"><div class="screen-heading"><div><div class="section-kicker">Charts</div><h1>Lift progress</h1></div></div><div class="empty-state">Log an exercise, then this screen will show progression charts and next-step guidance.</div></section>';
         }
         const latestOneRm = progress.e1rm.filter((point) => point.value > 0).at(-1);
@@ -3519,11 +3765,11 @@
           <section class="view charts-view">
             <div class="screen-heading"><div><div class="section-kicker">Charts</div><h1>Lift progress</h1></div></div>
             <div class="chart-control-panel" aria-label="Chart controls">
-              <label class="chart-control-field chart-control-lift"><span>Chart lift</span><input type="search" list="chart-exercise-options" data-action="review-exercise-input" aria-label="Search or select exercise" value="${escapeHtml(selectedExercise)}" /></label>
-              <datalist id="chart-exercise-options">${names.map((name) => '<option value="' + escapeHtml(name) + '"></option>').join("")}</datalist>
+              <div class="chart-control-field chart-control-lift"><label for="chart-exercise-search">Chart lift</label><div class="chart-search-input"><input id="chart-exercise-search" type="search" data-action="review-exercise-input" role="combobox" aria-autocomplete="list" aria-controls="chart-exercise-suggestions" aria-expanded="${chartExerciseSearchOpen ? 'true' : 'false'}" aria-label="Search or select exercise" autocomplete="off" value="${escapeHtml(chartExerciseDraft || selectedName)}" /><button class="chart-search-clear" type="button" data-action="clear-chart-exercise-search" aria-label="Clear exercise search">×</button></div><div id="chart-exercise-suggestions" class="exercise-suggestions" role="listbox" ${chartExerciseSearchOpen ? '' : 'hidden'}>${renderExerciseSuggestions()}</div></div>
+              <div class="score-scope-field"><span>Score scope</span><div class="score-scope-control" role="group" aria-label="Hypertrophy Score scope"><button type="button" data-action="set-hypertrophy-scope" data-scope="overall" aria-pressed="${hypertrophyScoreScope === 'overall'}">Overall program</button><button type="button" data-action="set-hypertrophy-scope" data-scope="exercise" aria-pressed="${hypertrophyScoreScope === 'exercise'}">Selected lift</button></div></div>
               <label class="chart-control-field"><span>Lift review week</span><select data-action="review-week" aria-label="Lift review week">${weeks.map((week) => '<option value="' + week.weekStart + '" ' + (week.weekStart === selectedWeek ? "selected" : "") + '>' + formatWeek(week.weekStart) + (week.isDeload ? ' · Deload' : '') + '</option>').join("")}</select></label>
-              <label class="chart-control-field"><span>Program score window</span><select data-action="hypertrophy-window" aria-label="Hypertrophy Score window">${analysis.windowOptions.length ? analysis.windowOptions.map((option) => '<option value="' + option.offset + '" ' + (option.offset === hypertrophyWindowOffset ? 'selected' : '') + '>' + escapeHtml(hypertrophyWindowLabel(option.selection)) + '</option>').join('') : '<option value="0">Latest qualifying weeks</option>'}</select></label>
-              <p class="chart-control-context">The Hypertrophy Score evaluates the overall submitted program. Lift charts and coaching below use ${escapeHtml(selectedExercise)}.</p>
+              <label class="chart-control-field"><span>Score window</span><select data-action="hypertrophy-window" aria-label="Hypertrophy Score window">${analysis.windowOptions.length ? analysis.windowOptions.map((option) => '<option value="' + option.offset + '" ' + (option.offset === hypertrophyWindowOffset ? 'selected' : '') + '>' + escapeHtml(hypertrophyWindowLabel(option.selection)) + '</option>').join('') : '<option value="0">Latest qualifying weeks</option>'}</select></label>
+              <p class="chart-control-context">${hypertrophyScoreScope === 'exercise' ? 'Score, rationale, weeks, and actions use only submitted ' + escapeHtml(selectedName) + ' history. Equipment and named variations remain separate.' : 'Score and rationale evaluate the overall submitted program.'} Lift charts and coaching use ${escapeHtml(selectedName)}.</p>
             </div>
             ${renderHypertrophyScore(analysis)}
             <div class="chart-metric-row"><div><span>Latest e1RM</span><strong>${latestOneRm ? latestOneRm.value : "-"}</strong></div><div><span>Latest volume</span><strong>${latestVolume ? latestVolume.value : "-"}</strong></div><div><span>Data points</span><strong>${progress.e1rm.filter((point) => point.value > 0).length}</strong></div></div>
@@ -3822,7 +4068,7 @@
         activeSetNotice = "";
         window.clearInterval(timerInterval);
         timer = null;
-        view = "workout";
+        setActiveTab("lift", { replace: true, renderNow: false });
         commit({ ...data, sessions: [session, ...data.sessions] });
       }
 
@@ -3839,7 +4085,7 @@
 
       function addTemplate() {
         const template = { id: id(), name: "New Template", notes: "", exercises: [{ id: id(), name: "Exercise", sets: 3, reps: 8, targetRpe: 8, increment: progressionProfileForExercise("Exercise").increment, restSeconds: recommendedRestSeconds("Exercise"), isBodyweight: false, warmups: [] }], createdAt: isoNow(), updatedAt: isoNow() };
-        view = "templates";
+        setActiveTab("plan", { renderNow: false });
         commit({ ...data, templates: [template, ...data.templates] });
       }
 
@@ -3868,11 +4114,11 @@
       function saveActiveSessionAsTemplate() {
         const template = createTemplateFromSession(activeSessionId);
         if (!template || template.exercises.length === 0) {
-          view = "templates";
+          setActiveTab("plan", { renderNow: false });
           addTemplate();
           return;
         }
-        view = "templates";
+        setActiveTab("plan", { renderNow: false });
         commit({ ...data, templates: [template, ...data.templates] });
       }
 
@@ -3909,7 +4155,7 @@
         session.adjustmentSummary = adjustedLiftCount ? adjustedLiftCount + " lift" + (adjustedLiftCount === 1 ? "" : "s") + " adjusted for recovery." : "No recovery adjustments — normal plan and history-based progression.";
         session.startedAt = session.startedAt || isoNow();
         activeSessionId = session.id;
-        view = "workout";
+        setActiveTab("lift", { renderNow: false });
         templateStartFlow = null;
         activeSetId = sets.find((set) => !set.completed && !set.skipped)?.id || "";
         activeSetAcknowledged = false;
@@ -4650,12 +4896,16 @@
       }
 
       function weeklyMuscleVolume(weekStart = startOfWeekIso(todayIso())) {
-        const buckets = new Map(muscleGroups.map((muscle) => [muscle, { muscle, sets: 0, directSets: 0, indirectSets: 0, highRpeSets: 0, failedSets: 0, exercises: new Set(), exerciseDetails: new Map() }]));
+        const buckets = new Map(muscleGroups.map((muscle) => [muscle, { muscle, sets: 0, directSets: 0, indirectSets: 0, highRpeSets: 0, failedSets: 0, exercises: new Set(), exerciseDetails: new Map(), submittedSessions: new Map(), excludedDeloadSessions: new Map() }]));
         const end = new Date(weekStart + "T00:00:00");
         end.setDate(end.getDate() + 7);
         const endIso = localDateIso(end);
         completedWorkoutEntries().forEach((entry) => {
           if (entry.session.date < weekStart || entry.session.date >= endIso) return;
+          if (entry.exercise.isDeload) {
+            musclesForExercise(entry.exercise).forEach(({ muscle }) => buckets.get(muscle)?.excludedDeloadSessions.set(entry.session.id, { id: entry.session.id, title: entry.session.title || "Workout", date: entry.session.date }));
+            return;
+          }
           musclesForExercise(entry.exercise).forEach(({ muscle, weight }) => {
             const bucket = buckets.get(muscle);
             if (!bucket) return;
@@ -4664,17 +4914,20 @@
             else bucket.indirectSets += weight;
             if (entry.set.rpe >= 9) bucket.highRpeSets += weight;
             bucket.exercises.add(entry.exercise.name);
-            const detail = bucket.exerciseDetails.get(entry.exercise.name) || { name: entry.exercise.name, sets: 0, volumeLoad: 0, sessions: new Map() };
+            bucket.submittedSessions.set(entry.session.id, { id: entry.session.id, title: entry.session.title || "Workout", date: entry.session.date });
+            const detail = bucket.exerciseDetails.get(entry.exercise.name) || { name: entry.exercise.name, sets: 0, directSets: 0, indirectSets: 0, volumeLoad: 0, sessions: new Map() };
             detail.sets += weight;
+            if (weight >= 1) detail.directSets += weight;
+            else detail.indirectSets += weight;
             detail.volumeLoad += Number(entry.set.weight || 0) * Number(entry.set.reps || 0) * weight;
-            detail.sessions.set(entry.session.id, { title: entry.session.title || "Workout", date: entry.session.date });
+            detail.sessions.set(entry.session.id, { id: entry.session.id, title: entry.session.title || "Workout", date: entry.session.date });
             bucket.exerciseDetails.set(entry.exercise.name, detail);
           });
         });
-        data.sets.filter((set) => !set.completed).forEach((set) => {
+        data.sets.filter((set) => !set.completed && !set.skipped && !set.isWarmup).forEach((set) => {
           const exercise = data.exercises.find((item) => item.id === set.exerciseId);
           const session = exercise ? data.sessions.find((item) => item.id === exercise.sessionId) : null;
-          if (!exercise || !session || session.date < weekStart || session.date >= endIso) return;
+          if (!exercise || !session || !isSessionSubmitted(session) || exercise.isDeload || session.date < weekStart || session.date >= endIso) return;
           musclesForExercise(exercise).forEach(({ muscle, weight }) => {
             const bucket = buckets.get(muscle);
             if (bucket) bucket.failedSets += weight;
@@ -4686,10 +4939,12 @@
           const details = Array.from(bucket.exerciseDetails.values()).map((detail) => ({
             name: detail.name,
             sets: detail.sets,
+            directSets: detail.directSets,
+            indirectSets: detail.indirectSets,
             volumeLoad: detail.volumeLoad,
             sessions: Array.from(detail.sessions.values()).sort((a, b) => a.date.localeCompare(b.date))
           })).sort((a, b) => b.sets - a.sets || a.name.localeCompare(b.name));
-          return { ...bucket, details, exerciseCount: bucket.exercises.size, targetLow: target.low, targetHigh: target.high, status };
+          return { ...bucket, details, sessions: Array.from(bucket.submittedSessions.values()).sort((a, b) => a.date.localeCompare(b.date)), excludedDeloadSessions: Array.from(bucket.excludedDeloadSessions.values()).sort((a, b) => a.date.localeCompare(b.date)), exerciseCount: bucket.exercises.size, targetLow: target.low, targetHigh: target.high, status };
         });
       }
 
@@ -4709,7 +4964,7 @@
           }
         });
         weeklyMuscleVolume(weekStart).forEach((bucket) => {
-          if (bucket.sets > bucket.targetHigh) flags.push({ id: "muscle-" + bucket.muscle.toLowerCase() + "-volume", scope: "Muscle", name: bucket.muscle, level: "over", concern: bucket.sets > bucket.targetHigh * 1.2 ? "high" : "moderate", triggeredAt: weekStart, reason: "Weekly volume exceeded the planned range.", evidence: [bucket.sets.toFixed(bucket.sets % 1 ? 1 : 0) + " weighted sets logged", "Target range " + bucket.targetLow + "-" + bucket.targetHigh + " sets", bucket.directSets.toFixed(bucket.directSets % 1 ? 1 : 0) + " direct and " + bucket.indirectSets.toFixed(bucket.indirectSets % 1 ? 1 : 0) + " indirect sets"], rule: "The muscle flag activates when weighted weekly sets exceed the configured upper target.", recommendation: "Do not add more volume this week. Keep remaining work easy or move it to the next training week.", resolution: "Return weekly volume to the target range and avoid a simultaneous decline in reps or recovery." });
+          if (bucket.sets > bucket.targetHigh) flags.push({ id: "muscle-" + bucket.muscle.toLowerCase() + "-volume", scope: "Muscle", name: bucket.muscle, level: "over", concern: bucket.sets > bucket.targetHigh * 1.2 ? "high" : "moderate", triggeredAt: weekStart, reason: "Weekly volume exceeded the planned range.", evidence: [bucket.sets.toFixed(bucket.sets % 1 ? 1 : 0) + " weighted sets logged", "Target range " + bucket.targetLow + "-" + bucket.targetHigh + " sets", bucket.directSets.toFixed(bucket.directSets % 1 ? 1 : 0) + " direct and " + bucket.indirectSets.toFixed(bucket.indirectSets % 1 ? 1 : 0) + " indirect sets"], rule: "The flag uses the Monday-Sunday calendar week and activates when completed weighted sets exceed the configured upper target. Direct sets count as 1; mapped secondary work counts fractionally. Only submitted workouts are included, and explicitly marked deload exercises are excluded.", recommendation: "Do not add more volume this week. Keep remaining work easy or move it to the next training week.", resolution: "Return weekly volume to the target range and avoid a simultaneous decline in reps or recovery.", detailType: "weekly-volume", volumeDetail: { muscle: bucket.muscle, weekStart, targetLow: bucket.targetLow, targetHigh: bucket.targetHigh, actual: bucket.sets, exceededBy: bucket.sets - bucket.targetHigh, directSets: bucket.directSets, indirectSets: bucket.indirectSets, contributions: bucket.details, sessions: bucket.sessions, excludedDeloadSessions: bucket.excludedDeloadSessions } });
           else if (bucket.highRpeSets >= 4) flags.push({ id: "muscle-" + bucket.muscle.toLowerCase() + "-rpe", scope: "Muscle", name: bucket.muscle, level: "caution", concern: "moderate", triggeredAt: weekStart, reason: "Several sets for this muscle were performed at RPE 9 or higher.", evidence: [bucket.highRpeSets.toFixed(bucket.highRpeSets % 1 ? 1 : 0) + " high-RPE weighted sets", bucket.sets.toFixed(bucket.sets % 1 ? 1 : 0) + " total weighted sets", "Caution threshold: 4 high-RPE sets"], rule: "The muscle flag activates at 4 or more weighted sets logged at RPE 9+ in one week.", recommendation: "Keep the next exposure 1-2 reps in reserve and avoid increasing both load and volume.", resolution: "Complete the next week with fewer than 4 high-RPE sets and stable performance." });
           else if (bucket.failedSets >= 2) flags.push({ id: "muscle-" + bucket.muscle.toLowerCase() + "-misses", scope: "Muscle", name: bucket.muscle, level: "caution", concern: "moderate", triggeredAt: weekStart, reason: "Multiple planned sets for this muscle were not completed.", evidence: [bucket.failedSets.toFixed(bucket.failedSets % 1 ? 1 : 0) + " weighted missed sets", bucket.sets.toFixed(bucket.sets % 1 ? 1 : 0) + " completed weighted sets", "Caution threshold: 2 missed sets"], rule: "The muscle flag activates at 2 or more weighted missed sets in the selected week.", recommendation: "Hold or reduce volume for this muscle and repeat the last successful loading pattern.", resolution: "Complete the next exposure with fewer than 2 misses and no further rep decline." });
         });
@@ -5032,7 +5287,8 @@
           target.dataset.previousValue = target.value;
           target.select();
         }
-        if (action === "set-view") { view = target.dataset.view; render(); }
+        if (action === "set-tab") setActiveTab(target.dataset.tab);
+        if (action === "open-history") { dashboardDetail = { type: "history" }; render(); window.scrollTo({ top: 0, behavior: "smooth" }); }
         if (action === "toggle-theme") commit({ ...data, settings: { ...data.settings, theme: data.settings.theme === "light" ? "dark" : "light" } });
         if (action === "toggle-unit") commit({ ...data, settings: { ...data.settings, weightUnit: data.settings.weightUnit === "lb" ? "kg" : "lb" } });
         if (action === "request-notifications") enablePushNotifications();
@@ -5040,8 +5296,26 @@
         if (action === "test-timer-sound") { primeTimerAlerts(); playTimerCompletionSound(); notificationMessage = "Foreground completion sound played."; commit({ ...data, settings: { ...data.settings, setupSoundConfirmed: true } }); }
         if (action === "dismiss-install-guide") commit({ ...data, settings: { ...data.settings, installGuideDismissed: true } });
         if (action === "apply-update") applyPwaUpdate();
+        if (action === "select-chart-exercise") selectChartExercise(target.dataset.exerciseId);
+        if (action === "clear-chart-exercise-search") {
+          chartExerciseDraft = "";
+          chartExerciseSearchOpen = true;
+          chartExerciseHighlight = 0;
+          const input = root.querySelector('[data-action="review-exercise-input"]');
+          if (input) { input.value = ""; input.focus(); }
+          updateExerciseSuggestionList();
+        }
+        if (action === "set-hypertrophy-scope") {
+          hypertrophyScoreScope = target.dataset.scope === "overall" ? "overall" : "exercise";
+          hypertrophyWindowOffset = 0;
+          hypertrophyScoreExpanded = false;
+          hypertrophyScoreLoading = true;
+          hypertrophyScoreCache = { dataRef: null, key: "", result: null };
+          render();
+          window.setTimeout(() => { hypertrophyScoreLoading = false; render(); }, 80);
+        }
         if (action === "show-chart-point") {
-          const progress = exerciseProgressSeries(selectedExercise);
+          const progress = exerciseProgressSeries(selectedExerciseName(), { canonicalExerciseId: selectedExerciseId });
           const chartKey = target.dataset.chartKey;
           const points = chartKey === "e1rm" ? progress.e1rm : progress.volume;
           const point = points.filter((item) => item.value > 0)[Number(target.dataset.chartPoint)];
@@ -5084,9 +5358,12 @@
           window.setTimeout(() => window.scrollTo({ top: dashboardReturnScroll, behavior: "auto" }), 0);
         }
         if (action === "open-dashboard-session") { dashboardDetail = { type: "session", id: target.dataset.sessionId }; render(); window.scrollTo({ top: 0, behavior: "smooth" }); }
+        if (action === "open-volume-session") { dashboardDetail = { type: "session", id: target.dataset.sessionId, parent: "fatigue-flag" }; render(); window.scrollTo({ top: 0, behavior: "smooth" }); }
         if (action === "open-fatigue-flag") { dashboardDetail = { type: "fatigue-flag", id: target.dataset.flagId }; render(); window.scrollTo({ top: 0, behavior: "smooth" }); }
+        if (action === "open-plan-volume-warning") { planVolumeDetailId = target.dataset.flagId; render(); window.scrollTo({ top: 0, behavior: "smooth" }); }
+        if (action === "close-plan-volume-detail") { planVolumeDetailId = ""; render(); window.scrollTo({ top: 0, behavior: "smooth" }); }
         if (action === "dashboard-detail-parent") {
-          dashboardDetail = { type: dashboardDetail?.type === "session" ? "sessions" : "fatigue" };
+          dashboardDetail = { type: dashboardDetail?.type === "session" ? (dashboardDetail.parent === "fatigue-flag" ? "fatigue" : "sessions") : "fatigue" };
           render();
           window.scrollTo({ top: 0, behavior: "smooth" });
         }
@@ -5155,7 +5432,7 @@
         if (action === "skip-timer") cancelTimer("skipped", true);
         if (action === "clear-timer") cancelTimer("canceled", true);
         if (action === "dismiss-timer-notice") { timerCompleteNotice = null; saveRuntime(); render(); }
-        if (action === "open-session") { activeSessionId = target.dataset.sessionId; view = "workout"; render(); }
+        if (action === "open-session") { activeSessionId = target.dataset.sessionId; planVolumeDetailId = ""; setActiveTab("lift"); }
         if (action === "export-data") exportData();
         if (action === "clear-data") { pendingClearData = true; render(); }
         if (action === "cancel-clear-data") { pendingClearData = false; render(); }
@@ -5191,11 +5468,6 @@
         if (action === "template-exercise-rest") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { restSeconds: Number(target.value) });
         if (action === "template-exercise-rpe") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { targetRpe: Number(target.value) });
         if (action === "template-exercise-increment") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { increment: Number(target.value) });
-        if (action === "review-exercise-input") {
-          const match = getExerciseNames().find((name) => exerciseMatches(name, target.value));
-          if (match) { selectedExercise = match; selectedWeek = ""; chartDetailPoint = null; render(); }
-          else target.value = selectedExercise;
-        }
         if (action === "review-week") { selectedWeek = target.value; render(); }
         if (action === "hypertrophy-window") { hypertrophyWindowOffset = Math.max(0, Number(target.value || 0)); hypertrophyScoreExpanded = false; render(); }
         if (action === "weight-unit") commit({ ...data, settings: { ...data.settings, weightUnit: target.value } });
@@ -5235,6 +5507,15 @@
       root.addEventListener("focusin", (event) => {
         const target = event.target.closest("[data-action]");
         if (!target || target.tagName !== "INPUT") return;
+        if (target.dataset.action === "review-exercise-input") {
+          chartExerciseDraft = target.value;
+          chartExerciseSearchOpen = true;
+          chartExerciseHighlight = 0;
+          target.select();
+          target.setAttribute("aria-expanded", "true");
+          updateExerciseSuggestionList();
+          return;
+        }
         if (isNumericEditAction(target.dataset.action)) {
           target.dataset.replaceOnNextInput = "true";
           target.dataset.previousValue = target.value;
@@ -5244,6 +5525,19 @@
 
       root.addEventListener("focusout", (event) => {
         const target = event.target.closest("[data-action]");
+        if (target?.dataset.action === "review-exercise-input") {
+          if (event.relatedTarget?.closest?.('[data-action="select-chart-exercise"]')) return;
+          window.setTimeout(() => {
+            chartExerciseSearchOpen = false;
+            const input = root.querySelector('[data-action="review-exercise-input"]');
+            if (input) {
+              input.value = selectedExerciseName();
+              input.setAttribute("aria-expanded", "false");
+            }
+            updateExerciseSuggestionList();
+          }, 0);
+          return;
+        }
         if (!target || target.tagName !== "INPUT" || !isNumericEditAction(target.dataset.action)) return;
         const nextTarget = event.relatedTarget?.closest?.("[data-action]");
         if (nextTarget && isNumericEditAction(nextTarget.dataset.action)) return;
@@ -5290,6 +5584,30 @@
             if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); return; }
           }
         }
+        if (target?.dataset.action === "review-exercise-input") {
+          const matches = matchingChartExercises(chartExerciseDraft);
+          if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+            event.preventDefault();
+            chartExerciseSearchOpen = true;
+            chartExerciseHighlight = matches.length ? (chartExerciseHighlight + (event.key === "ArrowDown" ? 1 : -1) + matches.length) % matches.length : 0;
+            updateExerciseSuggestionList();
+            return;
+          }
+          if (event.key === "Enter") {
+            event.preventDefault();
+            if (confirmChartExerciseDraft()) return;
+          }
+          if (event.key === "Escape") {
+            event.preventDefault();
+            chartExerciseDraft = selectedExerciseName();
+            chartExerciseSearchOpen = false;
+            target.value = chartExerciseDraft;
+            target.setAttribute("aria-expanded", "false");
+            updateExerciseSuggestionList();
+            target.blur();
+            return;
+          }
+        }
         if (target?.dataset.action === "show-chart-point" && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); target.dispatchEvent(new MouseEvent("click", { bubbles: true })); return; }
         if (!target || target.tagName !== "INPUT" || !isNumericEditAction(target.dataset.action)) return;
         if (target.dataset.replaceOnNextInput !== "true") return;
@@ -5316,12 +5634,16 @@
         }
         if (action === "add-exercise-draft") addExerciseDraft = target.value;
         if (action === "review-exercise-input") {
-          const match = getExerciseNames().find((name) => exerciseMatches(name, target.value));
-          if (match && match !== selectedExercise) { selectedExercise = match; selectedWeek = ""; chartDetailPoint = null; render(); return; }
+          chartExerciseDraft = target.value;
+          chartExerciseSearchOpen = true;
+          chartExerciseHighlight = 0;
+          target.setAttribute("aria-expanded", "true");
+          updateExerciseSuggestionList();
+          return;
         }
         if (action === "session-title") patchSession({ title: target.value }, false);
         if (action === "session-notes") patchSession({ notes: target.value }, false);
-        if (action === "exercise-name") patchExerciseName(target.dataset.exerciseId, target.value, false);
+        if (action === "exercise-name") { target.style.height = "auto"; target.style.height = Math.max(38, target.scrollHeight) + "px"; patchExerciseName(target.dataset.exerciseId, target.value, false); }
         if (action === "exercise-notes") patchExercise(target.dataset.exerciseId, { notes: target.value }, false);
         if (action === "set-reps") patchSetValue(target.dataset.setId, "reps", target.value, false);
         if (action === "set-weight") patchSetValue(target.dataset.setId, "weight", target.value, false);
@@ -5353,7 +5675,7 @@
       function applyWorkoutDeepLink() {
         const params = new URLSearchParams(window.location.search);
         if (params.get("view") === "settings") {
-          view = "settings";
+          setActiveTab("data", { replace: true, renderNow: false });
           return;
         }
         if (params.get("workout") !== "active") return;
@@ -5362,7 +5684,7 @@
         const exercise = data.exercises.find((item) => item.id === exerciseId);
         if (exercise && data.sessions.some((session) => session.id === exercise.sessionId)) activeSessionId = exercise.sessionId;
         if (data.sets.some((set) => set.id === setId)) setActiveSet(setId, "Set is ready", false);
-        view = "workout";
+        setActiveTab("lift", { replace: true, renderNow: false });
         window.setTimeout(() => scheduleActiveSetScroll(setId), 120);
       }
 
@@ -5412,6 +5734,7 @@
       async function boot() {
         await loadData();
         applyWorkoutDeepLink();
+        if (!primaryTabIds.includes(window.location.hash.replace(/^#/, ""))) window.history.replaceState({ ...(window.history.state || {}), tab: activeTab }, "", tabUrl(activeTab));
         saveData();
         render();
         registerPwaServiceWorker();
@@ -5424,6 +5747,14 @@
 
       window.addEventListener("pagehide", saveData);
       window.addEventListener("beforeunload", saveData);
+      window.addEventListener("popstate", () => {
+        const nextTab = tabFromLocation();
+        if (nextTab === activeTab) return;
+        tabScrollPositions.set(activeTab, window.scrollY);
+        activeTab = nextTab;
+        render();
+        window.setTimeout(() => window.scrollTo({ top: tabScrollPositions.get(activeTab) || 0, behavior: "auto" }), 0);
+      });
       document.addEventListener("visibilitychange", () => {
         if (!timer || timer.isPaused || !timer.isActive) return;
         timer.remainingSeconds = Math.max(0, Math.ceil((timer.endsAt - Date.now()) / 1000));
