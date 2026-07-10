@@ -110,4 +110,38 @@ assert.equal(incompleteSelection.incompleteWeeks.length, 1, "Incomplete submitte
 const empty = calculateHypertrophyScore({ included: [], skippedDeloadWeeks: [], incompleteWeeks: [], requestedWeeks: 6, provisional: true });
 assert.equal(empty.score, null, "No usable data must not produce a fake zero");
 
-console.log("Hypertrophy score tests passed (18 scenarios).");
+const perfectExecution = score(Array.from({ length: 6 }, (_, index) => week(index, {
+  completedSets: 20,
+  missedSets: 0,
+  repRangeTracked: 20,
+  repRangeHits: 20,
+  rpeLogged: 20,
+  rpeOnTarget: 20,
+  volumeTargetsHit: 4,
+  progressionWins: 5
+})));
+assert.equal(perfectExecution.categories.find((category) => category.key === "execution").points, 20, "Perfect rep execution should earn 20/20");
+assert.equal(perfectExecution.categories.find((category) => category.key === "rpe").points, 15, "Perfect RPE execution should earn 15/15");
+assert.equal(perfectExecution.improvements.some((item) => item.key === "execution"), false, "A 20/20 rep category cannot be rendered as a weakness");
+assert.equal(perfectExecution.improvements.some((item) => item.key === "rpe"), false, "A 15/15 RPE category cannot be rendered as a weakness");
+assert.ok(perfectExecution.improvements.length <= 1, "Near-perfect training must not manufacture several generic criticisms");
+
+assert.equal(rpeOvershoot.improvements.some((item) => item.key === "rpe"), true, "Repeated RPE overshooting should produce an evidence-backed RPE improvement");
+assert.equal(incomplete.improvements.some((item) => item.key === "consistency"), true, "Low completion should produce an evidence-backed consistency improvement");
+
+const straightArmPulldown = score(Array.from({ length: 6 }, (_, index) => week(index, {
+  completedSets: 12,
+  plannedSets: 12,
+  repRangeTracked: 12,
+  repRangeHits: 12,
+  rpeLogged: 12,
+  rpeOnTarget: 12,
+  volumeTargetsTracked: 2,
+  volumeTargetsHit: 2,
+  progressionWins: 4,
+  regressions: 0
+})));
+assert.equal(straightArmPulldown.improvements.some((item) => item.key === "execution"), false, "Straight-Arm Pulldown with 100% rep-range compliance must not receive a rep-range criticism");
+assert.equal(straightArmPulldown.improvements.some((item) => item.key === "rpe"), false, "Straight-Arm Pulldown with 100% RPE compliance must not receive an RPE criticism");
+
+console.log("Hypertrophy score tests passed (23 scenarios).");

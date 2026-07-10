@@ -107,7 +107,10 @@
       }
 
       button:hover { border-color: var(--green); }
-      button:active { transform: translateY(1px); }
+      button:active, button.is-pressing, select:active, select.is-pressing, summary[data-action]:active, summary[data-action].is-pressing, label.toggle-line:active, label.toggle-line.is-pressing, .volume-card:active, .volume-card.is-pressing { filter: brightness(.96); transform: translateY(1px) scale(.975); }
+      .feedback-medium.is-pressing { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--current) 56%, transparent); }
+      .feedback-success.is-pressing { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--success) 68%, transparent); }
+      .feedback-warning.is-pressing, .feedback-error.is-pressing { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--red) 70%, transparent); }
       button:disabled { cursor: not-allowed; opacity: .45; transform: none; }
 
       input, select, textarea {
@@ -440,7 +443,7 @@
       .exercise-name:focus { background: var(--input-bg); padding-left: 12px; }
 
       .exercise-header { align-items: start; display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr) auto; }
-      .exercise-name-field { field-sizing: content; line-height: 1.25; min-height: 38px; overflow: hidden; padding: 7px 4px 7px 0; resize: none; white-space: pre-wrap; width: 100%; }
+      .exercise-name-field { line-height: 1.25; min-height: 38px; overflow: hidden; padding: 7px 4px 7px 0; resize: none; white-space: pre-wrap; width: 100%; }
       .exercise-header .exercise-actions { align-items: center; display: flex; flex: 0 0 auto; gap: 6px; }
 
       .icon-button {
@@ -551,6 +554,9 @@
       .exercise-level-controls { align-items: center; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 14px; padding-bottom: 8px; }
       .exercise-level-controls .deload-toggle { border: 0; padding: 0; }
       .exercise-level-controls .bodyweight { color: var(--text); }
+      .resistance-type-control { align-items: center; color: var(--muted); display: flex; flex: 1 1 190px; font-size: .68rem; font-weight: 850; gap: 8px; }
+      .resistance-type-control select { flex: 1; min-height: 38px; padding: 5px 6px; }
+      .resistance-readout { align-items: center; background: var(--surface-strong); border-bottom: 1px solid var(--line-strong); color: var(--text); display: flex; font-size: .73rem; font-weight: 900; justify-content: center; min-height: 36px; padding: 4px; text-align: center; }
 
       .primary-action {
         background: var(--green);
@@ -812,6 +818,7 @@
       .exercise-suggestion span { color: var(--muted); font-size: .61rem; }
       .exercise-search-empty { color: var(--muted); font-size: .69rem; padding: 12px; }
       .exercise-search-error { color: var(--red); font-size: .64rem; font-weight: 750; line-height: 1.35; }
+      .analysis-period-control { grid-column: 1 / -1; }
       .score-scope-field { display: grid; gap: 4px; grid-column: 1 / -1; }
       .score-scope-field > span { color: var(--muted); font-size: .58rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
       .score-scope-control { background: var(--surface-strong); border: 1px solid var(--line); border-radius: 8px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 3px; }
@@ -822,6 +829,7 @@
       .hypertrophy-score-card { align-items: center; background: var(--surface); border: 1px solid color-mix(in srgb, var(--current) 45%, var(--line)); border-radius: 8px; color: var(--text); display: grid; gap: 9px 12px; grid-template-columns: minmax(0, 1fr) auto; min-height: 116px; padding: 12px; text-align: left; width: 100%; }
       .hypertrophy-score-card:hover, .hypertrophy-score-card:focus-visible { background: var(--current-dark); border-color: var(--current); box-shadow: inset 3px 0 0 var(--current); }
       .hypertrophy-score-title { color: var(--muted); display: block; font-size: .64rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+      .hypertrophy-score-scope { color: var(--muted); display: block; font-size: .63rem; line-height: 1.4; margin-top: 7px; max-width: 44ch; }
       .hypertrophy-score-number { color: var(--current); display: block; font-size: 1.68rem; font-weight: 950; line-height: 1; margin-top: 4px; }
       .hypertrophy-score-number small { color: var(--muted); font-size: .72rem; }
       .hypertrophy-score-ring { align-items: center; background: conic-gradient(var(--current) calc(var(--score) * 1%), var(--line) 0); border-radius: 50%; display: grid; height: 58px; justify-items: center; position: relative; width: 58px; }
@@ -856,6 +864,9 @@
       .score-action strong, .score-action span { grid-column: 2; }
       .score-action strong { font-size: .71rem; }
       .score-action span { color: var(--muted); font-size: .67rem; line-height: 1.4; }
+      .score-no-weakness { background: color-mix(in srgb, var(--success) 8%, var(--surface)); border-left: 3px solid var(--success); display: grid; gap: 4px; padding: 10px; }
+      .score-no-weakness strong { color: var(--success); font-size: .76rem; }
+      .score-no-weakness span { color: var(--muted); font-size: .68rem; line-height: 1.45; }
 
       .volume-set-list { display: grid; gap: 6px; }
       .volume-set-row { align-items: center; border-bottom: 1px solid var(--line); display: grid; gap: 4px 8px; grid-template-columns: 42px minmax(0, 1fr) 64px; padding: 7px 0; }
@@ -1053,6 +1064,8 @@
       .prescription-brief[open] summary { margin-bottom: 4px; }
       .prescription-brief strong { font-size: .76rem; }
       .prescription-brief span { color: var(--muted); font-size: .68rem; line-height: 1.4; }
+      .prescription-brief .why-link { align-items: center; color: var(--current); display: inline-flex; flex: 0 0 auto; font-size: .69rem; font-weight: 900; min-height: 40px; padding: 6px 2px 6px 10px; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--current) 45%, transparent); text-underline-offset: 3px; }
+      .prescription-brief summary:hover .why-link, .prescription-brief summary:focus-visible .why-link, .prescription-brief[open] .why-link { color: color-mix(in srgb, var(--current) 82%, #000); text-decoration-color: currentColor; }
       .notification-prompt { align-items: center; background: color-mix(in srgb, var(--green) 8%, var(--surface)); border: 1px solid var(--line-strong); display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr) auto; padding: 10px; }
       .notification-prompt strong { display: block; font-size: .76rem; }
       .notification-prompt span { color: var(--muted); display: block; font-size: .66rem; line-height: 1.35; margin-top: 2px; }
@@ -1226,7 +1239,7 @@
         color: var(--green-2);
       }
 
-      @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; } }
+      @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; } button:active, select:active, .is-pressing, summary[data-action]:active, label.toggle-line:active, .volume-card:active { transform: none !important; } }
 
       @media (max-width: 390px) {
         .two { grid-template-columns: 1fr; }
@@ -1408,7 +1421,9 @@
         trainingStatus: "intermediate",
         theme: "light",
         timerSound: true,
+        workoutCompletionSound: true,
         timerVibration: true,
+        interactionVibration: true,
         timerNotifications: true,
         defaultRestSeconds: 90,
         notificationMessageDetail: "exercise-set",
@@ -1462,7 +1477,6 @@
       let chartExerciseSearchError = "";
       let chartExerciseHighlight = 0;
       let recentChartExerciseIds = [];
-      let selectedWeek = "";
       let addExerciseDraft = "";
       let addExercisePrimaryMuscle = "";
       let addExerciseSecondaryMuscle = "";
@@ -1617,7 +1631,9 @@
           trainingStatus: storedSettings.trainingStatus,
           theme: storedSettings.theme,
           timerSound: storedSettings.timerSound,
+          workoutCompletionSound: storedSettings.workoutCompletionSound,
           timerVibration: storedSettings.timerVibration,
+          interactionVibration: storedSettings.interactionVibration,
           timerNotifications: storedSettings.timerNotifications,
           defaultRestSeconds: storedSettings.defaultRestSeconds,
           notificationMessageDetail: storedSettings.notificationMessageDetail,
@@ -1635,11 +1651,18 @@
         model.exercises = model.exercises.map((exercise) => {
           const exerciseSets = model.sets.filter((set) => set.exerciseId === exercise.id);
           const legacyBodyweight = exerciseSets.length > 0 && exerciseSets.every((set) => Boolean(set.isBodyweight)) && isBodyweightExerciseName(exercise.name);
-          return { ...exercise, isBodyweight: exercise.isBodyweight ?? legacyBodyweight };
+          const resistanceType = inferResistanceType(exercise.name, { ...exercise, isBodyweight: exercise.isBodyweight ?? legacyBodyweight }, exerciseSets);
+          return { ...exercise, resistanceType, isBodyweight: isBodyweightResistance(resistanceType) };
+        });
+        const normalizedExerciseById = new Map(model.exercises.map((exercise) => [exercise.id, exercise]));
+        model.sets = model.sets.map((set) => {
+          const exercise = normalizedExerciseById.get(set.exerciseId);
+          const resistanceType = resistanceTypeValues.includes(exercise?.resistanceType) ? exercise.resistanceType : resistanceTypeValues.includes(set.resistanceType) ? set.resistanceType : inferResistanceType(exercise?.name || "", set, [set]);
+          return normalizeResistanceSet(set, resistanceType);
         });
         model.templates = (Array.isArray(model.templates) ? model.templates : []).map((template) => ({
           ...template,
-          exercises: (Array.isArray(template.exercises) ? template.exercises : []).map((exercise) => ({ ...exercise, isBodyweight: exercise.isBodyweight ?? isBodyweightExerciseName(exercise.name), targetRpe: Number(exercise.targetRpe || 0) || "", increment: Number(exercise.increment || 0) || "" }))
+          exercises: (Array.isArray(template.exercises) ? template.exercises : []).map((exercise) => { const resistanceType = inferResistanceType(exercise.name, exercise); return { ...exercise, resistanceType, isBodyweight: isBodyweightResistance(resistanceType), targetRpe: Number(exercise.targetRpe || 0) || "", increment: Number(exercise.increment || 0) || "" }; })
         }));
         return model;
       }
@@ -1757,14 +1780,22 @@
 
       function createSet(exerciseId, setNumber, previous) {
         const exercise = data.exercises.find((item) => item.id === exerciseId);
+        const resistanceType = previous?.resistanceType || exercise?.resistanceType || inferResistanceType(exercise?.name || "", exercise || {});
+        const weight = previous?.weight ?? 0;
         return {
           id: id(),
           exerciseId,
           setNumber,
           reps: previous?.reps ?? 8,
-          weight: previous?.weight ?? 0,
+          weight,
           weightUnit: previous?.weightUnit ?? data.settings.weightUnit,
-          isBodyweight: previous?.isBodyweight ?? exercise?.isBodyweight ?? false,
+          resistanceType,
+          isBodyweight: isBodyweightResistance(resistanceType),
+          addedLoad: resistanceType === "bodyweight_plus_load" ? Number(previous?.addedLoad ?? weight) : Number(previous?.addedLoad || 0),
+          assistanceLoad: resistanceType === "assisted_bodyweight" ? Number(previous?.assistanceLoad ?? weight) : Number(previous?.assistanceLoad || 0),
+          durationSeconds: Number(previous?.durationSeconds || 0),
+          distance: Number(previous?.distance || 0),
+          distanceUnit: previous?.distanceUnit || "m",
           rpe: previous?.rpe ?? 8,
           completed: previous?.completed ?? false,
           isWarmup: previous?.isWarmup ?? false,
@@ -1900,10 +1931,10 @@
           const id = canonicalExerciseId(exercise.name);
           if (!id) return;
           const session = sessions.get(exercise.sessionId);
-          const current = catalog.get(id) || { id, name: exercise.name.trim(), lastDate: "", submittedUses: 0 };
+          const current = catalog.get(id) || { id, name: exercise.name.trim(), resistanceType: resistanceTypeFor(exercise), lastDate: "", submittedUses: 0 };
           if (session) {
             current.submittedUses += 1;
-            if (!current.lastDate || session.date >= current.lastDate) { current.lastDate = session.date; current.name = exercise.name.trim(); }
+            if (!current.lastDate || session.date >= current.lastDate) { current.lastDate = session.date; current.name = exercise.name.trim(); current.resistanceType = resistanceTypeFor(exercise); }
           }
           catalog.set(id, current);
         });
@@ -1955,7 +1986,6 @@
         if (!exercise) return false;
         selectedExerciseId = exercise.id;
         chartExerciseDraft = exercise.name;
-        selectedWeek = "";
         hypertrophyWindowOffset = 0;
         chartExerciseSearchOpen = false;
         chartExerciseSearchError = "";
@@ -1983,9 +2013,82 @@
         return stored === requested || exerciseKey(storedName) === exerciseKey(requestedName);
       }
 
+      // RESISTANCE_MODEL_START
       function isBodyweightExerciseName(name) {
         return /body ?weight|push up|pushup|pull up|pullup|chin up|chinup|\bdip\b|inverted row|air squat|pistol squat|plank|crunch|sit up|sit-up|hanging raise|knee raise|ab wheel|burpee/.test(exerciseKey(name));
       }
+
+      const resistanceTypeValues = ["external", "bodyweight", "bodyweight_plus_load", "assisted_bodyweight", "duration", "distance"];
+
+      function inferResistanceType(name, source = {}, sets = []) {
+        if (resistanceTypeValues.includes(source.resistanceType)) return source.resistanceType;
+        if (/\bassisted\b/.test(String(name || "").toLowerCase())) return "assisted_bodyweight";
+        const bodyweight = Boolean(source.isBodyweight || isBodyweightExerciseName(name));
+        if (!bodyweight) return "external";
+        return sets.some((set) => Number(set.addedLoad ?? set.weight ?? 0) > 0) ? "bodyweight_plus_load" : "bodyweight";
+      }
+
+      function isBodyweightResistance(type) {
+        return ["bodyweight", "bodyweight_plus_load", "assisted_bodyweight"].includes(type);
+      }
+
+      function resistanceTypeFor(exercise, set = null) {
+        if (resistanceTypeValues.includes(exercise?.resistanceType)) return exercise.resistanceType;
+        return inferResistanceType(exercise?.name || "", set || exercise || {}, set ? [set] : []);
+      }
+
+      function resistanceTypeLabel(type) {
+        return ({ external: "External load", bodyweight: "Bodyweight", bodyweight_plus_load: "Bodyweight + load", assisted_bodyweight: "Assisted bodyweight", duration: "Duration", distance: "Distance" })[type] || "External load";
+      }
+
+      function resistanceTypeOptions(selected) {
+        return resistanceTypeValues.map((type) => '<option value="' + type + '" ' + (type === selected ? 'selected' : '') + '>' + resistanceTypeLabel(type) + '</option>').join('');
+      }
+
+      function resistanceLoad(set, type) {
+        if (type === "bodyweight_plus_load") return Number(set?.addedLoad ?? set?.weight ?? 0);
+        if (type === "assisted_bodyweight") return Number(set?.assistanceLoad ?? set?.weight ?? 0);
+        return Number(set?.weight || 0);
+      }
+
+      function formatLoadNumber(value) {
+        return Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
+      }
+
+      function formatResistance(value, exercise = null) {
+        const type = inferResistanceType(exercise?.name || "", value || exercise || {}, value ? [value] : []);
+        const unit = value?.weightUnit || data.settings.weightUnit;
+        const load = resistanceLoad(value, type);
+        if (type === "bodyweight") return "BW";
+        if (type === "bodyweight_plus_load") return load > 0 ? "BW + " + formatLoadNumber(load) + " " + unit : "BW";
+        if (type === "assisted_bodyweight") return load > 0 ? "BW - " + formatLoadNumber(load) + " " + unit + " assistance" : "BW assisted";
+        if (type === "duration") return formatLoadNumber(value?.durationSeconds || value?.reps || 0) + " sec";
+        if (type === "distance") return formatLoadNumber(value?.distance || value?.reps || 0) + " " + (value?.distanceUnit || "m");
+        return formatLoadNumber(load) + " " + unit;
+      }
+
+      function formatSetPerformance(set, exercise = null) {
+        const type = resistanceTypeFor(exercise, set);
+        const effort = set?.rpe ? " @ RPE " + set.rpe : "";
+        if (type === "duration") return formatResistance(set, exercise) + effort;
+        if (type === "distance") return formatResistance(set, exercise) + effort;
+        return Number(set?.reps || 0) + " reps × " + formatResistance(set, exercise) + effort;
+      }
+
+      function normalizeResistanceSet(set, type) {
+        const load = Number(set.weight || 0);
+        return {
+          ...set,
+          resistanceType: type,
+          isBodyweight: isBodyweightResistance(type),
+          addedLoad: type === "bodyweight_plus_load" ? Number(set.addedLoad ?? load) : Number(set.addedLoad || 0),
+          assistanceLoad: type === "assisted_bodyweight" ? Number(set.assistanceLoad ?? load) : Number(set.assistanceLoad || 0),
+          durationSeconds: Number(set.durationSeconds || 0),
+          distance: Number(set.distance || 0),
+          distanceUnit: set.distanceUnit || "m"
+        };
+      }
+      // RESISTANCE_MODEL_END
 
       function getExerciseSets(exerciseName, options = {}) {
         const exercises = data.exercises.filter((exercise) => options.canonicalExerciseId ? canonicalExerciseId(exercise.name) === options.canonicalExerciseId : exerciseMatches(exercise.name, exerciseName));
@@ -1998,6 +2101,9 @@
         const unit = data.settings.weightUnit;
         const small = unit === "kg" ? 1 : 2.5;
         const standard = unit === "kg" ? 2.5 : 5;
+        if (/pull up|pullup|chin up|chinup|\bdip\b|push up|pushup|plank/.test(key)) {
+          return { kind: "bodyweight", increment: small, lowerRep: 8, upperRep: 20, maxJumpRatio: 0.2 };
+        }
         if (/leg extension|leg curl|pulldown|machine row|seated row/.test(key)) {
           return { kind: "machine", increment: standard, lowerRep: 8, upperRep: 15, maxJumpRatio: 0.12 };
         }
@@ -2068,7 +2174,10 @@
         const summaries = Array.from(grouped.entries()).map(([weekStart, bucket]) => {
           const completed = bucket.sets.filter((set) => set.completed);
           const rpeSets = bucket.sets.filter((set) => set.rpe > 0);
-          const topWeight = Math.max(0, ...completed.map((set) => set.weight));
+          const representativeExercise = exerciseById.get(bucket.sets[0]?.exerciseId);
+          const resistanceType = resistanceTypeFor(representativeExercise, completed[0]);
+          const positiveLoads = completed.map((set) => resistanceLoad(set, resistanceType)).filter((value) => value > 0);
+          const topWeight = positiveLoads.length ? (resistanceType === "assisted_bodyweight" ? Math.min(...positiveLoads) : Math.max(...positiveLoads)) : 0;
           const topWeightSets = completed.filter((set) => set.weight === topWeight);
           const setsBelowTopWeight = topWeight > 0 ? completed.filter((set) => set.weight > 0 && set.weight < topWeight).length : 0;
           const topWeightRpeSets = topWeightSets.filter((set) => set.rpe > 0);
@@ -2087,7 +2196,7 @@
             completedSets: completed.length,
             failedSets: bucket.sets.filter((set) => !set.completed && !set.skipped).length,
             averageRpe: rpeSets.length ? rpeSets.reduce((sum, set) => sum + set.rpe, 0) / rpeSets.length : 0,
-            bestEstimatedOneRepMax: Math.max(0, ...completed.map(estimatedOneRepMax))
+            bestEstimatedOneRepMax: Math.max(0, ...completed.map((set) => ["external", "bodyweight_plus_load"].includes(resistanceType) ? estimatedOneRepMax(set) : resistanceType === "assisted_bodyweight" ? Math.max(0, 10000 - resistanceLoad(set, resistanceType) * 10 + set.reps) : resistanceType === "duration" ? Number(set.durationSeconds || 0) : resistanceType === "distance" ? Number(set.distance || 0) : Number(set.reps || 0)))
           };
         }).sort((a, b) => b.weekStart.localeCompare(a.weekStart));
         summaries.forEach((summary, index) => {
@@ -2098,16 +2207,19 @@
         return summaries;
       }
 
-      function deloadEvidence(deloadWeek, baselineWeek) {
+      function deloadEvidence(deloadWeek, baselineWeek, loadFormatter = null) {
         if (!deloadWeek || !baselineWeek) return "";
         const loadText = deloadWeek.topWeight > 0 && baselineWeek.topWeight > 0
-          ? " load moved from " + baselineWeek.topWeight + " to " + deloadWeek.topWeight + " " + data.settings.weightUnit + ","
+          ? " resistance moved from " + (loadFormatter ? loadFormatter(baselineWeek.topWeight) : baselineWeek.topWeight + " " + data.settings.weightUnit) + " to " + (loadFormatter ? loadFormatter(deloadWeek.topWeight) : deloadWeek.topWeight + " " + data.settings.weightUnit) + ","
           : "";
         return "You marked " + formatWeek(deloadWeek.weekStart).toLowerCase() + " as a deload/recovery week:" + loadText + " it is skipped as the baseline and " + formatWeek(baselineWeek.weekStart).toLowerCase() + " is used for the next target.";
       }
 
       function recommendForExerciseWeek(exerciseName, weekStart, options = {}) {
         const summaries = summarizeExerciseByWeek(exerciseName, options);
+        const scopedExercise = getExerciseSets(exerciseName, options).exercises[0] || { name: exerciseName, resistanceType: "external" };
+        const resistanceType = resistanceTypeFor(scopedExercise);
+        const loadText = (value) => formatResistance({ weight: value, addedLoad: resistanceType === "bodyweight_plus_load" ? value : 0, assistanceLoad: resistanceType === "assisted_bodyweight" ? value : 0, resistanceType, weightUnit: data.settings.weightUnit }, scopedExercise);
         const selectedIndex = summaries.findIndex((summary) => summary.weekStart === weekStart);
         const rawIndex = selectedIndex >= 0 ? selectedIndex : 0;
         const rawCurrent = summaries[rawIndex];
@@ -2139,13 +2251,13 @@
         const evidence = [
           current.completedSets + " completed set" + (current.completedSets === 1 ? "" : "s") + " and " + current.failedSets + " missed set" + (current.failedSets === 1 ? "" : "s") + ".",
           "Average RPE " + (current.averageRpe ? current.averageRpe.toFixed(1) : "not logged") + ".",
-          "Best estimated 1RM " + (current.bestEstimatedOneRepMax ? current.bestEstimatedOneRepMax.toFixed(1) : "not available") + ".",
-          current.topWeight > 0 ? current.topWeightSetCount + " of " + current.completedSets + " completed sets used the top load of " + current.topWeight + " " + data.settings.weightUnit + "." : "No weighted top load found."
+          (resistanceType === "external" ? "Best estimated 1RM " : "Best comparable performance index ") + (current.bestEstimatedOneRepMax ? current.bestEstimatedOneRepMax.toFixed(1) : "not available") + ".",
+          current.topWeight > 0 ? current.topWeightSetCount + " of " + current.completedSets + " completed sets used " + loadText(current.topWeight) + "." : resistanceType === "bodyweight" ? "Bodyweight-only work was logged." : "No comparable load was found."
         ];
-        if (skippedDeload && skippedDeload !== current) evidence.unshift(deloadEvidence(skippedDeload, current));
+        if (skippedDeload && skippedDeload !== current) evidence.unshift(deloadEvidence(skippedDeload, current, loadText));
         if (travelAdjusted) evidence.push("Travel was logged this week, so the recommendation is less punitive for a dip.");
         if (skippedDeload && skippedDeload !== current) {
-          const targetLoad = current.topWeight > 0 ? current.topWeight + " " + data.settings.weightUnit : "the prior normal load";
+          const targetLoad = current.topWeight > 0 ? loadText(current.topWeight) : "the prior normal resistance";
           const targetReps = current.maxRepsAtTopWeight > 0 ? " for about " + current.maxRepsAtTopWeight + " reps" : "";
           return {
             decision: "hold",
@@ -2160,8 +2272,8 @@
           return { decision: "change", label: "Consider changing variation", reason: "This lift looks stalled across several recent weeks.", action: "Swap to a close variation for 4-6 weeks, then retest the original lift.", evidence, confidence: "medium" };
         }
         if ((failedMultipleSets || repeatedFailures || performanceDrop) && !travelAdjusted) {
-          const target = roundToIncrement(current.topWeight * 0.9, increment);
-          return { decision: "deload", label: "Deload", reason: "Recent performance suggests fatigue or an overly aggressive load.", action: "Reduce working weight about 10% next time, aiming near " + target + " " + data.settings.weightUnit + ", and keep 1-3 reps in reserve.", evidence, confidence: "high" };
+          const target = roundToIncrement(current.topWeight * (resistanceType === "assisted_bodyweight" ? 1.1 : 0.9), increment);
+          return { decision: "deload", label: "Deload", reason: "Recent performance suggests fatigue or an overly aggressive load.", action: (resistanceType === "assisted_bodyweight" ? "Increase assistance" : "Reduce added or external load") + " about 10% next time, aiming near " + loadText(target) + ", and keep 1-3 reps in reserve.", evidence, confidence: "high" };
         }
         if (hardWeek || current.failedSets > 0 || current.completedSets < 3 || travelAdjusted) {
           return { decision: "hold", label: "Hold", reason: travelAdjusted ? "The travel context makes this a good week to repeat before judging progress." : "The work was close enough to the limit that repeating is the cleaner next step.", action: "Repeat the same load and rep target next time; progress only if RPE settles below 9.", evidence, confidence: travelAdjusted ? "medium" : "high" };
@@ -2171,22 +2283,26 @@
             decision: "hold",
             label: "Consolidate load",
             reason: "Your top set is ahead of your back-off sets, so the next progression is making the current load repeatable.",
-            action: "Keep " + current.topWeight + " " + data.settings.weightUnit + " as the top load and work later sets up to that load before adding weight.",
+            action: "Keep " + loadText(current.topWeight) + " as the top resistance and work later sets up to it before progressing.",
             evidence,
             confidence: "high"
           };
         }
         const canAddLoad = current.topWeight > 0 && current.maxRepsAtTopWeight >= profile.upperRep && current.averageRpeAtTopWeight > 0 && current.averageRpeAtTopWeight <= 8.5;
-        const nextWeight = nextLoadForExercise(exerciseName, current.topWeight);
+        const nextWeight = resistanceType === "assisted_bodyweight" ? Math.max(0, roundToIncrement(Math.max(0, current.topWeight - increment), increment)) : nextLoadForExercise(exerciseName, current.topWeight);
         if (profile.kind === "isolation" && !canAddLoad) {
           const nextReps = Math.min(profile.upperRep, Math.max(profile.lowerRep, current.maxRepsAtTopWeight + 1));
-          return { decision: "progress", label: "Progress reps", reason: "You completed the work, but this is an isolation lift where load jumps are large.", action: "Keep " + current.topWeight + " " + data.settings.weightUnit + " and add reps first, targeting about " + nextReps + " reps before increasing load.", evidence, confidence: previous ? "high" : "medium" };
+          return { decision: "progress", label: "Progress reps", reason: "You completed the work, but this is an isolation lift where load jumps are large.", action: "Keep " + loadText(current.topWeight) + " and add reps first, targeting about " + nextReps + " reps before increasing load.", evidence, confidence: previous ? "high" : "medium" };
+        }
+        if (["bodyweight", "bodyweight_plus_load", "assisted_bodyweight"].includes(resistanceType) && !canAddLoad) {
+          const nextReps = Math.min(profile.upperRep, Math.max(profile.lowerRep, current.maxRepsAtTopWeight + 1));
+          return { decision: "progress", label: "Progress reps", reason: "The current bodyweight resistance has not yet reached the top of its programmed rep range at a confirmed manageable RPE.", action: "Keep " + loadText(current.topWeight) + " and build toward " + nextReps + "-" + profile.upperRep + " controlled reps before changing added load or assistance.", evidence, confidence: previous ? "high" : "medium" };
         }
         if (nextWeight === current.topWeight && current.topWeight > 0) {
           const nextReps = Math.min(profile.upperRep, Math.max(profile.lowerRep, current.maxRepsAtTopWeight + 1));
-          return { decision: "progress", label: "Progress reps", reason: "The next load jump is too large relative to the current working weight.", action: "Keep " + current.topWeight + " " + data.settings.weightUnit + " and add reps toward " + nextReps + "-" + profile.upperRep + " before increasing load.", evidence, confidence: previous ? "high" : "medium" };
+          return { decision: "progress", label: "Progress reps", reason: "The next load jump is too large relative to the current working weight.", action: "Keep " + loadText(current.topWeight) + " and add reps toward " + nextReps + "-" + profile.upperRep + " before increasing load.", evidence, confidence: previous ? "high" : "medium" };
         }
-        return { decision: "progress", label: "Progress load", reason: "You completed the work without a high-RPE warning or repeated misses.", action: current.topWeight > 0 ? "Add " + increment + " " + data.settings.weightUnit + " next time, targeting about " + nextWeight + " " + data.settings.weightUnit + "." : "Add reps or a harder bodyweight variation next time.", evidence, confidence: previous ? "high" : "medium" };
+        return { decision: "progress", label: "Progress load", reason: "You completed the work without a high-RPE warning or repeated misses.", action: current.topWeight > 0 ? (resistanceType === "assisted_bodyweight" ? "Reduce assistance to " : "Target ") + loadText(nextWeight) + " next time." : "Add reps or a harder bodyweight variation next time.", evidence, confidence: previous ? "high" : "medium" };
       }
 
       function templateExerciseCount(template) {
@@ -2261,12 +2377,14 @@
         const last = getLastCompletedSet(templateExercise.name, options);
         const skippedDeload = latestSkippedDeloadForExercise(templateExercise.name, options);
         const increment = Number(templateExercise.increment || profile.increment);
-        const recentTop = Math.max(0, ...recentSets.map((set) => set.weight), last?.set?.weight || 0);
+        const resistanceType = templateExercise.resistanceType || last?.set?.resistanceType || inferResistanceType(templateExercise.name, templateExercise, recentSets);
+        const recentLoads = [...recentSets.map((set) => resistanceLoad(set, resistanceType)), resistanceLoad(last?.set, resistanceType)].filter((value) => value > 0);
+        const recentTop = recentLoads.length ? (resistanceType === "assisted_bodyweight" ? Math.min(...recentLoads) : Math.max(...recentLoads)) : 0;
         const topSets = recentSets.filter((set) => set.weight === recentTop);
         const recentReps = Math.max(0, ...topSets.map((set) => set.reps), last?.set?.reps || 0);
         const representativeSet = topSets.slice().sort((a, b) => b.reps - a.reps || (a.rpe || 99) - (b.rpe || 99))[0] || last?.set;
         const recentRpe = Number(representativeSet?.rpe || 0);
-        const knownBodyweight = Boolean(templateExercise.isBodyweight || (recentSets.length > 0 && recentSets.every((set) => set.isBodyweight)) || last?.set?.isBodyweight);
+        const knownBodyweight = isBodyweightResistance(resistanceType);
         const sessionType = sessionTypeForTemplate(options.template);
         const daysSinceLast = last?.session?.date ? Math.floor((Date.now() - new Date(last.session.date + "T12:00:00").getTime()) / 86400000) : 0;
         let sets = plannedSets;
@@ -2279,30 +2397,36 @@
         if (sessionType === "deload") {
           mode = "deload";
           reason = "Planned deload: reduce fatigue with lower load, fewer sets, and lower effort.";
-          weight = recentTop > 0 ? roundToIncrement(recentTop * 0.9, increment) : 0;
+          weight = recentTop > 0 ? roundToIncrement(recentTop * (resistanceType === "assisted_bodyweight" ? 1.1 : 0.9), increment) : 0;
           sets = Math.max(1, Math.ceil(plannedSets * 0.65));
           reps = Math.max(profile.lowerRep, Math.min(targetReps, profile.upperRep));
           rpe = Number(templateExercise.targetRpe || 6.5);
         } else if (sessionType === "light" || sessionType === "technique") {
           mode = sessionType;
           reason = sessionType === "light" ? "Programmed light session: preserve movement quality while limiting fatigue." : "Technique-focused session: prioritize repeatable positions and bar path over loading.";
-          weight = recentTop > 0 ? roundToIncrement(recentTop * 0.9, increment) : 0;
+          weight = recentTop > 0 ? roundToIncrement(recentTop * (resistanceType === "assisted_bodyweight" ? 1.1 : 0.9), increment) : 0;
           rpe = Number(templateExercise.targetRpe || 6.5);
         } else if (daysSinceLast >= 35 && recentTop > 0) {
           mode = "return";
           reason = "Return from a training gap of " + daysSinceLast + " days: use a small ramp-in before resuming normal progression.";
-          weight = roundToIncrement(recentTop * 0.95, increment);
+          weight = roundToIncrement(recentTop * (resistanceType === "assisted_bodyweight" ? 1.05 : 0.95), increment);
           sets = Math.max(1, plannedSets - 1);
           rpe = Number(templateExercise.targetRpe || 7.5);
         } else if (skippedDeload) {
           mode = "return-from-deload";
           reason = "The most recent week looks like a deload/recovery break, so this target skips that reduced week and returns to the prior normal training baseline before progressing again.";
         } else if (recommendation?.decision === "progress") {
-          const loadCandidate = nextLoadForExercise(templateExercise.name, recentTop, increment);
-          const shouldAddLoad = profile.kind !== "isolation" && recentTop > 0 && recentReps >= profile.upperRep && recentRpe > 0 && recentRpe <= 8.5 && loadCandidate > recentTop;
+          const loadCandidate = resistanceType === "assisted_bodyweight"
+            ? Math.max(0, roundToIncrement(Math.max(0, recentTop - increment), increment))
+            : nextLoadForExercise(templateExercise.name, recentTop, increment);
+          const shouldAddLoad = resistanceType !== "bodyweight" && !["duration", "distance"].includes(resistanceType) && profile.kind !== "isolation" && recentTop > 0 && recentReps >= profile.upperRep && recentRpe > 0 && recentRpe <= 8.5 && loadCandidate !== recentTop;
           if (shouldAddLoad) {
             mode = "load-progression";
-            reason = "You reached the top of the programmed rep range at a manageable RPE, so the next available load increment is appropriate.";
+            reason = resistanceType === "assisted_bodyweight"
+              ? "You reached the top of the programmed rep range at a manageable RPE, so the next assistance reduction is appropriate."
+              : resistanceType === "bodyweight_plus_load"
+                ? "You reached the top of the programmed rep range at a manageable RPE, so the next added-load increment is appropriate."
+                : "You reached the top of the programmed rep range at a manageable RPE, so the next available load increment is appropriate.";
             weight = loadCandidate;
             reps = Math.max(profile.lowerRep, Math.min(profile.upperRep, targetReps - Math.max(2, Math.round((profile.upperRep - profile.lowerRep) * 0.35))));
           } else {
@@ -2315,7 +2439,7 @@
         } else if (recommendation?.decision === "deload") {
           mode = "deload";
           reason = "Recent work suggests fatigue or misses. Reduce load and volume.";
-          weight = recentTop > 0 ? roundToIncrement(recentTop * 0.9, increment) : 0;
+          weight = recentTop > 0 ? roundToIncrement(recentTop * (resistanceType === "assisted_bodyweight" ? 1.1 : 0.9), increment) : 0;
           sets = Math.max(1, Math.ceil(plannedSets * 0.65));
           reps = Math.max(profile.lowerRep, Math.min(reps, profile.upperRep));
           rpe = Number(templateExercise.targetRpe || 6.5);
@@ -2338,6 +2462,9 @@
           weight,
           rpe,
           weightUnit: data.settings.weightUnit,
+          resistanceType,
+          addedLoad: resistanceType === "bodyweight_plus_load" ? weight : 0,
+          assistanceLoad: resistanceType === "assisted_bodyweight" ? weight : 0,
           isBodyweight: knownBodyweight,
           isDeload: mode === "deload",
           reason,
@@ -2375,13 +2502,15 @@
 
       function validatePrescription(target, recentSets, profile) {
         const result = { ...target };
-        const recentTop = Math.max(0, ...recentSets.map((set) => Number(set.weight || 0)));
+        const assisted = result.resistanceType === "assisted_bodyweight";
+        const recentValues = recentSets.map((set) => resistanceLoad(set, result.resistanceType)).filter((value) => value > 0);
+        const recentTop = recentValues.length ? (assisted ? Math.min(...recentValues) : Math.max(...recentValues)) : 0;
         const recentTopSets = recentSets.filter((set) => Number(set.weight || 0) === recentTop);
         const recentBest = recentTopSets.slice().sort((a, b) => b.reps - a.reps)[0];
         const intentionalRegression = ["deload", "light", "technique", "return"].includes(result.mode);
         const guardrails = [];
         result.reps = Math.max(profile.lowerRep, Math.min(profile.upperRep, Number(result.reps || profile.lowerRep)));
-        if (recentBest && !intentionalRegression) {
+        if (recentBest && !intentionalRegression && !assisted) {
           const loadDrop = recentTop > 0 && result.weight > 0 ? 1 - result.weight / recentTop : 0;
           const loweredEffort = recentBest.rpe > 0 && result.rpe < recentBest.rpe;
           if (loadDrop > 0.1 && result.reps >= recentBest.reps - 1) {
@@ -2393,12 +2522,14 @@
             guardrails.push("prevented load and effort from both regressing in a normal session");
           }
         }
+        if (result.resistanceType === "bodyweight_plus_load") result.addedLoad = Number(result.weight || 0);
+        if (result.resistanceType === "assisted_bodyweight") result.assistanceLoad = Number(result.weight || 0);
         if (guardrails.length) result.reason += " Guardrail: " + guardrails.join("; ") + ".";
         return result;
       }
 
       function targetText(target, reason) {
-        const weightText = target.isBodyweight ? "body weight" : target.weight > 0 ? target.weight + " " + (target.weightUnit || data.settings.weightUnit) : "a controlled starting load";
+        const weightText = formatResistance(target);
         return "Target " + target.sets + " x " + target.reps + " @ " + weightText + ", aim RPE " + target.rpe + ". " + reason;
       }
 
@@ -2416,6 +2547,7 @@
         };
         const patterns = [
           { match: /neck curl|neck flexion|neck extension|neck harness|neck lateral/, sets: "2-4 controlled sets", reps: "10-20 reps", cues: ["Move slowly through a comfortable range.", "Keep the jaw relaxed and avoid jerking into end range.", "Progress conservatively; small muscles do not need big jumps."] },
+          { match: /side plank/, sets: "2-4 controlled sets", reps: "8-20 reps or timed sets", cues: ["Keep ribs and pelvis stacked instead of rotating toward the floor.", "Move through the trunk under control without pushing from the shoulder.", "Add reps or a small external load only after the same range stays crisp."] },
           { match: /seated leg curl|lying leg curl|standing leg curl|nordic curl|hamstring curl|leg curl/, sets: "2-5 hard sets", reps: "8-15 reps", cues: ["Keep hips pinned and control the stretched position.", "Curl without letting the low back or hips pop up.", "Add reps before load when the contraction gets sloppy."] },
           { match: /squat|leg press|lunge|split squat/, sets: "3-5 hard sets", reps: "5-12 reps", cues: ["Brace before the descent and keep pressure through midfoot.", "Let knees track with toes; do not dive-bomb the bottom.", "Use a depth you can repeat without lumbar rounding."] },
           { match: /deadlift|rdl|romanian|hinge|good morning/, sets: "2-4 hard sets", reps: "5-10 reps", cues: ["Start by pushing hips back, not by squatting the weight.", "Keep lats tight and the load close to the body.", "End the set when back position or hamstring tension breaks."] },
@@ -2518,13 +2650,14 @@
               name: exercise.name || "Exercise",
               primaryMuscle: exercise.primaryMuscle || "",
               secondaryMuscle: exercise.secondaryMuscle || "",
-              isBodyweight: Boolean(exercise.isBodyweight),
+              resistanceType: resistanceTypeFor(exercise),
+              isBodyweight: isBodyweightResistance(resistanceTypeFor(exercise)),
               sets: Math.max(sets.filter((set) => !set.isWarmup).length, 1),
               reps: sets.find((set) => !set.isWarmup)?.reps || 8,
               targetRpe: sets.find((set) => !set.isWarmup)?.rpe || "",
               increment: progressionProfileForExercise(exercise.name).increment,
               restSeconds: exercise.restSeconds || recommendedRestSeconds(exercise.name, { reps: sets.find((set) => !set.isWarmup)?.reps || 8 }),
-              warmups: sets.filter((set) => set.isWarmup).map((set) => ({ reps: set.reps, weight: set.weight, weightUnit: set.weightUnit, isBodyweight: set.isBodyweight, rpe: set.rpe }))
+              warmups: sets.filter((set) => set.isWarmup).map((set) => ({ reps: set.reps, weight: set.weight, weightUnit: set.weightUnit, resistanceType: set.resistanceType, isBodyweight: set.isBodyweight, addedLoad: set.addedLoad, assistanceLoad: set.assistanceLoad, rpe: set.rpe }))
             };
           });
         return { id: id(), name: (session.title || "Workout") + " Template", notes: "", exercises, createdAt: isoNow(), updatedAt: isoNow() };
@@ -2598,7 +2731,7 @@
       function resizeExerciseNameFields() {
         root.querySelectorAll(".exercise-name-field").forEach((field) => {
           field.style.height = "auto";
-          field.style.height = Math.max(38, field.scrollHeight) + "px";
+          field.style.height = Math.max(38, field.scrollHeight + 2) + "px";
         });
       }
 
@@ -2735,7 +2868,7 @@
               ${exercises.map((exercise) => {
                 const sets = setsForExercise(exercise.id).filter((set) => !set.isWarmup);
                 const first = sets[0] || createSet(exercise.id, 1);
-                const loadText = first.weight > 0 ? first.weight + " " + (first.weightUnit || data.settings.weightUnit) : "BW/control";
+                const loadText = formatResistance(first, exercise);
                 return `
                   <div class="plan-card">
                     <header><strong>${escapeHtml(exercise.name)}</strong><span class="status-pill" data-plan-count="${exercise.id}">${sets.length} sets</span></header>
@@ -2875,7 +3008,7 @@
           return `<section class="view dashboard-detail-view">${renderDashboardDetailHeader(session.title || "Workout", formatDate(session.date), true)}
             <div class="dashboard-summary-row"><div><strong>${facts.durationMinutes}m</strong><span>${facts.estimatedDuration ? "estimated duration" : "duration"}</span></div><div><strong>${facts.exercises.length}</strong><span>exercises</span></div><div><strong>${facts.completed.length}</strong><span>completed sets</span></div></div>
             ${facts.prs.length ? '<div class="pr-celebration"><strong>Personal records</strong>' + facts.prs.map((pr) => '<span>' + escapeHtml(pr.exercise + ': ' + pr.type + ' - ' + pr.value) + '</span>').join('') + '</div>' : '<div class="summary-muted">No PRs recorded for this session.</div>'}
-            <div class="detail-facts">${facts.exercises.map((exercise) => { const completed = facts.completed.filter((set) => set.exerciseId === exercise.id); return '<div class="detail-fact"><strong>' + escapeHtml(exercise.name) + '</strong><span>' + completed.length + ' completed set' + (completed.length === 1 ? '' : 's') + ': ' + escapeHtml(completed.map((set) => set.reps + ' × ' + (set.isBodyweight ? 'BW' : set.weight + ' ' + (set.weightUnit || data.settings.weightUnit)) + (set.rpe ? ' @ RPE ' + set.rpe : '')).join(', ') || 'No completed working sets') + '</span></div>'; }).join('')}</div>
+            <div class="detail-facts">${facts.exercises.map((exercise) => { const completed = facts.completed.filter((set) => set.exerciseId === exercise.id); return '<div class="detail-fact"><strong>' + escapeHtml(exercise.name) + '</strong><span>' + completed.length + ' completed set' + (completed.length === 1 ? '' : 's') + ': ' + escapeHtml(completed.map((set) => formatSetPerformance(set, exercise)).join(', ') || 'No completed working sets') + '</span></div>'; }).join('')}</div>
             ${session.notes ? '<div class="inline-panel"><strong>Session notes</strong><p class="settings-note">' + escapeHtml(session.notes) + '</p></div>' : ''}
           </section>`;
         }
@@ -3070,7 +3203,7 @@
             </div>
             <div class="exercise-level-controls">
               <label class="deload-toggle ${exercise.isDeload ? "active" : ""}"><input type="checkbox" data-action="exercise-deload" data-exercise-id="${exercise.id}" ${exercise.isDeload ? "checked" : ""} />Deload this exercise <span>${exercise.isDeload ? "Marked" : ""}</span></label>
-              <label class="bodyweight"><input type="checkbox" data-action="exercise-bodyweight" data-exercise-id="${exercise.id}" ${exercise.isBodyweight ? "checked" : ""} />Body weight</label>
+              <label class="resistance-type-control"><span>Resistance</span><select data-action="exercise-resistance-type" data-exercise-id="${exercise.id}" aria-label="Resistance type for ${escapeHtml(exercise.name)}">${resistanceTypeOptions(resistanceTypeFor(exercise))}</select></label>
             </div>
             ${exercise.adjustmentReason ? '<p class="settings-note"><strong>Recovery adjustment:</strong> ' + escapeHtml(exercise.adjustmentReason) + '</p>' : ""}
             ${renderPrescriptionBrief(exercise)}
@@ -3098,19 +3231,28 @@
 
       function renderSet(set, exercise) {
         const restSeconds = Number(exercise.restSeconds || recommendedRestSeconds(exercise.name, { reps: set.reps, rpe: set.rpe }));
+        const resistanceType = resistanceTypeFor(exercise, set);
         const visualState = setVisualState(set);
         const isNext = visualState === "current";
         const previousSets = set.isWarmup ? [] : getMostRecentWorkoutSets(exercise.name, { excludeSessionId: exercise.sessionId });
         const previous = previousSets.find((item) => item.setNumber === set.setNumber) || previousSets[set.setNumber - 1];
-        const previousText = previous
-          ? "Last time: " + previous.reps + " reps @ " + (previous.isBodyweight ? "body weight" : previous.weight + " " + (previous.weightUnit || data.settings.weightUnit)) + (previous.rpe ? " · RPE " + previous.rpe : "")
-          : "";
+        const previousText = previous ? "Last time: " + formatSetPerformance(previous, exercise) : "";
+        const performanceField = resistanceType === "duration"
+          ? '<label class="set-field"><span>Seconds</span><input type="number" min="0" value="' + Number(set.durationSeconds || 0) + '" data-action="set-duration" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' seconds" /></label>'
+          : resistanceType === "distance"
+            ? '<label class="set-field"><span>Distance</span><input type="number" min="0" step="0.1" value="' + Number(set.distance || 0) + '" data-action="set-distance" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' distance" /></label>'
+            : '<label class="set-field"><span>Reps</span><input type="number" min="0" value="' + set.reps + '" data-action="set-reps" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' reps" /></label>';
+        const loadField = resistanceType === "bodyweight"
+          ? '<div class="set-field"><span>Load</span><div class="resistance-readout">BW</div></div>'
+          : resistanceType === "duration" || resistanceType === "distance"
+            ? '<div class="set-field"><span>Load</span><div class="resistance-readout">—</div></div>'
+            : '<label class="set-field"><span>' + (resistanceType === 'bodyweight_plus_load' ? 'Added' : resistanceType === 'assisted_bodyweight' ? 'Assist' : 'Load') + '</span><input type="number" min="0" step="0.5" value="' + resistanceLoad(set, resistanceType) + '" data-action="set-weight" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' ' + (resistanceType === 'bodyweight_plus_load' ? 'added load' : resistanceType === 'assisted_bodyweight' ? 'assistance load' : 'load') + '" /></label>';
         return `
           <div id="set-${set.id}" data-set-state="${visualState}" class="set-block ${visualState === "completed" ? "completed" : ""} ${isNext ? "next-set" : ""} ${isNext && activeSetAcknowledged ? "acknowledged" : ""} ${visualState === "edited" ? "edited-set" : ""} ${visualState === "skipped" ? "skipped-set" : ""}">
             <div class="set-row ${visualState === "completed" ? "completed" : "pending"} ${set.isWarmup ? "warmup" : ""}">
               <div class="set-field set-index"><span>Set</span><strong>${set.isWarmup ? "WU" : set.setNumber}</strong></div>
-              <label class="set-field"><span>Reps</span><input type="number" min="0" value="${set.reps}" data-action="set-reps" data-set-id="${set.id}" aria-label="Set ${set.setNumber} reps" /></label>
-              <label class="set-field"><span>Load</span><input type="number" min="0" value="${set.weight}" data-action="set-weight" data-set-id="${set.id}" aria-label="Set ${set.setNumber} load" /></label>
+              ${performanceField}
+              ${loadField}
               <label class="set-field"><span>RPE</span><input type="number" min="0" max="10" step="0.5" value="${set.rpe}" data-action="set-rpe" data-set-id="${set.id}" aria-label="Set ${set.setNumber} RPE" /></label>
               <div class="set-field set-status"><span>Status</span><button class="check-button ${set.completed ? "checked" : ""}" type="button" data-action="toggle-set" data-set-id="${set.id}" title="${set.completed ? "Completed" : "Mark set complete"}" aria-label="${set.completed ? "Set completed" : "Mark set complete"}" aria-pressed="${set.completed ? "true" : "false"}">${icon.done}</button></div>
             </div>
@@ -3131,13 +3273,13 @@
       function renderPrescriptionBrief(exercise) {
         const target = exercise.prescription;
         if (!target) return "";
-        const load = target.isBodyweight ? "body weight" : target.weight + " " + (target.weightUnit || data.settings.weightUnit);
+        const load = formatResistance(target, exercise);
         const label = target.isDeload ? "Deload prescription" : target.mode === "technique" ? "Technique prescription" : "Recommended";
-        return '<details class="prescription-brief ' + (target.isDeload ? 'deload' : '') + '"><summary><strong>' + escapeHtml(label + ': ' + target.sets + ' × ' + target.reps + ' @ ' + load + ' · RPE ' + target.rpe) + '</strong><span>Why?</span></summary><span>' + escapeHtml(target.reason) + '</span><span>' + escapeHtml((target.confidence || 'low') + ' confidence · Rep range ' + target.repLow + '-' + target.repHigh + ' · Increment ' + target.increment + ' ' + data.settings.weightUnit) + '</span></details>';
+        return '<details class="prescription-brief ' + (target.isDeload ? 'deload' : '') + '"><summary data-action="toggle-prescription-rationale" aria-label="Why this recommendation?"><strong>' + escapeHtml(label + ': ' + target.sets + ' × ' + target.reps + ' @ ' + load + ' · RPE ' + target.rpe) + '</strong><span class="why-link">Why this recommendation?</span></summary><span>' + escapeHtml(target.reason) + '</span><span>' + escapeHtml((target.confidence || 'low') + ' confidence · Rep range ' + target.repLow + '-' + target.repHigh + ' · Increment ' + target.increment + ' ' + data.settings.weightUnit) + '</span></details>';
       }
 
       function renderPlateCalculator(exercise, set) {
-        if (!set || set.isBodyweight || exercise.isBodyweight || !isBarbellExercise(exercise.name)) return "";
+        if (!set || resistanceTypeFor(exercise, set) !== "external" || !isBarbellExercise(exercise.name)) return "";
         const total = Number(set.weight || 0);
         const unit = set.weightUnit || data.settings.weightUnit;
         const bar = unit === "kg" ? 20 : 45;
@@ -3254,8 +3396,9 @@
                         <label class="template-meta">Target RPE<input type="number" min="5" max="10" step="0.5" value="${exercise.targetRpe || 8}" data-action="template-exercise-rpe" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" /></label>
                         <label class="template-meta">Load increment<input type="number" min="0.5" step="0.5" value="${exercise.increment || progressionProfileForExercise(exercise.name).increment}" data-action="template-exercise-increment" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" /></label>
                       </div>
+                      <label class="template-meta">Resistance type<select data-action="template-exercise-resistance" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}">${resistanceTypeOptions(exercise.resistanceType || inferResistanceType(exercise.name, exercise))}</select></label>
                       <label class="template-meta">Rest seconds<input type="number" min="15" step="15" value="${exercise.restSeconds || recommendedRestSeconds(exercise.name, { reps: exercise.reps })}" data-action="template-exercise-rest" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" /></label>
-                      <div class="template-warmups"><strong>Warm-ups</strong>${(exercise.warmups || []).map((set, warmupIndex) => '<span>' + escapeHtml(set.reps) + ' reps @ ' + escapeHtml(set.weight) + ' ' + escapeHtml(set.weightUnit || data.settings.weightUnit) + '</span><button class="mini-button" type="button" data-action="remove-template-warmup" data-template-id="' + template.id + '" data-template-exercise-id="' + exercise.id + '" data-warmup-index="' + warmupIndex + '">Remove</button>').join("") || '<span>None yet</span>'}<button class="mini-button" type="button" data-action="add-template-warmup" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}">+ Warm-up</button></div>
+                      <div class="template-warmups"><strong>Warm-ups</strong>${(exercise.warmups || []).map((set, warmupIndex) => '<span>' + escapeHtml(set.reps + ' reps × ' + formatResistance(set, exercise)) + '</span><button class="mini-button" type="button" data-action="remove-template-warmup" data-template-id="' + template.id + '" data-template-exercise-id="' + exercise.id + '" data-warmup-index="' + warmupIndex + '">Remove</button>').join("") || '<span>None yet</span>'}<button class="mini-button" type="button" data-action="add-template-warmup" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}">+ Warm-up</button></div>
                       <button class="mini-button danger" type="button" data-action="delete-template-exercise" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}">Remove exercise</button>
                     </li>
                   `).join("")}
@@ -3386,33 +3529,59 @@
         const score = Math.round(clamp(categories.reduce((sum, category) => sum + category.points, 0), 0, 100));
         const interpretation = score >= 90 ? "Excellent hypertrophy-supportive training" : score >= 80 ? "Very good" : score >= 70 ? "Good, with identifiable improvements" : score >= 60 ? "Mixed" : score >= 40 ? "Significant issues are limiting progress" : "Training quality and consistency need attention";
         const completedSets = weeks.reduce((sum, week) => sum + Number(week.completedSets || 0), 0);
+        const plannedSets = weeks.reduce((sum, week) => sum + Number(week.plannedSets || 0), 0);
+        const repRangeTracked = weeks.reduce((sum, week) => sum + Number(week.repRangeTracked || 0), 0);
+        const repRangeHits = weeks.reduce((sum, week) => sum + Number(week.repRangeHits || 0), 0);
         const rpeLogged = weeks.reduce((sum, week) => sum + Number(week.rpeLogged || 0), 0);
+        const rpeOnTarget = weeks.reduce((sum, week) => sum + Number(week.rpeOnTarget || 0), 0);
         const comparable = weeks.reduce((sum, week) => sum + Number(week.comparableComparisons || 0), 0);
+        const regressions = weeks.reduce((sum, week) => sum + Number(week.regressions || 0), 0);
+        const fatigueHigh = weeks.reduce((sum, week) => sum + Number(week.fatigueHigh || 0), 0);
+        const fatigueModerate = weeks.reduce((sum, week) => sum + Number(week.fatigueModerate || 0), 0);
+        const volumeTargetsTracked = weeks.reduce((sum, week) => sum + Number(week.volumeTargetsTracked || 0), 0);
+        const volumeTargetsHit = weeks.reduce((sum, week) => sum + Number(week.volumeTargetsHit || 0), 0);
         const exerciseChangeRate = average(weeks.map((week) => Number(week.exerciseChangeRate || 0)), 0);
         const rpeCoverage = ratio(rpeLogged, completedSets, 0);
         const confidence = weeks.length >= 6 && comparable >= 6 && rpeCoverage >= 0.65 && exerciseChangeRate <= 0.35 ? "high" : weeks.length >= 3 && completedSets >= 12 && rpeCoverage >= 0.35 ? "moderate" : "low";
 
         const positives = [];
         if (progressionQuality >= 0.68) positives.push({ title: "Performance trends are moving productively", detail: Math.round(progressionQuality * 100) + "% of comparable outcomes improved or held with useful effort." });
-        if (repQuality >= 0.78) positives.push({ title: "Rep ranges are being executed well", detail: Math.round(repQuality * 100) + "% of tracked sets landed in range." });
-        if (rpeQuality >= 0.75) positives.push({ title: "Effort is well managed", detail: Math.round(rpeQuality * 100) + "% of logged RPE values aligned with the prescription." });
+        if (repQuality >= 0.9) positives.push({ title: "Rep ranges are being executed well", detail: repRangeHits + " of " + repRangeTracked + " tracked sets (" + Math.round(repQuality * 100) + "%) landed in range." });
+        if (rpeLogged > 0 && rpeQuality >= 0.9) positives.push({ title: "Effort is well managed", detail: rpeOnTarget + " of " + rpeLogged + " logged RPE values (" + Math.round(rpeQuality * 100) + "%) aligned with the prescription." });
         if (completionQuality >= 0.9) positives.push({ title: "Training is consistent", detail: Math.round(completionQuality * 100) + "% of planned working sets were completed." });
         if (!positives.length) positives.push({ title: "A usable baseline is established", detail: completedSets + " completed working sets provide a concrete starting point for the next block." });
 
-        const issueDetails = {
-          progression: "Comparable performance is not improving consistently across the selected weeks.",
-          execution: "Too many working sets are outside their programmed rep ranges.",
-          rpe: rpeCoverage < 0.35 ? "RPE coverage is too sparse for a confident effort assessment." : "Actual effort often misses the programmed RPE target.",
-          volume: "Weekly muscle volume is inconsistent or frequently outside the programmed ranges.",
-          consistency: "Skipped, missed, or incomplete prescribed sets are reducing repeatable training exposure.",
-          fatigue: "Current fatigue flags indicate unresolved performance or recovery pressure."
+        const categoryByKey = new Map(categories.map((category) => [category.key, category]));
+        const improvements = [];
+        const addImprovement = (key, detail, evidence, threshold, action) => {
+          const category = categoryByKey.get(key);
+          if (!category || category.points >= category.max) return;
+          improvements.push({ key, title: category.label, detail, evidence, threshold, action, severity: 1 - category.points / category.max });
         };
-        const improvements = [...categories]
-          .sort((a, b) => a.points / a.max - b.points / b.max)
-          .slice(0, 4)
-          .map((category) => ({ key: category.key, title: category.label, detail: issueDetails[category.key], evidence: category.detail, action: category.action }));
+        if (comparable >= 2 && (progressionQuality < 0.72 || regressions > 0)) {
+          addImprovement("progression", "Comparable performance has not progressed reliably.", comparable + " comparable outcomes included " + regressions + " regression" + (regressions === 1 ? "" : "s") + "; productive trend rate was " + Math.round(progressionQuality * 100) + "%.", "Target: at least 72% productive comparable outcomes with no repeated regressions.", "Add a rep or the smallest available load only after the top of the programmed range is repeated at the intended RPE.");
+        }
+        if (repRangeTracked >= 3 && repQuality < 0.9) {
+          addImprovement("execution", "A meaningful share of working sets fell outside the programmed rep range.", repRangeHits + " of " + repRangeTracked + " sets were in range (" + Math.round(repQuality * 100) + "%).", "Target: at least 90% of tracked working sets in range.", "Adjust load so the next comparable sets remain inside the prescribed rep range before progressing.");
+        }
+        if (completedSets >= 4 && rpeCoverage < 0.35) {
+          addImprovement("rpe", "RPE coverage is too sparse to evaluate effort confidently.", rpeLogged + " of " + completedSets + " completed sets included RPE (" + Math.round(rpeCoverage * 100) + "%).", "Target: RPE logged for at least 35% of completed working sets.", "Log RPE on the final hard set of each exercise, then expand coverage when practical.");
+        } else if (rpeLogged >= 3 && rpeQuality < 0.85) {
+          addImprovement("rpe", "Logged effort repeatedly missed the intended RPE band.", rpeOnTarget + " of " + rpeLogged + " RPE entries were within one point of target (" + Math.round(rpeQuality * 100) + "%).", "Target: at least 85% of logged sets within one RPE point of the prescription.", "Hold or reduce the load slightly until most working sets finish inside the intended effort band.");
+        }
+        if (volumeTargetsTracked >= 2 && (volumeTargetQuality < 0.85 || (weeks.length >= 2 && volumeStability < 0.7))) {
+          addImprovement("volume", "Weekly volume was outside target or changed too abruptly.", volumeTargetsHit + " of " + volumeTargetsTracked + " tracked targets were in range; volume stability was " + Math.round(volumeStability * 100) + "%.", "Target: at least 85% target coverage and 70% week-to-week stability.", "Return volume to the programmed range and stabilize it before adding more sets.");
+        }
+        if (plannedSets >= 4 && completionQuality < 0.9) {
+          addImprovement("consistency", "Prescribed working sets were not completed consistently.", completedSets + " of " + plannedSets + " planned sets were completed (" + Math.round(completionQuality * 100) + "%).", "Target: at least 90% completion of planned working sets.", "Complete the existing prescription consistently before expanding volume or exercise count.");
+        }
+        if (fatigueHigh > 0 || fatigueModerate > 0) {
+          addImprovement("fatigue", "Training data triggered unresolved fatigue signals.", fatigueHigh + " high-concern and " + fatigueModerate + " moderate fatigue signal" + (fatigueHigh + fatigueModerate === 1 ? " was" : "s were") + " recorded.", "Target: no unresolved high-concern flags and a downward trend in moderate flags.", "Resolve high-concern flags first, then hold load or volume until comparable performance stabilizes.");
+        }
+        improvements.sort((a, b) => b.severity - a.severity);
         const actions = improvements.slice(0, 3).map((item) => ({ title: item.action, detail: item.evidence, key: item.key }));
-        return { score, interpretation, confidence, categories, positives: positives.slice(0, 4), improvements, actions, rpeCoverage, comparable, completedSets, ...selection };
+        const metrics = { completedSets, plannedSets, repRangeTracked, repRangeHits, rpeLogged, rpeOnTarget, comparable, regressions, fatigueHigh, fatigueModerate, volumeTargetsTracked, volumeTargetsHit };
+        return { score, interpretation, confidence, categories, positives: positives.slice(0, 4), improvements, actions, metrics, rpeCoverage, comparable, completedSets, ...selection };
       }
       // HYPERTROPHY_SCORE_ENGINE_END
 
@@ -3471,8 +3640,11 @@
               stats.completedSets += 1;
               const reps = Number(set.reps || 0);
               const load = Number(set.weight || 0);
-              week.repRangeTracked += 1;
-              if (reps >= repLow && reps <= repHigh) week.repRangeHits += 1;
+              const resistanceType = resistanceTypeFor(exercise, set);
+              if (!["duration", "distance"].includes(resistanceType)) {
+                week.repRangeTracked += 1;
+                if (reps >= repLow && reps <= repHigh) week.repRangeHits += 1;
+              }
               const actualRpe = Number(set.rpe || 0);
               const targetRpe = Number(set.targetRpe || prescription.rpe || prescription.targetRpe || 8);
               if (actualRpe > 0) {
@@ -3481,8 +3653,13 @@
                 stats.rpeCount += 1;
                 if (Math.abs(actualRpe - targetRpe) <= 1) week.rpeOnTarget += 1;
               }
-              week.volumeTotal += load * reps;
-              stats.bestEstimatedOneRepMax = Math.max(stats.bestEstimatedOneRepMax, estimatedOneRepMax(set));
+              if (resistanceType === "external") week.volumeTotal += load * reps;
+              const performanceValue = ["external", "bodyweight_plus_load"].includes(resistanceType) ? estimatedOneRepMax(set)
+                : resistanceType === "assisted_bodyweight" ? Math.max(0, 10000 - resistanceLoad(set, resistanceType) * 10 + reps)
+                  : resistanceType === "duration" ? Number(set.durationSeconds || 0)
+                    : resistanceType === "distance" ? Number(set.distance || 0)
+                      : reps;
+              stats.bestEstimatedOneRepMax = Math.max(stats.bestEstimatedOneRepMax, performanceValue);
               if (load > stats.topWeight) { stats.topWeight = load; stats.maxRepsAtTopWeight = reps; }
               else if (load === stats.topWeight) stats.maxRepsAtTopWeight = Math.max(stats.maxRepsAtTopWeight, reps);
               musclesForExercise(exercise).forEach(({ muscle, weight }) => week.muscleSets.set(muscle, (week.muscleSets.get(muscle) || 0) + weight));
@@ -3579,6 +3756,11 @@
         result.scopeType = scope.type;
         result.scopeId = scope.exerciseId;
         result.scopeLabel = scope.type === "exercise" ? (exerciseCatalog().find((item) => item.id === scope.exerciseId)?.name || "Selected exercise") : "Overall program";
+        result.scoreTitle = scope.type === "exercise" ? result.scopeLabel + " Hypertrophy Score" : "Overall Program Hypertrophy Score";
+        const periodDescription = offset > 0 ? "the selected prior six-week qualifying non-deload window" : "the latest six qualifying non-deload weeks";
+        result.scopeDescription = scope.type === "exercise"
+          ? "Evaluates only submitted " + result.scopeLabel + " working sets from " + periodDescription + "."
+          : "Evaluates training quality across all included muscle groups, exercises, and submitted working sets from " + periodDescription + ".";
         hypertrophyScoreCache = { dataRef: data, key, result };
         return result;
       }
@@ -3587,22 +3769,38 @@
         const scoped = getExerciseSets(exerciseName, { canonicalExerciseId: options.canonicalExerciseId });
         const exerciseById = new Map(scoped.exercises.map((exercise) => [exercise.id, exercise]));
         const sessionById = new Map(data.sessions.map((session) => [session.id, session]));
+        const resistanceType = options.resistanceType || scoped.exercises.map((exercise) => resistanceTypeFor(exercise)).find(Boolean) || "external";
         const byWeek = new Map();
-        scoped.sets.filter((set) => set.completed && !set.isWarmup && set.reps > 0).forEach((set) => {
+        scoped.sets.filter((set) => set.completed && !set.isWarmup && (set.reps > 0 || set.durationSeconds > 0 || set.distance > 0)).forEach((set) => {
           const exercise = exerciseById.get(set.exerciseId);
           const session = exercise ? sessionById.get(exercise.sessionId) : null;
           if (!session || !isSessionSubmitted(session)) return;
           const week = session.date;
-          const bucket = byWeek.get(week) || { week, e1rm: 0, volume: 0, details: [] };
-          bucket.e1rm = Math.max(bucket.e1rm, estimatedOneRepMax(set));
-          bucket.volume += set.weight * set.reps;
-          bucket.details.push({ reps: set.reps, weight: set.weight, rpe: set.rpe, setNumber: set.setNumber, sessionTitle: session.title, sessionDate: session.date });
+          const bucket = byWeek.get(week) || { week, primary: resistanceType === "assisted_bodyweight" ? Infinity : 0, secondary: 0, details: [] };
+          const load = resistanceLoad(set, resistanceType);
+          const primaryValue = resistanceType === "external" ? estimatedOneRepMax(set)
+            : resistanceType === "bodyweight_plus_load" ? load
+              : resistanceType === "assisted_bodyweight" ? load
+                : resistanceType === "duration" ? Number(set.durationSeconds || 0)
+                  : resistanceType === "distance" ? Number(set.distance || 0)
+                    : Number(set.reps || 0);
+          bucket.primary = resistanceType === "assisted_bodyweight" ? Math.min(bucket.primary, primaryValue || Infinity) : Math.max(bucket.primary, primaryValue);
+          bucket.secondary += resistanceType === "external" ? load * set.reps : resistanceType === "duration" ? Number(set.durationSeconds || 0) : resistanceType === "distance" ? Number(set.distance || 0) : Number(set.reps || 0);
+          bucket.details.push({ ...set, resistanceType, addedLoad: set.addedLoad, assistanceLoad: set.assistanceLoad, sessionTitle: session.title, sessionDate: session.date });
           byWeek.set(week, bucket);
         });
         const weeks = Array.from(byWeek.values()).sort((a, b) => a.week.localeCompare(b.week)).slice(-16);
+        const labels = resistanceType === "external" ? { primaryTitle: "Estimated 1RM", secondaryTitle: "Volume load", primaryMetric: "e1rm", secondaryMetric: "conventional_volume", latestPrimary: "Latest e1RM", latestSecondary: "Latest volume" }
+          : resistanceType === "bodyweight_plus_load" ? { primaryTitle: "Added load", secondaryTitle: "Completed reps", primaryMetric: "added_load", secondaryMetric: "completed_reps", latestPrimary: "Latest added load", latestSecondary: "Latest reps" }
+            : resistanceType === "assisted_bodyweight" ? { primaryTitle: "Assistance load (lower is progress)", secondaryTitle: "Completed reps", primaryMetric: "assistance_load", secondaryMetric: "completed_reps", latestPrimary: "Latest assistance", latestSecondary: "Latest reps" }
+              : resistanceType === "duration" ? { primaryTitle: "Best duration", secondaryTitle: "Total duration", primaryMetric: "duration", secondaryMetric: "duration_total", latestPrimary: "Best duration", latestSecondary: "Total duration" }
+                : resistanceType === "distance" ? { primaryTitle: "Best distance", secondaryTitle: "Total distance", primaryMetric: "distance", secondaryMetric: "distance_total", latestPrimary: "Best distance", latestSecondary: "Total distance" }
+                  : { primaryTitle: "Best set reps", secondaryTitle: "Completed reps", primaryMetric: "bodyweight_reps", secondaryMetric: "completed_reps", latestPrimary: "Best reps", latestSecondary: "Latest reps" };
         return {
-          e1rm: weeks.map((week) => ({ label: formatDate(week.week), date: week.week, value: Math.round(week.e1rm * 10) / 10, details: week.details })),
-          volume: weeks.map((week) => ({ label: formatDate(week.week), date: week.week, value: Math.round(week.volume), details: week.details }))
+          resistanceType,
+          ...labels,
+          e1rm: weeks.map((week) => ({ label: formatDate(week.week), date: week.week, value: Number.isFinite(week.primary) ? Math.round(week.primary * 10) / 10 : 0, metricType: labels.primaryMetric, details: week.details })),
+          volume: weeks.map((week) => ({ label: formatDate(week.week), date: week.week, value: Math.round(week.secondary * 10) / 10, metricType: labels.secondaryMetric, details: week.details }))
         };
       }
 
@@ -3670,17 +3868,27 @@
 
       function renderChartPointDetail(chartKey, title, point, points) {
         const exerciseName = selectedExerciseName();
+        const exercise = selectedExerciseRecord();
         const index = points.findIndex((item) => item.date === point.date && item.value === point.value);
         const previous = index > 0 ? points[index - 1] : null;
         const comparison = previous && previous.value ? ((point.value - previous.value) / previous.value) * 100 : null;
         const close = '<button class="icon-button" type="button" data-action="close-chart-point" aria-label="Close chart detail">X</button>';
         if (chartKey === "e1rm") {
+          if (point.metricType !== "e1rm") {
+            const best = [...point.details].sort((a, b) => point.metricType === "assistance_load" ? Number(a.weight || 0) - Number(b.weight || 0) : Number(b.weight || 0) - Number(a.weight || 0) || Number(b.reps || 0) - Number(a.reps || 0))[0];
+            const unitLabel = ["added_load", "assistance_load"].includes(point.metricType) ? " " + data.settings.weightUnit : point.metricType.includes("duration") ? " sec" : point.metricType.includes("distance") ? " m" : " reps";
+            return '<article class="chart-detail" role="status"><div class="row split"><strong>' + escapeHtml(title + ' · ' + point.value + unitLabel) + '</strong>' + close + '</div><div class="chart-detail-facts"><div><span>Date</span><strong>' + formatDate(point.date) + '</strong></div><div><span>Exercise</span><strong>' + escapeHtml(exerciseName) + '</strong></div><div><span>Best set</span><strong>' + escapeHtml(best ? formatSetPerformance(best, exercise) : '-') + '</strong></div><div><span>Metric</span><strong>' + escapeHtml(title) + '</strong></div></div><small>Bodyweight resistance is tracked through reps, effort, and explicit added or assistance load. This is not treated as total system load.</small></article>';
+          }
           const best = [...point.details].filter((set) => set.weight > 0).sort((a, b) => estimatedOneRepMax(b) - estimatedOneRepMax(a))[0];
           const priorMax = Math.max(0, ...points.slice(0, Math.max(0, index)).map((item) => item.value));
           const isPr = point.value > priorMax;
           return '<article class="chart-detail" role="status"><div class="row split"><strong>Estimated 1RM · ' + point.value + ' ' + data.settings.weightUnit + '</strong>' + close + '</div><div class="chart-detail-facts"><div><span>Date</span><strong>' + formatDate(point.date) + '</strong></div><div><span>Exercise</span><strong>' + escapeHtml(exerciseName) + '</strong></div><div><span>Load × reps</span><strong>' + escapeHtml(best ? best.weight + ' ' + data.settings.weightUnit + ' × ' + best.reps : '-') + '</strong></div><div><span>RPE</span><strong>' + escapeHtml(best?.rpe || '-') + '</strong></div></div><small>Epley estimate: load × (1 + reps ÷ 30).' + (isPr ? ' Personal record for the available history.' : '') + '</small></article>';
         }
         if (chartKey === "volume") {
+          if (point.metricType !== "conventional_volume") {
+            const contributing = point.details.slice().sort((a, b) => a.setNumber - b.setNumber);
+            return '<article class="chart-detail volume-chart-detail" role="status"><div class="row split"><div><span class="section-kicker">Selected exercise work</span><strong>' + escapeHtml(title + ' · ' + point.value) + '</strong></div>' + close + '</div><div class="chart-detail-facts"><div><span>Date</span><strong>' + formatDate(point.date) + '</strong></div><div><span>Exercise</span><strong>' + escapeHtml(exerciseName) + '</strong></div><div><span>Sets included</span><strong>' + contributing.length + '</strong></div><div><span>Vs previous</span><strong>' + (comparison == null ? 'Baseline' : (comparison >= 0 ? '+' : '') + comparison.toFixed(1) + '%') + '</strong></div></div><div class="volume-set-list">' + contributing.map((set, index) => '<div class="volume-set-row"><strong>Set ' + (set.setNumber > 0 ? set.setNumber : index + 1) + '</strong><div class="volume-set-main"><strong>' + escapeHtml(formatSetPerformance(set, exercise)) + '</strong><span>' + resistanceTypeLabel(set.resistanceType) + '</span></div><div class="volume-set-total"><span>Contribution</span><strong>' + (point.metricType.includes('duration') ? Number(set.durationSeconds || 0) + ' sec' : point.metricType.includes('distance') ? Number(set.distance || 0) + ' m' : Number(set.reps || 0) + ' reps') + '</strong></div></div>').join('') + '</div><small>No unsupported bodyweight-based volume load is estimated.</small></article>';
+          }
           const contributing = point.details.filter((set) => set.weight > 0).sort((a, b) => a.setNumber - b.setNumber);
           return '<article class="chart-detail volume-chart-detail" role="status"><div class="row split"><div><span class="section-kicker">Selected exercise volume</span><strong>Volume load · ' + point.value.toLocaleString() + ' ' + data.settings.weightUnit + '</strong></div>' + close + '</div><div class="chart-detail-facts"><div><span>Date</span><strong>' + formatDate(point.date) + '</strong></div><div><span>Exercise</span><strong>' + escapeHtml(exerciseName) + '</strong></div><div><span>Sets included</span><strong>' + contributing.length + '</strong></div><div><span>Vs previous</span><strong>' + (comparison == null ? 'Baseline' : (comparison >= 0 ? '+' : '') + comparison.toFixed(1) + '%') + '</strong></div></div><div class="volume-set-list">' + contributing.map((set, index) => { const setVolume = Number(set.weight || 0) * Number(set.reps || 0); return '<div class="volume-set-row"><strong>Set ' + (set.setNumber > 0 ? set.setNumber : index + 1) + '</strong><div class="volume-set-main"><strong>' + set.weight + ' ' + data.settings.weightUnit + ' × ' + set.reps + '</strong><span>' + (set.rpe ? 'RPE ' + set.rpe : 'RPE not recorded') + '</span></div><div class="volume-set-total"><span>Set volume</span><strong>' + setVolume.toLocaleString() + ' ' + data.settings.weightUnit + '</strong></div></div>'; }).join('') + '</div><small>' + escapeHtml(contributing[0]?.sessionTitle || '') + ' · Total reflects this exercise only.</small></article>';
         }
@@ -3720,14 +3928,14 @@
             : "This is provisional. More submitted workouts, RPE entries, and comparable exercise exposures are needed.";
         return `<section class="hypertrophy-detail" aria-label="Hypertrophy Score explanation for ${escapeHtml(analysis.scopeLabel)}">
           <div><div class="section-kicker">${escapeHtml(analysis.scopeLabel)} · Score summary</div><h2>${analysis.score} / 100 · ${escapeHtml(analysis.interpretation)}</h2></div>
-          <p>This score evaluates how supportive the submitted ${analysis.scopeType === "exercise" ? "training for this exact exercise variation" : "program"} has been for hypertrophy. It does not measure or guarantee actual muscle gain.</p>
+          <p>${escapeHtml(analysis.scopeDescription)} It evaluates training quality and progression signals; it does not measure or guarantee actual muscle gain.</p>
           <div><h3>Weeks analyzed</h3><div class="score-week-list">${analysis.included.map((week) => '<span class="score-week-chip">' + formatWeek(week.weekStart).replace('Week of ', '') + '</span>').join('')}</div></div>
           ${analysis.skippedDeloadWeeks.length ? '<div><h3>Skipped deload weeks</h3><div class="score-week-list">' + analysis.skippedDeloadWeeks.map((week) => '<span class="score-week-chip deload">' + formatWeek(week.weekStart).replace('Week of ', '') + ' · Deload</span>').join('') + '</div></div>' : ''}
           ${analysis.incompleteWeeks.length ? '<div><h3>Low-data weeks not counted</h3><div class="score-week-list">' + analysis.incompleteWeeks.map((week) => '<span class="score-week-chip">' + formatWeek(week.weekStart).replace('Week of ', '') + '</span>').join('') + '</div></div>' : ''}
-          <div><h3>Category breakdown</h3><div class="score-category-list">${analysis.categories.map((category) => '<details class="score-category"><summary><strong>' + escapeHtml(category.label) + '</strong><span>' + category.points.toFixed(1) + ' / ' + category.max + '</span></summary><div><span>' + escapeHtml(category.detail) + '</span><strong>How to improve</strong><span>' + escapeHtml(category.action) + '</span></div></details>').join('')}</div></div>
+          <div><h3>Category breakdown</h3><div class="score-category-list">${analysis.categories.map((category) => { const onTarget = category.points / category.max >= 0.95; return '<details class="score-category"><summary><strong>' + escapeHtml(category.label) + '</strong><span>' + category.points.toFixed(1) + ' / ' + category.max + '</span></summary><div><span>' + escapeHtml(category.detail) + '</span><strong>' + (onTarget ? 'Status' : 'How to improve') + '</strong><span>' + escapeHtml(onTarget ? 'On target. Maintain this pattern.' : category.action) + '</span></div></details>'; }).join('')}</div></div>
           <div><h3>What is going well</h3><div class="score-findings">${analysis.positives.map((item) => '<div class="score-finding"><strong>' + escapeHtml(item.title) + '</strong><span>' + escapeHtml(item.detail) + '</span></div>').join('')}</div></div>
-          <div><h3>What could be improved</h3><div class="score-findings">${analysis.improvements.slice(0, 3).map((item) => '<div class="score-finding improve"><strong>' + escapeHtml(item.title) + '</strong><span>' + escapeHtml(item.detail) + ' ' + escapeHtml(item.evidence) + '</span><span><strong>Why it matters:</strong> This category limits repeatable hypertrophy stimulus across the selected block.</span><span><strong>Next action:</strong> ' + escapeHtml(item.action) + '</span></div>').join('')}</div></div>
-          <div><h3>How to improve this score</h3><div class="score-actions">${analysis.actions.map((item) => '<div class="score-action"><strong>' + escapeHtml(item.title) + '</strong><span>' + escapeHtml(item.detail) + '</span></div>').join('')}</div></div>
+          <div><h3>What could be improved</h3>${analysis.improvements.length ? '<div class="score-findings">' + analysis.improvements.slice(0, 3).map((item) => '<div class="score-finding improve"><strong>' + escapeHtml(item.title) + '</strong><span>' + escapeHtml(item.detail) + '</span><span><strong>Observed:</strong> ' + escapeHtml(item.evidence) + '</span><span><strong>Expected:</strong> ' + escapeHtml(item.threshold) + '</span><span><strong>Next action:</strong> ' + escapeHtml(item.action) + '</span></div>').join('') + '</div>' : '<div class="score-no-weakness"><strong>No material weaknesses identified</strong><span>Maintain the current progression and execution pattern. The app will surface an opportunity when a recorded metric crosses its documented threshold.</span></div>'}</div>
+          ${analysis.actions.length ? '<div><h3>How to improve this score</h3><div class="score-actions">' + analysis.actions.map((item) => '<div class="score-action"><strong>' + escapeHtml(item.title) + '</strong><span>' + escapeHtml(item.detail) + '</span></div>').join('') + '</div></div>' : ''}
           <div class="inline-panel"><strong>${analysis.confidence.charAt(0).toUpperCase() + analysis.confidence.slice(1)} confidence</strong><p class="settings-note">${escapeHtml(confidenceReason)}</p></div>
         </section>`;
       }
@@ -3739,7 +3947,7 @@
         const weekText = analysis.included.length + (analysis.included.length === 1 ? " qualifying week" : " qualifying weeks") + (analysis.provisional ? " · Provisional" : "");
         return `<div class="hypertrophy-score-wrap">
           <button class="hypertrophy-score-card" type="button" data-action="toggle-hypertrophy-score" aria-expanded="${hypertrophyScoreExpanded ? 'true' : 'false'}" style="--score:${analysis.score}">
-            <div><span class="hypertrophy-score-title">${escapeHtml(analysis.scopeLabel)} Hypertrophy Score</span><strong class="hypertrophy-score-number">${analysis.score} <small>/ 100</small></strong></div>
+            <div><span class="hypertrophy-score-title">${escapeHtml(analysis.scoreTitle)}</span><strong class="hypertrophy-score-number">${analysis.score} <small>/ 100</small></strong><span class="hypertrophy-score-scope">${escapeHtml(analysis.scopeDescription)}</span></div>
             <span class="hypertrophy-score-ring" aria-hidden="true"><span>${analysis.score}</span></span>
             <div class="hypertrophy-score-bar"><span></span></div>
             <div class="hypertrophy-score-meta"><strong>${escapeHtml(analysis.interpretation)}</strong><span>${escapeHtml(hypertrophyWindowLabel(analysis))}</span><span>${escapeHtml(weekText)}</span><span>${escapeHtml(trend)}</span><span>${escapeHtml(analysis.confidence)} confidence</span><span>${hypertrophyScoreExpanded ? 'Hide analysis' : 'Open analysis'} ›</span></div>
@@ -3757,10 +3965,10 @@
         const exercise = selectedExerciseRecord();
         const selectedName = exercise?.name || "";
         const weeks = selectedName ? summarizeExerciseByWeek(selectedName, { canonicalExerciseId: selectedExerciseId }) : [];
-        const progress = selectedName ? exerciseProgressSeries(selectedName, { canonicalExerciseId: selectedExerciseId }) : { e1rm: [], volume: [] };
+        const progress = selectedName ? exerciseProgressSeries(selectedName, { canonicalExerciseId: selectedExerciseId, resistanceType: exercise?.resistanceType }) : { e1rm: [], volume: [], primaryTitle: "Estimated 1RM", secondaryTitle: "Volume load", latestPrimary: "Latest e1RM", latestSecondary: "Latest volume", resistanceType: "external" };
         const analysis = hypertrophyAnalysis(hypertrophyWindowOffset, hypertrophyScoreScope, selectedExerciseId);
-        if (!selectedWeek || !weeks.some((week) => week.weekStart === selectedWeek)) selectedWeek = weeks[0]?.weekStart || startOfWeekIso(todayIso());
-        const recommendation = selectedName ? recommendForExerciseWeek(selectedName, selectedWeek, { canonicalExerciseId: selectedExerciseId }) : null;
+        const latestReviewWeek = weeks[0]?.weekStart || "";
+        const recommendation = selectedName && latestReviewWeek ? recommendForExerciseWeek(selectedName, latestReviewWeek, { canonicalExerciseId: selectedExerciseId }) : null;
         if (catalog.length === 0) {
           return '<section class="view charts-view"><div class="screen-heading"><div><div class="section-kicker">Charts</div><h1>Lift progress</h1></div></div><div class="empty-state">Log an exercise, then this screen will show progression charts and next-step guidance.</div></section>';
         }
@@ -3772,19 +3980,18 @@
             <div class="chart-control-panel" aria-label="Chart controls">
               <div class="chart-control-field chart-control-lift"><label for="chart-exercise-search">Chart lift</label><div class="chart-search-input"><input id="chart-exercise-search" type="search" data-action="review-exercise-input" role="combobox" aria-autocomplete="list" aria-controls="chart-exercise-suggestions" aria-expanded="${chartExerciseSearchOpen ? 'true' : 'false'}" aria-label="Search or select exercise" autocomplete="off" value="${escapeHtml(chartExerciseDraft || selectedName)}" /><button class="chart-search-clear" type="button" data-action="clear-chart-exercise-search" aria-label="Clear exercise search">×</button></div><div id="chart-exercise-suggestions" class="exercise-suggestions" role="listbox" ${chartExerciseSearchOpen ? '' : 'hidden'}>${renderExerciseSuggestions()}</div><small class="exercise-search-error" role="status" ${chartExerciseSearchError ? '' : 'hidden'}>${escapeHtml(chartExerciseSearchError)}</small></div>
               <div class="score-scope-field"><span>Score scope</span><div class="score-scope-control" role="group" aria-label="Hypertrophy Score scope"><button type="button" data-action="set-hypertrophy-scope" data-scope="overall" aria-pressed="${hypertrophyScoreScope === 'overall'}">Overall program</button><button type="button" data-action="set-hypertrophy-scope" data-scope="exercise" aria-pressed="${hypertrophyScoreScope === 'exercise'}">Selected lift</button></div></div>
-              <label class="chart-control-field"><span>Lift review week</span><select data-action="review-week" aria-label="Lift review week">${weeks.map((week) => '<option value="' + week.weekStart + '" ' + (week.weekStart === selectedWeek ? "selected" : "") + '>' + formatWeek(week.weekStart) + (week.isDeload ? ' · Deload' : '') + '</option>').join("")}</select></label>
-              <label class="chart-control-field"><span>Score window</span><select data-action="hypertrophy-window" aria-label="Hypertrophy Score window">${analysis.windowOptions.length ? analysis.windowOptions.map((option) => '<option value="' + option.offset + '" ' + (option.offset === hypertrophyWindowOffset ? 'selected' : '') + '>' + escapeHtml(hypertrophyWindowLabel(option.selection)) + '</option>').join('') : '<option value="0">Latest qualifying weeks</option>'}</select></label>
+              <label class="chart-control-field analysis-period-control"><span>Analysis period</span><select data-action="hypertrophy-window" aria-label="Hypertrophy Score analysis period">${analysis.windowOptions.length ? analysis.windowOptions.map((option, index) => '<option value="' + option.offset + '" ' + (option.offset === hypertrophyWindowOffset ? 'selected' : '') + '>' + escapeHtml((index === 0 ? 'Latest six qualifying weeks' : 'Previous six-week window ' + index) + ' · ' + hypertrophyWindowLabel(option.selection)) + '</option>').join('') : '<option value="0">Latest six qualifying weeks</option>'}</select></label>
               <p class="chart-control-context">${hypertrophyScoreScope === 'exercise' ? 'Score, rationale, weeks, and actions use only submitted ' + escapeHtml(selectedName) + ' history. Equipment and named variations remain separate.' : 'Score and rationale evaluate the overall submitted program.'} Lift charts and coaching use ${escapeHtml(selectedName)}.</p>
             </div>
             ${renderHypertrophyScore(analysis)}
-            <div class="chart-metric-row"><div><span>Latest e1RM</span><strong>${latestOneRm ? latestOneRm.value : "-"}</strong></div><div><span>Latest volume</span><strong>${latestVolume ? latestVolume.value : "-"}</strong></div><div><span>Data points</span><strong>${progress.e1rm.filter((point) => point.value > 0).length}</strong></div></div>
-            ${renderLiftProgressSummary(weeks, selectedWeek)}
+            <div class="chart-metric-row"><div><span>${escapeHtml(progress.latestPrimary)}</span><strong>${latestOneRm ? latestOneRm.value : "-"}</strong></div><div><span>${escapeHtml(progress.latestSecondary)}</span><strong>${latestVolume ? latestVolume.value : "-"}</strong></div><div><span>Data points</span><strong>${progress.e1rm.filter((point) => point.value > 0).length}</strong></div></div>
+            ${latestReviewWeek && progress.resistanceType === 'external' ? renderLiftProgressSummary(weeks, latestReviewWeek) : ''}
             ${recommendation ? '<details class="compact-disclosure"><summary>Coach recommendation <span>' + escapeHtml(recommendation.label) + '</span></summary><div class="disclosure-body">' + renderRecommendation(recommendation) + '</div></details>' : ""}
             <section class="screen-section">
               <div class="section-heading"><div><h2>Progress charts</h2><p>Tap a point to see its value, date, and session context.</p></div></div>
               <div class="chart-list">
-                ${renderChart("e1rm", "Estimated 1RM", progress.e1rm, "No weighted completed sets yet.")}
-                ${renderChart("volume", "Volume load", progress.volume, "No volume load yet. Bodyweight-only sets will show once load is added.")}
+                ${renderChart("e1rm", progress.primaryTitle, progress.e1rm, "No comparable completed sets yet.")}
+                ${renderChart("volume", progress.secondaryTitle, progress.volume, "No completed work is available for this metric yet.")}
               </div>
             </section>
             <section class="screen-section trend-section"><div class="section-heading"><div><h2>Recent weeks</h2></div></div><div class="trend-table">
@@ -3883,7 +4090,9 @@
             <details class="settings-group"><summary>Rest timer and alerts <span class="status-pill ${pushStatus.className}">${pushStatus.label}</span></summary><div class="disclosure-body settings-panel">
               <label class="toggle-line"><input type="checkbox" data-action="timer-notifications" ${data.settings.timerNotifications !== false ? "checked" : ""} />Rest notifications</label>
               <label class="toggle-line"><input type="checkbox" data-action="timer-sound" ${data.settings.timerSound !== false ? "checked" : ""} />Foreground completion sound</label>
+              <label class="toggle-line"><input type="checkbox" data-action="workout-completion-sound" ${data.settings.workoutCompletionSound !== false ? "checked" : ""} />Workout and PR completion sound</label>
               <label class="toggle-line"><input type="checkbox" data-action="timer-vibration" ${data.settings.timerVibration !== false ? "checked" : ""} />Browser vibration where supported</label>
+              <label class="toggle-line"><input type="checkbox" data-action="interaction-vibration" ${data.settings.interactionVibration !== false ? "checked" : ""} />Interaction vibration where supported</label>
               <label>Default rest duration<input type="number" min="15" max="900" step="15" value="${Number(data.settings.defaultRestSeconds || 90)}" data-action="default-rest-seconds" /></label>
               <label>Notification detail<select data-action="notification-detail"><option value="exercise-set" ${data.settings.notificationMessageDetail !== "private" ? "selected" : ""}>Exercise and upcoming set</option><option value="private" ${data.settings.notificationMessageDetail === "private" ? "selected" : ""}>Private: next set ready</option></select></label>
               <label class="toggle-line"><input type="checkbox" data-action="auto-start-rest" ${data.settings.autoStartRestTimer !== false ? "checked" : ""} />Start rest automatically after a completed set</label>
@@ -3991,7 +4200,14 @@
 
       function patchSetValue(setId, field, value, shouldRender = true) {
         acknowledgeActiveSet(setId);
-        patchSet(setId, { [field]: Number(value), edited: true }, shouldRender);
+        const set = data.sets.find((item) => item.id === setId);
+        const exercise = set ? data.exercises.find((item) => item.id === set.exerciseId) : null;
+        const resistanceType = resistanceTypeFor(exercise, set);
+        const numeric = Number(value);
+        const patch = { [field]: numeric, edited: true };
+        if (field === "weight" && resistanceType === "bodyweight_plus_load") patch.addedLoad = numeric;
+        if (field === "weight" && resistanceType === "assisted_bodyweight") patch.assistanceLoad = numeric;
+        patchSet(setId, patch, shouldRender);
       }
 
       function toggleSetCompletion(setId) {
@@ -4081,15 +4297,16 @@
         const session = activeSession();
         const name = addExerciseDraft;
         if (!session || !name || !name.trim()) return;
-        const exercise = { id: id(), sessionId: session.id, name: name.trim(), primaryMuscle: addExercisePrimaryMuscle, secondaryMuscle: addExerciseSecondaryMuscle, notes: "", order: activeExercises().length, restSeconds: recommendedRestSeconds(name.trim()), isBodyweight: false, isDeload: false };
+        const resistanceType = inferResistanceType(name.trim());
+        const exercise = { id: id(), sessionId: session.id, name: name.trim(), primaryMuscle: addExercisePrimaryMuscle, secondaryMuscle: addExerciseSecondaryMuscle, notes: "", order: activeExercises().length, restSeconds: recommendedRestSeconds(name.trim()), resistanceType, isBodyweight: isBodyweightResistance(resistanceType), isDeload: false };
         addExerciseDraft = "";
         addExercisePrimaryMuscle = "";
         addExerciseSecondaryMuscle = "";
-        commit({ ...data, exercises: [...data.exercises, exercise], sets: [...data.sets, createSet(exercise.id, 1)] });
+        commit({ ...data, exercises: [...data.exercises, exercise], sets: [...data.sets, createSet(exercise.id, 1, { resistanceType })] });
       }
 
       function addTemplate() {
-        const template = { id: id(), name: "New Template", notes: "", exercises: [{ id: id(), name: "Exercise", sets: 3, reps: 8, targetRpe: 8, increment: progressionProfileForExercise("Exercise").increment, restSeconds: recommendedRestSeconds("Exercise"), isBodyweight: false, warmups: [] }], createdAt: isoNow(), updatedAt: isoNow() };
+        const template = { id: id(), name: "New Template", notes: "", exercises: [{ id: id(), name: "Exercise", sets: 3, reps: 8, targetRpe: 8, increment: progressionProfileForExercise("Exercise").increment, restSeconds: recommendedRestSeconds("Exercise"), resistanceType: "external", isBodyweight: false, warmups: [] }], createdAt: isoNow(), updatedAt: isoNow() };
         setActiveTab("plan", { renderNow: false });
         commit({ ...data, templates: [template, ...data.templates] });
       }
@@ -4111,7 +4328,7 @@
         commit({
           ...data,
           templates: data.templates.map((template) => template.id === templateId
-              ? { ...template, exercises: [...template.exercises, { id: id(), name: "Exercise", sets: 3, reps: 8, targetRpe: 8, increment: progressionProfileForExercise("Exercise").increment, restSeconds: recommendedRestSeconds("Exercise"), isBodyweight: false, warmups: [] }], updatedAt: isoNow() }
+              ? { ...template, exercises: [...template.exercises, { id: id(), name: "Exercise", sets: 3, reps: 8, targetRpe: 8, increment: progressionProfileForExercise("Exercise").increment, restSeconds: recommendedRestSeconds("Exercise"), resistanceType: "external", isBodyweight: false, warmups: [] }], updatedAt: isoNow() }
             : template)
         });
       }
@@ -4143,18 +4360,18 @@
         const sets = [];
         let adjustedLiftCount = 0;
         template.exercises.forEach((templateExercise, index) => {
-          let historyTarget = { ...coachTargetForTemplateExercise(templateExercise, { excludeSessionId: session.id, template }), isBodyweight: Boolean(templateExercise.isBodyweight) };
-          if (templateExercise.isBodyweight) historyTarget = { ...historyTarget, weight: 0 };
+          const templateResistanceType = templateExercise.resistanceType || inferResistanceType(templateExercise.name, templateExercise);
+          const historyTarget = { ...coachTargetForTemplateExercise(templateExercise, { excludeSessionId: session.id, template }), resistanceType: templateResistanceType, isBodyweight: isBodyweightResistance(templateResistanceType) };
           const target = adjustTargetForRecovery(historyTarget, recoveryAdvice);
           if (target.adjusted) adjustedLiftCount += 1;
           const restSeconds = Number(templateExercise.restSeconds || recommendedRestSeconds(templateExercise.name, { reps: target.reps, rpe: target.rpe, excludeSessionId: session.id }));
-          const exercise = { id: id(), sessionId: session.id, name: templateExercise.name, primaryMuscle: templateExercise.primaryMuscle || "", secondaryMuscle: templateExercise.secondaryMuscle || "", notes: "", prescription: target, adjustmentReason: target.adjustmentReason || "", order: index, restSeconds, isBodyweight: Boolean(target.isBodyweight), isDeload: Boolean(target.isDeload) };
+          const exercise = { id: id(), sessionId: session.id, name: templateExercise.name, primaryMuscle: templateExercise.primaryMuscle || "", secondaryMuscle: templateExercise.secondaryMuscle || "", notes: "", prescription: target, adjustmentReason: target.adjustmentReason || "", order: index, restSeconds, resistanceType: target.resistanceType, isBodyweight: isBodyweightResistance(target.resistanceType), isDeload: Boolean(target.isDeload) };
           exercises.push(exercise);
           (templateExercise.warmups || []).forEach((warmup, warmupIndex) => {
-            sets.push(createSet(exercise.id, -(warmupIndex + 1), { ...warmup, completed: false, isWarmup: true }));
+            sets.push(createSet(exercise.id, -(warmupIndex + 1), { ...warmup, resistanceType: warmup.resistanceType || target.resistanceType, completed: false, isWarmup: true }));
           });
           for (let setNumber = 1; setNumber <= target.sets; setNumber += 1) {
-            sets.push(createSet(exercise.id, setNumber, { reps: target.reps, weight: target.weight, weightUnit: target.weightUnit, isBodyweight: target.isBodyweight, rpe: target.rpe, completed: false, isWarmup: false, targetReps: target.reps, targetWeight: target.weight, targetRpe: target.rpe, prescriptionReason: target.reason, prescriptionMode: target.mode, prescriptionConfidence: target.confidence }));
+            sets.push(createSet(exercise.id, setNumber, { reps: target.reps, weight: target.weight, weightUnit: target.weightUnit, resistanceType: target.resistanceType, isBodyweight: target.isBodyweight, addedLoad: target.addedLoad, assistanceLoad: target.assistanceLoad, rpe: target.rpe, completed: false, isWarmup: false, targetReps: target.reps, targetWeight: target.weight, targetRpe: target.rpe, prescriptionReason: target.reason, prescriptionMode: target.mode, prescriptionConfidence: target.confidence }));
           }
         });
         session.adjustmentSummary = adjustedLiftCount ? adjustedLiftCount + " lift" + (adjustedLiftCount === 1 ? "" : "s") + " adjusted for recovery." : "No recovery adjustments — normal plan and history-based progression.";
@@ -4612,8 +4829,8 @@
         }, 80);
       }
 
-      function primeTimerAlerts() {
-        if (!data.settings.timerSound) return;
+      function primeTimerAlerts(force = false) {
+        if (!force && !data.settings.timerSound) return;
         try {
           const AudioContextClass = window.AudioContext || window.webkitAudioContext;
           if (!AudioContextClass) return;
@@ -4626,7 +4843,7 @@
 
       function playTimerCompletionSound() {
         if (!data.settings.timerSound) return;
-        primeTimerAlerts();
+        primeTimerAlerts(true);
         if (!timerAudioContext) return;
         try {
           const now = timerAudioContext.currentTime;
@@ -4642,6 +4859,32 @@
             gain.connect(timerAudioContext.destination);
             oscillator.start(now + delay);
             oscillator.stop(now + delay + 0.18);
+          });
+        } catch {
+          return;
+        }
+      }
+
+      function playWorkoutCompletionSound(hasPr = false) {
+        if (data.settings.workoutCompletionSound === false) return;
+        primeTimerAlerts(true);
+        if (!timerAudioContext) return;
+        try {
+          const now = timerAudioContext.currentTime;
+          const notes = hasPr ? [523, 659, 784, 1046] : [523, 659, 784];
+          notes.forEach((frequency, index) => {
+            const delay = index * 0.13;
+            const oscillator = timerAudioContext.createOscillator();
+            const gain = timerAudioContext.createGain();
+            oscillator.type = "sine";
+            oscillator.frequency.value = frequency;
+            gain.gain.setValueAtTime(0.0001, now + delay);
+            gain.gain.exponentialRampToValueAtTime(0.16, now + delay + 0.018);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + delay + 0.16);
+            oscillator.connect(gain);
+            gain.connect(timerAudioContext.destination);
+            oscillator.start(now + delay);
+            oscillator.stop(now + delay + 0.17);
           });
         } catch {
           return;
@@ -4720,22 +4963,36 @@
         const priorSessionIds = new Set(data.sessions.filter((item) => item.id !== session.id && isSessionSubmitted(item)).map((item) => item.id));
         const prs = [];
         sessionExercises.forEach((exercise) => {
+          const resistanceType = resistanceTypeFor(exercise);
           const currentSets = setsForExercise(exercise.id).filter((set) => set.completed && !set.isWarmup && set.reps > 0);
           if (!currentSets.length) return;
           const priorSets = data.sets.filter((set) => {
             const priorExercise = data.exercises.find((item) => item.id === set.exerciseId);
-            return set.completed && !set.isWarmup && priorExercise && priorSessionIds.has(priorExercise.sessionId) && exerciseMatches(priorExercise.name, exercise.name);
+            return set.completed && !set.isWarmup && priorExercise && priorSessionIds.has(priorExercise.sessionId) && exerciseMatches(priorExercise.name, exercise.name) && resistanceTypeFor(priorExercise, set) === resistanceType;
           });
-          const maxWeight = Math.max(...currentSets.map((set) => set.weight));
-          const previousMaxWeight = Math.max(0, ...priorSets.map((set) => set.weight));
-          if (maxWeight > previousMaxWeight && maxWeight > 0) prs.push({ exercise: exercise.name, type: "Heaviest load", value: maxWeight + " " + data.settings.weightUnit });
-          currentSets.forEach((set) => {
-            const previousRepsAtLoad = Math.max(0, ...priorSets.filter((prior) => prior.weight === set.weight).map((prior) => prior.reps));
-            if (set.weight > 0 && set.reps > previousRepsAtLoad) prs.push({ exercise: exercise.name, type: "Most reps at load", value: set.reps + " reps @ " + set.weight + " " + data.settings.weightUnit });
-          });
-          const currentE1rm = Math.max(...currentSets.map(estimatedOneRepMax));
-          const previousE1rm = Math.max(0, ...priorSets.map(estimatedOneRepMax));
-          if (currentE1rm > previousE1rm && currentE1rm > 0) prs.push({ exercise: exercise.name, type: "Best estimated performance", value: currentE1rm.toFixed(1) + " e1RM" });
+          if (["external", "bodyweight_plus_load"].includes(resistanceType)) {
+            const maxWeight = Math.max(...currentSets.map((set) => resistanceLoad(set, resistanceType)));
+            const previousMaxWeight = Math.max(0, ...priorSets.map((set) => resistanceLoad(set, resistanceType)));
+            if (maxWeight > previousMaxWeight && maxWeight > 0) prs.push({ exercise: exercise.name, type: resistanceType === "bodyweight_plus_load" ? "Heaviest added load" : "Heaviest load", value: formatResistance({ ...currentSets.find((set) => resistanceLoad(set, resistanceType) === maxWeight), resistanceType }, exercise) });
+            currentSets.forEach((set) => {
+              const load = resistanceLoad(set, resistanceType);
+              const previousRepsAtLoad = Math.max(0, ...priorSets.filter((prior) => resistanceLoad(prior, resistanceType) === load).map((prior) => prior.reps));
+              if (load > 0 && set.reps > previousRepsAtLoad) prs.push({ exercise: exercise.name, type: resistanceType === "bodyweight_plus_load" ? "Most reps at added load" : "Most reps at load", value: formatSetPerformance(set, exercise) });
+            });
+          } else if (resistanceType === "assisted_bodyweight") {
+            const currentAssistance = Math.min(...currentSets.map((set) => resistanceLoad(set, resistanceType)).filter((value) => value > 0));
+            const previousAssistance = Math.min(...priorSets.map((set) => resistanceLoad(set, resistanceType)).filter((value) => value > 0));
+            if (Number.isFinite(currentAssistance) && (!Number.isFinite(previousAssistance) || currentAssistance < previousAssistance)) prs.push({ exercise: exercise.name, type: "Least assistance", value: "BW - " + currentAssistance + " " + data.settings.weightUnit + " assistance" });
+          } else {
+            const currentBest = Math.max(...currentSets.map((set) => resistanceType === "duration" ? set.durationSeconds : resistanceType === "distance" ? set.distance : set.reps));
+            const previousBest = Math.max(0, ...priorSets.map((set) => resistanceType === "duration" ? set.durationSeconds : resistanceType === "distance" ? set.distance : set.reps));
+            if (currentBest > previousBest) prs.push({ exercise: exercise.name, type: resistanceType === "duration" ? "Longest duration" : resistanceType === "distance" ? "Longest distance" : "Most reps", value: formatResistance(currentSets.find((set) => (resistanceType === "duration" ? set.durationSeconds : resistanceType === "distance" ? set.distance : set.reps) === currentBest), exercise) });
+          }
+          if (resistanceType === "external") {
+            const currentE1rm = Math.max(...currentSets.map(estimatedOneRepMax));
+            const previousE1rm = Math.max(0, ...priorSets.map(estimatedOneRepMax));
+            if (currentE1rm > previousE1rm && currentE1rm > 0) prs.push({ exercise: exercise.name, type: "Best estimated performance", value: currentE1rm.toFixed(1) + " e1RM" });
+          }
         });
         return prs.filter((pr, index, all) => all.findIndex((other) => other.exercise === pr.exercise && other.type === pr.type) === index);
       }
@@ -4748,6 +5005,7 @@
         pendingSubmitSessionId = "";
         completedSummarySessionId = session.id;
         commit({ ...data, sessions: data.sessions.map((item) => item.id === session.id ? { ...item, submitted: true, submittedAt: isoNow(), prs, updatedAt: isoNow() } : item) });
+        playWorkoutCompletionSound(prs.length > 0);
       }
 
       function renderSubmitConfirmation(session) {
@@ -4761,7 +5019,7 @@
       function renderCompletedWorkoutSummary(session) {
         const sessionExercises = data.exercises.filter((exercise) => exercise.sessionId === session.id).sort((a, b) => a.order - b.order);
         const prs = session.prs || [];
-        return '<section class="completed-summary"><div class="section-kicker">Workout logged</div><h2>Strong work.</h2><p>' + sessionExercises.length + ' lifts completed. Your charts and volume now include this session.</p>' + (prs.length ? '<div class="pr-celebration"><strong>Personal records</strong>' + prs.map((pr) => '<span>' + escapeHtml(pr.exercise) + ': ' + escapeHtml(pr.type) + ' - ' + escapeHtml(pr.value) + '</span>').join("") + '</div>' : '<div class="summary-muted">No new PR today. Clean, repeatable work is still progress.</div>') + '<div class="summary-lifts">' + sessionExercises.map((exercise) => { const sets = setsForExercise(exercise.id); const warmups = sets.filter((set) => set.isWarmup && set.completed); const work = sets.filter((set) => !set.isWarmup && set.completed); return '<div><strong>' + escapeHtml(exercise.name) + (exercise.isDeload ? ' - Deload' : '') + '</strong><span>' + warmups.length + ' warm-up, ' + work.length + ' working sets: ' + work.map((set) => set.reps + ' x ' + (set.isBodyweight ? 'BW' : set.weight + ' ' + set.weightUnit) + (set.rpe ? ' @ ' + set.rpe : '')).join(', ') + '</span></div>'; }).join("") + '</div><button type="button" data-action="close-completed-summary">Done</button></section>';
+        return '<section class="completed-summary"><div class="section-kicker">Workout logged</div><h2>Strong work.</h2><p>' + sessionExercises.length + ' lifts completed. Your charts and volume now include this session.</p>' + (prs.length ? '<div class="pr-celebration"><strong>Personal records</strong>' + prs.map((pr) => '<span>' + escapeHtml(pr.exercise) + ': ' + escapeHtml(pr.type) + ' - ' + escapeHtml(pr.value) + '</span>').join("") + '</div>' : '<div class="summary-muted">No new PR today. Clean, repeatable work is still progress.</div>') + '<div class="summary-lifts">' + sessionExercises.map((exercise) => { const sets = setsForExercise(exercise.id); const warmups = sets.filter((set) => set.isWarmup && set.completed); const work = sets.filter((set) => !set.isWarmup && set.completed); return '<div><strong>' + escapeHtml(exercise.name) + (exercise.isDeload ? ' - Deload' : '') + '</strong><span>' + warmups.length + ' warm-up, ' + work.length + ' working sets: ' + work.map((set) => formatSetPerformance(set, exercise)).join(', ') + '</span></div>'; }).join("") + '</div><button type="button" data-action="close-completed-summary">Done</button></section>';
       }
 
       function exportData() {
@@ -4837,6 +5095,7 @@
 
       const exerciseMuscleRules = [
         { match: /neck curl|neck flexion|neck extension|neck harness|neck lateral/, muscles: [["Neck", 1]] },
+        { match: /side plank/, muscles: [["Core", 1], ["Glutes", 0.25]] },
         { match: /calf|soleus|gastroc|heel raise/, muscles: [["Calves", 1]] },
         { match: /hip adduction|adductor/, muscles: [["Adductors", 1]] },
         { match: /hip abduction|abductor|clamshell|lateral leg raise|side lying leg raise/, muscles: [["Glutes", 1]] },
@@ -4897,7 +5156,7 @@
             const session = exercise ? sessionById.get(exercise.sessionId) : null;
             return exercise && session ? { set, exercise, session } : null;
           })
-          .filter((entry) => entry && isSessionSubmitted(entry.session) && entry.set.completed && !entry.set.isWarmup && entry.set.reps > 0);
+          .filter((entry) => entry && isSessionSubmitted(entry.session) && entry.set.completed && !entry.set.isWarmup && (entry.set.reps > 0 || entry.set.durationSeconds > 0 || entry.set.distance > 0));
       }
 
       function weeklyMuscleVolume(weekStart = startOfWeekIso(todayIso())) {
@@ -4924,7 +5183,7 @@
             detail.sets += weight;
             if (weight >= 1) detail.directSets += weight;
             else detail.indirectSets += weight;
-            detail.volumeLoad += Number(entry.set.weight || 0) * Number(entry.set.reps || 0) * weight;
+            if (resistanceTypeFor(entry.exercise, entry.set) === "external") detail.volumeLoad += Number(entry.set.weight || 0) * Number(entry.set.reps || 0) * weight;
             detail.sessions.set(entry.session.id, { id: entry.session.id, title: entry.session.title || "Workout", date: entry.session.date });
             bucket.exerciseDetails.set(entry.exercise.name, detail);
           });
@@ -5058,14 +5317,21 @@
       }
 
       function adjustTargetForRecovery(target, recoveryAdvice) {
-        const reducedWeight = (multiplier) => target.weight > 0 ? Math.min(target.weight, roundToIncrement(target.weight * multiplier, Number(target.increment || (data.settings.weightUnit === "kg" ? 2.5 : 5)))) : 0;
+        const reducedWeight = (multiplier) => {
+          if (!(target.weight > 0)) return 0;
+          const increment = Number(target.increment || (data.settings.weightUnit === "kg" ? 2.5 : 5));
+          if (target.resistanceType === "assisted_bodyweight") return roundToIncrement(target.weight * (2 - multiplier), increment);
+          return Math.min(target.weight, roundToIncrement(target.weight * multiplier, increment));
+        };
         if (recoveryAdvice.decision === "rest") {
-          const adjusted = { ...target, mode: "technique", sets: Math.max(1, Math.ceil(target.sets * 0.5)), weight: reducedWeight(0.85), rpe: 6, isDeload: false };
+          const weight = reducedWeight(0.85);
+          const adjusted = { ...target, mode: "technique", sets: Math.max(1, Math.ceil(target.sets * 0.5)), weight, addedLoad: target.resistanceType === "bodyweight_plus_load" ? weight : 0, assistanceLoad: target.resistanceType === "assisted_bodyweight" ? weight : 0, rpe: 6, isDeload: false };
           const reason = "Illness/injury or very low readiness: kept the exercise, cut load about 15% and working sets about 50%, and lowered effort to RPE 6 for technique-focused work.";
           return { ...adjusted, reason, adjusted: true, adjustmentReason: reason, text: targetText(adjusted, reason) };
         }
         if (recoveryAdvice.decision === "deload") {
-          const adjusted = { ...target, mode: "deload", sets: Math.max(1, Math.ceil(target.sets * 0.65)), weight: reducedWeight(0.9), rpe: 6.5, isDeload: true };
+          const weight = reducedWeight(0.9);
+          const adjusted = { ...target, mode: "deload", sets: Math.max(1, Math.ceil(target.sets * 0.65)), weight, addedLoad: target.resistanceType === "bodyweight_plus_load" ? weight : 0, assistanceLoad: target.resistanceType === "assisted_bodyweight" ? weight : 0, rpe: 6.5, isDeload: true };
           const reason = "Low outside-band readiness: kept the exercise, reduced load about 10% and working sets about 35%, and capped effort around RPE 6-7 to prioritize clean technique.";
           return { ...adjusted, reason, adjusted: true, adjustmentReason: reason, text: targetText(adjusted, reason) };
         }
@@ -5101,6 +5367,7 @@
           const templateExercises = sessionExercises.map((exercise) => {
             const exerciseSets = (setsByExercise.get(exercise.id) || []).slice().sort((a, b) => a.setNumber - b.setNumber);
             const completedSets = exerciseSets.filter((set) => set.completed && set.reps > 0);
+            const resistanceType = inferResistanceType(exercise.name, exercise, completedSets);
             const representativeReps = completedSets.length
               ? Math.round(completedSets.reduce((sum, set) => sum + set.reps, 0) / completedSets.length)
               : 8;
@@ -5109,13 +5376,14 @@
               name: exercise.name,
               primaryMuscle: exercise.primaryMuscle || "",
               secondaryMuscle: exercise.secondaryMuscle || "",
-              isBodyweight: completedSets.length > 0 && completedSets.every((set) => set.isBodyweight),
+              resistanceType,
+              isBodyweight: isBodyweightResistance(resistanceType),
               sets: Math.max(completedSets.filter((set) => !set.isWarmup).length || exerciseSets.length, 1),
               reps: Math.max(representativeReps, 1),
               targetRpe: completedSets.some((set) => Number(set.rpe) > 0) ? Math.round((completedSets.filter((set) => Number(set.rpe) > 0).reduce((sum, set) => sum + Number(set.rpe), 0) / completedSets.filter((set) => Number(set.rpe) > 0).length) * 2) / 2 : "",
               increment: progressionProfileForExercise(exercise.name).increment,
               restSeconds: exercise.restSeconds || recommendedRestSeconds(exercise.name, { reps: representativeReps }),
-              warmups: exerciseSets.filter((set) => set.isWarmup).map((set) => ({ reps: set.reps, weight: set.weight, weightUnit: set.weightUnit, isBodyweight: set.isBodyweight, rpe: set.rpe }))
+              warmups: exerciseSets.filter((set) => set.isWarmup).map((set) => ({ reps: set.reps, weight: set.weight, weightUnit: set.weightUnit, resistanceType: set.resistanceType, isBodyweight: set.isBodyweight, addedLoad: set.addedLoad, assistanceLoad: set.assistanceLoad, rpe: set.rpe }))
             };
           });
           if (!templateExercises.length) return null;
@@ -5191,7 +5459,8 @@
           let exercise = exerciseMap.get(exerciseExternalId);
           if (!exercise) {
             const exerciseOrder = exerciseCountsBySession.get(session.id) || 0;
-            exercise = { id: importedId("e"), externalId: exerciseExternalId, source: "strong", sessionId: session.id, name: exerciseName, primaryMuscle: "", secondaryMuscle: "", notes: row.Notes || "", order: exerciseOrder, restSeconds: recommendedRestSeconds(exerciseName), isBodyweight: isBodyweightExerciseName(exerciseName) };
+            const resistanceType = inferResistanceType(exerciseName);
+            exercise = { id: importedId("e"), externalId: exerciseExternalId, source: "strong", sessionId: session.id, name: exerciseName, primaryMuscle: "", secondaryMuscle: "", notes: row.Notes || "", order: exerciseOrder, restSeconds: recommendedRestSeconds(exerciseName), resistanceType, isBodyweight: isBodyweightResistance(resistanceType) };
             exerciseMap.set(exerciseExternalId, exercise);
             exercises.push(exercise);
             exerciseCountsBySession.set(session.id, exerciseOrder + 1);
@@ -5201,6 +5470,8 @@
           }
           const reps = numberFrom(row.Reps);
           const weight = numberFrom(row.Weight);
+          const resistanceType = exercise.resistanceType === "assisted_bodyweight" ? "assisted_bodyweight" : isBodyweightExerciseName(exerciseName) ? (weight > 0 ? "bodyweight_plus_load" : "bodyweight") : exercise.resistanceType || "external";
+          if (resistanceType === "bodyweight_plus_load") { exercise.resistanceType = resistanceType; exercise.isBodyweight = true; }
           const nextSetNumber = (setCountsByExercise.get(exercise.id) || 0) + 1;
           setCountsByExercise.set(exercise.id, nextSetNumber);
           sets.push({
@@ -5210,7 +5481,10 @@
             reps,
             weight,
             weightUnit: data.settings.weightUnit,
-            isBodyweight: isBodyweightExerciseName(exerciseName),
+            resistanceType,
+            isBodyweight: isBodyweightResistance(resistanceType),
+            addedLoad: resistanceType === "bodyweight_plus_load" ? weight : 0,
+            assistanceLoad: resistanceType === "assisted_bodyweight" ? weight : 0,
             rpe: numberFrom(row.RPE),
             completed: true
           });
@@ -5279,13 +5553,52 @@
       }
 
       function isNumericEditAction(action) {
-        return ["set-reps", "set-weight", "set-rpe", "template-exercise-sets", "template-exercise-reps", "template-exercise-rpe", "template-exercise-increment", "template-exercise-rest", "exercise-rest-seconds", "recovery-sleep-hours", "recovery-hrv", "recovery-resting-hr", "template-readiness-sleep-hours", "template-readiness-hrv", "template-readiness-resting-hr", "baseline-sleep-hours", "baseline-sleep-quality", "baseline-hrv", "baseline-resting-hr", "baseline-soreness", "baseline-band"].includes(action);
+        return ["set-reps", "set-weight", "set-rpe", "set-duration", "set-distance", "template-exercise-sets", "template-exercise-reps", "template-exercise-rpe", "template-exercise-increment", "template-exercise-rest", "exercise-rest-seconds", "recovery-sleep-hours", "recovery-hrv", "recovery-resting-hr", "template-readiness-sleep-hours", "template-readiness-hrv", "template-readiness-resting-hr", "baseline-sleep-hours", "baseline-sleep-quality", "baseline-hrv", "baseline-resting-hr", "baseline-soreness", "baseline-band"].includes(action);
       }
+
+      let lastInteractionFeedbackAt = 0;
+
+      function feedbackLevelForAction(action, target) {
+        if (!action) return "none";
+        if (["confirm-submit-workout"].includes(action)) return "success";
+        if (["confirm-delete-template", "confirm-clear-data", "delete-exercise", "delete-set", "delete-template-exercise"].includes(action)) return "warning";
+        if (action === "toggle-set") {
+          const set = data.sets.find((item) => item.id === target?.dataset?.setId);
+          if (!set || set.completed) return "light";
+          const remainingInExercise = data.sets.filter((item) => item.exerciseId === set.exerciseId && !item.isWarmup && !item.completed && !item.skipped && item.id !== set.id).length;
+          return remainingInExercise === 0 ? "success" : "medium";
+        }
+        if (["start-timer", "skip-timer", "start-template", "start-template-with-metrics", "use-usual-readiness", "request-submit-workout", "save-template", "update-template-exercise", "add-set", "add-warmup-set", "duplicate-set"].includes(action)) return "medium";
+        if (["request-delete-template", "clear-data", "toggle-skip-set"].includes(action)) return "warning";
+        if (["set-tab", "adjust-timer", "select-chart-exercise", "show-chart-point", "toggle-prescription-rationale", "open-fatigue-flag", "open-plan-volume-warning", "exercise-deload", "exercise-resistance-type", "exercise-bodyweight", "set-warmup", "timer-sound", "timer-vibration", "workout-completion-sound", "interaction-vibration", "timer-notifications"].includes(action)) return "light";
+        return "none";
+      }
+
+      function performInteractionFeedback(level) {
+        if (!level || level === "none" || data.settings.interactionVibration === false || typeof navigator.vibrate !== "function") return;
+        const now = Date.now();
+        if (now - lastInteractionFeedbackAt < 90) return;
+        lastInteractionFeedbackAt = now;
+        const pattern = ({ light: 10, medium: 22, success: [24, 28, 42], warning: [28, 32, 28], error: [45, 35, 70] })[level];
+        if (pattern) {
+          try { navigator.vibrate(pattern); } catch { /* Visual feedback remains the fallback. */ }
+        }
+      }
+
+      root.addEventListener("pointerdown", (event) => {
+        const target = event.target.closest("button, select, summary[data-action], label.toggle-line, .volume-card");
+        if (!target || target.hasAttribute("disabled")) return;
+        const actionTarget = event.target.closest("[data-action]") || target.querySelector?.("[data-action]");
+        const level = feedbackLevelForAction(actionTarget?.dataset?.action || target.dataset.action, actionTarget || target);
+        target.classList.add("is-pressing", "feedback-" + level);
+        window.setTimeout(() => target.isConnected && target.classList.remove("is-pressing", "feedback-" + level), 180);
+      });
 
       root.addEventListener("click", (event) => {
         const target = event.target.closest("[data-action]");
         if (!target) return;
         const action = target.dataset.action;
+        performInteractionFeedback(feedbackLevelForAction(action, target));
         if (target.classList.contains("sheet-backdrop") && event.target !== target) return;
         if (target.tagName === "INPUT" && isNumericEditAction(action)) {
           target.dataset.replaceOnNextInput = "true";
@@ -5423,7 +5736,8 @@
         if (action === "add-template-warmup") {
           const template = data.templates.find((item) => item.id === target.dataset.templateId);
           const exercise = template?.exercises.find((item) => item.id === target.dataset.templateExerciseId);
-          const warmups = [...(exercise?.warmups || []), { reps: 10, weight: 0, weightUnit: data.settings.weightUnit, isBodyweight: false, rpe: 5 }];
+          const resistanceType = exercise?.resistanceType || inferResistanceType(exercise?.name || "", exercise || {});
+          const warmups = [...(exercise?.warmups || []), { reps: 10, weight: 0, weightUnit: data.settings.weightUnit, resistanceType, isBodyweight: isBodyweightResistance(resistanceType), addedLoad: 0, assistanceLoad: 0, rpe: 5 }];
           patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { warmups });
         }
         if (action === "remove-template-warmup") {
@@ -5463,25 +5777,43 @@
         if (action === "exercise-primary-muscle") patchExercise(target.dataset.exerciseId, { primaryMuscle: target.value });
         if (action === "exercise-secondary-muscle") patchExercise(target.dataset.exerciseId, { secondaryMuscle: target.value });
         if (action === "exercise-deload") patchExercise(target.dataset.exerciseId, { isDeload: target.checked });
+        if (action === "exercise-resistance-type") {
+          const resistanceType = resistanceTypeValues.includes(target.value) ? target.value : "external";
+          commit({
+            ...data,
+            exercises: data.exercises.map((exercise) => {
+              if (exercise.id !== target.dataset.exerciseId) return exercise;
+              const prescriptionWeight = ["bodyweight", "duration", "distance"].includes(resistanceType) ? 0 : Number(exercise.prescription?.weight || 0);
+              const prescription = exercise.prescription ? { ...exercise.prescription, resistanceType, isBodyweight: isBodyweightResistance(resistanceType), weight: prescriptionWeight, addedLoad: resistanceType === "bodyweight_plus_load" ? prescriptionWeight : 0, assistanceLoad: resistanceType === "assisted_bodyweight" ? prescriptionWeight : 0 } : exercise.prescription;
+              return { ...exercise, resistanceType, isBodyweight: isBodyweightResistance(resistanceType), prescription };
+            }),
+            sets: data.sets.map((set) => set.exerciseId === target.dataset.exerciseId ? normalizeResistanceSet({ ...set, weight: ["bodyweight", "duration", "distance"].includes(resistanceType) ? 0 : set.weight }, resistanceType) : set)
+          });
+        }
         if (action === "exercise-bodyweight") {
-          commit({ ...data, exercises: data.exercises.map((exercise) => exercise.id === target.dataset.exerciseId ? { ...exercise, isBodyweight: target.checked } : exercise), sets: data.sets.map((set) => set.exerciseId === target.dataset.exerciseId ? { ...set, isBodyweight: target.checked } : set) });
+          const resistanceType = target.checked ? "bodyweight" : "external";
+          commit({ ...data, exercises: data.exercises.map((exercise) => exercise.id === target.dataset.exerciseId ? { ...exercise, resistanceType, isBodyweight: target.checked } : exercise), sets: data.sets.map((set) => set.exerciseId === target.dataset.exerciseId ? normalizeResistanceSet(set, resistanceType) : set) });
         }
         if (action === "set-warmup") patchSet(target.dataset.setId, { isWarmup: target.checked });
         if (action === "set-reps") patchSetValue(target.dataset.setId, "reps", target.value);
         if (action === "set-weight") patchSetValue(target.dataset.setId, "weight", target.value);
         if (action === "set-rpe") patchSetValue(target.dataset.setId, "rpe", target.value);
+        if (action === "set-duration") patchSetValue(target.dataset.setId, "durationSeconds", target.value);
+        if (action === "set-distance") patchSetValue(target.dataset.setId, "distance", target.value);
         if (action === "exercise-rest-seconds") patchExercise(target.dataset.exerciseId, { restSeconds: Number(target.value) });
         if (action === "template-exercise-rest") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { restSeconds: Number(target.value) });
+        if (action === "template-exercise-resistance") { const resistanceType = resistanceTypeValues.includes(target.value) ? target.value : "external"; patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { resistanceType, isBodyweight: isBodyweightResistance(resistanceType) }); }
         if (action === "template-exercise-rpe") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { targetRpe: Number(target.value) });
         if (action === "template-exercise-increment") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { increment: Number(target.value) });
-        if (action === "review-week") { selectedWeek = target.value; render(); }
         if (action === "hypertrophy-window") { hypertrophyWindowOffset = Math.max(0, Number(target.value || 0)); hypertrophyScoreExpanded = false; render(); }
         if (action === "weight-unit") commit({ ...data, settings: { ...data.settings, weightUnit: target.value } });
         if (action === "theme-mode") commit({ ...data, settings: { ...data.settings, theme: target.value } });
         if (action === "training-goal") commit({ ...data, settings: { ...data.settings, goal: target.value } });
         if (action === "training-status") commit({ ...data, settings: { ...data.settings, trainingStatus: target.value } });
         if (action === "timer-sound") commit({ ...data, settings: { ...data.settings, timerSound: target.checked } });
+        if (action === "workout-completion-sound") commit({ ...data, settings: { ...data.settings, workoutCompletionSound: target.checked } });
         if (action === "timer-vibration") commit({ ...data, settings: { ...data.settings, timerVibration: target.checked } });
+        if (action === "interaction-vibration") commit({ ...data, settings: { ...data.settings, interactionVibration: target.checked } });
         if (action === "timer-notifications") commit({ ...data, settings: { ...data.settings, timerNotifications: target.checked } });
         if (action === "default-rest-seconds") commit({ ...data, settings: { ...data.settings, defaultRestSeconds: Math.max(15, Number(target.value || 90)) } });
         if (action === "notification-detail") commit({ ...data, settings: { ...data.settings, notificationMessageDetail: target.value } });
@@ -5552,6 +5884,8 @@
         if (action === "set-reps") patchSetValue(target.dataset.setId, "reps", target.value);
         if (action === "set-weight") patchSetValue(target.dataset.setId, "weight", target.value);
         if (action === "set-rpe") patchSetValue(target.dataset.setId, "rpe", target.value);
+        if (action === "set-duration") patchSetValue(target.dataset.setId, "durationSeconds", target.value);
+        if (action === "set-distance") patchSetValue(target.dataset.setId, "distance", target.value);
         if (action === "recovery-sleep-hours") patchRecovery({ sleepHours: target.value });
         if (action === "recovery-hrv") patchRecovery({ hrv: target.value });
         if (action === "recovery-resting-hr") patchRecovery({ restingHr: target.value });
@@ -5606,6 +5940,7 @@
             chartExerciseDraft = selectedExerciseName();
             chartExerciseSearchOpen = false;
             chartExerciseSearchError = "No logged exercise matched. The previous lift remains selected.";
+            performInteractionFeedback("error");
             target.value = chartExerciseDraft;
             target.setAttribute("aria-expanded", "false");
             updateExerciseSuggestionList();
@@ -5663,6 +5998,8 @@
         if (action === "set-reps") patchSetValue(target.dataset.setId, "reps", target.value, false);
         if (action === "set-weight") patchSetValue(target.dataset.setId, "weight", target.value, false);
         if (action === "set-rpe") patchSetValue(target.dataset.setId, "rpe", target.value, false);
+        if (action === "set-duration") patchSetValue(target.dataset.setId, "durationSeconds", target.value, false);
+        if (action === "set-distance") patchSetValue(target.dataset.setId, "distance", target.value, false);
         if (action === "exercise-rest-seconds") patchExercise(target.dataset.exerciseId, { restSeconds: Number(target.value) }, false);
         if (action === "template-exercise-rest") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { restSeconds: Number(target.value) }, false);
         if (action === "template-name") patchTemplate(target.dataset.templateId, { name: target.value }, false);

@@ -8,6 +8,7 @@
     "sync:web": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/sync-web.ps1",
     "verify:pwa": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-pwa.ps1",
     "test:hypertrophy": "node scripts/test-hypertrophy-score.js",
+    "test:resistance": "node scripts/test-resistance-model.js",
     "cap:init": "npx cap init \"Comprehensive Fitness\" \"com.emills.comprehensivefitness\" --web-dir www",
     "cap:add:ios": "npx cap add ios",
     "cap:add:android": "npx cap add android",
