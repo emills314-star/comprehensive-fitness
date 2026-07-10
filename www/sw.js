@@ -1,4 +1,4 @@
-const CACHE_NAME = "comprehensive-fitness-pwa-v2";
+const CACHE_NAME = "comprehensive-fitness-pwa-v3";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -43,5 +43,17 @@ self.addEventListener("fetch", (event) => {
           return undefined;
         })
       )
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetUrl = new URL(event.notification.data?.url || "/?workout=active", self.location.origin).href;
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
+      const existing = windows.find((client) => client.url.startsWith(self.location.origin));
+      if (existing) return existing.navigate(targetUrl).then((client) => client.focus());
+      return clients.openWindow(targetUrl);
+    })
   );
 });
