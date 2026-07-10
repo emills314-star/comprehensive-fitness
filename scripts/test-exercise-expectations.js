@@ -14,6 +14,19 @@ const factory = new Function("data", `
   const canonicalExerciseId = (name) => String(name || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-");
   const inferResistanceType = (name, exercise = {}) => exercise.resistanceType || (/pull-up/i.test(name) ? "bodyweight_plus_load" : "external");
   const isSessionSubmitted = (session) => session && session.submitted !== false;
+  const activeHistorySessions = () => data.sessions.filter(isSessionSubmitted);
+  const todayIso = () => "2026-01-31";
+  const normalizeCanonicalSetType = (value, isWarmup = false) => {
+    if (isWarmup) return "warmup";
+    const key = String(value || "straight").toLowerCase().replace(/[^a-z]/g, "");
+    if (key === "warmup" || key === "warmupset") return "warmup";
+    if (key === "top" || key === "topset") return "top";
+    if (key === "backoff" || key === "backoffset") return "backoff";
+    if (key === "drop" || key === "dropset") return "drop";
+    return "straight";
+  };
+  const setTypeSemantics = (set) => ({ type: normalizeCanonicalSetType(set?.setType, set?.isWarmup), isWarmup: normalizeCanonicalSetType(set?.setType, set?.isWarmup) === "warmup" });
+  const isWorkingSet = (set) => !setTypeSemantics(set).isWarmup;
   const startOfWeekIso = (date) => date;
   const resistanceTypeFor = (exercise, set) => set.resistanceType || exercise.resistanceType || "external";
   ${match[1]}
@@ -118,7 +131,7 @@ assert.equal(weighted.resistanceType, "bodyweight_plus_load", "Weighted bodyweig
 assert.match(html, /function renderExerciseExpectations\(exerciseId, analysis\)/, "Charts must render Exercise Expectations");
 assert.match(html, /renderHypertrophyScore\(analysis, \{ deferDetail: true \}\)[\s\S]*renderExerciseExpectations\(selectedExerciseId, analysis\)[\s\S]*renderHypertrophyScoreDetail/, "Expectations must appear between the score and expanded category analysis");
 assert.match(html, /Targets changed during this window/, "Historical target changes must be disclosed");
-assert.match(html, /No active program target/, "Missing targets must have an explicit state");
+assert.match(html, /No active program target|Historical targets only/, "Missing or historical-only targets must have an explicit state");
 assert.match(html, /Excluded from hypertrophy score, hard-set volume, and PR calculations/, "Warm-up exclusions must be visible");
 
 console.log("Exercise expectation tests passed (set types, contexts, history, missing targets, and scoring alignment).");

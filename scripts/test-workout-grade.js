@@ -117,7 +117,7 @@ const oneOutlierResults = [result("progress", 1, 1), result("progress", 1, 1), r
 const oneOutlier = score(metrics({ results: oneOutlierResults }));
 assert.ok(oneOutlier.internalScore >= 90, "One extreme exercise outlier must not destroy an otherwise strong workout");
 
-assert.match(html, /filter\(\(set\) => !set\.isWarmup\)/, "Warm-up sets must be excluded before grading");
+assert.match(html, /filter\(\(set\) => isWorkingSet\(set, "score"\)\)/, "Canonical set semantics must exclude warm-ups before grading");
 assert.match(html, /const workoutAnalysis = calculateWorkoutAnalysis\(completedSession, \{ prs \}\)/, "Submission must calculate structured workout analysis");
 assert.match(html, /workoutAnalysis \}\s*: item/, "The submitted session must persist its workout analysis");
 assert.match(html, /calculateWorkoutAnalysis\(updatedSession, \{ prs \}\)/, "Saving history edits must recalculate the grade");

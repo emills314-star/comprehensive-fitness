@@ -1306,6 +1306,12 @@
       .recommendation p { color: var(--muted); margin: 0; }
       .recommendation strong { color: var(--text); line-height: 1.35; }
       .recommendation ul { color: var(--text); margin: 0; padding-left: 18px; }
+      .recommendation-execution { border-top: 1px solid var(--line); display: grid; gap: 5px; margin-top: 4px; padding-top: 9px; }
+      .recommendation-execution b { font-size: .68rem; text-transform: uppercase; }
+      .recommendation-execution span { background: transparent; border-left: 3px solid currentColor; padding: 4px 8px; }
+      .set-type-editor { align-items: center; display: inline-flex; gap: 6px; min-height: 38px; }
+      .set-type-editor span { color: var(--muted); font-size: .65rem; font-weight: 800; }
+      .set-type-editor select { min-height: 36px; padding: 5px 26px 5px 8px; }
       .recommendation.progress { border-color: var(--green); }
       .recommendation.hold { border-color: var(--amber); }
       .recommendation.deload, .recommendation.change { border-color: var(--red); }
@@ -1616,6 +1622,9 @@
       const DB_NAME = "comprehensive-fitness";
       const DB_VERSION = 1;
       const DB_STORE = "state";
+      const ACTIVE_HISTORY_MONTHS = 6;
+      const SET_CLASSIFIER_VERSION = 2;
+      const DOMAIN_MIGRATION_VERSION = 2;
       const root = document.getElementById("root");
       const defaultReadinessBaseline = { sleepHours: 7.5, sleepQuality: 4, hrv: "", restingHr: "", soreness: 2, band: 8 };
       const defaultSettings = {
@@ -1728,8 +1737,278 @@
       };
 
       function emptyData() {
-        return { sessions: [], exercises: [], sets: [], templates: [], settings: { ...defaultSettings } };
+        return { sessions: [], exercises: [], sets: [], templates: [], rawImports: [], migrationAudit: [], dataRevision: 0, settings: { ...defaultSettings } };
       }
+
+      // DOMAIN_INTEGRITY_ENGINE_START
+      function calendarMonthCutoff(asOfDate, months = ACTIVE_HISTORY_MONTHS) {
+        const parts = String(asOfDate || "").slice(0, 10).split("-").map(Number);
+        if (parts.length !== 3 || parts.some((value) => !Number.isFinite(value))) return "";
+        const [year, month, day] = parts;
+        const target = new Date(year, month - 1 - months, 1);
+        const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+        target.setDate(Math.min(day, lastDay));
+        return localDateIso(target);
+      }
+
+      function sessionCompletionDate(session) {
+        return String(session?.completedAt || session?.submittedAt || session?.date || "").slice(0, 10);
+      }
+
+      function isCompletedWorkout(session) {
+        if (!session || session.deletedAt || session.trashed || session.canceledAt || session.workoutState === "canceled") return false;
+        return session.submitted === true || session.workoutState === "completed" || (session.source === "strong" && session.submitted !== false);
+      }
+
+      function activeCompletedWorkoutHistory(model, options = {}) {
+        const asOfDate = String(options.asOfDate || todayIso()).slice(0, 10);
+        const throughDate = String(options.throughDate || asOfDate).slice(0, 10);
+        const cutoffDate = calendarMonthCutoff(asOfDate, ACTIVE_HISTORY_MONTHS);
+        return (model?.sessions || []).filter((session) => {
+          const completionDate = sessionCompletionDate(session);
+          return isCompletedWorkout(session) && completionDate && completionDate >= cutoffDate && completionDate <= throughDate;
+        });
+      }
+
+      function normalizeCanonicalSetType(value, isWarmup = false) {
+        if (isWarmup) return "warmup";
+        const key = String(value || "straight").toLowerCase().replace(/[^a-z]/g, "");
+        if (["w", "warmup", "warmupset"].includes(key)) return "warmup";
+        if (["top", "topset"].includes(key)) return "top";
+        if (["backoff", "backoffset"].includes(key)) return "backoff";
+        if (["d", "drop", "dropset"].includes(key)) return "drop";
+        if (["f", "failure", "failureset"].includes(key)) return "failure";
+        if (["amrap", "amrapset"].includes(key)) return "amrap";
+        if (["technique", "techniqueset"].includes(key)) return "technique";
+        if (["deload", "deloadset"].includes(key)) return "deload";
+        if (["unknown", "review", "reviewrequired"].includes(key)) return "unknown";
+        return "straight";
+      }
+
+      function setTypeSemantics(set) {
+        const type = normalizeCanonicalSetType(set?.setType, set?.isWarmup);
+        const isWarmup = type === "warmup";
+        return {
+          type,
+          isWarmup,
+          countsTowardScore: set?.countsTowardScore != null ? Boolean(set.countsTowardScore) : !isWarmup && type !== "unknown",
+          countsTowardVolume: set?.countsTowardVolume != null ? Boolean(set.countsTowardVolume) : !isWarmup && type !== "unknown",
+          countsTowardProgression: set?.countsTowardProgression != null ? Boolean(set.countsTowardProgression) : !isWarmup && type !== "unknown"
+        };
+      }
+
+      function isWorkingSet(set, purpose = "score") {
+        const semantics = setTypeSemantics(set);
+        if (semantics.isWarmup || semantics.type === "unknown") return false;
+        if (purpose === "volume") return semantics.countsTowardVolume;
+        if (purpose === "progression" || purpose === "pr") return semantics.countsTowardProgression;
+        return semantics.countsTowardScore;
+      }
+
+      function explicitStrongSetType(value) {
+        const key = String(value || "").trim().toLowerCase();
+        if (["w", "warmup", "warm-up"].includes(key)) return "warmup";
+        if (["d", "drop", "drop set"].includes(key)) return "drop";
+        if (["f", "failure", "failure set"].includes(key)) return "failure";
+        return "";
+      }
+
+      function classifyImportedExerciseSets(sourceSets, resistanceType = "external", source = "strong") {
+        const ordered = sourceSets.map((set, index) => ({ ...set, sequence: Number.isFinite(Number(set.sequence)) ? Number(set.sequence) : index + 1 }));
+        const results = ordered.map((set) => ({ set, type: "", source: "", confidence: 0, reviewRequired: false, reason: "" }));
+        results.forEach((result) => {
+          const set = result.set;
+          if (set.manualOverride || set.classificationSource === "manual") {
+            result.type = normalizeCanonicalSetType(set.setType, set.isWarmup);
+            result.source = "manual";
+            result.confidence = 1;
+            result.reason = "Manual correction preserved.";
+            return;
+          }
+          if (source !== "strong") {
+            result.type = normalizeCanonicalSetType(set.setType, set.isWarmup);
+            result.source = set.classificationSource || "app-explicit";
+            result.confidence = Number(set.classificationConfidence || 1);
+            result.reason = "App-created classification preserved.";
+            return;
+          }
+          const explicit = explicitStrongSetType(set.originalImportedValue?.setOrder || set.sourceSetType || set.sourceSetOrder);
+          if (explicit) {
+            result.type = explicit;
+            result.source = "strong-explicit";
+            result.confidence = 1;
+            result.reason = "Strong supplied an explicit " + explicit + " marker.";
+            return;
+          }
+          if (set.setType && normalizeCanonicalSetType(set.setType, set.isWarmup) !== "straight" && set.classificationSource !== "inferred") {
+            result.type = normalizeCanonicalSetType(set.setType, set.isWarmup);
+            result.source = set.classificationSource || "app-explicit";
+            result.confidence = Number(set.classificationConfidence || 0.95);
+            result.reason = "Existing explicit app classification preserved.";
+          }
+        });
+        if (["bodyweight", "assisted_bodyweight", "duration", "distance"].includes(resistanceType)) {
+          results.forEach((result) => {
+            if (result.type) return;
+            const numericStrongOrder = /^\d+$/.test(String(result.set.originalImportedValue?.setOrder || result.set.sourceSetOrder || "").trim());
+            result.type = numericStrongOrder ? "straight" : "unknown";
+            result.source = numericStrongOrder ? "strong-explicit" : "inferred";
+            result.confidence = numericStrongOrder ? 0.95 : 0.45;
+            result.reviewRequired = !numericStrongOrder;
+            result.reason = numericStrongOrder ? "Strong numeric set order identifies working work without load-ramp inference." : "Load-ramp inference is unsafe for this resistance type.";
+          });
+          return results;
+        }
+        const unresolved = results.map((result, index) => result.type ? -1 : index).filter((index) => index >= 0);
+        const resetIndex = unresolved.find((index, position) => position > 0 && Number(ordered[index].setNumber) <= Number(ordered[unresolved[position - 1]].setNumber));
+        let firstWorkingIndex = results[0]?.type && results[0].type !== "warmup" ? 0 : -1;
+        if (results[0]?.type === "warmup") {
+          const firstNonWarmup = results.findIndex((result) => result.type !== "warmup");
+          if (firstNonWarmup >= 0) firstWorkingIndex = firstNonWarmup;
+        }
+        if (firstWorkingIndex < 0 && resetIndex > 0) {
+          const prefix = ordered.slice(0, resetIndex);
+          const postLoad = Number(ordered[resetIndex]?.weight || 0);
+          const monotonicRamp = prefix.every((set, index) => index === 0 || Number(set.weight || 0) >= Number(prefix[index - 1].weight || 0));
+          const belowWorkingLoad = postLoad > 0 && prefix.every((set) => Number(set.weight || 0) <= postLoad * 0.85);
+          if (monotonicRamp && belowWorkingLoad) {
+            for (let index = 0; index < resetIndex; index += 1) {
+              if (results[index].type) continue;
+              results[index] = { ...results[index], type: "warmup", source: "inferred", confidence: 0.9, reason: "Early ascending load ramp before imported numbering reset." };
+            }
+            firstWorkingIndex = resetIndex;
+          }
+        }
+        if (firstWorkingIndex < 0) firstWorkingIndex = results.findIndex((result) => !result.type);
+        const workingLoads = ordered.slice(Math.max(0, firstWorkingIndex)).map((set) => Number(set.weight || 0));
+        const maxWorkingLoad = Math.max(0, ...workingLoads);
+        results.forEach((result, index) => {
+          if (result.type) return;
+          if (index < firstWorkingIndex) {
+            result.type = "unknown";
+            result.source = "inferred";
+            result.confidence = 0.45;
+            result.reviewRequired = true;
+            result.reason = "Early set could not be separated confidently from working work.";
+            return;
+          }
+          const load = Number(result.set.weight || 0);
+          const laterLower = ordered.slice(index + 1).some((set) => Number(set.weight || 0) < load * 0.98);
+          const priorWorkingLoad = index > firstWorkingIndex ? Number(ordered[index - 1]?.weight || 0) : 0;
+          if (index === firstWorkingIndex && load >= maxWorkingLoad * 0.98 && laterLower) {
+            result.type = "top";
+            result.reason = "First confident working set followed by lower working loads.";
+          } else if (index > firstWorkingIndex && maxWorkingLoad > 0 && load < maxWorkingLoad * 0.98) {
+            result.type = "backoff";
+            result.reason = priorWorkingLoad > 0 && load < priorWorkingLoad * 0.98
+              ? "Load reduction occurred after a confirmed working set; treated as back-off, not warm-up."
+              : "Set remained below the confirmed top-set load; preserved as back-off work.";
+          } else {
+            result.type = "straight";
+            result.reason = "Standard working set after the warm-up prefix.";
+          }
+          result.source = "inferred";
+          result.confidence = result.type === "straight" ? 0.75 : 0.86;
+        });
+        return results;
+      }
+
+      function migrateDomainData(model) {
+        const currentVersion = Number(model.domainMigrationVersion || 0);
+        if (currentVersion >= DOMAIN_MIGRATION_VERSION) return model;
+        const report = { version: DOMAIN_MIGRATION_VERSION, startedAt: isoNow(), inspected: 0, changed: 0, explicitRetained: 0, manualOverridesPreserved: 0, warmups: 0, topSets: 0, backoffSets: 0, dropSets: 0, ambiguous: 0, changes: [] };
+        const exerciseById = new Map((model.exercises || []).map((exercise) => [exercise.id, exercise]));
+        const groups = new Map();
+        (model.sets || []).forEach((set, index) => {
+          if (!groups.has(set.exerciseId)) groups.set(set.exerciseId, []);
+          groups.get(set.exerciseId).push({ ...set, sequence: Number(set.sequence || 0) || groups.get(set.exerciseId).length + 1, _modelIndex: index });
+        });
+        const nextSets = [...(model.sets || [])];
+        groups.forEach((sets, exerciseId) => {
+          const exercise = exerciseById.get(exerciseId);
+          const classifications = classifyImportedExerciseSets(sets, exercise?.resistanceType || "external", exercise?.source || "app");
+          classifications.forEach((classification) => {
+            const original = nextSets[classification.set._modelIndex];
+            report.inspected += 1;
+            if (classification.source === "manual") report.manualOverridesPreserved += 1;
+            else if (classification.source.includes("explicit")) report.explicitRetained += 1;
+            if (classification.type === "warmup") report.warmups += 1;
+            if (classification.type === "top") report.topSets += 1;
+            if (classification.type === "backoff") report.backoffSets += 1;
+            if (classification.type === "drop") report.dropSets += 1;
+            if (classification.reviewRequired) report.ambiguous += 1;
+            const semantics = setTypeSemantics({ ...original, setType: classification.type, isWarmup: classification.type === "warmup" });
+            const changed = normalizeCanonicalSetType(original.setType, original.isWarmup) !== classification.type || Number(original.sequence || 0) !== classification.set.sequence;
+            const migrated = {
+              ...original,
+              sequence: classification.set.sequence,
+              setType: classification.type,
+              isWarmup: semantics.isWarmup,
+              countsTowardScore: semantics.countsTowardScore,
+              countsTowardVolume: semantics.countsTowardVolume,
+              countsTowardProgression: semantics.countsTowardProgression,
+              classificationSource: classification.source,
+              classificationConfidence: classification.confidence,
+              classifierVersion: SET_CLASSIFIER_VERSION,
+              manualOverride: classification.source === "manual",
+              reviewRequired: classification.reviewRequired,
+              originalImportedValue: original.originalImportedValue || { setType: original.setType || "", isWarmup: Boolean(original.isWarmup), setNumber: original.setNumber, setOrder: original.sourceSetOrder || "" },
+              classifiedAt: isoNow()
+            };
+            nextSets[classification.set._modelIndex] = migrated;
+            if (changed) {
+              report.changed += 1;
+              report.changes.push({ setId: original.id, exerciseId, from: normalizeCanonicalSetType(original.setType, original.isWarmup), to: classification.type, reason: classification.reason, confidence: classification.confidence });
+            }
+          });
+        });
+        report.completedAt = isoNow();
+        model.sets = nextSets;
+        const activeSessions = activeCompletedWorkoutHistory(model);
+        const latestStrongByTitle = new Map();
+        activeSessions.filter((session) => session.source === "strong").forEach((session) => {
+          const key = String(session.title || "Strong Workout").trim().toLowerCase();
+          const current = latestStrongByTitle.get(key);
+          if (!current || sessionCompletionDate(session) > sessionCompletionDate(current)) latestStrongByTitle.set(key, session);
+        });
+        report.templatesReseeded = 0;
+        model.templates = (model.templates || []).map((template) => {
+          if (!/imported from strong workout name/i.test(String(template.notes || ""))) return template;
+          const sourceSession = latestStrongByTitle.get(String(template.name || "").trim().toLowerCase());
+          if (!sourceSession) return { ...template, historySeedStatus: "no-active-history", historySeededAt: isoNow() };
+          const sessionExercises = (model.exercises || []).filter((exercise) => exercise.sessionId === sourceSession.id).sort((a, b) => a.order - b.order);
+          const existingByName = new Map((template.exercises || []).map((exercise) => [canonicalExerciseId(exercise.name), exercise]));
+          const exercises = sessionExercises.map((exercise) => {
+            const existing = existingByName.get(canonicalExerciseId(exercise.name)) || {};
+            const exerciseSets = nextSets.filter((set) => set.exerciseId === exercise.id).sort((a, b) => Number(a.sequence || a.setNumber) - Number(b.sequence || b.setNumber));
+            const workingSets = exerciseSets.filter((set) => set.completed && isWorkingSet(set, "progression"));
+            const reps = workingSets.length ? Math.round(workingSets.reduce((sum, set) => sum + Number(set.reps || 0), 0) / workingSets.length) : Number(existing.reps || 8);
+            const rpeSets = workingSets.filter((set) => Number(set.rpe || 0) > 0);
+            return {
+              ...existing,
+              id: existing.id || id(),
+              name: exercise.name,
+              primaryMuscle: exercise.primaryMuscle || existing.primaryMuscle || "",
+              secondaryMuscle: exercise.secondaryMuscle || existing.secondaryMuscle || "",
+              resistanceType: exercise.resistanceType || existing.resistanceType || "external",
+              isBodyweight: isBodyweightResistance(exercise.resistanceType || existing.resistanceType),
+              sets: Math.max(workingSets.length, 1),
+              reps: Math.max(reps, 1),
+              targetRpe: rpeSets.length ? Math.round(rpeSets.reduce((sum, set) => sum + Number(set.rpe || 0), 0) / rpeSets.length * 2) / 2 : existing.targetRpe || "",
+              restSeconds: exercise.restSeconds || existing.restSeconds || 90,
+              setTypes: templateSetTypesFromHistory(workingSets, exercise.restSeconds || existing.restSeconds || 90),
+              warmups: exerciseSets.filter((set) => setTypeSemantics(set).isWarmup).map((set) => ({ reps: set.reps, weight: set.weight, weightUnit: set.weightUnit, resistanceType: set.resistanceType, addedLoad: set.addedLoad, assistanceLoad: set.assistanceLoad, rpe: set.rpe }))
+            };
+          });
+          report.templatesReseeded += 1;
+          return { ...template, exercises, sourceSessionId: sourceSession.id, historySeedStatus: "active-working-sets", historySeededAt: isoNow(), updatedAt: isoNow() };
+        });
+        model.domainMigrationVersion = DOMAIN_MIGRATION_VERSION;
+        model.dataRevision = Number(model.dataRevision || 0) + 1;
+        model.migrationAudit = [...(Array.isArray(model.migrationAudit) ? model.migrationAudit : []), report];
+        return model;
+      }
+      // DOMAIN_INTEGRITY_ENGINE_END
 
       function openFitnessDb() {
         return new Promise((resolve, reject) => {
@@ -1853,7 +2132,13 @@
           setupSoundConfirmed: storedSettings.setupSoundConfirmed
         };
         model.settings = { ...defaultSettings, ...Object.fromEntries(Object.entries(safeSettings).filter(([, value]) => value != null)), readinessBaseline: cleanReadinessBaseline(storedSettings.readinessBaseline || {}) };
-        model.sessions = (Array.isArray(model.sessions) ? model.sessions : []).map((session) => ({ ...session, recovery: cleanRecovery(session.recovery || {}) }));
+        model.sessions = (Array.isArray(model.sessions) ? model.sessions : []).map((session) => ({
+          ...session,
+          submitted: session.source === "strong" && session.submitted == null ? true : session.submitted,
+          workoutState: session.source === "strong" && !session.workoutState ? "completed" : session.workoutState,
+          completedAt: session.completedAt || session.submittedAt || (session.source === "strong" ? session.date : ""),
+          recovery: cleanRecovery(session.recovery || {})
+        }));
         model.exercises = Array.isArray(model.exercises) ? model.exercises : [];
         model.sets = Array.isArray(model.sets) ? model.sets : [];
         model.sets = model.sets.map((set) => ({ ...set, skipped: Boolean(set.skipped), edited: Boolean(set.edited) }));
@@ -1873,7 +2158,10 @@
           ...template,
           exercises: (Array.isArray(template.exercises) ? template.exercises : []).map((exercise) => { const resistanceType = inferResistanceType(exercise.name, exercise); return { ...exercise, resistanceType, isBodyweight: isBodyweightResistance(resistanceType), targetRpe: Number(exercise.targetRpe || 0) || "", increment: Number(exercise.increment || 0) || "", setTypes: Array.isArray(exercise.setTypes) ? exercise.setTypes.map((setType) => normalizeTargetSetType(setType, { restSeconds: exercise.restSeconds, targetRpe: exercise.targetRpe })) : [] }; })
         }));
-        return model;
+        model.rawImports = Array.isArray(model.rawImports) ? model.rawImports : [];
+        model.migrationAudit = Array.isArray(model.migrationAudit) ? model.migrationAudit : [];
+        model.dataRevision = Number(model.dataRevision || 0);
+        return migrateDomainData(model);
       }
 
       async function loadData() {
@@ -1892,7 +2180,18 @@
           }
         }
         data = stored ? { ...emptyData(), ...stored, settings: { ...defaultSettings, ...stored.settings } } : emptyData();
+        const needsDomainRecalculation = Number(data.domainMigrationVersion || 0) < DOMAIN_MIGRATION_VERSION;
         data = normalizeLoadedData(data);
+        if (needsDomainRecalculation) {
+          const activeIds = activeHistorySessionIds();
+          data.sessions = data.sessions.map((session) => {
+            if (!activeIds.has(session.id)) return session;
+            const prs = submitWorkoutPrs(session);
+            const updated = { ...session, prs };
+            return { ...updated, workoutAnalysis: calculateWorkoutAnalysis(updated, { prs }) };
+          });
+          hypertrophyScoreCache = { dataRef: null, key: "", result: null };
+        }
         applyTheme();
         if (data.sessions.length === 0) data.sessions.push(createSession());
         activeSessionId = [...data.sessions].sort((a, b) => b.date.localeCompare(a.date))[0].id;
@@ -1971,7 +2270,8 @@
       }
 
       function commit(nextData, shouldRender = true) {
-        data = nextData;
+        data = { ...nextData, dataRevision: Number(data?.dataRevision || 0) + 1 };
+        hypertrophyScoreCache = { dataRef: null, key: "", result: null };
         applyTheme();
         if (isEditingHistorySession()) {
           historyEditFlow.dirty = true;
@@ -2031,6 +2331,12 @@
           setType: normalizeSetTypeCode(previous?.setType, previous?.isWarmup),
           countsTowardScore: previous?.countsTowardScore ?? !(previous?.isWarmup ?? false),
           countsTowardVolume: previous?.countsTowardVolume ?? !(previous?.isWarmup ?? false),
+          countsTowardProgression: previous?.countsTowardProgression ?? !(previous?.isWarmup ?? false),
+          classificationSource: previous?.classificationSource || "app-explicit",
+          classificationConfidence: previous?.classificationConfidence ?? 1,
+          classifierVersion: previous?.classifierVersion || SET_CLASSIFIER_VERSION,
+          manualOverride: Boolean(previous?.manualOverride),
+          reviewRequired: Boolean(previous?.reviewRequired),
           skipped: previous?.skipped ?? false,
           edited: previous?.edited ?? false,
           targetReps: previous?.targetReps ?? previous?.reps,
@@ -2049,7 +2355,15 @@
       }
 
       function isSessionSubmitted(session) {
-        return session && session.submitted !== false;
+        return isCompletedWorkout(session);
+      }
+
+      function activeHistorySessions(options = {}) {
+        return activeCompletedWorkoutHistory(data, options);
+      }
+
+      function activeHistorySessionIds(options = {}) {
+        return new Set(activeHistorySessions(options).map((session) => session.id));
       }
 
       function activeSession() {
@@ -2089,15 +2403,16 @@
       }
 
       function workoutSessionOptions(session) {
+        const activeIds = activeHistorySessionIds();
         const recent = [...data.sessions]
-          .filter((item) => isSessionSubmitted(item) || item.id === activeWorkoutId || item.id === session?.id)
+          .filter((item) => activeIds.has(item.id) || item.id === activeWorkoutId || item.id === session?.id)
           .sort((a, b) => b.date.localeCompare(a.date))
           .slice(0, 60);
         return Array.from(new Map([session, ...recent].filter(Boolean).map((item) => [item.id, item])).values());
       }
 
       function setsForExercise(exerciseId) {
-        return data.sets.filter((set) => set.exerciseId === exerciseId).sort((a, b) => a.setNumber - b.setNumber);
+        return data.sets.filter((set) => set.exerciseId === exerciseId).sort((a, b) => Number(a.sequence || a.setNumber) - Number(b.sequence || b.setNumber) || a.setNumber - b.setNumber);
       }
 
       function orderedActiveSets() {
@@ -2166,7 +2481,8 @@
       }
 
       function getExerciseNames() {
-        return Array.from(new Set(data.exercises.map((exercise) => exercise.name.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+        const activeIds = activeHistorySessionIds();
+        return Array.from(new Set(data.exercises.filter((exercise) => activeIds.has(exercise.sessionId)).map((exercise) => exercise.name.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
       }
 
       function exerciseKey(name) {
@@ -2193,7 +2509,7 @@
       }
 
       function exerciseCatalog() {
-        const sessions = new Map(data.sessions.filter(isSessionSubmitted).map((session) => [session.id, session]));
+        const sessions = new Map(activeHistorySessions().map((session) => [session.id, session]));
         const catalog = new Map();
         data.exercises.forEach((exercise) => {
           const id = canonicalExerciseId(exercise.name);
@@ -2424,12 +2740,12 @@
       function summarizeExerciseByWeek(exerciseName, options = {}) {
         const scoped = getExerciseSets(exerciseName, { canonicalExerciseId: options.canonicalExerciseId });
         const exerciseById = new Map(scoped.exercises.map((exercise) => [exercise.id, exercise]));
-        const sessionById = new Map(data.sessions.map((session) => [session.id, session]));
+        const sessionById = new Map(activeHistorySessions({ asOfDate: options.retentionAsOfDate || todayIso(), throughDate: options.throughDate || options.asOfDate || todayIso() }).map((session) => [session.id, session]));
         const grouped = new Map();
         scoped.sets.forEach((set) => {
           const exercise = exerciseById.get(set.exerciseId);
           const session = exercise ? sessionById.get(exercise.sessionId) : null;
-          if (!session || !isSessionSubmitted(session) || set.isWarmup) return;
+          if (!session || !isWorkingSet(set, "score")) return;
           if (options.excludeSessionId && session.id === options.excludeSessionId) return;
           const week = startOfWeekIso(session.date);
           const bucket = grouped.get(week) || { sessions: new Set(), travelCount: 0, sets: [], deloadFlags: [] };
@@ -2570,8 +2886,91 @@
           const nextReps = Math.min(profile.upperRep, Math.max(profile.lowerRep, current.maxRepsAtTopWeight + 1));
           return { decision: "progress", label: "Progress reps", reason: "The next load jump is too large relative to the current working weight.", action: "Keep " + loadText(current.topWeight) + " and add reps toward " + nextReps + "-" + profile.upperRep + " before increasing load.", evidence, confidence: previous ? "high" : "medium" };
         }
-        return { decision: "progress", label: "Progress load", reason: "You completed the work without a high-RPE warning or repeated misses.", action: current.topWeight > 0 ? (resistanceType === "assisted_bodyweight" ? "Reduce assistance to " : "Target ") + loadText(nextWeight) + " next time." : "Add reps or a harder bodyweight variation next time.", evidence, confidence: previous ? "high" : "medium" };
+        return { decision: "progress", label: "Progress load", reason: "You completed the work without a high-RPE warning or repeated misses.", action: current.topWeight > 0 ? (resistanceType === "assisted_bodyweight" ? "Reduce assistance to " : "Target ") + loadText(nextWeight) + " next time." : resistanceType === "bodyweight" ? "Add reps or a harder bodyweight variation next time." : "Use the programmed working load and add a controlled rep before increasing resistance.", evidence, confidence: previous ? "high" : "medium" };
       }
+
+      // COACH_RECOMMENDATION_ENGINE_START
+      function coachRecommendationForExercise(exerciseName, options = {}) {
+        const weeks = summarizeExerciseByWeek(exerciseName, options);
+        const weekStart = options.weekStart || weeks[0]?.weekStart || "";
+        const summary = weeks.find((week) => week.weekStart === weekStart) || weeks[0];
+        const base = weekStart ? recommendForExerciseWeek(exerciseName, weekStart, options) : { decision: "hold", label: "Establish baseline", reason: "No recent qualifying working-set history is available.", action: "Use the current program target with controlled technique.", evidence: [], confidence: "low" };
+        const profile = progressionProfileForExercise(exerciseName);
+        const representativeExercise = getExerciseSets(exerciseName, options).exercises.find((exercise) => canonicalExerciseId(exercise.name) === (options.canonicalExerciseId || canonicalExerciseId(exerciseName))) || { name: exerciseName, resistanceType: "external" };
+        const resistanceType = resistanceTypeFor(representativeExercise);
+        let progressionAction = base.decision === "progress" ? (/rep/i.test(base.label) ? "increase_reps" : "increase_load") : base.decision === "hold" ? "repeat" : base.decision;
+        let targetLoad = Number(summary?.topWeight || 0);
+        let targetReps = Number(summary?.maxRepsAtTopWeight || 0);
+        if (progressionAction === "increase_reps") targetReps = Math.min(profile.upperRep, Math.max(profile.lowerRep, targetReps + 1));
+        if (progressionAction === "increase_load" && targetLoad > 0) targetLoad = resistanceType === "assisted_bodyweight" ? Math.max(0, roundToIncrement(targetLoad - profile.increment, profile.increment)) : nextLoadForExercise(exerciseName, targetLoad);
+        let interventionType = "normal";
+        let severity = "normal";
+        let durationInSessions = 1;
+        let loadAdjustment = 0;
+        let setAdjustment = 0;
+        let rpeTarget = null;
+        let progressionExpected = base.decision === "progress";
+        let removeIntensificationTechniques = false;
+        let returnToNormalCriteria = "Continue normal programming while reps and RPE remain inside target.";
+        const reasonCodes = [];
+        if (base.decision === "deload") {
+          interventionType = "deload";
+          severity = "high";
+          durationInSessions = 1;
+          loadAdjustment = -0.1;
+          setAdjustment = -0.35;
+          rpeTarget = 6.5;
+          progressionExpected = false;
+          removeIntensificationTechniques = true;
+          returnToNormalCriteria = "Resume normal programming after one deload exposure when the next warm-up is normal and comparable performance no longer declines at rising RPE.";
+          reasonCodes.push("repeated-misses-or-regression");
+        } else if (base.decision === "change") {
+          interventionType = "stop_modify";
+          severity = "high";
+          durationInSessions = 4;
+          progressionExpected = false;
+          removeIntensificationTechniques = true;
+          returnToNormalCriteria = "Return after 4-6 weeks with a close variation, or earlier only after the pain, safety, or repeated-stall concern is resolved.";
+          reasonCodes.push("persistent-stall");
+        } else if (summary && (summary.failedSets === 1 || summary.averageRpe >= 9 || (weeks[1] && summary.bestEstimatedOneRepMax < weeks[1].bestEstimatedOneRepMax * 0.95))) {
+          interventionType = "light";
+          severity = "moderate";
+          loadAdjustment = -0.05;
+          setAdjustment = -1;
+          rpeTarget = 7;
+          progressionExpected = false;
+          removeIntensificationTechniques = true;
+          returnToNormalCriteria = "Return to normal after one light exposure if all planned reps are completed at or below the target RPE and performance stabilizes.";
+          reasonCodes.push(summary.failedSets === 1 ? "single-missed-set" : summary.averageRpe >= 9 ? "high-effort" : "moderate-performance-decline");
+        } else {
+          reasonCodes.push(base.decision === "progress" ? "progression-supported" : "repeat-or-hold-supported");
+        }
+        return {
+          ...base,
+          interventionType,
+          progressionAction,
+          affectedExerciseIds: [canonicalExerciseId(exerciseName)],
+          affectedExerciseName: exerciseName,
+          reasonCodes,
+          humanReadableReason: base.reason,
+          severity,
+          loadAdjustment,
+          setAdjustment,
+          repRangeAdjustment: null,
+          targetLoad,
+          targetReps,
+          resistanceType,
+          rpeTarget,
+          restAdjustment: interventionType === "light" || interventionType === "deload" ? 15 : 0,
+          removeIntensificationTechniques,
+          progressionExpected,
+          durationInSessions,
+          returnToNormalCriteria,
+          sourceWindow: { weekStart, throughDate: options.throughDate || todayIso(), historical: Boolean(options.historical) },
+          asOfDate: options.throughDate || todayIso()
+        };
+      }
+      // COACH_RECOMMENDATION_ENGINE_END
 
       function templateExerciseCount(template) {
         return template.exercises.reduce((sum, exercise) => sum + Number(exercise.sets || 0), 0);
@@ -2589,9 +2988,9 @@
       }
 
       function getLastCompletedSet(exerciseName, options = {}) {
-        const scoped = getExerciseSets(exerciseName);
+        const scoped = getExerciseSets(exerciseName, { canonicalExerciseId: options.canonicalExerciseId || canonicalExerciseId(exerciseName) });
         const exerciseById = new Map(scoped.exercises.map((exercise) => [exercise.id, exercise]));
-        const sessionById = new Map(data.sessions.map((session) => [session.id, session]));
+        const sessionById = new Map(activeHistorySessions({ asOfDate: options.retentionAsOfDate || todayIso(), throughDate: options.throughDate || options.asOfDate || todayIso() }).map((session) => [session.id, session]));
         const deloadWeeks = options.includeDeloads ? new Set() : new Set(summarizeExerciseByWeek(exerciseName, options).filter((week) => week.isLikelyDeload).map((week) => week.weekStart));
         return scoped.sets
           .filter((set) => set.completed)
@@ -2601,16 +3000,16 @@
             return session ? { set, session } : null;
           })
           .filter(Boolean)
-          .filter((entry) => isSessionSubmitted(entry.session) && !entry.set.isWarmup)
+          .filter((entry) => isWorkingSet(entry.set, "progression"))
           .filter((entry) => !options.excludeSessionId || entry.session.id !== options.excludeSessionId)
           .filter((entry) => !deloadWeeks.has(startOfWeekIso(entry.session.date)))
           .sort((a, b) => b.session.date.localeCompare(a.session.date))[0];
       }
 
       function getMostRecentWorkoutSets(exerciseName, options = {}) {
-        const scoped = getExerciseSets(exerciseName);
+        const scoped = getExerciseSets(exerciseName, { canonicalExerciseId: options.canonicalExerciseId || canonicalExerciseId(exerciseName) });
         const exerciseById = new Map(scoped.exercises.map((exercise) => [exercise.id, exercise]));
-        const sessionById = new Map(data.sessions.map((session) => [session.id, session]));
+        const sessionById = new Map(activeHistorySessions({ asOfDate: options.retentionAsOfDate || todayIso(), throughDate: options.throughDate || options.asOfDate || todayIso() }).map((session) => [session.id, session]));
         const deloadWeeks = options.includeDeloads ? new Set() : new Set(summarizeExerciseByWeek(exerciseName, options).filter((week) => week.isLikelyDeload).map((week) => week.weekStart));
         const completed = scoped.sets
           .filter((set) => set.completed)
@@ -2620,12 +3019,12 @@
             return session ? { set, session } : null;
           })
           .filter(Boolean)
-          .filter((entry) => isSessionSubmitted(entry.session) && !entry.set.isWarmup)
+          .filter((entry) => isWorkingSet(entry.set, "progression"))
           .filter((entry) => !options.excludeSessionId || entry.session.id !== options.excludeSessionId)
           .filter((entry) => !deloadWeeks.has(startOfWeekIso(entry.session.date)))
-          .sort((a, b) => b.session.date.localeCompare(a.session.date) || a.set.setNumber - b.set.setNumber);
+          .sort((a, b) => b.session.date.localeCompare(a.session.date) || Number(a.set.sequence || a.set.setNumber) - Number(b.set.sequence || b.set.setNumber));
         const latestSessionId = completed[0]?.session.id;
-        return latestSessionId ? completed.filter((entry) => entry.session.id === latestSessionId).map((entry) => entry.set).sort((a, b) => a.setNumber - b.setNumber) : [];
+        return latestSessionId ? completed.filter((entry) => entry.session.id === latestSessionId).map((entry) => entry.set).sort((a, b) => Number(a.sequence || a.setNumber) - Number(b.sequence || b.setNumber)) : [];
       }
 
       function latestSkippedDeloadForExercise(exerciseName, options = {}) {
@@ -2640,7 +3039,7 @@
         const plannedSets = Number(templateExercise.sets || 1);
         const profile = progressionProfileForExercise(templateExercise.name);
         const weeks = summarizeExerciseByWeek(templateExercise.name, options);
-        const recommendation = weeks[0] ? recommendForExerciseWeek(templateExercise.name, weeks[0].weekStart, options) : null;
+        const recommendation = coachRecommendationForExercise(templateExercise.name, { ...options, weekStart: weeks[0]?.weekStart || "" });
         const recentSets = getMostRecentWorkoutSets(templateExercise.name, options);
         const last = getLastCompletedSet(templateExercise.name, options);
         const skippedDeload = latestSkippedDeloadForExercise(templateExercise.name, options);
@@ -2668,12 +3067,12 @@
           weight = recentTop > 0 ? roundToIncrement(recentTop * (resistanceType === "assisted_bodyweight" ? 1.1 : 0.9), increment) : 0;
           sets = Math.max(1, Math.ceil(plannedSets * 0.65));
           reps = Math.max(profile.lowerRep, Math.min(targetReps, profile.upperRep));
-          rpe = Number(templateExercise.targetRpe || 6.5);
+          rpe = Math.min(Number(templateExercise.targetRpe || 6.5), 6.5);
         } else if (sessionType === "light" || sessionType === "technique") {
           mode = sessionType;
           reason = sessionType === "light" ? "Programmed light session: preserve movement quality while limiting fatigue." : "Technique-focused session: prioritize repeatable positions and bar path over loading.";
           weight = recentTop > 0 ? roundToIncrement(recentTop * (resistanceType === "assisted_bodyweight" ? 1.1 : 0.9), increment) : 0;
-          rpe = Number(templateExercise.targetRpe || 6.5);
+          rpe = Math.min(Number(templateExercise.targetRpe || 7), 7);
         } else if (daysSinceLast >= 35 && recentTop > 0) {
           mode = "return";
           reason = "Return from a training gap of " + daysSinceLast + " days: use a small ramp-in before resuming normal progression.";
@@ -2683,11 +3082,14 @@
         } else if (skippedDeload) {
           mode = "return-from-deload";
           reason = "The most recent week looks like a deload/recovery break, so this target skips that reduced week and returns to the prior normal training baseline before progressing again.";
+        } else if (recommendation?.interventionType === "light") {
+          mode = "light";
+          reason = recommendation.reason + " One light exposure is prescribed before normal progression resumes.";
+          weight = recentTop > 0 ? roundToIncrement(recentTop * (resistanceType === "assisted_bodyweight" ? 1.05 : 0.95), increment) : 0;
+          sets = Math.max(1, plannedSets - 1);
+          rpe = Math.min(Number(templateExercise.targetRpe || recommendation.rpeTarget || 7), Number(recommendation.rpeTarget || 7));
         } else if (recommendation?.decision === "progress") {
-          const loadCandidate = resistanceType === "assisted_bodyweight"
-            ? Math.max(0, roundToIncrement(Math.max(0, recentTop - increment), increment))
-            : nextLoadForExercise(templateExercise.name, recentTop, increment);
-          const shouldAddLoad = resistanceType !== "bodyweight" && !["duration", "distance"].includes(resistanceType) && profile.kind !== "isolation" && recentTop > 0 && recentReps >= profile.upperRep && recentRpe > 0 && recentRpe <= 8.5 && loadCandidate !== recentTop;
+          const shouldAddLoad = recommendation.progressionAction === "increase_load" && Number(recommendation.targetLoad || 0) > 0;
           if (shouldAddLoad) {
             mode = "load-progression";
             reason = resistanceType === "assisted_bodyweight"
@@ -2695,14 +3097,14 @@
               : resistanceType === "bodyweight_plus_load"
                 ? "You reached the top of the programmed rep range at a manageable RPE, so the next added-load increment is appropriate."
                 : "You reached the top of the programmed rep range at a manageable RPE, so the next available load increment is appropriate.";
-            weight = loadCandidate;
+            weight = Number(recommendation.targetLoad);
             reps = Math.max(profile.lowerRep, Math.min(profile.upperRep, targetReps - Math.max(2, Math.round((profile.upperRep - profile.lowerRep) * 0.35))));
           } else {
             mode = "rep-progression";
             reason = profile.kind === "isolation"
               ? "Progress this lift by adding reps first; load jumps are large for isolation work."
               : "Progress by adding reps before taking the next load jump.";
-            reps = Math.min(profile.upperRep, Math.max(profile.lowerRep, recentReps + 1, targetReps));
+            reps = Math.min(profile.upperRep, Math.max(profile.lowerRep, Number(recommendation.targetReps || 0), recentReps + 1, targetReps));
           }
         } else if (recommendation?.decision === "deload") {
           mode = "deload";
@@ -2710,7 +3112,7 @@
           weight = recentTop > 0 ? roundToIncrement(recentTop * (resistanceType === "assisted_bodyweight" ? 1.1 : 0.9), increment) : 0;
           sets = Math.max(1, Math.ceil(plannedSets * 0.65));
           reps = Math.max(profile.lowerRep, Math.min(reps, profile.upperRep));
-          rpe = Number(templateExercise.targetRpe || 6.5);
+          rpe = Math.min(Number(templateExercise.targetRpe || 6.5), 6.5);
         } else if (recommendation?.decision === "change") {
           mode = "substitution";
           reason = "This pattern looks stalled. Consider swapping the lift for 4-6 weeks.";
@@ -2737,7 +3139,8 @@
           isDeload: mode === "deload",
           reason,
           increment,
-          confidence: prescriptionConfidence(weeks, daysSinceLast)
+          confidence: prescriptionConfidence(weeks, daysSinceLast),
+          coachRecommendation: recommendation
         }, recentSets, profile);
         target.text = targetText(target, target.reason);
         return target;
@@ -2914,6 +3317,8 @@
           .sort((a, b) => a.order - b.order)
           .map((exercise) => {
             const sets = setsForExercise(exercise.id);
+            const workingSets = sets.filter((set) => isWorkingSet(set, "progression"));
+            const representative = workingSets[0];
             return {
               id: id(),
               name: exercise.name || "Exercise",
@@ -2921,12 +3326,13 @@
               secondaryMuscle: exercise.secondaryMuscle || "",
               resistanceType: resistanceTypeFor(exercise),
               isBodyweight: isBodyweightResistance(resistanceTypeFor(exercise)),
-              sets: Math.max(sets.filter((set) => !set.isWarmup).length, 1),
-              reps: sets.find((set) => !set.isWarmup)?.reps || 8,
-              targetRpe: sets.find((set) => !set.isWarmup)?.rpe || "",
+              sets: Math.max(workingSets.length, 1),
+              reps: representative?.reps || 8,
+              targetRpe: representative?.rpe || "",
               increment: progressionProfileForExercise(exercise.name).increment,
-              restSeconds: exercise.restSeconds || recommendedRestSeconds(exercise.name, { reps: sets.find((set) => !set.isWarmup)?.reps || 8 }),
-              warmups: sets.filter((set) => set.isWarmup).map((set) => ({ reps: set.reps, weight: set.weight, weightUnit: set.weightUnit, resistanceType: set.resistanceType, isBodyweight: set.isBodyweight, addedLoad: set.addedLoad, assistanceLoad: set.assistanceLoad, rpe: set.rpe }))
+              restSeconds: exercise.restSeconds || recommendedRestSeconds(exercise.name, { reps: representative?.reps || 8 }),
+              setTypes: templateSetTypesFromHistory(workingSets, exercise.restSeconds),
+              warmups: sets.filter((set) => setTypeSemantics(set).isWarmup).map((set) => ({ reps: set.reps, weight: set.weight, weightUnit: set.weightUnit, resistanceType: set.resistanceType, isBodyweight: set.isBodyweight, addedLoad: set.addedLoad, assistanceLoad: set.assistanceLoad, rpe: set.rpe }))
             };
           });
         return { id: id(), name: (session.title || "Workout") + " Template", notes: "", exercises, createdAt: isoNow(), updatedAt: isoNow() };
@@ -3132,7 +3538,7 @@
         const exercises = activeExercises();
         const running = Boolean(session && session.id === activeWorkoutId && hasActiveWorkout());
         const visibleTimer = timer?.workoutId === session?.id ? timer : null;
-        const workSets = exercises.flatMap((exercise) => setsForExercise(exercise.id).filter((set) => !set.isWarmup));
+        const workSets = exercises.flatMap((exercise) => setsForExercise(exercise.id).filter((set) => isWorkingSet(set, "score")));
         const activeSet = data.sets.find((set) => set.id === activeSetId);
         const activeExercise = activeSet ? exercises.find((exercise) => exercise.id === activeSet.exerciseId) : null;
         const waitingSet = visibleTimer ? data.sets.find((set) => set.id === visibleTimer.pendingNextSetId) : null;
@@ -3182,7 +3588,7 @@
             <p class="advice-detail">${escapeHtml(readiness.action)}</p>
             <div class="plan-list">
               ${exercises.map((exercise) => {
-                const sets = setsForExercise(exercise.id).filter((set) => !set.isWarmup);
+                const sets = setsForExercise(exercise.id).filter((set) => isWorkingSet(set, "score"));
                 const first = sets[0] || createSet(exercise.id, 1);
                 const loadText = formatResistance(first, exercise);
                 return `
@@ -3270,8 +3676,8 @@
 
       function dashboardSessionsForWeek(weekStart) {
         const end = dashboardWeekEnd(weekStart);
-        return data.sessions
-          .filter((session) => isSessionSubmitted(session) && session.date >= weekStart && session.date < end)
+        return activeHistorySessions()
+          .filter((session) => session.date >= weekStart && session.date < end)
           .sort((a, b) => b.date.localeCompare(a.date) || String(b.submittedAt || "").localeCompare(String(a.submittedAt || "")));
       }
 
@@ -3279,7 +3685,7 @@
         const exercises = data.exercises.filter((exercise) => exercise.sessionId === session.id).sort((a, b) => a.order - b.order);
         const exerciseIds = new Set(exercises.map((exercise) => exercise.id));
         const sets = data.sets.filter((set) => exerciseIds.has(set.exerciseId));
-        const completed = sets.filter((set) => set.completed && !set.isWarmup);
+        const completed = sets.filter((set) => set.completed && isWorkingSet(set, "score"));
         const started = new Date(session.startedAt || session.createdAt || "").getTime();
         const ended = new Date(session.submittedAt || session.updatedAt || "").getTime();
         const measured = Number.isFinite(started) && Number.isFinite(ended) && ended > started ? Math.round((ended - started) / 60000) : 0;
@@ -3363,7 +3769,7 @@
       }
 
       function renderRecentSessions() {
-        const sessions = [...data.sessions].filter(isSessionSubmitted).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
+        const sessions = activeHistorySessions().sort((a, b) => sessionCompletionDate(b).localeCompare(sessionCompletionDate(a))).slice(0, 5);
         if (!sessions.length) return '<div class="empty-state">No saved workouts yet.</div>';
         return '<div class="flag-list">' + sessions.map((session) => {
           const exercises = data.exercises.filter((exercise) => exercise.sessionId === session.id);
@@ -3651,7 +4057,7 @@
         const sessionId = historyEditFlow.sessionId;
         const session = data.sessions.find((item) => item.id === sessionId);
         const prs = session ? submitWorkoutPrs(session) : [];
-        const updatedSession = session ? { ...session, prs, updatedAt: isoNow() } : null;
+        const updatedSession = session ? { ...session, completedAt: session.date, prs, updatedAt: isoNow() } : null;
         const workoutAnalysis = updatedSession ? calculateWorkoutAnalysis(updatedSession, { prs }) : null;
         data = { ...data, sessions: data.sessions.map((item) => item.id === sessionId ? { ...updatedSession, workoutAnalysis } : item) };
         historyEditFlow = null;
@@ -3716,7 +4122,7 @@
         const remainingSessions = data.sessions.filter((item) => item.id !== session.id);
         let nextSession = remainingSessions.find((item) => item.id === activeWorkoutId)
           || remainingSessions.filter((item) => !isSessionSubmitted(item) && !data.exercises.some((exercise) => exercise.sessionId === item.id)).sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))[0]
-          || remainingSessions.filter(isSessionSubmitted).sort((a, b) => b.date.localeCompare(a.date))[0];
+          || activeHistorySessions().filter((item) => item.id !== session.id).sort((a, b) => sessionCompletionDate(b).localeCompare(sessionCompletionDate(a)))[0];
         if (!nextSession) {
           nextSession = createSession();
           remainingSessions.unshift(nextSession);
@@ -3737,7 +4143,7 @@
 
       function renderExercise(exercise) {
         const exerciseSets = setsForExercise(exercise.id);
-        const firstWorkSet = exerciseSets.find((set) => !set.isWarmup) || exerciseSets[0];
+        const firstWorkSet = exerciseSets.find((set) => isWorkingSet(set, "score")) || exerciseSets[0];
         const restSeconds = Number(exercise.restSeconds || recommendedRestSeconds(exercise.name, { reps: firstWorkSet?.reps, rpe: firstWorkSet?.rpe }));
         return `
           <article class="exercise-card">
@@ -3781,8 +4187,9 @@
         const resistanceType = resistanceTypeFor(exercise, set);
         const visualState = setVisualState(set);
         const isNext = visualState === "current";
-        const previousSets = set.isWarmup ? [] : getMostRecentWorkoutSets(exercise.name, { excludeSessionId: exercise.sessionId });
-        const previous = previousSets.find((item) => item.setNumber === set.setNumber) || previousSets[set.setNumber - 1];
+        const previousSets = !isWorkingSet(set, "progression") ? [] : getMostRecentWorkoutSets(exercise.name, { excludeSessionId: exercise.sessionId });
+        const sameRole = previousSets.filter((item) => normalizeSetTypeCode(item.setType, item.isWarmup) === normalizeSetTypeCode(set.setType, set.isWarmup));
+        const previous = sameRole.find((item) => item.setNumber === set.setNumber) || sameRole[0] || previousSets.find((item) => item.setNumber === set.setNumber) || previousSets[set.setNumber - 1];
         const previousText = previous ? "Last time: " + formatSetPerformance(previous, exercise) : "";
         const performanceField = resistanceType === "duration"
           ? '<label class="set-field"><span>Seconds</span><input type="number" min="0" value="' + Number(set.durationSeconds || 0) + '" data-action="set-duration" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' seconds" /></label>'
@@ -3806,7 +4213,8 @@
             ${isNext ? '<div class="next-set-banner"><span aria-hidden="true">&#10148;</span><span>' + escapeHtml(activeSetAcknowledged ? "Current set" : activeSetNotice || "Current set") + '</span></div>' : ""}
             <div class="set-actions">
               <button class="mini-button set-rest-button" type="button" data-action="start-timer" data-exercise-id="${exercise.id}" data-set-id="${set.id}">${icon.clock} ${formatTimer(restSeconds)}</button>
-              <label class="toggle-line"><input type="checkbox" data-action="set-warmup" data-set-id="${set.id}" ${set.isWarmup ? "checked" : ""} />Warm-up</label>
+              ${isEditingHistorySession() ? '<label class="set-type-editor"><span>Set type</span><select data-action="set-type-override" data-set-id="' + set.id + '">' + ['warmup','straight','top','backoff','drop'].map((type) => '<option value="' + type + '" ' + (normalizeSetTypeCode(set.setType, set.isWarmup) === type ? 'selected' : '') + '>' + escapeHtml(setTypeLabels[type]) + '</option>').join('') + '</select></label>' : '<span class="status-pill ' + (set.reviewRequired ? 'caution' : '') + '">' + escapeHtml(setTypeLabels[normalizeSetTypeCode(set.setType, set.isWarmup)] || 'Working set') + (set.manualOverride ? ' · corrected' : '') + '</span>'}
+              ${set.manualOverride && isEditingHistorySession() && set.classificationUndo ? '<button class="mini-button" type="button" data-action="undo-set-type-override" data-set-id="' + set.id + '">Undo type change</button>' : ''}
               <button class="mini-button set-skip-button ${set.skipped ? "active" : ""}" type="button" data-action="toggle-skip-set" data-set-id="${set.id}">${set.skipped ? "Skipped" : "Skip"}</button>
               <button class="mini-button" type="button" data-action="delete-set" data-set-id="${set.id}">Remove</button>
               ${visualState === "edited" ? '<span class="edited-indicator">Edited, not completed</span>' : ""}
@@ -3992,8 +4400,11 @@
       }
 
       function renderHistory(nested = false) {
-        const totalSessions = data.sessions.filter(isSessionSubmitted).length;
-        const sessions = [...data.sessions].filter(isSessionSubmitted).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 120);
+        const activeHistory = activeHistorySessions();
+        const activeIds = new Set(activeHistory.map((session) => session.id));
+        const archived = data.sessions.filter((session) => isSessionSubmitted(session) && !activeIds.has(session.id)).sort((a, b) => b.date.localeCompare(a.date));
+        const totalSessions = activeHistory.length;
+        const sessions = [...activeHistory].sort((a, b) => sessionCompletionDate(b).localeCompare(sessionCompletionDate(a))).slice(0, 120);
         return `
           <section class="view history-view">
             <div class="screen-heading"><div><div class="section-kicker">History</div><h1>Training log</h1></div>${nested ? '<button class="text-button" type="button" data-action="close-dashboard-detail">Back</button>' : ''}</div>
@@ -4018,6 +4429,7 @@
               <summary>By exercise <span>${getExerciseNames().length} lifts</span></summary>
               <div class="disclosure-body">${renderExerciseHistory()}</div>
             </details>
+            ${archived.length ? '<details class="history-section"><summary>Retention archive <span>' + archived.length + ' recoverable</span></summary><div class="disclosure-body"><p class="settings-note">These completed workouts are older than the rolling six-calendar-month window. They remain in exports but do not affect charts, coaching, PRs, templates, or weekly volume.</p>' + archived.slice(0, 40).map((session) => '<div class="session-card"><div class="row split"><strong>' + escapeHtml(session.title || 'Workout') + '</strong><span>' + formatDate(sessionCompletionDate(session)) + '</span></div></div>').join('') + '</div></details>' : ''}
           </section>
         `;
       }
@@ -4047,19 +4459,10 @@
       }
 
       // EXERCISE_TARGET_ENGINE_START
-      const setTypeLabels = { top: "Top set", backoff: "Back-off set", straight: "Straight working set", drop: "Drop set", warmup: "Warm-up set", amrap: "AMRAP set", technique: "Technique set", deload: "Deload set" };
+      const setTypeLabels = { top: "Top set", backoff: "Back-off set", straight: "Working set", drop: "Drop set", failure: "Failure set", warmup: "Warm-up set", amrap: "AMRAP set", technique: "Technique set", deload: "Deload set", unknown: "Review required" };
 
       function normalizeSetTypeCode(value, isWarmup = false) {
-        if (isWarmup) return "warmup";
-        const key = String(value || "straight").toLowerCase().replace(/[^a-z]/g, "");
-        if (key === "top" || key === "topset") return "top";
-        if (key === "backoff" || key === "backoffset") return "backoff";
-        if (key === "drop" || key === "dropset") return "drop";
-        if (key === "warmup" || key === "warmupset") return "warmup";
-        if (key === "amrap" || key === "amrapset") return "amrap";
-        if (key === "technique" || key === "techniqueset") return "technique";
-        if (key === "deload" || key === "deloadset") return "deload";
-        return "straight";
+        return normalizeCanonicalSetType(value, isWarmup);
       }
 
       function targetRangeText(low, high, suffix = "") {
@@ -4096,6 +4499,33 @@
           countsTowardScore: raw.countsTowardScore != null ? Boolean(raw.countsTowardScore) : !isWarmup,
           isWarmup
         };
+      }
+
+      function templateSetTypesFromHistory(sets, restSeconds = 0) {
+        const grouped = new Map();
+        sets.filter((set) => isWorkingSet(set, "progression")).forEach((set) => {
+          const type = normalizeSetTypeCode(set.setType, set.isWarmup);
+          const bucket = grouped.get(type) || [];
+          bucket.push(set);
+          grouped.set(type, bucket);
+        });
+        return Array.from(grouped.entries()).map(([type, bucket]) => {
+          const reps = bucket.map((set) => Number(set.reps || 0)).filter((value) => value > 0);
+          const rpes = bucket.map((set) => Number(set.rpe || 0)).filter((value) => value > 0);
+          return normalizeTargetSetType({
+            type,
+            setCount: bucket.length,
+            repMin: reps.length ? Math.min(...reps) : 0,
+            repMax: reps.length ? Math.max(...reps) : 0,
+            rpeMin: rpes.length ? Math.min(...rpes) : 0,
+            rpeMax: rpes.length ? Math.max(...rpes) : 0,
+            restSeconds,
+            loadReductionMin: type === "drop" ? 20 : 0,
+            loadReductionMax: type === "drop" ? 25 : 0,
+            countsTowardScore: true,
+            countsTowardVolume: true
+          });
+        });
       }
 
       function defaultProgressionRule(templateExercise, profile) {
@@ -4168,7 +4598,7 @@
         const sourceExercise = {
           id: canonicalExerciseId(exercise.name),
           name: exercise.name,
-          sets: Number(prescription.sets || data.sets.filter((set) => set.exerciseId === exercise.id && !set.isWarmup).length || 0),
+          sets: Number(prescription.sets || data.sets.filter((set) => set.exerciseId === exercise.id && isWorkingSet(set, "score")).length || 0),
           reps: Number(prescription.reps || prescription.repHigh || 0),
           repMin: Number(prescription.repLow || 0),
           repMax: Number(prescription.repHigh || 0),
@@ -4193,7 +4623,8 @@
       }
 
       function setProgramExpectation(session, exercise, set, workingIndex = 0) {
-        if (set.isWarmup) return { isWarmup: true, countsTowardScore: false, countsTowardVolume: false, setType: "warmup", context: savedExerciseTargetContext(session, exercise) };
+        const semantics = setTypeSemantics(set);
+        if (semantics.isWarmup || semantics.type === "unknown") return { isWarmup: semantics.isWarmup, countsTowardScore: false, countsTowardVolume: false, setType: semantics.type, context: savedExerciseTargetContext(session, exercise) };
         const context = savedExerciseTargetContext(session, exercise);
         const type = targetSetTypeForSet(context, set, workingIndex);
         const repMin = Number(set.targetRepMin ?? type?.repMin ?? exercise.prescription?.repLow ?? 0);
@@ -4219,7 +4650,7 @@
 
       function exerciseExpectationActuals(exerciseId, analysis) {
         const includedWeeks = new Set((analysis.included || []).map((week) => week.weekStart));
-        const sessionById = new Map(data.sessions.filter(isSessionSubmitted).map((session) => [session.id, session]));
+        const sessionById = new Map(activeHistorySessions({ throughDate: analysis.windowEnd || todayIso() }).map((session) => [session.id, session]));
         const groups = new Map();
         data.exercises.filter((exercise) => canonicalExerciseId(exercise.name) === exerciseId).forEach((exercise) => {
           const session = sessionById.get(exercise.sessionId);
@@ -4230,7 +4661,7 @@
           group.sessions.add(session.id);
           group.dates.push(session.date);
           let workingIndex = 0;
-          data.sets.filter((set) => set.exerciseId === exercise.id).sort((a, b) => a.setNumber - b.setNumber).forEach((set) => {
+          data.sets.filter((set) => set.exerciseId === exercise.id).sort((a, b) => Number(a.sequence || a.setNumber) - Number(b.sequence || b.setNumber)).forEach((set) => {
             const expectation = setProgramExpectation(session, exercise, set, workingIndex);
             if (expectation.isWarmup || !expectation.countsTowardScore) return;
             workingIndex += 1;
@@ -4385,7 +4816,7 @@
       // HYPERTROPHY_SCORE_ENGINE_END
 
       function buildHypertrophyWeekAggregates(scope = { type: "overall", exerciseId: "" }) {
-        const sessionById = new Map(data.sessions.filter(isSessionSubmitted).map((session) => [session.id, session]));
+        const sessionById = new Map(activeHistorySessions().map((session) => [session.id, session]));
         const exercisesBySession = new Map();
         data.exercises.forEach((exercise) => {
           if (!sessionById.has(exercise.sessionId)) return;
@@ -4403,7 +4834,7 @@
         sessionById.forEach((session) => {
           const relevantExercises = (exercisesBySession.get(session.id) || []).filter((exercise) => {
             if (scope.type === "exercise" && canonicalExerciseId(exercise.name) !== scope.exerciseId) return false;
-            return (setsByExercise.get(exercise.id) || []).some((set) => !set.isWarmup);
+            return (setsByExercise.get(exercise.id) || []).some((set) => isWorkingSet(set, "score"));
           });
           if (!relevantExercises.length) return;
           const weekStart = startOfWeekIso(session.date);
@@ -4418,8 +4849,8 @@
           relevantExercises.forEach((exercise) => {
             let workingIndex = 0;
             const workingSets = (setsByExercise.get(exercise.id) || [])
-              .filter((set) => !set.isWarmup)
-              .sort((a, b) => a.setNumber - b.setNumber)
+              .filter((set) => isWorkingSet(set, "score"))
+              .sort((a, b) => Number(a.sequence || a.setNumber) - Number(b.sequence || b.setNumber))
               .map((set) => {
                 const expectation = setProgramExpectation(session, exercise, set, workingIndex);
                 if (expectation.countsTowardScore) workingIndex += 1;
@@ -4552,7 +4983,7 @@
 
       function hypertrophyAnalysis(offset = hypertrophyWindowOffset, scopeType = "exercise", exerciseId = selectedExerciseId) {
         const scope = scopeType === "exercise" && exerciseId ? { type: "exercise", exerciseId } : { type: "overall", exerciseId: "" };
-        const key = scope.type + "|" + scope.exerciseId + "|" + offset;
+        const key = scope.type + "|" + scope.exerciseId + "|" + offset + "|" + SET_CLASSIFIER_VERSION + "|" + Number(data.dataRevision || 0);
         if (hypertrophyScoreCache.dataRef === data && hypertrophyScoreCache.key === key) return hypertrophyScoreCache.result;
         const allWeeks = buildHypertrophyWeekAggregates(scope);
         const selection = selectHypertrophyWeeks(allWeeks, offset, 6);
@@ -4571,6 +5002,17 @@
         result.scopeDescription = scope.type === "exercise"
           ? "Evaluates only submitted " + result.scopeLabel + " working sets from " + periodDescription + "."
           : "Evaluates training quality across all included muscle groups, exercises, and submitted working sets from " + periodDescription + ".";
+        const includedStarts = result.included.map((week) => week.weekStart).sort();
+        result.windowStart = includedStarts[0] || "";
+        if (includedStarts.length) {
+          const end = new Date(includedStarts.at(-1) + "T00:00:00");
+          end.setDate(end.getDate() + 6);
+          result.windowEnd = localDateIso(end);
+        } else result.windowEnd = "";
+        result.windowId = scope.type + ":" + scope.exerciseId + ":" + result.windowStart + ":" + result.windowEnd;
+        result.qualifyingWeekIds = result.included.map((week) => week.weekStart);
+        result.dataPointCount = result.included.reduce((sum, week) => sum + Number(week.completedSets || 0), 0);
+        result.asOfDate = result.windowEnd || todayIso();
         hypertrophyScoreCache = { dataRef: data, key, result };
         return result;
       }
@@ -4578,13 +5020,14 @@
       function exerciseProgressSeries(exerciseName, options = {}) {
         const scoped = getExerciseSets(exerciseName, { canonicalExerciseId: options.canonicalExerciseId });
         const exerciseById = new Map(scoped.exercises.map((exercise) => [exercise.id, exercise]));
-        const sessionById = new Map(data.sessions.map((session) => [session.id, session]));
+        const allowedWeeks = options.qualifyingWeekIds ? new Set(options.qualifyingWeekIds) : null;
+        const sessionById = new Map(activeHistorySessions({ asOfDate: options.retentionAsOfDate || todayIso(), throughDate: options.throughDate || todayIso() }).map((session) => [session.id, session]));
         const resistanceType = options.resistanceType || scoped.exercises.map((exercise) => resistanceTypeFor(exercise)).find(Boolean) || "external";
         const byWeek = new Map();
-        scoped.sets.filter((set) => set.completed && !set.isWarmup && (set.reps > 0 || set.durationSeconds > 0 || set.distance > 0)).forEach((set) => {
+        scoped.sets.filter((set) => set.completed && isWorkingSet(set, "progression") && (set.reps > 0 || set.durationSeconds > 0 || set.distance > 0)).forEach((set) => {
           const exercise = exerciseById.get(set.exerciseId);
           const session = exercise ? sessionById.get(exercise.sessionId) : null;
-          if (!session || !isSessionSubmitted(session)) return;
+          if (!session || (allowedWeeks && !allowedWeeks.has(startOfWeekIso(session.date)))) return;
           const week = session.date;
           const bucket = byWeek.get(week) || { week, primary: resistanceType === "assisted_bodyweight" ? Infinity : 0, secondary: 0, details: [] };
           const load = resistanceLoad(set, resistanceType);
@@ -4725,9 +5168,11 @@
 
       function hypertrophyWindowLabel(selection) {
         if (!selection?.included?.length) return "No qualifying weeks";
-        const newest = selection.included[0].weekStart;
-        const oldest = selection.included.at(-1).weekStart;
-        return formatDate(oldest) + " - " + formatDate(newest);
+        const newestStart = selection.included[0].weekStart;
+        const oldestStart = selection.included.at(-1).weekStart;
+        const newestEndDate = new Date(newestStart + "T00:00:00");
+        newestEndDate.setDate(newestEndDate.getDate() + 6);
+        return formatDate(selection.windowStart || oldestStart) + " - " + formatDate(selection.windowEnd || localDateIso(newestEndDate));
       }
 
       function hypertrophyScoreTone(score) {
@@ -4829,7 +5274,7 @@
       }
 
       function renderExerciseExpectations(exerciseId, analysis) {
-        const contexts = currentExerciseTargetContexts(exerciseId);
+        const contexts = hypertrophyWindowOffset > 0 ? [] : currentExerciseTargetContexts(exerciseId);
         const actuals = exerciseExpectationActuals(exerciseId, analysis);
         const historicalConfigured = actuals.filter((group) => group.context).length;
         const historicalChanged = new Set(actuals.filter((group) => group.context).map((group) => group.context.id + "|" + JSON.stringify(group.context.setTypes))).size > 1;
@@ -4839,7 +5284,7 @@
             <div class="expectation-context-head"><div><h3>${escapeHtml(context.templateName)}</h3><p>${escapeHtml(context.role)} · ${escapeHtml(context.source)}${index === 0 ? ' · Current' : ''}</p></div><span class="status-pill ${index === 0 ? 'inside' : ''}">${escapeHtml(context.sessionType)}</span></div>
             <div class="set-type-list">${context.setTypes.map(renderTargetSetType).join('')}</div>
             <details class="expectation-advanced"><summary>Progression and scoring rules</summary><p><strong>Progression:</strong> ${escapeHtml(context.progressionRule)}</p><p>Each submitted set is graded against the set type and prescription saved with that workout. Readiness adjustments remain temporary and do not overwrite this base template.</p></details>
-          </article>`).join('') : '<div class="expectation-missing"><strong>No active program target</strong><span>Add this exercise to a workout template and configure sets, reps, RPE, and rest. Missing targets are excluded from compliance scoring rather than invented.</span></div>'}
+          </article>`).join('') : hypertrophyWindowOffset > 0 ? '<div class="expectation-missing"><strong>Historical targets only</strong><span>Current template targets are intentionally hidden in this snapshot. The execution below uses only prescriptions saved with workouts inside the selected period.</span></div>' : '<div class="expectation-missing"><strong>No active program target</strong><span>Add this exercise to a workout template and configure sets, reps, RPE, and rest. Missing targets are excluded from compliance scoring rather than invented.</span></div>'}
           <div class="actual-expected"><h3>Actual vs Expected · analyzed window</h3>
             ${actuals.length ? actuals.map((group) => {
               const expected = targetContextExpectationSummary(group.context);
@@ -4868,13 +5313,16 @@
           selectedExerciseId = catalog[0].id;
           chartExerciseDraft = catalog[0].name;
         }
+        const analysis = hypertrophyAnalysis(hypertrophyWindowOffset, "exercise", selectedExerciseId);
         const exercise = selectedExerciseRecord();
         const selectedName = exercise?.name || "";
-        const weeks = selectedName ? summarizeExerciseByWeek(selectedName, { canonicalExerciseId: selectedExerciseId }) : [];
-        const progress = selectedName ? exerciseProgressSeries(selectedName, { canonicalExerciseId: selectedExerciseId, resistanceType: exercise?.resistanceType }) : { e1rm: [], volume: [], primaryTitle: "Estimated 1RM", secondaryTitle: "Volume load", latestPrimary: "Latest e1RM", latestSecondary: "Latest volume", resistanceType: "external" };
-        const analysis = hypertrophyAnalysis(hypertrophyWindowOffset, "exercise", selectedExerciseId);
+        const analysisOptions = { canonicalExerciseId: selectedExerciseId, throughDate: analysis.windowEnd || todayIso(), retentionAsOfDate: todayIso() };
+        const allWeeks = selectedName ? summarizeExerciseByWeek(selectedName, analysisOptions) : [];
+        const qualifyingWeekIds = new Set(analysis.qualifyingWeekIds || []);
+        const weeks = allWeeks.filter((week) => qualifyingWeekIds.has(week.weekStart));
+        const progress = selectedName ? exerciseProgressSeries(selectedName, { ...analysisOptions, qualifyingWeekIds: analysis.qualifyingWeekIds, resistanceType: exercise?.resistanceType }) : { e1rm: [], volume: [], primaryTitle: "Estimated 1RM", secondaryTitle: "Volume load", latestPrimary: "Latest e1RM", latestSecondary: "Latest volume", resistanceType: "external" };
         const latestReviewWeek = weeks[0]?.weekStart || "";
-        const recommendation = selectedName && latestReviewWeek ? recommendForExerciseWeek(selectedName, latestReviewWeek, { canonicalExerciseId: selectedExerciseId }) : null;
+        const recommendation = selectedName && latestReviewWeek ? coachRecommendationForExercise(selectedName, { ...analysisOptions, weekStart: latestReviewWeek, historical: hypertrophyWindowOffset > 0 }) : null;
         if (catalog.length === 0) {
           return '<section class="view charts-view"><div class="screen-heading"><div><div class="section-kicker">Charts</div><h1>Lift progress</h1></div></div><div class="empty-state">Log an exercise, then this screen will show progression charts and next-step guidance.</div></section>';
         }
@@ -4882,7 +5330,7 @@
         const latestVolume = progress.volume.filter((point) => point.value > 0).at(-1);
         return `
           <section class="view charts-view">
-            <div class="screen-heading"><div><div class="section-kicker">Selected lift</div><h1>${escapeHtml(selectedName)}</h1></div><span class="status-pill inside">Lift analysis</span></div>
+            <div class="screen-heading"><div><div class="section-kicker">${hypertrophyWindowOffset > 0 ? 'Historical snapshot through ' + formatDate(analysis.windowEnd) : 'Selected lift'}</div><h1>${escapeHtml(selectedName)}</h1></div><span class="status-pill inside">${analysis.included.length} qualifying week${analysis.included.length === 1 ? '' : 's'} · ${analysis.dataPointCount} sets</span></div>
             <div class="chart-control-panel" aria-label="Selected lift controls">
               <div class="chart-control-field chart-control-lift"><label for="chart-exercise-search">Chart lift</label><div class="chart-search-input"><input id="chart-exercise-search" type="search" data-action="review-exercise-input" role="combobox" aria-autocomplete="list" aria-controls="chart-exercise-suggestions" aria-expanded="${chartExerciseSearchOpen ? 'true' : 'false'}" aria-label="Search or select exercise" autocomplete="off" value="${escapeHtml(chartExerciseDraft || selectedName)}" /><button class="chart-search-clear" type="button" data-action="clear-chart-exercise-search" aria-label="Clear exercise search">×</button></div><div id="chart-exercise-suggestions" class="exercise-suggestions" role="listbox" ${chartExerciseSearchOpen ? '' : 'hidden'}>${renderExerciseSuggestions()}</div><small class="exercise-search-error" role="status" ${chartExerciseSearchError ? '' : 'hidden'}>${escapeHtml(chartExerciseSearchError)}</small></div>
               <label class="chart-control-field analysis-period-control"><span>Analysis period</span><select data-action="hypertrophy-window" aria-label="Hypertrophy Score analysis period">${analysis.windowOptions.length ? analysis.windowOptions.map((option, index) => '<option value="' + option.offset + '" ' + (option.offset === hypertrophyWindowOffset ? 'selected' : '') + '>' + escapeHtml((index === 0 ? 'Latest six qualifying weeks' : 'Previous six-week window ' + index) + ' · ' + hypertrophyWindowLabel(option.selection)) + '</option>').join('') : '<option value="0">Latest six qualifying weeks</option>'}</select></label>
@@ -4891,9 +5339,9 @@
             ${renderHypertrophyScore(analysis, { deferDetail: true })}
             ${renderExerciseExpectations(selectedExerciseId, analysis)}
             ${hypertrophyScoreExpanded ? renderHypertrophyScoreDetail(analysis) : ""}
-            <div class="chart-metric-row"><div><span>${escapeHtml(progress.latestPrimary)}</span><strong>${latestOneRm ? latestOneRm.value : "-"}</strong></div><div><span>${escapeHtml(progress.latestSecondary)}</span><strong>${latestVolume ? latestVolume.value : "-"}</strong></div><div><span>Data points</span><strong>${progress.e1rm.filter((point) => point.value > 0).length}</strong></div></div>
+            <div class="chart-metric-row"><div><span>${escapeHtml(progress.latestPrimary)}</span><strong>${latestOneRm ? latestOneRm.value : "-"}</strong></div><div><span>${escapeHtml(progress.latestSecondary)}</span><strong>${latestVolume ? latestVolume.value : "-"}</strong></div><div><span>Data points</span><strong>${analysis.dataPointCount}</strong></div></div>
             ${latestReviewWeek && progress.resistanceType === 'external' ? renderLiftProgressSummary(weeks, latestReviewWeek) : ''}
-            ${recommendation ? '<details class="compact-disclosure"><summary>Coach recommendation <span>' + escapeHtml(recommendation.label) + '</span></summary><div class="disclosure-body">' + renderRecommendation(recommendation) + '</div></details>' : ""}
+            ${recommendation ? '<section class="coach-recommendation-wrap"><div class="section-kicker">' + (hypertrophyWindowOffset > 0 ? 'Coach recommendation at the end of this period' : 'Coach Recommendation') + '</div>' + renderRecommendation(recommendation) + '</section>' : ""}
             <section class="screen-section">
               <div class="section-heading"><div><h2>Progress charts</h2><p>Tap a point to see its value, date, and session context.</p></div></div>
               <div class="chart-list">
@@ -4917,12 +5365,26 @@
       }
 
       function renderRecommendation(recommendation) {
+        const interventionLabels = { normal: recommendation.label || "Normal session", light: "Perform a Light Session", deload: "Deload", stop_modify: "Stop or Modify" };
+        const intervention = recommendation.interventionType || (recommendation.decision === "deload" ? "deload" : "normal");
+        const execution = [];
+        if (recommendation.progressionAction === "increase_load" && Number(recommendation.targetLoad || 0) > 0) execution.push("Next resistance " + formatResistance({ weight: recommendation.targetLoad, addedLoad: recommendation.resistanceType === "bodyweight_plus_load" ? recommendation.targetLoad : 0, assistanceLoad: recommendation.resistanceType === "assisted_bodyweight" ? recommendation.targetLoad : 0, resistanceType: recommendation.resistanceType, weightUnit: data.settings.weightUnit }, { name: recommendation.affectedExerciseName, resistanceType: recommendation.resistanceType }));
+        if (recommendation.progressionAction === "increase_reps" && Number(recommendation.targetReps || 0) > 0) execution.push("Next target " + recommendation.targetReps + " reps at the current resistance");
+        if (recommendation.loadAdjustment) execution.push("Load " + Math.abs(Math.round(recommendation.loadAdjustment * 100)) + "% " + (recommendation.loadAdjustment < 0 ? "lower" : "higher"));
+        if (recommendation.setAdjustment) execution.push(recommendation.setAdjustment < 0 && Math.abs(recommendation.setAdjustment) < 1 ? "Working sets reduced about " + Math.round(Math.abs(recommendation.setAdjustment) * 100) + "%" : "Working sets " + (recommendation.setAdjustment > 0 ? "+" : "") + recommendation.setAdjustment);
+        if (recommendation.rpeTarget) execution.push("Target RPE " + recommendation.rpeTarget);
+        if (recommendation.restAdjustment) execution.push("Rest +" + recommendation.restAdjustment + " sec");
+        if (recommendation.removeIntensificationTechniques) execution.push("No drop sets or intensification work");
         return `
-          <article class="recommendation ${recommendation.decision}">
-            <span>${recommendation.confidence} confidence</span>
-            <h2>${escapeHtml(recommendation.label)}</h2>
+          <article class="recommendation ${intervention === 'deload' ? 'deload' : intervention === 'stop_modify' ? 'change' : intervention === 'light' ? 'hold' : recommendation.decision}">
+            <span>${escapeHtml(intervention.replace('_', ' '))} · ${recommendation.confidence} confidence</span>
+            <h2>${escapeHtml(interventionLabels[intervention] || recommendation.label)}</h2>
+            <p><strong>${escapeHtml(recommendation.affectedExerciseName || '')}</strong></p>
             <p>${escapeHtml(recommendation.reason)}</p>
             <strong>${escapeHtml(recommendation.action)}</strong>
+            ${execution.length ? '<div class="recommendation-execution"><b>Execution changes</b>' + execution.map((item) => '<span>' + escapeHtml(item) + '</span>').join('') + '</div>' : ''}
+            ${recommendation.durationInSessions ? '<p><b>Duration:</b> ' + recommendation.durationInSessions + ' session' + (recommendation.durationInSessions === 1 ? '' : 's') + '.</p>' : ''}
+            ${recommendation.returnToNormalCriteria ? '<p><b>Return to normal:</b> ' + escapeHtml(recommendation.returnToNormalCriteria) + '</p>' : ''}
             <ul>${recommendation.evidence.map((item) => "<li>" + escapeHtml(item) + "</li>").join("")}</ul>
           </article>
         `;
@@ -4955,6 +5417,8 @@
       function renderSettings() {
         const baseline = readinessBaseline();
         const pushStatus = notificationStatus();
+        const migration = data.migrationAudit?.at(-1);
+        const reviewSets = data.sets.filter((set) => set.reviewRequired);
         return `
           <section class="view settings-view">
             <div class="screen-heading"><div><div class="section-kicker">Settings</div><h1>Training setup</h1></div></div>
@@ -5029,6 +5493,9 @@
               <button type="button" data-action="export-data">${icon.download} data</button>
               ${exportText ? '<textarea class="export-box" readonly aria-label="Exported backup JSON">' + escapeHtml(exportText) + '</textarea>' : ""}
               <label class="import-button">${icon.upload} ${importInProgress ? "importing..." : "backup or Strong CSV"}<input type="file" accept=".json,.csv,application/json,text/csv" data-action="import-data" ${importInProgress ? "disabled" : ""} /></label>
+              ${migration ? '<div class="inline-panel"><strong>Strong data migration v' + migration.version + '</strong><p class="settings-note">Inspected ' + migration.inspected + ' sets; changed ' + migration.changed + '; preserved ' + migration.manualOverridesPreserved + ' manual corrections; identified ' + migration.warmups + ' warm-ups, ' + migration.topSets + ' top sets, ' + migration.backoffSets + ' back-off sets, and ' + migration.dropSets + ' drop sets. ' + migration.ambiguous + ' sets need review. ' + (migration.templatesReseeded || 0) + ' Strong templates were reseeded from active working sets.</p></div>' : ''}
+              <div class="inline-panel"><strong>Recoverability</strong><p class="settings-note">${data.rawImports?.length || 0} raw Strong import${(data.rawImports?.length || 0) === 1 ? '' : 's'} retained. Older completed workouts remain in the retention archive and are included in exports, but excluded from current analysis.</p></div>
+              ${reviewSets.length ? '<div class="inline-panel"><strong>Manual review queue · ' + reviewSets.length + '</strong><p class="settings-note">These imported sets could not be classified confidently. Open the submitted workout from History, choose Edit, then select the set type.</p></div>' : ''}
             </div></details>
             <details class="settings-group danger-zone"><summary>Danger Zone <span>High-risk actions</span></summary><div class="disclosure-body settings-panel">
               <div><strong>Clear All Local App Data</strong><p class="settings-note">Removes app data stored on this device. It does not submit, cancel, or delete cloud account data.</p></div>
@@ -5167,7 +5634,7 @@
       function patchExerciseName(exerciseId, name, shouldRender = true) {
         const exercise = data.exercises.find((item) => item.id === exerciseId);
         if (!exercise) return;
-        const firstSet = setsForExercise(exerciseId).find((set) => !set.isWarmup);
+        const firstSet = setsForExercise(exerciseId).find((set) => isWorkingSet(set, "score"));
         const previousAutoRest = recommendedRestSeconds(exercise.name, { reps: firstSet?.reps, rpe: firstSet?.rpe, excludeSessionId: exercise.sessionId });
         const restSeconds = !exercise.restSeconds || Number(exercise.restSeconds) === previousAutoRest
           ? recommendedRestSeconds(name, { reps: firstSet?.reps, rpe: firstSet?.rpe, excludeSessionId: exercise.sessionId })
@@ -5198,6 +5665,36 @@
           if (isEditingHistorySession()) historyEditFlow.dirty = true;
           else scheduleSave();
         }
+      }
+
+      function setManualType(setId, requestedType) {
+        const current = data.sets.find((set) => set.id === setId);
+        if (!current) return;
+        const setType = normalizeSetTypeCode(requestedType);
+        const isWarmup = setType === "warmup";
+        const semantics = setTypeSemantics({ ...current, setType, isWarmup, countsTowardScore: !isWarmup, countsTowardVolume: !isWarmup, countsTowardProgression: !isWarmup });
+        patchSet(setId, {
+          setType,
+          isWarmup,
+          countsTowardScore: semantics.countsTowardScore,
+          countsTowardVolume: semantics.countsTowardVolume,
+          countsTowardProgression: semantics.countsTowardProgression,
+          classificationSource: "manual",
+          classificationConfidence: 1,
+          classifierVersion: SET_CLASSIFIER_VERSION,
+          manualOverride: true,
+          reviewRequired: false,
+          classifiedAt: isoNow(),
+          classificationUndo: current.classificationUndo || { setType: current.setType, isWarmup: current.isWarmup, countsTowardScore: current.countsTowardScore, countsTowardVolume: current.countsTowardVolume, countsTowardProgression: current.countsTowardProgression, classificationSource: current.classificationSource, classificationConfidence: current.classificationConfidence, manualOverride: current.manualOverride, reviewRequired: current.reviewRequired }
+        });
+        showAppToast("Set type updated. Analysis and template history will use the correction.");
+      }
+
+      function undoManualSetType(setId) {
+        const current = data.sets.find((set) => set.id === setId);
+        if (!current?.classificationUndo) return;
+        patchSet(setId, { ...current.classificationUndo, classificationUndo: null, classifiedAt: isoNow() });
+        showAppToast("Set type correction undone.");
       }
 
       function patchSetValue(setId, field, value, shouldRender = true) {
@@ -5261,7 +5758,7 @@
         if (!session || !exercise || !template) return;
         const templateExercise = template.exercises.find((item) => exerciseMatches(item.name, exercise.name));
         if (!templateExercise) return;
-        const workSets = setsForExercise(exercise.id).filter((set) => !set.isWarmup && !set.skipped);
+        const workSets = setsForExercise(exercise.id).filter((set) => isWorkingSet(set, "progression") && !set.skipped);
         const representative = workSets[0];
         if (!representative) return;
         patchTemplateExercise(template.id, templateExercise.id, {
@@ -6032,9 +6529,9 @@
 
       function priorComparableWorkoutSets(session, exercise, resistanceType) {
         const canonicalId = canonicalExerciseId(exercise.name);
-        const priorSessionIds = new Set(data.sessions.filter((candidate) => candidate.id !== session.id && isSessionSubmitted(candidate) && sessionComesBefore(candidate, session)).map((candidate) => candidate.id));
+        const priorSessionIds = new Set(activeHistorySessions({ throughDate: session.date }).filter((candidate) => candidate.id !== session.id && sessionComesBefore(candidate, session)).map((candidate) => candidate.id));
         const priorExerciseIds = new Set(data.exercises.filter((candidate) => priorSessionIds.has(candidate.sessionId) && !candidate.isDeload && canonicalExerciseId(candidate.name) === canonicalId && resistanceTypeFor(candidate) === resistanceType).map((candidate) => candidate.id));
-        return data.sets.filter((set) => priorExerciseIds.has(set.exerciseId) && set.completed && !set.isWarmup && !set.skipped);
+        return data.sets.filter((set) => priorExerciseIds.has(set.exerciseId) && set.completed && isWorkingSet(set, "progression") && !set.skipped);
       }
 
       function compareWorkoutPerformance(currentSet, priorSet, resistanceType, repLow) {
@@ -6060,7 +6557,7 @@
       }
 
       function workoutExerciseAnalysis(session, exercise, prs) {
-        const allWorkingSets = setsForExercise(exercise.id).filter((set) => !set.isWarmup);
+        const allWorkingSets = setsForExercise(exercise.id).filter((set) => isWorkingSet(set, "score"));
         const completedSets = allWorkingSets.filter((set) => set.completed && !set.skipped);
         const resistanceType = resistanceTypeFor(exercise, completedSets[0]);
         const prescription = exercise.prescription || {};
@@ -6323,15 +6820,15 @@
 
       function submitWorkoutPrs(session) {
         const sessionExercises = data.exercises.filter((exercise) => exercise.sessionId === session.id);
-        const priorSessionIds = new Set(data.sessions.filter((item) => item.id !== session.id && isSessionSubmitted(item)).map((item) => item.id));
+        const priorSessionIds = new Set(activeHistorySessions({ throughDate: session.date }).filter((item) => item.id !== session.id).map((item) => item.id));
         const prs = [];
         sessionExercises.forEach((exercise) => {
           const resistanceType = resistanceTypeFor(exercise);
-          const currentSets = setsForExercise(exercise.id).filter((set) => set.completed && !set.isWarmup && set.reps > 0);
+          const currentSets = setsForExercise(exercise.id).filter((set) => set.completed && isWorkingSet(set, "pr") && set.reps > 0);
           if (!currentSets.length) return;
           const priorSets = data.sets.filter((set) => {
             const priorExercise = data.exercises.find((item) => item.id === set.exerciseId);
-            return set.completed && !set.isWarmup && priorExercise && priorSessionIds.has(priorExercise.sessionId) && exerciseMatches(priorExercise.name, exercise.name) && resistanceTypeFor(priorExercise, set) === resistanceType;
+            return set.completed && isWorkingSet(set, "pr") && priorExercise && priorSessionIds.has(priorExercise.sessionId) && exerciseMatches(priorExercise.name, exercise.name) && resistanceTypeFor(priorExercise, set) === resistanceType;
           });
           if (["external", "bodyweight_plus_load"].includes(resistanceType)) {
             const maxWeight = Math.max(...currentSets.map((set) => resistanceLoad(set, resistanceType)));
@@ -6366,7 +6863,7 @@
         if (timer) cancelTimer("workout-ended", false);
         const prs = submitWorkoutPrs(session);
         const submittedAt = isoNow();
-        const completedSession = { ...session, submitted: true, workoutStarted: false, workoutState: "completed", submittedAt, prs, updatedAt: submittedAt };
+        const completedSession = { ...session, submitted: true, workoutStarted: false, workoutState: "completed", completedAt: session.date, submittedAt, prs, updatedAt: submittedAt };
         const workoutAnalysis = calculateWorkoutAnalysis(completedSession, { prs });
         pendingSubmitSessionId = "";
         completedSummarySessionId = session.id;
@@ -6379,7 +6876,7 @@
       function renderSubmitConfirmation(session) {
         const completed = data.sets.filter((set) => {
           const exercise = data.exercises.find((item) => item.id === set.exerciseId);
-          return exercise?.sessionId === session.id && set.completed && !set.isWarmup;
+          return exercise?.sessionId === session.id && set.completed && isWorkingSet(set, "score");
         }).length;
         return '<section class="submit-confirmation"><strong>Log this workout as completed?</strong><span>' + completed + ' completed working sets will update history, charts, volume, and PRs.</span><div class="row"><button class="primary-action" type="button" data-action="confirm-submit-workout">Log workout</button><button type="button" data-action="cancel-submit-workout">Keep editing</button></div></section>';
       }
@@ -6547,7 +7044,7 @@
       }
 
       function completedWorkoutEntries() {
-        const sessionById = new Map(data.sessions.map((session) => [session.id, session]));
+        const sessionById = new Map(activeHistorySessions().map((session) => [session.id, session]));
         const exerciseById = new Map(data.exercises.map((exercise) => [exercise.id, exercise]));
         return data.sets
           .map((set) => {
@@ -6555,10 +7052,11 @@
             const session = exercise ? sessionById.get(exercise.sessionId) : null;
             return exercise && session ? { set, exercise, session } : null;
           })
-          .filter((entry) => entry && isSessionSubmitted(entry.session) && entry.set.completed && !entry.set.isWarmup && (entry.set.reps > 0 || entry.set.durationSeconds > 0 || entry.set.distance > 0));
+          .filter((entry) => entry && entry.set.completed && isWorkingSet(entry.set, "volume") && (entry.set.reps > 0 || entry.set.durationSeconds > 0 || entry.set.distance > 0));
       }
 
       function weeklyMuscleVolume(weekStart = startOfWeekIso(todayIso())) {
+        const activeSessionIds = activeHistorySessionIds();
         const buckets = new Map(muscleGroups.map((muscle) => [muscle, { muscle, sets: 0, directSets: 0, indirectSets: 0, highRpeSets: 0, failedSets: 0, exercises: new Set(), exerciseDetails: new Map(), sessionDetails: new Map(), submittedSessions: new Map(), excludedDeloadSessions: new Map() }]));
         const end = new Date(weekStart + "T00:00:00");
         end.setDate(end.getDate() + 7);
@@ -6598,10 +7096,10 @@
             bucket.sessionDetails.set(entry.session.id, sessionDetail);
           });
         });
-        data.sets.filter((set) => !set.completed && !set.skipped && !set.isWarmup).forEach((set) => {
+        data.sets.filter((set) => !set.completed && !set.skipped && isWorkingSet(set, "volume")).forEach((set) => {
           const exercise = data.exercises.find((item) => item.id === set.exerciseId);
           const session = exercise ? data.sessions.find((item) => item.id === exercise.sessionId) : null;
-          if (!exercise || !session || !isSessionSubmitted(session) || exercise.isDeload || session.date < weekStart || session.date >= endIso) return;
+          if (!exercise || !session || !activeSessionIds.has(session.id) || exercise.isDeload || session.date < weekStart || session.date >= endIso) return;
           musclesForExercise(exercise).forEach(({ muscle, weight }) => {
             const bucket = buckets.get(muscle);
             if (bucket) bucket.failedSets += weight;
@@ -6804,13 +7302,13 @@
         const triggerText = applicableTriggers.map((trigger) => trigger.label).join("; ");
         if (recoveryAdvice.decision === "rest" || severeConcern) {
           const weight = reducedWeight(0.85);
-          const adjusted = { ...target, mode: "technique", sets: Math.max(1, Math.ceil(target.sets * 0.5)), weight, addedLoad: target.resistanceType === "bodyweight_plus_load" ? weight : 0, assistanceLoad: target.resistanceType === "assisted_bodyweight" ? weight : 0, rpe: 6, restSeconds: Math.max(Number(target.restSeconds || 0), Number(target.restSeconds || 0) + 15), isDeload: false };
+          const adjusted = { ...target, mode: "stop-modify", interventionType: "stop_modify", safetyAdjustment: true, baseInterventionType: target.coachRecommendation?.interventionType || target.mode || "normal", sets: Math.max(1, Math.ceil(target.sets * 0.5)), weight, addedLoad: target.resistanceType === "bodyweight_plus_load" ? weight : 0, assistanceLoad: target.resistanceType === "assisted_bodyweight" ? weight : 0, rpe: 6, restSeconds: Math.max(Number(target.restSeconds || 0), Number(target.restSeconds || 0) + 15), isDeload: Boolean(target.isDeload) };
           const reason = (context.exerciseName ? context.exerciseName + " was adjusted because " : "Adjusted because ") + triggerText + ". " + describeReadinessTargetChanges(target, adjusted) + ". Why these levers: " + explainReadinessAdjustmentChoice(target, adjusted, applicableTriggers);
           return { ...adjusted, reason, adjusted: targetWasAdjusted(target, adjusted), adjustmentReason: reason, triggerLabels: applicableTriggers.map((trigger) => trigger.label), text: targetText(adjusted, reason) };
         }
         if (recoveryAdvice.decision === "deload" || targetedConcern) {
           const weight = reducedWeight(0.9);
-          const adjusted = { ...target, mode: targetedConcern ? "fatigue-adjusted" : "deload", sets: Math.max(1, Math.ceil(target.sets * 0.65)), weight, addedLoad: target.resistanceType === "bodyweight_plus_load" ? weight : 0, assistanceLoad: target.resistanceType === "assisted_bodyweight" ? weight : 0, rpe: 6.5, restSeconds: Math.max(Number(target.restSeconds || 0), Number(target.restSeconds || 0) + 15), isDeload: recoveryAdvice.decision === "deload" && !targetedConcern };
+          const adjusted = { ...target, mode: targetedConcern ? "readiness-adjusted" : "deload", interventionType: target.isDeload ? "deload" : targetedConcern ? "readiness_adjusted" : "deload", baseInterventionType: target.coachRecommendation?.interventionType || target.mode || "normal", sets: Math.max(1, Math.ceil(target.sets * 0.65)), weight, addedLoad: target.resistanceType === "bodyweight_plus_load" ? weight : 0, assistanceLoad: target.resistanceType === "assisted_bodyweight" ? weight : 0, rpe: 6.5, restSeconds: Math.max(Number(target.restSeconds || 0), Number(target.restSeconds || 0) + 15), isDeload: Boolean(target.isDeload || (recoveryAdvice.decision === "deload" && !targetedConcern)) };
           const reason = (context.exerciseName ? context.exerciseName + " was adjusted because " : "Adjusted because ") + triggerText + ". " + describeReadinessTargetChanges(target, adjusted) + ". Why these levers: " + explainReadinessAdjustmentChoice(target, adjusted, applicableTriggers);
           return { ...adjusted, reason, adjusted: targetWasAdjusted(target, adjusted), adjustmentReason: reason, triggerLabels: applicableTriggers.map((trigger) => trigger.label), text: targetText(adjusted, reason) };
         }
@@ -6829,6 +7327,7 @@
 
       function createTemplatesFromStrongSessions(importedSessions, importedExercises, importedSets) {
         const existingTemplateNames = new Set(data.templates.map((template) => template.name.trim().toLowerCase()));
+        const activeImportedSessionIds = new Set(activeCompletedWorkoutHistory({ sessions: importedSessions }, { asOfDate: todayIso() }).map((session) => session.id));
         const exercisesBySession = new Map();
         const setsByExercise = new Map();
         importedExercises.forEach((exercise) => {
@@ -6841,6 +7340,7 @@
         });
         const sessionsByWorkoutName = new Map();
         importedSessions.forEach((session) => {
+          if (!activeImportedSessionIds.has(session.id)) return;
           const name = (session.title || "Strong Workout").trim() || "Strong Workout";
           const current = sessionsByWorkoutName.get(name);
           if (!current || session.date > current.date) sessionsByWorkoutName.set(name, session);
@@ -6851,7 +7351,7 @@
           const sessionExercises = (exercisesBySession.get(session.id) || []).slice().sort((a, b) => a.order - b.order);
           const templateExercises = sessionExercises.map((exercise) => {
             const exerciseSets = (setsByExercise.get(exercise.id) || []).slice().sort((a, b) => a.setNumber - b.setNumber);
-            const completedSets = exerciseSets.filter((set) => set.completed && set.reps > 0);
+            const completedSets = exerciseSets.filter((set) => set.completed && set.reps > 0 && isWorkingSet(set, "progression"));
             const resistanceType = inferResistanceType(exercise.name, exercise, completedSets);
             const representativeReps = completedSets.length
               ? Math.round(completedSets.reduce((sum, set) => sum + set.reps, 0) / completedSets.length)
@@ -6863,12 +7363,13 @@
               secondaryMuscle: exercise.secondaryMuscle || "",
               resistanceType,
               isBodyweight: isBodyweightResistance(resistanceType),
-              sets: Math.max(completedSets.filter((set) => !set.isWarmup).length || exerciseSets.length, 1),
+              sets: Math.max(completedSets.length, 1),
               reps: Math.max(representativeReps, 1),
               targetRpe: completedSets.some((set) => Number(set.rpe) > 0) ? Math.round((completedSets.filter((set) => Number(set.rpe) > 0).reduce((sum, set) => sum + Number(set.rpe), 0) / completedSets.filter((set) => Number(set.rpe) > 0).length) * 2) / 2 : "",
               increment: progressionProfileForExercise(exercise.name).increment,
               restSeconds: exercise.restSeconds || recommendedRestSeconds(exercise.name, { reps: representativeReps }),
-              warmups: exerciseSets.filter((set) => set.isWarmup).map((set) => ({ reps: set.reps, weight: set.weight, weightUnit: set.weightUnit, resistanceType: set.resistanceType, isBodyweight: set.isBodyweight, addedLoad: set.addedLoad, assistanceLoad: set.assistanceLoad, rpe: set.rpe }))
+              setTypes: templateSetTypesFromHistory(completedSets, exercise.restSeconds || recommendedRestSeconds(exercise.name, { reps: representativeReps })),
+              warmups: exerciseSets.filter((set) => setTypeSemantics(set).isWarmup).map((set) => ({ reps: set.reps, weight: set.weight, weightUnit: set.weightUnit, resistanceType: set.resistanceType, isBodyweight: set.isBodyweight, addedLoad: set.addedLoad, assistanceLoad: set.assistanceLoad, rpe: set.rpe }))
             };
           });
           if (!templateExercises.length) return null;
@@ -6887,11 +7388,11 @@
           const minute = Number(match[5] || 0);
           const parsed = new Date(year, month, day, hour, minute);
           if (!Number.isNaN(parsed.getTime())) {
-            return { date: parsed.toISOString().slice(0, 10), createdAt: parsed.toISOString() };
+            return { date: localDateIso(parsed), createdAt: parsed.toISOString() };
           }
         }
         const parsed = new Date(trimmed.replace(" ", "T"));
-        if (!Number.isNaN(parsed.getTime())) return { date: parsed.toISOString().slice(0, 10), createdAt: parsed.toISOString() };
+        if (!Number.isNaN(parsed.getTime())) return { date: localDateIso(parsed), createdAt: parsed.toISOString() };
         return { date: todayIso(), createdAt: isoNow() };
       }
 
@@ -6932,6 +7433,9 @@
               title: workoutName,
               isTravel: false,
               notes: row["Workout Notes"] || "",
+              submitted: true,
+              workoutState: "completed",
+              completedAt: parsedDate.date,
               createdAt: parsedDate.createdAt,
               updatedAt: isoNow()
             };
@@ -6963,6 +7467,8 @@
             id: importedId("t"),
             exerciseId: exercise.id,
             setNumber: numberFrom(row["Set Order"], nextSetNumber),
+            sequence: nextSetNumber,
+            sourceSetOrder: String(row["Set Order"] || ""),
             reps,
             weight,
             weightUnit: data.settings.weightUnit,
@@ -6971,7 +7477,8 @@
             addedLoad: resistanceType === "bodyweight_plus_load" ? weight : 0,
             assistanceLoad: resistanceType === "assisted_bodyweight" ? weight : 0,
             rpe: numberFrom(row.RPE),
-            completed: true
+            completed: true,
+            originalImportedValue: { setOrder: String(row["Set Order"] || ""), weight: row.Weight, reps: row.Reps, rpe: row.RPE, distance: row.Distance, seconds: row.Seconds }
           });
         });
 
@@ -6981,22 +7488,47 @@
             data.exercises.filter((exercise) => exercise.source === "strong"),
             data.sets
           );
-          if (templates.length) {
-            commit({ ...data, templates: [...templates, ...data.templates] }, false);
-            settingsMessage = "Strong CSV already imported. Added " + templates.length + " templates from workout names.";
-          } else {
-            settingsMessage = "Strong CSV already imported.";
-          }
+          const backupAlreadyStored = (data.rawImports || []).some((item) => item.source === "strong" && item.originalText === text);
+          commit({ ...data, templates: [...templates, ...data.templates], rawImports: backupAlreadyStored ? data.rawImports : [...(data.rawImports || []), { id: "strong-backup-" + importStamp, source: "strong", importedAt: isoNow(), originalText: text, sessionExternalIds: [] }] }, false);
+          settingsMessage = "Strong CSV already imported." + (templates.length ? " Added " + templates.length + " templates from active workout names." : "") + (backupAlreadyStored ? "" : " Raw source backup retained.");
           render();
           return;
         }
+        const setsByImportedExercise = new Map();
+        sets.forEach((set) => {
+          if (!setsByImportedExercise.has(set.exerciseId)) setsByImportedExercise.set(set.exerciseId, []);
+          setsByImportedExercise.get(set.exerciseId).push(set);
+        });
+        setsByImportedExercise.forEach((exerciseSets, exerciseId) => {
+          const exercise = exercises.find((item) => item.id === exerciseId);
+          classifyImportedExerciseSets(exerciseSets, exercise?.resistanceType || "external").forEach((classification) => {
+            const targetSet = sets.find((set) => set.id === classification.set.id);
+            if (!targetSet) return;
+            const semantics = setTypeSemantics({ ...targetSet, setType: classification.type, isWarmup: classification.type === "warmup" });
+            Object.assign(targetSet, {
+              sequence: classification.set.sequence,
+              setType: classification.type,
+              isWarmup: semantics.isWarmup,
+              countsTowardScore: semantics.countsTowardScore,
+              countsTowardVolume: semantics.countsTowardVolume,
+              countsTowardProgression: semantics.countsTowardProgression,
+              classificationSource: classification.source,
+              classificationConfidence: classification.confidence,
+              classifierVersion: SET_CLASSIFIER_VERSION,
+              manualOverride: false,
+              reviewRequired: classification.reviewRequired,
+              classifiedAt: isoNow()
+            });
+          });
+        });
         const templates = createTemplatesFromStrongSessions(sessions, exercises, sets);
         commit({
           ...data,
           sessions: [...sessions, ...data.sessions],
           exercises: [...data.exercises, ...exercises],
           sets: [...data.sets, ...sets],
-          templates: [...templates, ...data.templates]
+          templates: [...templates, ...data.templates],
+          rawImports: [...(data.rawImports || []), { id: "strong-" + importStamp, source: "strong", importedAt: isoNow(), originalText: text, sessionExternalIds: sessions.map((session) => session.externalId) }]
         }, false);
         activeSessionId = sessions.sort((a, b) => b.date.localeCompare(a.date))[0]?.id || activeSessionId;
         settingsMessage = "Imported " + sessions.length + " Strong workouts, " + exercises.length + " exercises, " + sets.length + " sets, and " + templates.length + " templates.";
@@ -7247,6 +7779,7 @@
           commit({ ...data, sets: data.sets.filter((set) => set.id !== target.dataset.setId) });
           ensureActiveSet();
         }
+        if (action === "undo-set-type-override") undoManualSetType(target.dataset.setId);
         if (action === "toggle-set") toggleSetCompletion(target.dataset.setId);
         if (action === "toggle-skip-set") toggleSetSkipped(target.dataset.setId);
         if (action === "update-template-exercise") updateTemplateFromExercise(target.dataset.exerciseId);
@@ -7346,7 +7879,8 @@
           const resistanceType = target.checked ? "bodyweight" : "external";
           commit({ ...data, exercises: data.exercises.map((exercise) => exercise.id === target.dataset.exerciseId ? { ...exercise, resistanceType, isBodyweight: target.checked } : exercise), sets: data.sets.map((set) => set.exerciseId === target.dataset.exerciseId ? normalizeResistanceSet(set, resistanceType) : set) });
         }
-        if (action === "set-warmup") patchSet(target.dataset.setId, { isWarmup: target.checked });
+        if (action === "set-warmup") setManualType(target.dataset.setId, target.checked ? "warmup" : "straight");
+        if (action === "set-type-override") setManualType(target.dataset.setId, target.value);
         if (action === "set-reps") patchSetValue(target.dataset.setId, "reps", target.value);
         if (action === "set-weight") patchSetValue(target.dataset.setId, "weight", target.value);
         if (action === "set-rpe") patchSetValue(target.dataset.setId, "rpe", target.value);
@@ -7357,7 +7891,15 @@
         if (action === "template-exercise-resistance") { const resistanceType = resistanceTypeValues.includes(target.value) ? target.value : "external"; patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { resistanceType, isBodyweight: isBodyweightResistance(resistanceType) }); }
         if (action === "template-exercise-rpe") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { targetRpe: Number(target.value) });
         if (action === "template-exercise-increment") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { increment: Number(target.value) });
-        if (action === "hypertrophy-window") { hypertrophyWindowOffset = Math.max(0, Number(target.value || 0)); hypertrophyScoreExpanded = false; render(); }
+        if (action === "hypertrophy-window") {
+          hypertrophyWindowOffset = Math.max(0, Number(target.value || 0));
+          hypertrophyScoreExpanded = false;
+          chartDetailPoint = null;
+          hypertrophyScoreLoading = true;
+          hypertrophyScoreCache = { dataRef: null, key: "", result: null };
+          render();
+          window.setTimeout(() => { hypertrophyScoreLoading = false; render(); }, 60);
+        }
         if (action === "weight-unit") commit({ ...data, settings: { ...data.settings, weightUnit: target.value } });
         if (action === "theme-mode") commit({ ...data, settings: { ...data.settings, theme: target.value } });
         if (action === "training-goal") commit({ ...data, settings: { ...data.settings, goal: target.value } });
