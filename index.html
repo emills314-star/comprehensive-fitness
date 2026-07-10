@@ -431,9 +431,20 @@
 
       .set-row.warmup { border-left: 3px solid var(--amber); padding-left: 8px; }
       .set-row.warmup strong { color: var(--amber); font-size: 0.72rem; }
-      .set-row.completed { background: var(--green-dark); border-color: var(--green); }
-      .set-row.completed input { color: var(--muted); }
+      .set-block { border-left: 3px solid transparent; display: grid; }
+      .set-block.completed {
+        background: color-mix(in srgb, var(--amber) 18%, transparent);
+        border-left-color: var(--amber);
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--amber) 48%, transparent);
+      }
+      .set-block.completed .set-row { border-top-color: color-mix(in srgb, var(--amber) 60%, var(--line)); }
+      .set-block.completed .set-row strong { color: var(--amber); }
+      .set-block.completed input { color: var(--text); }
+      .set-row.completed { background: transparent; border-color: transparent; }
       .set-row.pending { border-left: 3px solid transparent; }
+      .set-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 6px; padding: 0 7px 8px 43px; }
+      .set-actions .mini-button { min-height: 32px; padding: 5px 9px; }
+      .set-rest-button { border-color: color-mix(in srgb, var(--amber) 58%, var(--line)); color: var(--amber); }
       .rest-control { align-items: center; color: var(--muted); display: flex; font-size: 0.78rem; font-weight: 800; gap: 7px; }
       .rest-control input { min-height: 38px; padding: 6px; width: 72px; }
       .session-submitted, .summary-muted { border: 1px solid var(--line); color: var(--muted); padding: 12px; }
@@ -459,8 +470,6 @@
         padding: 8px;
       }
 
-      .set-row .bodyweight, .set-row .mini-button { grid-column: span 2; }
-
       .mini-button {
         color: var(--muted);
         font-size: 0.82rem;
@@ -478,10 +487,15 @@
       }
 
       .check-button.checked {
-        background: var(--green-dark);
-        border-color: var(--green);
-        color: var(--green-2);
+        background: var(--amber);
+        border-color: var(--amber);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber) 22%, transparent);
+        color: #161006;
       }
+
+      .exercise-level-controls { align-items: center; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 14px; padding-bottom: 8px; }
+      .exercise-level-controls .deload-toggle { border: 0; padding: 0; }
+      .exercise-level-controls .bodyweight { color: var(--text); }
 
       .primary-action {
         background: var(--green);
@@ -707,8 +721,9 @@
         width: 100%;
       }
 
-      .chart-points { display: flex; flex-wrap: wrap; gap: 5px; }
-      .chart-points button { color: var(--muted); font-size: 0.7rem; min-height: 30px; padding: 5px 7px; }
+      .chart-point { cursor: pointer; outline: none; }
+      .chart-point .hit-area { fill: transparent; }
+      .chart-point:focus .visible-point, .chart-point:hover .visible-point { fill: var(--amber); stroke: var(--text); stroke-width: 2; }
       .chart-detail { border-top: 1px solid var(--green); display: grid; gap: 8px; margin-top: 12px; padding-top: 12px; }
       .chart-detail p, .chart-detail small { color: var(--muted); margin: 0; }
 
@@ -800,29 +815,12 @@
         min-height: 180px;
       }
 
-      .timer-bar {
-        align-items: center;
-        background: var(--nav-bg);
-        border: 1px solid rgba(255, 177, 43, 0.78);
-        border-radius: 12px;
-        bottom: calc(88px + env(safe-area-inset-bottom));
-        box-shadow: 0 18px 38px rgba(0, 0, 0, 0.45);
-        display: grid;
-        gap: 10px;
-        grid-template-columns: 1fr 48px 48px;
-        left: 14px;
-        margin: 0 auto;
-        max-width: 892px;
-        padding: 12px;
-        position: fixed;
-        right: 14px;
-        z-index: 5;
-      }
+      .timer-bar { align-items: center; background: var(--surface-strong); border-top: 1px solid var(--amber); display: grid; gap: 8px; grid-template-columns: 1fr 36px 36px; padding: 9px 8px 10px 43px; }
 
       .timer-bar strong {
         color: var(--amber);
         display: block;
-        font-size: 1.75rem;
+        font-size: 1.15rem;
         line-height: 1;
       }
 
@@ -835,6 +833,24 @@
       }
 
       .timer-bar.complete { border-color: var(--green); }
+      .timer-progress { background: color-mix(in srgb, var(--amber) 18%, var(--surface)); border-radius: 999px; grid-column: 1 / -1; height: 7px; overflow: hidden; }
+      .timer-progress span { background: linear-gradient(90deg, var(--amber), #ffe099); display: block; height: 100%; transition: width 1s linear; width: var(--timer-progress, 0%); }
+
+      .adjustment-summary { background: color-mix(in srgb, var(--amber) 11%, var(--surface)); border-left: 3px solid var(--amber); color: var(--text); font-weight: 900; padding: 10px 12px; }
+
+      .sheet-backdrop { align-items: end; background: rgba(0, 0, 0, 0.62); display: flex; inset: 0; justify-content: center; padding: 18px 14px max(18px, env(safe-area-inset-bottom)); position: fixed; z-index: 20; }
+      .bottom-sheet { background: var(--bg-soft); border: 1px solid var(--line-strong); border-radius: 18px 18px 10px 10px; box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55); display: grid; gap: 14px; max-height: min(86vh, 720px); max-width: 620px; overflow-y: auto; padding: 18px; width: 100%; }
+      .bottom-sheet::before { background: var(--line-strong); border-radius: 999px; content: ""; height: 4px; justify-self: center; width: 44px; }
+      .bottom-sheet h2, .bottom-sheet p { margin: 0; }
+      .bottom-sheet p { color: var(--muted); line-height: 1.45; }
+      .sheet-actions { display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+      .sheet-actions.stacked { grid-template-columns: 1fr; }
+      .sheet-actions .primary-action { min-height: 50px; }
+      .readiness-draft { display: grid; gap: 12px; }
+      .readiness-draft .recovery-inputs { margin: 0; }
+
+      [data-theme="light"] body .set-block.completed { background: #fff5d9; box-shadow: inset 0 0 0 1px #d89a19; }
+      [data-theme="light"] body .check-button.checked { color: #211400; }
 
       .session-card {
         align-items: stretch;
@@ -1021,7 +1037,7 @@
       .exercise-actions { gap: 6px; }
       .exercise-actions button, .mini-button { min-height: 31px; padding: 4px 8px; border-radius: 6px; font-size: .68rem; }
       .set-grid { gap: 4px; }
-      .set-row { min-height: 44px; grid-template-columns: 31px minmax(45px, .9fr) minmax(48px, 1fr) minmax(39px, .8fr) 31px 31px; gap: 5px; padding: 4px 0; }
+      .set-row { min-height: 44px; grid-template-columns: 31px minmax(45px, .9fr) minmax(48px, 1fr) minmax(39px, .8fr) 42px; gap: 5px; padding: 4px 0; }
       .set-row input, .set-row select { min-width: 0; min-height: 36px; padding: 4px; font-size: .77rem; }
       .set-row .set-number, .set-row .set-complete { font-size: .68rem; }
       .compact-disclosure, .history-section, .settings-group { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: transparent; }
@@ -1089,8 +1105,6 @@
       .chart-card { padding: 10px; border-radius: 8px; }
       .chart-card header strong { font-size: .8rem; }
       .chart-svg { min-height: 108px; }
-      .chart-points { gap: 5px; }
-      .chart-points button { min-height: 27px; font-size: .62rem; }
       .trend-section { margin-top: 2px; }
       .trend-table { font-size: .68rem; }
       .trend-head, .trend-row { gap: 6px; padding: 7px 0; }
@@ -1099,11 +1113,11 @@
       .settings-panel label { font-size: .72rem; }
       .settings-panel select, .settings-panel input { min-height: 38px; }
       .settings-links { display: flex; gap: 14px; }
-      body[data-theme="light"] .brand-mark { color: #fff; }
-      body[data-theme="light"] .section-heading p, body[data-theme="light"] .screen-intro, body[data-theme="light"] .template-coach { color: #4c6078; }
-      body[data-theme="light"] .text-button { color: #0759c5; }
+      [data-theme="light"] body .brand-mark { color: #fff; }
+      [data-theme="light"] body .section-heading p, [data-theme="light"] body .screen-intro, [data-theme="light"] body .template-coach { color: #4c6078; }
+      [data-theme="light"] body .text-button { color: #0759c5; }
       @media (min-width: 720px) { .app-main { max-width: 760px; padding: 18px 18px 0; } .brand-bar { max-width: 760px; margin: 0 auto; } .dashboard-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .quick-template-card { flex-basis: 180px; } }
-      @media (max-width: 380px) { .brand-title small { max-width: 95px; } .workout-status-strip > span { font-size: .63rem; } .set-row { grid-template-columns: 27px minmax(42px, .85fr) minmax(44px, 1fr) minmax(35px, .7fr) 28px 28px; gap: 3px; } .set-row input, .set-row select { font-size: .69rem; } .dashboard-grid { grid-template-columns: 1fr; } }
+      @media (max-width: 380px) { .brand-title small { max-width: 95px; } .workout-status-strip > span { font-size: .63rem; } .set-row { grid-template-columns: 27px minmax(42px, .85fr) minmax(44px, 1fr) minmax(35px, .7fr) 40px; gap: 3px; } .set-row input, .set-row select { font-size: .69rem; } .set-actions, .timer-bar { padding-left: 32px; } .dashboard-grid { grid-template-columns: 1fr; } }
     </style>
   </head>
   <body>
@@ -1111,8 +1125,8 @@
     <script>
       const STORAGE_KEY = "comprehensive-fitness-data-v1";
       const root = document.getElementById("root");
-      const defaultReadinessBaseline = { sleepHours: 7.5, sleepQuality: 4, hrv: "", restingHr: "", soreness: 2, stress: 2, energy: 4, band: 8 };
-      const defaultSettings = { weightUnit: "lb", defaultRestSeconds: 120, goal: "hypertrophy", trainingStatus: "intermediate", theme: "dark", readinessBaseline: { ...defaultReadinessBaseline } };
+      const defaultReadinessBaseline = { sleepHours: 7.5, sleepQuality: 4, hrv: "", restingHr: "", soreness: 2, band: 8 };
+      const defaultSettings = { weightUnit: "lb", goal: "hypertrophy", trainingStatus: "intermediate", theme: "dark", readinessBaseline: { ...defaultReadinessBaseline } };
       const researchRules = {
         volume: {
           novice: "8-12 hard sets per muscle weekly",
@@ -1148,6 +1162,7 @@
       let pendingSubmitSessionId = "";
       let completedSummarySessionId = "";
       let chartDetailPoint = null;
+      let templateStartFlow = null;
 
       const icon = {
         workout: "Lift",
@@ -1172,7 +1187,11 @@
       }
 
       function todayIso() {
-        return new Date().toISOString().slice(0, 10);
+        return localDateIso(new Date());
+      }
+
+      function localDateIso(date) {
+        return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
       }
 
       function isoNow() {
@@ -1184,11 +1203,14 @@
         const day = date.getDay();
         const diff = day === 0 ? -6 : 1 - day;
         date.setDate(date.getDate() + diff);
-        return date.toISOString().slice(0, 10);
+        return localDateIso(date);
       }
 
       function formatDate(dateIso) {
-        return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(dateIso + "T00:00:00"));
+        if (!dateIso) return "";
+        const parsed = new Date(String(dateIso).slice(0, 10) + "T00:00:00");
+        if (Number.isNaN(parsed.getTime())) return String(dateIso);
+        return new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric" }).format(parsed);
       }
 
       function formatWeek(dateIso) {
@@ -1207,6 +1229,53 @@
           .replaceAll('"', "&quot;");
       }
 
+      function cleanReadinessBaseline(source = {}) {
+        return {
+          sleepHours: source.sleepHours ?? defaultReadinessBaseline.sleepHours,
+          sleepQuality: source.sleepQuality ?? defaultReadinessBaseline.sleepQuality,
+          hrv: source.hrv ?? defaultReadinessBaseline.hrv,
+          restingHr: source.restingHr ?? defaultReadinessBaseline.restingHr,
+          soreness: source.soreness ?? defaultReadinessBaseline.soreness,
+          band: source.band ?? defaultReadinessBaseline.band
+        };
+      }
+
+      function cleanRecovery(source = {}) {
+        return {
+          sleepHours: source.sleepHours ?? "",
+          sleepQuality: source.sleepQuality ?? "",
+          hrv: source.hrv ?? "",
+          restingHr: source.restingHr ?? "",
+          soreness: source.soreness ?? "",
+          outsideBandNote: source.outsideBandNote ?? "",
+          illness: Boolean(source.illness)
+        };
+      }
+
+      function normalizeLoadedData(model) {
+        const storedSettings = model.settings || {};
+        const safeSettings = {
+          weightUnit: storedSettings.weightUnit,
+          goal: storedSettings.goal,
+          trainingStatus: storedSettings.trainingStatus,
+          theme: storedSettings.theme
+        };
+        model.settings = { ...defaultSettings, ...Object.fromEntries(Object.entries(safeSettings).filter(([, value]) => value != null)), readinessBaseline: cleanReadinessBaseline(storedSettings.readinessBaseline || {}) };
+        model.sessions = (Array.isArray(model.sessions) ? model.sessions : []).map((session) => ({ ...session, recovery: cleanRecovery(session.recovery || {}) }));
+        model.exercises = Array.isArray(model.exercises) ? model.exercises : [];
+        model.sets = Array.isArray(model.sets) ? model.sets : [];
+        model.exercises = model.exercises.map((exercise) => {
+          const exerciseSets = model.sets.filter((set) => set.exerciseId === exercise.id);
+          const legacyBodyweight = exerciseSets.length > 0 && exerciseSets.every((set) => Boolean(set.isBodyweight)) && isBodyweightExerciseName(exercise.name);
+          return { ...exercise, isBodyweight: exercise.isBodyweight ?? legacyBodyweight };
+        });
+        model.templates = (Array.isArray(model.templates) ? model.templates : []).map((template) => ({
+          ...template,
+          exercises: (Array.isArray(template.exercises) ? template.exercises : []).map((exercise) => ({ ...exercise, isBodyweight: exercise.isBodyweight ?? isBodyweightExerciseName(exercise.name) }))
+        }));
+        return model;
+      }
+
       function loadData() {
         try {
           const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
@@ -1214,8 +1283,7 @@
         } catch {
           data = emptyData();
         }
-        data.settings.readinessBaseline = { ...defaultReadinessBaseline, ...(data.settings.readinessBaseline || {}) };
-        data.templates = Array.isArray(data.templates) ? data.templates : [];
+        data = normalizeLoadedData(data);
         applyTheme();
         if (data.sessions.length === 0) data.sessions.push(createSession());
         activeSessionId = [...data.sessions].sort((a, b) => b.date.localeCompare(a.date))[0].id;
@@ -1262,14 +1330,15 @@
       }
 
       function defaultRecovery() {
-        return { sleepHours: "", sleepQuality: "", hrv: "", restingHr: "", soreness: "", stress: "", energy: "", outsideBand: false, outsideBandNote: "", illness: false };
+        return cleanRecovery();
       }
 
       function sessionRecovery(session) {
-        return { ...defaultRecovery(), ...(session?.recovery || {}) };
+        return cleanRecovery(session?.recovery || {});
       }
 
       function createSet(exerciseId, setNumber, previous) {
+        const exercise = data.exercises.find((item) => item.id === exerciseId);
         return {
           id: id(),
           exerciseId,
@@ -1277,7 +1346,7 @@
           reps: previous?.reps ?? 8,
           weight: previous?.weight ?? 0,
           weightUnit: previous?.weightUnit ?? data.settings.weightUnit,
-          isBodyweight: previous?.isBodyweight ?? false,
+          isBodyweight: previous?.isBodyweight ?? exercise?.isBodyweight ?? false,
           rpe: previous?.rpe ?? 7,
           completed: previous?.completed ?? false,
           isWarmup: previous?.isWarmup ?? false
@@ -1334,6 +1403,10 @@
         return stored === requested || exerciseKey(storedName) === exerciseKey(requestedName);
       }
 
+      function isBodyweightExerciseName(name) {
+        return /body ?weight|push up|pushup|pull up|pullup|chin up|chinup|\bdip\b|inverted row|air squat|pistol squat|plank|crunch|sit up|sit-up|hanging raise|knee raise|ab wheel|burpee/.test(exerciseKey(name));
+      }
+
       function getExerciseSets(exerciseName) {
         const exercises = data.exercises.filter((exercise) => exerciseMatches(exercise.name, exerciseName));
         const ids = new Set(exercises.map((exercise) => exercise.id));
@@ -1352,6 +1425,36 @@
           return { kind: "machine", increment: standard, lowerRep: 8, upperRep: 15, maxJumpRatio: 0.22 };
         }
         return { kind: "compound", increment: standard, lowerRep: 5, upperRep: 12, maxJumpRatio: 0.25 };
+      }
+
+      function recommendedRestSeconds(exerciseName, options = {}) {
+        const profile = progressionProfileForExercise(exerciseName);
+        const reps = Number(options.reps || 8);
+        const rpe = Number(options.rpe || 8);
+        let seconds = profile.kind === "compound" ? 180 : profile.kind === "machine" ? 120 : 75;
+        if (reps <= 5 || rpe >= 9) seconds += profile.kind === "isolation" ? 15 : 30;
+        if (reps >= 15 && profile.kind === "isolation") seconds = Math.min(seconds, 75);
+        const recentDurations = data.exercises
+          .filter((exercise) => exerciseMatches(exercise.name, exerciseName) && Number(exercise.restSeconds) > 0)
+          .map((exercise) => Number(exercise.restSeconds))
+          .sort((a, b) => a - b)
+          .slice(-6);
+        if (recentDurations.length) {
+          const historical = recentDurations[Math.floor(recentDurations.length / 2)];
+          seconds = Math.round((seconds * 2 + historical) / 3);
+        }
+        const latestWeek = summarizeExerciseByWeek(exerciseName, options)[0];
+        if (latestWeek && (latestWeek.failedSets >= 2 || (latestWeek.averageRpe >= 9.2 && latestWeek.completedSets >= 2))) seconds += 30;
+        return Math.max(60, Math.min(300, Math.round(seconds / 15) * 15));
+      }
+
+      function restRecommendationReason(exerciseName, options = {}) {
+        const profile = progressionProfileForExercise(exerciseName);
+        const seconds = recommendedRestSeconds(exerciseName, options);
+        const type = profile.kind === "compound" ? "compound lift" : profile.kind === "machine" ? "machine movement" : "isolation lift";
+        const history = summarizeExerciseByWeek(exerciseName, options)[0];
+        const historyNote = history && (history.failedSets >= 2 || history.averageRpe >= 9.2) ? " Recent hard or missed sets added recovery time." : "";
+        return seconds + " seconds for this " + type + " at the planned rep range." + historyNote;
       }
 
       function nextLoadForExercise(name, currentWeight) {
@@ -1580,6 +1683,7 @@
         const recentTop = Math.max(0, ...recentSets.map((set) => set.weight), last?.set?.weight || 0);
         const recentReps = Math.max(0, ...recentSets.map((set) => set.reps), last?.set?.reps || 0);
         const recentRpe = Math.max(0, ...recentSets.map((set) => set.rpe || 0), last?.set?.rpe || 0);
+        const knownBodyweight = Boolean(templateExercise.isBodyweight || (recentSets.length > 0 && recentSets.every((set) => set.isBodyweight)) || last?.set?.isBodyweight);
         let sets = plannedSets;
         let reps = Math.max(targetReps, Math.min(profile.upperRep, recentReps || targetReps));
         let weight = recentTop;
@@ -1612,7 +1716,7 @@
         } else if (recommendation) {
           reason = "Repeat the target and make it cleaner before adding workload.";
         }
-        const weightText = weight > 0 ? weight + " " + data.settings.weightUnit : "bodyweight/control load";
+        const weightText = knownBodyweight ? "body weight" : weight > 0 ? weight + " " + data.settings.weightUnit : "a controlled starting load";
         return {
           decision: recommendation?.decision || "hold",
           sets,
@@ -1620,13 +1724,13 @@
           weight,
           rpe,
           weightUnit: data.settings.weightUnit,
-          isBodyweight: weight === 0,
+          isBodyweight: knownBodyweight,
           text: "Target " + sets + " x " + reps + " @ " + weightText + ", aim RPE " + rpe + ". " + reason
         };
       }
 
       function targetText(target, reason) {
-        const weightText = target.weight > 0 ? target.weight + " " + (target.weightUnit || data.settings.weightUnit) : "bodyweight/control load";
+        const weightText = target.isBodyweight ? "body weight" : target.weight > 0 ? target.weight + " " + (target.weightUnit || data.settings.weightUnit) : "a controlled starting load";
         return "Target " + target.sets + " x " + target.reps + " @ " + weightText + ", aim RPE " + target.rpe + ". " + reason;
       }
 
@@ -1746,9 +1850,10 @@
               name: exercise.name || "Exercise",
               primaryMuscle: exercise.primaryMuscle || "",
               secondaryMuscle: exercise.secondaryMuscle || "",
+              isBodyweight: Boolean(exercise.isBodyweight),
               sets: Math.max(sets.filter((set) => !set.isWarmup).length, 1),
               reps: sets.find((set) => !set.isWarmup)?.reps || 8,
-              restSeconds: exercise.restSeconds || data.settings.defaultRestSeconds,
+              restSeconds: exercise.restSeconds || recommendedRestSeconds(exercise.name, { reps: sets.find((set) => !set.isWarmup)?.reps || 8 }),
               warmups: sets.filter((set) => set.isWarmup).map((set) => ({ reps: set.reps, weight: set.weight, weightUnit: set.weightUnit, isBodyweight: set.isBodyweight, rpe: set.rpe }))
             };
           });
@@ -1769,16 +1874,18 @@
               <button class="brand-action" type="button" data-action="toggle-unit" title="Switch pounds and kilograms">${data.settings.weightUnit.toUpperCase()}</button>
               <button class="theme-toggle" type="button" data-action="toggle-theme" title="Toggle light and dark theme">${themeLabel()}</button>
             </header>
-            <main class="app-main">${renderView()}</main>
-            <nav class="bottom-nav" aria-label="Main navigation">
+            <main class="app-main" ${templateStartFlow ? 'inert aria-hidden="true"' : ""}>${renderView()}</main>
+            <nav class="bottom-nav" aria-label="Main navigation" ${templateStartFlow ? 'inert aria-hidden="true"' : ""}>
               ${navButton("workout", "Workout")}
               ${navButton("dashboard", "Dashboard")}
               ${navButton("templates", "Templates")}
               ${navButton("review", "Charts")}
               ${navButton("settings", "Settings")}
             </nav>
+            ${renderTemplateStartSheet()}
           </div>
         `;
+        if (templateStartFlow) window.setTimeout(() => root.querySelector(".bottom-sheet [autofocus]")?.focus(), 0);
       }
 
       function navButton(target, label) {
@@ -1807,6 +1914,7 @@
               <span>${activeExercises().length} lifts</span><span>${activeExercises().reduce((sum, exercise) => sum + setsForExercise(exercise.id).filter((set) => !set.isWarmup).length, 0)} working sets</span><span>${session.isTravel ? "Travel" : "Home"}</span>
               <button class="icon-button" type="button" data-action="new-session" title="New workout">${icon.add}</button>
             </div>
+            ${session.adjustmentSummary ? '<div class="adjustment-summary">' + escapeHtml(session.adjustmentSummary) + '</div>' : ""}
             ${activeExercises().map(renderExercise).join("")}
             <details class="compact-disclosure add-exercise-panel">
               <summary>Add exercise <span>${icon.add}</span></summary>
@@ -1830,7 +1938,7 @@
               <div class="disclosure-body session-header">
               <div class="row split">
                 <select data-action="change-session" aria-label="Workout session">
-                  ${workoutSessionOptions(session).map((item) => '<option value="' + item.id + '" ' + (item.id === session.id ? "selected" : "") + '>' + escapeHtml(item.title) + " - " + item.date + '</option>').join("")}
+                  ${workoutSessionOptions(session).map((item) => '<option value="' + item.id + '" ' + (item.id === session.id ? "selected" : "") + '>' + escapeHtml(item.title) + " - " + formatDate(item.date) + '</option>').join("")}
                 </select>
               </div>
               <div class="grid two">
@@ -1848,7 +1956,6 @@
             </div>
             ${pendingSubmitSessionId === session.id ? renderSubmitConfirmation(session) : ""}
             ${completedSummarySessionId === session.id ? renderCompletedWorkoutSummary(session) : ""}
-            ${renderTimer()}
           </section>
         `;
       }
@@ -1880,7 +1987,7 @@
                     <div class="plan-targets">
                       <span data-plan-reps="${exercise.id}">${sets.length || 1} x ${first.reps || 0}</span>
                       <span data-plan-load="${exercise.id}">${escapeHtml(loadText)}</span>
-                      <span data-plan-rest="${exercise.id}">${exercise.restSeconds || data.settings.defaultRestSeconds}s rest</span>
+                      <span data-plan-rest="${exercise.id}">${exercise.restSeconds || recommendedRestSeconds(exercise.name, { reps: first.reps, rpe: first.rpe })}s rest</span>
                     </div>
                     <div class="plan-meta" data-plan-meta="${exercise.id}">Aim RPE ${first.rpe || 8}. ${escapeHtml(exercise.notes || "Use clean reps and stop when positions break.")}</div>
                   </div>
@@ -1948,7 +2055,8 @@
             ${bucket.details.map((detail) => `
               <div>
                 <strong>${escapeHtml(detail.name)}</strong>
-                <span>${detail.sets.toFixed(detail.sets % 1 ? 1 : 0)} set${detail.sets === 1 ? "" : "s"} - ${escapeHtml(detail.sessions.join(", "))} - ${escapeHtml(detail.dates.join(", "))}</span>
+                <span>${detail.sets.toFixed(detail.sets % 1 ? 1 : 0)} qualifying set${detail.sets === 1 ? "" : "s"}${detail.volumeLoad > 0 ? " · " + Math.round(detail.volumeLoad) + " " + data.settings.weightUnit + " volume" : ""}</span>
+                <span>${detail.sessions.map((session) => escapeHtml(session.title) + " · " + formatDate(session.date)).join("; ")}</span>
               </div>
             `).join("")}
           </div>
@@ -1985,10 +2093,7 @@
               <label>HRV<input type="number" min="0" step="1" value="${escapeHtml(recovery.hrv)}" data-action="recovery-hrv" /></label>
               <label>Resting HR<input type="number" min="0" step="1" value="${escapeHtml(recovery.restingHr)}" data-action="recovery-resting-hr" /></label>
               <label>Soreness<select data-action="recovery-soreness"><option value="">-</option>${[1,2,3,4,5].map((value) => '<option value="' + value + '" ' + (String(recovery.soreness) === String(value) ? "selected" : "") + '>' + value + '/5</option>').join("")}</select></label>
-              <label>Stress<select data-action="recovery-stress"><option value="">-</option>${[1,2,3,4,5].map((value) => '<option value="' + value + '" ' + (String(recovery.stress) === String(value) ? "selected" : "") + '>' + value + '/5</option>').join("")}</select></label>
-              <label>Energy<select data-action="recovery-energy"><option value="">-</option>${[1,2,3,4,5].map((value) => '<option value="' + value + '" ' + (String(recovery.energy) === String(value) ? "selected" : "") + '>' + value + '/5</option>').join("")}</select></label>
-              <label class="toggle-line"><input type="checkbox" data-action="recovery-outside-band" ${recovery.outsideBand ? "checked" : ""} />Mark outside band</label>
-              <label class="toggle-line"><input type="checkbox" data-action="recovery-illness" ${recovery.illness ? "checked" : ""} />Illness or unusual pain</label>
+              <label class="toggle-line"><input type="checkbox" data-action="recovery-illness" ${recovery.illness ? "checked" : ""} />Illness or injury</label>
             </div>
             <textarea data-action="recovery-outside-note" placeholder="Outside-band note, if today is meaningfully different" aria-label="Outside readiness band note">${escapeHtml(recovery.outsideBandNote)}</textarea>
           </section>
@@ -2018,6 +2123,82 @@
         `;
       }
 
+      function openTemplateStart(templateId) {
+        if (!data.templates.some((template) => template.id === templateId)) return;
+        templateStartFlow = { templateId, step: "confirm", draft: defaultRecovery() };
+        render();
+      }
+
+      function closeTemplateStart() {
+        templateStartFlow = null;
+        render();
+      }
+
+      function patchTemplateStartDraft(patch, shouldRender = true) {
+        if (!templateStartFlow) return;
+        templateStartFlow = { ...templateStartFlow, draft: cleanRecovery({ ...templateStartFlow.draft, ...patch }) };
+        if (shouldRender) render();
+      }
+
+      function renderTemplateStartSheet() {
+        if (!templateStartFlow) return "";
+        const template = data.templates.find((item) => item.id === templateStartFlow.templateId);
+        if (!template) return "";
+        if (templateStartFlow.step === "confirm") {
+          return `
+            <div class="sheet-backdrop" data-action="cancel-template-start" role="presentation">
+              <section class="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="template-start-title" data-sheet-content>
+                <h2 id="template-start-title">Start ${escapeHtml(template.name)}?</h2>
+                <p>This will prepare today’s targets from your workout history. Your current workout will not change until you continue through readiness.</p>
+                <div class="sheet-actions">
+                  <button type="button" data-action="cancel-template-start">Cancel</button>
+                  <button class="primary-action" type="button" data-action="continue-template-start" autofocus>Continue</button>
+                </div>
+              </section>
+            </div>
+          `;
+        }
+        if (templateStartFlow.step === "readiness") {
+          return `
+            <div class="sheet-backdrop" data-action="cancel-template-start" role="presentation">
+              <section class="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="readiness-choice-title" data-sheet-content>
+                <h2 id="readiness-choice-title">Use your usual readiness?</h2>
+                <p>Your saved baseline will be used unless you enter today’s objective or observable metrics.</p>
+                <div class="sheet-actions stacked">
+                  <button class="primary-action" type="button" data-action="use-usual-readiness" autofocus>Use usual readiness</button>
+                  <button type="button" data-action="log-today-readiness">Log today’s metrics</button>
+                  <button class="mini-button" type="button" data-action="cancel-template-start">Cancel</button>
+                </div>
+              </section>
+            </div>
+          `;
+        }
+        const recovery = templateStartFlow.draft;
+        const preview = recoveryRecommendationForSession({ id: "readiness-preview", date: todayIso(), recovery });
+        return `
+          <div class="sheet-backdrop" data-action="cancel-template-start" role="presentation">
+            <section class="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="daily-readiness-title" data-sheet-content>
+              <div><h2 id="daily-readiness-title">Today’s readiness</h2><p>${formatDate(todayIso())} · ${escapeHtml(preview.label)}. ${escapeHtml(preview.action)}</p></div>
+              <div class="readiness-draft">
+                <div class="recovery-inputs">
+                  <label>Sleep hours<input type="number" min="0" max="14" step="0.25" value="${escapeHtml(recovery.sleepHours)}" data-action="template-readiness-sleep-hours" autofocus /></label>
+                  <label>Sleep quality<select data-action="template-readiness-sleep-quality"><option value="">-</option>${[1,2,3,4,5].map((value) => '<option value="' + value + '" ' + (String(recovery.sleepQuality) === String(value) ? "selected" : "") + '>' + value + '/5</option>').join("")}</select></label>
+                  <label>HRV<input type="number" min="0" step="1" value="${escapeHtml(recovery.hrv)}" data-action="template-readiness-hrv" /></label>
+                  <label>Resting heart rate<input type="number" min="0" step="1" value="${escapeHtml(recovery.restingHr)}" data-action="template-readiness-resting-hr" /></label>
+                  <label>Soreness<select data-action="template-readiness-soreness"><option value="">-</option>${[1,2,3,4,5].map((value) => '<option value="' + value + '" ' + (String(recovery.soreness) === String(value) ? "selected" : "") + '>' + value + '/5</option>').join("")}</select></label>
+                  <label class="toggle-line"><input type="checkbox" data-action="template-readiness-illness" ${recovery.illness ? "checked" : ""} />Illness or injury</label>
+                </div>
+                <textarea data-action="template-readiness-note" placeholder="Optional note if something is outside your normal band" aria-label="Optional outside-normal-band note">${escapeHtml(recovery.outsideBandNote)}</textarea>
+              </div>
+              <div class="sheet-actions">
+                <button type="button" data-action="cancel-template-start">Cancel</button>
+                <button class="primary-action" type="button" data-action="start-template-with-metrics">Start workout</button>
+              </div>
+            </section>
+          </div>
+        `;
+      }
+
       function renderActiveWorkoutAdvice() {
         const session = activeSession();
         if (!session?.templateId) return "";
@@ -2028,7 +2209,8 @@
 
       function renderExercise(exercise) {
         const exerciseSets = setsForExercise(exercise.id);
-        const restSeconds = Number(exercise.restSeconds || data.settings.defaultRestSeconds);
+        const firstWorkSet = exerciseSets.find((set) => !set.isWarmup) || exerciseSets[0];
+        const restSeconds = Number(exercise.restSeconds || recommendedRestSeconds(exercise.name, { reps: firstWorkSet?.reps, rpe: firstWorkSet?.rpe }));
         return `
           <article class="exercise-card">
             <div class="row split">
@@ -2039,19 +2221,23 @@
                 <button class="icon-button danger" type="button" data-action="delete-exercise" data-exercise-id="${exercise.id}" title="Delete exercise">${icon.delete}</button>
               </div>
             </div>
-            <label class="deload-toggle ${exercise.isDeload ? "active" : ""}"><input type="checkbox" data-action="exercise-deload" data-exercise-id="${exercise.id}" ${exercise.isDeload ? "checked" : ""} />Deload this exercise <span>${exercise.isDeload ? "Marked" : ""}</span></label>
+            <div class="exercise-level-controls">
+              <label class="deload-toggle ${exercise.isDeload ? "active" : ""}"><input type="checkbox" data-action="exercise-deload" data-exercise-id="${exercise.id}" ${exercise.isDeload ? "checked" : ""} />Deload this exercise <span>${exercise.isDeload ? "Marked" : ""}</span></label>
+              <label class="bodyweight"><input type="checkbox" data-action="exercise-bodyweight" data-exercise-id="${exercise.id}" ${exercise.isBodyweight ? "checked" : ""} />Body weight</label>
+            </div>
+            ${exercise.adjustmentReason ? '<p class="settings-note"><strong>Recovery adjustment:</strong> ' + escapeHtml(exercise.adjustmentReason) + '</p>' : ""}
             <div class="set-head"><span>Set</span><span>Reps</span><span>Load</span><span>RPE</span><span>Done</span></div>
-            ${exerciseSets.map(renderSet).join("")}
+            ${exerciseSets.map((set) => renderSet(set, exercise)).join("")}
             <div class="row wrap">
               <button type="button" data-action="add-set" data-exercise-id="${exercise.id}">${icon.add} Set</button>
               <button type="button" data-action="add-warmup-set" data-exercise-id="${exercise.id}">+ Warm-up</button>
               <button type="button" data-action="duplicate-set" data-exercise-id="${exercise.id}">${icon.duplicate} Duplicate</button>
-              <button type="button" data-action="start-timer" data-exercise-id="${exercise.id}">${icon.clock} ${formatTimer(restSeconds)}</button>
             </div>
             <details class="exercise-options">
               <summary>Exercise options <span>${restSeconds}s rest</span></summary>
               <div class="disclosure-body">
                 <label class="rest-control">Rest after this lift<input type="number" min="15" step="15" value="${restSeconds}" data-action="exercise-rest-seconds" data-exercise-id="${exercise.id}" /> sec</label>
+                <p class="settings-note">${escapeHtml(restRecommendationReason(exercise.name, { reps: firstWorkSet?.reps, rpe: firstWorkSet?.rpe }))}</p>
                 ${renderMuscleSelectors(exercise)}
                 ${renderExerciseGuidance(exercise)}
                 <textarea data-action="exercise-notes" data-exercise-id="${exercise.id}" placeholder="Exercise notes" aria-label="Exercise notes">${escapeHtml(exercise.notes)}</textarea>
@@ -2061,28 +2247,37 @@
         `;
       }
 
-      function renderSet(set) {
+      function renderSet(set, exercise) {
+        const restSeconds = Number(exercise.restSeconds || recommendedRestSeconds(exercise.name, { reps: set.reps, rpe: set.rpe }));
         return `
-          <div class="set-row ${set.completed ? "completed" : "pending"} ${set.isWarmup ? "warmup" : ""}">
-            <strong>${set.isWarmup ? "WU" : set.setNumber}</strong>
-            <input type="number" min="0" value="${set.reps}" data-action="set-reps" data-set-id="${set.id}" aria-label="Reps" />
-            <input type="number" min="0" value="${set.weight}" data-action="set-weight" data-set-id="${set.id}" aria-label="Weight" />
-            <input type="number" min="0" max="10" step="0.5" value="${set.rpe}" data-action="set-rpe" data-set-id="${set.id}" aria-label="RPE" />
-            <button class="check-button ${set.completed ? "checked" : ""}" type="button" data-action="toggle-set" data-set-id="${set.id}" title="${set.completed ? "Completed" : "Mark set complete"}">${set.completed ? "Done" : icon.done}</button>
-            <label class="bodyweight"><input type="checkbox" data-action="set-bodyweight" data-set-id="${set.id}" ${set.isBodyweight ? "checked" : ""} />BW</label>
-            <label class="bodyweight"><input type="checkbox" data-action="set-warmup" data-set-id="${set.id}" ${set.isWarmup ? "checked" : ""} />Warm-up</label>
-            <button class="mini-button" type="button" data-action="delete-set" data-set-id="${set.id}">Remove</button>
+          <div class="set-block ${set.completed ? "completed" : ""}">
+            <div class="set-row ${set.completed ? "completed" : "pending"} ${set.isWarmup ? "warmup" : ""}">
+              <strong>${set.isWarmup ? "WU" : set.setNumber}</strong>
+              <input type="number" min="0" value="${set.reps}" data-action="set-reps" data-set-id="${set.id}" aria-label="Reps" />
+              <input type="number" min="0" value="${set.weight}" data-action="set-weight" data-set-id="${set.id}" aria-label="Weight" />
+              <input type="number" min="0" max="10" step="0.5" value="${set.rpe}" data-action="set-rpe" data-set-id="${set.id}" aria-label="RPE" />
+              <button class="check-button ${set.completed ? "checked" : ""}" type="button" data-action="toggle-set" data-set-id="${set.id}" title="${set.completed ? "Completed" : "Mark set complete"}" aria-pressed="${set.completed ? "true" : "false"}">${set.completed ? "Done" : icon.done}</button>
+            </div>
+            <div class="set-actions">
+              <button class="mini-button set-rest-button" type="button" data-action="start-timer" data-exercise-id="${exercise.id}" data-set-id="${set.id}">${icon.clock} ${formatTimer(restSeconds)}</button>
+              <label class="toggle-line"><input type="checkbox" data-action="set-warmup" data-set-id="${set.id}" ${set.isWarmup ? "checked" : ""} />Warm-up</label>
+              <button class="mini-button" type="button" data-action="delete-set" data-set-id="${set.id}">Remove</button>
+            </div>
+            ${renderTimer(set.id)}
           </div>
         `;
       }
 
-      function renderTimer() {
-        if (!timer) return "";
+      function renderTimer(setId) {
+        if (!timer || timer.setId !== setId) return "";
+        const elapsed = Math.max(0, timer.durationSeconds - timer.remainingSeconds);
+        const progress = timer.durationSeconds > 0 ? Math.min(100, Math.round((elapsed / timer.durationSeconds) * 100)) : 100;
         return `
           <div class="timer-bar ${timer.remainingSeconds === 0 ? "complete" : ""}">
-            <div><strong>${formatTimer(timer.remainingSeconds)}</strong><span>Rest timer</span></div>
+            <div><strong>${formatTimer(timer.remainingSeconds)}</strong><span>${timer.remainingSeconds === 0 ? "Rest complete" : "Rest timer"}</span></div>
             <button class="icon-button" type="button" data-action="toggle-timer">${timer.isPaused ? icon.play : icon.pause}</button>
             <button class="icon-button" type="button" data-action="clear-timer">${icon.delete}</button>
+            <div class="timer-progress" role="progressbar" aria-label="Rest elapsed" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}" style="--timer-progress:${progress}%"><span></span></div>
           </div>
         `;
       }
@@ -2134,7 +2329,7 @@
                         <label class="template-meta">Sets<input type="number" min="1" value="${exercise.sets}" data-action="template-exercise-sets" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" /></label>
                         <label class="template-meta">Reps<input type="number" min="1" value="${exercise.reps}" data-action="template-exercise-reps" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" /></label>
                       </div>
-                      <label class="template-meta">Rest seconds<input type="number" min="15" step="15" value="${exercise.restSeconds || data.settings.defaultRestSeconds}" data-action="template-exercise-rest" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" /></label>
+                      <label class="template-meta">Rest seconds<input type="number" min="15" step="15" value="${exercise.restSeconds || recommendedRestSeconds(exercise.name, { reps: exercise.reps })}" data-action="template-exercise-rest" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" /></label>
                       <div class="template-warmups"><strong>Warm-ups</strong>${(exercise.warmups || []).map((set, warmupIndex) => '<span>' + escapeHtml(set.reps) + ' reps @ ' + escapeHtml(set.weight) + ' ' + escapeHtml(set.weightUnit || data.settings.weightUnit) + '</span><button class="mini-button" type="button" data-action="remove-template-warmup" data-template-id="' + template.id + '" data-template-exercise-id="' + exercise.id + '" data-warmup-index="' + warmupIndex + '">Remove</button>').join("") || '<span>None yet</span>'}<button class="mini-button" type="button" data-action="add-template-warmup" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}">+ Warm-up</button></div>
                       <button class="mini-button danger" type="button" data-action="delete-template-exercise" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}">Remove exercise</button>
                     </li>
@@ -2194,7 +2389,7 @@
                 <div class="trend-head"><span>Week</span><span>Top</span><span>Sets</span><span>RPE</span></div>
                 ${weeks.map((week) => `
                   <div class="trend-row">
-                    <span>${week.weekStart}${week.travelCount ? " - Travel" : ""}${week.isDeload ? " - Deload" : ""}</span>
+                    <span>${formatDate(week.weekStart)}${week.travelCount ? " - Travel" : ""}${week.isDeload ? " - Deload" : ""}</span>
                     <span>${week.topWeight}</span>
                     <span>${week.completedSets}/${week.completedSets + week.failedSets}</span>
                     <span>${week.averageRpe ? week.averageRpe.toFixed(1) : "-"}</span>
@@ -2229,9 +2424,9 @@
         weeks.forEach((week) => week.repsByWeight.forEach((reps, weight) => allWeights.set(weight, (allWeights.get(weight) || 0) + 1)));
         const commonWeight = Array.from(allWeights.entries()).sort((a, b) => b[1] - a[1] || Number(b[0]) - Number(a[0]))[0]?.[0] || "0";
         return {
-          e1rm: weeks.map((week) => ({ label: week.week.slice(5), date: week.week, value: Math.round(week.e1rm * 10) / 10, details: week.details })),
-          volume: weeks.map((week) => ({ label: week.week.slice(5), date: week.week, value: Math.round(week.volume), details: week.details })),
-          repsAtWeight: weeks.map((week) => ({ label: week.week.slice(5), date: week.week, value: week.repsByWeight.get(commonWeight) || 0, details: week.details })),
+          e1rm: weeks.map((week) => ({ label: formatDate(week.week), date: week.week, value: Math.round(week.e1rm * 10) / 10, details: week.details })),
+          volume: weeks.map((week) => ({ label: formatDate(week.week), date: week.week, value: Math.round(week.volume), details: week.details })),
+          repsAtWeight: weeks.map((week) => ({ label: formatDate(week.week), date: week.week, value: week.repsByWeight.get(commonWeight) || 0, details: week.details })),
           commonWeight: Number(commonWeight)
         };
       }
@@ -2256,13 +2451,36 @@
             <div class="chart-svg">
               <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(title)} chart">
                 <polyline points="${polyline}" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></polyline>
-                ${chartPoints.filter((point) => point.value > 0).map((point) => '<circle cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="4" fill="var(--green-2)"></circle>').join("")}
+                ${chartPoints.filter((point) => point.value > 0).map((point, index) => '<g class="chart-point" role="button" tabindex="0" aria-label="' + escapeHtml(title + ': ' + point.value + ' on ' + formatDate(point.date)) + '" data-action="show-chart-point" data-chart-title="' + escapeHtml(title) + '" data-chart-point="' + index + '"><circle class="hit-area" cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="13"></circle><circle class="visible-point" cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="5" fill="var(--green-2)"></circle></g>').join("")}
               </svg>
             </div>
-            <div class="chart-points">${chartPoints.filter((point) => point.value > 0).map((point, index) => '<button type="button" aria-label="' + escapeHtml(title + " " + point.label) + '" data-action="show-chart-point" data-chart-title="' + escapeHtml(title) + '" data-chart-point="' + index + '">' + escapeHtml(point.label) + '</button>').join("")}</div>
-            <small>${escapeHtml(points[0]?.label || "")} to ${escapeHtml(points[points.length - 1]?.label || "")}. Range ${min}-${max}.</small>
           </div>
         `;
+      }
+
+      function chartValueText(point) {
+        if (!point) return "";
+        if (point.title === "Estimated 1RM") return "Estimated 1RM: " + point.value + " " + data.settings.weightUnit;
+        if (point.title === "Volume load") return "Volume load: " + point.value + " " + data.settings.weightUnit;
+        return point.title + ": " + point.value + " reps";
+      }
+
+      function renderLiftProgressSummary(weeks, weekStart) {
+        const index = weeks.findIndex((week) => week.weekStart === weekStart);
+        const current = weeks[index >= 0 ? index : 0];
+        const previous = weeks.slice((index >= 0 ? index : 0) + 1).find((week) => !week.isLikelyDeload);
+        if (!current) return "";
+        if (!previous) return '<div class="inline-panel"><strong>Baseline week</strong><p class="settings-note">' + current.completedSets + ' completed sets established the first comparison point for this lift.</p></div>';
+        const e1rmChange = current.bestEstimatedOneRepMax - previous.bestEstimatedOneRepMax;
+        const loadChange = current.topWeight - previous.topWeight;
+        const volumeChange = current.completedSets - previous.completedSets;
+        const direction = e1rmChange > 0.5 ? "improved" : e1rmChange < -0.5 ? "regressed" : "held steady";
+        const details = [
+          "Estimated 1RM " + direction + (Math.abs(e1rmChange) > 0.05 ? " by " + Math.abs(e1rmChange).toFixed(1) + " " + data.settings.weightUnit : ""),
+          loadChange === 0 ? "top load held" : "top load " + (loadChange > 0 ? "rose " : "fell ") + Math.abs(loadChange) + " " + data.settings.weightUnit,
+          volumeChange === 0 ? "working sets held" : Math.abs(volumeChange) + " " + (volumeChange > 0 ? "more" : "fewer") + " completed sets"
+        ];
+        return '<div class="inline-panel"><strong>' + formatDate(current.weekStart) + ' vs ' + formatDate(previous.weekStart) + '</strong><p class="settings-note">' + escapeHtml(details.join("; ")) + '. ' + (current.isDeload ? 'This week was marked as a deload, so it is not treated as a regression.' : 'Use this comparison with RPE and rep quality, not load alone.') + '</p></div>';
       }
 
       function renderReview() {
@@ -2285,21 +2503,22 @@
               <select data-action="review-week" aria-label="Week">${weeks.map((week) => '<option value="' + week.weekStart + '" ' + (week.weekStart === selectedWeek ? "selected" : "") + '>' + formatWeek(week.weekStart) + '</option>').join("")}</select>
             </div>
             <div class="chart-metric-row"><div><span>Latest e1RM</span><strong>${latestOneRm ? latestOneRm.value : "-"}</strong></div><div><span>Latest volume</span><strong>${latestVolume ? latestVolume.value : "-"}</strong></div><div><span>Data points</span><strong>${progress.e1rm.filter((point) => point.value > 0).length}</strong></div></div>
+            ${renderLiftProgressSummary(weeks, selectedWeek)}
             ${recommendation ? '<details class="compact-disclosure"><summary>Coach recommendation <span>' + escapeHtml(recommendation.label) + '</span></summary><div class="disclosure-body">' + renderRecommendation(recommendation) + '</div></details>' : ""}
             <section class="screen-section">
-              <div class="section-heading"><div><h2>Progress charts</h2><p>Tap a labeled point for the session behind it.</p></div></div>
+              <div class="section-heading"><div><h2>Progress charts</h2><p>Tap a point to see its value, date, and session context.</p></div></div>
               <div class="chart-list">
                 ${renderChart("Estimated 1RM", progress.e1rm, "No weighted completed sets yet.")}
                 ${renderChart("Volume load", progress.volume, "No volume load yet. Bodyweight-only sets will show once load is added.")}
                 ${renderChart("Reps at " + (progress.commonWeight ? progress.commonWeight + " " + data.settings.weightUnit : "same weight"), progress.repsAtWeight, "Need repeated work at the same load.")}
               </div>
-              ${chartDetailPoint ? '<article class="chart-detail"><div class="row split"><strong>' + escapeHtml(chartDetailPoint.title) + ' - ' + escapeHtml(chartDetailPoint.date) + '</strong><button class="icon-button" type="button" data-action="close-chart-point">X</button></div><p>' + escapeHtml(selectedExercise) + ': ' + chartDetailPoint.details.map((set) => set.reps + ' reps @ ' + set.weight + ' ' + data.settings.weightUnit + (set.rpe ? ' (RPE ' + set.rpe + ')' : '')).join(', ') + '</p><small>' + escapeHtml(chartDetailPoint.details[0]?.sessionTitle || '') + '</small></article>' : ''}
+              ${chartDetailPoint ? '<article class="chart-detail" role="status"><div class="row split"><strong>' + escapeHtml(chartValueText(chartDetailPoint)) + ' — achieved ' + formatDate(chartDetailPoint.date) + '</strong><button class="icon-button" type="button" data-action="close-chart-point" aria-label="Close chart detail">X</button></div><p>' + escapeHtml(selectedExercise) + ': ' + chartDetailPoint.details.map((set) => set.reps + ' reps @ ' + set.weight + ' ' + data.settings.weightUnit + (set.rpe ? ' (RPE ' + set.rpe + ')' : '')).join(', ') + '</p><small>' + escapeHtml(chartDetailPoint.details[0]?.sessionTitle || '') + '</small></article>' : ''}
             </section>
             <section class="screen-section trend-section"><div class="section-heading"><div><h2>Recent weeks</h2></div></div><div class="trend-table">
               <div class="trend-head"><span>Week</span><span>Top</span><span>Sets</span><span>RPE</span></div>
               ${weeks.map((week) => `
                 <div class="trend-row">
-                  <span>${week.weekStart}${week.travelCount ? " - Travel" : ""}${week.isDeload ? " - Deload" : ""}</span>
+                  <span>${formatDate(week.weekStart)}${week.travelCount ? " - Travel" : ""}${week.isDeload ? " - Deload" : ""}</span>
                   <span>${week.topWeight}</span>
                   <span>${week.completedSets}/${week.completedSets + week.failedSets}</span>
                   <span>${week.averageRpe ? week.averageRpe.toFixed(1) : "-"}</span>
@@ -2341,7 +2560,7 @@
                 </select>
               </label>
             </div></details>
-            <details class="settings-group"><summary>Training defaults <span>Goal and rest</span></summary><div class="disclosure-body settings-panel">
+            <details class="settings-group"><summary>Training defaults <span>Goal</span></summary><div class="disclosure-body settings-panel">
               <label>Training goal
                 <select data-action="training-goal">
                   <option value="hypertrophy" ${data.settings.goal === "hypertrophy" ? "selected" : ""}>Hypertrophy</option>
@@ -2357,9 +2576,7 @@
                   <option value="advanced" ${data.settings.trainingStatus === "advanced" ? "selected" : ""}>Advanced</option>
                 </select>
               </label>
-              <label>Default rest seconds
-                <input type="number" min="15" step="15" value="${data.settings.defaultRestSeconds}" data-action="rest-seconds" />
-              </label>
+              <p class="settings-note">Rest is recommended per exercise from movement type, rep range, effort, and recent performance.</p>
             </div></details>
             <details class="settings-group"><summary>Readiness baseline <span>Your normal</span></summary><div class="disclosure-body settings-panel">
               <div class="inline-panel">
@@ -2371,8 +2588,6 @@
                   <label>Avg HRV<input type="number" min="0" step="1" value="${escapeHtml(baseline.hrv)}" data-action="baseline-hrv" /></label>
                   <label>Avg resting HR<input type="number" min="0" step="1" value="${escapeHtml(baseline.restingHr)}" data-action="baseline-resting-hr" /></label>
                   <label>Avg soreness<input type="number" min="1" max="5" step="1" value="${escapeHtml(baseline.soreness)}" data-action="baseline-soreness" /></label>
-                  <label>Avg stress<input type="number" min="1" max="5" step="1" value="${escapeHtml(baseline.stress)}" data-action="baseline-stress" /></label>
-                  <label>Avg energy<input type="number" min="1" max="5" step="1" value="${escapeHtml(baseline.energy)}" data-action="baseline-energy" /></label>
                   <label>Band tolerance<input type="number" min="3" max="20" step="1" value="${escapeHtml(baseline.band)}" data-action="baseline-band" /></label>
                 </div>
               </div>
@@ -2425,6 +2640,28 @@
         }
       }
 
+      function patchExerciseName(exerciseId, name, shouldRender = true) {
+        const exercise = data.exercises.find((item) => item.id === exerciseId);
+        if (!exercise) return;
+        const firstSet = setsForExercise(exerciseId).find((set) => !set.isWarmup);
+        const previousAutoRest = recommendedRestSeconds(exercise.name, { reps: firstSet?.reps, rpe: firstSet?.rpe, excludeSessionId: exercise.sessionId });
+        const restSeconds = !exercise.restSeconds || Number(exercise.restSeconds) === previousAutoRest
+          ? recommendedRestSeconds(name, { reps: firstSet?.reps, rpe: firstSet?.rpe, excludeSessionId: exercise.sessionId })
+          : exercise.restSeconds;
+        patchExercise(exerciseId, { name, restSeconds }, shouldRender);
+      }
+
+      function patchTemplateExerciseName(templateId, exerciseId, name, shouldRender = true) {
+        const template = data.templates.find((item) => item.id === templateId);
+        const exercise = template?.exercises.find((item) => item.id === exerciseId);
+        if (!exercise) return;
+        const previousAutoRest = recommendedRestSeconds(exercise.name, { reps: exercise.reps });
+        const restSeconds = !exercise.restSeconds || Number(exercise.restSeconds) === previousAutoRest
+          ? recommendedRestSeconds(name, { reps: exercise.reps })
+          : exercise.restSeconds;
+        patchTemplateExercise(templateId, exerciseId, { name, restSeconds }, shouldRender);
+      }
+
       function patchSet(setId, patch, shouldRender = true) {
         if (shouldRender) {
           commit({ ...data, sets: data.sets.map((set) => set.id === setId ? { ...set, ...patch } : set) }, true);
@@ -2452,7 +2689,7 @@
         if (count) count.textContent = sets.length + " sets";
         if (reps) reps.textContent = (sets.length || 1) + " x " + (first.reps || 0);
         if (load) load.textContent = loadText;
-        if (rest) rest.textContent = data.settings.defaultRestSeconds + "s rest";
+        if (rest) rest.textContent = (exercise.restSeconds || recommendedRestSeconds(exercise.name, { reps: first.reps, rpe: first.rpe })) + "s rest";
         if (meta) meta.textContent = "Aim RPE " + (first.rpe || 8) + ". " + (exercise.notes || "Use clean reps and stop when positions break.");
       }
 
@@ -2467,7 +2704,7 @@
         const session = activeSession();
         const name = addExerciseDraft;
         if (!session || !name || !name.trim()) return;
-        const exercise = { id: id(), sessionId: session.id, name: name.trim(), primaryMuscle: addExercisePrimaryMuscle, secondaryMuscle: addExerciseSecondaryMuscle, notes: "", order: activeExercises().length, isDeload: false };
+        const exercise = { id: id(), sessionId: session.id, name: name.trim(), primaryMuscle: addExercisePrimaryMuscle, secondaryMuscle: addExerciseSecondaryMuscle, notes: "", order: activeExercises().length, restSeconds: recommendedRestSeconds(name.trim()), isBodyweight: false, isDeload: false };
         addExerciseDraft = "";
         addExercisePrimaryMuscle = "";
         addExerciseSecondaryMuscle = "";
@@ -2475,7 +2712,7 @@
       }
 
       function addTemplate() {
-        const template = { id: id(), name: "New Template", notes: "", exercises: [{ id: id(), name: "Exercise", sets: 3, reps: 8, restSeconds: data.settings.defaultRestSeconds, warmups: [] }], createdAt: isoNow(), updatedAt: isoNow() };
+        const template = { id: id(), name: "New Template", notes: "", exercises: [{ id: id(), name: "Exercise", sets: 3, reps: 8, restSeconds: recommendedRestSeconds("Exercise"), isBodyweight: false, warmups: [] }], createdAt: isoNow(), updatedAt: isoNow() };
         view = "templates";
         commit({ ...data, templates: [template, ...data.templates] });
       }
@@ -2497,7 +2734,7 @@
         commit({
           ...data,
           templates: data.templates.map((template) => template.id === templateId
-            ? { ...template, exercises: [...template.exercises, { id: id(), name: "Exercise", sets: 3, reps: 8, restSeconds: data.settings.defaultRestSeconds, warmups: [] }], updatedAt: isoNow() }
+            ? { ...template, exercises: [...template.exercises, { id: id(), name: "Exercise", sets: 3, reps: 8, restSeconds: recommendedRestSeconds("Exercise"), isBodyweight: false, warmups: [] }], updatedAt: isoNow() }
             : template)
         });
       }
@@ -2513,22 +2750,28 @@
         commit({ ...data, templates: [template, ...data.templates] });
       }
 
-      function startTemplate(templateId) {
+      function startTemplate(templateId, recovery = defaultRecovery(), readinessMode = "usual") {
         const template = data.templates.find((item) => item.id === templateId);
         if (!template) return;
         const currentSession = activeSession();
         const replaceCurrent = currentSession && currentSession.date === todayIso() && currentSession.source !== "strong" && !isSessionSubmitted(currentSession);
         const session = replaceCurrent
-          ? { ...currentSession, title: template.name, templateId: template.id, submitted: false, submittedAt: "", prs: [], updatedAt: isoNow() }
+          ? { ...currentSession, title: template.name, templateId: template.id, recovery: cleanRecovery(recovery), readinessMode, submitted: false, submittedAt: "", prs: [], updatedAt: isoNow() }
           : createSession(template.name);
         session.templateId = template.id;
+        session.recovery = cleanRecovery(recovery);
+        session.readinessMode = readinessMode;
         const recoveryAdvice = recoveryRecommendationForSession(session);
         const exercises = [];
         const sets = [];
+        let adjustedLiftCount = 0;
         template.exercises.forEach((templateExercise, index) => {
-          const exercise = { id: id(), sessionId: session.id, name: templateExercise.name, primaryMuscle: templateExercise.primaryMuscle || "", secondaryMuscle: templateExercise.secondaryMuscle || "", notes: "", order: index, restSeconds: Number(templateExercise.restSeconds || data.settings.defaultRestSeconds), isDeload: false };
-          const target = adjustTargetForRecovery(coachTargetForTemplateExercise(templateExercise, { excludeSessionId: session.id }), recoveryAdvice);
-          exercise.notes = "Coach target: " + target.text;
+          let historyTarget = { ...coachTargetForTemplateExercise(templateExercise, { excludeSessionId: session.id }), isBodyweight: Boolean(templateExercise.isBodyweight) };
+          if (templateExercise.isBodyweight) historyTarget = { ...historyTarget, weight: 0 };
+          const target = adjustTargetForRecovery(historyTarget, recoveryAdvice);
+          if (target.adjusted) adjustedLiftCount += 1;
+          const restSeconds = Number(templateExercise.restSeconds || recommendedRestSeconds(templateExercise.name, { reps: target.reps, rpe: target.rpe, excludeSessionId: session.id }));
+          const exercise = { id: id(), sessionId: session.id, name: templateExercise.name, primaryMuscle: templateExercise.primaryMuscle || "", secondaryMuscle: templateExercise.secondaryMuscle || "", notes: "Coach target: " + target.text, adjustmentReason: target.adjustmentReason || "", order: index, restSeconds, isBodyweight: Boolean(target.isBodyweight), isDeload: false };
           exercises.push(exercise);
           (templateExercise.warmups || []).forEach((warmup, warmupIndex) => {
             sets.push(createSet(exercise.id, -(warmupIndex + 1), { ...warmup, completed: false, isWarmup: true }));
@@ -2537,8 +2780,10 @@
             sets.push(createSet(exercise.id, setNumber, { reps: target.reps, weight: target.weight, weightUnit: target.weightUnit, isBodyweight: target.isBodyweight, rpe: target.rpe, completed: false, isWarmup: false }));
           }
         });
+        session.adjustmentSummary = adjustedLiftCount ? adjustedLiftCount + " lift" + (adjustedLiftCount === 1 ? "" : "s") + " adjusted for recovery." : "No recovery adjustments — normal plan and history-based progression.";
         activeSessionId = session.id;
         view = "workout";
+        templateStartFlow = null;
         if (replaceCurrent) {
           const oldExerciseIds = new Set(data.exercises.filter((exercise) => exercise.sessionId === session.id).map((exercise) => exercise.id));
           commit({
@@ -2570,10 +2815,11 @@
         commit({ ...data, exercises: data.exercises.map((exercise) => exercise.sessionId === session.id ? { ...exercise, order: orderMap.get(exercise.id) ?? exercise.order } : exercise) });
       }
 
-      function startTimer(exerciseId) {
+      function startTimer(exerciseId, setId) {
         const exercise = data.exercises.find((item) => item.id === exerciseId);
-        const seconds = Number(exercise?.restSeconds || data.settings.defaultRestSeconds);
-        timer = { exerciseId, durationSeconds: seconds, remainingSeconds: seconds, isActive: true, isPaused: false };
+        const set = data.sets.find((item) => item.id === setId);
+        const seconds = Number(exercise?.restSeconds || recommendedRestSeconds(exercise?.name || "Exercise", { reps: set?.reps, rpe: set?.rpe }));
+        timer = { exerciseId, setId, durationSeconds: seconds, remainingSeconds: seconds, isActive: true, isPaused: false };
         startTimerInterval();
         render();
       }
@@ -2702,35 +2948,38 @@
         advanced: { low: 12, high: 22 }
       };
 
-      const muscleGroups = ["Chest", "Back", "Quads", "Hamstrings", "Glutes", "Shoulders", "Biceps", "Triceps", "Forearms", "Calves", "Core", "Neck"];
+      const muscleGroups = ["Chest", "Back", "Quads", "Hamstrings", "Glutes", "Adductors", "Shoulders", "Biceps", "Triceps", "Forearms", "Calves", "Core", "Neck"];
 
       function targetRangeForMuscle(muscle) {
         const base = muscleTargets[data.settings.trainingStatus] || muscleTargets.intermediate;
         if (muscle === "Neck") return { low: Math.max(2, Math.round(base.low * 0.35)), high: Math.max(6, Math.round(base.high * 0.45)) };
+        if (muscle === "Adductors") return { low: Math.max(4, Math.round(base.low * 0.45)), high: Math.max(8, Math.round(base.high * 0.6)) };
         if (muscle === "Forearms" || muscle === "Calves") return { low: Math.max(4, Math.round(base.low * 0.55)), high: Math.max(10, Math.round(base.high * 0.7)) };
         return base;
       }
 
       const exerciseMuscleRules = [
         { match: /neck curl|neck flexion|neck extension|neck harness|neck lateral/, muscles: [["Neck", 1]] },
-        { match: /seated leg curl|lying leg curl|standing leg curl|nordic curl|hamstring curl|leg curl/, muscles: [["Hamstrings", 1]] },
-        { match: /leg extension/, muscles: [["Quads", 1]] },
+        { match: /calf|soleus|gastroc|heel raise/, muscles: [["Calves", 1]] },
+        { match: /hip adduction|adductor/, muscles: [["Adductors", 1]] },
+        { match: /hip abduction|abductor|clamshell|lateral leg raise|side lying leg raise/, muscles: [["Glutes", 1]] },
+        { match: /seated leg curl|lying leg curl|standing leg curl|nordic curl|hamstring curl|leg curl|glute ham raise|ghr/, muscles: [["Hamstrings", 1]] },
+        { match: /leg extension|sissy squat/, muscles: [["Quads", 1]] },
         { match: /wrist curl|wrist extension|forearm curl|grip|gripper|farmer|carry/, muscles: [["Forearms", 1], ["Core", 0.25]] },
         { match: /reverse curl|hammer curl/, muscles: [["Biceps", 1], ["Forearms", 0.5]] },
         { match: /preacher curl|incline curl|cable curl|ez bar curl|barbell curl|dumbbell curl|db curl|bicep curl|biceps curl|\bcurl\b/, muscles: [["Biceps", 1]] },
-        { match: /tricep|triceps|pushdown|skull crusher|skullcrusher|french press|overhead extension/, muscles: [["Triceps", 1]] },
-        { match: /lateral raise|front raise/, muscles: [["Shoulders", 1]] },
+        { match: /tricep|triceps|pushdown|skull crusher|skullcrusher|french press|overhead extension|close grip bench|close-grip bench/, muscles: [["Triceps", 1], ["Chest", 0.25]] },
+        { match: /upright row|lateral raise|front raise/, muscles: [["Shoulders", 1]] },
         { match: /rear delt|reverse fly|face pull/, muscles: [["Shoulders", 1], ["Back", 0.25]] },
         { match: /overhead press|shoulder press|military press|arnold press/, muscles: [["Shoulders", 1], ["Triceps", 0.5]] },
         { match: /bench|chest press|push up|pushup|dip|chest fly|pec deck|cable fly|incline press|decline press/, muscles: [["Chest", 1], ["Triceps", 0.5], ["Shoulders", 0.25]] },
+        { match: /pullover/, muscles: [["Back", 1], ["Chest", 0.5]] },
         { match: /pull up|pullup|chin up|chinup|pulldown|lat pulldown|row|t-bar|t bar|seated cable row|chest supported row/, muscles: [["Back", 1], ["Biceps", 0.5]] },
         { match: /shrug/, muscles: [["Back", 1], ["Shoulders", 0.25]] },
         { match: /hip thrust|glute bridge|glute kickback|cable kickback|abductor/, muscles: [["Glutes", 1], ["Hamstrings", 0.25]] },
-        { match: /romanian|rdl|stiff leg|good morning|deadlift|hinge/, muscles: [["Hamstrings", 1], ["Glutes", 0.5], ["Back", 0.25]] },
-        { match: /squat|leg press|hack squat|lunge|split squat|step up|step-up|bulgarian/, muscles: [["Quads", 1], ["Glutes", 0.5]] },
-        { match: /adductor/, muscles: [["Glutes", 0.5], ["Hamstrings", 0.5], ["Quads", 0.25]] },
-        { match: /calf|soleus|gastroc/, muscles: [["Calves", 1]] },
-        { match: /plank|crunch|sit up|sit-up|leg raise|hanging raise|knee raise|ab wheel|pallof|woodchop|core/, muscles: [["Core", 1]] }
+        { match: /romanian|\brdl\b|stiff leg|good morning|deadlift|hinge|back extension|hyperextension/, muscles: [["Hamstrings", 1], ["Glutes", 0.5], ["Back", 0.25]] },
+        { match: /squat|leg press|hack squat|pendulum squat|belt squat|lunge|split squat|step up|step-up|bulgarian/, muscles: [["Quads", 1], ["Glutes", 0.5]] },
+        { match: /plank|crunch|sit up|sit-up|leg raise|hanging raise|knee raise|ab wheel|pallof|woodchop|core|dead bug|bird dog/, muscles: [["Core", 1]] }
       ];
 
       function normalizeMuscleMatches(matches) {
@@ -2778,7 +3027,7 @@
         const buckets = new Map(muscleGroups.map((muscle) => [muscle, { muscle, sets: 0, highRpeSets: 0, failedSets: 0, exercises: new Set(), exerciseDetails: new Map() }]));
         const end = new Date(weekStart + "T00:00:00");
         end.setDate(end.getDate() + 7);
-        const endIso = end.toISOString().slice(0, 10);
+        const endIso = localDateIso(end);
         completedWorkoutEntries().forEach((entry) => {
           if (entry.session.date < weekStart || entry.session.date >= endIso) return;
           musclesForExercise(entry.exercise).forEach(({ muscle, weight }) => {
@@ -2787,10 +3036,10 @@
             bucket.sets += weight;
             if (entry.set.rpe >= 9) bucket.highRpeSets += weight;
             bucket.exercises.add(entry.exercise.name);
-            const detail = bucket.exerciseDetails.get(entry.exercise.name) || { name: entry.exercise.name, sets: 0, sessions: new Set(), dates: new Set() };
+            const detail = bucket.exerciseDetails.get(entry.exercise.name) || { name: entry.exercise.name, sets: 0, volumeLoad: 0, sessions: new Map() };
             detail.sets += weight;
-            detail.sessions.add(entry.session.title || "Workout");
-            detail.dates.add(entry.session.date);
+            detail.volumeLoad += Number(entry.set.weight || 0) * Number(entry.set.reps || 0) * weight;
+            detail.sessions.set(entry.session.id, { title: entry.session.title || "Workout", date: entry.session.date });
             bucket.exerciseDetails.set(entry.exercise.name, detail);
           });
         });
@@ -2809,8 +3058,8 @@
           const details = Array.from(bucket.exerciseDetails.values()).map((detail) => ({
             name: detail.name,
             sets: detail.sets,
-            sessions: Array.from(detail.sessions),
-            dates: Array.from(detail.dates).sort()
+            volumeLoad: detail.volumeLoad,
+            sessions: Array.from(detail.sessions.values()).sort((a, b) => a.date.localeCompare(b.date))
           })).sort((a, b) => b.sets - a.sets || a.name.localeCompare(b.name));
           return { ...bucket, details, exerciseCount: bucket.exercises.size, targetLow: target.low, targetHigh: target.high, status };
         });
@@ -2837,30 +3086,24 @@
       }
 
       function readinessBaseline() {
-        return { ...defaultReadinessBaseline, ...(data.settings.readinessBaseline || {}) };
+        return cleanReadinessBaseline(data.settings.readinessBaseline || {});
       }
 
       function readinessScore(markers, baseline = readinessBaseline()) {
         const sleepBase = numberFrom(baseline.sleepHours, 7.5);
         const sleepQualityBase = numberFrom(baseline.sleepQuality, 4);
         const sorenessBase = numberFrom(baseline.soreness, 2);
-        const stressBase = numberFrom(baseline.stress, 2);
-        const energyBase = numberFrom(baseline.energy, 4);
         const hrvBase = numberFrom(baseline.hrv, 0);
         const restingHrBase = numberFrom(baseline.restingHr, 0);
         const sleep = numberFrom(markers.sleepHours, sleepBase);
         const sleepQuality = numberFrom(markers.sleepQuality, sleepQualityBase);
         const soreness = numberFrom(markers.soreness, sorenessBase);
-        const stress = numberFrom(markers.stress, stressBase);
-        const energy = numberFrom(markers.energy, energyBase);
         const hrv = numberFrom(markers.hrv, hrvBase);
         const restingHr = numberFrom(markers.restingHr, restingHrBase);
         let score = 70;
         score += (sleep - sleepBase) * 5;
         score += (sleepQuality - sleepQualityBase) * 4;
-        score += (energy - energyBase) * 4;
         score -= (soreness - sorenessBase) * 4;
-        score -= (stress - stressBase) * 4;
         if (hrvBase > 0 && hrv > 0) score += ((hrv - hrvBase) / hrvBase) * 35;
         if (restingHrBase > 0 && restingHr > 0) score -= (restingHr - restingHrBase) * 1.5;
         if (markers.illness) score -= 25;
@@ -2887,16 +3130,16 @@
         const band = Math.max(3, numberFrom(baseline.band, 8));
         const deviation = score - center;
         const repeated = priorReadinessDeviations(session).filter((value) => Math.sign(value) === Math.sign(deviation)).length >= 2 && Math.abs(deviation) > band * 0.6;
-        const manualOutside = Boolean(recovery.outsideBand || String(recovery.outsideBandNote || "").trim());
+        const manualOutside = Boolean(String(recovery.outsideBandNote || "").trim());
         const outside = manualOutside || Math.abs(deviation) > band || repeated;
-        const direction = deviation >= 0 ? "high" : "low";
+        const direction = deviation > 0 ? "high" : "low";
         return { baseline, center, score, band, deviation, outside, repeated, manualOutside, direction };
       }
 
       function recoveryRecommendationForSession(session) {
         const recovery = sessionRecovery(session);
         const band = readinessBandStatus(session);
-        const logged = ["sleepHours", "sleepQuality", "hrv", "restingHr", "soreness", "stress", "energy"].some((key) => recovery[key] !== "" && recovery[key] != null) || recovery.illness || recovery.outsideBandNote;
+        const logged = ["sleepHours", "sleepQuality", "hrv", "restingHr", "soreness"].some((key) => recovery[key] !== "" && recovery[key] != null) || recovery.illness || recovery.outsideBandNote;
         const evidence = [
           "Rule: baseline score " + band.center + ", normal band " + (band.center - band.band) + "-" + (band.center + band.band) + ", today " + band.score + ".",
           band.outside ? "Today is outside your normal readiness band." : "Today is inside your normal readiness band; treat it as normal fluctuation."
@@ -2915,23 +3158,25 @@
         if (band.direction === "low") {
           return { decision: "deload", label: "Low outside-band readiness", action: "Reduce load 10-15% and volume 30-50%, aiming around RPE 6-7.", score: band.score, evidence, band };
         }
-        return { decision: "hold", label: "Go as planned", action: "Recovery is better than usual, but keep the planned work. Let warmups, reps, and RPE earn any progression.", score: band.score, evidence, band };
+        return { decision: "progress", label: "High outside-band readiness", action: "Use only the conservative progression already supported by your lift history; readiness alone never earns a larger jump.", score: band.score, evidence, band };
       }
 
       function adjustTargetForRecovery(target, recoveryAdvice) {
-        const reducedWeight = (multiplier) => target.weight > 0 ? roundToIncrement(target.weight * multiplier, data.settings.weightUnit === "kg" ? 2.5 : 5) : 0;
+        const reducedWeight = (multiplier) => target.weight > 0 ? Math.min(target.weight, roundToIncrement(target.weight * multiplier, data.settings.weightUnit === "kg" ? 2.5 : 5)) : 0;
         if (recoveryAdvice.decision === "rest") {
           const adjusted = { ...target, sets: Math.max(1, Math.ceil(target.sets * 0.5)), weight: reducedWeight(0.85), rpe: 6 };
-          return { ...adjusted, text: targetText(adjusted, "Recovery override: rest is preferred; if you train, keep this very easy.") };
+          const reason = "Illness/injury or very low readiness: kept the exercise, cut load about 15% and working sets about 50%, and lowered effort to RPE 6 for technique-focused work.";
+          return { ...adjusted, adjusted: true, adjustmentReason: reason, text: targetText(adjusted, reason) };
         }
         if (recoveryAdvice.decision === "deload") {
           const adjusted = { ...target, sets: Math.max(1, Math.ceil(target.sets * 0.65)), weight: reducedWeight(0.9), rpe: 7 };
-          return { ...adjusted, text: targetText(adjusted, "Recovery override: deload today.") };
+          const reason = "Low outside-band readiness: kept the exercise, reduced load about 10% and working sets about 35%, and capped effort at RPE 7 to prioritize clean technique.";
+          return { ...adjusted, adjusted: true, adjustmentReason: reason, text: targetText(adjusted, reason) };
         }
-        if (recoveryAdvice.decision === "hold") {
-          return { ...target, text: targetText(target, "Recovery note: hold today unless warmups feel excellent.") };
+        if (recoveryAdvice.decision === "progress") {
+          return { ...target, adjusted: false, adjustmentReason: "", text: targetText(target, "High readiness did not add work beyond the conservative progression supported by your lift history.") };
         }
-        return target;
+        return { ...target, adjusted: false, adjustmentReason: "", text: target.text || targetText(target, "Inside your normal band: use the normal plan and planned progression.") };
       }
 
       function createTemplatesFromStrongSessions(importedSessions, importedExercises, importedSets) {
@@ -2967,9 +3212,10 @@
               name: exercise.name,
               primaryMuscle: exercise.primaryMuscle || "",
               secondaryMuscle: exercise.secondaryMuscle || "",
+              isBodyweight: completedSets.length > 0 && completedSets.every((set) => set.isBodyweight),
               sets: Math.max(completedSets.filter((set) => !set.isWarmup).length || exerciseSets.length, 1),
               reps: Math.max(representativeReps, 1),
-              restSeconds: data.settings.defaultRestSeconds,
+              restSeconds: exercise.restSeconds || recommendedRestSeconds(exercise.name, { reps: representativeReps }),
               warmups: exerciseSets.filter((set) => set.isWarmup).map((set) => ({ reps: set.reps, weight: set.weight, weightUnit: set.weightUnit, isBodyweight: set.isBodyweight, rpe: set.rpe }))
             };
           });
@@ -3046,7 +3292,7 @@
           let exercise = exerciseMap.get(exerciseExternalId);
           if (!exercise) {
             const exerciseOrder = exerciseCountsBySession.get(session.id) || 0;
-            exercise = { id: importedId("e"), externalId: exerciseExternalId, source: "strong", sessionId: session.id, name: exerciseName, primaryMuscle: "", secondaryMuscle: "", notes: row.Notes || "", order: exerciseOrder };
+            exercise = { id: importedId("e"), externalId: exerciseExternalId, source: "strong", sessionId: session.id, name: exerciseName, primaryMuscle: "", secondaryMuscle: "", notes: row.Notes || "", order: exerciseOrder, restSeconds: recommendedRestSeconds(exerciseName), isBodyweight: isBodyweightExerciseName(exerciseName) };
             exerciseMap.set(exerciseExternalId, exercise);
             exercises.push(exercise);
             exerciseCountsBySession.set(session.id, exerciseOrder + 1);
@@ -3065,7 +3311,7 @@
             reps,
             weight,
             weightUnit: data.settings.weightUnit,
-            isBodyweight: weight === 0,
+            isBodyweight: isBodyweightExerciseName(exerciseName),
             rpe: numberFrom(row.RPE),
             completed: true
           });
@@ -3113,9 +3359,7 @@
             }
             const imported = JSON.parse(text);
             if (!Array.isArray(imported.sessions) || !Array.isArray(imported.exercises) || !Array.isArray(imported.sets)) throw new Error("Import must include sessions, exercises, and sets arrays.");
-            data = { ...emptyData(), ...imported, settings: { ...defaultSettings, ...imported.settings } };
-            data.settings.readinessBaseline = { ...defaultReadinessBaseline, ...(data.settings.readinessBaseline || {}) };
-            data.templates = Array.isArray(data.templates) ? data.templates : [];
+            data = normalizeLoadedData({ ...emptyData(), ...imported, settings: { ...defaultSettings, ...imported.settings } });
             activeSessionId = data.sessions[0]?.id || "";
             settingsMessage = "Import complete.";
             saveData();
@@ -3136,13 +3380,14 @@
       }
 
       function isNumericEditAction(action) {
-        return ["set-reps", "set-weight", "set-rpe", "template-exercise-sets", "template-exercise-reps", "template-exercise-rest", "exercise-rest-seconds", "rest-seconds", "recovery-sleep-hours", "recovery-hrv", "recovery-resting-hr", "baseline-sleep-hours", "baseline-sleep-quality", "baseline-hrv", "baseline-resting-hr", "baseline-soreness", "baseline-stress", "baseline-energy", "baseline-band"].includes(action);
+        return ["set-reps", "set-weight", "set-rpe", "template-exercise-sets", "template-exercise-reps", "template-exercise-rest", "exercise-rest-seconds", "recovery-sleep-hours", "recovery-hrv", "recovery-resting-hr", "template-readiness-sleep-hours", "template-readiness-hrv", "template-readiness-resting-hr", "baseline-sleep-hours", "baseline-sleep-quality", "baseline-hrv", "baseline-resting-hr", "baseline-soreness", "baseline-band"].includes(action);
       }
 
       root.addEventListener("click", (event) => {
         const target = event.target.closest("[data-action]");
         if (!target) return;
         const action = target.dataset.action;
+        if (target.classList.contains("sheet-backdrop") && event.target !== target) return;
         if (target.tagName === "INPUT" && isNumericEditAction(action)) {
           target.dataset.replaceOnNextInput = "true";
           target.dataset.previousValue = target.value;
@@ -3163,7 +3408,12 @@
         if (action === "new-session") addSession();
         if (action === "new-template") addTemplate();
         if (action === "save-template") saveActiveSessionAsTemplate();
-        if (action === "start-template") startTemplate(target.dataset.templateId);
+        if (action === "start-template") openTemplateStart(target.dataset.templateId);
+        if (action === "cancel-template-start") closeTemplateStart();
+        if (action === "continue-template-start" && templateStartFlow) { templateStartFlow = { ...templateStartFlow, step: "readiness" }; render(); }
+        if (action === "use-usual-readiness" && templateStartFlow) startTemplate(templateStartFlow.templateId, defaultRecovery(), "usual");
+        if (action === "log-today-readiness" && templateStartFlow) { templateStartFlow = { ...templateStartFlow, step: "metrics" }; render(); }
+        if (action === "start-template-with-metrics" && templateStartFlow) startTemplate(templateStartFlow.templateId, templateStartFlow.draft, "daily");
         if (action === "add-template-exercise") addTemplateExercise(target.dataset.templateId);
         if (action === "toggle-volume-muscle") {
           expandedVolumeMuscle = expandedVolumeMuscle === target.dataset.muscle ? "" : target.dataset.muscle;
@@ -3221,7 +3471,7 @@
           const warmups = (exercise?.warmups || []).filter((_, index) => index !== Number(target.dataset.warmupIndex));
           patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { warmups });
         }
-        if (action === "start-timer") startTimer(target.dataset.exerciseId);
+        if (action === "start-timer") startTimer(target.dataset.exerciseId, target.dataset.setId);
         if (action === "toggle-timer" && timer) { timer.isPaused = !timer.isPaused; render(); }
         if (action === "clear-timer") { timer = null; render(); }
         if (action === "open-session") { activeSessionId = target.dataset.sessionId; view = "workout"; render(); }
@@ -3249,7 +3499,9 @@
         if (action === "exercise-primary-muscle") patchExercise(target.dataset.exerciseId, { primaryMuscle: target.value });
         if (action === "exercise-secondary-muscle") patchExercise(target.dataset.exerciseId, { secondaryMuscle: target.value });
         if (action === "exercise-deload") patchExercise(target.dataset.exerciseId, { isDeload: target.checked });
-        if (action === "set-bodyweight") patchSet(target.dataset.setId, { isBodyweight: target.checked });
+        if (action === "exercise-bodyweight") {
+          commit({ ...data, exercises: data.exercises.map((exercise) => exercise.id === target.dataset.exerciseId ? { ...exercise, isBodyweight: target.checked } : exercise), sets: data.sets.map((set) => set.exerciseId === target.dataset.exerciseId ? { ...set, isBodyweight: target.checked } : set) });
+        }
         if (action === "set-warmup") patchSet(target.dataset.setId, { isWarmup: target.checked });
         if (action === "set-reps") patchSet(target.dataset.setId, { reps: Number(target.value) });
         if (action === "set-weight") patchSet(target.dataset.setId, { weight: Number(target.value) });
@@ -3264,9 +3516,6 @@
         if (action === "training-status") commit({ ...data, settings: { ...data.settings, trainingStatus: target.value } });
         if (action === "recovery-sleep-quality") patchRecovery({ sleepQuality: target.value });
         if (action === "recovery-soreness") patchRecovery({ soreness: target.value });
-        if (action === "recovery-stress") patchRecovery({ stress: target.value });
-        if (action === "recovery-energy") patchRecovery({ energy: target.value });
-        if (action === "recovery-outside-band") patchRecovery({ outsideBand: target.checked });
         if (action === "recovery-illness") patchRecovery({ illness: target.checked });
         if (action === "recovery-outside-note") patchRecovery({ outsideBandNote: target.value });
         if (action === "recovery-sleep-hours") patchRecovery({ sleepHours: target.value });
@@ -3277,9 +3526,13 @@
         if (action === "baseline-hrv") patchReadinessBaseline({ hrv: target.value });
         if (action === "baseline-resting-hr") patchReadinessBaseline({ restingHr: target.value });
         if (action === "baseline-soreness") patchReadinessBaseline({ soreness: target.value });
-        if (action === "baseline-stress") patchReadinessBaseline({ stress: target.value });
-        if (action === "baseline-energy") patchReadinessBaseline({ energy: target.value });
         if (action === "baseline-band") patchReadinessBaseline({ band: target.value });
+        if (action === "template-readiness-sleep-quality") patchTemplateStartDraft({ sleepQuality: target.value });
+        if (action === "template-readiness-soreness") patchTemplateStartDraft({ soreness: target.value });
+        if (action === "template-readiness-illness") patchTemplateStartDraft({ illness: target.checked });
+        if (action === "template-readiness-sleep-hours") patchTemplateStartDraft({ sleepHours: target.value });
+        if (action === "template-readiness-hrv") patchTemplateStartDraft({ hrv: target.value });
+        if (action === "template-readiness-resting-hr") patchTemplateStartDraft({ restingHr: target.value });
         if (action === "import-data" && target.files[0]) importDataFile(target.files[0]);
       });
 
@@ -3310,9 +3563,10 @@
         if (action === "baseline-hrv") patchReadinessBaseline({ hrv: target.value });
         if (action === "baseline-resting-hr") patchReadinessBaseline({ restingHr: target.value });
         if (action === "baseline-soreness") patchReadinessBaseline({ soreness: target.value });
-        if (action === "baseline-stress") patchReadinessBaseline({ stress: target.value });
-        if (action === "baseline-energy") patchReadinessBaseline({ energy: target.value });
         if (action === "baseline-band") patchReadinessBaseline({ band: target.value });
+        if (action === "template-readiness-sleep-hours") patchTemplateStartDraft({ sleepHours: target.value });
+        if (action === "template-readiness-hrv") patchTemplateStartDraft({ hrv: target.value });
+        if (action === "template-readiness-resting-hr") patchTemplateStartDraft({ restingHr: target.value });
       });
 
       root.addEventListener("beforeinput", (event) => {
@@ -3330,6 +3584,17 @@
 
       root.addEventListener("keydown", (event) => {
         const target = event.target.closest("[data-action]");
+        if (event.key === "Escape" && templateStartFlow) { event.preventDefault(); closeTemplateStart(); return; }
+        if (event.key === "Tab" && templateStartFlow) {
+          const focusable = Array.from(root.querySelectorAll(".bottom-sheet button:not([disabled]), .bottom-sheet input:not([disabled]), .bottom-sheet select:not([disabled]), .bottom-sheet textarea:not([disabled])"));
+          if (focusable.length) {
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); return; }
+            if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); return; }
+          }
+        }
+        if (target?.dataset.action === "show-chart-point" && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); target.dispatchEvent(new MouseEvent("click", { bubbles: true })); return; }
         if (!target || target.tagName !== "INPUT" || !isNumericEditAction(target.dataset.action)) return;
         if (target.dataset.replaceOnNextInput !== "true") return;
         if (event.ctrlKey || event.metaKey || event.altKey || event.key.length !== 1 || !/[\d.]/.test(event.key)) {
@@ -3356,7 +3621,7 @@
         if (action === "add-exercise-draft") addExerciseDraft = target.value;
         if (action === "session-title") patchSession({ title: target.value }, false);
         if (action === "session-notes") patchSession({ notes: target.value }, false);
-        if (action === "exercise-name") patchExercise(target.dataset.exerciseId, { name: target.value }, false);
+        if (action === "exercise-name") patchExerciseName(target.dataset.exerciseId, target.value, false);
         if (action === "exercise-notes") patchExercise(target.dataset.exerciseId, { notes: target.value }, false);
         if (action === "set-reps") patchSet(target.dataset.setId, { reps: Number(target.value) }, false);
         if (action === "set-weight") patchSet(target.dataset.setId, { weight: Number(target.value) }, false);
@@ -3364,10 +3629,9 @@
         if (action === "exercise-rest-seconds") patchExercise(target.dataset.exerciseId, { restSeconds: Number(target.value) }, false);
         if (action === "template-exercise-rest") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { restSeconds: Number(target.value) }, false);
         if (action === "template-name") patchTemplate(target.dataset.templateId, { name: target.value }, false);
-        if (action === "template-exercise-name") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { name: target.value }, false);
+        if (action === "template-exercise-name") patchTemplateExerciseName(target.dataset.templateId, target.dataset.templateExerciseId, target.value, false);
         if (action === "template-exercise-sets") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { sets: Number(target.value) }, false);
         if (action === "template-exercise-reps") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { reps: Number(target.value) }, false);
-        if (action === "rest-seconds") commit({ ...data, settings: { ...data.settings, defaultRestSeconds: Number(target.value) } }, false);
         if (action === "recovery-sleep-hours") patchRecovery({ sleepHours: target.value }, false);
         if (action === "recovery-hrv") patchRecovery({ hrv: target.value }, false);
         if (action === "recovery-resting-hr") patchRecovery({ restingHr: target.value }, false);
@@ -3377,9 +3641,11 @@
         if (action === "baseline-hrv") patchReadinessBaseline({ hrv: target.value }, false);
         if (action === "baseline-resting-hr") patchReadinessBaseline({ restingHr: target.value }, false);
         if (action === "baseline-soreness") patchReadinessBaseline({ soreness: target.value }, false);
-        if (action === "baseline-stress") patchReadinessBaseline({ stress: target.value }, false);
-        if (action === "baseline-energy") patchReadinessBaseline({ energy: target.value }, false);
         if (action === "baseline-band") patchReadinessBaseline({ band: target.value }, false);
+        if (action === "template-readiness-sleep-hours") patchTemplateStartDraft({ sleepHours: target.value }, false);
+        if (action === "template-readiness-hrv") patchTemplateStartDraft({ hrv: target.value }, false);
+        if (action === "template-readiness-resting-hr") patchTemplateStartDraft({ restingHr: target.value }, false);
+        if (action === "template-readiness-note") patchTemplateStartDraft({ outsideBandNote: target.value }, false);
       });
 
       loadData();
