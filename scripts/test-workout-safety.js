@@ -47,7 +47,8 @@ assert.match(html, /score-very-good \{ --score-color: #1f9272; \}/, "Very-good s
 assert.match(html, /score-good \{ --score-color: #86a423; \}/, "Good scores must bridge amber and teal with a yellow-green tone");
 assert.match(html, /function hypertrophyLetterGrade\(score\)/, "Program and exercise scores must expose one centralized letter-grade mapping");
 assert.match(html, /if \(value >= 97\) return "A\+";[\s\S]*if \(value >= 60\) return "D-";[\s\S]*return "F";/, "Letter grades must support A+ through F using stable thresholds");
-assert.match(html, /aria-label="Letter grade \$\{escapeHtml\(hypertrophyGradeLabel/, "The score ring must announce its letter grade accessibly");
+assert.match(html, /class="hypertrophy-score-grade" role="img" aria-label="Letter grade \$\{escapeHtml\(hypertrophyGradeLabel/, "The large score grade must announce its letter grade accessibly");
+assert.doesNotMatch(html, /hypertrophy-score-ring|conic-gradient\(var\(--score-color\)/, "Letter grades must not be enclosed in a progress ring");
 assert.match(html, /hypertrophyAnalysis\(hypertrophyWindowOffset, "exercise", selectedExerciseId\)/, "Charts must calculate only the selected exercise score");
 assert.doesNotMatch(html, /Score scope/, "Charts must not retain the overall-program scope selector");
 assert.doesNotMatch(html, /data-action="set-hypertrophy-scope"/, "Charts must not expose a hidden overall-program scope action");
