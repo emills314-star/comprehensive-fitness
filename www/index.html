@@ -5315,6 +5315,10 @@
           target.dataset.replaceOnNextInput = "false";
         }
         if (action === "add-exercise-draft") addExerciseDraft = target.value;
+        if (action === "review-exercise-input") {
+          const match = getExerciseNames().find((name) => exerciseMatches(name, target.value));
+          if (match && match !== selectedExercise) { selectedExercise = match; selectedWeek = ""; chartDetailPoint = null; render(); return; }
+        }
         if (action === "session-title") patchSession({ title: target.value }, false);
         if (action === "session-notes") patchSession({ notes: target.value }, false);
         if (action === "exercise-name") patchExerciseName(target.dataset.exerciseId, target.value, false);
