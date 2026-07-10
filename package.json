@@ -9,6 +9,7 @@
     "verify:pwa": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-pwa.ps1",
     "test:hypertrophy": "node scripts/test-hypertrophy-score.js",
     "test:resistance": "node scripts/test-resistance-model.js",
+    "test:workout-safety": "node scripts/test-workout-safety.js",
     "cap:init": "npx cap init \"Comprehensive Fitness\" \"com.emills.comprehensivefitness\" --web-dir www",
     "cap:add:ios": "npx cap add ios",
     "cap:add:android": "npx cap add android",
