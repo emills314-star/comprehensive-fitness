@@ -31,11 +31,13 @@
         --green-2: #a9d7ff;
         --green-dark: rgba(74, 163, 255, 0.13);
         --amber: #ffbc4a;
+        --rest-accent: #ffd23f;
+        --rest-text: #ffe47a;
         --red: #ff7e72;
         --success: #43d17a;
         --success-dark: rgba(67, 209, 122, 0.15);
-        --current: #55aaff;
-        --current-dark: rgba(85, 170, 255, 0.14);
+        --current: #2589ff;
+        --current-dark: rgba(37, 137, 255, 0.17);
         --surface: rgba(255, 255, 255, 0.035);
         --surface-strong: rgba(255, 255, 255, 0.07);
         --input-bg: rgba(5, 13, 18, 0.72);
@@ -61,11 +63,13 @@
         --green-2: #0d8bff;
         --green-dark: rgba(8, 111, 199, 0.1);
         --amber: #a76200;
+        --rest-accent: #e3a400;
+        --rest-text: #9a6700;
         --red: #c84337;
         --success: #148a46;
         --success-dark: rgba(20, 138, 70, 0.11);
-        --current: #086fc7;
-        --current-dark: #e4f2ff;
+        --current: #005bd8;
+        --current-dark: #e2efff;
         --surface: rgba(255, 255, 255, 0.66);
         --surface-strong: rgba(255, 255, 255, 0.9);
         --input-bg: rgba(255, 255, 255, 0.92);
@@ -263,6 +267,8 @@
         font-size: 0.92rem;
         font-weight: 800;
         gap: 9px;
+        min-height: 36px;
+        padding: 5px 0;
       }
 
       .deload-toggle {
@@ -277,16 +283,46 @@
         width: fit-content;
       }
 
-      .deload-toggle input { accent-color: var(--amber); height: 20px; width: 20px; }
+      .deload-toggle input { height: 20px; width: 20px; }
       .deload-toggle.active { border-color: var(--amber); color: var(--amber); }
       .deload-toggle span { font-size: 0.72rem; text-transform: uppercase; }
 
-      .toggle-line input, .bodyweight input {
-        accent-color: var(--green);
+      .toggle-line input[type="checkbox"], .bodyweight input[type="checkbox"], .deload-toggle input[type="checkbox"] {
+        appearance: none;
+        -webkit-appearance: none;
+        background: var(--input-bg);
+        border: 1.5px solid color-mix(in srgb, var(--muted) 55%, transparent);
+        border-radius: 6px;
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, white 35%, transparent);
+        display: inline-grid;
+        flex: 0 0 auto;
         height: 22px;
         min-height: 22px;
+        margin: 0;
+        place-content: center;
+        transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
         width: 22px;
       }
+
+      .toggle-line input[type="checkbox"]::before, .bodyweight input[type="checkbox"]::before, .deload-toggle input[type="checkbox"]::before {
+        background: white;
+        clip-path: polygon(14% 48%, 0 64%, 40% 100%, 100% 20%, 83% 5%, 38% 72%);
+        content: "";
+        height: 10px;
+        transform: scale(0);
+        transition: transform 120ms ease;
+        width: 12px;
+      }
+
+      .toggle-line input[type="checkbox"]:checked, .bodyweight input[type="checkbox"]:checked {
+        background: var(--current);
+        border-color: var(--current);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--current) 18%, transparent);
+      }
+
+      .deload-toggle input[type="checkbox"]:checked { background: var(--amber); border-color: var(--amber); }
+      .toggle-line input[type="checkbox"]:checked::before, .bodyweight input[type="checkbox"]:checked::before, .deload-toggle input[type="checkbox"]:checked::before { transform: scale(1); }
+      .toggle-line input[type="checkbox"]:focus-visible, .bodyweight input[type="checkbox"]:focus-visible, .deload-toggle input[type="checkbox"]:focus-visible { outline: 2px solid var(--current); outline-offset: 2px; }
 
       .exercise-card, .settings-panel, .recommendation, .template-card, .inline-panel, .workout-advice {
         background: transparent;
@@ -720,9 +756,9 @@
       .chart-svg {
         background: var(--surface);
         border: 1px solid var(--line);
-        border-radius: 0;
+        border-radius: 8px;
         color: var(--green);
-        height: 132px;
+        height: 176px;
         overflow: hidden;
         width: 100%;
       }
@@ -733,11 +769,23 @@
         width: 100%;
       }
 
+      .chart-grid-line { stroke: color-mix(in srgb, var(--muted) 18%, transparent); stroke-width: 1; }
+      .chart-axis-label { fill: var(--muted); font-size: 8px; font-weight: 700; }
+      .chart-line { fill: none; stroke: var(--current); stroke-linecap: round; stroke-linejoin: round; stroke-width: 2.5; }
       .chart-point { cursor: pointer; outline: none; }
       .chart-point .hit-area { fill: transparent; }
-      .chart-point:focus .visible-point, .chart-point:hover .visible-point { fill: var(--amber); stroke: var(--text); stroke-width: 2; }
-      .chart-detail { border-top: 1px solid var(--green); display: grid; gap: 8px; margin-top: 12px; padding-top: 12px; }
+      .chart-point .visible-point { fill: var(--surface-strong); stroke: var(--current); stroke-width: 2.5; }
+      .chart-point:focus .visible-point, .chart-point:hover .visible-point { fill: var(--current); stroke: white; stroke-width: 2; }
+      .chart-point.selected .visible-point { fill: var(--current); stroke: white; stroke-width: 2.5; }
+      .chart-point .selected-ring { fill: none; stroke: transparent; stroke-width: 2; }
+      .chart-point.selected .selected-ring { stroke: var(--current); }
+      .chart-selected-guide { stroke: var(--current); stroke-dasharray: 3 3; stroke-width: 1; }
+      .chart-detail { background: var(--current-dark); border: 1px solid color-mix(in srgb, var(--current) 48%, var(--line)); border-radius: 7px; display: grid; gap: 8px; margin-top: 8px; padding: 10px; }
       .chart-detail p, .chart-detail small { color: var(--muted); margin: 0; }
+      .chart-detail-facts { display: grid; gap: 6px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .chart-detail-facts div { display: grid; gap: 2px; }
+      .chart-detail-facts span { color: var(--muted); font-size: .62rem; }
+      .chart-detail-facts strong { font-size: .72rem; }
 
       .quick-template-strip {
         display: grid;
@@ -827,17 +875,17 @@
         min-height: 180px;
       }
 
-      .timer-bar { align-items: center; background: var(--surface-strong); border-top: 1px solid var(--amber); display: grid; gap: 6px; grid-template-columns: minmax(66px, 1fr) repeat(3, 36px) 48px 36px; padding: 9px 7px 10px 43px; }
+      .timer-bar { align-items: center; background: color-mix(in srgb, var(--rest-accent) 7%, var(--surface-strong)); border-left: 4px solid var(--rest-accent); border-top: 1px solid color-mix(in srgb, var(--rest-accent) 48%, var(--line)); display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr) auto; margin-left: -3px; padding: 10px 8px 11px 39px; }
 
       .timer-bar strong {
-        color: var(--amber);
+        color: var(--rest-text);
         display: block;
         font-size: 1.15rem;
         line-height: 1;
       }
 
       .timer-bar span {
-        color: var(--amber);
+        color: var(--rest-text);
         font-size: 0.82rem;
         font-weight: 800;
         letter-spacing: 0.05em;
@@ -849,13 +897,16 @@
       .timer-bar.complete { background: var(--success-dark); border-color: var(--success); }
       .timer-bar.complete strong, .timer-bar.complete span { color: var(--success); }
       .timer-control { border-radius: 8px; font-size: 1rem; font-weight: 1000; min-height: 40px; min-width: 40px; padding: 0; justify-content: center; }
-      .timer-adjust { color: var(--amber); font-size: .68rem; min-height: 36px; min-width: 36px; }
-      .timer-skip { border-color: var(--current); color: var(--current); font-size: .64rem; min-height: 36px; min-width: 48px; padding: 0 5px; }
+      .timer-primary-controls { display: grid; gap: 7px; grid-column: 1 / -1; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .timer-primary-controls button { align-items: center; display: inline-flex; font-size: .72rem; justify-content: center; line-height: 1; min-height: 42px; min-width: 0; padding: 0 8px; text-align: center; width: 100%; }
+      .timer-adjust { border-color: color-mix(in srgb, var(--rest-accent) 62%, var(--line)); color: var(--rest-text); }
+      .timer-skip { background: color-mix(in srgb, var(--rest-accent) 10%, transparent); border-color: var(--rest-accent); color: var(--rest-text); }
+      .timer-secondary-controls { display: flex; gap: 7px; }
       .timer-pause { background: var(--green-dark); border-color: var(--green); color: var(--green-2); }
       .timer-cancel { background: color-mix(in srgb, var(--red) 12%, transparent); border-color: var(--red); color: var(--red); }
       .timer-finished { background: var(--success-dark); border: 1px solid var(--success); color: var(--success); }
-      .timer-progress { background: color-mix(in srgb, var(--amber) 18%, var(--surface)); border-radius: 999px; grid-column: 1 / -1; height: 7px; overflow: hidden; }
-      .timer-progress span { background: linear-gradient(90deg, var(--amber), #ffe099); display: block; height: 100%; transition: width 1s linear; width: var(--timer-progress, 0%); }
+      .timer-progress { background: color-mix(in srgb, var(--rest-accent) 18%, var(--surface)); border-radius: 999px; grid-column: 1 / -1; height: 7px; overflow: hidden; }
+      .timer-progress span { background: linear-gradient(90deg, var(--rest-accent), #ffe88a); display: block; height: 100%; transition: width 1s linear; width: var(--timer-progress, 0%); }
       .timer-bar.complete .timer-progress { background: color-mix(in srgb, var(--success) 18%, var(--surface)); }
       .timer-bar.complete .timer-progress span { background: var(--success); }
 
@@ -1137,14 +1188,17 @@
       .template-library { display: grid; gap: 8px; }
       .template-card, .history-exercise { padding: 11px; border-radius: 8px; box-shadow: none; }
       .template-topline { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-      .template-topline > div { min-width: 0; flex: 1; }
+      .template-topline > .template-title { min-width: 0; flex: 1; }
       .template-topline .exercise-name { min-height: 29px; padding: 0; font-size: .94rem; font-weight: 850; border-color: transparent; background: transparent; }
       .template-topline small { display: block; margin-top: 2px; color: var(--muted); font-size: .68rem; }
       .template-start { min-height: 34px; padding: 0 11px; font-size: .69rem; }
+      .template-card-actions { align-items: center; display: flex; flex: 0 0 auto; gap: 5px; }
+      .template-delete-button { font-size: .72rem; min-height: 34px; min-width: 34px; padding: 0; justify-content: center; }
+      .template-delete-confirm { align-items: center; display: flex; gap: 4px; }
+      .template-delete-confirm button { min-height: 34px; padding: 0 8px; }
       .template-coach { margin: 8px 0 0; color: var(--muted); font-size: .72rem; line-height: 1.38; }
       .template-coach strong { color: var(--text); }
       .template-editor { margin-top: 8px; }
-      .template-delete-row { display: flex; justify-content: flex-end; margin-top: 5px; }
       .full-width { width: 100%; min-height: 42px; }
       .screen-section { display: grid; gap: 9px; }
       .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 10px; }
@@ -1153,10 +1207,34 @@
       .section-heading > span { color: var(--muted); font-size: .68rem; white-space: nowrap; }
       .text-button { min-height: 30px; padding: 0; border: 0; background: transparent; color: var(--green-2); font-size: .72rem; font-weight: 850; }
       .dashboard-summary-row, .chart-metric-row { grid-template-columns: repeat(3, minmax(0, 1fr)); border-radius: 8px; overflow: hidden; }
-      .dashboard-summary-row > div, .chart-metric-row > div { min-height: 60px; display: flex; flex-direction: column; justify-content: center; padding: 8px; border-right: 1px solid var(--line); }
-      .dashboard-summary-row > div:last-child, .chart-metric-row > div:last-child { border-right: 0; }
+      .dashboard-summary-row > div, .dashboard-summary-row > button, .chart-metric-row > div { min-height: 64px; display: flex; flex-direction: column; justify-content: center; padding: 8px; border: 0; border-right: 1px solid var(--line); border-radius: 0; }
+      .dashboard-summary-row > div:last-child, .dashboard-summary-row > button:last-child, .chart-metric-row > div:last-child { border-right: 0; }
+      .dashboard-summary-row > button { align-items: flex-start; color: var(--text); position: relative; text-align: left; }
+      .dashboard-summary-row > button::after { color: var(--current); content: "›"; font-size: 1rem; line-height: 1; position: absolute; right: 7px; top: 9px; }
+      .dashboard-summary-row > button:hover, .dashboard-summary-row > button:focus-visible { background: var(--current-dark); box-shadow: inset 0 -2px 0 var(--current); }
       .dashboard-summary-row strong, .chart-metric-row strong { font-size: 1.05rem; line-height: 1; }
-      .dashboard-summary-row span, .chart-metric-row span { margin-top: 4px; color: var(--muted); font-size: .62rem; font-weight: 750; line-height: 1.15; }
+      .dashboard-summary-row span, .chart-metric-row span { margin-top: 4px; color: var(--muted); font-size: .62rem; font-weight: 750; line-height: 1.15; padding-right: 9px; }
+      .dashboard-period { align-items: center; display: flex; gap: 6px; }
+      .dashboard-period button { min-height: 34px; min-width: 34px; padding: 0; justify-content: center; }
+      .dashboard-period strong { font-size: .7rem; min-width: 96px; text-align: center; }
+      .dashboard-detail-header { align-items: center; border-bottom: 1px solid var(--line); display: grid; gap: 10px; grid-template-columns: 38px minmax(0, 1fr); padding-bottom: 10px; }
+      .dashboard-detail-header button { justify-content: center; min-height: 36px; min-width: 36px; padding: 0; }
+      .dashboard-detail-header h1 { font-size: 1.18rem; margin: 0; }
+      .dashboard-detail-header p { color: var(--muted); font-size: .68rem; margin: 2px 0 0; }
+      .drilldown-list { display: grid; gap: 0; }
+      .drilldown-item { align-items: center; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; color: var(--text); display: grid; gap: 4px; grid-template-columns: minmax(0, 1fr) auto; min-height: 62px; padding: 10px 4px; text-align: left; width: 100%; }
+      .drilldown-item:hover, .drilldown-item:focus-visible { background: var(--current-dark); box-shadow: inset 3px 0 0 var(--current); }
+      .drilldown-item strong, .drilldown-item span, .drilldown-item small { grid-column: 1; }
+      .drilldown-item span, .drilldown-item small { color: var(--muted); font-size: .68rem; line-height: 1.35; }
+      .drilldown-item .drilldown-chevron { color: var(--current); font-size: 1.2rem; grid-column: 2; grid-row: 1 / span 3; }
+      .detail-facts { display: grid; gap: 0; }
+      .detail-fact { border-bottom: 1px solid var(--line); display: grid; gap: 3px; padding: 10px 0; }
+      .detail-fact span { color: var(--muted); font-size: .68rem; }
+      .fatigue-explanation { background: var(--surface); border-left: 3px solid var(--amber); display: grid; gap: 10px; padding: 12px; }
+      .fatigue-explanation.high { border-left-color: var(--red); }
+      .fatigue-explanation h2, .fatigue-explanation p { margin: 0; }
+      .fatigue-explanation p, .fatigue-explanation li { color: var(--muted); font-size: .72rem; line-height: 1.45; }
+      .fatigue-explanation ul { margin: 0; padding-left: 18px; }
       .dashboard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
       .volume-card { min-height: 102px; padding: 9px; border-radius: 7px; text-align: left; }
       .volume-card header { gap: 5px; }
@@ -1191,6 +1269,7 @@
       [data-theme="light"] body .text-button { color: #0759c5; }
       @media (min-width: 720px) { .app-main { max-width: 760px; padding: 18px 18px 0; } .brand-bar { max-width: 760px; margin: 0 auto; } .dashboard-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .quick-template-card { flex-basis: 180px; } }
       @media (max-width: 380px) { .brand-title small { max-width: 95px; } .workout-status-strip > span { font-size: .6rem; } .set-row { grid-template-columns: 27px minmax(42px, .85fr) minmax(44px, 1fr) minmax(35px, .7fr) 40px; gap: 3px; } .set-row input, .set-row select { font-size: .69rem; } .set-actions, .timer-bar { padding-left: 32px; } .next-set-banner { padding-left: 32px; } .dashboard-grid { grid-template-columns: 1fr; } }
+      @media (max-width: 380px) { .timer-primary-controls { gap: 5px; } .timer-primary-controls button { font-size: .68rem; padding: 0 5px; } .template-topline { flex-wrap: wrap; } .template-card-actions { margin-left: auto; } .template-delete-confirm button { padding: 0 6px; } .dashboard-summary-row span { font-size: .58rem; } }
     </style>
   </head>
   <body>
@@ -1265,6 +1344,9 @@
       let pendingClearData = false;
       let pendingDeleteTemplateId = "";
       let expandedVolumeMuscle = "";
+      let dashboardWeekStart = startOfWeekIso(todayIso());
+      let dashboardDetail = null;
+      let dashboardReturnScroll = 0;
       let settingsMessage = "";
       let importInProgress = false;
       let saveTimer = 0;
@@ -1639,7 +1721,8 @@
         saveRuntime();
         const block = document.getElementById("set-" + setId);
         block?.classList.add("acknowledged");
-        block?.querySelector(".next-set-banner")?.remove();
+        const label = block?.querySelector(".next-set-banner span:last-child");
+        if (label) label.textContent = "Current set";
       }
 
       function estimatedOneRepMax(set) {
@@ -2399,11 +2482,13 @@
       }
 
       function renderDashboard() {
-        const volumes = weeklyMuscleVolume();
-        const flags = fatigueFlags();
+        if (dashboardDetail) return renderDashboardDetail();
+        const volumes = weeklyMuscleVolume(dashboardWeekStart);
+        const flags = fatigueFlags(dashboardWeekStart);
         const trained = volumes.filter((bucket) => bucket.sets > 0);
         const untrained = volumes.filter((bucket) => bucket.sets === 0);
-        const completedSessions = data.sessions.filter(isSessionSubmitted);
+        const completedSessions = dashboardSessionsForWeek(dashboardWeekStart);
+        const currentWeek = startOfWeekIso(todayIso());
         const renderBucket = (bucket, quiet = false) => {
           const max = Math.max(bucket.targetHigh, bucket.sets, 1);
           const meter = Math.min(100, Math.round((bucket.sets / max) * 100));
@@ -2421,16 +2506,20 @@
         return `
           <section class="view dashboard-view">
             <div class="screen-heading">
-              <div class="section-kicker">Dashboard</div>
-              <h1>Volume and fatigue</h1>
+              <div><div class="section-kicker">Dashboard</div><h1>Volume and fatigue</h1></div>
+              <div class="dashboard-period" aria-label="Dashboard week">
+                <button type="button" data-action="dashboard-week" data-direction="-1" aria-label="Previous dashboard week">‹</button>
+                <strong>${formatDate(dashboardWeekStart)}</strong>
+                <button type="button" data-action="dashboard-week" data-direction="1" aria-label="Next dashboard week" ${dashboardWeekStart >= currentWeek ? "disabled" : ""}>›</button>
+              </div>
             </div>
             <div class="dashboard-summary-row" aria-label="Weekly overview">
-              <div><strong>${completedSessions.length}</strong><span>logged sessions</span></div>
-              <div><strong>${trained.length}</strong><span>trained muscles</span></div>
-              <div><strong>${flags.length}</strong><span>fatigue flags</span></div>
+              <button type="button" data-action="open-dashboard-detail" data-detail="sessions" aria-label="Open logged sessions for ${formatWeek(dashboardWeekStart)}"><strong>${completedSessions.length}</strong><span>logged sessions</span></button>
+              <button type="button" data-action="open-dashboard-detail" data-detail="muscles" aria-label="Open trained muscles for ${formatWeek(dashboardWeekStart)}"><strong>${trained.length}</strong><span>trained muscles</span></button>
+              <button type="button" data-action="open-dashboard-detail" data-detail="fatigue" aria-label="Open fatigue flags for ${formatWeek(dashboardWeekStart)}"><strong>${flags.length}</strong><span>fatigue flags</span></button>
             </div>
             <section class="screen-section">
-              <div class="section-heading"><div><h2>Weekly muscle volume</h2><p>Tap a muscle to see the contributing lifts.</p></div><span>${formatWeek(todayIso()).replace("Week of ", "")}</span></div>
+              <div class="section-heading"><div><h2>Weekly muscle volume</h2><p>Tap a muscle to see the contributing lifts.</p></div><span>${formatWeek(dashboardWeekStart).replace("Week of ", "")}</span></div>
               <div class="dashboard-grid">
                 ${trained.length ? trained.map((bucket) => renderBucket(bucket)).join("") : '<div class="empty-state">Log a working set to start your weekly volume dashboard.</div>'}
               </div>
@@ -2438,7 +2527,7 @@
             </section>
             <section class="screen-section">
               <div class="section-heading"><div><h2>Fatigue flags</h2><p>Lift and muscle signals remain separate from today’s recovery score.</p></div></div>
-              ${flags.length ? '<div class="flag-list">' + flags.map((flag) => '<div class="flag-card ' + flag.level + '"><strong>' + escapeHtml(flag.scope + ": " + flag.name) + '</strong><span>' + escapeHtml(flag.reason) + '</span></div>').join("") + '</div>' : '<div class="empty-state">No fatigue flags right now. This can be true even when recovery is low; lift and muscle flags are based on training history.</div>'}
+              ${flags.length ? '<div class="drilldown-list">' + flags.map((flag) => renderFatigueFlagRow(flag)).join("") + '</div>' : '<div class="empty-state">No fatigue flags for this week. This can be true even when a single day’s recovery is low; lift and muscle flags use training-history rules.</div>'}
             </section>
             <section class="screen-section">
               <div class="section-heading"><div><h2>Recent history</h2><p>Your latest completed sessions.</p></div><button class="text-button" type="button" data-action="set-view" data-view="history">View all</button></div>
@@ -2446,6 +2535,70 @@
             </section>
           </section>
         `;
+      }
+
+      function dashboardWeekEnd(weekStart) {
+        const end = new Date(weekStart + "T00:00:00");
+        end.setDate(end.getDate() + 7);
+        return localDateIso(end);
+      }
+
+      function dashboardSessionsForWeek(weekStart) {
+        const end = dashboardWeekEnd(weekStart);
+        return data.sessions
+          .filter((session) => isSessionSubmitted(session) && session.date >= weekStart && session.date < end)
+          .sort((a, b) => b.date.localeCompare(a.date) || String(b.submittedAt || "").localeCompare(String(a.submittedAt || "")));
+      }
+
+      function sessionWorkoutFacts(session) {
+        const exercises = data.exercises.filter((exercise) => exercise.sessionId === session.id).sort((a, b) => a.order - b.order);
+        const exerciseIds = new Set(exercises.map((exercise) => exercise.id));
+        const sets = data.sets.filter((set) => exerciseIds.has(set.exerciseId));
+        const completed = sets.filter((set) => set.completed && !set.isWarmup);
+        const started = new Date(session.startedAt || session.createdAt || "").getTime();
+        const ended = new Date(session.submittedAt || session.updatedAt || "").getTime();
+        const measured = Number.isFinite(started) && Number.isFinite(ended) && ended > started ? Math.round((ended - started) / 60000) : 0;
+        const durationMinutes = measured > 0 && measured < 720 ? measured : Math.max(1, Math.round(completed.length * 2.5));
+        return { exercises, sets, completed, durationMinutes, estimatedDuration: !(measured > 0 && measured < 720), prs: session.prs || [] };
+      }
+
+      function renderFatigueFlagRow(flag) {
+        return '<button class="drilldown-item" type="button" data-action="open-fatigue-flag" data-flag-id="' + escapeHtml(flag.id) + '" aria-label="Open ' + escapeHtml(flag.scope + ' ' + flag.name + ' fatigue flag') + '"><strong>' + escapeHtml(flag.scope + ': ' + flag.name) + '</strong><span>' + escapeHtml(flag.reason) + '</span><small>' + escapeHtml(flag.concern + ' concern · ' + formatDate(flag.triggeredAt)) + '</small><span class="drilldown-chevron" aria-hidden="true">›</span></button>';
+      }
+
+      function renderDashboardDetailHeader(title, subtitle, nested = false) {
+        return '<div class="dashboard-detail-header"><button type="button" data-action="' + (nested ? 'dashboard-detail-parent' : 'close-dashboard-detail') + '" aria-label="Back">‹</button><div><h1>' + escapeHtml(title) + '</h1><p>' + escapeHtml(subtitle) + '</p></div></div>';
+      }
+
+      function renderDashboardDetail() {
+        const volumes = weeklyMuscleVolume(dashboardWeekStart);
+        const flags = fatigueFlags(dashboardWeekStart);
+        const sessions = dashboardSessionsForWeek(dashboardWeekStart);
+        const period = formatWeek(dashboardWeekStart);
+        if (dashboardDetail.type === "session") {
+          const session = data.sessions.find((item) => item.id === dashboardDetail.id);
+          if (!session) { dashboardDetail = { type: "sessions" }; return renderDashboardDetail(); }
+          const facts = sessionWorkoutFacts(session);
+          return `<section class="view dashboard-detail-view">${renderDashboardDetailHeader(session.title || "Workout", formatDate(session.date), true)}
+            <div class="dashboard-summary-row"><div><strong>${facts.durationMinutes}m</strong><span>${facts.estimatedDuration ? "estimated duration" : "duration"}</span></div><div><strong>${facts.exercises.length}</strong><span>exercises</span></div><div><strong>${facts.completed.length}</strong><span>completed sets</span></div></div>
+            ${facts.prs.length ? '<div class="pr-celebration"><strong>Personal records</strong>' + facts.prs.map((pr) => '<span>' + escapeHtml(pr.exercise + ': ' + pr.type + ' - ' + pr.value) + '</span>').join('') + '</div>' : '<div class="summary-muted">No PRs recorded for this session.</div>'}
+            <div class="detail-facts">${facts.exercises.map((exercise) => { const completed = facts.completed.filter((set) => set.exerciseId === exercise.id); return '<div class="detail-fact"><strong>' + escapeHtml(exercise.name) + '</strong><span>' + completed.length + ' completed set' + (completed.length === 1 ? '' : 's') + ': ' + escapeHtml(completed.map((set) => set.reps + ' × ' + (set.isBodyweight ? 'BW' : set.weight + ' ' + (set.weightUnit || data.settings.weightUnit)) + (set.rpe ? ' @ RPE ' + set.rpe : '')).join(', ') || 'No completed working sets') + '</span></div>'; }).join('')}</div>
+            ${session.notes ? '<div class="inline-panel"><strong>Session notes</strong><p class="settings-note">' + escapeHtml(session.notes) + '</p></div>' : ''}
+          </section>`;
+        }
+        if (dashboardDetail.type === "sessions") {
+          return `<section class="view dashboard-detail-view">${renderDashboardDetailHeader("Logged sessions", period)}<div class="drilldown-list">${sessions.length ? sessions.map((session) => { const facts = sessionWorkoutFacts(session); return '<button class="drilldown-item" type="button" data-action="open-dashboard-session" data-session-id="' + session.id + '"><strong>' + escapeHtml(session.title || 'Workout') + '</strong><span>' + formatDate(session.date) + ' · ' + facts.durationMinutes + ' min' + (facts.estimatedDuration ? ' est.' : '') + ' · ' + facts.exercises.length + ' exercises</span><small>' + facts.completed.length + ' completed sets' + (facts.prs.length ? ' · ' + facts.prs.length + ' PR' + (facts.prs.length === 1 ? '' : 's') : '') + '</small><span class="drilldown-chevron" aria-hidden="true">›</span></button>'; }).join('') : '<div class="empty-state">No submitted workouts in this period.</div>'}</div></section>`;
+        }
+        if (dashboardDetail.type === "muscles") {
+          const trained = volumes.filter((bucket) => bucket.sets > 0);
+          return `<section class="view dashboard-detail-view">${renderDashboardDetailHeader("Trained muscles", period)}<div class="detail-facts">${trained.length ? trained.map((bucket) => { const sessionsCount = new Set(bucket.details.flatMap((detail) => detail.sessions.map((session) => session.title + session.date))).size; return '<div class="detail-fact"><strong>' + escapeHtml(bucket.muscle) + ' · ' + bucket.sets.toFixed(bucket.sets % 1 ? 1 : 0) + ' sets</strong><span>' + sessionsCount + ' session' + (sessionsCount === 1 ? '' : 's') + ' · ' + bucket.directSets.toFixed(bucket.directSets % 1 ? 1 : 0) + ' direct sets · ' + bucket.indirectSets.toFixed(bucket.indirectSets % 1 ? 1 : 0) + ' fractional secondary sets</span><span>' + escapeHtml(bucket.details.map((detail) => detail.name + ' (' + detail.sets.toFixed(detail.sets % 1 ? 1 : 0) + ')').join(', ')) + '</span></div>'; }).join('') : '<div class="empty-state">No muscle volume was logged in this period.</div>'}</div></section>`;
+        }
+        if (dashboardDetail.type === "fatigue-flag") {
+          const flag = flags.find((item) => item.id === dashboardDetail.id);
+          if (!flag) { dashboardDetail = { type: "fatigue" }; return renderDashboardDetail(); }
+          return `<section class="view dashboard-detail-view">${renderDashboardDetailHeader(flag.scope + ": " + flag.name, formatDate(flag.triggeredAt), true)}<article class="fatigue-explanation ${flag.concern}"><span class="status-pill ${flag.level}">${escapeHtml(flag.concern)} concern</span><h2>${escapeHtml(flag.reason)}</h2><div><strong>Data that triggered it</strong><ul>${flag.evidence.map((item) => '<li>' + escapeHtml(item) + '</li>').join('')}</ul></div><div><strong>Rule crossed</strong><p>${escapeHtml(flag.rule)}</p></div><div><strong>Recommended next step</strong><p>${escapeHtml(flag.recommendation)}</p></div><div><strong>What clears the flag</strong><p>${escapeHtml(flag.resolution)}</p></div></article></section>`;
+        }
+        return `<section class="view dashboard-detail-view">${renderDashboardDetailHeader("Fatigue flags", period)}<div class="drilldown-list">${flags.length ? flags.map(renderFatigueFlagRow).join('') : '<div class="empty-state">No fatigue flags were triggered in this period.</div>'}</div></section>`;
       }
 
       function renderVolumeDetails(bucket) {
@@ -2667,7 +2820,7 @@
               <label class="set-field"><span>RPE</span><input type="number" min="0" max="10" step="0.5" value="${set.rpe}" data-action="set-rpe" data-set-id="${set.id}" aria-label="Set ${set.setNumber} RPE" /></label>
               <div class="set-field set-status"><span>Status</span><button class="check-button ${set.completed ? "checked" : ""}" type="button" data-action="toggle-set" data-set-id="${set.id}" title="${set.completed ? "Completed" : "Mark set complete"}" aria-label="${set.completed ? "Set completed" : "Mark set complete"}" aria-pressed="${set.completed ? "true" : "false"}">${icon.done}</button></div>
             </div>
-            ${isNext && !activeSetAcknowledged ? '<div class="next-set-banner"><span aria-hidden="true">&#10148;</span><span>' + escapeHtml(activeSetNotice || "Current set") + '</span></div>' : ""}
+            ${isNext ? '<div class="next-set-banner"><span aria-hidden="true">&#10148;</span><span>' + escapeHtml(activeSetAcknowledged ? "Current set" : activeSetNotice || "Current set") + '</span></div>' : ""}
             <div class="set-actions">
               <button class="mini-button set-rest-button" type="button" data-action="start-timer" data-exercise-id="${exercise.id}" data-set-id="${set.id}">${icon.clock} ${formatTimer(restSeconds)}</button>
               <label class="toggle-line"><input type="checkbox" data-action="set-warmup" data-set-id="${set.id}" ${set.isWarmup ? "checked" : ""} />Warm-up</label>
@@ -2724,11 +2877,12 @@
         return `
           <div class="timer-bar" data-timer-id="${timer.id}">
             <div><strong data-timer-countdown>${formatTimer(timer.remainingSeconds)}</strong><span>${timer.isPaused ? "Paused" : "Rest"}</span><small>${escapeHtml(notificationStatus)}</small></div>
-            <button class="timer-adjust" type="button" data-action="adjust-timer" data-seconds="-15" title="Reduce rest by 15 seconds" aria-label="Reduce rest by 15 seconds">-15</button>
-            <button class="timer-adjust" type="button" data-action="adjust-timer" data-seconds="30" title="Add 30 seconds" aria-label="Add 30 seconds">+30</button>
-            <button class="timer-control timer-pause" type="button" data-action="toggle-timer" title="${timer.isPaused ? "Resume timer" : "Pause timer"}" aria-label="${timer.isPaused ? "Resume timer" : "Pause timer"}">${timer.isPaused ? icon.play : icon.pause}</button>
-            <button class="timer-skip" type="button" data-action="skip-timer" title="Skip remaining rest">Skip</button>
-            <button class="timer-control timer-cancel" type="button" data-action="clear-timer" title="Cancel timer" aria-label="Cancel timer">${icon.delete}</button>
+            <div class="timer-secondary-controls"><button class="timer-control timer-pause" type="button" data-action="toggle-timer" title="${timer.isPaused ? "Resume timer" : "Pause timer"}" aria-label="${timer.isPaused ? "Resume timer" : "Pause timer"}">${timer.isPaused ? icon.play : icon.pause}</button><button class="timer-control timer-cancel" type="button" data-action="clear-timer" title="Cancel timer" aria-label="Cancel timer">${icon.delete}</button></div>
+            <div class="timer-primary-controls" aria-label="Rest timer adjustments">
+              <button class="timer-adjust" type="button" data-action="adjust-timer" data-seconds="-15" title="Reduce rest by 15 seconds" aria-label="Reduce rest by 15 seconds">-15 sec</button>
+              <button class="timer-adjust" type="button" data-action="adjust-timer" data-seconds="15" title="Add 15 seconds" aria-label="Add 15 seconds">+15 sec</button>
+              <button class="timer-skip" type="button" data-action="skip-timer" title="Skip remaining rest">Skip</button>
+            </div>
             <div class="timer-progress" role="progressbar" aria-label="Rest elapsed" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}" style="--timer-progress:${progress}%"><span></span></div>
           </div>
         `;
@@ -2777,8 +2931,10 @@
         return `
           <article class="template-card compact-template">
             <div class="template-topline">
-              <div><input class="exercise-name" value="${escapeHtml(template.name)}" data-action="template-name" data-template-id="${template.id}" aria-label="Template name" /><small>${template.exercises.length} lifts · ${templateExerciseCount(template)} working sets · ~${duration} min</small></div>
-              <button class="primary-action template-start" type="button" data-action="start-template" data-template-id="${template.id}">Start</button>
+              <div class="template-title"><input class="exercise-name" value="${escapeHtml(template.name)}" data-action="template-name" data-template-id="${template.id}" aria-label="Template name" /><small>${template.exercises.length} lifts · ${templateExerciseCount(template)} working sets · ~${duration} min</small></div>
+              <div class="template-card-actions"><button class="primary-action template-start" type="button" data-action="start-template" data-template-id="${template.id}">Start</button>${confirmingDelete
+                ? '<span class="template-delete-confirm"><button class="danger" type="button" data-action="confirm-delete-template" data-template-id="' + template.id + '">Delete</button><button type="button" data-action="cancel-delete-template">Cancel</button></span>'
+                : '<button class="template-delete-button danger" type="button" data-action="request-delete-template" data-template-id="' + template.id + '" title="Delete template" aria-label="Delete ' + escapeHtml(template.name) + ' template">' + icon.delete + '</button>'}</div>
             </div>
             <p class="template-coach"><strong>${escapeHtml(advice.label)}</strong> ${escapeHtml(coachLine)}</p>
             <details class="compact-disclosure template-editor">
@@ -2805,11 +2961,6 @@
                 <button type="button" data-action="add-template-exercise" data-template-id="${template.id}">${icon.add} Exercise</button>
               </div>
             </details>
-            <div class="template-delete-row">
-              ${confirmingDelete
-                ? '<div class="row"><button class="mini-button danger" type="button" data-action="confirm-delete-template" data-template-id="' + template.id + '">Delete?</button><button class="mini-button" type="button" data-action="cancel-delete-template">Cancel</button></div>'
-                : '<button class="icon-button danger" type="button" data-action="request-delete-template" data-template-id="' + template.id + '" title="Delete template">' + icon.delete + '</button>'}
-            </div>
           </article>
         `;
       }
@@ -2898,31 +3049,86 @@
         };
       }
 
-      function renderChart(title, points, emptyText) {
-        const values = points.map((point) => point.value).filter((value) => value > 0);
+      function renderChart(chartKey, title, points, emptyText) {
+        const validPoints = points.filter((point) => point.value > 0);
+        const values = validPoints.map((point) => point.value);
         if (!values.length) return '<div class="chart-card"><header><strong>' + escapeHtml(title) + '</strong></header><small>' + escapeHtml(emptyText) + '</small></div>';
-        const max = Math.max(...values);
-        const min = Math.min(...values);
-        const spread = Math.max(1, max - min);
-        const width = 320;
-        const height = 100;
-        const chartPoints = points.map((point, index) => {
-          const x = points.length === 1 ? width / 2 : (index / (points.length - 1)) * width;
-          const y = height - ((point.value - min) / spread) * 78 - 11;
-          return { ...point, x, y };
-        });
-        const polyline = chartPoints.filter((point) => point.value > 0).map((point) => point.x.toFixed(1) + "," + point.y.toFixed(1)).join(" ");
+        const rawMax = Math.max(...values);
+        const rawMin = Math.min(...values);
+        const spread = rawMax - rawMin;
+        const padding = Math.max(spread * 0.14, rawMax * 0.045, chartKey === "volume" ? 10 : 1);
+        const domainMin = Math.max(0, rawMin - padding);
+        const domainMax = rawMax + padding;
+        const domainSpread = Math.max(1, domainMax - domainMin);
+        const width = 360;
+        const height = 150;
+        const plot = { left: 34, right: 22, top: 17, bottom: 25 };
+        const plotWidth = width - plot.left - plot.right;
+        const plotHeight = height - plot.top - plot.bottom;
+        const chartPoints = validPoints.map((point, index) => ({
+          ...point,
+          x: validPoints.length === 1 ? plot.left + plotWidth / 2 : plot.left + (index / (validPoints.length - 1)) * plotWidth,
+          y: plot.top + (1 - (point.value - domainMin) / domainSpread) * plotHeight
+        }));
+        const polyline = chartPoints.map((point) => point.x.toFixed(1) + "," + point.y.toFixed(1)).join(" ");
+        const selected = chartDetailPoint?.chartKey === chartKey ? chartDetailPoint : null;
+        const selectedIndex = selected ? chartPoints.findIndex((point) => point.date === selected.date && point.value === selected.value) : -1;
+        const selectedPoint = selectedIndex >= 0 ? chartPoints[selectedIndex] : null;
+        const grid = [0, 0.5, 1].map((ratio) => {
+          const y = plot.top + ratio * plotHeight;
+          const value = domainMax - ratio * domainSpread;
+          return '<line class="chart-grid-line" x1="' + plot.left + '" y1="' + y.toFixed(1) + '" x2="' + (width - plot.right) + '" y2="' + y.toFixed(1) + '"></line><text class="chart-axis-label" x="' + (plot.left - 5) + '" y="' + (y + 3).toFixed(1) + '" text-anchor="end">' + escapeHtml(formatChartAxisValue(value)) + '</text>';
+        }).join("");
+        const dateLabels = chartPoints.length === 1
+          ? '<text class="chart-axis-label" x="' + chartPoints[0].x.toFixed(1) + '" y="' + (height - 7) + '" text-anchor="middle">' + escapeHtml(shortChartDate(chartPoints[0].date)) + '</text>'
+          : '<text class="chart-axis-label" x="' + plot.left + '" y="' + (height - 7) + '">' + escapeHtml(shortChartDate(chartPoints[0].date)) + '</text><text class="chart-axis-label" x="' + (width - plot.right) + '" y="' + (height - 7) + '" text-anchor="end">' + escapeHtml(shortChartDate(chartPoints.at(-1).date)) + '</text>';
         return `
-          <div class="chart-card">
+          <div class="chart-card" data-chart-key="${chartKey}">
             <header><strong>${escapeHtml(title)}</strong><span class="status-pill">${values.length} points</span></header>
             <div class="chart-svg">
               <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(title)} chart">
-                <polyline points="${polyline}" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></polyline>
-                ${chartPoints.filter((point) => point.value > 0).map((point, index) => '<g class="chart-point" role="button" tabindex="0" aria-label="' + escapeHtml(title + ': ' + point.value + ' on ' + formatDate(point.date)) + '" data-action="show-chart-point" data-chart-title="' + escapeHtml(title) + '" data-chart-point="' + index + '"><circle class="hit-area" cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="13"></circle><circle class="visible-point" cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="5" fill="var(--green-2)"></circle></g>').join("")}
+                <defs><clipPath id="chart-clip-${chartKey}"><rect x="${plot.left - 3}" y="${plot.top - 3}" width="${plotWidth + 6}" height="${plotHeight + 6}" rx="3"></rect></clipPath></defs>
+                ${grid}
+                <polyline class="chart-line" points="${polyline}" clip-path="url(#chart-clip-${chartKey})"></polyline>
+                ${selectedPoint ? '<line class="chart-selected-guide" x1="' + selectedPoint.x.toFixed(1) + '" y1="' + selectedPoint.y.toFixed(1) + '" x2="' + selectedPoint.x.toFixed(1) + '" y2="' + (plot.top + plotHeight).toFixed(1) + '"></line>' : ""}
+                ${chartPoints.map((point, index) => { const isSelected = index === selectedIndex; return '<g class="chart-point ' + (isSelected ? 'selected' : '') + '" role="button" tabindex="0" aria-pressed="' + (isSelected ? 'true' : 'false') + '" aria-label="' + escapeHtml(title + ': ' + point.value + ' on ' + formatDate(point.date)) + '" data-action="show-chart-point" data-chart-key="' + chartKey + '" data-chart-point="' + index + '"><circle class="hit-area" cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="17"></circle><circle class="selected-ring" cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="9"></circle><circle class="visible-point" cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="4.5"></circle></g>'; }).join("")}
+                ${dateLabels}
               </svg>
             </div>
+            ${selected ? renderChartPointDetail(chartKey, title, selected, validPoints) : ""}
           </div>
         `;
+      }
+
+      function formatChartAxisValue(value) {
+        const absolute = Math.abs(value);
+        if (absolute >= 1000) return (value / 1000).toFixed(absolute >= 10000 ? 0 : 1) + "k";
+        return absolute >= 100 ? Math.round(value) : Math.round(value * 10) / 10;
+      }
+
+      function shortChartDate(dateIso) {
+        const date = new Date(dateIso + "T00:00:00");
+        return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(date);
+      }
+
+      function renderChartPointDetail(chartKey, title, point, points) {
+        const index = points.findIndex((item) => item.date === point.date && item.value === point.value);
+        const previous = index > 0 ? points[index - 1] : null;
+        const comparison = previous && previous.value ? ((point.value - previous.value) / previous.value) * 100 : null;
+        const close = '<button class="icon-button" type="button" data-action="close-chart-point" aria-label="Close chart detail">X</button>';
+        if (chartKey === "e1rm") {
+          const best = [...point.details].filter((set) => set.weight > 0).sort((a, b) => estimatedOneRepMax(b) - estimatedOneRepMax(a))[0];
+          const priorMax = Math.max(0, ...points.slice(0, Math.max(0, index)).map((item) => item.value));
+          const isPr = point.value > priorMax;
+          return '<article class="chart-detail" role="status"><div class="row split"><strong>Estimated 1RM · ' + point.value + ' ' + data.settings.weightUnit + '</strong>' + close + '</div><div class="chart-detail-facts"><div><span>Date</span><strong>' + formatDate(point.date) + '</strong></div><div><span>Exercise</span><strong>' + escapeHtml(selectedExercise) + '</strong></div><div><span>Load × reps</span><strong>' + escapeHtml(best ? best.weight + ' ' + data.settings.weightUnit + ' × ' + best.reps : '-') + '</strong></div><div><span>RPE</span><strong>' + escapeHtml(best?.rpe || '-') + '</strong></div></div><small>Epley estimate: load × (1 + reps ÷ 30).' + (isPr ? ' Personal record for the available history.' : '') + '</small></article>';
+        }
+        if (chartKey === "volume") {
+          const contributing = point.details.filter((set) => set.weight > 0);
+          return '<article class="chart-detail" role="status"><div class="row split"><strong>Volume load · ' + point.value + ' ' + data.settings.weightUnit + '</strong>' + close + '</div><div class="chart-detail-facts"><div><span>Date</span><strong>' + formatDate(point.date) + '</strong></div><div><span>Exercise</span><strong>' + escapeHtml(selectedExercise) + '</strong></div><div><span>Sets included</span><strong>' + contributing.length + '</strong></div><div><span>Vs previous</span><strong>' + (comparison == null ? 'Baseline' : (comparison >= 0 ? '+' : '') + comparison.toFixed(1) + '%') + '</strong></div></div><p>' + escapeHtml(contributing.map((set) => set.weight + ' × ' + set.reps + (set.rpe ? ' @ ' + set.rpe : '')).join(', ') || 'No weighted sets') + '</p><small>' + escapeHtml(contributing[0]?.sessionTitle || '') + '</small></article>';
+        }
+        const common = exerciseProgressSeries(selectedExercise).commonWeight;
+        const matching = point.details.filter((set) => Number(set.weight) === Number(common));
+        return '<article class="chart-detail" role="status"><div class="row split"><strong>' + escapeHtml(title) + ' · ' + point.value + '</strong>' + close + '</div><div class="chart-detail-facts"><div><span>Date</span><strong>' + formatDate(point.date) + '</strong></div><div><span>Exercise</span><strong>' + escapeHtml(selectedExercise) + '</strong></div><div><span>Load</span><strong>' + common + ' ' + data.settings.weightUnit + '</strong></div><div><span>Vs previous</span><strong>' + (comparison == null ? 'Baseline' : (comparison >= 0 ? '+' : '') + comparison.toFixed(1) + '%') + '</strong></div></div><p>' + escapeHtml(matching.map((set) => set.reps + ' reps' + (set.rpe ? ' @ RPE ' + set.rpe : '')).join(', ')) + '</p></article>';
       }
 
       function chartValueText(point) {
@@ -2975,11 +3181,10 @@
             <section class="screen-section">
               <div class="section-heading"><div><h2>Progress charts</h2><p>Tap a point to see its value, date, and session context.</p></div></div>
               <div class="chart-list">
-                ${renderChart("Estimated 1RM", progress.e1rm, "No weighted completed sets yet.")}
-                ${renderChart("Volume load", progress.volume, "No volume load yet. Bodyweight-only sets will show once load is added.")}
-                ${renderChart("Reps at " + (progress.commonWeight ? progress.commonWeight + " " + data.settings.weightUnit : "same weight"), progress.repsAtWeight, "Need repeated work at the same load.")}
+                ${renderChart("e1rm", "Estimated 1RM", progress.e1rm, "No weighted completed sets yet.")}
+                ${renderChart("volume", "Volume load", progress.volume, "No volume load yet. Bodyweight-only sets will show once load is added.")}
+                ${renderChart("repsAtWeight", "Reps at " + (progress.commonWeight ? progress.commonWeight + " " + data.settings.weightUnit : "same weight"), progress.repsAtWeight, "Need repeated work at the same load.")}
               </div>
-              ${chartDetailPoint ? '<article class="chart-detail" role="status"><div class="row split"><strong>' + escapeHtml(chartValueText(chartDetailPoint)) + ' — achieved ' + formatDate(chartDetailPoint.date) + '</strong><button class="icon-button" type="button" data-action="close-chart-point" aria-label="Close chart detail">X</button></div><p>' + escapeHtml(selectedExercise) + ': ' + chartDetailPoint.details.map((set) => set.reps + ' reps @ ' + set.weight + ' ' + data.settings.weightUnit + (set.rpe ? ' (RPE ' + set.rpe + ')' : '')).join(', ') + '</p><small>' + escapeHtml(chartDetailPoint.details[0]?.sessionTitle || '') + '</small></article>' : ''}
             </section>
             <section class="screen-section trend-section"><div class="section-heading"><div><h2>Recent weeks</h2></div></div><div class="trend-table">
               <div class="trend-head"><span>Week</span><span>Top</span><span>Sets</span><span>RPE</span></div>
@@ -4095,7 +4300,7 @@
       }
 
       function weeklyMuscleVolume(weekStart = startOfWeekIso(todayIso())) {
-        const buckets = new Map(muscleGroups.map((muscle) => [muscle, { muscle, sets: 0, highRpeSets: 0, failedSets: 0, exercises: new Set(), exerciseDetails: new Map() }]));
+        const buckets = new Map(muscleGroups.map((muscle) => [muscle, { muscle, sets: 0, directSets: 0, indirectSets: 0, highRpeSets: 0, failedSets: 0, exercises: new Set(), exerciseDetails: new Map() }]));
         const end = new Date(weekStart + "T00:00:00");
         end.setDate(end.getDate() + 7);
         const endIso = localDateIso(end);
@@ -4105,6 +4310,8 @@
             const bucket = buckets.get(muscle);
             if (!bucket) return;
             bucket.sets += weight;
+            if (weight >= 1) bucket.directSets += weight;
+            else bucket.indirectSets += weight;
             if (entry.set.rpe >= 9) bucket.highRpeSets += weight;
             bucket.exercises.add(entry.exercise.name);
             const detail = bucket.exerciseDetails.get(entry.exercise.name) || { name: entry.exercise.name, sets: 0, volumeLoad: 0, sessions: new Map() };
@@ -4136,23 +4343,31 @@
         });
       }
 
-      function fatigueFlags() {
+      function fatigueFlags(weekStart = startOfWeekIso(todayIso())) {
         const flags = [];
         getExerciseNames().forEach((name) => {
           const weeks = summarizeExerciseByWeek(name);
-          const current = weeks[0];
-          const previous = weeks[1];
+          const current = weeks.find((week) => week.weekStart === weekStart);
+          const previous = weeks.find((week) => week.weekStart < weekStart && !week.isLikelyDeload);
           if (!current) return;
           const drop = previous && current.bestEstimatedOneRepMax > 0 && current.bestEstimatedOneRepMax < previous.bestEstimatedOneRepMax * 0.93;
-          if (current.failedSets >= 2) flags.push({ scope: "Lift", name, level: "over", reason: "Multiple missed sets were logged this week." });
-          else if (current.averageRpe >= 9.2 && current.completedSets >= 2) flags.push({ scope: "Lift", name, level: "caution", reason: "Recent work averaged above RPE 9, so progression may be noisy." });
-          else if (drop) flags.push({ scope: "Lift", name, level: "caution", reason: "Estimated 1RM fell more than 7% versus the previous logged week." });
+          if (current.failedSets >= 2) flags.push({ id: "lift-" + exerciseKey(name) + "-misses", scope: "Lift", name, level: "over", concern: "high", triggeredAt: current.weekStart, reason: "Two or more planned sets were missed or left incomplete.", evidence: [current.failedSets + " missed sets this week", current.completedSets + " completed sets", current.averageRpe ? "Average completed-set RPE " + current.averageRpe.toFixed(1) : "No reliable RPE average"], rule: "The lift flag activates at 2 or more missed working sets in the selected week.", recommendation: "Hold load or reduce it 5-10%, complete the programmed reps with clean technique, and avoid adding sets this week.", resolution: "Complete a comparable session with fewer than 2 misses and without another performance decline." });
+          else if (current.averageRpe >= 9.2 && current.completedSets >= 2) flags.push({ id: "lift-" + exerciseKey(name) + "-rpe", scope: "Lift", name, level: "caution", concern: "moderate", triggeredAt: current.weekStart, reason: "Target effort was exceeded repeatedly.", evidence: ["Average RPE " + current.averageRpe.toFixed(1), current.completedSets + " completed working sets", "Caution threshold: average RPE 9.2"], rule: "The lift flag activates when at least 2 completed sets average RPE 9.2 or higher.", recommendation: "Repeat the load and stop 1-2 reps earlier, or reduce the next load increment if the equipment jump is large.", resolution: "Log a comparable session averaging below RPE 9.2 with stable reps and no repeated misses." });
+          else if (drop) {
+            const change = ((current.bestEstimatedOneRepMax / previous.bestEstimatedOneRepMax - 1) * 100).toFixed(1);
+            flags.push({ id: "lift-" + exerciseKey(name) + "-performance", scope: "Lift", name, level: "caution", concern: "moderate", triggeredAt: current.weekStart, reason: "Estimated performance declined versus the prior comparable week.", evidence: ["Estimated 1RM change " + change + "%", "Current " + current.bestEstimatedOneRepMax.toFixed(1) + " vs prior " + previous.bestEstimatedOneRepMax.toFixed(1) + " " + data.settings.weightUnit, "Deload weeks are excluded from the comparison"], rule: "The lift flag activates after a greater than 7% estimated 1RM decline versus the prior non-deload week.", recommendation: "Hold the prior successful load, check technique and recovery, and use a smaller progression only after reps stabilize.", resolution: "Return within 7% of the prior comparable estimated performance without high-RPE or missed-set warnings." });
+          }
         });
-        weeklyMuscleVolume().forEach((bucket) => {
-          if (bucket.sets > bucket.targetHigh) flags.push({ scope: "Muscle", name: bucket.muscle, level: "over", reason: "Weekly volume is above the target range." });
-          else if (bucket.highRpeSets >= 4) flags.push({ scope: "Muscle", name: bucket.muscle, level: "caution", reason: "Several sets for this muscle were logged at RPE 9+." });
-          else if (bucket.failedSets >= 2) flags.push({ scope: "Muscle", name: bucket.muscle, level: "caution", reason: "Missed sets appeared in this muscle group." });
+        weeklyMuscleVolume(weekStart).forEach((bucket) => {
+          if (bucket.sets > bucket.targetHigh) flags.push({ id: "muscle-" + bucket.muscle.toLowerCase() + "-volume", scope: "Muscle", name: bucket.muscle, level: "over", concern: bucket.sets > bucket.targetHigh * 1.2 ? "high" : "moderate", triggeredAt: weekStart, reason: "Weekly volume exceeded the planned range.", evidence: [bucket.sets.toFixed(bucket.sets % 1 ? 1 : 0) + " weighted sets logged", "Target range " + bucket.targetLow + "-" + bucket.targetHigh + " sets", bucket.directSets.toFixed(bucket.directSets % 1 ? 1 : 0) + " direct and " + bucket.indirectSets.toFixed(bucket.indirectSets % 1 ? 1 : 0) + " indirect sets"], rule: "The muscle flag activates when weighted weekly sets exceed the configured upper target.", recommendation: "Do not add more volume this week. Keep remaining work easy or move it to the next training week.", resolution: "Return weekly volume to the target range and avoid a simultaneous decline in reps or recovery." });
+          else if (bucket.highRpeSets >= 4) flags.push({ id: "muscle-" + bucket.muscle.toLowerCase() + "-rpe", scope: "Muscle", name: bucket.muscle, level: "caution", concern: "moderate", triggeredAt: weekStart, reason: "Several sets for this muscle were performed at RPE 9 or higher.", evidence: [bucket.highRpeSets.toFixed(bucket.highRpeSets % 1 ? 1 : 0) + " high-RPE weighted sets", bucket.sets.toFixed(bucket.sets % 1 ? 1 : 0) + " total weighted sets", "Caution threshold: 4 high-RPE sets"], rule: "The muscle flag activates at 4 or more weighted sets logged at RPE 9+ in one week.", recommendation: "Keep the next exposure 1-2 reps in reserve and avoid increasing both load and volume.", resolution: "Complete the next week with fewer than 4 high-RPE sets and stable performance." });
+          else if (bucket.failedSets >= 2) flags.push({ id: "muscle-" + bucket.muscle.toLowerCase() + "-misses", scope: "Muscle", name: bucket.muscle, level: "caution", concern: "moderate", triggeredAt: weekStart, reason: "Multiple planned sets for this muscle were not completed.", evidence: [bucket.failedSets.toFixed(bucket.failedSets % 1 ? 1 : 0) + " weighted missed sets", bucket.sets.toFixed(bucket.sets % 1 ? 1 : 0) + " completed weighted sets", "Caution threshold: 2 missed sets"], rule: "The muscle flag activates at 2 or more weighted missed sets in the selected week.", recommendation: "Hold or reduce volume for this muscle and repeat the last successful loading pattern.", resolution: "Complete the next exposure with fewer than 2 misses and no further rep decline." });
         });
+        const recoveryAlerts = dashboardSessionsForWeek(weekStart).map((session) => ({ session, advice: recoveryRecommendationForSession(session) })).filter((item) => ["rest", "deload"].includes(item.advice.decision));
+        if (recoveryAlerts.length) {
+          const highest = recoveryAlerts.find((item) => item.advice.decision === "rest") || recoveryAlerts[0];
+          flags.push({ id: "recovery-" + weekStart, scope: "Recovery", name: "Readiness", level: highest.advice.decision === "rest" ? "over" : "caution", concern: highest.advice.decision === "rest" ? "high" : "moderate", triggeredAt: highest.session.date, reason: recoveryAlerts.length + " session" + (recoveryAlerts.length === 1 ? "" : "s") + " started outside the normal low-readiness band.", evidence: recoveryAlerts.slice(0, 4).map((item) => formatDate(item.session.date) + ": " + item.advice.label), rule: "Recovery flags use the personal readiness baseline and band; low out-of-band days that call for deload or rest are included.", recommendation: highest.advice.action, resolution: "Return inside the personal readiness band or record a clear note explaining a temporary outside-band result." });
+        }
         return flags;
       }
 
@@ -4477,10 +4692,10 @@
         if (action === "apply-update") applyPwaUpdate();
         if (action === "show-chart-point") {
           const progress = exerciseProgressSeries(selectedExercise);
-          const title = target.dataset.chartTitle;
-          const points = title === "Estimated 1RM" ? progress.e1rm : title === "Volume load" ? progress.volume : progress.repsAtWeight;
+          const chartKey = target.dataset.chartKey;
+          const points = chartKey === "e1rm" ? progress.e1rm : chartKey === "volume" ? progress.volume : progress.repsAtWeight;
           const point = points.filter((item) => item.value > 0)[Number(target.dataset.chartPoint)];
-          chartDetailPoint = point ? { ...point, title, date: point.date || point.label } : null;
+          chartDetailPoint = point ? { ...point, chartKey, date: point.date || point.label } : null;
           render();
         }
         if (action === "close-chart-point") { chartDetailPoint = null; render(); }
@@ -4497,6 +4712,32 @@
         if (action === "toggle-volume-muscle") {
           expandedVolumeMuscle = expandedVolumeMuscle === target.dataset.muscle ? "" : target.dataset.muscle;
           render();
+        }
+        if (action === "dashboard-week") {
+          const date = new Date(dashboardWeekStart + "T00:00:00");
+          date.setDate(date.getDate() + Number(target.dataset.direction || 0) * 7);
+          dashboardWeekStart = localDateIso(date) > startOfWeekIso(todayIso()) ? startOfWeekIso(todayIso()) : localDateIso(date);
+          dashboardDetail = null;
+          expandedVolumeMuscle = "";
+          render();
+        }
+        if (action === "open-dashboard-detail") {
+          dashboardReturnScroll = window.scrollY;
+          dashboardDetail = { type: target.dataset.detail };
+          render();
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+        if (action === "close-dashboard-detail") {
+          dashboardDetail = null;
+          render();
+          window.setTimeout(() => window.scrollTo({ top: dashboardReturnScroll, behavior: "auto" }), 0);
+        }
+        if (action === "open-dashboard-session") { dashboardDetail = { type: "session", id: target.dataset.sessionId }; render(); window.scrollTo({ top: 0, behavior: "smooth" }); }
+        if (action === "open-fatigue-flag") { dashboardDetail = { type: "fatigue-flag", id: target.dataset.flagId }; render(); window.scrollTo({ top: 0, behavior: "smooth" }); }
+        if (action === "dashboard-detail-parent") {
+          dashboardDetail = { type: dashboardDetail?.type === "session" ? "sessions" : "fatigue" };
+          render();
+          window.scrollTo({ top: 0, behavior: "smooth" });
         }
         if (action === "request-delete-template") {
           pendingDeleteTemplateId = target.dataset.templateId;
@@ -4599,7 +4840,7 @@
         if (action === "template-exercise-rest") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { restSeconds: Number(target.value) });
         if (action === "template-exercise-rpe") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { targetRpe: Number(target.value) });
         if (action === "template-exercise-increment") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { increment: Number(target.value) });
-        if (action === "review-exercise") { selectedExercise = target.value; selectedWeek = ""; render(); }
+        if (action === "review-exercise") { selectedExercise = target.value; selectedWeek = ""; chartDetailPoint = null; render(); }
         if (action === "review-week") { selectedWeek = target.value; render(); }
         if (action === "weight-unit") commit({ ...data, settings: { ...data.settings, weightUnit: target.value } });
         if (action === "theme-mode") commit({ ...data, settings: { ...data.settings, theme: target.value } });

@@ -7,3 +7,4 @@ android/app/src/main/assets/public/
 .env.*
 !.env.example
 .DS_Store
+.vercel-data/
