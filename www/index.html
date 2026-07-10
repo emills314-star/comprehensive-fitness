@@ -809,6 +809,7 @@
       .chart-control-field > span, .chart-control-field > label { color: var(--muted); font-size: .58rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
       .chart-control-field input, .chart-control-field select { appearance: none; background: var(--surface-strong); border-color: var(--line-strong); color: var(--text); font-size: .75rem; font-weight: 850; min-height: 43px; overflow: hidden; padding: 8px 30px 8px 10px; text-overflow: ellipsis; white-space: nowrap; }
       .chart-control-field::after { bottom: 13px; color: var(--current); content: "\2304"; font-size: .78rem; pointer-events: none; position: absolute; right: 10px; }
+      .chart-control-field.chart-control-lift { grid-column: 1 / -1; }
       .chart-control-field.chart-control-lift::after { display: none; }
       .chart-control-lift input { padding-right: 42px; }
       .chart-search-clear { align-items: center; background: transparent; border: 0; color: var(--muted); display: flex; height: 36px; justify-content: center; min-height: 36px; min-width: 36px; padding: 0; position: absolute; right: 4px; top: 20px; width: 36px; z-index: 2; }
@@ -822,11 +823,6 @@
       .exercise-search-empty { color: var(--muted); font-size: .69rem; padding: 12px; }
       .exercise-search-error { color: var(--red); font-size: .64rem; font-weight: 750; line-height: 1.35; }
       .analysis-period-control { grid-column: 1 / -1; }
-      .score-scope-field { display: grid; gap: 4px; grid-column: 1 / -1; }
-      .score-scope-field > span { color: var(--muted); font-size: .58rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
-      .score-scope-control { background: var(--surface-strong); border: 1px solid var(--line); border-radius: 8px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 3px; }
-      .score-scope-control button { background: transparent; border: 0; color: var(--muted); min-height: 38px; padding: 6px 8px; }
-      .score-scope-control button[aria-pressed="true"] { background: var(--current-dark); box-shadow: inset 0 0 0 1px var(--current); color: var(--current); }
       .chart-control-context { color: var(--muted); font-size: .65rem; grid-column: 1 / -1; line-height: 1.35; margin: 0; }
 
       .hypertrophy-score-card { --score-color: var(--current); align-items: center; background: color-mix(in srgb, var(--score-color) 5%, var(--surface)); border: 1px solid color-mix(in srgb, var(--score-color) 48%, var(--line)); border-radius: 8px; color: var(--text); display: grid; gap: 9px 12px; grid-template-columns: minmax(0, 1fr) auto; min-height: 116px; padding: 12px; text-align: left; width: 100%; }
@@ -843,7 +839,7 @@
       .hypertrophy-score-number small { color: var(--muted); font-size: .72rem; }
       .hypertrophy-score-ring { align-items: center; background: conic-gradient(var(--score-color) calc(var(--score) * 1%), var(--line) 0); border-radius: 50%; display: grid; height: 58px; justify-items: center; position: relative; width: 58px; }
       .hypertrophy-score-ring::after { background: var(--surface); border-radius: 50%; content: ""; height: 43px; position: absolute; width: 43px; }
-      .hypertrophy-score-ring span { color: var(--text); font-size: .66rem; font-weight: 950; position: relative; z-index: 1; }
+      .hypertrophy-score-ring span { color: var(--score-color); font-size: .9rem; font-weight: 950; position: relative; z-index: 1; }
       .hypertrophy-score-meta { color: var(--muted); display: flex; flex-wrap: wrap; font-size: .66rem; gap: 4px 10px; grid-column: 1 / -1; line-height: 1.35; }
       .hypertrophy-score-bar { background: var(--line); border-radius: 999px; grid-column: 1 / -1; height: 6px; overflow: hidden; }
       .hypertrophy-score-bar span { background: var(--score-color); display: block; height: 100%; width: calc(var(--score) * 1%); }
@@ -1645,7 +1641,6 @@
       let completedSummarySessionId = "";
       let chartDetailPoint = null;
       let hypertrophyScoreExpanded = false;
-      let hypertrophyScoreScope = "exercise";
       let hypertrophyScoreLoading = false;
       let hypertrophyWindowOffset = 0;
       let hypertrophyScoreCache = { dataRef: null, key: "", result: null };
@@ -2945,6 +2940,8 @@
         const dailyReadinessTitle = root.querySelector("#daily-readiness-title");
         if (dailyReadinessTitle) dailyReadinessTitle.textContent = "Today's readiness";
         root.querySelectorAll(".readiness-comparison > .today > span").forEach((label) => { label.textContent = "Today's readiness"; });
+        const chartLiftLabel = root.querySelector('label[for="chart-exercise-search"]');
+        if (chartLiftLabel) chartLiftLabel.textContent = "Change lift";
         resizeExerciseNameFields();
         if (modalOpen) window.setTimeout(() => root.querySelector(".bottom-sheet [autofocus]")?.focus(), 0);
       }
@@ -4247,7 +4244,7 @@
         return options;
       }
 
-      function hypertrophyAnalysis(offset = hypertrophyWindowOffset, scopeType = hypertrophyScoreScope, exerciseId = selectedExerciseId) {
+      function hypertrophyAnalysis(offset = hypertrophyWindowOffset, scopeType = "exercise", exerciseId = selectedExerciseId) {
         const scope = scopeType === "exercise" && exerciseId ? { type: "exercise", exerciseId } : { type: "overall", exerciseId: "" };
         const key = scope.type + "|" + scope.exerciseId + "|" + offset;
         if (hypertrophyScoreCache.dataRef === data && hypertrophyScoreCache.key === key) return hypertrophyScoreCache.result;
@@ -4437,6 +4434,27 @@
         return "score-critical";
       }
 
+      function hypertrophyLetterGrade(score) {
+        const value = Number(score || 0);
+        if (value >= 97) return "A+";
+        if (value >= 93) return "A";
+        if (value >= 90) return "A-";
+        if (value >= 87) return "B+";
+        if (value >= 83) return "B";
+        if (value >= 80) return "B-";
+        if (value >= 77) return "C+";
+        if (value >= 73) return "C";
+        if (value >= 70) return "C-";
+        if (value >= 67) return "D+";
+        if (value >= 63) return "D";
+        if (value >= 60) return "D-";
+        return "F";
+      }
+
+      function hypertrophyGradeLabel(grade) {
+        return grade.replace("+", " plus").replace("-", " minus");
+      }
+
       function renderHypertrophyScoreDetail(analysis) {
         const confidenceReason = analysis.confidence === "high"
           ? "Six qualifying weeks, consistent RPE coverage, and several comparable lift exposures support this result."
@@ -4465,7 +4483,7 @@
         return `<div class="hypertrophy-score-wrap">
           <button class="hypertrophy-score-card ${hypertrophyScoreTone(analysis.score)}" type="button" data-action="toggle-hypertrophy-score" aria-expanded="${hypertrophyScoreExpanded ? 'true' : 'false'}" style="--score:${analysis.score}">
             <div><span class="hypertrophy-score-title">${escapeHtml(analysis.scoreTitle)}</span><strong class="hypertrophy-score-number">${analysis.score} <small>/ 100</small></strong><span class="hypertrophy-score-scope">${escapeHtml(analysis.scopeDescription)}</span></div>
-            <span class="hypertrophy-score-ring" aria-hidden="true"><span>${analysis.score}</span></span>
+            <span class="hypertrophy-score-ring" role="img" aria-label="Letter grade ${escapeHtml(hypertrophyGradeLabel(hypertrophyLetterGrade(analysis.score)))}"><span>${hypertrophyLetterGrade(analysis.score)}</span></span>
             <div class="hypertrophy-score-bar"><span></span></div>
             <div class="hypertrophy-score-meta"><strong>${escapeHtml(analysis.interpretation)}</strong><span>${escapeHtml(hypertrophyWindowLabel(analysis))}</span><span>${escapeHtml(weekText)}</span><span>${escapeHtml(trend)}</span><span>${escapeHtml(analysis.confidence)} confidence</span><span>${hypertrophyScoreExpanded ? 'Hide analysis' : 'Open analysis'} ›</span></div>
           </button>
@@ -4483,7 +4501,7 @@
         const selectedName = exercise?.name || "";
         const weeks = selectedName ? summarizeExerciseByWeek(selectedName, { canonicalExerciseId: selectedExerciseId }) : [];
         const progress = selectedName ? exerciseProgressSeries(selectedName, { canonicalExerciseId: selectedExerciseId, resistanceType: exercise?.resistanceType }) : { e1rm: [], volume: [], primaryTitle: "Estimated 1RM", secondaryTitle: "Volume load", latestPrimary: "Latest e1RM", latestSecondary: "Latest volume", resistanceType: "external" };
-        const analysis = hypertrophyAnalysis(hypertrophyWindowOffset, hypertrophyScoreScope, selectedExerciseId);
+        const analysis = hypertrophyAnalysis(hypertrophyWindowOffset, "exercise", selectedExerciseId);
         const latestReviewWeek = weeks[0]?.weekStart || "";
         const recommendation = selectedName && latestReviewWeek ? recommendForExerciseWeek(selectedName, latestReviewWeek, { canonicalExerciseId: selectedExerciseId }) : null;
         if (catalog.length === 0) {
@@ -4493,12 +4511,11 @@
         const latestVolume = progress.volume.filter((point) => point.value > 0).at(-1);
         return `
           <section class="view charts-view">
-            <div class="screen-heading"><div><div class="section-kicker">Charts</div><h1>Lift progress</h1></div></div>
-            <div class="chart-control-panel" aria-label="Chart controls">
+            <div class="screen-heading"><div><div class="section-kicker">Selected lift</div><h1>${escapeHtml(selectedName)}</h1></div><span class="status-pill inside">Lift analysis</span></div>
+            <div class="chart-control-panel" aria-label="Selected lift controls">
               <div class="chart-control-field chart-control-lift"><label for="chart-exercise-search">Chart lift</label><div class="chart-search-input"><input id="chart-exercise-search" type="search" data-action="review-exercise-input" role="combobox" aria-autocomplete="list" aria-controls="chart-exercise-suggestions" aria-expanded="${chartExerciseSearchOpen ? 'true' : 'false'}" aria-label="Search or select exercise" autocomplete="off" value="${escapeHtml(chartExerciseDraft || selectedName)}" /><button class="chart-search-clear" type="button" data-action="clear-chart-exercise-search" aria-label="Clear exercise search">×</button></div><div id="chart-exercise-suggestions" class="exercise-suggestions" role="listbox" ${chartExerciseSearchOpen ? '' : 'hidden'}>${renderExerciseSuggestions()}</div><small class="exercise-search-error" role="status" ${chartExerciseSearchError ? '' : 'hidden'}>${escapeHtml(chartExerciseSearchError)}</small></div>
-              <div class="score-scope-field"><span>Score scope</span><div class="score-scope-control" role="group" aria-label="Hypertrophy Score scope"><button type="button" data-action="set-hypertrophy-scope" data-scope="overall" aria-pressed="${hypertrophyScoreScope === 'overall'}">Overall program</button><button type="button" data-action="set-hypertrophy-scope" data-scope="exercise" aria-pressed="${hypertrophyScoreScope === 'exercise'}">Selected lift</button></div></div>
               <label class="chart-control-field analysis-period-control"><span>Analysis period</span><select data-action="hypertrophy-window" aria-label="Hypertrophy Score analysis period">${analysis.windowOptions.length ? analysis.windowOptions.map((option, index) => '<option value="' + option.offset + '" ' + (option.offset === hypertrophyWindowOffset ? 'selected' : '') + '>' + escapeHtml((index === 0 ? 'Latest six qualifying weeks' : 'Previous six-week window ' + index) + ' · ' + hypertrophyWindowLabel(option.selection)) + '</option>').join('') : '<option value="0">Latest six qualifying weeks</option>'}</select></label>
-              <p class="chart-control-context">${hypertrophyScoreScope === 'exercise' ? 'Score, rationale, weeks, and actions use only submitted ' + escapeHtml(selectedName) + ' history. Equipment and named variations remain separate.' : 'Score and rationale evaluate the overall submitted program.'} Lift charts and coaching use ${escapeHtml(selectedName)}.</p>
+              <p class="chart-control-context">Score, rationale, weeks, charts, and coaching use only submitted ${escapeHtml(selectedName)} history. Equipment and named variations remain separate.</p>
             </div>
             ${renderHypertrophyScore(analysis)}
             <div class="chart-metric-row"><div><span>${escapeHtml(progress.latestPrimary)}</span><strong>${latestOneRm ? latestOneRm.value : "-"}</strong></div><div><span>${escapeHtml(progress.latestSecondary)}</span><strong>${latestVolume ? latestVolume.value : "-"}</strong></div><div><span>Data points</span><strong>${progress.e1rm.filter((point) => point.value > 0).length}</strong></div></div>
@@ -6395,15 +6412,6 @@
           const input = root.querySelector('[data-action="review-exercise-input"]');
           if (input) { input.value = ""; input.focus(); }
           updateExerciseSuggestionList();
-        }
-        if (action === "set-hypertrophy-scope") {
-          hypertrophyScoreScope = target.dataset.scope === "overall" ? "overall" : "exercise";
-          hypertrophyWindowOffset = 0;
-          hypertrophyScoreExpanded = false;
-          hypertrophyScoreLoading = true;
-          hypertrophyScoreCache = { dataRef: null, key: "", result: null };
-          render();
-          window.setTimeout(() => { hypertrophyScoreLoading = false; render(); }, 80);
         }
         if (action === "show-chart-point") {
           const progress = exerciseProgressSeries(selectedExerciseName(), { canonicalExerciseId: selectedExerciseId });

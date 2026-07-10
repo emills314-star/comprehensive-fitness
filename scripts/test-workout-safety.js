@@ -45,6 +45,12 @@ assert.match(html, /\.volume-exercise-row > span:first-child small \{ display: n
 assert.match(html, /score-excellent \{ --score-color: var\(--current\); \}/, "Excellent scores must resolve into the app's established blue");
 assert.match(html, /score-very-good \{ --score-color: #1f9272; \}/, "Very-good scores must bridge green and blue with a distinct teal");
 assert.match(html, /score-good \{ --score-color: #86a423; \}/, "Good scores must bridge amber and teal with a yellow-green tone");
+assert.match(html, /function hypertrophyLetterGrade\(score\)/, "Program and exercise scores must expose one centralized letter-grade mapping");
+assert.match(html, /if \(value >= 97\) return "A\+";[\s\S]*if \(value >= 60\) return "D-";[\s\S]*return "F";/, "Letter grades must support A+ through F using stable thresholds");
+assert.match(html, /aria-label="Letter grade \$\{escapeHtml\(hypertrophyGradeLabel/, "The score ring must announce its letter grade accessibly");
+assert.match(html, /hypertrophyAnalysis\(hypertrophyWindowOffset, "exercise", selectedExerciseId\)/, "Charts must calculate only the selected exercise score");
+assert.doesNotMatch(html, /Score scope/, "Charts must not retain the overall-program scope selector");
+assert.doesNotMatch(html, /data-action="set-hypertrophy-scope"/, "Charts must not expose a hidden overall-program scope action");
 assert.match(html, /clearDataFlow\.acknowledged && clearDataFlow\.phrase === "CLEAR"/, "Local clearing must require acknowledgment and typed confirmation");
 assert.match(html, /Permanently Clear Local Data/, "The final device-wide deletion action must be explicit");
 assert.match(html, /enteredReadinessTriggers/, "Readiness adjustments must use explicit entered markers");
