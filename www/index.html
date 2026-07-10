@@ -89,6 +89,8 @@
           var(--bg);
       }
 
+      body.modal-open { overflow: hidden; }
+
       button, input, select, textarea { font: inherit; }
 
       button {
@@ -1090,11 +1092,13 @@
 
       .adjustment-summary { background: color-mix(in srgb, var(--amber) 11%, var(--surface)); border-left: 3px solid var(--amber); color: var(--text); font-weight: 900; padding: 10px 12px; }
 
-      .sheet-backdrop { align-items: end; background: rgba(0, 0, 0, 0.62); display: flex; inset: 0; justify-content: center; padding: 18px 14px max(18px, env(safe-area-inset-bottom)); position: fixed; z-index: 20; }
-      .bottom-sheet { background: var(--bg-soft); border: 1px solid var(--line-strong); border-radius: 18px 18px 10px 10px; box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55); display: grid; gap: 14px; max-height: min(86vh, 720px); max-width: 620px; overflow-y: auto; padding: 18px; width: 100%; }
+      .sheet-backdrop { align-items: end; background: rgba(0, 0, 0, 0.62); display: flex; inset: 0; justify-content: center; overscroll-behavior: contain; padding: 18px 14px max(18px, env(safe-area-inset-bottom)); position: fixed; z-index: 20; }
+      .bottom-sheet { -webkit-overflow-scrolling: touch; background: var(--bg-soft); border: 1px solid var(--line-strong); border-radius: 18px 18px 10px 10px; box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55); display: grid; gap: 14px; max-height: min(86vh, 720px); max-width: 620px; overflow-y: auto; overscroll-behavior: contain; padding: 18px; position: relative; width: 100%; }
       .bottom-sheet::before { background: var(--line-strong); border-radius: 999px; content: ""; height: 4px; justify-self: center; width: 44px; }
       .bottom-sheet h2, .bottom-sheet p { margin: 0; }
       .bottom-sheet p { color: var(--muted); line-height: 1.45; }
+      .bottom-sheet > h2, .bottom-sheet > div:first-of-type { padding-right: 44px; }
+      .sheet-close { align-items: center; background: var(--surface); border-color: var(--line-strong); border-radius: 999px; display: inline-flex; font-size: 1rem; height: 38px; justify-content: center; min-height: 38px; min-width: 38px; padding: 0; position: absolute; right: 12px; top: 12px; width: 38px; z-index: 1; }
       .sheet-actions { display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
       .sheet-actions.stacked { grid-template-columns: 1fr; }
       .sheet-actions .primary-action { min-height: 50px; }
@@ -1304,6 +1308,11 @@
         }
         .set-row { padding: 7px; }
         .set-row input { font-size: 0.95rem; padding: 7px 5px; }
+      }
+
+      @media (max-width: 719px) {
+        input, select, textarea { font-size: 16px; }
+        .set-row input, .set-row select, .chart-control-field input, .chart-control-field select { font-size: 16px; }
       }
 
       @media (min-width: 720px) {
@@ -1901,6 +1910,10 @@
       function sessionHasStarted(session) {
         if (session?.workoutState === "inactive") return false;
         return Boolean(session && !isSessionSubmitted(session) && (session.workoutStarted || session.templateId || data.exercises.some((exercise) => exercise.sessionId === session.id)));
+      }
+
+      function sessionCanBeDiscarded(session) {
+        return Boolean(session && !isSessionSubmitted(session));
       }
 
       function hasActiveWorkout() {
@@ -2797,7 +2810,10 @@
           root.innerHTML = '<div class="loading">Loading your training log...</div>';
           return;
         }
+        if (templateStartFlow && !data.templates.some((template) => template.id === templateStartFlow.templateId)) templateStartFlow = null;
+        if (cancelWorkoutFlow && !sessionCanBeDiscarded(data.sessions.find((item) => item.id === cancelWorkoutFlow.sessionId))) cancelWorkoutFlow = null;
         const modalOpen = Boolean(templateStartFlow || cancelWorkoutFlow || clearDataFlow?.open);
+        document.body.classList.toggle("modal-open", modalOpen);
         root.innerHTML = `
           <div class="app-shell">
             <header class="brand-bar">
@@ -2865,7 +2881,7 @@
             ${renderQuickStartTemplates()}
             ${renderNotificationPrompt()}
             <div class="workout-status-strip">
-              <span>${escapeHtml(progress.current)}</span><span>${progress.completed}/${progress.total} sets</span><span>${progress.elapsed} elapsed</span>
+              <span>${escapeHtml(progress.current)}</span><span>${progress.completed}/${progress.total} sets</span><span>${progress.elapsed}</span>
               <button class="icon-button" type="button" data-action="new-session" title="${hasActiveWorkout() ? "Finish or cancel the active workout before starting another" : "New workout"}" aria-label="${hasActiveWorkout() ? "New workout unavailable while a workout is active" : "New workout"}" ${hasActiveWorkout() ? "disabled" : ""}>${icon.add}</button>
             </div>
             ${session.adjustmentSummary ? '<div class="adjustment-summary">' + escapeHtml(session.adjustmentSummary) + '</div>' : ""}
@@ -2908,7 +2924,7 @@
               ? '<div class="session-submitted">Workout logged' + (session.submittedAt ? ' ' + formatDate(session.date) : '') + '</div>'
               : '<button class="primary-action submit-workout" type="button" data-action="request-submit-workout">Submit workout</button>'}
             </div>
-            ${activeWorkoutId === session.id && !isSessionSubmitted(session) ? '<div class="session-controls"><button class="text-danger-action" type="button" data-action="request-cancel-workout">Cancel Workout</button><span>Discards only this in-progress session.</span></div>' : ''}
+            ${sessionCanBeDiscarded(session) ? '<div class="session-controls"><button class="text-danger-action" type="button" data-action="request-cancel-workout" data-session-id="' + session.id + '">Cancel Workout</button><span>Discards only this open session.</span></div>' : ''}
             ${pendingSubmitSessionId === session.id ? renderSubmitConfirmation(session) : ""}
             ${completedSummarySessionId === session.id ? renderCompletedWorkoutSummary(session) : ""}
           </section>
@@ -2916,14 +2932,16 @@
       }
 
       function workoutProgress() {
+        const session = activeSession();
         const exercises = activeExercises();
-        const visibleTimer = timer?.workoutId === activeSession()?.id ? timer : null;
+        const running = Boolean(session && session.id === activeWorkoutId && hasActiveWorkout());
+        const visibleTimer = timer?.workoutId === session?.id ? timer : null;
         const workSets = exercises.flatMap((exercise) => setsForExercise(exercise.id).filter((set) => !set.isWarmup));
         const activeSet = data.sets.find((set) => set.id === activeSetId);
         const activeExercise = activeSet ? exercises.find((exercise) => exercise.id === activeSet.exerciseId) : null;
         const waitingSet = visibleTimer ? data.sets.find((set) => set.id === visibleTimer.pendingNextSetId) : null;
         const waitingExercise = waitingSet ? exercises.find((exercise) => exercise.id === waitingSet.exerciseId) : null;
-        const startedAt = new Date(activeSession()?.startedAt || activeSession()?.createdAt || Date.now()).getTime();
+        const startedAt = new Date(session?.startedAt || Date.now()).getTime();
         const elapsedMinutes = Math.max(0, Math.floor((Date.now() - startedAt) / 60000));
         const remaining = workSets.filter((set) => !set.completed && !set.skipped).length;
         const currentLabel = visibleTimer && waitingSet
@@ -2936,7 +2954,9 @@
           completed: workSets.filter((set) => set.completed).length,
           total: workSets.length,
           remaining,
-          elapsed: elapsedMinutes < 60 ? elapsedMinutes + "m" : Math.floor(elapsedMinutes / 60) + "h " + (elapsedMinutes % 60) + "m"
+          elapsed: running
+            ? (elapsedMinutes < 60 ? elapsedMinutes + "m elapsed" : Math.floor(elapsedMinutes / 60) + "h " + (elapsedMinutes % 60) + "m elapsed")
+            : isSessionSubmitted(session) ? "Workout logged" : "Not started"
         };
       }
 
@@ -3242,6 +3262,7 @@
           return `
             <div class="sheet-backdrop" data-action="cancel-template-start" role="presentation">
               <section class="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="active-workout-title" data-sheet-content>
+                <button class="sheet-close" type="button" data-action="cancel-template-start" aria-label="Close workout dialog">&times;</button>
                 <div><div class="section-kicker">Workout in progress</div><h2 id="active-workout-title">You already have an active workout.</h2><p>${escapeHtml(active?.title || "Your current workout")} must be submitted or explicitly canceled before another template can begin.</p></div>
                 <div class="sheet-actions stacked">
                   <button class="primary-action" type="button" data-action="return-active-workout" autofocus>Return to Active Workout</button>
@@ -3255,6 +3276,7 @@
           return `
             <div class="sheet-backdrop" data-action="cancel-template-start" role="presentation">
               <section class="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="template-start-title" data-sheet-content>
+                <button class="sheet-close" type="button" data-action="cancel-template-start" aria-label="Close template setup">&times;</button>
                 <h2 id="template-start-title">Start ${escapeHtml(template.name)}?</h2>
                 <p>This will prepare today’s targets from your workout history. Your current workout will not change until you continue through readiness.</p>
                 <div class="sheet-actions">
@@ -3269,6 +3291,7 @@
           return `
             <div class="sheet-backdrop" data-action="cancel-template-start" role="presentation">
               <section class="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="readiness-choice-title" data-sheet-content>
+                <button class="sheet-close" type="button" data-action="cancel-template-start" aria-label="Close readiness setup">&times;</button>
                 <h2 id="readiness-choice-title">Use your usual readiness?</h2>
                 <p>Your saved baseline will be used unless you enter today’s objective or observable metrics.</p>
                 <div class="sheet-actions stacked">
@@ -3287,8 +3310,9 @@
           const changed = changes.filter((item) => item.changed);
           const unchanged = changes.filter((item) => !item.changed);
           return `
-            <div class="sheet-backdrop" role="presentation">
+            <div class="sheet-backdrop" data-action="cancel-template-start" role="presentation">
               <section class="bottom-sheet readiness-review-sheet" role="dialog" aria-modal="true" aria-labelledby="readiness-review-title" data-sheet-content>
+                <button class="sheet-close" type="button" data-action="cancel-template-start" aria-label="Close readiness review">&times;</button>
                 <div><div class="section-kicker">Before training</div><h2 id="readiness-review-title">Todayâ€™s Readiness Adjustments</h2><p>${escapeHtml(preview.label)}. Every change below is tied only to a marker you entered.</p></div>
                 <div class="readiness-change-list">${changed.length ? changed.map(renderReadinessChange).join("") : '<div class="readiness-unchanged"><strong>No target changes</strong><span>Your entered markers remain within the normal band for this plan.</span></div>'}</div>
                 ${unchanged.length ? '<details class="compact-disclosure"><summary>Exercises unchanged <span>' + unchanged.length + '</span></summary><div class="disclosure-body readiness-unchanged-list">' + unchanged.map((item) => '<div><strong>' + escapeHtml(item.name) + '</strong><span>' + escapeHtml(prescriptionLine(item.original)) + '</span></div>').join('') + '</div></details>' : ''}
@@ -3304,10 +3328,11 @@
         return `
           <div class="sheet-backdrop" data-action="cancel-template-start" role="presentation">
             <section class="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="daily-readiness-title" data-sheet-content>
+              <button class="sheet-close" type="button" data-action="cancel-template-start" aria-label="Close daily readiness">&times;</button>
               <div><h2 id="daily-readiness-title">Today’s readiness</h2><p>${formatDate(todayIso())} · ${escapeHtml(preview.label)}. ${escapeHtml(preview.action)}</p></div>
               <div class="readiness-draft">
                 <div class="recovery-inputs">
-                  <label>Sleep hours<input type="number" min="0" max="14" step="0.25" value="${escapeHtml(recovery.sleepHours)}" data-action="template-readiness-sleep-hours" autofocus /></label>
+                  <label>Sleep hours<input type="number" min="0" max="14" step="0.25" value="${escapeHtml(recovery.sleepHours)}" data-action="template-readiness-sleep-hours" /></label>
                   <label>Sleep quality<select data-action="template-readiness-sleep-quality"><option value="">-</option>${[1,2,3,4,5].map((value) => '<option value="' + value + '" ' + (String(recovery.sleepQuality) === String(value) ? "selected" : "") + '>' + value + '/5</option>').join("")}</select></label>
                   <label>HRV<input type="number" min="0" step="1" value="${escapeHtml(recovery.hrv)}" data-action="template-readiness-hrv" /></label>
                   <label>Resting heart rate<input type="number" min="0" step="1" value="${escapeHtml(recovery.restingHr)}" data-action="template-readiness-resting-hr" /></label>
@@ -3334,9 +3359,14 @@
         return '<article class="readiness-change-card"><h3>' + escapeHtml(item.name) + '</h3><div class="readiness-comparison"><div><span>Original recommendation</span><strong>' + escapeHtml(prescriptionLine(item.original)) + '</strong></div><div class="today"><span>Todayâ€™s readiness</span><strong>' + escapeHtml(prescriptionLine(item.adjusted)) + '</strong></div></div><div class="readiness-why"><strong>Why this changed</strong><span>' + escapeHtml(item.reason) + '</span><small>Triggered by: ' + escapeHtml(item.triggers.join('; ')) + '</small></div></article>';
       }
 
-      function requestCancelWorkout(source = "workout") {
-        const session = activeWorkoutSession();
-        if (!session) return;
+      function requestCancelWorkout(source = "workout", requestedSessionId = "") {
+        const requestedSession = data.sessions.find((item) => item.id === requestedSessionId);
+        const session = sessionCanBeDiscarded(requestedSession)
+          ? requestedSession
+          : source === "template"
+            ? activeWorkoutSession()
+            : sessionCanBeDiscarded(activeSession()) ? activeSession() : activeWorkoutSession();
+        if (!sessionCanBeDiscarded(session)) return;
         cancelWorkoutFlow = { sessionId: session.id, source };
         templateStartFlow = null;
         render();
@@ -3377,8 +3407,8 @@
       }
 
       async function discardActiveWorkout() {
-        const session = activeWorkoutSession();
-        if (!session || session.id !== cancelWorkoutFlow?.sessionId) return;
+        const session = data.sessions.find((item) => item.id === cancelWorkoutFlow?.sessionId);
+        if (!sessionCanBeDiscarded(session)) return;
         window.clearTimeout(saveTimer);
         const exerciseIds = new Set(data.exercises.filter((exercise) => exercise.sessionId === session.id).map((exercise) => exercise.id));
         if (timer && (timer.workoutId === session.id || exerciseIds.has(timer.exerciseId))) {
@@ -3390,17 +3420,24 @@
           cancelRestPush(previousTimer, "workout-canceled");
         }
         await removeWorkoutFromSyncQueue(session.id);
-        activeWorkoutId = "";
-        activeSetId = "";
-        pendingNextSetId = "";
-        activeSetAcknowledged = false;
-        activeSetNotice = "";
-        timerCompleteNotice = null;
+        const discardedActiveWorkout = activeWorkoutId === session.id;
+        if (discardedActiveWorkout) {
+          activeWorkoutId = "";
+          activeSetId = "";
+          pendingNextSetId = "";
+          activeSetAcknowledged = false;
+          activeSetNotice = "";
+          timerCompleteNotice = null;
+        }
+        addExerciseDraft = "";
+        addExercisePrimaryMuscle = "";
+        addExerciseSecondaryMuscle = "";
         pendingSubmitSessionId = "";
         completedSummarySessionId = "";
         cancelWorkoutFlow = null;
         const remainingSessions = data.sessions.filter((item) => item.id !== session.id);
-        let nextSession = remainingSessions.filter((item) => !isSessionSubmitted(item) && !data.exercises.some((exercise) => exercise.sessionId === item.id)).sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))[0]
+        let nextSession = remainingSessions.find((item) => item.id === activeWorkoutId)
+          || remainingSessions.filter((item) => !isSessionSubmitted(item) && !data.exercises.some((exercise) => exercise.sessionId === item.id)).sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))[0]
           || remainingSessions.filter(isSessionSubmitted).sort((a, b) => b.date.localeCompare(a.date))[0];
         if (!nextSession) {
           nextSession = createSession();
@@ -6086,8 +6123,8 @@
         if (action === "save-template") saveActiveSessionAsTemplate();
         if (action === "start-template") openTemplateStart(target.dataset.templateId);
         if (action === "return-active-workout") { templateStartFlow = null; activeSessionId = activeWorkoutId; setActiveTab("lift"); }
-        if (action === "request-cancel-workout") requestCancelWorkout("workout");
-        if (action === "request-cancel-workout-from-template") requestCancelWorkout("template");
+        if (action === "request-cancel-workout") requestCancelWorkout("workout", target.dataset.sessionId || "");
+        if (action === "request-cancel-workout-from-template") requestCancelWorkout("template", activeWorkoutId);
         if (action === "keep-workout") { cancelWorkoutFlow = null; render(); }
         if (action === "confirm-cancel-workout") discardActiveWorkout();
         if (action === "cancel-template-start") closeTemplateStart();
@@ -6305,13 +6342,13 @@
         if (action === "baseline-resting-hr") patchReadinessBaseline({ restingHr: target.value });
         if (action === "baseline-soreness") patchReadinessBaseline({ soreness: target.value });
         if (action === "baseline-band") patchReadinessBaseline({ band: target.value });
-        if (action === "template-readiness-sleep-quality") patchTemplateStartDraft({ sleepQuality: target.value });
-        if (action === "template-readiness-soreness") patchTemplateStartDraft({ soreness: target.value });
-        if (action === "template-readiness-illness") patchTemplateStartDraft({ illness: target.checked });
-        if (action === "template-readiness-affected-muscle") patchTemplateStartDraft({ affectedMuscle: target.value });
-        if (action === "template-readiness-sleep-hours") patchTemplateStartDraft({ sleepHours: target.value });
-        if (action === "template-readiness-hrv") patchTemplateStartDraft({ hrv: target.value });
-        if (action === "template-readiness-resting-hr") patchTemplateStartDraft({ restingHr: target.value });
+        if (action === "template-readiness-sleep-quality") patchTemplateStartDraft({ sleepQuality: target.value }, false);
+        if (action === "template-readiness-soreness") patchTemplateStartDraft({ soreness: target.value }, false);
+        if (action === "template-readiness-illness") patchTemplateStartDraft({ illness: target.checked }, false);
+        if (action === "template-readiness-affected-muscle") patchTemplateStartDraft({ affectedMuscle: target.value }, false);
+        if (action === "template-readiness-sleep-hours") patchTemplateStartDraft({ sleepHours: target.value }, false);
+        if (action === "template-readiness-hrv") patchTemplateStartDraft({ hrv: target.value }, false);
+        if (action === "template-readiness-resting-hr") patchTemplateStartDraft({ restingHr: target.value }, false);
         if (action === "clear-data-ack" && clearDataFlow) { clearDataFlow = { ...clearDataFlow, acknowledged: target.checked }; render(); }
         if (action === "import-data" && target.files[0]) importDataFile(target.files[0]);
       });

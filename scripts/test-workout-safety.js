@@ -14,8 +14,13 @@ assert.match(html, /return sessionHasStarted\(session\);/, "The active guard mus
 assert.match(html, /item\.id === activeWorkoutId \|\| item\.id === session\?\.id/, "The session picker must exclude unrelated unsubmitted drafts");
 assert.match(html, /New workout unavailable while a workout is active/, "The new-workout control must be disabled while a session is active");
 assert.match(html, /Cancel and Discard Workout/, "Cancellation must use explicit destructive wording");
+assert.match(html, /function sessionCanBeDiscarded\(session\)/, "Any open legacy or canonical draft must be explicitly discardable");
+assert.match(html, /data-action="request-cancel-workout" data-session-id=/, "The cancel action must identify the visible draft instead of assuming it is canonical");
 assert.match(html, /data\.sessions\.filter\(\(item\) => item\.id !== session\.id\)/, "Cancellation must remove only the selected active session");
 assert.match(html, /removeWorkoutFromSyncQueue\(session\.id\)/, "Canceled drafts must be removed from pending synchronization");
+assert.match(html, /template-readiness-sleep-quality"\) patchTemplateStartDraft\(\{ sleepQuality: target\.value \}, false\)/, "Readiness selectors must not rebuild and refocus the sheet while entering metrics");
+assert.match(html, /if \(templateStartFlow && !data\.templates\.some/, "Invalid modal state must not leave the application inert");
+assert.match(html, /@media \(max-width: 719px\)[\s\S]{0,180}input, select, textarea \{ font-size: 16px; \}/, "Mobile form controls must prevent iOS focus zoom");
 assert.match(html, /clearDataFlow\.acknowledged && clearDataFlow\.phrase === "CLEAR"/, "Local clearing must require acknowledgment and typed confirmation");
 assert.match(html, /Permanently Clear Local Data/, "The final device-wide deletion action must be explicit");
 assert.match(html, /enteredReadinessTriggers/, "Readiness adjustments must use explicit entered markers");
