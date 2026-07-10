@@ -150,7 +150,9 @@
         margin: 0 auto;
         max-width: 920px;
         min-height: 100vh;
-        padding-bottom: 104px;
+        padding-bottom: calc(104px + env(safe-area-inset-bottom));
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
       }
 
       .brand-bar {
@@ -479,10 +481,11 @@
 
       .set-row.warmup { border-left: 3px solid var(--amber); padding-left: 8px; }
       .set-row.warmup strong { color: var(--amber); font-size: 0.72rem; }
-      .set-block { border-left: 3px solid transparent; display: grid; }
+      .set-block { border-left: 3px solid transparent; border-right: 3px solid transparent; display: grid; }
       .set-block.completed {
         background: var(--success-dark);
         border-left-color: var(--success);
+        border-right-color: var(--success);
         box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--success) 46%, transparent);
       }
       .set-block.completed .set-row { border-top-color: color-mix(in srgb, var(--success) 58%, var(--line)); }
@@ -787,6 +790,74 @@
       .chart-detail-facts span { color: var(--muted); font-size: .62rem; }
       .chart-detail-facts strong { font-size: .72rem; }
 
+      .chart-control-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; display: grid; gap: 9px; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 10px; }
+      .chart-control-lift { grid-column: 1 / -1; }
+      .chart-control-field { display: grid; gap: 4px; min-width: 0; position: relative; }
+      .chart-control-field > span { color: var(--muted); font-size: .58rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+      .chart-control-field input, .chart-control-field select { appearance: none; background: var(--surface-strong); border-color: var(--line-strong); color: var(--text); font-size: .75rem; font-weight: 850; min-height: 43px; overflow: hidden; padding: 8px 30px 8px 10px; text-overflow: ellipsis; white-space: nowrap; }
+      .chart-control-field::after { bottom: 13px; color: var(--current); content: "\2304"; font-size: .78rem; pointer-events: none; position: absolute; right: 10px; }
+      .chart-control-field.chart-control-lift::after { content: "\2315"; }
+      .chart-control-context { color: var(--muted); font-size: .65rem; grid-column: 1 / -1; line-height: 1.35; margin: 0; }
+
+      .hypertrophy-score-card { align-items: center; background: var(--surface); border: 1px solid color-mix(in srgb, var(--current) 45%, var(--line)); border-radius: 8px; color: var(--text); display: grid; gap: 9px 12px; grid-template-columns: minmax(0, 1fr) auto; min-height: 116px; padding: 12px; text-align: left; width: 100%; }
+      .hypertrophy-score-card:hover, .hypertrophy-score-card:focus-visible { background: var(--current-dark); border-color: var(--current); box-shadow: inset 3px 0 0 var(--current); }
+      .hypertrophy-score-title { color: var(--muted); display: block; font-size: .64rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+      .hypertrophy-score-number { color: var(--current); display: block; font-size: 1.68rem; font-weight: 950; line-height: 1; margin-top: 4px; }
+      .hypertrophy-score-number small { color: var(--muted); font-size: .72rem; }
+      .hypertrophy-score-ring { align-items: center; background: conic-gradient(var(--current) calc(var(--score) * 1%), var(--line) 0); border-radius: 50%; display: grid; height: 58px; justify-items: center; position: relative; width: 58px; }
+      .hypertrophy-score-ring::after { background: var(--surface); border-radius: 50%; content: ""; height: 43px; position: absolute; width: 43px; }
+      .hypertrophy-score-ring span { color: var(--text); font-size: .66rem; font-weight: 950; position: relative; z-index: 1; }
+      .hypertrophy-score-meta { color: var(--muted); display: flex; flex-wrap: wrap; font-size: .66rem; gap: 4px 10px; grid-column: 1 / -1; line-height: 1.35; }
+      .hypertrophy-score-bar { background: var(--line); border-radius: 999px; grid-column: 1 / -1; height: 6px; overflow: hidden; }
+      .hypertrophy-score-bar span { background: var(--current); display: block; height: 100%; width: calc(var(--score) * 1%); }
+      .hypertrophy-score-empty { background: var(--surface); border: 1px dashed var(--line-strong); border-radius: 8px; display: grid; gap: 5px; padding: 13px; }
+      .hypertrophy-score-empty p { color: var(--muted); font-size: .7rem; margin: 0; }
+      .hypertrophy-detail { border-bottom: 1px solid var(--line); border-top: 1px solid var(--line); display: grid; gap: 12px; padding: 12px 0; }
+      .hypertrophy-detail h2, .hypertrophy-detail h3, .hypertrophy-detail p { margin: 0; }
+      .hypertrophy-detail > p, .hypertrophy-detail li { color: var(--muted); font-size: .72rem; line-height: 1.45; }
+      .score-category-list { display: grid; gap: 0; }
+      .score-category { border-bottom: 1px solid var(--line); }
+      .score-category summary { align-items: center; cursor: pointer; display: flex; gap: 10px; justify-content: space-between; list-style: none; min-height: 44px; }
+      .score-category summary::-webkit-details-marker { display: none; }
+      .score-category summary strong { font-size: .73rem; }
+      .score-category summary span { color: var(--current); font-size: .69rem; font-weight: 900; }
+      .score-category div { color: var(--muted); display: grid; font-size: .69rem; gap: 6px; line-height: 1.4; padding: 0 0 10px; }
+      .score-week-list { display: flex; flex-wrap: wrap; gap: 5px; }
+      .score-week-chip { border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: .62rem; padding: 4px 7px; }
+      .score-week-chip.deload { background: color-mix(in srgb, var(--amber) 9%, transparent); border-color: var(--amber); color: var(--amber); }
+      .score-findings { display: grid; gap: 8px; }
+      .score-finding { border-left: 3px solid var(--current); display: grid; gap: 3px; padding: 5px 0 5px 9px; }
+      .score-finding.improve { border-left-color: var(--amber); }
+      .score-finding strong { font-size: .72rem; }
+      .score-finding span { color: var(--muted); font-size: .68rem; line-height: 1.4; }
+      .score-actions { counter-reset: score-action; display: grid; gap: 8px; }
+      .score-action { align-items: start; display: grid; gap: 3px 8px; grid-template-columns: 24px minmax(0, 1fr); }
+      .score-action::before { align-items: center; background: var(--current-dark); border: 1px solid var(--current); border-radius: 50%; color: var(--current); content: counter(score-action); counter-increment: score-action; display: flex; font-size: .65rem; font-weight: 950; height: 22px; justify-content: center; width: 22px; }
+      .score-action strong, .score-action span { grid-column: 2; }
+      .score-action strong { font-size: .71rem; }
+      .score-action span { color: var(--muted); font-size: .67rem; line-height: 1.4; }
+
+      .volume-set-list { display: grid; gap: 6px; }
+      .volume-set-row { align-items: center; border-bottom: 1px solid var(--line); display: grid; gap: 4px 8px; grid-template-columns: 42px minmax(0, 1fr) 64px; padding: 7px 0; }
+      .volume-set-row:last-child { border-bottom: 0; }
+      .volume-set-row > strong { color: var(--current); font-size: .69rem; }
+      .volume-set-main { display: grid; gap: 2px; }
+      .volume-set-main strong { font-size: .75rem; }
+      .volume-set-main span, .volume-set-total span { color: var(--muted); font-size: .62rem; }
+      .volume-set-total { display: grid; gap: 2px; justify-items: end; text-align: right; }
+      .volume-set-total strong { font-size: .71rem; }
+
+      .fatigue-severity { border: 1px solid var(--line); border-radius: 999px; display: inline-flex; font-size: .6rem; font-weight: 900; padding: 3px 6px; width: fit-content; }
+      .fatigue-severity.high { background: color-mix(in srgb, var(--red) 10%, var(--surface)); border-color: var(--red); color: var(--red); }
+      .fatigue-severity.moderate { background: color-mix(in srgb, var(--amber) 10%, var(--surface)); border-color: var(--amber); color: var(--amber); }
+      .fatigue-severity.low { background: var(--surface-strong); color: var(--muted); }
+      .drilldown-item.fatigue-high { box-shadow: inset 3px 0 0 var(--red); }
+      .drilldown-item.fatigue-moderate { box-shadow: inset 3px 0 0 var(--amber); }
+      .fatigue-summary-text { display: flex; flex-wrap: wrap; gap: 3px 6px; }
+      .dashboard-summary-row .fatigue-summary-text > span { margin: 0; padding: 0; }
+      .fatigue-summary-text .high { color: var(--red); }
+      .fatigue-summary-text .moderate { color: var(--amber); }
+
       .quick-template-strip {
         display: grid;
         gap: 10px;
@@ -875,7 +946,7 @@
         min-height: 180px;
       }
 
-      .timer-bar { align-items: center; background: color-mix(in srgb, var(--rest-accent) 7%, var(--surface-strong)); border-left: 4px solid var(--rest-accent); border-top: 1px solid color-mix(in srgb, var(--rest-accent) 48%, var(--line)); display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr) auto; margin-left: -3px; padding: 10px 8px 11px 39px; }
+      .timer-bar { align-items: center; background: color-mix(in srgb, var(--rest-accent) 7%, var(--surface-strong)); border-left: 4px solid var(--rest-accent); border-right: 4px solid var(--rest-accent); border-top: 1px solid color-mix(in srgb, var(--rest-accent) 48%, var(--line)); display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr) auto; margin-left: -3px; padding: 10px 8px 11px 39px; }
 
       .timer-bar strong {
         color: var(--rest-text);
@@ -921,10 +992,10 @@
       .plate-calculator strong { font-size: .78rem; }
       .plate-calculator span { color: var(--muted); font-size: .7rem; line-height: 1.4; }
       .set-block { position: relative; transition: background 180ms ease, border-color 180ms ease, box-shadow 180ms ease; }
-      .set-block.next-set { background: var(--current-dark); border-left-color: var(--current); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--current) 60%, transparent); }
+      .set-block.next-set { background: var(--current-dark); border-left-color: var(--current); border-right-color: var(--current); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--current) 60%, transparent); }
       .set-block.next-set:not(.acknowledged) { animation: next-set-pulse 1.2s ease-out 2; }
-      .set-block.edited-set:not(.completed):not(.next-set) { border-left-color: var(--amber); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--amber) 24%, transparent); }
-      .set-block.skipped-set { background: color-mix(in srgb, var(--muted) 7%, transparent); border-left-color: var(--muted-2); opacity: .72; }
+      .set-block.edited-set:not(.completed):not(.next-set) { border-left-color: var(--amber); border-right-color: var(--amber); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--amber) 24%, transparent); }
+      .set-block.skipped-set { background: color-mix(in srgb, var(--muted) 7%, transparent); border-left-color: var(--muted-2); border-right-color: var(--muted-2); opacity: .72; }
       .set-block.skipped-set .set-row { border-top-style: dashed; }
       .set-field { align-content: center; display: grid; gap: 2px; min-width: 0; }
       .set-field > span { color: var(--muted); font-size: .55rem; font-weight: 900; letter-spacing: .04em; line-height: 1; text-transform: uppercase; }
@@ -1070,7 +1141,7 @@
         gap: 4px;
         grid-template-columns: repeat(5, minmax(0, 1fr));
         left: 0;
-        padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+        padding: 8px max(8px, env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
         position: fixed;
         right: 0;
         z-index: 4;
@@ -1132,14 +1203,14 @@
         }
       }
       /* Compact, utility-first layer for the phone workout flow. */
-      .brand-bar { grid-template-columns: 36px minmax(0, 1fr) auto auto; min-height: 58px; margin: 0 12px; padding: 10px 0; gap: 8px; }
+      .brand-bar { grid-template-columns: 36px minmax(0, 1fr) auto auto; min-height: calc(58px + env(safe-area-inset-top)); margin: 0 12px; padding: max(12px, calc(env(safe-area-inset-top) + 10px)) 0 10px; gap: 8px; }
       .brand-mark { width: 34px; height: 34px; min-width: 34px; border-radius: 8px; border: 1px solid var(--green); background: var(--green); color: #fff; box-shadow: none; font-size: .71rem; font-weight: 900; letter-spacing: .02em; display: grid; place-items: center; }
       .brand-mark img { display: none; }
       .brand-title { min-width: 0; font-size: .76rem; line-height: 1.05; }
       .brand-title span { display: inline; }
       .brand-title small { display: block; color: var(--muted); font-size: .66rem; font-weight: 700; letter-spacing: 0; line-height: 1.25; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; text-transform: none; white-space: nowrap; }
       .brand-action, .theme-toggle { min-height: 34px; min-width: 34px; padding: 0 8px; border-radius: 7px; font-size: .69rem; }
-      .app-main { padding: 12px 12px 0; }
+      .app-main { padding: 12px 16px 0 14px; }
       .view { gap: 12px; padding-bottom: 18px; }
       .screen-heading, .workout-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
       .screen-heading h1, .workout-heading h1 { margin: 1px 0 0; font-size: 1.42rem; line-height: 1.1; }
@@ -1353,6 +1424,9 @@
       let pendingSubmitSessionId = "";
       let completedSummarySessionId = "";
       let chartDetailPoint = null;
+      let hypertrophyScoreExpanded = false;
+      let hypertrophyWindowOffset = 0;
+      let hypertrophyScoreCache = { dataRef: null, offset: -1, result: null };
       let templateStartFlow = null;
 
       const icon = {
@@ -2488,6 +2562,8 @@
         const trained = volumes.filter((bucket) => bucket.sets > 0);
         const untrained = volumes.filter((bucket) => bucket.sets === 0);
         const completedSessions = dashboardSessionsForWeek(dashboardWeekStart);
+        const highConcernCount = flags.filter((flag) => flag.concern === "high").length;
+        const moderateConcernCount = flags.filter((flag) => flag.concern === "moderate").length;
         const currentWeek = startOfWeekIso(todayIso());
         const renderBucket = (bucket, quiet = false) => {
           const max = Math.max(bucket.targetHigh, bucket.sets, 1);
@@ -2516,7 +2592,7 @@
             <div class="dashboard-summary-row" aria-label="Weekly overview">
               <button type="button" data-action="open-dashboard-detail" data-detail="sessions" aria-label="Open logged sessions for ${formatWeek(dashboardWeekStart)}"><strong>${completedSessions.length}</strong><span>logged sessions</span></button>
               <button type="button" data-action="open-dashboard-detail" data-detail="muscles" aria-label="Open trained muscles for ${formatWeek(dashboardWeekStart)}"><strong>${trained.length}</strong><span>trained muscles</span></button>
-              <button type="button" data-action="open-dashboard-detail" data-detail="fatigue" aria-label="Open fatigue flags for ${formatWeek(dashboardWeekStart)}"><strong>${flags.length}</strong><span>fatigue flags</span></button>
+              <button type="button" data-action="open-dashboard-detail" data-detail="fatigue" aria-label="Open fatigue flags for ${formatWeek(dashboardWeekStart)}"><strong>${flags.length}</strong><span class="fatigue-summary-text">${highConcernCount ? '<span class="high">' + highConcernCount + ' high</span>' : ''}${moderateConcernCount ? '<span class="moderate">' + moderateConcernCount + ' moderate</span>' : ''}${!flags.length ? 'fatigue flags' : ''}</span></button>
             </div>
             <section class="screen-section">
               <div class="section-heading"><div><h2>Weekly muscle volume</h2><p>Tap a muscle to see the contributing lifts.</p></div><span>${formatWeek(dashboardWeekStart).replace("Week of ", "")}</span></div>
@@ -2563,7 +2639,8 @@
       }
 
       function renderFatigueFlagRow(flag) {
-        return '<button class="drilldown-item" type="button" data-action="open-fatigue-flag" data-flag-id="' + escapeHtml(flag.id) + '" aria-label="Open ' + escapeHtml(flag.scope + ' ' + flag.name + ' fatigue flag') + '"><strong>' + escapeHtml(flag.scope + ': ' + flag.name) + '</strong><span>' + escapeHtml(flag.reason) + '</span><small>' + escapeHtml(flag.concern + ' concern · ' + formatDate(flag.triggeredAt)) + '</small><span class="drilldown-chevron" aria-hidden="true">›</span></button>';
+        const concern = flag.concern || "low";
+        return '<button class="drilldown-item fatigue-' + concern + '" type="button" data-action="open-fatigue-flag" data-flag-id="' + escapeHtml(flag.id) + '" aria-label="Open ' + escapeHtml(flag.scope + ' ' + flag.name + ' fatigue flag') + '"><strong>' + escapeHtml(flag.scope + ': ' + flag.name) + '</strong><span class="fatigue-severity ' + concern + '">' + escapeHtml(concern.charAt(0).toUpperCase() + concern.slice(1) + ' concern') + '</span><span>' + escapeHtml(flag.reason) + '</span><small>' + escapeHtml(formatDate(flag.triggeredAt)) + '</small><span class="drilldown-chevron" aria-hidden="true">›</span></button>';
       }
 
       function renderDashboardDetailHeader(title, subtitle, nested = false) {
@@ -2596,7 +2673,7 @@
         if (dashboardDetail.type === "fatigue-flag") {
           const flag = flags.find((item) => item.id === dashboardDetail.id);
           if (!flag) { dashboardDetail = { type: "fatigue" }; return renderDashboardDetail(); }
-          return `<section class="view dashboard-detail-view">${renderDashboardDetailHeader(flag.scope + ": " + flag.name, formatDate(flag.triggeredAt), true)}<article class="fatigue-explanation ${flag.concern}"><span class="status-pill ${flag.level}">${escapeHtml(flag.concern)} concern</span><h2>${escapeHtml(flag.reason)}</h2><div><strong>Data that triggered it</strong><ul>${flag.evidence.map((item) => '<li>' + escapeHtml(item) + '</li>').join('')}</ul></div><div><strong>Rule crossed</strong><p>${escapeHtml(flag.rule)}</p></div><div><strong>Recommended next step</strong><p>${escapeHtml(flag.recommendation)}</p></div><div><strong>What clears the flag</strong><p>${escapeHtml(flag.resolution)}</p></div></article></section>`;
+          return `<section class="view dashboard-detail-view">${renderDashboardDetailHeader(flag.scope + ": " + flag.name, formatDate(flag.triggeredAt), true)}<article class="fatigue-explanation ${flag.concern}"><span class="fatigue-severity ${flag.concern}">${escapeHtml(flag.concern.charAt(0).toUpperCase() + flag.concern.slice(1))} concern</span><h2>${escapeHtml(flag.reason)}</h2><div><strong>Data that triggered it</strong><ul>${flag.evidence.map((item) => '<li>' + escapeHtml(item) + '</li>').join('')}</ul></div><div><strong>Rule crossed</strong><p>${escapeHtml(flag.rule)}</p></div><div><strong>Recommended next step</strong><p>${escapeHtml(flag.recommendation)}</p></div><div><strong>What clears the flag</strong><p>${escapeHtml(flag.resolution)}</p></div></article></section>`;
         }
         return `<section class="view dashboard-detail-view">${renderDashboardDetailHeader("Fatigue flags", period)}<div class="drilldown-list">${flags.length ? flags.map(renderFatigueFlagRow).join('') : '<div class="empty-state">No fatigue flags were triggered in this period.</div>'}</div></section>`;
       }
@@ -3019,6 +3096,249 @@
         }).join("");
       }
 
+      // HYPERTROPHY_SCORE_ENGINE_START
+      function selectHypertrophyWeeks(allWeeks, offset = 0, count = 6) {
+        const sorted = [...allWeeks].sort((a, b) => b.weekStart.localeCompare(a.weekStart));
+        const included = [];
+        const skippedDeloadWeeks = [];
+        const incompleteWeeks = [];
+        let qualifyingSeen = 0;
+        let collecting = offset === 0;
+        for (const week of sorted) {
+          if (included.length >= count) break;
+          if (week.isDeload) {
+            if (collecting) skippedDeloadWeeks.push(week);
+            continue;
+          }
+          if (!week.qualifies) {
+            if (collecting && week.submittedSessions > 0) incompleteWeeks.push(week);
+            continue;
+          }
+          if (qualifyingSeen < offset) {
+            qualifyingSeen += 1;
+            continue;
+          }
+          collecting = true;
+          included.push(week);
+          qualifyingSeen += 1;
+        }
+        return { included, skippedDeloadWeeks, incompleteWeeks, requestedWeeks: count, provisional: included.length < count };
+      }
+
+      function calculateHypertrophyScore(selection) {
+        const weeks = selection.included || [];
+        if (!weeks.length) return { score: null, interpretation: "Not enough data yet", confidence: "low", categories: [], positives: [], improvements: [], actions: [], ...selection };
+        const clamp = (value, low = 0, high = 1) => Math.max(low, Math.min(high, Number.isFinite(value) ? value : low));
+        const average = (values, fallback = 0) => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : fallback;
+        const roundPoint = (value) => Math.round(value * 10) / 10;
+        const ratio = (value, total, fallback) => total > 0 ? clamp(value / total) : fallback;
+
+        // Each qualifying week has equal influence. The six category maxima total 100.
+        const progressionQuality = average(weeks.map((week) => {
+          const comparable = Number(week.comparableComparisons || 0);
+          if (!comparable) return 0.6;
+          const wins = Math.min(comparable, Number(week.progressionWins || 0));
+          const regressions = Math.min(comparable - wins, Number(week.regressions || 0));
+          const neutral = Math.max(0, comparable - wins - regressions);
+          return clamp((wins + neutral * 0.62 - regressions * 0.35) / comparable);
+        }), 0.6);
+        const repQuality = average(weeks.map((week) => ratio(week.repRangeHits, week.repRangeTracked, 0.65)), 0.65);
+        const rpeQuality = average(weeks.map((week) => ratio(week.rpeOnTarget, week.rpeLogged, 0.65)), 0.65);
+        const volumeTargetQuality = average(weeks.map((week) => ratio(week.volumeTargetsHit, week.volumeTargetsTracked, 0.65)), 0.65);
+        const volumeStability = average(weeks.map((week) => clamp(1 - Math.max(0, Number(week.volumeChangeRatio || 0) - 0.15) / 0.55)), 0.75);
+        const completionQuality = average(weeks.map((week) => ratio(week.completedSets, week.plannedSets, 0.7)), 0.7);
+        const fatigueQuality = average(weeks.map((week) => clamp(1 - Math.min(0.72, Number(week.fatigueHigh || 0) * 0.3 + Number(week.fatigueModerate || 0) * 0.12))), 1);
+
+        const categories = [
+          { key: "progression", label: "Progression quality", max: 25, quality: 0.35 + progressionQuality * 0.65, detail: Math.round(progressionQuality * 100) + "% of comparable lift trends improved or remained productive.", action: "Progress reps, load, or execution only after the programmed range is owned at the intended effort." },
+          { key: "execution", label: "Rep-range execution", max: 20, quality: 0.25 + repQuality * 0.75, detail: Math.round(repQuality * 100) + "% of tracked working sets landed in their programmed rep range.", action: "Keep working sets inside the prescribed range and progress load after repeated top-of-range performances." },
+          { key: "rpe", label: "RPE management", max: 15, quality: 0.25 + rpeQuality * 0.75, detail: Math.round(rpeQuality * 100) + "% of RPE-logged sets stayed within one point of the intended effort.", action: "Keep most hard sets near their target RPE; avoid turning routine hypertrophy work into maximal-effort sets." },
+          { key: "volume", label: "Volume quality", max: 15, quality: 0.3 + (volumeTargetQuality * 0.7 + volumeStability * 0.3) * 0.7, detail: Math.round(volumeTargetQuality * 100) + "% target coverage with " + Math.round(volumeStability * 100) + "% week-to-week volume stability.", action: "Keep programmed muscle volume in range and avoid adding sets while performance is deteriorating." },
+          { key: "consistency", label: "Training consistency", max: 15, quality: completionQuality, detail: Math.round(completionQuality * 100) + "% of planned working sets were completed across qualifying weeks.", action: "Complete the planned hard sets consistently before expanding the program or adding volume." },
+          { key: "fatigue", label: "Fatigue management", max: 10, quality: fatigueQuality, detail: Math.round(fatigueQuality * 100) + "% fatigue-management quality after weighting moderate and high flags.", action: "Resolve high-concern flags first, then stabilize performance before progressing volume or load." }
+        ].map((category) => ({ ...category, points: roundPoint(category.max * clamp(category.quality)) }));
+
+        const score = Math.round(clamp(categories.reduce((sum, category) => sum + category.points, 0), 0, 100));
+        const interpretation = score >= 90 ? "Excellent hypertrophy-supportive training" : score >= 80 ? "Very good" : score >= 70 ? "Good, with identifiable improvements" : score >= 60 ? "Mixed" : score >= 40 ? "Significant issues are limiting progress" : "Training quality and consistency need attention";
+        const completedSets = weeks.reduce((sum, week) => sum + Number(week.completedSets || 0), 0);
+        const rpeLogged = weeks.reduce((sum, week) => sum + Number(week.rpeLogged || 0), 0);
+        const comparable = weeks.reduce((sum, week) => sum + Number(week.comparableComparisons || 0), 0);
+        const exerciseChangeRate = average(weeks.map((week) => Number(week.exerciseChangeRate || 0)), 0);
+        const rpeCoverage = ratio(rpeLogged, completedSets, 0);
+        const confidence = weeks.length >= 6 && comparable >= 6 && rpeCoverage >= 0.65 && exerciseChangeRate <= 0.35 ? "high" : weeks.length >= 3 && completedSets >= 12 && rpeCoverage >= 0.35 ? "moderate" : "low";
+
+        const positives = [];
+        if (progressionQuality >= 0.68) positives.push({ title: "Performance trends are moving productively", detail: Math.round(progressionQuality * 100) + "% of comparable outcomes improved or held with useful effort." });
+        if (repQuality >= 0.78) positives.push({ title: "Rep ranges are being executed well", detail: Math.round(repQuality * 100) + "% of tracked sets landed in range." });
+        if (rpeQuality >= 0.75) positives.push({ title: "Effort is well managed", detail: Math.round(rpeQuality * 100) + "% of logged RPE values aligned with the prescription." });
+        if (completionQuality >= 0.9) positives.push({ title: "Training is consistent", detail: Math.round(completionQuality * 100) + "% of planned working sets were completed." });
+        if (!positives.length) positives.push({ title: "A usable baseline is established", detail: completedSets + " completed working sets provide a concrete starting point for the next block." });
+
+        const issueDetails = {
+          progression: "Comparable performance is not improving consistently across the selected weeks.",
+          execution: "Too many working sets are outside their programmed rep ranges.",
+          rpe: rpeCoverage < 0.35 ? "RPE coverage is too sparse for a confident effort assessment." : "Actual effort often misses the programmed RPE target.",
+          volume: "Weekly muscle volume is inconsistent or frequently outside the programmed ranges.",
+          consistency: "Skipped, missed, or incomplete prescribed sets are reducing repeatable training exposure.",
+          fatigue: "Current fatigue flags indicate unresolved performance or recovery pressure."
+        };
+        const improvements = [...categories]
+          .sort((a, b) => a.points / a.max - b.points / b.max)
+          .slice(0, 4)
+          .map((category) => ({ key: category.key, title: category.label, detail: issueDetails[category.key], evidence: category.detail, action: category.action }));
+        const actions = improvements.slice(0, 3).map((item) => ({ title: item.action, detail: item.evidence, key: item.key }));
+        return { score, interpretation, confidence, categories, positives: positives.slice(0, 4), improvements, actions, rpeCoverage, comparable, completedSets, ...selection };
+      }
+      // HYPERTROPHY_SCORE_ENGINE_END
+
+      function buildHypertrophyWeekAggregates() {
+        const sessionById = new Map(data.sessions.filter(isSessionSubmitted).map((session) => [session.id, session]));
+        const exercisesBySession = new Map();
+        data.exercises.forEach((exercise) => {
+          if (!sessionById.has(exercise.sessionId)) return;
+          const list = exercisesBySession.get(exercise.sessionId) || [];
+          list.push(exercise);
+          exercisesBySession.set(exercise.sessionId, list);
+        });
+        const setsByExercise = new Map();
+        data.sets.forEach((set) => {
+          const list = setsByExercise.get(set.exerciseId) || [];
+          list.push(set);
+          setsByExercise.set(set.exerciseId, list);
+        });
+        const weekMap = new Map();
+        sessionById.forEach((session) => {
+          const weekStart = startOfWeekIso(session.date);
+          const week = weekMap.get(weekStart) || {
+            weekStart, submittedSessions: 0, plannedSets: 0, completedSets: 0, skippedSets: 0, missedSets: 0,
+            repRangeTracked: 0, repRangeHits: 0, rpeLogged: 0, rpeOnTarget: 0, volumeTotal: 0,
+            exerciseCount: 0, deloadExerciseCount: 0, explicitSessionDeload: false, exerciseStats: new Map(),
+            intendedMuscles: new Set(), muscleSets: new Map()
+          };
+          week.submittedSessions += 1;
+          week.explicitSessionDeload ||= Boolean(session.isDeload || session.sessionType === "deload");
+          (exercisesBySession.get(session.id) || []).forEach((exercise) => {
+            const workingSets = (setsByExercise.get(exercise.id) || []).filter((set) => !set.isWarmup);
+            if (!workingSets.length) return;
+            week.exerciseCount += 1;
+            if (exercise.isDeload) {
+              week.deloadExerciseCount += 1;
+              return;
+            }
+            const profile = progressionProfileForExercise(exercise.name);
+            const prescription = exercise.prescription || {};
+            const repLow = Number(prescription.repLow || profile.lowerRep);
+            const repHigh = Number(prescription.repHigh || profile.upperRep);
+            const stats = week.exerciseStats.get(exerciseKey(exercise.name)) || { name: exercise.name, completedSets: 0, failedSets: 0, bestEstimatedOneRepMax: 0, topWeight: 0, maxRepsAtTopWeight: 0, rpeSum: 0, rpeCount: 0 };
+            musclesForExercise(exercise).forEach(({ muscle }) => week.intendedMuscles.add(muscle));
+            workingSets.forEach((set) => {
+              week.plannedSets += 1;
+              if (set.skipped) week.skippedSets += 1;
+              else if (!set.completed) { week.missedSets += 1; stats.failedSets += 1; }
+              if (!set.completed) return;
+              week.completedSets += 1;
+              stats.completedSets += 1;
+              const reps = Number(set.reps || 0);
+              const load = Number(set.weight || 0);
+              week.repRangeTracked += 1;
+              if (reps >= repLow && reps <= repHigh) week.repRangeHits += 1;
+              const actualRpe = Number(set.rpe || 0);
+              const targetRpe = Number(set.targetRpe || prescription.rpe || prescription.targetRpe || 8);
+              if (actualRpe > 0) {
+                week.rpeLogged += 1;
+                stats.rpeSum += actualRpe;
+                stats.rpeCount += 1;
+                if (Math.abs(actualRpe - targetRpe) <= 1) week.rpeOnTarget += 1;
+              }
+              week.volumeTotal += load * reps;
+              stats.bestEstimatedOneRepMax = Math.max(stats.bestEstimatedOneRepMax, estimatedOneRepMax(set));
+              if (load > stats.topWeight) { stats.topWeight = load; stats.maxRepsAtTopWeight = reps; }
+              else if (load === stats.topWeight) stats.maxRepsAtTopWeight = Math.max(stats.maxRepsAtTopWeight, reps);
+              musclesForExercise(exercise).forEach(({ muscle, weight }) => week.muscleSets.set(muscle, (week.muscleSets.get(muscle) || 0) + weight));
+            });
+            week.exerciseStats.set(exerciseKey(exercise.name), stats);
+          });
+          weekMap.set(weekStart, week);
+        });
+
+        const weeks = Array.from(weekMap.values()).map((week) => {
+          const isDeload = week.explicitSessionDeload || (week.exerciseCount > 0 && week.deloadExerciseCount === week.exerciseCount);
+          let volumeTargetsTracked = 0;
+          let volumeTargetsHit = 0;
+          week.intendedMuscles.forEach((muscle) => {
+            const target = targetRangeForMuscle(muscle);
+            const sets = week.muscleSets.get(muscle) || 0;
+            volumeTargetsTracked += 1;
+            if (sets >= target.low && sets <= target.high) volumeTargetsHit += 1;
+          });
+          const completionRatio = week.plannedSets > 0 ? week.completedSets / week.plannedSets : 0;
+          return { ...week, isDeload, qualifies: !isDeload && week.completedSets >= 3 && completionRatio >= 0.5, volumeTargetsTracked, volumeTargetsHit, progressionWins: 0, regressions: 0, comparableComparisons: 0, exerciseChangeRate: 0, fatigueHigh: 0, fatigueModerate: 0, volumeChangeRatio: 0 };
+        }).sort((a, b) => a.weekStart.localeCompare(b.weekStart));
+
+        const previousByExercise = new Map();
+        let previousVolume = 0;
+        weeks.forEach((week) => {
+          if (week.isDeload) return;
+          if (previousVolume > 0) week.volumeChangeRatio = Math.abs(week.volumeTotal - previousVolume) / previousVolume;
+          if (week.qualifies) previousVolume = week.volumeTotal || previousVolume;
+          let newExercises = 0;
+          week.exerciseStats.forEach((current, key) => {
+            const previous = previousByExercise.get(key);
+            const currentRpe = current.rpeCount ? current.rpeSum / current.rpeCount : 0;
+            if (!previous) newExercises += 1;
+            else {
+              week.comparableComparisons += 1;
+              const previousRpe = previous.rpeCount ? previous.rpeSum / previous.rpeCount : 0;
+              const weightedProgress = current.bestEstimatedOneRepMax > 0 && previous.bestEstimatedOneRepMax > 0 && current.bestEstimatedOneRepMax >= previous.bestEstimatedOneRepMax * 1.015;
+              const repProgress = current.topWeight === previous.topWeight && current.maxRepsAtTopWeight > previous.maxRepsAtTopWeight && (!currentRpe || !previousRpe || currentRpe <= previousRpe + 0.5);
+              const effortProgress = current.bestEstimatedOneRepMax >= previous.bestEstimatedOneRepMax * 0.99 && currentRpe > 0 && previousRpe > 0 && currentRpe <= previousRpe - 0.5;
+              const regression = current.bestEstimatedOneRepMax > 0 && previous.bestEstimatedOneRepMax > 0 && current.bestEstimatedOneRepMax < previous.bestEstimatedOneRepMax * 0.93;
+              if (weightedProgress || repProgress || effortProgress) week.progressionWins += 1;
+              else if (regression) week.regressions += 1;
+              if (regression) week.fatigueModerate += 1;
+            }
+            const averageRpe = current.rpeCount ? current.rpeSum / current.rpeCount : 0;
+            if (current.failedSets >= 2) week.fatigueHigh += 1;
+            else if (averageRpe >= 9.2 && current.completedSets >= 2) week.fatigueModerate += 1;
+            if (week.qualifies) previousByExercise.set(key, current);
+          });
+          week.exerciseChangeRate = week.exerciseStats.size ? newExercises / week.exerciseStats.size : 0;
+          week.intendedMuscles.forEach((muscle) => {
+            const target = targetRangeForMuscle(muscle);
+            const sets = week.muscleSets.get(muscle) || 0;
+            if (sets > target.high * 1.2) week.fatigueHigh += 1;
+            else if (sets > target.high) week.fatigueModerate += 1;
+          });
+        });
+        return weeks.sort((a, b) => b.weekStart.localeCompare(a.weekStart));
+      }
+
+      function hypertrophyWindowOptions(allWeeks) {
+        const qualifyingCount = allWeeks.filter((week) => week.qualifies && !week.isDeload).length;
+        const options = [];
+        for (let offset = 0; offset < qualifyingCount && options.length < 6; offset += 6) {
+          const selection = selectHypertrophyWeeks(allWeeks, offset, 6);
+          if (!selection.included.length) break;
+          options.push({ offset, selection });
+        }
+        return options;
+      }
+
+      function hypertrophyAnalysis(offset = hypertrophyWindowOffset) {
+        if (hypertrophyScoreCache.dataRef === data && hypertrophyScoreCache.offset === offset) return hypertrophyScoreCache.result;
+        const allWeeks = buildHypertrophyWeekAggregates();
+        const selection = selectHypertrophyWeeks(allWeeks, offset, 6);
+        const result = calculateHypertrophyScore(selection);
+        const previousSelection = selectHypertrophyWeeks(allWeeks, offset + 6, 6);
+        const previous = calculateHypertrophyScore(previousSelection);
+        result.previousScore = previous.score;
+        result.trend = result.score != null && previous.score != null ? result.score - previous.score : null;
+        result.windowOptions = hypertrophyWindowOptions(allWeeks);
+        result.allWeeks = allWeeks;
+        hypertrophyScoreCache = { dataRef: data, offset, result };
+        return result;
+      }
+
       function exerciseProgressSeries(exerciseName) {
         const scoped = getExerciseSets(exerciseName);
         const exerciseById = new Map(scoped.exercises.map((exercise) => [exercise.id, exercise]));
@@ -3029,23 +3349,16 @@
           const session = exercise ? sessionById.get(exercise.sessionId) : null;
           if (!session || !isSessionSubmitted(session)) return;
           const week = session.date;
-          const bucket = byWeek.get(week) || { week, e1rm: 0, volume: 0, repsByWeight: new Map(), details: [] };
+          const bucket = byWeek.get(week) || { week, e1rm: 0, volume: 0, details: [] };
           bucket.e1rm = Math.max(bucket.e1rm, estimatedOneRepMax(set));
           bucket.volume += set.weight * set.reps;
-          const weightKey = String(set.weight || 0);
-          bucket.repsByWeight.set(weightKey, Math.max(bucket.repsByWeight.get(weightKey) || 0, set.reps));
           bucket.details.push({ reps: set.reps, weight: set.weight, rpe: set.rpe, setNumber: set.setNumber, sessionTitle: session.title, sessionDate: session.date });
           byWeek.set(week, bucket);
         });
         const weeks = Array.from(byWeek.values()).sort((a, b) => a.week.localeCompare(b.week)).slice(-16);
-        const allWeights = new Map();
-        weeks.forEach((week) => week.repsByWeight.forEach((reps, weight) => allWeights.set(weight, (allWeights.get(weight) || 0) + 1)));
-        const commonWeight = Array.from(allWeights.entries()).sort((a, b) => b[1] - a[1] || Number(b[0]) - Number(a[0]))[0]?.[0] || "0";
         return {
           e1rm: weeks.map((week) => ({ label: formatDate(week.week), date: week.week, value: Math.round(week.e1rm * 10) / 10, details: week.details })),
-          volume: weeks.map((week) => ({ label: formatDate(week.week), date: week.week, value: Math.round(week.volume), details: week.details })),
-          repsAtWeight: weeks.map((week) => ({ label: formatDate(week.week), date: week.week, value: week.repsByWeight.get(commonWeight) || 0, details: week.details })),
-          commonWeight: Number(commonWeight)
+          volume: weeks.map((week) => ({ label: formatDate(week.week), date: week.week, value: Math.round(week.volume), details: week.details }))
         };
       }
 
@@ -3123,19 +3436,10 @@
           return '<article class="chart-detail" role="status"><div class="row split"><strong>Estimated 1RM · ' + point.value + ' ' + data.settings.weightUnit + '</strong>' + close + '</div><div class="chart-detail-facts"><div><span>Date</span><strong>' + formatDate(point.date) + '</strong></div><div><span>Exercise</span><strong>' + escapeHtml(selectedExercise) + '</strong></div><div><span>Load × reps</span><strong>' + escapeHtml(best ? best.weight + ' ' + data.settings.weightUnit + ' × ' + best.reps : '-') + '</strong></div><div><span>RPE</span><strong>' + escapeHtml(best?.rpe || '-') + '</strong></div></div><small>Epley estimate: load × (1 + reps ÷ 30).' + (isPr ? ' Personal record for the available history.' : '') + '</small></article>';
         }
         if (chartKey === "volume") {
-          const contributing = point.details.filter((set) => set.weight > 0);
-          return '<article class="chart-detail" role="status"><div class="row split"><strong>Volume load · ' + point.value + ' ' + data.settings.weightUnit + '</strong>' + close + '</div><div class="chart-detail-facts"><div><span>Date</span><strong>' + formatDate(point.date) + '</strong></div><div><span>Exercise</span><strong>' + escapeHtml(selectedExercise) + '</strong></div><div><span>Sets included</span><strong>' + contributing.length + '</strong></div><div><span>Vs previous</span><strong>' + (comparison == null ? 'Baseline' : (comparison >= 0 ? '+' : '') + comparison.toFixed(1) + '%') + '</strong></div></div><p>' + escapeHtml(contributing.map((set) => set.weight + ' × ' + set.reps + (set.rpe ? ' @ ' + set.rpe : '')).join(', ') || 'No weighted sets') + '</p><small>' + escapeHtml(contributing[0]?.sessionTitle || '') + '</small></article>';
+          const contributing = point.details.filter((set) => set.weight > 0).sort((a, b) => a.setNumber - b.setNumber);
+          return '<article class="chart-detail volume-chart-detail" role="status"><div class="row split"><div><span class="section-kicker">Selected exercise volume</span><strong>Volume load · ' + point.value.toLocaleString() + ' ' + data.settings.weightUnit + '</strong></div>' + close + '</div><div class="chart-detail-facts"><div><span>Date</span><strong>' + formatDate(point.date) + '</strong></div><div><span>Exercise</span><strong>' + escapeHtml(selectedExercise) + '</strong></div><div><span>Sets included</span><strong>' + contributing.length + '</strong></div><div><span>Vs previous</span><strong>' + (comparison == null ? 'Baseline' : (comparison >= 0 ? '+' : '') + comparison.toFixed(1) + '%') + '</strong></div></div><div class="volume-set-list">' + contributing.map((set, index) => { const setVolume = Number(set.weight || 0) * Number(set.reps || 0); return '<div class="volume-set-row"><strong>Set ' + (set.setNumber > 0 ? set.setNumber : index + 1) + '</strong><div class="volume-set-main"><strong>' + set.weight + ' ' + data.settings.weightUnit + ' × ' + set.reps + '</strong><span>' + (set.rpe ? 'RPE ' + set.rpe : 'RPE not recorded') + '</span></div><div class="volume-set-total"><span>Set volume</span><strong>' + setVolume.toLocaleString() + ' ' + data.settings.weightUnit + '</strong></div></div>'; }).join('') + '</div><small>' + escapeHtml(contributing[0]?.sessionTitle || '') + ' · Total reflects this exercise only.</small></article>';
         }
-        const common = exerciseProgressSeries(selectedExercise).commonWeight;
-        const matching = point.details.filter((set) => Number(set.weight) === Number(common));
-        return '<article class="chart-detail" role="status"><div class="row split"><strong>' + escapeHtml(title) + ' · ' + point.value + '</strong>' + close + '</div><div class="chart-detail-facts"><div><span>Date</span><strong>' + formatDate(point.date) + '</strong></div><div><span>Exercise</span><strong>' + escapeHtml(selectedExercise) + '</strong></div><div><span>Load</span><strong>' + common + ' ' + data.settings.weightUnit + '</strong></div><div><span>Vs previous</span><strong>' + (comparison == null ? 'Baseline' : (comparison >= 0 ? '+' : '') + comparison.toFixed(1) + '%') + '</strong></div></div><p>' + escapeHtml(matching.map((set) => set.reps + ' reps' + (set.rpe ? ' @ RPE ' + set.rpe : '')).join(', ')) + '</p></article>';
-      }
-
-      function chartValueText(point) {
-        if (!point) return "";
-        if (point.title === "Estimated 1RM") return "Estimated 1RM: " + point.value + " " + data.settings.weightUnit;
-        if (point.title === "Volume load") return "Volume load: " + point.value + " " + data.settings.weightUnit;
-        return point.title + ": " + point.value + " reps";
+        return "";
       }
 
       function renderLiftProgressSummary(weeks, weekStart) {
@@ -3156,11 +3460,54 @@
         return '<div class="inline-panel"><strong>' + formatDate(current.weekStart) + ' vs ' + formatDate(previous.weekStart) + '</strong><p class="settings-note">' + escapeHtml(details.join("; ")) + '. ' + (current.isDeload ? 'This week was marked as a deload, so it is not treated as a regression.' : 'Use this comparison with RPE and rep quality, not load alone.') + '</p></div>';
       }
 
+      function hypertrophyWindowLabel(selection) {
+        if (!selection?.included?.length) return "No qualifying weeks";
+        const newest = selection.included[0].weekStart;
+        const oldest = selection.included.at(-1).weekStart;
+        return formatDate(oldest) + " - " + formatDate(newest);
+      }
+
+      function renderHypertrophyScoreDetail(analysis) {
+        const confidenceReason = analysis.confidence === "high"
+          ? "Six qualifying weeks, consistent RPE coverage, and several comparable lift exposures support this result."
+          : analysis.confidence === "moderate"
+            ? "The score is useful, but limited RPE coverage, comparable sessions, or exercise continuity reduce precision."
+            : "This is provisional. More submitted workouts, RPE entries, and comparable exercise exposures are needed.";
+        return `<section class="hypertrophy-detail" aria-label="Hypertrophy Score explanation">
+          <div><div class="section-kicker">Score summary</div><h2>${analysis.score} / 100 · ${escapeHtml(analysis.interpretation)}</h2></div>
+          <p>This score evaluates how supportive the recorded training process has been for hypertrophy. It does not measure or guarantee actual muscle gain.</p>
+          <div><h3>Weeks analyzed</h3><div class="score-week-list">${analysis.included.map((week) => '<span class="score-week-chip">' + formatWeek(week.weekStart).replace('Week of ', '') + '</span>').join('')}</div></div>
+          ${analysis.skippedDeloadWeeks.length ? '<div><h3>Skipped deload weeks</h3><div class="score-week-list">' + analysis.skippedDeloadWeeks.map((week) => '<span class="score-week-chip deload">' + formatWeek(week.weekStart).replace('Week of ', '') + ' · Deload</span>').join('') + '</div></div>' : ''}
+          ${analysis.incompleteWeeks.length ? '<div><h3>Low-data weeks not counted</h3><div class="score-week-list">' + analysis.incompleteWeeks.map((week) => '<span class="score-week-chip">' + formatWeek(week.weekStart).replace('Week of ', '') + '</span>').join('') + '</div></div>' : ''}
+          <div><h3>Category breakdown</h3><div class="score-category-list">${analysis.categories.map((category) => '<details class="score-category"><summary><strong>' + escapeHtml(category.label) + '</strong><span>' + category.points.toFixed(1) + ' / ' + category.max + '</span></summary><div><span>' + escapeHtml(category.detail) + '</span><strong>How to improve</strong><span>' + escapeHtml(category.action) + '</span></div></details>').join('')}</div></div>
+          <div><h3>What is going well</h3><div class="score-findings">${analysis.positives.map((item) => '<div class="score-finding"><strong>' + escapeHtml(item.title) + '</strong><span>' + escapeHtml(item.detail) + '</span></div>').join('')}</div></div>
+          <div><h3>What could be improved</h3><div class="score-findings">${analysis.improvements.slice(0, 3).map((item) => '<div class="score-finding improve"><strong>' + escapeHtml(item.title) + '</strong><span>' + escapeHtml(item.detail) + ' ' + escapeHtml(item.evidence) + '</span><span><strong>Why it matters:</strong> This category limits repeatable hypertrophy stimulus across the selected block.</span><span><strong>Next action:</strong> ' + escapeHtml(item.action) + '</span></div>').join('')}</div></div>
+          <div><h3>How to improve this score</h3><div class="score-actions">${analysis.actions.map((item) => '<div class="score-action"><strong>' + escapeHtml(item.title) + '</strong><span>' + escapeHtml(item.detail) + '</span></div>').join('')}</div></div>
+          <div class="inline-panel"><strong>${analysis.confidence.charAt(0).toUpperCase() + analysis.confidence.slice(1)} confidence</strong><p class="settings-note">${escapeHtml(confidenceReason)}</p></div>
+        </section>`;
+      }
+
+      function renderHypertrophyScore(analysis) {
+        if (analysis.score == null) return '<section class="hypertrophy-score-empty"><strong>Hypertrophy Score · Not enough data yet</strong><p>Submit at least one week with three completed working sets and at least half of its planned work finished. The score becomes more useful as six non-deload weeks and consistent RPE data accumulate.</p></section>';
+        const trend = analysis.trend == null ? "No prior six-week window" : (analysis.trend >= 0 ? "+" : "") + analysis.trend + " vs prior window";
+        const weekText = analysis.included.length + (analysis.included.length === 1 ? " qualifying week" : " qualifying weeks") + (analysis.provisional ? " · Provisional" : "");
+        return `<div class="hypertrophy-score-wrap">
+          <button class="hypertrophy-score-card" type="button" data-action="toggle-hypertrophy-score" aria-expanded="${hypertrophyScoreExpanded ? 'true' : 'false'}" style="--score:${analysis.score}">
+            <div><span class="hypertrophy-score-title">Overall program Hypertrophy Score</span><strong class="hypertrophy-score-number">${analysis.score} <small>/ 100</small></strong></div>
+            <span class="hypertrophy-score-ring" aria-hidden="true"><span>${analysis.score}</span></span>
+            <div class="hypertrophy-score-bar"><span></span></div>
+            <div class="hypertrophy-score-meta"><strong>${escapeHtml(analysis.interpretation)}</strong><span>${escapeHtml(hypertrophyWindowLabel(analysis))}</span><span>${escapeHtml(weekText)}</span><span>${escapeHtml(trend)}</span><span>${escapeHtml(analysis.confidence)} confidence</span><span>${hypertrophyScoreExpanded ? 'Hide analysis' : 'Open analysis'} ›</span></div>
+          </button>
+          ${hypertrophyScoreExpanded ? renderHypertrophyScoreDetail(analysis) : ""}
+        </div>`;
+      }
+
       function renderReview() {
         const names = getExerciseNames();
         if (!selectedExercise && names[0]) selectedExercise = names[0];
         const weeks = selectedExercise ? summarizeExerciseByWeek(selectedExercise) : [];
         const progress = selectedExercise ? exerciseProgressSeries(selectedExercise) : null;
+        const analysis = hypertrophyAnalysis(hypertrophyWindowOffset);
         if (!selectedWeek || !weeks.some((week) => week.weekStart === selectedWeek)) selectedWeek = weeks[0]?.weekStart || startOfWeekIso(todayIso());
         const recommendation = selectedExercise ? recommendForExerciseWeek(selectedExercise, selectedWeek) : null;
         if (names.length === 0) {
@@ -3171,10 +3518,14 @@
         return `
           <section class="view charts-view">
             <div class="screen-heading"><div><div class="section-kicker">Charts</div><h1>Lift progress</h1></div></div>
-            <div class="grid two">
-              <select data-action="review-exercise" aria-label="Exercise">${names.map((name) => '<option ' + (name === selectedExercise ? "selected" : "") + '>' + escapeHtml(name) + '</option>').join("")}</select>
-              <select data-action="review-week" aria-label="Week">${weeks.map((week) => '<option value="' + week.weekStart + '" ' + (week.weekStart === selectedWeek ? "selected" : "") + '>' + formatWeek(week.weekStart) + '</option>').join("")}</select>
+            <div class="chart-control-panel" aria-label="Chart controls">
+              <label class="chart-control-field chart-control-lift"><span>Chart lift</span><input type="search" list="chart-exercise-options" data-action="review-exercise-input" aria-label="Search or select exercise" value="${escapeHtml(selectedExercise)}" /></label>
+              <datalist id="chart-exercise-options">${names.map((name) => '<option value="' + escapeHtml(name) + '"></option>').join("")}</datalist>
+              <label class="chart-control-field"><span>Lift review week</span><select data-action="review-week" aria-label="Lift review week">${weeks.map((week) => '<option value="' + week.weekStart + '" ' + (week.weekStart === selectedWeek ? "selected" : "") + '>' + formatWeek(week.weekStart) + (week.isDeload ? ' · Deload' : '') + '</option>').join("")}</select></label>
+              <label class="chart-control-field"><span>Program score window</span><select data-action="hypertrophy-window" aria-label="Hypertrophy Score window">${analysis.windowOptions.length ? analysis.windowOptions.map((option) => '<option value="' + option.offset + '" ' + (option.offset === hypertrophyWindowOffset ? 'selected' : '') + '>' + escapeHtml(hypertrophyWindowLabel(option.selection)) + '</option>').join('') : '<option value="0">Latest qualifying weeks</option>'}</select></label>
+              <p class="chart-control-context">The Hypertrophy Score evaluates the overall submitted program. Lift charts and coaching below use ${escapeHtml(selectedExercise)}.</p>
             </div>
+            ${renderHypertrophyScore(analysis)}
             <div class="chart-metric-row"><div><span>Latest e1RM</span><strong>${latestOneRm ? latestOneRm.value : "-"}</strong></div><div><span>Latest volume</span><strong>${latestVolume ? latestVolume.value : "-"}</strong></div><div><span>Data points</span><strong>${progress.e1rm.filter((point) => point.value > 0).length}</strong></div></div>
             ${renderLiftProgressSummary(weeks, selectedWeek)}
             ${recommendation ? '<details class="compact-disclosure"><summary>Coach recommendation <span>' + escapeHtml(recommendation.label) + '</span></summary><div class="disclosure-body">' + renderRecommendation(recommendation) + '</div></details>' : ""}
@@ -3183,7 +3534,6 @@
               <div class="chart-list">
                 ${renderChart("e1rm", "Estimated 1RM", progress.e1rm, "No weighted completed sets yet.")}
                 ${renderChart("volume", "Volume load", progress.volume, "No volume load yet. Bodyweight-only sets will show once load is added.")}
-                ${renderChart("repsAtWeight", "Reps at " + (progress.commonWeight ? progress.commonWeight + " " + data.settings.weightUnit : "same weight"), progress.repsAtWeight, "Need repeated work at the same load.")}
               </div>
             </section>
             <section class="screen-section trend-section"><div class="section-heading"><div><h2>Recent weeks</h2></div></div><div class="trend-table">
@@ -4693,12 +5043,13 @@
         if (action === "show-chart-point") {
           const progress = exerciseProgressSeries(selectedExercise);
           const chartKey = target.dataset.chartKey;
-          const points = chartKey === "e1rm" ? progress.e1rm : chartKey === "volume" ? progress.volume : progress.repsAtWeight;
+          const points = chartKey === "e1rm" ? progress.e1rm : progress.volume;
           const point = points.filter((item) => item.value > 0)[Number(target.dataset.chartPoint)];
           chartDetailPoint = point ? { ...point, chartKey, date: point.date || point.label } : null;
           render();
         }
         if (action === "close-chart-point") { chartDetailPoint = null; render(); }
+        if (action === "toggle-hypertrophy-score") { hypertrophyScoreExpanded = !hypertrophyScoreExpanded; render(); }
         if (action === "new-session") addSession();
         if (action === "new-template") addTemplate();
         if (action === "save-template") saveActiveSessionAsTemplate();
@@ -4840,8 +5191,13 @@
         if (action === "template-exercise-rest") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { restSeconds: Number(target.value) });
         if (action === "template-exercise-rpe") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { targetRpe: Number(target.value) });
         if (action === "template-exercise-increment") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { increment: Number(target.value) });
-        if (action === "review-exercise") { selectedExercise = target.value; selectedWeek = ""; chartDetailPoint = null; render(); }
+        if (action === "review-exercise-input") {
+          const match = getExerciseNames().find((name) => exerciseMatches(name, target.value));
+          if (match) { selectedExercise = match; selectedWeek = ""; chartDetailPoint = null; render(); }
+          else target.value = selectedExercise;
+        }
         if (action === "review-week") { selectedWeek = target.value; render(); }
+        if (action === "hypertrophy-window") { hypertrophyWindowOffset = Math.max(0, Number(target.value || 0)); hypertrophyScoreExpanded = false; render(); }
         if (action === "weight-unit") commit({ ...data, settings: { ...data.settings, weightUnit: target.value } });
         if (action === "theme-mode") commit({ ...data, settings: { ...data.settings, theme: target.value } });
         if (action === "training-goal") commit({ ...data, settings: { ...data.settings, goal: target.value } });
