@@ -3,4 +3,7 @@ dist/
 ios/App/App/public/
 android/app/src/main/assets/public/
 *.log
+.env
+.env.*
+!.env.example
 .DS_Store

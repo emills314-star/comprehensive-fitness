@@ -1,6 +1,6 @@
 # Comprehensive Fitness
 
-A local-first workout tracker for logging strength sessions and getting transparent progression guidance.
+A local-first, installable workout tracker for logging strength sessions and getting transparent progression guidance.
 
 ## Current App
 
@@ -8,8 +8,9 @@ The web app is intentionally simple and self-contained:
 
 - `index.html` runs directly in a browser and is what Vercel serves.
 - `www/index.html` is the bundled payload Capacitor will copy into native builds.
-- Workout data is stored locally in the user's browser/app storage.
+- Workout data is stored primarily in IndexedDB, with active-workout runtime state restored after reload or suspension.
 - `manifest.webmanifest`, `sw.js`, and `resources/icon-*.png` make the Vercel app installable from iPhone Safari.
+- Optional Web Push uses Vercel Functions, Upstash QStash, Upstash Redis, and VAPID. It does not require an Apple Developer Program membership.
 
 ## Install On iPhone From Vercel
 
@@ -18,11 +19,15 @@ After Vercel redeploys the latest `main` branch:
 1. Open the Vercel app URL in Safari on your iPhone.
 2. Tap the Share button.
 3. Tap `Add to Home Screen`.
-4. Name it `Comprehensive Fitness`.
-5. Tap `Add`.
-6. Open the app from the new Home Screen icon.
+4. Enable `Open as Web App` when that option appears.
+5. Name it `Comprehensive Fitness` and tap `Add`.
+6. Open it from the new Home Screen icon, then use Settings > iPhone app setup to enable and test notifications.
 
 Workout data is stored locally for that installed web app/site. Export a backup from Settings before switching domains, clearing Safari data, or replacing the phone.
+
+## Locked-Screen Rest Notifications
+
+The foreground timer works without backend configuration. Reliable locked-screen notifications require the free-tier-compatible push services documented in [docs/push-backend.md](docs/push-backend.md). Add the listed environment variables to Vercel and redeploy.
 
 ## PWA Maintenance
 

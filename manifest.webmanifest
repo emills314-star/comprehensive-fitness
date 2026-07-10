@@ -2,11 +2,14 @@
   "name": "Comprehensive Fitness",
   "short_name": "Fitness",
   "description": "Track strength workouts, rest timers, travel sessions, and transparent lift progression guidance.",
+  "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#101418",
-  "theme_color": "#101418",
+  "display_override": ["standalone", "minimal-ui"],
+  "lang": "en-US",
+  "background_color": "#f4f8fb",
+  "theme_color": "#086fc7",
   "orientation": "portrait",
   "categories": ["health", "fitness", "productivity"],
   "icons": [
@@ -14,13 +17,27 @@
       "src": "/resources/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/resources/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/resources/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Active workout",
+      "short_name": "Workout",
+      "url": "/?workout=active",
+      "icons": [{ "src": "/resources/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }
