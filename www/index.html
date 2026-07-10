@@ -811,6 +811,7 @@
       .exercise-suggestion strong { font-size: .74rem; line-height: 1.3; overflow-wrap: anywhere; }
       .exercise-suggestion span { color: var(--muted); font-size: .61rem; }
       .exercise-search-empty { color: var(--muted); font-size: .69rem; padding: 12px; }
+      .exercise-search-error { color: var(--red); font-size: .64rem; font-weight: 750; line-height: 1.35; }
       .score-scope-field { display: grid; gap: 4px; grid-column: 1 / -1; }
       .score-scope-field > span { color: var(--muted); font-size: .58rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
       .score-scope-control { background: var(--surface-strong); border: 1px solid var(--line); border-radius: 8px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 3px; }
@@ -1458,6 +1459,7 @@
       let selectedExerciseId = "";
       let chartExerciseDraft = "";
       let chartExerciseSearchOpen = false;
+      let chartExerciseSearchError = "";
       let chartExerciseHighlight = 0;
       let recentChartExerciseIds = [];
       let selectedWeek = "";
@@ -1944,6 +1946,8 @@
         if (!list) return;
         list.innerHTML = renderExerciseSuggestions(chartExerciseDraft);
         list.hidden = !chartExerciseSearchOpen;
+        const error = root.querySelector(".exercise-search-error");
+        if (error) { error.textContent = chartExerciseSearchError; error.hidden = !chartExerciseSearchError; }
       }
 
       function selectChartExercise(exerciseId) {
@@ -1954,6 +1958,7 @@
         selectedWeek = "";
         hypertrophyWindowOffset = 0;
         chartExerciseSearchOpen = false;
+        chartExerciseSearchError = "";
         chartExerciseHighlight = 0;
         recentChartExerciseIds = [exercise.id, ...recentChartExerciseIds.filter((id) => id !== exercise.id)].slice(0, 8);
         chartDetailPoint = null;
@@ -3765,7 +3770,7 @@
           <section class="view charts-view">
             <div class="screen-heading"><div><div class="section-kicker">Charts</div><h1>Lift progress</h1></div></div>
             <div class="chart-control-panel" aria-label="Chart controls">
-              <div class="chart-control-field chart-control-lift"><label for="chart-exercise-search">Chart lift</label><div class="chart-search-input"><input id="chart-exercise-search" type="search" data-action="review-exercise-input" role="combobox" aria-autocomplete="list" aria-controls="chart-exercise-suggestions" aria-expanded="${chartExerciseSearchOpen ? 'true' : 'false'}" aria-label="Search or select exercise" autocomplete="off" value="${escapeHtml(chartExerciseDraft || selectedName)}" /><button class="chart-search-clear" type="button" data-action="clear-chart-exercise-search" aria-label="Clear exercise search">×</button></div><div id="chart-exercise-suggestions" class="exercise-suggestions" role="listbox" ${chartExerciseSearchOpen ? '' : 'hidden'}>${renderExerciseSuggestions()}</div></div>
+              <div class="chart-control-field chart-control-lift"><label for="chart-exercise-search">Chart lift</label><div class="chart-search-input"><input id="chart-exercise-search" type="search" data-action="review-exercise-input" role="combobox" aria-autocomplete="list" aria-controls="chart-exercise-suggestions" aria-expanded="${chartExerciseSearchOpen ? 'true' : 'false'}" aria-label="Search or select exercise" autocomplete="off" value="${escapeHtml(chartExerciseDraft || selectedName)}" /><button class="chart-search-clear" type="button" data-action="clear-chart-exercise-search" aria-label="Clear exercise search">×</button></div><div id="chart-exercise-suggestions" class="exercise-suggestions" role="listbox" ${chartExerciseSearchOpen ? '' : 'hidden'}>${renderExerciseSuggestions()}</div><small class="exercise-search-error" role="status" ${chartExerciseSearchError ? '' : 'hidden'}>${escapeHtml(chartExerciseSearchError)}</small></div>
               <div class="score-scope-field"><span>Score scope</span><div class="score-scope-control" role="group" aria-label="Hypertrophy Score scope"><button type="button" data-action="set-hypertrophy-scope" data-scope="overall" aria-pressed="${hypertrophyScoreScope === 'overall'}">Overall program</button><button type="button" data-action="set-hypertrophy-scope" data-scope="exercise" aria-pressed="${hypertrophyScoreScope === 'exercise'}">Selected lift</button></div></div>
               <label class="chart-control-field"><span>Lift review week</span><select data-action="review-week" aria-label="Lift review week">${weeks.map((week) => '<option value="' + week.weekStart + '" ' + (week.weekStart === selectedWeek ? "selected" : "") + '>' + formatWeek(week.weekStart) + (week.isDeload ? ' · Deload' : '') + '</option>').join("")}</select></label>
               <label class="chart-control-field"><span>Score window</span><select data-action="hypertrophy-window" aria-label="Hypertrophy Score window">${analysis.windowOptions.length ? analysis.windowOptions.map((option) => '<option value="' + option.offset + '" ' + (option.offset === hypertrophyWindowOffset ? 'selected' : '') + '>' + escapeHtml(hypertrophyWindowLabel(option.selection)) + '</option>').join('') : '<option value="0">Latest qualifying weeks</option>'}</select></label>
@@ -5299,6 +5304,7 @@
         if (action === "select-chart-exercise") selectChartExercise(target.dataset.exerciseId);
         if (action === "clear-chart-exercise-search") {
           chartExerciseDraft = "";
+          chartExerciseSearchError = "";
           chartExerciseSearchOpen = true;
           chartExerciseHighlight = 0;
           const input = root.querySelector('[data-action="review-exercise-input"]');
@@ -5509,6 +5515,7 @@
         if (!target || target.tagName !== "INPUT") return;
         if (target.dataset.action === "review-exercise-input") {
           chartExerciseDraft = target.value;
+          chartExerciseSearchError = "";
           chartExerciseSearchOpen = true;
           chartExerciseHighlight = 0;
           target.select();
@@ -5596,6 +5603,13 @@
           if (event.key === "Enter") {
             event.preventDefault();
             if (confirmChartExerciseDraft()) return;
+            chartExerciseDraft = selectedExerciseName();
+            chartExerciseSearchOpen = false;
+            chartExerciseSearchError = "No logged exercise matched. The previous lift remains selected.";
+            target.value = chartExerciseDraft;
+            target.setAttribute("aria-expanded", "false");
+            updateExerciseSuggestionList();
+            return;
           }
           if (event.key === "Escape") {
             event.preventDefault();
@@ -5637,6 +5651,7 @@
           chartExerciseDraft = target.value;
           chartExerciseSearchOpen = true;
           chartExerciseHighlight = 0;
+          chartExerciseSearchError = "";
           target.setAttribute("aria-expanded", "true");
           updateExerciseSuggestionList();
           return;
