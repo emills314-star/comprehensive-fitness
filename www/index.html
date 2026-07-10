@@ -29,6 +29,8 @@
         --green-dark: rgba(74, 163, 255, 0.13);
         --amber: #ffbc4a;
         --red: #ff7e72;
+        --success: #43d17a;
+        --success-dark: rgba(67, 209, 122, 0.15);
         --surface: rgba(255, 255, 255, 0.035);
         --surface-strong: rgba(255, 255, 255, 0.07);
         --input-bg: rgba(5, 13, 18, 0.72);
@@ -55,6 +57,8 @@
         --green-dark: rgba(8, 111, 199, 0.1);
         --amber: #a76200;
         --red: #c84337;
+        --success: #148a46;
+        --success-dark: rgba(20, 138, 70, 0.11);
         --surface: rgba(255, 255, 255, 0.66);
         --surface-strong: rgba(255, 255, 255, 0.9);
         --input-bg: rgba(255, 255, 255, 0.92);
@@ -433,12 +437,12 @@
       .set-row.warmup strong { color: var(--amber); font-size: 0.72rem; }
       .set-block { border-left: 3px solid transparent; display: grid; }
       .set-block.completed {
-        background: color-mix(in srgb, var(--amber) 18%, transparent);
-        border-left-color: var(--amber);
-        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--amber) 48%, transparent);
+        background: var(--success-dark);
+        border-left-color: var(--success);
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--success) 46%, transparent);
       }
-      .set-block.completed .set-row { border-top-color: color-mix(in srgb, var(--amber) 60%, var(--line)); }
-      .set-block.completed .set-row strong { color: var(--amber); }
+      .set-block.completed .set-row { border-top-color: color-mix(in srgb, var(--success) 58%, var(--line)); }
+      .set-block.completed .set-row strong { color: var(--success); }
       .set-block.completed input { color: var(--text); }
       .set-row.completed { background: transparent; border-color: transparent; }
       .set-row.pending { border-left: 3px solid transparent; }
@@ -487,10 +491,10 @@
       }
 
       .check-button.checked {
-        background: var(--amber);
-        border-color: var(--amber);
-        box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber) 22%, transparent);
-        color: #161006;
+        background: var(--success);
+        border-color: var(--success);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 22%, transparent);
+        color: #06150b;
       }
 
       .exercise-level-controls { align-items: center; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 14px; padding-bottom: 8px; }
@@ -815,7 +819,7 @@
         min-height: 180px;
       }
 
-      .timer-bar { align-items: center; background: var(--surface-strong); border-top: 1px solid var(--amber); display: grid; gap: 8px; grid-template-columns: 1fr 36px 36px; padding: 9px 8px 10px 43px; }
+      .timer-bar { align-items: center; background: var(--surface-strong); border-top: 1px solid var(--amber); display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr) 42px 42px; padding: 10px 8px 11px 43px; }
 
       .timer-bar strong {
         color: var(--amber);
@@ -832,9 +836,26 @@
         text-transform: uppercase;
       }
 
-      .timer-bar.complete { border-color: var(--green); }
+      .timer-bar.complete { background: var(--success-dark); border-color: var(--success); }
+      .timer-bar.complete strong, .timer-bar.complete span { color: var(--success); }
+      .timer-control { border-radius: 8px; font-size: 1rem; font-weight: 1000; min-height: 40px; min-width: 40px; padding: 0; justify-content: center; }
+      .timer-pause { background: var(--green-dark); border-color: var(--green); color: var(--green-2); }
+      .timer-cancel { background: color-mix(in srgb, var(--red) 12%, transparent); border-color: var(--red); color: var(--red); }
+      .timer-finished { background: var(--success-dark); border: 1px solid var(--success); color: var(--success); }
       .timer-progress { background: color-mix(in srgb, var(--amber) 18%, var(--surface)); border-radius: 999px; grid-column: 1 / -1; height: 7px; overflow: hidden; }
       .timer-progress span { background: linear-gradient(90deg, var(--amber), #ffe099); display: block; height: 100%; transition: width 1s linear; width: var(--timer-progress, 0%); }
+      .timer-bar.complete .timer-progress { background: color-mix(in srgb, var(--success) 18%, var(--surface)); }
+      .timer-bar.complete .timer-progress span { background: var(--success); }
+
+      .timer-complete-toast { align-items: center; background: var(--bg-soft); border: 1px solid var(--success); border-radius: 10px; bottom: calc(88px + env(safe-area-inset-bottom)); box-shadow: 0 18px 48px rgba(0, 0, 0, .42); display: grid; gap: 3px; grid-template-columns: 36px minmax(0, 1fr) auto; left: 12px; margin: 0 auto; max-width: 520px; padding: 12px; position: fixed; right: 12px; z-index: 30; }
+      .timer-complete-icon { align-items: center; background: var(--success); border-radius: 999px; color: #06150b; display: inline-flex; font-size: 1.1rem; font-weight: 1000; height: 32px; justify-content: center; width: 32px; }
+      .timer-complete-toast strong { color: var(--success); font-size: .88rem; }
+      .timer-complete-toast span { color: var(--muted); font-size: .72rem; }
+      .timer-complete-toast button { min-height: 34px; padding: 5px 9px; }
+      .previous-set { color: var(--muted); flex: 1 1 100%; font-size: .68rem; line-height: 1.35; }
+      .plate-calculator { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; display: grid; gap: 5px; padding: 10px; }
+      .plate-calculator strong { font-size: .78rem; }
+      .plate-calculator span { color: var(--muted); font-size: .7rem; line-height: 1.4; }
 
       .adjustment-summary { background: color-mix(in srgb, var(--amber) 11%, var(--surface)); border-left: 3px solid var(--amber); color: var(--text); font-weight: 900; padding: 10px 12px; }
 
@@ -849,8 +870,8 @@
       .readiness-draft { display: grid; gap: 12px; }
       .readiness-draft .recovery-inputs { margin: 0; }
 
-      [data-theme="light"] body .set-block.completed { background: #fff5d9; box-shadow: inset 0 0 0 1px #d89a19; }
-      [data-theme="light"] body .check-button.checked { color: #211400; }
+      [data-theme="light"] body .set-block.completed { background: #e8f7ed; box-shadow: inset 0 0 0 1px #4ea36c; }
+      [data-theme="light"] body .check-button.checked { color: #fff; }
 
       .session-card {
         align-items: stretch;
@@ -1126,7 +1147,7 @@
       const STORAGE_KEY = "comprehensive-fitness-data-v1";
       const root = document.getElementById("root");
       const defaultReadinessBaseline = { sleepHours: 7.5, sleepQuality: 4, hrv: "", restingHr: "", soreness: 2, band: 8 };
-      const defaultSettings = { weightUnit: "lb", goal: "hypertrophy", trainingStatus: "intermediate", theme: "dark", readinessBaseline: { ...defaultReadinessBaseline } };
+      const defaultSettings = { weightUnit: "lb", goal: "hypertrophy", trainingStatus: "intermediate", theme: "dark", timerSound: true, timerVibration: true, readinessBaseline: { ...defaultReadinessBaseline } };
       const researchRules = {
         volume: {
           novice: "8-12 hard sets per muscle weekly",
@@ -1147,6 +1168,9 @@
       let activeSessionId = "";
       let timer = null;
       let timerInterval = 0;
+      let timerCompleteNotice = null;
+      let timerAudioContext = null;
+      let timerWakeLock = null;
       let selectedExercise = "";
       let selectedWeek = "";
       let addExerciseDraft = "";
@@ -1173,10 +1197,10 @@
         settings: "Data",
         add: "+",
         clock: "Rest",
-        done: "OK",
+        done: "&#10003;",
         delete: "X",
-        pause: "Pause",
-        play: "Start",
+        pause: "&#10074;&#10074;",
+        play: "&#9654;",
         duplicate: "Copy",
         download: "Export",
         upload: "Import"
@@ -1883,6 +1907,7 @@
               ${navButton("settings", "Settings")}
             </nav>
             ${renderTemplateStartSheet()}
+            ${renderTimerCompleteNotice()}
           </div>
         `;
         if (templateStartFlow) window.setTimeout(() => root.querySelector(".bottom-sheet [autofocus]")?.focus(), 0);
@@ -2238,6 +2263,7 @@
               <div class="disclosure-body">
                 <label class="rest-control">Rest after this lift<input type="number" min="15" step="15" value="${restSeconds}" data-action="exercise-rest-seconds" data-exercise-id="${exercise.id}" /> sec</label>
                 <p class="settings-note">${escapeHtml(restRecommendationReason(exercise.name, { reps: firstWorkSet?.reps, rpe: firstWorkSet?.rpe }))}</p>
+                ${renderPlateCalculator(exercise, firstWorkSet)}
                 ${renderMuscleSelectors(exercise)}
                 ${renderExerciseGuidance(exercise)}
                 <textarea data-action="exercise-notes" data-exercise-id="${exercise.id}" placeholder="Exercise notes" aria-label="Exercise notes">${escapeHtml(exercise.notes)}</textarea>
@@ -2249,6 +2275,11 @@
 
       function renderSet(set, exercise) {
         const restSeconds = Number(exercise.restSeconds || recommendedRestSeconds(exercise.name, { reps: set.reps, rpe: set.rpe }));
+        const previousSets = set.isWarmup ? [] : getMostRecentWorkoutSets(exercise.name, { excludeSessionId: exercise.sessionId });
+        const previous = previousSets.find((item) => item.setNumber === set.setNumber) || previousSets[set.setNumber - 1];
+        const previousText = previous
+          ? "Last time: " + previous.reps + " reps @ " + (previous.isBodyweight ? "body weight" : previous.weight + " " + (previous.weightUnit || data.settings.weightUnit)) + (previous.rpe ? " · RPE " + previous.rpe : "")
+          : "";
         return `
           <div class="set-block ${set.completed ? "completed" : ""}">
             <div class="set-row ${set.completed ? "completed" : "pending"} ${set.isWarmup ? "warmup" : ""}">
@@ -2256,16 +2287,44 @@
               <input type="number" min="0" value="${set.reps}" data-action="set-reps" data-set-id="${set.id}" aria-label="Reps" />
               <input type="number" min="0" value="${set.weight}" data-action="set-weight" data-set-id="${set.id}" aria-label="Weight" />
               <input type="number" min="0" max="10" step="0.5" value="${set.rpe}" data-action="set-rpe" data-set-id="${set.id}" aria-label="RPE" />
-              <button class="check-button ${set.completed ? "checked" : ""}" type="button" data-action="toggle-set" data-set-id="${set.id}" title="${set.completed ? "Completed" : "Mark set complete"}" aria-pressed="${set.completed ? "true" : "false"}">${set.completed ? "Done" : icon.done}</button>
+              <button class="check-button ${set.completed ? "checked" : ""}" type="button" data-action="toggle-set" data-set-id="${set.id}" title="${set.completed ? "Completed" : "Mark set complete"}" aria-label="${set.completed ? "Set completed" : "Mark set complete"}" aria-pressed="${set.completed ? "true" : "false"}">${icon.done}</button>
             </div>
             <div class="set-actions">
               <button class="mini-button set-rest-button" type="button" data-action="start-timer" data-exercise-id="${exercise.id}" data-set-id="${set.id}">${icon.clock} ${formatTimer(restSeconds)}</button>
               <label class="toggle-line"><input type="checkbox" data-action="set-warmup" data-set-id="${set.id}" ${set.isWarmup ? "checked" : ""} />Warm-up</label>
               <button class="mini-button" type="button" data-action="delete-set" data-set-id="${set.id}">Remove</button>
+              ${previousText ? '<span class="previous-set">' + escapeHtml(previousText) + '</span>' : ""}
             </div>
             ${renderTimer(set.id)}
           </div>
         `;
+      }
+
+      function renderPlateCalculator(exercise, set) {
+        if (!set || set.isBodyweight || exercise.isBodyweight || !isBarbellExercise(exercise.name)) return "";
+        const total = Number(set.weight || 0);
+        const unit = set.weightUnit || data.settings.weightUnit;
+        const bar = unit === "kg" ? 20 : 45;
+        if (total <= 0) return '<div class="plate-calculator"><strong>Plate calculator</strong><span>Enter the total bar weight to see plates per side.</span></div>';
+        if (total < bar) return '<div class="plate-calculator"><strong>Plate calculator</strong><span>Total load is below the standard ' + bar + ' ' + unit + ' bar.</span></div>';
+        const available = unit === "kg" ? [25, 20, 15, 10, 5, 2.5, 1.25] : [45, 35, 25, 10, 5, 2.5];
+        let remaining = Math.max(0, (total - bar) / 2);
+        const plates = [];
+        available.forEach((plate) => {
+          const count = Math.floor((remaining + 0.001) / plate);
+          if (count > 0) {
+            plates.push(count + " × " + plate);
+            remaining = Math.round((remaining - count * plate) * 100) / 100;
+          }
+        });
+        const plateText = plates.length ? plates.join(" + ") : "empty bar";
+        const remainder = remaining > 0.01 ? " · " + remaining + " " + unit + " per side cannot be made with standard plates" : "";
+        return '<div class="plate-calculator"><strong>Plate calculator · ' + total + ' ' + unit + '</strong><span>Each side: ' + plateText + remainder + '</span></div>';
+      }
+
+      function isBarbellExercise(name) {
+        const value = String(name || "").toLowerCase();
+        return /barbell|bench press|back squat|front squat|deadlift|good morning|hip thrust/.test(value) && !/dumbbell|machine|cable|smith/.test(value);
       }
 
       function renderTimer(setId) {
@@ -2275,9 +2334,22 @@
         return `
           <div class="timer-bar ${timer.remainingSeconds === 0 ? "complete" : ""}">
             <div><strong>${formatTimer(timer.remainingSeconds)}</strong><span>${timer.remainingSeconds === 0 ? "Rest complete" : "Rest timer"}</span></div>
-            <button class="icon-button" type="button" data-action="toggle-timer">${timer.isPaused ? icon.play : icon.pause}</button>
-            <button class="icon-button" type="button" data-action="clear-timer">${icon.delete}</button>
+            ${timer.remainingSeconds === 0
+              ? '<span class="timer-control timer-finished" aria-hidden="true">&#10003;</span>'
+              : '<button class="timer-control timer-pause" type="button" data-action="toggle-timer" title="' + (timer.isPaused ? 'Resume timer' : 'Pause timer') + '" aria-label="' + (timer.isPaused ? 'Resume timer' : 'Pause timer') + '">' + (timer.isPaused ? icon.play : icon.pause) + '</button>'}
+            <button class="timer-control timer-cancel" type="button" data-action="clear-timer" title="Cancel timer" aria-label="Cancel timer">${icon.delete}</button>
             <div class="timer-progress" role="progressbar" aria-label="Rest elapsed" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}" style="--timer-progress:${progress}%"><span></span></div>
+          </div>
+        `;
+      }
+
+      function renderTimerCompleteNotice() {
+        if (!timerCompleteNotice) return "";
+        return `
+          <div class="timer-complete-toast" role="alert" aria-live="assertive">
+            <span class="timer-complete-icon">&#10003;</span>
+            <div><strong>Timer complete</strong><span>${escapeHtml(timerCompleteNotice.exerciseName)}${timerCompleteNotice.setNumber ? " · Set " + timerCompleteNotice.setNumber : ""}. Time for your next set.</span></div>
+            <button type="button" data-action="dismiss-timer-notice">Dismiss</button>
           </div>
         `;
       }
@@ -2577,6 +2649,8 @@
                 </select>
               </label>
               <p class="settings-note">Rest is recommended per exercise from movement type, rep range, effort, and recent performance.</p>
+              <label class="toggle-line"><input type="checkbox" data-action="timer-sound" ${data.settings.timerSound !== false ? "checked" : ""} />Rest timer sound</label>
+              <label class="toggle-line"><input type="checkbox" data-action="timer-vibration" ${data.settings.timerVibration !== false ? "checked" : ""} />Rest timer vibration (when supported)</label>
             </div></details>
             <details class="settings-group"><summary>Readiness baseline <span>Your normal</span></summary><div class="disclosure-body settings-panel">
               <div class="inline-panel">
@@ -2819,7 +2893,10 @@
         const exercise = data.exercises.find((item) => item.id === exerciseId);
         const set = data.sets.find((item) => item.id === setId);
         const seconds = Number(exercise?.restSeconds || recommendedRestSeconds(exercise?.name || "Exercise", { reps: set?.reps, rpe: set?.rpe }));
-        timer = { exerciseId, setId, durationSeconds: seconds, remainingSeconds: seconds, isActive: true, isPaused: false };
+        timerCompleteNotice = null;
+        primeTimerAlerts();
+        requestTimerWakeLock();
+        timer = { exerciseId, setId, durationSeconds: seconds, remainingSeconds: seconds, endsAt: Date.now() + seconds * 1000, isActive: true, isPaused: false };
         startTimerInterval();
         render();
       }
@@ -2828,10 +2905,95 @@
         window.clearInterval(timerInterval);
         timerInterval = window.setInterval(() => {
           if (!timer || timer.isPaused || !timer.isActive) return;
-          timer.remainingSeconds = Math.max(0, timer.remainingSeconds - 1);
-          timer.isActive = timer.remainingSeconds > 0;
+          timer.remainingSeconds = Math.max(0, Math.ceil((timer.endsAt - Date.now()) / 1000));
+          if (timer.remainingSeconds === 0) {
+            completeTimer();
+            return;
+          }
           render();
         }, 1000);
+      }
+
+      function toggleTimer() {
+        if (!timer || timer.remainingSeconds === 0) return;
+        timer.isPaused = !timer.isPaused;
+        if (timer.isPaused) {
+          timer.remainingSeconds = Math.max(1, Math.ceil((timer.endsAt - Date.now()) / 1000));
+          releaseTimerWakeLock();
+        } else {
+          primeTimerAlerts();
+          requestTimerWakeLock();
+          timer.endsAt = Date.now() + timer.remainingSeconds * 1000;
+          startTimerInterval();
+        }
+        render();
+      }
+
+      function completeTimer() {
+        if (!timer || timer.remainingSeconds > 0 || !timer.isActive) return;
+        window.clearInterval(timerInterval);
+        timerInterval = 0;
+        timer.remainingSeconds = 0;
+        timer.isActive = false;
+        timer.isPaused = false;
+        releaseTimerWakeLock();
+        const exercise = data.exercises.find((item) => item.id === timer.exerciseId);
+        const set = data.sets.find((item) => item.id === timer.setId);
+        timerCompleteNotice = { exerciseName: exercise?.name || "Rest", setNumber: set?.setNumber || "" };
+        playTimerCompletionSound();
+        if (data.settings.timerVibration && navigator.vibrate) navigator.vibrate([250, 120, 250, 120, 450]);
+        render();
+      }
+
+      function primeTimerAlerts() {
+        if (!data.settings.timerSound) return;
+        try {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContextClass) return;
+          if (!timerAudioContext) timerAudioContext = new AudioContextClass();
+          if (timerAudioContext.state === "suspended") timerAudioContext.resume();
+        } catch {
+          timerAudioContext = null;
+        }
+      }
+
+      function playTimerCompletionSound() {
+        if (!data.settings.timerSound) return;
+        primeTimerAlerts();
+        if (!timerAudioContext) return;
+        try {
+          const now = timerAudioContext.currentTime;
+          [0, 0.22, 0.44].forEach((delay, index) => {
+            const oscillator = timerAudioContext.createOscillator();
+            const gain = timerAudioContext.createGain();
+            oscillator.type = "sine";
+            oscillator.frequency.value = index === 2 ? 1046 : 784;
+            gain.gain.setValueAtTime(0.0001, now + delay);
+            gain.gain.exponentialRampToValueAtTime(0.24, now + delay + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + delay + 0.17);
+            oscillator.connect(gain);
+            gain.connect(timerAudioContext.destination);
+            oscillator.start(now + delay);
+            oscillator.stop(now + delay + 0.18);
+          });
+        } catch {
+          return;
+        }
+      }
+
+      async function requestTimerWakeLock() {
+        if (!navigator.wakeLock?.request || document.visibilityState !== "visible") return;
+        try {
+          if (!timerWakeLock || timerWakeLock.released) timerWakeLock = await navigator.wakeLock.request("screen");
+        } catch {
+          timerWakeLock = null;
+        }
+      }
+
+      function releaseTimerWakeLock() {
+        if (!timerWakeLock) return;
+        timerWakeLock.release().catch(() => undefined);
+        timerWakeLock = null;
       }
 
       function formatTimer(seconds) {
@@ -3472,8 +3634,9 @@
           patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { warmups });
         }
         if (action === "start-timer") startTimer(target.dataset.exerciseId, target.dataset.setId);
-        if (action === "toggle-timer" && timer) { timer.isPaused = !timer.isPaused; render(); }
-        if (action === "clear-timer") { timer = null; render(); }
+        if (action === "toggle-timer") toggleTimer();
+        if (action === "clear-timer") { window.clearInterval(timerInterval); timerInterval = 0; releaseTimerWakeLock(); timer = null; render(); }
+        if (action === "dismiss-timer-notice") { timerCompleteNotice = null; timer = null; render(); }
         if (action === "open-session") { activeSessionId = target.dataset.sessionId; view = "workout"; render(); }
         if (action === "export-data") exportData();
         if (action === "clear-data") { pendingClearData = true; render(); }
@@ -3514,6 +3677,8 @@
         if (action === "theme-mode") commit({ ...data, settings: { ...data.settings, theme: target.value } });
         if (action === "training-goal") commit({ ...data, settings: { ...data.settings, goal: target.value } });
         if (action === "training-status") commit({ ...data, settings: { ...data.settings, trainingStatus: target.value } });
+        if (action === "timer-sound") commit({ ...data, settings: { ...data.settings, timerSound: target.checked } });
+        if (action === "timer-vibration") commit({ ...data, settings: { ...data.settings, timerVibration: target.checked } });
         if (action === "recovery-sleep-quality") patchRecovery({ sleepQuality: target.value });
         if (action === "recovery-soreness") patchRecovery({ soreness: target.value });
         if (action === "recovery-illness") patchRecovery({ illness: target.checked });
@@ -3654,6 +3819,15 @@
 
       window.addEventListener("pagehide", saveData);
       window.addEventListener("beforeunload", saveData);
+      document.addEventListener("visibilitychange", () => {
+        if (!timer || timer.isPaused || !timer.isActive) return;
+        timer.remainingSeconds = Math.max(0, Math.ceil((timer.endsAt - Date.now()) / 1000));
+        if (timer.remainingSeconds === 0) completeTimer();
+        else if (document.visibilityState === "visible") {
+          requestTimerWakeLock();
+          render();
+        }
+      });
 
       if ("serviceWorker" in navigator && window.isSecureContext) {
         window.addEventListener("load", () => {
