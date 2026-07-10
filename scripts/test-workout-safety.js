@@ -7,6 +7,12 @@ assert.match(html, /let activeWorkoutId = "";/, "A canonical active workout ID i
 assert.match(html, /const runtime = \{ activeSessionId, activeWorkoutId, timer/, "The active workout ID must persist with timer state");
 assert.match(html, /workoutId: activeWorkoutId \|\| exercise\?\.sessionId/, "Rest timers must be keyed to the active workout");
 assert.match(html, /You already have an active workout\./, "Starting a second template must be blocked");
+assert.match(html, /workoutState: options\.started \? "active" : "idle"/, "A newly started empty workout must immediately own the active slot");
+assert.match(html, /activeWorkoutId = session\.id;[\s\S]{0,180}activeSetId = "";/, "Creating a workout must assign the canonical active ID before rendering");
+assert.match(html, /if \(session\?\.workoutState === "inactive"\) return false;/, "Demoted legacy drafts must not reactivate after restart");
+assert.match(html, /return sessionHasStarted\(session\);/, "The active guard must include explicitly started workouts with no exercises yet");
+assert.match(html, /item\.id === activeWorkoutId \|\| item\.id === session\?\.id/, "The session picker must exclude unrelated unsubmitted drafts");
+assert.match(html, /New workout unavailable while a workout is active/, "The new-workout control must be disabled while a session is active");
 assert.match(html, /Cancel and Discard Workout/, "Cancellation must use explicit destructive wording");
 assert.match(html, /data\.sessions\.filter\(\(item\) => item\.id !== session\.id\)/, "Cancellation must remove only the selected active session");
 assert.match(html, /removeWorkoutFromSyncQueue\(session\.id\)/, "Canceled drafts must be removed from pending synchronization");

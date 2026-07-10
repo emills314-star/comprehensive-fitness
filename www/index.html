@@ -1748,11 +1748,19 @@
         if (data.sessions.length === 0) data.sessions.push(createSession());
         activeSessionId = [...data.sessions].sort((a, b) => b.date.localeCompare(a.date))[0].id;
         const draftSessions = data.sessions
-          .filter((session) => !isSessionSubmitted(session) && data.exercises.some((exercise) => exercise.sessionId === session.id))
+          .filter((session) => sessionHasStarted(session))
           .sort((a, b) => String(b.updatedAt || b.createdAt || "").localeCompare(String(a.updatedAt || a.createdAt || "")));
         activeWorkoutId = draftSessions[0]?.id || "";
         await restoreRuntime();
-        if (activeWorkoutId && !activeWorkoutSession()) activeWorkoutId = "";
+        if (activeWorkoutId && !hasActiveWorkout()) activeWorkoutId = "";
+        if (!activeWorkoutId && draftSessions.length) activeWorkoutId = draftSessions[0].id;
+        if (activeWorkoutId) {
+          data.sessions = data.sessions.map((session) => {
+            if (isSessionSubmitted(session)) return session;
+            if (session.id === activeWorkoutId) return { ...session, workoutStarted: true, workoutState: "active" };
+            return sessionHasStarted(session) ? { ...session, workoutStarted: false, workoutState: "inactive" } : session;
+          });
+        }
         if (activeWorkoutId) activeSessionId = activeWorkoutId;
         await restorePushIdentity();
         if (persistenceReady && stored) writeIndexedValue("app-data", data).catch(() => undefined);
@@ -1831,10 +1839,10 @@
         return data.settings.theme === "light" ? "Light" : "Dark";
       }
 
-      function createSession(title) {
+      function createSession(title, options = {}) {
         const now = isoNow();
         const sameDayCount = data.sessions.filter((session) => session.date === todayIso()).length + 1;
-        return { id: id(), date: todayIso(), title: title || "Workout " + sameDayCount, isTravel: false, notes: "", recovery: defaultRecovery(), submitted: false, startedAt: now, createdAt: now, updatedAt: now };
+        return { id: id(), date: todayIso(), title: title || "Workout " + sameDayCount, isTravel: false, notes: "", recovery: defaultRecovery(), submitted: false, workoutStarted: Boolean(options.started), workoutState: options.started ? "active" : "idle", startedAt: options.started ? now : "", createdAt: now, updatedAt: now };
       }
 
       function defaultRecovery() {
@@ -1890,9 +1898,14 @@
         return session && !isSessionSubmitted(session) ? session : null;
       }
 
+      function sessionHasStarted(session) {
+        if (session?.workoutState === "inactive") return false;
+        return Boolean(session && !isSessionSubmitted(session) && (session.workoutStarted || session.templateId || data.exercises.some((exercise) => exercise.sessionId === session.id)));
+      }
+
       function hasActiveWorkout() {
         const session = activeWorkoutSession();
-        return Boolean(session && data.exercises.some((exercise) => exercise.sessionId === session.id));
+        return sessionHasStarted(session);
       }
 
       function activeExercises() {
@@ -1901,7 +1914,10 @@
       }
 
       function workoutSessionOptions(session) {
-        const recent = [...data.sessions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 60);
+        const recent = [...data.sessions]
+          .filter((item) => isSessionSubmitted(item) || item.id === activeWorkoutId || item.id === session?.id)
+          .sort((a, b) => b.date.localeCompare(a.date))
+          .slice(0, 60);
         return Array.from(new Map([session, ...recent].filter(Boolean).map((item) => [item.id, item])).values());
       }
 
@@ -2844,13 +2860,13 @@
           <section class="view workout-view">
             <div class="workout-heading">
               <div><div class="section-kicker">Today</div><h1>${escapeHtml(session.title || "Workout")}</h1></div>
-              <span class="status-pill ${isSessionSubmitted(session) ? "good" : "inside"}">${isSessionSubmitted(session) ? "Logged" : "In progress"}</span>
+              <span class="status-pill ${isSessionSubmitted(session) ? "good" : session.id === activeWorkoutId && hasActiveWorkout() ? "inside" : "neutral"}">${isSessionSubmitted(session) ? "Logged" : session.id === activeWorkoutId && hasActiveWorkout() ? "In progress" : "Ready"}</span>
             </div>
             ${renderQuickStartTemplates()}
             ${renderNotificationPrompt()}
             <div class="workout-status-strip">
               <span>${escapeHtml(progress.current)}</span><span>${progress.completed}/${progress.total} sets</span><span>${progress.elapsed} elapsed</span>
-              <button class="icon-button" type="button" data-action="new-session" title="New workout">${icon.add}</button>
+              <button class="icon-button" type="button" data-action="new-session" title="${hasActiveWorkout() ? "Finish or cancel the active workout before starting another" : "New workout"}" aria-label="${hasActiveWorkout() ? "New workout unavailable while a workout is active" : "New workout"}" ${hasActiveWorkout() ? "disabled" : ""}>${icon.add}</button>
             </div>
             ${session.adjustmentSummary ? '<div class="adjustment-summary">' + escapeHtml(session.adjustmentSummary) + '</div>' : ""}
             ${activeExercises().map(renderExercise).join("")}
@@ -4606,8 +4622,9 @@
           render();
           return;
         }
-        const session = createSession();
+        const session = createSession(undefined, { started: true });
         activeSessionId = session.id;
+        activeWorkoutId = session.id;
         activeSetId = "";
         activeSetAcknowledged = false;
         activeSetNotice = "";
@@ -4621,12 +4638,25 @@
         const session = activeSession();
         const name = addExerciseDraft;
         if (!session || !name || !name.trim()) return;
+        if (isSessionSubmitted(session)) {
+          showAppToast("Logged workouts cannot become active again. Start a new workout first.");
+          return;
+        }
+        if (hasActiveWorkout() && session.id !== activeWorkoutId) {
+          activeSessionId = activeWorkoutId;
+          setActiveTab("lift", { replace: true, renderNow: false });
+          showAppToast("You already have an active workout. Resume or cancel it before adding another.");
+          render();
+          return;
+        }
         const resistanceType = inferResistanceType(name.trim());
         const exercise = { id: id(), sessionId: session.id, name: name.trim(), primaryMuscle: addExercisePrimaryMuscle, secondaryMuscle: addExerciseSecondaryMuscle, notes: "", order: activeExercises().length, restSeconds: recommendedRestSeconds(name.trim()), resistanceType, isBodyweight: isBodyweightResistance(resistanceType), isDeload: false };
         addExerciseDraft = "";
         addExercisePrimaryMuscle = "";
         addExerciseSecondaryMuscle = "";
         activeWorkoutId = session.id;
+        session.workoutStarted = true;
+        session.workoutState = "active";
         if (!session.startedAt) session.startedAt = isoNow();
         commit({ ...data, sessions: data.sessions.map((item) => item.id === session.id ? { ...session, updatedAt: isoNow() } : item), exercises: [...data.exercises, exercise], sets: [...data.sets, createSet(exercise.id, 1, { resistanceType })] });
       }
@@ -4681,9 +4711,11 @@
         const currentSession = activeSession();
         const replaceCurrent = currentSession && currentSession.date === todayIso() && currentSession.source !== "strong" && !isSessionSubmitted(currentSession);
         const session = replaceCurrent
-          ? { ...currentSession, title: template.name, templateId: template.id, recovery: cleanRecovery(recovery), readinessMode, submitted: false, submittedAt: "", prs: [], updatedAt: isoNow() }
-          : createSession(template.name);
+          ? { ...currentSession, title: template.name, templateId: template.id, recovery: cleanRecovery(recovery), readinessMode, submitted: false, submittedAt: "", workoutStarted: true, workoutState: "active", prs: [], updatedAt: isoNow() }
+          : createSession(template.name, { started: true });
         session.templateId = template.id;
+        session.workoutStarted = true;
+        session.workoutState = "active";
         session.recovery = cleanRecovery(recovery);
         session.readinessMode = readinessMode;
         const recoveryAdvice = recoveryRecommendationForSession(session);
@@ -5343,7 +5375,7 @@
         pendingSubmitSessionId = "";
         completedSummarySessionId = session.id;
         if (activeWorkoutId === session.id) activeWorkoutId = "";
-        commit({ ...data, sessions: data.sessions.map((item) => item.id === session.id ? { ...item, submitted: true, submittedAt: isoNow(), prs, updatedAt: isoNow() } : item) });
+        commit({ ...data, sessions: data.sessions.map((item) => item.id === session.id ? { ...item, submitted: true, workoutStarted: false, workoutState: "completed", submittedAt: isoNow(), prs, updatedAt: isoNow() } : item) });
         playWorkoutCompletionSound(prs.length > 0);
       }
 
@@ -6177,7 +6209,16 @@
         if (action === "skip-timer") cancelTimer("skipped", true);
         if (action === "clear-timer") cancelTimer("canceled", true);
         if (action === "dismiss-timer-notice") { timerCompleteNotice = null; saveRuntime(); render(); }
-        if (action === "open-session") { activeSessionId = target.dataset.sessionId; planVolumeDetailId = ""; setActiveTab("lift"); }
+        if (action === "open-session") {
+          const requestedSession = data.sessions.find((session) => session.id === target.dataset.sessionId);
+          if (!requestedSession || (!isSessionSubmitted(requestedSession) && requestedSession.id !== activeWorkoutId)) {
+            showAppToast("That draft is not the active workout.");
+            return;
+          }
+          activeSessionId = requestedSession.id;
+          planVolumeDetailId = "";
+          setActiveTab("lift");
+        }
         if (action === "export-data") exportData();
         if (action === "clear-data") requestClearLocalData();
         if (action === "cancel-clear-data") closeClearDataFlow();
@@ -6189,7 +6230,17 @@
         const target = event.target.closest("[data-action]");
         if (!target) return;
         const action = target.dataset.action;
-        if (action === "change-session") { activeSessionId = target.value; render(); }
+        if (action === "change-session") {
+          const requestedSession = data.sessions.find((session) => session.id === target.value);
+          if (!requestedSession || (!isSessionSubmitted(requestedSession) && requestedSession.id !== activeWorkoutId)) {
+            activeSessionId = activeWorkoutId || activeSessionId;
+            showAppToast("Only the active workout can be resumed. Finish or cancel it before starting another.");
+            render();
+            return;
+          }
+          activeSessionId = requestedSession.id;
+          render();
+        }
         if (action === "session-date") patchSession({ date: target.value });
         if (action === "session-travel") patchSession({ isTravel: target.checked });
         if (action === "add-exercise-primary") addExercisePrimaryMuscle = target.value;
@@ -6469,9 +6520,8 @@
         const exerciseId = params.get("exercise") || "";
         const exercise = data.exercises.find((item) => item.id === exerciseId);
         if (exercise && data.sessions.some((session) => session.id === exercise.sessionId)) {
-          activeSessionId = exercise.sessionId;
           const session = data.sessions.find((item) => item.id === exercise.sessionId);
-          if (session && !isSessionSubmitted(session)) activeWorkoutId = session.id;
+          if (session && ((!isSessionSubmitted(session) && session.id === activeWorkoutId) || isSessionSubmitted(session))) activeSessionId = exercise.sessionId;
         } else if (activeWorkoutId) activeSessionId = activeWorkoutId;
         if (data.sets.some((set) => set.id === setId)) setActiveSet(setId, "Set is ready", false);
         setActiveTab("lift", { replace: true, renderNow: false });
