@@ -63,7 +63,7 @@
         --green-2: #0d8bff;
         --green-dark: rgba(8, 111, 199, 0.1);
         --amber: #a76200;
-        --rest-accent: #e3a400;
+        --rest-accent: #e2b300;
         --rest-text: #9a6700;
         --red: #c84337;
         --success: #148a46;
@@ -905,6 +905,12 @@
       .actual-expected h3 { font-size: .76rem; }
       .actual-expected-context { border-top: 1px solid var(--line); display: grid; gap: 7px; padding-top: 8px; }
       .actual-expected-context > strong { font-size: .7rem; overflow-wrap: anywhere; }
+      .actual-role-grid { display: grid; gap: 8px; }
+      .actual-role-card { background: var(--surface); border: 1px solid var(--line); border-radius: 7px; display: grid; gap: 7px; padding: 9px; }
+      .actual-role-card > strong { font-size: .74rem; }
+      .actual-role-metric { align-items: start; display: grid; gap: 5px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+      .actual-role-metric span { color: var(--muted); display: block; font-size: .58rem; font-weight: 800; text-transform: uppercase; }
+      .actual-role-metric b { display: block; font-size: .7rem; line-height: 1.35; }
       .actual-expected-row { align-items: center; display: grid; gap: 6px; grid-template-columns: minmax(84px, .8fr) minmax(0, 1fr) minmax(0, 1fr); }
       .actual-expected-row strong { font-size: .67rem; line-height: 1.35; overflow-wrap: anywhere; }
       .actual-expected-row strong:last-child { color: var(--current); }
@@ -1071,7 +1077,7 @@
         min-height: 180px;
       }
 
-      .timer-bar { align-items: center; background: color-mix(in srgb, var(--rest-accent) 7%, var(--surface-strong)); border-left: 4px solid var(--rest-accent); border-right: 4px solid var(--rest-accent); border-top: 1px solid color-mix(in srgb, var(--rest-accent) 48%, var(--line)); display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr) auto; margin-left: -3px; padding: 10px 8px 11px 39px; }
+      .timer-bar { background: color-mix(in srgb, var(--rest-accent) 8%, var(--surface-strong)); border-left: 4px solid var(--rest-accent); border-right: 4px solid var(--rest-accent); border-top: 1px solid color-mix(in srgb, var(--rest-accent) 48%, var(--line)); display: grid; gap: 9px; grid-template-columns: minmax(0, 1fr) auto; margin: 0 4px; padding: 11px 10px 12px; }
 
       .timer-bar strong {
         color: var(--rest-text);
@@ -1090,33 +1096,38 @@
 
       .timer-bar small { color: var(--muted); display: block; font-size: .58rem; font-weight: 750; margin-top: 2px; }
 
-      .timer-bar.complete { background: var(--success-dark); border-color: var(--success); }
-      .timer-bar.complete strong, .timer-bar.complete span { color: var(--success); }
+      .timer-heading { align-items: start; display: flex; justify-content: space-between; min-width: 0; }
+      .timer-heading-copy { min-width: 0; }
+      .timer-context { color: var(--muted); font-size: .68rem; grid-column: 1 / -1; line-height: 1.35; }
       .timer-control { border-radius: 8px; font-size: 1rem; font-weight: 1000; min-height: 40px; min-width: 40px; padding: 0; justify-content: center; }
       .timer-primary-controls { display: grid; gap: 7px; grid-column: 1 / -1; grid-template-columns: repeat(3, minmax(0, 1fr)); }
       .timer-primary-controls button { align-items: center; display: inline-flex; font-size: .72rem; justify-content: center; line-height: 1; min-height: 42px; min-width: 0; padding: 0 8px; text-align: center; width: 100%; }
       .timer-adjust { border-color: color-mix(in srgb, var(--rest-accent) 62%, var(--line)); color: var(--rest-text); }
-      .timer-skip { background: color-mix(in srgb, var(--rest-accent) 10%, transparent); border-color: var(--rest-accent); color: var(--rest-text); }
+      .timer-skip { background: color-mix(in srgb, #607587 12%, var(--surface)); border-color: #738696; color: #40576a; }
       .timer-secondary-controls { display: flex; gap: 7px; }
       .timer-pause { background: var(--green-dark); border-color: var(--green); color: var(--green-2); }
       .timer-cancel { background: color-mix(in srgb, var(--red) 12%, transparent); border-color: var(--red); color: var(--red); }
       .timer-finished { background: var(--success-dark); border: 1px solid var(--success); color: var(--success); }
-      .timer-progress { background: color-mix(in srgb, var(--rest-accent) 18%, var(--surface)); border-radius: 999px; grid-column: 1 / -1; height: 7px; overflow: hidden; }
-      .timer-progress span { background: linear-gradient(90deg, var(--rest-accent), #ffe88a); display: block; height: 100%; transition: width 1s linear; width: var(--timer-progress, 0%); }
-      .timer-bar.complete .timer-progress { background: color-mix(in srgb, var(--success) 18%, var(--surface)); }
-      .timer-bar.complete .timer-progress span { background: var(--success); }
+      .timer-progress { align-items: center; background: color-mix(in srgb, var(--rest-accent) 13%, var(--surface)); border: 1px solid color-mix(in srgb, var(--rest-accent) 72%, var(--line)); border-radius: 8px; display: flex; grid-column: 1 / -1; height: 30px; justify-content: center; overflow: hidden; position: relative; }
+      .timer-progress > span { background: linear-gradient(90deg, color-mix(in srgb, var(--rest-accent) 78%, #fff), #ffe06b); bottom: 0; display: block; left: 0; opacity: .72; position: absolute; top: 0; transition: width 1s linear; width: var(--timer-progress, 0%); }
+      .timer-progress > b { color: var(--rest-text); font-size: .69rem; font-weight: 900; position: relative; z-index: 1; }
 
-      .timer-complete-toast { align-items: center; background: var(--bg-soft); border: 1px solid var(--success); border-radius: 10px; bottom: calc(88px + env(safe-area-inset-bottom)); box-shadow: 0 18px 48px rgba(0, 0, 0, .42); display: grid; gap: 3px; grid-template-columns: 36px minmax(0, 1fr) auto; left: 12px; margin: 0 auto; max-width: 520px; padding: 12px; position: fixed; right: 12px; z-index: 30; }
+      .timer-complete-toast { align-items: center; background: var(--bg-soft); border: 1px solid var(--success); border-radius: 10px; bottom: calc(88px + env(safe-area-inset-bottom)); box-shadow: 0 18px 48px rgba(0, 0, 0, .28); cursor: pointer; display: grid; gap: 8px; grid-template-columns: 36px minmax(0, 1fr) auto; left: 12px; margin: 0 auto; max-width: 520px; padding: 12px; position: fixed; right: 12px; transition: transform 90ms ease, background 90ms ease; z-index: 30; }
+      .timer-complete-toast:active { transform: scale(.985); }
       .timer-complete-icon { align-items: center; background: var(--success); border-radius: 999px; color: #06150b; display: inline-flex; font-size: 1.1rem; font-weight: 1000; height: 32px; justify-content: center; width: 32px; }
       .timer-complete-toast > div { min-width: 0; }
       .timer-complete-toast strong { color: var(--success); display: block; font-size: .88rem; line-height: 1.2; margin-bottom: 3px; }
       .timer-complete-toast span { color: var(--muted); display: block; font-size: .72rem; line-height: 1.35; overflow-wrap: anywhere; }
       .timer-complete-toast button { min-height: 34px; padding: 5px 9px; }
+      .set-block.resting-set { border-left-color: var(--rest-accent) !important; border-right-color: var(--rest-accent) !important; }
       .previous-set { color: var(--muted); flex: 1 1 100%; font-size: .68rem; line-height: 1.35; }
       .plate-calculator { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; display: grid; gap: 5px; padding: 10px; }
       .plate-calculator strong { font-size: .78rem; }
       .plate-calculator span { color: var(--muted); font-size: .7rem; line-height: 1.4; }
       .set-block { position: relative; transition: background 180ms ease, border-color 180ms ease, box-shadow 180ms ease; }
+      .set-sequence-label { color: var(--muted); font-size: .62rem; font-weight: 900; letter-spacing: .04em; padding: 7px 40px 0 31px; text-transform: uppercase; }
+      .set-block.next-set .set-sequence-label { color: var(--current); }
+      .set-block.completed .set-sequence-label { color: var(--success); }
       .set-block.next-set { background: var(--current-dark); border-left-color: var(--current); border-right-color: var(--current); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--current) 60%, transparent); }
       .set-block.next-set:not(.acknowledged) { animation: next-set-pulse 1.2s ease-out 2; }
       .set-block.edited-set:not(.completed):not(.next-set) { border-left-color: var(--amber); border-right-color: var(--amber); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--amber) 24%, transparent); }
@@ -1607,7 +1618,7 @@
       [data-theme="light"] body .text-button { color: #0759c5; }
       @media (min-width: 720px) { .app-main { max-width: 760px; padding: 18px 18px 0; } .brand-bar { max-width: 760px; margin: 0 auto; } .dashboard-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .quick-template-card { flex-basis: 180px; } }
       @media (max-width: 719px) { .brand-bar { margin: 0; padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); } .brand-bar::before { display: none; } }
-      @media (max-width: 380px) { .brand-title small { max-width: 95px; } .workout-status-strip > span { font-size: .6rem; } .app-main { padding-left: 14px; padding-right: 18px; } .set-row { grid-template-columns: 27px minmax(42px, .85fr) minmax(44px, 1fr) minmax(35px, .7fr) 46px; gap: 3px; padding-left: 6px; padding-right: 7px; } .set-row input, .set-row select { font-size: .69rem; } .set-actions, .timer-bar { padding-left: 32px; padding-right: 8px; } .next-set-banner { padding-left: 32px; padding-right: 8px; } .dashboard-grid { grid-template-columns: 1fr; } }
+      @media (max-width: 380px) { .brand-title small { max-width: 95px; } .workout-status-strip > span { font-size: .6rem; } .app-main { padding-left: 14px; padding-right: 18px; } .set-row { grid-template-columns: 27px minmax(42px, .85fr) minmax(44px, 1fr) minmax(35px, .7fr) 46px; gap: 3px; padding-left: 6px; padding-right: 7px; } .set-row input, .set-row select { font-size: .69rem; } .set-actions { padding-left: 32px; padding-right: 8px; } .timer-bar { margin-left: 3px; margin-right: 3px; padding-left: 8px; padding-right: 8px; } .next-set-banner { padding-left: 32px; padding-right: 8px; } .dashboard-grid { grid-template-columns: 1fr; } }
       @media (max-width: 380px) { .dashboard-view > .screen-heading { align-items: stretch; flex-direction: column; } .dashboard-view > .screen-heading h1 { font-size: 1.3rem; } .dashboard-period { align-self: stretch; justify-content: space-between; } }
       @media (max-width: 350px) { .bottom-nav { gap: 2px; padding-left: max(5px, env(safe-area-inset-left)); padding-right: max(5px, env(safe-area-inset-right)); } .nav-button { font-size: .6rem; gap: 2px; padding-left: 2px; padding-right: 2px; } .nav-icon { min-width: 26px; padding: 0 5px; } }
       @media (max-width: 380px) { .timer-primary-controls { gap: 5px; } .timer-primary-controls button { font-size: .68rem; padding: 0 5px; } .template-topline { flex-wrap: wrap; } .template-card-actions { margin-left: auto; } .template-delete-confirm button { padding: 0 6px; } .dashboard-summary-row span { font-size: .58rem; } }
@@ -1624,7 +1635,7 @@
       const DB_STORE = "state";
       const ACTIVE_HISTORY_MONTHS = 6;
       const SET_CLASSIFIER_VERSION = 2;
-      const DOMAIN_MIGRATION_VERSION = 2;
+      const DOMAIN_MIGRATION_VERSION = 3;
       const root = document.getElementById("root");
       const defaultReadinessBaseline = { sleepHours: 7.5, sleepQuality: 4, hrv: "", restingHr: "", soreness: 2, band: 8 };
       const defaultSettings = {
@@ -1670,6 +1681,7 @@
       let timer = null;
       let timerInterval = 0;
       let timerCompleteNotice = null;
+      let restNavigationState = null;
       let timerAudioContext = null;
       let timerWakeLock = null;
       let activeSetId = "";
@@ -1814,7 +1826,7 @@
       }
 
       function classifyImportedExerciseSets(sourceSets, resistanceType = "external", source = "strong") {
-        const ordered = sourceSets.map((set, index) => ({ ...set, sequence: Number.isFinite(Number(set.sequence)) ? Number(set.sequence) : index + 1 }));
+        const ordered = sourceSets.map((set, index) => ({ ...set, sequenceIndex: Number.isFinite(Number(set.sequenceIndex)) ? Number(set.sequenceIndex) : index, sequence: Number.isFinite(Number(set.sequence)) ? Number(set.sequence) : index }));
         const results = ordered.map((set) => ({ set, type: "", source: "", confidence: 0, reviewRequired: false, reason: "" }));
         results.forEach((result) => {
           const set = result.set;
@@ -1921,7 +1933,8 @@
         const groups = new Map();
         (model.sets || []).forEach((set, index) => {
           if (!groups.has(set.exerciseId)) groups.set(set.exerciseId, []);
-          groups.get(set.exerciseId).push({ ...set, sequence: Number(set.sequence || 0) || groups.get(set.exerciseId).length + 1, _modelIndex: index });
+          const fallbackSequence = groups.get(set.exerciseId).length;
+          groups.get(set.exerciseId).push({ ...set, sequenceIndex: Number(set.sequenceIndex ?? set.sequence ?? fallbackSequence), sequence: Number(set.sequence ?? set.sequenceIndex ?? fallbackSequence), _modelIndex: index });
         });
         const nextSets = [...(model.sets || [])];
         groups.forEach((sets, exerciseId) => {
@@ -1938,10 +1951,11 @@
             if (classification.type === "drop") report.dropSets += 1;
             if (classification.reviewRequired) report.ambiguous += 1;
             const semantics = setTypeSemantics({ ...original, setType: classification.type, isWarmup: classification.type === "warmup" });
-            const changed = normalizeCanonicalSetType(original.setType, original.isWarmup) !== classification.type || Number(original.sequence || 0) !== classification.set.sequence;
+            const changed = normalizeCanonicalSetType(original.setType, original.isWarmup) !== classification.type || Number(original.sequenceIndex ?? original.sequence ?? -1) !== Number(classification.set.sequenceIndex ?? classification.set.sequence);
             const migrated = {
               ...original,
-              sequence: classification.set.sequence,
+              sequenceIndex: classification.set.sequenceIndex ?? classification.set.sequence,
+              sequence: classification.set.sequenceIndex ?? classification.set.sequence,
               setType: classification.type,
               isWarmup: semantics.isWarmup,
               countsTowardScore: semantics.countsTowardScore,
@@ -2235,7 +2249,7 @@
       }
 
       function saveRuntime() {
-        const runtime = { activeSessionId, activeWorkoutId, timer, activeSetId, pendingNextSetId, activeSetAcknowledged, activeSetNotice };
+        const runtime = { activeSessionId, activeWorkoutId, timer, timerCompleteNotice, restNavigationState, activeSetId, pendingNextSetId, activeSetAcknowledged, activeSetNotice };
         writeIndexedValue("runtime", runtime).catch(() => {
           try { localStorage.setItem(RUNTIME_KEY, JSON.stringify(runtime)); } catch { return false; }
         });
@@ -2258,8 +2272,11 @@
           activeSetNotice = runtime.activeSetNotice || "";
         }
         if (data.sets.some((set) => set.id === runtime.pendingNextSetId)) pendingNextSetId = runtime.pendingNextSetId;
+        timerCompleteNotice = runtime.timerCompleteNotice || null;
+        restNavigationState = runtime.restNavigationState || null;
         if (runtime.timer && data.sets.some((set) => set.id === runtime.timer.setId) && (!runtime.timer.workoutId || runtime.timer.workoutId === activeWorkoutId)) {
           timer = { id: runtime.timer.id || id(), pendingNextSetId: runtime.timer.pendingNextSetId || runtime.pendingNextSetId || "", ...runtime.timer };
+          if (!restNavigationState) setRestNavigationState(timer, timer.isPaused ? "paused" : "active");
           pendingNextSetId = timer.pendingNextSetId || pendingNextSetId;
           if (timer.isActive && !timer.isPaused) {
             timer.remainingSeconds = Math.max(0, Math.ceil((Number(timer.endsAt || 0) - Date.now()) / 1000));
@@ -2315,6 +2332,10 @@
           id: id(),
           exerciseId,
           setNumber,
+          sequenceIndex: Number(previous?.sequenceIndex ?? previous?.sequence ?? setNumber),
+          sequence: Number(previous?.sequence ?? previous?.sequenceIndex ?? setNumber),
+          setTypeIndex: Number(previous?.setTypeIndex ?? 0),
+          sourceTemplateSetId: previous?.sourceTemplateSetId || "",
           reps: previous?.reps ?? 8,
           weight,
           weightUnit: previous?.weightUnit ?? data.settings.weightUnit,
@@ -2412,7 +2433,26 @@
       }
 
       function setsForExercise(exerciseId) {
-        return data.sets.filter((set) => set.exerciseId === exerciseId).sort((a, b) => Number(a.sequence || a.setNumber) - Number(b.sequence || b.setNumber) || a.setNumber - b.setNumber);
+        return data.sets.filter((set) => set.exerciseId === exerciseId).sort((a, b) => canonicalSetSequence(a) - canonicalSetSequence(b) || Number(a.setNumber || 0) - Number(b.setNumber || 0));
+      }
+
+      function canonicalSetSequence(set) {
+        return Number(set?.sequenceIndex ?? set?.sequence ?? set?.setNumber ?? 0);
+      }
+
+      function setExecutionLabel(set) {
+        if (!set) return "Set";
+        const exerciseSets = setsForExercise(set.exerciseId);
+        if (setTypeSemantics(set).isWarmup) {
+          const warmups = exerciseSets.filter((item) => setTypeSemantics(item).isWarmup);
+          const index = warmups.findIndex((item) => item.id === set.id);
+          return "Warm-Up " + (Math.max(0, index) + 1) + " of " + warmups.length;
+        }
+        const type = normalizeSetTypeCode(set.setType, set.isWarmup);
+        if (type === "top") return "Top Set";
+        if (type === "backoff") return "Back-Off Set";
+        if (type === "drop") return "Drop Set";
+        return "Working Set " + Number(set.setNumber || 1);
       }
 
       function orderedActiveSets() {
@@ -2435,13 +2475,13 @@
         const current = data.sets.find((set) => set.id === activeSetId);
         const activeSetIds = new Set(orderedActiveSets().map((set) => set.id));
         if (current && activeSetIds.has(current.id) && !current.completed && !current.skipped) {
-          if (!activeSetAcknowledged) activeSetNotice = "Set " + (current.isWarmup ? "WU" : current.setNumber) + " is ready";
+          if (!activeSetAcknowledged) activeSetNotice = setExecutionLabel(current) + " is ready";
           return;
         }
         const next = orderedActiveSets().find((set) => !set.completed && !set.skipped) || null;
         activeSetId = next?.id || "";
         activeSetAcknowledged = false;
-        activeSetNotice = next ? "Set " + (next.isWarmup ? "WU" : next.setNumber) + " is ready" : "";
+        activeSetNotice = next ? setExecutionLabel(next) + " is ready" : "";
       }
 
       function nextIncompleteSet(afterSetId) {
@@ -4112,6 +4152,7 @@
           activeSetAcknowledged = false;
           activeSetNotice = "";
           timerCompleteNotice = null;
+          if (restNavigationState?.workoutId === session.id) restNavigationState = { ...restNavigationState, status: "canceled", updatedAt: isoNow() };
         }
         addExerciseDraft = "";
         addExercisePrimaryMuscle = "";
@@ -4187,6 +4228,9 @@
         const resistanceType = resistanceTypeFor(exercise, set);
         const visualState = setVisualState(set);
         const isNext = visualState === "current";
+        const isResting = Boolean(timer?.isActive && timer.setId === set.id);
+        const executionLabel = setExecutionLabel(set);
+        const warmupIndex = setTypeSemantics(set).isWarmup ? setsForExercise(set.exerciseId).filter((item) => setTypeSemantics(item).isWarmup).findIndex((item) => item.id === set.id) : -1;
         const previousSets = !isWorkingSet(set, "progression") ? [] : getMostRecentWorkoutSets(exercise.name, { excludeSessionId: exercise.sessionId });
         const sameRole = previousSets.filter((item) => normalizeSetTypeCode(item.setType, item.isWarmup) === normalizeSetTypeCode(set.setType, set.isWarmup));
         const previous = sameRole.find((item) => item.setNumber === set.setNumber) || sameRole[0] || previousSets.find((item) => item.setNumber === set.setNumber) || previousSets[set.setNumber - 1];
@@ -4202,9 +4246,10 @@
             ? '<div class="set-field"><span>Load</span><div class="resistance-readout">—</div></div>'
             : '<label class="set-field"><span>' + (resistanceType === 'bodyweight_plus_load' ? 'Added' : resistanceType === 'assisted_bodyweight' ? 'Assist' : 'Load') + '</span><input type="number" min="0" step="0.5" value="' + resistanceLoad(set, resistanceType) + '" data-action="set-weight" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' ' + (resistanceType === 'bodyweight_plus_load' ? 'added load' : resistanceType === 'assisted_bodyweight' ? 'assistance load' : 'load') + '" /></label>';
         return `
-          <div id="set-${set.id}" data-set-state="${visualState}" class="set-block ${visualState === "completed" ? "completed" : ""} ${isNext ? "next-set" : ""} ${isNext && activeSetAcknowledged ? "acknowledged" : ""} ${visualState === "edited" ? "edited-set" : ""} ${visualState === "skipped" ? "skipped-set" : ""}">
+          <div id="set-${set.id}" data-set-state="${visualState}" class="set-block ${visualState === "completed" ? "completed" : ""} ${isNext ? "next-set" : ""} ${isNext && activeSetAcknowledged ? "acknowledged" : ""} ${visualState === "edited" ? "edited-set" : ""} ${visualState === "skipped" ? "skipped-set" : ""} ${isResting ? "resting-set" : ""}">
+            <div class="set-sequence-label">${escapeHtml(executionLabel)}</div>
             <div class="set-row ${visualState === "completed" ? "completed" : "pending"} ${set.isWarmup ? "warmup" : ""}">
-              <div class="set-field set-index"><span>Set</span><strong>${set.isWarmup ? "WU" : set.setNumber}</strong></div>
+              <div class="set-field set-index"><span>Set</span><strong>${warmupIndex >= 0 ? "WU" + (warmupIndex + 1) : set.setNumber}</strong></div>
               ${performanceField}
               ${loadField}
               <label class="set-field"><span>RPE</span><input type="number" min="0" max="10" step="0.5" value="${set.rpe}" data-action="set-rpe" data-set-id="${set.id}" aria-label="Set ${set.setNumber} RPE" /></label>
@@ -4294,16 +4339,20 @@
         const elapsed = Math.max(0, timer.durationSeconds - timer.remainingSeconds);
         const progress = timer.durationSeconds > 0 ? Math.min(100, Math.round((elapsed / timer.durationSeconds) * 100)) : 100;
         const notificationStatus = timer.notificationStatus === "scheduled" ? "Lock-screen alert scheduled" : timer.notificationStatus === "error" ? "Foreground alert only" : timer.notificationStatus === "paused" ? "Notification paused" : "Scheduling alert";
+        const sourceExercise = data.exercises.find((exercise) => exercise.id === timer.exerciseId);
+        const nextSet = data.sets.find((set) => set.id === timer.pendingNextSetId);
+        const nextExercise = nextSet ? data.exercises.find((exercise) => exercise.id === nextSet.exerciseId) : null;
         return `
           <div class="timer-bar" data-timer-id="${timer.id}">
-            <div><strong data-timer-countdown>${formatTimer(timer.remainingSeconds)}</strong><span>${timer.isPaused ? "Paused" : "Rest"}</span><small>${escapeHtml(notificationStatus)}</small></div>
+            <div class="timer-heading-copy"><span>${timer.isPaused ? "Paused" : "Rest"}</span><strong data-timer-countdown>${formatTimer(timer.remainingSeconds)}</strong><small>${escapeHtml(notificationStatus)}</small></div>
             <div class="timer-secondary-controls"><button class="timer-control timer-pause" type="button" data-action="toggle-timer" title="${timer.isPaused ? "Resume timer" : "Pause timer"}" aria-label="${timer.isPaused ? "Resume timer" : "Pause timer"}">${timer.isPaused ? icon.play : icon.pause}</button><button class="timer-control timer-cancel" type="button" data-action="clear-timer" title="Cancel timer" aria-label="Cancel timer">${icon.delete}</button></div>
+            <div class="timer-progress" role="progressbar" aria-label="Rest elapsed" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}" style="--timer-progress:${progress}%"><span></span><b data-timer-progress-label>${formatTimer(timer.remainingSeconds)} remaining</b></div>
             <div class="timer-primary-controls" aria-label="Rest timer adjustments">
               <button class="timer-adjust" type="button" data-action="adjust-timer" data-seconds="-15" title="Reduce rest by 15 seconds" aria-label="Reduce rest by 15 seconds">-15 sec</button>
               <button class="timer-adjust" type="button" data-action="adjust-timer" data-seconds="15" title="Add 15 seconds" aria-label="Add 15 seconds">+15 sec</button>
               <button class="timer-skip" type="button" data-action="skip-timer" title="Skip remaining rest">Skip</button>
             </div>
-            <div class="timer-progress" role="progressbar" aria-label="Rest elapsed" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}" style="--timer-progress:${progress}%"><span></span></div>
+            <div class="timer-context">After ${escapeHtml(sourceExercise?.name || "this set")} ${nextSet ? "&#8226; Next: " + escapeHtml(nextExercise?.name || sourceExercise?.name || "Exercise") + " &#8226; " + escapeHtml(setExecutionLabel(nextSet)) : "&#8226; Final set"}</div>
           </div>
         `;
       }
@@ -4311,10 +4360,10 @@
       function renderTimerCompleteNotice() {
         if (!timerCompleteNotice) return "";
         return `
-          <div class="timer-complete-toast" role="alert" aria-live="assertive">
+          <div class="timer-complete-toast" role="button" tabindex="0" data-action="return-to-rest-workout" aria-label="Return to active workout, ${escapeHtml(timerCompleteNotice.setLabel || "next set")} ready">
             <span class="timer-complete-icon">&#10003;</span>
-            <div><strong>Timer complete</strong><span>${escapeHtml(timerCompleteNotice.exerciseName)}${timerCompleteNotice.setNumber ? " · Set " + timerCompleteNotice.setNumber : ""}. ${escapeHtml(timerCompleteNotice.message || "Time for your next set.")}</span></div>
-            <button type="button" data-action="dismiss-timer-notice">Dismiss</button>
+            <div><strong>Rest complete</strong><span>${escapeHtml(timerCompleteNotice.exerciseName)}${timerCompleteNotice.setLabel ? " &#8226; " + escapeHtml(timerCompleteNotice.setLabel) : ""}</span></div>
+            <button type="button" data-action="return-to-rest-workout">Return to Workout</button>
           </div>
         `;
       }
@@ -4593,7 +4642,19 @@
         if (exercise.appliedTargetContext?.setTypes?.length) return exercise.appliedTargetContext;
         if (exercise.programTargetContext?.setTypes?.length) return exercise.programTargetContext;
         const prescription = exercise.prescription || {};
-        if (!(prescription.repLow || prescription.repHigh || prescription.rpe || prescription.targetRpe || prescription.sets)) return null;
+        if (!(prescription.repLow || prescription.repHigh || prescription.rpe || prescription.targetRpe || prescription.sets)) {
+          const roleMap = new Map();
+          setsForExercise(exercise.id).filter((set) => isWorkingSet(set, "score")).forEach((set) => {
+            const type = normalizeSetTypeCode(set.setType, set.isWarmup);
+            const hasTarget = Number(set.targetRepMin || set.targetRepMax || set.targetRpeMin || set.targetRpeMax || set.targetRpe || 0) > 0;
+            if (!hasTarget) return;
+            const role = roleMap.get(type) || { type, label: setTypeLabels[type] || "Working set", setCount: 0, repMin: Number(set.targetRepMin || 0), repMax: Number(set.targetRepMax || set.targetReps || 0), rpeMin: Number(set.targetRpeMin || 0), rpeMax: Number(set.targetRpeMax || set.targetRpe || 0), rpeTolerance: Number(set.targetRpeTolerance || 1), restSeconds: Number(set.targetRestSeconds || exercise.restSeconds || 0), countsTowardScore: true, countsTowardVolume: set.countsTowardVolume !== false };
+            role.setCount += 1;
+            roleMap.set(type, role);
+          });
+          if (!roleMap.size) return null;
+          return { id: "saved-set-targets-" + exercise.id, exerciseId: canonicalExerciseId(exercise.name), exerciseName: exercise.name, templateId: session.templateId || "", templateName: session.title || "Saved workout", sessionType: session.sessionType || "normal", source: "Saved set targets", effectiveStartDate: session.date, effectiveEndDate: session.date, setTypes: Array.from(roleMap.values()), progressionRule: "Saved with the submitted workout.", confidence: "high" };
+        }
         const template = { id: session.templateId || "", name: session.title || "Saved workout prescription", createdAt: session.date, updatedAt: session.date };
         const sourceExercise = {
           id: canonicalExerciseId(exercise.name),
@@ -4610,6 +4671,16 @@
         return exerciseTargetContext(template, sourceExercise, { source: "Saved workout prescription", effectiveStartDate: session.date, effectiveEndDate: session.date, confidence: "moderate" });
       }
 
+      function resolveExerciseTargetContext(session, exercise, options = {}) {
+        const saved = savedExerciseTargetContext(session, exercise);
+        if (saved) return { ...saved, resolutionSource: saved.source || "historical" };
+        if (!options.allowCurrentFallback) return null;
+        const canonicalId = canonicalExerciseId(exercise.name);
+        const contexts = currentExerciseTargetContexts(canonicalId);
+        const preferred = contexts.find((context) => context.templateId === session.templateId) || contexts[0] || null;
+        return preferred ? { ...preferred, resolutionSource: "current-fallback", confidence: "low" } : null;
+      }
+
       function targetSetTypeForSet(context, set, workingIndex) {
         if (!context?.setTypes?.length) return null;
         const explicitType = normalizeSetTypeCode(set.setType, set.isWarmup);
@@ -4622,10 +4693,10 @@
         return context.setTypes.filter((item) => item.countsTowardScore).at(-1) || null;
       }
 
-      function setProgramExpectation(session, exercise, set, workingIndex = 0) {
+      function setProgramExpectation(session, exercise, set, workingIndex = 0, options = {}) {
         const semantics = setTypeSemantics(set);
-        if (semantics.isWarmup || semantics.type === "unknown") return { isWarmup: semantics.isWarmup, countsTowardScore: false, countsTowardVolume: false, setType: semantics.type, context: savedExerciseTargetContext(session, exercise) };
-        const context = savedExerciseTargetContext(session, exercise);
+        const context = resolveExerciseTargetContext(session, exercise, options);
+        if (semantics.isWarmup || semantics.type === "unknown") return { isWarmup: semantics.isWarmup, countsTowardScore: false, countsTowardVolume: false, setType: semantics.type, context };
         const type = targetSetTypeForSet(context, set, workingIndex);
         const repMin = Number(set.targetRepMin ?? type?.repMin ?? exercise.prescription?.repLow ?? 0);
         const repMax = Number(set.targetRepMax ?? type?.repMax ?? exercise.prescription?.repHigh ?? 0);
@@ -4655,36 +4726,44 @@
         data.exercises.filter((exercise) => canonicalExerciseId(exercise.name) === exerciseId).forEach((exercise) => {
           const session = sessionById.get(exercise.sessionId);
           if (!session || !includedWeeks.has(startOfWeekIso(session.date)) || exercise.isDeload) return;
-          const context = savedExerciseTargetContext(session, exercise);
+          const allowCurrentFallback = hypertrophyWindowOffset === 0;
+          const context = resolveExerciseTargetContext(session, exercise, { allowCurrentFallback });
           const key = context ? context.id + "|" + JSON.stringify(context.setTypes) : "unconfigured";
-          const group = groups.get(key) || { key, label: context?.templateName || "Unconfigured historical sessions", sessionType: context?.sessionType || "unknown", sessions: new Set(), dates: [], plannedSets: 0, completedSets: 0, repTracked: 0, repHits: 0, rpeTracked: 0, rpeHits: 0, restTotal: 0, restCount: 0, context };
+          const group = groups.get(key) || { key, label: context?.templateName || "Historical target unavailable", sessionType: context?.sessionType || "unknown", sessions: new Set(), dates: [], plannedSets: 0, completedSets: 0, repTracked: 0, repHits: 0, rpeTracked: 0, rpeHits: 0, restTotal: 0, restCount: 0, roles: new Map(), context };
           group.sessions.add(session.id);
           group.dates.push(session.date);
           let workingIndex = 0;
-          data.sets.filter((set) => set.exerciseId === exercise.id).sort((a, b) => Number(a.sequence || a.setNumber) - Number(b.sequence || b.setNumber)).forEach((set) => {
-            const expectation = setProgramExpectation(session, exercise, set, workingIndex);
+          data.sets.filter((set) => set.exerciseId === exercise.id).sort((a, b) => canonicalSetSequence(a) - canonicalSetSequence(b)).forEach((set) => {
+            const expectation = setProgramExpectation(session, exercise, set, workingIndex, { allowCurrentFallback });
             if (expectation.isWarmup || !expectation.countsTowardScore) return;
             workingIndex += 1;
+            const roleKey = expectation.setType || "straight";
+            const role = group.roles.get(roleKey) || { key: roleKey, label: expectation.label || setTypeLabels[roleKey] || "Working set", plannedSets: 0, completedSets: 0, repTracked: 0, repHits: 0, rpeTracked: 0, rpeHits: 0, repMin: expectation.repMin, repMax: expectation.repMax, rpeMin: expectation.rpeMin, rpeMax: expectation.rpeMax, restSeconds: expectation.restSeconds };
             group.plannedSets += 1;
-            if (!set.completed) return;
+            role.plannedSets += 1;
+            if (!set.completed) { group.roles.set(roleKey, role); return; }
             group.completedSets += 1;
+            role.completedSets += 1;
             if (expectation.hasRepTarget && !["duration", "distance"].includes(resistanceTypeFor(exercise, set))) {
               group.repTracked += 1;
+              role.repTracked += 1;
               const reps = Number(set.reps || 0);
-              if (reps >= (expectation.repMin || expectation.repMax) && reps <= (expectation.repMax || expectation.repMin)) group.repHits += 1;
+              if (reps >= (expectation.repMin || expectation.repMax) && reps <= (expectation.repMax || expectation.repMin)) { group.repHits += 1; role.repHits += 1; }
             }
             const rpe = Number(set.rpe || 0);
             if (rpe > 0 && expectation.hasRpeTarget) {
               group.rpeTracked += 1;
+              role.rpeTracked += 1;
               const low = expectation.rpeMin || Math.max(0, expectation.rpeMax - expectation.rpeTolerance);
               const high = expectation.rpeMin ? expectation.rpeMax : expectation.rpeMax + expectation.rpeTolerance;
-              if (rpe >= low && rpe <= high) group.rpeHits += 1;
+              if (rpe >= low && rpe <= high) { group.rpeHits += 1; role.rpeHits += 1; }
             }
+            group.roles.set(roleKey, role);
           });
           if (Number(exercise.restSeconds) > 0) { group.restTotal += Number(exercise.restSeconds); group.restCount += 1; }
           groups.set(key, group);
         });
-        return Array.from(groups.values()).map((group) => ({ ...group, sessionCount: group.sessions.size, dateStart: group.dates.slice().sort()[0] || "", dateEnd: group.dates.slice().sort().at(-1) || "", sessions: undefined, dates: undefined }));
+        return Array.from(groups.values()).map((group) => ({ ...group, sessionCount: group.sessions.size, dateStart: group.dates.slice().sort()[0] || "", dateEnd: group.dates.slice().sort().at(-1) || "", roles: Array.from(group.roles.values()), sessions: undefined, dates: undefined }));
       }
       // EXERCISE_TARGET_ENGINE_END
 
@@ -4815,7 +4894,7 @@
       }
       // HYPERTROPHY_SCORE_ENGINE_END
 
-      function buildHypertrophyWeekAggregates(scope = { type: "overall", exerciseId: "" }) {
+      function buildHypertrophyWeekAggregates(scope = { type: "overall", exerciseId: "" }, options = {}) {
         const sessionById = new Map(activeHistorySessions().map((session) => [session.id, session]));
         const exercisesBySession = new Map();
         data.exercises.forEach((exercise) => {
@@ -4852,7 +4931,7 @@
               .filter((set) => isWorkingSet(set, "score"))
               .sort((a, b) => Number(a.sequence || a.setNumber) - Number(b.sequence || b.setNumber))
               .map((set) => {
-                const expectation = setProgramExpectation(session, exercise, set, workingIndex);
+                const expectation = setProgramExpectation(session, exercise, set, workingIndex, { allowCurrentFallback: Boolean(options.currentFallbackWeeks?.has(weekStart)) });
                 if (expectation.countsTowardScore) workingIndex += 1;
                 return { set, expectation };
               })
@@ -4863,7 +4942,7 @@
               week.deloadExerciseCount += 1;
               return;
             }
-            const targetContext = savedExerciseTargetContext(session, exercise);
+            const targetContext = resolveExerciseTargetContext(session, exercise, { allowCurrentFallback: Boolean(options.currentFallbackWeeks?.has(weekStart)) });
             if (targetContext) week.targetSignatures.add(targetContext.id + "|" + JSON.stringify(targetContext.setTypes));
             const canonicalId = canonicalExerciseId(exercise.name);
             const stats = week.exerciseStats.get(canonicalId) || { name: exercise.name, completedSets: 0, failedSets: 0, bestEstimatedOneRepMax: 0, topWeight: 0, maxRepsAtTopWeight: 0, rpeSum: 0, rpeCount: 0 };
@@ -4985,8 +5064,13 @@
         const scope = scopeType === "exercise" && exerciseId ? { type: "exercise", exerciseId } : { type: "overall", exerciseId: "" };
         const key = scope.type + "|" + scope.exerciseId + "|" + offset + "|" + SET_CLASSIFIER_VERSION + "|" + Number(data.dataRevision || 0);
         if (hypertrophyScoreCache.dataRef === data && hypertrophyScoreCache.key === key) return hypertrophyScoreCache.result;
-        const allWeeks = buildHypertrophyWeekAggregates(scope);
-        const selection = selectHypertrophyWeeks(allWeeks, offset, 6);
+        let allWeeks = buildHypertrophyWeekAggregates(scope);
+        let selection = selectHypertrophyWeeks(allWeeks, offset, 6);
+        if (offset === 0 && selection.included.length) {
+          const currentFallbackWeeks = new Set(selection.included.map((week) => week.weekStart));
+          allWeeks = buildHypertrophyWeekAggregates(scope, { currentFallbackWeeks });
+          selection = selectHypertrophyWeeks(allWeeks, offset, 6);
+        }
         const result = calculateHypertrophyScore(selection);
         const previousSelection = selectHypertrophyWeeks(allWeeks, offset + 6, 6);
         const previous = calculateHypertrophyScore(previousSelection);
@@ -5287,18 +5371,19 @@
           </article>`).join('') : hypertrophyWindowOffset > 0 ? '<div class="expectation-missing"><strong>Historical targets only</strong><span>Current template targets are intentionally hidden in this snapshot. The execution below uses only prescriptions saved with workouts inside the selected period.</span></div>' : '<div class="expectation-missing"><strong>No active program target</strong><span>Add this exercise to a workout template and configure sets, reps, RPE, and rest. Missing targets are excluded from compliance scoring rather than invented.</span></div>'}
           <div class="actual-expected"><h3>Actual vs Expected · analyzed window</h3>
             ${actuals.length ? actuals.map((group) => {
-              const expected = targetContextExpectationSummary(group.context);
-              const averageSets = group.sessionCount ? Math.round(group.completedSets / group.sessionCount * 10) / 10 : 0;
-              const repActual = group.repTracked ? Math.round(group.repHits / group.repTracked * 100) + '% in range' : 'No configured target';
-              const rpeActual = group.rpeTracked ? Math.round(group.rpeHits / group.rpeTracked * 100) + '% in range' : 'No configured target';
-              const restActual = group.restCount ? formatTimer(Math.round(group.restTotal / group.restCount)) + ' average' : 'Not recorded';
               const dateLabel = group.dateStart ? ' · ' + formatDate(group.dateStart) + (group.dateEnd && group.dateEnd !== group.dateStart ? ' to ' + formatDate(group.dateEnd) : '') : '';
-              return '<div class="actual-expected-context"><strong>' + escapeHtml(group.label) + dateLabel + ' · ' + group.sessionCount + (group.sessionCount === 1 ? ' session' : ' sessions') + '</strong>'
-                + '<div class="actual-expected-row"><span>Metric</span><span>Expected</span><span>Last 6 weeks</span></div>'
-                + '<div class="actual-expected-row"><strong>Working sets</strong><strong>' + escapeHtml(expected.sets) + '</strong><strong>' + averageSets + ' average</strong></div>'
-                + '<div class="actual-expected-row"><strong>Rep range</strong><strong>' + escapeHtml(expected.reps) + '</strong><strong>' + escapeHtml(repActual) + '</strong></div>'
-                + '<div class="actual-expected-row"><strong>RPE</strong><strong>' + escapeHtml(expected.rpe) + '</strong><strong>' + escapeHtml(rpeActual) + '</strong></div>'
-                + '<div class="actual-expected-row"><strong>Rest</strong><strong>' + escapeHtml(expected.rest) + '</strong><strong>' + escapeHtml(restActual) + '</strong></div></div>';
+              if (!group.context) return '<div class="actual-expected-context"><strong>Historical target unavailable' + dateLabel + '</strong><div class="expectation-missing"><span>The submitted sets remain visible, but this period has no effective-dated prescription. Compliance is excluded and confidence is reduced.</span></div></div>';
+              const roles = group.roles || [];
+              return '<div class="actual-expected-context"><strong>' + escapeHtml(group.label) + dateLabel + ' · ' + group.sessionCount + (group.sessionCount === 1 ? ' session' : ' sessions') + (group.context.resolutionSource === 'current-fallback' ? ' · current target fallback' : '') + '</strong><div class="actual-role-grid">'
+                + roles.map((role) => {
+                  const target = group.context.setTypes.find((type) => type.type === role.key) || {};
+                  const expectedReps = target.repMin || target.repMax ? (target.repMin || target.repMax) + (target.repMax && target.repMax !== target.repMin ? '–' + target.repMax : '') + ' reps' : 'Not configured';
+                  const expectedRpe = target.rpeMin || target.rpeMax ? (target.rpeMin || target.rpeMax) + (target.rpeMax && target.rpeMax !== target.rpeMin ? '–' + target.rpeMax : '') : 'Not configured';
+                  const repActual = role.repTracked ? role.repHits + ' of ' + role.repTracked + ' in range · ' + Math.round(role.repHits / role.repTracked * 100) + '%' : (expectedReps === 'Not configured' ? 'Excluded from score' : 'No completed sets');
+                  const rpeActual = role.rpeTracked ? role.rpeHits + ' of ' + role.rpeTracked + ' in range · ' + Math.round(role.rpeHits / role.rpeTracked * 100) + '%' : (expectedRpe === 'Not configured' ? 'Excluded from score' : 'No logged RPE');
+                  const averageSets = group.sessionCount ? Math.round(role.completedSets / group.sessionCount * 10) / 10 : 0;
+                  return '<div class="actual-role-card"><strong>' + escapeHtml(role.label) + '</strong><div class="actual-role-metric"><div><span>Expected sets</span><b>' + Number(target.setCount || 0) + ' per session</b></div><div><span>Actual sets</span><b>' + averageSets + ' average</b></div></div><div class="actual-role-metric"><div><span>Expected reps</span><b>' + escapeHtml(expectedReps) + '</b></div><div><span>Rep compliance</span><b>' + escapeHtml(repActual) + '</b></div></div><div class="actual-role-metric"><div><span>Expected RPE</span><b>' + escapeHtml(expectedRpe) + '</b></div><div><span>RPE compliance</span><b>' + escapeHtml(rpeActual) + '</b></div></div></div>';
+                }).join('') + '</div></div>';
             }).join('') : '<div class="expectation-missing"><strong>No qualifying execution data</strong><span>Current program expectations are shown above. Submit this exercise to populate the six-week comparison.</span></div>'}
           </div>
           ${historicalChanged ? '<p class="expectation-note"><strong>Targets changed during this window.</strong> Each session was scored against the target saved on that date; current template settings were not applied retroactively.</p>' : ''}
@@ -5916,8 +6001,9 @@
           const exercise = { id: id(), sessionId: session.id, name: templateExercise.name, primaryMuscle: templateExercise.primaryMuscle || "", secondaryMuscle: templateExercise.secondaryMuscle || "", notes: "", originalPrescription: historyTarget, prescription: target, programTargetContext, appliedTargetContext, adjustmentReason: target.adjustmentReason || "", order: index, restSeconds, resistanceType: target.resistanceType, isBodyweight: isBodyweightResistance(target.resistanceType), isDeload: Boolean(target.isDeload) };
           exercises.push(exercise);
           readinessAdjustments.push({ exerciseId: exercise.id, name: exercise.name, original: historyTarget, adjusted: target, changed: Boolean(target.adjusted), reason: target.adjustmentReason || "No readiness change was required.", triggers: target.triggerLabels || [] });
-          (templateExercise.warmups || []).forEach((warmup, warmupIndex) => {
-            sets.push(createSet(exercise.id, -(warmupIndex + 1), { ...warmup, resistanceType: warmup.resistanceType || target.resistanceType, completed: false, isWarmup: true, setType: "warmup", countsTowardScore: false, countsTowardVolume: false }));
+          const configuredWarmups = templateExercise.warmups || [];
+          configuredWarmups.forEach((warmup, warmupIndex) => {
+            sets.push(createSet(exercise.id, warmupIndex + 1, { ...warmup, sequenceIndex: warmupIndex, sequence: warmupIndex, setTypeIndex: warmupIndex, sourceTemplateSetId: warmup.id || templateExercise.id + "-warmup-" + warmupIndex, resistanceType: warmup.resistanceType || target.resistanceType, completed: false, isWarmup: true, setType: "warmup", countsTowardScore: false, countsTowardVolume: false, countsTowardProgression: false }));
           });
           let setNumber = 0;
           (appliedTargetContext?.setTypes || []).filter((setType) => setType.countsTowardScore && !setType.isWarmup).forEach((setType) => {
@@ -5928,7 +6014,7 @@
               const setWeight = dropPercent > 0 ? Math.max(0, roundToIncrement(Number(target.weight || 0) * dropMultiplier, Number(target.increment || templateExercise.increment || 1))) : Number(target.weight || 0);
               const setReps = Math.max(Number(setType.repMin || 0), Math.min(Number(setType.repMax || target.reps || 0), Number(target.reps || setType.repMax || setType.repMin || 0)));
               const setRpe = Number(setType.rpeMax || target.rpe || 0);
-              sets.push(createSet(exercise.id, setNumber, { reps: setReps, weight: setWeight, weightUnit: target.weightUnit, resistanceType: target.resistanceType, isBodyweight: target.isBodyweight, addedLoad: target.resistanceType === "bodyweight_plus_load" ? setWeight : target.addedLoad, assistanceLoad: target.resistanceType === "assisted_bodyweight" ? setWeight : target.assistanceLoad, rpe: setRpe, completed: false, isWarmup: false, setType: setType.type, countsTowardScore: setType.countsTowardScore, countsTowardVolume: setType.countsTowardVolume, targetReps: setReps, targetRepMin: setType.repMin, targetRepMax: setType.repMax, targetWeight: setWeight, targetRpe: setRpe, targetRpeMin: setType.rpeMin, targetRpeMax: setType.rpeMax, targetRpeTolerance: setType.rpeTolerance, targetRestSeconds: setType.restSeconds, originalTargetReps: historyTarget.reps, originalTargetWeight: historyTarget.weight, originalTargetRpe: historyTarget.rpe, prescriptionReason: target.reason, prescriptionMode: target.mode, prescriptionConfidence: target.confidence }));
+              sets.push(createSet(exercise.id, setNumber, { sequenceIndex: configuredWarmups.length + setNumber - 1, sequence: configuredWarmups.length + setNumber - 1, setTypeIndex: typeSetIndex, sourceTemplateSetId: setType.id || templateExercise.id + "-" + setType.type + "-" + typeSetIndex, reps: setReps, weight: setWeight, weightUnit: target.weightUnit, resistanceType: target.resistanceType, isBodyweight: target.isBodyweight, addedLoad: target.resistanceType === "bodyweight_plus_load" ? setWeight : target.addedLoad, assistanceLoad: target.resistanceType === "assisted_bodyweight" ? setWeight : target.assistanceLoad, rpe: setRpe, completed: false, isWarmup: false, setType: setType.type, countsTowardScore: setType.countsTowardScore, countsTowardVolume: setType.countsTowardVolume, targetReps: setReps, targetRepMin: setType.repMin, targetRepMax: setType.repMax, targetWeight: setWeight, targetRpe: setRpe, targetRpeMin: setType.rpeMin, targetRpeMax: setType.rpeMax, targetRpeTolerance: setType.rpeTolerance, targetRestSeconds: setType.restSeconds, originalTargetReps: historyTarget.reps, originalTargetWeight: historyTarget.weight, originalTargetRpe: historyTarget.rpe, prescriptionReason: target.reason, prescriptionMode: target.mode, prescriptionConfidence: target.confidence }));
             }
           });
         });
@@ -5941,7 +6027,7 @@
         viewingHistorySessionId = "";
         setActiveTab("lift", { renderNow: false });
         templateStartFlow = null;
-        activeSetId = sets.find((set) => !set.completed && !set.skipped)?.id || "";
+        activeSetId = [...sets].sort((a, b) => canonicalSetSequence(a) - canonicalSetSequence(b)).find((set) => !set.completed && !set.skipped)?.id || "";
         activeSetAcknowledged = false;
         activeSetNotice = activeSetId ? "First set is ready" : "";
         if (replaceCurrent) {
@@ -5959,7 +6045,9 @@
 
       function addSet(exerciseId, duplicate) {
         const sets = setsForExercise(exerciseId);
-        commit({ ...data, sets: [...data.sets, createSet(exerciseId, sets.length + 1, duplicate ? sets[sets.length - 1] : undefined)] });
+        const sequenceIndex = sets.length ? Math.max(...sets.map(canonicalSetSequence)) + 1 : 0;
+        const previous = duplicate ? sets[sets.length - 1] : undefined;
+        commit({ ...data, sets: [...data.sets, createSet(exerciseId, sets.filter((set) => !setTypeSemantics(set).isWarmup).length + 1, { ...(previous || {}), sequenceIndex, sequence: sequenceIndex, completed: false, skipped: false, edited: false })] });
       }
 
       function moveExercise(exerciseId, direction) {
@@ -6126,6 +6214,8 @@
             setId: timerSnapshot.setId,
             upcomingSetId: upcoming?.id || "",
             upcomingSetNumber: upcoming?.isWarmup ? "WU" : upcoming?.setNumber || "",
+            upcomingSetLabel: upcoming ? setExecutionLabel(upcoming) : "",
+            timerVersion: Number(timerSnapshot.version || 1),
             exerciseName: data.exercises.find((item) => item.id === upcoming?.exerciseId)?.name || exercise?.name || "Workout",
             messageDetail: data.settings.notificationMessageDetail,
             restEndTime: timerSnapshot.endsAt
@@ -6237,6 +6327,81 @@
         await writeIndexedValue("sync-queue", remaining).catch(() => undefined);
       }
 
+      function restNavigationPayload(timerSnapshot, nextOverride = null) {
+        const next = nextOverride || data.sets.find((set) => set.id === timerSnapshot?.pendingNextSetId) || null;
+        return {
+          navigationVersion: 1,
+          timerId: timerSnapshot?.id || "",
+          notificationId: timerSnapshot?.serverNotificationId || timerSnapshot?.id || "",
+          timerVersion: Number(timerSnapshot?.version || 1),
+          workoutId: timerSnapshot?.workoutId || activeWorkoutId || "",
+          exerciseId: next?.exerciseId || timerSnapshot?.exerciseId || "",
+          completedSetId: timerSnapshot?.setId || "",
+          nextSetId: next?.id || "",
+          endsAt: Number(timerSnapshot?.endsAt || 0)
+        };
+      }
+
+      function restCompletionUrl(payload = {}) {
+        const params = new URLSearchParams({
+          rest: "complete",
+          workoutId: payload.workoutId || "",
+          exerciseId: payload.exerciseId || "",
+          completedSetId: payload.completedSetId || "",
+          nextSetId: payload.nextSetId || "",
+          timerId: payload.timerId || "",
+          notificationId: payload.notificationId || payload.timerId || "",
+          timerVersion: String(payload.timerVersion || 1)
+        });
+        return "/?" + params.toString() + "#lift";
+      }
+
+      function setRestNavigationState(timerSnapshot, status, nextOverride = null) {
+        restNavigationState = { ...restNavigationPayload(timerSnapshot, nextOverride), status, updatedAt: isoNow() };
+        return restNavigationState;
+      }
+
+      function nextSetForRestPayload(payload) {
+        const requested = data.sets.find((set) => set.id === payload?.nextSetId);
+        const requestedExercise = requested && data.exercises.find((exercise) => exercise.id === requested.exerciseId);
+        if (requested && requestedExercise?.sessionId === payload.workoutId && !requested.completed && !requested.skipped) return requested;
+        const completed = data.sets.find((set) => set.id === payload?.completedSetId);
+        if (completed) return nextIncompleteSet(completed.id);
+        return orderedActiveSets().find((set) => !set.completed && !set.skipped) || null;
+      }
+
+      async function navigateToRestCompletion(payload = {}, options = {}) {
+        const workout = data.sessions.find((session) => session.id === payload.workoutId);
+        const stateMatches = restNavigationState && restNavigationState.timerId === payload.timerId && Number(restNavigationState.timerVersion || 1) === Number(payload.timerVersion || 1);
+        if (!workout || isSessionSubmitted(workout) || workout.id !== activeWorkoutId || !sessionHasStarted(workout) || !stateMatches || restNavigationState.status === "canceled") {
+          timerCompleteNotice = null;
+          saveRuntime();
+          showAppToast("This workout is no longer active.");
+          return false;
+        }
+        if (timer && timer.id === payload.timerId && Number(timer.version || 1) === Number(payload.timerVersion || 1) && Number(timer.endsAt || 0) <= Date.now()) {
+          timer.remainingSeconds = 0;
+          completeTimer({ suppressSystemAlert: true, suppressScroll: true });
+        }
+        const next = nextSetForRestPayload(payload);
+        activeSessionId = workout.id;
+        viewingHistorySessionId = "";
+        pendingNextSetId = "";
+        timerCompleteNotice = null;
+        if (next) setActiveSet(next.id, setExecutionLabel(next) + " is ready", false);
+        else {
+          activeSetId = "";
+          activeSetNotice = "Workout sets complete";
+          pendingSubmitSessionId = workout.id;
+        }
+        setActiveTab("lift", { replace: true, renderNow: false });
+        saveRuntime();
+        render();
+        if (next && data.settings.autoScrollNextSet !== false) scheduleActiveSetScroll(next.id);
+        if (!options.silent) showAppToast(next ? setExecutionLabel(next) + " is ready." : "All sets are complete.");
+        return true;
+      }
+
       function startTimer(exerciseId, setId, options = {}) {
         const previousTimer = timer ? { ...timer } : null;
         window.clearInterval(timerInterval);
@@ -6255,6 +6420,7 @@
         if (pendingNextSetId) activeSetId = "";
         timer = {
           id: id(),
+          version: Number(previousTimer?.version || 0) + 1,
           workoutId: activeWorkoutId || exercise?.sessionId || "",
           exerciseId,
           setId,
@@ -6266,6 +6432,7 @@
           isPaused: false,
           notificationStatus: data.settings.timerNotifications ? "pending" : "disabled"
         };
+        setRestNavigationState(timer, "active", next);
         startTimerInterval();
         saveRuntime();
         render();
@@ -6291,10 +6458,12 @@
         const bar = document.querySelector(selector);
         if (!bar) return;
         const countdown = bar.querySelector("[data-timer-countdown]");
+        const progressLabel = bar.querySelector("[data-timer-progress-label]");
         const progress = bar.querySelector(".timer-progress");
         const elapsed = Math.max(0, timer.durationSeconds - timer.remainingSeconds);
         const percent = timer.durationSeconds > 0 ? Math.min(100, Math.round((elapsed / timer.durationSeconds) * 100)) : 100;
         if (countdown) countdown.textContent = formatTimer(timer.remainingSeconds);
+        if (progressLabel) progressLabel.textContent = formatTimer(timer.remainingSeconds) + " remaining";
         if (progress) {
           progress.setAttribute("aria-valuenow", String(percent));
           progress.style.setProperty("--timer-progress", percent + "%");
@@ -6308,15 +6477,18 @@
           timer.remainingSeconds = Math.max(1, Math.ceil((timer.endsAt - Date.now()) / 1000));
           cancelRestPush({ ...timer }, "paused");
           timer.notificationStatus = "paused";
+          setRestNavigationState(timer, "paused");
           releaseTimerWakeLock();
         } else {
           primeTimerAlerts();
           requestTimerWakeLock();
           timer.id = id();
+          timer.version = Number(timer.version || 1) + 1;
           timer.endsAt = Date.now() + timer.remainingSeconds * 1000;
           timer.notificationStatus = data.settings.timerNotifications ? "pending" : "disabled";
           startTimerInterval();
           scheduleRestPush({ ...timer });
+          setRestNavigationState(timer, "active");
         }
         saveRuntime();
         render();
@@ -6328,10 +6500,12 @@
         const remaining = Math.max(5, Math.ceil((timer.endsAt - Date.now()) / 1000) + Number(secondsDelta));
         cancelRestPush(previous, "adjusted");
         timer.id = id();
+        timer.version = Number(timer.version || 1) + 1;
         timer.remainingSeconds = remaining;
         timer.durationSeconds = Math.max(timer.durationSeconds + Number(secondsDelta), remaining);
         timer.endsAt = Date.now() + remaining * 1000;
         timer.notificationStatus = data.settings.timerNotifications ? "pending" : "disabled";
+        setRestNavigationState(timer, "active");
         saveRuntime();
         render();
         scheduleRestPush({ ...timer });
@@ -6345,10 +6519,11 @@
         releaseTimerWakeLock();
         cancelRestPush(previous, reason);
         const next = data.sets.find((set) => set.id === previous.pendingNextSetId);
+        setRestNavigationState(previous, "canceled", next);
         timer = null;
         pendingNextSetId = "";
         if (advance && next && data.settings.autoHighlightNextSet !== false) {
-          setActiveSet(next.id, reason === "skipped" ? "Rest skipped - Set " + (next.isWarmup ? "WU" : next.setNumber) + " is ready" : "Set " + (next.isWarmup ? "WU" : next.setNumber) + " is ready", false);
+          setActiveSet(next.id, reason === "skipped" ? "Rest skipped - " + setExecutionLabel(next) + " is ready" : setExecutionLabel(next) + " is ready", false);
           if (data.settings.autoScrollNextSet !== false) scheduleActiveSetScroll(next.id);
         } else {
           ensureActiveSet();
@@ -6357,7 +6532,7 @@
         render();
       }
 
-      function completeTimer() {
+      function completeTimer(options = {}) {
         if (!timer || timer.remainingSeconds > 0 || !timer.isActive) return;
         const completedTimer = { ...timer };
         window.clearInterval(timerInterval);
@@ -6366,19 +6541,20 @@
         const exercise = data.exercises.find((item) => item.id === completedTimer.exerciseId);
         const next = data.sets.find((set) => set.id === completedTimer.pendingNextSetId) || nextIncompleteSet(completedTimer.setId);
         const nextExercise = next ? data.exercises.find((item) => item.id === next.exerciseId) : null;
-        const readyText = next ? "Set " + (next.isWarmup ? "WU" : next.setNumber) + " is ready" : "Workout sets complete";
+        const readyText = next ? setExecutionLabel(next) + " is ready" : "Workout sets complete";
         pendingNextSetId = "";
         if (data.settings.autoHighlightNextSet !== false) setActiveSet(next?.id || "", readyText, false);
         else setActiveSet("", readyText, true);
+        const navigation = setRestNavigationState(completedTimer, "completed", next);
         timer = null;
-        timerCompleteNotice = { exerciseName: nextExercise?.name || exercise?.name || "Workout", setNumber: next?.setNumber || "", message: next ? readyText : "Time to finish the workout" };
+        timerCompleteNotice = { exerciseName: nextExercise?.name || exercise?.name || "Workout", setNumber: next?.setNumber || "", setLabel: next ? setExecutionLabel(next) : "", message: next ? readyText : "Time to finish the workout", payload: navigation };
         playTimerCompletionSound();
         if (data.settings.timerVibration && navigator.vibrate) navigator.vibrate([250, 120, 250, 120, 450]);
-        if (completedTimer.notificationStatus !== "scheduled") sendRestTimerNotification(timerCompleteNotice, next?.id || "", nextExercise?.id || exercise?.id || "");
+        if (!options.suppressSystemAlert && completedTimer.notificationStatus !== "scheduled") sendRestTimerNotification(timerCompleteNotice, next?.id || "", nextExercise?.id || exercise?.id || "");
         else cancelRestPush(completedTimer, "foreground-completed");
         saveRuntime();
         render();
-        if (next && data.settings.autoScrollNextSet !== false) scheduleActiveSetScroll(next.id);
+        if (!options.suppressScroll && next && data.settings.autoScrollNextSet !== false) scheduleActiveSetScroll(next.id);
       }
 
       function scheduleActiveSetScroll(setId) {
@@ -6782,15 +6958,16 @@
         if (!data.settings.timerNotifications || !("Notification" in window) || Notification.permission !== "granted" || !("serviceWorker" in navigator)) return;
         try {
           const registration = await navigator.serviceWorker.ready;
-          const url = "/?workout=active&exercise=" + encodeURIComponent(exerciseId) + "&set=" + encodeURIComponent(setId);
+          const payload = notice.payload || restNavigationState || {};
+          const url = restCompletionUrl(payload);
           await registration.showNotification("Rest complete", {
-            body: data.settings.notificationMessageDetail === "private" ? "Your next set is ready." : notice.exerciseName + (notice.setNumber ? " - Set " + notice.setNumber : "") + " is ready.",
+            body: data.settings.notificationMessageDetail === "private" ? "Your next set is ready." : notice.exerciseName + (notice.setLabel ? " - " + notice.setLabel : notice.setNumber ? " - Set " + notice.setNumber : "") + " is ready.",
             tag: "comprehensive-fitness-rest-timer",
             renotify: true,
             requireInteraction: true,
             icon: "/resources/icon-192.png",
             badge: "/resources/icon-192.png",
-            data: { url },
+            data: { ...payload, url },
             vibrate: data.settings.timerVibration ? [250, 120, 250, 120, 450] : []
           });
         } catch {
@@ -6861,6 +7038,8 @@
         const session = data.sessions.find((item) => item.id === sessionId);
         if (!session) return;
         if (timer) cancelTimer("workout-ended", false);
+        timerCompleteNotice = null;
+        if (restNavigationState?.workoutId === sessionId) restNavigationState = { ...restNavigationState, status: "submitted", updatedAt: isoNow() };
         const prs = submitWorkoutPrs(session);
         const submittedAt = isoNow();
         const completedSession = { ...session, submitted: true, workoutStarted: false, workoutState: "completed", completedAt: session.date, submittedAt, prs, updatedAt: submittedAt };
@@ -7467,6 +7646,7 @@
             id: importedId("t"),
             exerciseId: exercise.id,
             setNumber: numberFrom(row["Set Order"], nextSetNumber),
+            sequenceIndex: nextSetNumber - 1,
             sequence: nextSetNumber,
             sourceSetOrder: String(row["Set Order"] || ""),
             reps,
@@ -7506,7 +7686,8 @@
             if (!targetSet) return;
             const semantics = setTypeSemantics({ ...targetSet, setType: classification.type, isWarmup: classification.type === "warmup" });
             Object.assign(targetSet, {
-              sequence: classification.set.sequence,
+              sequenceIndex: classification.set.sequenceIndex ?? classification.set.sequence,
+              sequence: classification.set.sequenceIndex ?? classification.set.sequence,
               setType: classification.type,
               isWarmup: semantics.isWarmup,
               countsTowardScore: semantics.countsTowardScore,
@@ -7770,8 +7951,17 @@
         if (action === "add-set") addSet(target.dataset.exerciseId, false);
         if (action === "add-warmup-set") {
           const sets = setsForExercise(target.dataset.exerciseId);
-          const last = sets[sets.length - 1];
-          commit({ ...data, sets: [...data.sets, createSet(target.dataset.exerciseId, -sets.filter((set) => set.isWarmup).length - 1, { ...(last || {}), completed: false, isWarmup: true, rpe: 5 })] });
+          const warmups = sets.filter((set) => setTypeSemantics(set).isWarmup);
+          const sequenceIndex = warmups.length;
+          const priorWarmup = warmups.at(-1);
+          const shifted = data.sets.map((set) => set.exerciseId === target.dataset.exerciseId && canonicalSetSequence(set) >= sequenceIndex ? { ...set, sequenceIndex: canonicalSetSequence(set) + 1, sequence: canonicalSetSequence(set) + 1 } : set);
+          const warmupSet = createSet(target.dataset.exerciseId, warmups.length + 1, { ...(priorWarmup || {}), sequenceIndex, sequence: sequenceIndex, setTypeIndex: warmups.length, completed: false, skipped: false, edited: false, isWarmup: true, setType: "warmup", countsTowardScore: false, countsTowardVolume: false, countsTowardProgression: false, rpe: 5 });
+          const current = data.sets.find((set) => set.id === activeSetId);
+          const nextWarmup = warmups.find((set) => !set.completed && !set.skipped) || warmupSet;
+          const nextWarmupIndex = nextWarmup.id === warmupSet.id ? warmups.length : warmups.findIndex((set) => set.id === nextWarmup.id);
+          const shouldActivateWarmup = !sets.some((set) => set.completed || set.skipped) && (!current || !setTypeSemantics(current).isWarmup);
+          if (shouldActivateWarmup) setActiveSet(nextWarmup.id, "Warm-Up " + (nextWarmupIndex + 1) + " of " + (warmups.length + 1) + " is ready", false);
+          commit({ ...data, sets: [...shifted, warmupSet] });
         }
         if (action === "duplicate-set") addSet(target.dataset.exerciseId, true);
         if (action === "delete-set") {
@@ -7812,6 +8002,7 @@
         if (action === "adjust-timer") adjustTimer(Number(target.dataset.seconds || 0));
         if (action === "skip-timer") cancelTimer("skipped", true);
         if (action === "clear-timer") cancelTimer("canceled", true);
+        if (action === "return-to-rest-workout") await navigateToRestCompletion(timerCompleteNotice?.payload || restNavigationState || {});
         if (action === "dismiss-timer-notice") { timerCompleteNotice = null; saveRuntime(); render(); }
         if (action === "open-session") {
           const requestedSession = data.sessions.find((session) => session.id === target.dataset.sessionId);
@@ -8012,6 +8203,11 @@
 
       root.addEventListener("keydown", (event) => {
         const target = event.target.closest("[data-action]");
+        if (target?.dataset.action === "return-to-rest-workout" && (event.key === "Enter" || event.key === " ")) {
+          event.preventDefault();
+          navigateToRestCompletion(timerCompleteNotice?.payload || restNavigationState || {});
+          return;
+        }
         if (event.key === "Escape" && (templateStartFlow || cancelWorkoutFlow || historyEditConfirm || clearDataFlow?.open)) {
           event.preventDefault();
           if (templateStartFlow) closeTemplateStart();
@@ -8134,10 +8330,24 @@
         }
       });
 
-      function applyWorkoutDeepLink() {
+      async function applyWorkoutDeepLink() {
         const params = new URLSearchParams(window.location.search);
         if (params.get("view") === "settings") {
           setActiveTab("data", { replace: true, renderNow: false });
+          return;
+        }
+        if (params.get("rest") === "complete") {
+          await navigateToRestCompletion({
+            navigationVersion: 1,
+            workoutId: params.get("workoutId") || "",
+            exerciseId: params.get("exerciseId") || "",
+            completedSetId: params.get("completedSetId") || "",
+            nextSetId: params.get("nextSetId") || "",
+            timerId: params.get("timerId") || "",
+            notificationId: params.get("notificationId") || "",
+            timerVersion: Number(params.get("timerVersion") || 1)
+          }, { silent: true });
+          window.history.replaceState({ ...(window.history.state || {}), tab: "lift" }, "", tabUrl("lift"));
           return;
         }
         if (params.get("workout") !== "active") return;
@@ -8172,8 +8382,11 @@
             });
           });
           navigator.serviceWorker.addEventListener("message", (event) => {
-            if (event.data?.type !== "REST_PUSH_RECEIVED") return;
-            if (timer && timer.endsAt <= Date.now()) {
+            if (event.data?.type === "REST_NOTIFICATION_CLICK") {
+              navigateToRestCompletion(event.data.payload || {});
+              return;
+            }
+            if (event.data?.type === "REST_PUSH_RECEIVED" && timer && timer.endsAt <= Date.now()) {
               timer.remainingSeconds = 0;
               completeTimer();
             }
@@ -8198,7 +8411,7 @@
 
       async function boot() {
         await loadData();
-        applyWorkoutDeepLink();
+        await applyWorkoutDeepLink();
         if (!primaryTabIds.includes(window.location.hash.replace(/^#/, ""))) window.history.replaceState({ ...(window.history.state || {}), tab: activeTab }, "", tabUrl(activeTab));
         saveData();
         render();

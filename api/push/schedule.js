@@ -50,6 +50,8 @@ module.exports = async function handler(req, res) {
     setId: body.setId,
     upcomingSetId: body.upcomingSetId || "",
     upcomingSetNumber: body.upcomingSetNumber || "",
+    upcomingSetLabel: body.upcomingSetLabel || "",
+    timerVersion: Number(body.timerVersion || 1),
     exerciseName: String(body.exerciseName || "Workout").slice(0, 120),
     messageDetail: String(body.messageDetail || "exercise-set"),
     scheduledCompletionAt: new Date(restEndTime).toISOString(),

@@ -28,6 +28,9 @@ const factory = new Function("data", `
   const setTypeSemantics = (set) => ({ type: normalizeCanonicalSetType(set?.setType, set?.isWarmup), isWarmup: normalizeCanonicalSetType(set?.setType, set?.isWarmup) === "warmup" });
   const isWorkingSet = (set) => !setTypeSemantics(set).isWarmup;
   const startOfWeekIso = (date) => date;
+  const hypertrophyWindowOffset = 0;
+  const canonicalSetSequence = (set) => Number(set?.sequenceIndex ?? set?.sequence ?? set?.setNumber ?? 0);
+  const setsForExercise = (exerciseId) => data.sets.filter((set) => set.exerciseId === exerciseId).sort((a, b) => canonicalSetSequence(a) - canonicalSetSequence(b));
   const resistanceTypeFor = (exercise, set) => set.resistanceType || exercise.resistanceType || "external";
   ${match[1]}
   return { normalizeTargetSetType, exerciseTargetContext, currentExerciseTargetContexts, savedExerciseTargetContext, targetSetTypeForSet, setProgramExpectation, exerciseExpectationActuals };
@@ -110,6 +113,9 @@ assert.equal(actuals.length, 1, "One saved heavy context should produce one comp
 assert.equal(actuals[0].plannedSets, 3, "Warm-ups must not inflate expected working sets");
 assert.equal(actuals[0].repHits, 3, "Top and back-off sets must be evaluated against their respective ranges");
 assert.equal(actuals[0].rpeHits, 3, "RPE compliance must use the saved set-type bands");
+assert.deepEqual(actuals[0].roles.map((role) => role.key).sort(), ["backoff", "top"], "Actual-vs-Expected must preserve separate top-set and back-off metrics");
+assert.equal(actuals[0].roles.find((role) => role.key === "top").repHits, 1, "Top-set compliance must use the top-set target");
+assert.equal(actuals[0].roles.find((role) => role.key === "backoff").repHits, 2, "Back-off compliance must use the back-off target");
 
 const changedHeavy = { ...heavy, setTypes: heavy.setTypes.map((type) => type.type === "backoff" ? { ...type, repMin: 10, repMax: 12 } : type) };
 data.sessions.push({ id: "s2", date: "2026-01-12", title: "Heavy Push", templateId: "heavy-push", submitted: true });

@@ -24,13 +24,34 @@ module.exports = async function handler(req, res) {
   if (installation.active !== "1" || !installation.endpoint) return json(res, 200, { status: "inactive" });
   const detail = record.messageDetail === "private"
     ? "Your next set is ready."
-    : `${record.exerciseName}${record.upcomingSetNumber ? ` - Set ${record.upcomingSetNumber}` : ""} is ready.`;
+    : `${record.exerciseName}${record.upcomingSetLabel ? ` - ${record.upcomingSetLabel}` : record.upcomingSetNumber ? ` - Set ${record.upcomingSetNumber}` : ""} is ready.`;
+  const navigation = {
+    navigationVersion: 1,
+    timerId: notificationId,
+    notificationId,
+    timerVersion: Number(record.timerVersion || 1),
+    workoutId: record.workoutId,
+    exerciseId: record.exerciseId,
+    completedSetId: record.setId,
+    nextSetId: record.upcomingSetId || "",
+    endsAt: Date.parse(record.scheduledCompletionAt || "") || 0
+  };
+  const params = new URLSearchParams({
+    rest: "complete",
+    workoutId: navigation.workoutId,
+    exerciseId: navigation.exerciseId,
+    completedSetId: navigation.completedSetId,
+    nextSetId: navigation.nextSetId,
+    timerId: navigation.timerId,
+    notificationId: navigation.notificationId,
+    timerVersion: String(navigation.timerVersion)
+  });
   const payload = JSON.stringify({
     title: "Rest complete",
     body: detail,
     tag: `fitness-rest-${record.workoutId}`,
-    url: `/?workout=active&exercise=${encodeURIComponent(record.exerciseId)}&set=${encodeURIComponent(record.upcomingSetId || record.setId)}`,
-    timerId: notificationId
+    url: `/?${params.toString()}#lift`,
+    ...navigation
   });
 
   try {

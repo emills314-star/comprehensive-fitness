@@ -1,4 +1,4 @@
-const CACHE_NAME = "comprehensive-fitness-pwa-v18";
+const CACHE_NAME = "comprehensive-fitness-pwa-v19";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -80,7 +80,7 @@ self.addEventListener("push", (event) => {
         icon: "/resources/icon-192.png",
         badge: "/resources/icon-192.png",
         vibrate: [250, 120, 250, 120, 450],
-        data: { url: payload.url || "/?workout=active", timerId: payload.timerId || "" }
+        data: { ...payload, url: payload.url || "/?rest=complete" }
       });
       });
     })
@@ -89,11 +89,15 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const targetUrl = new URL(event.notification.data?.url || "/?workout=active", self.location.origin).href;
+  const payload = event.notification.data || {};
+  const targetUrl = new URL(payload.url || "/?rest=complete", self.location.origin).href;
   event.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (windows) => {
       const existing = windows.find((client) => client.url.startsWith(self.location.origin));
-      if (existing) return existing.navigate(targetUrl).then((client) => client.focus());
+      if (existing) {
+        existing.postMessage({ type: "REST_NOTIFICATION_CLICK", payload });
+        return existing.focus();
+      }
       return self.clients.openWindow(targetUrl);
     })
   );
