@@ -20,6 +20,9 @@
     "test:prescription-integration": "node scripts/test-prescription-app-integration.js",
     "test:performance": "node scripts/test-performance.js",
     "test:set-prescriptions": "node scripts/test-set-prescriptions.js",
+    "audit:ui": "playwright test",
+    "audit:ui:update": "playwright test --update-snapshots",
+    "audit:ui:report": "node scripts/generate-ui-audit-report.js",
     "preview:strong-migration": "node scripts/preview-strong-migration.js",
     "research:build": "node scripts/build-research-database.js",
     "research:validate": "node scripts/validate-research-database.js",
@@ -44,6 +47,8 @@
     "@capacitor/android": "^7.4.3",
     "@capacitor/cli": "^7.4.3",
     "@capacitor/ios": "^7.4.3",
+    "@playwright/test": "^1.61.1",
+    "axe-core": "^4.12.1",
     "exceljs": "^4.4.0"
   }
 }

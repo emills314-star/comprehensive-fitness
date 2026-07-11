@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://comprehensive-fitness.local/schema/1.0.0/evidence_gaps.schema.json",
+  "$id": "https://comprehensive-fitness.local/schema/1.1.0/evidence_gaps.schema.json",
   "title": "evidence_gaps",
   "type": "array",
   "items": {

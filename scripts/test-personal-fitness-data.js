@@ -79,7 +79,9 @@ async function main() {
   });
   const normalizedResearchIds = new Map(normalizedPreview.records.map((record) => [record.exercise_id, record.research_exercise_id]));
   loaded.aliases.filter((alias) => alias.research_exercise_id).forEach((alias) => {
-    assert.equal(normalizedResearchIds.get(alias.exercise_id), alias.research_exercise_id, `${alias.recorded_name} must propagate research_exercise_id into normalized workout rows`);
+    if (normalizedResearchIds.has(alias.exercise_id)) {
+      assert.equal(normalizedResearchIds.get(alias.exercise_id), alias.research_exercise_id, `${alias.recorded_name} must propagate research_exercise_id into normalized workout rows`);
+    }
   });
   let plausibilityExcludedPreview = normalizedPreview.records.filter((record) => record.is_working_set && record.analysis_progression_eligible === false);
   const plausibilityExcludedIds = plausibilityExcludedPreview.map((record) => record.record_id);

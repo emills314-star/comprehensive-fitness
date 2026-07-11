@@ -5,7 +5,7 @@ const html = fs.readFileSync("index.html", "utf8");
 const match = html.match(/\/\/ RESISTANCE_MODEL_START([\s\S]*?)\/\/ RESISTANCE_MODEL_END/);
 assert.ok(match, "Resistance model markers were not found in index.html");
 
-const factory = new Function("exerciseKey", "data", match[1] + "; return { inferResistanceType, formatResistance, formatSetPerformance, normalizeResistanceSet }; ");
+const factory = new Function("exerciseKey", "data", match[1] + "; return { inferResistanceType, formatResistance, formatSetPerformance, normalizeResistanceSet, convertWeightValue, convertAppWeightUnit }; ");
 const exerciseKey = (name) => String(name || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 const model = factory(exerciseKey, { settings: { weightUnit: "lb" } });
 
@@ -26,6 +26,29 @@ assert.equal(model.formatResistance(bodyweight, { name: "Pull-Up", resistanceTyp
 
 const external = model.normalizeResistanceSet({ reps: 10, weight: 100, weightUnit: "lb" }, "external");
 assert.equal(model.formatResistance(external, { name: "Bench Press", resistanceType: "external" }), "100 lb");
+
+const appData = {
+  settings: { weightUnit: "lb" },
+  sets: [{ weight: 220.4623, targetWeight: 110.2312, addedLoad: 22.0462, weightUnit: "lb", setPrescription: { nextLoad: 225 } }],
+  templates: [{ exercises: [{ increment: 5, warmups: [{ weight: 45, weightUnit: "lb" }] }] }],
+  recommendationHistory: [{ finalPrescription: { prescribedLoad: { target: 220.4623, previous: 200 } } }],
+  manualOverrides: [{ changes: { load: { from: 200, to: 210 } } }],
+  personalEvidencePackage: { exercisePrescriptions: [{ weight: 999 }] },
+  rawImports: [{ weight: 888 }]
+};
+const kilograms = model.convertAppWeightUnit(appData, "kg");
+assert.equal(kilograms.settings.weightUnit, "kg");
+assert.equal(kilograms.sets[0].weight, 100, "Stored set loads must convert atomically to kilograms");
+assert.equal(kilograms.sets[0].targetWeight, 50, "Target loads must convert with actual loads");
+assert.equal(kilograms.sets[0].weightUnit, "kg", "Converted records must retain explicit unit provenance");
+assert.equal(kilograms.recommendationHistory[0].finalPrescription.prescribedLoad.target, 100, "Snapshot prescribed loads must preserve meaning across unit switches");
+assert.equal(kilograms.manualOverrides[0].changes.load.to, Number((210 / 2.2046226218).toFixed(4)), "Audited load overrides must convert without losing their from/to structure");
+assert.equal(kilograms.personalEvidencePackage, appData.personalEvidencePackage, "Private evidence must remain in its source units");
+assert.equal(kilograms.rawImports, appData.rawImports, "Raw import records must remain immutable source evidence");
+const poundsAgain = model.convertAppWeightUnit(kilograms, "lb");
+assert.ok(Math.abs(poundsAgain.sets[0].weight - appData.sets[0].weight) < 0.001, "lb to kg to lb conversion must be stable");
+assert.match(html, /toggle-unit"\) commit\(convertAppWeightUnit/, "Header unit control must convert app data rather than relabel it");
+assert.match(html, /weight-unit"\) commit\(convertAppWeightUnit/, "Settings unit control must use the same atomic conversion boundary");
 
 assert.doesNotMatch(html, /templateExercise\.isBodyweight[\s\S]{0,160}weight:\s*0/, "Starting a template must not silently erase added load");
 assert.match(html, /createSet\(exercise\.id, 1, \{ resistanceType \}\)/, "A newly added bodyweight exercise must give its first set the inferred resistance type");

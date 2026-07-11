@@ -1,5 +1,5 @@
 {
-  "database_version": "1.0.0",
+  "database_version": "1.1.0",
   "valid": true,
   "errors": [],
   "warning_count": 30,
@@ -40,19 +40,19 @@
     "research_library": 40,
     "evidence_conclusions": 27,
     "muscle_group_recommendations": 23,
-    "exercise_database": 60,
+    "exercise_database": 61,
     "progression_rules": 18,
     "nutrition_strategies": 13,
     "evidence_gaps": 15,
     "definitions_data_dictionary": 241,
-    "change_log": 1,
-    "exercise_muscle_map": 133,
-    "exercise_substitution_map": 90,
+    "change_log": 2,
+    "exercise_muscle_map": 136,
+    "exercise_substitution_map": 93,
     "study_conclusion_map": 55,
-    "study_exercise_map": 480,
+    "study_exercise_map": 488,
     "study_muscle_group_map": 69,
-    "rule_exercise_map": 738,
+    "rule_exercise_map": 753,
     "rule_muscle_group_map": 46,
-    "exercise_progression_metric_map": 360
+    "exercise_progression_metric_map": 366
   }
 }

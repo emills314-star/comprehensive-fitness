@@ -4,7 +4,7 @@
     "muscle_group": "chest",
     "muscle_subdivision": "sternal_pectoralis_major",
     "anatomical_function": "Horizontal adduction and shoulder flexion",
-    "effective_exercises": "ex_barbell_bench_press|ex_dumbbell_bench_press|ex_machine_chest_press|ex_cable_fly",
+    "effective_exercises": "ex_barbell_bench_press|ex_cambered_barbell_bench_press|ex_dumbbell_bench_press|ex_machine_chest_press|ex_cable_fly",
     "minimum_effective_weekly_sets": 6,
     "typical_effective_weekly_sets_low": 10,
     "typical_effective_weekly_sets_high": 16,

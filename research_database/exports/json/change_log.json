@@ -11,5 +11,18 @@
     "reason_for_change": "Created normalized evidence, application rules, exports, methodology, and validation package.",
     "supporting_study_ids": "stu_0001|stu_0004|stu_0016|stu_0019",
     "reviewer_notes": "Version 1.0 is broad but not an exhaustive systematic review; low-confidence operational defaults are explicitly labeled."
+  },
+  {
+    "change_id": "chg_0002",
+    "change_date": "2026-07-11",
+    "database_version": "1.1.0",
+    "affected_tab": "exercise_database|muscle_group_recommendations",
+    "affected_record_ids": "ex_cambered_barbell_bench_press|mg_chest_sternal",
+    "change_type": "exercise_library_addition",
+    "previous_value": "Cambered bench aliases were not discoverable.",
+    "new_value": "Added one canonical cambered-barbell bench record with three aliases and normal chest mapping.",
+    "reason_for_change": "Exercise discovery must evaluate eligible canonical library variations instead of silently omitting unrecognized aliases.",
+    "supporting_study_ids": "stu_0004|stu_0009|stu_0010|stu_0011",
+    "reviewer_notes": "This is a movement-specific research default, not a claim that camber geometry guarantees superior hypertrophy."
   }
 ]

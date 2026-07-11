@@ -1,6 +1,6 @@
 # Bibliography
 
-Database version 1.0.0; reviewed 2026-07-11. IDs are persistent and correspond to the research library. Links resolve through DOI.org when a DOI is available.
+Database version 1.1.0; reviewed 2026-07-11. IDs are persistent and correspond to the research library. Links resolve through DOI.org when a DOI is available.
 
 - **stu_0001** — Pelland et al. (2025). The Resistance Training Dose Response: Meta-Regressions Exploring the Effects of Weekly Volume and Frequency on Muscle Hypertrophy and Strength Gains. Sports Medicine. https://doi.org/10.1007/s40279-025-02344-w
 - **stu_0002** — Schoenfeld, Ogborn, and Krieger (2017). Dose-response relationship between weekly resistance training volume and increases in muscle mass. Journal of Sports Sciences. https://doi.org/10.1080/02640414.2016.1210197

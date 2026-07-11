@@ -8,6 +8,7 @@ android/app/src/main/assets/public/
 !.env.example
 .DS_Store
 .vercel-data/
+artifacts/
 
 # Personal health data and generated personal analysis outputs.
 personal_fitness_data/raw/

@@ -2,6 +2,19 @@
 
 A local-first, installable workout tracker for logging strength sessions and getting transparent progression guidance.
 
+## Living documentation
+
+- [Product scope and status](docs/PROJECT.md)
+- [Architecture and data flows](docs/ARCHITECTURE.md)
+- [Recommendation and readiness logic](docs/DECISION_ENGINE.md)
+- [UI and UX behavior](docs/UI_UX.md)
+- [Roadmap, debt, and NEEDS REVIEW register](docs/ROADMAP.md)
+- [Existing-document reconciliation](docs/DOCUMENTATION_INVENTORY.md)
+
+Coding agents should begin with [AGENTS.md](AGENTS.md). The core documents distinguish verified implementation from planned behavior; focused research, private-pipeline, push, setup, and performance documents remain authoritative for their specialized details.
+
+Every application change must update its associated living documentation in the same task. Agents read the relevant documents before implementation, return to them after implementation, update `docs/ROADMAP.md`, and report any unresolved code-versus-intent mismatch as `NEEDS REVIEW`.
+
 The repository also contains a private, reproducible [personal fitness data layer](personal_fitness_data/README.md). Its raw and generated health data are intentionally excluded from Git and deployment.
 
 For future prescription-engine work, [Training Prescription Data and Integration Map](docs/training-prescription-data.md) inventories both databases, their current versions and record counts, crosswalk/weighting rules, app persistence contract, privacy boundary, and regeneration commands.

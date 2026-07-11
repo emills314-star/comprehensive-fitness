@@ -1,6 +1,6 @@
 {
   "database_name": "male_resistance_training_evidence_database",
-  "database_version": "1.0.0",
+  "database_version": "1.1.0",
   "last_reviewed_date": "2026-07-11",
   "population_scope": "resistance-trained and resistance-training-eligible males",
   "source_of_truth": "research_database/source/database.js",
@@ -23,7 +23,7 @@
       "primary_id_field": "muscle_group_id"
     },
     "exercise_database": {
-      "record_count": 60,
+      "record_count": 61,
       "primary_id_field": "exercise_id"
     },
     "progression_rules": {
@@ -43,15 +43,15 @@
       "primary_id_field": null
     },
     "change_log": {
-      "record_count": 1,
+      "record_count": 2,
       "primary_id_field": "change_id"
     },
     "exercise_muscle_map": {
-      "record_count": 133,
+      "record_count": 136,
       "primary_id_field": "exercise_muscle_map_id"
     },
     "exercise_substitution_map": {
-      "record_count": 90,
+      "record_count": 93,
       "primary_id_field": "exercise_substitution_map_id"
     },
     "study_conclusion_map": {
@@ -59,7 +59,7 @@
       "primary_id_field": "study_conclusion_map_id"
     },
     "study_exercise_map": {
-      "record_count": 480,
+      "record_count": 488,
       "primary_id_field": "study_exercise_map_id"
     },
     "study_muscle_group_map": {
@@ -67,7 +67,7 @@
       "primary_id_field": "study_muscle_group_map_id"
     },
     "rule_exercise_map": {
-      "record_count": 738,
+      "record_count": 753,
       "primary_id_field": "rule_exercise_map_id"
     },
     "rule_muscle_group_map": {
@@ -75,7 +75,7 @@
       "primary_id_field": "rule_muscle_group_map_id"
     },
     "exercise_progression_metric_map": {
-      "record_count": 360,
+      "record_count": 366,
       "primary_id_field": "exercise_progression_metric_map_id"
     }
   },

@@ -641,8 +641,13 @@
       }
 
       .template-card { text-align: left; }
-      .mesocycle-planner { display: grid; gap: 12px; }
-      .mesocycle-builder { background: var(--surface); border: 1px solid var(--line); border-radius: 9px; display: grid; gap: 9px; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 11px; }
+      .mesocycle-planner { display: grid; gap: 14px; }
+      .planner-steps { display: grid; gap: 6px; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+      .planner-step { align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; color: var(--muted); display: flex; font-size: .61rem; font-weight: 800; gap: 6px; min-height: 42px; padding: 7px; }
+      .planner-step b { align-items: center; background: var(--surface-strong); border-radius: 999px; display: inline-flex; height: 21px; justify-content: center; width: 21px; }
+      .planner-step.current { border-color: var(--current); color: var(--text); box-shadow: inset 0 -3px 0 var(--current); }
+      .planner-step.complete b { background: var(--success-dark); color: var(--success); }
+      .mesocycle-builder { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 13px; }
       .mesocycle-builder label, .candidate-muscle-select { color: var(--muted); display: grid; font-size: .64rem; font-weight: 850; gap: 4px; }
       .mesocycle-builder .primary-action { grid-column: 1 / -1; }
       .mesocycle-card { background: var(--surface-strong); border: 1px solid var(--line-strong); border-radius: 10px; display: grid; gap: 10px; padding: 12px; }
@@ -650,8 +655,21 @@
       .mesocycle-card h2, .mesocycle-card p { margin: 0; }
       .mesocycle-card > p, .mesocycle-candidate p { color: var(--muted); font-size: .68rem; line-height: 1.45; }
       .mesocycle-pool { display: grid; gap: 7px; }
-      .mesocycle-candidate { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 0 9px; }
+      .mesocycle-candidate { background: var(--surface); border: 1px solid var(--line); border-radius: 11px; display: grid; gap: 8px; padding: 11px; }
       .mesocycle-candidate.top-candidate { border-color: color-mix(in srgb, var(--current) 58%, var(--line)); }
+      .mesocycle-candidate.selected { border-color: var(--current); box-shadow: inset 4px 0 0 var(--current); }
+      .candidate-score { align-items: baseline; display: flex; gap: 4px; }
+      .candidate-score strong { color: var(--current); font-size: 1.42rem; line-height: 1; }
+      .candidate-score span { color: var(--muted); font-size: .66rem; font-weight: 800; }
+      .candidate-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+      .candidate-actions button[aria-pressed="true"] { background: var(--current); border-color: var(--current); color: white; }
+      .program-slot-summary { background: var(--surface-strong); border: 1px solid var(--line-strong); border-radius: 11px; display: grid; gap: 5px; padding: 11px; }
+      .program-review-grid, .session-plan-grid, .candidate-comparison { display: grid; gap: 9px; }
+      .program-session, .muscle-plan, .program-warning, .comparison-card { background: var(--surface); border: 1px solid var(--line); border-radius: 11px; display: grid; gap: 7px; padding: 11px; }
+      .program-warning.serious { border-color: var(--red); box-shadow: inset 3px 0 0 var(--red); }
+      .program-warning.review { border-color: var(--amber); box-shadow: inset 3px 0 0 var(--amber); }
+      .score-factor-list { color: var(--muted); font-size: .66rem; line-height: 1.45; margin: 0; padding-left: 18px; }
+      .mesocycle-history-meta { display: grid; gap: 4px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .mesocycle-candidate summary { align-items: center; cursor: pointer; display: grid; gap: 8px; grid-template-columns: 24px minmax(0, 1fr) auto; list-style: none; min-height: 54px; }
       .mesocycle-candidate summary::-webkit-details-marker { display: none; }
       .mesocycle-candidate summary div { display: grid; gap: 2px; min-width: 0; }
@@ -661,7 +679,7 @@
       .candidate-detail-grid > div { background: var(--surface-strong); display: grid; gap: 3px; padding: 7px; }
       .candidate-detail-grid span { color: var(--muted); font-size: .56rem; font-weight: 900; text-transform: uppercase; }
       .candidate-detail-grid strong { font-size: .66rem; overflow-wrap: anywhere; }
-      @media (max-width: 520px) { .mesocycle-builder { grid-template-columns: 1fr; } .mesocycle-builder .primary-action { grid-column: auto; } }
+      @media (max-width: 520px) { .mesocycle-builder { grid-template-columns: 1fr; } .mesocycle-builder .primary-action { grid-column: auto; } .planner-steps { grid-template-columns: 1fr 1fr; } .planner-step { min-height: 38px; } .mesocycle-history-meta { grid-template-columns: 1fr; } }
 
       .template-card h2,
       .workout-advice h2,
@@ -886,7 +904,11 @@
       .chart-detail-facts span { color: var(--muted); font-size: .62rem; }
       .chart-detail-facts strong { font-size: .72rem; }
 
-      .chart-control-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; display: grid; gap: 9px; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 10px; }
+      .chart-control-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; display: grid; gap: 11px; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 13px; }
+      .chart-viewing-summary { align-items: end; display: flex; gap: 10px; grid-column: 1 / -1; justify-content: space-between; }
+      .chart-viewing-summary div { display: grid; gap: 2px; }
+      .chart-viewing-summary span { color: var(--muted); font-size: .62rem; }
+      .chart-viewing-summary strong { font-size: .92rem; }
       .chart-control-lift { grid-column: 1 / -1; }
       .chart-control-field { display: grid; gap: 4px; min-width: 0; position: relative; }
       .chart-control-field > span, .chart-control-field > label { color: var(--muted); font-size: .58rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
@@ -906,6 +928,12 @@
       .exercise-search-empty { color: var(--muted); font-size: .69rem; padding: 12px; }
       .exercise-search-error { color: var(--red); font-size: .64rem; font-weight: 750; line-height: 1.35; }
       .analysis-period-control { grid-column: 1 / -1; }
+      .analysis-period-menu { position: relative; }
+      .analysis-period-menu > summary { align-items: center; background: var(--surface-strong); border: 1px solid var(--line-strong); border-radius: 10px; cursor: pointer; display: flex; font-size: .74rem; font-weight: 850; justify-content: space-between; min-height: 45px; padding: 9px 11px; }
+      .analysis-period-options { background: var(--surface-strong); border: 1px solid var(--line-strong); border-radius: 11px; box-shadow: 0 14px 34px rgba(8, 24, 38, .22); display: grid; gap: 5px; margin-top: 6px; padding: 7px; }
+      .analysis-period-options button { background: var(--surface); min-height: 46px; text-align: left; }
+      .analysis-period-options button[aria-pressed="true"] { border-color: var(--current); box-shadow: inset 3px 0 0 var(--current); }
+      .chart-recalculating { align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; display: grid; gap: 6px; min-height: 170px; padding: 22px; text-align: center; }
       .chart-control-context { color: var(--muted); font-size: .65rem; grid-column: 1 / -1; line-height: 1.35; margin: 0; }
 
       .hypertrophy-score-card { --score-color: var(--current); align-items: center; background: color-mix(in srgb, var(--score-color) 5%, var(--surface)); border: 1px solid color-mix(in srgb, var(--score-color) 48%, var(--line)); border-radius: 8px; color: var(--text); display: grid; gap: 9px 12px; grid-template-columns: minmax(0, 1fr) auto; min-height: 116px; padding: 12px; text-align: left; width: 100%; }
@@ -1511,7 +1539,7 @@
       }
 
       .nav-button.active {
-        color: var(--green-2);
+        color: var(--current);
       }
 
       .nav-button[aria-current="page"] { background: var(--current-dark); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--current) 42%, var(--line)); }
@@ -1519,8 +1547,8 @@
 
       .nav-button.active .nav-icon {
         background: var(--green-dark);
-        border-color: var(--green);
-        color: var(--green-2);
+        border-color: var(--current);
+        color: var(--current);
       }
 
       @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; } button:active, select:active, .is-pressing, summary[data-action]:active, label.toggle-line:active, .volume-card:active { transform: none !important; } }
@@ -1950,6 +1978,8 @@
       let mesocycleDraftType = "primary_progression";
       let mesocycleSpecializationMuscle = "";
       let mesocycleDurationDraft = "";
+      let mesocycleComparisonIds = [];
+      let pendingDeleteMesocycleId = "";
 
       const icon = {
         workout: "Lift",
@@ -2404,7 +2434,15 @@
           exercises: (Array.isArray(template.exercises) ? template.exercises : []).map((exercise) => { const resistanceType = inferResistanceType(exercise.name, exercise); return { ...exercise, resistanceType, isBodyweight: isBodyweightResistance(resistanceType), targetRpe: Number(exercise.targetRpe || 0) || "", increment: Number(exercise.increment || 0) || "", setTypes: Array.isArray(exercise.setTypes) ? exercise.setTypes.map((setType) => normalizeTargetSetType(setType, { restSeconds: exercise.restSeconds, targetRpe: exercise.targetRpe })) : [] }; })
         }));
         model.appDataVersion = Math.max(2, Number(model.appDataVersion || 0));
-        model.mesocycles = Array.isArray(model.mesocycles) ? model.mesocycles : [];
+        model.mesocycles = (Array.isArray(model.mesocycles) ? model.mesocycles : []).map((mesocycle) => ({
+          ...mesocycle,
+          status: mesocycle.status === "preview" ? "draft" : mesocycle.status === "loaded" ? "planned" : mesocycle.status,
+          planningStep: Number(mesocycle.planningStep || 5),
+          programSlots: Array.isArray(mesocycle.programSlots) ? mesocycle.programSlots : [],
+          selectedPortfolio: Array.isArray(mesocycle.selectedPortfolio) ? mesocycle.selectedPortfolio : (Array.isArray(mesocycle.activeExercises) ? mesocycle.activeExercises : []),
+          sessions: Array.isArray(mesocycle.sessions) ? mesocycle.sessions : [],
+          programReview: mesocycle.programReview || { warnings: [], seriousWarningCount: 0, musclePlans: [], explanation: ["Legacy mesocycle: rebuild the draft to receive full-program interaction analysis."] }
+        }));
         model.activeMesocycleId = model.mesocycles.some((mesocycle) => mesocycle.id === model.activeMesocycleId && mesocycle.status === "active") ? model.activeMesocycleId : "";
         model.recommendationHistory = Array.isArray(model.recommendationHistory) ? model.recommendationHistory : [];
         model.manualOverrides = Array.isArray(model.manualOverrides) ? model.manualOverrides : [];
@@ -2735,7 +2773,8 @@
         const type = prescription.recommendationType;
         const resistanceType = templateExercise.resistanceType || inferResistanceType(templateExercise.name || prescription.exerciseId, templateExercise);
         const rpe = prescription.targetRpe ? Number(((prescription.targetRpe.min + prescription.targetRpe.max) / 2).toFixed(1)) : 8;
-        const weight = Number(prescription.prescribedLoad?.target || 0);
+        const sourceWeightUnit = prescription.prescribedLoad?.unit || templateExercise.weightUnit || data.settings.weightUnit;
+        const weight = Number(convertWeightValue(prescription.prescribedLoad?.target || 0, sourceWeightUnit, data.settings.weightUnit));
         const reps = Number(prescription.repRange?.target || Math.round((prescription.repRange.min + prescription.repRange.max) / 2));
         const mode = type === "progress" ? (Number(prescription.prescribedLoad?.adjustmentPercent || 0) > 0 ? "load-progression" : "rep-progression")
           : ["exercise_deload", "muscle_group_deload", "full_program_deload"].includes(type) ? "deload"
@@ -2758,7 +2797,7 @@
           isBodyweight: isBodyweightResistance(resistanceType),
           isDeload: ["exercise_deload", "muscle_group_deload", "full_program_deload"].includes(type),
           reason: prescription.userExplanation,
-          increment: Math.abs(Number(prescription.prescribedLoad?.target || 0) - Number(prescription.prescribedLoad?.previous || 0)) || Number(templateExercise.increment || progressionProfileForExercise(templateExercise.name || prescription.exerciseId).increment),
+          increment: Math.abs(weight - Number(convertWeightValue(prescription.prescribedLoad?.previous || 0, sourceWeightUnit, data.settings.weightUnit))) || Number(templateExercise.increment || progressionProfileForExercise(templateExercise.name || prescription.exerciseId).increment),
           confidence: prescription.confidence,
           restSeconds: prescription.restSeconds.target,
           restReason: `Unified ${prescription.confidence} confidence target: ${prescription.restSeconds.min}-${prescription.restSeconds.max} seconds.`,
@@ -3309,7 +3348,7 @@
       }
 
       function canonicalExerciseId(name) {
-        return String(name || "")
+        const normalized = String(name || "")
           .toLowerCase()
           .replace(/[^a-z0-9]+/g, " ")
           .replace(/\bdb\b/g, "dumbbell")
@@ -3320,6 +3359,9 @@
           .replace(/\b(flyes|flies)\b/g, "fly")
           .replace(/\s+/g, " ")
           .trim();
+        const researchId = prescriptionEngine?.evidence?.research?.exerciseIdByAlias?.get(normalizePrescriptionIdentity(name))
+          || prescriptionEngine?.evidence?.research?.exerciseIdByAlias?.get(normalizePrescriptionIdentity(normalized));
+        return researchId || normalized;
       }
 
       function exerciseCatalog() {
@@ -3488,6 +3530,51 @@
           distance: Number(set.distance || 0),
           distanceUnit: set.distanceUnit || "m"
         };
+      }
+
+      const convertibleLoadKeys = new Set([
+        "weight", "targetWeight", "originalTargetWeight", "addedLoad", "assistanceLoad",
+        "increment", "targetLoad", "nextLoad"
+      ]);
+
+      function convertWeightValue(value, fromUnit, toUnit) {
+        const numeric = Number(value);
+        if (!Number.isFinite(numeric) || fromUnit === toUnit) return value;
+        const converted = fromUnit === "lb" && toUnit === "kg" ? numeric / 2.2046226218 : numeric * 2.2046226218;
+        return Number(converted.toFixed(4));
+      }
+
+      function convertWeightFields(value, fromUnit, toUnit, key = "") {
+        if (value == null || fromUnit === toUnit) return value;
+        if (key === "personalEvidencePackage" || key === "rawImports") return value;
+        if (Array.isArray(value)) return value.map((item) => convertWeightFields(item, fromUnit, toUnit));
+        if (typeof value !== "object") return convertibleLoadKeys.has(key) ? convertWeightValue(value, fromUnit, toUnit) : value;
+        const converted = {};
+        const hasExplicitUnitField = Object.prototype.hasOwnProperty.call(value, "weightUnit");
+        Object.entries(value).forEach(([field, item]) => {
+          if (field === "prescribedLoad" && item && typeof item === "object") {
+            converted[field] = { ...item, target: convertWeightValue(item.target, fromUnit, toUnit), previous: convertWeightValue(item.previous, fromUnit, toUnit), unit: item.unit ? toUnit : item.unit };
+          } else if (field === "load" && item && typeof item === "object" && ("from" in item || "to" in item)) {
+            converted[field] = { ...item, from: convertWeightValue(item.from, fromUnit, toUnit), to: convertWeightValue(item.to, fromUnit, toUnit) };
+          } else {
+            converted[field] = convertWeightFields(item, fromUnit, toUnit, field);
+          }
+        });
+        if (hasExplicitUnitField) converted.weightUnit = toUnit;
+        if (converted.recommendationId && converted.checksum && typeof window !== "undefined" && window.ComprehensiveFitnessPrescriptionEngine?.refreshRecommendationChecksum) {
+          return window.ComprehensiveFitnessPrescriptionEngine.refreshRecommendationChecksum(converted);
+        }
+        return converted;
+      }
+
+      function convertAppWeightUnit(model, toUnit) {
+        const fromUnit = model?.settings?.weightUnit === "kg" ? "kg" : "lb";
+        if (!model || !["lb", "kg"].includes(toUnit) || fromUnit === toUnit) return model;
+        const converted = convertWeightFields(model, fromUnit, toUnit);
+        converted.settings = { ...model.settings, weightUnit: toUnit };
+        converted.personalEvidencePackage = model.personalEvidencePackage;
+        converted.rawImports = model.rawImports;
+        return converted;
       }
       // RESISTANCE_MODEL_END
 
@@ -4178,11 +4265,11 @@
       }
 
       function recoverySessionLabel(recoveryAdvice, hasHistory) {
-        if (recoveryAdvice?.decision === "rest") return "Session target: recovery / technique only";
-        if (recoveryAdvice?.decision === "light_session") return "Session target: readiness-adjusted light session";
-        if (recoveryAdvice?.decision === "deload") return "Session target: deload";
-        if (recoveryAdvice?.decision === "hold") return hasHistory ? "Session target: hold the plan" : "Session target: establish baseline";
-        return hasHistory ? "Session target: progressive overload" : "Session target: establish baseline";
+        if (recoveryAdvice?.decision === "rest") return "Today's start guidance: recovery / technique only";
+        if (recoveryAdvice?.decision === "light_session") return "Today's start guidance: readiness-adjusted light session";
+        if (recoveryAdvice?.decision === "deload") return "Today's start guidance: deload";
+        if (recoveryAdvice?.decision === "hold") return hasHistory ? "Today's start guidance: hold the plan" : "Today's start guidance: establish baseline";
+        return hasHistory ? "Today's start guidance: planned progression" : "Today's start guidance: establish baseline";
       }
 
       function recoverySessionDetail(recoveryAdvice) {
@@ -4462,7 +4549,7 @@
         const progress = workoutProgress();
         const quickStartHtml = measurePerformance("lift:quickTemplates", renderQuickStartTemplates);
         const exerciseHtml = measurePerformance("lift:exerciseList", () => activeExercises().map(renderExercise).join(""), { count: activeExercises().length });
-        const planReadinessHtml = measurePerformance("lift:planReadiness", () => renderTodayPlan() + renderRecoveryPanel(session) + renderActiveWorkoutAdvice());
+          const planReadinessHtml = measurePerformance("lift:planReadiness", () => renderRecoveryPanel(session) + renderTodayPlan() + renderActiveWorkoutAdvice());
         return `
           <section class="view workout-view ${historyReadOnly ? "history-readonly" : ""} ${editingHistory ? "history-editing" : ""}">
             <div class="workout-heading">
@@ -4824,7 +4911,6 @@
       function renderRecoveryPanel(session) {
         const recovery = sessionRecovery(session);
         const advice = recoveryRecommendationForSession(session);
-        const band = advice.band || readinessBandStatus(session);
         return `
           <section class="recovery-panel compact-recovery">
             <div class="row split">
@@ -5498,18 +5584,27 @@
 
       function previewMesocyclePlan() {
         if (!prescriptionEngine || prescriptionEvidenceStatus.state === "error") return showAppToast("Training evidence is not available yet.");
-        const currentExerciseIds = data.templates.flatMap((template) => template.exercises.map((exercise) => prescriptionExerciseIdentity(exercise.name))).filter(Boolean);
+        const currentProgramTemplates = data.activeMesocycleId ? data.templates.filter((template) => template.mesocycleId === data.activeMesocycleId) : [];
+        const currentProgramExerciseIds = currentProgramTemplates.flatMap((template) => template.exercises.map((exercise) => prescriptionExerciseIdentity(exercise.name))).filter(Boolean);
+        const recentCutoff = new Date();
+        recentCutoff.setDate(recentCutoff.getDate() - 56);
+        const recentSessionIds = new Set(data.sessions.filter((session) => isSessionSubmitted(session) && new Date(sessionCompletionDate(session)) >= recentCutoff).map((session) => session.id));
+        const recentExerciseIds = Array.from(new Set(data.exercises.filter((exercise) => recentSessionIds.has(exercise.sessionId)).map((exercise) => prescriptionExerciseIdentity(exercise.name)).filter(Boolean)));
+        const successfulExerciseIds = Array.from(new Set(prescriptionEngine.evidence.personal.exerciseScores.filter((score) => Number(score.comparable_exposures || score.session_count || 0) >= 3 && Number(score.progression_score || score.progressionScore || 0) >= 55).map((score) => score.exercise_id || score.exerciseId).filter(Boolean)));
         const durationWeeks = Number(mesocycleDurationDraft || 0);
         const mesocycle = prescriptionEngine.createMesocycle({
           type: mesocycleDraftType,
           durationWeeks: durationWeeks > 0 ? durationWeeks : undefined,
           trainingDays: Number(data.settings.trainingDaysPerWeek || 4),
           availableEquipment: data.settings.availableEquipment || [],
-          currentExerciseIds,
+          currentExerciseIds: currentProgramExerciseIds,
+          currentProgramExerciseIds,
+          recentExerciseIds,
+          successfulExerciseIds,
           specializationMuscleGroups: mesocycleDraftType === "specialization" && mesocycleSpecializationMuscle ? [mesocycleSpecializationMuscle] : [],
           split: data.templates.map((template) => template.name)
         });
-        selectedPrescriptionPoolMuscle = Object.keys(mesocycle.pools)[0] || selectedPrescriptionPoolMuscle;
+        selectedPrescriptionPoolMuscle = mesocycle.programSlots?.[0]?.muscleGroupId || Object.keys(mesocycle.pools)[0] || selectedPrescriptionPoolMuscle;
         commit({ ...data, mesocycles: [mesocycle, ...data.mesocycles] });
       }
 
@@ -5532,12 +5627,11 @@
       }
 
       function templatesForMesocycle(mesocycle) {
-        const exerciseCount = mesocycle.activeExercises.length;
-        if (!exerciseCount) return [];
-        const dayCount = Math.max(1, Math.min(Number(mesocycle.trainingDays || 4), Math.ceil(exerciseCount / 4)));
-        const days = Array.from({ length: dayCount }, (_, index) => ({ id: id(), name: `${mesocycle.name} · Day ${index + 1}`, notes: `Generated from active mesocycle ${mesocycle.id}. Productive exercises are preserved unless the unified engine records a supported rotation.`, exercises: [], createdAt: isoNow(), updatedAt: isoNow(), mesocycleId: mesocycle.id }));
-        mesocycle.activeExercises.forEach((candidate, index) => {
-          const targetDay = days[index % dayCount];
+        const plannedSessions = mesocycle.sessions || [];
+        if (!plannedSessions.length) return [];
+        const days = plannedSessions.map((planned) => ({ id: id(), planSessionId: planned.id, name: `${mesocycle.name} · ${planned.name}`, baseSessionIntent: planned.baseSessionIntent, notes: `Generated from full-program mesocycle ${mesocycle.id}. Base Session Intent: ${planned.baseSessionIntent}. Today's readiness may modify load, sets, RPE, rest, or exercise selection before the workout begins.`, exercises: [], createdAt: isoNow(), updatedAt: isoNow(), mesocycleId: mesocycle.id }));
+        plannedSessions.forEach((planned, sessionIndex) => planned.exercises.forEach((candidate) => {
+          const targetDay = days[sessionIndex];
           const snapshot = unifiedPrescriptionSnapshot({ name: candidate.exerciseName }, { exerciseId: candidate.exerciseId, muscleGroupId: candidate.muscleGroupId, mesocycle, fresh: true, createdAt: isoNow() });
           const prescription = snapshot?.basePrescription;
           const target = snapshot ? legacyTargetFromSnapshot(snapshot, { name: candidate.exerciseName }) : null;
@@ -5562,7 +5656,7 @@
             warmups: [],
             recommendationSnapshot: snapshot
           });
-        });
+        }));
         return days.filter((day) => day.exercises.length);
       }
 
@@ -5574,6 +5668,7 @@
           return;
         }
         try {
+          if (action === "start" && Number(selected.programReview?.seriousWarningCount || 0) > 0) return showAppToast("Resolve the serious full-program warnings before activation.");
           const transitioned = prescriptionEngine.transitionMesocycle(selected, action, action === "complete" ? { outcome: { completedFromApp: true } } : action === "review" ? { review: { recommendationHistoryCount: data.recommendationHistory.filter((snapshot) => snapshot.mesocycleId === mesocycleId).length } } : {});
           const activeMesocycleId = transitioned.status === "active" ? transitioned.id : data.activeMesocycleId === transitioned.id && transitioned.status !== "active" ? "" : data.activeMesocycleId;
           const generatedTemplates = action === "start" ? templatesForMesocycle(transitioned) : [];
@@ -5584,12 +5679,52 @@
         }
       }
 
-      function renderMesocycleCandidate(candidate, pool) {
+      function selectMesocycleCandidate(mesocycleId, slotId, exerciseId) {
+        const mesocycle = data.mesocycles.find((item) => item.id === mesocycleId);
+        const slot = mesocycle?.programSlots?.find((item) => item.id === slotId);
+        if (!mesocycle || !slot || !prescriptionEngine) return;
+        const selected = slot.selectionRequired === 1 ? [exerciseId] : Array.from(new Set([...slot.selectedExerciseIds, exerciseId])).slice(-slot.selectionRequired);
+        try {
+          const updated = prescriptionEngine.updateMesocycleSelection(mesocycle, slotId, selected);
+          commit({ ...data, mesocycles: data.mesocycles.map((item) => item.id === mesocycleId ? updated : item) });
+          showAppToast("Program portfolio updated and every session was rechecked.");
+        } catch (error) {
+          showAppToast(error?.message || "Exercise selection could not be updated.");
+        }
+      }
+
+      function deleteMesocycleDraft(mesocycleId) {
+        const mesocycle = data.mesocycles.find((item) => item.id === mesocycleId);
+        if (!mesocycle || !prescriptionEngine?.canDeleteMesocycle(mesocycle)) return showAppToast("Completed or previously activated mesocycles are protected. Archive them instead.");
+        commit({ ...data, mesocycles: data.mesocycles.filter((item) => item.id !== mesocycleId) });
+        pendingDeleteMesocycleId = "";
+      }
+
+      function mesocycleRoleExplanation(role) {
+        return ({
+          primary_progression_lift: "Primary progression lift: placed early enough to track measurable load or repetition progress.",
+          secondary_hypertrophy_lift: "Secondary hypertrophy lift: adds target-muscle work without competing with the primary progression role.",
+          low_fatigue_accessory: "Lower-fatigue accessory: adds useful volume with less systemic, spinal, or grip cost.",
+          maintenance_lift: "Maintenance lift: retains skill and stimulus with conservative volume.",
+          deload_variation: "Deload variation: preserves the movement goal while reducing stress or staleness."
+        })[role] || "This role defines how the exercise contributes to the complete program.";
+      }
+
+      function renderMesocycleCandidate(candidate, pool, slot, mesocycle) {
         const replacement = pool.candidates.find((item) => item.exerciseId === candidate.preferredReplacementExerciseId);
+        const selected = slot.selectedExerciseIds.includes(candidate.exerciseId);
+        const score = Math.round(candidate.scores.predictedProgramEffectiveness ?? candidate.scores.overallRecommendationStrength);
+        const compared = mesocycleComparisonIds.includes(candidate.exerciseId);
         return `
-          <details class="mesocycle-candidate ${candidate.rank === 1 ? "top-candidate" : ""}">
-            <summary><span class="candidate-rank">${candidate.rank}</span><div><strong>${escapeHtml(candidate.exerciseName)}</strong><small>${escapeHtml(candidate.intendedRole.replaceAll('_', ' '))} · ${Math.round(candidate.scores.overallRecommendationStrength)}/100</small></div><span class="status-pill ${candidate.personalDataConfidence === 'high' ? 'good' : 'neutral'}">${escapeHtml(candidate.personalDataConfidence)}</span></summary>
+          <article class="mesocycle-candidate ${candidate.rank === 1 ? "top-candidate" : ""} ${selected ? 'selected' : ''}">
+            <div class="row split"><div><span class="section-kicker">${candidate.rank === 1 ? 'Recommended for this slot' : 'Alternative ' + candidate.rank}</span><strong>${escapeHtml(candidate.exerciseName)}</strong><small>${escapeHtml(candidate.intendedRole.replaceAll('_', ' '))}</small></div><div class="candidate-score"><strong>${score}</strong><span>/ 100</span></div></div>
+            <p><strong>Predicted Program Effectiveness</strong><br><small>Expected usefulness for this role in this proposed mesocycle; it is not a guaranteed hypertrophy outcome.</small></p>
+            <div class="candidate-actions"><button type="button" data-action="select-mesocycle-candidate" data-mesocycle-id="${mesocycle.id}" data-slot-id="${slot.id}" data-exercise-id="${candidate.exerciseId}" aria-pressed="${selected}">${selected ? 'Selected' : 'Select for this role'}</button><button type="button" data-action="compare-mesocycle-candidate" data-exercise-id="${candidate.exerciseId}" aria-pressed="${compared}">${compared ? 'Comparing' : 'Compare'}</button></div>
             <div class="candidate-detail-grid">
+              <div><span>Full-program fit</span><strong>${Math.round(candidate.scores.fullProgramFit ?? 100)} / 100</strong></div>
+              <div><span>Target-muscle effectiveness</span><strong>${Math.round(candidate.scores.targetMuscleEffectiveness ?? candidate.scores.overallRecommendationStrength)} / 100</strong></div>
+              <div><span>Confidence</span><strong>${escapeHtml(candidate.personalDataConfidence)}</strong></div>
+              <div><span>Evidence</span><strong>${escapeHtml(candidate.sourceTrace?.explanation || candidate.scores.weightingReason)}</strong></div>
               <div><span>Muscles</span><strong>${escapeHtml([...candidate.primaryMuscles, ...candidate.secondaryMuscles].join(', ') || pool.muscleGroupId)}</strong></div>
               <div><span>Structure</span><strong>${escapeHtml(candidate.recommendedSetStructure.replaceAll('_', ' '))}</strong></div>
               <div><span>Sets</span><strong>${escapeHtml(prescriptionMetric(candidate.recommendedSetRange))}</strong></div>
@@ -5597,13 +5732,14 @@
               <div><span>Effort</span><strong>RPE ${escapeHtml(candidate.recommendedRpe.min + '-' + candidate.recommendedRpe.max)} · RIR ${escapeHtml(candidate.recommendedRir.min + '-' + candidate.recommendedRir.max)}</strong></div>
               <div><span>Frequency</span><strong>${escapeHtml(prescriptionMetric(candidate.recommendedFrequency, '/week'))}</strong></div>
             </div>
+            <p><strong>Role meaning:</strong> ${escapeHtml(mesocycleRoleExplanation(candidate.intendedRole))}</p>
             <p><strong>Why it belongs:</strong> ${escapeHtml(candidate.reasonForMesocycle)}</p>
             <p><strong>Progression:</strong> ${escapeHtml(candidate.progressionInstruction)}</p>
             <p><strong>Deload trigger:</strong> ${escapeHtml(candidate.deloadTrigger)}</p>
             <p><strong>Rotation trigger:</strong> ${escapeHtml(candidate.rotationTrigger)}</p>
             <p><strong>Preferred replacement:</strong> ${escapeHtml(replacement?.exerciseName || candidate.preferredReplacementExerciseId || 'Choose the next diversified same-function option')}</p>
-            <p class="settings-note">Personal confidence ${escapeHtml(candidate.personalDataConfidence)} · research confidence ${escapeHtml(candidate.researchDataConfidence)} · ${escapeHtml(candidate.setStructureReason)}</p>
-          </details>
+            <details><summary>Why this score?</summary><div><strong>Positive factors</strong><ul class="score-factor-list">${(candidate.scoreExplanation?.positiveFactors || [candidate.scores.weightingReason]).map((factor) => '<li>' + escapeHtml(factor) + '</li>').join('')}</ul><strong>What reduced or limits it</strong><ul class="score-factor-list">${(candidate.scoreExplanation?.limitingFactors?.length ? candidate.scoreExplanation.limitingFactors : ['No material program-fit penalty. Confidence still reflects sample size and data completeness.']).map((factor) => '<li>' + escapeHtml(factor) + '</li>').join('')}</ul><p class="settings-note">Systemic fatigue ${Math.round(candidate.scores.systemicFatigue || 0)}/100 · spinal load ${Math.round(candidate.scores.spinalLoad || 0)}/100 · grip ${Math.round(candidate.scores.gripDemand || 0)}/100 · ${escapeHtml(candidate.setStructureReason)}</p></div></details>
+          </article>
         `;
       }
 
@@ -5611,19 +5747,29 @@
         const poolKeys = Object.keys(mesocycle.pools || {});
         const selectedMuscle = poolKeys.includes(selectedPrescriptionPoolMuscle) ? selectedPrescriptionPoolMuscle : poolKeys[0];
         const pool = mesocycle.pools?.[selectedMuscle];
+        const slot = mesocycle.programSlots?.find((item) => item.muscleGroupId === selectedMuscle);
+        const comparison = pool?.candidates.filter((candidate) => mesocycleComparisonIds.includes(candidate.exerciseId)).slice(0, 3) || [];
+        const warnings = mesocycle.programReview?.warnings || [];
+        const startDate = mesocycle.startedAt || "";
+        const endDate = mesocycle.completedAt || mesocycle.abandonedAt || "";
         const actions = [];
-        if (mesocycle.status === "preview") actions.push('<button type="button" data-action="mesocycle-transition" data-mesocycle-action="load" data-mesocycle-id="' + mesocycle.id + '">Load plan</button>');
-        if (["preview", "loaded"].includes(mesocycle.status)) actions.push('<button class="primary-action" type="button" data-action="mesocycle-transition" data-mesocycle-action="start" data-mesocycle-id="' + mesocycle.id + '">Start mesocycle</button>');
+        if (mesocycle.status === "draft") actions.push('<button type="button" data-action="mesocycle-transition" data-mesocycle-action="plan" data-mesocycle-id="' + mesocycle.id + '">Save as planned mesocycle</button>');
+        if (mesocycle.status === "planned") actions.push('<button class="primary-action" type="button" data-action="mesocycle-transition" data-mesocycle-action="start" data-mesocycle-id="' + mesocycle.id + '" ' + (mesocycle.programReview?.seriousWarningCount ? 'disabled title="Resolve serious program warnings first"' : '') + '>Activate mesocycle</button>');
         if (mesocycle.status === "active") actions.push('<button type="button" data-action="mesocycle-transition" data-mesocycle-action="complete" data-mesocycle-id="' + mesocycle.id + '">Complete mesocycle</button>');
-        if (mesocycle.status === "completed") actions.push('<button type="button" data-action="mesocycle-transition" data-mesocycle-action="review" data-mesocycle-id="' + mesocycle.id + '">Review outcomes</button>');
+        if (["draft", "planned", "active"].includes(mesocycle.status)) actions.push('<button type="button" data-action="mesocycle-transition" data-mesocycle-action="abandon" data-mesocycle-id="' + mesocycle.id + '">Abandon</button>');
+        if (["completed", "abandoned"].includes(mesocycle.status)) actions.push('<button type="button" data-action="mesocycle-transition" data-mesocycle-action="archive" data-mesocycle-id="' + mesocycle.id + '">Archive</button>');
+        if (["completed", "archived"].includes(mesocycle.status)) actions.push('<button type="button" data-action="mesocycle-transition" data-mesocycle-action="review" data-mesocycle-id="' + mesocycle.id + '">Review outcomes</button>');
+        if (prescriptionEngine?.canDeleteMesocycle(mesocycle)) actions.push(pendingDeleteMesocycleId === mesocycle.id ? '<span><button class="danger" type="button" data-action="confirm-delete-mesocycle" data-mesocycle-id="' + mesocycle.id + '">Confirm delete</button><button type="button" data-action="cancel-delete-mesocycle">Cancel</button></span>' : '<button class="danger" type="button" data-action="request-delete-mesocycle" data-mesocycle-id="' + mesocycle.id + '">Delete unused draft</button>');
         return `
           <article class="mesocycle-card ${mesocycle.status === 'active' ? 'active-mesocycle' : ''}">
             <div class="row split"><div><div class="section-kicker">${escapeHtml(mesocycleTypeLabel(mesocycle.type))}</div><h2>${escapeHtml(mesocycle.name)}</h2></div><span class="status-pill ${mesocycle.status === 'active' ? 'good' : 'neutral'}">${escapeHtml(mesocycle.status)}</span></div>
-            <p>${mesocycle.durationWeeks} weeks · ${escapeHtml(mesocycle.durationBasis)}</p>
-            <p>${mesocycle.activeExercises.length} exercises selected across ${poolKeys.length} represented muscle groups. ${mesocycle.preservedProductiveExerciseIds.length} productive current exercise${mesocycle.preservedProductiveExerciseIds.length === 1 ? ' was' : 's were'} preserved.</p>
-            <details class="compact-disclosure"><summary>Active-program subset <span>${mesocycle.activeExercises.length}</span></summary><div class="disclosure-body"><ul class="template-list">${mesocycle.activeExercises.map((candidate) => '<li><strong>' + escapeHtml(candidate.exerciseName) + '</strong><small>' + escapeHtml(candidate.muscleGroupId.replaceAll('_', ' ') + ' · ' + candidate.intendedRole.replaceAll('_', ' ') + ' · ' + candidate.selectionReason) + '</small></li>').join('')}</ul><p class="settings-note">Starting this mesocycle creates day templates from this subset. Candidate pools remain alternatives, not extra required work.</p></div></details>
+            <div class="mesocycle-history-meta"><span>${mesocycle.durationWeeks} weeks · ${escapeHtml(mesocycle.durationBasis)}</span><span>Created ${formatDate(mesocycle.createdAt)}</span><span>Started ${startDate ? formatDate(startDate) : 'Never activated'}</span><span>Ended ${endDate ? formatDate(endDate) : 'Not ended'}</span></div>
+            <p>${mesocycle.selectedPortfolio?.length || mesocycle.activeExercises.length} portfolio exercises fill ${mesocycle.programSlots?.length || poolKeys.length} program slots across ${mesocycle.sessions?.length || mesocycle.trainingDays} sessions. ${mesocycle.preservedProductiveExerciseIds.length} productive current-program exercise${mesocycle.preservedProductiveExerciseIds.length === 1 ? ' was' : 's were'} preserved.</p>
+            <details class="compact-disclosure" open><summary>Selected program-wide exercise portfolio <span>${mesocycle.selectedPortfolio?.length || 0}</span></summary><div class="disclosure-body"><p class="settings-note">This portfolio is selected before session construction. It replaces the misleading former “Active Program Subset.”</p><ul class="template-list">${(mesocycle.selectedPortfolio || []).map((candidate) => '<li><strong>' + escapeHtml(candidate.exerciseName) + '</strong><small>' + escapeHtml(candidate.targetMuscleGroupIds.join(', ').replaceAll('_', ' ') + ' · ' + candidate.intendedRole.replaceAll('_', ' ') + ' · ' + candidate.selectionReason) + '</small></li>').join('')}</ul></div></details>
             <div class="row wrap">${actions.join('')}</div>
-            ${pool ? '<label class="candidate-muscle-select">Candidate pool<select data-action="mesocycle-pool-muscle">' + poolKeys.map((muscle) => '<option value="' + escapeHtml(muscle) + '" ' + (muscle === selectedMuscle ? 'selected' : '') + '>' + escapeHtml(muscle.replaceAll('_', ' ')) + '</option>').join('') + '</select></label><div class="mesocycle-pool"><p class="settings-note">Candidates, not five mandatory weekly exercises. ' + escapeHtml(pool.explanation) + '</p>' + pool.candidates.map((candidate) => renderMesocycleCandidate(candidate, pool)).join('') + '</div>' : ''}
+            ${pool && slot ? '<label class="candidate-muscle-select">Review program slot<select data-action="mesocycle-pool-muscle">' + poolKeys.map((muscle) => '<option value="' + escapeHtml(muscle) + '" ' + (muscle === selectedMuscle ? 'selected' : '') + '>' + escapeHtml(muscle.replaceAll('_', ' ')) + '</option>').join('') + '</select></label><section class="program-slot-summary"><div class="section-kicker">Program Slot</div><strong>' + escapeHtml(slot.muscleGroupId.replaceAll('_', ' ') + ' · ' + slot.role.replaceAll('_', ' ')) + '</strong><span>Choose ' + slot.selectionRequired + ' exercise' + (slot.selectionRequired === 1 ? '' : 's') + ' · ' + slot.weeklySetsTarget + ' planned sets · ' + slot.weeklyExposuresTarget + ' exposure(s)</span><p>' + escapeHtml(slot.rationale) + '</p><small>Selected: ' + escapeHtml(slot.selectedExerciseIds.map((id) => pool.candidates.find((candidate) => candidate.exerciseId === id)?.exerciseName || id).join(', ') || 'Selection required') + ' · Sessions: ' + escapeHtml(slot.plannedSessionIds.join(', ') || 'assigned after selection') + '</small></section><div class="mesocycle-pool"><h3>Top Exercise Candidates</h3><p class="settings-note">Select the exercise you want to use for this role. Candidates are ranked using your performance history, program compatibility, fatigue cost, equipment, and research evidence. The remaining options are alternatives for substitutions or future mesocycles—you are not expected to perform all five.</p>' + pool.candidates.map((candidate) => renderMesocycleCandidate(candidate, pool, slot, mesocycle)).join('') + (pool.excludedCandidates?.length ? '<details><summary>Why eligible-looking exercises were excluded</summary><ul class="score-factor-list">' + pool.excludedCandidates.map((item) => '<li><strong>' + escapeHtml(item.exerciseName) + ':</strong> ' + escapeHtml(item.explanation) + '</li>').join('') + '</ul></details>' : '') + '</div>' : ''}
+            ${comparison.length ? '<section class="candidate-comparison"><div class="section-heading"><div><h3>Candidate comparison</h3><p>Compare up to three alternatives for this program slot.</p></div></div>' + comparison.map((candidate) => '<article class="comparison-card"><strong>' + escapeHtml(candidate.exerciseName) + '</strong><div class="candidate-detail-grid"><div><span>Effectiveness</span><strong>' + Math.round(candidate.scores.predictedProgramEffectiveness) + '/100</strong></div><div><span>Confidence</span><strong>' + escapeHtml(candidate.personalDataConfidence) + '</strong></div><div><span>Systemic fatigue</span><strong>' + Math.round(candidate.scores.systemicFatigue) + '/100</strong></div><div><span>Spinal load</span><strong>' + Math.round(candidate.scores.spinalLoad) + '/100</strong></div><div><span>Grip</span><strong>' + Math.round(candidate.scores.gripDemand) + '/100</strong></div><div><span>Placement</span><strong>' + escapeHtml((mesocycle.sessions || []).find((session) => session.exercises.some((item) => item.exerciseId === candidate.exerciseId))?.name || 'Alternative only') + '</strong></div></div></article>').join('') + '</section>' : ''}
+            <section class="program-review-grid"><div class="section-heading"><div><h3>Full-program review</h3><p>Portfolio interactions are checked before activation.</p></div><span class="status-pill ${mesocycle.programReview?.seriousWarningCount ? 'deload' : 'good'}">${mesocycle.programReview?.seriousWarningCount || 0} serious</span></div><div class="session-plan-grid">${(mesocycle.sessions || []).map((session) => '<article class="program-session"><div class="row split"><strong>' + escapeHtml(session.name) + '</strong><span>~' + Math.round(session.estimatedDurationMinutes) + ' min</span></div><small>Base Session Intent: ' + escapeHtml(session.baseSessionIntent) + '</small><p>' + escapeHtml(session.exercises.map((exercise) => exercise.exerciseName).join(' · ')) + '</p><small>Systemic ' + Math.round(session.systemicFatigue) + ' · Spinal ' + Math.round(session.spinalLoad) + ' · Grip ' + Math.round(session.gripDemand) + '</small></article>').join('')}</div>${warnings.map((warning) => '<article class="program-warning ' + warning.severity + '"><strong>' + escapeHtml(warning.conflict) + '</strong><span>' + escapeHtml(warning.why) + '</span><small>Recommended resolution: ' + escapeHtml(warning.recommendation) + '</small></article>').join('') || '<div class="empty-state">No serious portfolio, placement, volume, fatigue, spinal-load, grip, redundancy, or duration conflict was found.</div>'}<details><summary>Why this mesocycle fits together</summary><ul class="score-factor-list">${(mesocycle.programReview?.explanation || []).map((item) => '<li>' + escapeHtml(item) + '</li>').join('')}</ul></details></section>
           </article>
         `;
       }
@@ -5633,18 +5779,19 @@
         const availableMuscles = prescriptionEngine ? prescriptionApi.representedMuscleGroups(prescriptionEngine.evidence) : [];
         return `
           <section class="mesocycle-planner screen-section">
-            <div class="section-heading"><div><div class="section-kicker">Training prescription</div><h2>Mesocycle planner</h2><p>Preview evidence-weighted exercise pools and preserve productive lifts until progression, fatigue, pain, redundancy, or the block objective supports a change.</p></div></div>
+            <div class="section-heading"><div><div class="section-kicker">Full-program design</div><h2>Mesocycle planner</h2><p>Choose a goal, select a complete exercise portfolio, distribute it across sessions, and review interactions before activation.</p></div></div>
+            <div class="planner-steps" aria-label="Mesocycle planning steps">${['Objective','Equipment','Evidence','Candidates','Portfolio','Sessions','Review','Confirm','Planned','Active'].map((label, index) => '<div class="planner-step ' + (latest && index + 1 < (latest.planningStep || 1) ? 'complete' : latest && index + 1 === (latest.planningStep || 1) ? 'current' : '') + '"><b>' + (index + 1) + '</b><span>' + label + '</span></div>').join('')}</div>
             <div class="mesocycle-builder">
               <label>Mesocycle type<select data-action="mesocycle-type"><option value="primary_progression" ${mesocycleDraftType === 'primary_progression' ? 'selected' : ''}>Primary progression</option><option value="alternative_exercise" ${mesocycleDraftType === 'alternative_exercise' ? 'selected' : ''}>Alternative exercises</option><option value="lower_fatigue_resensitization" ${mesocycleDraftType === 'lower_fatigue_resensitization' ? 'selected' : ''}>Lower fatigue / resensitization</option><option value="specialization" ${mesocycleDraftType === 'specialization' ? 'selected' : ''}>Specialization</option></select></label>
               <label>Duration (optional)<input type="number" min="2" max="12" step="1" value="${escapeHtml(mesocycleDurationDraft)}" data-action="mesocycle-duration" placeholder="Engine decides" /></label>
               <label>Training days/week<input type="number" min="1" max="7" step="1" value="${Number(data.settings.trainingDaysPerWeek || 4)}" data-action="mesocycle-training-days" /></label>
               <label>Available equipment<input value="${escapeHtml((data.settings.availableEquipment || []).join(', '))}" data-action="mesocycle-equipment" placeholder="All, or cable, barbell…" /></label>
               ${mesocycleDraftType === 'specialization' ? '<label>Specialization muscle<select data-action="mesocycle-specialization"><option value="">Choose muscle</option>' + availableMuscles.map((muscle) => '<option value="' + escapeHtml(muscle) + '" ' + (mesocycleSpecializationMuscle === muscle ? 'selected' : '') + '>' + escapeHtml(muscle.replaceAll('_', ' ')) + '</option>').join('') + '</select></label>' : ''}
-              <button class="primary-action" type="button" data-action="preview-mesocycle">Preview prescription block</button>
+              <button class="primary-action" type="button" data-action="preview-mesocycle">Build full-program draft</button>
             </div>
             <p class="settings-note">${escapeHtml(prescriptionEvidenceStatus.message)}</p>
-            ${latest ? renderMesocycleCard(latest) : '<div class="empty-state">Create a preview to see up to five diversified candidates per represented muscle group and the subset selected for your days, split, recovery, equipment, overlap, and specialization goal.</div>'}
-            ${data.mesocycles.length > 1 ? '<details class="compact-disclosure"><summary>Earlier mesocycles <span>' + (data.mesocycles.length - 1) + '</span></summary><div class="disclosure-body">' + data.mesocycles.slice(1).map(renderMesocycleCard).join('') + '</div></details>' : ''}
+            ${latest ? renderMesocycleCard(latest) : '<div class="empty-state">Build a draft to review program slots, selectable alternatives, the proposed portfolio, session placement, and full-program fatigue/volume checks.</div>'}
+            ${data.mesocycles.length > 1 ? '<details class="compact-disclosure"><summary>Historical mesocycles <span>' + (data.mesocycles.length - 1) + '</span></summary><div class="disclosure-body"><p class="settings-note">Drafts and never-started plans are distinct from completed history. Completed mesocycles are protected and may be archived, not deleted.</p>' + data.mesocycles.slice(1).map(renderMesocycleCard).join('') + '</div></details>' : ''}
           </section>
         `;
       }
@@ -5692,6 +5839,7 @@
                 ? '<span class="template-delete-confirm"><button class="danger" type="button" data-action="confirm-delete-template" data-template-id="' + template.id + '">Delete</button><button type="button" data-action="cancel-delete-template">Cancel</button></span>'
                 : '<button class="template-delete-button danger" type="button" data-action="request-delete-template" data-template-id="' + template.id + '" title="Delete template" aria-label="Delete ' + escapeHtml(template.name) + ' template">' + icon.delete + '</button>'}</div>
             </div>
+            ${template.baseSessionIntent ? '<p class="template-coach"><strong>Base Session Intent</strong> ' + escapeHtml(template.baseSessionIntent) + '. Today’s readiness may modify load, sets, RPE, rest, or exercise selection before the workout begins.</p>' : ''}
             ${advice ? '<p class="template-coach"><strong>' + escapeHtml(advice.label) + '</strong> ' + escapeHtml(coachLine) + '</p>' : ''}
             <details class="compact-disclosure template-editor">
               <summary>Edit template <span>${template.exercises.length} lifts</span></summary>
@@ -6899,6 +7047,10 @@
           selectedExerciseId = catalog[0].id;
           chartExerciseDraft = catalog[0].name;
         }
+        const pendingExercise = selectedExerciseRecord();
+        if (hypertrophyScoreLoading && catalog.length) {
+          return `<section class="view charts-view" aria-busy="true"><div class="screen-heading"><div><div class="section-kicker">Charts</div><h1>${escapeHtml(pendingExercise?.name || 'Exercise analysis')}</h1></div></div><div class="chart-control-panel"><div class="chart-viewing-summary"><div><span>Viewing</span><strong>${escapeHtml(pendingExercise?.name || 'Selected exercise')}</strong><span>Exercise analysis · recalculating every dependent value</span></div><span class="status-pill inside">Loading</span></div></div><div class="chart-recalculating" role="status"><strong>Recalculating analysis</strong><span>Charts, score, rationale, expectations, actual versus expected, recommendations, and selected-point details are cleared until the new scope is ready.</span></div></section>`;
+        }
         const analysis = measurePerformance("charts:hypertrophyAnalysis", () => hypertrophyAnalysis(hypertrophyWindowOffset, "exercise", selectedExerciseId), { exerciseId: selectedExerciseId, windowOffset: hypertrophyWindowOffset });
         const exercise = selectedExerciseRecord();
         const selectedName = exercise?.name || "";
@@ -6918,8 +7070,9 @@
           <section class="view charts-view">
             <div class="screen-heading"><div><div class="section-kicker">${hypertrophyWindowOffset > 0 ? 'Historical snapshot through ' + formatDate(analysis.windowEnd) : 'Selected lift'}</div><h1>${escapeHtml(selectedName)}</h1></div><span class="status-pill inside">${analysis.included.length} qualifying week${analysis.included.length === 1 ? '' : 's'} · ${analysis.dataPointCount} sets</span></div>
             <div class="chart-control-panel" aria-label="Selected lift controls">
+              <div class="chart-viewing-summary"><div><span>Viewing</span><strong>${escapeHtml(selectedName)}</strong><span>Exercise analysis · ${formatDate(analysis.windowStart)} – ${formatDate(analysis.windowEnd)}</span></div><span class="status-pill inside">${analysis.included.length} qualifying · ${analysis.skippedDeloadWeeks.length} deload skipped</span></div>
               <div class="chart-control-field chart-control-lift"><label for="chart-exercise-search">Chart lift</label><div class="chart-search-input"><input id="chart-exercise-search" type="search" data-action="review-exercise-input" role="combobox" aria-autocomplete="list" aria-controls="chart-exercise-suggestions" aria-expanded="${chartExerciseSearchOpen ? 'true' : 'false'}" aria-label="Search or select exercise" autocomplete="off" value="${escapeHtml(chartExerciseDraft || selectedName)}" /><button class="chart-search-clear" type="button" data-action="clear-chart-exercise-search" aria-label="Clear exercise search">×</button></div><div id="chart-exercise-suggestions" class="exercise-suggestions" role="listbox" ${chartExerciseSearchOpen ? '' : 'hidden'}>${renderExerciseSuggestions()}</div><small class="exercise-search-error" role="status" ${chartExerciseSearchError ? '' : 'hidden'}>${escapeHtml(chartExerciseSearchError)}</small></div>
-              <label class="chart-control-field analysis-period-control"><span>Analysis period</span><select data-action="hypertrophy-window" aria-label="Hypertrophy Score analysis period">${analysis.windowOptions.length ? analysis.windowOptions.map((option, index) => '<option value="' + option.offset + '" ' + (option.offset === hypertrophyWindowOffset ? 'selected' : '') + '>' + escapeHtml((index === 0 ? 'Latest six qualifying weeks' : 'Previous six-week window ' + index) + ' · ' + hypertrophyWindowLabel(option.selection)) + '</option>').join('') : '<option value="0">Latest six qualifying weeks</option>'}</select></label>
+              <div class="chart-control-field analysis-period-control"><span>Analysis period</span><details class="analysis-period-menu"><summary>${escapeHtml((hypertrophyWindowOffset === 0 ? 'Latest qualifying period' : 'Historical period ' + hypertrophyWindowOffset) + ' · ' + hypertrophyWindowLabel(analysis))}<span aria-hidden="true">⌄</span></summary><div class="analysis-period-options">${analysis.windowOptions.length ? analysis.windowOptions.map((option, index) => '<button type="button" data-action="select-chart-period" data-period-offset="' + option.offset + '" aria-pressed="' + (option.offset === hypertrophyWindowOffset) + '"><strong>' + escapeHtml(index === 0 ? 'Latest 6 qualifying weeks' : 'Previous qualifying period ' + index) + '</strong><br><small>' + escapeHtml(hypertrophyWindowLabel(option.selection)) + '</small></button>').join('') : '<button type="button" aria-pressed="true">Latest qualifying period</button>'}</div></details></div>
               <p class="chart-control-context">Score, rationale, weeks, charts, and coaching use only submitted ${escapeHtml(selectedName)} history. Equipment and named variations remain separate.</p>
             </div>
             ${renderHypertrophyScore(analysis, { deferDetail: true })}
@@ -9251,90 +9404,23 @@
         return cleanReadinessBaseline(data.settings.readinessBaseline || {});
       }
 
-      function readinessScore(markers, baseline = readinessBaseline()) {
-        const sleepBase = numberFrom(baseline.sleepHours, 7.5);
-        const sleepQualityBase = numberFrom(baseline.sleepQuality, 4);
-        const sorenessBase = numberFrom(baseline.soreness, 2);
-        const hrvBase = numberFrom(baseline.hrv, 0);
-        const restingHrBase = numberFrom(baseline.restingHr, 0);
-        const sleep = numberFrom(markers.sleepHours, sleepBase);
-        const sleepQuality = numberFrom(markers.sleepQuality, sleepQualityBase);
-        const soreness = numberFrom(markers.soreness, sorenessBase);
-        const hrv = numberFrom(markers.hrv, hrvBase);
-        const restingHr = numberFrom(markers.restingHr, restingHrBase);
-        let score = 70;
-        score += (sleep - sleepBase) * 5;
-        score += (sleepQuality - sleepQualityBase) * 4;
-        score -= (soreness - sorenessBase) * 4;
-        if (hrvBase > 0 && hrv > 0) score += ((hrv - hrvBase) / hrvBase) * 35;
-        if (restingHrBase > 0 && restingHr > 0) score -= (restingHr - restingHrBase) * 1.5;
-        if (markers.illness) score -= 25;
-        return Math.max(0, Math.min(100, Math.round(score)));
-      }
-
-      function priorReadinessDeviations(session) {
-        const baseline = readinessBaseline();
-        const center = readinessScore(baseline, baseline);
-        const band = numberFrom(baseline.band, 8);
-        return [...data.sessions]
-          .filter((item) => item.id !== session?.id && item.date <= (session?.date || todayIso()) && item.recovery)
-          .sort((a, b) => b.date.localeCompare(a.date))
-          .slice(0, 3)
-          .map((item) => readinessScore(sessionRecovery(item), baseline) - center)
-          .filter((value) => Math.abs(value) > band);
-      }
-
-      function readinessBandStatus(session) {
-        const baseline = readinessBaseline();
-        const recovery = sessionRecovery(session);
-        const center = readinessScore(baseline, baseline);
-        const score = readinessScore(recovery, baseline);
-        const band = Math.max(3, numberFrom(baseline.band, 8));
-        const deviation = score - center;
-        const repeated = priorReadinessDeviations(session).filter((value) => Math.sign(value) === Math.sign(deviation)).length >= 2 && Math.abs(deviation) > band * 0.6;
-        const manualOutside = Boolean(String(recovery.outsideBandNote || "").trim());
-        const outside = manualOutside || Math.abs(deviation) > band || repeated;
-        const direction = deviation > 0 ? "high" : "low";
-        return { baseline, center, score, band, deviation, outside, repeated, manualOutside, direction };
-      }
-
       function recoveryRecommendationForSession(session) {
         const recovery = sessionRecovery(session);
+        if (recovery.illness) {
+          const evidence = [recovery.affectedMuscle ? `Pain or injury was recorded for ${recovery.affectedMuscle}.` : "Illness or a whole-body injury warning was recorded."];
+          return { decision: "rest", label: recovery.affectedMuscle ? "Stop or modify affected work" : "Rest recommended", action: "Avoid hard loading. Use pain-free technique work only if appropriate, and seek qualified care for persistent or concerning symptoms.", score: 0, evidence, evaluation: null };
+        }
         if (prescriptionEngine) {
           const evaluation = prescriptionEngine.evaluateReadiness(prescriptionReadiness(recovery, []));
           const evidence = evaluation.signals.map((signal) => signal.explanation);
           if (!evaluation.signals.length) evidence.push("No independent adverse readiness domain was detected; use the base prescription.");
-          if (recovery.illness) {
-            evidence.push(recovery.affectedMuscle ? `Pain or injury was recorded for ${recovery.affectedMuscle}.` : "Illness or a whole-body injury warning was recorded.");
-            return { decision: "rest", label: recovery.affectedMuscle ? "Stop or modify affected work" : "Rest recommended", action: "Avoid hard loading. Use pain-free technique work only if appropriate, and seek qualified care for persistent or concerning symptoms.", score: 0, evidence, evaluation };
-          }
           if (evaluation.signalCount < 2) {
             if (evaluation.signalCount === 1) evidence.push("One isolated HRV, resting-heart-rate, sleep, soreness, or nutrition marker is monitored but cannot trigger a deload by itself.");
             return { decision: "hold", label: evaluation.signalCount ? "Monitor one readiness marker" : "Go as planned", action: "Use the base prescription. Adjust only if another independent marker, warm-up performance, pain, or comparable-set regression also worsens.", score: evaluation.severity, evidence, evaluation };
           }
           return { decision: "light_session", label: "Temporary readiness adjustment", action: "Use today's adjusted prescription with fewer sets and/or lower load and effort. This does not rewrite the mesocycle or count as an exercise deload.", score: evaluation.severity, evidence, evaluation };
         }
-        const band = readinessBandStatus(session);
-        const logged = ["sleepHours", "sleepQuality", "hrv", "restingHr", "soreness"].some((key) => recovery[key] !== "" && recovery[key] != null) || recovery.illness || recovery.outsideBandNote;
-        const evidence = [
-          "Rule: baseline score " + band.center + ", normal band " + (band.center - band.band) + "-" + (band.center + band.band) + ", today " + band.score + ".",
-          band.outside ? "Today is outside your normal readiness band." : "Today is inside your normal readiness band; treat it as normal fluctuation."
-        ];
-        if (!logged) evidence.push("No daily markers entered, so the app uses your typical average readiness as today.");
-        if (band.manualOutside) evidence.push("Your note/override marked today outside the band.");
-        if (band.repeated) evidence.push("Repeated deviation suggests this is a real trend, not a one-off swing.");
-        if (recovery.illness) evidence.push("Illness or unusual pain is a rest warning.");
-        if (recovery.outsideBandNote) evidence.push("Note: " + recovery.outsideBandNote);
-        if (!band.outside && !recovery.illness) {
-          return { decision: "hold", label: "Go as planned", action: "You are in your normal readiness band. Train the plan as written and let performance during the session guide progression.", score: band.score, evidence, band };
-        }
-        if (recovery.illness || (band.direction === "low" && band.deviation <= -band.band * 2)) {
-          return { decision: "rest", label: "Low outside-band readiness", action: "Rest or keep technique work very light. Hard loading is not the target today.", score: band.score, evidence, band };
-        }
-        if (band.direction === "low") {
-          return { decision: "deload", label: "Low outside-band readiness", action: "Reduce load 10-15% and volume 30-50%, aiming around RPE 6-7.", score: band.score, evidence, band };
-        }
-        return { decision: "progress", label: "High outside-band readiness", action: "Use only the conservative progression already supported by your lift history; readiness alone never earns a larger jump.", score: band.score, evidence, band };
+        return { decision: "hold", label: "Go as planned", action: "The readiness engine is unavailable, so keep the base prescription and use warm-ups, pain, and technique to decide whether to stop or modify work.", score: 0, evidence: ["Readiness engine unavailable; no automatic adjustment was applied."], evaluation: null };
       }
 
       function enteredReadinessTriggers(recoveryInput) {
@@ -9797,7 +9883,7 @@
         }
         if (action === "open-history") { dashboardDetail = { type: "history" }; render(); window.scrollTo({ top: 0, behavior: "smooth" }); }
         if (action === "toggle-theme") commit({ ...data, settings: { ...data.settings, theme: data.settings.theme === "light" ? "dark" : "light" } });
-        if (action === "toggle-unit") commit({ ...data, settings: { ...data.settings, weightUnit: data.settings.weightUnit === "lb" ? "kg" : "lb" } });
+        if (action === "toggle-unit") commit(convertAppWeightUnit(data, data.settings.weightUnit === "lb" ? "kg" : "lb"));
         if (action === "request-notifications") enablePushNotifications();
         if (action === "toggle-rest-notifications") {
           const alerts = restAlertState();
@@ -9839,10 +9925,27 @@
         }
         if (action === "close-chart-point") { chartDetailPoint = null; render(); }
         if (action === "toggle-hypertrophy-score") { hypertrophyScoreExpanded = !hypertrophyScoreExpanded; render(); }
+        if (action === "select-chart-period") {
+          hypertrophyWindowOffset = Math.max(0, Number(target.dataset.periodOffset || 0));
+          hypertrophyScoreExpanded = false;
+          chartDetailPoint = null;
+          hypertrophyScoreLoading = true;
+          render();
+          window.setTimeout(() => { hypertrophyScoreLoading = false; render(); }, 80);
+        }
         if (action === "new-session") addSession();
         if (action === "new-template") addTemplate();
         if (action === "preview-mesocycle") previewMesocyclePlan();
         if (action === "mesocycle-transition") transitionMesocyclePlan(target.dataset.mesocycleId, target.dataset.mesocycleAction);
+        if (action === "select-mesocycle-candidate") selectMesocycleCandidate(target.dataset.mesocycleId, target.dataset.slotId, target.dataset.exerciseId);
+        if (action === "compare-mesocycle-candidate") {
+          const exerciseId = target.dataset.exerciseId;
+          mesocycleComparisonIds = mesocycleComparisonIds.includes(exerciseId) ? mesocycleComparisonIds.filter((id) => id !== exerciseId) : [...mesocycleComparisonIds, exerciseId].slice(-3);
+          render();
+        }
+        if (action === "request-delete-mesocycle") { pendingDeleteMesocycleId = target.dataset.mesocycleId; render(); }
+        if (action === "cancel-delete-mesocycle") { pendingDeleteMesocycleId = ""; render(); }
+        if (action === "confirm-delete-mesocycle") deleteMesocycleDraft(target.dataset.mesocycleId);
         if (action === "apply-prescription-override") applyPrescriptionOverride(target.dataset.exerciseId, target.closest("[data-override-form]"));
         if (action === "save-template") saveActiveSessionAsTemplate();
         if (action === "start-template") openTemplateStart(target.dataset.templateId);
@@ -10094,7 +10197,7 @@
           render();
           window.setTimeout(() => { hypertrophyScoreLoading = false; render(); }, 60);
         }
-        if (action === "weight-unit") commit({ ...data, settings: { ...data.settings, weightUnit: target.value } });
+        if (action === "weight-unit") commit(convertAppWeightUnit(data, target.value));
         if (action === "theme-mode") commit({ ...data, settings: { ...data.settings, theme: target.value } });
         if (action === "training-goal") commit({ ...data, settings: { ...data.settings, goal: target.value } });
         if (action === "training-status") commit({ ...data, settings: { ...data.settings, trainingStatus: target.value } });

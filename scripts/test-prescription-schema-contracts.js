@@ -244,13 +244,14 @@ assert.match(conditionalText, /top_set_backoff/);
 assert.match(conditionalText, /backoffSets/);
 assert.match(conditionalText, /multiple_top_sets/);
 
-assert.equal(mesocycle.properties.schemaVersion.const, "mesocycle/1.0.0");
+assert(mesocycle.properties.schemaVersion.enum.includes("mesocycle/2.0.0"));
 assert.equal(mesocycle.additionalProperties, false);
 assertExactEnum(mesocycle.$defs.mesocycleType.enum, extractFrozenObjectValues(engineSource, "MESOCYCLE_TYPES"), "mesocycleType");
-assert.deepEqual(mesocycle.$defs.mesocycleStatus.enum, ["preview", "loaded", "active", "completed", "reviewed"]);
+assertIncludesAll(mesocycle.$defs.mesocycleStatus.enum, ["draft", "planned", "active", "completed", "abandoned", "archived"]);
 assert.equal(mesocycle.properties.durationWeeks.minimum, 2);
 assert.equal(mesocycle.properties.durationWeeks.maximum, 12);
 assert.equal(propertyAt(mesocycle, "$defs", "candidatePool", "properties", "candidates", "maxItems"), 5);
+assertIncludesAll(mesocycle.required, ["programSlots", "selectedPortfolio", "sessions", "programReview", "planningStep"], "MesocyclePlan.required");
 assertIncludesAll(mesocycle.$defs.candidateCore.required, [
   "rank", "rawScoreRank", "exerciseId", "intendedRole", "primaryMuscles", "secondaryMuscles",
   "recommendedSetStructure", "recommendedSetRange", "recommendedRepRange", "recommendedRpe",

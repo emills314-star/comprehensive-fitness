@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://comprehensive-fitness.local/schema/1.0.0/definitions_data_dictionary.schema.json",
+  "$id": "https://comprehensive-fitness.local/schema/1.1.0/definitions_data_dictionary.schema.json",
   "title": "definitions_data_dictionary",
   "type": "array",
   "items": {

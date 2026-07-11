@@ -24,6 +24,15 @@ assert.match(html, /manualOverrides:/, "App data must retain manual override eve
 assert.match(html, /applyPrescriptionOverride\(/, "Live workouts must support explicit prescription overrides");
 assert.match(html, /evaluateWorkoutOverrideOutcomes\(/, "Completed workouts must evaluate override outcomes");
 assert.match(html, /renderMesocyclePlanner\(/, "Plan must expose the mesocycle lifecycle");
+assert.match(html, /Program Slot[\s\S]*Top Exercise Candidates/, "Planner must present program slots and ranked candidate alternatives");
+assert.match(html, /Select for this role/, "Planner candidates must expose an explicit selection control");
+assert.doesNotMatch(html, />Active-program subset</, "Misleading Active Program Subset UI term must be removed");
+assert.doesNotMatch(html, />Preview prescription block</, "Misleading Prescription Block action must be removed");
+assert.match(html, /Predicted Program Effectiveness[\s\S]*Confidence[\s\S]*Evidence/, "Effectiveness must be primary and distinct from confidence/evidence");
+assert.match(html, /full-program review/i, "Planner must expose full-program interaction review");
+assert.match(html, /Base Session Intent[\s\S]*Today’s readiness may modify/, "Templates must distinguish stable intent from readiness changes");
+assert.match(html, /analysis-period-menu[\s\S]*select-chart-period/, "Charts period selection must use the custom control surface");
+assert.doesNotMatch(html, /<select data-action="hypertrophy-window"/, "Charts must not retain the browser-default period dropdown");
 assert.match(html, /primary_progression[\s\S]*alternative_exercise[\s\S]*lower_fatigue_resensitization[\s\S]*specialization/, "All four mesocycle types must be available");
 assert.match(html, /renderMesocycleCandidate[\s\S]*Deload trigger:[\s\S]*Rotation trigger:[\s\S]*Preferred replacement:/, "Candidate cards must explain progression, deload, rotation and replacement");
 assert.match(html, /Base prescription[\s\S]*Today only/, "Live UI must keep base and readiness-adjusted prescriptions distinct");
@@ -64,8 +73,11 @@ surfaces.forEach((surface) => {
 for (const type of Object.values(engineApi.MESOCYCLE_TYPES)) {
   const mesocycle = engine.createMesocycle({ type, trainingDays: 4, specializationMuscleGroups: type === engineApi.MESOCYCLE_TYPES.SPECIALIZATION ? [muscle] : [] });
   assert.equal(mesocycle.type, type);
-  assert.equal(mesocycle.status, "preview");
+  assert.equal(mesocycle.status, "draft");
   assert(Object.keys(mesocycle.pools).length === represented.length);
+  assert(mesocycle.programSlots.length === represented.length);
+  assert(mesocycle.sessions.length === 4);
+  assert(mesocycle.selectedPortfolio.length > 0);
 }
 
 const overridden = engine.applyManualOverride(snapshot, { setCount: snapshot.finalPrescription.workingSets.target + 1, setStructure: "straight_sets" }, { workoutId: "integration-workout", reason: "Integration override" });

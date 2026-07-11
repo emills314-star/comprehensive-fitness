@@ -1127,6 +1127,30 @@
         "fatigueCost": {
           "$ref": "#/$defs/score"
         },
+        "systemicFatigue": {
+          "$ref": "#/$defs/score"
+        },
+        "spinalLoad": {
+          "$ref": "#/$defs/score"
+        },
+        "gripDemand": {
+          "$ref": "#/$defs/score"
+        },
+        "jointStress": {
+          "$ref": "#/$defs/score"
+        },
+        "highFatigueCompound": {
+          "type": "boolean"
+        },
+        "targetMuscleEffectiveness": {
+          "$ref": "#/$defs/score"
+        },
+        "fullProgramFit": {
+          "$ref": "#/$defs/score"
+        },
+        "predictedProgramEffectiveness": {
+          "$ref": "#/$defs/score"
+        },
         "researchSupport": {
           "$ref": "#/$defs/score"
         },

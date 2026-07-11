@@ -1,0 +1,40 @@
+name: Weekly UI/UX audit
+
+on:
+  schedule:
+    - cron: "17 13 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Run visual and accessibility audit
+        id: audit
+        continue-on-error: true
+        run: npm run audit:ui
+      - name: Build structured report
+        if: always()
+        run: npm run audit:ui:report
+      - name: Upload report, screenshots, diffs, and traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-ui-audit-${{ github.run_number }}
+          path: artifacts/ui-audit
+          if-no-files-found: error
+          retention-days: 30
+      - name: Fail visibly when the audit failed
+        if: steps.audit.outcome != 'success'
+        run: exit 1

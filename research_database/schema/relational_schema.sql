@@ -1,4 +1,4 @@
--- Generated schema for male resistance-training evidence database v1.0.0
+-- Generated schema for male resistance-training evidence database v1.1.0
 -- Pipe-delimited list fields have normalized mapping-table equivalents where relationships are frequently queried.
 
 CREATE TABLE executive_summary (

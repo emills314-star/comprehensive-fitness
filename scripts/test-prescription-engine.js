@@ -24,8 +24,10 @@ const {
   recommendationHistory,
   applyManualOverride,
   reconcileRecommendation,
+  refreshRecommendationChecksum,
   evaluateManualOverrideOutcome,
-  transitionMesocycle
+  transitionMesocycle,
+  canDeleteMesocycle
 } = require("../prescription-engine");
 
 const tests = [];
@@ -457,8 +459,14 @@ test("all four mesocycle types create five-candidate pools and lifecycle states"
     });
     assert(mesocycle.durationWeeks >= 2 && mesocycle.durationWeeks <= 12);
     assert.strictEqual(mesocycle.pools.chest.candidates.length, 5);
+    assert.strictEqual(mesocycle.status, "draft");
+    assert(mesocycle.programSlots.length >= 1);
+    assert(mesocycle.selectedPortfolio.length >= 1);
+    assert(mesocycle.sessions.length >= 1);
+    assert(Array.isArray(mesocycle.programReview.warnings));
     assert(mesocycle.preservedProductiveExerciseIds.includes("personal_press"), `${type} should preserve a progressing lift`);
-    const active = transitionMesocycle(mesocycle, "start", { at: "2026-07-12T12:00:00.000Z" });
+    const planned = transitionMesocycle(mesocycle, "plan", { at: "2026-07-12T11:00:00.000Z" });
+    const active = transitionMesocycle(planned, "start", { at: "2026-07-12T12:00:00.000Z" });
     const completed = transitionMesocycle(active, "complete", { at: "2026-08-20T12:00:00.000Z", outcome: { progressed: true } });
     const reviewed = transitionMesocycle(completed, "review", { at: "2026-08-21T12:00:00.000Z", review: { retain: ["personal_press"] } });
     assert.strictEqual(reviewed.status, "reviewed");
@@ -491,6 +499,17 @@ test("versioned history reopens the original recommendation unchanged", () => {
   assert.throws(() => appendRecommendationHistory(storage, { ...snapshot, explanation: "silently changed" }), /refusing to silently rewrite/);
 });
 
+test("meaning-preserving unit representation changes can refresh snapshot integrity", () => {
+  const engine = createPrescriptionEngine(fixture());
+  const snapshot = engine.prescribeExercise({ exerciseId: "personal_press", muscleGroupId: "chest", history: improvingHistory, createdAt: "2026-07-11T12:00:00.000Z" });
+  const converted = JSON.parse(JSON.stringify(snapshot));
+  if (converted.finalPrescription.prescribedLoad?.target) converted.finalPrescription.prescribedLoad.target /= 2.2046226218;
+  assert.throws(() => deserializeRecommendationSnapshot(converted), /checksum/i, "Changing a stored numeric representation must invalidate the old checksum");
+  const refreshed = refreshRecommendationChecksum(converted);
+  assert.doesNotThrow(() => deserializeRecommendationSnapshot(refreshed));
+  assert.notStrictEqual(refreshed.checksum, snapshot.checksum);
+});
+
 test("manual overrides are audited and locked for the workout", () => {
   const engine = createPrescriptionEngine(fixture());
   const snapshot = engine.prescribeExercise({ exerciseId: "personal_press", muscleGroupId: "chest", history: improvingHistory, createdAt: "2026-07-11T12:00:00.000Z" });
@@ -514,7 +533,38 @@ test("file adapters load the real private aggregates locally without embedding t
   assert(evidence.personal.exerciseScores.length >= 100);
   assert(evidence.personal.exercisePrescriptions.length >= 100);
   assert(evidence.research.exerciseDatabase.length >= 50);
-  assert.strictEqual(evidence.versions.research, "1.0.0");
+  assert.strictEqual(evidence.versions.research, "1.1.0");
+});
+
+test("full-program portfolio scoring and lifecycle protections are explicit", () => {
+  const evidence = loadEvidenceFromFiles(path.resolve(__dirname, ".."), { includeSessionMetrics: false, includeWeeklyVolume: false });
+  const engine = createPrescriptionEngine(evidence);
+  const mesocycle = engine.createMesocycle({ trainingDays: 4, currentProgramExerciseIds: ["ex_barbell_bench_press"], availableEquipment: ["barbell", "dumbbell", "machine", "cable", "bodyweight"] });
+  assert(mesocycle.programSlots.every((slot) => slot.selectionRequired >= 1 && slot.selectedExerciseIds.length >= 1));
+  assert(mesocycle.selectedPortfolio.every((candidate) => Number.isFinite(candidate.scores.predictedProgramEffectiveness) && Number.isFinite(candidate.scores.fullProgramFit)));
+  assert(mesocycle.sessions.every((session) => session.baseSessionIntent && Number.isFinite(session.spinalLoad) && Number.isFinite(session.estimatedDurationMinutes)));
+  mesocycle.programReview.warnings.forEach((warning) => {
+    assert(warning.conflict && warning.why && warning.recommendation);
+    assert(Array.isArray(warning.exerciseIds));
+  });
+  assert.strictEqual(canDeleteMesocycle(mesocycle), true);
+  const planned = transitionMesocycle(mesocycle, "plan");
+  const active = transitionMesocycle(planned, "start");
+  assert.strictEqual(canDeleteMesocycle(active), false);
+  const completed = transitionMesocycle(active, "complete");
+  assert.strictEqual(canDeleteMesocycle(completed), false);
+});
+
+test("cambered bench aliases resolve through the canonical eligible library", () => {
+  const evidence = loadEvidenceFromFiles(path.resolve(__dirname, ".."), { includeSessionMetrics: false, includeWeeklyVolume: false });
+  const engine = createPrescriptionEngine(evidence);
+  ["Camber Bar Bench Press", "Cambered Barbell Bench Press", "Cambered Bench Press"].forEach((alias) => {
+    assert.strictEqual(evidence.research.exerciseIdByAlias.get(alias.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "")), "ex_cambered_barbell_bench_press");
+  });
+  const pool = engine.rankExercisePool("chest", { maxCandidates: 5, availableEquipment: ["barbell"] });
+  const visible = pool.candidates.some((candidate) => candidate.exerciseId === "ex_cambered_barbell_bench_press");
+  const excluded = pool.excludedCandidates.some((candidate) => candidate.exerciseId === "ex_cambered_barbell_bench_press");
+  assert(visible || excluded, "Eligible cambered bench must appear or carry an explicit exclusion reason");
 });
 
 test("URL loader tolerates unavailable protected personal sources and still loads research", async () => {

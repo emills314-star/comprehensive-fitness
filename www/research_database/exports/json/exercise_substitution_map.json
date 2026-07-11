@@ -2,7 +2,7 @@
   {
     "exercise_substitution_map_id": "esm_0001",
     "exercise_id": "ex_barbell_bench_press",
-    "substitute_exercise_id": "ex_dumbbell_bench_press",
+    "substitute_exercise_id": "ex_cambered_barbell_bench_press",
     "substitution_similarity": "same_pattern_and_primary_muscle",
     "reason": "Alternative with different equipment, stability, or joint-loading profile",
     "confidence_rating": "moderate"
@@ -10,7 +10,7 @@
   {
     "exercise_substitution_map_id": "esm_0002",
     "exercise_id": "ex_barbell_bench_press",
-    "substitute_exercise_id": "ex_machine_chest_press",
+    "substitute_exercise_id": "ex_dumbbell_bench_press",
     "substitution_similarity": "same_pattern_and_primary_muscle",
     "reason": "Alternative with different equipment, stability, or joint-loading profile",
     "confidence_rating": "moderate"
@@ -18,14 +18,14 @@
   {
     "exercise_substitution_map_id": "esm_0003",
     "exercise_id": "ex_barbell_bench_press",
-    "substitute_exercise_id": "ex_cable_fly",
+    "substitute_exercise_id": "ex_machine_chest_press",
     "substitution_similarity": "same_pattern_and_primary_muscle",
     "reason": "Alternative with different equipment, stability, or joint-loading profile",
     "confidence_rating": "moderate"
   },
   {
     "exercise_substitution_map_id": "esm_0004",
-    "exercise_id": "ex_dumbbell_bench_press",
+    "exercise_id": "ex_cambered_barbell_bench_press",
     "substitute_exercise_id": "ex_barbell_bench_press",
     "substitution_similarity": "same_pattern_and_primary_muscle",
     "reason": "Alternative with different equipment, stability, or joint-loading profile",
@@ -33,102 +33,126 @@
   },
   {
     "exercise_substitution_map_id": "esm_0005",
-    "exercise_id": "ex_dumbbell_bench_press",
-    "substitute_exercise_id": "ex_machine_chest_press",
+    "exercise_id": "ex_cambered_barbell_bench_press",
+    "substitute_exercise_id": "ex_dumbbell_bench_press",
     "substitution_similarity": "same_pattern_and_primary_muscle",
     "reason": "Alternative with different equipment, stability, or joint-loading profile",
     "confidence_rating": "moderate"
   },
   {
     "exercise_substitution_map_id": "esm_0006",
-    "exercise_id": "ex_dumbbell_bench_press",
-    "substitute_exercise_id": "ex_cable_fly",
-    "substitution_similarity": "same_pattern_and_primary_muscle",
-    "reason": "Alternative with different equipment, stability, or joint-loading profile",
-    "confidence_rating": "moderate"
-  },
-  {
-    "exercise_substitution_map_id": "esm_0007",
-    "exercise_id": "ex_incline_dumbbell_press",
-    "substitute_exercise_id": "ex_incline_machine_press",
-    "substitution_similarity": "same_pattern_and_primary_muscle",
-    "reason": "Alternative with different equipment, stability, or joint-loading profile",
-    "confidence_rating": "moderate"
-  },
-  {
-    "exercise_substitution_map_id": "esm_0008",
-    "exercise_id": "ex_incline_dumbbell_press",
-    "substitute_exercise_id": "ex_low_to_high_cable_fly",
-    "substitution_similarity": "same_pattern_and_primary_muscle",
-    "reason": "Alternative with different equipment, stability, or joint-loading profile",
-    "confidence_rating": "moderate"
-  },
-  {
-    "exercise_substitution_map_id": "esm_0009",
-    "exercise_id": "ex_machine_chest_press",
-    "substitute_exercise_id": "ex_barbell_bench_press",
-    "substitution_similarity": "same_pattern_and_primary_muscle",
-    "reason": "Alternative with different equipment, stability, or joint-loading profile",
-    "confidence_rating": "moderate"
-  },
-  {
-    "exercise_substitution_map_id": "esm_0010",
-    "exercise_id": "ex_machine_chest_press",
-    "substitute_exercise_id": "ex_dumbbell_bench_press",
-    "substitution_similarity": "same_pattern_and_primary_muscle",
-    "reason": "Alternative with different equipment, stability, or joint-loading profile",
-    "confidence_rating": "moderate"
-  },
-  {
-    "exercise_substitution_map_id": "esm_0011",
-    "exercise_id": "ex_machine_chest_press",
-    "substitute_exercise_id": "ex_cable_fly",
-    "substitution_similarity": "same_pattern_and_primary_muscle",
-    "reason": "Alternative with different equipment, stability, or joint-loading profile",
-    "confidence_rating": "moderate"
-  },
-  {
-    "exercise_substitution_map_id": "esm_0012",
-    "exercise_id": "ex_incline_machine_press",
-    "substitute_exercise_id": "ex_incline_dumbbell_press",
-    "substitution_similarity": "same_pattern_and_primary_muscle",
-    "reason": "Alternative with different equipment, stability, or joint-loading profile",
-    "confidence_rating": "moderate"
-  },
-  {
-    "exercise_substitution_map_id": "esm_0013",
-    "exercise_id": "ex_incline_machine_press",
-    "substitute_exercise_id": "ex_low_to_high_cable_fly",
-    "substitution_similarity": "same_pattern_and_primary_muscle",
-    "reason": "Alternative with different equipment, stability, or joint-loading profile",
-    "confidence_rating": "moderate"
-  },
-  {
-    "exercise_substitution_map_id": "esm_0014",
-    "exercise_id": "ex_cable_fly",
-    "substitute_exercise_id": "ex_barbell_bench_press",
-    "substitution_similarity": "same_pattern_and_primary_muscle",
-    "reason": "Alternative with different equipment, stability, or joint-loading profile",
-    "confidence_rating": "moderate"
-  },
-  {
-    "exercise_substitution_map_id": "esm_0015",
-    "exercise_id": "ex_cable_fly",
-    "substitute_exercise_id": "ex_dumbbell_bench_press",
-    "substitution_similarity": "same_pattern_and_primary_muscle",
-    "reason": "Alternative with different equipment, stability, or joint-loading profile",
-    "confidence_rating": "moderate"
-  },
-  {
-    "exercise_substitution_map_id": "esm_0016",
-    "exercise_id": "ex_cable_fly",
+    "exercise_id": "ex_cambered_barbell_bench_press",
     "substitute_exercise_id": "ex_machine_chest_press",
     "substitution_similarity": "same_pattern_and_primary_muscle",
     "reason": "Alternative with different equipment, stability, or joint-loading profile",
     "confidence_rating": "moderate"
   },
   {
+    "exercise_substitution_map_id": "esm_0007",
+    "exercise_id": "ex_dumbbell_bench_press",
+    "substitute_exercise_id": "ex_barbell_bench_press",
+    "substitution_similarity": "same_pattern_and_primary_muscle",
+    "reason": "Alternative with different equipment, stability, or joint-loading profile",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_substitution_map_id": "esm_0008",
+    "exercise_id": "ex_dumbbell_bench_press",
+    "substitute_exercise_id": "ex_cambered_barbell_bench_press",
+    "substitution_similarity": "same_pattern_and_primary_muscle",
+    "reason": "Alternative with different equipment, stability, or joint-loading profile",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_substitution_map_id": "esm_0009",
+    "exercise_id": "ex_dumbbell_bench_press",
+    "substitute_exercise_id": "ex_machine_chest_press",
+    "substitution_similarity": "same_pattern_and_primary_muscle",
+    "reason": "Alternative with different equipment, stability, or joint-loading profile",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_substitution_map_id": "esm_0010",
+    "exercise_id": "ex_incline_dumbbell_press",
+    "substitute_exercise_id": "ex_incline_machine_press",
+    "substitution_similarity": "same_pattern_and_primary_muscle",
+    "reason": "Alternative with different equipment, stability, or joint-loading profile",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_substitution_map_id": "esm_0011",
+    "exercise_id": "ex_incline_dumbbell_press",
+    "substitute_exercise_id": "ex_low_to_high_cable_fly",
+    "substitution_similarity": "same_pattern_and_primary_muscle",
+    "reason": "Alternative with different equipment, stability, or joint-loading profile",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_substitution_map_id": "esm_0012",
+    "exercise_id": "ex_machine_chest_press",
+    "substitute_exercise_id": "ex_barbell_bench_press",
+    "substitution_similarity": "same_pattern_and_primary_muscle",
+    "reason": "Alternative with different equipment, stability, or joint-loading profile",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_substitution_map_id": "esm_0013",
+    "exercise_id": "ex_machine_chest_press",
+    "substitute_exercise_id": "ex_cambered_barbell_bench_press",
+    "substitution_similarity": "same_pattern_and_primary_muscle",
+    "reason": "Alternative with different equipment, stability, or joint-loading profile",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_substitution_map_id": "esm_0014",
+    "exercise_id": "ex_machine_chest_press",
+    "substitute_exercise_id": "ex_dumbbell_bench_press",
+    "substitution_similarity": "same_pattern_and_primary_muscle",
+    "reason": "Alternative with different equipment, stability, or joint-loading profile",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_substitution_map_id": "esm_0015",
+    "exercise_id": "ex_incline_machine_press",
+    "substitute_exercise_id": "ex_incline_dumbbell_press",
+    "substitution_similarity": "same_pattern_and_primary_muscle",
+    "reason": "Alternative with different equipment, stability, or joint-loading profile",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_substitution_map_id": "esm_0016",
+    "exercise_id": "ex_incline_machine_press",
+    "substitute_exercise_id": "ex_low_to_high_cable_fly",
+    "substitution_similarity": "same_pattern_and_primary_muscle",
+    "reason": "Alternative with different equipment, stability, or joint-loading profile",
+    "confidence_rating": "moderate"
+  },
+  {
     "exercise_substitution_map_id": "esm_0017",
+    "exercise_id": "ex_cable_fly",
+    "substitute_exercise_id": "ex_barbell_bench_press",
+    "substitution_similarity": "same_pattern_and_primary_muscle",
+    "reason": "Alternative with different equipment, stability, or joint-loading profile",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_substitution_map_id": "esm_0018",
+    "exercise_id": "ex_cable_fly",
+    "substitute_exercise_id": "ex_cambered_barbell_bench_press",
+    "substitution_similarity": "same_pattern_and_primary_muscle",
+    "reason": "Alternative with different equipment, stability, or joint-loading profile",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_substitution_map_id": "esm_0019",
+    "exercise_id": "ex_cable_fly",
+    "substitute_exercise_id": "ex_dumbbell_bench_press",
+    "substitution_similarity": "same_pattern_and_primary_muscle",
+    "reason": "Alternative with different equipment, stability, or joint-loading profile",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_substitution_map_id": "esm_0020",
     "exercise_id": "ex_low_to_high_cable_fly",
     "substitute_exercise_id": "ex_incline_dumbbell_press",
     "substitution_similarity": "same_pattern_and_primary_muscle",
@@ -136,7 +160,7 @@
     "confidence_rating": "moderate"
   },
   {
-    "exercise_substitution_map_id": "esm_0018",
+    "exercise_substitution_map_id": "esm_0021",
     "exercise_id": "ex_low_to_high_cable_fly",
     "substitute_exercise_id": "ex_incline_machine_press",
     "substitution_similarity": "same_pattern_and_primary_muscle",
@@ -144,7 +168,7 @@
     "confidence_rating": "moderate"
   },
   {
-    "exercise_substitution_map_id": "esm_0019",
+    "exercise_substitution_map_id": "esm_0022",
     "exercise_id": "ex_overhead_press",
     "substitute_exercise_id": "ex_machine_shoulder_press",
     "substitution_similarity": "same_pattern_and_primary_muscle",
@@ -152,7 +176,7 @@
     "confidence_rating": "moderate"
   },
   {
-    "exercise_substitution_map_id": "esm_0020",
+    "exercise_substitution_map_id": "esm_0023",
     "exercise_id": "ex_machine_shoulder_press",
     "substitute_exercise_id": "ex_overhead_press",
     "substitution_similarity": "same_pattern_and_primary_muscle",
@@ -160,39 +184,39 @@
     "confidence_rating": "moderate"
   },
   {
-    "exercise_substitution_map_id": "esm_0021",
+    "exercise_substitution_map_id": "esm_0024",
     "exercise_id": "ex_cable_lateral_raise",
     "substitute_exercise_id": "ex_dumbbell_lateral_raise",
-    "substitution_similarity": "same_pattern_and_primary_muscle",
-    "reason": "Alternative with different equipment, stability, or joint-loading profile",
-    "confidence_rating": "moderate"
-  },
-  {
-    "exercise_substitution_map_id": "esm_0022",
-    "exercise_id": "ex_cable_lateral_raise",
-    "substitute_exercise_id": "ex_machine_lateral_raise",
-    "substitution_similarity": "same_pattern_and_primary_muscle",
-    "reason": "Alternative with different equipment, stability, or joint-loading profile",
-    "confidence_rating": "moderate"
-  },
-  {
-    "exercise_substitution_map_id": "esm_0023",
-    "exercise_id": "ex_dumbbell_lateral_raise",
-    "substitute_exercise_id": "ex_cable_lateral_raise",
-    "substitution_similarity": "same_pattern_and_primary_muscle",
-    "reason": "Alternative with different equipment, stability, or joint-loading profile",
-    "confidence_rating": "moderate"
-  },
-  {
-    "exercise_substitution_map_id": "esm_0024",
-    "exercise_id": "ex_dumbbell_lateral_raise",
-    "substitute_exercise_id": "ex_machine_lateral_raise",
     "substitution_similarity": "same_pattern_and_primary_muscle",
     "reason": "Alternative with different equipment, stability, or joint-loading profile",
     "confidence_rating": "moderate"
   },
   {
     "exercise_substitution_map_id": "esm_0025",
+    "exercise_id": "ex_cable_lateral_raise",
+    "substitute_exercise_id": "ex_machine_lateral_raise",
+    "substitution_similarity": "same_pattern_and_primary_muscle",
+    "reason": "Alternative with different equipment, stability, or joint-loading profile",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_substitution_map_id": "esm_0026",
+    "exercise_id": "ex_dumbbell_lateral_raise",
+    "substitute_exercise_id": "ex_cable_lateral_raise",
+    "substitution_similarity": "same_pattern_and_primary_muscle",
+    "reason": "Alternative with different equipment, stability, or joint-loading profile",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_substitution_map_id": "esm_0027",
+    "exercise_id": "ex_dumbbell_lateral_raise",
+    "substitute_exercise_id": "ex_machine_lateral_raise",
+    "substitution_similarity": "same_pattern_and_primary_muscle",
+    "reason": "Alternative with different equipment, stability, or joint-loading profile",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_substitution_map_id": "esm_0028",
     "exercise_id": "ex_machine_lateral_raise",
     "substitute_exercise_id": "ex_cable_lateral_raise",
     "substitution_similarity": "same_pattern_and_primary_muscle",
@@ -200,7 +224,7 @@
     "confidence_rating": "moderate"
   },
   {
-    "exercise_substitution_map_id": "esm_0026",
+    "exercise_substitution_map_id": "esm_0029",
     "exercise_id": "ex_machine_lateral_raise",
     "substitute_exercise_id": "ex_dumbbell_lateral_raise",
     "substitution_similarity": "same_pattern_and_primary_muscle",
@@ -208,7 +232,7 @@
     "confidence_rating": "moderate"
   },
   {
-    "exercise_substitution_map_id": "esm_0027",
+    "exercise_substitution_map_id": "esm_0030",
     "exercise_id": "ex_pull_up",
     "substitute_exercise_id": "ex_chin_up",
     "substitution_similarity": "same_pattern_and_primary_muscle",
@@ -216,32 +240,8 @@
     "confidence_rating": "moderate"
   },
   {
-    "exercise_substitution_map_id": "esm_0028",
-    "exercise_id": "ex_pull_up",
-    "substitute_exercise_id": "ex_lat_pulldown",
-    "substitution_similarity": "same_pattern_and_primary_muscle",
-    "reason": "Alternative with different equipment, stability, or joint-loading profile",
-    "confidence_rating": "moderate"
-  },
-  {
-    "exercise_substitution_map_id": "esm_0029",
-    "exercise_id": "ex_pull_up",
-    "substitute_exercise_id": "ex_one_arm_cable_pulldown",
-    "substitution_similarity": "same_pattern_and_primary_muscle",
-    "reason": "Alternative with different equipment, stability, or joint-loading profile",
-    "confidence_rating": "moderate"
-  },
-  {
-    "exercise_substitution_map_id": "esm_0030",
-    "exercise_id": "ex_chin_up",
-    "substitute_exercise_id": "ex_pull_up",
-    "substitution_similarity": "same_pattern_and_primary_muscle",
-    "reason": "Alternative with different equipment, stability, or joint-loading profile",
-    "confidence_rating": "moderate"
-  },
-  {
     "exercise_substitution_map_id": "esm_0031",
-    "exercise_id": "ex_chin_up",
+    "exercise_id": "ex_pull_up",
     "substitute_exercise_id": "ex_lat_pulldown",
     "substitution_similarity": "same_pattern_and_primary_muscle",
     "reason": "Alternative with different equipment, stability, or joint-loading profile",
@@ -249,7 +249,7 @@
   },
   {
     "exercise_substitution_map_id": "esm_0032",
-    "exercise_id": "ex_chin_up",
+    "exercise_id": "ex_pull_up",
     "substitute_exercise_id": "ex_one_arm_cable_pulldown",
     "substitution_similarity": "same_pattern_and_primary_muscle",
     "reason": "Alternative with different equipment, stability, or joint-loading profile",
@@ -257,7 +257,7 @@
   },
   {
     "exercise_substitution_map_id": "esm_0033",
-    "exercise_id": "ex_lat_pulldown",
+    "exercise_id": "ex_chin_up",
     "substitute_exercise_id": "ex_pull_up",
     "substitution_similarity": "same_pattern_and_primary_muscle",
     "reason": "Alternative with different equipment, stability, or joint-loading profile",
@@ -265,15 +265,15 @@
   },
   {
     "exercise_substitution_map_id": "esm_0034",
-    "exercise_id": "ex_lat_pulldown",
-    "substitute_exercise_id": "ex_chin_up",
+    "exercise_id": "ex_chin_up",
+    "substitute_exercise_id": "ex_lat_pulldown",
     "substitution_similarity": "same_pattern_and_primary_muscle",
     "reason": "Alternative with different equipment, stability, or joint-loading profile",
     "confidence_rating": "moderate"
   },
   {
     "exercise_substitution_map_id": "esm_0035",
-    "exercise_id": "ex_lat_pulldown",
+    "exercise_id": "ex_chin_up",
     "substitute_exercise_id": "ex_one_arm_cable_pulldown",
     "substitution_similarity": "same_pattern_and_primary_muscle",
     "reason": "Alternative with different equipment, stability, or joint-loading profile",
@@ -281,7 +281,7 @@
   },
   {
     "exercise_substitution_map_id": "esm_0036",
-    "exercise_id": "ex_one_arm_cable_pulldown",
+    "exercise_id": "ex_lat_pulldown",
     "substitute_exercise_id": "ex_pull_up",
     "substitution_similarity": "same_pattern_and_primary_muscle",
     "reason": "Alternative with different equipment, stability, or joint-loading profile",
@@ -289,7 +289,7 @@
   },
   {
     "exercise_substitution_map_id": "esm_0037",
-    "exercise_id": "ex_one_arm_cable_pulldown",
+    "exercise_id": "ex_lat_pulldown",
     "substitute_exercise_id": "ex_chin_up",
     "substitution_similarity": "same_pattern_and_primary_muscle",
     "reason": "Alternative with different equipment, stability, or joint-loading profile",
@@ -297,6 +297,30 @@
   },
   {
     "exercise_substitution_map_id": "esm_0038",
+    "exercise_id": "ex_lat_pulldown",
+    "substitute_exercise_id": "ex_one_arm_cable_pulldown",
+    "substitution_similarity": "same_pattern_and_primary_muscle",
+    "reason": "Alternative with different equipment, stability, or joint-loading profile",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_substitution_map_id": "esm_0039",
+    "exercise_id": "ex_one_arm_cable_pulldown",
+    "substitute_exercise_id": "ex_pull_up",
+    "substitution_similarity": "same_pattern_and_primary_muscle",
+    "reason": "Alternative with different equipment, stability, or joint-loading profile",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_substitution_map_id": "esm_0040",
+    "exercise_id": "ex_one_arm_cable_pulldown",
+    "substitute_exercise_id": "ex_chin_up",
+    "substitution_similarity": "same_pattern_and_primary_muscle",
+    "reason": "Alternative with different equipment, stability, or joint-loading profile",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_substitution_map_id": "esm_0041",
     "exercise_id": "ex_one_arm_cable_pulldown",
     "substitute_exercise_id": "ex_lat_pulldown",
     "substitution_similarity": "same_pattern_and_primary_muscle",
@@ -304,7 +328,7 @@
     "confidence_rating": "moderate"
   },
   {
-    "exercise_substitution_map_id": "esm_0039",
+    "exercise_substitution_map_id": "esm_0042",
     "exercise_id": "ex_chest_supported_row",
     "substitute_exercise_id": "ex_seated_cable_row",
     "substitution_similarity": "same_pattern_and_primary_muscle",
@@ -312,7 +336,7 @@
     "confidence_rating": "moderate"
   },
   {
-    "exercise_substitution_map_id": "esm_0040",
+    "exercise_substitution_map_id": "esm_0043",
     "exercise_id": "ex_seated_cable_row",
     "substitute_exercise_id": "ex_chest_supported_row",
     "substitution_similarity": "same_pattern_and_primary_muscle",
@@ -320,7 +344,7 @@
     "confidence_rating": "moderate"
   },
   {
-    "exercise_substitution_map_id": "esm_0041",
+    "exercise_substitution_map_id": "esm_0044",
     "exercise_id": "ex_reverse_pec_deck",
     "substitute_exercise_id": "ex_cable_rear_delt_fly",
     "substitution_similarity": "same_pattern_and_primary_muscle",
@@ -328,7 +352,7 @@
     "confidence_rating": "moderate"
   },
   {
-    "exercise_substitution_map_id": "esm_0042",
+    "exercise_substitution_map_id": "esm_0045",
     "exercise_id": "ex_cable_rear_delt_fly",
     "substitute_exercise_id": "ex_reverse_pec_deck",
     "substitution_similarity": "same_pattern_and_primary_muscle",
@@ -336,7 +360,7 @@
     "confidence_rating": "moderate"
   },
   {
-    "exercise_substitution_map_id": "esm_0043",
+    "exercise_substitution_map_id": "esm_0046",
     "exercise_id": "ex_barbell_shrug",
     "substitute_exercise_id": "ex_dumbbell_shrug",
     "substitution_similarity": "same_pattern_and_primary_muscle",
@@ -344,7 +368,7 @@
     "confidence_rating": "moderate"
   },
   {
-    "exercise_substitution_map_id": "esm_0044",
+    "exercise_substitution_map_id": "esm_0047",
     "exercise_id": "ex_dumbbell_shrug",
     "substitute_exercise_id": "ex_barbell_shrug",
     "substitution_similarity": "same_pattern_and_primary_muscle",
@@ -352,7 +376,7 @@
     "confidence_rating": "moderate"
   },
   {
-    "exercise_substitution_map_id": "esm_0045",
+    "exercise_substitution_map_id": "esm_0048",
     "exercise_id": "ex_back_squat",
     "substitute_exercise_id": "ex_front_squat",
     "substitution_similarity": "same_pattern_and_primary_muscle",
@@ -360,32 +384,8 @@
     "confidence_rating": "moderate"
   },
   {
-    "exercise_substitution_map_id": "esm_0046",
-    "exercise_id": "ex_back_squat",
-    "substitute_exercise_id": "ex_leg_press",
-    "substitution_similarity": "same_pattern_and_primary_muscle",
-    "reason": "Alternative with different equipment, stability, or joint-loading profile",
-    "confidence_rating": "moderate"
-  },
-  {
-    "exercise_substitution_map_id": "esm_0047",
-    "exercise_id": "ex_back_squat",
-    "substitute_exercise_id": "ex_hack_squat",
-    "substitution_similarity": "same_pattern_and_primary_muscle",
-    "reason": "Alternative with different equipment, stability, or joint-loading profile",
-    "confidence_rating": "moderate"
-  },
-  {
-    "exercise_substitution_map_id": "esm_0048",
-    "exercise_id": "ex_front_squat",
-    "substitute_exercise_id": "ex_back_squat",
-    "substitution_similarity": "same_pattern_and_primary_muscle",
-    "reason": "Alternative with different equipment, stability, or joint-loading profile",
-    "confidence_rating": "moderate"
-  },
-  {
     "exercise_substitution_map_id": "esm_0049",
-    "exercise_id": "ex_front_squat",
+    "exercise_id": "ex_back_squat",
     "substitute_exercise_id": "ex_leg_press",
     "substitution_similarity": "same_pattern_and_primary_muscle",
     "reason": "Alternative with different equipment, stability, or joint-loading profile",
@@ -393,7 +393,7 @@
   },
   {
     "exercise_substitution_map_id": "esm_0050",
-    "exercise_id": "ex_front_squat",
+    "exercise_id": "ex_back_squat",
     "substitute_exercise_id": "ex_hack_squat",
     "substitution_similarity": "same_pattern_and_primary_muscle",
     "reason": "Alternative with different equipment, stability, or joint-loading profile",
@@ -401,7 +401,7 @@
   },
   {
     "exercise_substitution_map_id": "esm_0051",
-    "exercise_id": "ex_leg_press",
+    "exercise_id": "ex_front_squat",
     "substitute_exercise_id": "ex_back_squat",
     "substitution_similarity": "same_pattern_and_primary_muscle",
     "reason": "Alternative with different equipment, stability, or joint-loading profile",
@@ -409,15 +409,15 @@
   },
   {
     "exercise_substitution_map_id": "esm_0052",
-    "exercise_id": "ex_leg_press",
-    "substitute_exercise_id": "ex_front_squat",
+    "exercise_id": "ex_front_squat",
+    "substitute_exercise_id": "ex_leg_press",
     "substitution_similarity": "same_pattern_and_primary_muscle",
     "reason": "Alternative with different equipment, stability, or joint-loading profile",
     "confidence_rating": "moderate"
   },
   {
     "exercise_substitution_map_id": "esm_0053",
-    "exercise_id": "ex_leg_press",
+    "exercise_id": "ex_front_squat",
     "substitute_exercise_id": "ex_hack_squat",
     "substitution_similarity": "same_pattern_and_primary_muscle",
     "reason": "Alternative with different equipment, stability, or joint-loading profile",
@@ -425,7 +425,7 @@
   },
   {
     "exercise_substitution_map_id": "esm_0054",
-    "exercise_id": "ex_hack_squat",
+    "exercise_id": "ex_leg_press",
     "substitute_exercise_id": "ex_back_squat",
     "substitution_similarity": "same_pattern_and_primary_muscle",
     "reason": "Alternative with different equipment, stability, or joint-loading profile",
@@ -433,7 +433,7 @@
   },
   {
     "exercise_substitution_map_id": "esm_0055",
-    "exercise_id": "ex_hack_squat",
+    "exercise_id": "ex_leg_press",
     "substitute_exercise_id": "ex_front_squat",
     "substitution_similarity": "same_pattern_and_primary_muscle",
     "reason": "Alternative with different equipment, stability, or joint-loading profile",
@@ -441,6 +441,30 @@
   },
   {
     "exercise_substitution_map_id": "esm_0056",
+    "exercise_id": "ex_leg_press",
+    "substitute_exercise_id": "ex_hack_squat",
+    "substitution_similarity": "same_pattern_and_primary_muscle",
+    "reason": "Alternative with different equipment, stability, or joint-loading profile",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_substitution_map_id": "esm_0057",
+    "exercise_id": "ex_hack_squat",
+    "substitute_exercise_id": "ex_back_squat",
+    "substitution_similarity": "same_pattern_and_primary_muscle",
+    "reason": "Alternative with different equipment, stability, or joint-loading profile",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_substitution_map_id": "esm_0058",
+    "exercise_id": "ex_hack_squat",
+    "substitute_exercise_id": "ex_front_squat",
+    "substitution_similarity": "same_pattern_and_primary_muscle",
+    "reason": "Alternative with different equipment, stability, or joint-loading profile",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_substitution_map_id": "esm_0059",
     "exercise_id": "ex_hack_squat",
     "substitute_exercise_id": "ex_leg_press",
     "substitution_similarity": "same_pattern_and_primary_muscle",
@@ -448,39 +472,39 @@
     "confidence_rating": "moderate"
   },
   {
-    "exercise_substitution_map_id": "esm_0057",
+    "exercise_substitution_map_id": "esm_0060",
     "exercise_id": "ex_deadlift",
     "substitute_exercise_id": "ex_good_morning",
-    "substitution_similarity": "same_pattern_and_primary_muscle",
-    "reason": "Alternative with different equipment, stability, or joint-loading profile",
-    "confidence_rating": "moderate"
-  },
-  {
-    "exercise_substitution_map_id": "esm_0058",
-    "exercise_id": "ex_deadlift",
-    "substitute_exercise_id": "ex_back_extension",
-    "substitution_similarity": "same_pattern_and_primary_muscle",
-    "reason": "Alternative with different equipment, stability, or joint-loading profile",
-    "confidence_rating": "moderate"
-  },
-  {
-    "exercise_substitution_map_id": "esm_0059",
-    "exercise_id": "ex_good_morning",
-    "substitute_exercise_id": "ex_deadlift",
-    "substitution_similarity": "same_pattern_and_primary_muscle",
-    "reason": "Alternative with different equipment, stability, or joint-loading profile",
-    "confidence_rating": "moderate"
-  },
-  {
-    "exercise_substitution_map_id": "esm_0060",
-    "exercise_id": "ex_good_morning",
-    "substitute_exercise_id": "ex_back_extension",
     "substitution_similarity": "same_pattern_and_primary_muscle",
     "reason": "Alternative with different equipment, stability, or joint-loading profile",
     "confidence_rating": "moderate"
   },
   {
     "exercise_substitution_map_id": "esm_0061",
+    "exercise_id": "ex_deadlift",
+    "substitute_exercise_id": "ex_back_extension",
+    "substitution_similarity": "same_pattern_and_primary_muscle",
+    "reason": "Alternative with different equipment, stability, or joint-loading profile",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_substitution_map_id": "esm_0062",
+    "exercise_id": "ex_good_morning",
+    "substitute_exercise_id": "ex_deadlift",
+    "substitution_similarity": "same_pattern_and_primary_muscle",
+    "reason": "Alternative with different equipment, stability, or joint-loading profile",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_substitution_map_id": "esm_0063",
+    "exercise_id": "ex_good_morning",
+    "substitute_exercise_id": "ex_back_extension",
+    "substitution_similarity": "same_pattern_and_primary_muscle",
+    "reason": "Alternative with different equipment, stability, or joint-loading profile",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_substitution_map_id": "esm_0064",
     "exercise_id": "ex_back_extension",
     "substitute_exercise_id": "ex_deadlift",
     "substitution_similarity": "same_pattern_and_primary_muscle",
@@ -488,7 +512,7 @@
     "confidence_rating": "moderate"
   },
   {
-    "exercise_substitution_map_id": "esm_0062",
+    "exercise_substitution_map_id": "esm_0065",
     "exercise_id": "ex_back_extension",
     "substitute_exercise_id": "ex_good_morning",
     "substitution_similarity": "same_pattern_and_primary_muscle",
@@ -496,39 +520,39 @@
     "confidence_rating": "moderate"
   },
   {
-    "exercise_substitution_map_id": "esm_0063",
+    "exercise_substitution_map_id": "esm_0066",
     "exercise_id": "ex_seated_leg_curl",
     "substitute_exercise_id": "ex_lying_leg_curl",
-    "substitution_similarity": "same_pattern_and_primary_muscle",
-    "reason": "Alternative with different equipment, stability, or joint-loading profile",
-    "confidence_rating": "moderate"
-  },
-  {
-    "exercise_substitution_map_id": "esm_0064",
-    "exercise_id": "ex_seated_leg_curl",
-    "substitute_exercise_id": "ex_nordic_curl",
-    "substitution_similarity": "same_pattern_and_primary_muscle",
-    "reason": "Alternative with different equipment, stability, or joint-loading profile",
-    "confidence_rating": "moderate"
-  },
-  {
-    "exercise_substitution_map_id": "esm_0065",
-    "exercise_id": "ex_lying_leg_curl",
-    "substitute_exercise_id": "ex_seated_leg_curl",
-    "substitution_similarity": "same_pattern_and_primary_muscle",
-    "reason": "Alternative with different equipment, stability, or joint-loading profile",
-    "confidence_rating": "moderate"
-  },
-  {
-    "exercise_substitution_map_id": "esm_0066",
-    "exercise_id": "ex_lying_leg_curl",
-    "substitute_exercise_id": "ex_nordic_curl",
     "substitution_similarity": "same_pattern_and_primary_muscle",
     "reason": "Alternative with different equipment, stability, or joint-loading profile",
     "confidence_rating": "moderate"
   },
   {
     "exercise_substitution_map_id": "esm_0067",
+    "exercise_id": "ex_seated_leg_curl",
+    "substitute_exercise_id": "ex_nordic_curl",
+    "substitution_similarity": "same_pattern_and_primary_muscle",
+    "reason": "Alternative with different equipment, stability, or joint-loading profile",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_substitution_map_id": "esm_0068",
+    "exercise_id": "ex_lying_leg_curl",
+    "substitute_exercise_id": "ex_seated_leg_curl",
+    "substitution_similarity": "same_pattern_and_primary_muscle",
+    "reason": "Alternative with different equipment, stability, or joint-loading profile",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_substitution_map_id": "esm_0069",
+    "exercise_id": "ex_lying_leg_curl",
+    "substitute_exercise_id": "ex_nordic_curl",
+    "substitution_similarity": "same_pattern_and_primary_muscle",
+    "reason": "Alternative with different equipment, stability, or joint-loading profile",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_substitution_map_id": "esm_0070",
     "exercise_id": "ex_nordic_curl",
     "substitute_exercise_id": "ex_seated_leg_curl",
     "substitution_similarity": "same_pattern_and_primary_muscle",
@@ -536,7 +560,7 @@
     "confidence_rating": "moderate"
   },
   {
-    "exercise_substitution_map_id": "esm_0068",
+    "exercise_substitution_map_id": "esm_0071",
     "exercise_id": "ex_nordic_curl",
     "substitute_exercise_id": "ex_lying_leg_curl",
     "substitution_similarity": "same_pattern_and_primary_muscle",
@@ -544,7 +568,7 @@
     "confidence_rating": "moderate"
   },
   {
-    "exercise_substitution_map_id": "esm_0069",
+    "exercise_substitution_map_id": "esm_0072",
     "exercise_id": "ex_hip_abduction_machine",
     "substitute_exercise_id": "ex_cable_hip_abduction",
     "substitution_similarity": "same_pattern_and_primary_muscle",
@@ -552,7 +576,7 @@
     "confidence_rating": "moderate"
   },
   {
-    "exercise_substitution_map_id": "esm_0070",
+    "exercise_substitution_map_id": "esm_0073",
     "exercise_id": "ex_cable_hip_abduction",
     "substitute_exercise_id": "ex_hip_abduction_machine",
     "substitution_similarity": "same_pattern_and_primary_muscle",
@@ -560,7 +584,7 @@
     "confidence_rating": "moderate"
   },
   {
-    "exercise_substitution_map_id": "esm_0071",
+    "exercise_substitution_map_id": "esm_0074",
     "exercise_id": "ex_standing_calf_raise",
     "substitute_exercise_id": "ex_leg_press_calf_raise",
     "substitution_similarity": "same_pattern_and_primary_muscle",
@@ -568,7 +592,7 @@
     "confidence_rating": "moderate"
   },
   {
-    "exercise_substitution_map_id": "esm_0072",
+    "exercise_substitution_map_id": "esm_0075",
     "exercise_id": "ex_leg_press_calf_raise",
     "substitute_exercise_id": "ex_standing_calf_raise",
     "substitution_similarity": "same_pattern_and_primary_muscle",
@@ -576,7 +600,7 @@
     "confidence_rating": "moderate"
   },
   {
-    "exercise_substitution_map_id": "esm_0073",
+    "exercise_substitution_map_id": "esm_0076",
     "exercise_id": "ex_incline_dumbbell_curl",
     "substitute_exercise_id": "ex_preacher_curl",
     "substitution_similarity": "same_pattern_and_primary_muscle",
@@ -584,32 +608,8 @@
     "confidence_rating": "moderate"
   },
   {
-    "exercise_substitution_map_id": "esm_0074",
-    "exercise_id": "ex_incline_dumbbell_curl",
-    "substitute_exercise_id": "ex_cable_curl",
-    "substitution_similarity": "same_pattern_and_primary_muscle",
-    "reason": "Alternative with different equipment, stability, or joint-loading profile",
-    "confidence_rating": "moderate"
-  },
-  {
-    "exercise_substitution_map_id": "esm_0075",
-    "exercise_id": "ex_incline_dumbbell_curl",
-    "substitute_exercise_id": "ex_hammer_curl",
-    "substitution_similarity": "same_pattern_and_primary_muscle",
-    "reason": "Alternative with different equipment, stability, or joint-loading profile",
-    "confidence_rating": "moderate"
-  },
-  {
-    "exercise_substitution_map_id": "esm_0076",
-    "exercise_id": "ex_preacher_curl",
-    "substitute_exercise_id": "ex_incline_dumbbell_curl",
-    "substitution_similarity": "same_pattern_and_primary_muscle",
-    "reason": "Alternative with different equipment, stability, or joint-loading profile",
-    "confidence_rating": "moderate"
-  },
-  {
     "exercise_substitution_map_id": "esm_0077",
-    "exercise_id": "ex_preacher_curl",
+    "exercise_id": "ex_incline_dumbbell_curl",
     "substitute_exercise_id": "ex_cable_curl",
     "substitution_similarity": "same_pattern_and_primary_muscle",
     "reason": "Alternative with different equipment, stability, or joint-loading profile",
@@ -617,7 +617,7 @@
   },
   {
     "exercise_substitution_map_id": "esm_0078",
-    "exercise_id": "ex_preacher_curl",
+    "exercise_id": "ex_incline_dumbbell_curl",
     "substitute_exercise_id": "ex_hammer_curl",
     "substitution_similarity": "same_pattern_and_primary_muscle",
     "reason": "Alternative with different equipment, stability, or joint-loading profile",
@@ -625,7 +625,7 @@
   },
   {
     "exercise_substitution_map_id": "esm_0079",
-    "exercise_id": "ex_cable_curl",
+    "exercise_id": "ex_preacher_curl",
     "substitute_exercise_id": "ex_incline_dumbbell_curl",
     "substitution_similarity": "same_pattern_and_primary_muscle",
     "reason": "Alternative with different equipment, stability, or joint-loading profile",
@@ -633,15 +633,15 @@
   },
   {
     "exercise_substitution_map_id": "esm_0080",
-    "exercise_id": "ex_cable_curl",
-    "substitute_exercise_id": "ex_preacher_curl",
+    "exercise_id": "ex_preacher_curl",
+    "substitute_exercise_id": "ex_cable_curl",
     "substitution_similarity": "same_pattern_and_primary_muscle",
     "reason": "Alternative with different equipment, stability, or joint-loading profile",
     "confidence_rating": "moderate"
   },
   {
     "exercise_substitution_map_id": "esm_0081",
-    "exercise_id": "ex_cable_curl",
+    "exercise_id": "ex_preacher_curl",
     "substitute_exercise_id": "ex_hammer_curl",
     "substitution_similarity": "same_pattern_and_primary_muscle",
     "reason": "Alternative with different equipment, stability, or joint-loading profile",
@@ -649,7 +649,7 @@
   },
   {
     "exercise_substitution_map_id": "esm_0082",
-    "exercise_id": "ex_hammer_curl",
+    "exercise_id": "ex_cable_curl",
     "substitute_exercise_id": "ex_incline_dumbbell_curl",
     "substitution_similarity": "same_pattern_and_primary_muscle",
     "reason": "Alternative with different equipment, stability, or joint-loading profile",
@@ -657,7 +657,7 @@
   },
   {
     "exercise_substitution_map_id": "esm_0083",
-    "exercise_id": "ex_hammer_curl",
+    "exercise_id": "ex_cable_curl",
     "substitute_exercise_id": "ex_preacher_curl",
     "substitution_similarity": "same_pattern_and_primary_muscle",
     "reason": "Alternative with different equipment, stability, or joint-loading profile",
@@ -665,6 +665,30 @@
   },
   {
     "exercise_substitution_map_id": "esm_0084",
+    "exercise_id": "ex_cable_curl",
+    "substitute_exercise_id": "ex_hammer_curl",
+    "substitution_similarity": "same_pattern_and_primary_muscle",
+    "reason": "Alternative with different equipment, stability, or joint-loading profile",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_substitution_map_id": "esm_0085",
+    "exercise_id": "ex_hammer_curl",
+    "substitute_exercise_id": "ex_incline_dumbbell_curl",
+    "substitution_similarity": "same_pattern_and_primary_muscle",
+    "reason": "Alternative with different equipment, stability, or joint-loading profile",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_substitution_map_id": "esm_0086",
+    "exercise_id": "ex_hammer_curl",
+    "substitute_exercise_id": "ex_preacher_curl",
+    "substitution_similarity": "same_pattern_and_primary_muscle",
+    "reason": "Alternative with different equipment, stability, or joint-loading profile",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_substitution_map_id": "esm_0087",
     "exercise_id": "ex_hammer_curl",
     "substitute_exercise_id": "ex_cable_curl",
     "substitution_similarity": "same_pattern_and_primary_muscle",
@@ -672,7 +696,7 @@
     "confidence_rating": "moderate"
   },
   {
-    "exercise_substitution_map_id": "esm_0085",
+    "exercise_substitution_map_id": "esm_0088",
     "exercise_id": "ex_cable_pushdown",
     "substitute_exercise_id": "ex_overhead_cable_extension",
     "substitution_similarity": "same_pattern_and_primary_muscle",
@@ -680,7 +704,7 @@
     "confidence_rating": "moderate"
   },
   {
-    "exercise_substitution_map_id": "esm_0086",
+    "exercise_substitution_map_id": "esm_0089",
     "exercise_id": "ex_overhead_cable_extension",
     "substitute_exercise_id": "ex_cable_pushdown",
     "substitution_similarity": "same_pattern_and_primary_muscle",
@@ -688,7 +712,7 @@
     "confidence_rating": "moderate"
   },
   {
-    "exercise_substitution_map_id": "esm_0087",
+    "exercise_substitution_map_id": "esm_0090",
     "exercise_id": "ex_cable_crunch",
     "substitute_exercise_id": "ex_hanging_leg_raise",
     "substitution_similarity": "same_pattern_and_primary_muscle",
@@ -696,7 +720,7 @@
     "confidence_rating": "moderate"
   },
   {
-    "exercise_substitution_map_id": "esm_0088",
+    "exercise_substitution_map_id": "esm_0091",
     "exercise_id": "ex_hanging_leg_raise",
     "substitute_exercise_id": "ex_cable_crunch",
     "substitution_similarity": "same_pattern_and_primary_muscle",
@@ -704,7 +728,7 @@
     "confidence_rating": "moderate"
   },
   {
-    "exercise_substitution_map_id": "esm_0089",
+    "exercise_substitution_map_id": "esm_0092",
     "exercise_id": "ex_pallof_press",
     "substitute_exercise_id": "ex_side_plank",
     "substitution_similarity": "same_pattern_and_primary_muscle",
@@ -712,7 +736,7 @@
     "confidence_rating": "moderate"
   },
   {
-    "exercise_substitution_map_id": "esm_0090",
+    "exercise_substitution_map_id": "esm_0093",
     "exercise_id": "ex_side_plank",
     "substitute_exercise_id": "ex_pallof_press",
     "substitution_similarity": "same_pattern_and_primary_muscle",

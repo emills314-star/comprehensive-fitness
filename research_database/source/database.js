@@ -1,6 +1,6 @@
 "use strict";
 
-const VERSION = "1.0.0";
+const VERSION = "1.1.0";
 const REVIEW_DATE = "2026-07-11";
 const DELIMITER = "|";
 
@@ -169,7 +169,7 @@ const conclusions = [
 ];
 
 const muscleSpecs = [
-  ["mg_chest_sternal", "chest", "sternal_pectoralis_major", "Horizontal adduction and shoulder flexion", "ex_barbell_bench_press|ex_dumbbell_bench_press|ex_machine_chest_press|ex_cable_fly", 6, 10, 16, 17, 22, 20, 2, 8, 1, 3, 5, 20, 0, 4, 90, 240, "Pressing contributes 1.0; close-grip or overhead pressing usually 0-0.5"],
+  ["mg_chest_sternal", "chest", "sternal_pectoralis_major", "Horizontal adduction and shoulder flexion", "ex_barbell_bench_press|ex_cambered_barbell_bench_press|ex_dumbbell_bench_press|ex_machine_chest_press|ex_cable_fly", 6, 10, 16, 17, 22, 20, 2, 8, 1, 3, 5, 20, 0, 4, 90, 240, "Pressing contributes 1.0; close-grip or overhead pressing usually 0-0.5"],
   ["mg_chest_clavicular", "chest", "clavicular_pectoralis_major", "Shoulder flexion and horizontal adduction", "ex_incline_dumbbell_press|ex_incline_machine_press|ex_low_to_high_cable_fly", 4, 8, 14, 15, 20, 18, 2, 7, 1, 3, 6, 20, 0, 4, 90, 240, "Flat pressing 0.5; overhead pressing 0-0.25"],
   ["mg_upper_back", "upper_back", "rhomboids_and_mid_trapezius", "Scapular retraction and control", "ex_chest_supported_row|ex_seated_cable_row|ex_reverse_pec_deck", 6, 10, 18, 18, 24, 22, 2, 8, 1, 4, 6, 20, 0, 4, 90, 240, "Rows 1.0; vertical pulls 0.25-0.5"],
   ["mg_lats", "lats", "latissimus_dorsi", "Shoulder extension and adduction", "ex_pull_up|ex_lat_pulldown|ex_one_arm_cable_pulldown|ex_dumbbell_row", 6, 10, 18, 18, 24, 22, 2, 8, 1, 4, 6, 20, 0, 4, 90, 240, "Vertical pulls and shoulder-extension rows 1.0; other rows 0.5"],
@@ -206,6 +206,7 @@ const muscleGroups = muscleSpecs.map((x) => ({
 
 const exerciseSpecs = [
   ["ex_barbell_bench_press", "Barbell Bench Press", "bench press", "horizontal_push", "barbell_and_bench", "mg_chest_sternal", "mg_triceps|mg_front_delts", "free_weight_compound", 5, 10, 3, 15, 120, 300, "load_then_reps", 2, "high", "high"],
+  ["ex_cambered_barbell_bench_press", "Cambered Barbell Bench Press", "camber bar bench press|cambered bench press|cambered bar bench", "horizontal_push", "cambered_barbell_and_bench", "mg_chest_sternal", "mg_triceps|mg_front_delts", "free_weight_compound", 6, 12, 4, 15, 150, 300, "double_progression", 2, "high", "high"],
   ["ex_dumbbell_bench_press", "Dumbbell Bench Press", "db bench press", "horizontal_push", "dumbbells_and_bench", "mg_chest_sternal", "mg_triceps|mg_front_delts", "free_weight_compound", 6, 12, 5, 20, 120, 240, "double_progression", 2, "moderate", "moderate"],
   ["ex_incline_dumbbell_press", "Incline Dumbbell Press", "incline db press", "horizontal_push", "dumbbells_and_incline_bench", "mg_chest_clavicular", "mg_triceps|mg_front_delts", "free_weight_compound", 6, 12, 5, 20, 120, 240, "double_progression", 2, "moderate", "moderate"],
   ["ex_machine_chest_press", "Machine Chest Press", "selectorized chest press", "horizontal_push", "machine", "mg_chest_sternal", "mg_triceps|mg_front_delts", "machine_compound", 8, 15, 6, 20, 90, 210, "dynamic_double_progression", 1, "low", "low"],
@@ -450,7 +451,10 @@ const operationalDefinitions = [
 ].map((x)=>({field_name:x[0],display_name:x[1],definition:x[2],data_type:"operational_definition",allowed_values:"",unit:"",nullable:false,example_value:"",validation_rule:"informational_controlled_term",used_in_tabs:"all"}));
 definitionsDataDictionary.push(...operationalDefinitions);
 
-const changeLog = [{change_id:"chg_0001",change_date:REVIEW_DATE,database_version:VERSION,affected_tab:"all",affected_record_ids:"all_v1_records",change_type:"initial_release",previous_value:"",new_value:"Initial male-specific evidence database release",reason_for_change:"Created normalized evidence, application rules, exports, methodology, and validation package.",supporting_study_ids:"stu_0001|stu_0004|stu_0016|stu_0019",reviewer_notes:"Version 1.0 is broad but not an exhaustive systematic review; low-confidence operational defaults are explicitly labeled."}];
+const changeLog = [
+  {change_id:"chg_0001",change_date:REVIEW_DATE,database_version:"1.0.0",affected_tab:"all",affected_record_ids:"all_v1_records",change_type:"initial_release",previous_value:"",new_value:"Initial male-specific evidence database release",reason_for_change:"Created normalized evidence, application rules, exports, methodology, and validation package.",supporting_study_ids:"stu_0001|stu_0004|stu_0016|stu_0019",reviewer_notes:"Version 1.0 is broad but not an exhaustive systematic review; low-confidence operational defaults are explicitly labeled."},
+  {change_id:"chg_0002",change_date:REVIEW_DATE,database_version:VERSION,affected_tab:"exercise_database|muscle_group_recommendations",affected_record_ids:"ex_cambered_barbell_bench_press|mg_chest_sternal",change_type:"exercise_library_addition",previous_value:"Cambered bench aliases were not discoverable.",new_value:"Added one canonical cambered-barbell bench record with three aliases and normal chest mapping.",reason_for_change:"Exercise discovery must evaluate eligible canonical library variations instead of silently omitting unrecognized aliases.",supporting_study_ids:"stu_0004|stu_0009|stu_0010|stu_0011",reviewer_notes:"This is a movement-specific research default, not a claim that camber geometry guarantees superior hypertrophy."}
+];
 
 const data = {
   executive_summary: executiveSummary,
