@@ -1,0 +1,178 @@
+# iPhone PWA Personal Coach Setup
+
+This is the operational runbook for using Comprehensive Fitness as a private personal coach on an iPhone without a Mac or Apple Developer Program membership.
+
+## Current production app
+
+- URL: `https://comprehensive-fitness.vercel.app`
+- Minimum iOS version for Home Screen Web Push: iOS 16.4
+- Personal evidence is intentionally excluded from GitHub and Vercel.
+- The installed PWA stores its state in that installation's IndexedDB. Exported app backups remain the authoritative recovery method.
+
+## 1. Configure the free push backend
+
+The coaching engine works without this backend. The backend is required for reliable rest-complete delivery while the PWA is backgrounded or the phone is locked.
+
+### Create Upstash Redis
+
+1. Sign into Upstash.
+2. Open **Redis** and select **Create Database**.
+3. Name it `comprehensive-fitness` and select a region near the Vercel deployment.
+4. Open the database's REST API/connection section.
+5. Copy `UPSTASH_REDIS_REST_URL`.
+6. Copy the standard `UPSTASH_REDIS_REST_TOKEN`, not the read-only token.
+
+### Collect QStash credentials
+
+1. Open **QStash** in Upstash.
+2. Copy `QSTASH_TOKEN`.
+3. Copy `QSTASH_CURRENT_SIGNING_KEY`.
+4. Copy `QSTASH_NEXT_SIGNING_KEY`.
+5. Keep all three values in a password manager.
+
+### Generate VAPID credentials
+
+From PowerShell in the repository:
+
+```powershell
+npx web-push generate-vapid-keys
+```
+
+Keep both keys in a password manager. Never commit the private key or paste it into client-side code.
+
+### Add Vercel environment variables
+
+Open Vercel, select **comprehensive-fitness**, then open **Settings > Environment Variables**. Add these values to Production:
+
+```text
+PUBLIC_APP_URL=https://comprehensive-fitness.vercel.app
+VAPID_SUBJECT=mailto:YOUR_EMAIL_ADDRESS
+VAPID_PUBLIC_KEY=YOUR_GENERATED_PUBLIC_KEY
+VAPID_PRIVATE_KEY=YOUR_GENERATED_PRIVATE_KEY
+QSTASH_TOKEN=YOUR_QSTASH_TOKEN
+QSTASH_CURRENT_SIGNING_KEY=YOUR_CURRENT_SIGNING_KEY
+QSTASH_NEXT_SIGNING_KEY=YOUR_NEXT_SIGNING_KEY
+UPSTASH_REDIS_REST_URL=YOUR_REDIS_REST_URL
+UPSTASH_REDIS_REST_TOKEN=YOUR_STANDARD_REDIS_REST_TOKEN
+```
+
+Redeploy the latest production deployment after saving the variables. Then open:
+
+```text
+https://comprehensive-fitness.vercel.app/api/push/config
+```
+
+Do not continue until it returns `"configured": true` and `"scheduler": "qstash"`.
+
+## 2. Install the PWA
+
+1. Open `https://comprehensive-fitness.vercel.app` in iPhone Safari.
+2. Tap **Share > Add to Home Screen**.
+3. Enable **Open as Web App** when shown.
+4. Name it **Comprehensive Fitness** and tap **Add**.
+5. Close Safari and launch Comprehensive Fitness from its Home Screen icon.
+
+Always use the same production domain. IndexedDB, notification permission, and the Web Push subscription are domain- and installation-specific.
+
+## 3. Import private personal evidence
+
+Build or refresh the private package on Windows:
+
+```powershell
+npm.cmd run personal:validate
+npm.cmd run build:app-evidence
+```
+
+The private package is created at:
+
+```text
+personal_fitness_data\derived\app_personal_evidence.json
+```
+
+1. Copy that file to a private iCloud Drive, OneDrive, or other iPhone Files location.
+2. Do not upload it to GitHub or Vercel.
+3. In the installed PWA, open **Settings > Data and backup**.
+4. Tap **private personal evidence package** and select the JSON file.
+5. Confirm Settings reports engine `2.0.0`, personal data `1.1.0`, research data `1.0.0`, approximately 718 aggregate personal records, and 60 research exercises.
+6. Delete temporary shared copies if they are no longer needed. Retain one encrypted offline copy.
+
+If an older Comprehensive Fitness installation already contains workout history, export its app backup and import that backup before beginning a new workout. The evidence package contains analysis aggregates; it is not the workout-history backup.
+
+## 4. Enable iPhone notifications
+
+1. In the installed PWA, open **Settings > iPhone app setup**.
+2. Enable lock-screen rest notifications.
+3. Tap the notification test action and choose **Allow** at the iOS prompt.
+4. Open iPhone **Settings > Notifications > Comprehensive Fitness**.
+5. Enable **Allow Notifications**, **Lock Screen**, **Notification Center**, **Banners**, and **Sounds**.
+6. Add Comprehensive Fitness to the allowed apps for any Focus mode used at the gym.
+7. Keep ringer/notification volume audible. A web app cannot override Silent Mode or Focus.
+
+Recommended app settings:
+
+- Foreground completion sound: on
+- Rest-complete sound: Sharp two-tone
+- Sound volume: 0.85-1.0 after testing with gym music
+- Browser vibration: on where supported
+- In-app completion alert: on
+- Alert auto-dismiss: 5 seconds
+- Auto-return: off unless explicitly preferred
+
+## 5. Physical acceptance test
+
+### Evidence and coaching
+
+1. Open a recommendation's **Why/Evidence** section and confirm personal and research weights appear.
+2. Preview and start a primary-progression mesocycle.
+3. Confirm candidate pools contain up to five diverse options per represented muscle.
+4. Enter one poor HRV value; confirm it does not cause a full deload.
+5. Enter two converging domains, such as poor sleep plus suppressed HRV or poor nutrition; confirm Today's prescription changes while Base prescription remains visible and unchanged.
+6. Compare the coach, chart, template, and live workout for one exercise; confirm the action and prescription agree.
+
+### Rest completion
+
+1. Play music from another app.
+2. Start a 10-second timer while Comprehensive Fitness remains visible.
+3. Confirm one completion sound and one Rest Complete overlay.
+4. Confirm the overlay disappears after five seconds and no new timer starts.
+5. Repeat and tap **Return to Workout**; confirm the next incomplete set is focused.
+6. Start another timer, background the PWA, and confirm one notification arrives.
+7. Repeat with the phone locked.
+8. Tap the notification and confirm it returns to the active workout and next set.
+9. Extend and cancel timers to confirm stale notifications do not arrive.
+
+### Persistence
+
+1. Apply a manual set-count or set-structure override.
+2. Complete the workout.
+3. Reopen it from History and confirm the original recommendation, evidence versions, and override remain stored.
+4. Export a full app backup and verify the JSON exists in Files.
+
+## Platform workarounds
+
+| Limitation | Workaround |
+| --- | --- |
+| No custom lock-screen sound | Use the noticeable foreground two-tone, enable iOS notification sounds, and test the chosen tone while music is playing. Background Web Push uses the operating-system sound. |
+| No reliable browser vibration on iOS | Use sound, the overlay, banners, and lock-screen delivery. If an Apple Watch is available, mirror Comprehensive Fitness notifications for a wrist tap. |
+| The PWA cannot explicitly duck music | Test the sharp two-tone and whistle sounds with the real headphones/music level. Web Audio mixes with other audio but cannot request a native iOS audio session. |
+| A suspended page cannot repaint at the deadline | Web Push provides the external alert. The controller stores an absolute completion/dismissal timestamp and reconciles immediately when iOS resumes the PWA. |
+| Background delivery needs connectivity | Keep cellular data enabled when starting a rest period. Foreground timing remains local if the backend cannot be reached. |
+| iOS can evict web storage | Export a backup weekly and before iOS upgrades, domain changes, clearing Safari data, or reinstalling the PWA. |
+| Redis workout sync is not a restore service | Treat exported app JSON as the authoritative backup. Do not delete the installed PWA based only on a successful sync status. |
+| PWA update appears delayed | Export first, open the PWA online, wait briefly, close it from the app switcher, and reopen it. Delete/reinstall only after a verified backup. |
+
+## Ongoing evidence refresh
+
+The app's own completed workouts immediately influence future recommendations. Rebuild the larger personal evidence package after materially updating Strong, Fitbit, nutrition, or body-composition source exports:
+
+```powershell
+npm.cmd run personal:build -- --analysis-date $(Get-Date -Format yyyy-MM-dd)
+npm.cmd run personal:validate
+npm.cmd run build:app-evidence
+```
+
+Transfer and import the replacement JSON through Files. Historical recommendation snapshots retain their original personal/research versions.
+
+## Native alternative
+
+The existing Capacitor project cannot be installed as a dependable native iPhone app without Apple signing. A borrowed Mac plus a free Apple Personal Team can install a private development build, but it must be re-provisioned periodically and is not an App Store/TestFlight distribution path. AltStore/cloud-signing routes still require an iOS build/signing workflow and add recurring refresh or credential risk. The PWA is therefore the supported no-Mac, no-fee route.

@@ -6,6 +6,8 @@ The repository also contains a private, reproducible [personal fitness data laye
 
 For future prescription-engine work, [Training Prescription Data and Integration Map](docs/training-prescription-data.md) inventories both databases, their current versions and record counts, crosswalk/weighting rules, app persistence contract, privacy boundary, and regeneration commands.
 
+To install and finish configuring the personal coach on an iPhone without an Apple Developer membership, follow the [iPhone PWA Personal Coach Setup](docs/iphone-pwa-personal-coach-setup.md).
+
 ## Current App
 
 The web app is intentionally simple and self-contained:
