@@ -35,7 +35,7 @@
       "$ref": "exercise-prescription.v2.schema.json#/$defs/id"
     },
     "schemaVersion": {
-      "enum": ["mesocycle/1.0.0", "mesocycle/2.0.0"]
+      "enum": ["mesocycle/1.0.0", "mesocycle/2.0.0", "mesocycle/2.1.0", "mesocycle/2.2.0"]
     },
     "type": {
       "$ref": "#/$defs/mesocycleType"
@@ -88,6 +88,10 @@
     },
     "constraints": { "type": "object", "additionalProperties": true },
     "planningStep": { "type": "integer", "minimum": 1, "maximum": 10 },
+    "availableMuscleGroupIds": { "$ref": "#/$defs/idList" },
+    "includedMuscleGroupIds": { "$ref": "#/$defs/idList" },
+    "omittedMuscleGroups": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["muscleGroupId", "importance", "explanation"], "properties": { "muscleGroupId": { "$ref": "exercise-prescription.v2.schema.json#/$defs/id" }, "importance": { "enum": ["major", "smaller"] }, "explanation": { "$ref": "exercise-prescription.v2.schema.json#/$defs/nonEmptyString" } } } },
+    "scopeConfirmed": { "type": "boolean" },
     "currentProgramExerciseIds": { "$ref": "#/$defs/idList" },
     "recentExerciseWindowDays": { "type": "integer", "minimum": 1 },
     "pools": {
@@ -226,7 +230,8 @@
         "excludedCandidates": {
           "type": "array",
           "items": { "type": "object", "additionalProperties": true }
-        }
+        },
+        "sourceMuscleGroupIds": { "$ref": "#/$defs/idList" }
       }
     },
     "candidateCore": {
@@ -430,6 +435,9 @@
         "predictedProgramEffectiveness": { "$ref": "exercise-prescription.v2.schema.json#/$defs/score" },
         "positiveFactors": { "type": "array", "items": { "type": "string" } },
         "limitingFactors": { "type": "array", "items": { "type": "string" } }
+        ,"plannedSets": { "type": "integer", "minimum": 0 },
+        "weeklySets": { "type": "integer", "minimum": 0 },
+        "exposureIndex": { "type": "integer", "minimum": 1 }
       },
       "unevaluatedProperties": false
     },
@@ -446,6 +454,7 @@
         "selectedExerciseIds": { "$ref": "#/$defs/idList" },
         "candidateExerciseIds": { "$ref": "#/$defs/idList" },
         "weeklySetsTarget": { "type": "number", "minimum": 0 },
+        "weeklySetsRange": { "type": "object", "additionalProperties": false, "required": ["min", "target", "max"], "properties": { "min": { "type": "number", "minimum": 0 }, "target": { "type": "number", "minimum": 0 }, "max": { "type": "number", "minimum": 0 } } },
         "weeklyExposuresTarget": { "type": "number", "minimum": 0 },
         "plannedSessionIds": { "$ref": "#/$defs/idList" },
         "rationale": { "$ref": "exercise-prescription.v2.schema.json#/$defs/nonEmptyString" }
@@ -475,6 +484,7 @@
       "properties": {
         "warnings": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
         "seriousWarningCount": { "type": "integer", "minimum": 0 },
+        "blockingIssueCount": { "type": "integer", "minimum": 0 },
         "musclePlans": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
         "explanation": { "type": "array", "items": { "type": "string" } }
       }

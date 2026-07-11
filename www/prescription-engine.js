@@ -13,7 +13,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function prescriptionEngineFactory() {
   "use strict";
 
-  const ENGINE_VERSION = "2.1.0";
+  const ENGINE_VERSION = "2.3.0";
   const PRESCRIPTION_SCHEMA_VERSION = "2.0.0";
   const SNAPSHOT_SCHEMA_VERSION = "1.0.0";
   const HISTORY_STORAGE_KEY = "comprehensiveFitness.recommendationHistory.v1";
@@ -166,6 +166,19 @@
 
   function normalizeMuscleId(value) {
     return normalizeText(value).replace(/^mg_/, "");
+  }
+
+  function muscleFamily(value) {
+    const muscle = normalizeMuscleId(value);
+    if (muscle.startsWith("chest")) return "chest";
+    if (muscle.includes("latissimus") || muscle === "lats") return "lats";
+    if (muscle.includes("upper_back") || muscle.includes("rhomboid")) return "upper_back";
+    if (muscle.startsWith("quad")) return "quads";
+    if (muscle.startsWith("hamstring")) return "hamstrings";
+    if (muscle.startsWith("glute")) return "glutes";
+    if (muscle.includes("abdominal") || muscle === "abs") return "abs";
+    if (muscle.includes("neck")) return "neck";
+    return muscle;
   }
 
   function isoNow(clock) {
@@ -1240,6 +1253,7 @@
   }
 
   function normalizeRole(value, exercise = {}) {
+    exercise = exercise || {};
     const role = String(value || "").toLowerCase();
     if (ROLES.includes(role)) return role;
     if (role === "technique_or_maintenance_lift") return "maintenance_lift";
@@ -1918,21 +1932,48 @@
     return { targetMuscleEffectiveness, fullProgramFit, predictedProgramEffectiveness, positiveFactors, limitingFactors };
   }
 
+  function consolidateProgramPools(pools) {
+    const grouped = new Map();
+    Object.values(pools).forEach((pool) => {
+      const family = muscleFamily(pool.muscleGroupId);
+      if (!grouped.has(family)) grouped.set(family, { muscleGroupId: family, mesocycleType: pool.mesocycleType, generatedAt: pool.generatedAt, candidates: [], excludedCandidates: [], availableViableExerciseCount: 0, sourceMuscleGroupIds: [] });
+      const target = grouped.get(family);
+      target.sourceMuscleGroupIds.push(pool.muscleGroupId);
+      target.availableViableExerciseCount += number(pool.availableViableExerciseCount, pool.candidates.length);
+      target.excludedCandidates.push(...asArray(pool.excludedCandidates));
+      pool.candidates.forEach((candidate) => {
+        const existing = target.candidates.find((item) => item.exerciseId === candidate.exerciseId);
+        if (!existing || candidate.scores.overallRecommendationStrength > existing.scores.overallRecommendationStrength) target.candidates = target.candidates.filter((item) => item.exerciseId !== candidate.exerciseId).concat(candidate);
+      });
+    });
+    return Object.fromEntries([...grouped.entries()].map(([family, pool]) => { const candidates = pool.candidates.sort((a, b) => b.scores.overallRecommendationStrength - a.scores.overallRecommendationStrength).slice(0, 5).map((candidate, index) => ({ ...candidate, rank: index + 1 })); return [family, { ...pool, sourceMuscleGroupIds: unique(pool.sourceMuscleGroupIds), candidateCount: candidates.length, diversificationApplied: true, explanation: `Top alternatives for the ${family.replaceAll("_", " ")} program slot; select the required number, not all candidates.`, candidates, excludedCandidates: unique(pool.excludedCandidates.map((item) => JSON.stringify(item))).map((item) => JSON.parse(item)).slice(0, 20) }]; }));
+  }
+
   function createProgramSlots(pools, options = {}) {
     const specialization = new Set(asArray(options.specializationMuscleGroups).map(normalizeMuscleId));
-    return Object.values(pools).filter((pool) => pool.candidates.length > 0).map((pool, index) => ({
+    const majorGroups = new Set(["chest", "upper_back", "lats", "quads", "hamstrings", "glutes", "front_delts", "side_delts", "rear_delts"]);
+    return Object.values(pools).filter((pool) => pool.candidates.length > 0).map((pool, index) => {
+      const defaults = options.evidence ? aggregateMuscleResearchDefaults(options.evidence.research, pool.muscleGroupId) : null;
+      const specialized = specialization.has(normalizeMuscleId(pool.muscleGroupId));
+      const desiredSelections = specialized || majorGroups.has(normalizeMuscleId(pool.muscleGroupId)) ? 2 : 1;
+      const objectiveFactor = options.type === MESOCYCLE_TYPES.LOWER_FATIGUE ? 0.72 : specialized ? 1.2 : 1;
+      const weeklyTarget = Math.max(2, Math.round(number(defaults?.weeklySets?.min, pool.candidates[0]?.recommendedSetRange?.target || 3) * objectiveFactor));
+      const frequencyTarget = Math.min(weeklyTarget, number(options.trainingDays, 4), specialized ? 3 : 2, Math.max(1, Math.round(number(defaults?.frequency?.target, pool.candidates[0]?.recommendedFrequency?.target || 2))));
+      return ({
       id: `slot_${normalizeText(pool.muscleGroupId)}_${index + 1}`,
       muscleGroupId: pool.muscleGroupId,
-      trainingPurpose: specialization.has(normalizeMuscleId(pool.muscleGroupId)) ? "Specialization volume and progression" : "Maintain effective full-program coverage",
+      trainingPurpose: specialized ? "Specialization volume and progression" : "Meet evidence-adjusted weekly volume and frequency",
       role: pool.candidates[0]?.intendedRole || "secondary_hypertrophy_lift",
-      selectionRequired: Math.min(pool.candidates.length, specialization.has(normalizeMuscleId(pool.muscleGroupId)) ? 2 : 1),
+      selectionRequired: Math.min(pool.candidates.length, desiredSelections),
       selectedExerciseIds: [],
       candidateExerciseIds: pool.candidates.map((candidate) => candidate.exerciseId),
-      weeklySetsTarget: pool.candidates[0]?.recommendedSetRange?.target || 3,
-      weeklyExposuresTarget: pool.candidates[0]?.recommendedFrequency?.target || pool.candidates[0]?.recommendedFrequency?.min || 1,
+      weeklySetsRange: { min: Math.max(2, Math.round(number(defaults?.weeklySets?.min, weeklyTarget) * objectiveFactor)), target: weeklyTarget, max: Math.max(weeklyTarget, Math.round(number(defaults?.weeklySets?.max, weeklyTarget + 4) * objectiveFactor)) },
+      weeklySetsTarget: weeklyTarget,
+      weeklyExposuresTarget: frequencyTarget,
       plannedSessionIds: [],
-      rationale: `This slot ensures ${pool.muscleGroupId.replaceAll("_", " ")} receives a traceable role inside the complete weekly program.`
-    }));
+      rationale: `This slot ensures ${pool.muscleGroupId.replaceAll("_", " ")} receives its evidence-adjusted volume across ${frequencyTarget} weekly exposure${frequencyTarget === 1 ? "" : "s"}.`
+    });
+    });
   }
 
   function buildProgramPortfolio(pools, slots, options = {}) {
@@ -1982,23 +2023,52 @@
     const priorDay = sessions[(dayIndex - 1 + sessions.length) % sessions.length];
     const nextDay = sessions[(dayIndex + 1) % sessions.length];
     const adjacentOverlap = [priorDay, nextDay].filter(Boolean).flatMap((item) => item.exercises).filter((item) => item.targetMuscleGroupIds?.some((muscle) => exercise.targetMuscleGroupIds?.includes(muscle))).length;
-    return session.estimatedDurationMinutes + samePattern * 18 + sameMuscle * 14 + adjacentOverlap * 7 + session.spinalLoad * exercise.scores.spinalLoad / 900 + session.gripDemand * exercise.scores.gripDemand / 1100;
+    return session.estimatedDurationMinutes + samePattern * 30 + sameMuscle * 120 + adjacentOverlap * 18 + session.spinalLoad * exercise.scores.spinalLoad / 900 + session.gripDemand * exercise.scores.gripDemand / 1100;
   }
 
   function distributePortfolioAcrossSessions(portfolio, options = {}) {
     const dayCount = clamp(number(options.trainingDays, 4), 1, 7);
-    const sessions = Array.from({ length: dayCount }, (_, index) => ({ id: `session_${index + 1}`, dayIndex: index, name: `Day ${index + 1}`, baseSessionIntent: index === 0 ? "Heavy progression session" : options.type === MESOCYCLE_TYPES.LOWER_FATIGUE ? "Lower-fatigue practice session" : "Balanced hypertrophy session", exercises: [], estimatedDurationMinutes: 0, systemicFatigue: 0, spinalLoad: 0, gripDemand: 0, jointStress: 0 }));
+    const splitByDays = { 1: ["Full Body"], 2: ["Upper", "Lower"], 3: ["Upper", "Lower", "Full Body"], 4: ["Upper", "Lower", "Upper", "Lower"], 5: ["Upper", "Lower", "Push", "Pull", "Accessories"], 6: ["Upper", "Lower", "Push", "Pull", "Upper", "Lower"], 7: ["Upper", "Lower", "Push", "Pull", "Upper", "Lower", "Accessories"] };
+    const focuses = splitByDays[dayCount];
+    const sessions = Array.from({ length: dayCount }, (_, index) => ({ id: `session_${index + 1}`, dayIndex: index, name: `${focuses[index]} · Day ${index + 1}`, primaryPurpose: focuses[index], baseSessionIntent: options.type === MESOCYCLE_TYPES.LOWER_FATIGUE ? "Lower-fatigue practice session" : `${focuses[index]} hypertrophy and progression`, exercises: [], estimatedDurationMinutes: 0, systemicFatigue: 0, spinalLoad: 0, gripDemand: 0, jointStress: 0 }));
+    const lower = new Set(["quads", "hamstrings", "glutes", "calves", "adductors", "abductors"]);
+    const push = new Set(["chest", "front_delts", "side_delts", "triceps"]);
+    const pull = new Set(["upper_back", "lats", "rear_delts", "biceps", "forearms", "traps"]);
+    const accessory = new Set(["abs", "obliques", "neck", "calves", "forearms"]);
+    const focusFit = (session, exercise) => {
+      const muscles = new Set(asArray(exercise.targetMuscleGroupIds).map(muscleFamily));
+      const matches = (set) => [...muscles].some((muscle) => set.has(muscle));
+      if (session.primaryPurpose === "Full Body") return 0;
+      if (session.primaryPurpose === "Lower") return matches(lower) ? 0 : matches(accessory) ? 15 : 500;
+      if (session.primaryPurpose === "Push") return matches(push) ? 0 : matches(new Set(["quads", "calves"])) ? 20 : 75;
+      if (session.primaryPurpose === "Pull") return matches(pull) ? 0 : matches(new Set(["hamstrings"])) ? 20 : 75;
+      if (session.primaryPurpose === "Accessories") return matches(accessory) ? 0 : 55;
+      if (session.primaryPurpose === "Upper") return matches(lower) ? 500 : 0;
+      return 0;
+    };
     const ordered = portfolio.slice().sort((a, b) => Number(b.scores.highFatigueCompound) - Number(a.scores.highFatigueCompound) || b.scores.systemicFatigue - a.scores.systemicFatigue);
     ordered.forEach((exercise) => {
-      const target = sessions.map((session, index) => ({ session, cost: sessionPlacementCost(session, exercise, index, sessions) })).sort((a, b) => a.cost - b.cost)[0].session;
-      const sets = number(exercise.recommendedSetRange?.target, 3);
-      const rest = number(exercise.recommendedRestSeconds?.target || exercise.restSeconds?.target, exercise.scores.highFatigueCompound ? 180 : 90);
-      target.exercises.push(exercise);
-      target.estimatedDurationMinutes = round(target.estimatedDurationMinutes + sets * (rest + 42) / 60 + 2, 1);
-      target.systemicFatigue += exercise.scores.systemicFatigue;
-      target.spinalLoad += exercise.scores.spinalLoad;
-      target.gripDemand += exercise.scores.gripDemand;
-      target.jointStress += exercise.scores.jointStress;
+      const relatedSlots = asArray(options.slots).filter((slot) => exercise.programSlotIds.includes(slot.id));
+      const weeklySets = Math.max(1, Math.round(sum(relatedSlots.map((slot) => slot.weeklySetsTarget / Math.max(1, slot.selectionRequired))) || number(exercise.recommendedSetRange?.target, 3)));
+      const exposures = Math.min(dayCount, weeklySets, Math.max(1, Math.ceil(Math.max(...relatedSlots.map((slot) => slot.weeklyExposuresTarget / Math.max(1, slot.selectionRequired)), 1))));
+      const chosen = [];
+      for (let exposure = 0; exposure < exposures; exposure += 1) {
+        const rankedSessions = sessions.filter((session) => !chosen.includes(session)).map((session, index) => {
+          const adjacentSameExercise = sessions.filter((other) => Math.abs(other.dayIndex - session.dayIndex) === 1 && other.exercises.some((item) => item.exerciseId === exercise.exerciseId)).length;
+          return { session, cost: focusFit(session, exercise) + sessionPlacementCost(session, exercise, index, sessions) + adjacentSameExercise * (exercise.scores.highFatigueCompound ? 500 : 120) };
+        }).sort((a, b) => a.cost - b.cost);
+        if (rankedSessions[0]) chosen.push(rankedSessions[0].session);
+      }
+      chosen.forEach((target, exposureIndex) => {
+        const sets = Math.floor(weeklySets / chosen.length) + (exposureIndex < weeklySets % chosen.length ? 1 : 0);
+        const rest = number(exercise.recommendedRestSeconds?.target || exercise.restSeconds?.target, exercise.scores.highFatigueCompound ? 180 : 90);
+        target.exercises.push({ ...exercise, plannedSets: sets, weeklySets, exposureIndex: exposureIndex + 1 });
+        target.estimatedDurationMinutes = round(target.estimatedDurationMinutes + sets * (rest + 42) / 60 + 2, 1);
+        target.systemicFatigue += exercise.scores.systemicFatigue * sets / 3;
+        target.spinalLoad += exercise.scores.spinalLoad * sets / 3;
+        target.gripDemand += exercise.scores.gripDemand * sets / 3;
+        target.jointStress += exercise.scores.jointStress * sets / 3;
+      });
     });
     sessions.forEach((session) => session.exercises.sort((a, b) => (a.intendedRole === "primary_progression_lift" ? -1 : 1) - (b.intendedRole === "primary_progression_lift" ? -1 : 1) || b.scores.systemicFatigue - a.scores.systemicFatigue));
     return sessions;
@@ -2019,20 +2089,28 @@
     });
     const musclePlans = slots.map((slot) => {
       const selected = portfolio.filter((item) => item.programSlotIds.includes(slot.id));
-      const directSets = sum(selected.map((item) => number(item.recommendedSetRange?.target, 3)));
-      const indirectSets = sum(portfolio.filter((item) => !item.programSlotIds.includes(slot.id) && item.secondaryMuscles?.some((muscle) => researchMuscleMatch(evidence.research, slot.muscleGroupId, muscle))).map((item) => number(item.recommendedSetRange?.target, 3) * 0.5));
+      const directSets = sum(sessions.flatMap((session) => session.exercises).filter((item) => item.programSlotIds.includes(slot.id)).map((item) => number(item.plannedSets, 0)));
+      const indirectSets = sum(sessions.flatMap((session) => session.exercises).filter((item) => !item.programSlotIds.includes(slot.id) && item.secondaryMuscles?.some((muscle) => researchMuscleMatch(evidence.research, slot.muscleGroupId, muscle))).map((item) => number(item.plannedSets, 0) * 0.5));
       const sessionIds = sessions.filter((session) => session.exercises.some((item) => item.programSlotIds.includes(slot.id))).map((session) => session.id);
-      return { muscleGroupId: slot.muscleGroupId, weeklyTargetVolume: slot.weeklySetsTarget, plannedFrequency: sessionIds.length, selectedExerciseIds: selected.map((item) => item.exerciseId), directSets, indirectSets: round(indirectSets, 1), localFatigue: round(average(selected.map((item) => item.scores.fatigueCost)), 1), programWideFatigue: round(sum(selected.map((item) => item.scores.systemicFatigue + item.scores.spinalLoad * 0.5)), 1), sessionIds, overlapNotes: selected.flatMap((item) => item.secondaryMuscles).length ? "Secondary-muscle work is counted fractionally and reviewed with the rest of the portfolio." : "No material indirect overlap was identified." };
+      const effectiveSets = round(directSets + indirectSets, 1);
+      return { muscleGroupId: slot.muscleGroupId, weeklyTargetRange: slot.weeklySetsRange, weeklyTargetVolume: slot.weeklySetsTarget, plannedFrequency: sessionIds.length, targetFrequency: slot.weeklyExposuresTarget, selectedExerciseIds: selected.map((item) => item.exerciseId), directSets, indirectSets: round(indirectSets, 1), effectiveSets, targetMet: effectiveSets >= slot.weeklySetsRange.min && effectiveSets <= slot.weeklySetsRange.max && sessionIds.length >= slot.weeklyExposuresTarget, localFatigue: round(average(selected.map((item) => item.scores.fatigueCost)), 1), programWideFatigue: round(sum(selected.map((item) => item.scores.systemicFatigue + item.scores.spinalLoad * 0.5)), 1), sessionIds, overlapNotes: selected.flatMap((item) => item.secondaryMuscles).length ? "Secondary-muscle work is counted fractionally and reviewed with the rest of the portfolio." : "No material indirect overlap was identified." };
     });
     musclePlans.forEach((plan) => {
       if (!plan.selectedExerciseIds.length) warnings.push({ severity: "serious", type: "missing_exposure", sessionId: null, exerciseIds: [], conflict: `${plan.muscleGroupId.replaceAll("_", " ")} has no selected exercise.`, why: "The complete program would omit a represented training requirement.", recommendation: "Select an eligible candidate or explicitly remove the program slot." });
+      else if (plan.effectiveSets < plan.weeklyTargetRange.min) warnings.push({ severity: "blocking", type: "volume_below_target", sessionId: null, exerciseIds: plan.selectedExerciseIds, conflict: `${plan.muscleGroupId.replaceAll("_", " ")} receives ${plan.effectiveSets} effective sets, below its ${plan.weeklyTargetRange.min}-${plan.weeklyTargetRange.max} range.`, why: "The selected portfolio does not provide the evidence-adjusted minimum weekly stimulus.", recommendation: "Add sets to a selected exercise or choose a complementary secondary lift." });
+      else if (plan.effectiveSets > plan.weeklyTargetRange.max) warnings.push({ severity: "warning", type: "volume_above_target", sessionId: null, exerciseIds: plan.selectedExerciseIds, conflict: `${plan.muscleGroupId.replaceAll("_", " ")} receives ${plan.effectiveSets} effective sets, above its ${plan.weeklyTargetRange.min}-${plan.weeklyTargetRange.max} range.`, why: "Extra overlap may add fatigue without a proportional benefit.", recommendation: "Remove low-value overlap or reduce one contributing exercise." });
+      if (plan.plannedFrequency < plan.targetFrequency) warnings.push({ severity: "blocking", type: "frequency_below_target", sessionId: null, exerciseIds: plan.selectedExerciseIds, conflict: `${plan.muscleGroupId.replaceAll("_", " ")} is trained ${plan.plannedFrequency} time(s), below its ${plan.targetFrequency}-exposure target.`, why: "The allocated weekly sets are too concentrated for the intended frequency.", recommendation: "Distribute the selected exercise or a complementary lift to another compatible session." });
+    });
+    portfolio.filter((item) => item.scores.highFatigueCompound).forEach((exercise) => {
+      const days = sessions.filter((session) => session.exercises.some((item) => item.exerciseId === exercise.exerciseId)).map((session) => session.dayIndex).sort((a, b) => a - b);
+      if (days.some((day, index) => index && day - days[index - 1] <= 1)) warnings.push({ severity: "blocking", type: "consecutive_heavy_pattern", sessionId: null, exerciseIds: [exercise.exerciseId], conflict: `${exercise.exerciseName} is programmed on consecutive training days.`, why: "Repeating the same high-fatigue movement without recovery can degrade performance and increase local/systemic fatigue.", recommendation: "Separate exposures by at least one training day or use a lower-fatigue complementary exercise." });
     });
     const explanation = [
       "The exercise portfolio was selected before session construction.",
       "Demanding compounds were distributed using systemic fatigue, spinal load, grip demand, muscle overlap, and estimated duration.",
       warnings.length ? `${warnings.length} interaction warning${warnings.length === 1 ? " requires" : "s require"} review before activation.` : "No serious program interaction remains unresolved."
     ];
-    return { warnings, seriousWarningCount: warnings.filter((item) => item.severity === "serious").length, musclePlans, explanation };
+    return { warnings, blockingIssueCount: warnings.filter((item) => item.severity === "blocking").length, seriousWarningCount: warnings.filter((item) => ["blocking", "serious"].includes(item.severity)).length, musclePlans, explanation };
   }
 
   function refreshMesocycleProgram(mesocycle, evidenceInput, options = {}) {
@@ -2058,7 +2136,7 @@
       const ranked = pools[item.muscleGroupId]?.candidates.find((candidate) => candidate.exerciseId === item.exerciseId) || item;
       return { ...item, ...candidateProgramFit(ranked, portfolio.filter((other) => other.exerciseId !== item.exerciseId), { ...DEFAULT_POLICY, ...(options.policy || {}) }), scores: ranked.scores, scoreExplanation: ranked.scoreExplanation };
     });
-    const sessions = distributePortfolioAcrossSessions(portfolio, { ...options, trainingDays: mesocycle.trainingDays, type: mesocycle.type });
+    const sessions = distributePortfolioAcrossSessions(portfolio, { ...options, slots, trainingDays: mesocycle.trainingDays, type: mesocycle.type });
     slots.forEach((slot) => { slot.plannedSessionIds = sessions.filter((session) => session.exercises.some((item) => item.programSlotIds.includes(slot.id))).map((session) => session.id); });
     const programReview = reviewFullProgram(portfolio, sessions, slots, evidence, options);
     return { ...mesocycle, pools, programSlots: slots, selectedPortfolio: portfolio, activeExercises: portfolio, sessions, programReview, planningStep: Math.max(number(mesocycle.planningStep, 1), 5) };
@@ -2070,12 +2148,24 @@
     const createdAt = options.createdAt || isoNow(options.clock);
     const durationWeeks = chooseMesocycleDuration(evidence, { ...options, type });
     const poolOptions = { ...options, mesocycleType: type, maxCandidates: 5 };
-    const pools = buildAllCandidatePools(evidence, poolOptions);
-    const programSlots = createProgramSlots(pools, options);
+    const allPools = consolidateProgramPools(buildAllCandidatePools(evidence, poolOptions));
+    const availableMuscleGroupIds = Object.keys(allPools);
+    const requestedScope = asArray(options.includedMuscleGroupIds).map(muscleFamily).filter(Boolean);
+    const includedMuscleGroupIds = requestedScope.length ? unique(requestedScope).filter((id) => availableMuscleGroupIds.includes(id)) : availableMuscleGroupIds;
+    const pools = Object.fromEntries(Object.entries(allPools).filter(([muscleGroupId]) => includedMuscleGroupIds.includes(muscleGroupId)));
+    const majorMuscleGroups = new Set(["chest", "upper_back", "lats", "quads", "hamstrings", "glutes", "front_delts", "side_delts", "rear_delts"]);
+    const omittedMuscleGroups = availableMuscleGroupIds.filter((id) => !includedMuscleGroupIds.includes(id)).map((muscleGroupId) => ({
+      muscleGroupId,
+      importance: majorMuscleGroups.has(muscleGroupId) ? "major" : "smaller",
+      explanation: majorMuscleGroups.has(muscleGroupId)
+        ? `Leaving ${muscleGroupId.replaceAll("_", " ")} out removes a major source of balanced strength, hypertrophy, and movement-pattern coverage from this mesocycle.`
+        : `${muscleGroupId.replaceAll("_", " ")} is optional for this block; include it when direct development, resilience, or skill is a goal.`
+    }));
+    const programSlots = createProgramSlots(pools, { ...options, type, evidence });
     const id = options.id || `meso_${normalizeText(type)}_${dateOnly(createdAt).replace(/-/g, "")}_${stableHash({ type, durationWeeks, groups: Object.keys(pools), createdAt }).slice(0, 6)}`;
     const draft = {
       id,
-      schemaVersion: "mesocycle/2.0.0",
+      schemaVersion: "mesocycle/2.2.0",
       type,
       name: options.name || ({
         [MESOCYCLE_TYPES.PRIMARY]: "Primary progression mesocycle",
@@ -2099,6 +2189,10 @@
         sessionDurationMaximumMinutes: number(options.sessionDurationMaximumMinutes, DEFAULT_POLICY.sessionDurationMaximumMinutes)
       },
       planningStep: 3,
+      availableMuscleGroupIds,
+      includedMuscleGroupIds,
+      omittedMuscleGroups,
+      scopeConfirmed: omittedMuscleGroups.length === 0,
       currentProgramExerciseIds: asArray(options.currentProgramExerciseIds || options.currentExerciseIds),
       recentExerciseWindowDays: number(options.recentExerciseWindowDays, DEFAULT_POLICY.recentExerciseWindowDays),
       pools,
@@ -2128,6 +2222,8 @@
       review: ["completed", "archived"]
     };
     if (!allowed[action]?.includes(next.status)) throw new Error(`Cannot ${action} a mesocycle with status ${next.status}.`);
+    if (["plan", "start"].includes(action) && asArray(next.omittedMuscleGroups).length && !next.scopeConfirmed) throw new Error("Confirm the intentionally omitted muscle groups before continuing.");
+    if (action === "start" && number(next.programReview?.blockingIssueCount, 0) > 0) throw new Error("Cannot activate a mesocycle with unresolved blocking program issues.");
     if (action === "plan") next.status = "planned";
     if (action === "start") {
       next.status = "active";
@@ -2759,6 +2855,7 @@
     assessDeloadNeed,
     rankExercisePool,
     representedMuscleGroups,
+    muscleFamily,
     buildAllCandidatePools,
     chooseMesocycleDuration,
     createMesocyclePlan,

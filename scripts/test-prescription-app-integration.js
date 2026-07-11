@@ -29,12 +29,21 @@ assert.match(html, /Select for this role/, "Planner candidates must expose an ex
 assert.doesNotMatch(html, />Active-program subset</, "Misleading Active Program Subset UI term must be removed");
 assert.doesNotMatch(html, />Preview prescription block</, "Misleading Prescription Block action must be removed");
 assert.match(html, /Predicted Program Effectiveness[\s\S]*Confidence[\s\S]*Evidence/, "Effectiveness must be primary and distinct from confidence/evidence");
-assert.match(html, /full-program review/i, "Planner must expose full-program interaction review");
+assert.match(html, /full.program review/i, "Planner must expose full-program interaction review");
 assert.match(html, /Base Session Intent[\s\S]*Today’s readiness may modify/, "Templates must distinguish stable intent from readiness changes");
 assert.match(html, /analysis-period-menu[\s\S]*select-chart-period/, "Charts period selection must use the custom control surface");
 assert.doesNotMatch(html, /<select data-action="hypertrophy-window"/, "Charts must not retain the browser-default period dropdown");
+assert(html.indexOf('class="template-library"') < html.indexOf('${renderMesocyclePlanner()}'), "Regular templates must render before the Mesocycle Planner");
+assert(html.indexOf('${renderMesocyclePlanner()}') < html.indexOf('${renderHistoricalMesocycles()}'), "Historical Mesocycles must render after the planner");
+assert.match(html, /function presentationLabel\(/, "Planner UI must use one centralized presentation-label adapter");
+assert.doesNotMatch(html, /It replaces the misleading former/, "Migration terminology must not reach users");
+assert.match(html, /recommendation-badge[\s\S]*candidate-heading[\s\S]*Recommended for This Slot/, "Candidate badge, exercise name, and role need separate hierarchy");
+assert.match(html, /programReview\?\.blockingIssueCount[\s\S]*disabled/, "A blocking program review must prevent activation");
+assert.match(html, /Muscle Groups in Scope[\s\S]*mesocycle-muscle-scope/, "Planner must let the user choose every muscle group in scope");
+assert.match(html, /Confirm Intentionally Omitted Muscle Groups[\s\S]*Add to Mesocycle[\s\S]*Keep These Exclusions and Continue/, "Omitted groups need add and explicit-confirmation controls");
+assert.match(html, /importance === 'major'[\s\S]*Major Muscle Group/, "Major omissions need a stronger explanation marker");
 assert.match(html, /primary_progression[\s\S]*alternative_exercise[\s\S]*lower_fatigue_resensitization[\s\S]*specialization/, "All four mesocycle types must be available");
-assert.match(html, /renderMesocycleCandidate[\s\S]*Deload trigger:[\s\S]*Rotation trigger:[\s\S]*Preferred replacement:/, "Candidate cards must explain progression, deload, rotation and replacement");
+assert.match(html, /renderMesocycleCandidate[\s\S]*Deload and Rotation Triggers[\s\S]*Preferred Replacement/, "Candidate cards must explain progression, deload, rotation and replacement");
 assert.match(html, /Base prescription[\s\S]*Today only/, "Live UI must keep base and readiness-adjusted prescriptions distinct");
 assert.match(html, /data-action="template-readiness-nutrition"[\s\S]*data-action="template-readiness-protein"/, "Workout readiness must collect current nutrition and protein context");
 assert.match(html, /nutritionAdequate:[\s\S]*proteinAdequate:[\s\S]*energyAvailabilityLow:/, "Current nutrition must reach the unified readiness evaluation");
@@ -74,8 +83,8 @@ for (const type of Object.values(engineApi.MESOCYCLE_TYPES)) {
   const mesocycle = engine.createMesocycle({ type, trainingDays: 4, specializationMuscleGroups: type === engineApi.MESOCYCLE_TYPES.SPECIALIZATION ? [muscle] : [] });
   assert.equal(mesocycle.type, type);
   assert.equal(mesocycle.status, "draft");
-  assert(Object.keys(mesocycle.pools).length === represented.length);
-  assert(mesocycle.programSlots.length === represented.length);
+  assert(Object.keys(mesocycle.pools).length <= represented.length, "Research subdivisions should consolidate into user-facing muscle-family pools");
+  assert(mesocycle.programSlots.length === Object.keys(mesocycle.pools).length);
   assert(mesocycle.sessions.length === 4);
   assert(mesocycle.selectedPortfolio.length > 0);
 }

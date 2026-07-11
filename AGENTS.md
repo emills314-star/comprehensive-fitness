@@ -30,6 +30,12 @@ Do not postpone documentation to a later task. If a relevant document needs no t
 8. Cross-check implementation and documentation before finishing.
 9. Report remaining mismatches as **NEEDS REVIEW**, with concrete file references.
 
+## Approval preference
+
+The repository owner prefers agents to proceed autonomously and complete all safe, in-scope work without pausing for optional confirmation. When the execution environment requires approval, request it promptly and explain the concrete action. Where the interface supports persistent approvals, offer a reusable, reasonably scoped rule for the relevant command or workflow.
+
+This preference does not grant permissions, disable sandboxing, or override platform safety controls. Do not claim that `AGENTS.md` enables global “approve everything,” and do not request blanket or unnecessarily broad command access. Actual approval mode must be configured by the repository owner in the Codex application or local session settings.
+
 Never silently resolve a code-versus-documentation conflict. Preserve these labels and distinctions:
 
 - **IMPLEMENTED:** verified current behavior.

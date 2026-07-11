@@ -12,6 +12,8 @@
 
 Read this document before changing application structure, dependencies, persistence, models, schemas, APIs, authentication, integrations, data flow, builds, deployment, or testing architecture. After implementation and verification, update the affected sections and `ROADMAP.md` in the same task. New source-of-truth files and migrations must be referenced here.
 
+Repository instructions may express an approval preference, but they cannot alter the Codex sandbox or approval policy. Those controls belong to the execution environment; see `AGENTS.md`.
+
 ## Stack and repository layout
 
 This is a dependency-light static PWA with Capacitor wrappers, not a bundled component-framework application.
@@ -111,7 +113,11 @@ flowchart TD
   Snapshot --> Surfaces[template / live / chart / coach / history]
 ```
 
-Mesocycle construction is portfolio-first: normalized evidence creates traceable candidate pools; program slots select a coherent portfolio; the distributor then places it across sessions; the review aggregates fatigue, spinal/grip demand, duration, overlap, direct/indirect volume, and recovery conflicts. Templates generated from a mesocycle consume these planned sessions rather than independently choosing exercises. Candidate selection reruns portfolio fit, placement, and review.
+Mesocycle construction is portfolio-first: normalized evidence creates traceable candidate pools; research subdivisions are consolidated into user-facing muscle-family pools; program slots derive weekly volume/frequency requirements and select a coherent portfolio; the distributor allocates weekly sets across named split sessions; the review aggregates fatigue, spinal/grip demand, duration, overlap, direct/indirect volume, frequency, and recovery conflicts. Templates generated from a mesocycle consume these planned sessions rather than independently choosing exercises. Candidate selection reruns portfolio fit, set allocation, placement, and validation. `mesocycle/2.1.0` adds weekly set ranges, per-session planned sets/exposure indexes, and blocking-issue count.
+
+`mesocycle/2.2.0` adds explicit scope persistence: `availableMuscleGroupIds`, `includedMuscleGroupIds`, structured `omittedMuscleGroups`, and `scopeConfirmed`. Scope filtering occurs before slot and portfolio generation. Generated templates use each session exercise's allocated `plannedSets`, not a newly recomputed generic exercise target.
+
+Internal IDs remain persistence/engine values. The frontend `presentationLabel` adapter is the centralized display boundary for muscle IDs, roles, confidence states, structures, lifecycle enums, session IDs, and validation severity. New planner UI must pass internal values through that adapter rather than mutating persisted values.
 
 The personal pipeline normalizes source data and produces workout-recovery links, exercise-session metrics, muscle volume/response, sweet spots, recovery rules, scores, and prescriptions. Direct live Fitbit and nutrition APIs are not implemented. Nutrition strategies are loaded into the engine, but in-app nutrition capture is limited to adequacy/protein status.
 

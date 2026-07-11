@@ -555,6 +555,48 @@ test("full-program portfolio scoring and lifecycle protections are explicit", ()
   assert.strictEqual(canDeleteMesocycle(completed), false);
 });
 
+test("mesocycle volume and frequency are balanced across coherent sessions", () => {
+  const evidence = loadEvidenceFromFiles(path.resolve(__dirname, ".."), { includeSessionMetrics: false, includeWeeklyVolume: false });
+  const engine = createPrescriptionEngine(evidence);
+  [3, 4, 5].forEach((trainingDays) => {
+    const mesocycle = engine.createMesocycle({ trainingDays, availableEquipment: ["barbell", "dumbbell", "machine", "cable", "bodyweight"] });
+    const chest = mesocycle.programReview.musclePlans.find((plan) => plan.muscleGroupId === "chest");
+    assert(chest && chest.effectiveSets >= chest.weeklyTargetRange.min, "Chest must meet its evidence-adjusted minimum");
+    mesocycle.programReview.musclePlans.forEach((plan) => assert(plan.plannedFrequency >= plan.targetFrequency, `${plan.muscleGroupId} must meet planned frequency`));
+    mesocycle.selectedPortfolio.filter((exercise) => exercise.scores.highFatigueCompound).forEach((exercise) => {
+      const days = mesocycle.sessions.filter((session) => session.exercises.some((item) => item.exerciseId === exercise.exerciseId)).map((session) => session.dayIndex).sort((a, b) => a - b);
+      assert(!days.some((day, index) => index && day - days[index - 1] <= 1), `${exercise.exerciseName} cannot repeat on consecutive days`);
+    });
+    assert(mesocycle.sessions.every((session) => session.primaryPurpose), "Every session needs a coherent named purpose");
+  });
+});
+
+test("blocking validation prevents an under-prescribed program from being treated as confirmable", () => {
+  const evidence = loadEvidenceFromFiles(path.resolve(__dirname, ".."), { includeSessionMetrics: false, includeWeeklyVolume: false });
+  const engine = createPrescriptionEngine(evidence);
+  const mesocycle = engine.createMesocycle({ trainingDays: 4 });
+  const chestSlot = mesocycle.programSlots.find((slot) => slot.muscleGroupId === "chest");
+  const sessions = mesocycle.sessions.map((session) => ({ ...session, exercises: session.exercises.filter((exercise) => !exercise.programSlotIds.includes(chestSlot.id)) }));
+  const review = require("../prescription-engine").reviewFullProgram(mesocycle.selectedPortfolio, sessions, mesocycle.programSlots, engine.evidence);
+  assert(review.blockingIssueCount > 0);
+  assert(review.warnings.some((warning) => warning.type === "volume_below_target" && warning.severity === "blocking"));
+});
+
+test("user-defined muscle scope is respected and omissions require explicit confirmation", () => {
+  const evidence = loadEvidenceFromFiles(path.resolve(__dirname, ".."), { includeSessionMetrics: false, includeWeeklyVolume: false });
+  const engine = createPrescriptionEngine(evidence);
+  const included = ["chest", "upper_back", "quads", "hamstrings", "glutes", "abs"];
+  const mesocycle = engine.createMesocycle({ trainingDays: 4, includedMuscleGroupIds: included });
+  assert.deepStrictEqual(mesocycle.includedMuscleGroupIds.slice().sort(), included.slice().sort());
+  assert(mesocycle.programSlots.every((slot) => included.includes(slot.muscleGroupId)));
+  assert(mesocycle.omittedMuscleGroups.some((item) => item.muscleGroupId === "lats" && item.importance === "major" && item.explanation.length > 60));
+  assert(mesocycle.omittedMuscleGroups.some((item) => item.importance === "smaller"));
+  assert.strictEqual(mesocycle.scopeConfirmed, false);
+  assert.throws(() => transitionMesocycle(mesocycle, "plan"), /omitted muscle groups/i);
+  const confirmed = { ...mesocycle, scopeConfirmed: true };
+  assert.strictEqual(transitionMesocycle(confirmed, "plan").status, "planned");
+});
+
 test("cambered bench aliases resolve through the canonical eligible library", () => {
   const evidence = loadEvidenceFromFiles(path.resolve(__dirname, ".."), { includeSessionMetrics: false, includeWeeklyVolume: false });
   const engine = createPrescriptionEngine(evidence);
