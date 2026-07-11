@@ -110,7 +110,7 @@
       }
 
       button:hover { border-color: var(--green); }
-      button:active, button.is-pressing, select:active, select.is-pressing, summary[data-action]:active, summary[data-action].is-pressing, label.toggle-line:active, label.toggle-line.is-pressing, .volume-card:active, .volume-card.is-pressing { filter: brightness(.96); transform: translateY(1px) scale(.975); }
+      button:active, button.is-pressing, select:active, select.is-pressing, summary[data-action]:active, summary[data-action].is-pressing, label.toggle-line:active, label.toggle-line.is-pressing, .alert-setting-card:active, .alert-setting-card.is-pressing, .volume-card:active, .volume-card.is-pressing { filter: brightness(.96); transform: translateY(1px) scale(.975); }
       .feedback-medium.is-pressing { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--current) 56%, transparent); }
       .feedback-success.is-pressing { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--success) 68%, transparent); }
       .feedback-warning.is-pressing, .feedback-error.is-pressing { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--red) 70%, transparent); }
@@ -500,11 +500,12 @@
       .set-type-badge.type-warmup { background: color-mix(in srgb, #6f8497 9%, transparent); border-color: color-mix(in srgb, #6f8497 35%, var(--line)); color: #60778b; }
       .set-type-badge.type-deload { background: color-mix(in srgb, var(--amber) 10%, transparent); border-color: color-mix(in srgb, var(--amber) 42%, var(--line)); color: #a75d00; }
       .set-validation-warning { color: var(--amber); font-size: .62rem; font-weight: 850; }
-      .set-prescription-context { border-top: 1px solid var(--line); display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); margin: 0 10px; padding: 8px 0; }
+      .set-prescription-context { border-top: 1px solid var(--line); display: grid; gap: 8px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0 10px; padding: 8px 0; }
       .set-prescription-context > div { display: grid; gap: 2px; min-width: 0; }
       .set-prescription-context span { color: var(--muted); font-size: .58rem; font-weight: 900; text-transform: uppercase; }
       .set-prescription-context strong { color: var(--text); font-size: .7rem; line-height: 1.35; overflow-wrap: anywhere; }
       .set-prescription-context small { color: var(--muted); font-size: .63rem; line-height: 1.35; }
+      .set-prescription-context .set-progress-rule { border-top: 1px solid var(--line); grid-column: 1 / -1; padding-top: 7px; }
       .set-block.completed {
         background: var(--success-dark);
         border-left-color: var(--success);
@@ -561,10 +562,17 @@
       .workout-exercise-detail strong, .workout-exercise-detail p { font-size: .69rem; line-height: 1.45; margin: 0; overflow-wrap: anywhere; }
       .workout-confidence { color: var(--muted); font-size: .66rem; line-height: 1.45; }
       .role-prescription-list { border-top: 1px solid var(--line); display: grid; gap: 0; }
-      .role-prescription { border-bottom: 1px solid var(--line); display: grid; gap: 4px; padding: 10px 0; }
+      .role-prescription { border-bottom: 1px solid var(--line); display: grid; gap: 9px; padding: 12px 0; }
       .role-prescription > span { color: var(--muted); font-size: .61rem; font-weight: 950; text-transform: uppercase; }
-      .role-prescription > strong { color: var(--text); font-size: .73rem; line-height: 1.4; overflow-wrap: anywhere; }
       .role-prescription > p { color: var(--muted); font-size: .67rem; line-height: 1.5; margin: 0; }
+      .role-performance-grid { display: grid; gap: 7px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .role-performance-grid > div, .role-progress-rule { background: var(--surface-strong); display: grid; gap: 3px; min-width: 0; padding: 8px; }
+      .role-performance-grid small, .role-progression-facts small, .role-progress-rule small { color: var(--muted); font-size: .57rem; font-weight: 900; text-transform: uppercase; }
+      .role-performance-grid strong, .role-progress-rule strong { color: var(--text); font-size: .69rem; line-height: 1.4; overflow-wrap: anywhere; }
+      .role-performance-grid b { color: var(--muted); font-size: .63rem; line-height: 1.4; }
+      .role-progression-facts { display: grid; gap: 1px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .role-progression-facts > div { background: color-mix(in srgb, var(--current) 5%, var(--surface)); display: grid; gap: 3px; min-width: 0; padding: 8px; }
+      .role-progression-facts strong { color: var(--text); font-size: .67rem; line-height: 1.35; overflow-wrap: anywhere; }
       .pr-celebration { background: var(--green-dark); border-left: 3px solid var(--green-2); display: grid; gap: 6px; padding: 12px; }
       .pr-celebration strong { color: var(--green-2); }
       .pr-celebration span, .summary-lifts span { color: var(--muted); font-size: 0.9rem; }
@@ -1192,6 +1200,20 @@
       .notification-prompt strong { display: block; font-size: .76rem; }
       .notification-prompt span { color: var(--muted); display: block; font-size: .66rem; line-height: 1.35; margin-top: 2px; }
       .notification-prompt button { min-height: 34px; padding: 5px 9px; }
+      .notification-prompt.selected { background: color-mix(in srgb, var(--current) 9%, var(--surface)); border-color: var(--current); }
+      .notification-prompt.denied { border-color: color-mix(in srgb, var(--red) 48%, var(--line)); }
+      .selected-control, .alert-toggle-button.selected-control { background: var(--current); border-color: var(--current); color: #fff; }
+      .alert-settings-list { display: grid; gap: 7px; }
+      .alert-setting-card { align-items: center; background: var(--surface); border: 1px solid var(--line); color: var(--text); display: grid; gap: 9px; grid-template-columns: 24px minmax(0, 1fr) auto; min-height: 54px; padding: 9px 10px; }
+      .alert-setting-card.selected { background: var(--current); border-color: var(--current); color: #fff; }
+      .alert-setting-card.unavailable { opacity: .65; }
+      .alert-setting-card input { height: 20px !important; width: 20px !important; }
+      .alert-setting-card > span { display: grid; gap: 2px; min-width: 0; }
+      .alert-setting-card strong { color: inherit; font-size: .72rem; }
+      .alert-setting-card small { color: var(--muted); font-size: .62rem; line-height: 1.35; }
+      .alert-setting-card.selected small { color: rgba(255,255,255,.82); }
+      .alert-setting-card > b { color: var(--muted); font-size: .62rem; text-align: right; white-space: nowrap; }
+      .alert-setting-card.selected > b { color: #fff; }
       .setup-flow { display: grid; gap: 0; }
       .setup-step { align-items: start; border-bottom: 1px solid var(--line); display: grid; gap: 8px; grid-template-columns: 28px minmax(0, 1fr) auto; padding: 11px 0; }
       .setup-step:last-child { border-bottom: 0; }
@@ -1202,6 +1224,8 @@
       .setup-step button { min-height: 34px; padding: 5px 9px; }
       .status-pill { border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: .62rem; font-weight: 850; padding: 4px 7px; white-space: nowrap; }
       .status-pill.enabled { border-color: var(--success); color: var(--success); }
+      .status-pill.partial { border-color: var(--current); color: var(--current); }
+      .status-pill.denied { border-color: var(--red); color: var(--red); }
       .update-banner { align-items: center; background: var(--current-dark); border: 1px solid var(--current); display: flex; font-size: .7rem; gap: 9px; justify-content: space-between; padding: 9px 11px; }
       .update-banner button { min-height: 32px; padding: 4px 8px; }
       @keyframes next-set-pulse { 0% { box-shadow: inset 0 0 0 1px var(--current), 0 0 0 0 color-mix(in srgb, var(--current) 35%, transparent); } 100% { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--current) 60%, transparent), 0 0 0 8px transparent; } }
@@ -1218,6 +1242,10 @@
       .sheet-actions { display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
       .sheet-actions.stacked { grid-template-columns: 1fr; }
       .sheet-actions .primary-action { min-height: 50px; }
+      .cancel-sheet-actions { align-items: stretch; border-top: 1px solid var(--line); gap: 10px; padding-top: 13px; }
+      .cancel-sheet-actions button { justify-content: center; min-height: 48px; text-align: center; }
+      .discard-workout-button { background: color-mix(in srgb, var(--red) 7%, var(--surface)); border-color: color-mix(in srgb, var(--red) 48%, var(--line)); color: var(--red); font-weight: 900; }
+      .discard-workout-button:focus-visible { outline: 2px solid color-mix(in srgb, var(--red) 38%, transparent); outline-offset: 2px; }
       .readiness-draft { display: grid; gap: 12px; }
       .readiness-draft .recovery-inputs { margin: 0; }
       .readiness-review-sheet { max-height: min(90vh, 780px); }
@@ -1477,6 +1505,8 @@
         input, select, textarea { font-size: 16px; }
         .set-row input, .set-row select, .chart-control-field input, .chart-control-field select { font-size: 16px; }
         .rationale-facts { grid-template-columns: 1fr; }
+        .set-prescription-context, .role-progression-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .role-progression-facts > div:last-child { grid-column: 1 / -1; }
         .history-edit-actions, .history-view-actions { grid-template-columns: 1fr; }
         .brand-bar { margin: 0; padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); }
         .brand-bar::before { display: none; }
@@ -1683,6 +1713,7 @@
         timerVibration: true,
         interactionVibration: true,
         timerNotifications: true,
+        inAppRestAlerts: true,
         defaultRestSeconds: 90,
         notificationMessageDetail: "exercise-set",
         autoStartRestTimer: true,
@@ -1815,7 +1846,8 @@
           updatedAt: isoNow(),
           exercises: [
             { id: "perf-leg-press", name: "Leg Press", sets: 2, reps: 10, targetRpe: 8.5, increment: 5, restSeconds: 150, resistanceType: "external", warmups: [{ id: "lp-wu-1", reps: 8, weight: 90, rpe: 5 }, { id: "lp-wu-2", reps: 5, weight: 135, rpe: 6 }], setTypes: [{ type: "top", setCount: 1, repMin: 8, repMax: 10, rpeMin: 8, rpeMax: 9 }, { type: "backoff", setCount: 1, repMin: 10, repMax: 15, rpeMin: 7, rpeMax: 8, loadReductionMin: 8, loadReductionMax: 15 }] },
-            { id: "perf-leg-extension", name: "Leg Extension", sets: 2, reps: 15, targetRpe: 8.5, increment: 5, restSeconds: 90, resistanceType: "external", warmups: [], setTypes: [{ type: "top", setCount: 1, repMin: 10, repMax: 15, rpeMin: 8, rpeMax: 9 }, { type: "backoff", setCount: 1, repMin: 12, repMax: 20, rpeMin: 7, rpeMax: 8, loadReductionMin: 10, loadReductionMax: 20 }] }
+            { id: "perf-leg-extension", name: "Leg Extension", sets: 2, reps: 15, targetRpe: 8.5, increment: 5, restSeconds: 90, resistanceType: "external", warmups: [], setTypes: [{ type: "top", setCount: 1, repMin: 10, repMax: 15, rpeMin: 8, rpeMax: 9 }, { type: "backoff", setCount: 1, repMin: 12, repMax: 20, rpeMin: 7, rpeMax: 8, loadReductionMin: 10, loadReductionMax: 20 }] },
+            { id: "perf-lying-leg-curl", name: "Lying Leg Curl", sets: 2, reps: 9, targetRpe: 8.5, increment: 5, restSeconds: 90, resistanceType: "external", warmups: [], setTypes: [{ type: "top", setCount: 1, repMin: 9, repMax: 9, rpeMin: 8, rpeMax: 8, rangeSource: "strong-history" }, { type: "backoff", setCount: 1, repMin: 8, repMax: 9, rpeMin: 9, rpeMax: 9, rangeSource: "strong-history", loadReductionMin: 10, loadReductionMax: 18 }] }
           ]
         };
         data = { ...data, sessions: [...sessions, ...data.sessions], exercises: [...data.exercises, ...exercises], sets: [...data.sets, ...sets], templates: [legTemplate, ...data.templates.filter((template) => template.id !== legTemplate.id)], dataRevision: Number(data.dataRevision || 0) + 1 };
@@ -2259,6 +2291,7 @@
           timerVibration: storedSettings.timerVibration,
           interactionVibration: storedSettings.interactionVibration,
           timerNotifications: storedSettings.timerNotifications,
+          inAppRestAlerts: storedSettings.inAppRestAlerts,
           defaultRestSeconds: storedSettings.defaultRestSeconds,
           notificationMessageDetail: storedSettings.notificationMessageDetail,
           autoStartRestTimer: storedSettings.autoStartRestTimer,
@@ -4070,8 +4103,14 @@
         if (!isStandalonePwa() && !data.settings.installGuideDismissed) {
           return '<div class="notification-prompt install-prompt"><div><strong>Install on iPhone</strong><span>In Safari, tap Share, choose Add to Home Screen, enable Open as Web App when shown, then tap Add.</span></div><button type="button" data-action="dismiss-install-guide">Got it</button></div>';
         }
-        if (!data.settings.timerNotifications || !("Notification" in window) || Notification.permission !== "default") return "";
-        return '<div class="notification-prompt"><div><strong>Enable rest notifications</strong><span>Enable notifications so the app can tell you when your rest period ends, even when your iPhone is locked or you are using another app.</span></div><button type="button" data-action="request-notifications">Enable</button></div>';
+        const alerts = restAlertState();
+        const denied = alerts.permissionStatus === "denied";
+        const detail = alerts.lockScreenReady
+          ? "Lock-screen rest alerts are active for this installed app."
+          : denied
+            ? "Permission is denied in iPhone or browser settings. Foreground alerts remain available."
+            : "Enable alerts so the app can tell you when rest ends while your iPhone is locked or another app is open.";
+        return '<div class="notification-prompt rest-alert-control ' + (alerts.lockScreenReady ? 'selected' : '') + ' ' + (denied ? 'denied' : '') + '"><div><strong>Rest notifications</strong><span>' + escapeHtml(detail) + '</span></div><button class="alert-toggle-button ' + (alerts.lockScreenReady ? 'selected-control' : '') + '" type="button" data-action="toggle-rest-notifications" ' + (denied ? 'aria-label="Rest notification permission denied"' : '') + '>' + (alerts.lockScreenReady ? '&#10003; Enabled' : denied ? 'Permission denied' : alerts.notificationsEnabled ? 'Finish setup' : 'Enable') + '</button></div>';
       }
 
       function renderTodayPlan() {
@@ -4520,11 +4559,11 @@
         return `
           <div class="sheet-backdrop" role="presentation">
             <section class="bottom-sheet destructive-sheet" role="dialog" aria-modal="true" aria-labelledby="cancel-workout-title" data-sheet-content>
-              <div class="cancel-hero"><span class="cancel-visual" aria-hidden="true">!</span><div><div class="section-kicker">Discard session</div><h2 id="cancel-workout-title">Cancel this workout?</h2><p>This removes only the open draft. Your completed training history and templates stay untouched.</p></div></div>
-              <div class="cancel-impact"><div><b aria-hidden="true">-</b><div><strong>Current draft is removed</strong><span>Unsaved sets, notes, edits, elapsed time, and the active rest timer will be discarded.</span></div></div><div><b aria-hidden="true">&#10003;</b><div><strong>Completed data stays safe</strong><span>Submitted workouts, charts, personal records, templates, and settings are not deleted.</span></div></div></div>
-              <div class="sheet-actions stacked">
-                <button class="primary-action" type="button" data-action="keep-workout" autofocus>Keep Workout</button>
-                <button class="danger-button" type="button" data-action="confirm-cancel-workout">Cancel and Discard Workout</button>
+              <div class="cancel-hero"><span class="cancel-visual" aria-hidden="true">!</span><div><div class="section-kicker">Active session</div><h2 id="cancel-workout-title">Cancel this workout?</h2><p>Your unsaved sets, notes, timer state, and session progress will be discarded. This workout will not be added to your completed history.</p></div></div>
+              <div class="cancel-impact"><div><b aria-hidden="true">-</b><div><strong>Only this draft is removed</strong><span>The workout timer, rest timer, scheduled alert, notes, and unsaved set entries will be cleared.</span></div></div><div><b aria-hidden="true">&#10003;</b><div><strong>Your history remains intact</strong><span>Submitted workouts, templates, personal records, charts, and settings stay unchanged.</span></div></div></div>
+              <div class="sheet-actions cancel-sheet-actions">
+                <button class="primary-action" type="button" data-action="keep-workout">Keep Workout</button>
+                <button class="discard-workout-button" type="button" data-action="confirm-cancel-workout">Discard Workout</button>
               </div>
             </section>
           </div>`;
@@ -4744,6 +4783,10 @@
         const targetLoadText = formatResistance({ ...set, weight: targetLoad, addedLoad: resistanceType === "bodyweight_plus_load" ? targetLoad : set.addedLoad, assistanceLoad: resistanceType === "assisted_bodyweight" ? targetLoad : set.assistanceLoad, resistanceType });
         const targetRepText = targetRangeText(set.targetRepMin, set.targetRepMax || set.targetReps, " reps");
         const targetRpeText = targetRangeText(set.targetRpeMin, set.targetRpeMax || set.targetRpe, " RPE");
+        const nextIncrementText = set.setPrescription?.nextLoad != null
+          ? formatResistance({ ...set, weight: set.setPrescription.nextLoad, addedLoad: resistanceType === "bodyweight_plus_load" ? set.setPrescription.nextLoad : set.addedLoad, assistanceLoad: resistanceType === "assisted_bodyweight" ? set.setPrescription.nextLoad : set.assistanceLoad, resistanceType })
+          : "Not configured";
+        const progressionRule = set.setPrescription?.progressionRule || "Progress after reaching the top of the programmed range within the RPE target.";
         const performanceField = resistanceType === "duration"
           ? '<label class="set-field"><span>Seconds</span><input type="number" min="0" value="' + Number(set.durationSeconds || 0) + '" data-action="set-duration" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' seconds" /></label>'
           : resistanceType === "distance"
@@ -4767,7 +4810,7 @@
               <label class="set-field"><span>RPE</span><input type="number" min="0" max="10" step="0.5" value="${set.rpe}" data-action="set-rpe" data-set-id="${set.id}" aria-label="Set ${set.setNumber} RPE" /></label>
               <div class="set-field set-status"><span>Status</span><button class="check-button ${set.completed ? "checked" : ""}" type="button" data-action="toggle-set" data-set-id="${set.id}" title="${set.completed ? "Completed" : "Mark set complete"}" aria-label="${set.completed ? "Set completed" : "Mark set complete"}" aria-pressed="${set.completed ? "true" : "false"}">${icon.done}</button></div>
             </div>
-            ${!setTypeSemantics(set).isWarmup ? '<div class="set-prescription-context"><div><span>Last time</span><strong>' + escapeHtml(previousText) + '</strong></div><div><span>Today</span><strong>' + escapeHtml(targetLoadText) + '</strong><small>' + escapeHtml(targetRepText + ' · ' + targetRpeText) + '</small></div></div>' : ""}
+            ${!setTypeSemantics(set).isWarmup ? '<div class="set-prescription-context"><div><span>Last time</span><strong>' + escapeHtml(previousText) + '</strong></div><div><span>Today</span><strong>' + escapeHtml(targetLoadText) + '</strong><small>' + escapeHtml(targetRepText + ' · ' + targetRpeText) + '</small></div><div><span>Next increment</span><strong>' + escapeHtml(nextIncrementText) + '</strong><small>' + escapeHtml(String(set.setPrescription?.confidence || set.prescriptionConfidence || 'low') + ' confidence') + '</small></div><div class="set-progress-rule"><span>Progress when</span><strong>' + escapeHtml(progressionRule) + '</strong></div></div>' : ""}
             ${isNext ? '<div class="next-set-banner"><span aria-hidden="true">&#10148;</span><span>' + escapeHtml(activeSetAcknowledged ? "Current set" : activeSetNotice || "Current set") + '</span></div>' : ""}
             <div class="set-actions">
               <button class="mini-button set-rest-button" type="button" data-action="start-timer" data-exercise-id="${exercise.id}" data-set-id="${set.id}">${icon.clock} ${formatTimer(restSeconds)}</button>
@@ -4809,7 +4852,13 @@
           const load = formatResistance({ ...set, weight: Number(set.targetWeight ?? set.weight ?? 0), addedLoad: set.resistanceType === "bodyweight_plus_load" ? Number(set.targetWeight ?? set.addedLoad ?? 0) : set.addedLoad, assistanceLoad: set.resistanceType === "assisted_bodyweight" ? Number(set.targetWeight ?? set.assistanceLoad ?? 0) : set.assistanceLoad });
           const reps = targetRangeText(set.targetRepMin, set.targetRepMax || set.targetReps, " reps");
           const rpe = targetRangeText(set.targetRpeMin, set.targetRpeMax || set.targetRpe, " RPE");
-          return '<div class="role-prescription"><span>' + escapeHtml(setTypeLabels[role] || "Working set") + '</span><strong>' + escapeHtml(load + " · " + reps + " · " + rpe) + '</strong><p>' + escapeHtml(set.setPrescription?.reason || set.prescriptionReason || "This set follows its programmed role and comparable history.") + '</p></div>';
+          const previous = set.previousComparableSet ? formatSetPerformance(set.previousComparableSet, exercise) : "No comparable " + (setTypeLabels[role] || "working set").toLowerCase();
+          const nextIncrement = set.setPrescription?.nextLoad != null
+            ? formatResistance({ ...set, weight: set.setPrescription.nextLoad, addedLoad: set.resistanceType === "bodyweight_plus_load" ? set.setPrescription.nextLoad : set.addedLoad, assistanceLoad: set.resistanceType === "assisted_bodyweight" ? set.setPrescription.nextLoad : set.assistanceLoad })
+            : "Not configured";
+          const confidence = String(set.setPrescription?.confidence || set.prescriptionConfidence || "low");
+          const progressionRule = set.setPrescription?.progressionRule || "Reach the top of the programmed range without exceeding the RPE target.";
+          return '<div class="role-prescription"><span>' + escapeHtml(setTypeLabels[role] || "Working set") + '</span><div class="role-performance-grid"><div><small>Last time</small><strong>' + escapeHtml(previous) + '</strong></div><div><small>Today</small><strong>' + escapeHtml(load) + '</strong><b>' + escapeHtml(reps + ' · ' + rpe) + '</b></div></div><div class="role-progression-facts"><div><small>Confidence</small><strong>' + escapeHtml(confidence.charAt(0).toUpperCase() + confidence.slice(1)) + '</strong></div><div><small>Target reps</small><strong>' + escapeHtml(reps) + '</strong></div><div><small>Next increment</small><strong>' + escapeHtml(nextIncrement) + '</strong></div></div><div class="role-progress-rule"><small>Progress when</small><strong>' + escapeHtml(progressionRule) + '</strong></div><p>' + escapeHtml(set.setPrescription?.reason || set.prescriptionReason || "This set follows its programmed role and comparable history.") + '</p></div>';
         }).join('') + '</div>';
       }
 
@@ -4823,14 +4872,11 @@
           ? '<span class="prescription-tier"><span>Recommended</span><strong>' + escapeHtml(readablePrescriptionLine(original)) + '</strong></span><span class="prescription-tier readiness-tier"><span>Today\'s readiness</span><strong>' + escapeHtml(readablePrescriptionLine(target)) + '</strong></span><span class="why-link">Why this changed</span>'
           : '<span class="prescription-tier"><span>' + escapeHtml(label) + '</span><strong>' + escapeHtml(readablePrescriptionLine(target)) + '</strong></span><span class="why-link">Why this recommendation?</span>';
         const reason = target.adjustmentReason || target.reason || "This target follows the most comparable submitted performance and the programmed rep range.";
-        const confidence = String(target.confidence || "low");
-        const repRange = target.repLow != null && target.repHigh != null ? target.repLow + "-" + target.repHigh + " reps" : target.reps + " reps";
-        const increment = Number(target.increment || 0) > 0 ? target.increment + " " + data.settings.weightUnit : "Hold load";
         const reasonParts = reason.split("Why these levers:");
         const reasonMarkup = reasonParts.length > 1
           ? '<div class="rationale-copy"><div><span>What triggered it</span><p class="rationale-reason">' + escapeHtml(reasonParts[0].trim()) + '</p></div><div><span>Why these changes</span><p class="rationale-reason">' + escapeHtml(reasonParts.slice(1).join("Why these levers:").trim()) + '</p></div></div>'
           : '<p class="rationale-reason">' + escapeHtml(reason) + '</p>';
-        const rationale = '<div class="recommendation-rationale"><div class="rationale-heading"><span class="rationale-icon" aria-hidden="true">i</span><div><strong>' + (changed ? 'Why today\'s target changed' : 'Why this recommendation') + '</strong><span>Based on submitted history and programming rules</span></div></div>' + reasonMarkup + renderRolePrescriptionDetails(exercise) + '<div class="rationale-facts"><div class="rationale-fact"><span>Confidence</span><strong>' + escapeHtml(confidence.charAt(0).toUpperCase() + confidence.slice(1)) + '</strong></div><div class="rationale-fact"><span>Primary target range</span><strong>' + escapeHtml(repRange) + '</strong></div><div class="rationale-fact"><span>Next increment</span><strong>' + escapeHtml(increment) + '</strong></div></div></div>';
+        const rationale = '<div class="recommendation-rationale"><div class="rationale-heading"><span class="rationale-icon" aria-hidden="true">i</span><div><strong>' + (changed ? 'Why today\'s target changed' : 'Why this recommendation') + '</strong><span>Based on submitted history and programming rules</span></div></div>' + reasonMarkup + renderRolePrescriptionDetails(exercise) + '</div>';
         return '<details class="prescription-brief ' + (target.isDeload ? 'deload' : '') + ' ' + (changed ? 'readiness-adjusted' : '') + '"><summary data-action="toggle-prescription-rationale" aria-label="' + (changed ? 'Why this changed' : 'Why this recommendation?') + '">' + summary + '</summary>' + rationale + '</details>';
       }
 
@@ -5050,12 +5096,34 @@
         return value + suffix;
       }
 
+      function resolveProgrammedRepRange(raw = {}, fallback = {}) {
+        const exactReps = Boolean(raw.exactReps ?? fallback.exactReps);
+        const rangeSource = raw.rangeSource || fallback.rangeSource || "program";
+        let repMin = Number(raw.repMin ?? raw.lowerRep ?? fallback.repMin ?? fallback.lowerRep ?? 0);
+        let repMax = Number(raw.repMax ?? raw.upperRep ?? raw.reps ?? fallback.repMax ?? fallback.upperRep ?? fallback.reps ?? repMin ?? 0);
+        if (repMin > 0 && repMax > 0 && repMin > repMax) [repMin, repMax] = [repMax, repMin];
+        const fallbackMin = Number(fallback.repMin ?? fallback.lowerRep ?? 0);
+        const fallbackMax = Number(fallback.repMax ?? fallback.upperRep ?? fallback.reps ?? fallbackMin ?? 0);
+        const fallbackIsRange = fallbackMin > 0 && fallbackMax > fallbackMin;
+        const historyNarrow = /history|strong/i.test(rangeSource) && repMin > 0 && repMax - repMin < 2;
+        const accidentalExact = repMin > 0 && repMin === repMax && !exactReps;
+        if ((historyNarrow || accidentalExact) && fallbackIsRange) {
+          repMin = fallbackMin;
+          repMax = fallbackMax;
+        } else if (accidentalExact) {
+          repMin = Math.max(1, repMin - 1);
+          repMax += 1;
+        }
+        return { repMin, repMax, exactReps, rangeSource, rangeAdjusted: accidentalExact || historyNarrow };
+      }
+
       function normalizeTargetSetType(raw = {}, fallback = {}) {
         const type = normalizeSetTypeCode(raw.type || raw.setType || fallback.type, raw.isWarmup || fallback.isWarmup);
         const isWarmup = type === "warmup";
         const setCount = Math.max(0, Number(raw.setCount ?? raw.sets ?? fallback.setCount ?? fallback.sets ?? 0));
-        const repMin = Number(raw.repMin ?? raw.lowerRep ?? fallback.repMin ?? fallback.lowerRep ?? 0);
-        const repMax = Number(raw.repMax ?? raw.upperRep ?? raw.reps ?? fallback.repMax ?? fallback.upperRep ?? fallback.reps ?? repMin ?? 0);
+        const repRange = resolveProgrammedRepRange(raw, fallback);
+        const repMin = repRange.repMin;
+        const repMax = repRange.repMax;
         const rpeMin = Number(raw.rpeMin ?? fallback.rpeMin ?? 0);
         const rpeMax = Number(raw.rpeMax ?? fallback.rpeMax ?? raw.targetRpe ?? raw.rpe ?? fallback.targetRpe ?? fallback.rpe ?? rpeMin ?? 0);
         const restSeconds = Number(raw.restSeconds ?? fallback.restSeconds ?? 0);
@@ -5065,11 +5133,15 @@
           setCount,
           repMin,
           repMax,
+          exactReps: repRange.exactReps,
+          rangeSource: repRange.rangeSource,
+          rangeAdjusted: repRange.rangeAdjusted,
           rpeMin,
           rpeMax,
           rpeTolerance: Number(raw.rpeTolerance ?? fallback.rpeTolerance ?? 1),
           loadRule: raw.loadRule || fallback.loadRule || "",
           progressionRule: raw.progressionRule || fallback.progressionRule || "",
+          increment: Number(raw.increment ?? fallback.increment ?? 0),
           loadReductionMin: Number(raw.loadReductionMin ?? raw.dropPercentMin ?? fallback.loadReductionMin ?? 0),
           loadReductionMax: Number(raw.loadReductionMax ?? raw.dropPercentMax ?? fallback.loadReductionMax ?? 0),
           restSeconds,
@@ -5091,11 +5163,19 @@
         const rpeMin = Math.max(1, rpeMax - (role === "top" ? 0.5 : 1));
         const backoffReduction = profile.backoffReduction || (profile.kind === "isolation" ? [10, 20] : [8, 15]);
         const reduction = role === "drop" ? [20, 25] : role === "backoff" ? backoffReduction : [0, 0];
+        const roleIncrement = Number(templateExercise.setRoleIncrements?.[role] || templateExercise.increment || profile.increment || 0);
         const loadRule = role === "backoff"
           ? "Reduce load " + reduction[0] + "-" + reduction[1] + "% from the top set, rounded to available equipment."
           : role === "drop" ? "Reduce load " + reduction[0] + "-" + reduction[1] + "% from the preceding working set."
             : role === "top" ? "Use the primary high-demand working load for this exercise."
               : "Use the programmed straight-set load across comparable working sets.";
+        const roleProgressionRule = role === "top"
+          ? "Add the next top-set increment after reaching " + Number(range[1] || range[0]) + " reps without exceeding RPE " + targetRangeText(rpeMin, rpeMax) + "."
+          : role === "backoff"
+            ? "Add the next back-off increment after every programmed back-off set reaches " + Number(range[1] || range[0]) + " reps without exceeding RPE " + targetRangeText(rpeMin, rpeMax) + "."
+            : role === "drop"
+              ? "Progress the drop set only after reaching " + Number(range[1] || range[0]) + " controlled reps within RPE " + targetRangeText(rpeMin, rpeMax) + "."
+              : "Add the next increment after the programmed straight sets reach the top of their range within the RPE target.";
         return {
           type,
           repMin: Number(range[0] || profile.lowerRep || 0),
@@ -5104,13 +5184,24 @@
           rpeMax,
           rpeTolerance: 0.5,
           loadRule,
-          progressionRule: templateExercise.progressionRule || defaultProgressionRule(templateExercise, profile),
+          progressionRule: templateExercise.setRoleProgressionRules?.[role] || templateExercise.progressionRule || roleProgressionRule,
+          increment: roleIncrement,
           loadReductionMin: reduction[0],
           loadReductionMax: reduction[1],
           restSeconds: role === "drop" ? Math.min(Number(restSeconds || 60), 60) : Number(restSeconds || 0),
           countsTowardScore: type !== "warmup",
           countsTowardVolume: type !== "warmup"
         };
+      }
+
+      function progressionRuleForTargetSet(type) {
+        const role = normalizeSetTypeCode(type.type || type.setType);
+        const topReps = Number(type.repMax || type.repMin || 0);
+        const rpe = targetRangeText(type.rpeMin, type.rpeMax);
+        if (role === "top") return "Add the next top-set increment after reaching " + topReps + " reps without exceeding RPE " + rpe + ".";
+        if (role === "backoff") return "Add the next back-off increment after every programmed back-off set reaches " + topReps + " reps without exceeding RPE " + rpe + ".";
+        if (role === "drop") return "Progress the drop set only after reaching " + topReps + " controlled reps within RPE " + rpe + ".";
+        return "Add the next increment after the programmed straight sets reach " + topReps + " reps within RPE " + rpe + ".";
       }
 
       function roundEquipmentLoad(value, increment) {
@@ -5147,7 +5238,7 @@
       function setPrescriptionForRole(options = {}) {
         const { templateExercise, target, setType, setTypeIndex = 0, sequenceIndex = 0, previousSets = [] } = options;
         const role = normalizeSetTypeCode(setType.type || setType.setType);
-        const increment = Number(target.increment || templateExercise.increment || progressionProfileForExercise(templateExercise.name).increment || 1);
+        const increment = Number(setType.increment || target.increment || templateExercise.increment || progressionProfileForExercise(templateExercise.name).increment || 1);
         const resistanceType = target.resistanceType || templateExercise.resistanceType || "external";
         const reductionMin = Number(setType.loadReductionMin || 0);
         const reductionMax = Number(setType.loadReductionMax || reductionMin || 0);
@@ -5155,13 +5246,19 @@
         const assisted = resistanceType === "assisted_bodyweight";
         const multiplier = reduction > 0 ? (assisted ? 1 + reduction / 100 : 1 - reduction / 100) : 1;
         const targetLoad = roundEquipmentLoad(Number(target.weight || 0) * multiplier, increment);
-        const repMin = Number(setType.repMin || target.repLow || target.reps || 0);
-        const repMax = Number(setType.repMax || target.repHigh || target.reps || repMin);
+        const roleDefaults = setRoleDefaultsForExercise(templateExercise, role, progressionProfileForExercise(templateExercise.name), target.mode || "normal", target.rpe, setType.restSeconds || target.restSeconds);
+        const repRange = resolveProgrammedRepRange(setType, roleDefaults);
+        const repMin = Number(repRange.repMin || target.repLow || 0);
+        const repMax = Number(repRange.repMax || target.repHigh || repMin);
         const previousComparableSet = previousComparableSetForRole(previousSets, role, setTypeIndex);
         const previousReps = Number(previousComparableSet?.reps || 0);
         const targetReps = Math.max(repMin, Math.min(repMax, previousReps || Number(target.reps || repMax || repMin)));
         const rpeMin = Number(setType.rpeMin || Math.max(1, Number(setType.rpeMax || target.rpe || 0) - 1));
         const rpeMax = Number(setType.rpeMax || target.rpe || rpeMin);
+        const nextLoad = resistanceType === "assisted_bodyweight"
+          ? roundEquipmentLoad(Math.max(0, targetLoad - increment), increment)
+          : roundEquipmentLoad(targetLoad + increment, increment);
+        const progressionRule = setType.progressionRule || ("Progress after reaching " + repMax + " reps within RPE " + targetRangeText(rpeMin, rpeMax) + " on " + (role === "backoff" ? "the comparable back-off work" : role === "top" ? "the top set" : "the programmed sets") + ".");
         const roleName = setTypeLabels[role] || "Working set";
         const reason = role === "backoff"
           ? "Load is reduced " + formatLoadNumber(reductionMin) + "-" + formatLoadNumber(reductionMax) + "% from the top set so you can add productive volume inside " + repMin + "-" + repMax + " reps at RPE " + targetRangeText(rpeMin, rpeMax) + " without repeating top-set demand."
@@ -5170,13 +5267,14 @@
             : role === "top"
               ? "This is the primary high-demand set. Its load, rep range, and RPE target are resolved from the active program and prior top-set performance."
               : "This is a straight working set. The programmed range allows normal rep decline across later sets without treating it as failure.";
-        return { setType: role, sequenceIndex, setTypeIndex, targetLoad, targetReps, repMin, repMax, rpeMin, rpeMax, restSeconds: Number(setType.restSeconds || target.restSeconds || 0), loadRule: setType.loadRule || "", progressionRule: setType.progressionRule || "", reductionPercent: reduction, previousComparableSet, reason: roleName + ": " + reason };
+        return { setType: role, sequenceIndex, setTypeIndex, targetLoad, targetReps, repMin, repMax, exactReps: repRange.exactReps, rangeSource: repRange.rangeSource, rpeMin, rpeMax, restSeconds: Number(setType.restSeconds || target.restSeconds || 0), increment, nextLoad, loadRule: setType.loadRule || "", progressionRule, reductionPercent: reduction, previousComparableSet, confidence: target.confidence || "low", reason: roleName + ": " + reason };
       }
 
       function validateGeneratedSetPrescriptions(prescriptions, resistanceType) {
         const top = prescriptions.find((item) => item.setType === "top");
         return prescriptions.map((item) => {
           if (!top || item.setType !== "backoff") return item;
+          if (Number(top.targetLoad || 0) <= 0) return item;
           const identical = item.targetLoad === top.targetLoad && item.repMin === top.repMin && item.repMax === top.repMax && item.rpeMin === top.rpeMin && item.rpeMax === top.rpeMax;
           if (identical) return { ...item, setType: "straight", reason: "Working set: This set intentionally repeats the same prescription, so it is classified as a straight working set rather than a back-off set." };
           const demandReduced = resistanceType === "assisted_bodyweight" ? item.targetLoad > top.targetLoad : item.targetLoad < top.targetLoad;
@@ -5202,6 +5300,8 @@
             repMax: reps.length ? Math.max(...reps) : 0,
             rpeMin: rpes.length ? Math.min(...rpes) : 0,
             rpeMax: rpes.length ? Math.max(...rpes) : 0,
+            rangeSource: "workout-history",
+            historySampleSize: bucket.length,
             restSeconds,
             loadReductionMin: type === "drop" ? 20 : 0,
             loadReductionMax: type === "drop" ? 25 : 0,
@@ -5227,7 +5327,12 @@
         const explicitTypes = Array.isArray(templateExercise.setTypes) ? templateExercise.setTypes : [];
         let setTypes = explicitTypes.map((item) => {
           const defaults = setRoleDefaultsForExercise(templateExercise, item.type || item.setType, profile, sessionType, targetRpe, restSeconds);
-          const normalized = normalizeTargetSetType(item, defaults);
+          const strongDerived = /imported from strong/i.test(String(template?.notes || "")) || /strong/i.test(String(item.rangeSource || ""));
+          const sourceItem = strongDerived && !item.userAuthoredTarget && !item.exactReps
+            ? { ...item, repMin: defaults.repMin, repMax: defaults.repMax, rpeMin: defaults.rpeMin, rpeMax: defaults.rpeMax, rangeSource: "strong-history-fallback" }
+            : item;
+          const normalizedTarget = normalizeTargetSetType(sourceItem, defaults);
+          const normalized = { ...normalizedTarget, progressionRule: item.progressionRule || templateExercise.setRoleProgressionRules?.[normalizedTarget.type] || templateExercise.progressionRule || progressionRuleForTargetSet(normalizedTarget) };
           const needsDemandReduction = ["backoff", "drop"].includes(normalized.type) && Number(normalized.loadReductionMax || normalized.loadReductionMin || 0) <= 0;
           return needsDemandReduction
             ? { ...normalized, loadReductionMin: defaults.loadReductionMin, loadReductionMax: defaults.loadReductionMax, loadRule: normalized.loadRule || defaults.loadRule }
@@ -6171,26 +6276,63 @@
         `;
       }
 
+      function restAlertState() {
+        const notificationsSupported = "Notification" in window && "PushManager" in window && "serviceWorker" in navigator;
+        const permissionStatus = notificationsSupported ? Notification.permission : "unsupported";
+        const installedEligible = !isIosDevice() || isStandalonePwa();
+        const notificationsEnabled = data.settings.timerNotifications !== false;
+        const foregroundSoundEnabled = data.settings.timerSound !== false;
+        const inAppAlertEnabled = data.settings.inAppRestAlerts !== false;
+        const vibrationSupported = typeof navigator.vibrate === "function";
+        const vibrationEnabled = data.settings.timerVibration !== false && vibrationSupported;
+        const lockScreenReady = notificationsEnabled && notificationsSupported && installedEligible && permissionStatus === "granted" && pushIdentity?.status === "enabled";
+        const foregroundActive = foregroundSoundEnabled || inAppAlertEnabled || vibrationEnabled;
+        const anyPreference = notificationsEnabled || foregroundSoundEnabled || inAppAlertEnabled || data.settings.timerVibration !== false;
+        const availableBehaviors = [notificationsSupported && installedEligible, true, true, vibrationSupported];
+        const enabledBehaviors = [lockScreenReady, foregroundSoundEnabled, inAppAlertEnabled, vibrationEnabled];
+        const allAvailableEnabled = availableBehaviors.every((available, index) => !available || enabledBehaviors[index]);
+        let label = "Disabled";
+        let className = "disabled";
+        if (!anyPreference) {
+          label = "Disabled";
+        } else if (notificationsEnabled && permissionStatus === "denied") {
+          label = "Permission denied";
+          className = "denied";
+        } else if (lockScreenReady && allAvailableEnabled) {
+          label = "Fully enabled";
+          className = "enabled";
+        } else if (lockScreenReady || foregroundActive) {
+          label = lockScreenReady ? "Enabled" : "Partially enabled";
+          className = lockScreenReady ? "enabled" : "partial";
+        } else if (notificationsEnabled && isIosDevice() && !installedEligible) {
+          label = "Install app";
+          className = "install";
+        }
+        return { label, className, notificationsSupported, installedEligible, permissionStatus, notificationsEnabled, foregroundSoundEnabled, soundConfirmed: Boolean(data.settings.setupSoundConfirmed), inAppAlertEnabled, vibrationSupported, vibrationEnabled, lockScreenReady, foregroundActive };
+      }
+
       function notificationStatus() {
-        if (!("Notification" in window) || !("PushManager" in window)) return { label: "Unsupported", className: "" };
-        if (isIosDevice() && !isStandalonePwa()) return { label: "Install app", className: "" };
-        if (Notification.permission === "denied") return { label: "Permission denied", className: "" };
-        if (Notification.permission === "granted" && pushIdentity?.status === "enabled") return { label: "Enabled", className: "enabled" };
-        return { label: data.settings.timerNotifications ? "Disabled" : "Off", className: "" };
+        return restAlertState();
+      }
+
+      function renderAlertSetting(action, label, detail, checked, options = {}) {
+        const selected = Boolean(checked && !options.unavailable);
+        const stateLabel = options.stateLabel || (selected ? "Enabled" : options.unavailable ? "Unavailable" : "Disabled");
+        return '<label class="alert-setting-card ' + (selected ? 'selected' : '') + ' ' + (options.unavailable ? 'unavailable' : '') + '"><input type="checkbox" data-action="' + action + '" ' + (checked ? 'checked' : '') + ' ' + (options.unavailable ? 'disabled' : '') + ' /><span><strong>' + escapeHtml(label) + '</strong><small>' + escapeHtml(detail) + '</small></span><b>' + (selected ? '&#10003; ' : '') + escapeHtml(stateLabel) + '</b></label>';
       }
 
       function renderPwaSetup() {
         const installed = isStandalonePwa();
         const status = notificationStatus();
-        const notificationsReady = status.label === "Enabled";
+        const notificationsReady = status.lockScreenReady;
         const tested = Boolean(pushIdentity?.testedAt);
         const soundReady = Boolean(data.settings.setupSoundConfirmed);
         return `
           <div class="setup-flow">
             <div class="setup-step ${installed ? "complete" : ""}"><span class="setup-number">${installed ? "&#10003;" : "1"}</span><div><strong>Install the app</strong><p>${installed ? "Running as an installed Home Screen app." : "In Safari: Share > Add to Home Screen > Open as Web App > Add."}</p></div>${installed ? '<span class="status-pill enabled">Installed</span>' : '<button type="button" data-action="dismiss-install-guide">Instructions read</button>'}</div>
-            <div class="setup-step ${notificationsReady ? "complete" : ""}"><span class="setup-number">${notificationsReady ? "&#10003;" : "2"}</span><div><strong>Enable notifications</strong><p>Alerts can arrive while the phone is locked or another app is open, subject to iPhone notification, Silent Mode, and Focus settings.</p></div><button type="button" data-action="request-notifications">${notificationsReady ? "Refresh" : "Enable"}</button></div>
+            <div class="setup-step ${notificationsReady ? "complete" : ""}"><span class="setup-number">${notificationsReady ? "&#10003;" : "2"}</span><div><strong>Enable notifications</strong><p>Alerts can arrive while the phone is locked or another app is open, subject to iPhone notification, Silent Mode, and Focus settings.</p></div><button class="${notificationsReady ? 'selected-control' : ''}" type="button" data-action="request-notifications">${notificationsReady ? "&#10003; Enabled" : "Enable"}</button></div>
             <div class="setup-step ${tested ? "complete" : ""}"><span class="setup-number">${tested ? "&#10003;" : "3"}</span><div><strong>Test notification</strong><p>Send a server push to verify this installation and its lock-screen permission.</p></div><button type="button" data-action="test-notification" ${notificationsReady ? "" : "disabled"}>Send test</button></div>
-            <div class="setup-step ${soundReady ? "complete" : ""}"><span class="setup-number">${soundReady ? "&#10003;" : "4"}</span><div><strong>Confirm foreground sound</strong><p>Audio is primed by this tap so timer completion does not fail silently.</p></div><button type="button" data-action="test-timer-sound">Play sound</button></div>
+            <div class="setup-step ${soundReady ? "complete" : ""}"><span class="setup-number">${soundReady ? "&#10003;" : "4"}</span><div><strong>Confirm foreground sound</strong><p>Audio is primed by this tap so timer completion does not fail silently.</p></div><button class="${soundReady ? 'selected-control' : ''}" type="button" data-action="test-timer-sound">${soundReady ? "&#10003; Confirmed" : "Test sound"}</button></div>
           </div>
         `;
       }
@@ -6240,10 +6382,13 @@
               <p class="settings-note">Rest is recommended per exercise from movement type, rep range, effort, and recent performance.</p>
             </div></details>
             <details class="settings-group"><summary>Rest timer and alerts <span class="status-pill ${pushStatus.className}">${pushStatus.label}</span></summary><div class="disclosure-body settings-panel">
-              <label class="toggle-line"><input type="checkbox" data-action="timer-notifications" ${data.settings.timerNotifications !== false ? "checked" : ""} />Rest notifications</label>
-              <label class="toggle-line"><input type="checkbox" data-action="timer-sound" ${data.settings.timerSound !== false ? "checked" : ""} />Foreground completion sound</label>
-              <label class="toggle-line"><input type="checkbox" data-action="workout-completion-sound" ${data.settings.workoutCompletionSound !== false ? "checked" : ""} />Workout and PR completion sound</label>
-              <label class="toggle-line"><input type="checkbox" data-action="timer-vibration" ${data.settings.timerVibration !== false ? "checked" : ""} />Browser vibration where supported</label>
+              <div class="alert-settings-list">
+                ${renderAlertSetting("timer-notifications", "Lock-screen rest notifications", "Requires permission and an installed iPhone Home Screen app.", pushStatus.notificationsEnabled, { stateLabel: pushStatus.permissionStatus === "denied" ? "Permission denied" : pushStatus.lockScreenReady ? "Enabled" : "Needs setup" })}
+                ${renderAlertSetting("in-app-rest-alerts", "In-app completion alert", "Shows the tappable Rest complete banner while using the app.", pushStatus.inAppAlertEnabled)}
+                ${renderAlertSetting("timer-sound", "Foreground completion sound", "Respects browser audio restrictions and iPhone system controls.", pushStatus.foregroundSoundEnabled, { stateLabel: pushStatus.foregroundSoundEnabled ? (pushStatus.soundConfirmed ? "Confirmed" : "Not tested") : "Disabled" })}
+                ${renderAlertSetting("timer-vibration", "Browser vibration", "Used only where the browser exposes vibration support.", data.settings.timerVibration !== false, { unavailable: !pushStatus.vibrationSupported, stateLabel: pushStatus.vibrationSupported ? "Enabled" : "Unsupported" })}
+                ${renderAlertSetting("workout-completion-sound", "Workout and PR sound", "Plays only for workout completion and meaningful milestones.", data.settings.workoutCompletionSound !== false)}
+              </div>
               <label class="toggle-line"><input type="checkbox" data-action="interaction-vibration" ${data.settings.interactionVibration !== false ? "checked" : ""} />Interaction vibration where supported</label>
               <label>Default rest duration<input type="number" min="15" max="900" step="15" value="${Number(data.settings.defaultRestSeconds || 90)}" data-action="default-rest-seconds" /></label>
               <label>Notification detail<select data-action="notification-detail"><option value="exercise-set" ${data.settings.notificationMessageDetail !== "private" ? "selected" : ""}>Exercise and upcoming set</option><option value="private" ${data.settings.notificationMessageDetail === "private" ? "selected" : ""}>Private: next set ready</option></select></label>
@@ -6889,6 +7034,7 @@
       }
 
       async function enablePushNotifications() {
+        if (data.settings.timerNotifications === false) commit({ ...data, settings: { ...data.settings, timerNotifications: true } }, false);
         if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
           notificationMessage = "System notifications are unsupported in this browser.";
           render();
@@ -7295,10 +7441,11 @@
         else setActiveSet("", readyText, true);
         const navigation = setRestNavigationState(completedTimer, "completed", next);
         timer = null;
-        timerCompleteNotice = { exerciseName: nextExercise?.name || exercise?.name || "Workout", setNumber: next?.setNumber || "", setLabel: next ? setExecutionLabel(next) : "", message: next ? readyText : "Time to finish the workout", payload: navigation };
+        const completionNotice = { exerciseName: nextExercise?.name || exercise?.name || "Workout", setNumber: next?.setNumber || "", setLabel: next ? setExecutionLabel(next) : "", message: next ? readyText : "Time to finish the workout", payload: navigation };
+        timerCompleteNotice = data.settings.inAppRestAlerts !== false ? completionNotice : null;
         playTimerCompletionSound();
         if (data.settings.timerVibration && navigator.vibrate) navigator.vibrate([250, 120, 250, 120, 450]);
-        if (!options.suppressSystemAlert && completedTimer.notificationStatus !== "scheduled") sendRestTimerNotification(timerCompleteNotice, next?.id || "", nextExercise?.id || exercise?.id || "");
+        if (!options.suppressSystemAlert && completedTimer.notificationStatus !== "scheduled") sendRestTimerNotification(completionNotice, next?.id || "", nextExercise?.id || exercise?.id || "");
         else cancelRestPush(completedTimer, "foreground-completed");
         saveRuntime();
         render();
@@ -8533,7 +8680,7 @@
         }
         if (["start-timer", "skip-timer", "start-template", "start-template-with-metrics", "use-usual-readiness", "request-submit-workout", "request-save-history-edits", "begin-history-edit", "save-template", "update-template-exercise", "add-set", "add-warmup-set", "duplicate-set"].includes(action)) return "medium";
         if (["request-delete-template", "request-cancel-workout", "request-cancel-workout-from-template", "request-cancel-history-edits", "clear-data", "toggle-skip-set"].includes(action)) return "warning";
-        if (["set-tab", "adjust-timer", "select-chart-exercise", "show-chart-point", "toggle-prescription-rationale", "open-fatigue-flag", "open-plan-volume-warning", "exercise-deload", "exercise-resistance-type", "exercise-bodyweight", "set-warmup", "timer-sound", "timer-vibration", "workout-completion-sound", "interaction-vibration", "timer-notifications"].includes(action)) return "light";
+        if (["set-tab", "adjust-timer", "select-chart-exercise", "show-chart-point", "toggle-prescription-rationale", "open-fatigue-flag", "open-plan-volume-warning", "exercise-deload", "exercise-resistance-type", "exercise-bodyweight", "set-warmup", "timer-sound", "timer-vibration", "workout-completion-sound", "interaction-vibration", "timer-notifications", "in-app-rest-alerts", "toggle-rest-notifications"].includes(action)) return "light";
         return "none";
       }
 
@@ -8563,7 +8710,7 @@
       }
 
       root.addEventListener("pointerdown", (event) => {
-        const target = event.target.closest("button, select, summary[data-action], label.toggle-line, .volume-card");
+        const target = event.target.closest("button, select, summary[data-action], label.toggle-line, .alert-setting-card, .volume-card");
         if (!target || target.hasAttribute("disabled")) return;
         const actionTarget = event.target.closest("[data-action]") || target.querySelector?.("[data-action]");
         const level = feedbackLevelForAction(actionTarget?.dataset?.action || target.dataset.action, actionTarget || target);
@@ -8599,8 +8746,18 @@
         if (action === "toggle-theme") commit({ ...data, settings: { ...data.settings, theme: data.settings.theme === "light" ? "dark" : "light" } });
         if (action === "toggle-unit") commit({ ...data, settings: { ...data.settings, weightUnit: data.settings.weightUnit === "lb" ? "kg" : "lb" } });
         if (action === "request-notifications") enablePushNotifications();
+        if (action === "toggle-rest-notifications") {
+          const alerts = restAlertState();
+          if (alerts.lockScreenReady) {
+            notificationMessage = "Lock-screen rest notifications are disabled. Foreground alert settings are unchanged.";
+            commit({ ...data, settings: { ...data.settings, timerNotifications: false } });
+          } else {
+            commit({ ...data, settings: { ...data.settings, timerNotifications: true } }, false);
+            await enablePushNotifications();
+          }
+        }
         if (action === "test-notification") sendTestPushNotification();
-        if (action === "test-timer-sound") { primeTimerAlerts(); playTimerCompletionSound(); notificationMessage = "Foreground completion sound played."; commit({ ...data, settings: { ...data.settings, setupSoundConfirmed: true } }); }
+        if (action === "test-timer-sound") { primeTimerAlerts(); playTimerCompletionSound(); notificationMessage = "Foreground completion sound confirmed. Silent Mode and browser restrictions still apply."; commit({ ...data, settings: { ...data.settings, timerSound: true, setupSoundConfirmed: true } }); }
         if (action === "dismiss-install-guide") commit({ ...data, settings: { ...data.settings, installGuideDismissed: true } });
         if (action === "apply-update") applyPwaUpdate();
         if (action === "select-chart-exercise") selectChartExercise(target.dataset.exerciseId);
@@ -8859,11 +9016,15 @@
         if (action === "theme-mode") commit({ ...data, settings: { ...data.settings, theme: target.value } });
         if (action === "training-goal") commit({ ...data, settings: { ...data.settings, goal: target.value } });
         if (action === "training-status") commit({ ...data, settings: { ...data.settings, trainingStatus: target.value } });
-        if (action === "timer-sound") commit({ ...data, settings: { ...data.settings, timerSound: target.checked } });
+        if (action === "timer-sound") commit({ ...data, settings: { ...data.settings, timerSound: target.checked, setupSoundConfirmed: target.checked ? data.settings.setupSoundConfirmed : false } });
         if (action === "workout-completion-sound") commit({ ...data, settings: { ...data.settings, workoutCompletionSound: target.checked } });
         if (action === "timer-vibration") commit({ ...data, settings: { ...data.settings, timerVibration: target.checked } });
         if (action === "interaction-vibration") commit({ ...data, settings: { ...data.settings, interactionVibration: target.checked } });
-        if (action === "timer-notifications") commit({ ...data, settings: { ...data.settings, timerNotifications: target.checked } });
+        if (action === "timer-notifications") {
+          commit({ ...data, settings: { ...data.settings, timerNotifications: target.checked } }, !target.checked);
+          if (target.checked) enablePushNotifications();
+        }
+        if (action === "in-app-rest-alerts") commit({ ...data, settings: { ...data.settings, inAppRestAlerts: target.checked } });
         if (action === "default-rest-seconds") commit({ ...data, settings: { ...data.settings, defaultRestSeconds: Math.max(15, Number(target.value || 90)) } });
         if (action === "notification-detail") commit({ ...data, settings: { ...data.settings, notificationMessageDetail: target.value } });
         if (action === "auto-start-rest") commit({ ...data, settings: { ...data.settings, autoStartRestTimer: target.checked } });
