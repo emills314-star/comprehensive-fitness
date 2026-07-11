@@ -156,6 +156,8 @@ Private raw/normalized/derived/reports data must not enter public web assets. `.
 
 Deployment configuration is inferred as Vercel from `api/`, `.vercelignore`, and docs; no `vercel.json` or CI workflow is present. Native release requires external signing/toolchains.
 
+Repository publication follows `AGENTS.md`: verified source, tests, schemas, public research exports, and documentation are committed and pushed to GitHub `main` by default. Raw/normalized/derived/reported or packaged personal evidence, app exports, local databases, credentials, and secrets remain local and must be excluded after an explicit staged-file privacy review. Ignore rules provide defense in depth but do not replace that review.
+
 ## Decisions, risks, and debt
 
 - **Decision:** Local-first static app minimizes infrastructure and account requirements.

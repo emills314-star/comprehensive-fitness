@@ -36,6 +36,14 @@ The repository owner prefers agents to proceed autonomously and complete all saf
 
 This preference does not grant permissions, disable sandboxing, or override platform safety controls. Do not claim that `AGENTS.md` enables global “approve everything,” and do not request blanket or unnecessarily broad command access. Actual approval mode must be configured by the repository owner in the Codex application or local session settings.
 
+## Publishing policy
+
+After an in-scope change is implemented, tested, documented, and cross-checked, commit the completed change and push it to the repository's GitHub `main` branch unless the owner explicitly requests a different branch, a local-only result, or no publication. Do not describe work as complete before the push succeeds. Report the pushed commit identifier in the final response.
+
+Publishing source changes must never publish personal fitness or health data. Before staging, inspect the complete Git status and exclude all raw, normalized, derived, report, packaged, backup, or locally imported personal-data artifacts, including content under `personal_fitness_data/raw/`, `personal_fitness_data/normalized/`, `personal_fitness_data/derived/`, `personal_fitness_data/reports/`, `private-personal-data/`, and `www/private-personal-data/`. Also exclude credentials, tokens, environment files, deployment secrets, app-data exports, local databases, and generated audit artifacts that may contain user data.
+
+Public pipeline code, schemas, empty templates, methodology, aggregate contracts, and non-personal configuration may be published only when they contain no actual personal records or secrets. `.gitignore` and `.vercelignore` are safeguards, not substitutes for reviewing the staged diff. Run `git status`, inspect the staged file list, and verify that no private data is included before every commit and push.
+
 Never silently resolve a code-versus-documentation conflict. Preserve these labels and distinctions:
 
 - **IMPLEMENTED:** verified current behavior.
@@ -57,6 +65,6 @@ Do not place secrets, credentials, tokens, private source exports, or raw person
 
 ## Definition of done
 
-A task is not complete until the implementation has been tested and the relevant documentation has been reviewed and updated.
+A task is not complete until the implementation has been tested, the relevant documentation has been reviewed and updated, the staged content has passed the privacy review, and the completed source changes have been pushed to GitHub under the publishing policy above.
 
 The final report must name the documentation files updated, or name each reviewed document that required no change.
