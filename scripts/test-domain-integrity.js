@@ -101,7 +101,7 @@ assert.equal(normal.interventionType, "normal");
 const modify = coachFactory([{ weekStart: "2026-07-06", failedSets: 0, averageRpe: 8, bestEstimatedOneRepMax: 100 }], { decision: "change", label: "Change variation", reason: "Stalled", action: "Substitute", evidence: [], confidence: "medium" })("Bench Press");
 assert.equal(modify.interventionType, "stop_modify");
 
-assert.match(html, /new Map\(activeHistorySessions\(\)\.map\(\(session\) => \[session\.id, session\]\)\)/, "Charts and scoring must use canonical active history");
+assert.match(html, /function completedAnalysisIndex\(\)[\s\S]*const sessions = activeHistorySessions\(\);[\s\S]*sessionById/, "Charts and scoring must use the indexed canonical active history");
 assert.match(html, /qualifyingWeekIds: analysis\.qualifyingWeekIds/, "Chart points must use the selected qualifying weeks");
 assert.match(html, /coachRecommendationForExercise\(templateExercise\.name/, "Template prescriptions must use the shared recommendation source");
 assert.match(html, /coachRecommendationForExercise\(selectedName/, "Charts must use the shared recommendation source");

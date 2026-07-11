@@ -1,0 +1,44 @@
+# Performance benchmark
+
+## Method
+
+Measurements use the development-only `?perf=1&perfFixture=large` fixture and the app's in-page `performance.now()` instrumentation. The fixture adds 180 submitted sessions, 1,440 exercise records, and 5,760 completed sets, then runs at a 375 px iPhone viewport. Browser-control transport time is excluded because it is not application latency.
+
+The fixture and timing logs are available only on `localhost` or `127.0.0.1`. Production keeps neither the synthetic data nor verbose timing output.
+
+## Results
+
+| Interaction | Before | After |
+| --- | ---: | ---: |
+| Cold Lift render with program score | 1,145.2 ms | 233.4 ms |
+| Cold active-workout restore/render | 1,145.2 ms shared path | 92.3-95.9 ms |
+| Cached return to Lift | Not cached | 5.4 ms |
+| Dashboard render | 393.0 ms | 90.3 ms cold, 11-12 ms cached |
+| Templates render | 887.3 ms | 71 ms cold, 5.4 ms cached |
+| Charts render | 2,150.6 ms | 95.5 ms after shared history warm-up |
+| Reps/load/RPE input handler | Could trigger full-workout work | 0.5-0.9 ms |
+| Complete set and start rest | 220.6 ms | 20.3 ms |
+| Adjust active timer | Full render path | 1.8 ms |
+| Full data serialization | 33.9 ms on the edit path | 34.3 ms, deferred and idle-scheduled |
+
+These values are deterministic development benchmarks, not network round-trip timings. IndexedDB and remote synchronization continue asynchronously and report failures without blocking workout entry.
+
+## Changes behind the result
+
+- Active set edits use indexed entity lookup and mutate only the relevant draft record.
+- Compact active-workout snapshots persist after a short debounce; full history persistence is batched and idle-scheduled.
+- Completed-history analysis is separated from draft state and invalidates only when completed source data changes.
+- Six-month history, weekly volume, fatigue, hypertrophy, chart, recommendation, and previous-performance queries share revision-keyed caches.
+- The latest hypertrophy window uses a lightweight qualifying-week pass and performs the expensive target-aware aggregation once.
+- Set completion and timer adjustment update the relevant DOM nodes instead of rebuilding the application shell.
+- Templates skip coaching calculations while an active workout locks their Start actions.
+- Recent History reuses the workout grade saved at submission rather than recalculating it per row.
+- The unused 2.0 MB legacy athlete image was removed from both source assets and web output.
+
+## Bundle
+
+The client remains a dependency-free single HTML application: 643,613 bytes raw, approximately 134,248 bytes with gzip and 103,891 bytes with Brotli. Chart logic is parsed with the application but is not executed on the workout path. A future module split could reduce initial parse work, but the current measured Lift bottleneck was analysis execution, not a chart-library download.
+
+## Remaining watch item
+
+The cold overall-program score is still the heaviest first-view calculation at about 233 ms for the dense fixture. It is outside active set entry and is cached after the first result. If retained histories or program breadth grow materially beyond the six-calendar-month boundary, the next useful step is chunked or worker-based score aggregation rather than broader component memoization.
