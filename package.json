@@ -15,8 +15,9 @@
     "test:domain-integrity": "node scripts/test-domain-integrity.js",
     "test:rest-warmup-targets": "node scripts/test-rest-warmup-targets.js",
     "test:performance": "node scripts/test-performance.js",
+    "test:set-prescriptions": "node scripts/test-set-prescriptions.js",
     "preview:strong-migration": "node scripts/preview-strong-migration.js",
-    "test": "node scripts/test-hypertrophy-score.js && node scripts/test-resistance-model.js && node scripts/test-workout-safety.js && node scripts/test-workout-grade.js && node scripts/test-exercise-expectations.js && node scripts/test-domain-integrity.js && node scripts/test-rest-warmup-targets.js && node scripts/test-performance.js",
+    "test": "node scripts/test-hypertrophy-score.js && node scripts/test-resistance-model.js && node scripts/test-workout-safety.js && node scripts/test-workout-grade.js && node scripts/test-exercise-expectations.js && node scripts/test-domain-integrity.js && node scripts/test-rest-warmup-targets.js && node scripts/test-performance.js && node scripts/test-set-prescriptions.js",
     "cap:init": "npx cap init \"Comprehensive Fitness\" \"com.emills.comprehensivefitness\" --web-dir www",
     "cap:add:ios": "npx cap add ios",
     "cap:add:android": "npx cap add android",
@@ -32,6 +33,7 @@
   "devDependencies": {
     "@capacitor/android": "^7.4.3",
     "@capacitor/cli": "^7.4.3",
-    "@capacitor/ios": "^7.4.3"
+    "@capacitor/ios": "^7.4.3",
+    "exceljs": "^4.4.0"
   }
 }
