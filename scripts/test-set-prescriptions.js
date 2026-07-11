@@ -34,6 +34,7 @@ const runtime = new Function(`
   function formatLoadNumber(value) { return String(Number(value)); }
   function targetRangeText(low, high) { return Number(low) === Number(high) ? String(Number(high)) : Number(low) + "-" + Number(high); }
   ${extractFunction("progressionProfileForExercise")}
+  ${extractFunction("resolveProgrammedRepRange")}
   ${extractFunction("normalizeTargetSetType")}
   ${extractFunction("setRoleDefaultsForExercise")}
   ${extractFunction("roundEquipmentLoad")}
@@ -41,7 +42,7 @@ const runtime = new Function(`
   ${extractFunction("resolvedSetTypesForPrescription")}
   ${extractFunction("setPrescriptionForRole")}
   ${extractFunction("validateGeneratedSetPrescriptions")}
-  return { progressionProfileForExercise, normalizeTargetSetType, setRoleDefaultsForExercise, roundEquipmentLoad, previousComparableSetForRole, resolvedSetTypesForPrescription, setPrescriptionForRole, validateGeneratedSetPrescriptions };
+  return { progressionProfileForExercise, resolveProgrammedRepRange, normalizeTargetSetType, setRoleDefaultsForExercise, roundEquipmentLoad, previousComparableSetForRole, resolvedSetTypesForPrescription, setPrescriptionForRole, validateGeneratedSetPrescriptions };
 `)();
 
 const legPress = runtime.progressionProfileForExercise("Leg Press");
@@ -81,6 +82,11 @@ const duplicate = runtime.validateGeneratedSetPrescriptions([
   { setType: "backoff", targetLoad: 100, repMin: 10, repMax: 15, rpeMin: 8, rpeMax: 9 }
 ], "external");
 assert.strictEqual(duplicate[1].setType, "straight", "An identical later set is a straight working set, not a back-off");
+const noBaseline = runtime.validateGeneratedSetPrescriptions([
+  { setType: "top", targetLoad: 0, repMin: 8, repMax: 12, rpeMin: 8, rpeMax: 9 },
+  { setType: "backoff", targetLoad: 0, repMin: 10, repMax: 15, rpeMin: 7, rpeMax: 8 }
+], "external");
+assert.strictEqual(noBaseline[1].validationWarning, undefined, "A missing load baseline must not create a false back-off warning");
 
 const straight = runtime.setPrescriptionForRole({ templateExercise: { name: "Leg Press", increment: 5 }, target: { ...baseTarget, reps: 10, weight: 385 }, setType: { type: "straight", repMin: 8, repMax: 12, rpeMin: 7, rpeMax: 8 }, setTypeIndex: 1, previousSets: [{ id: "straight-two", setType: "straight", setTypeIndex: 1, reps: 9, weight: 385, rpe: 8 }] });
 assert.strictEqual(straight.targetLoad, 385);

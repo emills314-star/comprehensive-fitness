@@ -15,7 +15,7 @@ assert.match(html, /if \(session\?\.workoutState === "inactive"\) return false;/
 assert.match(html, /return sessionHasStarted\(session\);/, "The active guard must include explicitly started workouts with no exercises yet");
 assert.match(html, /item\.id === activeWorkoutId \|\| item\.id === session\?\.id/, "The session picker must exclude unrelated unsubmitted drafts");
 assert.match(html, /New workout unavailable while a workout is active/, "The new-workout control must be disabled while a session is active");
-assert.match(html, /Cancel and Discard Workout/, "Cancellation must use explicit destructive wording");
+assert.match(html, />Discard Workout</, "Cancellation must use concise explicit destructive wording inside the confirmation dialog");
 assert.match(html, /function sessionCanBeDiscarded\(session\)/, "Any open legacy or canonical draft must be explicitly discardable");
 assert.match(html, /data-action="request-cancel-workout" data-session-id=/, "The cancel action must identify the visible draft instead of assuming it is canonical");
 assert.match(html, /data\.sessions\.filter\(\(item\) => item\.id !== session\.id\)/, "Cancellation must remove only the selected active session");
@@ -24,7 +24,7 @@ assert.match(html, /template-readiness-sleep-quality"\) patchTemplateStartDraft\
 assert.match(html, /if \(templateStartFlow && !data\.templates\.some/, "Invalid modal state must not leave the application inert");
 assert.match(html, /@media \(max-width: 719px\)[\s\S]{0,180}input, select, textarea \{ font-size: 16px; \}/, "Mobile form controls must prevent iOS focus zoom");
 assert.match(html, /function renderPrescriptionDetails\(exercise\)/, "Recommendation rationale must use the structured readable renderer");
-assert.match(html, /class="rationale-facts"/, "Recommendation rationale must separate confidence, range, and increment");
+assert.match(html, /class="role-progression-facts"/, "Recommendation rationale must separate role-specific confidence, range, and increment");
 assert.match(html, /class="cancel-impact"/, "Workout cancellation must explain removed and preserved data visually");
 assert.match(html, /function beginHistoryEdit\(\)/, "Logged workouts must enter an explicit edit transaction");
 assert.match(html, /originalData: cloneAppData\(data\)/, "Canceling history edits must be able to restore the original workout");
