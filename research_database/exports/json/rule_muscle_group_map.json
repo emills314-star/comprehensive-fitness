@@ -1,0 +1,232 @@
+[
+  {
+    "rule_muscle_group_map_id": "rmg_0001",
+    "rule_id": "rule_0010",
+    "muscle_group_id": "mg_chest_sternal"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0002",
+    "rule_id": "rule_0010",
+    "muscle_group_id": "mg_chest_clavicular"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0003",
+    "rule_id": "rule_0010",
+    "muscle_group_id": "mg_upper_back"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0004",
+    "rule_id": "rule_0010",
+    "muscle_group_id": "mg_lats"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0005",
+    "rule_id": "rule_0010",
+    "muscle_group_id": "mg_traps_upper"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0006",
+    "rule_id": "rule_0010",
+    "muscle_group_id": "mg_front_delts"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0007",
+    "rule_id": "rule_0010",
+    "muscle_group_id": "mg_side_delts"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0008",
+    "rule_id": "rule_0010",
+    "muscle_group_id": "mg_rear_delts"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0009",
+    "rule_id": "rule_0010",
+    "muscle_group_id": "mg_biceps"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0010",
+    "rule_id": "rule_0010",
+    "muscle_group_id": "mg_triceps"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0011",
+    "rule_id": "rule_0010",
+    "muscle_group_id": "mg_forearms"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0012",
+    "rule_id": "rule_0010",
+    "muscle_group_id": "mg_spinal_erectors"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0013",
+    "rule_id": "rule_0010",
+    "muscle_group_id": "mg_abdominals"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0014",
+    "rule_id": "rule_0010",
+    "muscle_group_id": "mg_obliques"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0015",
+    "rule_id": "rule_0010",
+    "muscle_group_id": "mg_glutes_max"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0016",
+    "rule_id": "rule_0010",
+    "muscle_group_id": "mg_quadriceps"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0017",
+    "rule_id": "rule_0010",
+    "muscle_group_id": "mg_hamstrings"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0018",
+    "rule_id": "rule_0010",
+    "muscle_group_id": "mg_adductors"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0019",
+    "rule_id": "rule_0010",
+    "muscle_group_id": "mg_abductors"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0020",
+    "rule_id": "rule_0010",
+    "muscle_group_id": "mg_calves_gastroc"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0021",
+    "rule_id": "rule_0010",
+    "muscle_group_id": "mg_calves_soleus"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0022",
+    "rule_id": "rule_0010",
+    "muscle_group_id": "mg_neck_flexors"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0023",
+    "rule_id": "rule_0010",
+    "muscle_group_id": "mg_neck_extensors"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0024",
+    "rule_id": "rule_0011",
+    "muscle_group_id": "mg_chest_sternal"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0025",
+    "rule_id": "rule_0011",
+    "muscle_group_id": "mg_chest_clavicular"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0026",
+    "rule_id": "rule_0011",
+    "muscle_group_id": "mg_upper_back"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0027",
+    "rule_id": "rule_0011",
+    "muscle_group_id": "mg_lats"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0028",
+    "rule_id": "rule_0011",
+    "muscle_group_id": "mg_traps_upper"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0029",
+    "rule_id": "rule_0011",
+    "muscle_group_id": "mg_front_delts"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0030",
+    "rule_id": "rule_0011",
+    "muscle_group_id": "mg_side_delts"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0031",
+    "rule_id": "rule_0011",
+    "muscle_group_id": "mg_rear_delts"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0032",
+    "rule_id": "rule_0011",
+    "muscle_group_id": "mg_biceps"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0033",
+    "rule_id": "rule_0011",
+    "muscle_group_id": "mg_triceps"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0034",
+    "rule_id": "rule_0011",
+    "muscle_group_id": "mg_forearms"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0035",
+    "rule_id": "rule_0011",
+    "muscle_group_id": "mg_spinal_erectors"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0036",
+    "rule_id": "rule_0011",
+    "muscle_group_id": "mg_abdominals"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0037",
+    "rule_id": "rule_0011",
+    "muscle_group_id": "mg_obliques"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0038",
+    "rule_id": "rule_0011",
+    "muscle_group_id": "mg_glutes_max"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0039",
+    "rule_id": "rule_0011",
+    "muscle_group_id": "mg_quadriceps"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0040",
+    "rule_id": "rule_0011",
+    "muscle_group_id": "mg_hamstrings"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0041",
+    "rule_id": "rule_0011",
+    "muscle_group_id": "mg_adductors"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0042",
+    "rule_id": "rule_0011",
+    "muscle_group_id": "mg_abductors"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0043",
+    "rule_id": "rule_0011",
+    "muscle_group_id": "mg_calves_gastroc"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0044",
+    "rule_id": "rule_0011",
+    "muscle_group_id": "mg_calves_soleus"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0045",
+    "rule_id": "rule_0011",
+    "muscle_group_id": "mg_neck_flexors"
+  },
+  {
+    "rule_muscle_group_map_id": "rmg_0046",
+    "rule_id": "rule_0011",
+    "muscle_group_id": "mg_neck_extensors"
+  }
+]

@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://comprehensive-fitness.local/schema/1.0.0/change_log.schema.json",
+  "title": "change_log",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "change_id",
+      "change_date",
+      "database_version",
+      "affected_tab",
+      "affected_record_ids",
+      "change_type",
+      "previous_value",
+      "new_value",
+      "reason_for_change",
+      "supporting_study_ids",
+      "reviewer_notes"
+    ],
+    "properties": {
+      "change_id": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "change_date": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+      },
+      "database_version": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "affected_tab": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "affected_record_ids": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "change_type": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "previous_value": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "new_value": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "reason_for_change": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "supporting_study_ids": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "reviewer_notes": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    }
+  }
+}

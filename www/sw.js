@@ -1,10 +1,19 @@
-const CACHE_NAME = "comprehensive-fitness-pwa-v23";
+const CACHE_NAME = "comprehensive-fitness-pwa-v25";
 const APP_SHELL = [
   "/",
   "/index.html",
   "/privacy.html",
   "/support.html",
   "/manifest.webmanifest",
+  "/prescription-engine.js",
+  "/rest-completion-controller.js",
+  "/research_database/exports/json/exercise_database.json",
+  "/research_database/exports/json/exercise_muscle_map.json",
+  "/research_database/exports/json/exercise_substitution_map.json",
+  "/research_database/exports/json/muscle_group_recommendations.json",
+  "/research_database/exports/json/progression_rules.json",
+  "/research_database/exports/json/nutrition_strategies.json",
+  "/research_database/exports/json/manifest.json",
   "/resources/icon-180.png",
   "/resources/icon-192.png",
   "/resources/icon-512.png",

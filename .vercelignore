@@ -1,0 +1,4 @@
+# Never deploy raw or derived personal health data with the public application.
+personal_fitness_data/**
+www/private-personal-data/**
+private-personal-data/**

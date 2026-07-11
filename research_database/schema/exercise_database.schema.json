@@ -1,0 +1,392 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://comprehensive-fitness.local/schema/1.0.0/exercise_database.schema.json",
+  "title": "exercise_database",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "exercise_id",
+      "exercise_name",
+      "exercise_aliases",
+      "movement_pattern",
+      "equipment",
+      "primary_muscles",
+      "secondary_muscles",
+      "stabilizing_muscles",
+      "muscle_subdivisions_emphasized",
+      "stability_demand",
+      "skill_requirement",
+      "systemic_fatigue_cost",
+      "local_fatigue_cost",
+      "joint_stress_considerations",
+      "recommended_rep_range_low",
+      "recommended_rep_range_high",
+      "acceptable_rep_range_low",
+      "acceptable_rep_range_high",
+      "recommended_sets_per_session_low",
+      "recommended_sets_per_session_high",
+      "weekly_set_contribution",
+      "recommended_rir_low",
+      "recommended_rir_high",
+      "recommended_rest_seconds_low",
+      "recommended_rest_seconds_high",
+      "preferred_progression_model",
+      "load_increase_criteria",
+      "rep_increase_criteria",
+      "set_increase_criteria",
+      "regression_criteria",
+      "deload_criteria",
+      "technique_quality_criteria",
+      "range_of_motion_criteria",
+      "primary_progression_metric",
+      "secondary_progression_metrics",
+      "normal_performance_variability",
+      "stall_definition",
+      "substitution_triggers",
+      "suggested_substitutions",
+      "top_set_backoff_suitability",
+      "recommended_load_increment",
+      "recommended_evaluation_window_sessions",
+      "cutting_adjustment",
+      "bulking_adjustment",
+      "direct_exercise_evidence",
+      "evidence_quality",
+      "confidence_rating",
+      "supporting_study_ids",
+      "notes"
+    ],
+    "properties": {
+      "exercise_id": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "exercise_name": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "exercise_aliases": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "movement_pattern": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "enum": [
+          "horizontal_push",
+          "vertical_push",
+          "horizontal_pull",
+          "vertical_pull",
+          "squat",
+          "hinge",
+          "lunge",
+          "elbow_flexion",
+          "elbow_extension",
+          "shoulder_abduction",
+          "shoulder_horizontal_abduction",
+          "knee_extension",
+          "knee_flexion",
+          "hip_extension",
+          "hip_abduction",
+          "hip_adduction",
+          "plantar_flexion",
+          "spinal_flexion",
+          "anti_extension",
+          "anti_rotation",
+          "loaded_carry",
+          "wrist_flexion",
+          "wrist_extension",
+          "neck_flexion",
+          "neck_extension",
+          "scapular_elevation",
+          null
+        ]
+      },
+      "equipment": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "primary_muscles": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "secondary_muscles": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "stabilizing_muscles": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "muscle_subdivisions_emphasized": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "stability_demand": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "skill_requirement": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "systemic_fatigue_cost": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "local_fatigue_cost": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "joint_stress_considerations": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "recommended_rep_range_low": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "recommended_rep_range_high": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "acceptable_rep_range_low": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "acceptable_rep_range_high": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "recommended_sets_per_session_low": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "recommended_sets_per_session_high": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "weekly_set_contribution": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "recommended_rir_low": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "recommended_rir_high": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "recommended_rest_seconds_low": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "recommended_rest_seconds_high": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "preferred_progression_model": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "load_increase_criteria": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "rep_increase_criteria": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "set_increase_criteria": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "regression_criteria": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "deload_criteria": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "technique_quality_criteria": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "range_of_motion_criteria": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "primary_progression_metric": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "secondary_progression_metrics": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "normal_performance_variability": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "stall_definition": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "substitution_triggers": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "suggested_substitutions": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "top_set_backoff_suitability": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "recommended_load_increment": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "recommended_evaluation_window_sessions": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "cutting_adjustment": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "bulking_adjustment": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "direct_exercise_evidence": {
+        "type": "boolean"
+      },
+      "evidence_quality": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "confidence_rating": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "enum": [
+          "very_high",
+          "high",
+          "moderate",
+          "low",
+          "very_low",
+          null
+        ]
+      },
+      "supporting_study_ids": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "notes": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    }
+  }
+}

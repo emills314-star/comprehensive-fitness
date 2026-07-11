@@ -1,0 +1,156 @@
+[
+  {
+    "summary_id": "sum_0001",
+    "topic": "hypertrophy_rep_ranges",
+    "applicable_male_population": "healthy adult natural males",
+    "practical_recommendation": "Use roughly 5-30 reps for hypertrophy when effort and technique are appropriate; default many compound lifts to 5-12 and stable isolations to 8-25.",
+    "evidence_strength": "high",
+    "confidence_rating": "high",
+    "important_exception_or_limitation": "Very light loads need closer proximity to failure; pain, cardio, grip, or balance can make a nominal range unproductive.",
+    "supporting_study_ids": "stu_0004|stu_0005|stu_0039",
+    "last_reviewed_date": "2026-07-11"
+  },
+  {
+    "summary_id": "sum_0002",
+    "topic": "weekly_volume",
+    "applicable_male_population": "resistance-trained natural males",
+    "practical_recommendation": "Start near 6-10 fractional hard sets per muscle weekly and adjust; many trained males may use 10-20, but returns diminish and muscle-specific thresholds are not established.",
+    "evidence_strength": "high",
+    "confidence_rating": "moderate",
+    "important_exception_or_limitation": "Ranges are operational and depend on effort, exercise, indirect work, session distribution, calories, sleep, and individual response.",
+    "supporting_study_ids": "stu_0001|stu_0002|stu_0025",
+    "last_reviewed_date": "2026-07-11"
+  },
+  {
+    "summary_id": "sum_0003",
+    "topic": "frequency",
+    "applicable_male_population": "healthy adult natural males",
+    "practical_recommendation": "Choose 1-3 weekly exposures per muscle to distribute volume; twice weekly is a convenient default, not a hypertrophy requirement.",
+    "evidence_strength": "high",
+    "confidence_rating": "high",
+    "important_exception_or_limitation": "Very high per-session volume may justify higher frequency; low-volume programs can work at once weekly.",
+    "supporting_study_ids": "stu_0001|stu_0003",
+    "last_reviewed_date": "2026-07-11"
+  },
+  {
+    "summary_id": "sum_0004",
+    "topic": "proximity_to_failure",
+    "applicable_male_population": "healthy adult natural males",
+    "practical_recommendation": "Keep most productive sets around 0-4 RIR, generally closer for light-load/high-rep work and farther for high-skill compounds.",
+    "evidence_strength": "moderate",
+    "confidence_rating": "moderate",
+    "important_exception_or_limitation": "RIR reporting is imprecise and failure is not required; the exact optimal RIR is unresolved.",
+    "supporting_study_ids": "stu_0005|stu_0006|stu_0030",
+    "last_reviewed_date": "2026-07-11"
+  },
+  {
+    "summary_id": "sum_0005",
+    "topic": "rest_intervals",
+    "applicable_male_population": "healthy adult natural males",
+    "practical_recommendation": "Rest long enough to preserve output: often 2-5 minutes for demanding compounds and 1-3 minutes for stable isolations.",
+    "evidence_strength": "moderate",
+    "confidence_rating": "moderate",
+    "important_exception_or_limitation": "Hypertrophy differences beyond about 90 seconds are small and uncertain; time constraints and supersets change the tradeoff.",
+    "supporting_study_ids": "stu_0007|stu_0026|stu_0038",
+    "last_reviewed_date": "2026-07-11"
+  },
+  {
+    "summary_id": "sum_0006",
+    "topic": "progression",
+    "applicable_male_population": "healthy adult natural males",
+    "practical_recommendation": "Count load, reps, lower RPE/higher RIR, better ROM, and better execution as progression only under comparable conditions and multi-session confirmation.",
+    "evidence_strength": "low",
+    "confidence_rating": "moderate",
+    "important_exception_or_limitation": "Deterministic thresholds are operational inferences; no universal plateau or regression cut point is validated.",
+    "supporting_study_ids": "stu_0029|stu_0030|stu_0031",
+    "last_reviewed_date": "2026-07-11"
+  },
+  {
+    "summary_id": "sum_0007",
+    "topic": "exercise_selection",
+    "applicable_male_population": "healthy adult natural males",
+    "practical_recommendation": "Choose machines or free weights by target-muscle loading, comfort, skill, stability, and progression resolution; neither is inherently superior for hypertrophy.",
+    "evidence_strength": "high",
+    "confidence_rating": "high",
+    "important_exception_or_limitation": "Strength transfer remains modality- and task-specific.",
+    "supporting_study_ids": "stu_0009|stu_0010",
+    "last_reviewed_date": "2026-07-11"
+  },
+  {
+    "summary_id": "sum_0008",
+    "topic": "range_of_motion",
+    "applicable_male_population": "healthy adult natural males",
+    "practical_recommendation": "Use the largest pain-free controlled ROM and include long-muscle-length loading where practical.",
+    "evidence_strength": "moderate",
+    "confidence_rating": "moderate",
+    "important_exception_or_limitation": "Long-length advantages are small/heterogeneous and muscle-specific; shortened partials can still be useful.",
+    "supporting_study_ids": "stu_0011|stu_0012|stu_0013",
+    "last_reviewed_date": "2026-07-11"
+  },
+  {
+    "summary_id": "sum_0009",
+    "topic": "protein",
+    "applicable_male_population": "healthy adult natural males",
+    "practical_recommendation": "Target about 1.6-2.2 g/kg/day; in lean deficits consider about 1.8-2.4 g/kg body weight or 2.3-3.1 g/kg fat-free mass.",
+    "evidence_strength": "high",
+    "confidence_rating": "high",
+    "important_exception_or_limitation": "Higher intake is not automatically better and medical protein restrictions require clinician guidance.",
+    "supporting_study_ids": "stu_0016|stu_0017|stu_0018",
+    "last_reviewed_date": "2026-07-11"
+  },
+  {
+    "summary_id": "sum_0010",
+    "topic": "dieting",
+    "applicable_male_population": "natural males performing resistance training",
+    "practical_recommendation": "Use a moderate deficit and slower loss when leaner or more advanced; preserve load exposure and reduce only low-value volume when recovery deteriorates.",
+    "evidence_strength": "high",
+    "confidence_rating": "moderate",
+    "important_exception_or_limitation": "The approximately 500 kcal/day inflection is an average meta-regression estimate, not a universal safe limit.",
+    "supporting_study_ids": "stu_0019|stu_0020|stu_0021",
+    "last_reviewed_date": "2026-07-11"
+  },
+  {
+    "summary_id": "sum_0011",
+    "topic": "recomposition",
+    "applicable_male_population": "natural adult males",
+    "practical_recommendation": "Recomposition is most plausible in untrained, detrained, novice, higher-body-fat, or previously under-proteined males; advanced lean males should expect little.",
+    "evidence_strength": "low",
+    "confidence_rating": "moderate",
+    "important_exception_or_limitation": "Short-term DXA lean-mass changes include water/glycogen and do not equal contractile tissue.",
+    "supporting_study_ids": "stu_0021|stu_0023",
+    "last_reviewed_date": "2026-07-11"
+  },
+  {
+    "summary_id": "sum_0012",
+    "topic": "bulking",
+    "applicable_male_population": "natural adult males",
+    "practical_recommendation": "Use the smallest surplus that supports a credible gain trend: roughly 0.25-0.5% body weight/week for novices, 0.15-0.3% for intermediates, and 0.1-0.25% for advanced males.",
+    "evidence_strength": "low",
+    "confidence_rating": "low",
+    "important_exception_or_limitation": "These are practical review-based rates; trials do not establish an optimal surplus or universal muscle-to-fat ratio.",
+    "supporting_study_ids": "stu_0022|stu_0036",
+    "last_reviewed_date": "2026-07-11"
+  },
+  {
+    "summary_id": "sum_0013",
+    "topic": "maintenance",
+    "applicable_male_population": "previously trained natural males",
+    "practical_recommendation": "A large volume reduction can often maintain muscle if meaningful load/effort exposure remains; start around 25-50% of recent productive volume and monitor.",
+    "evidence_strength": "low",
+    "confidence_rating": "low",
+    "important_exception_or_limitation": "Direct evidence in currently trained young males and during calorie restriction is sparse.",
+    "supporting_study_ids": "stu_0027|stu_0028",
+    "last_reviewed_date": "2026-07-11"
+  },
+  {
+    "summary_id": "sum_0014",
+    "topic": "advanced_methods",
+    "applicable_male_population": "recreationally trained natural males",
+    "practical_recommendation": "Use drop sets, rest-pause, and similar methods mainly for time efficiency or preference, not because they are proven superior.",
+    "evidence_strength": "moderate",
+    "confidence_rating": "moderate",
+    "important_exception_or_limitation": "Method-specific evidence varies and fatigue can change set comparability.",
+    "supporting_study_ids": "stu_0014",
+    "last_reviewed_date": "2026-07-11"
+  }
+]

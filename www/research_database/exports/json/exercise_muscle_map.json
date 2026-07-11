@@ -1,0 +1,1199 @@
+[
+  {
+    "exercise_muscle_map_id": "emm_0001",
+    "exercise_id": "ex_barbell_bench_press",
+    "muscle_group_id": "mg_chest_sternal",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0002",
+    "exercise_id": "ex_barbell_bench_press",
+    "muscle_group_id": "mg_triceps",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0003",
+    "exercise_id": "ex_barbell_bench_press",
+    "muscle_group_id": "mg_front_delts",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0004",
+    "exercise_id": "ex_dumbbell_bench_press",
+    "muscle_group_id": "mg_chest_sternal",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0005",
+    "exercise_id": "ex_dumbbell_bench_press",
+    "muscle_group_id": "mg_triceps",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0006",
+    "exercise_id": "ex_dumbbell_bench_press",
+    "muscle_group_id": "mg_front_delts",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0007",
+    "exercise_id": "ex_incline_dumbbell_press",
+    "muscle_group_id": "mg_chest_clavicular",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0008",
+    "exercise_id": "ex_incline_dumbbell_press",
+    "muscle_group_id": "mg_triceps",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0009",
+    "exercise_id": "ex_incline_dumbbell_press",
+    "muscle_group_id": "mg_front_delts",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0010",
+    "exercise_id": "ex_machine_chest_press",
+    "muscle_group_id": "mg_chest_sternal",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0011",
+    "exercise_id": "ex_machine_chest_press",
+    "muscle_group_id": "mg_triceps",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0012",
+    "exercise_id": "ex_machine_chest_press",
+    "muscle_group_id": "mg_front_delts",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0013",
+    "exercise_id": "ex_incline_machine_press",
+    "muscle_group_id": "mg_chest_clavicular",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0014",
+    "exercise_id": "ex_incline_machine_press",
+    "muscle_group_id": "mg_triceps",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0015",
+    "exercise_id": "ex_incline_machine_press",
+    "muscle_group_id": "mg_front_delts",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0016",
+    "exercise_id": "ex_cable_fly",
+    "muscle_group_id": "mg_chest_sternal",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0017",
+    "exercise_id": "ex_low_to_high_cable_fly",
+    "muscle_group_id": "mg_chest_clavicular",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0018",
+    "exercise_id": "ex_low_to_high_cable_fly",
+    "muscle_group_id": "mg_front_delts",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0019",
+    "exercise_id": "ex_overhead_press",
+    "muscle_group_id": "mg_front_delts",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0020",
+    "exercise_id": "ex_overhead_press",
+    "muscle_group_id": "mg_triceps",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0021",
+    "exercise_id": "ex_overhead_press",
+    "muscle_group_id": "mg_traps_upper",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0022",
+    "exercise_id": "ex_machine_shoulder_press",
+    "muscle_group_id": "mg_front_delts",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0023",
+    "exercise_id": "ex_machine_shoulder_press",
+    "muscle_group_id": "mg_triceps",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0024",
+    "exercise_id": "ex_cable_lateral_raise",
+    "muscle_group_id": "mg_side_delts",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0025",
+    "exercise_id": "ex_dumbbell_lateral_raise",
+    "muscle_group_id": "mg_side_delts",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0026",
+    "exercise_id": "ex_machine_lateral_raise",
+    "muscle_group_id": "mg_side_delts",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0027",
+    "exercise_id": "ex_pull_up",
+    "muscle_group_id": "mg_lats",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0028",
+    "exercise_id": "ex_pull_up",
+    "muscle_group_id": "mg_biceps",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0029",
+    "exercise_id": "ex_pull_up",
+    "muscle_group_id": "mg_upper_back",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0030",
+    "exercise_id": "ex_chin_up",
+    "muscle_group_id": "mg_lats",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0031",
+    "exercise_id": "ex_chin_up",
+    "muscle_group_id": "mg_biceps",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0032",
+    "exercise_id": "ex_chin_up",
+    "muscle_group_id": "mg_upper_back",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0033",
+    "exercise_id": "ex_lat_pulldown",
+    "muscle_group_id": "mg_lats",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0034",
+    "exercise_id": "ex_lat_pulldown",
+    "muscle_group_id": "mg_biceps",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0035",
+    "exercise_id": "ex_lat_pulldown",
+    "muscle_group_id": "mg_upper_back",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0036",
+    "exercise_id": "ex_one_arm_cable_pulldown",
+    "muscle_group_id": "mg_lats",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0037",
+    "exercise_id": "ex_one_arm_cable_pulldown",
+    "muscle_group_id": "mg_biceps",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0038",
+    "exercise_id": "ex_chest_supported_row",
+    "muscle_group_id": "mg_upper_back",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0039",
+    "exercise_id": "ex_chest_supported_row",
+    "muscle_group_id": "mg_lats",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0040",
+    "exercise_id": "ex_chest_supported_row",
+    "muscle_group_id": "mg_biceps",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0041",
+    "exercise_id": "ex_chest_supported_row",
+    "muscle_group_id": "mg_rear_delts",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0042",
+    "exercise_id": "ex_seated_cable_row",
+    "muscle_group_id": "mg_upper_back",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0043",
+    "exercise_id": "ex_seated_cable_row",
+    "muscle_group_id": "mg_lats",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0044",
+    "exercise_id": "ex_seated_cable_row",
+    "muscle_group_id": "mg_biceps",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0045",
+    "exercise_id": "ex_seated_cable_row",
+    "muscle_group_id": "mg_rear_delts",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0046",
+    "exercise_id": "ex_dumbbell_row",
+    "muscle_group_id": "mg_lats",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0047",
+    "exercise_id": "ex_dumbbell_row",
+    "muscle_group_id": "mg_upper_back",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0048",
+    "exercise_id": "ex_dumbbell_row",
+    "muscle_group_id": "mg_biceps",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0049",
+    "exercise_id": "ex_dumbbell_row",
+    "muscle_group_id": "mg_rear_delts",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0050",
+    "exercise_id": "ex_reverse_pec_deck",
+    "muscle_group_id": "mg_rear_delts",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0051",
+    "exercise_id": "ex_reverse_pec_deck",
+    "muscle_group_id": "mg_upper_back",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0052",
+    "exercise_id": "ex_cable_rear_delt_fly",
+    "muscle_group_id": "mg_rear_delts",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0053",
+    "exercise_id": "ex_cable_rear_delt_fly",
+    "muscle_group_id": "mg_upper_back",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0054",
+    "exercise_id": "ex_barbell_shrug",
+    "muscle_group_id": "mg_traps_upper",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0055",
+    "exercise_id": "ex_barbell_shrug",
+    "muscle_group_id": "mg_forearms",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0056",
+    "exercise_id": "ex_dumbbell_shrug",
+    "muscle_group_id": "mg_traps_upper",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0057",
+    "exercise_id": "ex_dumbbell_shrug",
+    "muscle_group_id": "mg_forearms",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0058",
+    "exercise_id": "ex_back_squat",
+    "muscle_group_id": "mg_quadriceps",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0059",
+    "exercise_id": "ex_back_squat",
+    "muscle_group_id": "mg_glutes_max",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0060",
+    "exercise_id": "ex_back_squat",
+    "muscle_group_id": "mg_spinal_erectors",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0061",
+    "exercise_id": "ex_back_squat",
+    "muscle_group_id": "mg_adductors",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0062",
+    "exercise_id": "ex_front_squat",
+    "muscle_group_id": "mg_quadriceps",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0063",
+    "exercise_id": "ex_front_squat",
+    "muscle_group_id": "mg_glutes_max",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0064",
+    "exercise_id": "ex_front_squat",
+    "muscle_group_id": "mg_spinal_erectors",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0065",
+    "exercise_id": "ex_leg_press",
+    "muscle_group_id": "mg_quadriceps",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0066",
+    "exercise_id": "ex_leg_press",
+    "muscle_group_id": "mg_glutes_max",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0067",
+    "exercise_id": "ex_leg_press",
+    "muscle_group_id": "mg_adductors",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0068",
+    "exercise_id": "ex_hack_squat",
+    "muscle_group_id": "mg_quadriceps",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0069",
+    "exercise_id": "ex_hack_squat",
+    "muscle_group_id": "mg_glutes_max",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0070",
+    "exercise_id": "ex_hack_squat",
+    "muscle_group_id": "mg_adductors",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0071",
+    "exercise_id": "ex_bulgarian_split_squat",
+    "muscle_group_id": "mg_quadriceps",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0072",
+    "exercise_id": "ex_bulgarian_split_squat",
+    "muscle_group_id": "mg_glutes_max",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0073",
+    "exercise_id": "ex_bulgarian_split_squat",
+    "muscle_group_id": "mg_adductors",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0074",
+    "exercise_id": "ex_leg_extension",
+    "muscle_group_id": "mg_quadriceps",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0075",
+    "exercise_id": "ex_deadlift",
+    "muscle_group_id": "mg_spinal_erectors",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0076",
+    "exercise_id": "ex_deadlift",
+    "muscle_group_id": "mg_glutes_max",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0077",
+    "exercise_id": "ex_deadlift",
+    "muscle_group_id": "mg_hamstrings",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0078",
+    "exercise_id": "ex_deadlift",
+    "muscle_group_id": "mg_traps_upper",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0079",
+    "exercise_id": "ex_deadlift",
+    "muscle_group_id": "mg_forearms",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0080",
+    "exercise_id": "ex_romanian_deadlift",
+    "muscle_group_id": "mg_hamstrings",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0081",
+    "exercise_id": "ex_romanian_deadlift",
+    "muscle_group_id": "mg_glutes_max",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0082",
+    "exercise_id": "ex_romanian_deadlift",
+    "muscle_group_id": "mg_spinal_erectors",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0083",
+    "exercise_id": "ex_romanian_deadlift",
+    "muscle_group_id": "mg_forearms",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0084",
+    "exercise_id": "ex_good_morning",
+    "muscle_group_id": "mg_spinal_erectors",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0085",
+    "exercise_id": "ex_good_morning",
+    "muscle_group_id": "mg_hamstrings",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0086",
+    "exercise_id": "ex_good_morning",
+    "muscle_group_id": "mg_glutes_max",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0087",
+    "exercise_id": "ex_hip_thrust",
+    "muscle_group_id": "mg_glutes_max",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0088",
+    "exercise_id": "ex_hip_thrust",
+    "muscle_group_id": "mg_hamstrings",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0089",
+    "exercise_id": "ex_back_extension",
+    "muscle_group_id": "mg_spinal_erectors",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0090",
+    "exercise_id": "ex_back_extension",
+    "muscle_group_id": "mg_glutes_max",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0091",
+    "exercise_id": "ex_back_extension",
+    "muscle_group_id": "mg_hamstrings",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0092",
+    "exercise_id": "ex_seated_leg_curl",
+    "muscle_group_id": "mg_hamstrings",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0093",
+    "exercise_id": "ex_lying_leg_curl",
+    "muscle_group_id": "mg_hamstrings",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0094",
+    "exercise_id": "ex_nordic_curl",
+    "muscle_group_id": "mg_hamstrings",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0095",
+    "exercise_id": "ex_nordic_curl",
+    "muscle_group_id": "mg_calves_gastroc",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0096",
+    "exercise_id": "ex_hip_adduction_machine",
+    "muscle_group_id": "mg_adductors",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0097",
+    "exercise_id": "ex_hip_abduction_machine",
+    "muscle_group_id": "mg_abductors",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0098",
+    "exercise_id": "ex_cable_hip_abduction",
+    "muscle_group_id": "mg_abductors",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0099",
+    "exercise_id": "ex_standing_calf_raise",
+    "muscle_group_id": "mg_calves_gastroc",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0100",
+    "exercise_id": "ex_standing_calf_raise",
+    "muscle_group_id": "mg_calves_soleus",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0101",
+    "exercise_id": "ex_seated_calf_raise",
+    "muscle_group_id": "mg_calves_soleus",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0102",
+    "exercise_id": "ex_seated_calf_raise",
+    "muscle_group_id": "mg_calves_gastroc",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0103",
+    "exercise_id": "ex_leg_press_calf_raise",
+    "muscle_group_id": "mg_calves_gastroc",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0104",
+    "exercise_id": "ex_leg_press_calf_raise",
+    "muscle_group_id": "mg_calves_soleus",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0105",
+    "exercise_id": "ex_incline_dumbbell_curl",
+    "muscle_group_id": "mg_biceps",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0106",
+    "exercise_id": "ex_incline_dumbbell_curl",
+    "muscle_group_id": "mg_forearms",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0107",
+    "exercise_id": "ex_preacher_curl",
+    "muscle_group_id": "mg_biceps",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0108",
+    "exercise_id": "ex_preacher_curl",
+    "muscle_group_id": "mg_forearms",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0109",
+    "exercise_id": "ex_cable_curl",
+    "muscle_group_id": "mg_biceps",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0110",
+    "exercise_id": "ex_cable_curl",
+    "muscle_group_id": "mg_forearms",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0111",
+    "exercise_id": "ex_hammer_curl",
+    "muscle_group_id": "mg_biceps",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0112",
+    "exercise_id": "ex_hammer_curl",
+    "muscle_group_id": "mg_forearms",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0113",
+    "exercise_id": "ex_cable_pushdown",
+    "muscle_group_id": "mg_triceps",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0114",
+    "exercise_id": "ex_overhead_cable_extension",
+    "muscle_group_id": "mg_triceps",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0115",
+    "exercise_id": "ex_close_grip_bench_press",
+    "muscle_group_id": "mg_triceps",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0116",
+    "exercise_id": "ex_close_grip_bench_press",
+    "muscle_group_id": "mg_chest_sternal",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0117",
+    "exercise_id": "ex_close_grip_bench_press",
+    "muscle_group_id": "mg_front_delts",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0118",
+    "exercise_id": "ex_wrist_curl",
+    "muscle_group_id": "mg_forearms",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0119",
+    "exercise_id": "ex_reverse_wrist_curl",
+    "muscle_group_id": "mg_forearms",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0120",
+    "exercise_id": "ex_farmers_carry",
+    "muscle_group_id": "mg_forearms",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0121",
+    "exercise_id": "ex_farmers_carry",
+    "muscle_group_id": "mg_traps_upper",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0122",
+    "exercise_id": "ex_farmers_carry",
+    "muscle_group_id": "mg_obliques",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0123",
+    "exercise_id": "ex_cable_crunch",
+    "muscle_group_id": "mg_abdominals",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0124",
+    "exercise_id": "ex_hanging_leg_raise",
+    "muscle_group_id": "mg_abdominals",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0125",
+    "exercise_id": "ex_hanging_leg_raise",
+    "muscle_group_id": "mg_forearms",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0126",
+    "exercise_id": "ex_ab_wheel",
+    "muscle_group_id": "mg_abdominals",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0127",
+    "exercise_id": "ex_ab_wheel",
+    "muscle_group_id": "mg_lats",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0128",
+    "exercise_id": "ex_pallof_press",
+    "muscle_group_id": "mg_obliques",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0129",
+    "exercise_id": "ex_pallof_press",
+    "muscle_group_id": "mg_abdominals",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0130",
+    "exercise_id": "ex_side_plank",
+    "muscle_group_id": "mg_obliques",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0131",
+    "exercise_id": "ex_side_plank",
+    "muscle_group_id": "mg_abductors",
+    "relationship_type": "secondary",
+    "fractional_set_credit": 0.5,
+    "evidence_basis": "operational_default_not_validated_constant",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0132",
+    "exercise_id": "ex_neck_flexion",
+    "muscle_group_id": "mg_neck_flexors",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0133",
+    "exercise_id": "ex_neck_extension",
+    "muscle_group_id": "mg_neck_extensors",
+    "relationship_type": "primary",
+    "fractional_set_credit": 1,
+    "evidence_basis": "movement_pattern_and_anatomical_inference",
+    "confidence_rating": "moderate"
+  }
+]

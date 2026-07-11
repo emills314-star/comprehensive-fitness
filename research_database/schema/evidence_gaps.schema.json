@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://comprehensive-fitness.local/schema/1.0.0/evidence_gaps.schema.json",
+  "title": "evidence_gaps",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "evidence_gap_id",
+      "topic",
+      "research_question",
+      "male_population",
+      "current_best_interpretation",
+      "reason_for_uncertainty",
+      "conflicting_positions",
+      "supporting_study_ids",
+      "conflicting_study_ids",
+      "practical_default",
+      "risk_of_wrong_application",
+      "research_priority",
+      "last_reviewed_date"
+    ],
+    "properties": {
+      "evidence_gap_id": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "topic": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "research_question": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "male_population": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "current_best_interpretation": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "reason_for_uncertainty": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "conflicting_positions": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "supporting_study_ids": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "conflicting_study_ids": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "practical_default": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "risk_of_wrong_application": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "research_priority": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "last_reviewed_date": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+      }
+    }
+  }
+}

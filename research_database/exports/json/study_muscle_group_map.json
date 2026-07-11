@@ -1,0 +1,416 @@
+[
+  {
+    "study_muscle_group_map_id": "smg_0001",
+    "study_id": "stu_0001",
+    "muscle_group_id": "mg_chest_sternal",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0002",
+    "study_id": "stu_0002",
+    "muscle_group_id": "mg_chest_sternal",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0003",
+    "study_id": "stu_0025",
+    "muscle_group_id": "mg_chest_sternal",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0004",
+    "study_id": "stu_0001",
+    "muscle_group_id": "mg_chest_clavicular",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0005",
+    "study_id": "stu_0002",
+    "muscle_group_id": "mg_chest_clavicular",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0006",
+    "study_id": "stu_0025",
+    "muscle_group_id": "mg_chest_clavicular",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0007",
+    "study_id": "stu_0001",
+    "muscle_group_id": "mg_upper_back",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0008",
+    "study_id": "stu_0002",
+    "muscle_group_id": "mg_upper_back",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0009",
+    "study_id": "stu_0025",
+    "muscle_group_id": "mg_upper_back",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0010",
+    "study_id": "stu_0001",
+    "muscle_group_id": "mg_lats",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0011",
+    "study_id": "stu_0002",
+    "muscle_group_id": "mg_lats",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0012",
+    "study_id": "stu_0025",
+    "muscle_group_id": "mg_lats",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0013",
+    "study_id": "stu_0001",
+    "muscle_group_id": "mg_traps_upper",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0014",
+    "study_id": "stu_0002",
+    "muscle_group_id": "mg_traps_upper",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0015",
+    "study_id": "stu_0025",
+    "muscle_group_id": "mg_traps_upper",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0016",
+    "study_id": "stu_0001",
+    "muscle_group_id": "mg_front_delts",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0017",
+    "study_id": "stu_0002",
+    "muscle_group_id": "mg_front_delts",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0018",
+    "study_id": "stu_0025",
+    "muscle_group_id": "mg_front_delts",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0019",
+    "study_id": "stu_0001",
+    "muscle_group_id": "mg_side_delts",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0020",
+    "study_id": "stu_0002",
+    "muscle_group_id": "mg_side_delts",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0021",
+    "study_id": "stu_0025",
+    "muscle_group_id": "mg_side_delts",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0022",
+    "study_id": "stu_0001",
+    "muscle_group_id": "mg_rear_delts",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0023",
+    "study_id": "stu_0002",
+    "muscle_group_id": "mg_rear_delts",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0024",
+    "study_id": "stu_0025",
+    "muscle_group_id": "mg_rear_delts",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0025",
+    "study_id": "stu_0001",
+    "muscle_group_id": "mg_biceps",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0026",
+    "study_id": "stu_0002",
+    "muscle_group_id": "mg_biceps",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0027",
+    "study_id": "stu_0025",
+    "muscle_group_id": "mg_biceps",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0028",
+    "study_id": "stu_0001",
+    "muscle_group_id": "mg_triceps",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0029",
+    "study_id": "stu_0002",
+    "muscle_group_id": "mg_triceps",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0030",
+    "study_id": "stu_0025",
+    "muscle_group_id": "mg_triceps",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0031",
+    "study_id": "stu_0001",
+    "muscle_group_id": "mg_forearms",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0032",
+    "study_id": "stu_0002",
+    "muscle_group_id": "mg_forearms",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0033",
+    "study_id": "stu_0025",
+    "muscle_group_id": "mg_forearms",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0034",
+    "study_id": "stu_0001",
+    "muscle_group_id": "mg_spinal_erectors",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0035",
+    "study_id": "stu_0002",
+    "muscle_group_id": "mg_spinal_erectors",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0036",
+    "study_id": "stu_0025",
+    "muscle_group_id": "mg_spinal_erectors",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0037",
+    "study_id": "stu_0001",
+    "muscle_group_id": "mg_abdominals",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0038",
+    "study_id": "stu_0002",
+    "muscle_group_id": "mg_abdominals",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0039",
+    "study_id": "stu_0025",
+    "muscle_group_id": "mg_abdominals",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0040",
+    "study_id": "stu_0001",
+    "muscle_group_id": "mg_obliques",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0041",
+    "study_id": "stu_0002",
+    "muscle_group_id": "mg_obliques",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0042",
+    "study_id": "stu_0025",
+    "muscle_group_id": "mg_obliques",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0043",
+    "study_id": "stu_0001",
+    "muscle_group_id": "mg_glutes_max",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0044",
+    "study_id": "stu_0002",
+    "muscle_group_id": "mg_glutes_max",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0045",
+    "study_id": "stu_0025",
+    "muscle_group_id": "mg_glutes_max",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0046",
+    "study_id": "stu_0001",
+    "muscle_group_id": "mg_quadriceps",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0047",
+    "study_id": "stu_0002",
+    "muscle_group_id": "mg_quadriceps",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0048",
+    "study_id": "stu_0025",
+    "muscle_group_id": "mg_quadriceps",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0049",
+    "study_id": "stu_0001",
+    "muscle_group_id": "mg_hamstrings",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0050",
+    "study_id": "stu_0002",
+    "muscle_group_id": "mg_hamstrings",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0051",
+    "study_id": "stu_0025",
+    "muscle_group_id": "mg_hamstrings",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0052",
+    "study_id": "stu_0001",
+    "muscle_group_id": "mg_adductors",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0053",
+    "study_id": "stu_0002",
+    "muscle_group_id": "mg_adductors",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0054",
+    "study_id": "stu_0025",
+    "muscle_group_id": "mg_adductors",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0055",
+    "study_id": "stu_0001",
+    "muscle_group_id": "mg_abductors",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0056",
+    "study_id": "stu_0002",
+    "muscle_group_id": "mg_abductors",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0057",
+    "study_id": "stu_0025",
+    "muscle_group_id": "mg_abductors",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0058",
+    "study_id": "stu_0001",
+    "muscle_group_id": "mg_calves_gastroc",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0059",
+    "study_id": "stu_0002",
+    "muscle_group_id": "mg_calves_gastroc",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0060",
+    "study_id": "stu_0025",
+    "muscle_group_id": "mg_calves_gastroc",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0061",
+    "study_id": "stu_0001",
+    "muscle_group_id": "mg_calves_soleus",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0062",
+    "study_id": "stu_0002",
+    "muscle_group_id": "mg_calves_soleus",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0063",
+    "study_id": "stu_0025",
+    "muscle_group_id": "mg_calves_soleus",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0064",
+    "study_id": "stu_0001",
+    "muscle_group_id": "mg_neck_flexors",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0065",
+    "study_id": "stu_0002",
+    "muscle_group_id": "mg_neck_flexors",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0066",
+    "study_id": "stu_0025",
+    "muscle_group_id": "mg_neck_flexors",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0067",
+    "study_id": "stu_0001",
+    "muscle_group_id": "mg_neck_extensors",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0068",
+    "study_id": "stu_0002",
+    "muscle_group_id": "mg_neck_extensors",
+    "relationship_type": "general_volume_inference"
+  },
+  {
+    "study_muscle_group_map_id": "smg_0069",
+    "study_id": "stu_0025",
+    "muscle_group_id": "mg_neck_extensors",
+    "relationship_type": "general_volume_inference"
+  }
+]

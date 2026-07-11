@@ -1,0 +1,2882 @@
+[
+  {
+    "exercise_progression_metric_map_id": "epm_00001",
+    "exercise_id": "ex_barbell_bench_press",
+    "metric": "estimated_1rm_with_technique_gate",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00002",
+    "exercise_id": "ex_barbell_bench_press",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00003",
+    "exercise_id": "ex_barbell_bench_press",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00004",
+    "exercise_id": "ex_barbell_bench_press",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00005",
+    "exercise_id": "ex_barbell_bench_press",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00006",
+    "exercise_id": "ex_barbell_bench_press",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00007",
+    "exercise_id": "ex_dumbbell_bench_press",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00008",
+    "exercise_id": "ex_dumbbell_bench_press",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00009",
+    "exercise_id": "ex_dumbbell_bench_press",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00010",
+    "exercise_id": "ex_dumbbell_bench_press",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00011",
+    "exercise_id": "ex_dumbbell_bench_press",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00012",
+    "exercise_id": "ex_dumbbell_bench_press",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00013",
+    "exercise_id": "ex_incline_dumbbell_press",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00014",
+    "exercise_id": "ex_incline_dumbbell_press",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00015",
+    "exercise_id": "ex_incline_dumbbell_press",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00016",
+    "exercise_id": "ex_incline_dumbbell_press",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00017",
+    "exercise_id": "ex_incline_dumbbell_press",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00018",
+    "exercise_id": "ex_incline_dumbbell_press",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00019",
+    "exercise_id": "ex_machine_chest_press",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00020",
+    "exercise_id": "ex_machine_chest_press",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00021",
+    "exercise_id": "ex_machine_chest_press",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00022",
+    "exercise_id": "ex_machine_chest_press",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00023",
+    "exercise_id": "ex_machine_chest_press",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00024",
+    "exercise_id": "ex_machine_chest_press",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00025",
+    "exercise_id": "ex_incline_machine_press",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00026",
+    "exercise_id": "ex_incline_machine_press",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00027",
+    "exercise_id": "ex_incline_machine_press",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00028",
+    "exercise_id": "ex_incline_machine_press",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00029",
+    "exercise_id": "ex_incline_machine_press",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00030",
+    "exercise_id": "ex_incline_machine_press",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00031",
+    "exercise_id": "ex_cable_fly",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00032",
+    "exercise_id": "ex_cable_fly",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00033",
+    "exercise_id": "ex_cable_fly",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00034",
+    "exercise_id": "ex_cable_fly",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00035",
+    "exercise_id": "ex_cable_fly",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00036",
+    "exercise_id": "ex_cable_fly",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00037",
+    "exercise_id": "ex_low_to_high_cable_fly",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00038",
+    "exercise_id": "ex_low_to_high_cable_fly",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00039",
+    "exercise_id": "ex_low_to_high_cable_fly",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00040",
+    "exercise_id": "ex_low_to_high_cable_fly",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00041",
+    "exercise_id": "ex_low_to_high_cable_fly",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00042",
+    "exercise_id": "ex_low_to_high_cable_fly",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00043",
+    "exercise_id": "ex_overhead_press",
+    "metric": "estimated_1rm_with_technique_gate",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00044",
+    "exercise_id": "ex_overhead_press",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00045",
+    "exercise_id": "ex_overhead_press",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00046",
+    "exercise_id": "ex_overhead_press",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00047",
+    "exercise_id": "ex_overhead_press",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00048",
+    "exercise_id": "ex_overhead_press",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00049",
+    "exercise_id": "ex_machine_shoulder_press",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00050",
+    "exercise_id": "ex_machine_shoulder_press",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00051",
+    "exercise_id": "ex_machine_shoulder_press",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00052",
+    "exercise_id": "ex_machine_shoulder_press",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00053",
+    "exercise_id": "ex_machine_shoulder_press",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00054",
+    "exercise_id": "ex_machine_shoulder_press",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00055",
+    "exercise_id": "ex_cable_lateral_raise",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00056",
+    "exercise_id": "ex_cable_lateral_raise",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00057",
+    "exercise_id": "ex_cable_lateral_raise",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00058",
+    "exercise_id": "ex_cable_lateral_raise",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00059",
+    "exercise_id": "ex_cable_lateral_raise",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00060",
+    "exercise_id": "ex_cable_lateral_raise",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00061",
+    "exercise_id": "ex_dumbbell_lateral_raise",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00062",
+    "exercise_id": "ex_dumbbell_lateral_raise",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00063",
+    "exercise_id": "ex_dumbbell_lateral_raise",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00064",
+    "exercise_id": "ex_dumbbell_lateral_raise",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00065",
+    "exercise_id": "ex_dumbbell_lateral_raise",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00066",
+    "exercise_id": "ex_dumbbell_lateral_raise",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00067",
+    "exercise_id": "ex_machine_lateral_raise",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00068",
+    "exercise_id": "ex_machine_lateral_raise",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00069",
+    "exercise_id": "ex_machine_lateral_raise",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00070",
+    "exercise_id": "ex_machine_lateral_raise",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00071",
+    "exercise_id": "ex_machine_lateral_raise",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00072",
+    "exercise_id": "ex_machine_lateral_raise",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00073",
+    "exercise_id": "ex_pull_up",
+    "metric": "estimated_1rm_with_technique_gate",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00074",
+    "exercise_id": "ex_pull_up",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00075",
+    "exercise_id": "ex_pull_up",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00076",
+    "exercise_id": "ex_pull_up",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00077",
+    "exercise_id": "ex_pull_up",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00078",
+    "exercise_id": "ex_pull_up",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00079",
+    "exercise_id": "ex_chin_up",
+    "metric": "estimated_1rm_with_technique_gate",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00080",
+    "exercise_id": "ex_chin_up",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00081",
+    "exercise_id": "ex_chin_up",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00082",
+    "exercise_id": "ex_chin_up",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00083",
+    "exercise_id": "ex_chin_up",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00084",
+    "exercise_id": "ex_chin_up",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00085",
+    "exercise_id": "ex_lat_pulldown",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00086",
+    "exercise_id": "ex_lat_pulldown",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00087",
+    "exercise_id": "ex_lat_pulldown",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00088",
+    "exercise_id": "ex_lat_pulldown",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00089",
+    "exercise_id": "ex_lat_pulldown",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00090",
+    "exercise_id": "ex_lat_pulldown",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00091",
+    "exercise_id": "ex_one_arm_cable_pulldown",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00092",
+    "exercise_id": "ex_one_arm_cable_pulldown",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00093",
+    "exercise_id": "ex_one_arm_cable_pulldown",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00094",
+    "exercise_id": "ex_one_arm_cable_pulldown",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00095",
+    "exercise_id": "ex_one_arm_cable_pulldown",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00096",
+    "exercise_id": "ex_one_arm_cable_pulldown",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00097",
+    "exercise_id": "ex_chest_supported_row",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00098",
+    "exercise_id": "ex_chest_supported_row",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00099",
+    "exercise_id": "ex_chest_supported_row",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00100",
+    "exercise_id": "ex_chest_supported_row",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00101",
+    "exercise_id": "ex_chest_supported_row",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00102",
+    "exercise_id": "ex_chest_supported_row",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00103",
+    "exercise_id": "ex_seated_cable_row",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00104",
+    "exercise_id": "ex_seated_cable_row",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00105",
+    "exercise_id": "ex_seated_cable_row",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00106",
+    "exercise_id": "ex_seated_cable_row",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00107",
+    "exercise_id": "ex_seated_cable_row",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00108",
+    "exercise_id": "ex_seated_cable_row",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00109",
+    "exercise_id": "ex_dumbbell_row",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00110",
+    "exercise_id": "ex_dumbbell_row",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00111",
+    "exercise_id": "ex_dumbbell_row",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00112",
+    "exercise_id": "ex_dumbbell_row",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00113",
+    "exercise_id": "ex_dumbbell_row",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00114",
+    "exercise_id": "ex_dumbbell_row",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00115",
+    "exercise_id": "ex_reverse_pec_deck",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00116",
+    "exercise_id": "ex_reverse_pec_deck",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00117",
+    "exercise_id": "ex_reverse_pec_deck",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00118",
+    "exercise_id": "ex_reverse_pec_deck",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00119",
+    "exercise_id": "ex_reverse_pec_deck",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00120",
+    "exercise_id": "ex_reverse_pec_deck",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00121",
+    "exercise_id": "ex_cable_rear_delt_fly",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00122",
+    "exercise_id": "ex_cable_rear_delt_fly",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00123",
+    "exercise_id": "ex_cable_rear_delt_fly",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00124",
+    "exercise_id": "ex_cable_rear_delt_fly",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00125",
+    "exercise_id": "ex_cable_rear_delt_fly",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00126",
+    "exercise_id": "ex_cable_rear_delt_fly",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00127",
+    "exercise_id": "ex_barbell_shrug",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00128",
+    "exercise_id": "ex_barbell_shrug",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00129",
+    "exercise_id": "ex_barbell_shrug",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00130",
+    "exercise_id": "ex_barbell_shrug",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00131",
+    "exercise_id": "ex_barbell_shrug",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00132",
+    "exercise_id": "ex_barbell_shrug",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00133",
+    "exercise_id": "ex_dumbbell_shrug",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00134",
+    "exercise_id": "ex_dumbbell_shrug",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00135",
+    "exercise_id": "ex_dumbbell_shrug",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00136",
+    "exercise_id": "ex_dumbbell_shrug",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00137",
+    "exercise_id": "ex_dumbbell_shrug",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00138",
+    "exercise_id": "ex_dumbbell_shrug",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00139",
+    "exercise_id": "ex_back_squat",
+    "metric": "estimated_1rm_with_technique_gate",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00140",
+    "exercise_id": "ex_back_squat",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00141",
+    "exercise_id": "ex_back_squat",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00142",
+    "exercise_id": "ex_back_squat",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00143",
+    "exercise_id": "ex_back_squat",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00144",
+    "exercise_id": "ex_back_squat",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00145",
+    "exercise_id": "ex_front_squat",
+    "metric": "estimated_1rm_with_technique_gate",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00146",
+    "exercise_id": "ex_front_squat",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00147",
+    "exercise_id": "ex_front_squat",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00148",
+    "exercise_id": "ex_front_squat",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00149",
+    "exercise_id": "ex_front_squat",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00150",
+    "exercise_id": "ex_front_squat",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00151",
+    "exercise_id": "ex_leg_press",
+    "metric": "estimated_1rm_with_technique_gate",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00152",
+    "exercise_id": "ex_leg_press",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00153",
+    "exercise_id": "ex_leg_press",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00154",
+    "exercise_id": "ex_leg_press",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00155",
+    "exercise_id": "ex_leg_press",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00156",
+    "exercise_id": "ex_leg_press",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00157",
+    "exercise_id": "ex_hack_squat",
+    "metric": "estimated_1rm_with_technique_gate",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00158",
+    "exercise_id": "ex_hack_squat",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00159",
+    "exercise_id": "ex_hack_squat",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00160",
+    "exercise_id": "ex_hack_squat",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00161",
+    "exercise_id": "ex_hack_squat",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00162",
+    "exercise_id": "ex_hack_squat",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00163",
+    "exercise_id": "ex_bulgarian_split_squat",
+    "metric": "estimated_1rm_with_technique_gate",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00164",
+    "exercise_id": "ex_bulgarian_split_squat",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00165",
+    "exercise_id": "ex_bulgarian_split_squat",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00166",
+    "exercise_id": "ex_bulgarian_split_squat",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00167",
+    "exercise_id": "ex_bulgarian_split_squat",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00168",
+    "exercise_id": "ex_bulgarian_split_squat",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00169",
+    "exercise_id": "ex_leg_extension",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00170",
+    "exercise_id": "ex_leg_extension",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00171",
+    "exercise_id": "ex_leg_extension",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00172",
+    "exercise_id": "ex_leg_extension",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00173",
+    "exercise_id": "ex_leg_extension",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00174",
+    "exercise_id": "ex_leg_extension",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00175",
+    "exercise_id": "ex_deadlift",
+    "metric": "estimated_1rm_with_technique_gate",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00176",
+    "exercise_id": "ex_deadlift",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00177",
+    "exercise_id": "ex_deadlift",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00178",
+    "exercise_id": "ex_deadlift",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00179",
+    "exercise_id": "ex_deadlift",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00180",
+    "exercise_id": "ex_deadlift",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00181",
+    "exercise_id": "ex_romanian_deadlift",
+    "metric": "estimated_1rm_with_technique_gate",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00182",
+    "exercise_id": "ex_romanian_deadlift",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00183",
+    "exercise_id": "ex_romanian_deadlift",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00184",
+    "exercise_id": "ex_romanian_deadlift",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00185",
+    "exercise_id": "ex_romanian_deadlift",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00186",
+    "exercise_id": "ex_romanian_deadlift",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00187",
+    "exercise_id": "ex_good_morning",
+    "metric": "estimated_1rm_with_technique_gate",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00188",
+    "exercise_id": "ex_good_morning",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00189",
+    "exercise_id": "ex_good_morning",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00190",
+    "exercise_id": "ex_good_morning",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00191",
+    "exercise_id": "ex_good_morning",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00192",
+    "exercise_id": "ex_good_morning",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00193",
+    "exercise_id": "ex_hip_thrust",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00194",
+    "exercise_id": "ex_hip_thrust",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00195",
+    "exercise_id": "ex_hip_thrust",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00196",
+    "exercise_id": "ex_hip_thrust",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00197",
+    "exercise_id": "ex_hip_thrust",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00198",
+    "exercise_id": "ex_hip_thrust",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00199",
+    "exercise_id": "ex_back_extension",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00200",
+    "exercise_id": "ex_back_extension",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00201",
+    "exercise_id": "ex_back_extension",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00202",
+    "exercise_id": "ex_back_extension",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00203",
+    "exercise_id": "ex_back_extension",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00204",
+    "exercise_id": "ex_back_extension",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00205",
+    "exercise_id": "ex_seated_leg_curl",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00206",
+    "exercise_id": "ex_seated_leg_curl",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00207",
+    "exercise_id": "ex_seated_leg_curl",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00208",
+    "exercise_id": "ex_seated_leg_curl",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00209",
+    "exercise_id": "ex_seated_leg_curl",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00210",
+    "exercise_id": "ex_seated_leg_curl",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00211",
+    "exercise_id": "ex_lying_leg_curl",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00212",
+    "exercise_id": "ex_lying_leg_curl",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00213",
+    "exercise_id": "ex_lying_leg_curl",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00214",
+    "exercise_id": "ex_lying_leg_curl",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00215",
+    "exercise_id": "ex_lying_leg_curl",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00216",
+    "exercise_id": "ex_lying_leg_curl",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00217",
+    "exercise_id": "ex_nordic_curl",
+    "metric": "estimated_1rm_with_technique_gate",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00218",
+    "exercise_id": "ex_nordic_curl",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00219",
+    "exercise_id": "ex_nordic_curl",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00220",
+    "exercise_id": "ex_nordic_curl",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00221",
+    "exercise_id": "ex_nordic_curl",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00222",
+    "exercise_id": "ex_nordic_curl",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00223",
+    "exercise_id": "ex_hip_adduction_machine",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00224",
+    "exercise_id": "ex_hip_adduction_machine",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00225",
+    "exercise_id": "ex_hip_adduction_machine",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00226",
+    "exercise_id": "ex_hip_adduction_machine",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00227",
+    "exercise_id": "ex_hip_adduction_machine",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00228",
+    "exercise_id": "ex_hip_adduction_machine",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00229",
+    "exercise_id": "ex_hip_abduction_machine",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00230",
+    "exercise_id": "ex_hip_abduction_machine",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00231",
+    "exercise_id": "ex_hip_abduction_machine",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00232",
+    "exercise_id": "ex_hip_abduction_machine",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00233",
+    "exercise_id": "ex_hip_abduction_machine",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00234",
+    "exercise_id": "ex_hip_abduction_machine",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00235",
+    "exercise_id": "ex_cable_hip_abduction",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00236",
+    "exercise_id": "ex_cable_hip_abduction",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00237",
+    "exercise_id": "ex_cable_hip_abduction",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00238",
+    "exercise_id": "ex_cable_hip_abduction",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00239",
+    "exercise_id": "ex_cable_hip_abduction",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00240",
+    "exercise_id": "ex_cable_hip_abduction",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00241",
+    "exercise_id": "ex_standing_calf_raise",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00242",
+    "exercise_id": "ex_standing_calf_raise",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00243",
+    "exercise_id": "ex_standing_calf_raise",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00244",
+    "exercise_id": "ex_standing_calf_raise",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00245",
+    "exercise_id": "ex_standing_calf_raise",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00246",
+    "exercise_id": "ex_standing_calf_raise",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00247",
+    "exercise_id": "ex_seated_calf_raise",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00248",
+    "exercise_id": "ex_seated_calf_raise",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00249",
+    "exercise_id": "ex_seated_calf_raise",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00250",
+    "exercise_id": "ex_seated_calf_raise",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00251",
+    "exercise_id": "ex_seated_calf_raise",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00252",
+    "exercise_id": "ex_seated_calf_raise",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00253",
+    "exercise_id": "ex_leg_press_calf_raise",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00254",
+    "exercise_id": "ex_leg_press_calf_raise",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00255",
+    "exercise_id": "ex_leg_press_calf_raise",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00256",
+    "exercise_id": "ex_leg_press_calf_raise",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00257",
+    "exercise_id": "ex_leg_press_calf_raise",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00258",
+    "exercise_id": "ex_leg_press_calf_raise",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00259",
+    "exercise_id": "ex_incline_dumbbell_curl",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00260",
+    "exercise_id": "ex_incline_dumbbell_curl",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00261",
+    "exercise_id": "ex_incline_dumbbell_curl",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00262",
+    "exercise_id": "ex_incline_dumbbell_curl",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00263",
+    "exercise_id": "ex_incline_dumbbell_curl",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00264",
+    "exercise_id": "ex_incline_dumbbell_curl",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00265",
+    "exercise_id": "ex_preacher_curl",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00266",
+    "exercise_id": "ex_preacher_curl",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00267",
+    "exercise_id": "ex_preacher_curl",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00268",
+    "exercise_id": "ex_preacher_curl",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00269",
+    "exercise_id": "ex_preacher_curl",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00270",
+    "exercise_id": "ex_preacher_curl",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00271",
+    "exercise_id": "ex_cable_curl",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00272",
+    "exercise_id": "ex_cable_curl",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00273",
+    "exercise_id": "ex_cable_curl",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00274",
+    "exercise_id": "ex_cable_curl",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00275",
+    "exercise_id": "ex_cable_curl",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00276",
+    "exercise_id": "ex_cable_curl",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00277",
+    "exercise_id": "ex_hammer_curl",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00278",
+    "exercise_id": "ex_hammer_curl",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00279",
+    "exercise_id": "ex_hammer_curl",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00280",
+    "exercise_id": "ex_hammer_curl",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00281",
+    "exercise_id": "ex_hammer_curl",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00282",
+    "exercise_id": "ex_hammer_curl",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00283",
+    "exercise_id": "ex_cable_pushdown",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00284",
+    "exercise_id": "ex_cable_pushdown",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00285",
+    "exercise_id": "ex_cable_pushdown",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00286",
+    "exercise_id": "ex_cable_pushdown",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00287",
+    "exercise_id": "ex_cable_pushdown",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00288",
+    "exercise_id": "ex_cable_pushdown",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00289",
+    "exercise_id": "ex_overhead_cable_extension",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00290",
+    "exercise_id": "ex_overhead_cable_extension",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00291",
+    "exercise_id": "ex_overhead_cable_extension",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00292",
+    "exercise_id": "ex_overhead_cable_extension",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00293",
+    "exercise_id": "ex_overhead_cable_extension",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00294",
+    "exercise_id": "ex_overhead_cable_extension",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00295",
+    "exercise_id": "ex_close_grip_bench_press",
+    "metric": "estimated_1rm_with_technique_gate",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00296",
+    "exercise_id": "ex_close_grip_bench_press",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00297",
+    "exercise_id": "ex_close_grip_bench_press",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00298",
+    "exercise_id": "ex_close_grip_bench_press",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00299",
+    "exercise_id": "ex_close_grip_bench_press",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00300",
+    "exercise_id": "ex_close_grip_bench_press",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00301",
+    "exercise_id": "ex_wrist_curl",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00302",
+    "exercise_id": "ex_wrist_curl",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00303",
+    "exercise_id": "ex_wrist_curl",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00304",
+    "exercise_id": "ex_wrist_curl",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00305",
+    "exercise_id": "ex_wrist_curl",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00306",
+    "exercise_id": "ex_wrist_curl",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00307",
+    "exercise_id": "ex_reverse_wrist_curl",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00308",
+    "exercise_id": "ex_reverse_wrist_curl",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00309",
+    "exercise_id": "ex_reverse_wrist_curl",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00310",
+    "exercise_id": "ex_reverse_wrist_curl",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00311",
+    "exercise_id": "ex_reverse_wrist_curl",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00312",
+    "exercise_id": "ex_reverse_wrist_curl",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00313",
+    "exercise_id": "ex_farmers_carry",
+    "metric": "load_distance_quality",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00314",
+    "exercise_id": "ex_farmers_carry",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00315",
+    "exercise_id": "ex_farmers_carry",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00316",
+    "exercise_id": "ex_farmers_carry",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00317",
+    "exercise_id": "ex_farmers_carry",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00318",
+    "exercise_id": "ex_farmers_carry",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00319",
+    "exercise_id": "ex_cable_crunch",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00320",
+    "exercise_id": "ex_cable_crunch",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00321",
+    "exercise_id": "ex_cable_crunch",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00322",
+    "exercise_id": "ex_cable_crunch",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00323",
+    "exercise_id": "ex_cable_crunch",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00324",
+    "exercise_id": "ex_cable_crunch",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00325",
+    "exercise_id": "ex_hanging_leg_raise",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00326",
+    "exercise_id": "ex_hanging_leg_raise",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00327",
+    "exercise_id": "ex_hanging_leg_raise",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00328",
+    "exercise_id": "ex_hanging_leg_raise",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00329",
+    "exercise_id": "ex_hanging_leg_raise",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00330",
+    "exercise_id": "ex_hanging_leg_raise",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00331",
+    "exercise_id": "ex_ab_wheel",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00332",
+    "exercise_id": "ex_ab_wheel",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00333",
+    "exercise_id": "ex_ab_wheel",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00334",
+    "exercise_id": "ex_ab_wheel",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00335",
+    "exercise_id": "ex_ab_wheel",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00336",
+    "exercise_id": "ex_ab_wheel",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00337",
+    "exercise_id": "ex_pallof_press",
+    "metric": "duration_or_leverage_quality",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00338",
+    "exercise_id": "ex_pallof_press",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00339",
+    "exercise_id": "ex_pallof_press",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00340",
+    "exercise_id": "ex_pallof_press",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00341",
+    "exercise_id": "ex_pallof_press",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00342",
+    "exercise_id": "ex_pallof_press",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00343",
+    "exercise_id": "ex_side_plank",
+    "metric": "duration_or_leverage_quality",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00344",
+    "exercise_id": "ex_side_plank",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00345",
+    "exercise_id": "ex_side_plank",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00346",
+    "exercise_id": "ex_side_plank",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00347",
+    "exercise_id": "ex_side_plank",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00348",
+    "exercise_id": "ex_side_plank",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00349",
+    "exercise_id": "ex_neck_flexion",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00350",
+    "exercise_id": "ex_neck_flexion",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00351",
+    "exercise_id": "ex_neck_flexion",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00352",
+    "exercise_id": "ex_neck_flexion",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00353",
+    "exercise_id": "ex_neck_flexion",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00354",
+    "exercise_id": "ex_neck_flexion",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00355",
+    "exercise_id": "ex_neck_extension",
+    "metric": "repetitions_at_load_and_rir",
+    "priority_rank": 1,
+    "use_case": "primary_progression_decision",
+    "confidence_rating": "moderate"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00356",
+    "exercise_id": "ex_neck_extension",
+    "metric": "load",
+    "priority_rank": 2,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00357",
+    "exercise_id": "ex_neck_extension",
+    "metric": "repetitions",
+    "priority_rank": 3,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00358",
+    "exercise_id": "ex_neck_extension",
+    "metric": "rir",
+    "priority_rank": 4,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00359",
+    "exercise_id": "ex_neck_extension",
+    "metric": "range_of_motion",
+    "priority_rank": 5,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  },
+  {
+    "exercise_progression_metric_map_id": "epm_00360",
+    "exercise_id": "ex_neck_extension",
+    "metric": "technique_quality",
+    "priority_rank": 6,
+    "use_case": "supporting_context_or_tie_breaker",
+    "confidence_rating": "low"
+  }
+]

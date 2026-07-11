@@ -102,6 +102,7 @@ assert(html.includes("pointer-events: none"), "Informational set badges must not
 assert(!/set-type-badge[^>]+data-action/.test(html), "Set-type badges must not own edit or navigation actions");
 assert(html.includes("previousComparableSetForRole(previousSets, role, set.setTypeIndex)"));
 assert(html.includes("Broad exercise guidance"));
-assert(html.includes("The programmed set targets above drive scoring and progression."));
+assert(html.includes("These values come from the same saved prescription shown above."));
+assert(html.includes("exercise.recommendationSnapshot || unifiedPrescriptionSnapshot(exercise)"), "Broad guidance must reuse the unified prescription instead of hard-coded sets or reps");
 
 console.log("Set prescription tests passed (roles, ranges, history, equipment, labels, and reduced sessions).");

@@ -1,0 +1,332 @@
+[
+  {
+    "study_conclusion_map_id": "scm_0001",
+    "study_id": "stu_0004",
+    "conclusion_id": "con_0001",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0002",
+    "study_id": "stu_0039",
+    "conclusion_id": "con_0001",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0003",
+    "study_id": "stu_0005",
+    "conclusion_id": "con_0002",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0004",
+    "study_id": "stu_0006",
+    "conclusion_id": "con_0002",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0005",
+    "study_id": "stu_0005",
+    "conclusion_id": "con_0003",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0006",
+    "study_id": "stu_0006",
+    "conclusion_id": "con_0003",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0007",
+    "study_id": "stu_0001",
+    "conclusion_id": "con_0004",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0008",
+    "study_id": "stu_0002",
+    "conclusion_id": "con_0004",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0009",
+    "study_id": "stu_0025",
+    "conclusion_id": "con_0004",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0010",
+    "study_id": "stu_0001",
+    "conclusion_id": "con_0005",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0011",
+    "study_id": "stu_0001",
+    "conclusion_id": "con_0006",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0012",
+    "study_id": "stu_0003",
+    "conclusion_id": "con_0006",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0013",
+    "study_id": "stu_0001",
+    "conclusion_id": "con_0007",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0014",
+    "study_id": "stu_0003",
+    "conclusion_id": "con_0007",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0015",
+    "study_id": "stu_0007",
+    "conclusion_id": "con_0008",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0016",
+    "study_id": "stu_0026",
+    "conclusion_id": "con_0008",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0017",
+    "study_id": "stu_0038",
+    "conclusion_id": "con_0008",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0018",
+    "study_id": "stu_0008",
+    "conclusion_id": "con_0009",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0019",
+    "study_id": "stu_0011",
+    "conclusion_id": "con_0010",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0020",
+    "study_id": "stu_0012",
+    "conclusion_id": "con_0010",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0021",
+    "study_id": "stu_0013",
+    "conclusion_id": "con_0010",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0022",
+    "study_id": "stu_0012",
+    "conclusion_id": "con_0011",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0023",
+    "study_id": "stu_0013",
+    "conclusion_id": "con_0011",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0024",
+    "study_id": "stu_0009",
+    "conclusion_id": "con_0012",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0025",
+    "study_id": "stu_0010",
+    "conclusion_id": "con_0013",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0026",
+    "study_id": "stu_0015",
+    "conclusion_id": "con_0014",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0027",
+    "study_id": "stu_0029",
+    "conclusion_id": "con_0015",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0028",
+    "study_id": "stu_0030",
+    "conclusion_id": "con_0015",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0029",
+    "study_id": "stu_0031",
+    "conclusion_id": "con_0015",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0030",
+    "study_id": "stu_0029",
+    "conclusion_id": "con_0016",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0031",
+    "study_id": "stu_0030",
+    "conclusion_id": "con_0016",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0032",
+    "study_id": "stu_0031",
+    "conclusion_id": "con_0016",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0033",
+    "study_id": "stu_0027",
+    "conclusion_id": "con_0017",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0034",
+    "study_id": "stu_0028",
+    "conclusion_id": "con_0017",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0035",
+    "study_id": "stu_0016",
+    "conclusion_id": "con_0018",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0036",
+    "study_id": "stu_0017",
+    "conclusion_id": "con_0018",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0037",
+    "study_id": "stu_0017",
+    "conclusion_id": "con_0019",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0038",
+    "study_id": "stu_0018",
+    "conclusion_id": "con_0019",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0039",
+    "study_id": "stu_0020",
+    "conclusion_id": "con_0019",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0040",
+    "study_id": "stu_0021",
+    "conclusion_id": "con_0019",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0041",
+    "study_id": "stu_0033",
+    "conclusion_id": "con_0020",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0042",
+    "study_id": "stu_0034",
+    "conclusion_id": "con_0020",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0043",
+    "study_id": "stu_0019",
+    "conclusion_id": "con_0021",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0044",
+    "study_id": "stu_0020",
+    "conclusion_id": "con_0021",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0045",
+    "study_id": "stu_0021",
+    "conclusion_id": "con_0021",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0046",
+    "study_id": "stu_0018",
+    "conclusion_id": "con_0022",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0047",
+    "study_id": "stu_0019",
+    "conclusion_id": "con_0022",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0048",
+    "study_id": "stu_0021",
+    "conclusion_id": "con_0023",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0049",
+    "study_id": "stu_0023",
+    "conclusion_id": "con_0023",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0050",
+    "study_id": "stu_0022",
+    "conclusion_id": "con_0024",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0051",
+    "study_id": "stu_0036",
+    "conclusion_id": "con_0024",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0052",
+    "study_id": "stu_0022",
+    "conclusion_id": "con_0025",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0053",
+    "study_id": "stu_0036",
+    "conclusion_id": "con_0025",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0054",
+    "study_id": "stu_0020",
+    "conclusion_id": "con_0026",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0055",
+    "study_id": "stu_0014",
+    "conclusion_id": "con_0027",
+    "relationship_type": "supports"
+  }
+]

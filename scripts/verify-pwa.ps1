@@ -6,6 +6,10 @@ $required = @(
   "privacy.html",
   "support.html",
   "manifest.webmanifest",
+  "prescription-engine.js",
+  "rest-completion-controller.js",
+  "research_database\exports\json\exercise_database.json",
+  "research_database\exports\json\manifest.json",
   "sw.js",
   "resources\icon-180.png",
   "resources\icon-192.png",
@@ -14,6 +18,10 @@ $required = @(
   "resources\splash-1170x2532.png",
   "www\index.html",
   "www\manifest.webmanifest",
+  "www\prescription-engine.js",
+  "www\rest-completion-controller.js",
+  "www\research_database\exports\json\exercise_database.json",
+  "www\research_database\exports\json\manifest.json",
   "www\sw.js",
   "www\resources\icon-180.png",
   "www\resources\icon-192.png",
@@ -28,7 +36,7 @@ if ($missing.Count -gt 0) {
 }
 
 $index = Get-Content -LiteralPath (Join-Path $root "index.html") -Raw
-foreach ($needle in @("manifest.webmanifest", "apple-mobile-web-app-capable", "apple-touch-icon", "apple-touch-startup-image", "serviceWorker")) {
+foreach ($needle in @("manifest.webmanifest", "apple-mobile-web-app-capable", "apple-touch-icon", "apple-touch-startup-image", "prescription-engine.js", "rest-completion-controller.js", "serviceWorker")) {
   if ($index -notlike "*$needle*") {
     throw "index.html is missing required PWA marker: $needle"
   }

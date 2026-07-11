@@ -1,0 +1,189 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://comprehensive-fitness.local/schema/1.0.0/evidence_conclusions.schema.json",
+  "title": "evidence_conclusions",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "conclusion_id",
+      "topic",
+      "research_question",
+      "male_population",
+      "training_status",
+      "nutrition_context",
+      "conclusion",
+      "recommended_lower_bound",
+      "recommended_upper_bound",
+      "recommended_unit",
+      "practical_range_text",
+      "supporting_study_ids",
+      "conflicting_study_ids",
+      "direct_or_indirect_evidence",
+      "evidence_strength",
+      "confidence_rating",
+      "key_limitations",
+      "application_rule",
+      "exceptions",
+      "last_reviewed_date"
+    ],
+    "properties": {
+      "conclusion_id": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "topic": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "research_question": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "male_population": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "training_status": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "enum": [
+          "untrained",
+          "novice",
+          "intermediate",
+          "advanced",
+          "mixed",
+          "not_reported",
+          "all",
+          null
+        ]
+      },
+      "nutrition_context": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "conclusion": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "recommended_lower_bound": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "recommended_upper_bound": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "recommended_unit": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "practical_range_text": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "supporting_study_ids": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "conflicting_study_ids": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "direct_or_indirect_evidence": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "enum": [
+          "direct",
+          "indirect",
+          "mixed",
+          "expert_inference",
+          null
+        ]
+      },
+      "evidence_strength": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "enum": [
+          "very_high",
+          "high",
+          "moderate",
+          "low",
+          "very_low",
+          null
+        ]
+      },
+      "confidence_rating": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "enum": [
+          "very_high",
+          "high",
+          "moderate",
+          "low",
+          "very_low",
+          null
+        ]
+      },
+      "key_limitations": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "application_rule": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "exceptions": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "last_reviewed_date": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+      }
+    }
+  }
+}

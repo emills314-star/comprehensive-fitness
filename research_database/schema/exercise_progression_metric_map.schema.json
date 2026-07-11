@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://comprehensive-fitness.local/schema/1.0.0/exercise_progression_metric_map.schema.json",
+  "title": "exercise_progression_metric_map",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "exercise_progression_metric_map_id",
+      "exercise_id",
+      "metric",
+      "priority_rank",
+      "use_case",
+      "confidence_rating"
+    ],
+    "properties": {
+      "exercise_progression_metric_map_id": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "exercise_id": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "metric": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "priority_rank": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "use_case": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "confidence_rating": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "enum": [
+          "very_high",
+          "high",
+          "moderate",
+          "low",
+          "very_low",
+          null
+        ]
+      }
+    }
+  }
+}

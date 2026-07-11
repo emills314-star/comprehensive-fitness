@@ -1,0 +1,501 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://comprehensive-fitness.local/schemas/mesocycle-plan.v1.schema.json",
+  "title": "MesocyclePlan and diversified exercise candidate pools v1",
+  "description": "A versioned mesocycle decision context. Candidate pools contain no more than five options per represented muscle group; activeExercises is the recoverable subset selected for the program.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "schemaVersion",
+    "type",
+    "name",
+    "status",
+    "createdAt",
+    "durationWeeks",
+    "durationBasis",
+    "specializationMuscleGroups",
+    "trainingDays",
+    "split",
+    "availableEquipment",
+    "pools",
+    "activeExercises",
+    "preservedProductiveExerciseIds",
+    "versions",
+    "lifecycle"
+  ],
+  "properties": {
+    "id": {
+      "$ref": "exercise-prescription.v2.schema.json#/$defs/id"
+    },
+    "schemaVersion": {
+      "const": "mesocycle/1.0.0"
+    },
+    "type": {
+      "$ref": "#/$defs/mesocycleType"
+    },
+    "name": {
+      "$ref": "exercise-prescription.v2.schema.json#/$defs/nonEmptyString"
+    },
+    "status": {
+      "$ref": "#/$defs/mesocycleStatus"
+    },
+    "createdAt": {
+      "$ref": "#/$defs/dateTime"
+    },
+    "durationWeeks": {
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 12
+    },
+    "durationBasis": {
+      "$ref": "exercise-prescription.v2.schema.json#/$defs/nonEmptyString"
+    },
+    "specializationMuscleGroups": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "exercise-prescription.v2.schema.json#/$defs/id"
+      }
+    },
+    "trainingDays": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 14
+    },
+    "split": {
+      "anyOf": [
+        {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/nonEmptyString"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "availableEquipment": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "exercise-prescription.v2.schema.json#/$defs/nonEmptyString"
+      }
+    },
+    "pools": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "$ref": "#/$defs/candidatePool"
+      }
+    },
+    "activeExercises": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/activeExercise"
+      }
+    },
+    "preservedProductiveExerciseIds": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "exercise-prescription.v2.schema.json#/$defs/id"
+      }
+    },
+    "versions": {
+      "$ref": "#/$defs/evidenceVersions"
+    },
+    "lifecycle": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/lifecycleEvent"
+      }
+    },
+    "startedAt": {
+      "$ref": "#/$defs/dateTime"
+    },
+    "completedAt": {
+      "$ref": "#/$defs/dateTime"
+    },
+    "outcome": {
+      "$ref": "#/$defs/mesocycleOutcome"
+    },
+    "reviewedAt": {
+      "$ref": "#/$defs/dateTime"
+    },
+    "review": {
+      "$ref": "#/$defs/mesocycleReview"
+    }
+  },
+  "$defs": {
+    "dateTime": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T"
+    },
+    "mesocycleType": {
+      "type": "string",
+      "enum": [
+        "primary_progression",
+        "alternative_exercise",
+        "lower_fatigue_resensitization",
+        "specialization"
+      ]
+    },
+    "mesocycleStatus": {
+      "type": "string",
+      "enum": [
+        "preview",
+        "loaded",
+        "active",
+        "completed",
+        "reviewed"
+      ]
+    },
+    "candidatePool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "muscleGroupId",
+        "mesocycleType",
+        "generatedAt",
+        "candidateCount",
+        "availableViableExerciseCount",
+        "candidates",
+        "diversificationApplied",
+        "explanation"
+      ],
+      "properties": {
+        "muscleGroupId": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/id"
+        },
+        "mesocycleType": {
+          "$ref": "#/$defs/mesocycleType"
+        },
+        "generatedAt": {
+          "$ref": "#/$defs/dateTime"
+        },
+        "candidateCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "availableViableExerciseCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "candidates": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "$ref": "#/$defs/candidate"
+          }
+        },
+        "diversificationApplied": {
+          "type": "boolean"
+        },
+        "explanation": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "candidateCore": {
+      "type": "object",
+      "required": [
+        "rank",
+        "rawScoreRank",
+        "exerciseId",
+        "researchExerciseId",
+        "exerciseName",
+        "intendedRole",
+        "primaryMuscles",
+        "secondaryMuscles",
+        "recommendedSetStructure",
+        "setStructureReason",
+        "recommendedSetRange",
+        "recommendedRepRange",
+        "recommendedRpe",
+        "recommendedRir",
+        "recommendedFrequency",
+        "progressionMethod",
+        "progressionInstruction",
+        "deloadTrigger",
+        "rotationTrigger",
+        "preferredReplacementExerciseId",
+        "reasonForMesocycle",
+        "personalDataConfidence",
+        "researchDataConfidence",
+        "scores",
+        "diversitySignature"
+      ],
+      "properties": {
+        "rank": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "rawScoreRank": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "exerciseId": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/id"
+        },
+        "researchExerciseId": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/nullableId"
+        },
+        "exerciseName": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/nonEmptyString"
+        },
+        "intendedRole": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/role"
+        },
+        "primaryMuscles": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "exercise-prescription.v2.schema.json#/$defs/id"
+          }
+        },
+        "secondaryMuscles": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "exercise-prescription.v2.schema.json#/$defs/id"
+          }
+        },
+        "recommendedSetStructure": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/setStructure"
+        },
+        "setStructureReason": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/nonEmptyString"
+        },
+        "recommendedSetRange": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/setRange"
+        },
+        "recommendedRepRange": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/repRange"
+        },
+        "recommendedRpe": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/rpeRange"
+        },
+        "recommendedRir": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/rirRange"
+        },
+        "recommendedFrequency": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/frequencyRange"
+        },
+        "progressionMethod": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/progressionMethod"
+        },
+        "progressionInstruction": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/nonEmptyString"
+        },
+        "deloadTrigger": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/nonEmptyString"
+        },
+        "rotationTrigger": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/nonEmptyString"
+        },
+        "preferredReplacementExerciseId": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/nullableId"
+        },
+        "reasonForMesocycle": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/nonEmptyString"
+        },
+        "personalDataConfidence": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/confidence"
+        },
+        "researchDataConfidence": {
+          "type": "string",
+          "enum": [
+            "high",
+            "moderate",
+            "low",
+            "very_low"
+          ]
+        },
+        "scores": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/exerciseScoreBreakdown"
+        },
+        "diversitySignature": {
+          "$ref": "#/$defs/diversitySignature"
+        }
+      }
+    },
+    "candidate": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/candidateCore"
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "diversitySignature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "movement",
+        "equipment",
+        "region",
+        "stability",
+        "loading"
+      ],
+      "properties": {
+        "movement": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/nonEmptyString"
+        },
+        "equipment": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/nonEmptyString"
+        },
+        "region": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/nonEmptyString"
+        },
+        "stability": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/nonEmptyString"
+        },
+        "loading": {
+          "type": "string",
+          "enum": [
+            "high_load",
+            "moderate_load",
+            "moderate_light_load"
+          ]
+        }
+      }
+    },
+    "activeExercise": {
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/$defs/candidateCore"
+        }
+      ],
+      "required": [
+        "muscleGroupId",
+        "targetMuscleGroupIds",
+        "selectionReason"
+      ],
+      "properties": {
+        "muscleGroupId": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/id"
+        },
+        "targetMuscleGroupIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "exercise-prescription.v2.schema.json#/$defs/id"
+          }
+        },
+        "selectionReason": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/nonEmptyString"
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "evidenceVersions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "engine",
+        "personal",
+        "research"
+      ],
+      "properties": {
+        "engine": {
+          "$ref": "#/$defs/semanticVersion"
+        },
+        "personal": {
+          "$ref": "#/$defs/versionIdentifier"
+        },
+        "research": {
+          "$ref": "#/$defs/versionIdentifier"
+        }
+      }
+    },
+    "semanticVersion": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?$"
+    },
+    "versionIdentifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "lifecycleEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "at"
+      ],
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/mesocycleStatus"
+        },
+        "at": {
+          "$ref": "#/$defs/dateTime"
+        }
+      }
+    },
+    "mesocycleOutcome": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "completedWeeks": {
+          "type": "number",
+          "minimum": 0
+        },
+        "completedWorkouts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "adherencePercent": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/percentage"
+        },
+        "progressingExerciseIds": {
+          "$ref": "#/$defs/idList"
+        },
+        "stalledExerciseIds": {
+          "$ref": "#/$defs/idList"
+        },
+        "rotatedExerciseIds": {
+          "$ref": "#/$defs/idList"
+        },
+        "summary": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "idList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "exercise-prescription.v2.schema.json#/$defs/id"
+      }
+    },
+    "mesocycleReview": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "keepExerciseIds": {
+          "$ref": "#/$defs/idList"
+        },
+        "rotationCandidateIds": {
+          "$ref": "#/$defs/idList"
+        },
+        "nextMesocycleType": {
+          "$ref": "#/$defs/mesocycleType"
+        },
+        "evidenceSummary": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "exercise-prescription.v2.schema.json#/$defs/nonEmptyString"
+          }
+        }
+      }
+    }
+  }
+}

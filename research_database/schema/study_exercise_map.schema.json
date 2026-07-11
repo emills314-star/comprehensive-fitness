@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://comprehensive-fitness.local/schema/1.0.0/study_exercise_map.schema.json",
+  "title": "study_exercise_map",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "study_exercise_map_id",
+      "study_id",
+      "exercise_id",
+      "relationship_type"
+    ],
+    "properties": {
+      "study_exercise_map_id": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "study_id": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "exercise_id": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "relationship_type": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    }
+  }
+}

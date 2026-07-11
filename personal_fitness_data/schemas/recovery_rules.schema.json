@@ -1,0 +1,221 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://comprehensive-fitness.local/schemas/personal-fitness/v1/recovery_rules.schema.json",
+  "title": "Personal recovery decision rules",
+  "description": "Historically supported multi-marker rules for adjusting training from personal recovery, nutrition, volume, and performance context.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": true,
+    "required": [
+      "rule_id",
+      "rule_name",
+      "action",
+      "signals",
+      "minimum_converging_indicators",
+      "trigger_logic",
+      "action_parameters",
+      "historical_evidence",
+      "source_date_range",
+      "analysis_date",
+      "methodology_version",
+      "sample_size",
+      "confidence_level",
+      "missing_data_flags",
+      "source_references",
+      "notes"
+    ],
+    "properties": {
+      "rule_id": { "$ref": "#/$defs/stableId" },
+      "rule_name": { "type": "string", "minLength": 1 },
+      "scope": {
+        "type": "string",
+        "enum": ["full_session", "exercise", "muscle_group"]
+      },
+      "exercise_id": { "$ref": "#/$defs/nullableStableId" },
+      "muscle_group_id": { "$ref": "#/$defs/nullableStableId" },
+      "action": {
+        "type": "string",
+        "enum": [
+          "train_as_planned",
+          "hold_load_constant",
+          "reduce_one_set",
+          "reduce_volume_percentage",
+          "use_lighter_session",
+          "substitute_lower_fatigue_movement",
+          "deload_exercise",
+          "deload_muscle_group",
+          "delay_training"
+        ]
+      },
+      "signals": {
+        "type": "array",
+        "minItems": 1,
+        "items": { "$ref": "#/$defs/signal" }
+      },
+      "minimum_converging_indicators": {
+        "description": "Number of independently observed signals required before the action is eligible. Major reductions should normally require at least two.",
+        "type": "integer",
+        "minimum": 1
+      },
+      "trigger_logic": {
+        "description": "Deterministic expression over the named signals; the pipeline may use JSON Logic or an equivalently documented expression object.",
+        "type": "object",
+        "minProperties": 1,
+        "additionalProperties": true
+      },
+      "action_parameters": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "historical_evidence": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["eligible_observations", "triggered_observations"],
+        "properties": {
+          "eligible_observations": { "type": "integer", "minimum": 0 },
+          "triggered_observations": { "type": "integer", "minimum": 0 },
+          "successful_outcomes": { "type": ["integer", "null"], "minimum": 0 },
+          "unsuccessful_outcomes": { "type": ["integer", "null"], "minimum": 0 },
+          "success_rate": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+          "effect_summary": { "type": ["string", "null"] }
+        }
+      },
+      "source_date_range": { "$ref": "#/$defs/dateRange" },
+      "analysis_date": { "$ref": "#/$defs/isoDate" },
+      "methodology_version": { "$ref": "#/$defs/version" },
+      "sample_size": { "type": "integer", "minimum": 0 },
+      "confidence_level": { "$ref": "#/$defs/confidenceLevel" },
+      "confidence_score": {
+        "type": ["number", "null"],
+        "minimum": 0,
+        "maximum": 100
+      },
+      "missing_data_flags": { "$ref": "#/$defs/missingDataFlags" },
+      "source_references": {
+        "type": "array",
+        "items": { "$ref": "#/$defs/sourceReference" },
+        "uniqueItems": true
+      },
+      "notes": { "$ref": "#/$defs/notes" },
+      "integration_envelope": { "$ref": "#/$defs/integrationEnvelope" }
+    }
+  },
+  "$defs": {
+    "stableId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "nullableStableId": {
+      "type": ["string", "null"],
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "isoDate": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?$"
+    },
+    "dateRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start_date", "end_date"],
+      "properties": {
+        "start_date": {
+          "type": ["string", "null"],
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "end_date": {
+          "type": ["string", "null"],
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        }
+      }
+    },
+    "confidenceLevel": {
+      "type": "string",
+      "enum": ["high", "moderate", "low", "insufficient_personal_evidence"]
+    },
+    "missingDataFlags": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/stableId" },
+      "uniqueItems": true
+    },
+    "sourceReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "source_path"],
+      "properties": {
+        "source_id": { "$ref": "#/$defs/stableId" },
+        "source_path": { "type": "string", "minLength": 1 },
+        "worksheet": { "type": ["string", "null"] },
+        "source_record_id": { "type": ["string", "null"] },
+        "source_row": { "type": ["integer", "null"], "minimum": 1 },
+        "source_date": {
+          "type": ["string", "null"],
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "notes": { "type": ["string", "null"] }
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "signal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["signal_id", "metric", "comparator", "threshold", "required"],
+      "properties": {
+        "signal_id": { "$ref": "#/$defs/stableId" },
+        "metric": { "$ref": "#/$defs/stableId" },
+        "comparator": {
+          "type": "string",
+          "enum": ["lt", "lte", "gt", "gte", "eq", "between", "outside", "present", "repeated"]
+        },
+        "threshold": { "type": ["number", "string", "array", "boolean", "null"] },
+        "unit": { "type": ["string", "null"] },
+        "baseline_window_days": {
+          "type": ["integer", "null"],
+          "enum": [14, 28, 42, null]
+        },
+        "lookback_days": { "type": ["integer", "null"], "minimum": 0 },
+        "required": { "type": "boolean" },
+        "notes": { "type": ["string", "null"] }
+      }
+    },
+    "integrationEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "personal_estimate",
+        "personal_confidence",
+        "personal_sample_size",
+        "research_default",
+        "research_confidence",
+        "personal_weight",
+        "research_weight",
+        "final_recommendation",
+        "weighting_reason",
+        "last_updated"
+      ],
+      "properties": {
+        "personal_estimate": { "type": "object", "additionalProperties": true },
+        "personal_confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "personal_sample_size": { "type": "integer", "minimum": 0 },
+        "research_default": { "type": "object", "additionalProperties": true },
+        "research_confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "personal_weight": { "type": "number", "minimum": 0, "maximum": 1 },
+        "research_weight": { "type": "number", "minimum": 0, "maximum": 1 },
+        "final_recommendation": { "type": "object", "additionalProperties": true },
+        "weighting_reason": { "type": "string", "minLength": 1 },
+        "last_updated": { "$ref": "#/$defs/isoDate" }
+      }
+    }
+  }
+}

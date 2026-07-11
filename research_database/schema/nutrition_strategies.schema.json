@@ -1,0 +1,266 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://comprehensive-fitness.local/schema/1.0.0/nutrition_strategies.schema.json",
+  "title": "nutrition_strategies",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "strategy_id",
+      "strategy_category",
+      "male_population",
+      "training_status",
+      "starting_body_fat_context",
+      "nutrition_phase",
+      "calorie_adjustment_type",
+      "recommended_calorie_adjustment_low",
+      "recommended_calorie_adjustment_high",
+      "calorie_adjustment_unit",
+      "target_weight_change_rate_low",
+      "target_weight_change_rate_high",
+      "weight_change_rate_unit",
+      "protein_g_per_kg_low",
+      "protein_g_per_kg_high",
+      "fat_g_per_kg_low",
+      "fat_g_per_kg_high",
+      "carbohydrate_guidance",
+      "training_volume_adjustment",
+      "training_intensity_adjustment",
+      "cardio_guidance",
+      "recovery_guidance",
+      "expected_outcome",
+      "monitoring_metrics",
+      "adjustment_triggers",
+      "recommended_duration",
+      "contraindications_or_exceptions",
+      "evidence_strength",
+      "confidence_rating",
+      "supporting_study_ids",
+      "notes"
+    ],
+    "properties": {
+      "strategy_id": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "strategy_category": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "male_population": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "training_status": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "enum": [
+          "untrained",
+          "novice",
+          "intermediate",
+          "advanced",
+          "mixed",
+          "not_reported",
+          "all",
+          null
+        ]
+      },
+      "starting_body_fat_context": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "nutrition_phase": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "enum": [
+          "deficit",
+          "maintenance",
+          "recomposition",
+          "surplus",
+          "all",
+          null
+        ]
+      },
+      "calorie_adjustment_type": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "recommended_calorie_adjustment_low": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "recommended_calorie_adjustment_high": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "calorie_adjustment_unit": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "target_weight_change_rate_low": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "target_weight_change_rate_high": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "weight_change_rate_unit": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "protein_g_per_kg_low": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "protein_g_per_kg_high": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "fat_g_per_kg_low": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "fat_g_per_kg_high": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "carbohydrate_guidance": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "training_volume_adjustment": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "training_intensity_adjustment": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "cardio_guidance": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "recovery_guidance": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "expected_outcome": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "monitoring_metrics": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "adjustment_triggers": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "recommended_duration": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "contraindications_or_exceptions": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "evidence_strength": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "enum": [
+          "very_high",
+          "high",
+          "moderate",
+          "low",
+          "very_low",
+          null
+        ]
+      },
+      "confidence_rating": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "enum": [
+          "very_high",
+          "high",
+          "moderate",
+          "low",
+          "very_low",
+          null
+        ]
+      },
+      "supporting_study_ids": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "notes": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    }
+  }
+}

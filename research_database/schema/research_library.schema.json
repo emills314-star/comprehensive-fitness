@@ -1,0 +1,334 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://comprehensive-fitness.local/schema/1.0.0/research_library.schema.json",
+  "title": "research_library",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "study_id",
+      "full_citation",
+      "publication_year",
+      "authors",
+      "study_title",
+      "journal",
+      "doi",
+      "permanent_url",
+      "study_type",
+      "research_topic",
+      "male_only_sample",
+      "mixed_sex_sample",
+      "male_results_reported_separately",
+      "male_sample_size",
+      "total_sample_size",
+      "participant_training_status",
+      "participant_age_mean",
+      "participant_age_range",
+      "natural_or_enhanced",
+      "study_duration_weeks",
+      "intervention",
+      "comparator",
+      "training_protocol",
+      "nutrition_conditions",
+      "outcome_measures",
+      "main_result",
+      "effect_size",
+      "statistical_significance",
+      "practical_significance",
+      "study_limitations",
+      "risk_of_bias",
+      "male_applicability",
+      "evidence_tier",
+      "confidence_rating",
+      "replication_status",
+      "conflicting_evidence",
+      "reviewer_notes",
+      "date_added",
+      "last_reviewed_date"
+    ],
+    "properties": {
+      "study_id": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "full_citation": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "publication_year": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "authors": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "study_title": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "journal": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "doi": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "permanent_url": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "study_type": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "enum": [
+          "systematic_review_meta_analysis",
+          "systematic_review",
+          "position_stand",
+          "consensus_statement",
+          "randomized_controlled_trial",
+          "longitudinal_trial",
+          "observational_study",
+          "acute_mechanistic_study",
+          "narrative_review",
+          null
+        ]
+      },
+      "research_topic": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "male_only_sample": {
+        "type": "boolean"
+      },
+      "mixed_sex_sample": {
+        "type": "boolean"
+      },
+      "male_results_reported_separately": {
+        "type": "boolean"
+      },
+      "male_sample_size": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "total_sample_size": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "participant_training_status": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "participant_age_mean": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "participant_age_range": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "natural_or_enhanced": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "enum": [
+          "natural",
+          "enhanced",
+          "mixed",
+          "not_reported",
+          "not_applicable",
+          null
+        ]
+      },
+      "study_duration_weeks": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "intervention": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "comparator": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "training_protocol": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "nutrition_conditions": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "outcome_measures": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "main_result": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "effect_size": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "statistical_significance": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "practical_significance": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "study_limitations": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "risk_of_bias": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "enum": [
+          "low",
+          "some_concerns",
+          "high",
+          "not_formally_assessed",
+          "varies_across_included_studies",
+          null
+        ]
+      },
+      "male_applicability": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "enum": [
+          "direct",
+          "indirect",
+          "mechanistic",
+          "excluded",
+          null
+        ]
+      },
+      "evidence_tier": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "enum": [
+          "tier_1",
+          "tier_2",
+          "tier_3",
+          "tier_4",
+          "tier_5",
+          "tier_6",
+          "tier_7",
+          null
+        ]
+      },
+      "confidence_rating": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "enum": [
+          "very_high",
+          "high",
+          "moderate",
+          "low",
+          "very_low",
+          null
+        ]
+      },
+      "replication_status": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "conflicting_evidence": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "reviewer_notes": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "date_added": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+      },
+      "last_reviewed_date": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+      }
+    }
+  }
+}

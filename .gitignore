@@ -8,3 +8,11 @@ android/app/src/main/assets/public/
 !.env.example
 .DS_Store
 .vercel-data/
+
+# Personal health data and generated personal analysis outputs.
+personal_fitness_data/raw/
+personal_fitness_data/normalized/
+personal_fitness_data/derived/
+personal_fitness_data/reports/
+personal_fitness_data/config/personal_context.json
+www/private-personal-data/

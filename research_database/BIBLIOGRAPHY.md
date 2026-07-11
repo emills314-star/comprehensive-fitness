@@ -1,0 +1,44 @@
+# Bibliography
+
+Database version 1.0.0; reviewed 2026-07-11. IDs are persistent and correspond to the research library. Links resolve through DOI.org when a DOI is available.
+
+- **stu_0001** — Pelland et al. (2025). The Resistance Training Dose Response: Meta-Regressions Exploring the Effects of Weekly Volume and Frequency on Muscle Hypertrophy and Strength Gains. Sports Medicine. https://doi.org/10.1007/s40279-025-02344-w
+- **stu_0002** — Schoenfeld, Ogborn, and Krieger (2017). Dose-response relationship between weekly resistance training volume and increases in muscle mass. Journal of Sports Sciences. https://doi.org/10.1080/02640414.2016.1210197
+- **stu_0003** — Schoenfeld, Grgic, and Krieger (2019). How many times per week should a muscle be trained to maximize muscle hypertrophy?. Journal of Sports Sciences. https://doi.org/10.1080/02640414.2018.1555906
+- **stu_0004** — Lopez et al. (2021). Resistance Training Load Effects on Muscle Hypertrophy and Strength Gain. Medicine and Science in Sports and Exercise. https://doi.org/10.1249/MSS.0000000000002585
+- **stu_0005** — Refalo et al. (2023). Influence of Resistance Training Proximity-to-Failure on Skeletal Muscle Hypertrophy. Sports Medicine. https://doi.org/10.1007/s40279-022-01784-y
+- **stu_0006** — Grgic et al. (2022). Effects of resistance training performed to repetition failure or non-failure. Journal of Sport and Health Science. https://doi.org/10.1016/j.jshs.2021.01.007
+- **stu_0007** — Singer et al. (2024). Give it a rest: effect of inter-set rest interval duration on muscle hypertrophy. Frontiers in Sports and Active Living. https://doi.org/10.3389/fspor.2024.1429789
+- **stu_0008** — Schoenfeld, Ogborn, and Krieger (2015). Effect of repetition duration during resistance training on muscle hypertrophy. Sports Medicine. https://doi.org/10.1007/s40279-015-0304-0
+- **stu_0009** — Nunes et al. (2021). What influence does resistance exercise order have on muscular strength gains and muscle hypertrophy?. European Journal of Sport Science. https://doi.org/10.1080/17461391.2020.1733672
+- **stu_0010** — Haugen et al. (2023). Effect of free-weight vs. machine-based strength training on maximal strength, hypertrophy and jump performance. BMC Sports Science Medicine and Rehabilitation. https://doi.org/10.1186/s13102-023-00713-4
+- **stu_0011** — Pallarés et al. (2021). Effects of range of motion on resistance training adaptations. Scandinavian Journal of Medicine and Science in Sports. https://doi.org/10.1111/sms.14006
+- **stu_0012** — Kassiano et al. (2023). Which ROMs Lead to Rome?. Journal of Strength and Conditioning Research. https://doi.org/10.1519/JSC.0000000000004415
+- **stu_0013** — Varovic et al. (2025). Does Muscle Length Influence Regional Hypertrophy?. International Journal of Sports Medicine. https://doi.org/10.1055/a-2615-4935
+- **stu_0014** — Fonseca et al. (2023). Comparison of Traditional and Advanced Resistance Training Paradigms on Muscle Hypertrophy in Trained Individuals. BioMed Research International. https://doi.org/10.1155/2023/9507977
+- **stu_0015** — Moesgaard et al. (2022). Effects of Periodization on Strength and Muscle Hypertrophy in Volume-Equated Resistance Training Programs. Sports Medicine. https://doi.org/10.1007/s40279-021-01636-1
+- **stu_0016** — Morton et al. (2018). Protein supplementation and resistance training-induced gains in muscle mass and strength. British Journal of Sports Medicine. https://doi.org/10.1136/bjsports-2017-097608
+- **stu_0017** — Jäger et al. (2017). International Society of Sports Nutrition Position Stand: protein and exercise. Journal of the International Society of Sports Nutrition. https://doi.org/10.1186/s12970-017-0177-8
+- **stu_0018** — Helms et al. (2014). Dietary protein during caloric restriction in resistance trained lean athletes. International Journal of Sport Nutrition and Exercise Metabolism. https://doi.org/10.1123/ijsnem.2013-0054
+- **stu_0019** — Murphy and Koehler (2022). Energy deficiency impairs resistance training gains in lean mass but not strength. Scandinavian Journal of Medicine and Science in Sports. https://doi.org/10.1111/sms.14075
+- **stu_0020** — Roth et al. (2023). Resistance training volume does not influence lean mass preservation during energy restriction in trained males. Scandinavian Journal of Medicine and Science in Sports. https://doi.org/10.1111/sms.14237
+- **stu_0021** — Longland et al. (2016). Higher compared with lower dietary protein during an energy deficit combined with intense exercise. American Journal of Clinical Nutrition. https://doi.org/10.3945/ajcn.115.119339
+- **stu_0022** — Iraki et al. (2019). Nutrition Recommendations for Bodybuilders in the Off-Season. Sports. https://doi.org/10.3390/sports7070154
+- **stu_0023** — Barakat et al. (2020). Body Recomposition: Can Trained Individuals Build Muscle and Lose Fat at the Same Time?. Strength and Conditioning Journal. https://doi.org/10.1519/SSC.0000000000000584
+- **stu_0024** — Campbell et al. (2018). Effects of High Versus Low Protein Intake on Body Composition and Maximal Strength in Aspiring Female Physique Athletes. International Journal of Sport Nutrition and Exercise Metabolism. https://doi.org/10.1123/ijsnem.2017-0389 *(excluded from male recommendation mappings)*
+- **stu_0025** — Schoenfeld et al. (2019). Resistance Training Volume Enhances Muscle Hypertrophy but Not Strength in Trained Men. Medicine and Science in Sports and Exercise. https://doi.org/10.1249/MSS.0000000000001764
+- **stu_0026** — Schoenfeld et al. (2016). Longer Interset Rest Periods Enhance Muscle Strength and Hypertrophy in Resistance-Trained Men. Journal of Strength and Conditioning Research. https://doi.org/10.1519/JSC.0000000000001272
+- **stu_0027** — Bickel, Cross, and Bamman (2011). Exercise dosing to retain resistance training adaptations in young and older adults. Medicine and Science in Sports and Exercise. https://doi.org/10.1249/MSS.0b013e318207c15d
+- **stu_0028** — Androulakis-Korakakis et al. (2020). The Minimum Effective Training Dose Required to Increase 1RM Strength in Resistance-Trained Men. Sports Medicine. https://doi.org/10.1007/s40279-019-01236-0
+- **stu_0029** — Helms et al. (2018). RPE and Velocity Relationships for the Back Squat, Bench Press, and Deadlift in Powerlifters. Journal of Strength and Conditioning Research. https://doi.org/10.1519/JSC.0000000000002778
+- **stu_0030** — Zourdos et al. (2016). Novel Resistance Training-Specific Rating of Perceived Exertion Scale Measuring Repetitions in Reserve. Journal of Strength and Conditioning Research. https://doi.org/10.1519/JSC.0000000000001049
+- **stu_0031** — Zhang et al. (2021). Auto-Regulation Method vs Fixed-Loading Method in Maximum Strength Training for Athletes. Frontiers in Physiology. https://doi.org/10.3389/fphys.2021.651112
+- **stu_0032** — Jukic et al. (2021). The Acute and Chronic Effects of Implementing Velocity Loss Thresholds During Resistance Training. Sports Medicine. https://doi.org/10.1007/s40279-020-01382-2
+- **stu_0033** — Schoenfeld and Aragon (2018). How much protein can the body use in a single meal for muscle-building?. Journal of the International Society of Sports Nutrition. https://doi.org/10.1186/s12970-018-0215-1
+- **stu_0034** — Yasuda et al. (2020). Evenly Distributed Protein Intake over 3 Meals Augments Resistance Exercise-Induced Muscle Hypertrophy in Healthy Young Men. Journal of Nutrition. https://doi.org/10.1093/jn/nxaa101
+- **stu_0035** — Gillen et al. (2021). Intermittent Energy Restriction Attenuates the Loss of Fat Free Mass in Resistance Trained Individuals. Journal of Functional Morphology and Kinesiology. https://doi.org/10.3390/jfmk6010019
+- **stu_0036** — Smith et al. (2021). Predicting Adaptations to Resistance Training Plus Overfeeding Using Bayesian Regression. Journal of Functional Morphology and Kinesiology. https://doi.org/10.3390/jfmk6020036
+- **stu_0037** — Schoenfeld et al. (2021). Resistance Training Recommendations to Maximize Muscle Hypertrophy in an Athletic Population: Position Stand of the IUSCA. International Journal of Strength and Conditioning. https://doi.org/10.47206/ijsc.v1i1.81
+- **stu_0038** — Grgic et al. (2017). Effects of short versus long inter-set rest intervals on muscle hypertrophy. European Journal of Sport Science. https://doi.org/10.1080/17461391.2017.1340524
+- **stu_0039** — Schoenfeld et al. (2017). Strength and Hypertrophy Adaptations Between Low- vs High-Load Resistance Training. Journal of Strength and Conditioning Research. https://doi.org/10.1519/JSC.0000000000002200
+- **stu_0040** — Alizadeh et al. (2023). Resistance Training Induces Improvements in Range of Motion. Sports Medicine. https://doi.org/10.1007/s40279-022-01804-x

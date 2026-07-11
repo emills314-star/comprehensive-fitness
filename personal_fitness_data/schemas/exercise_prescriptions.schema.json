@@ -1,0 +1,237 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://comprehensive-fitness.local/schemas/personal-fitness/v1/exercise_prescriptions.schema.json",
+  "title": "Personal exercise prescriptions",
+  "description": "Machine-readable exercise and muscle-specific prescriptions derived from personal training, nutrition, and recovery evidence.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": true,
+    "required": [
+      "prescription_id",
+      "exercise_id",
+      "research_exercise_id",
+      "muscle_group_id",
+      "research_muscle_group_id",
+      "role",
+      "source_date_range",
+      "analysis_date",
+      "methodology_version",
+      "sample_size",
+      "confidence_level",
+      "missing_data_flags",
+      "source_references",
+      "notes",
+      "evidence_summary"
+    ],
+    "properties": {
+      "prescription_id": { "$ref": "#/$defs/stableId" },
+      "exercise_id": { "$ref": "#/$defs/stableId" },
+      "research_exercise_id": { "$ref": "#/$defs/nullableStableId" },
+      "muscle_group_id": { "$ref": "#/$defs/stableId" },
+      "research_muscle_group_id": { "$ref": "#/$defs/nullableStableId" },
+      "role": {
+        "type": "string",
+        "enum": [
+          "primary_progression_lift",
+          "secondary_hypertrophy_lift",
+          "low_fatigue_accessory",
+          "technique_or_maintenance_lift",
+          "deload_substitute",
+          "remove_or_deprioritize"
+        ]
+      },
+      "primary_muscle_group_id": { "$ref": "#/$defs/nullableStableId" },
+      "secondary_muscle_group_ids": {
+        "type": "array",
+        "items": { "$ref": "#/$defs/stableId" },
+        "uniqueItems": true
+      },
+      "recommended_sets_per_session": { "$ref": "#/$defs/integerRange" },
+      "recommended_weekly_sets": { "$ref": "#/$defs/integerRange" },
+      "recommended_sessions_per_week": { "$ref": "#/$defs/numberRange" },
+      "recommended_rep_range": { "$ref": "#/$defs/integerRange" },
+      "recommended_rpe": { "$ref": "#/$defs/numberRange" },
+      "recommended_rir": { "$ref": "#/$defs/numberRange" },
+      "recommended_rest_seconds": { "$ref": "#/$defs/integerRange" },
+      "recommended_days_between_exposures": { "$ref": "#/$defs/numberRange" },
+      "recommended_workout_placement": { "type": ["string", "null"] },
+      "top_set_structure": {
+        "type": ["object", "null"],
+        "additionalProperties": true
+      },
+      "backoff_set_structure": {
+        "type": ["object", "null"],
+        "additionalProperties": true
+      },
+      "progression_rule": { "type": "string", "minLength": 1 },
+      "recommended_load_increment": { "type": ["object", "string", "number", "null"] },
+      "repetition_fall_response": { "type": ["string", "null"] },
+      "rpe_rise_response": { "type": ["string", "null"] },
+      "stalled_exposure_response": { "type": ["string", "null"] },
+      "deload_rule": { "type": ["string", "object", "null"] },
+      "nutrition_conditions": {
+        "type": ["object", "null"],
+        "additionalProperties": true
+      },
+      "recovery_conditions": {
+        "type": ["object", "null"],
+        "additionalProperties": true
+      },
+      "substitute_exercise_ids": {
+        "type": "array",
+        "items": { "$ref": "#/$defs/stableId" },
+        "uniqueItems": true
+      },
+      "warning_signs": {
+        "type": "array",
+        "items": { "type": "string", "minLength": 1 }
+      },
+      "observed_best_range": {
+        "type": ["object", "null"],
+        "additionalProperties": true
+      },
+      "recommended_future_range": {
+        "type": ["object", "null"],
+        "additionalProperties": true
+      },
+      "highest_recoverable_range_observed": {
+        "type": ["object", "null"],
+        "additionalProperties": true
+      },
+      "source_date_range": { "$ref": "#/$defs/dateRange" },
+      "analysis_date": { "$ref": "#/$defs/isoDate" },
+      "methodology_version": { "$ref": "#/$defs/version" },
+      "sample_size": { "type": "integer", "minimum": 0 },
+      "confidence_level": { "$ref": "#/$defs/confidenceLevel" },
+      "confidence_score": {
+        "type": ["number", "null"],
+        "minimum": 0,
+        "maximum": 100
+      },
+      "missing_data_flags": { "$ref": "#/$defs/missingDataFlags" },
+      "source_references": {
+        "type": "array",
+        "items": { "$ref": "#/$defs/sourceReference" },
+        "uniqueItems": true
+      },
+      "notes": { "$ref": "#/$defs/notes" },
+      "evidence_summary": { "type": "string", "minLength": 1 },
+      "integration_envelope": { "$ref": "#/$defs/integrationEnvelope" }
+    }
+  },
+  "$defs": {
+    "stableId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "nullableStableId": {
+      "type": ["string", "null"],
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "isoDate": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?$"
+    },
+    "dateRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start_date", "end_date"],
+      "properties": {
+        "start_date": {
+          "type": ["string", "null"],
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "end_date": {
+          "type": ["string", "null"],
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        }
+      }
+    },
+    "integerRange": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["min", "max"],
+      "properties": {
+        "min": { "type": ["integer", "null"], "minimum": 0 },
+        "max": { "type": ["integer", "null"], "minimum": 0 }
+      }
+    },
+    "numberRange": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["min", "max"],
+      "properties": {
+        "min": { "type": ["number", "null"], "minimum": 0 },
+        "max": { "type": ["number", "null"], "minimum": 0 }
+      }
+    },
+    "confidenceLevel": {
+      "type": "string",
+      "enum": ["high", "moderate", "low", "insufficient_personal_evidence"]
+    },
+    "missingDataFlags": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/stableId" },
+      "uniqueItems": true
+    },
+    "sourceReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "source_path"],
+      "properties": {
+        "source_id": { "$ref": "#/$defs/stableId" },
+        "source_path": { "type": "string", "minLength": 1 },
+        "worksheet": { "type": ["string", "null"] },
+        "source_record_id": { "type": ["string", "null"] },
+        "source_row": { "type": ["integer", "null"], "minimum": 1 },
+        "source_date": {
+          "type": ["string", "null"],
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "notes": { "type": ["string", "null"] }
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "integrationEnvelope": {
+      "description": "Forward-compatible blend of personal estimates and external research defaults. Weights should sum to 1 within floating-point tolerance.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "personal_estimate",
+        "personal_confidence",
+        "personal_sample_size",
+        "research_default",
+        "research_confidence",
+        "personal_weight",
+        "research_weight",
+        "final_recommendation",
+        "weighting_reason",
+        "last_updated"
+      ],
+      "properties": {
+        "personal_estimate": { "type": "object", "additionalProperties": true },
+        "personal_confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "personal_sample_size": { "type": "integer", "minimum": 0 },
+        "research_default": { "type": "object", "additionalProperties": true },
+        "research_confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "personal_weight": { "type": "number", "minimum": 0, "maximum": 1 },
+        "research_weight": { "type": "number", "minimum": 0, "maximum": 1 },
+        "final_recommendation": { "type": "object", "additionalProperties": true },
+        "weighting_reason": { "type": "string", "minLength": 1 },
+        "last_updated": { "$ref": "#/$defs/isoDate" }
+      }
+    }
+  }
+}

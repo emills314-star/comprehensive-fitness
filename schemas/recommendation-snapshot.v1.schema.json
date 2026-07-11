@@ -1,0 +1,413 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://comprehensive-fitness.local/schemas/recommendation-snapshot.v1.schema.json",
+  "title": "Immutable recommendation snapshot and manual override audit log v1",
+  "description": "Append-only workout recommendation evidence. Historical workouts render basePrescription and finalPrescription from this snapshot rather than recomputing them with a newer engine. Adding an override produces a new checksummed snapshot value and preserves the prior final prescription in the override entry.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "recommendationId",
+    "schemaVersion",
+    "recommendationVersion",
+    "engineVersion",
+    "personalDataVersion",
+    "researchDatabaseVersion",
+    "mesocycleId",
+    "exerciseId",
+    "muscleGroupId",
+    "exerciseScore",
+    "muscleSpecificScore",
+    "personalEvidenceWeight",
+    "researchEvidenceWeight",
+    "readinessAdjustment",
+    "basePrescription",
+    "finalPrescription",
+    "explanation",
+    "evidenceSummary",
+    "confidence",
+    "createdAt",
+    "manualOverrides",
+    "overrideLocked",
+    "checksum"
+  ],
+  "properties": {
+    "recommendationId": {
+      "$ref": "exercise-prescription.v2.schema.json#/$defs/id"
+    },
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "recommendationVersion": {
+      "$ref": "#/$defs/versionIdentifier"
+    },
+    "engineVersion": {
+      "$ref": "#/$defs/semanticVersion"
+    },
+    "personalDataVersion": {
+      "$ref": "#/$defs/versionIdentifier"
+    },
+    "researchDatabaseVersion": {
+      "$ref": "#/$defs/versionIdentifier"
+    },
+    "mesocycleId": {
+      "$ref": "exercise-prescription.v2.schema.json#/$defs/nullableId"
+    },
+    "exerciseId": {
+      "$ref": "exercise-prescription.v2.schema.json#/$defs/id"
+    },
+    "muscleGroupId": {
+      "$ref": "exercise-prescription.v2.schema.json#/$defs/id"
+    },
+    "exerciseScore": {
+      "$ref": "exercise-prescription.v2.schema.json#/$defs/score"
+    },
+    "muscleSpecificScore": {
+      "$ref": "exercise-prescription.v2.schema.json#/$defs/score"
+    },
+    "personalEvidenceWeight": {
+      "$ref": "exercise-prescription.v2.schema.json#/$defs/weight"
+    },
+    "researchEvidenceWeight": {
+      "$ref": "exercise-prescription.v2.schema.json#/$defs/weight"
+    },
+    "readinessAdjustment": {
+      "anyOf": [
+        {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/readinessAdjustment"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "basePrescription": {
+      "$ref": "exercise-prescription.v2.schema.json"
+    },
+    "finalPrescription": {
+      "$ref": "exercise-prescription.v2.schema.json"
+    },
+    "explanation": {
+      "$ref": "exercise-prescription.v2.schema.json#/$defs/nonEmptyString"
+    },
+    "evidenceSummary": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "exercise-prescription.v2.schema.json#/$defs/nonEmptyString"
+      }
+    },
+    "confidence": {
+      "$ref": "exercise-prescription.v2.schema.json#/$defs/confidence"
+    },
+    "createdAt": {
+      "$ref": "#/$defs/dateTime"
+    },
+    "manualOverrides": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/manualOverride"
+      }
+    },
+    "overrideLocked": {
+      "type": "boolean",
+      "description": "True while an intentional override must not be undone by engine recomputation during the same workout."
+    },
+    "checksum": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8,128}$"
+    }
+  },
+  "$defs": {
+    "dateTime": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T"
+    },
+    "semanticVersion": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?$"
+    },
+    "versionIdentifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "changePairBase": {
+      "type": "object",
+      "required": [
+        "from",
+        "to"
+      ]
+    },
+    "exerciseIdChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "from",
+        "to"
+      ],
+      "properties": {
+        "from": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/nullableId"
+        },
+        "to": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/id"
+        }
+      }
+    },
+    "setCountChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "from",
+        "to"
+      ],
+      "properties": {
+        "from": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 20
+        },
+        "to": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        }
+      }
+    },
+    "repRangeChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "from",
+        "to"
+      ],
+      "properties": {
+        "from": {
+          "anyOf": [
+            {
+              "$ref": "exercise-prescription.v2.schema.json#/$defs/repRange"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "to": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/repRange"
+        }
+      }
+    },
+    "loadChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "from",
+        "to"
+      ],
+      "properties": {
+        "from": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "to": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "setStructureChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "from",
+        "to"
+      ],
+      "properties": {
+        "from": {
+          "anyOf": [
+            {
+              "$ref": "exercise-prescription.v2.schema.json#/$defs/setStructure"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "to": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/setStructure"
+        }
+      }
+    },
+    "recommendationTypeChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "from",
+        "to"
+      ],
+      "properties": {
+        "from": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/recommendationType"
+        },
+        "to": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/recommendationType"
+        }
+      }
+    },
+    "mesocycleIdChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "from",
+        "to"
+      ],
+      "properties": {
+        "from": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/nullableId"
+        },
+        "to": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/id"
+        }
+      }
+    },
+    "overrideChanges": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "exerciseId": {
+          "$ref": "#/$defs/exerciseIdChange"
+        },
+        "setCount": {
+          "$ref": "#/$defs/setCountChange"
+        },
+        "repRange": {
+          "$ref": "#/$defs/repRangeChange"
+        },
+        "load": {
+          "$ref": "#/$defs/loadChange"
+        },
+        "setStructure": {
+          "$ref": "#/$defs/setStructureChange"
+        },
+        "deloadRecommendation": {
+          "$ref": "#/$defs/recommendationTypeChange"
+        },
+        "exerciseRotation": {
+          "$ref": "#/$defs/recommendationTypeChange"
+        },
+        "mesocycleId": {
+          "$ref": "#/$defs/mesocycleIdChange"
+        }
+      }
+    },
+    "overrideOutcome": {
+      "description": "Extensible observed outcome used to compare an intentional override with the original engine recommendation. Known properties remain typed; later outcome metrics may be added without rewriting historical records.",
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "progressed": {
+          "type": "boolean"
+        },
+        "progressionPercent": {
+          "type": "number"
+        },
+        "recoveryCost": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "pain": {
+          "type": "boolean"
+        },
+        "discomfort": {
+          "type": "boolean"
+        },
+        "completed": {
+          "type": "boolean"
+        },
+        "adherence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "outcomeEvaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "result",
+        "evaluatedAt",
+        "explanation"
+      ],
+      "properties": {
+        "result": {
+          "type": "string",
+          "enum": [
+            "override_outperformed_or_supported",
+            "engine_recommendation_likely_preferred",
+            "inconclusive"
+          ]
+        },
+        "evaluatedAt": {
+          "$ref": "#/$defs/dateTime"
+        },
+        "explanation": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "manualOverride": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "overrideId",
+        "createdAt",
+        "actor",
+        "reason",
+        "workoutId",
+        "changes",
+        "previousFinalPrescription"
+      ],
+      "properties": {
+        "overrideId": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/id"
+        },
+        "createdAt": {
+          "$ref": "#/$defs/dateTime"
+        },
+        "actor": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/nonEmptyString"
+        },
+        "reason": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/nonEmptyString"
+        },
+        "workoutId": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/nullableId"
+        },
+        "changes": {
+          "$ref": "#/$defs/overrideChanges"
+        },
+        "previousFinalPrescription": {
+          "$ref": "exercise-prescription.v2.schema.json"
+        },
+        "outcome": {
+          "$ref": "#/$defs/overrideOutcome"
+        },
+        "outcomeEvaluation": {
+          "$ref": "#/$defs/outcomeEvaluation"
+        }
+      }
+    }
+  }
+}

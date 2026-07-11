@@ -1,0 +1,279 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://comprehensive-fitness.local/schema/1.0.0/muscle_group_recommendations.schema.json",
+  "title": "muscle_group_recommendations",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "muscle_group_id",
+      "muscle_group",
+      "muscle_subdivision",
+      "anatomical_function",
+      "effective_exercises",
+      "minimum_effective_weekly_sets",
+      "typical_effective_weekly_sets_low",
+      "typical_effective_weekly_sets_high",
+      "higher_volume_range_low",
+      "higher_volume_range_high",
+      "likely_diminishing_returns_threshold",
+      "recommended_sets_per_session_low",
+      "recommended_sets_per_session_high",
+      "recommended_frequency_low",
+      "recommended_frequency_high",
+      "recommended_rep_range_low",
+      "recommended_rep_range_high",
+      "recommended_rir_low",
+      "recommended_rir_high",
+      "recommended_rest_seconds_low",
+      "recommended_rest_seconds_high",
+      "lengthened_position_considerations",
+      "indirect_set_contribution",
+      "recovery_considerations",
+      "cutting_adjustment",
+      "recomp_adjustment",
+      "maintenance_adjustment",
+      "bulking_adjustment",
+      "maintenance_volume_estimate",
+      "training_status",
+      "evidence_strength",
+      "confidence_rating",
+      "supporting_study_ids",
+      "notes"
+    ],
+    "properties": {
+      "muscle_group_id": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "muscle_group": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "muscle_subdivision": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "anatomical_function": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "effective_exercises": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "minimum_effective_weekly_sets": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "typical_effective_weekly_sets_low": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "typical_effective_weekly_sets_high": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "higher_volume_range_low": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "higher_volume_range_high": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "likely_diminishing_returns_threshold": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "recommended_sets_per_session_low": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "recommended_sets_per_session_high": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "recommended_frequency_low": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "recommended_frequency_high": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "recommended_rep_range_low": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "recommended_rep_range_high": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "recommended_rir_low": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "recommended_rir_high": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "recommended_rest_seconds_low": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "recommended_rest_seconds_high": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "lengthened_position_considerations": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "indirect_set_contribution": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "recovery_considerations": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "cutting_adjustment": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "recomp_adjustment": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "maintenance_adjustment": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "bulking_adjustment": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "maintenance_volume_estimate": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "training_status": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "enum": [
+          "untrained",
+          "novice",
+          "intermediate",
+          "advanced",
+          "mixed",
+          "not_reported",
+          "all",
+          null
+        ]
+      },
+      "evidence_strength": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "enum": [
+          "very_high",
+          "high",
+          "moderate",
+          "low",
+          "very_low",
+          null
+        ]
+      },
+      "confidence_rating": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "enum": [
+          "very_high",
+          "high",
+          "moderate",
+          "low",
+          "very_low",
+          null
+        ]
+      },
+      "supporting_study_ids": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "notes": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    }
+  }
+}

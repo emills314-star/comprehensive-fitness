@@ -1,0 +1,2 @@
+change_id,change_date,database_version,affected_tab,affected_record_ids,change_type,previous_value,new_value,reason_for_change,supporting_study_ids,reviewer_notes
+chg_0001,2026-07-11,1.0.0,all,all_v1_records,initial_release,,Initial male-specific evidence database release,"Created normalized evidence, application rules, exports, methodology, and validation package.",stu_0001|stu_0004|stu_0016|stu_0019,Version 1.0 is broad but not an exhaustive systematic review; low-confidence operational defaults are explicitly labeled.

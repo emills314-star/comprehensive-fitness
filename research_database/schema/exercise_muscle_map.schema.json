@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://comprehensive-fitness.local/schema/1.0.0/exercise_muscle_map.schema.json",
+  "title": "exercise_muscle_map",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "exercise_muscle_map_id",
+      "exercise_id",
+      "muscle_group_id",
+      "relationship_type",
+      "fractional_set_credit",
+      "evidence_basis",
+      "confidence_rating"
+    ],
+    "properties": {
+      "exercise_muscle_map_id": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "exercise_id": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "muscle_group_id": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "relationship_type": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "fractional_set_credit": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "evidence_basis": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "confidence_rating": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "enum": [
+          "very_high",
+          "high",
+          "moderate",
+          "low",
+          "very_low",
+          null
+        ]
+      }
+    }
+  }
+}

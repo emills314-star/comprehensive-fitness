@@ -1,0 +1,1221 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://comprehensive-fitness.local/schemas/exercise-prescription.v2.schema.json",
+  "title": "ExercisePrescription v2",
+  "description": "The canonical, explainable exercise-level decision returned by the unified prescription engine. Ranges are inclusive. Evidence weights must sum to 1 within normal floating-point tolerance.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "exerciseId",
+    "researchExerciseId",
+    "muscleGroupId",
+    "recommendationType",
+    "role",
+    "setStructure",
+    "workingSets",
+    "repRange",
+    "targetRpe",
+    "targetRir",
+    "restSeconds",
+    "frequencyPerWeek",
+    "volume",
+    "progressionMethod",
+    "progressionRule",
+    "holdRule",
+    "regressionRule",
+    "deloadRule",
+    "substitutionRule",
+    "preferredReplacementExerciseId",
+    "setStructureReason",
+    "personalEvidenceWeight",
+    "researchEvidenceWeight",
+    "confidence",
+    "evidenceSummary",
+    "userExplanation",
+    "exerciseScore",
+    "muscleSpecificScore",
+    "staleness",
+    "deloadStatus",
+    "mesocycleId"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "2.0.0"
+    },
+    "exerciseId": {
+      "$ref": "#/$defs/id"
+    },
+    "researchExerciseId": {
+      "$ref": "#/$defs/nullableId"
+    },
+    "exerciseName": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "muscleGroupId": {
+      "$ref": "#/$defs/id"
+    },
+    "recommendationType": {
+      "$ref": "#/$defs/recommendationType"
+    },
+    "role": {
+      "$ref": "#/$defs/role"
+    },
+    "setStructure": {
+      "$ref": "#/$defs/setStructure"
+    },
+    "setStructureEvidenceConflict": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "personal_structure_fields_disagree",
+        null
+      ]
+    },
+    "workingSets": {
+      "$ref": "#/$defs/setRange"
+    },
+    "repRange": {
+      "$ref": "#/$defs/repRange"
+    },
+    "targetRpe": {
+      "$ref": "#/$defs/rpeRange"
+    },
+    "targetRir": {
+      "$ref": "#/$defs/rirRange"
+    },
+    "topSet": {
+      "$ref": "#/$defs/topSet"
+    },
+    "backoffSets": {
+      "$ref": "#/$defs/backoffSets"
+    },
+    "restSeconds": {
+      "$ref": "#/$defs/restRange"
+    },
+    "frequencyPerWeek": {
+      "$ref": "#/$defs/frequencyRange"
+    },
+    "prescribedLoad": {
+      "$ref": "#/$defs/loadTarget"
+    },
+    "manualOverride": {
+      "$ref": "#/$defs/prescriptionManualOverride"
+    },
+    "volume": {
+      "$ref": "#/$defs/volumePrescription"
+    },
+    "progressionMethod": {
+      "$ref": "#/$defs/progressionMethod"
+    },
+    "progressionRule": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "holdRule": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "regressionRule": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "deloadRule": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "substitutionRule": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "preferredReplacementExerciseId": {
+      "$ref": "#/$defs/nullableId"
+    },
+    "setStructureReason": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "deloadState": {
+      "$ref": "#/$defs/deloadState"
+    },
+    "deloadStatus": {
+      "$ref": "#/$defs/deloadStatus"
+    },
+    "staleness": {
+      "$ref": "#/$defs/stalenessAssessment"
+    },
+    "readinessAdjustment": {
+      "$ref": "#/$defs/readinessAdjustment"
+    },
+    "personalEvidenceWeight": {
+      "$ref": "#/$defs/weight"
+    },
+    "researchEvidenceWeight": {
+      "$ref": "#/$defs/weight"
+    },
+    "confidence": {
+      "$ref": "#/$defs/confidence"
+    },
+    "exerciseScore": {
+      "$ref": "#/$defs/score"
+    },
+    "muscleSpecificScore": {
+      "$ref": "#/$defs/score"
+    },
+    "mesocycleId": {
+      "$ref": "#/$defs/nullableId"
+    },
+    "evidenceSummary": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/nonEmptyString"
+      }
+    },
+    "userExplanation": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "explanationDetails": {
+      "$ref": "#/$defs/explanationDetails"
+    }
+  },
+  "allOf": [
+    {
+      "anyOf": [
+        {
+          "required": [
+            "targetRpe"
+          ]
+        },
+        {
+          "required": [
+            "targetRir"
+          ]
+        }
+      ]
+    },
+    {
+      "if": {
+        "properties": {
+          "setStructure": {
+            "const": "top_set_backoff"
+          }
+        },
+        "required": [
+          "setStructure"
+        ]
+      },
+      "then": {
+        "required": [
+          "topSet",
+          "backoffSets"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "setStructure": {
+            "const": "multiple_top_sets"
+          }
+        },
+        "required": [
+          "setStructure"
+        ]
+      },
+      "then": {
+        "required": [
+          "topSet"
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^(?!\\s*$)[^\\r\\n]+$"
+    },
+    "nullableId": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000,
+      "pattern": "^(?=.*\\S)[\\s\\S]+$"
+    },
+    "weight": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "confidence": {
+      "type": "string",
+      "enum": [
+        "high",
+        "moderate",
+        "low",
+        "research_default"
+      ]
+    },
+    "recommendationType": {
+      "type": "string",
+      "enum": [
+        "normal",
+        "progress",
+        "hold",
+        "reduce_volume",
+        "light_session",
+        "exercise_deload",
+        "muscle_group_deload",
+        "full_program_deload",
+        "substitute",
+        "rotate_exercise"
+      ]
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "primary_progression_lift",
+        "secondary_hypertrophy_lift",
+        "low_fatigue_accessory",
+        "maintenance_lift",
+        "deload_variation"
+      ]
+    },
+    "setStructure": {
+      "type": "string",
+      "enum": [
+        "straight_sets",
+        "top_set_backoff",
+        "multiple_top_sets",
+        "single_working_set",
+        "custom"
+      ]
+    },
+    "progressionMethod": {
+      "type": "string",
+      "enum": [
+        "double_progression",
+        "rep_first_progression",
+        "load_first_progression",
+        "top_set_progression_with_backoff_recalculation",
+        "rpe_adjusted_progression",
+        "fixed_load_progression",
+        "volume_progression",
+        "technique_quality_progression",
+        "load_then_reps",
+        "dynamic_double_progression",
+        "rep_first",
+        "rep_then_added_load",
+        "load_first",
+        "rep_then_rom_then_load",
+        "distance_then_load",
+        "rom_then_reps",
+        "load_then_hold_quality",
+        "duration_then_leverage"
+      ]
+    },
+    "deloadState": {
+      "type": "string",
+      "enum": [
+        "normal",
+        "readiness_adjustment",
+        "light_session",
+        "exercise_deload",
+        "muscle_group_deload",
+        "full_program_deload"
+      ]
+    },
+    "setRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "min",
+        "target",
+        "max"
+      ],
+      "properties": {
+        "min": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20
+        },
+        "target": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20
+        }
+      }
+    },
+    "repRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "min",
+        "max"
+      ],
+      "properties": {
+        "min": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "target": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      }
+    },
+    "rpeRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "min",
+        "max"
+      ],
+      "properties": {
+        "min": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "max": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10
+        }
+      }
+    },
+    "rirRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "min",
+        "max"
+      ],
+      "properties": {
+        "min": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "target": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "max": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10
+        }
+      }
+    },
+    "restRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "min",
+        "target",
+        "max"
+      ],
+      "properties": {
+        "min": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1800
+        },
+        "target": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1800
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1800
+        }
+      }
+    },
+    "frequencyRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "min",
+        "target",
+        "max"
+      ],
+      "properties": {
+        "min": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 14
+        },
+        "target": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 14
+        },
+        "max": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 14
+        }
+      }
+    },
+    "topSet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "count",
+        "repRange"
+      ],
+      "properties": {
+        "enabled": {
+          "const": true
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "repRange": {
+          "$ref": "#/$defs/repRange"
+        },
+        "targetRpe": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "targetRir": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "targetRpe"
+          ]
+        },
+        {
+          "required": [
+            "targetRir"
+          ]
+        }
+      ]
+    },
+    "backoffSets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "count",
+        "loadReductionPercent",
+        "repRange",
+        "maximumAcceptableRepLossPercent",
+        "maximumAcceptableLoadReductionPercent",
+        "conversionRule"
+      ],
+      "properties": {
+        "count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 19
+        },
+        "loadReductionPercent": {
+          "$ref": "#/$defs/percentRange"
+        },
+        "repRange": {
+          "$ref": "#/$defs/repRange"
+        },
+        "targetRpe": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "targetRir": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "maximumAcceptableRepLossPercent": {
+          "$ref": "#/$defs/percentage"
+        },
+        "maximumAcceptableLoadReductionPercent": {
+          "$ref": "#/$defs/percentage"
+        },
+        "conversionRule": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "targetRpe"
+          ]
+        },
+        {
+          "required": [
+            "targetRir"
+          ]
+        }
+      ]
+    },
+    "percentage": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "percentRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "min",
+        "target",
+        "max"
+      ],
+      "properties": {
+        "min": {
+          "$ref": "#/$defs/percentage"
+        },
+        "target": {
+          "$ref": "#/$defs/percentage"
+        },
+        "max": {
+          "$ref": "#/$defs/percentage"
+        }
+      }
+    },
+    "loadTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target",
+        "reason"
+      ],
+      "properties": {
+        "unit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "previous": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "target": {
+          "type": "number",
+          "minimum": 0
+        },
+        "adjustmentPercent": {
+          "type": "number",
+          "minimum": -100,
+          "maximum": 100
+        },
+        "direction": {
+          "type": "string",
+          "enum": [
+            "less_assistance_is_progress",
+            "more_external_load_is_progress"
+          ]
+        },
+        "reason": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "researchIncrement": {
+          "type": [
+            "string",
+            "number",
+            "null"
+          ]
+        }
+      }
+    },
+    "volumeLevel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "recommendedStarting",
+        "normalOperatingRange",
+        "currentPrescribed",
+        "highestRecoverableObserved",
+        "deload",
+        "researchFallbackRange"
+      ],
+      "properties": {
+        "recommendedStarting": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "normalOperatingRange": {
+          "$ref": "#/$defs/numericRange"
+        },
+        "currentPrescribed": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "highestRecoverableObserved": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "deload": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "researchFallbackRange": {
+          "$ref": "#/$defs/numericRange"
+        }
+      }
+    },
+    "numericRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "min",
+        "max"
+      ],
+      "properties": {
+        "min": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "target": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "max": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    },
+    "volumePrescription": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adjustmentType",
+        "perExercise",
+        "perMusclePerSession",
+        "perMusclePerWeek",
+        "reason"
+      ],
+      "properties": {
+        "adjustmentType": {
+          "type": "string",
+          "enum": [
+            "normal",
+            "reduce_volume"
+          ]
+        },
+        "perExercise": {
+          "$ref": "#/$defs/volumeLevel"
+        },
+        "perMusclePerSession": {
+          "$ref": "#/$defs/numericRange"
+        },
+        "perMusclePerWeek": {
+          "$ref": "#/$defs/volumeLevel"
+        },
+        "reason": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "readinessSignal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "domain",
+        "severity",
+        "explanation"
+      ],
+      "properties": {
+        "domain": {
+          "type": "string",
+          "enum": [
+            "hrv",
+            "resting_heart_rate",
+            "sleep",
+            "subjective_recovery",
+            "subjective_readiness",
+            "recent_performance",
+            "nutrition",
+            "pain",
+            "body_weight_trend"
+          ]
+        },
+        "severity": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        },
+        "explanation": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "readinessAdjustment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "changed",
+        "temporary",
+        "affectsMesocycle",
+        "setChange",
+        "loadChangePercent",
+        "repTargetChange",
+        "rpeChange",
+        "explanation",
+        "resumeRule",
+        "signals"
+      ],
+      "properties": {
+        "changed": {
+          "type": "boolean"
+        },
+        "temporary": {
+          "const": true
+        },
+        "affectsMesocycle": {
+          "type": "boolean"
+        },
+        "setChange": {
+          "type": "integer",
+          "minimum": -20,
+          "maximum": 20
+        },
+        "loadChangePercent": {
+          "type": "number",
+          "minimum": -100,
+          "maximum": 100
+        },
+        "repTargetChange": {
+          "type": "integer",
+          "minimum": -100,
+          "maximum": 100
+        },
+        "rpeChange": {
+          "type": "number",
+          "minimum": -10,
+          "maximum": 10
+        },
+        "explanation": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "resumeRule": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "signals": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/readinessSignal"
+          }
+        }
+      }
+    },
+    "stalenessClassification": {
+      "type": "string",
+      "enum": [
+        "productive",
+        "productive_approaching_plateau",
+        "stalled",
+        "regressing",
+        "excessively_fatiguing",
+        "candidate_for_rotation",
+        "insufficient_evidence"
+      ]
+    },
+    "stalenessMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "progressionTrend",
+        "rpeTrend",
+        "estimated1RmTrend",
+        "backoffTrend"
+      ],
+      "properties": {
+        "progressionTrend": {
+          "type": "number"
+        },
+        "rpeTrend": {
+          "type": "number"
+        },
+        "estimated1RmTrend": {
+          "type": "number"
+        },
+        "backoffTrend": {
+          "type": "number"
+        },
+        "setRepLossFlag": {
+          "type": "boolean"
+        },
+        "recoveryCostFlag": {
+          "type": "boolean"
+        },
+        "painFlag": {
+          "type": "boolean"
+        },
+        "adherenceFlag": {
+          "type": "boolean"
+        },
+        "averageAdherence": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "improvedExposures": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "heldExposures": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "regressedExposures": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "stalenessAssessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "score",
+        "classification",
+        "label",
+        "exposureCount",
+        "rotationRecommended",
+        "deloadCandidate",
+        "reasons",
+        "metrics"
+      ],
+      "properties": {
+        "score": {
+          "$ref": "#/$defs/score"
+        },
+        "classification": {
+          "$ref": "#/$defs/stalenessClassification"
+        },
+        "label": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "exposureCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rotationRecommended": {
+          "type": "boolean"
+        },
+        "deloadCandidate": {
+          "type": "boolean"
+        },
+        "reasons": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/nonEmptyString"
+          }
+        },
+        "metrics": {
+          "$ref": "#/$defs/stalenessMetrics"
+        }
+      }
+    },
+    "readinessEvaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "signalCount",
+        "severity",
+        "signals",
+        "persistent",
+        "state"
+      ],
+      "properties": {
+        "signalCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "severity": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "signals": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/readinessSignal"
+          }
+        },
+        "persistent": {
+          "type": "boolean"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "normal",
+            "monitor",
+            "below_baseline",
+            "low"
+          ]
+        }
+      }
+    },
+    "deloadStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "fullProgram",
+        "muscleGroup",
+        "exerciseSpecific",
+        "lightSession",
+        "readinessOnly",
+        "explanation",
+        "readinessEvaluation",
+        "exerciseStaleness",
+        "degradedExerciseCount",
+        "degradedMuscleGroupCount"
+      ],
+      "properties": {
+        "state": {
+          "$ref": "#/$defs/deloadState"
+        },
+        "fullProgram": {
+          "type": "boolean"
+        },
+        "muscleGroup": {
+          "type": "boolean"
+        },
+        "exerciseSpecific": {
+          "type": "boolean"
+        },
+        "lightSession": {
+          "type": "boolean"
+        },
+        "readinessOnly": {
+          "type": "boolean"
+        },
+        "explanation": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "readinessEvaluation": {
+          "$ref": "#/$defs/readinessEvaluation"
+        },
+        "exerciseStaleness": {
+          "$ref": "#/$defs/stalenessAssessment"
+        },
+        "degradedExerciseCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "degradedMuscleGroupCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "exerciseScoreBreakdown": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exerciseId",
+        "researchExerciseId",
+        "muscleGroupId",
+        "personalHypertrophySupport",
+        "progressionQuality",
+        "recoveryEfficiency",
+        "repeatability",
+        "muscleSpecificity",
+        "lengthenedPositionLoading",
+        "stability",
+        "easeOfProgression",
+        "jointTolerance",
+        "fatigueCost",
+        "researchSupport",
+        "personalDataConfidence",
+        "overallRecommendationStrength",
+        "personalEvidenceWeight",
+        "researchEvidenceWeight",
+        "confidence",
+        "weightingReason",
+        "staleness"
+      ],
+      "properties": {
+        "exerciseId": {
+          "$ref": "#/$defs/id"
+        },
+        "researchExerciseId": {
+          "$ref": "#/$defs/nullableId"
+        },
+        "muscleGroupId": {
+          "$ref": "#/$defs/id"
+        },
+        "personalHypertrophySupport": {
+          "$ref": "#/$defs/score"
+        },
+        "progressionQuality": {
+          "$ref": "#/$defs/score"
+        },
+        "recoveryEfficiency": {
+          "$ref": "#/$defs/score"
+        },
+        "repeatability": {
+          "$ref": "#/$defs/score"
+        },
+        "muscleSpecificity": {
+          "$ref": "#/$defs/score"
+        },
+        "lengthenedPositionLoading": {
+          "$ref": "#/$defs/score"
+        },
+        "stability": {
+          "$ref": "#/$defs/score"
+        },
+        "easeOfProgression": {
+          "$ref": "#/$defs/score"
+        },
+        "jointTolerance": {
+          "$ref": "#/$defs/score"
+        },
+        "fatigueCost": {
+          "$ref": "#/$defs/score"
+        },
+        "researchSupport": {
+          "$ref": "#/$defs/score"
+        },
+        "personalDataConfidence": {
+          "$ref": "#/$defs/score"
+        },
+        "overallRecommendationStrength": {
+          "$ref": "#/$defs/score"
+        },
+        "personalEvidenceWeight": {
+          "$ref": "#/$defs/weight"
+        },
+        "researchEvidenceWeight": {
+          "$ref": "#/$defs/weight"
+        },
+        "confidence": {
+          "$ref": "#/$defs/confidence"
+        },
+        "weightingReason": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "staleness": {
+          "$ref": "#/$defs/stalenessAssessment"
+        }
+      }
+    },
+    "prescriptionManualOverride": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "overrideId",
+        "lockedForWorkout",
+        "explanation"
+      ],
+      "properties": {
+        "overrideId": {
+          "$ref": "#/$defs/id"
+        },
+        "lockedForWorkout": {
+          "const": true
+        },
+        "explanation": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "explanationDetails": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exerciseSelection",
+        "volume",
+        "repRange",
+        "setStructure",
+        "progression",
+        "deload",
+        "personalEvidence",
+        "researchEvidence",
+        "changeConditions"
+      ],
+      "properties": {
+        "exerciseSelection": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "volume": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "repRange": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "setStructure": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "progression": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "deload": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "personalEvidence": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "researchEvidence": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "changeConditions": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    }
+  }
+}

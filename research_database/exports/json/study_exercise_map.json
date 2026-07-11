@@ -1,0 +1,2882 @@
+[
+  {
+    "study_exercise_map_id": "sem_00001",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_barbell_bench_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00002",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_barbell_bench_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00003",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_barbell_bench_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00004",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_barbell_bench_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00005",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_barbell_bench_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00006",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_barbell_bench_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00007",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_barbell_bench_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00008",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_barbell_bench_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00009",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_dumbbell_bench_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00010",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_dumbbell_bench_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00011",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_dumbbell_bench_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00012",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_dumbbell_bench_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00013",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_dumbbell_bench_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00014",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_dumbbell_bench_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00015",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_dumbbell_bench_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00016",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_dumbbell_bench_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00017",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_incline_dumbbell_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00018",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_incline_dumbbell_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00019",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_incline_dumbbell_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00020",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_incline_dumbbell_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00021",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_incline_dumbbell_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00022",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_incline_dumbbell_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00023",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_incline_dumbbell_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00024",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_incline_dumbbell_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00025",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_machine_chest_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00026",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_machine_chest_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00027",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_machine_chest_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00028",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_machine_chest_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00029",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_machine_chest_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00030",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_machine_chest_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00031",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_machine_chest_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00032",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_machine_chest_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00033",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_incline_machine_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00034",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_incline_machine_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00035",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_incline_machine_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00036",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_incline_machine_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00037",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_incline_machine_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00038",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_incline_machine_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00039",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_incline_machine_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00040",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_incline_machine_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00041",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_cable_fly",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00042",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_cable_fly",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00043",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_cable_fly",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00044",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_cable_fly",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00045",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_cable_fly",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00046",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_cable_fly",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00047",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_cable_fly",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00048",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_cable_fly",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00049",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_low_to_high_cable_fly",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00050",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_low_to_high_cable_fly",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00051",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_low_to_high_cable_fly",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00052",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_low_to_high_cable_fly",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00053",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_low_to_high_cable_fly",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00054",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_low_to_high_cable_fly",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00055",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_low_to_high_cable_fly",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00056",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_low_to_high_cable_fly",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00057",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_overhead_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00058",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_overhead_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00059",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_overhead_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00060",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_overhead_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00061",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_overhead_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00062",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_overhead_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00063",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_overhead_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00064",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_overhead_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00065",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_machine_shoulder_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00066",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_machine_shoulder_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00067",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_machine_shoulder_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00068",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_machine_shoulder_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00069",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_machine_shoulder_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00070",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_machine_shoulder_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00071",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_machine_shoulder_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00072",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_machine_shoulder_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00073",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_cable_lateral_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00074",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_cable_lateral_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00075",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_cable_lateral_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00076",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_cable_lateral_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00077",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_cable_lateral_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00078",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_cable_lateral_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00079",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_cable_lateral_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00080",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_cable_lateral_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00081",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_dumbbell_lateral_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00082",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_dumbbell_lateral_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00083",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_dumbbell_lateral_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00084",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_dumbbell_lateral_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00085",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_dumbbell_lateral_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00086",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_dumbbell_lateral_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00087",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_dumbbell_lateral_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00088",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_dumbbell_lateral_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00089",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_machine_lateral_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00090",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_machine_lateral_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00091",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_machine_lateral_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00092",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_machine_lateral_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00093",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_machine_lateral_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00094",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_machine_lateral_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00095",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_machine_lateral_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00096",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_machine_lateral_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00097",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_pull_up",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00098",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_pull_up",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00099",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_pull_up",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00100",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_pull_up",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00101",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_pull_up",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00102",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_pull_up",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00103",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_pull_up",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00104",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_pull_up",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00105",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_chin_up",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00106",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_chin_up",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00107",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_chin_up",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00108",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_chin_up",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00109",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_chin_up",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00110",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_chin_up",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00111",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_chin_up",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00112",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_chin_up",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00113",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_lat_pulldown",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00114",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_lat_pulldown",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00115",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_lat_pulldown",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00116",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_lat_pulldown",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00117",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_lat_pulldown",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00118",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_lat_pulldown",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00119",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_lat_pulldown",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00120",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_lat_pulldown",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00121",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_one_arm_cable_pulldown",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00122",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_one_arm_cable_pulldown",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00123",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_one_arm_cable_pulldown",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00124",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_one_arm_cable_pulldown",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00125",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_one_arm_cable_pulldown",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00126",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_one_arm_cable_pulldown",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00127",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_one_arm_cable_pulldown",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00128",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_one_arm_cable_pulldown",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00129",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_chest_supported_row",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00130",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_chest_supported_row",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00131",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_chest_supported_row",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00132",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_chest_supported_row",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00133",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_chest_supported_row",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00134",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_chest_supported_row",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00135",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_chest_supported_row",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00136",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_chest_supported_row",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00137",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_seated_cable_row",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00138",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_seated_cable_row",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00139",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_seated_cable_row",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00140",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_seated_cable_row",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00141",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_seated_cable_row",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00142",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_seated_cable_row",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00143",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_seated_cable_row",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00144",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_seated_cable_row",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00145",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_dumbbell_row",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00146",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_dumbbell_row",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00147",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_dumbbell_row",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00148",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_dumbbell_row",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00149",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_dumbbell_row",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00150",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_dumbbell_row",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00151",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_dumbbell_row",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00152",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_dumbbell_row",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00153",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_reverse_pec_deck",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00154",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_reverse_pec_deck",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00155",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_reverse_pec_deck",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00156",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_reverse_pec_deck",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00157",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_reverse_pec_deck",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00158",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_reverse_pec_deck",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00159",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_reverse_pec_deck",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00160",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_reverse_pec_deck",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00161",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_cable_rear_delt_fly",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00162",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_cable_rear_delt_fly",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00163",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_cable_rear_delt_fly",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00164",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_cable_rear_delt_fly",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00165",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_cable_rear_delt_fly",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00166",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_cable_rear_delt_fly",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00167",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_cable_rear_delt_fly",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00168",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_cable_rear_delt_fly",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00169",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_barbell_shrug",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00170",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_barbell_shrug",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00171",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_barbell_shrug",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00172",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_barbell_shrug",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00173",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_barbell_shrug",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00174",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_barbell_shrug",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00175",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_barbell_shrug",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00176",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_barbell_shrug",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00177",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_dumbbell_shrug",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00178",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_dumbbell_shrug",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00179",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_dumbbell_shrug",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00180",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_dumbbell_shrug",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00181",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_dumbbell_shrug",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00182",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_dumbbell_shrug",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00183",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_dumbbell_shrug",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00184",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_dumbbell_shrug",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00185",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_back_squat",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00186",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_back_squat",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00187",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_back_squat",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00188",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_back_squat",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00189",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_back_squat",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00190",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_back_squat",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00191",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_back_squat",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00192",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_back_squat",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00193",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_front_squat",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00194",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_front_squat",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00195",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_front_squat",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00196",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_front_squat",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00197",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_front_squat",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00198",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_front_squat",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00199",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_front_squat",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00200",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_front_squat",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00201",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_leg_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00202",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_leg_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00203",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_leg_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00204",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_leg_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00205",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_leg_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00206",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_leg_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00207",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_leg_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00208",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_leg_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00209",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_hack_squat",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00210",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_hack_squat",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00211",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_hack_squat",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00212",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_hack_squat",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00213",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_hack_squat",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00214",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_hack_squat",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00215",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_hack_squat",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00216",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_hack_squat",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00217",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_bulgarian_split_squat",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00218",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_bulgarian_split_squat",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00219",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_bulgarian_split_squat",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00220",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_bulgarian_split_squat",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00221",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_bulgarian_split_squat",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00222",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_bulgarian_split_squat",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00223",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_bulgarian_split_squat",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00224",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_bulgarian_split_squat",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00225",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_leg_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00226",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_leg_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00227",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_leg_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00228",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_leg_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00229",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_leg_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00230",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_leg_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00231",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_leg_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00232",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_leg_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00233",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_deadlift",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00234",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_deadlift",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00235",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_deadlift",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00236",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_deadlift",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00237",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_deadlift",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00238",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_deadlift",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00239",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_deadlift",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00240",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_deadlift",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00241",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_romanian_deadlift",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00242",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_romanian_deadlift",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00243",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_romanian_deadlift",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00244",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_romanian_deadlift",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00245",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_romanian_deadlift",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00246",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_romanian_deadlift",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00247",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_romanian_deadlift",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00248",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_romanian_deadlift",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00249",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_good_morning",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00250",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_good_morning",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00251",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_good_morning",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00252",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_good_morning",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00253",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_good_morning",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00254",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_good_morning",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00255",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_good_morning",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00256",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_good_morning",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00257",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_hip_thrust",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00258",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_hip_thrust",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00259",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_hip_thrust",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00260",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_hip_thrust",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00261",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_hip_thrust",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00262",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_hip_thrust",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00263",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_hip_thrust",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00264",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_hip_thrust",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00265",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_back_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00266",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_back_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00267",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_back_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00268",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_back_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00269",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_back_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00270",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_back_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00271",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_back_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00272",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_back_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00273",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_seated_leg_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00274",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_seated_leg_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00275",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_seated_leg_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00276",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_seated_leg_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00277",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_seated_leg_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00278",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_seated_leg_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00279",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_seated_leg_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00280",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_seated_leg_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00281",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_lying_leg_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00282",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_lying_leg_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00283",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_lying_leg_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00284",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_lying_leg_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00285",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_lying_leg_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00286",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_lying_leg_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00287",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_lying_leg_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00288",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_lying_leg_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00289",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_nordic_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00290",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_nordic_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00291",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_nordic_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00292",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_nordic_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00293",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_nordic_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00294",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_nordic_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00295",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_nordic_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00296",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_nordic_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00297",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_hip_adduction_machine",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00298",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_hip_adduction_machine",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00299",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_hip_adduction_machine",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00300",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_hip_adduction_machine",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00301",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_hip_adduction_machine",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00302",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_hip_adduction_machine",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00303",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_hip_adduction_machine",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00304",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_hip_adduction_machine",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00305",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_hip_abduction_machine",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00306",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_hip_abduction_machine",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00307",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_hip_abduction_machine",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00308",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_hip_abduction_machine",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00309",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_hip_abduction_machine",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00310",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_hip_abduction_machine",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00311",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_hip_abduction_machine",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00312",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_hip_abduction_machine",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00313",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_cable_hip_abduction",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00314",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_cable_hip_abduction",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00315",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_cable_hip_abduction",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00316",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_cable_hip_abduction",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00317",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_cable_hip_abduction",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00318",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_cable_hip_abduction",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00319",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_cable_hip_abduction",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00320",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_cable_hip_abduction",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00321",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_standing_calf_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00322",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_standing_calf_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00323",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_standing_calf_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00324",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_standing_calf_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00325",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_standing_calf_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00326",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_standing_calf_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00327",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_standing_calf_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00328",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_standing_calf_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00329",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_seated_calf_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00330",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_seated_calf_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00331",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_seated_calf_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00332",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_seated_calf_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00333",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_seated_calf_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00334",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_seated_calf_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00335",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_seated_calf_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00336",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_seated_calf_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00337",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_leg_press_calf_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00338",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_leg_press_calf_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00339",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_leg_press_calf_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00340",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_leg_press_calf_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00341",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_leg_press_calf_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00342",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_leg_press_calf_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00343",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_leg_press_calf_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00344",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_leg_press_calf_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00345",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_incline_dumbbell_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00346",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_incline_dumbbell_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00347",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_incline_dumbbell_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00348",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_incline_dumbbell_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00349",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_incline_dumbbell_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00350",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_incline_dumbbell_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00351",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_incline_dumbbell_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00352",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_incline_dumbbell_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00353",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_preacher_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00354",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_preacher_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00355",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_preacher_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00356",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_preacher_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00357",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_preacher_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00358",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_preacher_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00359",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_preacher_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00360",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_preacher_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00361",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_cable_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00362",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_cable_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00363",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_cable_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00364",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_cable_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00365",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_cable_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00366",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_cable_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00367",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_cable_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00368",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_cable_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00369",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_hammer_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00370",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_hammer_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00371",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_hammer_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00372",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_hammer_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00373",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_hammer_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00374",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_hammer_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00375",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_hammer_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00376",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_hammer_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00377",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_cable_pushdown",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00378",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_cable_pushdown",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00379",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_cable_pushdown",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00380",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_cable_pushdown",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00381",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_cable_pushdown",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00382",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_cable_pushdown",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00383",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_cable_pushdown",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00384",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_cable_pushdown",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00385",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_overhead_cable_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00386",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_overhead_cable_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00387",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_overhead_cable_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00388",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_overhead_cable_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00389",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_overhead_cable_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00390",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_overhead_cable_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00391",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_overhead_cable_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00392",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_overhead_cable_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00393",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_close_grip_bench_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00394",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_close_grip_bench_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00395",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_close_grip_bench_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00396",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_close_grip_bench_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00397",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_close_grip_bench_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00398",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_close_grip_bench_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00399",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_close_grip_bench_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00400",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_close_grip_bench_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00401",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_wrist_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00402",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_wrist_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00403",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_wrist_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00404",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_wrist_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00405",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_wrist_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00406",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_wrist_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00407",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_wrist_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00408",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_wrist_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00409",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_reverse_wrist_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00410",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_reverse_wrist_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00411",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_reverse_wrist_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00412",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_reverse_wrist_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00413",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_reverse_wrist_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00414",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_reverse_wrist_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00415",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_reverse_wrist_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00416",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_reverse_wrist_curl",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00417",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_farmers_carry",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00418",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_farmers_carry",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00419",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_farmers_carry",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00420",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_farmers_carry",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00421",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_farmers_carry",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00422",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_farmers_carry",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00423",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_farmers_carry",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00424",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_farmers_carry",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00425",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_cable_crunch",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00426",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_cable_crunch",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00427",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_cable_crunch",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00428",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_cable_crunch",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00429",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_cable_crunch",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00430",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_cable_crunch",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00431",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_cable_crunch",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00432",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_cable_crunch",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00433",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_hanging_leg_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00434",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_hanging_leg_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00435",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_hanging_leg_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00436",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_hanging_leg_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00437",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_hanging_leg_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00438",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_hanging_leg_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00439",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_hanging_leg_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00440",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_hanging_leg_raise",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00441",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_ab_wheel",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00442",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_ab_wheel",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00443",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_ab_wheel",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00444",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_ab_wheel",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00445",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_ab_wheel",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00446",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_ab_wheel",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00447",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_ab_wheel",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00448",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_ab_wheel",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00449",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_pallof_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00450",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_pallof_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00451",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_pallof_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00452",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_pallof_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00453",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_pallof_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00454",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_pallof_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00455",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_pallof_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00456",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_pallof_press",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00457",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_side_plank",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00458",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_side_plank",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00459",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_side_plank",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00460",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_side_plank",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00461",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_side_plank",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00462",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_side_plank",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00463",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_side_plank",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00464",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_side_plank",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00465",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_neck_flexion",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00466",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_neck_flexion",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00467",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_neck_flexion",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00468",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_neck_flexion",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00469",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_neck_flexion",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00470",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_neck_flexion",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00471",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_neck_flexion",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00472",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_neck_flexion",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00473",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_neck_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00474",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_neck_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00475",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_neck_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00476",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_neck_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00477",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_neck_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00478",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_neck_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00479",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_neck_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00480",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_neck_extension",
+    "relationship_type": "movement_pattern_inference"
+  }
+]

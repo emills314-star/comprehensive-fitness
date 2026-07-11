@@ -1,0 +1,2513 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Male resistance training evidence database",
+  "type": "object",
+  "required": [
+    "manifest",
+    "tables"
+  ],
+  "properties": {
+    "manifest": {
+      "type": "object"
+    },
+    "tables": {
+      "type": "object",
+      "required": [
+        "executive_summary",
+        "research_library",
+        "evidence_conclusions",
+        "muscle_group_recommendations",
+        "exercise_database",
+        "progression_rules",
+        "nutrition_strategies",
+        "evidence_gaps",
+        "definitions_data_dictionary",
+        "change_log",
+        "exercise_muscle_map",
+        "exercise_substitution_map",
+        "study_conclusion_map",
+        "study_exercise_map",
+        "study_muscle_group_map",
+        "rule_exercise_map",
+        "rule_muscle_group_map",
+        "exercise_progression_metric_map"
+      ],
+      "properties": {
+        "executive_summary": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://comprehensive-fitness.local/schema/1.0.0/executive_summary.schema.json",
+          "title": "executive_summary",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "summary_id",
+              "topic",
+              "applicable_male_population",
+              "practical_recommendation",
+              "evidence_strength",
+              "confidence_rating",
+              "important_exception_or_limitation",
+              "supporting_study_ids",
+              "last_reviewed_date"
+            ],
+            "properties": {
+              "summary_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "topic": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "applicable_male_population": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "practical_recommendation": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "evidence_strength": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "very_high",
+                  "high",
+                  "moderate",
+                  "low",
+                  "very_low",
+                  null
+                ]
+              },
+              "confidence_rating": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "very_high",
+                  "high",
+                  "moderate",
+                  "low",
+                  "very_low",
+                  null
+                ]
+              },
+              "important_exception_or_limitation": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "supporting_study_ids": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "last_reviewed_date": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              }
+            }
+          }
+        },
+        "research_library": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://comprehensive-fitness.local/schema/1.0.0/research_library.schema.json",
+          "title": "research_library",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "study_id",
+              "full_citation",
+              "publication_year",
+              "authors",
+              "study_title",
+              "journal",
+              "doi",
+              "permanent_url",
+              "study_type",
+              "research_topic",
+              "male_only_sample",
+              "mixed_sex_sample",
+              "male_results_reported_separately",
+              "male_sample_size",
+              "total_sample_size",
+              "participant_training_status",
+              "participant_age_mean",
+              "participant_age_range",
+              "natural_or_enhanced",
+              "study_duration_weeks",
+              "intervention",
+              "comparator",
+              "training_protocol",
+              "nutrition_conditions",
+              "outcome_measures",
+              "main_result",
+              "effect_size",
+              "statistical_significance",
+              "practical_significance",
+              "study_limitations",
+              "risk_of_bias",
+              "male_applicability",
+              "evidence_tier",
+              "confidence_rating",
+              "replication_status",
+              "conflicting_evidence",
+              "reviewer_notes",
+              "date_added",
+              "last_reviewed_date"
+            ],
+            "properties": {
+              "study_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "full_citation": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "publication_year": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "authors": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "study_title": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "journal": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "doi": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "permanent_url": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "study_type": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "systematic_review_meta_analysis",
+                  "systematic_review",
+                  "position_stand",
+                  "consensus_statement",
+                  "randomized_controlled_trial",
+                  "longitudinal_trial",
+                  "observational_study",
+                  "acute_mechanistic_study",
+                  "narrative_review",
+                  null
+                ]
+              },
+              "research_topic": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "male_only_sample": {
+                "type": "boolean"
+              },
+              "mixed_sex_sample": {
+                "type": "boolean"
+              },
+              "male_results_reported_separately": {
+                "type": "boolean"
+              },
+              "male_sample_size": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "total_sample_size": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "participant_training_status": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "participant_age_mean": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "participant_age_range": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "natural_or_enhanced": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "natural",
+                  "enhanced",
+                  "mixed",
+                  "not_reported",
+                  "not_applicable",
+                  null
+                ]
+              },
+              "study_duration_weeks": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "intervention": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "comparator": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "training_protocol": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "nutrition_conditions": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "outcome_measures": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "main_result": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "effect_size": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "statistical_significance": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "practical_significance": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "study_limitations": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "risk_of_bias": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "low",
+                  "some_concerns",
+                  "high",
+                  "not_formally_assessed",
+                  "varies_across_included_studies",
+                  null
+                ]
+              },
+              "male_applicability": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "direct",
+                  "indirect",
+                  "mechanistic",
+                  "excluded",
+                  null
+                ]
+              },
+              "evidence_tier": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "tier_1",
+                  "tier_2",
+                  "tier_3",
+                  "tier_4",
+                  "tier_5",
+                  "tier_6",
+                  "tier_7",
+                  null
+                ]
+              },
+              "confidence_rating": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "very_high",
+                  "high",
+                  "moderate",
+                  "low",
+                  "very_low",
+                  null
+                ]
+              },
+              "replication_status": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "conflicting_evidence": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "reviewer_notes": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "date_added": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              "last_reviewed_date": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              }
+            }
+          }
+        },
+        "evidence_conclusions": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://comprehensive-fitness.local/schema/1.0.0/evidence_conclusions.schema.json",
+          "title": "evidence_conclusions",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "conclusion_id",
+              "topic",
+              "research_question",
+              "male_population",
+              "training_status",
+              "nutrition_context",
+              "conclusion",
+              "recommended_lower_bound",
+              "recommended_upper_bound",
+              "recommended_unit",
+              "practical_range_text",
+              "supporting_study_ids",
+              "conflicting_study_ids",
+              "direct_or_indirect_evidence",
+              "evidence_strength",
+              "confidence_rating",
+              "key_limitations",
+              "application_rule",
+              "exceptions",
+              "last_reviewed_date"
+            ],
+            "properties": {
+              "conclusion_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "topic": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "research_question": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "male_population": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "training_status": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "untrained",
+                  "novice",
+                  "intermediate",
+                  "advanced",
+                  "mixed",
+                  "not_reported",
+                  "all",
+                  null
+                ]
+              },
+              "nutrition_context": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "conclusion": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "recommended_lower_bound": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "recommended_upper_bound": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "recommended_unit": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "practical_range_text": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "supporting_study_ids": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "conflicting_study_ids": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "direct_or_indirect_evidence": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "direct",
+                  "indirect",
+                  "mixed",
+                  "expert_inference",
+                  null
+                ]
+              },
+              "evidence_strength": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "very_high",
+                  "high",
+                  "moderate",
+                  "low",
+                  "very_low",
+                  null
+                ]
+              },
+              "confidence_rating": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "very_high",
+                  "high",
+                  "moderate",
+                  "low",
+                  "very_low",
+                  null
+                ]
+              },
+              "key_limitations": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "application_rule": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "exceptions": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "last_reviewed_date": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              }
+            }
+          }
+        },
+        "muscle_group_recommendations": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://comprehensive-fitness.local/schema/1.0.0/muscle_group_recommendations.schema.json",
+          "title": "muscle_group_recommendations",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "muscle_group_id",
+              "muscle_group",
+              "muscle_subdivision",
+              "anatomical_function",
+              "effective_exercises",
+              "minimum_effective_weekly_sets",
+              "typical_effective_weekly_sets_low",
+              "typical_effective_weekly_sets_high",
+              "higher_volume_range_low",
+              "higher_volume_range_high",
+              "likely_diminishing_returns_threshold",
+              "recommended_sets_per_session_low",
+              "recommended_sets_per_session_high",
+              "recommended_frequency_low",
+              "recommended_frequency_high",
+              "recommended_rep_range_low",
+              "recommended_rep_range_high",
+              "recommended_rir_low",
+              "recommended_rir_high",
+              "recommended_rest_seconds_low",
+              "recommended_rest_seconds_high",
+              "lengthened_position_considerations",
+              "indirect_set_contribution",
+              "recovery_considerations",
+              "cutting_adjustment",
+              "recomp_adjustment",
+              "maintenance_adjustment",
+              "bulking_adjustment",
+              "maintenance_volume_estimate",
+              "training_status",
+              "evidence_strength",
+              "confidence_rating",
+              "supporting_study_ids",
+              "notes"
+            ],
+            "properties": {
+              "muscle_group_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "muscle_group": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "muscle_subdivision": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "anatomical_function": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "effective_exercises": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "minimum_effective_weekly_sets": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "typical_effective_weekly_sets_low": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "typical_effective_weekly_sets_high": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "higher_volume_range_low": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "higher_volume_range_high": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "likely_diminishing_returns_threshold": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "recommended_sets_per_session_low": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "recommended_sets_per_session_high": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "recommended_frequency_low": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "recommended_frequency_high": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "recommended_rep_range_low": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "recommended_rep_range_high": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "recommended_rir_low": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "recommended_rir_high": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "recommended_rest_seconds_low": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "recommended_rest_seconds_high": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "lengthened_position_considerations": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "indirect_set_contribution": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "recovery_considerations": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "cutting_adjustment": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "recomp_adjustment": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "maintenance_adjustment": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "bulking_adjustment": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "maintenance_volume_estimate": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "training_status": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "untrained",
+                  "novice",
+                  "intermediate",
+                  "advanced",
+                  "mixed",
+                  "not_reported",
+                  "all",
+                  null
+                ]
+              },
+              "evidence_strength": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "very_high",
+                  "high",
+                  "moderate",
+                  "low",
+                  "very_low",
+                  null
+                ]
+              },
+              "confidence_rating": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "very_high",
+                  "high",
+                  "moderate",
+                  "low",
+                  "very_low",
+                  null
+                ]
+              },
+              "supporting_study_ids": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "notes": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "exercise_database": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://comprehensive-fitness.local/schema/1.0.0/exercise_database.schema.json",
+          "title": "exercise_database",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "exercise_id",
+              "exercise_name",
+              "exercise_aliases",
+              "movement_pattern",
+              "equipment",
+              "primary_muscles",
+              "secondary_muscles",
+              "stabilizing_muscles",
+              "muscle_subdivisions_emphasized",
+              "stability_demand",
+              "skill_requirement",
+              "systemic_fatigue_cost",
+              "local_fatigue_cost",
+              "joint_stress_considerations",
+              "recommended_rep_range_low",
+              "recommended_rep_range_high",
+              "acceptable_rep_range_low",
+              "acceptable_rep_range_high",
+              "recommended_sets_per_session_low",
+              "recommended_sets_per_session_high",
+              "weekly_set_contribution",
+              "recommended_rir_low",
+              "recommended_rir_high",
+              "recommended_rest_seconds_low",
+              "recommended_rest_seconds_high",
+              "preferred_progression_model",
+              "load_increase_criteria",
+              "rep_increase_criteria",
+              "set_increase_criteria",
+              "regression_criteria",
+              "deload_criteria",
+              "technique_quality_criteria",
+              "range_of_motion_criteria",
+              "primary_progression_metric",
+              "secondary_progression_metrics",
+              "normal_performance_variability",
+              "stall_definition",
+              "substitution_triggers",
+              "suggested_substitutions",
+              "top_set_backoff_suitability",
+              "recommended_load_increment",
+              "recommended_evaluation_window_sessions",
+              "cutting_adjustment",
+              "bulking_adjustment",
+              "direct_exercise_evidence",
+              "evidence_quality",
+              "confidence_rating",
+              "supporting_study_ids",
+              "notes"
+            ],
+            "properties": {
+              "exercise_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "exercise_name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "exercise_aliases": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "movement_pattern": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "horizontal_push",
+                  "vertical_push",
+                  "horizontal_pull",
+                  "vertical_pull",
+                  "squat",
+                  "hinge",
+                  "lunge",
+                  "elbow_flexion",
+                  "elbow_extension",
+                  "shoulder_abduction",
+                  "shoulder_horizontal_abduction",
+                  "knee_extension",
+                  "knee_flexion",
+                  "hip_extension",
+                  "hip_abduction",
+                  "hip_adduction",
+                  "plantar_flexion",
+                  "spinal_flexion",
+                  "anti_extension",
+                  "anti_rotation",
+                  "loaded_carry",
+                  "wrist_flexion",
+                  "wrist_extension",
+                  "neck_flexion",
+                  "neck_extension",
+                  "scapular_elevation",
+                  null
+                ]
+              },
+              "equipment": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "primary_muscles": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "secondary_muscles": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "stabilizing_muscles": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "muscle_subdivisions_emphasized": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "stability_demand": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "skill_requirement": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "systemic_fatigue_cost": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "local_fatigue_cost": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "joint_stress_considerations": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "recommended_rep_range_low": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "recommended_rep_range_high": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "acceptable_rep_range_low": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "acceptable_rep_range_high": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "recommended_sets_per_session_low": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "recommended_sets_per_session_high": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "weekly_set_contribution": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "recommended_rir_low": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "recommended_rir_high": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "recommended_rest_seconds_low": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "recommended_rest_seconds_high": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "preferred_progression_model": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "load_increase_criteria": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "rep_increase_criteria": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "set_increase_criteria": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "regression_criteria": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "deload_criteria": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "technique_quality_criteria": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "range_of_motion_criteria": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "primary_progression_metric": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "secondary_progression_metrics": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "normal_performance_variability": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "stall_definition": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "substitution_triggers": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "suggested_substitutions": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "top_set_backoff_suitability": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "recommended_load_increment": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "recommended_evaluation_window_sessions": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "cutting_adjustment": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "bulking_adjustment": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "direct_exercise_evidence": {
+                "type": "boolean"
+              },
+              "evidence_quality": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "confidence_rating": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "very_high",
+                  "high",
+                  "moderate",
+                  "low",
+                  "very_low",
+                  null
+                ]
+              },
+              "supporting_study_ids": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "notes": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "progression_rules": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://comprehensive-fitness.local/schema/1.0.0/progression_rules.schema.json",
+          "title": "progression_rules",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rule_id",
+              "rule_name",
+              "rule_category",
+              "applicable_exercise_types",
+              "applicable_exercise_ids",
+              "applicable_muscle_groups",
+              "applicable_training_levels",
+              "applicable_nutrition_phases",
+              "required_inputs",
+              "condition_logic",
+              "threshold_value_1",
+              "threshold_unit_1",
+              "threshold_value_2",
+              "threshold_unit_2",
+              "minimum_sessions_required",
+              "recommended_action",
+              "load_adjustment_percent",
+              "rep_adjustment",
+              "set_adjustment",
+              "rir_adjustment",
+              "rest_adjustment_seconds",
+              "exceptions",
+              "supporting_study_ids",
+              "direct_or_inferred_rule",
+              "evidence_strength",
+              "confidence_rating",
+              "notes"
+            ],
+            "properties": {
+              "rule_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "rule_name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "rule_category": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "applicable_exercise_types": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "applicable_exercise_ids": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "applicable_muscle_groups": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "applicable_training_levels": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "applicable_nutrition_phases": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "required_inputs": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "condition_logic": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "threshold_value_1": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "threshold_unit_1": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "threshold_value_2": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "threshold_unit_2": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "minimum_sessions_required": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "recommended_action": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "load_adjustment_percent": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "rep_adjustment": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "set_adjustment": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "rir_adjustment": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "rest_adjustment_seconds": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "exceptions": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "supporting_study_ids": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "direct_or_inferred_rule": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "evidence_strength": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "very_high",
+                  "high",
+                  "moderate",
+                  "low",
+                  "very_low",
+                  null
+                ]
+              },
+              "confidence_rating": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "very_high",
+                  "high",
+                  "moderate",
+                  "low",
+                  "very_low",
+                  null
+                ]
+              },
+              "notes": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "nutrition_strategies": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://comprehensive-fitness.local/schema/1.0.0/nutrition_strategies.schema.json",
+          "title": "nutrition_strategies",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "strategy_id",
+              "strategy_category",
+              "male_population",
+              "training_status",
+              "starting_body_fat_context",
+              "nutrition_phase",
+              "calorie_adjustment_type",
+              "recommended_calorie_adjustment_low",
+              "recommended_calorie_adjustment_high",
+              "calorie_adjustment_unit",
+              "target_weight_change_rate_low",
+              "target_weight_change_rate_high",
+              "weight_change_rate_unit",
+              "protein_g_per_kg_low",
+              "protein_g_per_kg_high",
+              "fat_g_per_kg_low",
+              "fat_g_per_kg_high",
+              "carbohydrate_guidance",
+              "training_volume_adjustment",
+              "training_intensity_adjustment",
+              "cardio_guidance",
+              "recovery_guidance",
+              "expected_outcome",
+              "monitoring_metrics",
+              "adjustment_triggers",
+              "recommended_duration",
+              "contraindications_or_exceptions",
+              "evidence_strength",
+              "confidence_rating",
+              "supporting_study_ids",
+              "notes"
+            ],
+            "properties": {
+              "strategy_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "strategy_category": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "male_population": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "training_status": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "untrained",
+                  "novice",
+                  "intermediate",
+                  "advanced",
+                  "mixed",
+                  "not_reported",
+                  "all",
+                  null
+                ]
+              },
+              "starting_body_fat_context": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "nutrition_phase": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "deficit",
+                  "maintenance",
+                  "recomposition",
+                  "surplus",
+                  "all",
+                  null
+                ]
+              },
+              "calorie_adjustment_type": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "recommended_calorie_adjustment_low": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "recommended_calorie_adjustment_high": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "calorie_adjustment_unit": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "target_weight_change_rate_low": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "target_weight_change_rate_high": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "weight_change_rate_unit": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "protein_g_per_kg_low": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "protein_g_per_kg_high": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "fat_g_per_kg_low": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "fat_g_per_kg_high": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "carbohydrate_guidance": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "training_volume_adjustment": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "training_intensity_adjustment": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "cardio_guidance": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "recovery_guidance": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "expected_outcome": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "monitoring_metrics": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "adjustment_triggers": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "recommended_duration": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "contraindications_or_exceptions": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "evidence_strength": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "very_high",
+                  "high",
+                  "moderate",
+                  "low",
+                  "very_low",
+                  null
+                ]
+              },
+              "confidence_rating": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "very_high",
+                  "high",
+                  "moderate",
+                  "low",
+                  "very_low",
+                  null
+                ]
+              },
+              "supporting_study_ids": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "notes": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "evidence_gaps": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://comprehensive-fitness.local/schema/1.0.0/evidence_gaps.schema.json",
+          "title": "evidence_gaps",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "evidence_gap_id",
+              "topic",
+              "research_question",
+              "male_population",
+              "current_best_interpretation",
+              "reason_for_uncertainty",
+              "conflicting_positions",
+              "supporting_study_ids",
+              "conflicting_study_ids",
+              "practical_default",
+              "risk_of_wrong_application",
+              "research_priority",
+              "last_reviewed_date"
+            ],
+            "properties": {
+              "evidence_gap_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "topic": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "research_question": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "male_population": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "current_best_interpretation": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "reason_for_uncertainty": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "conflicting_positions": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "supporting_study_ids": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "conflicting_study_ids": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "practical_default": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "risk_of_wrong_application": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "research_priority": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "last_reviewed_date": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              }
+            }
+          }
+        },
+        "definitions_data_dictionary": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://comprehensive-fitness.local/schema/1.0.0/definitions_data_dictionary.schema.json",
+          "title": "definitions_data_dictionary",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "field_name",
+              "display_name",
+              "definition",
+              "data_type",
+              "allowed_values",
+              "unit",
+              "nullable",
+              "example_value",
+              "validation_rule",
+              "used_in_tabs"
+            ],
+            "properties": {
+              "field_name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "display_name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "definition": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "data_type": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "allowed_values": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "unit": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "nullable": {
+                "type": "boolean"
+              },
+              "example_value": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "validation_rule": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "used_in_tabs": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "change_log": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://comprehensive-fitness.local/schema/1.0.0/change_log.schema.json",
+          "title": "change_log",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "change_id",
+              "change_date",
+              "database_version",
+              "affected_tab",
+              "affected_record_ids",
+              "change_type",
+              "previous_value",
+              "new_value",
+              "reason_for_change",
+              "supporting_study_ids",
+              "reviewer_notes"
+            ],
+            "properties": {
+              "change_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "change_date": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              "database_version": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "affected_tab": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "affected_record_ids": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "change_type": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "previous_value": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "new_value": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "reason_for_change": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "supporting_study_ids": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "reviewer_notes": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "exercise_muscle_map": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://comprehensive-fitness.local/schema/1.0.0/exercise_muscle_map.schema.json",
+          "title": "exercise_muscle_map",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "exercise_muscle_map_id",
+              "exercise_id",
+              "muscle_group_id",
+              "relationship_type",
+              "fractional_set_credit",
+              "evidence_basis",
+              "confidence_rating"
+            ],
+            "properties": {
+              "exercise_muscle_map_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "exercise_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "muscle_group_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "relationship_type": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "fractional_set_credit": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "evidence_basis": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "confidence_rating": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "very_high",
+                  "high",
+                  "moderate",
+                  "low",
+                  "very_low",
+                  null
+                ]
+              }
+            }
+          }
+        },
+        "exercise_substitution_map": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://comprehensive-fitness.local/schema/1.0.0/exercise_substitution_map.schema.json",
+          "title": "exercise_substitution_map",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "exercise_substitution_map_id",
+              "exercise_id",
+              "substitute_exercise_id",
+              "substitution_similarity",
+              "reason",
+              "confidence_rating"
+            ],
+            "properties": {
+              "exercise_substitution_map_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "exercise_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "substitute_exercise_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "substitution_similarity": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "reason": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "confidence_rating": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "very_high",
+                  "high",
+                  "moderate",
+                  "low",
+                  "very_low",
+                  null
+                ]
+              }
+            }
+          }
+        },
+        "study_conclusion_map": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://comprehensive-fitness.local/schema/1.0.0/study_conclusion_map.schema.json",
+          "title": "study_conclusion_map",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "study_conclusion_map_id",
+              "study_id",
+              "conclusion_id",
+              "relationship_type"
+            ],
+            "properties": {
+              "study_conclusion_map_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "study_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "conclusion_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "relationship_type": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "study_exercise_map": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://comprehensive-fitness.local/schema/1.0.0/study_exercise_map.schema.json",
+          "title": "study_exercise_map",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "study_exercise_map_id",
+              "study_id",
+              "exercise_id",
+              "relationship_type"
+            ],
+            "properties": {
+              "study_exercise_map_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "study_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "exercise_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "relationship_type": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "study_muscle_group_map": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://comprehensive-fitness.local/schema/1.0.0/study_muscle_group_map.schema.json",
+          "title": "study_muscle_group_map",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "study_muscle_group_map_id",
+              "study_id",
+              "muscle_group_id",
+              "relationship_type"
+            ],
+            "properties": {
+              "study_muscle_group_map_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "study_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "muscle_group_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "relationship_type": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "rule_exercise_map": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://comprehensive-fitness.local/schema/1.0.0/rule_exercise_map.schema.json",
+          "title": "rule_exercise_map",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rule_exercise_map_id",
+              "rule_id",
+              "exercise_id"
+            ],
+            "properties": {
+              "rule_exercise_map_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "rule_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "exercise_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              }
+            }
+          }
+        },
+        "rule_muscle_group_map": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://comprehensive-fitness.local/schema/1.0.0/rule_muscle_group_map.schema.json",
+          "title": "rule_muscle_group_map",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rule_muscle_group_map_id",
+              "rule_id",
+              "muscle_group_id"
+            ],
+            "properties": {
+              "rule_muscle_group_map_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "rule_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "muscle_group_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              }
+            }
+          }
+        },
+        "exercise_progression_metric_map": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "$id": "https://comprehensive-fitness.local/schema/1.0.0/exercise_progression_metric_map.schema.json",
+          "title": "exercise_progression_metric_map",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "exercise_progression_metric_map_id",
+              "exercise_id",
+              "metric",
+              "priority_rank",
+              "use_case",
+              "confidence_rating"
+            ],
+            "properties": {
+              "exercise_progression_metric_map_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "exercise_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "metric": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "priority_rank": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "use_case": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "confidence_rating": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "very_high",
+                  "high",
+                  "moderate",
+                  "low",
+                  "very_low",
+                  null
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

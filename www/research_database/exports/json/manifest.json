@@ -1,0 +1,204 @@
+{
+  "database_name": "male_resistance_training_evidence_database",
+  "database_version": "1.0.0",
+  "last_reviewed_date": "2026-07-11",
+  "population_scope": "resistance-trained and resistance-training-eligible males",
+  "source_of_truth": "research_database/source/database.js",
+  "multi_value_delimiter": "|",
+  "tables": {
+    "executive_summary": {
+      "record_count": 14,
+      "primary_id_field": "summary_id"
+    },
+    "research_library": {
+      "record_count": 40,
+      "primary_id_field": "study_id"
+    },
+    "evidence_conclusions": {
+      "record_count": 27,
+      "primary_id_field": "conclusion_id"
+    },
+    "muscle_group_recommendations": {
+      "record_count": 23,
+      "primary_id_field": "muscle_group_id"
+    },
+    "exercise_database": {
+      "record_count": 60,
+      "primary_id_field": "exercise_id"
+    },
+    "progression_rules": {
+      "record_count": 18,
+      "primary_id_field": "rule_id"
+    },
+    "nutrition_strategies": {
+      "record_count": 13,
+      "primary_id_field": "strategy_id"
+    },
+    "evidence_gaps": {
+      "record_count": 15,
+      "primary_id_field": "evidence_gap_id"
+    },
+    "definitions_data_dictionary": {
+      "record_count": 241,
+      "primary_id_field": null
+    },
+    "change_log": {
+      "record_count": 1,
+      "primary_id_field": "change_id"
+    },
+    "exercise_muscle_map": {
+      "record_count": 133,
+      "primary_id_field": "exercise_muscle_map_id"
+    },
+    "exercise_substitution_map": {
+      "record_count": 90,
+      "primary_id_field": "exercise_substitution_map_id"
+    },
+    "study_conclusion_map": {
+      "record_count": 55,
+      "primary_id_field": "study_conclusion_map_id"
+    },
+    "study_exercise_map": {
+      "record_count": 480,
+      "primary_id_field": "study_exercise_map_id"
+    },
+    "study_muscle_group_map": {
+      "record_count": 69,
+      "primary_id_field": "study_muscle_group_map_id"
+    },
+    "rule_exercise_map": {
+      "record_count": 738,
+      "primary_id_field": "rule_exercise_map_id"
+    },
+    "rule_muscle_group_map": {
+      "record_count": 46,
+      "primary_id_field": "rule_muscle_group_map_id"
+    },
+    "exercise_progression_metric_map": {
+      "record_count": 360,
+      "primary_id_field": "exercise_progression_metric_map_id"
+    }
+  },
+  "controlled_vocabularies": {
+    "confidence_rating": [
+      "very_high",
+      "high",
+      "moderate",
+      "low",
+      "very_low"
+    ],
+    "evidence_strength": [
+      "very_high",
+      "high",
+      "moderate",
+      "low",
+      "very_low"
+    ],
+    "evidence_tier": [
+      "tier_1",
+      "tier_2",
+      "tier_3",
+      "tier_4",
+      "tier_5",
+      "tier_6",
+      "tier_7"
+    ],
+    "training_status": [
+      "untrained",
+      "novice",
+      "intermediate",
+      "advanced",
+      "mixed",
+      "not_reported",
+      "all"
+    ],
+    "nutrition_phase": [
+      "deficit",
+      "maintenance",
+      "recomposition",
+      "surplus",
+      "all"
+    ],
+    "applicability": [
+      "direct",
+      "indirect",
+      "mechanistic",
+      "excluded"
+    ],
+    "direct_or_indirect_evidence": [
+      "direct",
+      "indirect",
+      "mixed",
+      "expert_inference"
+    ],
+    "natural_or_enhanced": [
+      "natural",
+      "enhanced",
+      "mixed",
+      "not_reported",
+      "not_applicable"
+    ],
+    "study_type": [
+      "systematic_review_meta_analysis",
+      "systematic_review",
+      "position_stand",
+      "consensus_statement",
+      "randomized_controlled_trial",
+      "longitudinal_trial",
+      "observational_study",
+      "acute_mechanistic_study",
+      "narrative_review"
+    ],
+    "risk_of_bias": [
+      "low",
+      "some_concerns",
+      "high",
+      "not_formally_assessed",
+      "varies_across_included_studies"
+    ],
+    "movement_pattern": [
+      "horizontal_push",
+      "vertical_push",
+      "horizontal_pull",
+      "vertical_pull",
+      "squat",
+      "hinge",
+      "lunge",
+      "elbow_flexion",
+      "elbow_extension",
+      "shoulder_abduction",
+      "shoulder_horizontal_abduction",
+      "knee_extension",
+      "knee_flexion",
+      "hip_extension",
+      "hip_abduction",
+      "hip_adduction",
+      "plantar_flexion",
+      "spinal_flexion",
+      "anti_extension",
+      "anti_rotation",
+      "loaded_carry",
+      "wrist_flexion",
+      "wrist_extension",
+      "neck_flexion",
+      "neck_extension",
+      "scapular_elevation"
+    ],
+    "exercise_type": [
+      "free_weight_compound",
+      "machine_compound",
+      "bodyweight_compound",
+      "free_weight_isolation",
+      "machine_isolation",
+      "cable_isolation",
+      "bodyweight_isolation",
+      "isometric",
+      "loaded_carry"
+    ],
+    "boolean": [
+      true,
+      false
+    ]
+  },
+  "caveat": "Operational ranges are not individualized medical advice and low-confidence values are not proven physiological thresholds."
+}

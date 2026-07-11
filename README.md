@@ -2,6 +2,10 @@
 
 A local-first, installable workout tracker for logging strength sessions and getting transparent progression guidance.
 
+The repository also contains a private, reproducible [personal fitness data layer](personal_fitness_data/README.md). Its raw and generated health data are intentionally excluded from Git and deployment.
+
+For future prescription-engine work, [Training Prescription Data and Integration Map](docs/training-prescription-data.md) inventories both databases, their current versions and record counts, crosswalk/weighting rules, app persistence contract, privacy boundary, and regeneration commands.
+
 ## Current App
 
 The web app is intentionally simple and self-contained:

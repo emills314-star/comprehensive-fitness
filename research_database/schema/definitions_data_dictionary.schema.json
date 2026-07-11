@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://comprehensive-fitness.local/schema/1.0.0/definitions_data_dictionary.schema.json",
+  "title": "definitions_data_dictionary",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "field_name",
+      "display_name",
+      "definition",
+      "data_type",
+      "allowed_values",
+      "unit",
+      "nullable",
+      "example_value",
+      "validation_rule",
+      "used_in_tabs"
+    ],
+    "properties": {
+      "field_name": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "display_name": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "definition": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "data_type": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "allowed_values": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "unit": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "nullable": {
+        "type": "boolean"
+      },
+      "example_value": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "validation_rule": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "used_in_tabs": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    }
+  }
+}

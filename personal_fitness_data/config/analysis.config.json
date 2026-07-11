@@ -1,0 +1,132 @@
+{
+  "methodology_version": "1.1.0",
+  "timezone": "America/Chicago",
+  "input_root": "personal_fitness_data/raw",
+  "output_root": "personal_fitness_data",
+  "rolling_baseline_days": [14, 28, 42],
+  "rolling_baseline_min_observations": 7,
+  "hard_set_min_rpe": 6,
+  "assume_logged_working_set_hard_when_rpe_missing": true,
+  "estimated_1rm_formula": "epley",
+  "progression": {
+    "improved_threshold_pct": 1,
+    "regressed_threshold_pct": -1.5,
+    "max_comparable_gap_days": 56,
+    "same_load_rep_decline_review": 3,
+    "acceptable_set_rep_loss_pct": 30,
+    "acceptable_load_reduction_pct": 30,
+    "meaningful_load_reduction_for_backoff_pct": 2,
+    "plateau_review_exposures": 2,
+    "rolling_weeks": [4, 6]
+  },
+  "deload": {
+    "weekly_volume_ratio_threshold": 0.3,
+    "explicit_note_terms": ["deload", "half sets", "1/2 reps", "1/2 sets"]
+  },
+  "confidence": {
+    "insufficient_exposures_max": 2,
+    "low_exposures_min": 3,
+    "low_exposures_max": 5,
+    "moderate_exposures_min": 6,
+    "moderate_exposures_max": 11,
+    "potential_high_exposures_min": 12,
+    "high_score_min": 75,
+    "moderate_score_min": 50,
+    "low_score_min": 25,
+    "meaningful_span_days": 56
+  },
+  "score_weights": {
+    "progression": {
+      "outcome_rate": 0.25,
+      "total_performance_change": 0.25,
+      "top_set": 0.2,
+      "backoff_set": 0.15,
+      "stall_avoidance": 0.15
+    },
+    "hypertrophy_support": {
+      "progression": 0.45,
+      "productive_rep_range": 0.2,
+      "set_quality": 0.15,
+      "frequency_repeatability": 0.1,
+      "direct_evidence": 0.1
+    },
+    "recovery_efficiency": {
+      "progression_benefit": 0.55,
+      "recovery_tolerance": 0.45
+    },
+    "repeatability": {
+      "performance_variance": 0.35,
+      "set_consistency": 0.2,
+      "rpe_completion": 0.15,
+      "retention": 0.2,
+      "pain_free_notes": 0.1
+    },
+    "confidence": {
+      "sample_size": 0.4,
+      "observation_span": 0.15,
+      "rpe_completeness": 0.15,
+      "recovery_completeness": 0.15,
+      "nutrition_completeness": 0.05,
+      "variation_consistency": 0.1
+    },
+    "overall": {
+      "progression_score": 0.3,
+      "hypertrophy_support_score": 0.25,
+      "recovery_efficiency_score": 0.2,
+      "repeatability_score": 0.15,
+      "nutrition_support_score": 0.1
+    },
+    "confidence_adjustment": {
+      "shrunk_performance_weight": 0.8,
+      "confidence_weight": 0.2,
+      "prior_score": 50
+    },
+    "muscle_specific": {
+      "overall_personal_exercise_score": 0.55,
+      "mechanical_contribution_score": 0.45
+    }
+  },
+  "recovery_adverse_thresholds": {
+    "hrv_pct_below_28d": -10,
+    "resting_hr_pct_above_28d": 5,
+    "sleep_pct_below_28d": -15,
+    "sleeping_hr_pct_above_28d": 5,
+    "short_sleep_minutes": 360,
+    "severe_short_sleep_minutes": 300,
+    "recent_volume_pct_above_42d": 20,
+    "rapid_weight_loss_lb_per_week": -1.5
+  },
+  "recovery_cost_full_scale": {
+    "hrv_suppression_pct": 15,
+    "resting_hr_elevation_pct": 8,
+    "sleep_loss_pct": 20,
+    "sleeping_hr_elevation_pct": 8
+  },
+  "productive_rep_range": {
+    "external_resistance_min": 5,
+    "external_resistance_max": 30,
+    "bodyweight_min": 5,
+    "bodyweight_max": 40
+  },
+  "plausibility": {
+    "maximum_progression_repetitions": 50,
+    "within_session_load_outlier_ratio": 3,
+    "between_session_regime_change_ratio": 1.75,
+    "between_session_regime_change_min_absolute_load": 10,
+    "maximum_comparable_performance_change_pct": 40,
+    "recommended_rpe_min": 6,
+    "recommended_rpe_max": 9
+  },
+  "minimum_recommended_rep_range_width": {
+    "compound": 4,
+    "isolation": 5,
+    "bodyweight": 6
+  },
+  "periods": [
+    { "period_id": "february_2025", "label": "February 2025", "start": "2025-02-01", "end": "2025-02-28" },
+    { "period_id": "august_2025", "label": "August 2025", "start": "2025-08-01", "end": "2025-08-31" },
+    { "period_id": "april_2026", "label": "April 2026", "start": "2026-04-01", "end": "2026-04-30" },
+    { "period_id": "may_2026", "label": "May 2026", "start": "2026-05-01", "end": "2026-05-31" },
+    { "period_id": "june_2026", "label": "June 2026", "start": "2026-06-01", "end": "2026-06-30" }
+  ]
+}

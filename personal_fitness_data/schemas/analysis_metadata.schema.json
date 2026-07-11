@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://comprehensive-fitness.local/schemas/personal-fitness/v1/analysis_metadata.schema.json",
+  "title": "Personal fitness analysis metadata",
+  "description": "Run-level provenance, coverage, confidence, and reproducibility metadata for the personal hypertrophy and recovery analysis.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "analysis_id",
+    "database_name",
+    "analysis_date",
+    "generated_at",
+    "methodology_version",
+    "source_date_range",
+    "sample_size",
+    "confidence_level",
+    "missing_data_flags",
+    "source_references",
+    "notes",
+    "table_record_counts"
+  ],
+  "properties": {
+    "analysis_id": { "$ref": "#/$defs/stableId" },
+    "database_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "analysis_date": { "$ref": "#/$defs/isoDate" },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "methodology_version": { "$ref": "#/$defs/version" },
+    "pipeline_version": { "$ref": "#/$defs/nullableVersion" },
+    "research_database_version": { "$ref": "#/$defs/nullableVersion" },
+    "source_date_range": { "$ref": "#/$defs/dateRange" },
+    "sample_size": {
+      "description": "Total normalized records represented by the analysis run; table-specific counts remain in table_record_counts.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "confidence_level": { "$ref": "#/$defs/confidenceLevel" },
+    "confidence_score": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 100
+    },
+    "missing_data_flags": { "$ref": "#/$defs/missingDataFlags" },
+    "source_references": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/sourceReference" },
+      "uniqueItems": true
+    },
+    "notes": { "$ref": "#/$defs/notes" },
+    "analysis_scope": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "config_paths": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "input_manifest_path": { "type": ["string", "null"] },
+    "output_manifest_path": { "type": ["string", "null"] },
+    "table_record_counts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "data_quality_summary": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "personal_research_weighting_policy": {
+      "description": "Run-level policy used to increase personal evidence weight with sample size and data quality.",
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "stableId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "isoDate": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?$"
+    },
+    "nullableVersion": {
+      "type": ["string", "null"],
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?$"
+    },
+    "dateRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start_date", "end_date"],
+      "properties": {
+        "start_date": {
+          "type": ["string", "null"],
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "end_date": {
+          "type": ["string", "null"],
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        }
+      }
+    },
+    "confidenceLevel": {
+      "type": "string",
+      "enum": ["high", "moderate", "low", "insufficient_personal_evidence"]
+    },
+    "missingDataFlags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "uniqueItems": true
+    },
+    "sourceReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "source_path"],
+      "properties": {
+        "source_id": { "$ref": "#/$defs/stableId" },
+        "source_path": { "type": "string", "minLength": 1 },
+        "worksheet": { "type": ["string", "null"] },
+        "source_record_id": { "type": ["string", "null"] },
+        "source_row": { "type": ["integer", "null"], "minimum": 1 },
+        "source_date": {
+          "type": ["string", "null"],
+          "format": "date",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "notes": { "type": ["string", "null"] }
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

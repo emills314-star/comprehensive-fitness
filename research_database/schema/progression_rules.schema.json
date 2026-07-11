@@ -1,0 +1,220 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://comprehensive-fitness.local/schema/1.0.0/progression_rules.schema.json",
+  "title": "progression_rules",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "rule_id",
+      "rule_name",
+      "rule_category",
+      "applicable_exercise_types",
+      "applicable_exercise_ids",
+      "applicable_muscle_groups",
+      "applicable_training_levels",
+      "applicable_nutrition_phases",
+      "required_inputs",
+      "condition_logic",
+      "threshold_value_1",
+      "threshold_unit_1",
+      "threshold_value_2",
+      "threshold_unit_2",
+      "minimum_sessions_required",
+      "recommended_action",
+      "load_adjustment_percent",
+      "rep_adjustment",
+      "set_adjustment",
+      "rir_adjustment",
+      "rest_adjustment_seconds",
+      "exceptions",
+      "supporting_study_ids",
+      "direct_or_inferred_rule",
+      "evidence_strength",
+      "confidence_rating",
+      "notes"
+    ],
+    "properties": {
+      "rule_id": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "rule_name": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "rule_category": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "applicable_exercise_types": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "applicable_exercise_ids": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "applicable_muscle_groups": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "applicable_training_levels": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "applicable_nutrition_phases": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "required_inputs": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "condition_logic": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "threshold_value_1": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "threshold_unit_1": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "threshold_value_2": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "threshold_unit_2": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "minimum_sessions_required": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "recommended_action": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "load_adjustment_percent": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "rep_adjustment": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "set_adjustment": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "rir_adjustment": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
+      "rest_adjustment_seconds": {
+        "type": [
+          "integer",
+          "null"
+        ]
+      },
+      "exceptions": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "supporting_study_ids": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "direct_or_inferred_rule": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "evidence_strength": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "enum": [
+          "very_high",
+          "high",
+          "moderate",
+          "low",
+          "very_low",
+          null
+        ]
+      },
+      "confidence_rating": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "enum": [
+          "very_high",
+          "high",
+          "moderate",
+          "low",
+          "very_low",
+          null
+        ]
+      },
+      "notes": {
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    }
+  }
+}

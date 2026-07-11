@@ -1,0 +1,72 @@
+exercise_id,muscle_group,role,contribution_weight,regional_function,research_muscle_group_id,substitution_notes
+ab_wheel,abdominals,primary,1,anti_extension,mg_abdominals,
+ab_wheel,obliques,secondary,0.3,trunk_stabilization,mg_obliques,
+ab_wheel,lats,secondary,0.25,shoulder_extension_stabilization,mg_lats,Not a direct lat substitute.
+barbell_bench_press,chest,primary,1,horizontal_press_sternal_bias,mg_chest_sternal,
+barbell_bench_press,front_delts,secondary,0.55,shoulder_flexion,mg_front_delts,
+barbell_bench_press,triceps,secondary,0.55,elbow_extension,mg_triceps,
+cable_biceps_curl,biceps,primary,1,elbow_flexion,mg_biceps,
+cable_biceps_curl,forearms,secondary,0.35,grip_and_elbow_flexion,mg_forearms,
+cable_biceps_curl_light,biceps,primary,1,elbow_flexion,mg_biceps,
+cable_biceps_curl_light,forearms,secondary,0.35,grip_and_elbow_flexion,mg_forearms,
+seated_leg_press_calf_press,calves,primary,1,plantar_flexion,mg_calves_gastroc,
+cable_crossover,chest,primary,1,horizontal_adduction_angle_unknown,,Angle must be known before regional substitution.
+cable_crossover,front_delts,secondary,0.2,shoulder_flexion,mg_front_delts,
+chest_assisted_row,upper_back,primary,1,scapular_retraction,mg_upper_back,
+chest_assisted_row,lats,secondary,0.65,shoulder_extension,mg_lats,
+chest_assisted_row,rear_delts,secondary,0.5,horizontal_abduction,mg_rear_delts,
+chest_assisted_row,biceps,secondary,0.5,elbow_flexion,mg_biceps,
+chest_assisted_row,traps,secondary,0.35,scapular_retraction,mg_traps,
+chest_assisted_row,forearms,secondary,0.2,grip,mg_forearms,
+incline_dumbbell_press,chest,primary,1,incline_press_clavicular_bias,mg_chest_clavicular,
+incline_dumbbell_press,front_delts,secondary,0.65,shoulder_flexion,mg_front_delts,
+incline_dumbbell_press,triceps,secondary,0.5,elbow_extension,mg_triceps,
+incline_dumbbell_curl,biceps,primary,1,lengthened_elbow_flexion,mg_biceps,
+incline_dumbbell_curl,forearms,secondary,0.35,grip_and_elbow_flexion,mg_forearms,
+double_pulley_lat_pulldown,lats,primary,1,vertical_pull,mg_lats,
+double_pulley_lat_pulldown,biceps,secondary,0.55,elbow_flexion,mg_biceps,
+double_pulley_lat_pulldown,upper_back,secondary,0.45,scapular_depression,mg_upper_back,
+double_pulley_lat_pulldown,rear_delts,secondary,0.2,shoulder_extension,mg_rear_delts,
+double_pulley_lat_pulldown,forearms,secondary,0.2,grip,mg_forearms,
+cable_lateral_raise,side_delts,primary,1,shoulder_abduction,mg_side_delts,
+cable_lateral_raise,traps,secondary,0.25,scapular_upward_rotation,mg_traps,Not a direct trap substitute.
+heavy_leg_extension,quadriceps,primary,1,knee_extension,mg_quadriceps,
+machine_leg_extension,quadriceps,primary,1,knee_extension,mg_quadriceps,
+leg_press,quadriceps,primary,1,knee_extension,mg_quadriceps,
+leg_press,glutes,secondary,0.65,hip_extension,mg_glutes_max,
+leg_press,adductors,secondary,0.45,hip_extension_and_stabilization,mg_adductors,
+leg_press,abductors,secondary,0.2,hip_stabilization,mg_abductors,Not a direct abductor substitute.
+lying_leg_curl,hamstrings,primary,1,knee_flexion,mg_hamstrings,
+harness_neck_extension,neck_extensors,primary,1,cervical_extension,mg_neck_extensors,
+neck_flexion,neck_flexors,primary,1,cervical_flexion,mg_neck_flexors,
+lateral_neck_flexion_light,lateral_neck_musculature,primary,1,lateral_cervical_flexion,,No research muscle record.
+lateral_neck_flexion,lateral_neck_musculature,primary,1,lateral_cervical_flexion,,No research muscle record.
+pallof_press,obliques,primary,1,anti_rotation,mg_obliques,
+pallof_press,abdominals,secondary,0.6,trunk_stabilization,mg_abdominals,
+pallof_press,spinal_erectors,secondary,0.2,trunk_stabilization,mg_spinal_erectors,Not a direct erector substitute.
+reverse_crunch,abdominals,primary,1,trunk_flexion_posterior_pelvic_tilt,mg_abdominals,
+reverse_crunch,obliques,secondary,0.3,trunk_stabilization,mg_obliques,
+seated_leg_curl,hamstrings,primary,1,knee_flexion,mg_hamstrings,
+side_plank_dips,obliques,primary,1,lateral_trunk_flexion,mg_obliques,
+side_plank_dips,abdominals,secondary,0.6,trunk_stabilization,mg_abdominals,
+side_plank_dips,abductors,secondary,0.5,hip_stabilization,mg_abductors,Regional function differs from machine hip abduction.
+standing_machine_calf_raise,calves,primary,1,plantar_flexion_gastroc_bias,mg_calves_gastroc,
+barbell_stiff_leg_deadlift,hamstrings,primary,1,hip_hinge_lengthened,mg_hamstrings,
+barbell_stiff_leg_deadlift,glutes,secondary,0.75,hip_extension,mg_glutes_max,
+barbell_stiff_leg_deadlift,spinal_erectors,secondary,0.5,isometric_trunk_extension,mg_spinal_erectors,
+barbell_stiff_leg_deadlift,forearms,secondary,0.25,grip,mg_forearms,
+barbell_stiff_leg_deadlift,adductors,secondary,0.2,hip_extension,mg_adductors,
+straight_arm_pulldown,lats,primary,1,shoulder_extension,mg_lats,
+straight_arm_pulldown,triceps,secondary,0.2,long_head_isometric,mg_triceps,Not a direct triceps substitute.
+straight_arm_pulldown,abdominals,secondary,0.15,trunk_stabilization,mg_abdominals,Not a direct abdominal substitute.
+super_high_row,upper_back,primary,1,high_row_path,mg_upper_back,
+super_high_row,rear_delts,secondary,0.7,horizontal_abduction,mg_rear_delts,
+super_high_row,traps,secondary,0.65,scapular_retraction,mg_traps,
+super_high_row,biceps,secondary,0.45,elbow_flexion,mg_biceps,
+super_high_row,lats,secondary,0.4,shoulder_extension,mg_lats,
+triceps_pushdown_dongles,triceps,primary,1,elbow_extension,mg_triceps,
+cable_triceps_extension,triceps,primary,1,elbow_extension_path_unknown,mg_triceps,Path must be known before regional substitution.
+triceps_pushdown_straight_bar,triceps,primary,1,elbow_extension,mg_triceps,
+band_woodchop,obliques,primary,1,trunk_rotation,mg_obliques,
+band_woodchop,abdominals,secondary,0.6,trunk_stabilization,mg_abdominals,
+band_woodchop,spinal_erectors,secondary,0.2,trunk_stabilization,mg_spinal_erectors,Not a direct erector substitute.

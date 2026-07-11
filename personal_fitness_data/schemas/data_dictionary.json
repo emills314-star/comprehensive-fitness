@@ -1,0 +1,485 @@
+{
+  "dictionary_name": "personal_fitness_data_dictionary",
+  "dictionary_version": "1.0.0",
+  "methodology_version": "1.1.0",
+  "analysis_date": "2026-07-11",
+  "description": "Field definitions shared by the personal hypertrophy, progression, nutrition, and recovery analysis schemas.",
+  "conventions": {
+    "stable_identifiers": "Persistent lowercase snake_case identifiers matching ^[a-z][a-z0-9_]*$. Identifiers must not depend on output row order. Source-derived record IDs should be deterministic across reruns.",
+    "research_crosswalks": "research_exercise_id and research_muscle_group_id are nullable. Populate them only for a confident semantic match; preserve personal variation and equipment identity separately.",
+    "dates": "Calendar dates use ISO YYYY-MM-DD. Timestamps use ISO 8601 with an explicit offset or Z. source_date_range endpoints are inclusive.",
+    "missing_values": "Unknown values are null in JSON and empty in CSV. Never replace an unknown value with zero. missing_data_flags explains material gaps.",
+    "confidence": "confidence_level is categorical and confidence_score is 0-100. The future integration envelope uses 0-1 confidence values because they act as weights rather than display scores.",
+    "ranges": "Range objects use inclusive min and max fields. Broad or null endpoints are preferred over unsupported precision.",
+    "source_references": "Every derived result identifies the raw or normalized source. A reference may identify a path, worksheet, row, source record, and source date without embedding source data.",
+    "future_weighting": "Within an integration_envelope, personal_weight plus research_weight should equal 1 within floating-point tolerance. Missing research evidence uses an empty research_default, research_confidence 0, and research_weight 0.",
+    "units": "Units are encoded in field names where practical or recorded in an adjacent unit field. Loads are not comparable across unconfirmed machines merely because the unit is the same."
+  },
+  "controlled_vocabularies": {
+    "confidence_level": [
+      "high",
+      "moderate",
+      "low",
+      "insufficient_personal_evidence"
+    ],
+    "exercise_role": [
+      "primary_progression_lift",
+      "secondary_hypertrophy_lift",
+      "low_fatigue_accessory",
+      "technique_or_maintenance_lift",
+      "deload_substitute",
+      "remove_or_deprioritize"
+    ],
+    "recovery_action": [
+      "train_as_planned",
+      "hold_load_constant",
+      "reduce_one_set",
+      "reduce_volume_percentage",
+      "use_lighter_session",
+      "substitute_lower_fatigue_movement",
+      "deload_exercise",
+      "deload_muscle_group",
+      "delay_training"
+    ],
+    "recovery_scope": [
+      "full_session",
+      "exercise",
+      "muscle_group"
+    ],
+    "signal_comparator": [
+      "lt",
+      "lte",
+      "gt",
+      "gte",
+      "eq",
+      "between",
+      "outside",
+      "present",
+      "repeated"
+    ],
+    "tabular_format": [
+      "csv",
+      "parquet",
+      "json"
+    ]
+  },
+  "field_groups": {
+    "identifiers": {
+      "analysis_id": {
+        "type": "stable_id",
+        "nullable": false,
+        "description": "Persistent identifier for one reproducible analysis run."
+      },
+      "manifest_id": {
+        "type": "stable_id",
+        "nullable": false,
+        "description": "Persistent identifier for an output manifest."
+      },
+      "prescription_id": {
+        "type": "stable_id",
+        "nullable": false,
+        "description": "Stable identifier for one exercise-and-muscle-specific prescription."
+      },
+      "rule_id": {
+        "type": "stable_id",
+        "nullable": false,
+        "description": "Stable identifier for one recovery decision rule."
+      },
+      "output_id": {
+        "type": "stable_id",
+        "nullable": false,
+        "description": "Stable identifier for one normalized or derived output artifact."
+      },
+      "exercise_id": {
+        "type": "stable_id",
+        "nullable": false,
+        "description": "Personal canonical exercise identifier; variation and equipment instance remain separate analytical dimensions."
+      },
+      "research_exercise_id": {
+        "type": "stable_id",
+        "nullable": true,
+        "description": "Crosswalk to research_database exercise_id when the match is confident; otherwise null."
+      },
+      "muscle_group_id": {
+        "type": "stable_id",
+        "nullable": false,
+        "description": "Personal muscle-group or regional-muscle identifier."
+      },
+      "research_muscle_group_id": {
+        "type": "stable_id",
+        "nullable": true,
+        "description": "Crosswalk to research_database muscle_group_id when regional correspondence is confident; otherwise null."
+      }
+    },
+    "common_result_metadata": {
+      "source_date_range": {
+        "type": "object",
+        "nullable": false,
+        "description": "Inclusive start_date and end_date covered by the observations supporting the result. Either endpoint may be null when no dated source exists."
+      },
+      "start_date": {
+        "type": "date",
+        "nullable": true,
+        "description": "Earliest dated observation represented by the result."
+      },
+      "end_date": {
+        "type": "date",
+        "nullable": true,
+        "description": "Latest dated observation represented by the result."
+      },
+      "analysis_date": {
+        "type": "date",
+        "nullable": false,
+        "description": "Calendar date on which the result was calculated."
+      },
+      "generated_at": {
+        "type": "date_time",
+        "nullable": false,
+        "description": "Exact timestamp at which the analysis artifact was generated."
+      },
+      "methodology_version": {
+        "type": "semantic_version",
+        "nullable": false,
+        "description": "Version of normalization, linkage, scoring, and recommendation rules used."
+      },
+      "pipeline_version": {
+        "type": "semantic_version",
+        "nullable": true,
+        "description": "Version of executable pipeline code when tracked separately from methodology."
+      },
+      "sample_size": {
+        "type": "nonnegative_integer",
+        "nullable": false,
+        "unit": "observations",
+        "description": "Number of observations supporting the result. The observation unit must be clear from the table or evidence summary."
+      },
+      "confidence_level": {
+        "type": "controlled_string",
+        "nullable": false,
+        "description": "Categorical personal-evidence confidence after sample size, duration, completeness, variation consistency, and confounding are considered."
+      },
+      "confidence_score": {
+        "type": "decimal",
+        "nullable": true,
+        "unit": "score_0_100",
+        "description": "Numeric data-confidence score; null when the method does not calculate one."
+      },
+      "missing_data_flags": {
+        "type": "array_of_stable_ids",
+        "nullable": false,
+        "description": "Machine-readable flags for material missingness or unsupported fields; use an empty array when none apply."
+      },
+      "source_references": {
+        "type": "array_of_source_reference",
+        "nullable": false,
+        "description": "Traceable references to raw or normalized inputs supporting the result."
+      },
+      "notes": {
+        "type": "array_of_string",
+        "nullable": false,
+        "description": "Assumptions, caveats, discrepancies, and interpretation notes; use an empty array when none apply."
+      }
+    },
+    "source_reference": {
+      "source_id": {
+        "type": "stable_id",
+        "nullable": false,
+        "description": "Stable identifier for a source file or source dataset."
+      },
+      "source_path": {
+        "type": "string",
+        "nullable": false,
+        "description": "Repository-relative source path."
+      },
+      "worksheet": {
+        "type": "string",
+        "nullable": true,
+        "description": "Workbook worksheet name when applicable."
+      },
+      "source_record_id": {
+        "type": "string",
+        "nullable": true,
+        "description": "Native or deterministically derived source record identifier."
+      },
+      "source_row": {
+        "type": "positive_integer",
+        "nullable": true,
+        "description": "One-based source row number when meaningful."
+      },
+      "source_date": {
+        "type": "date",
+        "nullable": true,
+        "description": "Measurement, workout, meal, or biometric date represented by the referenced source record."
+      }
+    },
+    "analysis_metadata": {
+      "database_name": {
+        "type": "string",
+        "nullable": false,
+        "description": "Human-readable name of the personal data product."
+      },
+      "research_database_version": {
+        "type": "semantic_version",
+        "nullable": true,
+        "description": "Version of the external research database available to the run; null when it was not used."
+      },
+      "analysis_scope": {
+        "type": "array_of_string",
+        "nullable": true,
+        "description": "Domains and date periods included in the run."
+      },
+      "config_paths": {
+        "type": "array_of_string",
+        "nullable": true,
+        "description": "Configuration files used to reproduce the run."
+      },
+      "table_record_counts": {
+        "type": "object_string_to_nonnegative_integer",
+        "nullable": false,
+        "description": "Record count for each normalized and derived output."
+      },
+      "data_quality_summary": {
+        "type": "object",
+        "nullable": true,
+        "description": "Run-level summary of duplicate, missing, invalid, and inconsistent records."
+      },
+      "personal_research_weighting_policy": {
+        "type": "object",
+        "nullable": true,
+        "description": "Policy for increasing personal evidence weight as observation quality and quantity grow."
+      }
+    },
+    "exercise_prescription": {
+      "role": {
+        "type": "controlled_string",
+        "nullable": false,
+        "description": "Program role assigned to the exercise for the specified muscle group."
+      },
+      "recommended_sets_per_session": {
+        "type": "integer_range",
+        "nullable": true,
+        "unit": "hard_sets",
+        "description": "Recommended working-set range per exposure; warm-ups are excluded."
+      },
+      "recommended_weekly_sets": {
+        "type": "integer_range",
+        "nullable": true,
+        "unit": "hard_sets_per_week",
+        "description": "Recommended normal weekly hard-set range for the exercise and muscle context."
+      },
+      "recommended_sessions_per_week": {
+        "type": "number_range",
+        "nullable": true,
+        "unit": "sessions_per_week",
+        "description": "Recommended exposure-frequency range."
+      },
+      "recommended_rep_range": {
+        "type": "integer_range",
+        "nullable": true,
+        "unit": "repetitions",
+        "description": "Meaningful personal repetition range rather than a single-repetition target."
+      },
+      "recommended_rpe": {
+        "type": "number_range",
+        "nullable": true,
+        "unit": "rpe_0_10",
+        "description": "Recommended effort range using RPE."
+      },
+      "recommended_rir": {
+        "type": "number_range",
+        "nullable": true,
+        "unit": "repetitions_in_reserve",
+        "description": "Recommended effort range using RIR."
+      },
+      "recommended_rest_seconds": {
+        "type": "integer_range",
+        "nullable": true,
+        "unit": "seconds",
+        "description": "Recommended inter-set rest interval."
+      },
+      "recommended_days_between_exposures": {
+        "type": "number_range",
+        "nullable": true,
+        "unit": "days",
+        "description": "Recommended spacing between comparable exposures."
+      },
+      "progression_rule": {
+        "type": "string",
+        "nullable": true,
+        "description": "Concrete rule for progressing load, repetitions, or execution."
+      },
+      "observed_best_range": {
+        "type": "object",
+        "nullable": true,
+        "description": "Conditions directly observed with the best combined progression and recovery."
+      },
+      "recommended_future_range": {
+        "type": "object",
+        "nullable": true,
+        "description": "Forward-looking prescription after personal evidence, uncertainty, and guardrails are applied."
+      },
+      "highest_recoverable_range_observed": {
+        "type": "object",
+        "nullable": true,
+        "description": "Highest observed volume or intensity range tolerated without repeated adverse outcomes; not automatically recommended."
+      },
+      "evidence_summary": {
+        "type": "string",
+        "nullable": false,
+        "description": "Concise explanation of personal evidence and material limitations behind the prescription."
+      },
+      "warning_signs": {
+        "type": "array_of_string",
+        "nullable": true,
+        "description": "Patterns indicating the exercise may be becoming unproductive or excessively costly."
+      }
+    },
+    "recovery_rule": {
+      "rule_name": {
+        "type": "string",
+        "nullable": false,
+        "description": "Human-readable recovery rule name."
+      },
+      "scope": {
+        "type": "controlled_string",
+        "nullable": true,
+        "description": "Whether the rule affects a full session, one exercise, or one muscle group."
+      },
+      "action": {
+        "type": "controlled_string",
+        "nullable": false,
+        "description": "Training adjustment recommended when the trigger logic is satisfied."
+      },
+      "signals": {
+        "type": "array_of_signal",
+        "nullable": false,
+        "description": "Named recovery, performance, nutrition, and recent-volume indicators evaluated by the rule."
+      },
+      "minimum_converging_indicators": {
+        "type": "positive_integer",
+        "nullable": false,
+        "description": "Minimum independent signals required; prevents a major adjustment from one isolated biometric."
+      },
+      "trigger_logic": {
+        "type": "object",
+        "nullable": false,
+        "description": "Deterministic Boolean or JSON-Logic-style expression over signal IDs."
+      },
+      "action_parameters": {
+        "type": "object",
+        "nullable": false,
+        "description": "Load, set, volume, RPE, timing, or substitution parameters for the action."
+      },
+      "historical_evidence": {
+        "type": "object",
+        "nullable": false,
+        "description": "Eligible observations, triggered observations, outcomes, and effect summary supporting the rule."
+      }
+    },
+    "tabular_manifest": {
+      "table_name": {
+        "type": "stable_id",
+        "nullable": false,
+        "description": "Logical normalized or derived table name."
+      },
+      "relative_path": {
+        "type": "string",
+        "nullable": false,
+        "description": "Repository-relative path to the generated artifact."
+      },
+      "format": {
+        "type": "controlled_string",
+        "nullable": false,
+        "description": "Serialization format of the artifact."
+      },
+      "schema_path": {
+        "type": "string",
+        "nullable": true,
+        "description": "Repository-relative JSON Schema or table-contract path."
+      },
+      "row_count": {
+        "type": "nonnegative_integer",
+        "nullable": false,
+        "unit": "rows",
+        "description": "Physical row or item count in the output."
+      },
+      "stable_identifier_columns": {
+        "type": "array_of_stable_ids",
+        "nullable": false,
+        "description": "Columns that uniquely and reproducibly identify output records."
+      },
+      "columns": {
+        "type": "array_of_stable_ids",
+        "nullable": true,
+        "description": "Ordered output column names when applicable."
+      },
+      "checksum_sha256": {
+        "type": "sha256_hex",
+        "nullable": true,
+        "description": "Optional lowercase SHA-256 checksum of the generated artifact."
+      }
+    },
+    "future_integration_envelope": {
+      "integration_envelope": {
+        "type": "object",
+        "nullable": true,
+        "description": "Forward-compatible personal/research recommendation blend. When present, all ten child fields are required."
+      },
+      "personal_estimate": {
+        "type": "object",
+        "nullable": false,
+        "description": "Recommendation or range estimated only from personal evidence."
+      },
+      "personal_confidence": {
+        "type": "decimal",
+        "nullable": false,
+        "unit": "proportion_0_1",
+        "description": "Quality-adjusted confidence in the personal estimate."
+      },
+      "personal_sample_size": {
+        "type": "nonnegative_integer",
+        "nullable": false,
+        "unit": "observations",
+        "description": "Comparable personal observations contributing to the estimate."
+      },
+      "research_default": {
+        "type": "object",
+        "nullable": false,
+        "description": "Applicable external research default; use an empty object when none exists."
+      },
+      "research_confidence": {
+        "type": "decimal",
+        "nullable": false,
+        "unit": "proportion_0_1",
+        "description": "Confidence assigned to the applicable research default."
+      },
+      "personal_weight": {
+        "type": "decimal",
+        "nullable": false,
+        "unit": "proportion_0_1",
+        "description": "Decision weight assigned to personal evidence."
+      },
+      "research_weight": {
+        "type": "decimal",
+        "nullable": false,
+        "unit": "proportion_0_1",
+        "description": "Decision weight assigned to research evidence."
+      },
+      "final_recommendation": {
+        "type": "object",
+        "nullable": false,
+        "description": "Recommendation after applying the evidence hierarchy and weights."
+      },
+      "weighting_reason": {
+        "type": "string",
+        "nullable": false,
+        "description": "Human-readable explanation of the personal/research weights."
+      },
+      "last_updated": {
+        "type": "date",
+        "nullable": false,
+        "description": "Date on which the integration envelope was last recalculated."
+      }
+    }
+  }
+}
