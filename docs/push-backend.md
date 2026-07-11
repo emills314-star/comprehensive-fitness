@@ -11,6 +11,21 @@ Comprehensive Fitness uses standards-based Web Push for locked-screen rest alert
 
 All three services have free tiers suitable for personal use. The foreground timer and IndexedDB workout log continue to work when the notification backend is not configured.
 
+## Live Free-Tier Deployment
+
+Production was configured and verified on 2026-07-11. No paid plan or payment method is required by the current implementation.
+
+| Component | Live resource | Free-plan details used by this app |
+| --- | --- | --- |
+| Vercel | Hobby project `comprehensive-fitness`, production domain `https://comprehensive-fitness.vercel.app`, functions in `iad1` | Hosts the PWA and seven Node.js API functions |
+| Upstash Redis | Database `comprehensive-fitness`, AWS `us-east-2`, Free Tier | 500,000 commands/month, 256 MB storage, 50 GB monthly bandwidth |
+| Upstash QStash | `US Region`, AWS `us-east-1`, Free | 1,000 messages/day, 50 GB monthly bandwidth, three retries, 1 MB messages |
+| Web Push | One production VAPID key pair generated 2026-07-11 | Private key exists only in Vercel Production environment variables |
+
+The nine variables below are present only in Vercel Production. The latest deployment is `READY`, and `GET /api/push/config` returns `configured: true` with scheduler `qstash`. A temporary `cf:smoke:*` Redis key was written, read, and deleted successfully during setup, so no smoke-test record remains.
+
+Before an iPhone enables notifications, Redis is expected to contain no persistent app records. The first installed-PWA registration creates the installation hash and registry membership documented below; timers and workout sync keys appear only as those features are used.
+
 ## Environment Variables
 
 Set these in Vercel for Production, Preview, and Development as appropriate:
@@ -43,13 +58,15 @@ Key: `cf:install:{installationId}` (hash)
 
 Fields: `installationId`, `userId`, `endpoint`, `p256dh`, `auth`, `createdAt`, `updatedAt`, `lastSuccessfulDeliveryAt`, `deviceId`, `active`, `invalidAt`, `secretHash`.
 
+Key: `cf:installations` (set) contains registered installation IDs for operational auditing.
+
 The browser receives a random installation bearer token once. Only its SHA-256 hash is stored. Expired subscriptions are marked inactive after a `404` or `410` push response.
 
 ### Scheduled rest notifications
 
 Key: `cf:timer:{notificationId}` (hash)
 
-Fields: `notificationId`, `installationId`, `userId`, `workoutId`, `exerciseId`, `setId`, `upcomingSetId`, `upcomingSetNumber`, `exerciseName`, `messageDetail`, `scheduledCompletionAt`, `status`, `createdAt`, `canceledAt`, `deliveredAt`, `messageId`, `cancelReason`, `deliveryError`.
+Fields: `notificationId`, `installationId`, `userId`, `workoutId`, `exerciseId`, `setId`, `upcomingSetId`, `upcomingSetNumber`, `upcomingSetLabel`, `timerVersion`, `exerciseName`, `messageDetail`, `scheduledCompletionAt`, `status`, `createdAt`, `canceledAt`, `deliveredAt`, `messageId`, `cancelReason`, `deliveryError`.
 
 Key: `cf:active:{installationId}:{workoutId}` points to the only active notification ID for that workout. Scheduling a replacement cancels the prior QStash message first.
 
@@ -60,6 +77,13 @@ Key: `cf:workout:{installationId}:{sessionId}` (hash)
 Fields: `installationId`, `sessionId`, `revision`, `payload`, `updatedAt`.
 
 Key: `cf:mutation:{installationId}:{mutationId}` is an expiring idempotency record. Duplicate mutations return success without creating duplicate workout or set records.
+
+## Free-Tier Operations
+
+- Check Upstash Redis **Commands**, **Storage**, and **Bandwidth** monthly. The personal app should remain far below the free limits; do not select **Upgrade** or add a payment method.
+- Check QStash **Messages**, **DLQ**, and **Schedules** if a locked-screen notification fails. The current free allowance is ample for personal rest timers.
+- Rotate Redis, QStash, or VAPID credentials only when compromised or intentionally migrating. Update all matching Vercel Production variables together and redeploy immediately.
+- Historical workout recommendation snapshots are client-side IndexedDB data and are not silently rewritten by these backend services. Exported app backups remain the authoritative restore source.
 
 ## Delivery Flow
 

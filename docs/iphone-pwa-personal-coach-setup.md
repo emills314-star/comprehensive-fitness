@@ -9,11 +9,21 @@ This is the operational runbook for using Comprehensive Fitness as a private per
 - Personal evidence is intentionally excluded from GitHub and Vercel.
 - The installed PWA stores its state in that installation's IndexedDB. Exported app backups remain the authoritative recovery method.
 
-## 1. Configure the free push backend
+## 1. Free push backend status: complete
 
 The coaching engine works without this backend. The backend is required for reliable rest-complete delivery while the PWA is backgrounded or the phone is locked.
 
-### Create Upstash Redis
+The production backend was configured and verified on 2026-07-11:
+
+- Upstash Redis: `comprehensive-fitness`, AWS `us-east-2`, Free Tier.
+- Upstash QStash: US Region, AWS `us-east-1`, Free.
+- Vercel: Hobby project, Production variables only.
+- Live check: `https://comprehensive-fitness.vercel.app/api/push/config` returns `"configured": true` and `"scheduler": "qstash"`.
+- Direct Redis write/read/delete and protected live route checks passed.
+
+Do not create another database, select **Upgrade**, add a credit card, or regenerate credentials during normal setup. The following subsections are recovery instructions for a future credential rotation or account migration.
+
+### Recovery: recreate Upstash Redis
 
 1. Sign into Upstash.
 2. Open **Redis** and select **Create Database**.
@@ -22,7 +32,7 @@ The coaching engine works without this backend. The backend is required for reli
 5. Copy `UPSTASH_REDIS_REST_URL`.
 6. Copy the standard `UPSTASH_REDIS_REST_TOKEN`, not the read-only token.
 
-### Collect QStash credentials
+### Recovery: collect QStash credentials
 
 1. Open **QStash** in Upstash.
 2. Copy `QSTASH_TOKEN`.
@@ -30,7 +40,7 @@ The coaching engine works without this backend. The backend is required for reli
 4. Copy `QSTASH_NEXT_SIGNING_KEY`.
 5. Keep all three values in a password manager.
 
-### Generate VAPID credentials
+### Recovery: generate VAPID credentials
 
 From PowerShell in the repository:
 
@@ -40,7 +50,7 @@ npx web-push generate-vapid-keys
 
 Keep both keys in a password manager. Never commit the private key or paste it into client-side code.
 
-### Add Vercel environment variables
+### Recovery: update Vercel environment variables
 
 Open Vercel, select **comprehensive-fitness**, then open **Settings > Environment Variables**. Add these values to Production:
 
@@ -62,7 +72,7 @@ Redeploy the latest production deployment after saving the variables. Then open:
 https://comprehensive-fitness.vercel.app/api/push/config
 ```
 
-Do not continue until it returns `"configured": true` and `"scheduler": "qstash"`.
+Do not continue after a recovery change until it again returns `"configured": true` and `"scheduler": "qstash"`.
 
 ## 2. Install the PWA
 
@@ -160,6 +170,18 @@ Recommended app settings:
 | iOS can evict web storage | Export a backup weekly and before iOS upgrades, domain changes, clearing Safari data, or reinstalling the PWA. |
 | Redis workout sync is not a restore service | Treat exported app JSON as the authoritative backup. Do not delete the installed PWA based only on a successful sync status. |
 | PWA update appears delayed | Export first, open the PWA online, wait briefly, close it from the app switcher, and reopen it. Delete/reinstall only after a verified backup. |
+
+## Manual account-security task
+
+Vercel displayed its optional two-factor-authentication setup prompt during configuration. It was skipped because completing authenticator enrollment requires your phone and recovery-code storage; this does not affect app functionality. To secure the deployment account without paying:
+
+1. Install or open a free authenticator such as Google Authenticator, Microsoft Authenticator, or 2FAS on your phone.
+2. Sign in to Vercel, open your avatar menu, and choose **Account Settings**.
+3. Open **Security** and choose **Set Up Two-Factor Authentication**.
+4. Scan the QR code with the authenticator app.
+5. Enter the current six-digit code in Vercel.
+6. Save the recovery codes in your password manager and one encrypted offline backup.
+7. Sign out and back in once to confirm the authenticator works before relying on it.
 
 ## Ongoing evidence refresh
 

@@ -10,8 +10,11 @@ This document is the durable map for future recommendation-engine iterations. It
 | Personal analysis methodology | `1.1.0` | 2026-07-11 | `personal_fitness_data/reports/analysis_metadata.json` |
 | Exercise-science database | `1.0.0` | 2026-07-11 | `research_database/source/database.js` |
 | App prescription schema | `2.0.0` | 2026-07-11 | `prescription-engine.js` and the app prescription JSON Schemas |
+| Push/sync operational database | `1.0.0` | deployed/verified 2026-07-11 | `docs/push-backend.md` and `api/` |
 
 The personal analysis metadata declares research database `1.0.0`, so these outputs were built against the same research release used by the app.
+
+The live operational database is separate from both evidence sources. Upstash Redis stores only installation-scoped push, timer, idempotency, and workout-sync records; it does not contain or replace the private personal-analysis package or the public research database. Its exact key and field inventory, free-tier resource regions, and current deployment status are maintained in `docs/push-backend.md`.
 
 Current personal analysis identity: `analysis_9a245e42ebd6605a3ef6`; 81,313 source/normalized records from 2019-03-02 through 2026-07-11; overall evidence confidence `moderate` (`64.77/100`). Preserve this ID in audit work so outputs from a later rebuild are not mistaken for the evidence used by an older recommendation snapshot.
 
