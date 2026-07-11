@@ -492,6 +492,19 @@
       .set-row.warmup { border-left: 3px solid var(--amber); padding-left: 8px; }
       .set-row.warmup strong { color: var(--amber); font-size: 0.72rem; }
       .set-block { border-left: 3px solid transparent; border-right: 3px solid transparent; display: grid; }
+      .set-heading { align-items: center; display: flex; gap: 8px; justify-content: space-between; padding: 7px 10px 2px; }
+      .set-type-badge { background: color-mix(in srgb, var(--muted) 9%, transparent); border: 1px solid color-mix(in srgb, var(--muted) 28%, var(--line)); border-radius: 5px; color: var(--muted); display: inline-flex; font-size: .6rem; font-weight: 950; line-height: 1; padding: 4px 6px; pointer-events: none; text-transform: uppercase; user-select: none; }
+      .set-type-badge.type-top { background: color-mix(in srgb, var(--current) 10%, transparent); border-color: color-mix(in srgb, var(--current) 42%, var(--line)); color: var(--current); }
+      .set-type-badge.type-backoff { background: color-mix(in srgb, #54708c 10%, transparent); border-color: color-mix(in srgb, #54708c 38%, var(--line)); color: #466781; }
+      .set-type-badge.type-drop { background: color-mix(in srgb, #7c5fc8 10%, transparent); border-color: color-mix(in srgb, #7c5fc8 42%, var(--line)); color: #6949b7; }
+      .set-type-badge.type-warmup { background: color-mix(in srgb, #6f8497 9%, transparent); border-color: color-mix(in srgb, #6f8497 35%, var(--line)); color: #60778b; }
+      .set-type-badge.type-deload { background: color-mix(in srgb, var(--amber) 10%, transparent); border-color: color-mix(in srgb, var(--amber) 42%, var(--line)); color: #a75d00; }
+      .set-validation-warning { color: var(--amber); font-size: .62rem; font-weight: 850; }
+      .set-prescription-context { border-top: 1px solid var(--line); display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); margin: 0 10px; padding: 8px 0; }
+      .set-prescription-context > div { display: grid; gap: 2px; min-width: 0; }
+      .set-prescription-context span { color: var(--muted); font-size: .58rem; font-weight: 900; text-transform: uppercase; }
+      .set-prescription-context strong { color: var(--text); font-size: .7rem; line-height: 1.35; overflow-wrap: anywhere; }
+      .set-prescription-context small { color: var(--muted); font-size: .63rem; line-height: 1.35; }
       .set-block.completed {
         background: var(--success-dark);
         border-left-color: var(--success);
@@ -547,6 +560,11 @@
       .workout-exercise-detail span { color: var(--muted); font-size: .62rem; font-weight: 800; text-transform: uppercase; }
       .workout-exercise-detail strong, .workout-exercise-detail p { font-size: .69rem; line-height: 1.45; margin: 0; overflow-wrap: anywhere; }
       .workout-confidence { color: var(--muted); font-size: .66rem; line-height: 1.45; }
+      .role-prescription-list { border-top: 1px solid var(--line); display: grid; gap: 0; }
+      .role-prescription { border-bottom: 1px solid var(--line); display: grid; gap: 4px; padding: 10px 0; }
+      .role-prescription > span { color: var(--muted); font-size: .61rem; font-weight: 950; text-transform: uppercase; }
+      .role-prescription > strong { color: var(--text); font-size: .73rem; line-height: 1.4; overflow-wrap: anywhere; }
+      .role-prescription > p { color: var(--muted); font-size: .67rem; line-height: 1.5; margin: 0; }
       .pr-celebration { background: var(--green-dark); border-left: 3px solid var(--green-2); display: grid; gap: 6px; padding: 12px; }
       .pr-celebration strong { color: var(--green-2); }
       .pr-celebration span, .summary-lifts span { color: var(--muted); font-size: 0.9rem; }
@@ -1789,7 +1807,18 @@
             }
           });
         }
-        data = { ...data, sessions: [...sessions, ...data.sessions], exercises: [...data.exercises, ...exercises], sets: [...data.sets, ...sets], dataRevision: Number(data.dataRevision || 0) + 1 };
+        const legTemplate = {
+          id: "perf-leg-template",
+          name: "Leg Day Prescription QA",
+          notes: "Development-only set-role fixture",
+          createdAt: isoNow(),
+          updatedAt: isoNow(),
+          exercises: [
+            { id: "perf-leg-press", name: "Leg Press", sets: 2, reps: 10, targetRpe: 8.5, increment: 5, restSeconds: 150, resistanceType: "external", warmups: [{ id: "lp-wu-1", reps: 8, weight: 90, rpe: 5 }, { id: "lp-wu-2", reps: 5, weight: 135, rpe: 6 }], setTypes: [{ type: "top", setCount: 1, repMin: 8, repMax: 10, rpeMin: 8, rpeMax: 9 }, { type: "backoff", setCount: 1, repMin: 10, repMax: 15, rpeMin: 7, rpeMax: 8, loadReductionMin: 8, loadReductionMax: 15 }] },
+            { id: "perf-leg-extension", name: "Leg Extension", sets: 2, reps: 15, targetRpe: 8.5, increment: 5, restSeconds: 90, resistanceType: "external", warmups: [], setTypes: [{ type: "top", setCount: 1, repMin: 10, repMax: 15, rpeMin: 8, rpeMax: 9 }, { type: "backoff", setCount: 1, repMin: 12, repMax: 20, rpeMin: 7, rpeMax: 8, loadReductionMin: 10, loadReductionMax: 20 }] }
+          ]
+        };
+        data = { ...data, sessions: [...sessions, ...data.sessions], exercises: [...data.exercises, ...exercises], sets: [...data.sets, ...sets], templates: [legTemplate, ...data.templates.filter((template) => template.id !== legTemplate.id)], dataRevision: Number(data.dataRevision || 0) + 1 };
         measurePerformance("fixture:serializeFullData", () => JSON.stringify(data), { sessions: data.sessions.length, exercises: data.exercises.length, sets: data.sets.length });
       }
       let pendingSubmitSessionId = "";
@@ -2533,11 +2562,14 @@
           targetRpe: previous?.targetRpe ?? previous?.rpe,
           targetRpeMin: previous?.targetRpeMin ?? 0,
           targetRpeMax: previous?.targetRpeMax ?? previous?.targetRpe ?? previous?.rpe,
-          targetRpeTolerance: previous?.targetRpeTolerance ?? 1,
+          targetRpeTolerance: previous?.targetRpeTolerance ?? 0.5,
           targetRestSeconds: previous?.targetRestSeconds ?? exercise?.restSeconds ?? 0,
+          setPrescription: previous?.setPrescription ? { ...previous.setPrescription, previousComparableSet: previous.setPrescription.previousComparableSet ? { ...previous.setPrescription.previousComparableSet } : null } : null,
+          previousComparableSet: previous?.previousComparableSet ? { ...previous.previousComparableSet } : null,
           prescriptionReason: previous?.prescriptionReason || "",
           prescriptionMode: previous?.prescriptionMode || "",
-          prescriptionConfidence: previous?.prescriptionConfidence || ""
+          prescriptionConfidence: previous?.prescriptionConfidence || "",
+          validationWarning: previous?.validationWarning || ""
         };
       }
 
@@ -2729,10 +2761,16 @@
           return "Warm-Up " + (Math.max(0, index) + 1) + " of " + warmups.length;
         }
         const type = normalizeSetTypeCode(set.setType, set.isWarmup);
-        if (type === "top") return "Top Set";
-        if (type === "backoff") return "Back-Off Set";
-        if (type === "drop") return "Drop Set";
-        return "Working Set " + Number(set.setNumber || 1);
+        const sameRole = exerciseSets.filter((item) => normalizeSetTypeCode(item.setType, item.isWarmup) === type);
+        const roleIndex = Math.max(0, sameRole.findIndex((item) => item.id === set.id));
+        const numberedRole = (label) => label + " " + (roleIndex + 1) + (sameRole.length > 1 ? " of " + sameRole.length : "");
+        if (type === "top") return sameRole.length > 1 ? numberedRole("Top Set") : "Top Set";
+        if (type === "backoff") return numberedRole("Back-Off Set");
+        if (type === "drop") return numberedRole("Drop Set");
+        if (type === "deload") return numberedRole("Deload Set");
+        if (type === "technique") return numberedRole("Technique Set");
+        if (type === "amrap") return numberedRole("AMRAP Set");
+        return numberedRole("Working Set");
       }
 
       function orderedActiveSets() {
@@ -3012,15 +3050,27 @@
         const small = unit === "kg" ? 1 : 2.5;
         const standard = unit === "kg" ? 2.5 : 5;
         if (/pull up|pullup|chin up|chinup|\bdip\b|push up|pushup|plank/.test(key)) {
-          return { kind: "bodyweight", increment: small, lowerRep: 8, upperRep: 20, maxJumpRatio: 0.2 };
+          return { kind: "bodyweight", increment: small, lowerRep: 8, upperRep: 20, maxJumpRatio: 0.2, roleRanges: { top: [8, 15], straight: [8, 20], backoff: [10, 20], drop: [15, 25] }, backoffReduction: [5, 10] };
         }
-        if (/leg extension|leg curl|pulldown|machine row|seated row/.test(key)) {
-          return { kind: "machine", increment: standard, lowerRep: 8, upperRep: 15, maxJumpRatio: 0.12 };
+        if (/leg press|hack squat|pendulum squat|belt squat/.test(key)) {
+          return { kind: "compound", subtype: "machine-compound", increment: standard, lowerRep: 8, upperRep: 15, maxJumpRatio: 0.12, roleRanges: { top: [8, 10], straight: [8, 15], backoff: [10, 15], drop: [15, 20] }, backoffReduction: [8, 15] };
+        }
+        if (/leg extension/.test(key)) {
+          return { kind: "machine", subtype: "machine-isolation", increment: standard, lowerRep: 10, upperRep: 15, maxJumpRatio: 0.12, roleRanges: { top: [10, 15], straight: [10, 15], backoff: [12, 20], drop: [15, 25] }, backoffReduction: [10, 20] };
+        }
+        if (/leg curl/.test(key)) {
+          return { kind: "machine", subtype: "machine-isolation", increment: standard, lowerRep: 8, upperRep: 15, maxJumpRatio: 0.12, roleRanges: { top: [8, 12], straight: [8, 15], backoff: [10, 15], drop: [12, 20] }, backoffReduction: [10, 18] };
+        }
+        if (/pulldown|machine row|seated row/.test(key)) {
+          return { kind: "machine", subtype: "machine-compound", increment: standard, lowerRep: 8, upperRep: 15, maxJumpRatio: 0.12, roleRanges: { top: [8, 12], straight: [8, 15], backoff: [10, 15], drop: [12, 20] }, backoffReduction: [8, 15] };
         }
         if (/lateral raise|rear delt|fly|crossover|pec deck|bicep curl|hammer curl|pushdown|tricep extension|calf|neck/.test(key)) {
-          return { kind: "isolation", increment: small, lowerRep: /lateral raise|rear delt/.test(key) ? 12 : 10, upperRep: 20, maxJumpRatio: 0.18 };
+          const lowerRep = /lateral raise|rear delt/.test(key) ? 12 : 10;
+          const topMin = lowerRep;
+          const topMax = /lateral raise|rear delt/.test(key) ? 15 : 15;
+          return { kind: "isolation", increment: small, lowerRep, upperRep: 20, maxJumpRatio: 0.18, roleRanges: { top: [topMin, topMax], straight: [lowerRep, 20], backoff: [Math.max(12, lowerRep), 20], drop: [15, 25] }, backoffReduction: [10, 20] };
         }
-        return { kind: "compound", increment: standard, lowerRep: 5, upperRep: 12, maxJumpRatio: 0.25 };
+        return { kind: "compound", increment: standard, lowerRep: 6, upperRep: 12, maxJumpRatio: 0.25, roleRanges: { top: [6, 10], straight: [6, 12], backoff: [8, 12], drop: [12, 20] }, backoffReduction: [8, 15] };
       }
 
       function recommendedRestSeconds(exerciseName, options = {}) {
@@ -3384,9 +3434,16 @@
       }
 
       function coachTargetForTemplateExercise(templateExercise, options = {}) {
-        const targetReps = Number(templateExercise.reps || 8);
-        const plannedSets = Number(templateExercise.sets || 1);
         const profile = progressionProfileForExercise(templateExercise.name);
+        const sessionType = sessionTypeForTemplate(options.template);
+        const programContext = exerciseTargetContext(options.template, templateExercise, { source: "Current workout template" });
+        const scoredTypes = (programContext?.setTypes || []).filter((type) => type.countsTowardScore && !type.isWarmup);
+        const primaryType = scoredTypes.find((type) => type.type === "top") || scoredTypes.find((type) => type.type === "straight") || scoredTypes[0];
+        const activeLowerRep = Number(primaryType?.repMin || templateExercise.repMin || profile.lowerRep || 0);
+        const activeUpperRep = Number(primaryType?.repMax || templateExercise.repMax || templateExercise.reps || profile.upperRep || activeLowerRep);
+        const activeProfile = { ...profile, lowerRep: activeLowerRep, upperRep: activeUpperRep };
+        const targetReps = Number(templateExercise.reps || activeUpperRep || 8);
+        const plannedSets = Math.max(1, scoredTypes.reduce((sum, type) => sum + Number(type.setCount || 0), 0) || Number(templateExercise.sets || 1));
         const weeks = summarizeExerciseByWeek(templateExercise.name, options);
         const recommendation = coachRecommendationForExercise(templateExercise.name, { ...options, weekStart: weeks[0]?.weekStart || "" });
         const recentSets = getMostRecentWorkoutSets(templateExercise.name, options);
@@ -3401,10 +3458,9 @@
         const representativeSet = topSets.slice().sort((a, b) => b.reps - a.reps || (a.rpe || 99) - (b.rpe || 99))[0] || last?.set;
         const recentRpe = Number(representativeSet?.rpe || 0);
         const knownBodyweight = isBodyweightResistance(resistanceType);
-        const sessionType = sessionTypeForTemplate(options.template);
         const daysSinceLast = last?.session?.date ? Math.floor((Date.now() - new Date(last.session.date + "T12:00:00").getTime()) / 86400000) : 0;
         let sets = plannedSets;
-        let reps = Math.max(profile.lowerRep, Math.min(profile.upperRep, recentReps || targetReps));
+        let reps = Math.max(activeLowerRep, Math.min(activeUpperRep, recentReps || targetReps));
         let weight = recentTop;
         let rpe = programmedRpeForExercise(templateExercise, profile, sessionType, recentRpe);
         let mode = recentSets.length ? "maintenance" : "baseline";
@@ -3415,7 +3471,7 @@
           reason = "Planned deload: reduce fatigue with lower load, fewer sets, and lower effort.";
           weight = recentTop > 0 ? roundToIncrement(recentTop * (resistanceType === "assisted_bodyweight" ? 1.1 : 0.9), increment) : 0;
           sets = Math.max(1, Math.ceil(plannedSets * 0.65));
-          reps = Math.max(profile.lowerRep, Math.min(targetReps, profile.upperRep));
+          reps = Math.max(activeLowerRep, Math.min(targetReps, activeUpperRep));
           rpe = Math.min(Number(templateExercise.targetRpe || 6.5), 6.5);
         } else if (sessionType === "light" || sessionType === "technique") {
           mode = sessionType;
@@ -3447,20 +3503,20 @@
                 ? "You reached the top of the programmed rep range at a manageable RPE, so the next added-load increment is appropriate."
                 : "You reached the top of the programmed rep range at a manageable RPE, so the next available load increment is appropriate.";
             weight = Number(recommendation.targetLoad);
-            reps = Math.max(profile.lowerRep, Math.min(profile.upperRep, targetReps - Math.max(2, Math.round((profile.upperRep - profile.lowerRep) * 0.35))));
+            reps = Math.max(activeLowerRep, Math.min(activeUpperRep, targetReps - Math.max(2, Math.round((activeUpperRep - activeLowerRep) * 0.35))));
           } else {
             mode = "rep-progression";
             reason = profile.kind === "isolation"
               ? "Progress this lift by adding reps first; load jumps are large for isolation work."
               : "Progress by adding reps before taking the next load jump.";
-            reps = Math.min(profile.upperRep, Math.max(profile.lowerRep, Number(recommendation.targetReps || 0), recentReps + 1, targetReps));
+            reps = Math.min(activeUpperRep, Math.max(activeLowerRep, Number(recommendation.targetReps || 0), recentReps + 1, targetReps));
           }
         } else if (recommendation?.decision === "deload") {
           mode = "deload";
           reason = "Recent work suggests fatigue or misses. Reduce load and volume.";
           weight = recentTop > 0 ? roundToIncrement(recentTop * (resistanceType === "assisted_bodyweight" ? 1.1 : 0.9), increment) : 0;
           sets = Math.max(1, Math.ceil(plannedSets * 0.65));
-          reps = Math.max(profile.lowerRep, Math.min(reps, profile.upperRep));
+          reps = Math.max(activeLowerRep, Math.min(reps, activeUpperRep));
           rpe = Math.min(Number(templateExercise.targetRpe || 6.5), 6.5);
         } else if (recommendation?.decision === "change") {
           mode = "substitution";
@@ -3476,8 +3532,8 @@
           mode,
           sets,
           reps,
-          repLow: profile.lowerRep,
-          repHigh: profile.upperRep,
+          repLow: activeLowerRep,
+          repHigh: activeUpperRep,
           weight,
           rpe,
           weightUnit: data.settings.weightUnit,
@@ -3489,8 +3545,9 @@
           reason,
           increment,
           confidence: prescriptionConfidence(weeks, daysSinceLast),
-          coachRecommendation: recommendation
-        }, recentSets, profile);
+          coachRecommendation: recommendation,
+          programTargetContext: programContext
+        }, recentSets, activeProfile);
         target.text = targetText(target, target.reason);
         return target;
       }
@@ -3569,7 +3626,8 @@
           { match: /neck curl|neck flexion|neck extension|neck harness|neck lateral/, sets: "2-4 controlled sets", reps: "10-20 reps", cues: ["Move slowly through a comfortable range.", "Keep the jaw relaxed and avoid jerking into end range.", "Progress conservatively; small muscles do not need big jumps."] },
           { match: /side plank/, sets: "2-4 controlled sets", reps: "8-20 reps or timed sets", cues: ["Keep ribs and pelvis stacked instead of rotating toward the floor.", "Move through the trunk under control without pushing from the shoulder.", "Add reps or a small external load only after the same range stays crisp."] },
           { match: /seated leg curl|lying leg curl|standing leg curl|nordic curl|hamstring curl|leg curl/, sets: "2-5 hard sets", reps: "8-15 reps", cues: ["Keep hips pinned and control the stretched position.", "Curl without letting the low back or hips pop up.", "Add reps before load when the contraction gets sloppy."] },
-          { match: /squat|leg press|lunge|split squat/, sets: "3-5 hard sets", reps: "5-12 reps", cues: ["Brace before the descent and keep pressure through midfoot.", "Let knees track with toes; do not dive-bomb the bottom.", "Use a depth you can repeat without lumbar rounding."] },
+          { match: /leg press/, sets: "3-5 hard sets", reps: "8-15 reps", cues: ["Brace before the descent and keep pressure through the whole foot.", "Use a repeatable depth without the pelvis rolling off the pad.", "Let the active program's top-set and back-off ranges determine today's target."] },
+          { match: /squat|lunge|split squat/, sets: "3-5 hard sets", reps: "5-12 reps", cues: ["Brace before the descent and keep pressure through midfoot.", "Let knees track with toes; do not dive-bomb the bottom.", "Use a depth you can repeat without lumbar rounding."] },
           { match: /deadlift|rdl|romanian|hinge|good morning/, sets: "2-4 hard sets", reps: "5-10 reps", cues: ["Start by pushing hips back, not by squatting the weight.", "Keep lats tight and the load close to the body.", "End the set when back position or hamstring tension breaks."] },
           { match: /bench|chest press|push up|pushup|dip|chest|pec/, sets: "3-5 hard sets", reps: "6-12 reps", cues: ["Set shoulder blades before the first rep and keep wrists stacked.", "Lower under control to a consistent touch point or depth.", "Press without bouncing or letting shoulders roll forward."] },
           { match: /row|pulldown|pull up|chin|lat pulldown|\blat\b/, sets: "3-5 hard sets", reps: "6-15 reps", cues: ["Lead with elbows and keep ribs down.", "Pause briefly in the shortened position instead of yanking.", "Control the stretch without losing shoulder position."] },
@@ -3586,12 +3644,13 @@
         const guidance = exerciseGuidanceFor(exercise.name);
         return `
           <div class="exercise-guidance">
-            <strong>Execution target</strong>
+            <strong>Broad exercise guidance</strong>
             <div class="guidance-grid">
               <div class="guidance-pill"><span>Sets</span><b>${escapeHtml(guidance.sets)}</b></div>
               <div class="guidance-pill"><span>Reps</span><b>${escapeHtml(guidance.reps)}</b></div>
               <div class="guidance-pill"><span>Effort</span><b>${escapeHtml(guidance.effort)}</b></div>
             </div>
+            <p class="muted-note">The programmed set targets above drive scoring and progression.</p>
             <ul class="cue-list">${guidance.cues.map((cue) => "<li>" + escapeHtml(cue) + "</li>").join("")}</ul>
           </div>
         `;
@@ -4678,9 +4737,13 @@
         const executionLabel = setExecutionLabel(set);
         const warmupIndex = setTypeSemantics(set).isWarmup ? (context.warmupIds || []).indexOf(set.id) : -1;
         const previousSets = !isWorkingSet(set, "progression") ? [] : (context.previousSets || []);
-        const sameRole = previousSets.filter((item) => normalizeSetTypeCode(item.setType, item.isWarmup) === normalizeSetTypeCode(set.setType, set.isWarmup));
-        const previous = sameRole.find((item) => item.setNumber === set.setNumber) || sameRole[0] || previousSets.find((item) => item.setNumber === set.setNumber) || previousSets[set.setNumber - 1];
-        const previousText = previous ? "Last time: " + formatSetPerformance(previous, exercise) : "";
+        const role = normalizeSetTypeCode(set.setType, set.isWarmup);
+        const previous = set.previousComparableSet || previousComparableSetForRole(previousSets, role, set.setTypeIndex);
+        const previousText = previous ? formatSetPerformance(previous, exercise) : "No comparable " + (setTypeLabels[role] || "working set").toLowerCase();
+        const targetLoad = Number(set.targetWeight ?? set.weight ?? 0);
+        const targetLoadText = formatResistance({ ...set, weight: targetLoad, addedLoad: resistanceType === "bodyweight_plus_load" ? targetLoad : set.addedLoad, assistanceLoad: resistanceType === "assisted_bodyweight" ? targetLoad : set.assistanceLoad, resistanceType });
+        const targetRepText = targetRangeText(set.targetRepMin, set.targetRepMax || set.targetReps, " reps");
+        const targetRpeText = targetRangeText(set.targetRpeMin, set.targetRpeMax || set.targetRpe, " RPE");
         const performanceField = resistanceType === "duration"
           ? '<label class="set-field"><span>Seconds</span><input type="number" min="0" value="' + Number(set.durationSeconds || 0) + '" data-action="set-duration" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' seconds" /></label>'
           : resistanceType === "distance"
@@ -4693,7 +4756,10 @@
             : '<label class="set-field"><span>' + (resistanceType === 'bodyweight_plus_load' ? 'Added' : resistanceType === 'assisted_bodyweight' ? 'Assist' : 'Load') + '</span><input type="number" min="0" step="0.5" value="' + resistanceLoad(set, resistanceType) + '" data-action="set-weight" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' ' + (resistanceType === 'bodyweight_plus_load' ? 'added load' : resistanceType === 'assisted_bodyweight' ? 'assistance load' : 'load') + '" /></label>';
         return `
           <div id="set-${set.id}" data-set-state="${visualState}" class="set-block ${visualState === "completed" ? "completed" : ""} ${isNext ? "next-set" : ""} ${isNext && activeSetAcknowledged ? "acknowledged" : ""} ${visualState === "edited" ? "edited-set" : ""} ${visualState === "skipped" ? "skipped-set" : ""} ${isResting ? "resting-set" : ""}">
-            <div class="set-sequence-label">${escapeHtml(executionLabel)}</div>
+            <div class="set-heading">
+              <span class="set-type-badge type-${escapeHtml(role)}">${escapeHtml(executionLabel.toUpperCase())}${set.manualOverride ? " · CORRECTED" : ""}</span>
+              ${set.validationWarning ? '<span class="set-validation-warning">Review prescription</span>' : ""}
+            </div>
             <div class="set-row ${visualState === "completed" ? "completed" : "pending"} ${set.isWarmup ? "warmup" : ""}">
               <div class="set-field set-index"><span>Set</span><strong>${warmupIndex >= 0 ? "WU" + (warmupIndex + 1) : set.setNumber}</strong></div>
               ${performanceField}
@@ -4701,15 +4767,15 @@
               <label class="set-field"><span>RPE</span><input type="number" min="0" max="10" step="0.5" value="${set.rpe}" data-action="set-rpe" data-set-id="${set.id}" aria-label="Set ${set.setNumber} RPE" /></label>
               <div class="set-field set-status"><span>Status</span><button class="check-button ${set.completed ? "checked" : ""}" type="button" data-action="toggle-set" data-set-id="${set.id}" title="${set.completed ? "Completed" : "Mark set complete"}" aria-label="${set.completed ? "Set completed" : "Mark set complete"}" aria-pressed="${set.completed ? "true" : "false"}">${icon.done}</button></div>
             </div>
+            ${!setTypeSemantics(set).isWarmup ? '<div class="set-prescription-context"><div><span>Last time</span><strong>' + escapeHtml(previousText) + '</strong></div><div><span>Today</span><strong>' + escapeHtml(targetLoadText) + '</strong><small>' + escapeHtml(targetRepText + ' · ' + targetRpeText) + '</small></div></div>' : ""}
             ${isNext ? '<div class="next-set-banner"><span aria-hidden="true">&#10148;</span><span>' + escapeHtml(activeSetAcknowledged ? "Current set" : activeSetNotice || "Current set") + '</span></div>' : ""}
             <div class="set-actions">
               <button class="mini-button set-rest-button" type="button" data-action="start-timer" data-exercise-id="${exercise.id}" data-set-id="${set.id}">${icon.clock} ${formatTimer(restSeconds)}</button>
-              ${isEditingHistorySession() ? '<label class="set-type-editor"><span>Set type</span><select data-action="set-type-override" data-set-id="' + set.id + '">' + ['warmup','straight','top','backoff','drop'].map((type) => '<option value="' + type + '" ' + (normalizeSetTypeCode(set.setType, set.isWarmup) === type ? 'selected' : '') + '>' + escapeHtml(setTypeLabels[type]) + '</option>').join('') + '</select></label>' : '<span class="status-pill ' + (set.reviewRequired ? 'caution' : '') + '">' + escapeHtml(setTypeLabels[normalizeSetTypeCode(set.setType, set.isWarmup)] || 'Working set') + (set.manualOverride ? ' · corrected' : '') + '</span>'}
+              ${isEditingHistorySession() ? '<label class="set-type-editor"><span>Set type</span><select data-action="set-type-override" data-set-id="' + set.id + '">' + ['warmup','straight','top','backoff','drop'].map((type) => '<option value="' + type + '" ' + (normalizeSetTypeCode(set.setType, set.isWarmup) === type ? 'selected' : '') + '>' + escapeHtml(setTypeLabels[type]) + '</option>').join('') + '</select></label>' : ''}
               ${set.manualOverride && isEditingHistorySession() && set.classificationUndo ? '<button class="mini-button" type="button" data-action="undo-set-type-override" data-set-id="' + set.id + '">Undo type change</button>' : ''}
               <button class="mini-button set-skip-button ${set.skipped ? "active" : ""}" type="button" data-action="toggle-skip-set" data-set-id="${set.id}">${set.skipped ? "Skipped" : "Skip"}</button>
               <button class="mini-button" type="button" data-action="delete-set" data-set-id="${set.id}">Remove</button>
               ${visualState === "edited" ? '<span class="edited-indicator">Edited, not completed</span>' : ""}
-              ${previousText ? '<span class="previous-set">' + escapeHtml(previousText) + '</span>' : ""}
             </div>
             ${renderTimer(set.id)}
           </div>
@@ -4732,6 +4798,21 @@
         return target.sets + " set" + (Number(target.sets) === 1 ? "" : "s") + " | " + formatResistance(target) + " x " + target.reps + " reps @ RPE " + target.rpe + (target.restSeconds ? " | " + target.restSeconds + "s rest" : "");
       }
 
+      function renderRolePrescriptionDetails(exercise) {
+        const byRole = new Map();
+        setsForExercise(exercise.id).filter((set) => isWorkingSet(set, "score")).forEach((set) => {
+          const role = normalizeSetTypeCode(set.setType, set.isWarmup);
+          if (!byRole.has(role)) byRole.set(role, set);
+        });
+        if (!byRole.size) return "";
+        return '<div class="role-prescription-list">' + Array.from(byRole.entries()).map(([role, set]) => {
+          const load = formatResistance({ ...set, weight: Number(set.targetWeight ?? set.weight ?? 0), addedLoad: set.resistanceType === "bodyweight_plus_load" ? Number(set.targetWeight ?? set.addedLoad ?? 0) : set.addedLoad, assistanceLoad: set.resistanceType === "assisted_bodyweight" ? Number(set.targetWeight ?? set.assistanceLoad ?? 0) : set.assistanceLoad });
+          const reps = targetRangeText(set.targetRepMin, set.targetRepMax || set.targetReps, " reps");
+          const rpe = targetRangeText(set.targetRpeMin, set.targetRpeMax || set.targetRpe, " RPE");
+          return '<div class="role-prescription"><span>' + escapeHtml(setTypeLabels[role] || "Working set") + '</span><strong>' + escapeHtml(load + " · " + reps + " · " + rpe) + '</strong><p>' + escapeHtml(set.setPrescription?.reason || set.prescriptionReason || "This set follows its programmed role and comparable history.") + '</p></div>';
+        }).join('') + '</div>';
+      }
+
       function renderPrescriptionDetails(exercise) {
         const target = exercise.prescription;
         if (!target) return "";
@@ -4749,7 +4830,7 @@
         const reasonMarkup = reasonParts.length > 1
           ? '<div class="rationale-copy"><div><span>What triggered it</span><p class="rationale-reason">' + escapeHtml(reasonParts[0].trim()) + '</p></div><div><span>Why these changes</span><p class="rationale-reason">' + escapeHtml(reasonParts.slice(1).join("Why these levers:").trim()) + '</p></div></div>'
           : '<p class="rationale-reason">' + escapeHtml(reason) + '</p>';
-        const rationale = '<div class="recommendation-rationale"><div class="rationale-heading"><span class="rationale-icon" aria-hidden="true">i</span><div><strong>' + (changed ? 'Why today\'s target changed' : 'Why this recommendation') + '</strong><span>Based on submitted history and programming rules</span></div></div>' + reasonMarkup + '<div class="rationale-facts"><div class="rationale-fact"><span>Confidence</span><strong>' + escapeHtml(confidence.charAt(0).toUpperCase() + confidence.slice(1)) + '</strong></div><div class="rationale-fact"><span>Target range</span><strong>' + escapeHtml(repRange) + '</strong></div><div class="rationale-fact"><span>Next increment</span><strong>' + escapeHtml(increment) + '</strong></div></div></div>';
+        const rationale = '<div class="recommendation-rationale"><div class="rationale-heading"><span class="rationale-icon" aria-hidden="true">i</span><div><strong>' + (changed ? 'Why today\'s target changed' : 'Why this recommendation') + '</strong><span>Based on submitted history and programming rules</span></div></div>' + reasonMarkup + renderRolePrescriptionDetails(exercise) + '<div class="rationale-facts"><div class="rationale-fact"><span>Confidence</span><strong>' + escapeHtml(confidence.charAt(0).toUpperCase() + confidence.slice(1)) + '</strong></div><div class="rationale-fact"><span>Primary target range</span><strong>' + escapeHtml(repRange) + '</strong></div><div class="rationale-fact"><span>Next increment</span><strong>' + escapeHtml(increment) + '</strong></div></div></div>';
         return '<details class="prescription-brief ' + (target.isDeload ? 'deload' : '') + ' ' + (changed ? 'readiness-adjusted' : '') + '"><summary data-action="toggle-prescription-rationale" aria-label="' + (changed ? 'Why this changed' : 'Why this recommendation?') + '">' + summary + '</summary>' + rationale + '</details>';
       }
 
@@ -4988,6 +5069,7 @@
           rpeMax,
           rpeTolerance: Number(raw.rpeTolerance ?? fallback.rpeTolerance ?? 1),
           loadRule: raw.loadRule || fallback.loadRule || "",
+          progressionRule: raw.progressionRule || fallback.progressionRule || "",
           loadReductionMin: Number(raw.loadReductionMin ?? raw.dropPercentMin ?? fallback.loadReductionMin ?? 0),
           loadReductionMax: Number(raw.loadReductionMax ?? raw.dropPercentMax ?? fallback.loadReductionMax ?? 0),
           restSeconds,
@@ -4995,6 +5077,111 @@
           countsTowardScore: raw.countsTowardScore != null ? Boolean(raw.countsTowardScore) : !isWarmup,
           isWarmup
         };
+      }
+
+      function setRoleDefaultsForExercise(templateExercise, setType, profile, sessionType, targetRpe, restSeconds) {
+        const type = normalizeSetTypeCode(setType);
+        const role = ["top", "backoff", "drop"].includes(type) ? type : "straight";
+        const range = profile.roleRanges?.[role] || [profile.lowerRep, profile.upperRep];
+        const programmedRpe = Number(targetRpe || templateExercise.targetRpe || (profile.kind === "isolation" ? 8.5 : 8));
+        const isReducedSession = ["deload", "light", "technique"].includes(sessionType) || ["deload", "technique"].includes(type);
+        const rpeMax = isReducedSession ? Math.min(programmedRpe || 6.5, 6.5)
+          : role === "backoff" ? Math.max(6, programmedRpe - 0.5)
+            : programmedRpe;
+        const rpeMin = Math.max(1, rpeMax - (role === "top" ? 0.5 : 1));
+        const backoffReduction = profile.backoffReduction || (profile.kind === "isolation" ? [10, 20] : [8, 15]);
+        const reduction = role === "drop" ? [20, 25] : role === "backoff" ? backoffReduction : [0, 0];
+        const loadRule = role === "backoff"
+          ? "Reduce load " + reduction[0] + "-" + reduction[1] + "% from the top set, rounded to available equipment."
+          : role === "drop" ? "Reduce load " + reduction[0] + "-" + reduction[1] + "% from the preceding working set."
+            : role === "top" ? "Use the primary high-demand working load for this exercise."
+              : "Use the programmed straight-set load across comparable working sets.";
+        return {
+          type,
+          repMin: Number(range[0] || profile.lowerRep || 0),
+          repMax: Number(range[1] || profile.upperRep || range[0] || 0),
+          rpeMin,
+          rpeMax,
+          rpeTolerance: 0.5,
+          loadRule,
+          progressionRule: templateExercise.progressionRule || defaultProgressionRule(templateExercise, profile),
+          loadReductionMin: reduction[0],
+          loadReductionMax: reduction[1],
+          restSeconds: role === "drop" ? Math.min(Number(restSeconds || 60), 60) : Number(restSeconds || 0),
+          countsTowardScore: type !== "warmup",
+          countsTowardVolume: type !== "warmup"
+        };
+      }
+
+      function roundEquipmentLoad(value, increment) {
+        const step = Math.max(0.01, Number(increment || 1));
+        return Math.max(0, Math.round(Number(value || 0) / step) * step);
+      }
+
+      function previousComparableSetForRole(previousSets, setType, setTypeIndex = 0) {
+        const role = normalizeSetTypeCode(setType);
+        const sameRole = (previousSets || []).filter((set) => normalizeSetTypeCode(set.setType, set.isWarmup) === role);
+        return sameRole.find((set) => Number(set.setTypeIndex || 0) === Number(setTypeIndex || 0)) || sameRole[Number(setTypeIndex || 0)] || null;
+      }
+
+      function resolvedSetTypesForPrescription(context, target) {
+        const scored = (context?.setTypes || []).filter((type) => type.countsTowardScore && !type.isWarmup);
+        const targetCount = Math.max(1, Number(target.sets || scored.reduce((sum, type) => sum + Number(type.setCount || 0), 0) || 1));
+        if (["deload", "light", "technique"].includes(target.mode)) {
+          const source = scored.find((type) => type.type === "straight") || scored[0] || {};
+          const type = target.mode === "deload" ? "deload" : target.mode === "technique" ? "technique" : "straight";
+          return [{ ...source, type, label: setTypeLabels[type], setCount: targetCount, rpeMin: Math.max(1, Number(target.rpe || 6.5) - 1), rpeMax: Number(target.rpe || 6.5), loadReductionMin: 0, loadReductionMax: 0, loadRule: target.mode === "deload" ? "Use the resolved deload load; no top set or intensification technique." : "Use lower-fatigue straight sets for this session." }];
+        }
+        if (!scored.length) return [];
+        const baseCount = Math.max(1, scored.reduce((sum, type) => sum + Number(type.setCount || 0), 0));
+        let remaining = targetCount;
+        return scored.map((type, index) => {
+          const count = index === scored.length - 1
+            ? remaining
+            : Math.min(remaining, Math.max(0, Math.round(Number(type.setCount || 0) * targetCount / baseCount)));
+          remaining -= count;
+          return { ...type, setCount: count };
+        }).filter((type) => type.setCount > 0);
+      }
+
+      function setPrescriptionForRole(options = {}) {
+        const { templateExercise, target, setType, setTypeIndex = 0, sequenceIndex = 0, previousSets = [] } = options;
+        const role = normalizeSetTypeCode(setType.type || setType.setType);
+        const increment = Number(target.increment || templateExercise.increment || progressionProfileForExercise(templateExercise.name).increment || 1);
+        const resistanceType = target.resistanceType || templateExercise.resistanceType || "external";
+        const reductionMin = Number(setType.loadReductionMin || 0);
+        const reductionMax = Number(setType.loadReductionMax || reductionMin || 0);
+        const reduction = (reductionMin + reductionMax) / 2;
+        const assisted = resistanceType === "assisted_bodyweight";
+        const multiplier = reduction > 0 ? (assisted ? 1 + reduction / 100 : 1 - reduction / 100) : 1;
+        const targetLoad = roundEquipmentLoad(Number(target.weight || 0) * multiplier, increment);
+        const repMin = Number(setType.repMin || target.repLow || target.reps || 0);
+        const repMax = Number(setType.repMax || target.repHigh || target.reps || repMin);
+        const previousComparableSet = previousComparableSetForRole(previousSets, role, setTypeIndex);
+        const previousReps = Number(previousComparableSet?.reps || 0);
+        const targetReps = Math.max(repMin, Math.min(repMax, previousReps || Number(target.reps || repMax || repMin)));
+        const rpeMin = Number(setType.rpeMin || Math.max(1, Number(setType.rpeMax || target.rpe || 0) - 1));
+        const rpeMax = Number(setType.rpeMax || target.rpe || rpeMin);
+        const roleName = setTypeLabels[role] || "Working set";
+        const reason = role === "backoff"
+          ? "Load is reduced " + formatLoadNumber(reductionMin) + "-" + formatLoadNumber(reductionMax) + "% from the top set so you can add productive volume inside " + repMin + "-" + repMax + " reps at RPE " + targetRangeText(rpeMin, rpeMax) + " without repeating top-set demand."
+          : role === "drop"
+            ? "Load is reduced " + formatLoadNumber(reductionMin) + "-" + formatLoadNumber(reductionMax) + "% for the programmed drop-set range while limiting additional fatigue."
+            : role === "top"
+              ? "This is the primary high-demand set. Its load, rep range, and RPE target are resolved from the active program and prior top-set performance."
+              : "This is a straight working set. The programmed range allows normal rep decline across later sets without treating it as failure.";
+        return { setType: role, sequenceIndex, setTypeIndex, targetLoad, targetReps, repMin, repMax, rpeMin, rpeMax, restSeconds: Number(setType.restSeconds || target.restSeconds || 0), loadRule: setType.loadRule || "", progressionRule: setType.progressionRule || "", reductionPercent: reduction, previousComparableSet, reason: roleName + ": " + reason };
+      }
+
+      function validateGeneratedSetPrescriptions(prescriptions, resistanceType) {
+        const top = prescriptions.find((item) => item.setType === "top");
+        return prescriptions.map((item) => {
+          if (!top || item.setType !== "backoff") return item;
+          const identical = item.targetLoad === top.targetLoad && item.repMin === top.repMin && item.repMax === top.repMax && item.rpeMin === top.rpeMin && item.rpeMax === top.rpeMax;
+          if (identical) return { ...item, setType: "straight", reason: "Working set: This set intentionally repeats the same prescription, so it is classified as a straight working set rather than a back-off set." };
+          const demandReduced = resistanceType === "assisted_bodyweight" ? item.targetLoad > top.targetLoad : item.targetLoad < top.targetLoad;
+          return demandReduced ? item : { ...item, validationWarning: "Back-off demand was not lower than the top set." };
+        });
       }
 
       function templateSetTypesFromHistory(sets, restSeconds = 0) {
@@ -5038,19 +5225,29 @@
         const targetRpe = Number(overrides.rpe ?? overrides.targetRpe ?? templateExercise.targetRpe ?? 0);
         const restSeconds = Number(overrides.restSeconds ?? templateExercise.restSeconds ?? recommendedRestSeconds(templateExercise.name, { reps: templateExercise.reps, rpe: targetRpe }));
         const explicitTypes = Array.isArray(templateExercise.setTypes) ? templateExercise.setTypes : [];
-        let setTypes = explicitTypes.map((item) => normalizeTargetSetType(item, { restSeconds, targetRpe }));
+        let setTypes = explicitTypes.map((item) => {
+          const defaults = setRoleDefaultsForExercise(templateExercise, item.type || item.setType, profile, sessionType, targetRpe, restSeconds);
+          const normalized = normalizeTargetSetType(item, defaults);
+          const needsDemandReduction = ["backoff", "drop"].includes(normalized.type) && Number(normalized.loadReductionMax || normalized.loadReductionMin || 0) <= 0;
+          return needsDemandReduction
+            ? { ...normalized, loadReductionMin: defaults.loadReductionMin, loadReductionMax: defaults.loadReductionMax, loadRule: normalized.loadRule || defaults.loadRule }
+            : normalized;
+        });
         if (!setTypes.length) {
+          const defaultType = sessionType === "deload" ? "deload" : sessionType === "technique" ? "technique" : "straight";
+          const roleDefaults = setRoleDefaultsForExercise(templateExercise, defaultType, profile, sessionType, targetRpe, restSeconds);
           setTypes = [normalizeTargetSetType({
-            type: sessionType === "deload" ? "deload" : sessionType === "technique" ? "technique" : "straight",
+            type: defaultType,
             setCount: Number(overrides.sets ?? templateExercise.sets ?? 0),
-            repMin: Number(templateExercise.repMin || profile.lowerRep || 0),
-            repMax: Number(templateExercise.repMax || profile.upperRep || templateExercise.reps || 0),
-            rpeMin: Number(templateExercise.rpeMin || 0),
-            rpeMax: Number(templateExercise.rpeMax || targetRpe || 0),
-            rpeTolerance: 1,
+            repMin: Number(templateExercise.repMin || roleDefaults.repMin || 0),
+            repMax: Number(templateExercise.repMax || roleDefaults.repMax || templateExercise.reps || 0),
+            rpeMin: Number(templateExercise.rpeMin || roleDefaults.rpeMin || 0),
+            rpeMax: Number(templateExercise.rpeMax || roleDefaults.rpeMax || targetRpe || 0),
+            rpeTolerance: roleDefaults.rpeTolerance,
             restSeconds,
-            loadRule: templateExercise.loadRule || ""
-          })];
+            loadRule: templateExercise.loadRule || roleDefaults.loadRule,
+            progressionRule: templateExercise.progressionRule || roleDefaults.progressionRule
+          }, roleDefaults)];
         }
         const warmups = Array.isArray(templateExercise.warmups) ? templateExercise.warmups : [];
         if (warmups.length && !setTypes.some((item) => item.isWarmup)) {
@@ -6511,12 +6708,16 @@
           const restSeconds = Number(target.restSeconds || historyTarget.restSeconds);
           const programTargetContext = exerciseTargetContext(template, templateExercise, { source: "Current workout template", effectiveStartDate: session.date });
           let appliedTargetContext = exerciseTargetContext(template, { ...templateExercise, sets: target.sets }, { sets: target.sets, rpe: target.rpe, restSeconds, source: target.adjusted ? "Readiness-adjusted target" : target.isDeload ? "Deload prescription" : "Saved workout prescription", effectiveStartDate: session.date, effectiveEndDate: session.date, confidence: target.confidence });
-          if (programTargetContext && appliedTargetContext && Array.isArray(templateExercise.setTypes) && templateExercise.setTypes.length) {
-            const baseScoredSets = Math.max(1, programTargetContext.setTypes.filter((type) => type.countsTowardScore).reduce((sum, type) => sum + type.setCount, 0));
-            const setScale = Number(target.sets || baseScoredSets) / baseScoredSets;
-            const rpeShift = Number(target.rpe || 0) && Number(historyTarget.rpe || 0) ? Number(target.rpe) - Number(historyTarget.rpe) : 0;
-            appliedTargetContext = { ...appliedTargetContext, setTypes: programTargetContext.setTypes.map((type) => type.isWarmup ? type : { ...type, setCount: Math.max(1, Math.round(type.setCount * setScale)), rpeMin: type.rpeMin ? Math.max(1, type.rpeMin + rpeShift) : 0, rpeMax: type.rpeMax ? Math.max(1, type.rpeMax + rpeShift) : Number(target.rpe || 0), restSeconds: Number(target.restSeconds || type.restSeconds || restSeconds) }) };
-          }
+          const baseTargetContext = programTargetContext || appliedTargetContext;
+          const rpeShift = Number(target.rpe || 0) && Number(historyTarget.rpe || 0) ? Number(target.rpe) - Number(historyTarget.rpe) : 0;
+          const effectiveRpeShift = ["deload", "light", "technique"].includes(target.mode) ? 0 : rpeShift;
+          const resolvedTypes = resolvedSetTypesForPrescription(baseTargetContext, target).map((type) => ({
+            ...type,
+            rpeMin: type.rpeMin ? Math.max(1, type.rpeMin + effectiveRpeShift) : Math.max(1, Number(target.rpe || 0) - 1),
+            rpeMax: type.rpeMax ? Math.max(1, type.rpeMax + effectiveRpeShift) : Number(target.rpe || 0),
+            restSeconds: Number(target.restSeconds || type.restSeconds || restSeconds)
+          }));
+          appliedTargetContext = { ...appliedTargetContext, setTypes: [...(appliedTargetContext?.setTypes || []).filter((type) => type.isWarmup), ...resolvedTypes] };
           const exercise = { id: id(), sessionId: session.id, name: templateExercise.name, primaryMuscle: templateExercise.primaryMuscle || "", secondaryMuscle: templateExercise.secondaryMuscle || "", notes: "", originalPrescription: historyTarget, prescription: target, programTargetContext, appliedTargetContext, adjustmentReason: target.adjustmentReason || "", order: index, restSeconds, resistanceType: target.resistanceType, isBodyweight: isBodyweightResistance(target.resistanceType), isDeload: Boolean(target.isDeload) };
           exercises.push(exercise);
           readinessAdjustments.push({ exerciseId: exercise.id, name: exercise.name, original: historyTarget, adjusted: target, changed: Boolean(target.adjusted), reason: target.adjustmentReason || "No readiness change was required.", triggers: target.triggerLabels || [] });
@@ -6524,17 +6725,30 @@
           configuredWarmups.forEach((warmup, warmupIndex) => {
             sets.push(createSet(exercise.id, warmupIndex + 1, { ...warmup, sequenceIndex: warmupIndex, sequence: warmupIndex, setTypeIndex: warmupIndex, sourceTemplateSetId: warmup.id || templateExercise.id + "-warmup-" + warmupIndex, resistanceType: warmup.resistanceType || target.resistanceType, completed: false, isWarmup: true, setType: "warmup", countsTowardScore: false, countsTowardVolume: false, countsTowardProgression: false }));
           });
+          const previousRoleSets = getMostRecentWorkoutSets(templateExercise.name, { excludeSessionId: session.id });
           let setNumber = 0;
-          (appliedTargetContext?.setTypes || []).filter((setType) => setType.countsTowardScore && !setType.isWarmup).forEach((setType) => {
+          let rolePrescriptions = [];
+          resolvedTypes.forEach((setType) => {
             for (let typeSetIndex = 0; typeSetIndex < setType.setCount; typeSetIndex += 1) {
               setNumber += 1;
-              const dropPercent = setType.type === "drop" ? ((Number(setType.loadReductionMin || 0) + Number(setType.loadReductionMax || setType.loadReductionMin || 0)) / 2) : 0;
-              const dropMultiplier = dropPercent > 0 ? (target.resistanceType === "assisted_bodyweight" ? 1 + dropPercent / 100 : 1 - dropPercent / 100) : 1;
-              const setWeight = dropPercent > 0 ? Math.max(0, roundToIncrement(Number(target.weight || 0) * dropMultiplier, Number(target.increment || templateExercise.increment || 1))) : Number(target.weight || 0);
-              const setReps = Math.max(Number(setType.repMin || 0), Math.min(Number(setType.repMax || target.reps || 0), Number(target.reps || setType.repMax || setType.repMin || 0)));
-              const setRpe = Number(setType.rpeMax || target.rpe || 0);
-              sets.push(createSet(exercise.id, setNumber, { sequenceIndex: configuredWarmups.length + setNumber - 1, sequence: configuredWarmups.length + setNumber - 1, setTypeIndex: typeSetIndex, sourceTemplateSetId: setType.id || templateExercise.id + "-" + setType.type + "-" + typeSetIndex, reps: setReps, weight: setWeight, weightUnit: target.weightUnit, resistanceType: target.resistanceType, isBodyweight: target.isBodyweight, addedLoad: target.resistanceType === "bodyweight_plus_load" ? setWeight : target.addedLoad, assistanceLoad: target.resistanceType === "assisted_bodyweight" ? setWeight : target.assistanceLoad, rpe: setRpe, completed: false, isWarmup: false, setType: setType.type, countsTowardScore: setType.countsTowardScore, countsTowardVolume: setType.countsTowardVolume, targetReps: setReps, targetRepMin: setType.repMin, targetRepMax: setType.repMax, targetWeight: setWeight, targetRpe: setRpe, targetRpeMin: setType.rpeMin, targetRpeMax: setType.rpeMax, targetRpeTolerance: setType.rpeTolerance, targetRestSeconds: setType.restSeconds, originalTargetReps: historyTarget.reps, originalTargetWeight: historyTarget.weight, originalTargetRpe: historyTarget.rpe, prescriptionReason: target.reason, prescriptionMode: target.mode, prescriptionConfidence: target.confidence }));
+              rolePrescriptions.push(setPrescriptionForRole({ templateExercise, target, setType, setTypeIndex: typeSetIndex, sequenceIndex: configuredWarmups.length + setNumber - 1, previousSets: previousRoleSets }));
             }
+          });
+          rolePrescriptions = validateGeneratedSetPrescriptions(rolePrescriptions, target.resistanceType);
+          const generatedRoleTypes = Array.from(new Set(rolePrescriptions.map((prescription) => prescription.setType))).map((role) => {
+            const sourceType = resolvedTypes.find((type) => normalizeSetTypeCode(type.type) === role)
+              || (role === "straight" ? resolvedTypes.find((type) => normalizeSetTypeCode(type.type) === "backoff") : null)
+              || {};
+            return { ...sourceType, type: role, label: setTypeLabels[role] || "Working set", setCount: rolePrescriptions.filter((prescription) => prescription.setType === role).length };
+          });
+          appliedTargetContext = { ...appliedTargetContext, setTypes: [...(appliedTargetContext?.setTypes || []).filter((type) => type.isWarmup), ...generatedRoleTypes] };
+          exercise.appliedTargetContext = appliedTargetContext;
+          rolePrescriptions.forEach((prescription, prescriptionIndex) => {
+            const setNumber = prescriptionIndex + 1;
+            const setType = resolvedTypes.find((type) => normalizeSetTypeCode(type.type) === prescription.setType) || resolvedTypes.find((type) => normalizeSetTypeCode(type.type) === "backoff" && prescription.setType === "straight") || {};
+            const setWeight = prescription.targetLoad;
+            const setRpe = prescription.rpeMax;
+            sets.push(createSet(exercise.id, setNumber, { sequenceIndex: prescription.sequenceIndex, sequence: prescription.sequenceIndex, setTypeIndex: prescription.setTypeIndex, sourceTemplateSetId: setType.id || templateExercise.id + "-" + prescription.setType + "-" + prescription.setTypeIndex, reps: prescription.targetReps, weight: setWeight, weightUnit: target.weightUnit, resistanceType: target.resistanceType, isBodyweight: target.isBodyweight, addedLoad: target.resistanceType === "bodyweight_plus_load" ? setWeight : target.addedLoad, assistanceLoad: target.resistanceType === "assisted_bodyweight" ? setWeight : target.assistanceLoad, rpe: setRpe, completed: false, isWarmup: false, setType: prescription.setType, countsTowardScore: setType.countsTowardScore !== false, countsTowardVolume: setType.countsTowardVolume !== false, targetReps: prescription.targetReps, targetRepMin: prescription.repMin, targetRepMax: prescription.repMax, targetWeight: setWeight, targetRpe: setRpe, targetRpeMin: prescription.rpeMin, targetRpeMax: prescription.rpeMax, targetRpeTolerance: setType.rpeTolerance, targetRestSeconds: prescription.restSeconds, originalTargetReps: historyTarget.reps, originalTargetWeight: historyTarget.weight, originalTargetRpe: historyTarget.rpe, setPrescription: prescription, previousComparableSet: prescription.previousComparableSet, prescriptionReason: prescription.reason + " " + (target.adjustmentReason || target.reason || ""), prescriptionMode: target.mode, prescriptionConfidence: target.confidence, validationWarning: prescription.validationWarning || "" }));
           });
         });
         session.adjustmentSummary = adjustedLiftCount ? adjustedLiftCount + " lift" + (adjustedLiftCount === 1 ? "" : "s") + " adjusted for recovery." : "No recovery adjustments — normal plan and history-based progression.";
