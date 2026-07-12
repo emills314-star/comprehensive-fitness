@@ -2833,7 +2833,7 @@
   },
   {
     "exercise_progression_metric_map_id": "epm_00355",
-    "exercise_id": "ex_cable_woodchop",
+    "exercise_id": "ex_neck_flexion",
     "metric": "repetitions_at_load_and_rir",
     "priority_rank": 1,
     "use_case": "primary_progression_decision",
@@ -2841,7 +2841,7 @@
   },
   {
     "exercise_progression_metric_map_id": "epm_00356",
-    "exercise_id": "ex_cable_woodchop",
+    "exercise_id": "ex_neck_flexion",
     "metric": "load",
     "priority_rank": 2,
     "use_case": "supporting_context_or_tie_breaker",
@@ -2849,7 +2849,7 @@
   },
   {
     "exercise_progression_metric_map_id": "epm_00357",
-    "exercise_id": "ex_cable_woodchop",
+    "exercise_id": "ex_neck_flexion",
     "metric": "repetitions",
     "priority_rank": 3,
     "use_case": "supporting_context_or_tie_breaker",
@@ -2857,7 +2857,7 @@
   },
   {
     "exercise_progression_metric_map_id": "epm_00358",
-    "exercise_id": "ex_cable_woodchop",
+    "exercise_id": "ex_neck_flexion",
     "metric": "rir",
     "priority_rank": 4,
     "use_case": "supporting_context_or_tie_breaker",
@@ -2865,7 +2865,7 @@
   },
   {
     "exercise_progression_metric_map_id": "epm_00359",
-    "exercise_id": "ex_cable_woodchop",
+    "exercise_id": "ex_neck_flexion",
     "metric": "range_of_motion",
     "priority_rank": 5,
     "use_case": "supporting_context_or_tie_breaker",
@@ -2873,7 +2873,7 @@
   },
   {
     "exercise_progression_metric_map_id": "epm_00360",
-    "exercise_id": "ex_cable_woodchop",
+    "exercise_id": "ex_neck_flexion",
     "metric": "technique_quality",
     "priority_rank": 6,
     "use_case": "supporting_context_or_tie_breaker",
@@ -2881,7 +2881,7 @@
   },
   {
     "exercise_progression_metric_map_id": "epm_00361",
-    "exercise_id": "ex_neck_flexion",
+    "exercise_id": "ex_neck_extension",
     "metric": "repetitions_at_load_and_rir",
     "priority_rank": 1,
     "use_case": "primary_progression_decision",
@@ -2889,7 +2889,7 @@
   },
   {
     "exercise_progression_metric_map_id": "epm_00362",
-    "exercise_id": "ex_neck_flexion",
+    "exercise_id": "ex_neck_extension",
     "metric": "load",
     "priority_rank": 2,
     "use_case": "supporting_context_or_tie_breaker",
@@ -2897,7 +2897,7 @@
   },
   {
     "exercise_progression_metric_map_id": "epm_00363",
-    "exercise_id": "ex_neck_flexion",
+    "exercise_id": "ex_neck_extension",
     "metric": "repetitions",
     "priority_rank": 3,
     "use_case": "supporting_context_or_tie_breaker",
@@ -2905,7 +2905,7 @@
   },
   {
     "exercise_progression_metric_map_id": "epm_00364",
-    "exercise_id": "ex_neck_flexion",
+    "exercise_id": "ex_neck_extension",
     "metric": "rir",
     "priority_rank": 4,
     "use_case": "supporting_context_or_tie_breaker",
@@ -2913,7 +2913,7 @@
   },
   {
     "exercise_progression_metric_map_id": "epm_00365",
-    "exercise_id": "ex_neck_flexion",
+    "exercise_id": "ex_neck_extension",
     "metric": "range_of_motion",
     "priority_rank": 5,
     "use_case": "supporting_context_or_tie_breaker",
@@ -2921,7 +2921,7 @@
   },
   {
     "exercise_progression_metric_map_id": "epm_00366",
-    "exercise_id": "ex_neck_flexion",
+    "exercise_id": "ex_neck_extension",
     "metric": "technique_quality",
     "priority_rank": 6,
     "use_case": "supporting_context_or_tie_breaker",
@@ -2929,7 +2929,7 @@
   },
   {
     "exercise_progression_metric_map_id": "epm_00367",
-    "exercise_id": "ex_neck_extension",
+    "exercise_id": "ex_cable_woodchop",
     "metric": "repetitions_at_load_and_rir",
     "priority_rank": 1,
     "use_case": "primary_progression_decision",
@@ -2937,7 +2937,7 @@
   },
   {
     "exercise_progression_metric_map_id": "epm_00368",
-    "exercise_id": "ex_neck_extension",
+    "exercise_id": "ex_cable_woodchop",
     "metric": "load",
     "priority_rank": 2,
     "use_case": "supporting_context_or_tie_breaker",
@@ -2945,7 +2945,7 @@
   },
   {
     "exercise_progression_metric_map_id": "epm_00369",
-    "exercise_id": "ex_neck_extension",
+    "exercise_id": "ex_cable_woodchop",
     "metric": "repetitions",
     "priority_rank": 3,
     "use_case": "supporting_context_or_tie_breaker",
@@ -2953,7 +2953,7 @@
   },
   {
     "exercise_progression_metric_map_id": "epm_00370",
-    "exercise_id": "ex_neck_extension",
+    "exercise_id": "ex_cable_woodchop",
     "metric": "rir",
     "priority_rank": 4,
     "use_case": "supporting_context_or_tie_breaker",
@@ -2961,7 +2961,7 @@
   },
   {
     "exercise_progression_metric_map_id": "epm_00371",
-    "exercise_id": "ex_neck_extension",
+    "exercise_id": "ex_cable_woodchop",
     "metric": "range_of_motion",
     "priority_rank": 5,
     "use_case": "supporting_context_or_tie_breaker",
@@ -2969,7 +2969,7 @@
   },
   {
     "exercise_progression_metric_map_id": "epm_00372",
-    "exercise_id": "ex_neck_extension",
+    "exercise_id": "ex_cable_woodchop",
     "metric": "technique_quality",
     "priority_rank": 6,
     "use_case": "supporting_context_or_tie_breaker",

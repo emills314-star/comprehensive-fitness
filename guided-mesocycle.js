@@ -92,8 +92,8 @@
       canonicalMuscleGroupIds: Array.from(family.canonicalMuscleGroupIds),
       relationshipType: family.selected?.relationshipType || "unknown_insufficient_evidence",
       setContribution: family.selected?.setContribution || 0,
-      localFatigueWeight: round(family.localFatigueWeight),
-      isometricFatigueWeight: round(family.isometricFatigueWeight),
+      localFatigueWeight: family.localFatigueWeight,
+      isometricFatigueWeight: family.isometricFatigueWeight,
       relationshipCount: family.relationships.length
     }));
   }

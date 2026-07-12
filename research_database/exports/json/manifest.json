@@ -37,8 +37,8 @@
     "exercise_database": {
       "record_count": 62,
       "primary_id_field": "exercise_id",
-      "csv_sha256": "89ac1d4a442075f20daecbcb29f552de786cd5f9daac91d272be9f9938a430be",
-      "json_sha256": "cc6487c2bd5ad852f94177a89ed35839fa510df591ca5780307f59d506e0dc7a",
+      "csv_sha256": "12cae19e2289392f399a9bfae57d7838b35bdae19d60274106fd41bcc02b7b69",
+      "json_sha256": "e2d4b1e07829513bb7df4863eb929c797fba7c282b5f6985f3cb4db15595428b",
       "schema_sha256": "5e25a6472e8e5303cc74f075a5fbd3e89b69660b4060d158f28143ba73a3a89f"
     },
     "progression_rules": {
@@ -72,15 +72,15 @@
     "change_log": {
       "record_count": 4,
       "primary_id_field": "change_id",
-      "csv_sha256": "aa62571f0a8417598a9568998a3f5c8b434182f963f98b836da10e2f194304cc",
-      "json_sha256": "0b7d48209f6aa7c2a7da7cd645836bd761e3b9a6c595855b3b1010d58e17dbde",
+      "csv_sha256": "6405e580bf0bc4867f95fc37065d478845d8d0774a74b35124add9631db427c5",
+      "json_sha256": "1dc4219c4377ae66a9c265839298586240f414cdf1d79e0c96e6a25d413f56f7",
       "schema_sha256": "a11dee19b6b0832a48125503dc297b095a2d1a8fac41c2a63e91f1650ffe5a82"
     },
     "exercise_muscle_map": {
       "record_count": 151,
       "primary_id_field": "exercise_muscle_map_id",
-      "csv_sha256": "cd84535a0ad22f9af06cd552f2e6e7e07826b77c02fa8dbdd8a8d9bef972d59a",
-      "json_sha256": "3dd5e6fd18a238b4b5a462fbba89f050af015116c0d0c5196fe382ec1ef8e163",
+      "csv_sha256": "efcdef06ead4f9557d4268f97b7b64597e18322432a74044a1207fc9d97522ed",
+      "json_sha256": "db68a8aa6ccf02865353ae96c5955fd3578c51b17328ebaf699a8617a9e96d71",
       "schema_sha256": "3ef7754729e11cef91dcbeb88f8f3ed3ca35796b39101b5b8cced7de9a1b6413"
     },
     "exercise_taxonomy_review_queue": {
@@ -107,8 +107,8 @@
     "study_exercise_map": {
       "record_count": 496,
       "primary_id_field": "study_exercise_map_id",
-      "csv_sha256": "ce7c2ed421e33b4499cda025499c2e4ebae8b5e1de6eb0638db85a10217855ac",
-      "json_sha256": "233c6684d0d6c156d8b591d0ba2db9a1e0cebfdd1c9aa12421b6e4c4359d768b",
+      "csv_sha256": "871548b1774a8bbd84eac170dbe3856b4f985c650864b65748b990729e93f129",
+      "json_sha256": "93e4f2dae8a80b4606615f0b4d2003aab571f0df4002cc3c03337005e3f32667",
       "schema_sha256": "e6c3a7ef1574d1c5490ac9fbd518c5ec55ea478338e146fc484c3d4b62cfbb10"
     },
     "study_muscle_group_map": {
@@ -121,8 +121,8 @@
     "rule_exercise_map": {
       "record_count": 765,
       "primary_id_field": "rule_exercise_map_id",
-      "csv_sha256": "2cb67125a24bf248e92267e2412471a27af0810b475503a6be93f5902041f236",
-      "json_sha256": "ddb51de1a903f33145b603489b7c00904a476a1594ea072c79a45db5b07b1f66",
+      "csv_sha256": "92b53fbbebd9aee4367db3c2614e1c0620c919961140f720ac54595257e0c421",
+      "json_sha256": "86c94b7b0daa5dbaeeb0c951b09420e816877969991014ac145c772e9a198d2b",
       "schema_sha256": "e885c085f70e4628eab6ac7cb2f691ac2a512f26b9f54c765ba6f37fb7f712ee"
     },
     "rule_muscle_group_map": {
@@ -135,8 +135,8 @@
     "exercise_progression_metric_map": {
       "record_count": 372,
       "primary_id_field": "exercise_progression_metric_map_id",
-      "csv_sha256": "f6275b3b482f6c692d1261686dc99703e6aa7e014a59fabc443d125e1f6d0df7",
-      "json_sha256": "838a37350e95be54fe244a7d86e00660a2b901031f8946168bff1474fd7ffa64",
+      "csv_sha256": "0a821f8a89c324a4eee278042f2804593ab31c4b251930f5868d9f495205028b",
+      "json_sha256": "0f500faa59eb31f79f9224fd0a0e0599ba4c784759ffa3807b1b9cff33bb5f32",
       "schema_sha256": "3fa3145ac77516e983fb55eb0e1dc1076819e68d55aab7eadd3c49d54f428d00"
     }
   },

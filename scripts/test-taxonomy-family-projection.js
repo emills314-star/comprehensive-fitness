@@ -48,7 +48,8 @@ draft.guidedDays[0].assignments.push(
 );
 draft.guidedDays[1].assignments.push(
   { id: "a4", exerciseId: "synthetic-soleus", name: "Synthetic soleus", workingSets: 3 },
-  { id: "a5", exerciseId: "synthetic-core", name: "Synthetic core", workingSets: 3 }
+  { id: "a5", exerciseId: "synthetic-core", name: "Synthetic core", workingSets: 3 },
+  { id: "a6", exerciseId: "synthetic-exact-fatigue", name: "Synthetic exact fatigue", workingSets: 6.8 }
 );
 const relationships = {
   "synthetic-calf-combined": [
@@ -64,6 +65,10 @@ const relationships = {
   "synthetic-core": [
     { muscle_group_id: "mg_abdominals", relationship_type: "direct_load", fractional_set_credit: 1, local_fatigue_weight: 1 },
     { muscle_group_id: "mg_abdominals", relationship_type: "isometric_stabilizing_load", fractional_set_credit: 0, local_fatigue_weight: 0.4 }
+  ],
+  "synthetic-exact-fatigue": [
+    { muscle_group_id: "mg_adductors", relationship_type: "direct_load", fractional_set_credit: 1, local_fatigue_weight: 0.5 },
+    { muscle_group_id: "mg_adductors", relationship_type: "meaningful_fractional_load", fractional_set_credit: 0.25, local_fatigue_weight: 0.25 }
   ]
 };
 const ledger = guided.volumeLedger(draft, (assignment) => relationships[assignment.exerciseId]);
@@ -78,6 +83,9 @@ assert.deepEqual({ direct: chest.directSets, fractional: chest.fractionalSets, w
 assert.equal(ledger.muscleTotals.find((row) => row.muscleGroupId === "traps")?.weightedSets, 2, "Canonical upper traps must satisfy the traps programming family");
 const core = ledger.muscleTotals.find((row) => row.muscleGroupId === "abs");
 assert.deepEqual({ weighted: core.weightedSets, isometric: core.isometricExposure, fatigue: core.localFatigueExposure }, { weighted: 3, isometric: 3, fatigue: 4.2 }, "Isometric fatigue must remain separate from hypertrophy credit");
+const exactFatigue = ledger.muscleTotals.find((row) => row.muscleGroupId === "adductors");
+assert.equal(exactFatigue.localFatigueExposure, 5.1, "Exact 0.75 fatigue weight must aggregate before the final exposure is rounded");
+assert.equal(exactFatigue.contributors[0].localFatigueWeight, 0.75, "Contributor weights must retain exact family aggregation");
 
 const statuses = guided.muscleTargetStatuses(draft, ledger, () => ({ min: 6, target: 8, max: 10 }));
 assert.equal(statuses.length, 1, "Two calf subdivisions must yield one family status");
