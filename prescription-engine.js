@@ -1266,7 +1266,13 @@
   }
 
   function equipmentCompatible(exercise, availableEquipment) {
-    const available = new Set(asArray(availableEquipment).map(normalizeEquipmentItem));
+    const bundles = {
+      bodyweight: ["bodyweight"], bands: ["bands"], dumbbell: ["dumbbell"],
+      barbell: ["barbell", "plates"], rack: ["rack", "bench", "incline_bench", "pull_up_bar", "nordic_anchor"],
+      cable_station: ["cable_station", "pull_up_bar"]
+    };
+    const selected = asArray(availableEquipment).map(normalizeEquipmentItem);
+    const available = new Set(selected.flatMap((item) => bundles[item] || [item]));
     if (!available.size || available.has("all")) return { eligible: true, requirements: equipmentRequirementOptions(exercise), missing: [] };
     const requirements = equipmentRequirementOptions(exercise);
     if (!requirements.length) return { eligible: false, requirements, missing: ["verified equipment metadata"] };
@@ -1290,7 +1296,11 @@
 
   function jointActionsForExercise(exercise = {}) {
     const explicit = splitMulti(exercise.joint_actions || exercise.jointActions);
-    return explicit.length ? explicit : (JOINT_ACTIONS_BY_PATTERN[normalizeText(exercise.movement_pattern || exercise.movementPattern)] || []);
+    if (explicit.length) return explicit;
+    const name = normalizeText(exercise.exercise_name || exercise.exerciseName);
+    if (/fly|crossover|pec_deck/.test(name)) return ["shoulder_horizontal_adduction"];
+    if (/pullover|straight_arm_pulldown/.test(name)) return ["shoulder_extension"];
+    return JOINT_ACTIONS_BY_PATTERN[normalizeText(exercise.movement_pattern || exercise.movementPattern)] || [];
   }
 
   function diversitySignature(candidate) {
@@ -1963,20 +1973,31 @@
     return selected;
   }
 
+  function mechanicalRedundancyScore(candidate, other) {
+    const candidatePattern = normalizeText(candidate.diversitySignature?.movement);
+    const otherPattern = normalizeText(other.diversitySignature?.movement);
+    if (!candidatePattern || candidatePattern === "unknown" || !otherPattern || otherPattern === "unknown" || candidatePattern !== otherPattern) return 0;
+    const candidatePrimary = new Set(asArray(candidate.primaryMuscles).map(muscleFamily));
+    const otherPrimary = new Set(asArray(other.primaryMuscles).map(muscleFamily));
+    if (![...otherPrimary].some((muscle) => candidatePrimary.has(muscle))) return 0;
+    const candidateActions = new Set(asArray(candidate.jointActions || candidate.diversitySignature?.jointActions));
+    const otherActions = new Set(asArray(other.jointActions || other.diversitySignature?.jointActions));
+    const sharedActions = [...candidateActions].filter((action) => otherActions.has(action)).length;
+    const actionUnion = new Set([...candidateActions, ...otherActions]).size;
+    if (candidateActions.size && otherActions.size && !sharedActions) return 0;
+    let score = 0.5;
+    score += actionUnion ? sharedActions / actionUnion * 0.18 : 0.06;
+    if (candidate.intendedRole && candidate.intendedRole === other.intendedRole) score += 0.1;
+    if (candidate.diversitySignature?.loading === other.diversitySignature?.loading) score += 0.07;
+    if (candidate.diversitySignature?.stability === other.diversitySignature?.stability) score += 0.05;
+    if (candidate.diversitySignature?.region === other.diversitySignature?.region) score += 0.05;
+    if (candidate.diversitySignature?.equipment === other.diversitySignature?.equipment) score += 0.05;
+    return round(clamp(score, 0, 1), 2);
+  }
+
   function candidateProgramFit(candidate, portfolio = [], policy = DEFAULT_POLICY) {
     const others = portfolio.filter((item) => item.exerciseId !== candidate.exerciseId);
-    const redundancyWith = (other) => {
-      const candidatePattern = normalizeText(candidate.diversitySignature?.movement);
-      const otherPattern = normalizeText(other.diversitySignature?.movement);
-      if (!candidatePattern || candidatePattern === "unknown" || candidatePattern !== otherPattern) return false;
-      const candidatePrimary = new Set(asArray(candidate.primaryMuscles).map(muscleFamily));
-      const otherPrimary = asArray(other.primaryMuscles).map(muscleFamily);
-      if (!otherPrimary.some((muscle) => candidatePrimary.has(muscle))) return false;
-      const candidateActions = new Set(asArray(candidate.jointActions || candidate.diversitySignature?.jointActions));
-      const otherActions = asArray(other.jointActions || other.diversitySignature?.jointActions);
-      return !candidateActions.size || !otherActions.length || otherActions.some((action) => candidateActions.has(action));
-    };
-    const redundant = others.filter(redundancyWith);
+    const redundant = others.map((item) => ({ item, similarity: mechanicalRedundancyScore(candidate, item) })).filter((entry) => entry.similarity >= 0.72);
     const sameEquipment = others.filter((item) => item.diversitySignature?.equipment === candidate.diversitySignature?.equipment);
     const spinalTotal = sum(others.map((item) => item.scores?.spinalLoad));
     const gripTotal = sum(others.map((item) => item.scores?.gripDemand));
@@ -1988,9 +2009,9 @@
     if (candidate.scores.recoveryEfficiency >= 70) positiveFactors.push("Personal or blended evidence supports good recovery efficiency.");
     if (candidate.scores.easeOfProgression >= 75) positiveFactors.push("Load or repetition progression is easy to measure.");
     if (candidate.scores.personalEvidenceWeight >= 0.6) positiveFactors.push("Adequate comparable personal evidence informs the estimate.");
-    if (redundant.length >= 2) {
-      fit -= 12 + (redundant.length - 2) * 5;
-      limitingFactors.push(`Mechanically redundant with ${redundant.slice(0, 3).map((item) => item.exerciseName).join(", ")}: shared primary muscle, movement pattern, and joint action.`);
+    if (redundant.length) {
+      fit -= 9 + (redundant.length - 1) * 5;
+      limitingFactors.push(`Mechanically redundant with ${redundant.slice(0, 3).map((entry) => entry.item.exerciseName).join(", ")}: shared primary target, joint action, movement pattern, and similar program role or loading profile.`);
     }
     if (sameEquipment.length >= 4) fit -= 4;
     if (candidate.scores.spinalLoad >= 70 && spinalTotal >= policy.maximumSessionSpinalLoad * 2) {
@@ -2174,8 +2195,14 @@
       if (highFatigue.length > policy.maximumHighFatigueCompoundsPerSession) warnings.push({ severity: "serious", type: "compound_concentration", sessionId: session.id, exerciseIds: highFatigue.map((item) => item.exerciseId), conflict: `Too many high-fatigue compounds in ${session.name}: ${highFatigue.map((item) => item.exerciseName).join(", ")}.`, why: "The session concentrates systemic fatigue and may make later exercises poor-quality work.", recommendation: "Distribute the compounds across the week or replace the lowest-priority one with a lower-fatigue accessory." });
       if (session.gripDemand > policy.maximumSessionGripDemand) warnings.push({ severity: "review", type: "grip_fatigue", sessionId: session.id, exerciseIds: session.exercises.filter((item) => item.scores.gripDemand >= 65).map((item) => item.exerciseId), conflict: `Grip demand is concentrated in ${session.name}.`, why: "Grip may limit target-muscle performance across pulls, rows, carries, and hinges.", recommendation: "Separate grip-limited lifts, use straps where appropriate, or choose a supported/cable alternative." });
       if (session.estimatedDurationMinutes > policy.sessionDurationMaximumMinutes) warnings.push({ severity: "serious", type: "session_duration", sessionId: session.id, exerciseIds: session.exercises.map((item) => item.exerciseId), conflict: `${session.name} is estimated at ${session.estimatedDurationMinutes} minutes.`, why: "An overly long session can reduce adherence and set quality.", recommendation: "Move accessory work to a shorter day or reduce redundant sets." });
-      const patterns = groupBy(session.exercises.filter((item) => item.diversitySignature?.movement && item.diversitySignature.movement !== "unknown"), (item) => `${item.diversitySignature.movement}|${muscleFamily(item.primaryMuscles?.[0] || item.muscleGroupId)}`);
-      patterns.forEach((items, signature) => { if (items.length >= 3) { const [pattern, muscle] = signature.split("|"); warnings.push({ severity: "review", type: "redundant_pattern", sessionId: session.id, exerciseIds: items.map((item) => item.exerciseId), conflict: `${items.map((item) => item.exerciseName).join(", ")} repeat the ${pattern.replaceAll("_", " ")} pattern for ${muscle.replaceAll("_", " ")} in ${session.name}.`, why: "These exercises share a primary target and movement pattern; repeated versions can add fatigue without a distinct role.", recommendation: "Keep the best progression lift and replace another with a different joint action, resistance profile, or regional emphasis." }); } });
+      const redundantPairs = [];
+      session.exercises.forEach((exercise, index) => session.exercises.slice(index + 1).forEach((other) => {
+        const similarity = mechanicalRedundancyScore(exercise, other);
+        if (similarity >= 0.72) redundantPairs.push({ exercise, other, similarity });
+      }));
+      redundantPairs.forEach(({ exercise, other, similarity }) => warnings.push({ severity: "review", type: "redundant_pattern", sessionId: session.id, exerciseIds: [exercise.exerciseId, other.exerciseId], conflict: `${exercise.exerciseName} and ${other.exerciseName} may duplicate the same training role in ${session.name}.`, why: `They share a primary target, joint action, movement pattern, and similar loading or role profile (${Math.round(similarity * 100)}% mechanical similarity).`, recommendation: "Keep both only when their resistance profile, regional emphasis, or progression purpose is intentionally distinct; otherwise replace the lower-priority option." }));
+      const unclassified = session.exercises.filter((item) => !item.diversitySignature?.movement || item.diversitySignature.movement === "unknown");
+      if (unclassified.length) warnings.push({ severity: "informational", type: "movement_metadata_incomplete", sessionId: session.id, exerciseIds: unclassified.map((item) => item.exerciseId), conflict: `${unclassified.map((item) => item.exerciseName).join(", ")} ${unclassified.length === 1 ? "has" : "have"} unclassified movement metadata.`, why: "Unknown classifications are excluded from redundancy decisions rather than treated as matching patterns.", recommendation: "Review and classify the movement metadata when reliable source information is available; no conflict is assumed meanwhile." });
     });
     const musclePlans = slots.map((slot) => {
       const selected = portfolio.filter((item) => item.programSlotIds.includes(slot.id));
@@ -2979,6 +3006,7 @@
     refreshMesocycleProgram,
     canDeleteMesocycle,
     candidateProgramFit,
+    mechanicalRedundancyScore,
     distributePortfolioAcrossSessions,
     reviewFullProgram,
     createExercisePrescriptionSnapshot,

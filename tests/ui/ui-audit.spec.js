@@ -103,7 +103,10 @@ test("Mesocycle Planner follows dependencies and enforces restricted equipment",
   await page.locator('[data-tab="plan"]').click();
   await expect(page.locator(".mesocycle-planner h2")).toContainText("Mesocycle planner", { timeout: 30_000 });
   const workflow = await page.evaluate(() => [...document.querySelectorAll(".planner-step span")].map((item) => item.textContent.trim()));
-  expect(workflow).toEqual(["Objective & Schedule", "Equipment", "Training Scope", "Exercise Portfolio", "Program Slots", "Full Review", "Confirm", "Ready"]);
+  expect(workflow).toEqual(["Objective & Schedule", "Equipment", "Training Scope", "Exercise Portfolio", "Exercise Assignments", "Full Review", "Confirm", "Ready"]);
+
+  const equipmentLabels = await page.locator('[data-action="toggle-mesocycle-equipment"]').allTextContents();
+  expect(equipmentLabels).toEqual(["All Equipment / Standard Gym", "Bodyweight", "Bands", "Dumbbells", "Barbell", "Rack", "Cable Station"]);
 
   const allEquipment = page.locator('[data-action="toggle-mesocycle-equipment"][data-value="all"]');
   const bodyweight = page.locator('[data-action="toggle-mesocycle-equipment"][data-value="bodyweight"]');
@@ -161,13 +164,15 @@ test("Mesocycle Planner progresses from compact setup to full review", async ({ 
   await page.getByLabel("Duration in Weeks").fill("4");
   await page.getByLabel("Training Days per Week").fill("4");
   await page.getByRole("button", { name: "Dumbbells" }).click();
-  await page.getByRole("button", { name: "Machines" }).click();
+  await page.getByRole("button", { name: "Rack" }).click();
   await expect(page.getByRole("button", { name: "Dumbbells" })).toHaveAttribute("aria-pressed", "true");
-  await page.getByRole("button", { name: "All Equipment" }).click();
+  await page.getByRole("button", { name: "All Equipment / Standard Gym" }).click();
   await page.getByRole("button", { name: "Build full-program draft" }).click();
   await expect(page.getByLabel("Mesocycle summary")).toBeVisible();
   await expect(page.getByText("Selected Program-Wide Exercise Portfolio")).toBeVisible();
-  await expect(page.getByText("Full Program Review")).toBeVisible();
+  await expect(page.locator(".compact-program-review").getByText("Full Program Review")).toBeVisible();
+  await expect(page.locator(".review-session-card").first()).toBeVisible();
+  await expect(page.locator(".review-groups")).toBeVisible();
   await expect(page.getByRole("button", { name: /View Alternates/ })).toBeVisible();
   await page.getByRole("button", { name: /View Alternates/ }).click();
   expect(await page.getByText("Alternative Replacement").count()).toBeGreaterThan(0);

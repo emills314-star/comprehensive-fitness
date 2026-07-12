@@ -20,6 +20,7 @@ const {
   equipmentRequirementOptions,
   equipmentCompatible,
   candidateProgramFit,
+  mechanicalRedundancyScore,
   recommendationForSurface,
   serializeRecommendationSnapshot,
   deserializeRecommendationSnapshot,
@@ -632,7 +633,8 @@ test("equipment restrictions honor complete and alternative requirements", () =>
   const row = { exercise_id: "ex_chest_supported_row", equipment: "dumbbell_or_machine" };
   assert.deepStrictEqual(equipmentRequirementOptions(bench), [["barbell", "plates", "bench", "rack"]]);
   assert.strictEqual(equipmentCompatible(bench, ["barbell", "plates", "bench", "rack"]).eligible, true, "barbell, plates, bench and rack should satisfy bench press");
-  assert.strictEqual(equipmentCompatible(bench, ["barbell", "rack"]).eligible, false, "missing bench and plates must reject bench press");
+  assert.strictEqual(equipmentCompatible(bench, ["barbell", "rack"]).eligible, true, "the simplified barbell and rack selections supply plates, a bench, and rack capabilities");
+  assert.strictEqual(equipmentCompatible(bench, ["barbell"]).eligible, false, "barbell alone must not imply a rack or bench");
   assert.strictEqual(equipmentCompatible(nordic, ["bodyweight"]).eligible, false, "Nordics require an anchor, not only floor space");
   assert.strictEqual(equipmentCompatible(nordic, ["bodyweight", "nordic_anchor"]).eligible, true);
   assert.strictEqual(equipmentCompatible(row, ["dumbbell"]).eligible, true, "an OR equipment path should be accepted");
@@ -647,9 +649,9 @@ test("bodyweight, dumbbell, barbell-rack, commercial, and mixed-home pools never
   const scenarios = [
     ["bodyweight only", ["bodyweight"]],
     ["dumbbells only", ["dumbbell"]],
-    ["barbell and rack", ["barbell", "plates", "bench", "rack"]],
+    ["barbell and rack", ["barbell", "rack"]],
     ["full commercial gym", ["all"]],
-    ["mixed home gym", ["bodyweight", "pull_up_bar", "bands", "dumbbell", "bench"]]
+    ["mixed home gym", ["bodyweight", "bands", "dumbbell", "rack"]]
   ];
   scenarios.forEach(([label, availableEquipment]) => {
     const pools = engine.buildAllCandidatePools({ availableEquipment });
@@ -678,6 +680,13 @@ test("redundancy requires shared mechanics and primary target, not generic compo
   assert(!clean.limitingFactors.some((reason) => /redundant/i.test(reason)), "deadlift must not be redundant with bench, chin-up, or fly");
   const hinges = ["Romanian Deadlift", "Stiff-Leg Deadlift"].map((name, index) => ({ exerciseId: `hinge_${index}`, exerciseName: name, primaryMuscles: ["mg_spinal_erectors"], jointActions: ["hip_extension"], diversitySignature: { movement: "hinge", equipment: "barbell" }, scores: baseScores }));
   assert(candidateProgramFit(candidate, hinges).limitingFactors.some((reason) => /mechanically redundant/i.test(reason)), "multiple same-target hinges should trigger redundancy review");
+  assert(mechanicalRedundancyScore(candidate, hinges[0]) >= 0.72, "same-target hinges should be mechanically similar");
+  assert.strictEqual(mechanicalRedundancyScore(candidate, unrelated[0]), 0, "different target muscles and mechanics are not redundant");
+  const unknown = { ...hinges[0], diversitySignature: { movement: "unknown", equipment: "barbell" } };
+  assert.strictEqual(mechanicalRedundancyScore(candidate, unknown), 0, "unknown movement metadata must never establish redundancy");
+  const press = { exerciseId: "press", exerciseName: "Bench Press", primaryMuscles: ["mg_chest_sternal"], jointActions: ["shoulder_horizontal_adduction", "elbow_extension"], diversitySignature: { movement: "horizontal_push", equipment: "barbell", loading: "heavy", stability: "stable" }, role: "primary_progression_lift", scores: baseScores };
+  const fly = { exerciseId: "fly", exerciseName: "Cable Fly", primaryMuscles: ["mg_chest_sternal"], jointActions: ["shoulder_horizontal_adduction"], diversitySignature: { movement: "horizontal_push", equipment: "cable", loading: "moderate", stability: "stable" }, role: "secondary_hypertrophy_lift", scores: baseScores };
+  assert(mechanicalRedundancyScore(press, fly) < 0.72, "same-muscle exercises with different joint actions, loading, and roles should remain complementary");
 });
 
 test("URL loader tolerates unavailable protected personal sources and still loads research", async () => {

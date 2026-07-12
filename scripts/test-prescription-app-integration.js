@@ -24,7 +24,7 @@ assert.match(html, /manualOverrides:/, "App data must retain manual override eve
 assert.match(html, /applyPrescriptionOverride\(/, "Live workouts must support explicit prescription overrides");
 assert.match(html, /evaluateWorkoutOverrideOutcomes\(/, "Completed workouts must evaluate override outcomes");
 assert.match(html, /renderMesocyclePlanner\(/, "Plan must expose the mesocycle lifecycle");
-assert.match(html, /Program Slot[\s\S]*Top Exercise Candidates/, "Planner must present program slots and ranked candidate alternatives");
+assert.match(html, /Exercise Assignments[\s\S]*Top Exercise Candidates/, "Planner must present exercise assignments and ranked candidate alternatives");
 assert.match(html, /Selected for Program[\s\S]*Use as Replacement/, "Planner candidates must distinguish selected exercises from replacements");
 assert.doesNotMatch(html, />Active-program subset</, "Misleading Active Program Subset UI term must be removed");
 assert.doesNotMatch(html, />Preview prescription block</, "Misleading Prescription Block action must be removed");
@@ -50,7 +50,10 @@ assert.match(html, /Objective, Schedule, and Constraints[\s\S]*All Equipment[\s\
 assert.doesNotMatch(html, /Leave all unselected to allow the complete library/, "Equipment access must never depend on an ambiguous empty selection");
 assert.doesNotMatch(html, />Unknown</, "Planner cards must not expose meaningless Unknown metadata");
 assert.match(html, /toggle-mesocycle-alternates[\s\S]*View Alternates/, "Alternate candidates must remain collapsed until requested");
-assert.match(html, /program-slot-nav[\s\S]*jump-mesocycle-slot/, "Program slots need compact jump navigation");
+assert.match(html, /program-slot-nav[\s\S]*jump-mesocycle-slot/, "Exercise assignments need compact jump navigation");
+assert.match(html, /All Equipment \/ Standard Gym[\s\S]*Bodyweight[\s\S]*Bands[\s\S]*Dumbbells[\s\S]*Barbell[\s\S]*Rack[\s\S]*Cable Station/, "Planner equipment choices must use the simplified capability bundles");
+assert.match(html, /Why the Score\?[\s\S]*Target-Muscle Fit[\s\S]*Equipment Compatibility[\s\S]*Program Redundancy/, "Candidate scores need an expandable explanation tied to real factors");
+assert.match(html, /Blocking Issues[\s\S]*Recommended Changes[\s\S]*Warnings[\s\S]*Informational Notes[\s\S]*Passed Checks/, "Program review findings must be prioritized by severity");
 assert.match(html, /renderMesocycleCandidate[\s\S]*Deload and Rotation Triggers[\s\S]*Preferred Replacement/, "Candidate cards must explain progression, deload, rotation and replacement");
 assert.match(html, /Base prescription[\s\S]*Today only/, "Live UI must keep base and readiness-adjusted prescriptions distinct");
 assert.match(html, /data-action="template-readiness-nutrition"[\s\S]*data-action="template-readiness-protein"/, "Workout readiness must collect current nutrition and protein context");
