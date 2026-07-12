@@ -13,7 +13,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function prescriptionEngineFactory() {
   "use strict";
 
-  const ENGINE_VERSION = "3.0.1";
+  const ENGINE_VERSION = "3.0.2";
   const PRESCRIPTION_SCHEMA_VERSION = "2.0.0";
   const SNAPSHOT_SCHEMA_VERSION = "1.0.0";
   const HISTORY_STORAGE_KEY = "comprehensiveFitness.recommendationHistory.v1";
@@ -87,6 +87,7 @@
     lowerFatigueVolumeFactor: 0.72,
     specializationVolumeFactor: 1.2,
     recentExerciseWindowDays: 56,
+    maximumReturnGapDays: 56,
     sessionDurationTargetMinutes: 75,
     sessionDurationMaximumMinutes: 100,
     maximumHighFatigueCompoundsPerSession: 3,
@@ -810,7 +811,7 @@
     }
     const asOfDate = dateOnly(firstPresent(options.asOfDate, options.createdAt));
     const latestDate = recent.at(-1)?.date;
-    const maximumReturnGapDays = number(options.maximumReturnGapDays, 0);
+    const maximumReturnGapDays = number(options.maximumReturnGapDays, DEFAULT_POLICY.maximumReturnGapDays);
     if (asOfDate && latestDate && maximumReturnGapDays > 0) {
       const elapsedDays = Math.floor((new Date(`${asOfDate}T00:00:00Z`).getTime() - new Date(`${latestDate}T00:00:00Z`).getTime()) / 86400000);
       if (Number.isFinite(elapsedDays) && elapsedDays > maximumReturnGapDays) {
@@ -1005,6 +1006,8 @@
       adjusted.progressionAction = illness ? "stop_for_illness" : "hold_for_pain_free_substitution";
       adjusted.progressionRule = change.explanation;
       adjusted.holdRule = change.resumeRule;
+      adjusted.userExplanation = change.explanation;
+      delete adjusted.prescribedLoad;
       if (pain) adjusted.substitutionRule = "Use only a pain-free alternative that preserves all equipment, exclusion, and safety constraints; stop the affected work if no such option exists.";
       return adjusted;
     }
@@ -1352,7 +1355,9 @@
     const staleness = assessExerciseStaleness(candidate.history, {
       currentExerciseScore: number(score.overall_personal_exercise_score, personalOverall),
       bestAlternativeScore: options.bestAlternativeScore,
-      currentMesocycleExposures: options.currentMesocycleExposures
+      currentMesocycleExposures: options.currentMesocycleExposures,
+      asOfDate: firstPresent(options.asOfDate, options.createdAt),
+      maximumReturnGapDays: firstPresent(options.maximumReturnGapDays, options.policy?.maximumReturnGapDays, DEFAULT_POLICY.maximumReturnGapDays)
     });
     const targetMuscleEffectiveness = round(clamp(
       muscleSpecificity * 0.55 + progressionQuality * 0.16 + recoveryEfficiency * 0.12 + researchSupport * 0.1 + (100 - fatigueCost) * 0.07,
@@ -1729,6 +1734,18 @@
         instruction: `Establish a controlled baseline inside ${repRange.min}-${repRange.max} reps at the target effort; do not force a load jump without comparable data.`,
         holdRule: "Hold load until execution, ROM, and effort are repeatable.",
         regressionRule: "If the first comparable exposure is outside the target, adjust the load before changing volume."
+      };
+    }
+    const returnBaselineRequired = staleness.classification === STALENESS.INSUFFICIENT
+      && asArray(staleness.reasons).some((reason) => /latest comparable exposure|return-to-training baseline/i.test(reason));
+    if (returnBaselineRequired) {
+      return {
+        action: "establish_baseline",
+        recommendationType: "hold",
+        progressionMethod: method,
+        instruction: "Hold progression and establish a controlled return-to-training baseline at pain-free technique and target effort before changing load, repetitions, or volume.",
+        holdRule: "Keep the last normal prescription as historical context only; the first current comparable exposure establishes the new baseline.",
+        regressionRule: "Adjust conservatively if the return exposure exceeds target effort, loses technique, or cannot complete the prescribed work."
       };
     }
     const regressions = recent.slice(-2).filter((item) => /regress|declin/.test(item.status) || number(item.progressionPercent) < -1.5).length;
@@ -2537,7 +2554,7 @@
     const programReview = reviewFullProgram(portfolio, sessions, slots, evidence, options);
     asArray(mesocycle.equipmentUnavailableMuscleGroupIds).forEach((muscleGroupId) => {
       if (!programReview.warnings.some((warning) => warning.type === "equipment_blocks_muscle" && warning.muscleGroupId === muscleGroupId)) programReview.warnings.push({ severity: "blocking", type: "equipment_blocks_muscle", muscleGroupId, sessionId: null, exerciseIds: [], conflict: `${muscleGroupId.replaceAll("_", " ")} has no exercise compatible with the selected equipment.`, why: "This muscle is in scope, but every known candidate requires equipment that is unavailable or has incomplete verified equipment metadata.", recommendation: "Add compatible equipment, add a verified exercise to the library, or intentionally remove this muscle from scope." });
-      if (!programReview.musclePlans.some((plan) => plan.muscleGroupId === muscleGroupId)) programReview.musclePlans.push({ muscleGroupId, weeklyTargetRange: { min: 0, target: 0, max: 0 }, weeklyTargetVolume: 0, plannedFrequency: 0, targetFrequency: 0, selectedExerciseIds: [], directSets: 0, indirectSets: 0, effectiveSets: 0, targetMet: false, localFatigue: 0, programWideFatigue: 0, sessionIds: [], overlapNotes: "No equipment-compatible exercise is currently available." });
+      if (!programReview.musclePlans.some((plan) => plan.muscleGroupId === muscleGroupId)) programReview.musclePlans.push({ muscleGroupId, weeklyTargetRange: { min: 0, target: 0, max: 0 }, weeklyTargetVolume: 0, plannedFrequency: 0, targetFrequency: 0, selectedExerciseIds: [], directSets: 0, secondarySets: 0, indirectSets: 0, incidentalSets: 0, isometricExposure: 0, effectiveSets: 0, targetMet: false, localFatigue: 0, programWideFatigue: 0, sessionIds: [], overlapNotes: "No equipment-compatible exercise is currently available." });
     });
     programReview.blockingIssueCount = programReview.warnings.filter((item) => item.severity === "blocking").length;
     programReview.seriousWarningCount = programReview.warnings.filter((item) => ["blocking", "serious"].includes(item.severity)).length;
@@ -2775,10 +2792,12 @@
     const evidence = evidenceInput.personal ? evidenceInput : normalizeEvidenceBundle(evidenceInput);
     const muscleGroupId = options.muscleGroupId;
     if (!options.exerciseId || !muscleGroupId) throw new Error("exerciseId and muscleGroupId are required.");
+    const createdAt = options.createdAt || isoNow(options.clock);
     const candidate = resolveExerciseCandidate(evidence, options.exerciseId, muscleGroupId, options);
     if (options.history) candidate.history = options.history;
     const score = scoreExerciseCandidate(candidate, evidence, muscleGroupId, {
       ...options,
+      createdAt,
       mesocycleType: options.mesocycle?.type || options.mesocycleType,
       specializationMuscleGroups: options.mesocycle?.specializationMuscleGroups || options.specializationMuscleGroups
     });
@@ -2910,10 +2929,13 @@
     const load = prescribedLoadFromHistory(candidate, progression, deloadStatus, options);
     if (load) basePrescription.prescribedLoad = load;
     basePrescription = applyDeloadState(basePrescription, deloadStatus);
-    const finalPrescription = ["exercise_deload", "muscle_group_deload", "full_program_deload"].includes(deloadStatus.state)
-      ? { ...deepClone(basePrescription), readinessAdjustment: { ...readinessAdjustmentFor(basePrescription, options.readiness || {}), changed: false, explanation: `${deloadStatus.explanation} The deload already supersedes a smaller readiness adjustment.` } }
-      : applyReadinessAdjustment(basePrescription, options.readiness || {});
-    const createdAt = options.createdAt || isoNow(options.clock);
+    const readinessChange = readinessAdjustmentFor(basePrescription, options.readiness || {});
+    const hardSafetyReadiness = readinessChange.signals.some((signal) => signal.domain === "illness" || signal.domain === "pain");
+    const finalPrescription = hardSafetyReadiness
+      ? applyReadinessAdjustment(basePrescription, options.readiness || {})
+      : ["exercise_deload", "muscle_group_deload", "full_program_deload"].includes(deloadStatus.state)
+        ? { ...deepClone(basePrescription), readinessAdjustment: { ...readinessChange, changed: false, explanation: `${deloadStatus.explanation} The deload already supersedes a smaller readiness adjustment.` } }
+        : applyReadinessAdjustment(basePrescription, options.readiness || {});
     const recommendationId = options.recommendationId || `rx_${normalizeText(candidate.exerciseId)}_${dateOnly(createdAt).replace(/-/g, "")}_${stableHash({
       candidate: candidate.exerciseId,
       muscleGroupId,
@@ -3071,22 +3093,56 @@
       || HARD_SAFETY_PROGRESSION_ACTIONS.has(prescription.progressionAction);
   }
 
+  function catalogIdentity(item) {
+    if (!item) return null;
+    if (typeof item === "string") return { exerciseId: item, researchExerciseId: item };
+    const exerciseId = firstPresent(item.exerciseId, item.exercise_id, item.personalExerciseId, item.personal_exercise_id);
+    if (!exerciseId) return null;
+    const explicitResearchId = firstPresent(item.researchExerciseId, item.research_exercise_id, item.researchId, item.research_id);
+    const researchExerciseId = explicitResearchId || (/^ex_[a-z0-9_]+$/.test(String(exerciseId)) ? exerciseId : null);
+    return { exerciseId, researchExerciseId };
+  }
+
   function applyManualOverride(snapshotInput, override = {}, options = {}) {
     const snapshot = deserializeRecommendationSnapshot(snapshotInput, { verifyChecksum: false });
     const before = deepClone(snapshot.finalPrescription);
     const final = deepClone(snapshot.finalPrescription);
     const applied = {};
-    const exerciseCatalog = new Set([
-      snapshot.exerciseId,
-      snapshot.basePrescription?.exerciseId,
-      snapshot.finalPrescription?.exerciseId,
+    const catalogSources = [
+      { exerciseId: snapshot.exerciseId, researchExerciseId: firstPresent(snapshot.finalPrescription?.researchExerciseId, snapshot.basePrescription?.researchExerciseId) },
+      { exerciseId: snapshot.basePrescription?.exerciseId, researchExerciseId: snapshot.basePrescription?.researchExerciseId },
+      { exerciseId: snapshot.finalPrescription?.exerciseId, researchExerciseId: snapshot.finalPrescription?.researchExerciseId },
       snapshot.basePrescription?.preferredReplacementExerciseId,
       snapshot.finalPrescription?.preferredReplacementExerciseId,
       ...asArray(options.allowedExerciseIds),
-      ...asArray(options.exerciseCatalog).map((item) => typeof item === "string" ? item : firstPresent(item?.exerciseId, item?.exercise_id, item?.researchExerciseId, item?.research_exercise_id))
-    ].filter(Boolean));
+      ...asArray(options.exerciseCatalog)
+    ];
+    const catalogIdentities = new Map();
+    catalogSources.map(catalogIdentity).filter(Boolean).forEach((identity) => {
+      const existing = catalogIdentities.get(identity.exerciseId);
+      if (!existing?.researchExerciseId || identity.researchExerciseId) catalogIdentities.set(identity.exerciseId, identity);
+    });
+    const exerciseCatalog = new Set(catalogIdentities.keys());
     const safetyLocked = hasHardSafetyMarker(final) || hasHardSafetyMarker(snapshot.basePrescription);
     const selectedExerciseId = firstPresent(override.exerciseId, override.exerciseSelection, override.replacementExerciseId);
+    const allowedSafetySource = options.allowedSafetySubstituteIds;
+    if (allowedSafetySource !== undefined && !Array.isArray(allowedSafetySource)) throw new Error("allowedSafetySubstituteIds must be an array of exercise IDs.");
+    const allowedSafetySubstituteIds = new Set(asArray(allowedSafetySource).map((value) => {
+      if (typeof value !== "string" || !value.trim()) throw new Error("allowedSafetySubstituteIds must contain only non-empty string IDs.");
+      if (!exerciseCatalog.has(value)) throw new Error(`Unknown allowed safety substitute ${value}.`);
+      return value;
+    }));
+    if (safetyLocked) {
+      const allowedOverrideFields = new Set(["exerciseId", "exerciseSelection", "replacementExerciseId", "researchExerciseId", "reason"]);
+      const blockedFields = Object.keys(override).filter((key) => override[key] !== undefined && !allowedOverrideFields.has(key));
+      if (blockedFields.length) throw new Error(`Hard-safety prescriptions reject training override fields: ${blockedFields.join(", ")}.`);
+      if (!selectedExerciseId) throw new Error("Hard-safety prescriptions may only accept an explicitly allowed safe substitute.");
+      if (final.progressionAction === "stop_for_illness") throw new Error("Illness requires holding the workout; an exercise override cannot bypass the stop instruction.");
+      if (!allowedSafetySubstituteIds.has(selectedExerciseId)) throw new Error(`Safety substitute ${selectedExerciseId} was not explicitly allowed.`);
+      const identity = catalogIdentities.get(selectedExerciseId);
+      const requestedResearchId = firstPresent(override.researchExerciseId, override.research_exercise_id);
+      if (!identity?.researchExerciseId || !requestedResearchId || requestedResearchId !== identity.researchExerciseId) throw new Error(`Safety substitute ${selectedExerciseId} must preserve its coherent exercise/research identity.`);
+    }
     if (selectedExerciseId) {
       if (!exerciseCatalog.has(selectedExerciseId)) throw new Error(`Unknown manual override exercise ${selectedExerciseId}.`);
       applied.exerciseId = { from: final.exerciseId, to: selectedExerciseId };
@@ -3269,11 +3325,15 @@
     prescribeWorkout(options = {}) { return createWorkoutPrescription(this.evidence, { ...options, policy: this.policy }); }
     forSurface(snapshot, surface) { return recommendationForSurface(snapshot, surface); }
     applyManualOverride(snapshot, override, options = {}) {
-      const exerciseCatalog = [
-        ...this.evidence.research.exerciseDatabase,
-        ...this.evidence.personal.exerciseScores,
-        ...this.evidence.personal.exercisePrescriptions
-      ];
+      const researchCatalog = this.evidence.research.exerciseDatabase.map((item) => ({
+        exerciseId: firstPresent(item.exercise_id, item.exerciseId),
+        researchExerciseId: firstPresent(item.exercise_id, item.exerciseId)
+      }));
+      const personalCatalog = [...this.evidence.personal.exerciseScores, ...this.evidence.personal.exercisePrescriptions].map((item) => {
+        const exerciseId = firstPresent(item.exercise_id, item.exerciseId);
+        return { exerciseId, researchExerciseId: this.evidence.personal.crosswalkByPersonalId.get(exerciseId) || null };
+      });
+      const exerciseCatalog = [...researchCatalog, ...personalCatalog];
       return applyManualOverride(snapshot, override, { ...options, exerciseCatalog: [...exerciseCatalog, ...asArray(options.exerciseCatalog)] });
     }
     reconcileRecommendation(snapshot, newEngineRecommendation) { return reconcileRecommendation(snapshot, newEngineRecommendation); }

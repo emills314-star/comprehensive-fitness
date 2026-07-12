@@ -11,7 +11,8 @@ const {
   evaluateReadiness,
   normalizeEvidenceBundle,
   rankExercisePool,
-  readinessAdjustmentFor
+  readinessAdjustmentFor,
+  validateSnapshot
 } = require("../prescription-engine");
 
 function publicResearchData() {
@@ -76,7 +77,8 @@ function collectFailures(checks) {
   if (failures.length) throw new Error(failures.join("\n"));
 }
 
-function regressionHistory() {
+function regressionHistory(options = {}) {
+  const pain = options.pain !== false;
   return [0, 1, 2, 3].map((index) => ({
     workout_date: `2026-07-${String(1 + index * 2).padStart(2, "0")}`,
     progression_status: index < 2 ? "held" : "regressed",
@@ -87,7 +89,7 @@ function regressionHistory() {
     recovery_strain_score: index < 2 ? 50 : 75,
     max_set_rep_loss_pct: index < 2 ? 10 : 35,
     regression_duration_exposures: index < 2 ? 0 : index - 1,
-    pain: index >= 2,
+    pain: pain && index >= 2,
     set_repetitions: "[8,7,6]",
     set_loads: "[100,100,100]"
   }));
@@ -103,7 +105,38 @@ test("illness and pain have hard readiness precedence", () => {
   const pain = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", history: progressionHistory(), readiness: { pain: true, affectedMuscle: "Chest" }, createdAt });
   assert.equal(pain.finalPrescription.recommendationType, "substitute", JSON.stringify(pain.finalPrescription.readinessAdjustment));
   assert.equal(pain.finalPrescription.progressionAction, "hold_for_pain_free_substitution");
-  assert.deepEqual(pain.finalPrescription.prescribedLoad, pain.basePrescription.prescribedLoad, "pain must not create a lower-load test of the affected movement");
+  assert.equal(pain.finalPrescription.prescribedLoad, undefined, "pain must not emit a load target for the affected movement");
+});
+
+test("current illness or pain supersedes every deload scope", () => {
+  const regression = regressionHistory({ pain: false });
+  const programMuscleHistories = [0, 1, 2].map(() => [regression, regression]);
+  const scopeCases = [
+    ["exercise", {}],
+    ["muscle", { muscleExerciseHistories: [regression, regression] }],
+    ["full program", { programMuscleHistories }]
+  ];
+  const safetyCases = [
+    ["illness", { illness: true, sleepHours: 4, baselineSleepHours: 8, consecutiveLowReadinessDays: 2 }, "hold", "stop_for_illness"],
+    ["pain", { pain: true, affectedMuscle: "Chest", sleepHours: 4, baselineSleepHours: 8, consecutiveLowReadinessDays: 2 }, "substitute", "hold_for_pain_free_substitution"]
+  ];
+  collectFailures(scopeCases.flatMap(([scope, scopeOptions]) => safetyCases.map(([label, readiness, recommendationType, action]) => [
+    `${scope} ${label}`,
+    () => {
+      const snapshot = engine.prescribeExercise({
+        exerciseId: "ex_barbell_bench_press",
+        muscleGroupId: "chest",
+        history: regression,
+        readiness,
+        ...scopeOptions,
+        createdAt
+      });
+      assert.equal(snapshot.finalPrescription.recommendationType, recommendationType, `${scope} ${label}: ${JSON.stringify(snapshot.finalPrescription.deloadStatus)}`);
+      assert.equal(snapshot.finalPrescription.progressionAction, action);
+      assert.equal(snapshot.finalPrescription.readinessAdjustment.loadChangePercent, 0, "hard safety must not create a reduced-load test");
+      assert.ok(!["exercise_deload", "muscle_group_deload", "full_program_deload", "light_session"].includes(snapshot.finalPrescription.recommendationType));
+    }
+  ])));
 });
 
 test("HRV and resting heart rate count as one correlated readiness domain", () => {
@@ -226,15 +259,12 @@ test("manual overrides cannot disable hard deload or rotation safety", () => {
     createdAt
   });
   assert.equal(snapshot.finalPrescription.recommendationType, "exercise_deload", "fixture must start safety-restricted");
-  const safetyTypes = new Set(["exercise_deload", "muscle_group_deload", "full_program_deload", "substitute", "rotate_exercise"]);
   collectFailures([
     ["deload lock", () => {
-      const result = applyManualOverride(snapshot, { deloadRecommendation: false }, { createdAt: "2026-07-12T12:02:00.000Z" });
-      assert.ok(safetyTypes.has(result.finalPrescription.recommendationType), `safety became ${result.finalPrescription.recommendationType}`);
+      assert.throws(() => applyManualOverride(snapshot, { deloadRecommendation: false }, { createdAt: "2026-07-12T12:02:00.000Z" }));
     }],
     ["rotation lock", () => {
-      const result = applyManualOverride(snapshot, { exerciseRotation: false }, { createdAt: "2026-07-12T12:03:00.000Z" });
-      assert.ok(safetyTypes.has(result.finalPrescription.recommendationType), `safety became ${result.finalPrescription.recommendationType}`);
+      assert.throws(() => applyManualOverride(snapshot, { exerciseRotation: false }, { createdAt: "2026-07-12T12:03:00.000Z" }));
     }]
   ]);
   const ordinary = engine.prescribeExercise({
@@ -246,6 +276,93 @@ test("manual overrides cannot disable hard deload or rotation safety", () => {
   assert.equal(ordinary.finalPrescription.recommendationType, "exercise_deload", "fixture must start as a non-safety policy deload");
   const overridden = applyManualOverride(ordinary, { deloadRecommendation: false }, { createdAt: "2026-07-12T12:04:00.000Z" });
   assert.equal(overridden.finalPrescription.recommendationType, "normal", "ordinary policy deload should remain an audited user choice");
+});
+
+test("hard-safety snapshots reject training overrides and require an explicit coherent safe substitute", () => {
+  const snapshot = engine.prescribeExercise({
+    exerciseId: "ex_barbell_bench_press",
+    muscleGroupId: "chest",
+    history: progressionHistory(),
+    readiness: { pain: true, affectedMuscle: "Chest" },
+    createdAt
+  });
+  assert.equal(snapshot.finalPrescription.recommendationType, "substitute", "fixture must be hard-safety restricted");
+  const blocked = [
+    ["load", { load: 40 }],
+    ["set count", { setCount: 2 }],
+    ["rep range", { repRange: { min: 6, max: 8 } }],
+    ["set structure", { setStructure: "straight_sets" }],
+    ["deload weakening", { deloadRecommendation: false }],
+    ["rotation weakening", { exerciseRotation: false }],
+    ["arbitrary catalog exercise", { exerciseId: "ex_dumbbell_bench_press", researchExerciseId: "ex_dumbbell_bench_press" }]
+  ];
+  collectFailures(blocked.map(([label, override]) => [label, () => assert.throws(
+    () => engine.applyManualOverride(snapshot, override, { createdAt: "2026-07-12T12:05:00.000Z" }),
+    undefined,
+    `${label} changed a hard-safety snapshot`
+  )]));
+  assert.throws(() => engine.applyManualOverride(snapshot, {
+    exerciseId: "ex_dumbbell_bench_press",
+    researchExerciseId: "ex_dumbbell_bench_press"
+  }, { allowedSafetySubstituteIds: "ex_dumbbell_bench_press" }), /array/i);
+  assert.throws(() => engine.applyManualOverride(snapshot, {
+    exerciseId: "ex_dumbbell_bench_press",
+    researchExerciseId: "ex_dumbbell_bench_press"
+  }, { allowedSafetySubstituteIds: ["not_in_catalog"] }), /unknown allowed safety substitute/i);
+  assert.throws(() => engine.applyManualOverride(snapshot, {
+    exerciseId: "ex_dumbbell_bench_press",
+    researchExerciseId: "ex_barbell_bench_press"
+  }, {
+    allowedSafetySubstituteIds: ["ex_dumbbell_bench_press"],
+    createdAt: "2026-07-12T12:06:00.000Z"
+  }), /identity|research/i, "safe substitute must keep coherent exercise/research identity");
+  const substituted = engine.applyManualOverride(snapshot, {
+    exerciseId: "ex_dumbbell_bench_press",
+    researchExerciseId: "ex_dumbbell_bench_press"
+  }, {
+    allowedSafetySubstituteIds: ["ex_dumbbell_bench_press"],
+    createdAt: "2026-07-12T12:07:00.000Z"
+  });
+  assert.equal(substituted.exerciseId, "ex_dumbbell_bench_press");
+  assert.equal(substituted.finalPrescription.exerciseId, "ex_dumbbell_bench_press");
+  assert.equal(substituted.finalPrescription.researchExerciseId, "ex_dumbbell_bench_press");
+  assert.equal(substituted.finalPrescription.recommendationType, "substitute");
+  assert.doesNotThrow(() => validateSnapshot(substituted));
+});
+
+test("stale history is wired through scoring and snapshots by default", () => {
+  assert.equal(engine.policy.maximumReturnGapDays, 56, "the return-gap default must remain visible in engine policy");
+  const staleHistory = [1, 8, 15].map((day) => ({
+    workout_date: `2024-01-${String(day).padStart(2, "0")}`,
+    progression_status: "improved",
+    progression_pct_vs_prior: 2,
+    comparison_performance_value: 100 + day,
+    set_repetitions: "[10,10,10]",
+    set_loads: "[100,100,100]",
+    set_rpes: "[8,8,8]",
+    average_rpe: 8
+  }));
+  const scored = engine.scoreExercise("ex_barbell_bench_press", "chest", { history: staleHistory, createdAt });
+  assert.equal(scored.staleness.classification, STALENESS.INSUFFICIENT, JSON.stringify(scored.staleness));
+  const snapshot = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", history: staleHistory, createdAt });
+  assert.equal(snapshot.basePrescription.staleness.classification, STALENESS.INSUFFICIENT, JSON.stringify(snapshot.basePrescription.staleness));
+  assert.equal(snapshot.finalPrescription.progressionAction, "establish_baseline");
+  assert.equal(snapshot.finalPrescription.recommendationType, "hold");
+});
+
+test("unavailable-muscle fallback plans expose complete zeroed volume fields", () => {
+  const mesocycle = engine.createMesocycle({
+    trainingDays: 4,
+    includedMuscleGroupIds: ["chest"],
+    availableEquipment: ["synthetic_unavailable_equipment"]
+  });
+  const plan = mesocycle.programReview.musclePlans.find((item) => item.muscleGroupId === "chest");
+  assert.ok(plan, "equipment-blocked muscle requires a fallback plan");
+  assert.equal(plan.directSets, 0);
+  assert.equal(plan.secondarySets, 0);
+  assert.equal(plan.indirectSets, 0);
+  assert.equal(plan.incidentalSets, 0);
+  assert.equal(plan.isometricExposure, 0);
 });
 
 test("recommendation IDs distinguish different readiness contexts", () => {

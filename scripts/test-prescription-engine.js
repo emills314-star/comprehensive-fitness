@@ -460,7 +460,7 @@ test("all four mesocycle types create five-candidate pools and lifecycle states"
   Object.values(MESOCYCLE_TYPES).forEach((type) => {
     const mesocycle = engine.createMesocycle({
       type, muscleGroupIds: ["chest"], histories: { personal_press: improvingHistory },
-      currentExerciseIds: ["personal_press"], specializationMuscleGroups: ["chest"], createdAt: "2026-07-11T12:00:00.000Z"
+      currentExerciseIds: ["personal_press"], specializationMuscleGroups: ["chest"], maximumReturnGapDays: 365, createdAt: "2026-07-11T12:00:00.000Z"
     });
     assert(mesocycle.durationWeeks >= 2 && mesocycle.durationWeeks <= 12);
     assert.strictEqual(mesocycle.pools.chest.candidates.length, 5);
