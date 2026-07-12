@@ -13,7 +13,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function prescriptionEngineFactory() {
   "use strict";
 
-  const ENGINE_VERSION = "3.0.0";
+  const ENGINE_VERSION = "3.0.1";
   const PRESCRIPTION_SCHEMA_VERSION = "2.0.0";
   const SNAPSHOT_SCHEMA_VERSION = "1.0.0";
   const HISTORY_STORAGE_KEY = "comprehensiveFitness.recommendationHistory.v1";
@@ -47,6 +47,13 @@
     "substitute",
     "rotate_exercise"
   ]);
+
+  const HARD_SAFETY_PROGRESSION_ACTIONS = Object.freeze(new Set([
+    "hold_for_pain_free_modification",
+    "hold_for_pain_free_substitution",
+    "hold_for_technique",
+    "stop_for_illness"
+  ]));
 
   const ROLES = Object.freeze([
     "primary_progression_lift",
@@ -116,6 +123,21 @@
     if (value === null || value === undefined || value === "") return null;
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function normalizedBoolean(value, fallback = null) {
+    if (value === true || value === false) return value;
+    if (value === 1 || value === 0) return value === 1;
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      if (["true", "1", "yes", "y", "on"].includes(normalized)) return true;
+      if (["false", "0", "no", "n", "off", ""].includes(normalized)) return false;
+    }
+    return fallback;
+  }
+
+  function anyExplicitTrue(...values) {
+    return values.some((value) => normalizedBoolean(value, false) === true);
   }
 
   function clamp(value, min, max) {
@@ -707,6 +729,11 @@
       const repetitions = splitMulti(item.set_repetitions || item.setRepetitions || item.reps).map(number);
       const rpes = splitMulti(item.set_rpes || item.setRpes).map((value) => nullableNumber(value)).filter((value) => value !== null);
       const loads = splitMulti(item.set_loads || item.setLoads).map(number);
+      const completedSetCount = nullableNumber(firstPresent(item.completedSetCount, item.completed_set_count));
+      const prescribedSetCount = nullableNumber(firstPresent(item.prescribedSetCount, item.prescribed_set_count, item.plannedSetCount, item.planned_set_count));
+      const completedSetRatio = nullableNumber(firstPresent(item.completedSetRatio, item.completed_set_ratio, item.adherence));
+      const techniqueValid = normalizedBoolean(firstPresent(item.techniqueValid, item.technique_valid), null);
+      const techniqueQuality = normalizeText(firstPresent(item.techniqueQuality, item.technique_quality));
       return {
         raw: item,
         index,
@@ -722,16 +749,22 @@
         recoveryCost: nullableNumber(firstPresent(item.recovery_strain_score, item.recoveryStrainScore, item.recoveryCost)),
         plateauExposures: number(item.plateau_duration_exposures || item.plateauExposures),
         regressionExposures: number(item.regression_duration_exposures || item.regressionExposures),
-        pain: Boolean(item.pain || item.discomfort || item.painReported || item.pain_reported),
-        adherence: nullableNumber(firstPresent(item.adherence, item.completedSetRatio, item.completed_set_ratio)),
+        pain: anyExplicitTrue(item.pain, item.discomfort, item.painReported, item.pain_reported),
+        techniqueValid,
+        techniqueQuality,
+        completedSetCount,
+        prescribedSetCount,
+        incompletePrescribedWork: (completedSetRatio !== null && completedSetRatio < 0.999) || (completedSetCount !== null && prescribedSetCount !== null && completedSetCount < prescribedSetCount),
+        adherence: completedSetRatio,
         reps: repetitions.length ? repetitions : asArray(item.reps).map(number),
+        rpes,
         loads: loads.length ? loads : asArray(item.loads).map(number),
         setTypes: splitMulti(item.set_types || item.setTypes),
         topSetCount: number(item.top_set_count || item.topSetCount),
         backoffSetCount: number(item.back_off_set_count || item.backoffSetCount),
         straightSetCount: number(item.straight_working_set_count || item.straightSetCount),
         progressionPercent: nullableNumber(item.progression_pct_vs_prior || item.progressionPercent),
-        prescribedReduction: Boolean(item.prescribed_reduction || item.prescribedReduction || /planned[_ -]?reduction|light[_ -]?session|deload/.test(status))
+        prescribedReduction: anyExplicitTrue(item.prescribed_reduction, item.prescribedReduction) || /planned[_ -]?reduction|light[_ -]?session|deload/.test(status)
       };
     }).sort((left, right) => (left.date || "9999").localeCompare(right.date || "9999") || left.index - right.index);
   }
@@ -749,6 +782,20 @@
     const exposures = normalizeHistory(history).filter((item) => !item.prescribedReduction);
     const recent = exposures.slice(-Math.max(3, number(options.lookbackExposures, 6)));
     const minimum = number(options.minimumComparableExposures, DEFAULT_POLICY.minimumComparableExposures);
+    const insufficientMetrics = {
+      progressionTrend: 0,
+      rpeTrend: 0,
+      estimated1RmTrend: 0,
+      backoffTrend: 0,
+      setRepLossFlag: false,
+      recoveryCostFlag: false,
+      painFlag: false,
+      adherenceFlag: false,
+      averageAdherence: null,
+      improvedExposures: 0,
+      heldExposures: 0,
+      regressedExposures: 0
+    };
     if (recent.length < minimum) {
       return {
         score: 0,
@@ -758,8 +805,26 @@
         rotationRecommended: false,
         deloadCandidate: false,
         reasons: [`Only ${recent.length} recent comparable exposure${recent.length === 1 ? "" : "s"}; continue collecting consistent performance and RPE data.`],
-        metrics: { progressionTrend: 0, rpeTrend: 0, estimated1RmTrend: 0, backoffTrend: 0 }
+        metrics: insufficientMetrics
       };
+    }
+    const asOfDate = dateOnly(firstPresent(options.asOfDate, options.createdAt));
+    const latestDate = recent.at(-1)?.date;
+    const maximumReturnGapDays = number(options.maximumReturnGapDays, 0);
+    if (asOfDate && latestDate && maximumReturnGapDays > 0) {
+      const elapsedDays = Math.floor((new Date(`${asOfDate}T00:00:00Z`).getTime() - new Date(`${latestDate}T00:00:00Z`).getTime()) / 86400000);
+      if (Number.isFinite(elapsedDays) && elapsedDays > maximumReturnGapDays) {
+        return {
+          score: 0,
+          classification: STALENESS.INSUFFICIENT,
+          label: "Insufficient evidence",
+          exposureCount: recent.length,
+          rotationRecommended: false,
+          deloadCandidate: false,
+          reasons: [`The latest comparable exposure is ${elapsedDays} days old; establish a return-to-training baseline before diagnosing a plateau or progressing load.`],
+          metrics: insufficientMetrics
+        };
+      }
     }
     const statusCounts = {
       improved: recent.filter((item) => /improv|progress/.test(item.status) || number(item.progressionPercent) >= 1).length,
@@ -849,27 +914,39 @@
     const hrvRatio = nullableNumber(firstPresent(readiness.hrvRatio, readiness.hrvPctOfBaseline !== undefined ? number(readiness.hrvPctOfBaseline) / 100 : null, readiness.hrv !== undefined && readiness.baselineHrv ? number(readiness.hrv) / number(readiness.baselineHrv) : null));
     const rhrRatio = nullableNumber(firstPresent(readiness.restingHeartRateRatio, readiness.restingHeartRatePctOfBaseline !== undefined ? number(readiness.restingHeartRatePctOfBaseline) / 100 : null, readiness.restingHeartRate !== undefined && readiness.baselineRestingHeartRate ? number(readiness.restingHeartRate) / number(readiness.baselineRestingHeartRate) : null));
     const sleepRatio = nullableNumber(firstPresent(readiness.sleepRatio, readiness.sleepHours !== undefined && readiness.baselineSleepHours ? number(readiness.sleepHours) / number(readiness.baselineSleepHours) : null));
-    if (hrvRatio !== null && hrvRatio < 0.9) add("hrv", hrvRatio < 0.82 ? 2 : 1, `HRV is ${Math.round((1 - hrvRatio) * 100)}% below baseline.`);
-    if (rhrRatio !== null && rhrRatio > 1.07) add("resting_heart_rate", rhrRatio > 1.12 ? 2 : 1, `Resting heart rate is ${Math.round((rhrRatio - 1) * 100)}% above baseline.`);
+    const illness = anyExplicitTrue(readiness.illness, readiness.isIll, readiness.illnessReported);
+    const pain = anyExplicitTrue(readiness.pain, readiness.discomfort, readiness.injury, readiness.painReported);
+    if (illness) add("illness", 3, "Illness is a hard readiness restriction; do not progress training stress today.");
+    if (pain) add("pain", 3, `Pain${readiness.affectedMuscle ? ` affecting ${readiness.affectedMuscle}` : ""} requires a pain-free modification or stopping the affected work.`);
+    const autonomicReasons = [];
+    if (hrvRatio !== null && hrvRatio < 0.9) autonomicReasons.push(`HRV is ${Math.round((1 - hrvRatio) * 100)}% below baseline.`);
+    if (rhrRatio !== null && rhrRatio > 1.07) autonomicReasons.push(`Resting heart rate is ${Math.round((rhrRatio - 1) * 100)}% above baseline.`);
+    if (autonomicReasons.length) {
+      const autonomicSeverity = (hrvRatio !== null && hrvRatio < 0.82) || (rhrRatio !== null && rhrRatio > 1.12) ? 2 : 1;
+      add(hrvRatio !== null && hrvRatio < 0.9 ? "hrv" : "resting_heart_rate", autonomicSeverity, autonomicReasons.join(" "));
+    }
     if ((sleepRatio !== null && sleepRatio < 0.85) || (nullableNumber(readiness.sleepHours) !== null && number(readiness.sleepHours) < 6)) add("sleep", sleepRatio !== null && sleepRatio < 0.7 ? 2 : 1, "Sleep was materially below the personal baseline.");
     if (number(readiness.soreness) >= 7 || number(readiness.fatigue) >= 7) add("subjective_recovery", number(readiness.soreness) >= 9 || number(readiness.fatigue) >= 9 ? 2 : 1, "Soreness or fatigue is high enough to affect training quality.");
     if (number(readiness.readinessScore, 10) <= 4) add("subjective_readiness", number(readiness.readinessScore, 10) <= 2 ? 2 : 1, "Readiness is below the usual training range.");
-    if (readiness.previousExposureRegressed || number(readiness.consecutiveRegressions) >= 1) add("recent_performance", number(readiness.consecutiveRegressions) >= 2 ? 2 : 1, "The previous comparable exposure regressed.");
-    if (readiness.nutritionAdequate === false || readiness.proteinAdequate === false || readiness.energyAvailabilityLow) add("nutrition", readiness.energyAvailabilityLow ? 2 : 1, "Nutrition or energy availability is below the planned condition.");
+    if (anyExplicitTrue(readiness.previousExposureRegressed) || number(readiness.consecutiveRegressions) >= 1) add("recent_performance", number(readiness.consecutiveRegressions) >= 2 ? 2 : 1, "The previous comparable exposure regressed.");
+    const energyAvailabilityLow = anyExplicitTrue(readiness.energyAvailabilityLow);
+    if (normalizedBoolean(readiness.nutritionAdequate, null) === false || normalizedBoolean(readiness.proteinAdequate, null) === false || energyAvailabilityLow) add("nutrition", energyAvailabilityLow ? 2 : 1, "Nutrition or energy availability is below the planned condition.");
     const severity = sum(signals.map((signal) => signal.severity));
     const persistent = number(readiness.consecutiveLowReadinessDays || readiness.consecutiveAdverseDays) >= 2;
+    const hardSafety = illness || pain;
     return {
       signalCount: signals.length,
       severity,
       signals,
       persistent,
-      state: signals.length >= 3 || severity >= 4 ? "low" : signals.length >= 2 ? "below_baseline" : signals.length === 1 ? "monitor" : "normal"
+      state: hardSafety || signals.length >= 3 || severity >= 4 ? "low" : signals.length >= 2 ? "below_baseline" : signals.length === 1 ? "monitor" : "normal"
     };
   }
 
   function readinessAdjustmentFor(basePrescription, readiness = {}) {
     const evaluation = evaluateReadiness(readiness);
-    if (evaluation.signalCount < 2) {
+    const hardSafetySignals = evaluation.signals.filter((signal) => signal.domain === "illness" || signal.domain === "pain");
+    if (evaluation.signalCount < 2 && !hardSafetySignals.length) {
       return {
         changed: false,
         temporary: true,
@@ -880,6 +957,21 @@
         rpeChange: 0,
         explanation: evaluation.signalCount === 1 ? `${evaluation.signals[0].explanation} One isolated marker is monitored without rewriting today's prescription.` : "Readiness supports the base prescription.",
         resumeRule: "Continue the base progression unless another independent recovery or performance signal also worsens.",
+        signals: evaluation.signals
+      };
+    }
+    if (hardSafetySignals.length) {
+      const illness = hardSafetySignals.some((signal) => signal.domain === "illness");
+      return {
+        changed: true,
+        temporary: true,
+        affectsMesocycle: false,
+        setChange: 0,
+        loadChangePercent: 0,
+        repTargetChange: 0,
+        rpeChange: 0,
+        explanation: `${hardSafetySignals.map((signal) => signal.explanation).join(" ")} ${illness ? "Hold the workout rather than testing readiness with a lighter session." : "Do not test the affected movement at a lower load; use a pain-free substitute or stop that work."}`,
+        resumeRule: illness ? "Resume training only after the acute illness restriction has resolved; seek qualified guidance when symptoms are severe, unexplained, or persistent." : "Resume the affected movement only when it is pain-free; seek qualified evaluation when pain is severe, unexplained, or persistent.",
         signals: evaluation.signals
       };
     }
@@ -906,6 +998,16 @@
     const change = readinessAdjustmentFor(basePrescription, readiness);
     adjusted.readinessAdjustment = change;
     if (!change.changed) return adjusted;
+    const illness = change.signals.some((signal) => signal.domain === "illness");
+    const pain = change.signals.some((signal) => signal.domain === "pain");
+    if (illness || pain) {
+      adjusted.recommendationType = illness ? "hold" : "substitute";
+      adjusted.progressionAction = illness ? "stop_for_illness" : "hold_for_pain_free_substitution";
+      adjusted.progressionRule = change.explanation;
+      adjusted.holdRule = change.resumeRule;
+      if (pain) adjusted.substitutionRule = "Use only a pain-free alternative that preserves all equipment, exclusion, and safety constraints; stop the affected work if no such option exists.";
+      return adjusted;
+    }
     adjusted.workingSets.target = Math.max(1, adjusted.workingSets.target + change.setChange);
     adjusted.workingSets.min = Math.min(adjusted.workingSets.min, adjusted.workingSets.target);
     adjusted.workingSets.max = Math.max(adjusted.workingSets.target, adjusted.workingSets.max + Math.min(0, change.setChange));
@@ -1636,7 +1738,8 @@
     const firstSetAtTop = lastReps.length > 0 && lastReps[0] >= number(repRange.max);
     const laterSetsConverged = lastReps.slice(1).every((reps) => reps >= Math.ceil(number(repRange.max) * (1 - acceptableRepLoss)));
     const allAtTop = firstSetAtTop && laterSetsConverged;
-    const effortAcceptable = last.averageRpe === null || last.averageRpe <= number(rpeRange.max, 9);
+    const effortRecorded = last.averageRpe !== null || last.rpes.length > 0;
+    const effortAcceptable = effortRecorded && (last.averageRpe === null || last.averageRpe <= number(rpeRange.max, 9)) && last.rpes.every((rpe) => rpe <= number(rpeRange.max, 9));
     const topReached = lastReps[0] >= number(repRange.max) && effortAcceptable;
     if (staleness.deloadCandidate && regressions >= 2) {
       return {
@@ -1646,6 +1749,25 @@
         instruction: "Begin an exercise-specific deload: reduce working sets about 50%, lower load 7.5-12%, avoid failure work, and reassess after one lower-fatigue exposure.",
         holdRule: "Do not resume progression until warm-ups and a comparable work set stabilize.",
         regressionRule: "If regression or pain persists after the deload, rotate to the preferred replacement."
+      };
+    }
+    const invalidTechnique = last.techniqueValid === false || /invalid|poor|breakdown|failed/.test(last.techniqueQuality);
+    const effortTooHigh = effortRecorded && !effortAcceptable;
+    const blockers = [
+      last.pain ? "current pain or discomfort" : "",
+      invalidTechnique ? "invalid or deteriorated technique" : "",
+      !effortRecorded ? "missing RPE evidence" : "",
+      effortTooHigh ? "RPE above the prescribed ceiling" : "",
+      last.incompletePrescribedWork ? "incomplete prescribed working sets" : ""
+    ].filter(Boolean);
+    if (blockers.length) {
+      return {
+        action: last.pain ? "hold_for_pain_free_modification" : invalidTechnique ? "hold_for_technique" : "hold_for_complete_evidence",
+        recommendationType: "hold",
+        progressionMethod: method,
+        instruction: `Do not progress this exposure because of ${blockers.join(", ")}. Repeat only with pain-free execution, complete prescribed work, valid technique, and recorded effort inside the target range.`,
+        holdRule: "Hold load, repetitions, and volume until the blocking evidence is resolved on a comparable exposure.",
+        regressionRule: last.pain ? "Use a pain-free substitute or seek qualified evaluation when pain is severe, unexplained, or persistent." : "Reduce load or complexity if valid technique and target effort cannot be restored."
       };
     }
     if (risingRpe && !allAtTop) {
@@ -1818,11 +1940,19 @@
     };
   }
 
-  function preferredReplacementFor(candidate, evidence, rankedCandidates = []) {
+  function preferredReplacementFor(candidate, evidence, rankedCandidates = [], options = {}) {
     const research = evidence.research;
+    const availableEquipment = asArray(options.availableEquipment);
+    const restrictionsActive = availableEquipment.length > 0 && !availableEquipment.includes("all");
+    const replacementAllowed = (researchExerciseId) => {
+      if (!restrictionsActive) return true;
+      const exercise = research.exerciseById.get(researchExerciseId);
+      return Boolean(exercise && equipmentCompatible(exercise, availableEquipment).eligible);
+    };
     const substitutions = research.substitutionsByExercise.get(candidate.researchExerciseId) || [];
     for (const mapping of substitutions) {
       const targetResearchId = mapping.substitute_exercise_id || mapping.substituteExerciseId;
+      if (!replacementAllowed(targetResearchId)) continue;
       const ranked = rankedCandidates.find((item) => item.candidate.researchExerciseId === targetResearchId || item.candidate.exerciseId === targetResearchId);
       if (ranked) return ranked.candidate.exerciseId;
       const personalId = evidence.personal.personalIdsByResearchId.get(targetResearchId)?.[0];
@@ -1922,7 +2052,7 @@
         setStructure: structure.setStructure,
         progressionMethod: candidate.researchExercise?.preferred_progression_model
       });
-      const preferredReplacementExerciseId = preferredReplacementFor(candidate, evidence, selected);
+      const preferredReplacementExerciseId = preferredReplacementFor(candidate, evidence, selected, options);
       const taxonomy = asArray(candidate.researchMappings).length ? asArray(candidate.researchMappings) : [{
         muscle_group_id: candidate.muscleScore?.research_muscle_group_id || candidate.muscleScore?.muscle_group || muscleGroupId,
         relationship_type: number(candidate.muscleScore?.contribution_weight, 1) >= 1 ? "direct_load" : "meaningful_fractional_load",
@@ -2574,13 +2704,20 @@
   }
 
   function prescribedLoadFromHistory(candidate, progression, deloadState, options = {}) {
-    const history = normalizeHistory(candidate.history);
+    const history = normalizeHistory(candidate.history).filter((item) => !item.prescribedReduction);
     const last = history.at(-1);
     const loads = last?.loads?.filter((value) => value > 0) || [];
     const current = loads.length ? Math.max(...loads) : number(firstPresent(last?.raw?.max_load, last?.raw?.weight, last?.raw?.load), 0);
     if (!current) return undefined;
     const exercise = candidate.researchExercise || {};
-    const assisted = String(candidate.personalScore?.resistance_type || "").toLowerCase() === "assisted_bodyweight";
+    const resistanceType = normalizeText(firstPresent(
+      options.resistanceType,
+      last?.raw?.resistanceType,
+      last?.raw?.resistance_type,
+      candidate.personalScore?.resistance_type,
+      candidate.personalScore?.resistanceType
+    ));
+    const assisted = resistanceType === "assisted_bodyweight";
     let target = current;
     let reason = "Hold the most recent comparable load.";
     if (progression.action === "increase_load" || progression.action === "increase_top_set_load" || progression.action === "increase_load_first") {
@@ -2709,7 +2846,7 @@
       mesocycleType,
       maxCandidates: 5
     });
-    const preferredReplacementExerciseId = pool.candidates.find((item) => item.exerciseId === candidate.exerciseId)?.preferredReplacementExerciseId || preferredReplacementFor(candidate, evidence, []);
+    const preferredReplacementExerciseId = pool.candidates.find((item) => item.exerciseId === candidate.exerciseId)?.preferredReplacementExerciseId || preferredReplacementFor(candidate, evidence, [], options);
     let recommendationType = volume.adjustmentType === "reduce_volume" ? "reduce_volume" : progression.recommendationType;
     if (score.staleness.rotationRecommended && !deloadStatus.exerciseSpecific) recommendationType = score.staleness.metrics.painFlag ? "substitute" : "rotate_exercise";
     const evidenceSummary = unique([
@@ -2777,7 +2914,15 @@
       ? { ...deepClone(basePrescription), readinessAdjustment: { ...readinessAdjustmentFor(basePrescription, options.readiness || {}), changed: false, explanation: `${deloadStatus.explanation} The deload already supersedes a smaller readiness adjustment.` } }
       : applyReadinessAdjustment(basePrescription, options.readiness || {});
     const createdAt = options.createdAt || isoNow(options.clock);
-    const recommendationId = options.recommendationId || `rx_${normalizeText(candidate.exerciseId)}_${dateOnly(createdAt).replace(/-/g, "")}_${stableHash({ candidate: candidate.exerciseId, muscleGroupId, createdAt, mesocycle: basePrescription.mesocycleId }).slice(0, 8)}`;
+    const recommendationId = options.recommendationId || `rx_${normalizeText(candidate.exerciseId)}_${dateOnly(createdAt).replace(/-/g, "")}_${stableHash({
+      candidate: candidate.exerciseId,
+      muscleGroupId,
+      createdAt,
+      mesocycle: basePrescription.mesocycleId,
+      basePrescription,
+      finalPrescription,
+      readinessAdjustment: finalPrescription.readinessAdjustment || null
+    }).slice(0, 8)}`;
     const snapshot = {
       recommendationId,
       schemaVersion: SNAPSHOT_SCHEMA_VERSION,
@@ -2916,20 +3061,44 @@
     return value ? JSON.parse(value) : null;
   }
 
+  function hasHardSafetyMarker(prescription = {}) {
+    const signals = [
+      ...asArray(prescription.readinessAdjustment?.signals),
+      ...asArray(prescription.deloadStatus?.readinessEvaluation?.signals)
+    ];
+    return signals.some((signal) => signal?.domain === "illness" || signal?.domain === "pain")
+      || prescription.staleness?.metrics?.painFlag === true
+      || HARD_SAFETY_PROGRESSION_ACTIONS.has(prescription.progressionAction);
+  }
+
   function applyManualOverride(snapshotInput, override = {}, options = {}) {
     const snapshot = deserializeRecommendationSnapshot(snapshotInput, { verifyChecksum: false });
     const before = deepClone(snapshot.finalPrescription);
     const final = deepClone(snapshot.finalPrescription);
     const applied = {};
+    const exerciseCatalog = new Set([
+      snapshot.exerciseId,
+      snapshot.basePrescription?.exerciseId,
+      snapshot.finalPrescription?.exerciseId,
+      snapshot.basePrescription?.preferredReplacementExerciseId,
+      snapshot.finalPrescription?.preferredReplacementExerciseId,
+      ...asArray(options.allowedExerciseIds),
+      ...asArray(options.exerciseCatalog).map((item) => typeof item === "string" ? item : firstPresent(item?.exerciseId, item?.exercise_id, item?.researchExerciseId, item?.research_exercise_id))
+    ].filter(Boolean));
+    const safetyLocked = hasHardSafetyMarker(final) || hasHardSafetyMarker(snapshot.basePrescription);
     const selectedExerciseId = firstPresent(override.exerciseId, override.exerciseSelection, override.replacementExerciseId);
     if (selectedExerciseId) {
+      if (!exerciseCatalog.has(selectedExerciseId)) throw new Error(`Unknown manual override exercise ${selectedExerciseId}.`);
       applied.exerciseId = { from: final.exerciseId, to: selectedExerciseId };
       final.exerciseId = selectedExerciseId;
       if (override.researchExerciseId !== undefined) final.researchExerciseId = override.researchExerciseId;
     }
-    const setCount = nullableNumber(firstPresent(override.setCount, override.workingSets?.target));
+    const rawSetCount = firstPresent(override.setCount, override.workingSets?.target);
+    const setCount = nullableNumber(rawSetCount);
+    if (rawSetCount !== undefined && rawSetCount !== null && setCount === null) throw new Error("Manual set count must be numeric.");
     if (setCount !== null) {
-      const target = Math.max(1, Math.round(setCount));
+      if (!Number.isInteger(setCount) || setCount < 1 || setCount > DEFAULT_POLICY.absoluteMaximumWorkingSetsPerSession) throw new Error(`Manual set count must be an integer from 1 to ${DEFAULT_POLICY.absoluteMaximumWorkingSetsPerSession}.`);
+      const target = setCount;
       applied.setCount = { from: final.workingSets.target, to: target };
       final.workingSets.target = target;
       final.workingSets.min = Math.min(final.workingSets.min, target);
@@ -2938,12 +3107,16 @@
     if (override.repRange) {
       const range = normalizeRange(override.repRange, null, true);
       if (!range) throw new Error("Manual repRange override must contain min and/or max.");
+      if (range.min < 1 || range.max > 100) throw new Error("Manual repRange override must stay between 1 and 100 repetitions.");
       const normalized = targetRange(range, true);
       applied.repRange = { from: deepClone(final.repRange), to: normalized };
       final.repRange = normalized;
     }
-    const load = nullableNumber(firstPresent(override.load, override.prescribedLoad?.target));
+    const rawLoad = firstPresent(override.load, override.prescribedLoad?.target);
+    const load = nullableNumber(rawLoad);
+    if (rawLoad !== undefined && rawLoad !== null && load === null) throw new Error("Manual load override must be numeric.");
     if (load !== null) {
+      if (load < 0 || load > 1000000) throw new Error("Manual load override must be between 0 and 1,000,000 logged units.");
       applied.load = { from: final.prescribedLoad?.target ?? null, to: load };
       final.prescribedLoad = { ...(final.prescribedLoad || {}), target: load, reason: "Manual user override; engine recommendation remains in the audit record." };
     }
@@ -2986,8 +3159,9 @@
       }
     }
     if (override.deloadRecommendation !== undefined) {
-      const to = override.deloadRecommendation === false ? "normal" : override.deloadRecommendation === true ? "exercise_deload" : override.deloadRecommendation;
-      if (!RECOMMENDATION_TYPES.includes(to)) throw new Error(`Invalid manual deload recommendation ${to}.`);
+      const requested = normalizedBoolean(override.deloadRecommendation, null) === false ? "normal" : normalizedBoolean(override.deloadRecommendation, null) === true ? "exercise_deload" : override.deloadRecommendation;
+      if (!RECOMMENDATION_TYPES.includes(requested)) throw new Error(`Invalid manual deload recommendation ${requested}.`);
+      const to = safetyLocked ? final.recommendationType : requested;
       applied.deloadRecommendation = { from: final.recommendationType, to };
       final.recommendationType = to;
       if (["exercise_deload", "muscle_group_deload", "full_program_deload"].includes(to)) {
@@ -2998,8 +3172,9 @@
       }
     }
     if (override.exerciseRotation !== undefined) {
-      const to = override.exerciseRotation === false ? "hold" : override.exerciseRotation === true ? "rotate_exercise" : override.exerciseRotation;
-      if (!RECOMMENDATION_TYPES.includes(to)) throw new Error(`Invalid manual rotation recommendation ${to}.`);
+      const requested = normalizedBoolean(override.exerciseRotation, null) === false ? "hold" : normalizedBoolean(override.exerciseRotation, null) === true ? "rotate_exercise" : override.exerciseRotation;
+      if (!RECOMMENDATION_TYPES.includes(requested)) throw new Error(`Invalid manual rotation recommendation ${requested}.`);
+      const to = safetyLocked ? final.recommendationType : requested;
       applied.exerciseRotation = { from: final.recommendationType, to };
       final.recommendationType = to;
     }
@@ -3093,7 +3268,14 @@
     prescribeExercise(options = {}) { return createExercisePrescriptionSnapshot(this.evidence, { ...options, policy: this.policy }); }
     prescribeWorkout(options = {}) { return createWorkoutPrescription(this.evidence, { ...options, policy: this.policy }); }
     forSurface(snapshot, surface) { return recommendationForSurface(snapshot, surface); }
-    applyManualOverride(snapshot, override, options) { return applyManualOverride(snapshot, override, options); }
+    applyManualOverride(snapshot, override, options = {}) {
+      const exerciseCatalog = [
+        ...this.evidence.research.exerciseDatabase,
+        ...this.evidence.personal.exerciseScores,
+        ...this.evidence.personal.exercisePrescriptions
+      ];
+      return applyManualOverride(snapshot, override, { ...options, exerciseCatalog: [...exerciseCatalog, ...asArray(options.exerciseCatalog)] });
+    }
     reconcileRecommendation(snapshot, newEngineRecommendation) { return reconcileRecommendation(snapshot, newEngineRecommendation); }
     evaluateOverride(snapshot, outcome, options) { return evaluateManualOverrideOutcome(snapshot, outcome, options); }
   }

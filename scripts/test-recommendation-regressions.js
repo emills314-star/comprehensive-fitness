@@ -10,7 +10,8 @@ const {
   equipmentCompatible,
   evaluateReadiness,
   normalizeEvidenceBundle,
-  rankExercisePool
+  rankExercisePool,
+  readinessAdjustmentFor
 } = require("../prescription-engine");
 
 function publicResearchData() {
@@ -96,6 +97,21 @@ test("illness and pain have hard readiness precedence", () => {
   const result = evaluateReadiness({ illness: true, pain: true, affectedMuscle: "Chest" });
   assert.notEqual(result.state, "normal", `illness/pain returned ${JSON.stringify(result)}`);
   assert.ok(result.signalCount > 0, `illness/pain emitted no safety signal: ${JSON.stringify(result)}`);
+  const illness = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", readiness: { illness: true }, createdAt });
+  assert.equal(illness.finalPrescription.recommendationType, "hold", JSON.stringify(illness.finalPrescription.readinessAdjustment));
+  assert.equal(illness.finalPrescription.progressionAction, "stop_for_illness");
+  const pain = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", history: progressionHistory(), readiness: { pain: true, affectedMuscle: "Chest" }, createdAt });
+  assert.equal(pain.finalPrescription.recommendationType, "substitute", JSON.stringify(pain.finalPrescription.readinessAdjustment));
+  assert.equal(pain.finalPrescription.progressionAction, "hold_for_pain_free_substitution");
+  assert.deepEqual(pain.finalPrescription.prescribedLoad, pain.basePrescription.prescribedLoad, "pain must not create a lower-load test of the affected movement");
+});
+
+test("HRV and resting heart rate count as one correlated readiness domain", () => {
+  const readiness = { hrvRatio: 0.8, restingHeartRateRatio: 1.15 };
+  const evaluation = evaluateReadiness(readiness);
+  assert.equal(evaluation.signalCount, 1, JSON.stringify(evaluation));
+  const adjustment = readinessAdjustmentFor({ workingSets: { target: 3 } }, readiness);
+  assert.equal(adjustment.changed, false, JSON.stringify(adjustment));
 });
 
 test("current pain and invalid technique block progression", () => {
@@ -221,6 +237,15 @@ test("manual overrides cannot disable hard deload or rotation safety", () => {
       assert.ok(safetyTypes.has(result.finalPrescription.recommendationType), `safety became ${result.finalPrescription.recommendationType}`);
     }]
   ]);
+  const ordinary = engine.prescribeExercise({
+    exerciseId: "ex_barbell_bench_press",
+    muscleGroupId: "chest",
+    history: regressionHistory().map((exposure) => ({ ...exposure, pain: false })),
+    createdAt
+  });
+  assert.equal(ordinary.finalPrescription.recommendationType, "exercise_deload", "fixture must start as a non-safety policy deload");
+  const overridden = applyManualOverride(ordinary, { deloadRecommendation: false }, { createdAt: "2026-07-12T12:04:00.000Z" });
+  assert.equal(overridden.finalPrescription.recommendationType, "normal", "ordinary policy deload should remain an audited user choice");
 });
 
 test("recommendation IDs distinguish different readiness contexts", () => {
