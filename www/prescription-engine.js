@@ -1229,12 +1229,78 @@
     return normalizeText(text) || "other";
   }
 
+  const EQUIPMENT_REQUIREMENT_OVERRIDES = Object.freeze({
+    ex_barbell_bench_press: "barbell+plates+bench+rack", ex_cambered_barbell_bench_press: "cambered_bar+plates+bench+rack",
+    ex_close_grip_bench_press: "barbell+plates+bench+rack", ex_overhead_press: "barbell+plates+rack",
+    ex_back_squat: "barbell+plates+rack", ex_front_squat: "barbell+plates+rack", ex_deadlift: "barbell+plates",
+    ex_good_morning: "barbell+plates+rack", ex_hip_thrust: "barbell+plates+bench", ex_nordic_curl: "bodyweight+nordic_anchor",
+    ex_barbell_shrug: "barbell+plates", ex_romanian_deadlift: "barbell+plates|dumbbell", ex_bulgarian_split_squat: "dumbbell|barbell+plates+rack",
+    ex_leg_press: "leg_press_machine", ex_hack_squat: "hack_squat_machine", ex_leg_extension: "leg_extension_machine",
+    ex_seated_leg_curl: "leg_curl_machine", ex_lying_leg_curl: "leg_curl_machine", ex_hip_adduction_machine: "hip_adduction_machine",
+    ex_hip_abduction_machine: "hip_abduction_machine", ex_leg_press_calf_raise: "leg_press_machine", ex_back_extension: "back_extension_bench",
+    ex_hanging_leg_raise: "pull_up_bar", ex_ab_wheel: "ab_wheel", ex_preacher_curl: "preacher_bench+barbell+plates|preacher_curl_machine",
+    ex_incline_dumbbell_press: "dumbbell+incline_bench", ex_incline_dumbbell_curl: "dumbbell+incline_bench",
+    ex_wrist_curl: "dumbbell|barbell+plates", ex_reverse_wrist_curl: "dumbbell|barbell+plates", ex_farmers_carry: "dumbbell|trap_bar+plates",
+    ex_standing_calf_raise: "selectorized_machine|dumbbell|barbell+plates", ex_neck_flexion: "neck_harness|plates", ex_neck_extension: "neck_harness|bands"
+  });
+
+  function normalizeEquipmentItem(value) {
+    const item = normalizeText(value).replace(/dumbbells?/, "dumbbell").replace(/^cable$/, "cable_station");
+    if (item === "machine") return "selectorized_machine";
+    if (item === "leg_press") return "leg_press_machine";
+    return item;
+  }
+
+  function equipmentRequirementOptions(exercise = {}) {
+    const explicit = String(exercise.equipment_requirements || exercise.equipmentRequirements || EQUIPMENT_REQUIREMENT_OVERRIDES[exercise.exercise_id || exercise.exerciseId] || "");
+    if (explicit) return explicit.split("|").map((option) => option.split("+").map(normalizeEquipmentItem).filter(Boolean)).filter((option) => option.length);
+    const raw = String(exercise.equipment || "").toLowerCase();
+    if (!raw) return [];
+    if (raw === "bodyweight") return [["bodyweight"]];
+    if (raw === "bodyweight_or_belt") return [["bodyweight"], ["bodyweight", "dip_belt", "plates"]];
+    if (raw === "cable_machine") return [["cable_station"]];
+    if (raw === "dumbbell_or_machine") return [["dumbbell"], ["selectorized_machine"]];
+    if (raw === "machine_or_free_weight") return [["selectorized_machine"], ["dumbbell"], ["barbell", "plates"]];
+    const normalized = raw.replaceAll("_and_", "+").replaceAll("_or_", "|");
+    return normalized.split("|").map((option) => option.split("+").map(normalizeEquipmentItem).filter(Boolean)).filter((option) => option.length);
+  }
+
+  function equipmentCompatible(exercise, availableEquipment) {
+    const available = new Set(asArray(availableEquipment).map(normalizeEquipmentItem));
+    if (!available.size || available.has("all")) return { eligible: true, requirements: equipmentRequirementOptions(exercise), missing: [] };
+    const requirements = equipmentRequirementOptions(exercise);
+    if (!requirements.length) return { eligible: false, requirements, missing: ["verified equipment metadata"] };
+    const matched = requirements.some((option) => option.every((item) => available.has(item)));
+    const missing = requirements.map((option) => option.filter((item) => !available.has(item))).sort((a, b) => a.length - b.length)[0] || [];
+    return { eligible: matched, requirements, missing };
+  }
+
+  const JOINT_ACTIONS_BY_PATTERN = Object.freeze({
+    horizontal_push: ["shoulder_horizontal_adduction", "elbow_extension"], vertical_push: ["shoulder_flexion", "elbow_extension"],
+    horizontal_pull: ["shoulder_extension", "scapular_retraction", "elbow_flexion"], vertical_pull: ["shoulder_adduction", "elbow_flexion"],
+    squat: ["knee_extension", "hip_extension"], lunge: ["knee_extension", "hip_extension"], hinge: ["hip_extension"],
+    hip_extension: ["hip_extension"], knee_extension: ["knee_extension"], knee_flexion: ["knee_flexion"],
+    elbow_flexion: ["elbow_flexion"], elbow_extension: ["elbow_extension"], shoulder_abduction: ["shoulder_abduction"],
+    shoulder_horizontal_abduction: ["shoulder_horizontal_abduction", "scapular_retraction"], hip_abduction: ["hip_abduction"],
+    hip_adduction: ["hip_adduction"], plantar_flexion: ["ankle_plantar_flexion"], spinal_flexion: ["spinal_flexion"],
+    anti_extension: ["trunk_anti_extension"], anti_rotation: ["trunk_anti_rotation"], loaded_carry: ["grip", "trunk_stabilization"],
+    wrist_flexion: ["wrist_flexion"], wrist_extension: ["wrist_extension"], neck_flexion: ["cervical_flexion"],
+    neck_extension: ["cervical_extension"], scapular_elevation: ["scapular_elevation"]
+  });
+
+  function jointActionsForExercise(exercise = {}) {
+    const explicit = splitMulti(exercise.joint_actions || exercise.jointActions);
+    return explicit.length ? explicit : (JOINT_ACTIONS_BY_PATTERN[normalizeText(exercise.movement_pattern || exercise.movementPattern)] || []);
+  }
+
   function diversitySignature(candidate) {
     const exercise = candidate.researchExercise || {};
     const repLow = number(exercise.recommended_rep_range_low, 8);
     return {
       movement: exercise.movement_pattern || "unknown",
       equipment: equipmentFamily(exercise.equipment),
+      equipmentRequirements: equipmentRequirementOptions(exercise),
+      jointActions: jointActionsForExercise(exercise),
       region: exercise.muscle_subdivisions_emphasized || candidate.muscleScore?.regional_function || candidate.muscleScore?.regionalFunction || "general",
       stability: String(exercise.stability_demand || "moderate"),
       loading: repLow <= 6 ? "high_load" : repLow >= 10 ? "moderate_light_load" : "moderate_load"
@@ -1689,20 +1755,21 @@
   function rankExercisePool(evidenceInput, muscleGroupId, options = {}) {
     const evidence = evidenceInput.personal ? evidenceInput : normalizeEvidenceBundle(evidenceInput);
     const maxCandidates = clamp(number(options.maxCandidates, DEFAULT_POLICY.candidatePoolSize), 1, 5);
-    const availableEquipment = asArray(options.availableEquipment).map(equipmentFamily);
+    const availableEquipment = asArray(options.availableEquipment);
     let candidates = buildMergedExerciseCandidates(evidence, muscleGroupId, options);
     const excludedCandidates = [];
-    if (availableEquipment.length) {
+    if (availableEquipment.length && !availableEquipment.includes("all")) {
       const compatible = candidates.filter((candidate) => {
-        const family = equipmentFamily(candidate.researchExercise?.equipment);
-        const eligible = availableEquipment.includes(family) || (candidate.source === "personal_only" && family === "other");
-        if (!eligible) excludedCandidates.push({
+        const compatibility = equipmentCompatible(candidate.researchExercise || candidate.personalScore || {}, availableEquipment);
+        if (!compatibility.eligible) excludedCandidates.push({
           exerciseId: candidate.exerciseId,
           exerciseName: candidate.exerciseName,
           reasonCode: "equipment_unavailable",
-          explanation: `Requires ${family.replaceAll("_", " ")}, which is not in the selected equipment list.`
+          explanation: candidate.source === "personal_only" && !compatibility.requirements.length
+            ? "Excluded because verified equipment requirements are missing while equipment restrictions are active."
+            : `Requires ${compatibility.requirements.map((option) => option.join(" + ")).join(" or ")}; the selected equipment is missing ${compatibility.missing.join(" + ")}.`
         });
-        return eligible;
+        return compatibility.eligible;
       });
       candidates = compatible;
     }
@@ -1776,6 +1843,8 @@
         intendedRole: role,
         primaryMuscles,
         secondaryMuscles: splitMulti(candidate.researchExercise?.secondary_muscles),
+        equipmentRequirements: equipmentRequirementOptions(candidate.researchExercise || candidate.personalScore),
+        jointActions: jointActionsForExercise(candidate.researchExercise || candidate.personalScore),
         recommendedSetStructure: structure.setStructure,
         setStructureReason: structure.reasoning,
         recommendedSetRange: workingSets,
@@ -1896,7 +1965,18 @@
 
   function candidateProgramFit(candidate, portfolio = [], policy = DEFAULT_POLICY) {
     const others = portfolio.filter((item) => item.exerciseId !== candidate.exerciseId);
-    const samePattern = others.filter((item) => item.diversitySignature?.movement === candidate.diversitySignature?.movement);
+    const redundancyWith = (other) => {
+      const candidatePattern = normalizeText(candidate.diversitySignature?.movement);
+      const otherPattern = normalizeText(other.diversitySignature?.movement);
+      if (!candidatePattern || candidatePattern === "unknown" || candidatePattern !== otherPattern) return false;
+      const candidatePrimary = new Set(asArray(candidate.primaryMuscles).map(muscleFamily));
+      const otherPrimary = asArray(other.primaryMuscles).map(muscleFamily);
+      if (!otherPrimary.some((muscle) => candidatePrimary.has(muscle))) return false;
+      const candidateActions = new Set(asArray(candidate.jointActions || candidate.diversitySignature?.jointActions));
+      const otherActions = asArray(other.jointActions || other.diversitySignature?.jointActions);
+      return !candidateActions.size || !otherActions.length || otherActions.some((action) => candidateActions.has(action));
+    };
+    const redundant = others.filter(redundancyWith);
     const sameEquipment = others.filter((item) => item.diversitySignature?.equipment === candidate.diversitySignature?.equipment);
     const spinalTotal = sum(others.map((item) => item.scores?.spinalLoad));
     const gripTotal = sum(others.map((item) => item.scores?.gripDemand));
@@ -1904,13 +1984,13 @@
     const positiveFactors = [];
     const limitingFactors = [];
     let fit = 94;
-    if (!samePattern.length) positiveFactors.push("Adds a distinct movement pattern to the program.");
+    if (!redundant.length) positiveFactors.push("Adds a mechanically distinct pattern or target-muscle role to the program.");
     if (candidate.scores.recoveryEfficiency >= 70) positiveFactors.push("Personal or blended evidence supports good recovery efficiency.");
     if (candidate.scores.easeOfProgression >= 75) positiveFactors.push("Load or repetition progression is easy to measure.");
     if (candidate.scores.personalEvidenceWeight >= 0.6) positiveFactors.push("Adequate comparable personal evidence informs the estimate.");
-    if (samePattern.length >= 2) {
-      fit -= 12 + (samePattern.length - 2) * 5;
-      limitingFactors.push(`Redundant with ${samePattern.slice(0, 3).map((item) => item.exerciseName).join(", ")} in the same movement pattern.`);
+    if (redundant.length >= 2) {
+      fit -= 12 + (redundant.length - 2) * 5;
+      limitingFactors.push(`Mechanically redundant with ${redundant.slice(0, 3).map((item) => item.exerciseName).join(", ")}: shared primary muscle, movement pattern, and joint action.`);
     }
     if (sameEquipment.length >= 4) fit -= 4;
     if (candidate.scores.spinalLoad >= 70 && spinalTotal >= policy.maximumSessionSpinalLoad * 2) {
@@ -2094,8 +2174,8 @@
       if (highFatigue.length > policy.maximumHighFatigueCompoundsPerSession) warnings.push({ severity: "serious", type: "compound_concentration", sessionId: session.id, exerciseIds: highFatigue.map((item) => item.exerciseId), conflict: `Too many high-fatigue compounds in ${session.name}: ${highFatigue.map((item) => item.exerciseName).join(", ")}.`, why: "The session concentrates systemic fatigue and may make later exercises poor-quality work.", recommendation: "Distribute the compounds across the week or replace the lowest-priority one with a lower-fatigue accessory." });
       if (session.gripDemand > policy.maximumSessionGripDemand) warnings.push({ severity: "review", type: "grip_fatigue", sessionId: session.id, exerciseIds: session.exercises.filter((item) => item.scores.gripDemand >= 65).map((item) => item.exerciseId), conflict: `Grip demand is concentrated in ${session.name}.`, why: "Grip may limit target-muscle performance across pulls, rows, carries, and hinges.", recommendation: "Separate grip-limited lifts, use straps where appropriate, or choose a supported/cable alternative." });
       if (session.estimatedDurationMinutes > policy.sessionDurationMaximumMinutes) warnings.push({ severity: "serious", type: "session_duration", sessionId: session.id, exerciseIds: session.exercises.map((item) => item.exerciseId), conflict: `${session.name} is estimated at ${session.estimatedDurationMinutes} minutes.`, why: "An overly long session can reduce adherence and set quality.", recommendation: "Move accessory work to a shorter day or reduce redundant sets." });
-      const patterns = groupBy(session.exercises, (item) => item.diversitySignature?.movement || "unknown");
-      patterns.forEach((items, pattern) => { if (items.length >= 3) warnings.push({ severity: "review", type: "redundant_pattern", sessionId: session.id, exerciseIds: items.map((item) => item.exerciseId), conflict: `${items.map((item) => item.exerciseName).join(", ")} repeat the ${pattern.replaceAll("_", " ")} pattern in ${session.name}.`, why: "Redundant patterns can add fatigue without adding a distinct role.", recommendation: "Keep the best progression lift and replace another with a different resistance profile or regional emphasis." }); });
+      const patterns = groupBy(session.exercises.filter((item) => item.diversitySignature?.movement && item.diversitySignature.movement !== "unknown"), (item) => `${item.diversitySignature.movement}|${muscleFamily(item.primaryMuscles?.[0] || item.muscleGroupId)}`);
+      patterns.forEach((items, signature) => { if (items.length >= 3) { const [pattern, muscle] = signature.split("|"); warnings.push({ severity: "review", type: "redundant_pattern", sessionId: session.id, exerciseIds: items.map((item) => item.exerciseId), conflict: `${items.map((item) => item.exerciseName).join(", ")} repeat the ${pattern.replaceAll("_", " ")} pattern for ${muscle.replaceAll("_", " ")} in ${session.name}.`, why: "These exercises share a primary target and movement pattern; repeated versions can add fatigue without a distinct role.", recommendation: "Keep the best progression lift and replace another with a different joint action, resistance profile, or regional emphasis." }); } });
     });
     const musclePlans = slots.map((slot) => {
       const selected = portfolio.filter((item) => item.programSlotIds.includes(slot.id));
@@ -2159,6 +2239,12 @@
     const sessions = distributePortfolioAcrossSessions(portfolio, { ...options, slots, trainingDays: mesocycle.trainingDays, type: mesocycle.type });
     slots.forEach((slot) => { slot.plannedSessionIds = sessions.filter((session) => session.exercises.some((item) => item.programSlotIds.includes(slot.id))).map((session) => session.id); });
     const programReview = reviewFullProgram(portfolio, sessions, slots, evidence, options);
+    asArray(mesocycle.equipmentUnavailableMuscleGroupIds).forEach((muscleGroupId) => {
+      if (!programReview.warnings.some((warning) => warning.type === "equipment_blocks_muscle" && warning.muscleGroupId === muscleGroupId)) programReview.warnings.push({ severity: "blocking", type: "equipment_blocks_muscle", muscleGroupId, sessionId: null, exerciseIds: [], conflict: `${muscleGroupId.replaceAll("_", " ")} has no exercise compatible with the selected equipment.`, why: "This muscle is in scope, but every known candidate requires equipment that is unavailable or has incomplete verified equipment metadata.", recommendation: "Add compatible equipment, add a verified exercise to the library, or intentionally remove this muscle from scope." });
+      if (!programReview.musclePlans.some((plan) => plan.muscleGroupId === muscleGroupId)) programReview.musclePlans.push({ muscleGroupId, weeklyTargetRange: { min: 0, target: 0, max: 0 }, weeklyTargetVolume: 0, plannedFrequency: 0, targetFrequency: 0, selectedExerciseIds: [], directSets: 0, indirectSets: 0, effectiveSets: 0, targetMet: false, localFatigue: 0, programWideFatigue: 0, sessionIds: [], overlapNotes: "No equipment-compatible exercise is currently available." });
+    });
+    programReview.blockingIssueCount = programReview.warnings.filter((item) => item.severity === "blocking").length;
+    programReview.seriousWarningCount = programReview.warnings.filter((item) => ["blocking", "serious"].includes(item.severity)).length;
     return { ...mesocycle, pools, programSlots: slots, selectedPortfolio: portfolio, activeExercises: portfolio, sessions, programReview, planningStep: Math.max(number(mesocycle.planningStep, 1), 5) };
   }
 
@@ -2168,11 +2254,13 @@
     const createdAt = options.createdAt || isoNow(options.clock);
     const durationWeeks = chooseMesocycleDuration(evidence, { ...options, type });
     const poolOptions = { ...options, mesocycleType: type, maxCandidates: 5 };
+    const unrestrictedPools = consolidateProgramPools(buildAllCandidatePools(evidence, { ...poolOptions, availableEquipment: [] }));
     const allPools = consolidateProgramPools(buildAllCandidatePools(evidence, poolOptions));
-    const availableMuscleGroupIds = Object.keys(allPools);
+    const availableMuscleGroupIds = Object.keys(unrestrictedPools);
     const requestedScope = asArray(options.includedMuscleGroupIds).map(muscleFamily).filter(Boolean);
     const includedMuscleGroupIds = requestedScope.length ? unique(requestedScope).filter((id) => availableMuscleGroupIds.includes(id)) : availableMuscleGroupIds;
     const pools = Object.fromEntries(Object.entries(allPools).filter(([muscleGroupId]) => includedMuscleGroupIds.includes(muscleGroupId)));
+    const equipmentUnavailableMuscleGroupIds = includedMuscleGroupIds.filter((muscleGroupId) => !pools[muscleGroupId]?.candidates?.length);
     const majorMuscleGroups = new Set(["chest", "upper_back", "lats", "quads", "hamstrings", "glutes", "front_delts", "side_delts", "rear_delts"]);
     const omittedMuscleGroups = availableMuscleGroupIds.filter((id) => !includedMuscleGroupIds.includes(id)).map((muscleGroupId) => ({
       muscleGroupId,
@@ -2188,7 +2276,7 @@
     const id = options.id || `meso_${normalizeText(type)}_${dateOnly(createdAt).replace(/-/g, "")}_${stableHash({ type, durationWeeks, groups: Object.keys(pools), createdAt }).slice(0, 6)}`;
     const draft = {
       id,
-      schemaVersion: "mesocycle/2.2.0",
+      schemaVersion: "mesocycle/2.3.0",
       type,
       name: options.name || ({
         [MESOCYCLE_TYPES.PRIMARY]: "Primary progression mesocycle",
@@ -2214,6 +2302,7 @@
       planningStep: 3,
       availableMuscleGroupIds,
       includedMuscleGroupIds,
+      equipmentUnavailableMuscleGroupIds,
       omittedMuscleGroups,
       scopeConfirmed: omittedMuscleGroups.length === 0,
       currentProgramExerciseIds: asArray(options.currentProgramExerciseIds || options.currentExerciseIds),
@@ -2877,6 +2966,9 @@
     determineProgressionDecision,
     assessDeloadNeed,
     rankExercisePool,
+    equipmentRequirementOptions,
+    equipmentCompatible,
+    jointActionsForExercise,
     representedMuscleGroups,
     muscleFamily,
     buildAllCandidatePools,

@@ -96,6 +96,39 @@ test("Templates initial frame stays progressive under large history", async ({ p
   await expect(editor.locator(".disclosure-body")).toHaveCount(0);
 });
 
+test("Mesocycle Planner follows dependencies and enforces restricted equipment", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === "desktop", "Restricted-equipment interaction is covered at the narrow mobile viewport; desktop runs the complete full-review workflow.");
+  test.setTimeout(120_000);
+  await page.locator('[data-tab="plan"]').waitFor({ state: "visible", timeout: 90_000 });
+  await page.locator('[data-tab="plan"]').click();
+  await expect(page.locator(".mesocycle-planner h2")).toContainText("Mesocycle planner", { timeout: 30_000 });
+  const workflow = await page.evaluate(() => [...document.querySelectorAll(".planner-step span")].map((item) => item.textContent.trim()));
+  expect(workflow).toEqual(["Objective & Schedule", "Equipment", "Training Scope", "Exercise Portfolio", "Program Slots", "Full Review", "Confirm", "Ready"]);
+
+  const allEquipment = page.locator('[data-action="toggle-mesocycle-equipment"][data-value="all"]');
+  const bodyweight = page.locator('[data-action="toggle-mesocycle-equipment"][data-value="bodyweight"]');
+  expect(await allEquipment.count()).toBe(1);
+  expect(await bodyweight.count()).toBe(1);
+  await expect(allEquipment).toHaveAttribute("aria-pressed", "true");
+  await bodyweight.click();
+  await expect(allEquipment).toHaveAttribute("aria-pressed", "false");
+  await expect(bodyweight).toHaveAttribute("aria-pressed", "true");
+
+  const chestScope = page.locator('[data-action="mesocycle-muscle-scope"][value="chest"]');
+  expect(await chestScope.count()).toBe(1);
+  await chestScope.setChecked(false);
+  const build = page.locator('[data-action="preview-mesocycle"]');
+  expect(await build.count()).toBe(1);
+  await build.click();
+  await expect(page.getByText("Intentionally Omitted Muscle Groups", { exact: true })).toBeVisible();
+  expect(await page.getByText("Why Train This Muscle Group?", { exact: true }).count()).toBeGreaterThan(0);
+
+  const candidateNames = await page.evaluate(() => [...document.querySelectorAll(".mesocycle-candidate .candidate-heading > strong")].map((item) => item.textContent.trim()));
+  expect(candidateNames.some((name) => /cable|barbell|dumbbell|machine|leg press/i.test(name))).toBe(false);
+  expect(await page.locator(".program-warning.blocking").count()).toBeGreaterThan(0);
+  expect(await page.getByText("Unknown", { exact: true }).count()).toBe(0);
+});
+
 test("design-system source does not accumulate one-off styling", async () => {
   const source = fs.readFileSync(path.join(__dirname, "..", "..", "index.html"), "utf8");
   const style = source.match(/<style>([\s\S]*?)<\/style>/)?.[1] || "";
@@ -119,8 +152,10 @@ test("the authoritative UI documentation remains present", async () => {
 });
 
 test("Mesocycle Planner progresses from compact setup to full review", async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
   const nav = page.getByRole("navigation", { name: "Main navigation" });
   await nav.getByRole("button", { name: /Templates$/ }).click();
+  await page.getByRole("button", { name: /Fatigue Management/ }).waitFor({ state: "visible", timeout: 60_000 });
   await page.getByRole("button", { name: /Fatigue Management/ }).click();
   await expect(page.getByRole("button", { name: /Fatigue Management/ })).toHaveAttribute("aria-pressed", "true");
   await page.getByLabel("Duration in Weeks").fill("4");
@@ -128,6 +163,7 @@ test("Mesocycle Planner progresses from compact setup to full review", async ({ 
   await page.getByRole("button", { name: "Dumbbells" }).click();
   await page.getByRole("button", { name: "Machines" }).click();
   await expect(page.getByRole("button", { name: "Dumbbells" })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "All Equipment" }).click();
   await page.getByRole("button", { name: "Build full-program draft" }).click();
   await expect(page.getByLabel("Mesocycle summary")).toBeVisible();
   await expect(page.getByText("Selected Program-Wide Exercise Portfolio")).toBeVisible();

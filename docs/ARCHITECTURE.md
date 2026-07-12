@@ -117,7 +117,7 @@ flowchart TD
 
 Mesocycle construction is portfolio-first: normalized evidence creates traceable candidate pools; research subdivisions are consolidated into user-facing muscle-family pools; program slots derive weekly volume/frequency requirements and select a coherent portfolio; the distributor allocates weekly sets across named split sessions; the review aggregates fatigue, spinal/grip demand, duration, overlap, direct/indirect volume, frequency, and recovery conflicts. Templates generated from a mesocycle consume these planned sessions rather than independently choosing exercises. Candidate selection reruns portfolio fit, set allocation, placement, and validation. `mesocycle/2.1.0` adds weekly set ranges, per-session planned sets/exposure indexes, and blocking-issue count.
 
-`mesocycle/2.2.0` adds explicit scope persistence: `availableMuscleGroupIds`, `includedMuscleGroupIds`, structured `omittedMuscleGroups`, and `scopeConfirmed`. Scope filtering occurs before slot and portfolio generation. Generated templates use each session exercise's allocated `plannedSets`, not a newly recomputed generic exercise target.
+`mesocycle/2.2.0` adds explicit scope persistence: `availableMuscleGroupIds`, `includedMuscleGroupIds`, structured `omittedMuscleGroups`, and `scopeConfirmed`. Scope filtering occurs before slot and portfolio generation. Generated templates use each session exercise's allocated `plannedSets`, not a newly recomputed generic exercise target. `mesocycle/2.3.0` adds normalized candidate `equipmentRequirements` (OR paths containing AND requirements) and `jointActions`, which are persisted alongside the legacy research equipment/movement fields.
 
 Internal IDs remain persistence/engine values. The frontend `presentationLabel` adapter is the centralized display boundary for muscle IDs, roles, confidence states, structures, lifecycle enums, session IDs, and validation severity. New planner UI must pass internal values through that adapter rather than mutating persisted values.
 
@@ -162,7 +162,7 @@ Repository publication follows `AGENTS.md`: verified source, tests, schemas, pub
 
 ## Decisions, risks, and debt
 
-Mesocycle candidate detail remains progressively rendered: Templates defers the full planner review, the review renders one selected Program Slot, and unselected alternates return no markup until explicitly expanded. Standardized equipment IDs are stored in settings and passed unchanged to the engine equipment-family filter; user-facing equipment labels remain a UI concern.
+Mesocycle candidate detail remains progressively rendered: Templates defers the full planner review, the review renders one selected Program Slot, and unselected alternates return no markup until explicitly expanded. Standardized equipment IDs are stored in settings. Empty legacy selections normalize to explicit `all`; otherwise the engine requires one complete equipment option for each exercise. Multi-item requirements and alternative setups are evaluated before candidate scoring, so restricted candidates never enter portfolio, alternate, comparison, or session construction. A restricted personal-only record without verified equipment metadata fails closed and receives an inspectable exclusion reason.
 
 - **Decision:** Local-first static app minimizes infrastructure and account requirements.
 - **Decision:** One prescription snapshot feeds every app surface; tests enforce this.

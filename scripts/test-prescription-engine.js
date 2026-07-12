@@ -17,6 +17,9 @@ const {
   determineProgressionDecision,
   assessDeloadNeed,
   evaluateReadiness,
+  equipmentRequirementOptions,
+  equipmentCompatible,
+  candidateProgramFit,
   recommendationForSurface,
   serializeRecommendationSnapshot,
   deserializeRecommendationSnapshot,
@@ -621,6 +624,60 @@ test("cambered bench aliases resolve through the canonical eligible library", ()
   const visible = pool.candidates.some((candidate) => candidate.exerciseId === "ex_cambered_barbell_bench_press");
   const excluded = pool.excludedCandidates.some((candidate) => candidate.exerciseId === "ex_cambered_barbell_bench_press");
   assert(visible || excluded, "Eligible cambered bench must appear or carry an explicit exclusion reason");
+});
+
+test("equipment restrictions honor complete and alternative requirements", () => {
+  const bench = { exercise_id: "ex_barbell_bench_press", equipment: "barbell_and_bench" };
+  const nordic = { exercise_id: "ex_nordic_curl", equipment: "bodyweight" };
+  const row = { exercise_id: "ex_chest_supported_row", equipment: "dumbbell_or_machine" };
+  assert.deepStrictEqual(equipmentRequirementOptions(bench), [["barbell", "plates", "bench", "rack"]]);
+  assert.strictEqual(equipmentCompatible(bench, ["barbell", "plates", "bench", "rack"]).eligible, true, "barbell, plates, bench and rack should satisfy bench press");
+  assert.strictEqual(equipmentCompatible(bench, ["barbell", "rack"]).eligible, false, "missing bench and plates must reject bench press");
+  assert.strictEqual(equipmentCompatible(nordic, ["bodyweight"]).eligible, false, "Nordics require an anchor, not only floor space");
+  assert.strictEqual(equipmentCompatible(nordic, ["bodyweight", "nordic_anchor"]).eligible, true);
+  assert.strictEqual(equipmentCompatible(row, ["dumbbell"]).eligible, true, "an OR equipment path should be accepted");
+  assert.strictEqual(equipmentCompatible(row, ["selectorized_machine"]).eligible, true, "the machine alternative should be accepted");
+  assert.strictEqual(equipmentCompatible(row, ["bodyweight"]).eligible, false);
+  assert.strictEqual(equipmentCompatible(bench, ["all"]).eligible, true, "All Equipment is explicit unrestricted access");
+});
+
+test("bodyweight, dumbbell, barbell-rack, commercial, and mixed-home pools never leak unavailable equipment", () => {
+  const evidence = loadEvidenceFromFiles(path.resolve(__dirname, ".."), { includeSessionMetrics: false, includeWeeklyVolume: false });
+  const engine = createPrescriptionEngine(evidence);
+  const scenarios = [
+    ["bodyweight only", ["bodyweight"]],
+    ["dumbbells only", ["dumbbell"]],
+    ["barbell and rack", ["barbell", "plates", "bench", "rack"]],
+    ["full commercial gym", ["all"]],
+    ["mixed home gym", ["bodyweight", "pull_up_bar", "bands", "dumbbell", "bench"]]
+  ];
+  scenarios.forEach(([label, availableEquipment]) => {
+    const pools = engine.buildAllCandidatePools({ availableEquipment });
+    Object.values(pools).flatMap((pool) => pool.candidates).forEach((candidate) => {
+      const source = evidence.research.exerciseById.get(candidate.researchExerciseId) || {};
+      assert.strictEqual(equipmentCompatible(source, availableEquipment).eligible, true, `${label} leaked ${candidate.exerciseName}`);
+    });
+  });
+  const bodyweightPlan = engine.createMesocycle({ availableEquipment: ["bodyweight"], trainingDays: 3 });
+  bodyweightPlan.selectedPortfolio.forEach((candidate) => {
+    const source = evidence.research.exerciseById.get(candidate.researchExerciseId) || {};
+    assert.strictEqual(equipmentCompatible(source, ["bodyweight"]).eligible, true, `bodyweight plan leaked ${candidate.exerciseName}`);
+  });
+  assert(bodyweightPlan.programReview.warnings.some((warning) => warning.type === "equipment_blocks_muscle"), "restricted equipment must visibly block unsupported in-scope muscles rather than silently dropping them");
+});
+
+test("redundancy requires shared mechanics and primary target, not generic compound overlap", () => {
+  const baseScores = { overallRecommendationStrength: 80, recoveryEfficiency: 75, easeOfProgression: 80, personalEvidenceWeight: 0.6, spinalLoad: 75, gripDemand: 75, systemicFatigue: 75, jointStress: 40 };
+  const candidate = { exerciseId: "deadlift", exerciseName: "Deadlift", primaryMuscles: ["mg_spinal_erectors"], jointActions: ["hip_extension"], diversitySignature: { movement: "hinge", equipment: "barbell" }, scores: baseScores };
+  const unrelated = [
+    { exerciseId: "bench", exerciseName: "Bench Press", primaryMuscles: ["mg_chest_sternal"], jointActions: ["shoulder_horizontal_adduction"], diversitySignature: { movement: "horizontal_push", equipment: "barbell" }, scores: baseScores },
+    { exerciseId: "chin", exerciseName: "Chin-Up", primaryMuscles: ["mg_lats"], jointActions: ["shoulder_adduction"], diversitySignature: { movement: "vertical_pull", equipment: "bodyweight" }, scores: baseScores },
+    { exerciseId: "fly", exerciseName: "Cable Fly", primaryMuscles: ["mg_chest_sternal"], jointActions: ["shoulder_horizontal_adduction"], diversitySignature: { movement: "horizontal_push", equipment: "cable" }, scores: baseScores }
+  ];
+  const clean = candidateProgramFit(candidate, unrelated);
+  assert(!clean.limitingFactors.some((reason) => /redundant/i.test(reason)), "deadlift must not be redundant with bench, chin-up, or fly");
+  const hinges = ["Romanian Deadlift", "Stiff-Leg Deadlift"].map((name, index) => ({ exerciseId: `hinge_${index}`, exerciseName: name, primaryMuscles: ["mg_spinal_erectors"], jointActions: ["hip_extension"], diversitySignature: { movement: "hinge", equipment: "barbell" }, scores: baseScores }));
+  assert(candidateProgramFit(candidate, hinges).limitingFactors.some((reason) => /mechanically redundant/i.test(reason)), "multiple same-target hinges should trigger redundancy review");
 });
 
 test("URL loader tolerates unavailable protected personal sources and still loads research", async () => {

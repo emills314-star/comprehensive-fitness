@@ -40,12 +40,15 @@ assert.doesNotMatch(html, /It replaces the misleading former/, "Migration termin
 assert.match(html, /recommendation-badge[\s\S]*candidate-heading[\s\S]*Recommended for This Slot/, "Candidate badge, exercise name, and role need separate hierarchy");
 assert.match(html, /programReview\?\.blockingIssueCount[\s\S]*disabled/, "A blocking program review must prevent activation");
 assert.match(html, /Muscle Groups in Scope[\s\S]*mesocycle-muscle-scope/, "Planner must let the user choose every muscle group in scope");
-assert.match(html, /Intentionally Omitted Muscle Groups[\s\S]*Why Omitted\?[\s\S]*Add to Mesocycle[\s\S]*Keep These Exclusions and Continue/, "Omitted groups need concise reasons, add-back, and explicit-confirmation controls");
+assert.match(html, /Intentionally Omitted Muscle Groups[\s\S]*Why Train This Muscle Group\?[\s\S]*Add to Mesocycle[\s\S]*Keep These Exclusions and Continue/, "Omitted groups need education, add-back, and explicit-confirmation controls");
 assert.match(html, /importance === 'major'[\s\S]*Major Muscle Group/, "Major omissions need a stronger explanation marker");
 assert.match(html, /toggle-mesocycle-planner-review[\s\S]*Open Planner Review/, "Full mesocycle review must be progressively disclosed");
 assert.doesNotMatch(html.slice(html.indexOf("function renderHistoricalMesocycles()"), html.indexOf("function renderTemplates()")), /renderMesocycleCard\(/, "Historical mesocycles must not eagerly render full planner cards");
 assert.match(html, /primary_progression[\s\S]*alternative_exercise[\s\S]*lower_fatigue_resensitization[\s\S]*specialization/, "All four mesocycle types must be available");
 assert.match(html, /mesocycle-type-option[\s\S]*toggle-mesocycle-equipment/, "Setup must use compact purpose options and standardized equipment chips");
+assert.match(html, /Objective, Schedule, and Constraints[\s\S]*All Equipment[\s\S]*Muscle Groups in Scope/, "Planner setup must follow objective/schedule, equipment, then scope dependencies");
+assert.doesNotMatch(html, /Leave all unselected to allow the complete library/, "Equipment access must never depend on an ambiguous empty selection");
+assert.doesNotMatch(html, />Unknown</, "Planner cards must not expose meaningless Unknown metadata");
 assert.match(html, /toggle-mesocycle-alternates[\s\S]*View Alternates/, "Alternate candidates must remain collapsed until requested");
 assert.match(html, /program-slot-nav[\s\S]*jump-mesocycle-slot/, "Program slots need compact jump navigation");
 assert.match(html, /renderMesocycleCandidate[\s\S]*Deload and Rotation Triggers[\s\S]*Preferred Replacement/, "Candidate cards must explain progression, deload, rotation and replacement");

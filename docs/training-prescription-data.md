@@ -8,11 +8,11 @@ This document is the durable map for future recommendation-engine iterations. It
 | --- | --- | --- | --- |
 | Personal analysis pipeline | `1.1.0` | 2026-07-11 | `scripts/personal-fitness/` plus `personal_fitness_data/config/` |
 | Personal analysis methodology | `1.1.0` | 2026-07-11 | `personal_fitness_data/reports/analysis_metadata.json` |
-| Exercise-science database | `1.0.0` | 2026-07-11 | `research_database/source/database.js` |
+| Exercise-science database | `1.1.0` | 2026-07-11 | `research_database/source/database.js` |
 | App prescription schema | `2.0.0` | 2026-07-11 | `prescription-engine.js` and the app prescription JSON Schemas |
 | Push/sync operational database | `1.0.0` | deployed/verified 2026-07-11 | `docs/push-backend.md` and `api/` |
 
-The personal analysis metadata declares research database `1.0.0`, so these outputs were built against the same research release used by the app.
+The private personal-analysis metadata still declares research database `1.0.0`; the public app library is now `1.1.0` because it added canonical cambered-bench discovery. The runtime blends compatible records by persistent IDs/aliases and preserves both source versions in recommendation snapshots. **NEEDS REVIEW:** rebuild the private aggregate package when the next personal-analysis refresh is run so its declared research version matches the public library.
 
 The live operational database is separate from both evidence sources. Upstash Redis stores only installation-scoped push, timer, idempotency, and workout-sync records; it does not contain or replace the private personal-analysis package or the public research database. Its exact key and field inventory, free-tier resource regions, and current deployment status are maintained in `docs/push-backend.md`.
 
@@ -98,7 +98,7 @@ The app-facing contracts are intentionally separate from the personal-analysis s
 | Contract | Version | Canonical file | What it records |
 | --- | --- | --- | --- |
 | Exercise prescription | `2.0.0` | `schemas/exercise-prescription.v2.schema.json` | Exercise and muscle IDs; normal/progress/hold/light/deload/rotation action; role; set structure; working sets; reps; RPE/RIR; top and back-off details; rest; frequency; three-level volume; progression/hold/regression/deload/substitution rules; readiness; full score breakdown; staleness; deload scope; evidence weights; confidence; explanation |
-| Mesocycle plan and candidate pools | `mesocycle/2.2.0` | `schemas/mesocycle-plan.v1.schema.json` | User-selected muscle scope; structured major/smaller omissions and confirmation; four mesocycle types; evidence-derived duration; consolidated muscle-family slots; weekly set ranges/exposure targets; diversified alternatives; selected portfolio; per-session set allocation; split-aware sessions; direct/indirect muscle plans; blocking validation; outcome and review |
+| Mesocycle plan and candidate pools | `mesocycle/2.3.0` | `schemas/mesocycle-plan.v1.schema.json` | User-selected muscle scope; structured omissions and education; four mesocycle types; normalized equipment requirement alternatives and joint actions; evidence-derived duration; consolidated muscle-family slots; weekly set ranges/exposure targets; diversified alternatives; selected portfolio; per-session set allocation; direct/contributing muscle plans; blocking validation; outcome and review |
 | Recommendation snapshot and overrides | `1.0.0` | `schemas/recommendation-snapshot.v1.schema.json` | Recommendation/engine/personal/research versions; mesocycle; exercise and muscle scores; base and readiness-adjusted final prescriptions; explanation/evidence; checksum; append-only manual override entries; prior final prescription; override outcomes and later comparison |
 
 Candidate score objects expose the distinct dimensions used by ranking: personal hypertrophy support, progression quality, recovery efficiency, repeatability, muscle specificity, lengthened-position loading, stability, ease of progression, joint tolerance, fatigue cost, research support, personal-data confidence, and overall recommendation strength. Pool rank is deliberately separate from raw score rank because movement pattern, equipment, regional emphasis, stability, loading range, recovery cost, and redundancy can change the diversified order.
