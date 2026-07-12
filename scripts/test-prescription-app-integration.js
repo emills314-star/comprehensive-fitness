@@ -94,8 +94,27 @@ assert.deepEqual(unlocked.planningProgress.completedSteps, ["guide", "setup"], "
 const sameDayDuplicate = guidedApi.addExercise(guidedApi.addExercise(guided, guided.guidedDays[0].id, bench), guided.guidedDays[0].id, { ...bench, exerciseId: "bench-alias", researchExerciseId: "bench" });
 assert.equal(sameDayDuplicate.assignmentError.reason, "already_added_to_day", "canonical aliases must not duplicate an exercise within one day");
 const statusRows = guidedApi.muscleTargetStatuses(repeated, repeatedLedger, () => ({ min: 8, target: 10, max: 12 }));
-assert.equal(statusRows[0].setsRemaining, 2, "sets remaining must use the direct-set minimum");
+assert.equal(statusRows[0].setsRemaining, 2, "sets remaining must use total effective sets");
 assert.equal(statusRows[0].frequencyRemaining, 0, "two programmed exposures must satisfy normal frequency");
+const fractionalDraft = guidedApi.createDraft({ trainingDays: 2, includedMuscleGroupIds: ["triceps"] });
+const fractionalExercise = { exerciseId: "press", name: "Press", workingSets: 4, muscleRelationships: [{ muscle_group_id: "triceps", relationship_type: "meaningful_fractional_load", fractional_set_credit: 0.5 }] };
+const fractionalBothDays = guidedApi.addExercise(guidedApi.addExercise(fractionalDraft, fractionalDraft.guidedDays[0].id, fractionalExercise), fractionalDraft.guidedDays[1].id, fractionalExercise);
+const fractionalLedger = guidedApi.volumeLedger(fractionalBothDays, (assignment) => assignment.muscleRelationships.map((item) => ({ muscleGroupId: item.muscle_group_id, relationshipType: item.relationship_type, setContribution: item.fractional_set_credit })));
+const fractionalStatus = guidedApi.muscleTargetStatuses(fractionalBothDays, fractionalLedger, () => ({ min: 2, target: 6, max: 12 }))[0];
+assert.equal(fractionalStatus.directSets, 0, "fractional volume must remain transparent");
+assert.equal(fractionalStatus.totalEffectiveSets, 4, "credited fractional work must count toward total effective volume");
+assert.equal(fractionalStatus.overallStatus, "within", "sufficient effective volume plus frequency must satisfy the muscle target");
+const oneDayFractional = guidedApi.addExercise(fractionalDraft, fractionalDraft.guidedDays[0].id, fractionalExercise);
+const oneDayLedger = guidedApi.volumeLedger(oneDayFractional, (assignment) => assignment.muscleRelationships.map((item) => ({ muscleGroupId: item.muscle_group_id, relationshipType: item.relationship_type, setContribution: item.fractional_set_credit })));
+const oneDayStatus = guidedApi.muscleTargetStatuses(oneDayFractional, oneDayLedger, () => ({ min: 2, target: 6, max: 12 }))[0];
+assert.equal(oneDayStatus.volumeStatus, "within", "volume must be independently satisfied by fractional work");
+assert.equal(oneDayStatus.overallStatus, "needs_frequency", "missing frequency must override a successful volume badge");
+assert.match(html, /Needs Attention/, "the Build UI must separate unresolved muscles from Completed");
+assert.match(html, /Mesocycle Completed/, "successful creation must have a persistent completion state");
+assert.match(html, /Why This Recommendation/, "recommendation explanation labels must be standardized");
+assert.doesNotMatch(html, /Why\? \/ Evidence/, "legacy recommendation labels must not leak into the UI");
+assert.match(html, /intentionalReduction/, "prescribed light work must be marked so fatigue flags do not misclassify it as weakness");
+assert.match(html, /roundLoadForUnit/, "all displayed and edited loads must use the shared precision boundary");
 
 const evidence = engineApi.loadEvidenceFromFiles(root);
 const engine = engineApi.createPrescriptionEngine(evidence);

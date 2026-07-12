@@ -32,6 +32,8 @@ const runtime = new Function(`
   function normalizeSetTypeCode(value) { return ({ working: "straight", work: "straight", "back-off": "backoff" })[String(value || "straight").toLowerCase()] || String(value || "straight").toLowerCase(); }
   function defaultProgressionRule() { return "Progress inside the programmed range."; }
   function formatLoadNumber(value) { return String(Number(value)); }
+  function roundLoadForUnit(value, unit, increment) { const step = unit === "lb" ? Math.max(0.5, Number(increment || 0.5)) : Math.max(0.001, Number(increment || 0.001)); return Math.round(Number(value || 0) / step) * step; }
+  function resistanceLoad(value) { return Number(value?.weight || value?.targetWeight || 0); }
   function targetRangeText(low, high) { return Number(low) === Number(high) ? String(Number(high)) : Number(low) + "-" + Number(high); }
   ${extractFunction("progressionProfileForExercise")}
   ${extractFunction("resolveProgrammedRepRange")}

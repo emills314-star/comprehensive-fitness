@@ -5,8 +5,8 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const BUILDER_VERSION = "guided-mesocycle/1.0.0";
-  const RULES_VERSION = "planning-rules/1.0.0";
+  const BUILDER_VERSION = "guided-mesocycle/1.1.0";
+  const RULES_VERSION = "planning-rules/1.1.0";
   const STEPS = Object.freeze(["guide", "setup", "build", "check", "create"]);
   const PLANNING_RULES = Object.freeze({
     version: RULES_VERSION,
@@ -27,6 +27,7 @@
   });
 
   const number = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
+  const sum = (values) => values.reduce((total, value) => total + number(value), 0);
   const round = (value) => Math.round(value * 10) / 10;
   const clone = (value) => JSON.parse(JSON.stringify(value));
   const uid = () => `guided-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
@@ -145,13 +146,19 @@
       const target = targetFor(muscleGroupId, draft);
       const priority = draft.musclePriorities?.[muscleGroupId] || "normal";
       const frequencyTarget = priority === "maintenance" ? PLANNING_RULES.maintenanceFrequency : priority === "specialization" ? PLANNING_RULES.specializationFrequency : PLANNING_RULES.normalFrequency;
-      const status = total.directSets < target.min ? "below" : total.weightedSets > target.max ? "above" : "within";
-      const setsRemaining = Math.max(0, round(target.min - total.directSets));
+      const volumeStatus = total.weightedSets < target.min ? "below" : total.weightedSets > target.max ? "above" : "within";
+      const setsRemaining = Math.max(0, round(target.min - total.weightedSets));
       const frequencyRemaining = Math.max(0, frequencyTarget - total.exposureDayIds.length);
+      const frequencyStatus = frequencyRemaining > 0 ? "needed" : "satisfied";
+      const distributionIssue = total.exposureDayIds.length === 1 && total.weightedSets > Math.max(target.min, target.target || target.min);
+      const overallStatus = volumeStatus === "above" ? "above"
+        : frequencyRemaining > 0 ? "needs_frequency"
+          : volumeStatus === "below" ? "below"
+            : distributionIssue ? "needs_distribution" : "within";
       const priorityWeight = priority === "specialization" ? 1.35 : priority === "priority" ? 1.2 : priority === "maintenance" ? 0.65 : 1;
       const normalizedDeficit = target.min ? setsRemaining / target.min : 0;
       const recommendationScore = round((total.directSets === 0 ? 50 : 0) + normalizedDeficit * 35 * priorityWeight + frequencyRemaining * 18 + (frequencyRemaining > remainingTrainingDays ? 25 : 0));
-      return { muscleGroupId, ...total, targetRange: target, setsRemaining, headroom: Math.max(0, round(target.max - total.weightedSets)), status, priority, frequencyTarget, frequencyRemaining, remainingTrainingDays, recommendationScore };
+      return { muscleGroupId, ...total, totalEffectiveSets: total.weightedSets, targetRange: target, setsRemaining, headroom: Math.max(0, round(target.max - total.weightedSets)), status: overallStatus, overallStatus, volumeStatus, frequencyStatus, distributionIssue, priority, frequencyTarget, frequencyRemaining, remainingTrainingDays, recommendationScore };
     }).sort((a, b) => b.recommendationScore - a.recommendationScore || b.setsRemaining - a.setsRemaining || a.muscleGroupId.localeCompare(b.muscleGroupId));
   }
 
@@ -166,27 +173,38 @@
       day.assignments.forEach((assignment) => { const key = canonicalExerciseId(assignment); if (key) canonicalCounts.set(key, (canonicalCounts.get(key) || 0) + 1); });
       canonicalCounts.forEach((count, canonicalId) => { if (count > 1) findings.push({ id: `duplicate-${day.id}-${canonicalId}`, severity: "blocking", dayId: day.id, title: `${day.name} repeats the same exercise`, why: "An exact canonical exercise may appear only once in one training day. Increase or restructure the existing assignment instead.", actions: ["Merge sets", "Remove duplicate"] }); });
       if (!day.assignments.length) findings.push({ id: `empty-${day.id}`, severity: "blocking", dayId: day.id, title: `${day.name} is empty`, why: "Every configured training day needs at least one exercise.", actions: ["Add exercise", "Reduce training days"] });
-      if (daily?.workingSets > PLANNING_RULES.maxWorkingSetsPerDay) findings.push({ id: `sets-${day.id}`, severity: "strong_warning", dayId: day.id, title: `${day.name} has ${daily.workingSets} working sets`, why: `This exceeds the ${PLANNING_RULES.maxWorkingSetsPerDay}-set practical limit.`, actions: ["Reduce sets", "Move an exercise"] });
+      if (daily?.workingSets > PLANNING_RULES.maxWorkingSetsPerDay) findings.push({ id: `sets-${day.id}`, severity: "blocking", dayId: day.id, title: `${day.name} has ${daily.workingSets} working sets`, why: `This exceeds the hard ${PLANNING_RULES.maxWorkingSetsPerDay}-set daily limit.`, actions: ["Reduce sets", "Move an exercise"] });
       if (daily?.exerciseCount > PLANNING_RULES.practicalExerciseRange[1]) findings.push({ id: `count-${day.id}`, severity: "advisory", dayId: day.id, title: `${day.name} has ${daily.exerciseCount} exercises`, why: "Setup changes and transition time may make this session longer than expected.", actions: ["Consolidate exercises"] });
-      (daily?.muscles || []).filter((muscle) => muscle.exercises.filter((item) => item.type === "direct_load").length > PLANNING_RULES.maxExercisesPerMusclePerDay).forEach((muscle) => findings.push({ id: `same-day-${day.id}-${muscle.muscleGroupId}`, severity: "strong_warning", dayId: day.id, muscleGroupId: muscle.muscleGroupId, title: `More than two direct exercises target ${muscle.muscleGroupId} on ${day.name}`, why: "A third same-day exercise often adds fatigue and setup time without enough distinct stimulus.", actions: ["Remove one exercise", "Move one exercise"] }));
+      (daily?.muscles || []).filter((muscle) => muscle.exercises.filter((item) => item.type === "direct_load").length > PLANNING_RULES.maxExercisesPerMusclePerDay).forEach((muscle) => findings.push({ id: `same-day-${day.id}-${muscle.muscleGroupId}`, severity: "blocking", dayId: day.id, muscleGroupId: muscle.muscleGroupId, title: `More than two direct exercises target ${muscle.muscleGroupId} on ${day.name}`, why: "The guided builder permits no more than two exercises for one muscle in a training day.", actions: ["Remove one exercise", "Move one exercise"] }));
+      const estimatedMinutes = day.assignments.reduce((sum, assignment) => sum + number(assignment.workingSets) * (number(assignment.restSeconds, 90) + 45) / 60 + 1.5, 0);
+      const systemic = sum(day.assignments.map((assignment) => number(assignment.systemicFatigue) * Math.max(1, number(assignment.workingSets)) / 3));
+      const spinal = sum(day.assignments.map((assignment) => number(assignment.spinalLoad) * Math.max(1, number(assignment.workingSets)) / 3));
+      const demanding = day.assignments.filter((assignment) => number(assignment.systemicFatigue) >= 65 || number(assignment.spinalLoad) >= 65);
+      if (estimatedMinutes > 100) findings.push({ id: `duration-${day.id}`, severity: "warning", dayId: day.id, title: `${day.name} may take about ${Math.round(estimatedMinutes)} minutes`, why: "Working sets, programmed rest, warm-up/setup allowance, and exercise transitions make the session impractically long for most gym sessions.", actions: ["Consolidate exercises", "Move work to another day"] });
+      if (demanding.length >= 3 || systemic > 420 || spinal > 300) findings.push({ id: `fatigue-${day.id}`, severity: "warning", dayId: day.id, title: `${day.name} concentrates high fatigue`, why: `${demanding.map((item) => item.name).join(", ") || "The selected exercises"} create substantial systemic or spinal demand that may compromise later work and recovery.`, actions: ["Reorder priority work", "Replace one demanding lift", "Move one lift"] });
+    });
+    draft.guidedDays.slice(0, -1).forEach((day, index) => {
+      const next = draft.guidedDays[index + 1];
+      const fatigue = (candidate) => sum(candidate.assignments.map((assignment) => number(assignment.systemicFatigue) + number(assignment.spinalLoad) + number(assignment.jointStress)));
+      if (fatigue(day) >= 300 && fatigue(next) >= 300) findings.push({ id: `recovery-spacing-${day.id}-${next.id}`, severity: "warning", dayId: next.id, title: `${day.name} and ${next.name} are consecutive high-fatigue sessions`, why: "Back-to-back systemic, spinal, or joint demand can impair the later session even when each day is acceptable in isolation.", actions: ["Move a demanding exercise", "Insert recovery spacing", "Accept the schedule tradeoff"] });
     });
     (draft.includedMuscleGroupIds || []).forEach((muscleGroupId) => {
       const total = ledger.muscleTotals.find((item) => item.muscleGroupId === muscleGroupId) || { directSets: 0, fractionalSets: 0, weightedSets: 0, exposureDayIds: [] };
       const target = targetFor(muscleGroupId, draft) || { min: 4, target: 8, max: 12 };
       const priority = draft.musclePriorities?.[muscleGroupId] || "normal";
       const frequencyTarget = priority === "maintenance" ? PLANNING_RULES.maintenanceFrequency : priority === "specialization" ? PLANNING_RULES.specializationFrequency : PLANNING_RULES.normalFrequency;
-      if (total.directSets <= 0) findings.push({ id: `missing-${muscleGroupId}`, severity: "strong_warning", muscleGroupId, title: `${muscleGroupId} has no direct work`, why: "Fractional participation does not automatically replace a selected muscle group's direct training.", actions: ["Add suggested exercise", "Accept intentional omission"] });
-      else if (total.directSets < number(target.min, 0)) findings.push({ id: `low-${muscleGroupId}`, severity: "strong_warning", muscleGroupId, title: `${muscleGroupId} is below its direct-set target`, why: `${total.directSets} direct sets are planned; the current evidence-adjusted range begins at ${target.min}.`, actions: ["Add sets", "Accept lower volume"] });
-      if (total.weightedSets > number(target.max, 99)) findings.push({ id: `high-${muscleGroupId}`, severity: "strong_warning", muscleGroupId, title: `${muscleGroupId} is above its weighted-volume range`, why: `${total.weightedSets} weighted sets exceed the current upper target of ${target.max}.`, actions: ["Reduce sets", "Accept specialization volume"] });
-      if (total.exposureDayIds.length < frequencyTarget) findings.push({ id: `frequency-${muscleGroupId}`, severity: "strong_warning", muscleGroupId, title: `${muscleGroupId} is trained in ${total.exposureDayIds.length} weekly session${total.exposureDayIds.length === 1 ? "" : "s"}`, why: `The selected ${priority} priority uses a practical default of ${frequencyTarget} meaningful exposure${frequencyTarget === 1 ? "" : "s"}.`, actions: ["Add work to another day", "Accept lower frequency"] });
+      if (total.weightedSets <= 0) findings.push({ id: `missing-${muscleGroupId}`, severity: "blocking", muscleGroupId, title: `${muscleGroupId} receives no meaningful stimulus`, why: "The selected muscle has no direct or credited fractional hypertrophy work, so its templates would be incomplete.", actions: ["Add suggested exercise", "Remove the muscle from scope"] });
+      else if (total.weightedSets < number(target.min, 0)) findings.push({ id: `low-${muscleGroupId}`, severity: "warning", muscleGroupId, title: `${muscleGroupId} is below its effective-set target`, why: `${total.weightedSets} total effective sets are planned (${total.directSets} direct + ${total.fractionalSets} fractional); the range begins at ${target.min}.`, actions: ["Add effective sets", "Accept lower volume"] });
+      if (total.weightedSets > number(target.max, 99)) findings.push({ id: `high-${muscleGroupId}`, severity: "warning", muscleGroupId, title: `${muscleGroupId} is above its effective-volume range`, why: `${total.weightedSets} total effective sets exceed the current upper target of ${target.max}.`, actions: ["Reduce sets", "Accept specialization volume"] });
+      if (total.exposureDayIds.length < frequencyTarget) findings.push({ id: `frequency-${muscleGroupId}`, severity: "warning", muscleGroupId, title: `${muscleGroupId} needs more frequency`, why: `Volume is evaluated separately. ${total.exposureDayIds.length} of ${frequencyTarget} meaningful weekly exposures are planned for the selected ${priority} priority.`, actions: ["Add work to another day", "Accept lower frequency"] });
       const remainingDays = draft.guidedDays.filter((day) => !total.exposureDayIds.includes(day.id)).length;
-      if (Math.max(0, frequencyTarget - total.exposureDayIds.length) > remainingDays) findings.push({ id: `capacity-${muscleGroupId}`, severity: "strong_warning", muscleGroupId, title: `${muscleGroupId} cannot reach its frequency target with the remaining days`, why: "The current distribution leaves too few compatible training days for the default exposure target.", actions: ["Move work", "Increase training days", "Accept lower frequency"] });
+      if (Math.max(0, frequencyTarget - total.exposureDayIds.length) > remainingDays) findings.push({ id: `capacity-${muscleGroupId}`, severity: "warning", muscleGroupId, title: `${muscleGroupId} cannot reach its frequency target with the remaining days`, why: "The current distribution leaves too few compatible training days for the default exposure target.", actions: ["Move work", "Increase training days", "Accept lower frequency"] });
     });
     const accepted = new Set(draft.acceptedExceptions || []);
     const visible = findings.map((finding) => ({ ...finding, accepted: accepted.has(finding.id) }));
     const active = visible.filter((finding) => !finding.accepted);
-    const score = Math.max(0, Math.round(100 - active.reduce((sum, finding) => sum + (finding.severity === "blocking" ? 25 : finding.severity === "strong_warning" ? 8 : 3), 0)));
-    const result = { version: "viability/1.1.0", rulesVersion: RULES_VERSION, checkedAt: new Date().toISOString(), score, grade: score >= 90 ? "Excellent" : score >= 80 ? "Good" : score >= 70 ? "Workable" : "Needs Revision", findings: visible, blockingCount: active.filter((item) => item.severity === "blocking").length, warningCount: active.filter((item) => item.severity === "strong_warning").length, readyToGenerate: active.every((item) => item.severity !== "blocking"), ledger };
+    const score = Math.max(0, Math.round(100 - active.reduce((sum, finding) => sum + (finding.severity === "blocking" ? 25 : finding.severity === "warning" || finding.severity === "strong_warning" ? 8 : 3), 0)));
+    const result = { version: "viability/1.2.0", rulesVersion: RULES_VERSION, checkedAt: new Date().toISOString(), score, grade: score >= 90 ? "Excellent" : score >= 80 ? "Good" : score >= 70 ? "Workable" : "Needs Revision", findings: visible, blockingCount: active.filter((item) => item.severity === "blocking").length, warningCount: active.filter((item) => ["warning", "strong_warning"].includes(item.severity)).length, informationCount: active.filter((item) => item.severity === "information" || item.severity === "advisory").length, readyToGenerate: active.every((item) => item.severity !== "blocking"), ledger };
     return result;
   }
 

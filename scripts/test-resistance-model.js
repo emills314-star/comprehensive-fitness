@@ -42,11 +42,14 @@ assert.equal(kilograms.sets[0].weight, 100, "Stored set loads must convert atomi
 assert.equal(kilograms.sets[0].targetWeight, 50, "Target loads must convert with actual loads");
 assert.equal(kilograms.sets[0].weightUnit, "kg", "Converted records must retain explicit unit provenance");
 assert.equal(kilograms.recommendationHistory[0].finalPrescription.prescribedLoad.target, 100, "Snapshot prescribed loads must preserve meaning across unit switches");
-assert.equal(kilograms.manualOverrides[0].changes.load.to, Number((210 / 2.2046226218).toFixed(4)), "Audited load overrides must convert without losing their from/to structure");
+assert.equal(kilograms.manualOverrides[0].changes.load.to, Number((210 / 2.2046226218).toFixed(3)), "Audited load overrides must convert without losing their from/to structure");
 assert.equal(kilograms.personalEvidencePackage, appData.personalEvidencePackage, "Private evidence must remain in its source units");
 assert.equal(kilograms.rawImports, appData.rawImports, "Raw import records must remain immutable source evidence");
 const poundsAgain = model.convertAppWeightUnit(kilograms, "lb");
-assert.ok(Math.abs(poundsAgain.sets[0].weight - appData.sets[0].weight) < 0.001, "lb to kg to lb conversion must be stable");
+assert.equal(poundsAgain.sets[0].weight, 220.5, "Pound loads must settle on the nearest supported half-pound boundary");
+let switched = poundsAgain;
+for (let index = 0; index < 10; index += 1) switched = model.convertAppWeightUnit(model.convertAppWeightUnit(switched, "kg"), "lb");
+assert.equal(switched.sets[0].weight, 220.5, "Repeated kg/lb switching must not accumulate conversion drift");
 assert.match(html, /toggle-unit"\) commit\(convertAppWeightUnit/, "Header unit control must convert app data rather than relabel it");
 assert.match(html, /weight-unit"\) commit\(convertAppWeightUnit/, "Settings unit control must use the same atomic conversion boundary");
 

@@ -807,6 +807,22 @@ test("weighted taxonomy volume is traceable, deterministic, and leaves logged re
   assert.strictEqual(glutes.contributions.reduce((sum, row) => sum + row.weightedHypertrophySets, 0), glutes.weightedHypertrophySets);
 });
 
+test("straight-set load progression requires a top first set and acceptable later-set rep loss", () => {
+  const decision = determineProgressionDecision({
+    history: [{ workout_date: "2026-06-28", progression_status: "held", set_repetitions: "[15,13]", set_loads: "[80,80]", set_rpes: "[8,8]", average_rpe: 8 }],
+    repRange: { min: 10, max: 15 }, targetRpe: { min: 8, max: 8 }, setStructure: "straight_sets", progressionMethod: "double_progression"
+  });
+  assert.strictEqual(decision.action, "increase_load", "15 and 13 reps are within the 20% acceptable rep-loss boundary and should progress load");
+  assert.match(decision.instruction, /every comparable straight set/);
+  const plannedReductionIgnored = determineProgressionDecision({
+    history: [
+      { workout_date: "2026-06-28", progression_status: "improved", set_repetitions: "[14]", set_loads: "[52.5]", set_rpes: "[8]" },
+      { workout_date: "2026-07-06", progression_status: "planned_reduction", prescribed_reduction: true, set_repetitions: "[12]", set_loads: "[45]", set_rpes: "[7]" }
+    ], repRange: { min: 6, max: 12 }, targetRpe: { min: 7, max: 8 }, setStructure: "straight_sets"
+  });
+  assert.notStrictEqual(plannedReductionIgnored.recommendationType, "reduce_volume", "a prescribed light exposure must not be reclassified as weakness");
+});
+
 (async function run() {
   let passed = 0;
   const failures = [];

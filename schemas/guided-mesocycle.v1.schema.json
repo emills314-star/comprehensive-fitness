@@ -6,9 +6,9 @@
   "required": ["id", "schemaVersion", "builderMode", "rulesVersion", "name", "type", "status", "durationWeeks", "trainingDays", "planningProgress", "guidedDays", "acceptedExceptions", "revision", "createdAt", "updatedAt"],
   "properties": {
     "id": { "type": "string", "minLength": 1 },
-    "schemaVersion": { "const": "guided-mesocycle/1.0.0" },
+    "schemaVersion": { "enum": ["guided-mesocycle/1.0.0", "guided-mesocycle/1.1.0"] },
     "builderMode": { "const": "guided" },
-    "rulesVersion": { "const": "planning-rules/1.0.0" },
+    "rulesVersion": { "enum": ["planning-rules/1.0.0", "planning-rules/1.1.0"] },
     "name": { "type": "string", "minLength": 1 },
     "type": { "enum": ["primary_progression", "alternative_exercise", "lower_fatigue_resensitization", "specialization"] },
     "status": { "enum": ["draft", "planned", "active", "completed", "abandoned", "archived"] },
@@ -47,6 +47,7 @@
     "viabilityResult": { "type": ["object", "null"] },
     "viabilityStale": { "type": "boolean" },
     "linkedTemplateIds": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "creationResult": { "type": "object", "required": ["operationId", "completedAt", "createdCount", "updatedCount", "templateCount", "templateIds"], "properties": { "operationId": { "type": "string" }, "completedAt": { "type": "string", "format": "date-time" }, "createdCount": { "type": "integer", "minimum": 0 }, "updatedCount": { "type": "integer", "minimum": 0 }, "templateCount": { "type": "integer", "minimum": 0 }, "templateIds": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }, "acceptedWarningIds": { "type": "array", "items": { "type": "string" }, "uniqueItems": true } }, "additionalProperties": false },
     "revision": { "type": "integer", "minimum": 1 },
     "createdAt": { "type": "string", "format": "date-time" },
     "updatedAt": { "type": "string", "format": "date-time" }

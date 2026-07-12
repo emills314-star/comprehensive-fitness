@@ -110,6 +110,10 @@
     "progressionMethod": {
       "$ref": "#/$defs/progressionMethod"
     },
+    "progressionAction": {
+      "type": "string",
+      "minLength": 1
+    },
     "progressionRule": {
       "$ref": "#/$defs/nonEmptyString"
     },

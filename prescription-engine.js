@@ -730,7 +730,8 @@
         topSetCount: number(item.top_set_count || item.topSetCount),
         backoffSetCount: number(item.back_off_set_count || item.backoffSetCount),
         straightSetCount: number(item.straight_working_set_count || item.straightSetCount),
-        progressionPercent: nullableNumber(item.progression_pct_vs_prior || item.progressionPercent)
+        progressionPercent: nullableNumber(item.progression_pct_vs_prior || item.progressionPercent),
+        prescribedReduction: Boolean(item.prescribed_reduction || item.prescribedReduction || /planned[_ -]?reduction|light[_ -]?session|deload/.test(status))
       };
     }).sort((left, right) => (left.date || "9999").localeCompare(right.date || "9999") || left.index - right.index);
   }
@@ -745,7 +746,7 @@
   }
 
   function assessExerciseStaleness(history = [], options = {}) {
-    const exposures = normalizeHistory(history);
+    const exposures = normalizeHistory(history).filter((item) => !item.prescribedReduction);
     const recent = exposures.slice(-Math.max(3, number(options.lookbackExposures, 6)));
     const minimum = number(options.minimumComparableExposures, DEFAULT_POLICY.minimumComparableExposures);
     if (recent.length < minimum) {
@@ -884,16 +885,17 @@
     }
     const severe = evaluation.state === "low";
     const targetSets = number(basePrescription?.workingSets?.target, 1);
-    const setChange = -Math.min(severe && targetSets >= 4 ? 2 : 1, Math.max(0, targetSets - 1));
+    const canReduceSet = targetSets >= 3;
+    const setChange = canReduceSet ? -1 : 0;
     return {
       changed: true,
       temporary: true,
       affectsMesocycle: false,
       setChange,
-      loadChangePercent: severe ? -7.5 : -5,
-      repTargetChange: severe ? -1 : 0,
-      rpeChange: -1,
-      explanation: `${evaluation.signals.map((signal) => signal.explanation).join(" ")} This is a one-day fatigue adjustment, not a mesocycle rewrite.`,
+      loadChangePercent: severe ? -5 : canReduceSet ? 0 : -5,
+      repTargetChange: 0,
+      rpeChange: severe ? -1 : -0.5,
+      explanation: `${evaluation.signals.map((signal) => signal.explanation).join(" ")} The smallest useful one-day adjustment was selected: ${setChange ? "remove one set" : "preserve set count"}, ${severe || !canReduceSet ? "reduce load about 5%" : "preserve load"}, preserve the programmed rep range, and lower target effort. This is not a mesocycle rewrite or evidence of lost strength.`,
       resumeRule: "Resume the base prescription when at least two affected readiness domains return near baseline and warm-ups or the next comparable exposure are stable.",
       signals: evaluation.signals
     };
@@ -1608,7 +1610,7 @@
   }
 
   function determineProgressionDecision(options = {}) {
-    const history = normalizeHistory(options.history);
+    const history = normalizeHistory(options.history).filter((item) => !item.prescribedReduction);
     const recent = history.slice(-4);
     const last = recent.at(-1);
     const repRange = options.repRange || { min: 6, max: 12 };
@@ -1630,7 +1632,10 @@
     const regressions = recent.slice(-2).filter((item) => /regress|declin/.test(item.status) || number(item.progressionPercent) < -1.5).length;
     const risingRpe = linearSlope(recent.map((item) => item.averageRpe)) >= 0.3;
     const lastReps = last.reps.length ? last.reps : [number(last.raw.reps || last.raw.repetitions)];
-    const allAtTop = lastReps.length > 0 && lastReps.every((reps) => reps >= number(repRange.max));
+    const acceptableRepLoss = number(options.maximumRepLossPercent, DEFAULT_POLICY.maximumRepLossPercent) / 100;
+    const firstSetAtTop = lastReps.length > 0 && lastReps[0] >= number(repRange.max);
+    const laterSetsConverged = lastReps.slice(1).every((reps) => reps >= Math.ceil(number(repRange.max) * (1 - acceptableRepLoss)));
+    const allAtTop = firstSetAtTop && laterSetsConverged;
     const effortAcceptable = last.averageRpe === null || last.averageRpe <= number(rpeRange.max, 9);
     const topReached = lastReps[0] >= number(repRange.max) && effortAcceptable;
     if (staleness.deloadCandidate && regressions >= 2) {
@@ -1744,7 +1749,7 @@
         action: "increase_load",
         recommendationType: "progress",
         progressionMethod: method === "load_then_reps" ? "load_first_progression" : "double_progression",
-        instruction: "Add the smallest available load increment and return to the lower half of the rep range.",
+        instruction: `Add the smallest available load increment to every comparable straight set and return to the lower half of the rep range. The first set reached ${repRange.max} reps and later sets stayed within the ${Math.round(acceptableRepLoss * 100)}% acceptable rep-loss boundary.`,
         holdRule: "Hold the new load if execution or target RPE is not repeatable.",
         regressionRule: "Treat one poor session as noise; reduce stress only after a confirmed regression pattern."
       };
@@ -2568,7 +2573,7 @@
     };
   }
 
-  function prescribedLoadFromHistory(candidate, progression, deloadState) {
+  function prescribedLoadFromHistory(candidate, progression, deloadState, options = {}) {
     const history = normalizeHistory(candidate.history);
     const last = history.at(-1);
     const loads = last?.loads?.filter((value) => value > 0) || [];
@@ -2578,10 +2583,12 @@
     const assisted = String(candidate.personalScore?.resistance_type || "").toLowerCase() === "assisted_bodyweight";
     let target = current;
     let reason = "Hold the most recent comparable load.";
-    if (progression.action === "increase_load" || progression.action === "increase_top_set_load") {
+    if (progression.action === "increase_load" || progression.action === "increase_top_set_load" || progression.action === "increase_load_first") {
+      const personalIncrement = number(candidate.personalPrescription?.recommended_load_increment?.value, 0);
+      const equipmentIncrement = number(options.equipmentIncrement, 0) || personalIncrement;
       const percent = 2.5;
-      target = assisted ? current * (1 - percent / 100) : current * (1 + percent / 100);
-      reason = `Use the smallest practical increment (research default approximately ${percent}%).`;
+      target = equipmentIncrement > 0 ? (assisted ? Math.max(0, current - equipmentIncrement) : current + equipmentIncrement) : assisted ? current * (1 - percent / 100) : current * (1 + percent / 100);
+      reason = equipmentIncrement > 0 ? `Use the smallest available equipment increment (${equipmentIncrement} ${candidate.personalPrescription?.recommended_load_increment?.unit || "logged units"}).` : `Use the smallest practical increment (research default approximately ${percent}%).`;
     }
     if (["exercise_deload", "muscle_group_deload", "full_program_deload"].includes(deloadState.state)) {
       const reduction = deloadState.state === "full_program_deload" ? 15 : 10;
@@ -2743,6 +2750,7 @@
       frequencyPerWeek,
       volume,
       progressionMethod: progression.progressionMethod,
+      progressionAction: progression.action,
       progressionRule: recommendationType === "reduce_volume"
         ? `Perform ${workingSets.target} working set${workingSets.target === 1 ? "" : "s"} this exposure; do not add volume until performance and recovery are stable inside the blended weekly range.`
         : progression.instruction,
@@ -2762,7 +2770,7 @@
       deloadStatus,
       mesocycleId: options.mesocycle?.id || options.mesocycleId || null
     };
-    const load = prescribedLoadFromHistory(candidate, progression, deloadStatus);
+    const load = prescribedLoadFromHistory(candidate, progression, deloadStatus, options);
     if (load) basePrescription.prescribedLoad = load;
     basePrescription = applyDeloadState(basePrescription, deloadStatus);
     const finalPrescription = ["exercise_deload", "muscle_group_deload", "full_program_deload"].includes(deloadStatus.state)

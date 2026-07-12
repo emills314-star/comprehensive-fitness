@@ -22,6 +22,8 @@ The same exercise may intentionally appear on multiple training days. Cross-day 
 
 During Build, selected muscles are ranked by direct-set deficit, missing exposure/frequency, priority, and remaining-day feasibility. Candidate eligibility is controlled by the canonical exercise–muscle taxonomy: direct and positive-credit fractional dynamic relationships qualify; incidental, isometric-only, unknown, and zero-credit relationships do not. Candidate cards display effectiveness for the selected target muscle separately from confidence and general exercise quality.
 
+Total effective sets—not direct sets alone—determine whether a target range is satisfied. Frequency and distribution remain independent requirements, so a muscle cannot appear complete while an exposure is still missing. Final review exposes every training day before an idempotent create/update operation; successful creation ends on a persistent completion summary with routes to the linked templates.
+
 Comprehensive Fitness is a local-first strength-training application that logs workouts and turns workout history, optional private personal evidence, recovery check-ins, and a versioned exercise-science database into transparent training guidance. It is trying to become a personal fitness decision system without hiding uncertainty or rewriting historical recommendations after engine updates.
 
 The verified target user is a single strength/hypertrophy trainee using a phone during training. The research package is explicitly scoped to male hypertrophy and related strength, recovery, and nutrition questions (`research_database/README.md`, `research_database/METHODOLOGY.md`). Broader population support is not established.
