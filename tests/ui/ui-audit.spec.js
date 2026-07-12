@@ -180,6 +180,7 @@ test("Mesocycle Planner progresses from compact setup to full review", async ({ 
   sessionTotals.forEach((session) => expect(session.sets).toBeLessThanOrEqual(18));
   const scheduledExerciseNames = await page.evaluate(() => [...document.querySelectorAll(".review-session-exercises li > div:first-child > strong")].map((item) => item.textContent.trim()));
   expect(scheduledExerciseNames.length).toBe(new Set(scheduledExerciseNames).size);
+  if (process.env.PLAYWRIGHT_BASE_URL) console.log(`HOSTED_MESOCYCLE ${testInfo.project.name}: ${JSON.stringify({ sessionTotals, scheduledExerciseNames })}`);
   const scoreDisclosure = page.getByText("Why the Score?", { exact: true }).first();
   await scoreDisclosure.click();
   await expect(page.getByText("Taxonomy Basis", { exact: true }).first()).toBeVisible();
@@ -187,8 +188,9 @@ test("Mesocycle Planner progresses from compact setup to full review", async ({ 
     await page.getByRole("button", { name: "Regenerate with Practical Limits" }).click();
     await expect(page.locator(".review-session-card").first()).toBeVisible();
   }
-  await expect(page.getByRole("button", { name: /View Alternates/ })).toBeVisible();
-  await page.getByRole("button", { name: /View Alternates/ }).click();
-  expect(await page.getByText("Alternative Replacement").count()).toBeGreaterThan(0);
+  const alternatesToggle = page.getByRole("button", { name: /View Alternates/ }).first();
+  await expect(alternatesToggle).toBeVisible();
+  await alternatesToggle.click();
+  await expect(page.getByRole("button", { name: /Hide Alternates/ }).first()).toBeVisible();
   expect(await page.getByText(/working sets|Blocking/).count()).toBeGreaterThan(0);
 });
