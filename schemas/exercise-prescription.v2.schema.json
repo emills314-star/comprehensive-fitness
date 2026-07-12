@@ -1073,6 +1073,9 @@
         "recoveryEfficiency",
         "repeatability",
         "muscleSpecificity",
+        "targetMuscleEffectiveness",
+        "targetRelationshipType",
+        "targetSetContribution",
         "lengthenedPositionLoading",
         "stability",
         "easeOfProgression",
@@ -1144,6 +1147,15 @@
         },
         "targetMuscleEffectiveness": {
           "$ref": "#/$defs/score"
+        },
+        "targetRelationshipType": {
+          "type": "string",
+          "minLength": 1
+        },
+        "targetSetContribution": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
         },
         "fullProgramFit": {
           "$ref": "#/$defs/score"

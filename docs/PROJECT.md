@@ -16,9 +16,11 @@ Read this document before changing product scope, capabilities, target users, wo
 
 ### Guided mesocycle planning — IMPLEMENTED
 
-New mesocycles are built in a guided manual workspace rather than assembled automatically. **Plan Your Mesocycle** appears before the ordinary template library. Users review concise planning rules, configure objective, schedule, equipment, and scope, create empty training days, select and arrange exercises, adjust working sets with immediate volume feedback, run a viability check, acknowledge non-blocking exceptions, and create linked workout templates.
+New mesocycles are built in a guided manual workspace rather than assembled automatically. **Plan Your Mesocycle** appears before the ordinary template library. Users review concise planning rules, configure objective, schedule, equipment, and scope, create empty training days, select and arrange exercises, adjust working sets with immediate volume feedback, run a viability check, acknowledge non-blocking exceptions, and create linked workout templates. Guide, Setup, Build, Check, and Create use persisted progressive unlocking: completed steps remain available, locked steps cannot bypass validation, and Build edits invalidate Check/Create without deleting compatible work.
 
 The same exercise may intentionally appear on multiple training days. Cross-day exercise reuse is not an error or warning. Same-day mechanical redundancy may still be surfaced when it creates a material programming problem.
+
+During Build, selected muscles are ranked by direct-set deficit, missing exposure/frequency, priority, and remaining-day feasibility. Candidate eligibility is controlled by the canonical exercise–muscle taxonomy: direct and positive-credit fractional dynamic relationships qualify; incidental, isometric-only, unknown, and zero-credit relationships do not. Candidate cards display effectiveness for the selected target muscle separately from confidence and general exercise quality.
 
 Comprehensive Fitness is a local-first strength-training application that logs workouts and turns workout history, optional private personal evidence, recovery check-ins, and a versioned exercise-science database into transparent training guidance. It is trying to become a personal fitness decision system without hiding uncertainty or rewriting historical recommendations after engine updates.
 

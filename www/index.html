@@ -648,8 +648,10 @@
       .guided-builder { display: grid; gap: 14px; padding-bottom: 90px; }
       .guided-builder-header { position: sticky; top: 0; z-index: 8; margin: 0 -16px; padding: 10px 16px; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
       .guided-progress { display: flex; gap: 6px; overflow-x: auto; padding: 4px 0; scrollbar-width: none; }
-      .guided-progress span { flex: 0 0 auto; padding: 6px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); font-size: 12px; font-weight: 700; }
+      .guided-progress button { min-height: 44px; flex: 0 0 auto; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); background: var(--surface); font-size: 12px; font-weight: 800; }
       .guided-progress .current { background: var(--current); color: white; border-color: var(--current); }
+      .guided-progress .completed, .guided-progress .unlocked { background: color-mix(in srgb, var(--current) 11%, var(--surface)); color: var(--current); border-color: color-mix(in srgb, var(--current) 34%, var(--line)); }
+      .guided-progress .locked { background: transparent; color: var(--muted-2); opacity: .58; }
       .guideline-grid { display: grid; gap: 9px; }
       .guideline-card { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); overflow: hidden; }
       .guideline-card summary { min-height: 52px; padding: 12px; cursor: pointer; list-style: none; display: grid; gap: 3px; }
@@ -674,12 +676,23 @@
       .guided-volume-row small { color: var(--muted); }
       .exercise-browser-results { display: grid; gap: 10px; }
       .exercise-browser-card { border: 1px solid var(--line); background: var(--surface); border-radius: 15px; padding: 13px; display: grid; gap: 8px; }
+      .guided-priority-summary { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); padding: 12px; display: grid; gap: 10px; }
+      .guided-priority-list { display: grid; gap: 6px; }
+      .guided-priority-row { min-height: 58px; width: 100%; display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; gap: 8px; text-align: left; background: transparent; border: 1px solid var(--line); border-radius: 12px; padding: 9px; }
+      .guided-priority-row > span:first-child { display: grid; min-width: 0; }
+      .guided-priority-row small { color: var(--muted); }
+      .guided-priority-row.below { border-color: color-mix(in srgb, var(--amber) 42%, var(--line)); }
+      .guided-priority-row.within { border-color: color-mix(in srgb, var(--success) 35%, var(--line)); }
+      .guided-priority-row.above { border-color: color-mix(in srgb, var(--red) 38%, var(--line)); }
+      .guided-active-config { scroll-margin-block: 120px; border: 2px solid var(--current); border-radius: 18px; background: color-mix(in srgb, var(--current) 7%, var(--surface-strong)); padding: 15px; display: grid; gap: 12px; outline: none; }
+      .guided-active-config:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--current) 28%, transparent); }
       .viability-score { display: flex; align-items: baseline; gap: 8px; }
       .viability-score strong { font-size: 34px; }
       .finding { border-left: 4px solid var(--amber); background: color-mix(in srgb, var(--amber) 9%, var(--surface)); border-radius: 10px; padding: 12px; display: grid; gap: 6px; }
       .finding.blocking { border-left-color: var(--red); background: color-mix(in srgb, var(--red) 8%, var(--surface)); }
       .finding.accepted { opacity: .65; }
       @media (min-width: 760px) { .guided-setup-grid { grid-template-columns: repeat(2, 1fr); } .guided-day-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } .exercise-browser-results { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+      @media (max-width: 520px) { .guided-priority-row { grid-template-columns: minmax(0,1fr) auto; } .guided-priority-row .status-pill { grid-column: 1 / -1; justify-self: start; } }
       .planner-steps { display: grid; gap: 6px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
       .planner-step { align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; color: var(--muted); display: flex; font-size: .61rem; font-weight: 800; gap: 6px; min-height: 42px; padding: 7px; }
       .planner-step b { align-items: center; background: var(--surface-strong); border-radius: 999px; display: inline-flex; height: 21px; justify-content: center; width: 21px; }
@@ -2150,6 +2163,8 @@
       let guidedExerciseBrowserDayId = "";
       let guidedExerciseMuscleFilter = "";
       let guidedExerciseSearch = "";
+      let guidedPendingAssignment = null;
+      let guidedReturnFocusToPicker = false;
       let guidedWeeklySummaryOpen = false;
       let guidedGenerationReviewOpen = false;
       const expandedTemplateEditorIds = new Set();
@@ -5806,17 +5821,44 @@
       }
 
       function guidedTargetFor(muscleGroupId, draft = guidedDraft()) {
-        const rows = prescriptionEngine?.evidence?.research?.muscleGroupRecommendations || [];
-        const matching = rows.filter((item) => prescriptionApi.muscleFamily(item.muscle_group_id || item.muscle_group) === prescriptionApi.muscleFamily(muscleGroupId));
-        const read = (keys, fallback) => {
-          const values = matching.map((item) => keys.map((key) => Number(item[key])).find(Number.isFinite)).filter(Number.isFinite);
-          return values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : fallback;
-        };
-        let result = { min: read(["weekly_sets_min", "minimum_effective_volume"], 6), target: read(["weekly_sets_target", "weekly_sets_moderate", "maximum_adaptive_volume"], 10), max: read(["weekly_sets_max", "maximum_recoverable_volume"], 14) };
+        const defaults = prescriptionApi?.aggregateMuscleResearchDefaults?.(prescriptionEngine?.evidence?.research, muscleGroupId);
+        let result = defaults?.weeklySets ? { min: Number(defaults.weeklySets.min), target: Number(defaults.weeklySets.target), max: Number(defaults.weeklySets.max) } : { min: 6, target: 10, max: 14 };
         const priority = draft?.musclePriorities?.[muscleGroupId];
         if (priority === "maintenance") result = { min: Math.max(2, Math.round(result.min * .5)), target: Math.max(3, Math.round(result.target * .55)), max: Math.max(5, Math.round(result.max * .65)) };
         if (priority === "specialization") result = { min: result.min, target: Math.min(result.max, result.target + 2), max: result.max + 2 };
         return result;
+      }
+
+      function guidedMuscleStatuses(draft = guidedDraft()) {
+        return draft ? guidedMesocycleApi.muscleTargetStatuses(draft, guidedLedger(draft), (muscle) => guidedTargetFor(muscle, draft)) : [];
+      }
+
+      function guidedStepIndex(step) { return guidedMesocycleApi.STEPS.indexOf(step); }
+      function guidedStepUnlocked(draft, step) { return guidedStepIndex(step) <= guidedStepIndex(draft?.planningProgress?.highestUnlockedStep || (draft?.guidedDays?.length ? "build" : "guide")); }
+
+      function setGuidedStep(step) {
+        const draft = guidedDraft();
+        if (step === "guide") { guidedMesocycleView = "guidelines"; render(); return; }
+        if (step === "setup" && (!draft || guidedStepUnlocked(draft, "setup"))) {
+          if (draft) {
+            mesocycleDraftType = draft.type;
+            mesocycleDurationDraft = String(draft.durationWeeks);
+            mesocycleScopeDraft = new Set(draft.includedMuscleGroupIds || []);
+            mesocycleSpecializationMuscle = draft.specializationMuscleGroups?.[0] || "";
+          }
+          guidedMesocycleView = "setup";
+          render();
+          requestAnimationFrame(() => {
+            const objectiveSelect = document.querySelector('[data-action="mesocycle-type"]');
+            if (objectiveSelect) objectiveSelect.value = mesocycleDraftType;
+          });
+          return;
+        }
+        if (!draft || !guidedStepUnlocked(draft, step)) return;
+        guidedMesocycleView = step === "check" ? "viability" : "builder";
+        guidedWeeklySummaryOpen = false;
+        guidedGenerationReviewOpen = step === "create";
+        render();
       }
 
       function guidedRelationships(assignment) {
@@ -5846,11 +5888,23 @@
 
       function createGuidedMesocycleDraft() {
         const muscles = mesocycleScopeDraft ? Array.from(mesocycleScopeDraft) : guidedAvailableMuscles();
-        const draft = guidedMesocycleApi.createDraft({ type: mesocycleDraftType, durationWeeks: Number(mesocycleDurationDraft || 6), trainingDays: Number(data.settings.trainingDaysPerWeek || 4), availableEquipment: mesocycleEquipmentSelection(), includedMuscleGroupIds: muscles, specializationMuscleGroups: mesocycleSpecializationMuscle ? [mesocycleSpecializationMuscle] : [], musclePriorities: Object.fromEntries(muscles.map((muscle) => [muscle, mesocycleSpecializationMuscle === muscle ? "specialization" : "normal"])) });
+        const existing = guidedDraft();
+        const trainingDays = Number(data.settings.trainingDaysPerWeek || 4);
+        const baseOptions = { type: mesocycleDraftType, durationWeeks: Number(mesocycleDurationDraft || 6), trainingDays, availableEquipment: mesocycleEquipmentSelection(), includedMuscleGroupIds: muscles, specializationMuscleGroups: mesocycleSpecializationMuscle ? [mesocycleSpecializationMuscle] : [], musclePriorities: Object.fromEntries(muscles.map((muscle) => [muscle, existing?.musclePriorities?.[muscle] || (mesocycleSpecializationMuscle === muscle ? "specialization" : "normal")])) };
+        let draft;
+        if (existing) {
+          const removedDays = existing.guidedDays.slice(trainingDays);
+          if (removedDays.some((day) => day.assignments.length)) return showAppToast("Move or remove exercises from training days that would be removed before reducing the schedule.");
+          const generated = guidedMesocycleApi.createDraft(baseOptions);
+          const guidedDays = Array.from({ length: trainingDays }, (_, index) => existing.guidedDays[index] || generated.guidedDays[index]);
+          draft = { ...existing, ...baseOptions, guidedDays, viabilityResult: null, viabilityStale: true, revision: Number(existing.revision || 0) + 1, planningProgress: { ...existing.planningProgress, highestUnlockedStep: "check", completedSteps: (existing.planningProgress?.completedSteps || []).filter((step) => !["check", "create"].includes(step)), setupRevision: Number(existing.planningProgress?.setupRevision || 0) + 1, viabilityRevision: null, createReadyRevision: null }, updatedAt: isoNow() };
+        } else draft = guidedMesocycleApi.createDraft(baseOptions);
+        draft = guidedMesocycleApi.unlockStep(draft, "build", "guide");
+        draft = guidedMesocycleApi.unlockStep(draft, "build", "setup");
         guidedMesocycleDraftId = draft.id;
         guidedSelectedDayId = draft.guidedDays[0]?.id || "";
         guidedMesocycleView = "builder";
-        commit({ ...data, mesocycles: [draft, ...data.mesocycles] });
+        commit({ ...data, mesocycles: existing ? data.mesocycles.map((item) => item.id === draft.id ? draft : item) : [draft, ...data.mesocycles] });
       }
 
       function guidedCandidatePool(muscleGroupId) {
@@ -5859,7 +5913,7 @@
         catch { return []; }
       }
 
-      function addGuidedExercise(dayId, exerciseId, muscleGroupId) {
+      function selectGuidedExercise(dayId, exerciseId, muscleGroupId) {
         const draft = guidedDraft();
         const candidate = guidedCandidatePool(muscleGroupId).find((item) => item.exerciseId === exerciseId);
         if (!draft || !candidate) return;
@@ -5867,6 +5921,7 @@
         const prescription = recommendation?.basePrescription;
         const assignment = {
           exerciseId: candidate.exerciseId, researchExerciseId: candidate.researchExerciseId, name: candidate.exerciseName, muscleGroupId,
+          canonicalExerciseId: candidate.researchExerciseId || candidate.exerciseId, targetMuscleEffectiveness: Number(candidate.scores?.targetMuscleEffectiveness ?? candidate.scores?.muscleSpecificity ?? 0), confidence: candidate.personalDataConfidence || candidate.scores?.confidence || "research_default",
           primaryMuscles: candidate.primaryMuscles || [muscleGroupId], secondaryMuscles: candidate.secondaryMuscles || [], muscleRelationships: candidate.muscleRelationships || [],
           role: candidate.intendedRole || "secondary_hypertrophy_lift", movementPattern: candidate.movementPattern || candidate.jointActions?.join(" + ") || "",
           equipmentRequirements: candidate.equipmentRequirements || [], workingSets: Number(candidate.recommendedSetRange?.target || prescription?.workingSets?.target || 3),
@@ -5874,15 +5929,43 @@
           setStructure: candidate.recommendedSetStructure || prescription?.setStructure || "straight_sets", restSeconds: Number(prescription?.restSeconds?.target || 120),
           progressionRule: candidate.progressionInstruction || prescription?.progressionRule || "Use double progression within the recommended rep range.", recommendationSnapshot: recommendation
         };
-        guidedExerciseBrowserDayId = "";
-        updateGuidedDraft(guidedMesocycleApi.addExercise(draft, dayId, assignment));
+        guidedPendingAssignment = assignment;
+        render();
+        window.requestAnimationFrame(() => {
+          const target = document.querySelector('[data-guided-configuration]');
+          if (!target) return;
+          target.scrollIntoView({ block: "center", behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? "auto" : "smooth" });
+          target.focus({ preventScroll: true });
+        });
+      }
+
+      function confirmGuidedExercise() {
+        const draft = guidedDraft();
+        const pending = guidedPendingAssignment;
+        if (!draft || !pending || !guidedExerciseBrowserDayId) return;
+        const updated = guidedMesocycleApi.addExercise(draft, guidedExerciseBrowserDayId, pending);
+        if (updated.assignmentError) return showAppToast(updated.assignmentError.reason === "already_added_to_day" ? "This exercise is already assigned to this training day." : "The exercise could not be added.");
+        guidedPendingAssignment = null;
+        guidedReturnFocusToPicker = true;
+        updateGuidedDraft(updated);
+        window.requestAnimationFrame(() => {
+          const picker = document.querySelector('[data-guided-exercise-picker]');
+          picker?.scrollIntoView({ block: "start", behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? "auto" : "smooth" });
+          picker?.focus({ preventScroll: true });
+          guidedReturnFocusToPicker = false;
+        });
       }
 
       function checkGuidedViability() {
         const draft = guidedDraft();
         if (!draft) return;
         const result = guidedMesocycleApi.viability(draft, { ledger: guidedLedger(draft), targetFor: (muscle) => guidedTargetFor(muscle, draft) });
-        const updated = { ...draft, viabilityResult: result, viabilityStale: false, updatedAt: isoNow() };
+        let updated = { ...draft, viabilityResult: result, viabilityStale: false, updatedAt: isoNow(), planningProgress: { ...draft.planningProgress, viabilityRevision: draft.planningProgress?.buildRevision || 0 } };
+        updated = guidedMesocycleApi.unlockStep(updated, "check", "build");
+        if (!result.blockingCount) {
+          updated = guidedMesocycleApi.unlockStep(updated, "create", "check");
+          updated.planningProgress = { ...updated.planningProgress, createReadyRevision: updated.planningProgress.buildRevision };
+        }
         guidedMesocycleView = "viability";
         updateGuidedDraft(updated);
       }
@@ -6144,9 +6227,49 @@
         `;
       }
 
+      function renderGuidedMusclePrioritySummary(draft, compact = false) {
+        const statuses = guidedMuscleStatuses(draft);
+        const visible = compact ? statuses.slice(0, 6) : statuses;
+        return '<section class="guided-priority-summary"><div class="row split"><div><div class="section-kicker">Volume Remaining</div><strong>What Needs Work Next</strong></div>' + (compact ? '<button type="button" data-action="open-guided-weekly">View All</button>' : '') + '</div><div class="guided-priority-list">' + visible.map((item, index) => '<button type="button" data-action="choose-guided-muscle" data-muscle-group-id="' + escapeHtml(item.muscleGroupId) + '" class="guided-priority-row ' + item.status + '"><span><strong>' + escapeHtml(presentationLabel(item.muscleGroupId)) + '</strong><small>' + item.directSets + ' direct + ' + item.fractionalSets + ' fractional · target ' + item.targetRange.min + '–' + item.targetRange.max + '</small></span><span><b>' + item.setsRemaining + '</b><small>sets to minimum</small></span><span class="status-pill ' + (item.status === 'within' ? 'good' : item.status === 'above' ? 'deload' : 'rest') + '">' + (index === 0 && item.status === 'below' ? 'Recommended · ' : '') + (item.status === 'below' ? 'Below Target' : item.status === 'above' ? 'Above Target' : item.frequencyRemaining ? 'Frequency Needed' : 'Within Target') + '</span></button>').join('') + '</div></section>';
+      }
+
+      function renderGuidedExerciseWorkspace(draft, headerHtml) {
+        const muscles = draft.includedMuscleGroupIds || [];
+        const statuses = guidedMuscleStatuses(draft);
+        guidedExerciseMuscleFilter = muscles.includes(guidedExerciseMuscleFilter) ? guidedExerciseMuscleFilter : statuses[0]?.muscleGroupId || muscles[0];
+        const day = draft.guidedDays.find((item) => item.id === guidedExerciseBrowserDayId);
+        const query = normalizePrescriptionIdentity(guidedExerciseSearch);
+        const pool = guidedCandidatePool(guidedExerciseMuscleFilter).filter((item) => !query || normalizePrescriptionIdentity(item.exerciseName).includes(query));
+        const targetStatus = statuses.find((item) => item.muscleGroupId === guidedExerciseMuscleFilter);
+        const pending = guidedPendingAssignment;
+        const dayLedger = guidedLedger(draft).dayTotals.find((item) => item.dayId === guidedExerciseBrowserDayId) || { workingSets: 0, muscles: [] };
+        const sameMuscleExercises = day?.assignments.filter((item) => (item.primaryMuscles || [item.muscleGroupId]).map(prescriptionApi.muscleFamily).includes(prescriptionApi.muscleFamily(guidedExerciseMuscleFilter))).length || 0;
+        const pendingWarnings = pending ? [
+          dayLedger.workingSets + pending.workingSets > guidedMesocycleApi.PLANNING_RULES.maxWorkingSetsPerDay ? 'This addition would put the day above 18 working sets.' : '',
+          sameMuscleExercises >= guidedMesocycleApi.PLANNING_RULES.maxExercisesPerMusclePerDay ? 'This day already has two exercises directly targeting this muscle.' : '',
+          targetStatus && targetStatus.directSets + pending.workingSets > targetStatus.targetRange.max ? 'This addition would move the muscle above its direct-set target range.' : '',
+          targetStatus?.frequencyRemaining > targetStatus?.remainingTrainingDays ? 'Too few unprogrammed days remain to reach the default frequency without revising the schedule.' : ''
+        ].filter(Boolean) : [];
+        const pendingCard = pending ? '<section class="guided-active-config" data-guided-configuration tabindex="-1" aria-labelledby="guided-config-title"><div class="section-kicker">Configuring Now</div><h2 id="guided-config-title">' + escapeHtml(pending.name) + '</h2><div class="metadata-tags"><span class="metadata-tag">Target: ' + escapeHtml(presentationLabel(pending.muscleGroupId)) + '</span><span class="metadata-tag">' + Math.round(pending.targetMuscleEffectiveness || 0) + '/100 ' + escapeHtml(presentationLabel(pending.muscleGroupId)) + ' Effectiveness</span><span class="metadata-tag">' + escapeHtml(presentationLabel(pending.setStructure)) + '</span></div><div class="set-stepper"><button type="button" data-action="guided-pending-set-change" data-delta="-1" aria-label="Remove one planned working set">−</button><output>' + pending.workingSets + ' planned sets</output><button type="button" data-action="guided-pending-set-change" data-delta="1" aria-label="Add one planned working set">+</button></div><div class="candidate-detail-grid"><div><span>Rep Range</span><strong>' + pending.repRange.min + '–' + pending.repRange.max + '</strong></div><div><span>Effort</span><strong>' + (pending.targetRir ? 'RIR ' + pending.targetRir.min + '–' + pending.targetRir.max : 'RPE ' + pending.targetRpe.min + '–' + pending.targetRpe.max) + '</strong></div><div><span>Rest</span><strong>' + pending.restSeconds + ' sec</strong></div></div>' + pendingWarnings.map((warning) => '<div class="finding"><strong>Programming warning</strong><p>' + escapeHtml(warning) + '</p></div>').join('') + '<div class="row wrap"><button type="button" data-action="cancel-guided-pending">Cancel</button><button class="primary-action" type="button" data-action="confirm-guided-exercise">Add to ' + escapeHtml(day?.name || 'Training Day') + '</button></div></section>' : '';
+        return '<section class="guided-builder">' + headerHtml + '<div data-guided-exercise-picker tabindex="-1">' + renderGuidedMusclePrioritySummary(draft, true) + '<div class="section-heading"><div><div class="section-kicker">Exercise Selection</div><h2>Add Exercise to ' + escapeHtml(day?.name || 'Training Day') + '</h2><p>Choose a muscle, then review the target-specific prescription before adding it.</p></div></div><label>Search<input type="search" data-action="guided-exercise-search" value="' + escapeHtml(guidedExerciseSearch) + '"></label><label>Target Muscle<select data-action="guided-exercise-muscle">' + statuses.map((item) => '<option value="' + item.muscleGroupId + '" ' + (item.muscleGroupId === guidedExerciseMuscleFilter ? 'selected' : '') + '>' + escapeHtml(presentationLabel(item.muscleGroupId)) + ' · ' + item.setsRemaining + ' sets remaining</option>').join('') + '</select></label></div>' + pendingCard + '<div class="exercise-browser-results">' + pool.map((candidate) => {
+          const validation = guidedMesocycleApi.canAssignExercise(draft, guidedExerciseBrowserDayId, candidate);
+          const score = Math.round(candidate.scores?.targetMuscleEffectiveness ?? candidate.scores?.muscleSpecificity ?? 0);
+          return '<article class="exercise-browser-card"><div class="section-kicker">' + escapeHtml(presentationLabel(candidate.intendedRole)) + '</div><h3>' + escapeHtml(candidate.exerciseName) + '</h3><strong>' + escapeHtml(presentationLabel(guidedExerciseMuscleFilter)) + ' Effectiveness: ' + score + ' / 100</strong><span>Confidence: ' + escapeHtml(presentationLabel(candidate.personalDataConfidence || candidate.scores?.confidence || 'research_default')) + '</span><span>' + (candidate.recommendedSetRange?.target || 3) + ' sets · ' + (candidate.recommendedRepRange?.min || 8) + '–' + (candidate.recommendedRepRange?.max || 12) + ' reps</span><details><summary>Why for ' + escapeHtml(presentationLabel(guidedExerciseMuscleFilter)) + '?</summary><p>' + escapeHtml(candidate.reasonForMesocycle || 'Canonical target relationship, objective fit, evidence, fatigue, and available equipment inform this estimate.') + '</p></details><button type="button" class="primary-action" data-action="select-guided-exercise" data-day-id="' + guidedExerciseBrowserDayId + '" data-exercise-id="' + escapeHtml(candidate.exerciseId) + '" data-muscle-group-id="' + guidedExerciseMuscleFilter + '" ' + (!validation.allowed ? 'disabled' : '') + '>' + (validation.allowed ? 'Configure Exercise' : 'Already Added to ' + escapeHtml(day?.name || 'This Day')) + '</button></article>';
+        }).join('') + '</div><div class="sr-only" aria-live="polite">' + (pending ? 'Configuring ' + escapeHtml(pending.name) : guidedReturnFocusToPicker ? 'Exercise added. Choose the next muscle or exercise.' : '') + '</div></section>';
+      }
+
       function renderGuidedMesocycle() {
         const draft = guidedDraft();
-        const progress = (step) => '<div class="guided-progress">' + ['Guide','Setup','Build','Check','Create'].map((label, index) => '<span class="' + (index === step ? 'current' : '') + '">' + label + '</span>').join('') + '</div>';
+        const progress = (activeIndex) => {
+          const progressState = draft?.planningProgress;
+          const transientUnlocked = draft ? guidedStepIndex(progressState?.highestUnlockedStep || (draft.guidedDays?.length ? 'build' : 'guide')) : Math.max(activeIndex, activeIndex === 1 ? 1 : 0);
+          return '<nav class="guided-progress" aria-label="Mesocycle builder steps">' + guidedMesocycleApi.STEPS.map((step, index) => {
+            const label = step.charAt(0).toUpperCase() + step.slice(1);
+            const unlocked = index <= transientUnlocked;
+            const completed = (progressState?.completedSteps || []).includes(step) || (!draft && index < activeIndex);
+            return '<button type="button" class="' + (index === activeIndex ? 'current' : completed ? 'completed' : unlocked ? 'unlocked' : 'locked') + '" data-action="guided-step" data-step="' + step + '" ' + (!unlocked ? 'disabled' : '') + ' aria-current="' + (index === activeIndex ? 'step' : 'false') + '">' + (completed ? '<span aria-hidden="true">✓</span> ' : '') + label + '</button>';
+          }).join('') + '</nav>';
+        };
         const header = (step, backAction) => '<div class="guided-builder-header"><div class="row split"><button type="button" data-action="' + backAction + '">Back</button><button type="button" data-action="open-guided-guidelines">Programming Guide</button></div>' + progress(step) + '</div>';
         if (guidedMesocycleView === 'guidelines') return '<section class="guided-builder">' + header(0, 'close-guided-mesocycle') + '<div class="section-heading"><div><div class="section-kicker">Before You Build</div><h2>Plan with clear guardrails</h2><p>These practical defaults power the live feedback while you remain in control.</p></div></div><div class="guideline-grid">' + guidedMesocycleApi.PLANNING_RULES.guidelines.map((rule) => '<details class="guideline-card"><summary><strong>' + escapeHtml(rule.title) + '</strong><span>' + escapeHtml(rule.summary) + '</span></summary><p>' + escapeHtml(rule.detail) + '</p></details>').join('') + '</div><button class="primary-action" type="button" data-action="open-guided-setup">Start Planning</button></section>';
         if (guidedMesocycleView === 'setup') {
@@ -6155,18 +6278,13 @@
           return '<section class="guided-builder">' + header(1, 'guided-back-guidelines') + '<div class="section-heading"><div><div class="section-kicker">Setup</div><h2>Objective, Schedule, and Constraints</h2><p>These choices create empty training days and evidence-adjusted targets—not an automatic program.</p></div></div><div class="guided-setup-grid"><label>Objective<select data-action="mesocycle-type"><option value="primary_progression">Primary Progression</option><option value="alternative_exercise">Alternative Exercises</option><option value="lower_fatigue_resensitization">Lower Fatigue</option><option value="specialization">Specialization</option></select></label><label>Duration (weeks)<input type="number" min="2" max="12" value="' + escapeHtml(mesocycleDurationDraft || 6) + '" data-action="mesocycle-duration"></label><label>Training Days per Week<input type="number" min="1" max="7" value="' + Number(data.settings.trainingDaysPerWeek || 4) + '" data-action="mesocycle-training-days"></label></div><section class="equipment-picker"><strong>Available Equipment</strong><div class="equipment-chips">' + mesocycleEquipmentTaxonomy.map(([value,label]) => '<button class="equipment-chip" type="button" data-action="toggle-mesocycle-equipment" data-value="' + value + '" aria-pressed="' + mesocycleEquipmentSelection().includes(value) + '">' + label + '</button>').join('') + '</div></section><section class="muscle-scope-panel"><strong>Muscle Groups and Scope</strong><div class="muscle-scope-options">' + muscles.map((muscle) => '<label class="muscle-scope-option"><input type="checkbox" data-action="mesocycle-muscle-scope" value="' + muscle + '" ' + (mesocycleScopeDraft.has(muscle) ? 'checked' : '') + '><span>' + escapeHtml(presentationLabel(muscle)) + '</span></label>').join('') + '</div></section><button class="primary-action" type="button" data-action="create-guided-draft">Create Empty Training Days</button></section>';
         }
         if (!draft) return '';
-        if (guidedExerciseBrowserDayId) {
-          const muscles = draft.includedMuscleGroupIds || [];
-          guidedExerciseMuscleFilter = muscles.includes(guidedExerciseMuscleFilter) ? guidedExerciseMuscleFilter : muscles[0];
-          const pool = guidedCandidatePool(guidedExerciseMuscleFilter).filter((item) => !guidedExerciseSearch || normalizePrescriptionIdentity(item.exerciseName).includes(normalizePrescriptionIdentity(guidedExerciseSearch)));
-          return '<section class="guided-builder">' + header(2, 'close-guided-exercise-browser') + '<h2>Add Exercise</h2><label>Search<input type="search" data-action="guided-exercise-search" value="' + escapeHtml(guidedExerciseSearch) + '"></label><label>Target Muscle<select data-action="guided-exercise-muscle">' + muscles.map((muscle) => '<option value="' + muscle + '" ' + (muscle === guidedExerciseMuscleFilter ? 'selected' : '') + '>' + escapeHtml(presentationLabel(muscle)) + '</option>').join('') + '</select></label><div class="exercise-browser-results">' + pool.map((candidate) => '<article class="exercise-browser-card"><div class="section-kicker">' + escapeHtml(presentationLabel(candidate.intendedRole)) + '</div><h3>' + escapeHtml(candidate.exerciseName) + '</h3><strong>Predicted effectiveness: ' + Math.round(candidate.scores?.overallRecommendationStrength || 0) + ' / 100</strong><span>' + (candidate.recommendedSetRange?.target || 3) + ' sets · ' + (candidate.recommendedRepRange?.min || 8) + '–' + (candidate.recommendedRepRange?.max || 12) + ' reps</span><details><summary>Why this exercise?</summary><p>' + escapeHtml(candidate.reasonForMesocycle || 'Fits the selected target, objective, evidence, and available equipment.') + '</p></details><button type="button" class="primary-action" data-action="add-guided-exercise" data-day-id="' + guidedExerciseBrowserDayId + '" data-exercise-id="' + escapeHtml(candidate.exerciseId) + '" data-muscle-group-id="' + guidedExerciseMuscleFilter + '">Add Exercise</button></article>').join('') + '</div></section>';
-        }
+        if (guidedExerciseBrowserDayId) return renderGuidedExerciseWorkspace(draft, header(2, 'close-guided-exercise-browser'));
         const ledger = guidedLedger(draft);
-        if (guidedWeeklySummaryOpen) return '<section class="guided-builder">' + header(2, 'close-guided-weekly') + '<h2>Weekly Muscle Volume</h2><p>Direct sets remain separate from estimated fractional contribution.</p><div class="guided-volume-grid">' + draft.includedMuscleGroupIds.map((muscle) => { const total = ledger.muscleTotals.find((item) => item.muscleGroupId === muscle) || { directSets:0,fractionalSets:0,weightedSets:0,exposureDayIds:[] }; const target = guidedTargetFor(muscle,draft); const status = total.directSets < target.min ? 'Below target' : total.weightedSets > target.max ? 'Above target' : 'Within target'; return '<div class="guided-volume-row"><strong>' + escapeHtml(presentationLabel(muscle)) + '<small>' + status + ' · target ' + target.min + '–' + target.max + '</small></strong><span><b>' + total.directSets + '</b><small> direct</small></span><span>' + total.fractionalSets + '<small> fractional</small></span><span>' + total.exposureDayIds.length + '<small> sessions</small></span></div>'; }).join('') + '</div><button class="primary-action" type="button" data-action="check-guided-viability">Check Viability</button></section>';
+        if (guidedWeeklySummaryOpen) return '<section class="guided-builder">' + header(2, 'close-guided-weekly') + '<div class="section-heading"><div><div class="section-kicker">Weekly Review</div><h2>Weekly Muscle Volume</h2><p>Direct sets remain separate from fractional contribution; targets represent one normal training week.</p></div></div>' + renderGuidedMusclePrioritySummary(draft, false) + '<button class="primary-action" type="button" data-action="check-guided-viability">Check Viability</button></section>';
         if (guidedGenerationReviewOpen) { const templates = guidedTemplatesForMesocycle(draft); return '<section class="guided-builder">' + header(4, 'close-guided-generation-review') + '<h2>Create Mesocycle Templates</h2><p>' + templates.length + ' linked templates will preserve exercise order, sets, research targets, and overrides.</p>' + templates.map((template) => '<article class="guided-day"><div class="guided-day-header"><strong>' + escapeHtml(template.name) + '</strong><span>' + template.exercises.reduce((sum,item) => sum + item.sets,0) + ' working sets</span></div></article>').join('') + '<button class="primary-action" type="button" data-action="create-guided-templates">Create Mesocycle Templates</button></section>'; }
         if (guidedMesocycleView === 'viability' && draft.viabilityResult) { const result = draft.viabilityResult; return '<section class="guided-builder">' + header(3, 'return-guided-builder') + '<div class="row split"><div><div class="section-kicker">Viability Check</div><h2>' + escapeHtml(result.grade) + '</h2></div><div class="viability-score"><strong>' + result.score + '</strong><span>/ 100</span></div></div><div class="guideline-grid">' + result.findings.filter((item) => !item.accepted).map((finding) => '<article class="finding ' + (finding.severity === 'blocking' ? 'blocking' : '') + '"><strong>' + escapeHtml(presentationLabel(finding.title)) + '</strong><p>' + escapeHtml(finding.why) + '</p><span>' + escapeHtml((finding.actions || []).join(' · ')) + '</span>' + (finding.severity !== 'blocking' ? '<button type="button" data-action="accept-guided-finding" data-finding-id="' + finding.id + '">Accept Exception</button>' : '') + '</article>').join('') + '</div><button class="primary-action" type="button" data-action="open-guided-generation-review" ' + (result.blockingCount ? 'disabled' : '') + '>Review Template Creation</button></section>'; }
         if (!guidedSelectedDayId) guidedSelectedDayId = draft.guidedDays[0]?.id || '';
-        return '<section class="guided-builder">' + header(2, 'close-guided-mesocycle') + '<div><div class="section-kicker">Guided Mesocycle Builder</div><h2>' + escapeHtml(draft.name) + '</h2><p>' + draft.durationWeeks + ' weeks · ' + draft.trainingDays + ' training days</p></div><div class="guided-day-list">' + draft.guidedDays.map((day) => { const total = ledger.dayTotals.find((item) => item.dayId === day.id) || {workingSets:0,exerciseCount:0}; const open = guidedSelectedDayId === day.id; return '<article class="guided-day"><div class="guided-day-header"><button type="button" data-action="toggle-guided-day" data-day-id="' + day.id + '"><strong>' + escapeHtml(day.name) + '</strong><span>' + total.workingSets + ' working sets · ' + total.exerciseCount + ' exercises</span></button></div>' + (open ? '<div class="guided-day-body">' + day.assignments.map((assignment) => '<article class="guided-exercise"><strong>' + escapeHtml(assignment.name) + '</strong><span>' + escapeHtml(presentationLabel(assignment.role)) + ' · ' + assignment.repRange.min + '–' + assignment.repRange.max + ' reps</span><div class="set-stepper"><button type="button" data-action="guided-set-change" data-day-id="' + day.id + '" data-assignment-id="' + assignment.id + '" data-delta="-1">−</button><output>' + assignment.workingSets + ' sets</output><button type="button" data-action="guided-set-change" data-day-id="' + day.id + '" data-assignment-id="' + assignment.id + '" data-delta="1">+</button></div><label>Move to day<select data-action="move-guided-exercise" data-day-id="' + day.id + '" data-assignment-id="' + assignment.id + '">' + draft.guidedDays.map((option) => '<option value="' + option.id + '" ' + (option.id === day.id ? 'selected' : '') + '>' + escapeHtml(option.name) + '</option>').join('') + '</select></label><button type="button" data-action="remove-guided-exercise" data-day-id="' + day.id + '" data-assignment-id="' + assignment.id + '">Remove</button></article>').join('') + '<button class="primary-action" type="button" data-action="open-guided-exercise-browser" data-day-id="' + day.id + '">Add Exercise</button></div>' : '') + '</article>'; }).join('') + '</div><button class="guided-summary-button primary-action" type="button" data-action="open-guided-weekly">Weekly Volume & Frequency</button><button type="button" data-action="check-guided-viability">Check Viability</button></section>';
+        return '<section class="guided-builder">' + header(2, 'close-guided-mesocycle') + '<div><div class="section-kicker">Guided Mesocycle Builder</div><h2>' + escapeHtml(draft.name) + '</h2><p>' + draft.durationWeeks + ' weeks · ' + draft.trainingDays + ' training days</p></div>' + renderGuidedMusclePrioritySummary(draft, true) + '<div class="guided-day-list">' + draft.guidedDays.map((day) => { const total = ledger.dayTotals.find((item) => item.dayId === day.id) || {workingSets:0,exerciseCount:0}; const open = guidedSelectedDayId === day.id; return '<article class="guided-day"><div class="guided-day-header"><button type="button" data-action="toggle-guided-day" data-day-id="' + day.id + '"><strong>' + escapeHtml(day.name) + '</strong><span>' + total.workingSets + ' working sets · ' + total.exerciseCount + ' exercises</span></button></div>' + (open ? '<div class="guided-day-body">' + day.assignments.map((assignment) => '<article class="guided-exercise"><strong>' + escapeHtml(assignment.name) + '</strong><span>' + escapeHtml(presentationLabel(assignment.role)) + ' · ' + assignment.repRange.min + '–' + assignment.repRange.max + ' reps</span><div class="set-stepper"><button type="button" data-action="guided-set-change" data-day-id="' + day.id + '" data-assignment-id="' + assignment.id + '" data-delta="-1">−</button><output>' + assignment.workingSets + ' sets</output><button type="button" data-action="guided-set-change" data-day-id="' + day.id + '" data-assignment-id="' + assignment.id + '" data-delta="1">+</button></div><label>Move to day<select data-action="move-guided-exercise" data-day-id="' + day.id + '" data-assignment-id="' + assignment.id + '">' + draft.guidedDays.map((option) => '<option value="' + option.id + '" ' + (option.id === day.id ? 'selected' : '') + '>' + escapeHtml(option.name) + '</option>').join('') + '</select></label><button type="button" data-action="remove-guided-exercise" data-day-id="' + day.id + '" data-assignment-id="' + assignment.id + '">Remove</button></article>').join('') + '<button class="primary-action" type="button" data-action="open-guided-exercise-browser" data-day-id="' + day.id + '">Add Exercise</button></div>' : '') + '</article>'; }).join('') + '</div><button class="guided-summary-button primary-action" type="button" data-action="open-guided-weekly">Weekly Volume & Frequency</button><button type="button" data-action="check-guided-viability">Check Viability</button></section>';
       }
 
       function renderMesocyclePlanner() {
@@ -10374,14 +10492,19 @@
         if (action === "new-session") addSession();
         if (action === "new-template") addTemplate();
         if (action === "begin-guided-mesocycle") beginGuidedMesocycle();
+        if (action === "guided-step") setGuidedStep(target.dataset.step);
         if (action === "close-guided-mesocycle") { guidedMesocycleView = "closed"; guidedExerciseBrowserDayId = ""; guidedWeeklySummaryOpen = false; render(); }
         if (action === "open-guided-guidelines" || action === "guided-back-guidelines") { guidedMesocycleView = "guidelines"; guidedExerciseBrowserDayId = ""; guidedWeeklySummaryOpen = false; render(); }
-        if (action === "open-guided-setup") { guidedMesocycleView = "setup"; render(); }
+        if (action === "open-guided-setup") setGuidedStep("setup");
         if (action === "create-guided-draft") createGuidedMesocycleDraft();
         if (action === "toggle-guided-day") { guidedSelectedDayId = target.dataset.dayId; render(); }
-        if (action === "open-guided-exercise-browser") { guidedExerciseBrowserDayId = target.dataset.dayId; guidedExerciseSearch = ""; render(); }
-        if (action === "close-guided-exercise-browser") { guidedExerciseBrowserDayId = ""; render(); }
-        if (action === "add-guided-exercise") addGuidedExercise(target.dataset.dayId, target.dataset.exerciseId, target.dataset.muscleGroupId);
+        if (action === "open-guided-exercise-browser") { guidedExerciseBrowserDayId = target.dataset.dayId; guidedExerciseSearch = ""; guidedPendingAssignment = null; render(); }
+        if (action === "close-guided-exercise-browser") { guidedExerciseBrowserDayId = ""; guidedPendingAssignment = null; render(); }
+        if (action === "choose-guided-muscle") { guidedExerciseMuscleFilter = target.dataset.muscleGroupId; if (!guidedExerciseBrowserDayId) guidedExerciseBrowserDayId = guidedSelectedDayId || guidedDraft()?.guidedDays?.[0]?.id || ""; guidedPendingAssignment = null; render(); }
+        if (action === "select-guided-exercise") selectGuidedExercise(target.dataset.dayId, target.dataset.exerciseId, target.dataset.muscleGroupId);
+        if (action === "guided-pending-set-change") { if (guidedPendingAssignment) { guidedPendingAssignment = { ...guidedPendingAssignment, workingSets: Math.max(1, Math.min(10, Number(guidedPendingAssignment.workingSets) + Number(target.dataset.delta))) }; render(); } }
+        if (action === "cancel-guided-pending") { guidedPendingAssignment = null; render(); }
+        if (action === "confirm-guided-exercise") confirmGuidedExercise();
         if (action === "guided-set-change") { const draft = guidedDraft(); const day = draft?.guidedDays.find((item) => item.id === target.dataset.dayId); const assignment = day?.assignments.find((item) => item.id === target.dataset.assignmentId); if (draft && assignment) updateGuidedDraft(guidedMesocycleApi.patchAssignment(draft, day.id, assignment.id, { workingSets: Math.max(1, Math.min(10, Number(assignment.workingSets) + Number(target.dataset.delta))) })); }
         if (action === "remove-guided-exercise") { const draft = guidedDraft(); if (draft) updateGuidedDraft(guidedMesocycleApi.removeAssignment(draft, target.dataset.dayId, target.dataset.assignmentId)); }
         if (action === "open-guided-weekly") { guidedWeeklySummaryOpen = true; render(); }
@@ -10389,7 +10512,7 @@
         if (action === "check-guided-viability") { guidedWeeklySummaryOpen = false; checkGuidedViability(); }
         if (action === "return-guided-builder") { guidedMesocycleView = "builder"; render(); }
         if (action === "accept-guided-finding") { const draft = guidedDraft(); if (draft) { const acceptedExceptions = Array.from(new Set([...(draft.acceptedExceptions || []), target.dataset.findingId])); const viabilityResult = { ...draft.viabilityResult, findings: draft.viabilityResult.findings.map((item) => item.id === target.dataset.findingId ? { ...item, accepted: true } : item) }; viabilityResult.blockingCount = viabilityResult.findings.filter((item) => !item.accepted && item.severity === 'blocking').length; updateGuidedDraft({ ...draft, acceptedExceptions, viabilityResult, viabilityStale: false, updatedAt: isoNow() }); } }
-        if (action === "open-guided-generation-review") { guidedGenerationReviewOpen = true; render(); }
+        if (action === "open-guided-generation-review") { if (guidedStepUnlocked(guidedDraft(), "create")) { guidedGenerationReviewOpen = true; render(); } }
         if (action === "close-guided-generation-review") { guidedGenerationReviewOpen = false; render(); }
         if (action === "create-guided-templates") createGuidedTemplates();
         if (action === "toggle-template-editor") {
@@ -10689,9 +10812,9 @@
         if (action === "training-status") commit({ ...data, settings: { ...data.settings, trainingStatus: target.value } });
         if (action === "mesocycle-type") { mesocycleDraftType = target.value; render(); }
         if (action === "mesocycle-specialization") { mesocycleSpecializationMuscle = target.value; render(); }
-        if (action === "guided-exercise-muscle") { guidedExerciseMuscleFilter = target.value; render(); }
+        if (action === "guided-exercise-muscle") { guidedExerciseMuscleFilter = target.value; guidedPendingAssignment = null; render(); }
         if (action === "guided-exercise-search") { guidedExerciseSearch = target.value; render(); }
-        if (action === "move-guided-exercise") { const draft = guidedDraft(); if (draft) updateGuidedDraft(guidedMesocycleApi.moveAssignment(draft, target.dataset.dayId, target.value, target.dataset.assignmentId)); }
+        if (action === "move-guided-exercise") { const draft = guidedDraft(); if (draft) { const updated = guidedMesocycleApi.moveAssignment(draft, target.dataset.dayId, target.value, target.dataset.assignmentId); if (updated.assignmentError) { target.value = target.dataset.dayId; showAppToast("That exercise is already assigned to the selected day. Merge sets with the existing assignment instead."); } else updateGuidedDraft(updated); } }
         if (action === "mesocycle-muscle-scope") {
           const available = prescriptionEngine ? Array.from(new Set(prescriptionApi.representedMuscleGroups(prescriptionEngine.evidence).map(prescriptionApi.muscleFamily))) : [];
           if (!mesocycleScopeDraft) mesocycleScopeDraft = new Set(available);

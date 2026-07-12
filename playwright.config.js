@@ -18,6 +18,7 @@ module.exports = defineConfig({
   use: {
     baseURL: hostedBaseUrl || "http://127.0.0.1:8765",
     colorScheme: "light",
+    serviceWorkers: "block",
     screenshot: "only-on-failure",
     trace: "retain-on-failure"
   },

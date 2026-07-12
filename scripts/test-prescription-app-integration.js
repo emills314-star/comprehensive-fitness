@@ -88,10 +88,22 @@ const repeatedCheck = guidedApi.viability(repeated, { ledger: repeatedLedger, ta
 assert.equal(repeatedLedger.muscleTotals[0].directSets, 6, "guided volume must update across days");
 assert(!repeatedCheck.findings.some((item) => /repeat|duplicate|same exercise/i.test(item.title)), "the same exercise may be used on multiple days without a warning");
 assert.equal(guidedApi.PLANNING_RULES.maxWorkingSetsPerDay, 18, "guide and viability must share the 18-set rule");
+const unlocked = guidedApi.unlockStep(guidedApi.unlockStep(guided, "setup", "guide"), "build", "setup");
+assert.equal(unlocked.planningProgress.highestUnlockedStep, "build", "completed steps must unlock progressively");
+assert.deepEqual(unlocked.planningProgress.completedSteps, ["guide", "setup"], "completed step state must persist in the draft");
+const sameDayDuplicate = guidedApi.addExercise(guidedApi.addExercise(guided, guided.guidedDays[0].id, bench), guided.guidedDays[0].id, { ...bench, exerciseId: "bench-alias", researchExerciseId: "bench" });
+assert.equal(sameDayDuplicate.assignmentError.reason, "already_added_to_day", "canonical aliases must not duplicate an exercise within one day");
+const statusRows = guidedApi.muscleTargetStatuses(repeated, repeatedLedger, () => ({ min: 8, target: 10, max: 12 }));
+assert.equal(statusRows[0].setsRemaining, 2, "sets remaining must use the direct-set minimum");
+assert.equal(statusRows[0].frequencyRemaining, 0, "two programmed exposures must satisfy normal frequency");
 
 const evidence = engineApi.loadEvidenceFromFiles(root);
 const engine = engineApi.createPrescriptionEngine(evidence);
 const pools = engine.buildAllCandidatePools();
+const latPool = engine.rankExercisePool("lats", { availableEquipment: ["all"] });
+assert(!latPool.candidates.some((candidate) => /ab wheel/i.test(candidate.exerciseName)), "isometric zero-credit Ab Wheel involvement must not make it a lat candidate");
+assert(latPool.candidates.some((candidate) => /pulldown|pull-up|chin/i.test(candidate.exerciseName)), "the lat pool must retain direct dynamic candidates");
+latPool.candidates.forEach((candidate) => assert(Number.isFinite(candidate.scores.targetMuscleEffectiveness), "each candidate must expose target-muscle effectiveness separately"));
 const represented = Object.keys(pools);
 assert(represented.length >= 20, "The real databases should expose all represented muscle groups");
 represented.forEach((muscle) => {

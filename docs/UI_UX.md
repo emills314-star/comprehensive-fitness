@@ -16,11 +16,15 @@ Read this document before changing navigation, screens, labels, visual hierarchy
 
 ### Guided mesocycle workflow — IMPLEMENTED
 
-The Templates hierarchy begins with **Plan Your Mesocycle**, followed by ordinary templates and Historical Mesocycles. Opening it creates a focused workspace: Before You Build guidance; objective/schedule/equipment/scope setup; empty training days; exercise search and evidence-ranked selection; live workload review; Check Viability; exception acknowledgment; and final linked-template review.
+The Templates hierarchy begins with **Plan Your Mesocycle**, followed by ordinary templates and Historical Mesocycles. Opening it creates a focused workspace: Before You Build guidance; objective/schedule/equipment/scope setup; empty training days; prioritized muscle needs; target-specific exercise search; focused pending set configuration; live workload review; Check Viability; exception acknowledgment; and final linked-template review.
 
 One day is expanded at a time on mobile. Each assignment provides a working-set stepper, explicit Move to Day selector, and Remove action. Drag-and-drop is not required. The weekly summary distinguishes direct, fractional, and exposure-frequency values. Programming Guide remains available without discarding progress. The same exercise can be selected on multiple days without warning.
 
 Warnings identify the affected day or muscle, explain why it matters, and suggest a correction. Passed checks and low-value notes remain hidden. Non-blocking exceptions may be accepted and remain audited in the draft.
+
+Guide, Setup, Build, Check, and Create are compact step buttons. Active uses strong blue; completed/unlocked uses a light-blue return state with a checkmark; future steps are muted and disabled. Progress persists in the draft. Setup or Build edits retain compatible work but stale the prior viability result and relock Create.
+
+Build keeps a compact Volume Remaining panel available. It shows direct/fractional sets, evidence-adjusted target range, sets to minimum, frequency need, remaining-day feasibility, and Below/Within/Above status. Candidate selection creates a pending Configuring Now card, focuses it with reduced-motion support, and shows target muscle, target-muscle effectiveness, confidence, sets, reps, RPE/RIR, structure, rest, and live warnings. Add to Day returns focus to the picker, updates needs immediately, and disables the same canonical exercise for that day while leaving it available on other days.
 
 The current UI is mobile-first, light/dark capable, dense enough for training use, and designed to keep recommendations explainable. The visual language uses blue/current-state accents, cards, score tones, completion states, compact bottom navigation, and responsive wrapping. It should feel motivating without treating every workout as a maximal-performance test.
 
@@ -72,7 +76,7 @@ The Charts scope controls form one rounded panel. It shows the canonical selecte
 
 ### Mesocycle planner
 
-The Templates tab hierarchy is regular workout templates first, Mesocycle Planner second, and Historical Mesocycles last. Mesocycles intentionally remain inside Templates instead of becoming a sixth primary tab. The benefit of a dedicated tab would be shorter Template content and faster direct access to planning/history; the drawbacks are overcrowded mobile navigation, elevating an occasional planning task above frequently used workout actions, and separating plans from the templates they generate. Normal training already exposes the active mesocycle through its generated templates and workout prescription, so the drawbacks outweigh the benefits. The planner exposes eight dependency-ordered stages: Objective & Schedule; Equipment; Training Scope; Exercise Portfolio; Exercise Assignments; Full Review; Confirm; Ready. Initial controls are grouped under `Objective, Schedule, and Constraints`; Available Equipment follows immediately, then Muscle Groups in Scope. The persisted engine unit remains a `Program Slot`, while the UI calls the selection and placement surface `Exercise Assignments`. Planner fields share the same 48-pixel input, border, focus-ring, disabled, pressed, and responsive layout contract. `Top Exercise Candidates` is an active selector: the user chooses the stated number, sees the selected state immediately, and may compare up to three alternatives.
+Mesocycles intentionally remain inside Templates instead of becoming a sixth primary tab. The benefit of a dedicated tab would be shorter Template content and faster direct access; the drawbacks are overcrowded mobile navigation and separating plans from the templates they generate. The guided workflow therefore uses five dependency-ordered steps inside Templates: Guide, Setup, Build, Check, and Create. The former eight-stage automatic planner and Program Slot UI are legacy historical-plan behavior, not the new-plan workflow.
 
 Templates are progressively disclosed for responsiveness. The initial tab shows compact template rows, a compact current-mesocycle summary, and compact history. “Edit template” constructs that template's exercise controls only while open; “Open Planner Review” constructs the candidate, portfolio, session, and validation detail only while requested. Weekly fatigue warnings remain available on Dashboard, and readiness-adjusted coaching is calculated when starting a workout rather than repeated across every template row. Muscle-scope checkboxes update their local draft immediately without rebuilding the full tab after each tap.
 
@@ -84,9 +88,9 @@ The review shows named session purpose, ordered exercises, roles, sets/reps, dir
 
 ### Recovery and nutrition
 
-### Refined mesocycle construction
+### Legacy automatic mesocycle review
 
-Mesocycle purpose uses four compact selectable options. Duration and training-day fields remain bounded numeric inputs, while equipment uses standardized selectable chips rather than free text. The generated summary uses labelled metadata for purpose, duration, calculated basis, frequency, lifecycle dates, and program size.
+Legacy automatically generated plans retain their existing review presentation for historical compatibility. New guided plans do not automatically generate a portfolio or distribute sessions.
 
 Available Equipment has an explicit `All Equipment / Standard Gym` default. The only other user-facing capability choices are Bodyweight, Bands, Dumbbells, Barbell, Rack, and Cable Station. Selecting an individual capability clears Standard Gym; clearing the final individual capability restores Standard Gym, so an empty ambiguous state is impossible. Restrictions apply to selected candidates, alternates, and comparisons; detailed requirements remain in the engine and are not exposed as a long picker. Omitted muscle groups use collapsed `Why Train This Muscle Group?` education. Portfolio entries prioritize exercise name, target muscle, program role, and primary/secondary designation without repeating generic boilerplate. Primary, secondary, and destructive lifecycle actions are visually separated.
 

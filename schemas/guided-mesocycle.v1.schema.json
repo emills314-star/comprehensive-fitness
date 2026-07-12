@@ -3,7 +3,7 @@
   "$id": "https://comprehensive-fitness.local/schemas/guided-mesocycle.v1.schema.json",
   "title": "Guided Mesocycle Draft v1",
   "type": "object",
-  "required": ["id", "schemaVersion", "builderMode", "rulesVersion", "name", "type", "status", "durationWeeks", "trainingDays", "guidedDays", "acceptedExceptions", "revision", "createdAt", "updatedAt"],
+  "required": ["id", "schemaVersion", "builderMode", "rulesVersion", "name", "type", "status", "durationWeeks", "trainingDays", "planningProgress", "guidedDays", "acceptedExceptions", "revision", "createdAt", "updatedAt"],
   "properties": {
     "id": { "type": "string", "minLength": 1 },
     "schemaVersion": { "const": "guided-mesocycle/1.0.0" },
@@ -17,6 +17,19 @@
     "availableEquipment": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
     "includedMuscleGroupIds": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
     "musclePriorities": { "type": "object", "additionalProperties": { "enum": ["maintenance", "normal", "priority", "specialization"] } },
+    "planningProgress": {
+      "type": "object",
+      "required": ["highestUnlockedStep", "completedSteps", "setupRevision", "buildRevision"],
+      "properties": {
+        "highestUnlockedStep": { "enum": ["guide", "setup", "build", "check", "create"] },
+        "completedSteps": { "type": "array", "items": { "enum": ["guide", "setup", "build", "check", "create"] }, "uniqueItems": true },
+        "setupRevision": { "type": "integer", "minimum": 0 },
+        "buildRevision": { "type": "integer", "minimum": 0 },
+        "viabilityRevision": { "type": ["integer", "null"], "minimum": 0 },
+        "createReadyRevision": { "type": ["integer", "null"], "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
     "guidedDays": {
       "type": "array",
       "minItems": 1,
@@ -25,7 +38,7 @@
         "required": ["id", "ordinal", "name", "assignments"],
         "properties": {
           "id": { "type": "string" }, "ordinal": { "type": "integer", "minimum": 1 }, "name": { "type": "string", "minLength": 1 },
-          "assignments": { "type": "array", "items": { "type": "object", "required": ["id", "exerciseId", "name", "workingSets", "repRange", "setStructure"], "properties": { "id": { "type": "string" }, "exerciseId": { "type": "string" }, "name": { "type": "string" }, "workingSets": { "type": "integer", "minimum": 1 }, "repRange": { "type": "object" }, "setStructure": { "type": "string" } }, "additionalProperties": true } }
+          "assignments": { "type": "array", "items": { "type": "object", "required": ["id", "exerciseId", "name", "workingSets", "repRange", "setStructure"], "properties": { "id": { "type": "string" }, "exerciseId": { "type": "string" }, "canonicalExerciseId": { "type": "string" }, "name": { "type": "string" }, "workingSets": { "type": "integer", "minimum": 1 }, "targetMuscleEffectiveness": { "type": "number", "minimum": 0, "maximum": 100 }, "confidence": { "type": "string" }, "repRange": { "type": "object" }, "setStructure": { "type": "string" } }, "additionalProperties": true } }
         },
         "additionalProperties": true
       }

@@ -105,8 +105,10 @@ test("Mesocycle Planner follows dependencies and enforces restricted equipment",
   await page.getByRole("button", { name: "Plan Your Mesocycle" }).click();
   await expect(page.getByText("Before You Build", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Start Planning" }).click();
-  const workflow = await page.evaluate(() => [...document.querySelectorAll(".guided-progress span")].map((item) => item.textContent.trim()));
+  const workflow = await page.evaluate(() => [...document.querySelectorAll(".guided-progress button")].map((item) => item.textContent.replace("✓", "").trim()));
   expect(workflow).toEqual(["Guide", "Setup", "Build", "Check", "Create"]);
+  await expect(page.locator('[data-action="guided-step"][data-step="guide"]')).toBeEnabled();
+  await expect(page.locator('[data-action="guided-step"][data-step="build"]')).toBeDisabled();
 
   const equipmentLabels = await page.locator('[data-action="toggle-mesocycle-equipment"]').allTextContents();
   expect(equipmentLabels).toEqual(["All Equipment / Standard Gym", "Bodyweight", "Bands", "Dumbbells", "Barbell", "Rack", "Cable Station"]);
@@ -126,10 +128,26 @@ test("Mesocycle Planner follows dependencies and enforces restricted equipment",
   const build = page.locator('[data-action="create-guided-draft"]');
   expect(await build.count()).toBe(1);
   await build.click();
+  await expect(page.locator('[data-action="guided-step"][data-step="guide"]')).toBeEnabled();
+  await expect(page.locator('[data-action="guided-step"][data-step="setup"]')).toBeEnabled();
+  await expect(page.locator('[data-action="guided-step"][data-step="build"]')).toBeEnabled();
+  await expect(page.locator('[data-action="guided-step"][data-step="create"]')).toBeDisabled();
   await page.getByRole("button", { name: "Add Exercise" }).click();
   const candidateNames = await page.evaluate(() => [...document.querySelectorAll(".exercise-browser-card h3")].map((item) => item.textContent.trim()));
   expect(candidateNames.some((name) => /cable|barbell|dumbbell|machine|leg press/i.test(name))).toBe(false);
   expect(await page.getByText("Unknown", { exact: true }).count()).toBe(0);
+  await page.locator('[data-action="close-guided-exercise-browser"]').click();
+  await page.locator('[data-action="guided-step"][data-step="setup"]').click();
+  await page.getByRole("button", { name: "All Equipment / Standard Gym" }).click();
+  await page.getByRole("button", { name: "Create Empty Training Days" }).click();
+  await page.getByRole("button", { name: "Add Exercise" }).click();
+  const configureButtons = page.locator('[data-action="select-guided-exercise"]:not([disabled])');
+  expect(await configureButtons.count()).toBeGreaterThan(0);
+  await configureButtons.first().click();
+  await expect(page.getByText("Configuring Now", { exact: true })).toBeVisible();
+  await expect(page.locator("[data-guided-configuration]")).toBeFocused();
+  await page.locator('[data-action="confirm-guided-exercise"]').click();
+  await expect(page.getByText(/Already Added to Day 1/)).toBeVisible();
 });
 
 test("design-system source does not accumulate one-off styling", async () => {

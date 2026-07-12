@@ -7,6 +7,7 @@
 
   const BUILDER_VERSION = "guided-mesocycle/1.0.0";
   const RULES_VERSION = "planning-rules/1.0.0";
+  const STEPS = Object.freeze(["guide", "setup", "build", "check", "create"]);
   const PLANNING_RULES = Object.freeze({
     version: RULES_VERSION,
     maxWorkingSetsPerDay: 18,
@@ -39,13 +40,34 @@
       availableEquipment: clone(options.availableEquipment || ["all"]), includedMuscleGroupIds: clone(options.includedMuscleGroupIds || []),
       musclePriorities: clone(options.musclePriorities || {}), specializationMuscleGroups: clone(options.specializationMuscleGroups || []),
       guidedDays: Array.from({ length: trainingDays }, (_, index) => ({ id: uid(), ordinal: index + 1, name: `Day ${index + 1}`, assignments: [] })),
+      planningProgress: { highestUnlockedStep: "guide", completedSteps: [], setupRevision: 1, buildRevision: 0, viabilityRevision: null, createReadyRevision: null },
       acceptedExceptions: [], viabilityResult: null, viabilityStale: true, linkedTemplateIds: [], revision: 1,
       createdAt: options.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString()
     };
   }
 
   function touch(draft) {
-    return { ...draft, viabilityResult: null, viabilityStale: true, updatedAt: new Date().toISOString(), revision: number(draft.revision, 0) + 1 };
+    const progress = draft.planningProgress || {};
+    return { ...draft, viabilityResult: null, viabilityStale: true, planningProgress: { ...progress, highestUnlockedStep: STEPS.indexOf(progress.highestUnlockedStep) >= STEPS.indexOf("check") ? "check" : (progress.highestUnlockedStep || "build"), completedSteps: (progress.completedSteps || []).filter((step) => !["check", "create"].includes(step)), buildRevision: number(progress.buildRevision, 0) + 1, viabilityRevision: null, createReadyRevision: null }, updatedAt: new Date().toISOString(), revision: number(draft.revision, 0) + 1 };
+  }
+
+  function unlockStep(draft, step, completedStep) {
+    const progress = draft.planningProgress || { highestUnlockedStep: "guide", completedSteps: [] };
+    const highest = STEPS[Math.max(STEPS.indexOf(progress.highestUnlockedStep), STEPS.indexOf(step))];
+    return { ...draft, planningProgress: { ...progress, highestUnlockedStep: highest, completedSteps: Array.from(new Set([...(progress.completedSteps || []), ...(completedStep ? [completedStep] : [])])) }, updatedAt: new Date().toISOString() };
+  }
+
+  function canonicalExerciseId(assignment) {
+    return String(assignment?.researchExerciseId || assignment?.canonicalExerciseId || assignment?.exerciseId || "").trim().toLowerCase();
+  }
+
+  function canAssignExercise(draft, dayId, assignment, ignoreAssignmentId = "") {
+    const canonicalId = canonicalExerciseId(assignment);
+    if (!canonicalId) return { allowed: false, reason: "missing_canonical_exercise_id" };
+    const day = draft.guidedDays.find((item) => item.id === dayId);
+    if (!day) return { allowed: false, reason: "training_day_not_found" };
+    const duplicate = day.assignments.find((item) => item.id !== ignoreAssignmentId && canonicalExerciseId(item) === canonicalId);
+    return duplicate ? { allowed: false, reason: "already_added_to_day", duplicateAssignmentId: duplicate.id } : { allowed: true };
   }
 
   function updateDay(draft, dayId, updater) {
@@ -53,6 +75,8 @@
   }
 
   function addExercise(draft, dayId, assignment) {
+    const validation = canAssignExercise(draft, dayId, assignment);
+    if (!validation.allowed) return { ...draft, assignmentError: validation };
     return updateDay(draft, dayId, (day) => ({ ...day, assignments: [...day.assignments, { id: assignment.id || uid(), workingSets: Math.max(1, number(assignment.workingSets, 3)), ...clone(assignment) }] }));
   }
 
@@ -68,6 +92,8 @@
     if (fromDayId === toDayId) return draft;
     const assignment = draft.guidedDays.find((day) => day.id === fromDayId)?.assignments.find((item) => item.id === assignmentId);
     if (!assignment) return draft;
+    const validation = canAssignExercise(draft, toDayId, assignment, assignmentId);
+    if (!validation.allowed) return { ...draft, assignmentError: validation };
     const days = draft.guidedDays.map((day) => {
       if (day.id === fromDayId) return { ...day, assignments: day.assignments.filter((item) => item.id !== assignmentId) };
       if (day.id === toDayId) return { ...day, assignments: [...day.assignments, clone(assignment)] };
@@ -111,6 +137,24 @@
     };
   }
 
+  function muscleTargetStatuses(draft, ledger, targetFor) {
+    const populatedDays = new Set(draft.guidedDays.filter((day) => day.assignments.length).map((day) => day.id));
+    const remainingTrainingDays = Math.max(0, draft.guidedDays.length - populatedDays.size);
+    return (draft.includedMuscleGroupIds || []).map((muscleGroupId) => {
+      const total = ledger.muscleTotals.find((item) => item.muscleGroupId === muscleGroupId) || { directSets: 0, fractionalSets: 0, weightedSets: 0, exposureDayIds: [] };
+      const target = targetFor(muscleGroupId, draft);
+      const priority = draft.musclePriorities?.[muscleGroupId] || "normal";
+      const frequencyTarget = priority === "maintenance" ? PLANNING_RULES.maintenanceFrequency : priority === "specialization" ? PLANNING_RULES.specializationFrequency : PLANNING_RULES.normalFrequency;
+      const status = total.directSets < target.min ? "below" : total.weightedSets > target.max ? "above" : "within";
+      const setsRemaining = Math.max(0, round(target.min - total.directSets));
+      const frequencyRemaining = Math.max(0, frequencyTarget - total.exposureDayIds.length);
+      const priorityWeight = priority === "specialization" ? 1.35 : priority === "priority" ? 1.2 : priority === "maintenance" ? 0.65 : 1;
+      const normalizedDeficit = target.min ? setsRemaining / target.min : 0;
+      const recommendationScore = round((total.directSets === 0 ? 50 : 0) + normalizedDeficit * 35 * priorityWeight + frequencyRemaining * 18 + (frequencyRemaining > remainingTrainingDays ? 25 : 0));
+      return { muscleGroupId, ...total, targetRange: target, setsRemaining, headroom: Math.max(0, round(target.max - total.weightedSets)), status, priority, frequencyTarget, frequencyRemaining, remainingTrainingDays, recommendationScore };
+    }).sort((a, b) => b.recommendationScore - a.recommendationScore || b.setsRemaining - a.setsRemaining || a.muscleGroupId.localeCompare(b.muscleGroupId));
+  }
+
   function viability(draft, options = {}) {
     const ledger = options.ledger || volumeLedger(draft, options.relationshipResolver || (() => []));
     const targetFor = options.targetFor || (() => ({ min: 4, target: 8, max: 12 }));
@@ -118,6 +162,9 @@
     if (!draft.guidedDays.length || draft.guidedDays.every((day) => !day.assignments.length)) findings.push({ id: "no-exercises", severity: "blocking", title: "Add exercises before creating templates", why: "A mesocycle cannot create usable workout templates without exercise assignments.", actions: ["Return to builder"] });
     draft.guidedDays.forEach((day) => {
       const daily = ledger.dayTotals.find((item) => item.dayId === day.id);
+      const canonicalCounts = new Map();
+      day.assignments.forEach((assignment) => { const key = canonicalExerciseId(assignment); if (key) canonicalCounts.set(key, (canonicalCounts.get(key) || 0) + 1); });
+      canonicalCounts.forEach((count, canonicalId) => { if (count > 1) findings.push({ id: `duplicate-${day.id}-${canonicalId}`, severity: "blocking", dayId: day.id, title: `${day.name} repeats the same exercise`, why: "An exact canonical exercise may appear only once in one training day. Increase or restructure the existing assignment instead.", actions: ["Merge sets", "Remove duplicate"] }); });
       if (!day.assignments.length) findings.push({ id: `empty-${day.id}`, severity: "blocking", dayId: day.id, title: `${day.name} is empty`, why: "Every configured training day needs at least one exercise.", actions: ["Add exercise", "Reduce training days"] });
       if (daily?.workingSets > PLANNING_RULES.maxWorkingSetsPerDay) findings.push({ id: `sets-${day.id}`, severity: "strong_warning", dayId: day.id, title: `${day.name} has ${daily.workingSets} working sets`, why: `This exceeds the ${PLANNING_RULES.maxWorkingSetsPerDay}-set practical limit.`, actions: ["Reduce sets", "Move an exercise"] });
       if (daily?.exerciseCount > PLANNING_RULES.practicalExerciseRange[1]) findings.push({ id: `count-${day.id}`, severity: "advisory", dayId: day.id, title: `${day.name} has ${daily.exerciseCount} exercises`, why: "Setup changes and transition time may make this session longer than expected.", actions: ["Consolidate exercises"] });
@@ -132,13 +179,16 @@
       else if (total.directSets < number(target.min, 0)) findings.push({ id: `low-${muscleGroupId}`, severity: "strong_warning", muscleGroupId, title: `${muscleGroupId} is below its direct-set target`, why: `${total.directSets} direct sets are planned; the current evidence-adjusted range begins at ${target.min}.`, actions: ["Add sets", "Accept lower volume"] });
       if (total.weightedSets > number(target.max, 99)) findings.push({ id: `high-${muscleGroupId}`, severity: "strong_warning", muscleGroupId, title: `${muscleGroupId} is above its weighted-volume range`, why: `${total.weightedSets} weighted sets exceed the current upper target of ${target.max}.`, actions: ["Reduce sets", "Accept specialization volume"] });
       if (total.exposureDayIds.length < frequencyTarget) findings.push({ id: `frequency-${muscleGroupId}`, severity: "strong_warning", muscleGroupId, title: `${muscleGroupId} is trained in ${total.exposureDayIds.length} weekly session${total.exposureDayIds.length === 1 ? "" : "s"}`, why: `The selected ${priority} priority uses a practical default of ${frequencyTarget} meaningful exposure${frequencyTarget === 1 ? "" : "s"}.`, actions: ["Add work to another day", "Accept lower frequency"] });
+      const remainingDays = draft.guidedDays.filter((day) => !total.exposureDayIds.includes(day.id)).length;
+      if (Math.max(0, frequencyTarget - total.exposureDayIds.length) > remainingDays) findings.push({ id: `capacity-${muscleGroupId}`, severity: "strong_warning", muscleGroupId, title: `${muscleGroupId} cannot reach its frequency target with the remaining days`, why: "The current distribution leaves too few compatible training days for the default exposure target.", actions: ["Move work", "Increase training days", "Accept lower frequency"] });
     });
     const accepted = new Set(draft.acceptedExceptions || []);
     const visible = findings.map((finding) => ({ ...finding, accepted: accepted.has(finding.id) }));
     const active = visible.filter((finding) => !finding.accepted);
     const score = Math.max(0, Math.round(100 - active.reduce((sum, finding) => sum + (finding.severity === "blocking" ? 25 : finding.severity === "strong_warning" ? 8 : 3), 0)));
-    return { version: "viability/1.0.0", rulesVersion: RULES_VERSION, checkedAt: new Date().toISOString(), score, grade: score >= 90 ? "Excellent" : score >= 80 ? "Good" : score >= 70 ? "Workable" : "Needs Revision", findings: visible, blockingCount: active.filter((item) => item.severity === "blocking").length, warningCount: active.filter((item) => item.severity === "strong_warning").length, readyToGenerate: active.every((item) => item.severity !== "blocking"), ledger };
+    const result = { version: "viability/1.1.0", rulesVersion: RULES_VERSION, checkedAt: new Date().toISOString(), score, grade: score >= 90 ? "Excellent" : score >= 80 ? "Good" : score >= 70 ? "Workable" : "Needs Revision", findings: visible, blockingCount: active.filter((item) => item.severity === "blocking").length, warningCount: active.filter((item) => item.severity === "strong_warning").length, readyToGenerate: active.every((item) => item.severity !== "blocking"), ledger };
+    return result;
   }
 
-  return Object.freeze({ BUILDER_VERSION, RULES_VERSION, PLANNING_RULES, createDraft, addExercise, patchAssignment, removeAssignment, moveAssignment, volumeLedger, viability });
+  return Object.freeze({ BUILDER_VERSION, RULES_VERSION, STEPS, PLANNING_RULES, createDraft, unlockStep, canonicalExerciseId, canAssignExercise, addExercise, patchAssignment, removeAssignment, moveAssignment, volumeLedger, muscleTargetStatuses, viability });
 });

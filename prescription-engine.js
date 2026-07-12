@@ -1128,7 +1128,16 @@
         source: "research_only"
       });
     });
-    return [...candidates.values()];
+    return [...candidates.values()].filter((candidate) => {
+      const canonicalMappings = asArray(candidate.researchMappings);
+      if (!canonicalMappings.length) {
+        const personalRole = String(candidate.muscleScore?.muscle_role || candidate.muscleScore?.muscleRole || "").toLowerCase();
+        return number(candidate.muscleScore?.contribution_weight, ["primary", "direct_load"].includes(personalRole) ? 1 : ["secondary", "meaningful_fractional_load"].includes(personalRole) ? 0.5 : 0) > 0;
+      }
+      const relevant = canonicalMappings.filter((mapping) => researchMuscleMatch(research, muscleGroupId, mapping.muscle_group_id || mapping.muscleGroupId));
+      if (!relevant.length) return false;
+      return relevant.some((mapping) => ["direct_load", "meaningful_fractional_load", "primary", "secondary"].includes(mapping.relationship_type || mapping.relationshipType) && number(mapping.fractional_set_credit ?? mapping.setContribution, 0) > 0);
+    });
   }
 
   function fatigueCostScore(exercise) {
@@ -1214,7 +1223,13 @@
     const relationship = String(firstPresent(muscleScore.muscle_role, muscleScore.muscleRole, "primary")).toLowerCase();
     const directRelationship = relationship === "primary" || relationship === "direct_load";
     const contribution = dataFraction(firstPresent(muscleScore.contribution_weight, muscleScore.contributionWeight, directRelationship ? 1 : 0.5), directRelationship ? 1 : 0.5);
-    const muscleSpecificity = clamp(number(firstPresent(muscleScore.muscle_specific_effectiveness_score, muscleScore.muscleSpecificEffectivenessScore), contribution * 100), 0, 100);
+    const canonicalRelationship = asArray(candidate.researchMappings)
+      .filter((mapping) => researchMuscleMatch(bundle.research, muscleGroupId, mapping.muscle_group_id || mapping.muscleGroupId))
+      .sort((a, b) => number(b.fractional_set_credit, 0) - number(a.fractional_set_credit, 0))[0];
+    const canonicalContribution = canonicalRelationship ? number(canonicalRelationship.fractional_set_credit, 0) : contribution;
+    const canonicalDynamic = !canonicalRelationship || ["direct_load", "meaningful_fractional_load", "primary", "secondary"].includes(canonicalRelationship.relationship_type);
+    const personalMuscleEstimate = number(firstPresent(muscleScore.muscle_specific_effectiveness_score, muscleScore.muscleSpecificEffectivenessScore), canonicalContribution * 100);
+    const muscleSpecificity = clamp(canonicalDynamic ? Math.min(personalMuscleEstimate, canonicalContribution >= 1 ? 100 : canonicalContribution * 100) : 0, 0, 100);
     const lengthenedPositionLoading = lengthenedPositionScore(exercise);
     const stability = stabilityScore(exercise);
     const easeOfProgression = easeOfProgressionScore(exercise);
@@ -1235,7 +1250,12 @@
       bestAlternativeScore: options.bestAlternativeScore,
       currentMesocycleExposures: options.currentMesocycleExposures
     });
-    let overallRecommendationStrength = personalOverall * weights.personalEvidenceWeight + researchOverall * weights.researchEvidenceWeight;
+    const targetMuscleEffectiveness = round(clamp(
+      muscleSpecificity * 0.55 + progressionQuality * 0.16 + recoveryEfficiency * 0.12 + researchSupport * 0.1 + (100 - fatigueCost) * 0.07,
+      0, 100
+    ), 2);
+    const generalExerciseQuality = personalOverall * weights.personalEvidenceWeight + researchOverall * weights.researchEvidenceWeight;
+    let overallRecommendationStrength = targetMuscleEffectiveness * 0.72 + generalExerciseQuality * 0.28;
     if (staleness.rotationRecommended) overallRecommendationStrength -= 14;
     else if ([STALENESS.REGRESSING, STALENESS.EXCESSIVELY_FATIGUING].includes(staleness.classification)) overallRecommendationStrength -= 8;
     const mesocycleType = options.mesocycleType;
@@ -1253,6 +1273,9 @@
       recoveryEfficiency: round(recoveryEfficiency, 2),
       repeatability: round(repeatability, 2),
       muscleSpecificity: round(muscleSpecificity, 2),
+      targetMuscleEffectiveness,
+      targetRelationshipType: canonicalRelationship?.relationship_type || relationship,
+      targetSetContribution: round(canonicalContribution, 2),
       lengthenedPositionLoading: round(lengthenedPositionLoading, 2),
       stability: round(stability, 2),
       easeOfProgression: round(easeOfProgression, 2),
