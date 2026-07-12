@@ -5834,10 +5834,13 @@
       }
 
       function beginGuidedMesocycle() {
-        guidedMesocycleView = "guidelines";
         guidedGenerationReviewOpen = false;
         const existing = guidedDraft();
-        if (existing) guidedMesocycleDraftId = existing.id;
+        if (existing) {
+          guidedMesocycleDraftId = existing.id;
+          guidedSelectedDayId = existing.guidedDays?.[0]?.id || "";
+          guidedMesocycleView = "builder";
+        } else guidedMesocycleView = "guidelines";
         render();
       }
 
