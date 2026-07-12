@@ -16,6 +16,12 @@ Repository instructions may express an approval preference, but they cannot alte
 
 ## Stack and repository layout
 
+### Guided mesocycle layer — IMPLEMENTED
+
+`guided-mesocycle.js` is the versioned, pure planning layer (`guided-mesocycle/1.0.0`; rules `planning-rules/1.0.0`). Its persistence contract is `schemas/guided-mesocycle.v1.schema.json`. It owns draft construction, day assignments, working-set edits, moves, direct/fractional volume ledgers, viability findings, and readiness-to-generate state. `index.html` supplies persistence and UI integration; `prescription-engine.js` remains authoritative for taxonomy, equipment eligibility, candidate ranking, and research-backed prescriptions.
+
+Guided drafts persist in `data.mesocycles` with `builderMode: "guided"`, `guidedDays`, accepted exceptions, a versioned viability result, revision, and linked template IDs. Generated templates store mesocycle, revision, training-day, and assignment identities. Legacy automatically generated mesocycles remain readable; new creation uses the guided path. The guided draft is the structural source of truth and linked templates are derived outputs.
+
 This is a dependency-light static PWA with Capacitor wrappers, not a bundled component-framework application.
 
 | Area | Implementation |

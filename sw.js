@@ -1,4 +1,4 @@
-const CACHE_NAME = "comprehensive-fitness-pwa-v25";
+const CACHE_NAME = "comprehensive-fitness-pwa-v26";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -6,6 +6,7 @@ const APP_SHELL = [
   "/support.html",
   "/manifest.webmanifest",
   "/prescription-engine.js",
+  "/guided-mesocycle.js",
   "/rest-completion-controller.js",
   "/research_database/exports/json/exercise_database.json",
   "/research_database/exports/json/exercise_muscle_map.json",

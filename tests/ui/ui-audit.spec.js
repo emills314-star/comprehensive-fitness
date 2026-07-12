@@ -101,9 +101,12 @@ test("Mesocycle Planner follows dependencies and enforces restricted equipment",
   test.setTimeout(120_000);
   await page.locator('[data-tab="plan"]').waitFor({ state: "visible", timeout: 90_000 });
   await page.locator('[data-tab="plan"]').click();
-  await expect(page.locator(".mesocycle-planner h2")).toContainText("Mesocycle planner", { timeout: 30_000 });
-  const workflow = await page.evaluate(() => [...document.querySelectorAll(".planner-step span")].map((item) => item.textContent.trim()));
-  expect(workflow).toEqual(["Objective & Schedule", "Equipment", "Training Scope", "Exercise Portfolio", "Exercise Assignments", "Full Review", "Confirm", "Ready"]);
+  await expect(page.locator(".mesocycle-planner h2")).toContainText("Plan Your Mesocycle", { timeout: 30_000 });
+  await page.getByRole("button", { name: "Plan Your Mesocycle" }).click();
+  await expect(page.getByText("Before You Build", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Start Planning" }).click();
+  const workflow = await page.evaluate(() => [...document.querySelectorAll(".guided-progress span")].map((item) => item.textContent.trim()));
+  expect(workflow).toEqual(["Guide", "Setup", "Build", "Check", "Create"]);
 
   const equipmentLabels = await page.locator('[data-action="toggle-mesocycle-equipment"]').allTextContents();
   expect(equipmentLabels).toEqual(["All Equipment / Standard Gym", "Bodyweight", "Bands", "Dumbbells", "Barbell", "Rack", "Cable Station"]);
@@ -120,15 +123,12 @@ test("Mesocycle Planner follows dependencies and enforces restricted equipment",
   const chestScope = page.locator('[data-action="mesocycle-muscle-scope"][value="chest"]');
   expect(await chestScope.count()).toBe(1);
   await chestScope.setChecked(false);
-  const build = page.locator('[data-action="preview-mesocycle"]');
+  const build = page.locator('[data-action="create-guided-draft"]');
   expect(await build.count()).toBe(1);
   await build.click();
-  await expect(page.getByText("Intentionally Omitted Muscle Groups", { exact: true })).toBeVisible();
-  expect(await page.getByText("Why Train This Muscle Group?", { exact: true }).count()).toBeGreaterThan(0);
-
-  const candidateNames = await page.evaluate(() => [...document.querySelectorAll(".mesocycle-candidate .candidate-heading > strong")].map((item) => item.textContent.trim()));
+  await page.getByRole("button", { name: "Add Exercise" }).click();
+  const candidateNames = await page.evaluate(() => [...document.querySelectorAll(".exercise-browser-card h3")].map((item) => item.textContent.trim()));
   expect(candidateNames.some((name) => /cable|barbell|dumbbell|machine|leg press/i.test(name))).toBe(false);
-  expect(await page.locator(".program-warning.blocking").count()).toBeGreaterThan(0);
   expect(await page.getByText("Unknown", { exact: true }).count()).toBe(0);
 });
 
@@ -158,39 +158,22 @@ test("Mesocycle Planner progresses from compact setup to full review", async ({ 
   test.setTimeout(120_000);
   const nav = page.getByRole("navigation", { name: "Main navigation" });
   await nav.getByRole("button", { name: /Templates$/ }).click();
-  await page.getByRole("button", { name: /Fatigue Management/ }).waitFor({ state: "visible", timeout: 60_000 });
-  await page.getByRole("button", { name: /Fatigue Management/ }).click();
-  await expect(page.getByRole("button", { name: /Fatigue Management/ })).toHaveAttribute("aria-pressed", "true");
-  await page.getByLabel("Duration in Weeks").fill("4");
+  await page.getByRole("button", { name: "Plan Your Mesocycle" }).click();
+  await page.getByRole("button", { name: "Start Planning" }).click();
+  await page.getByLabel("Duration (weeks)").fill("4");
   await page.getByLabel("Training Days per Week").fill("4");
   await page.getByRole("button", { name: "Dumbbells" }).click();
   await page.getByRole("button", { name: "Rack" }).click();
   await expect(page.getByRole("button", { name: "Dumbbells" })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "All Equipment / Standard Gym" }).click();
-  await page.getByRole("button", { name: "Build full-program draft" }).click();
-  await expect(page.getByLabel("Mesocycle summary")).toBeVisible();
-  await expect(page.getByText("Selected Program-Wide Exercise Portfolio")).toBeVisible();
-  await expect(page.locator(".compact-program-review").getByText("Full Program Review")).toBeVisible();
-  await expect(page.locator(".review-session-card").first()).toBeVisible();
-  expect(await page.locator(".review-groups").count()).toBeLessThanOrEqual(1);
+  await page.getByRole("button", { name: "Create Empty Training Days" }).click();
+  await expect(page.getByText("Guided Mesocycle Builder", { exact: true })).toBeVisible();
+  expect(await page.locator(".guided-day").count()).toBe(4);
+  await page.getByRole("button", { name: "Weekly Volume & Frequency" }).click();
+  await expect(page.getByText("Weekly Muscle Volume", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Check Viability" }).click();
+  await expect(page.getByText("Viability Check", { exact: true })).toBeVisible();
+  expect(await page.locator(".finding.blocking").count()).toBeGreaterThan(0);
   expect(await page.getByText("Passed Checks", { exact: true }).count()).toBe(0);
-  expect(await page.getByText("Informational Notes", { exact: true }).count()).toBe(0);
-  const sessionTotals = await page.evaluate(() => [...document.querySelectorAll(".review-session-card")].map((card) => ({ header: card.querySelector(".review-session-title span")?.textContent || "", sets: [...card.querySelectorAll(".review-session-exercises li > strong:last-child")].reduce((sum, item) => sum + Number.parseInt(item.textContent, 10), 0) })));
-  expect(sessionTotals.length).toBe(4);
-  sessionTotals.forEach((session) => expect(session.sets).toBeLessThanOrEqual(18));
-  const scheduledExerciseNames = await page.evaluate(() => [...document.querySelectorAll(".review-session-exercises li > div:first-child > strong")].map((item) => item.textContent.trim()));
-  expect(scheduledExerciseNames.length).toBe(new Set(scheduledExerciseNames).size);
-  if (process.env.PLAYWRIGHT_BASE_URL) console.log(`HOSTED_MESOCYCLE ${testInfo.project.name}: ${JSON.stringify({ sessionTotals, scheduledExerciseNames })}`);
-  const scoreDisclosure = page.getByText("Why the Score?", { exact: true }).first();
-  await scoreDisclosure.click();
-  await expect(page.getByText("Taxonomy Basis", { exact: true }).first()).toBeVisible();
-  if (await page.getByRole("button", { name: "Regenerate with Practical Limits" }).count()) {
-    await page.getByRole("button", { name: "Regenerate with Practical Limits" }).click();
-    await expect(page.locator(".review-session-card").first()).toBeVisible();
-  }
-  const alternatesToggle = page.getByRole("button", { name: /View Alternates/ }).first();
-  await expect(alternatesToggle).toBeVisible();
-  await alternatesToggle.click();
-  await expect(page.getByRole("button", { name: /Hide Alternates/ }).first()).toBeVisible();
-  expect(await page.getByText(/working sets|Blocking/).count()).toBeGreaterThan(0);
+  if (process.env.PLAYWRIGHT_BASE_URL) console.log(`HOSTED_GUIDED_MESOCYCLE ${testInfo.project.name}: empty-day blocker and live weekly summary verified`);
 });

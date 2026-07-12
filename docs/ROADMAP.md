@@ -16,6 +16,9 @@ Priority labels reflect risk/dependency where clear; otherwise they are **NEEDS 
 
 ## Current product status
 
+- **IMPLEMENTED:** Guided manual mesocycle builder foundation: Templates entry, planning guide, setup, empty days, evidence-ranked exercise selection, working-set controls, move/remove actions, live volume ledger, viability review, exception acknowledgment, and linked-template creation.
+- **NEEDS REVIEW:** Advanced day naming, assignment reordering controls, per-muscle maintenance/specialization selectors, and active-mesocycle revision UX remain follow-up refinements. The persisted model reserves priority, override, and revision fields.
+
 The app is a tested local-first PWA/Capacitor workout tracker with templates, active logging, submission/history/editing, progress/volume/fatigue analytics, recovery guidance, versioned evidence-backed prescriptions, private aggregate import, and optional Web Push/workout mutation upload. The full `npm test` suite passes on `main` @ `7c52a2b` (2026-07-11). Direct wearable sync, comprehensive nutrition logging, account/cloud restore, and production/device verification are incomplete or unverified.
 
 All user-facing work now has a mandatory hosted-site browser-verification gate. A work log may say **Complete** only after local validation, intended-branch deployment, and the affected hosted flow has passed mobile/desktop browser checks with console/runtime review. See `docs/DAILY_BROWSER_QA.md` and `docs/WORK_LOG_TEMPLATE.md`.

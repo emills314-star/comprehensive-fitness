@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const engineApi = require("../prescription-engine");
+const guidedApi = require("../guided-mesocycle");
 
 const root = path.resolve(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
@@ -36,7 +37,7 @@ assert.match(html, /full.program review/i, "Planner must expose full-program int
 assert.match(html, /Base Session Intent[\s\S]*Today’s readiness may modify/, "Templates must distinguish stable intent from readiness changes");
 assert.match(html, /analysis-period-menu[\s\S]*select-chart-period/, "Charts period selection must use the custom control surface");
 assert.doesNotMatch(html, /<select data-action="hypertrophy-window"/, "Charts must not retain the browser-default period dropdown");
-assert(html.indexOf('class="template-library"') < html.indexOf('${renderMesocyclePlanner()}'), "Regular templates must render before the Mesocycle Planner");
+assert(html.indexOf('${renderMesocyclePlanner()}') < html.indexOf('class="template-library"'), "Plan Your Mesocycle must appear near the beginning of Templates");
 assert(html.indexOf('${renderMesocyclePlanner()}') < html.indexOf('${renderHistoricalMesocycles()}'), "Historical Mesocycles must render after the planner");
 assert.match(html, /function presentationLabel\(/, "Planner UI must use one centralized presentation-label adapter");
 assert.doesNotMatch(html, /It replaces the misleading former/, "Migration terminology must not reach users");
@@ -78,6 +79,15 @@ assert.match(html, /restCompletionController\.complete\(completedTimer/, "Timer 
 assert.match(html, /restCompleteAutoDismissMs: 5000/, "Rest overlay must default to exactly five seconds");
 assert.match(html, /data-action="return-to-rest-workout"/, "Rest overlay must include Return to Workout");
 assert.match(html, /data-action="preview-rest-complete-sound"/, "Settings must preview the selected rest sound");
+
+const guided = guidedApi.createDraft({ trainingDays: 2, includedMuscleGroupIds: ["chest"] });
+const bench = { exerciseId: "bench", name: "Bench Press", workingSets: 3, muscleRelationships: [{ muscle_group_id: "chest", relationship_type: "direct_load", fractional_set_credit: 1 }] };
+const repeated = guidedApi.addExercise(guidedApi.addExercise(guided, guided.guidedDays[0].id, bench), guided.guidedDays[1].id, bench);
+const repeatedLedger = guidedApi.volumeLedger(repeated, (assignment) => assignment.muscleRelationships.map((item) => ({ muscleGroupId: item.muscle_group_id, relationshipType: item.relationship_type, setContribution: item.fractional_set_credit })));
+const repeatedCheck = guidedApi.viability(repeated, { ledger: repeatedLedger, targetFor: () => ({ min: 4, target: 6, max: 10 }) });
+assert.equal(repeatedLedger.muscleTotals[0].directSets, 6, "guided volume must update across days");
+assert(!repeatedCheck.findings.some((item) => /repeat|duplicate|same exercise/i.test(item.title)), "the same exercise may be used on multiple days without a warning");
+assert.equal(guidedApi.PLANNING_RULES.maxWorkingSetsPerDay, 18, "guide and viability must share the 18-set rule");
 
 const evidence = engineApi.loadEvidenceFromFiles(root);
 const engine = engineApi.createPrescriptionEngine(evidence);

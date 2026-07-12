@@ -14,6 +14,14 @@ Read this document before changing readiness, recovery, progression, volume, PR,
 
 ## Purpose and evidence hierarchy
 
+### Guided planning rules — IMPLEMENTED
+
+The introductory guide and viability evaluator consume the same exported `PLANNING_RULES` object. Normal sessions should remain at or below 18 working sets; more than two direct exercises for one muscle in one day is a strong warning; normal/priority muscles default to two meaningful weekly exposures, maintenance to one, and specialization to at least two. Direct sets, exercise-specific fractional contribution, weighted stimulus, and isometric exposure remain separate.
+
+Empty configured days are technical blockers. Unusual but usable volume or frequency choices are warnings the user may explicitly accept. Cross-day reuse of the same canonical exercise is allowed and creates no finding. Any assignment, move, or set edit makes the prior viability result stale.
+
+Viability begins at 100 and deducts for unresolved blockers, strong warnings, and advisories. Grades are Excellent (90+), Good (80+), Workable (70+), and Needs Revision. Only unresolved technical blockers prevent linked-template creation.
+
 The engine selects exercises, creates versioned prescriptions and mesocycles, adjusts a workout for current readiness, explains decisions, and preserves the exact recommendation used. It is deterministic for the same normalized inputs; research translation and some operational thresholds are heuristic.
 
 Implemented precedence is tested as:

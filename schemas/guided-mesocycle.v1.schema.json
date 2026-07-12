@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://comprehensive-fitness.local/schemas/guided-mesocycle.v1.schema.json",
+  "title": "Guided Mesocycle Draft v1",
+  "type": "object",
+  "required": ["id", "schemaVersion", "builderMode", "rulesVersion", "name", "type", "status", "durationWeeks", "trainingDays", "guidedDays", "acceptedExceptions", "revision", "createdAt", "updatedAt"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "schemaVersion": { "const": "guided-mesocycle/1.0.0" },
+    "builderMode": { "const": "guided" },
+    "rulesVersion": { "const": "planning-rules/1.0.0" },
+    "name": { "type": "string", "minLength": 1 },
+    "type": { "enum": ["primary_progression", "alternative_exercise", "lower_fatigue_resensitization", "specialization"] },
+    "status": { "enum": ["draft", "planned", "active", "completed", "abandoned", "archived"] },
+    "durationWeeks": { "type": "integer", "minimum": 2, "maximum": 12 },
+    "trainingDays": { "type": "integer", "minimum": 1, "maximum": 7 },
+    "availableEquipment": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "includedMuscleGroupIds": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "musclePriorities": { "type": "object", "additionalProperties": { "enum": ["maintenance", "normal", "priority", "specialization"] } },
+    "guidedDays": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "ordinal", "name", "assignments"],
+        "properties": {
+          "id": { "type": "string" }, "ordinal": { "type": "integer", "minimum": 1 }, "name": { "type": "string", "minLength": 1 },
+          "assignments": { "type": "array", "items": { "type": "object", "required": ["id", "exerciseId", "name", "workingSets", "repRange", "setStructure"], "properties": { "id": { "type": "string" }, "exerciseId": { "type": "string" }, "name": { "type": "string" }, "workingSets": { "type": "integer", "minimum": 1 }, "repRange": { "type": "object" }, "setStructure": { "type": "string" } }, "additionalProperties": true } }
+        },
+        "additionalProperties": true
+      }
+    },
+    "acceptedExceptions": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "viabilityResult": { "type": ["object", "null"] },
+    "viabilityStale": { "type": "boolean" },
+    "linkedTemplateIds": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "revision": { "type": "integer", "minimum": 1 },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": true
+}

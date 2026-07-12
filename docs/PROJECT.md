@@ -14,6 +14,12 @@ Read this document before changing product scope, capabilities, target users, wo
 
 ## Product purpose
 
+### Guided mesocycle planning — IMPLEMENTED
+
+New mesocycles are built in a guided manual workspace rather than assembled automatically. **Plan Your Mesocycle** appears before the ordinary template library. Users review concise planning rules, configure objective, schedule, equipment, and scope, create empty training days, select and arrange exercises, adjust working sets with immediate volume feedback, run a viability check, acknowledge non-blocking exceptions, and create linked workout templates.
+
+The same exercise may intentionally appear on multiple training days. Cross-day exercise reuse is not an error or warning. Same-day mechanical redundancy may still be surfaced when it creates a material programming problem.
+
 Comprehensive Fitness is a local-first strength-training application that logs workouts and turns workout history, optional private personal evidence, recovery check-ins, and a versioned exercise-science database into transparent training guidance. It is trying to become a personal fitness decision system without hiding uncertainty or rewriting historical recommendations after engine updates.
 
 The verified target user is a single strength/hypertrophy trainee using a phone during training. The research package is explicitly scoped to male hypertrophy and related strength, recovery, and nutrition questions (`research_database/README.md`, `research_database/METHODOLOGY.md`). Broader population support is not established.

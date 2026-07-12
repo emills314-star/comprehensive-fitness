@@ -14,6 +14,14 @@ Read this document before changing navigation, screens, labels, visual hierarchy
 
 ## Experience principles
 
+### Guided mesocycle workflow — IMPLEMENTED
+
+The Templates hierarchy begins with **Plan Your Mesocycle**, followed by ordinary templates and Historical Mesocycles. Opening it creates a focused workspace: Before You Build guidance; objective/schedule/equipment/scope setup; empty training days; exercise search and evidence-ranked selection; live workload review; Check Viability; exception acknowledgment; and final linked-template review.
+
+One day is expanded at a time on mobile. Each assignment provides a working-set stepper, explicit Move to Day selector, and Remove action. Drag-and-drop is not required. The weekly summary distinguishes direct, fractional, and exposure-frequency values. Programming Guide remains available without discarding progress. The same exercise can be selected on multiple days without warning.
+
+Warnings identify the affected day or muscle, explain why it matters, and suggest a correction. Passed checks and low-value notes remain hidden. Non-blocking exceptions may be accepted and remain audited in the draft.
+
 The current UI is mobile-first, light/dark capable, dense enough for training use, and designed to keep recommendations explainable. The visual language uses blue/current-state accents, cards, score tones, completion states, compact bottom navigation, and responsive wrapping. It should feel motivating without treating every workout as a maximal-performance test.
 
 Interaction principles evidenced in code: one canonical active workout; explicit destructive/final actions; immediate visible set updates; preserved drafts; conservative empty states; full recommendation detail on demand; accessible labels/live regions/inert modal backgrounds; and user-controlled overrides with reasons.
