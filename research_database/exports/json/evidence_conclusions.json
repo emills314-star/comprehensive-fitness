@@ -19,7 +19,7 @@
     "key_limitations": "Most syntheses combine sexes and training statuses; exercise- and muscle-specific data are sparse.",
     "application_rule": "A broad loading spectrum can produce hypertrophy when sets are sufficiently effortful; moderate loads are usually the most time-efficient default.",
     "exceptions": "Pain, technique failure, medical contraindications, or recovery failure override the default.",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "conclusion_id": "con_0002",
@@ -41,7 +41,7 @@
     "key_limitations": "Most syntheses combine sexes and training statuses; exercise- and muscle-specific data are sparse.",
     "application_rule": "As loads become lighter and rep targets rise, sets generally need to finish closer to task failure to recruit and fatigue high-threshold motor units.",
     "exceptions": "Pain, technique failure, medical contraindications, or recovery failure override the default.",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "conclusion_id": "con_0003",
@@ -63,7 +63,7 @@
     "key_limitations": "Most syntheses combine sexes and training statuses; exercise- and muscle-specific data are sparse.",
     "application_rule": "Momentary muscular failure is not required for hypertrophy and can impose extra fatigue; it is more defensible selectively on stable isolation work than routinely on high-skill compounds.",
     "exceptions": "Pain, technique failure, medical contraindications, or recovery failure override the default.",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "conclusion_id": "con_0004",
@@ -85,7 +85,7 @@
     "key_limitations": "The numeric bands are operational starting ranges, not established per-muscle thresholds.",
     "application_rule": "Hypertrophy generally increases with weekly set volume, but marginal returns diminish and individual recovery constrains useful dose.",
     "exceptions": "Pain, technique failure, medical contraindications, or recovery failure override the default.",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "conclusion_id": "con_0005",
@@ -107,7 +107,7 @@
     "key_limitations": "Most syntheses combine sexes and training statuses; exercise- and muscle-specific data are sparse.",
     "application_rule": "Fractional counting is more defensible than either ignoring all indirect work or crediting every indirect set as a full direct set.",
     "exceptions": "Pain, technique failure, medical contraindications, or recovery failure override the default.",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "conclusion_id": "con_0006",
@@ -129,7 +129,7 @@
     "key_limitations": "Most syntheses combine sexes and training statuses; exercise- and muscle-specific data are sparse.",
     "application_rule": "Frequency is mainly a way to distribute weekly volume and preserve set quality; when volume is equated, hypertrophy differences are small.",
     "exceptions": "Pain, technique failure, medical contraindications, or recovery failure override the default.",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "conclusion_id": "con_0007",
@@ -151,7 +151,7 @@
     "key_limitations": "No validated universal per-session hypertrophy cap exists.",
     "application_rule": "Spread large weekly volumes across sessions when per-session set quality, repetitions, or target-muscle limitation deteriorates.",
     "exceptions": "Pain, technique failure, medical contraindications, or recovery failure override the default.",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "conclusion_id": "con_0008",
@@ -173,7 +173,7 @@
     "key_limitations": "Most syntheses combine sexes and training statuses; exercise- and muscle-specific data are sparse.",
     "application_rule": "Rest long enough to preserve intended repetitions, load, range of motion, and target-muscle performance; compounds usually need longer rests than isolations.",
     "exceptions": "Pain, technique failure, medical contraindications, or recovery failure override the default.",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "conclusion_id": "con_0009",
@@ -195,7 +195,7 @@
     "key_limitations": "Most syntheses combine sexes and training statuses; exercise- and muscle-specific data are sparse.",
     "application_rule": "Controlled repetitions across a broad range of durations can support hypertrophy; intentionally very slow repetitions are not superior.",
     "exceptions": "Pain, technique failure, medical contraindications, or recovery failure override the default.",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "conclusion_id": "con_0010",
@@ -217,7 +217,7 @@
     "key_limitations": "Most syntheses combine sexes and training statuses; exercise- and muscle-specific data are sparse.",
     "application_rule": "Use the largest pain-free, controlled range that maintains the intended joint path and target-muscle loading; full ROM is a strong default, not an inviolable rule.",
     "exceptions": "Pain, technique failure, medical contraindications, or recovery failure override the default.",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "conclusion_id": "con_0011",
@@ -239,7 +239,7 @@
     "key_limitations": "Most syntheses combine sexes and training statuses; exercise- and muscle-specific data are sparse.",
     "application_rule": "Including exercises or ranges that load a muscle at relatively long lengths is reasonable, but the average advantage appears small and muscle-specific.",
     "exceptions": "Pain, technique failure, medical contraindications, or recovery failure override the default.",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "conclusion_id": "con_0012",
@@ -261,7 +261,7 @@
     "key_limitations": "Most syntheses combine sexes and training statuses; exercise- and muscle-specific data are sparse.",
     "application_rule": "Place the highest-priority exercise or muscle earlier; hypertrophy appears similar across broad order strategies, while exercise-specific strength favors earlier placement.",
     "exceptions": "Pain, technique failure, medical contraindications, or recovery failure override the default.",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "conclusion_id": "con_0013",
@@ -283,7 +283,7 @@
     "key_limitations": "Most syntheses combine sexes and training statuses; exercise- and muscle-specific data are sparse.",
     "application_rule": "Neither mode is inherently superior for hypertrophy; select for target-muscle loading, comfort, skill, stability, progression resolution, and transfer goals.",
     "exceptions": "Pain, technique failure, medical contraindications, or recovery failure override the default.",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "conclusion_id": "con_0014",
@@ -305,7 +305,7 @@
     "key_limitations": "Most syntheses combine sexes and training statuses; exercise- and muscle-specific data are sparse.",
     "application_rule": "Varying load can support fatigue management and strength, but periodization has not clearly improved hypertrophy when volume is equated.",
     "exceptions": "Pain, technique failure, medical contraindications, or recovery failure override the default.",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "conclusion_id": "con_0015",
@@ -327,7 +327,7 @@
     "key_limitations": "Most syntheses combine sexes and training statuses; exercise- and muscle-specific data are sparse.",
     "application_rule": "Progression includes more repetitions or load with comparable execution and effort, the same performance at lower effort, or improved range and control at comparable load.",
     "exceptions": "Pain, technique failure, medical contraindications, or recovery failure override the default.",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "conclusion_id": "con_0016",
@@ -349,7 +349,7 @@
     "key_limitations": "Most syntheses combine sexes and training statuses; exercise- and muscle-specific data are sparse.",
     "application_rule": "Increase load only after the prescribed sets reach the top of their range with target RIR and standardized technique across the exercise-specific confirmation window.",
     "exceptions": "Pain, technique failure, medical contraindications, or recovery failure override the default.",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "conclusion_id": "con_0017",
@@ -371,7 +371,7 @@
     "key_limitations": "Most syntheses combine sexes and training statuses; exercise- and muscle-specific data are sparse.",
     "application_rule": "Muscle can often be maintained with substantially less volume than was used to build it if load/effort exposure is retained, but exact trained-male thresholds are unknown.",
     "exceptions": "Pain, technique failure, medical contraindications, or recovery failure override the default.",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "conclusion_id": "con_0018",
@@ -393,7 +393,7 @@
     "key_limitations": "Most syntheses combine sexes and training statuses; exercise- and muscle-specific data are sparse.",
     "application_rule": "Approximately 1.6 g/kg/day covers the average response plateau; up to about 2.2 g/kg/day is a conservative high-end target.",
     "exceptions": "Pain, technique failure, medical contraindications, or recovery failure override the default.",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "conclusion_id": "con_0019",
@@ -415,7 +415,7 @@
     "key_limitations": "Most syntheses combine sexes and training statuses; exercise- and muscle-specific data are sparse.",
     "application_rule": "Protein needs may rise with leanness and deficit severity; use body weight for ordinary cuts and fat-free-mass scaling for very lean athletes.",
     "exceptions": "Pain, technique failure, medical contraindications, or recovery failure override the default.",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "conclusion_id": "con_0020",
@@ -437,7 +437,7 @@
     "key_limitations": "Most syntheses combine sexes and training statuses; exercise- and muscle-specific data are sparse.",
     "application_rule": "Total daily protein is primary; distributing it across 3-5 meaningful feedings is a practical secondary consideration.",
     "exceptions": "Pain, technique failure, medical contraindications, or recovery failure override the default.",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "conclusion_id": "con_0021",
@@ -459,7 +459,7 @@
     "key_limitations": "Most syntheses combine sexes and training statuses; exercise- and muscle-specific data are sparse.",
     "application_rule": "Avoid unnecessarily large sustained deficits; around 500 kcal/day was associated with prevented lean-mass gains on average, but retention remains possible with training and protein.",
     "exceptions": "Pain, technique failure, medical contraindications, or recovery failure override the default.",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "conclusion_id": "con_0022",
@@ -481,7 +481,7 @@
     "key_limitations": "Most syntheses combine sexes and training statuses; exercise- and muscle-specific data are sparse.",
     "application_rule": "Use a slower rate as the trainee becomes leaner, more advanced, or more performance-sensitive.",
     "exceptions": "Pain, technique failure, medical contraindications, or recovery failure override the default.",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "conclusion_id": "con_0023",
@@ -503,7 +503,7 @@
     "key_limitations": "Most syntheses combine sexes and training statuses; exercise- and muscle-specific data are sparse.",
     "application_rule": "Untrained, detrained, novice, higher-body-fat, and previously under-proteined males have the highest probability; advanced lean males should expect small or absent changes.",
     "exceptions": "Pain, technique failure, medical contraindications, or recovery failure override the default.",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "conclusion_id": "con_0024",
@@ -525,7 +525,7 @@
     "key_limitations": "Most syntheses combine sexes and training statuses; exercise- and muscle-specific data are sparse.",
     "application_rule": "Use the smallest surplus that produces a credible upward weight trend and productive training; larger surpluses increasingly add fat rather than guaranteed muscle.",
     "exceptions": "Pain, technique failure, medical contraindications, or recovery failure override the default.",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "conclusion_id": "con_0025",
@@ -547,7 +547,7 @@
     "key_limitations": "Most syntheses combine sexes and training statuses; exercise- and muscle-specific data are sparse.",
     "application_rule": "Target gain rate should decline with training age; treat scale change as a control signal, not a direct measure of muscle growth.",
     "exceptions": "Pain, technique failure, medical contraindications, or recovery failure override the default.",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "conclusion_id": "con_0026",
@@ -569,7 +569,7 @@
     "key_limitations": "Most syntheses combine sexes and training statuses; exercise- and muscle-specific data are sparse.",
     "application_rule": "Do not pre-emptively slash volume; retain enough hard work to preserve performance, then reduce low-value sets if recovery or performance deteriorates.",
     "exceptions": "Pain, technique failure, medical contraindications, or recovery failure override the default.",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "conclusion_id": "con_0027",
@@ -591,6 +591,6 @@
     "key_limitations": "Most syntheses combine sexes and training statuses; exercise- and muscle-specific data are sparse.",
     "application_rule": "Advanced set systems are mainly time-efficiency or variety tools; they are not reliably superior to traditional sets for hypertrophy.",
     "exceptions": "Pain, technique failure, medical contraindications, or recovery failure override the default.",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   }
 ]

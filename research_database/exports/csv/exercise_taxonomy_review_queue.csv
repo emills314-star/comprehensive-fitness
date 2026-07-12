@@ -1,0 +1,12 @@
+taxonomy_review_id,exercise_id,review_reason,priority,status,taxonomy_version,last_reviewed_date
+etr_0001,ex_low_to_high_cable_fly,1 low-confidence relationship require future exercise-specific evidence review.,low,queued,2.0.0,2026-07-12
+etr_0002,ex_reverse_pec_deck,1 low-confidence relationship require future exercise-specific evidence review.,low,queued,2.0.0,2026-07-12
+etr_0003,ex_cable_rear_delt_fly,1 low-confidence relationship require future exercise-specific evidence review.,low,queued,2.0.0,2026-07-12
+etr_0004,ex_deadlift,4 low-confidence relationships require future exercise-specific evidence review.,medium,queued,2.0.0,2026-07-12
+etr_0005,ex_standing_calf_raise,1 low-confidence relationship require future exercise-specific evidence review.,low,queued,2.0.0,2026-07-12
+etr_0006,ex_seated_calf_raise,1 low-confidence relationship require future exercise-specific evidence review.,low,queued,2.0.0,2026-07-12
+etr_0007,ex_leg_press_calf_raise,1 low-confidence relationship require future exercise-specific evidence review.,low,queued,2.0.0,2026-07-12
+etr_0008,ex_incline_dumbbell_curl,1 low-confidence relationship require future exercise-specific evidence review.,low,queued,2.0.0,2026-07-12
+etr_0009,ex_preacher_curl,1 low-confidence relationship require future exercise-specific evidence review.,low,queued,2.0.0,2026-07-12
+etr_0010,ex_cable_curl,1 low-confidence relationship require future exercise-specific evidence review.,low,queued,2.0.0,2026-07-12
+etr_0011,ex_hammer_curl,1 low-confidence relationship require future exercise-specific evidence review.,low,queued,2.0.0,2026-07-12

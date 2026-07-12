@@ -1,21 +1,22 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://comprehensive-fitness.local/schema/2.0.0/exercise_progression_metric_map.schema.json",
-  "title": "exercise_progression_metric_map",
+  "$id": "https://comprehensive-fitness.local/schema/2.0.0/exercise_taxonomy_review_queue.schema.json",
+  "title": "exercise_taxonomy_review_queue",
   "type": "array",
   "items": {
     "type": "object",
     "additionalProperties": false,
     "required": [
-      "exercise_progression_metric_map_id",
+      "taxonomy_review_id",
       "exercise_id",
-      "metric",
-      "priority_rank",
-      "use_case",
-      "confidence_rating"
+      "review_reason",
+      "priority",
+      "status",
+      "taxonomy_version",
+      "last_reviewed_date"
     ],
     "properties": {
-      "exercise_progression_metric_map_id": {
+      "taxonomy_review_id": {
         "type": [
           "string",
           "null"
@@ -29,37 +30,36 @@
         ],
         "pattern": "^[a-z][a-z0-9_]*$"
       },
-      "metric": {
+      "review_reason": {
         "type": [
           "string",
           "null"
         ]
       },
-      "priority_rank": {
-        "type": [
-          "integer",
-          "null"
-        ]
-      },
-      "use_case": {
+      "priority": {
         "type": [
           "string",
           "null"
         ]
       },
-      "confidence_rating": {
+      "status": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "taxonomy_version": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "last_reviewed_date": {
         "type": [
           "string",
           "null"
         ],
-        "enum": [
-          "very_high",
-          "high",
-          "moderate",
-          "low",
-          "very_low",
-          null
-        ]
+        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
       }
     }
   }

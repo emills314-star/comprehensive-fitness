@@ -8,7 +8,7 @@
     "confidence_rating": "high",
     "important_exception_or_limitation": "Very light loads need closer proximity to failure; pain, cardio, grip, or balance can make a nominal range unproductive.",
     "supporting_study_ids": "stu_0004|stu_0005|stu_0039",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "summary_id": "sum_0002",
@@ -19,7 +19,7 @@
     "confidence_rating": "moderate",
     "important_exception_or_limitation": "Ranges are operational and depend on effort, exercise, indirect work, session distribution, calories, sleep, and individual response.",
     "supporting_study_ids": "stu_0001|stu_0002|stu_0025",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "summary_id": "sum_0003",
@@ -30,7 +30,7 @@
     "confidence_rating": "high",
     "important_exception_or_limitation": "Very high per-session volume may justify higher frequency; low-volume programs can work at once weekly.",
     "supporting_study_ids": "stu_0001|stu_0003",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "summary_id": "sum_0004",
@@ -41,7 +41,7 @@
     "confidence_rating": "moderate",
     "important_exception_or_limitation": "RIR reporting is imprecise and failure is not required; the exact optimal RIR is unresolved.",
     "supporting_study_ids": "stu_0005|stu_0006|stu_0030",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "summary_id": "sum_0005",
@@ -52,7 +52,7 @@
     "confidence_rating": "moderate",
     "important_exception_or_limitation": "Hypertrophy differences beyond about 90 seconds are small and uncertain; time constraints and supersets change the tradeoff.",
     "supporting_study_ids": "stu_0007|stu_0026|stu_0038",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "summary_id": "sum_0006",
@@ -63,7 +63,7 @@
     "confidence_rating": "moderate",
     "important_exception_or_limitation": "Deterministic thresholds are operational inferences; no universal plateau or regression cut point is validated.",
     "supporting_study_ids": "stu_0029|stu_0030|stu_0031",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "summary_id": "sum_0007",
@@ -74,7 +74,7 @@
     "confidence_rating": "high",
     "important_exception_or_limitation": "Strength transfer remains modality- and task-specific.",
     "supporting_study_ids": "stu_0009|stu_0010",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "summary_id": "sum_0008",
@@ -85,7 +85,7 @@
     "confidence_rating": "moderate",
     "important_exception_or_limitation": "Long-length advantages are small/heterogeneous and muscle-specific; shortened partials can still be useful.",
     "supporting_study_ids": "stu_0011|stu_0012|stu_0013",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "summary_id": "sum_0009",
@@ -96,7 +96,7 @@
     "confidence_rating": "high",
     "important_exception_or_limitation": "Higher intake is not automatically better and medical protein restrictions require clinician guidance.",
     "supporting_study_ids": "stu_0016|stu_0017|stu_0018",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "summary_id": "sum_0010",
@@ -107,7 +107,7 @@
     "confidence_rating": "moderate",
     "important_exception_or_limitation": "The approximately 500 kcal/day inflection is an average meta-regression estimate, not a universal safe limit.",
     "supporting_study_ids": "stu_0019|stu_0020|stu_0021",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "summary_id": "sum_0011",
@@ -118,7 +118,7 @@
     "confidence_rating": "moderate",
     "important_exception_or_limitation": "Short-term DXA lean-mass changes include water/glycogen and do not equal contractile tissue.",
     "supporting_study_ids": "stu_0021|stu_0023",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "summary_id": "sum_0012",
@@ -129,7 +129,7 @@
     "confidence_rating": "low",
     "important_exception_or_limitation": "These are practical review-based rates; trials do not establish an optimal surplus or universal muscle-to-fat ratio.",
     "supporting_study_ids": "stu_0022|stu_0036",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "summary_id": "sum_0013",
@@ -140,7 +140,7 @@
     "confidence_rating": "low",
     "important_exception_or_limitation": "Direct evidence in currently trained young males and during calorie restriction is sparse.",
     "supporting_study_ids": "stu_0027|stu_0028",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "summary_id": "sum_0014",
@@ -151,6 +151,6 @@
     "confidence_rating": "moderate",
     "important_exception_or_limitation": "Method-specific evidence varies and fatigue can change set comparability.",
     "supporting_study_ids": "stu_0014",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   }
 ]

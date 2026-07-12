@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://comprehensive-fitness.local/schema/1.1.0/exercise_muscle_map.schema.json",
+  "$id": "https://comprehensive-fitness.local/schema/2.0.0/exercise_muscle_map.schema.json",
   "title": "exercise_muscle_map",
   "type": "array",
   "items": {
@@ -11,9 +11,17 @@
       "exercise_id",
       "muscle_group_id",
       "relationship_type",
+      "loading_role",
+      "range_of_motion_role",
       "fractional_set_credit",
+      "local_fatigue_weight",
       "evidence_basis",
-      "confidence_rating"
+      "evidence_notes",
+      "supporting_study_ids",
+      "confidence_rating",
+      "review_status",
+      "taxonomy_version",
+      "last_reviewed_date"
     ],
     "properties": {
       "exercise_muscle_map_id": {
@@ -43,13 +51,43 @@
           "null"
         ]
       },
+      "loading_role": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "range_of_motion_role": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
       "fractional_set_credit": {
         "type": [
           "number",
           "null"
         ]
       },
+      "local_fatigue_weight": {
+        "type": [
+          "number",
+          "null"
+        ]
+      },
       "evidence_basis": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "evidence_notes": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "supporting_study_ids": {
         "type": [
           "string",
           "null"
@@ -68,6 +106,25 @@
           "very_low",
           null
         ]
+      },
+      "review_status": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "taxonomy_version": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "last_reviewed_date": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
       }
     }
   }

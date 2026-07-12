@@ -1,6 +1,6 @@
 # Bibliography
 
-Database version 1.1.0; reviewed 2026-07-11. IDs are persistent and correspond to the research library. Links resolve through DOI.org when a DOI is available.
+Database version 2.0.0; reviewed 2026-07-12. IDs are persistent and correspond to the research library. Links resolve through DOI.org when a DOI is available.
 
 - **stu_0001** — Pelland et al. (2025). The Resistance Training Dose Response: Meta-Regressions Exploring the Effects of Weekly Volume and Frequency on Muscle Hypertrophy and Strength Gains. Sports Medicine. https://doi.org/10.1007/s40279-025-02344-w
 - **stu_0002** — Schoenfeld, Ogborn, and Krieger (2017). Dose-response relationship between weekly resistance training volume and increases in muscle mass. Journal of Sports Sciences. https://doi.org/10.1080/02640414.2016.1210197
@@ -42,3 +42,5 @@ Database version 1.1.0; reviewed 2026-07-11. IDs are persistent and correspond t
 - **stu_0038** — Grgic et al. (2017). Effects of short versus long inter-set rest intervals on muscle hypertrophy. European Journal of Sport Science. https://doi.org/10.1080/17461391.2017.1340524
 - **stu_0039** — Schoenfeld et al. (2017). Strength and Hypertrophy Adaptations Between Low- vs High-Load Resistance Training. Journal of Strength and Conditioning Research. https://doi.org/10.1519/JSC.0000000000002200
 - **stu_0040** — Alizadeh et al. (2023). Resistance Training Induces Improvements in Range of Motion. Sports Medicine. https://doi.org/10.1007/s40279-022-01804-x
+- **stu_0041** — Martín-Fuentes et al. (2020). Electromyographic activity in deadlift exercise and its variants: a systematic review. PLOS ONE. https://doi.org/10.1371/journal.pone.0229507
+- **stu_0042** — Lee et al. (2018). An electromyographic and kinetic comparison of conventional and Romanian deadlifts. Journal of Exercise Science & Fitness. https://doi.org/10.1016/j.jesf.2018.08.001

@@ -12,7 +12,7 @@
     "practical_default": "Start 6-10 fractional hard sets and adjust from repeated performance/recovery data.",
     "risk_of_wrong_application": "False precision can cause needless volume escalation or undertraining.",
     "research_priority": "very_high",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "evidence_gap_id": "gap_0002",
@@ -27,7 +27,7 @@
     "practical_default": "Use 1.0 primary, 0.5 clearly loaded secondary, and 0 when contribution is trivial; permit overrides.",
     "risk_of_wrong_application": "Miscounting distorts volume targets.",
     "research_priority": "high",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "evidence_gap_id": "gap_0003",
@@ -42,7 +42,7 @@
     "practical_default": "Use 1-4 RIR for high-skill compounds and 0-3 for stable isolations; move closer with light loads.",
     "risk_of_wrong_application": "Routine failure may add fatigue; staying too far may underdose light work.",
     "research_priority": "high",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "evidence_gap_id": "gap_0004",
@@ -57,7 +57,7 @@
     "practical_default": "Require 1-3 confirmations depending on skill and variability; never ignore technique/ROM.",
     "risk_of_wrong_application": "Overreacting to noise creates oscillating loads and unnecessary deloads.",
     "research_priority": "very_high",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "evidence_gap_id": "gap_0005",
@@ -72,7 +72,7 @@
     "practical_default": "Use reactive multi-exercise regression and fatigue criteria; scheduled deload only by prior individual pattern.",
     "risk_of_wrong_application": "Unnecessary deloads reduce stimulus; missed fatigue can increase injury or dropout risk.",
     "research_priority": "high",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "evidence_gap_id": "gap_0006",
@@ -87,7 +87,7 @@
     "practical_default": "Start at 25-50% of prior productive volume only when maintenance is the goal; increase if performance or size trends decline.",
     "risk_of_wrong_application": "Too-low defaults may lose tissue; too-high defaults waste recovery.",
     "research_priority": "very_high",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "evidence_gap_id": "gap_0007",
@@ -102,7 +102,7 @@
     "practical_default": "Use status-specific weight-gain rate and adjust from 2-3 week trends.",
     "risk_of_wrong_application": "Large surpluses can cause unnecessary fat gain; no surplus may limit gain in some males.",
     "research_priority": "very_high",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "evidence_gap_id": "gap_0008",
@@ -117,7 +117,7 @@
     "practical_default": "Return qualitative high/moderate/low likelihood with uncertainty, never a precise probability.",
     "risk_of_wrong_application": "False promises can distort calorie and training choices.",
     "research_priority": "high",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "evidence_gap_id": "gap_0009",
@@ -132,7 +132,7 @@
     "practical_default": "Choose 1-3 complementary, pain-free exercises and judge by target limitation and progression.",
     "risk_of_wrong_application": "EMG-based certainty can select uncomfortable or poorly progressive exercises.",
     "research_priority": "high",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "evidence_gap_id": "gap_0010",
@@ -147,7 +147,7 @@
     "practical_default": "Flag repeated sleep below 7 hours as a recovery risk, not proof of impaired hypertrophy.",
     "risk_of_wrong_application": "Treating a heuristic as causation can misclassify training response.",
     "research_priority": "high",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "evidence_gap_id": "gap_0011",
@@ -162,7 +162,7 @@
     "practical_default": "Use lower-end starting volume, 1-4 RIR, and gradual progression while monitoring function and pain.",
     "risk_of_wrong_application": "Overgeneralizing young-male data may impair adherence or recovery.",
     "research_priority": "high",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "evidence_gap_id": "gap_0012",
@@ -177,7 +177,7 @@
     "practical_default": "Keep enhanced status separate and return insufficient_evidence for dose optimization.",
     "risk_of_wrong_application": "Combining populations can dangerously inflate natural-male expectations.",
     "research_priority": "very_high",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "evidence_gap_id": "gap_0013",
@@ -192,7 +192,7 @@
     "practical_default": "Store null rather than invent a count; downgrade applicability unless male results are separable.",
     "risk_of_wrong_application": "Invented counts undermine traceability.",
     "research_priority": "high",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "evidence_gap_id": "gap_0014",
@@ -207,7 +207,7 @@
     "practical_default": "Use broad contexts plus waist, health, preferences, and trajectory; never a single cutoff.",
     "risk_of_wrong_application": "Measurement error can trigger inappropriate dieting or surplus.",
     "research_priority": "high",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   },
   {
     "evidence_gap_id": "gap_0015",
@@ -222,6 +222,6 @@
     "practical_default": "Do not create hypertrophy rankings from acute markers alone.",
     "risk_of_wrong_application": "Misapplication can promote ineffective or harmful programming.",
     "research_priority": "high",
-    "last_reviewed_date": "2026-07-11"
+    "last_reviewed_date": "2026-07-12"
   }
 ]

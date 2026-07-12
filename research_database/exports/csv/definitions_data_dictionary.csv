@@ -48,13 +48,14 @@ effective_exercises,Effective Exercises,Structured field for effective exercises
 equipment,Equipment,Structured field for equipment; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,exercise_database
 evidence_basis,Evidence Basis,Structured field for evidence basis; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,exercise_muscle_map
 evidence_gap_id,Evidence Gap Id,Structured field for evidence gap id; see the owning table and methodology for interpretation.,string,,,true,,lowercase_snake_case_persistent_id,evidence_gaps
+evidence_notes,Evidence Notes,Structured field for evidence notes; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,exercise_muscle_map
 evidence_quality,Evidence Quality,Structured field for evidence quality; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,exercise_database
 evidence_strength,Evidence Strength,Overall evidence grade using the database's five-level controlled vocabulary.,string,very_high|high|moderate|low|very_low,,true,,must_be_one_of:very_high|high|moderate|low|very_low,executive_summary|evidence_conclusions|muscle_group_recommendations|progression_rules|nutrition_strategies
 evidence_tier,Evidence Tier,Structured field for evidence tier; see the owning table and methodology for interpretation.,string,tier_1|tier_2|tier_3|tier_4|tier_5|tier_6|tier_7,,true,,must_be_one_of:tier_1|tier_2|tier_3|tier_4|tier_5|tier_6|tier_7,research_library
 example_value,Example Value,Structured field for example value; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,definitions_data_dictionary
 exceptions,Exceptions,Structured field for exceptions; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,evidence_conclusions|progression_rules
 exercise_aliases,Exercise Aliases,Structured field for exercise aliases; see the owning table and methodology for interpretation.,delimited_string,,,true,,type_must_match,exercise_database
-exercise_id,Exercise Id,Persistent unique identifier for an exercise.,string,,,false,,lowercase_snake_case_persistent_id,exercise_database|exercise_muscle_map|exercise_substitution_map|study_exercise_map|rule_exercise_map|exercise_progression_metric_map
+exercise_id,Exercise Id,Persistent unique identifier for an exercise.,string,,,false,,lowercase_snake_case_persistent_id,exercise_database|exercise_muscle_map|exercise_taxonomy_review_queue|exercise_substitution_map|study_exercise_map|rule_exercise_map|exercise_progression_metric_map
 exercise_muscle_map_id,Exercise Muscle Map Id,Structured field for exercise muscle map id; see the owning table and methodology for interpretation.,string,,,true,,lowercase_snake_case_persistent_id,exercise_muscle_map
 exercise_name,Exercise Name,Structured field for exercise name; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,exercise_database
 exercise_progression_metric_map_id,Exercise Progression Metric Map Id,Structured field for exercise progression metric map id; see the owning table and methodology for interpretation.,string,,,true,,lowercase_snake_case_persistent_id,exercise_progression_metric_map
@@ -73,12 +74,14 @@ intervention,Intervention,Structured field for intervention; see the owning tabl
 joint_stress_considerations,Joint Stress Considerations,Structured field for joint stress considerations; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,exercise_database
 journal,Journal,Structured field for journal; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,research_library
 key_limitations,Key Limitations,Structured field for key limitations; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,evidence_conclusions
-last_reviewed_date,Last Reviewed Date,"Most recent date the record was checked, formatted YYYY-MM-DD.",date,,YYYY-MM-DD,true,,iso_date_yyyy_mm_dd,executive_summary|research_library|evidence_conclusions|evidence_gaps
+last_reviewed_date,Last Reviewed Date,"Most recent date the record was checked, formatted YYYY-MM-DD.",date,,YYYY-MM-DD,true,,iso_date_yyyy_mm_dd,executive_summary|research_library|evidence_conclusions|evidence_gaps|exercise_muscle_map|exercise_taxonomy_review_queue
 lengthened_position_considerations,Lengthened Position Considerations,Structured field for lengthened position considerations; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,muscle_group_recommendations
 likely_diminishing_returns_threshold,Likely Diminishing Returns Threshold,Approximate weekly fractional hard-set level above which marginal returns are more likely to be small; not a maximum tolerable volume.,integer,,,true,,type_must_match,muscle_group_recommendations
 load_adjustment_percent,Load Adjustment Percent,Structured field for load adjustment percent; see the owning table and methodology for interpretation.,decimal,,,true,,type_must_match,progression_rules
 load_increase_criteria,Load Increase Criteria,Structured field for load increase criteria; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,exercise_database
+loading_role,Loading Role,Structured field for loading role; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,exercise_muscle_map
 local_fatigue_cost,Local Fatigue Cost,Structured field for local fatigue cost; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,exercise_database
+local_fatigue_weight,Local Fatigue Weight,Structured field for local fatigue weight; see the owning table and methodology for interpretation.,decimal,,,true,,type_must_match,exercise_muscle_map
 main_result,Main Result,Structured field for main result; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,research_library
 maintenance_adjustment,Maintenance Adjustment,Structured field for maintenance adjustment; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,muscle_group_recommendations
 maintenance_volume_estimate,Maintenance Volume Estimate,Structured field for maintenance volume estimate; see the owning table and methodology for interpretation.,integer,,,true,,type_must_match,muscle_group_recommendations
@@ -118,11 +121,13 @@ preferred_progression_model,Preferred Progression Model,Structured field for pre
 previous_value,Previous Value,Structured field for previous value; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,change_log
 primary_muscles,Primary Muscles,Structured field for primary muscles; see the owning table and methodology for interpretation.,delimited_string,,,true,,type_must_match,exercise_database
 primary_progression_metric,Primary Progression Metric,Structured field for primary progression metric; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,exercise_database
+priority,Priority,Structured field for priority; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,exercise_taxonomy_review_queue
 priority_rank,Priority Rank,Structured field for priority rank; see the owning table and methodology for interpretation.,integer,,,true,,type_must_match,exercise_progression_metric_map
 protein_g_per_kg_high,Protein G Per Kg High,Structured field for protein g per kg high; see the owning table and methodology for interpretation.,decimal,,g_per_kg_per_day,true,,type_must_match,nutrition_strategies
 protein_g_per_kg_low,Protein G Per Kg Low,Structured field for protein g per kg low; see the owning table and methodology for interpretation.,decimal,,g_per_kg_per_day,true,,type_must_match,nutrition_strategies
 publication_year,Publication Year,Structured field for publication year; see the owning table and methodology for interpretation.,integer,,,true,,type_must_match,research_library
 range_of_motion_criteria,Range Of Motion Criteria,Structured field for range of motion criteria; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,exercise_database
+range_of_motion_role,Range Of Motion Role,Structured field for range of motion role; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,exercise_muscle_map
 reason,Reason,Structured field for reason; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,exercise_substitution_map
 reason_for_change,Reason For Change,Structured field for reason for change; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,change_log
 reason_for_uncertainty,Reason For Uncertainty,Structured field for reason for uncertainty; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,evidence_gaps
@@ -158,6 +163,8 @@ research_priority,Research Priority,Structured field for research priority; see 
 research_question,Research Question,Structured field for research question; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,evidence_conclusions|evidence_gaps
 research_topic,Research Topic,Structured field for research topic; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,research_library
 rest_adjustment_seconds,Rest Adjustment Seconds,Structured field for rest adjustment seconds; see the owning table and methodology for interpretation.,integer,,seconds,true,,type_must_match,progression_rules
+review_reason,Review Reason,Structured field for review reason; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,exercise_taxonomy_review_queue
+review_status,Review Status,Structured field for review status; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,exercise_muscle_map
 reviewer_notes,Reviewer Notes,Structured field for reviewer notes; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,research_library|change_log
 rir_adjustment,Rir Adjustment,Structured field for rir adjustment; see the owning table and methodology for interpretation.,decimal,,,true,,type_must_match,progression_rules
 risk_of_bias,Risk Of Bias,Structured field for risk of bias; see the owning table and methodology for interpretation.,string,low|some_concerns|high|not_formally_assessed|varies_across_included_studies,,true,,must_be_one_of:low|some_concerns|high|not_formally_assessed|varies_across_included_studies,research_library
@@ -177,6 +184,7 @@ stabilizing_muscles,Stabilizing Muscles,Structured field for stabilizing muscles
 stall_definition,Stall Definition,Structured field for stall definition; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,exercise_database
 starting_body_fat_context,Starting Body Fat Context,Structured field for starting body fat context; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,nutrition_strategies
 statistical_significance,Statistical Significance,Structured field for statistical significance; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,research_library
+status,Status,Structured field for status; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,exercise_taxonomy_review_queue
 strategy_category,Strategy Category,Structured field for strategy category; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,nutrition_strategies
 strategy_id,Strategy Id,Structured field for strategy id; see the owning table and methodology for interpretation.,string,,,true,,lowercase_snake_case_persistent_id,nutrition_strategies
 study_conclusion_map_id,Study Conclusion Map Id,Structured field for study conclusion map id; see the owning table and methodology for interpretation.,string,,,true,,lowercase_snake_case_persistent_id,study_conclusion_map
@@ -192,10 +200,12 @@ substitution_similarity,Substitution Similarity,Structured field for substitutio
 substitution_triggers,Substitution Triggers,Structured field for substitution triggers; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,exercise_database
 suggested_substitutions,Suggested Substitutions,Structured field for suggested substitutions; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,exercise_database
 summary_id,Summary Id,Structured field for summary id; see the owning table and methodology for interpretation.,string,,,true,,lowercase_snake_case_persistent_id,executive_summary
-supporting_study_ids,Supporting Study Ids,Pipe-delimited persistent study IDs; normalized equivalent is provided in relationship tables.,delimited_string,,,true,,type_must_match,executive_summary|evidence_conclusions|muscle_group_recommendations|exercise_database|progression_rules|nutrition_strategies|evidence_gaps|change_log
+supporting_study_ids,Supporting Study Ids,Pipe-delimited persistent study IDs; normalized equivalent is provided in relationship tables.,delimited_string,,,true,,type_must_match,executive_summary|evidence_conclusions|muscle_group_recommendations|exercise_database|progression_rules|nutrition_strategies|evidence_gaps|change_log|exercise_muscle_map
 systemic_fatigue_cost,Systemic Fatigue Cost,Structured field for systemic fatigue cost; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,exercise_database
 target_weight_change_rate_high,Target Weight Change Rate High,Structured field for target weight change rate high; see the owning table and methodology for interpretation.,decimal,,,true,,type_must_match,nutrition_strategies
 target_weight_change_rate_low,Target Weight Change Rate Low,Structured field for target weight change rate low; see the owning table and methodology for interpretation.,decimal,,,true,,type_must_match,nutrition_strategies
+taxonomy_review_id,Taxonomy Review Id,Structured field for taxonomy review id; see the owning table and methodology for interpretation.,string,,,true,,lowercase_snake_case_persistent_id,exercise_taxonomy_review_queue
+taxonomy_version,Taxonomy Version,Structured field for taxonomy version; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,exercise_muscle_map|exercise_taxonomy_review_queue
 technique_quality_criteria,Technique Quality Criteria,Structured field for technique quality criteria; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,exercise_database
 threshold_unit_1,Threshold Unit 1,Structured field for threshold unit 1; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,progression_rules
 threshold_unit_2,Threshold Unit 2,Structured field for threshold unit 2; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,progression_rules

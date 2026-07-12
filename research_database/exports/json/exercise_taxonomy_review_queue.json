@@ -1,0 +1,101 @@
+[
+  {
+    "taxonomy_review_id": "etr_0001",
+    "exercise_id": "ex_low_to_high_cable_fly",
+    "review_reason": "1 low-confidence relationship require future exercise-specific evidence review.",
+    "priority": "low",
+    "status": "queued",
+    "taxonomy_version": "2.0.0",
+    "last_reviewed_date": "2026-07-12"
+  },
+  {
+    "taxonomy_review_id": "etr_0002",
+    "exercise_id": "ex_reverse_pec_deck",
+    "review_reason": "1 low-confidence relationship require future exercise-specific evidence review.",
+    "priority": "low",
+    "status": "queued",
+    "taxonomy_version": "2.0.0",
+    "last_reviewed_date": "2026-07-12"
+  },
+  {
+    "taxonomy_review_id": "etr_0003",
+    "exercise_id": "ex_cable_rear_delt_fly",
+    "review_reason": "1 low-confidence relationship require future exercise-specific evidence review.",
+    "priority": "low",
+    "status": "queued",
+    "taxonomy_version": "2.0.0",
+    "last_reviewed_date": "2026-07-12"
+  },
+  {
+    "taxonomy_review_id": "etr_0004",
+    "exercise_id": "ex_deadlift",
+    "review_reason": "4 low-confidence relationships require future exercise-specific evidence review.",
+    "priority": "medium",
+    "status": "queued",
+    "taxonomy_version": "2.0.0",
+    "last_reviewed_date": "2026-07-12"
+  },
+  {
+    "taxonomy_review_id": "etr_0005",
+    "exercise_id": "ex_standing_calf_raise",
+    "review_reason": "1 low-confidence relationship require future exercise-specific evidence review.",
+    "priority": "low",
+    "status": "queued",
+    "taxonomy_version": "2.0.0",
+    "last_reviewed_date": "2026-07-12"
+  },
+  {
+    "taxonomy_review_id": "etr_0006",
+    "exercise_id": "ex_seated_calf_raise",
+    "review_reason": "1 low-confidence relationship require future exercise-specific evidence review.",
+    "priority": "low",
+    "status": "queued",
+    "taxonomy_version": "2.0.0",
+    "last_reviewed_date": "2026-07-12"
+  },
+  {
+    "taxonomy_review_id": "etr_0007",
+    "exercise_id": "ex_leg_press_calf_raise",
+    "review_reason": "1 low-confidence relationship require future exercise-specific evidence review.",
+    "priority": "low",
+    "status": "queued",
+    "taxonomy_version": "2.0.0",
+    "last_reviewed_date": "2026-07-12"
+  },
+  {
+    "taxonomy_review_id": "etr_0008",
+    "exercise_id": "ex_incline_dumbbell_curl",
+    "review_reason": "1 low-confidence relationship require future exercise-specific evidence review.",
+    "priority": "low",
+    "status": "queued",
+    "taxonomy_version": "2.0.0",
+    "last_reviewed_date": "2026-07-12"
+  },
+  {
+    "taxonomy_review_id": "etr_0009",
+    "exercise_id": "ex_preacher_curl",
+    "review_reason": "1 low-confidence relationship require future exercise-specific evidence review.",
+    "priority": "low",
+    "status": "queued",
+    "taxonomy_version": "2.0.0",
+    "last_reviewed_date": "2026-07-12"
+  },
+  {
+    "taxonomy_review_id": "etr_0010",
+    "exercise_id": "ex_cable_curl",
+    "review_reason": "1 low-confidence relationship require future exercise-specific evidence review.",
+    "priority": "low",
+    "status": "queued",
+    "taxonomy_version": "2.0.0",
+    "last_reviewed_date": "2026-07-12"
+  },
+  {
+    "taxonomy_review_id": "etr_0011",
+    "exercise_id": "ex_hammer_curl",
+    "review_reason": "1 low-confidence relationship require future exercise-specific evidence review.",
+    "priority": "low",
+    "status": "queued",
+    "taxonomy_version": "2.0.0",
+    "last_reviewed_date": "2026-07-12"
+  }
+]

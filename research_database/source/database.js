@@ -1,7 +1,8 @@
 "use strict";
 
-const VERSION = "1.1.0";
-const REVIEW_DATE = "2026-07-11";
+const { TAXONOMY_VERSION, buildExerciseMuscleTaxonomy } = require("./exercise-muscle-taxonomy");
+const VERSION = "2.0.0";
+const REVIEW_DATE = "2026-07-12";
 const DELIMITER = "|";
 
 const controlledVocabularies = {
@@ -31,7 +32,8 @@ const tableColumns = {
   evidence_gaps: ["evidence_gap_id", "topic", "research_question", "male_population", "current_best_interpretation", "reason_for_uncertainty", "conflicting_positions", "supporting_study_ids", "conflicting_study_ids", "practical_default", "risk_of_wrong_application", "research_priority", "last_reviewed_date"],
   definitions_data_dictionary: ["field_name", "display_name", "definition", "data_type", "allowed_values", "unit", "nullable", "example_value", "validation_rule", "used_in_tabs"],
   change_log: ["change_id", "change_date", "database_version", "affected_tab", "affected_record_ids", "change_type", "previous_value", "new_value", "reason_for_change", "supporting_study_ids", "reviewer_notes"],
-  exercise_muscle_map: ["exercise_muscle_map_id", "exercise_id", "muscle_group_id", "relationship_type", "fractional_set_credit", "evidence_basis", "confidence_rating"],
+  exercise_muscle_map: ["exercise_muscle_map_id", "exercise_id", "muscle_group_id", "relationship_type", "loading_role", "range_of_motion_role", "fractional_set_credit", "local_fatigue_weight", "evidence_basis", "evidence_notes", "supporting_study_ids", "confidence_rating", "review_status", "taxonomy_version", "last_reviewed_date"],
+  exercise_taxonomy_review_queue: ["taxonomy_review_id", "exercise_id", "review_reason", "priority", "status", "taxonomy_version", "last_reviewed_date"],
   exercise_substitution_map: ["exercise_substitution_map_id", "exercise_id", "substitute_exercise_id", "substitution_similarity", "reason", "confidence_rating"],
   study_conclusion_map: ["study_conclusion_map_id", "study_id", "conclusion_id", "relationship_type"],
   study_exercise_map: ["study_exercise_map_id", "study_id", "exercise_id", "relationship_type"],
@@ -137,6 +139,11 @@ const c = (id, topic, question, population, conclusion, low, high, unit, studies
   application_rule: extra.application_rule || conclusion, exceptions: extra.exceptions || "Pain, technique failure, medical contraindications, or recovery failure override the default.",
   last_reviewed_date: REVIEW_DATE
 });
+
+studies.push(
+  s("stu_0041", "Martín-Fuentes et al.", 2020, "Electromyographic activity in deadlift exercise and its variants: a systematic review", "PLOS ONE", "10.1371/journal.pone.0229507", "systematic_review", "exercise_biomechanics", "Deadlift variants load multiple lower-body and trunk muscles, with meaningful variation-specific differences; EMG does not establish hypertrophy set equivalence.", { mixed_sex_sample: true, male_results_reported_separately: false, participant_training_status: "mixed", male_applicability: "mechanistic", evidence_tier: "tier_1", confidence_rating: "moderate", risk_of_bias: "varies_across_included_studies", reviewer_notes: "Used to support multi-muscle classification and uncertainty, not to translate EMG amplitude directly into hypertrophy credit." }),
+  s("stu_0042", "Lee et al.", 2018, "An electromyographic and kinetic comparison of conventional and Romanian deadlifts", "Journal of Exercise Science & Fitness", "10.1016/j.jesf.2018.08.001", "acute_mechanistic_study", "exercise_biomechanics", "In 21 males, conventional and Romanian deadlifts differed in lower-limb muscle activity and joint kinetics; conventional deadlift showed greater rectus femoris and gluteus maximus demand.", { male_only_sample: true, male_sample_size: 21, total_sample_size: 21, participant_training_status: "not_reported", male_applicability: "mechanistic", evidence_tier: "tier_6", confidence_rating: "moderate", risk_of_bias: "not_formally_assessed", reviewer_notes: "Supports variation-specific mechanics; acute EMG and kinetics do not prove longitudinal hypertrophy magnitude." })
+);
 
 const conclusions = [
   c("con_0001", "loading", "What repetition ranges can produce hypertrophy?", "healthy adult natural males", "A broad loading spectrum can produce hypertrophy when sets are sufficiently effortful; moderate loads are usually the most time-efficient default.", 5, 30, "repetitions", ["stu_0004", "stu_0039"], { practical_range_text: "Approximately 5-30 reps; 6-15 is the practical default for many exercises", evidence_strength: "high", confidence_rating: "high" }),
@@ -368,11 +375,7 @@ const gapRows = [
   ["gap_0015","acute_mechanisms","Can EMG, hormones, soreness, or acute MPS rank programs?","adult males","These measures may explain mechanisms but cannot by themselves prove superior long-term hypertrophy.","Acute responses do not map reliably to chronic growth magnitude.","Mechanistic plausibility versus longitudinal outcomes","","","Do not create hypertrophy rankings from acute markers alone.","Misapplication can promote ineffective or harmful programming.","high"]
 ].map((x)=>({evidence_gap_id:x[0],topic:x[1],research_question:x[2],male_population:x[3],current_best_interpretation:x[4],reason_for_uncertainty:x[5],conflicting_positions:x[6],supporting_study_ids:x[7],conflicting_study_ids:x[8],practical_default:x[9],risk_of_wrong_application:x[10],research_priority:x[11],last_reviewed_date:REVIEW_DATE}));
 
-const exerciseMuscleMap = [];
-exercises.forEach((exercise) => {
-  exerciseMuscleMap.push({exercise_muscle_map_id:`emm_${String(exerciseMuscleMap.length+1).padStart(4,"0")}`,exercise_id:exercise.exercise_id,muscle_group_id:exercise.primary_muscles,relationship_type:"primary",fractional_set_credit:1,evidence_basis:"movement_pattern_and_anatomical_inference",confidence_rating:"moderate"});
-  String(exercise.secondary_muscles || "").split(DELIMITER).filter(Boolean).forEach((muscleId)=>exerciseMuscleMap.push({exercise_muscle_map_id:`emm_${String(exerciseMuscleMap.length+1).padStart(4,"0")}`,exercise_id:exercise.exercise_id,muscle_group_id:muscleId,relationship_type:"secondary",fractional_set_credit:0.5,evidence_basis:"operational_default_not_validated_constant",confidence_rating:"low"}));
-});
+const { rows: exerciseMuscleMap, reviewQueue: exerciseTaxonomyReviewQueue } = buildExerciseMuscleTaxonomy(exercises);
 
 const exerciseSubstitutionMap = [];
 const byPattern = Map.groupBy ? Map.groupBy(exercises, (e)=>e.movement_pattern) : exercises.reduce((m,e)=>(m.set(e.movement_pattern,[...(m.get(e.movement_pattern)||[]),e]),m),new Map());
@@ -408,7 +411,7 @@ const integerFields = new Set([
   "publication_year","male_sample_size","total_sample_size","study_duration_weeks","minimum_effective_weekly_sets","typical_effective_weekly_sets_low","typical_effective_weekly_sets_high","higher_volume_range_low","higher_volume_range_high","likely_diminishing_returns_threshold","recommended_sets_per_session_low","recommended_sets_per_session_high","recommended_frequency_low","recommended_frequency_high","recommended_rep_range_low","recommended_rep_range_high","recommended_rir_low","recommended_rir_high","recommended_rest_seconds_low","recommended_rest_seconds_high","maintenance_volume_estimate","acceptable_rep_range_low","acceptable_rep_range_high","recommended_evaluation_window_sessions","minimum_sessions_required","rep_adjustment","set_adjustment","rest_adjustment_seconds","priority_rank"
 ]);
 const decimalFields = new Set([
-  "participant_age_mean","recommended_lower_bound","recommended_upper_bound","threshold_value_1","threshold_value_2","load_adjustment_percent","rir_adjustment","recommended_calorie_adjustment_low","recommended_calorie_adjustment_high","target_weight_change_rate_low","target_weight_change_rate_high","protein_g_per_kg_low","protein_g_per_kg_high","fat_g_per_kg_low","fat_g_per_kg_high","fractional_set_credit"
+  "participant_age_mean","recommended_lower_bound","recommended_upper_bound","threshold_value_1","threshold_value_2","load_adjustment_percent","rir_adjustment","recommended_calorie_adjustment_low","recommended_calorie_adjustment_high","target_weight_change_rate_low","target_weight_change_rate_high","protein_g_per_kg_low","protein_g_per_kg_high","fat_g_per_kg_low","fat_g_per_kg_high","fractional_set_credit","local_fatigue_weight"
 ]);
 const integerish = /(_size|_year|_weeks|_sessions|_seconds|_sets|_frequency|_reps|_rank)$/;
 const decimalish = /(percent|rate|g_per_kg|rir|rpe|fractional|threshold_value|effect_size)/;
@@ -454,6 +457,7 @@ definitionsDataDictionary.push(...operationalDefinitions);
 const changeLog = [
   {change_id:"chg_0001",change_date:REVIEW_DATE,database_version:"1.0.0",affected_tab:"all",affected_record_ids:"all_v1_records",change_type:"initial_release",previous_value:"",new_value:"Initial male-specific evidence database release",reason_for_change:"Created normalized evidence, application rules, exports, methodology, and validation package.",supporting_study_ids:"stu_0001|stu_0004|stu_0016|stu_0019",reviewer_notes:"Version 1.0 is broad but not an exhaustive systematic review; low-confidence operational defaults are explicitly labeled."},
   {change_id:"chg_0002",change_date:REVIEW_DATE,database_version:VERSION,affected_tab:"exercise_database|muscle_group_recommendations",affected_record_ids:"ex_cambered_barbell_bench_press|mg_chest_sternal",change_type:"exercise_library_addition",previous_value:"Cambered bench aliases were not discoverable.",new_value:"Added one canonical cambered-barbell bench record with three aliases and normal chest mapping.",reason_for_change:"Exercise discovery must evaluate eligible canonical library variations instead of silently omitting unrecognized aliases.",supporting_study_ids:"stu_0004|stu_0009|stu_0010|stu_0011",reviewer_notes:"This is a movement-specific research default, not a claim that camber geometry guarantees superior hypertrophy."}
+  ,{change_id:"chg_0003",change_date:REVIEW_DATE,database_version:VERSION,affected_tab:"exercise_muscle_map|exercise_taxonomy_review_queue",affected_record_ids:"all_exercise_muscle_relationships",change_type:"breaking_taxonomy_migration",previous_value:"Primary 1.0 and blanket secondary 0.5 relationships generated from legacy exercise columns.",new_value:`Taxonomy ${TAXONOMY_VERSION}: direct, fractional, incidental, isometric, and unknown relationships with exercise-specific credit, fatigue, confidence, evidence, and review metadata.`,reason_for_change:"Hypertrophy volume and fatigue exposure require different semantics, and compound exercises require multi-muscle biomechanical classification.",supporting_study_ids:"stu_0001|stu_0009|stu_0010|stu_0011|stu_0041|stu_0042",reviewer_notes:"Weights are transparent programming conventions, not proven physiological constants; low-confidence entries remain queued."}
 ];
 
 const data = {
@@ -468,6 +472,7 @@ const data = {
   definitions_data_dictionary: definitionsDataDictionary,
   change_log: changeLog,
   exercise_muscle_map: exerciseMuscleMap,
+  exercise_taxonomy_review_queue: exerciseTaxonomyReviewQueue,
   exercise_substitution_map: exerciseSubstitutionMap,
   study_conclusion_map: studyConclusionMap,
   study_exercise_map: studyExerciseMap,

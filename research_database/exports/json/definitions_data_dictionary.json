@@ -588,6 +588,18 @@
     "used_in_tabs": "evidence_gaps"
   },
   {
+    "field_name": "evidence_notes",
+    "display_name": "Evidence Notes",
+    "definition": "Structured field for evidence notes; see the owning table and methodology for interpretation.",
+    "data_type": "string",
+    "allowed_values": "",
+    "unit": "",
+    "nullable": true,
+    "example_value": "",
+    "validation_rule": "type_must_match",
+    "used_in_tabs": "exercise_muscle_map"
+  },
+  {
     "field_name": "evidence_quality",
     "display_name": "Evidence Quality",
     "definition": "Structured field for evidence quality; see the owning table and methodology for interpretation.",
@@ -669,7 +681,7 @@
     "nullable": false,
     "example_value": "",
     "validation_rule": "lowercase_snake_case_persistent_id",
-    "used_in_tabs": "exercise_database|exercise_muscle_map|exercise_substitution_map|study_exercise_map|rule_exercise_map|exercise_progression_metric_map"
+    "used_in_tabs": "exercise_database|exercise_muscle_map|exercise_taxonomy_review_queue|exercise_substitution_map|study_exercise_map|rule_exercise_map|exercise_progression_metric_map"
   },
   {
     "field_name": "exercise_muscle_map_id",
@@ -897,7 +909,7 @@
     "nullable": true,
     "example_value": "",
     "validation_rule": "iso_date_yyyy_mm_dd",
-    "used_in_tabs": "executive_summary|research_library|evidence_conclusions|evidence_gaps"
+    "used_in_tabs": "executive_summary|research_library|evidence_conclusions|evidence_gaps|exercise_muscle_map|exercise_taxonomy_review_queue"
   },
   {
     "field_name": "lengthened_position_considerations",
@@ -948,6 +960,18 @@
     "used_in_tabs": "exercise_database"
   },
   {
+    "field_name": "loading_role",
+    "display_name": "Loading Role",
+    "definition": "Structured field for loading role; see the owning table and methodology for interpretation.",
+    "data_type": "string",
+    "allowed_values": "",
+    "unit": "",
+    "nullable": true,
+    "example_value": "",
+    "validation_rule": "type_must_match",
+    "used_in_tabs": "exercise_muscle_map"
+  },
+  {
     "field_name": "local_fatigue_cost",
     "display_name": "Local Fatigue Cost",
     "definition": "Structured field for local fatigue cost; see the owning table and methodology for interpretation.",
@@ -958,6 +982,18 @@
     "example_value": "",
     "validation_rule": "type_must_match",
     "used_in_tabs": "exercise_database"
+  },
+  {
+    "field_name": "local_fatigue_weight",
+    "display_name": "Local Fatigue Weight",
+    "definition": "Structured field for local fatigue weight; see the owning table and methodology for interpretation.",
+    "data_type": "decimal",
+    "allowed_values": "",
+    "unit": "",
+    "nullable": true,
+    "example_value": "",
+    "validation_rule": "type_must_match",
+    "used_in_tabs": "exercise_muscle_map"
   },
   {
     "field_name": "main_result",
@@ -1428,6 +1464,18 @@
     "used_in_tabs": "exercise_database"
   },
   {
+    "field_name": "priority",
+    "display_name": "Priority",
+    "definition": "Structured field for priority; see the owning table and methodology for interpretation.",
+    "data_type": "string",
+    "allowed_values": "",
+    "unit": "",
+    "nullable": true,
+    "example_value": "",
+    "validation_rule": "type_must_match",
+    "used_in_tabs": "exercise_taxonomy_review_queue"
+  },
+  {
     "field_name": "priority_rank",
     "display_name": "Priority Rank",
     "definition": "Structured field for priority rank; see the owning table and methodology for interpretation.",
@@ -1486,6 +1534,18 @@
     "example_value": "",
     "validation_rule": "type_must_match",
     "used_in_tabs": "exercise_database"
+  },
+  {
+    "field_name": "range_of_motion_role",
+    "display_name": "Range Of Motion Role",
+    "definition": "Structured field for range of motion role; see the owning table and methodology for interpretation.",
+    "data_type": "string",
+    "allowed_values": "",
+    "unit": "",
+    "nullable": true,
+    "example_value": "",
+    "validation_rule": "type_must_match",
+    "used_in_tabs": "exercise_muscle_map"
   },
   {
     "field_name": "reason",
@@ -1908,6 +1968,30 @@
     "used_in_tabs": "progression_rules"
   },
   {
+    "field_name": "review_reason",
+    "display_name": "Review Reason",
+    "definition": "Structured field for review reason; see the owning table and methodology for interpretation.",
+    "data_type": "string",
+    "allowed_values": "",
+    "unit": "",
+    "nullable": true,
+    "example_value": "",
+    "validation_rule": "type_must_match",
+    "used_in_tabs": "exercise_taxonomy_review_queue"
+  },
+  {
+    "field_name": "review_status",
+    "display_name": "Review Status",
+    "definition": "Structured field for review status; see the owning table and methodology for interpretation.",
+    "data_type": "string",
+    "allowed_values": "",
+    "unit": "",
+    "nullable": true,
+    "example_value": "",
+    "validation_rule": "type_must_match",
+    "used_in_tabs": "exercise_muscle_map"
+  },
+  {
     "field_name": "reviewer_notes",
     "display_name": "Reviewer Notes",
     "definition": "Structured field for reviewer notes; see the owning table and methodology for interpretation.",
@@ -2136,6 +2220,18 @@
     "used_in_tabs": "research_library"
   },
   {
+    "field_name": "status",
+    "display_name": "Status",
+    "definition": "Structured field for status; see the owning table and methodology for interpretation.",
+    "data_type": "string",
+    "allowed_values": "",
+    "unit": "",
+    "nullable": true,
+    "example_value": "",
+    "validation_rule": "type_must_match",
+    "used_in_tabs": "exercise_taxonomy_review_queue"
+  },
+  {
     "field_name": "strategy_category",
     "display_name": "Strategy Category",
     "definition": "Structured field for strategy category; see the owning table and methodology for interpretation.",
@@ -2325,7 +2421,7 @@
     "nullable": true,
     "example_value": "",
     "validation_rule": "type_must_match",
-    "used_in_tabs": "executive_summary|evidence_conclusions|muscle_group_recommendations|exercise_database|progression_rules|nutrition_strategies|evidence_gaps|change_log"
+    "used_in_tabs": "executive_summary|evidence_conclusions|muscle_group_recommendations|exercise_database|progression_rules|nutrition_strategies|evidence_gaps|change_log|exercise_muscle_map"
   },
   {
     "field_name": "systemic_fatigue_cost",
@@ -2362,6 +2458,30 @@
     "example_value": "",
     "validation_rule": "type_must_match",
     "used_in_tabs": "nutrition_strategies"
+  },
+  {
+    "field_name": "taxonomy_review_id",
+    "display_name": "Taxonomy Review Id",
+    "definition": "Structured field for taxonomy review id; see the owning table and methodology for interpretation.",
+    "data_type": "string",
+    "allowed_values": "",
+    "unit": "",
+    "nullable": true,
+    "example_value": "",
+    "validation_rule": "lowercase_snake_case_persistent_id",
+    "used_in_tabs": "exercise_taxonomy_review_queue"
+  },
+  {
+    "field_name": "taxonomy_version",
+    "display_name": "Taxonomy Version",
+    "definition": "Structured field for taxonomy version; see the owning table and methodology for interpretation.",
+    "data_type": "string",
+    "allowed_values": "",
+    "unit": "",
+    "nullable": true,
+    "example_value": "",
+    "validation_rule": "type_must_match",
+    "used_in_tabs": "exercise_muscle_map|exercise_taxonomy_review_queue"
   },
   {
     "field_name": "technique_quality_criteria",

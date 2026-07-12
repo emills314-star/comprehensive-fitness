@@ -70,7 +70,7 @@ Product principles evidenced in the repository:
 - **Recommendation snapshot:** Immutable record of the base and readiness-adjusted prescription used for a workout.
 - **Mesocycle:** A decision context (primary, alternative, lower-fatigue, or specialization), not an automatic calendar rotation.
 - **PR:** A submitted-workout performance record under implemented comparison semantics; see `docs/DECISION_ENGINE.md`.
-- **Weighted muscle volume:** Direct sets count fully and mapped secondary work fractionally.
+- **Weighted muscle volume:** Versioned canonical relationships count direct dynamic sets fully, meaningful fractional dynamic work at its configured weight, and incidental/unknown/isometric work at zero hypertrophy credit while retaining fatigue exposure separately.
 
 ## Data sources and privacy
 

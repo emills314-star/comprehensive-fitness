@@ -1,4 +1,4 @@
--- Generated schema for male resistance-training evidence database v1.1.0
+-- Generated schema for male resistance-training evidence database v2.0.0
 -- Pipe-delimited list fields have normalized mapping-table equivalents where relationships are frequently queried.
 
 CREATE TABLE executive_summary (
@@ -279,9 +279,27 @@ CREATE TABLE exercise_muscle_map (
   exercise_id TEXT,
   muscle_group_id TEXT,
   relationship_type TEXT,
+  loading_role TEXT,
+  range_of_motion_role TEXT,
   fractional_set_credit REAL,
+  local_fatigue_weight REAL,
   evidence_basis TEXT,
-  confidence_rating TEXT
+  evidence_notes TEXT,
+  supporting_study_ids TEXT,
+  confidence_rating TEXT,
+  review_status TEXT,
+  taxonomy_version TEXT,
+  last_reviewed_date DATE
+);
+
+CREATE TABLE exercise_taxonomy_review_queue (
+  taxonomy_review_id TEXT PRIMARY KEY,
+  exercise_id TEXT,
+  review_reason TEXT,
+  priority TEXT,
+  status TEXT,
+  taxonomy_version TEXT,
+  last_reviewed_date DATE
 );
 
 CREATE TABLE exercise_substitution_map (
@@ -338,6 +356,7 @@ CREATE TABLE exercise_progression_metric_map (
 -- Add these foreign keys in engines that support ALTER TABLE ADD CONSTRAINT:
 -- ALTER TABLE exercise_muscle_map ADD FOREIGN KEY (exercise_id) REFERENCES exercise_database(exercise_id);
 -- ALTER TABLE exercise_muscle_map ADD FOREIGN KEY (muscle_group_id) REFERENCES muscle_group_recommendations(muscle_group_id);
+-- ALTER TABLE exercise_taxonomy_review_queue ADD FOREIGN KEY (exercise_id) REFERENCES exercise_database(exercise_id);
 -- ALTER TABLE exercise_substitution_map ADD FOREIGN KEY (exercise_id) REFERENCES exercise_database(exercise_id);
 -- ALTER TABLE exercise_substitution_map ADD FOREIGN KEY (substitute_exercise_id) REFERENCES exercise_database(exercise_id);
 -- ALTER TABLE study_conclusion_map ADD FOREIGN KEY (study_id) REFERENCES research_library(study_id);

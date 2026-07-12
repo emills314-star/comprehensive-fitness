@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://comprehensive-fitness.local/schema/1.1.0/progression_rules.schema.json",
+  "$id": "https://comprehensive-fitness.local/schema/2.0.0/progression_rules.schema.json",
   "title": "progression_rules",
   "type": "array",
   "items": {

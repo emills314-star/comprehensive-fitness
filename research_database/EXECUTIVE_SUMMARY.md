@@ -6,7 +6,7 @@ This database supports male-specific application decisions while refusing precis
 
 Healthy adult males can produce hypertrophy across roughly 5-30 repetitions when sets are sufficiently effortful. Moderate ranges are usually more practical; very high repetitions are more vulnerable to cardio, discomfort, grip, stability, or pain becoming limiting. Lighter loads generally need to finish closer to failure. Most work can stay around 0-4 RIR, with 1-4 RIR a conservative default for high-skill compounds and 0-3 RIR for stable isolation work. Momentary failure is optional, not required. (`con_0001`-`con_0003`; `stu_0004`, `stu_0005`, `stu_0006`, `stu_0039`)
 
-Weekly set volume shows a positive but diminishing-return association with hypertrophy. For an application, approximately 6-10 fractional hard sets per muscle per week is a conservative starting band, and approximately 10-20 is a common trained-male productive band. These are not proven muscle-specific thresholds. The database counts a primary muscle as 1.0 set and a clearly loaded secondary muscle as 0.5 by default, with overrides expected. (`con_0004`, `con_0005`; `stu_0001`, `stu_0002`, `stu_0025`)
+Weekly set volume shows a positive but diminishing-return association with hypertrophy. For an application, approximately 6-10 weighted hard sets per muscle per week is a conservative starting band, and approximately 10-20 is a common trained-male productive band. These are not proven muscle-specific thresholds. Taxonomy 2.0 counts direct dynamic work as 1.0, meaningful fractional work as 0.5 or 0.25, and incidental/unknown/isometric work as zero hypertrophy credit while tracking fatigue separately. (`con_0004`, `con_0005`; `stu_0001`, `stu_0002`, `stu_0025`)
 
 Frequency is primarily a scheduling variable. One to three weekly exposures can work when volume is equated; twice weekly is often convenient for quality and distribution, not biologically mandatory. Split large volumes when later sets lose repetitions, load, ROM, technique, or target-muscle limitation. (`con_0006`, `con_0007`; `stu_0001`, `stu_0003`)
 
@@ -37,4 +37,3 @@ Enhanced males remain a separate population. This release does not prescribe dru
 ## Highest-priority uncertainties
 
 The most consequential unresolved questions are true per-muscle volume thresholds, fractional indirect-set credit, exact exercise/load-specific RIR, deterministic progression noise bands, deload efficacy, maintenance volume in trained dieting males, optimal surplus size, and validated recomposition prediction. Applications should expose confidence and return `insufficient_data` or a conservative default rather than hide these gaps.
-

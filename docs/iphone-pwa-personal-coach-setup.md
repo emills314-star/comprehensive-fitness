@@ -103,7 +103,7 @@ personal_fitness_data\derived\app_personal_evidence.json
 2. Do not upload it to GitHub or Vercel.
 3. In the installed PWA, open **Settings > Data and backup**.
 4. Tap **private personal evidence package** and select the JSON file.
-5. Confirm Settings reports engine `2.0.0`, personal data `1.1.0`, research data `1.0.0`, approximately 718 aggregate personal records, and 60 research exercises.
+5. Confirm Settings reports engine `3.0.0`, personal data `1.1.0` (until the next private rebuild), research/taxonomy data `2.0.0`, approximately 718 aggregate personal records, and 61 research exercises.
 6. Delete temporary shared copies if they are no longer needed. Retain one encrypted offline copy.
 
 If an older Comprehensive Fitness installation already contains workout history, export its app backup and import that backup before beginning a new workout. The evidence package contains analysis aggregates; it is not the workout-history backup.

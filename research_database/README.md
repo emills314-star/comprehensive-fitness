@@ -19,6 +19,7 @@ Muscle-volume thresholds, fractional set credit, plateau windows, deload trigger
 - `EXECUTIVE_SUMMARY.md`: written practical summary with evidence IDs.
 - `SCHEMA_VALIDATION.md`: validation and import instructions.
 - `BIBLIOGRAPHY.md`: persistent DOI bibliography.
+- `EXERCISE_MUSCLE_TAXONOMY.md`: authoritative relationship categories, evidence rules, versioning, review queue, and historical recalculation contract.
 
 ## Build and validate
 
@@ -32,4 +33,3 @@ Multiple values in denormalized display fields use the pipe character (`|`). Fre
 ## Import guidance
 
 Import `exports/json/database.json` for document-oriented applications. Import CSV tables plus `schema/relational_schema.sql` for a relational database. Use mapping tables rather than parsing pipe-delimited fields for study, exercise, muscle, rule, substitution, and progression-metric relationships.
-

@@ -21,6 +21,7 @@ const {
   equipmentCompatible,
   candidateProgramFit,
   mechanicalRedundancyScore,
+  recalculateHistoricalMuscleVolume,
   recommendationForSurface,
   serializeRecommendationSnapshot,
   deserializeRecommendationSnapshot,
@@ -537,13 +538,13 @@ test("file adapters load the real private aggregates locally without embedding t
   assert(evidence.personal.exerciseScores.length >= 100);
   assert(evidence.personal.exercisePrescriptions.length >= 100);
   assert(evidence.research.exerciseDatabase.length >= 50);
-  assert.strictEqual(evidence.versions.research, "1.1.0");
+  assert.strictEqual(evidence.versions.research, "2.0.0");
 });
 
 test("full-program portfolio scoring and lifecycle protections are explicit", () => {
   const evidence = loadEvidenceFromFiles(path.resolve(__dirname, ".."), { includeSessionMetrics: false, includeWeeklyVolume: false });
   const engine = createPrescriptionEngine(evidence);
-  const mesocycle = engine.createMesocycle({ trainingDays: 4, includedMuscleGroupIds: ["chest", "upper_back", "quads", "hamstrings", "glutes", "abs"], currentProgramExerciseIds: ["ex_barbell_bench_press"], availableEquipment: ["barbell", "dumbbell", "machine", "cable", "bodyweight"] });
+  const mesocycle = engine.createMesocycle({ trainingDays: 4, includedMuscleGroupIds: ["chest", "upper_back", "quads", "hamstrings", "glutes", "abs"], currentProgramExerciseIds: ["ex_barbell_bench_press"], availableEquipment: ["all"] });
   assert(mesocycle.programSlots.every((slot) => slot.selectionRequired >= 1 && slot.selectedExerciseIds.length >= 1));
   assert(mesocycle.selectedPortfolio.every((candidate) => Number.isFinite(candidate.scores.predictedProgramEffectiveness) && Number.isFinite(candidate.scores.fullProgramFit)));
   assert(mesocycle.sessions.every((session) => session.baseSessionIntent && Number.isFinite(session.spinalLoad) && Number.isFinite(session.estimatedDurationMinutes)));
@@ -757,6 +758,53 @@ test("URL loader tolerates unavailable protected personal sources and still load
   const evidence = await loadEvidenceFromUrls({ fetch: mockFetch, researchBaseUrl: "/research", personalBaseUrl: "/protected-personal", includeSessionMetrics: true });
   assert.strictEqual(evidence.personal.exerciseScores.length, 0);
   assert.strictEqual(evidence.research.exerciseDatabase.length, data.exerciseDatabase.length);
+});
+
+test("generated mesocycles use each canonical exercise on only one day", () => {
+  const evidence = loadEvidenceFromFiles(path.resolve(__dirname, ".."), { includeSessionMetrics: false, includeWeeklyVolume: false });
+  const engine = createPrescriptionEngine(evidence);
+  const plan = engine.createMesocycle({ trainingDays: 5, includedMuscleGroupIds: ["chest", "upper_back", "lats", "quads", "hamstrings", "glutes", "side_delts", "biceps", "triceps"], availableEquipment: ["all"] });
+  const canonicalDays = new Map();
+  plan.sessions.forEach((session) => session.exercises.forEach((exercise) => {
+    const canonical = exercise.researchExerciseId || exercise.exerciseId;
+    if (!canonicalDays.has(canonical)) canonicalDays.set(canonical, new Set());
+    canonicalDays.get(canonical).add(session.id);
+  }));
+  canonicalDays.forEach((days, canonical) => assert.strictEqual(days.size, 1, `${canonical} repeated across days`));
+  const regenerated = engine.refreshMesocycle(plan, { trainingDays: 5 });
+  const regeneratedIds = regenerated.sessions.flatMap((session) => session.exercises.map((exercise) => exercise.researchExerciseId || exercise.exerciseId));
+  assert.strictEqual(regeneratedIds.length, new Set(regeneratedIds).size, "Regeneration must preserve canonical uniqueness");
+  assert.strictEqual(evidence.research.exerciseIdByAlias.get("camber bar bench press"), evidence.research.exerciseIdByAlias.get("cambered bench press"));
+});
+
+test("compound taxonomy distinguishes dynamic, fractional, incidental, and isometric loading", () => {
+  const evidence = loadEvidenceFromFiles(path.resolve(__dirname, ".."), { includeSessionMetrics: false, includeWeeklyVolume: false });
+  const compounds = ["ex_deadlift", "ex_romanian_deadlift", "ex_back_squat", "ex_leg_press", "ex_barbell_bench_press", "ex_incline_dumbbell_press", "ex_pull_up", "ex_lat_pulldown", "ex_chest_supported_row", "ex_overhead_press"];
+  compounds.forEach((exerciseId) => assert((evidence.research.muscleMapsByExercise.get(exerciseId) || []).length > 1, `${exerciseId} needs multiple classified relationships`));
+  const deadlift = evidence.research.muscleMapsByExercise.get("ex_deadlift");
+  assert(deadlift.some((row) => row.muscle_group_id === "mg_glutes_max" && row.relationship_type === "direct_load" && row.fractional_set_credit === 1));
+  assert(deadlift.some((row) => row.muscle_group_id === "mg_quadriceps" && row.relationship_type === "meaningful_fractional_load"));
+  assert(deadlift.some((row) => row.muscle_group_id === "mg_spinal_erectors" && row.relationship_type === "isometric_stabilizing_load" && row.fractional_set_credit === 0));
+  assert(deadlift.some((row) => row.muscle_group_id === "mg_forearms" && row.local_fatigue_weight > 0 && row.fractional_set_credit === 0));
+});
+
+test("weighted taxonomy volume is traceable, deterministic, and leaves logged records unchanged", () => {
+  const evidence = loadEvidenceFromFiles(path.resolve(__dirname, ".."), { includeSessionMetrics: false, includeWeeklyVolume: false });
+  const logged = [{ exerciseName: "Conventional Deadlift", workingSets: 4, weight: 405, reps: 5, rpe: 8, date: "2026-07-01" }];
+  const before = JSON.stringify(logged);
+  const first = recalculateHistoricalMuscleVolume(evidence, logged);
+  const second = recalculateHistoricalMuscleVolume(evidence, logged);
+  assert.strictEqual(JSON.stringify(logged), before, "Historical logged performance must remain immutable");
+  assert.deepStrictEqual(first, second, "Recalculation must be deterministic");
+  assert.strictEqual(first.taxonomyVersion, "2.0.0");
+  const glutes = first.muscleTotals.find((row) => row.muscleGroupId === "mg_glutes_max");
+  const quads = first.muscleTotals.find((row) => row.muscleGroupId === "mg_quadriceps");
+  const erectors = first.muscleTotals.find((row) => row.muscleGroupId === "mg_spinal_erectors");
+  assert.strictEqual(glutes.directSets, 4);
+  assert.strictEqual(quads.fractionalSets, 2);
+  assert.strictEqual(erectors.weightedHypertrophySets, 0);
+  assert(erectors.isometricExposure > 0);
+  assert.strictEqual(glutes.contributions.reduce((sum, row) => sum + row.weightedHypertrophySets, 0), glutes.weightedHypertrophySets);
 });
 
 (async function run() {

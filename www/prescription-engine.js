@@ -13,7 +13,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function prescriptionEngineFactory() {
   "use strict";
 
-  const ENGINE_VERSION = "2.4.0";
+  const ENGINE_VERSION = "3.0.0";
   const PRESCRIPTION_SCHEMA_VERSION = "2.0.0";
   const SNAPSHOT_SCHEMA_VERSION = "1.0.0";
   const HISTORY_STORAGE_KEY = "comprehensiveFitness.recommendationHistory.v1";
@@ -445,6 +445,7 @@
     function exerciseTargetsMuscle(exerciseId, muscleGroupId) {
       const requested = normalizeMuscleId(muscleGroupId);
       return (muscleMapsByExercise.get(exerciseId) || []).some((mapping) => {
+        if (number(mapping.fractional_set_credit ?? mapping.fractionalSetCredit, 0) <= 0) return false;
         const mapped = normalizeMuscleId(mapping.muscle_group_id || mapping.muscleGroupId);
         const rec = muscleRecommendationById.get(mapping.muscle_group_id || mapping.muscleGroupId);
         const category = normalizeMuscleId(rec?.muscle_group || rec?.muscleGroup);
@@ -925,7 +926,57 @@
     const mapped = normalizeMuscleId(researchMuscleId);
     const recommendation = research.muscleRecommendationById.get(researchMuscleId);
     const category = normalizeMuscleId(recommendation?.muscle_group || recommendation?.muscleGroup);
-    return mapped === requested || category === requested || mapped.startsWith(`${requested}_`) || (category && requested.startsWith(`${category}_`));
+    return mapped === requested || category === requested || muscleFamily(mapped) === muscleFamily(requested) || (category && muscleFamily(category) === muscleFamily(requested)) || mapped.startsWith(`${requested}_`) || (category && requested.startsWith(`${category}_`));
+  }
+
+  function taxonomyRelationshipsFor(research, exerciseOrId) {
+    if (typeof exerciseOrId === "object" && asArray(exerciseOrId?.muscleRelationships).length) return asArray(exerciseOrId.muscleRelationships);
+    const id = typeof exerciseOrId === "string" ? exerciseOrId : firstPresent(exerciseOrId?.researchExerciseId, exerciseOrId?.exerciseId);
+    return asArray(research?.muscleMapsByExercise?.get(id));
+  }
+
+  function taxonomyContributionFor(research, exerciseOrId, muscleGroupId) {
+    const matches = taxonomyRelationshipsFor(research, exerciseOrId).filter((mapping) => researchMuscleMatch(research, muscleGroupId, mapping.muscle_group_id || mapping.muscleGroupId));
+    return matches.sort((a, b) => number(b.fractional_set_credit, 0) - number(a.fractional_set_credit, 0))[0] || null;
+  }
+
+  function calculateExerciseMuscleContributions(researchInput, exerciseOrId, workingSets = 1) {
+    const research = researchInput?.kind === "research_evidence_adapter" ? researchInput : createResearchDataAdapter(researchInput || {});
+    return taxonomyRelationshipsFor(research, exerciseOrId).map((mapping) => {
+      const setCredit = number(mapping.fractional_set_credit, 0);
+      return {
+        exerciseId: typeof exerciseOrId === "string" ? exerciseOrId : firstPresent(exerciseOrId?.researchExerciseId, exerciseOrId?.exerciseId),
+        muscleGroupId: mapping.muscle_group_id || mapping.muscleGroupId,
+        relationshipType: mapping.relationship_type,
+        loadingRole: mapping.loading_role || "unknown",
+        directSets: mapping.relationship_type === "direct_load" ? round(workingSets * setCredit, 2) : 0,
+        fractionalSets: mapping.relationship_type === "meaningful_fractional_load" ? round(workingSets * setCredit, 2) : 0,
+        weightedHypertrophySets: round(workingSets * setCredit, 2),
+        isometricExposure: mapping.relationship_type === "isometric_stabilizing_load" ? round(workingSets * number(mapping.local_fatigue_weight, 0), 2) : 0,
+        taxonomyVersion: mapping.taxonomy_version || research.version,
+        confidence: mapping.confidence_rating,
+        evidenceNotes: mapping.evidence_notes
+      };
+    });
+  }
+
+  function recalculateHistoricalMuscleVolume(evidenceInput, records = []) {
+    const evidence = evidenceInput?.research ? evidenceInput : normalizeEvidenceBundle(evidenceInput || {});
+    const snapshot = deepClone(records);
+    const totals = new Map();
+    snapshot.forEach((record) => {
+      const canonicalId = firstPresent(record.researchExerciseId, evidence.research.exerciseIdByAlias.get(normalizeText(record.exerciseName)), record.exerciseId);
+      calculateExerciseMuscleContributions(evidence.research, canonicalId, number(record.workingSets, record.sets || 0)).forEach((entry) => {
+        if (!totals.has(entry.muscleGroupId)) totals.set(entry.muscleGroupId, { muscleGroupId: entry.muscleGroupId, directSets: 0, fractionalSets: 0, weightedHypertrophySets: 0, isometricExposure: 0, contributions: [] });
+        const total = totals.get(entry.muscleGroupId);
+        total.directSets += entry.directSets;
+        total.fractionalSets += entry.fractionalSets;
+        total.weightedHypertrophySets += entry.weightedHypertrophySets;
+        total.isometricExposure += entry.isometricExposure;
+        total.contributions.push(entry);
+      });
+    });
+    return { taxonomyVersion: evidence.research.version, sourceRecords: snapshot, muscleTotals: [...totals.values()].map((item) => ({ ...item, directSets: round(item.directSets, 2), fractionalSets: round(item.fractionalSets, 2), weightedHypertrophySets: round(item.weightedHypertrophySets, 2), isometricExposure: round(item.isometricExposure, 2) })) };
   }
 
   function aggregateMuscleResearchDefaults(research, muscleGroupId) {
@@ -1055,7 +1106,7 @@
     research.exerciseDatabase.forEach((exercise) => {
       const researchExerciseId = exercise.exercise_id || exercise.exerciseId;
       const mappings = research.muscleMapsByExercise.get(researchExerciseId) || [];
-      if (!mappings.some((mapping) => researchMuscleMatch(research, muscleGroupId, mapping.muscle_group_id || mapping.muscleGroupId))) return;
+      if (!mappings.some((mapping) => number(mapping.fractional_set_credit, 0) > 0 && researchMuscleMatch(research, muscleGroupId, mapping.muscle_group_id || mapping.muscleGroupId))) return;
       const linkedPersonalIds = personal.personalIdsByResearchId.get(researchExerciseId) || [];
       if (linkedPersonalIds.some((id) => candidates.has(id))) return;
       const relevantMapping = mappings.find((mapping) => researchMuscleMatch(research, muscleGroupId, mapping.muscle_group_id || mapping.muscleGroupId)) || {};
@@ -1161,7 +1212,8 @@
     const recoveryEfficiency = number(firstPresent(score.recovery_efficiency_score, score.recoveryEfficiencyScore, muscleScore.recovery_efficiency_score), 50);
     const repeatability = number(firstPresent(score.repeatability_score, score.repeatabilityScore), 50);
     const relationship = String(firstPresent(muscleScore.muscle_role, muscleScore.muscleRole, "primary")).toLowerCase();
-    const contribution = dataFraction(firstPresent(muscleScore.contribution_weight, muscleScore.contributionWeight, relationship === "primary" ? 1 : 0.5), relationship === "primary" ? 1 : 0.5);
+    const directRelationship = relationship === "primary" || relationship === "direct_load";
+    const contribution = dataFraction(firstPresent(muscleScore.contribution_weight, muscleScore.contributionWeight, directRelationship ? 1 : 0.5), directRelationship ? 1 : 0.5);
     const muscleSpecificity = clamp(number(firstPresent(muscleScore.muscle_specific_effectiveness_score, muscleScore.muscleSpecificEffectivenessScore), contribution * 100), 0, 100);
     const lengthenedPositionLoading = lengthenedPositionScore(exercise);
     const stability = stabilityScore(exercise);
@@ -1843,10 +1895,21 @@
         progressionMethod: candidate.researchExercise?.preferred_progression_model
       });
       const preferredReplacementExerciseId = preferredReplacementFor(candidate, evidence, selected);
-      const primaryMuscles = unique([
-        ...splitMulti(candidate.researchExercise?.primary_muscles),
-        candidate.muscleScore?.research_muscle_group_id || candidate.muscleScore?.muscle_group || muscleGroupId
-      ]);
+      const taxonomy = asArray(candidate.researchMappings).length ? asArray(candidate.researchMappings) : [{
+        muscle_group_id: candidate.muscleScore?.research_muscle_group_id || candidate.muscleScore?.muscle_group || muscleGroupId,
+        relationship_type: number(candidate.muscleScore?.contribution_weight, 1) >= 1 ? "direct_load" : "meaningful_fractional_load",
+        loading_role: "dynamic",
+        range_of_motion_role: "unknown",
+        fractional_set_credit: number(candidate.muscleScore?.contribution_weight, 1),
+        local_fatigue_weight: 1,
+        confidence_rating: candidate.personalScore?.confidence_level || "low",
+        evidence_basis: "personal_mapping_pending_canonical_research_crosswalk",
+        evidence_notes: "Personal exercise mapping is used because this recorded variation has no canonical research relationship yet.",
+        taxonomy_version: "personal_mapping_review_queue"
+      }];
+      const primaryMuscles = unique(taxonomy.filter((mapping) => mapping.relationship_type === "direct_load" || mapping.relationship_type === "primary").map((mapping) => mapping.muscle_group_id || mapping.muscleGroupId));
+      const secondaryMuscles = unique(taxonomy.filter((mapping) => mapping.relationship_type === "meaningful_fractional_load" || mapping.relationship_type === "secondary").map((mapping) => mapping.muscle_group_id || mapping.muscleGroupId));
+      const stabilizingMuscles = unique(taxonomy.filter((mapping) => mapping.relationship_type === "isometric_stabilizing_load").map((mapping) => mapping.muscle_group_id || mapping.muscleGroupId));
       return {
         rank: index + 1,
         rawScoreRank: entry.rawRank,
@@ -1854,8 +1917,10 @@
         researchExerciseId: candidate.researchExerciseId,
         exerciseName: candidate.exerciseName,
         intendedRole: role,
-        primaryMuscles,
-        secondaryMuscles: splitMulti(candidate.researchExercise?.secondary_muscles),
+        primaryMuscles: primaryMuscles.length ? primaryMuscles : unique([candidate.muscleScore?.research_muscle_group_id || candidate.muscleScore?.muscle_group || muscleGroupId]),
+        secondaryMuscles,
+        stabilizingMuscles,
+        muscleRelationships: taxonomy,
         equipmentRequirements: equipmentRequirementOptions(candidate.researchExercise || candidate.personalScore),
         jointActions: jointActionsForExercise(candidate.researchExercise || candidate.personalScore),
         recommendedSetStructure: structure.setStructure,
@@ -2062,10 +2127,10 @@
     return Object.values(pools).filter((pool) => pool.candidates.length > 0).map((pool, index) => {
       const defaults = options.evidence ? aggregateMuscleResearchDefaults(options.evidence.research, pool.muscleGroupId) : null;
       const specialized = specialization.has(normalizeMuscleId(pool.muscleGroupId));
-      const desiredSelections = specialized ? 2 : 1;
       const objectiveFactor = options.type === MESOCYCLE_TYPES.LOWER_FATIGUE ? 0.72 : specialized ? 1.2 : 1;
       const weeklyTarget = Math.max(2, Math.round(number(defaults?.weeklySets?.min, pool.candidates[0]?.recommendedSetRange?.target || 3) * objectiveFactor));
       const frequencyTarget = Math.min(weeklyTarget, number(options.trainingDays, 4), specialized ? 3 : 2, Math.max(1, Math.round(number(defaults?.frequency?.target, pool.candidates[0]?.recommendedFrequency?.target || 2))));
+      const desiredSelections = frequencyTarget;
       return ({
       id: `slot_${normalizeText(pool.muscleGroupId)}_${index + 1}`,
       muscleGroupId: pool.muscleGroupId,
@@ -2091,14 +2156,17 @@
     orderedSlots.forEach((slot) => {
       const pool = pools[slot.muscleGroupId];
       for (let pick = 0; pick < slot.selectionRequired; pick += 1) {
-        const candidates = pool.candidates.filter((candidate) => !slot.selectedExerciseIds.includes(candidate.exerciseId) && !candidate.scores.staleness.rotationRecommended);
+        let candidates = pool.candidates.filter((candidate) => !slot.selectedExerciseIds.includes(candidate.exerciseId) && !candidate.scores.staleness.rotationRecommended);
+        const directCandidates = candidates.filter((candidate) => asArray(candidate.muscleRelationships).some((mapping) => mapping.relationship_type === "direct_load" && researchMuscleMatch(options.evidence?.research, slot.muscleGroupId, mapping.muscle_group_id)));
+        if (directCandidates.length) candidates = directCandidates;
         const productiveCurrent = candidates.find((candidate) => currentIds.has(candidate.exerciseId) && candidate.scores.staleness.classification === STALENESS.PRODUCTIVE);
         const ranked = candidates.map((candidate) => ({ candidate, fit: candidateProgramFit(candidate, selected, { ...DEFAULT_POLICY, ...(options.policy || {}) }) }))
           .sort((a, b) => b.fit.predictedProgramEffectiveness - a.fit.predictedProgramEffectiveness || a.candidate.exerciseName.localeCompare(b.candidate.exerciseName));
         const choice = productiveCurrent || ranked[0]?.candidate || pool.candidates[pick];
         if (!choice) continue;
         slot.selectedExerciseIds.push(choice.exerciseId);
-        const existing = byId.get(choice.exerciseId);
+        const canonicalId = firstPresent(choice.researchExerciseId, choice.exerciseId);
+        const existing = byId.get(canonicalId);
         if (existing) {
           existing.targetMuscleGroupIds = unique([...existing.targetMuscleGroupIds, slot.muscleGroupId]);
           existing.programSlotIds = unique([...existing.programSlotIds, slot.id]);
@@ -2106,7 +2174,7 @@
           const fit = candidateProgramFit(choice, selected, { ...DEFAULT_POLICY, ...(options.policy || {}) });
           const entry = { ...deepClone(choice), muscleGroupId: slot.muscleGroupId, targetMuscleGroupIds: [slot.muscleGroupId], programSlotIds: [slot.id], selectionReason: productiveCurrent === choice ? "Preserved because this current-program exercise is productive and well tolerated." : "Highest predicted effectiveness after personal evidence, research, equipment, fatigue, and portfolio interactions.", ...fit };
           selected.push(entry);
-          byId.set(entry.exerciseId, entry);
+          byId.set(canonicalId, entry);
         }
       }
     });
@@ -2171,7 +2239,8 @@
     ordered.forEach((exercise) => {
       const relatedSlots = asArray(options.slots).filter((slot) => exercise.programSlotIds.includes(slot.id));
       const weeklySets = Math.max(1, Math.round(sum(relatedSlots.map((slot) => slot.weeklySetsTarget / Math.max(1, slot.selectionRequired))) || number(exercise.recommendedSetRange?.target, 3)));
-      const exposures = Math.min(dayCount, weeklySets, Math.max(1, Math.ceil(Math.max(...relatedSlots.map((slot) => slot.weeklyExposuresTarget / Math.max(1, slot.selectionRequired)), 1))));
+      // One canonical exercise belongs to one scheduled day. Frequency is supplied by distinct exercises.
+      const exposures = 1;
       const chosen = [];
       const plannedExposureSets = Array.from({ length: exposures }, (_, exposureIndex) => Math.floor(weeklySets / exposures) + (exposureIndex < weeklySets % exposures ? 1 : 0));
       for (let exposure = 0; exposure < exposures; exposure += 1) {
@@ -2205,10 +2274,16 @@
   function reviewFullProgram(portfolio, sessions, slots, evidence, options = {}) {
     const policy = { ...DEFAULT_POLICY, ...(options.policy || {}) };
     const warnings = [];
+    const scheduledCanonicalIds = new Map();
     sessions.forEach((session) => {
       const names = session.exercises.map((item) => item.exerciseName);
       const highFatigue = session.exercises.filter((item) => item.scores.highFatigueCompound);
       const workingSets = sum(session.exercises.map((item) => number(item.plannedSets, 0)));
+      session.exercises.forEach((exercise) => {
+        const canonicalId = firstPresent(exercise.researchExerciseId, exercise.exerciseId);
+        if (!scheduledCanonicalIds.has(canonicalId)) scheduledCanonicalIds.set(canonicalId, []);
+        scheduledCanonicalIds.get(canonicalId).push(session.id);
+      });
       session.exerciseCount = session.exercises.length;
       session.workingSetCount = workingSets;
       const exercisesByMuscle = groupBy(session.exercises.flatMap((exercise) => asArray(exercise.targetMuscleGroupIds).map((muscle) => ({ muscle: muscleFamily(muscle), exercise }))), (item) => item.muscle);
@@ -2230,6 +2305,9 @@
       }));
       redundantPairs.forEach(({ exercise, other, similarity }) => warnings.push({ severity: "review", type: "redundant_pattern", sessionId: session.id, exerciseIds: [exercise.exerciseId, other.exerciseId], conflict: `${exercise.exerciseName} and ${other.exerciseName} duplicate the same training role in ${session.name}.`, why: `They share a primary target, joint action, movement pattern, and closely similar loading/role profile (${Math.round(similarity * 100)}% mechanical similarity), so the second exercise crowds out more distinct work.`, recommendation: "Keep the higher-priority option and replace the other with a mechanically complementary exercise or remove it.", correctiveAction: "apply_recommended_fix" }));
     });
+    scheduledCanonicalIds.forEach((sessionIds, canonicalId) => {
+      if (unique(sessionIds).length > 1) warnings.push({ severity: "blocking", type: "duplicate_canonical_exercise", sessionId: null, exerciseIds: [canonicalId], conflict: `${canonicalId} is assigned on more than one training day.`, why: "Automatically generated mesocycles use each canonical exercise on only one scheduled day; aliases and duplicate labels do not bypass the rule.", recommendation: "Keep the exercise on its highest-value day and use the next compatible candidate for the other exposure.", correctiveAction: "regenerate_affected_sessions" });
+    });
     groupBy(asArray(sessions.capacityIssues), (issue) => issue.exerciseId).forEach((issues) => {
       const issue = issues[0];
       const unallocatedSets = sum(issues.map((item) => item.unallocatedSets));
@@ -2237,11 +2315,13 @@
     });
     const musclePlans = slots.map((slot) => {
       const selected = portfolio.filter((item) => item.programSlotIds.includes(slot.id));
-      const directSets = sum(sessions.flatMap((session) => session.exercises).filter((item) => item.programSlotIds.includes(slot.id)).map((item) => number(item.plannedSets, 0)));
-      const secondarySets = sum(sessions.flatMap((session) => session.exercises).filter((item) => !item.programSlotIds.includes(slot.id) && item.secondaryMuscles?.some((muscle) => researchMuscleMatch(evidence.research, slot.muscleGroupId, muscle))).map((item) => number(item.plannedSets, 0) * 0.35));
-      const sessionIds = sessions.filter((session) => session.exercises.some((item) => item.programSlotIds.includes(slot.id))).map((session) => session.id);
+      const contributions = sessions.flatMap((session) => session.exercises.map((item) => ({ session, item, mapping: taxonomyContributionFor(evidence.research, item, slot.muscleGroupId) }))).filter((entry) => entry.mapping);
+      const directSets = sum(contributions.filter((entry) => entry.mapping.relationship_type === "direct_load" || entry.mapping.relationship_type === "primary").map((entry) => number(entry.item.plannedSets, 0) * number(entry.mapping.fractional_set_credit, 1)));
+      const secondarySets = sum(contributions.filter((entry) => entry.mapping.relationship_type === "meaningful_fractional_load" || entry.mapping.relationship_type === "secondary").map((entry) => number(entry.item.plannedSets, 0) * number(entry.mapping.fractional_set_credit, 0)));
+      const isometricExposure = sum(contributions.filter((entry) => entry.mapping.relationship_type === "isometric_stabilizing_load").map((entry) => number(entry.item.plannedSets, 0) * number(entry.mapping.local_fatigue_weight, 0)));
+      const sessionIds = unique(contributions.filter((entry) => number(entry.mapping.fractional_set_credit, 0) > 0).map((entry) => entry.session.id));
       const effectiveSets = round(directSets + secondarySets, 1);
-      return { muscleGroupId: slot.muscleGroupId, weeklyTargetRange: slot.weeklySetsRange, weeklyTargetVolume: slot.weeklySetsTarget, plannedFrequency: sessionIds.length, targetFrequency: slot.weeklyExposuresTarget, selectedExerciseIds: selected.map((item) => item.exerciseId), directSets, secondarySets: round(secondarySets, 1), indirectSets: round(secondarySets, 1), incidentalSets: 0, effectiveSets, targetMet: directSets >= slot.weeklySetsRange.min && directSets <= slot.weeklySetsRange.max && sessionIds.length >= slot.weeklyExposuresTarget, localFatigue: round(average(selected.map((item) => item.scores.fatigueCost)), 1), programWideFatigue: round(sum(selected.map((item) => item.scores.systemicFatigue + item.scores.spinalLoad * 0.5)), 1), sessionIds, overlapNotes: secondarySets > 0 ? "Only meaningfully mapped secondary work receives 0.35 credit; stabilization and incidental involvement receive zero." : "No material secondary contribution was identified." };
+      return { muscleGroupId: slot.muscleGroupId, taxonomyVersion: evidence.research.version, weeklyTargetRange: slot.weeklySetsRange, weeklyTargetVolume: slot.weeklySetsTarget, plannedFrequency: sessionIds.length, targetFrequency: slot.weeklyExposuresTarget, selectedExerciseIds: selected.map((item) => item.exerciseId), directSets: round(directSets, 1), secondarySets: round(secondarySets, 1), indirectSets: round(secondarySets, 1), incidentalSets: 0, isometricExposure: round(isometricExposure, 1), effectiveSets, targetMet: directSets >= slot.weeklySetsRange.min && directSets <= slot.weeklySetsRange.max && sessionIds.length >= slot.weeklyExposuresTarget, localFatigue: round(average(selected.map((item) => item.scores.fatigueCost)), 1), programWideFatigue: round(sum(selected.map((item) => item.scores.systemicFatigue + item.scores.spinalLoad * 0.5)), 1), sessionIds, overlapNotes: secondarySets > 0 ? "Exercise-specific fractional relationships supply secondary credit; isometric and incidental involvement remain fatigue-only." : "No material fractional hypertrophy contribution was identified." };
     });
     musclePlans.forEach((plan) => {
       if (!plan.selectedExerciseIds.length) warnings.push({ severity: "serious", type: "missing_exposure", sessionId: null, exerciseIds: [], conflict: `${plan.muscleGroupId.replaceAll("_", " ")} has no selected exercise.`, why: "The complete program would omit a represented training requirement.", recommendation: "Select an eligible candidate or explicitly remove the program slot." });
@@ -2274,7 +2354,7 @@
   function refreshMesocycleProgram(mesocycle, evidenceInput, options = {}) {
     const evidence = evidenceInput.personal ? evidenceInput : normalizeEvidenceBundle(evidenceInput);
     const slots = deepClone(mesocycle.programSlots || []);
-    let portfolio = buildProgramPortfolio(mesocycle.pools, slots, { ...mesocycle.constraints, ...options, currentProgramExerciseIds: options.currentProgramExerciseIds || mesocycle.currentProgramExerciseIds, specializationMuscleGroups: mesocycle.specializationMuscleGroups, type: mesocycle.type });
+    let portfolio = buildProgramPortfolio(mesocycle.pools, slots, { ...mesocycle.constraints, ...options, evidence, currentProgramExerciseIds: options.currentProgramExerciseIds || mesocycle.currentProgramExerciseIds, specializationMuscleGroups: mesocycle.specializationMuscleGroups, type: mesocycle.type });
     if (options.selections) {
       slots.forEach((slot) => {
         const requested = asArray(options.selections[slot.id]);
@@ -3038,6 +3118,8 @@
     canDeleteMesocycle,
     candidateProgramFit,
     mechanicalRedundancyScore,
+    calculateExerciseMuscleContributions,
+    recalculateHistoricalMuscleVolume,
     distributePortfolioAcrossSessions,
     reviewFullProgram,
     createExercisePrescriptionSnapshot,

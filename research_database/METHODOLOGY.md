@@ -61,11 +61,10 @@ Version 1.0 was extracted by one reviewer-agent. Discrepancies were resolved con
 
 Evidence conclusions describe what the literature supports. Application rules add monitoring inputs, deterministic conditions, and actions. If a numeric threshold is not directly validated, the rule is labeled `inferred`, confidence is reduced, and the evidence-gap table records the uncertainty.
 
-Set volume uses fractional hard sets. Primary muscles receive a default 1.0 set; clearly loaded secondary muscles receive 0.5; trivial contribution receives 0. These are query conventions, not physiological constants, and applications should permit exercise-specific overrides.
+Set volume uses the versioned relationship framework in `EXERCISE_MUSCLE_TAXONOMY.md`. Direct dynamic work normally receives 1.0, meaningful fractional dynamic work receives 0.5 or 0.25, and incidental, unknown, or isometric stabilization receives zero hypertrophy-set credit. Isometric/local fatigue is stored separately. These are transparent programming conventions, not physiological constants. EMG is mechanistic support only and cannot independently establish hypertrophy credit.
 
 Progress requires comparable load, repetition, RIR/RPE, ROM, technique, rest, equipment, and set role. Single-session changes can be noise. Higher-skill or higher-variability exercises require longer confirmation windows. Pain and technique failure override progression.
 
 ## Update and version control
 
 Review high-impact topics at least every six months and perform a complete annual audit. Search alerts should prioritize new meta-analyses, male-only trained trials, corrections, and retractions. Each material change receives a persistent change ID, database semantic version, affected IDs, previous/new value, reason, evidence IDs, reviewer note, and review date. IDs are never reused. Breaking schema changes increment the major version; changed interpretation increments minor; corrections without meaning change increment patch.
-

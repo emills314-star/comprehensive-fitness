@@ -95,6 +95,7 @@ for (const [table, columns] of Object.entries(tableColumns)) {
 }
 const fks = [
   ["exercise_muscle_map", "exercise_id", "exercise_database", "exercise_id"], ["exercise_muscle_map", "muscle_group_id", "muscle_group_recommendations", "muscle_group_id"],
+  ["exercise_taxonomy_review_queue", "exercise_id", "exercise_database", "exercise_id"],
   ["exercise_substitution_map", "exercise_id", "exercise_database", "exercise_id"], ["exercise_substitution_map", "substitute_exercise_id", "exercise_database", "exercise_id"],
   ["study_conclusion_map", "study_id", "research_library", "study_id"], ["study_conclusion_map", "conclusion_id", "evidence_conclusions", "conclusion_id"],
   ["study_exercise_map", "study_id", "research_library", "study_id"], ["study_exercise_map", "exercise_id", "exercise_database", "exercise_id"],
@@ -126,7 +127,7 @@ const sheetNames = {
   executive_summary: "01 Executive Summary", research_library: "02 Research Library", evidence_conclusions: "03 Evidence Conclusions",
   muscle_group_recommendations: "04 Muscle Groups", exercise_database: "05 Exercises", progression_rules: "06 Progression Rules",
   nutrition_strategies: "07 Diet Recomp Bulk", evidence_gaps: "08 Evidence Gaps", definitions_data_dictionary: "09 Data Dictionary",
-  change_log: "10 Change Log", exercise_muscle_map: "Map Exercise Muscle", exercise_substitution_map: "Map Substitutions",
+  change_log: "10 Change Log", exercise_muscle_map: "Map Exercise Muscle", exercise_taxonomy_review_queue: "Taxonomy Review Queue", exercise_substitution_map: "Map Substitutions",
   study_conclusion_map: "Map Study Conclusion", study_exercise_map: "Map Study Exercise", study_muscle_group_map: "Map Study Muscle",
   rule_exercise_map: "Map Rule Exercise", rule_muscle_group_map: "Map Rule Muscle", exercise_progression_metric_map: "Map Exercise Metrics"
 };

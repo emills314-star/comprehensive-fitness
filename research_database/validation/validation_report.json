@@ -1,8 +1,8 @@
 {
-  "database_version": "1.1.0",
+  "database_version": "2.0.0",
   "valid": true,
   "errors": [],
-  "warning_count": 30,
+  "warning_count": 31,
   "warnings": [
     "stu_0001: male sample size unavailable and intentionally null",
     "stu_0002: male sample size unavailable and intentionally null",
@@ -33,20 +33,22 @@
     "stu_0037: male sample size unavailable and intentionally null",
     "stu_0038: male sample size unavailable and intentionally null",
     "stu_0039: male sample size unavailable and intentionally null",
-    "stu_0040: male sample size unavailable and intentionally null"
+    "stu_0040: male sample size unavailable and intentionally null",
+    "stu_0041: male sample size unavailable and intentionally null"
   ],
   "record_counts": {
     "executive_summary": 14,
-    "research_library": 40,
+    "research_library": 42,
     "evidence_conclusions": 27,
     "muscle_group_recommendations": 23,
     "exercise_database": 61,
     "progression_rules": 18,
     "nutrition_strategies": 13,
     "evidence_gaps": 15,
-    "definitions_data_dictionary": 241,
-    "change_log": 2,
-    "exercise_muscle_map": 136,
+    "definitions_data_dictionary": 251,
+    "change_log": 3,
+    "exercise_muscle_map": 149,
+    "exercise_taxonomy_review_queue": 11,
     "exercise_substitution_map": 93,
     "study_conclusion_map": 55,
     "study_exercise_map": 488,

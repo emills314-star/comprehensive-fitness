@@ -2,17 +2,22 @@
 
 This document is the durable map for future recommendation-engine iterations. It describes what is in the personal analysis and exercise-science database, how the app is allowed to use each source, and which files are canonical. Keep it current whenever a source schema, database version, engine version, or app persistence contract changes.
 
+## Exercise–muscle taxonomy 2.0
+
+The canonical relationship source is `research_database/source/exercise-muscle-taxonomy.js`; generated `exercise_muscle_map` and `exercise_taxonomy_review_queue` artifacts are the runtime/data-contract outputs. Every mapped row includes classification, loading/ROM role, hypertrophy credit, local-fatigue weight, confidence, evidence notes/IDs, review state/date, and taxonomy version. See `research_database/EXERCISE_MUSCLE_TAXONOMY.md`. Legacy binary mappings are compatibility-only.
+
 ## Current versions
 
 | Layer | Version | Reviewed/generated | Canonical source |
 | --- | --- | --- | --- |
 | Personal analysis pipeline | `1.1.0` | 2026-07-11 | `scripts/personal-fitness/` plus `personal_fitness_data/config/` |
 | Personal analysis methodology | `1.1.0` | 2026-07-11 | `personal_fitness_data/reports/analysis_metadata.json` |
-| Exercise-science database | `1.1.0` | 2026-07-11 | `research_database/source/database.js` |
+| Exercise-science database and muscle taxonomy | `2.0.0` | 2026-07-12 | `research_database/source/database.js` and `research_database/source/exercise-muscle-taxonomy.js` |
+| Unified prescription engine | `3.0.0` | 2026-07-12 | `prescription-engine.js` |
 | App prescription schema | `2.0.0` | 2026-07-11 | `prescription-engine.js` and the app prescription JSON Schemas |
 | Push/sync operational database | `1.0.0` | deployed/verified 2026-07-11 | `docs/push-backend.md` and `api/` |
 
-The private personal-analysis metadata still declares research database `1.0.0`; the public app library is now `1.1.0` because it added canonical cambered-bench discovery. The runtime blends compatible records by persistent IDs/aliases and preserves both source versions in recommendation snapshots. **NEEDS REVIEW:** rebuild the private aggregate package when the next personal-analysis refresh is run so its declared research version matches the public library.
+The existing private personal-analysis snapshot predates taxonomy 2.0. The runtime resolves its persistent research exercise crosswalk against taxonomy 2.0 and preserves both source versions in recommendation snapshots; the updated private pipeline will use taxonomy 2.0 on its next local rebuild. Raw/private data remains unpublished.
 
 The live operational database is separate from both evidence sources. Upstash Redis stores only installation-scoped push, timer, idempotency, and workout-sync records; it does not contain or replace the private personal-analysis package or the public research database. Its exact key and field inventory, free-tier resource regions, and current deployment status are maintained in `docs/push-backend.md`.
 
@@ -51,7 +56,8 @@ The public research database contains 18 normalized tables. The application-rele
 | --- | ---: | --- |
 | `exercise_database` | 60 | Exercise traits, rep/set/RIR/rest defaults, progression model, fatigue, stability/skill, substitution and deload criteria |
 | `muscle_group_recommendations` | 23 | Weekly/session volume, frequency, rep, RIR and rest ranges for muscle groups/subdivisions |
-| `exercise_muscle_map` | 133 | Primary, secondary, regional and fractional muscle attribution |
+| `exercise_muscle_map` | 149 | Direct, fractional, incidental, isometric, confidence, evidence, fatigue, and versioned muscle attribution |
+| `exercise_taxonomy_review_queue` | 11 | Low-confidence exercise/family relationships awaiting future focused review |
 | `exercise_substitution_map` | 90 | Preferred same-function replacements with similarity and confidence |
 | `progression_rules` | 18 | Double, dynamic, load/rep, technique, volume, deload and fatigue-management actions |
 | `nutrition_strategies` | 13 | Goal/phase-specific nutrition modifiers and evidence confidence |

@@ -1,7 +1,7 @@
 [
   {
     "change_id": "chg_0001",
-    "change_date": "2026-07-11",
+    "change_date": "2026-07-12",
     "database_version": "1.0.0",
     "affected_tab": "all",
     "affected_record_ids": "all_v1_records",
@@ -14,8 +14,8 @@
   },
   {
     "change_id": "chg_0002",
-    "change_date": "2026-07-11",
-    "database_version": "1.1.0",
+    "change_date": "2026-07-12",
+    "database_version": "2.0.0",
     "affected_tab": "exercise_database|muscle_group_recommendations",
     "affected_record_ids": "ex_cambered_barbell_bench_press|mg_chest_sternal",
     "change_type": "exercise_library_addition",
@@ -24,5 +24,18 @@
     "reason_for_change": "Exercise discovery must evaluate eligible canonical library variations instead of silently omitting unrecognized aliases.",
     "supporting_study_ids": "stu_0004|stu_0009|stu_0010|stu_0011",
     "reviewer_notes": "This is a movement-specific research default, not a claim that camber geometry guarantees superior hypertrophy."
+  },
+  {
+    "change_id": "chg_0003",
+    "change_date": "2026-07-12",
+    "database_version": "2.0.0",
+    "affected_tab": "exercise_muscle_map|exercise_taxonomy_review_queue",
+    "affected_record_ids": "all_exercise_muscle_relationships",
+    "change_type": "breaking_taxonomy_migration",
+    "previous_value": "Primary 1.0 and blanket secondary 0.5 relationships generated from legacy exercise columns.",
+    "new_value": "Taxonomy 2.0.0: direct, fractional, incidental, isometric, and unknown relationships with exercise-specific credit, fatigue, confidence, evidence, and review metadata.",
+    "reason_for_change": "Hypertrophy volume and fatigue exposure require different semantics, and compound exercises require multi-muscle biomechanical classification.",
+    "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011|stu_0041|stu_0042",
+    "reviewer_notes": "Weights are transparent programming conventions, not proven physiological constants; low-confidence entries remain queued."
   }
 ]

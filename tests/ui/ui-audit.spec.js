@@ -178,6 +178,11 @@ test("Mesocycle Planner progresses from compact setup to full review", async ({ 
   const sessionTotals = await page.evaluate(() => [...document.querySelectorAll(".review-session-card")].map((card) => ({ header: card.querySelector(".review-session-title span")?.textContent || "", sets: [...card.querySelectorAll(".review-session-exercises li > strong:last-child")].reduce((sum, item) => sum + Number.parseInt(item.textContent, 10), 0) })));
   expect(sessionTotals.length).toBe(4);
   sessionTotals.forEach((session) => expect(session.sets).toBeLessThanOrEqual(18));
+  const scheduledExerciseNames = await page.evaluate(() => [...document.querySelectorAll(".review-session-exercises li > div:first-child > strong")].map((item) => item.textContent.trim()));
+  expect(scheduledExerciseNames.length).toBe(new Set(scheduledExerciseNames).size);
+  const scoreDisclosure = page.getByText("Why the Score?", { exact: true }).first();
+  await scoreDisclosure.click();
+  await expect(page.getByText("Taxonomy Basis", { exact: true }).first()).toBeVisible();
   if (await page.getByRole("button", { name: "Regenerate with Practical Limits" }).count()) {
     await page.getByRole("button", { name: "Regenerate with Practical Limits" }).click();
     await expect(page.locator(".review-session-card").first()).toBeVisible();

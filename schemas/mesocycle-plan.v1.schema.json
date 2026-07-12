@@ -303,6 +303,20 @@
             "$ref": "exercise-prescription.v2.schema.json#/$defs/id"
           }
         },
+        "stabilizingMuscles": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "exercise-prescription.v2.schema.json#/$defs/id"
+          }
+        },
+        "muscleRelationships": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
         "equipmentRequirements": {
           "type": "array",
           "items": {

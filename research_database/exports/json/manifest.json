@@ -1,7 +1,7 @@
 {
   "database_name": "male_resistance_training_evidence_database",
-  "database_version": "1.1.0",
-  "last_reviewed_date": "2026-07-11",
+  "database_version": "2.0.0",
+  "last_reviewed_date": "2026-07-12",
   "population_scope": "resistance-trained and resistance-training-eligible males",
   "source_of_truth": "research_database/source/database.js",
   "multi_value_delimiter": "|",
@@ -11,7 +11,7 @@
       "primary_id_field": "summary_id"
     },
     "research_library": {
-      "record_count": 40,
+      "record_count": 42,
       "primary_id_field": "study_id"
     },
     "evidence_conclusions": {
@@ -39,16 +39,20 @@
       "primary_id_field": "evidence_gap_id"
     },
     "definitions_data_dictionary": {
-      "record_count": 241,
+      "record_count": 251,
       "primary_id_field": null
     },
     "change_log": {
-      "record_count": 2,
+      "record_count": 3,
       "primary_id_field": "change_id"
     },
     "exercise_muscle_map": {
-      "record_count": 136,
+      "record_count": 149,
       "primary_id_field": "exercise_muscle_map_id"
+    },
+    "exercise_taxonomy_review_queue": {
+      "record_count": 11,
+      "primary_id_field": "taxonomy_review_id"
     },
     "exercise_substitution_map": {
       "record_count": 93,
