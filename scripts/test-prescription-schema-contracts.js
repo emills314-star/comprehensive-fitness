@@ -219,7 +219,7 @@ const mesocycle = load(SCHEMA_FILES[1]).schema;
 const snapshot = load(SCHEMA_FILES[2]).schema;
 const engineSource = fs.readFileSync(path.resolve(ROOT, "prescription-engine.js"), "utf8");
 
-assert.equal(exercise.properties.schemaVersion.const, "2.0.0");
+assert.equal(exercise.properties.schemaVersion.const, "2.1.0");
 assert.equal(exercise.additionalProperties, false);
 assertIncludesAll(exercise.required, [
   "exerciseId", "muscleGroupId", "recommendationType", "role", "setStructure",
@@ -227,8 +227,10 @@ assertIncludesAll(exercise.required, [
   "frequencyPerWeek", "volume", "progressionMethod", "progressionRule", "holdRule",
   "regressionRule", "deloadRule", "personalEvidenceWeight", "researchEvidenceWeight",
   "confidence", "evidenceSummary", "userExplanation", "exerciseScore", "muscleSpecificScore",
-  "staleness", "deloadStatus", "mesocycleId"
+  "staleness", "deloadStatus", "mesocycleId", "executionBlocked"
 ], "ExercisePrescription.required");
+assert.ok(exercise.properties.safetyRestriction, "ExercisePrescription must define versioned hard-safety metadata");
+assert.equal(exercise.$defs.hardSafetyRestriction.properties.schemaVersion.const, "hard-safety/1.0.0");
 assertExactEnum(exercise.$defs.recommendationType.enum, extractFrozenArray(engineSource, "RECOMMENDATION_TYPES"), "recommendationType");
 assertExactEnum(exercise.$defs.role.enum, extractFrozenArray(engineSource, "ROLES"), "role");
 assertExactEnum(exercise.$defs.setStructure.enum, extractFrozenArray(engineSource, "SET_STRUCTURES"), "setStructure");
@@ -262,7 +264,7 @@ assertIncludesAll(mesocycle.$defs.candidateCore.required, [
 assert.equal(mesocycle.$defs.candidate.unevaluatedProperties, false);
 assert.equal(mesocycle.$defs.activeExercise.unevaluatedProperties, false);
 
-assert.equal(snapshot.properties.schemaVersion.const, "1.0.0");
+assert.equal(snapshot.properties.schemaVersion.const, "1.1.0");
 assert.equal(snapshot.additionalProperties, false);
 assertIncludesAll(snapshot.required, [
   "recommendationId", "recommendationVersion", "engineVersion", "personalDataVersion",
@@ -272,7 +274,7 @@ assertIncludesAll(snapshot.required, [
 ], "RecommendationSnapshot.required");
 assertIncludesAll(Object.keys(snapshot.$defs.overrideChanges.properties), [
   "exerciseId", "setCount", "repRange", "load", "setStructure", "deloadRecommendation",
-  "exerciseRotation", "mesocycleId"
+  "exerciseRotation", "mesocycleId", "safetyConfirmation"
 ], "overrideChanges.properties");
 assertIncludesAll(snapshot.$defs.manualOverride.required, [
   "overrideId", "createdAt", "actor", "reason", "workoutId", "changes", "previousFinalPrescription"
@@ -311,6 +313,36 @@ const generatedSnapshot = engine.createExercisePrescriptionSnapshot(evidence, {
   createdAt: generatedAt
 });
 assertValidInstance(generatedSnapshot, snapshot, SCHEMA_FILES[2], "Generated recommendation snapshot");
+
+const blockedSnapshot = engine.createExercisePrescriptionSnapshot(evidence, {
+  exerciseId: pool.candidates[0].exerciseId,
+  muscleGroupId,
+  mesocycle: generatedMesocycle,
+  readiness: { pain: true, affectedMuscle: muscleGroupId },
+  createdAt: generatedAt
+});
+assertValidInstance(blockedSnapshot, snapshot, SCHEMA_FILES[2], "Hard-safety recommendation snapshot");
+assert.equal(blockedSnapshot.finalPrescription.executionBlocked, true);
+assert.deepEqual(blockedSnapshot.finalPrescription.workingSets, { min: 0, target: 0, max: 0 });
+const safeAlternative = pool.candidates.find((candidate) => candidate.exerciseId !== blockedSnapshot.exerciseId);
+assert.ok(safeAlternative, "Safety schema contract requires a second catalog-backed candidate");
+const safetyResearchId = safeAlternative.researchExerciseId || safeAlternative.exerciseId;
+const safetyCatalogRecord = evidence.research.exerciseById.get(safetyResearchId);
+assert.ok(safetyCatalogRecord, "Safety substitute must resolve to an actual research catalog record");
+const substitutedSnapshot = engine.applyManualOverride(blockedSnapshot, {
+  exerciseId: safeAlternative.exerciseId,
+  researchExerciseId: safetyResearchId,
+  painFreeConfirmed: true
+}, {
+  allowedSafetySubstituteIds: [safeAlternative.exerciseId],
+  exerciseCatalog: [{ ...safetyCatalogRecord, exerciseId: safeAlternative.exerciseId, researchExerciseId: safetyResearchId }],
+  availableEquipment: ["all"],
+  createdAt: "2026-07-11T12:02:00.000Z"
+});
+assertValidInstance(substitutedSnapshot, snapshot, SCHEMA_FILES[2], "Confirmed pain-free substitute snapshot");
+assert.equal(substitutedSnapshot.finalPrescription.executionBlocked, false);
+assert.equal(substitutedSnapshot.finalPrescription.prescribedLoad, undefined);
+assert.equal(substitutedSnapshot.manualOverrides.at(-1).changes.safetyConfirmation.painFreeConfirmed, true);
 
 const overriddenSnapshot = engine.applyManualOverride(generatedSnapshot, {
   setCount: Math.max(2, generatedSnapshot.finalPrescription.workingSets.target),

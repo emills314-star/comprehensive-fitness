@@ -1,6 +1,8 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const {
   STALENESS,
   applyManualOverride,
@@ -14,6 +16,8 @@ const {
   readinessAdjustmentFor,
   validateSnapshot
 } = require("../prescription-engine");
+
+const ROOT = path.resolve(__dirname, "..");
 
 function publicResearchData() {
   return {
@@ -68,6 +72,27 @@ function assertNotProgress(decision, context) {
   );
 }
 
+function assertHardSafetyBlocked(snapshot, expectedReason, expectedScope) {
+  const final = snapshot.finalPrescription;
+  assert.equal(final.executionBlocked, true, `${expectedReason} must explicitly block execution`);
+  assert.deepEqual(final.workingSets, { min: 0, target: 0, max: 0 }, `${expectedReason} must expose no executable working sets`);
+  assert.equal(final.volume.perExercise.currentPrescribed, 0, `${expectedReason} must expose no executable per-exercise volume`);
+  assert.equal(final.volume.perExercise.deload, 0, `${expectedReason} must not expose deload work as executable`);
+  assert.deepEqual(final.volume.perMusclePerSession, { min: 0, target: 0, max: 0 }, `${expectedReason} must expose no executable session volume`);
+  assert.equal(final.volume.perMusclePerWeek.currentPrescribed, 0, `${expectedReason} must expose no executable weekly volume`);
+  assert.equal(final.prescribedLoad, undefined, `${expectedReason} must not expose a prescribed load`);
+  assert.equal(final.topSet, undefined, `${expectedReason} must not expose a top-set target`);
+  assert.equal(final.backoffSets, undefined, `${expectedReason} must not expose back-off targets`);
+  assert.equal(final.safetyRestriction.schemaVersion, "hard-safety/1.0.0");
+  assert.equal(final.safetyRestriction.status, "blocked");
+  assert.equal(final.safetyRestriction.reason, expectedReason);
+  assert.equal(final.safetyRestriction.scope, expectedScope);
+  assert.ok(final.safetyRestriction.resumeCriteria, `${expectedReason} must state resume criteria`);
+  assert.deepEqual(final.safetyRestriction.auditBaseTargets.workingSets, snapshot.basePrescription.workingSets, `${expectedReason} base sets must survive only as audit context`);
+  assert.deepEqual(final.safetyRestriction.auditBaseTargets.repRange, snapshot.basePrescription.repRange, `${expectedReason} base reps must survive only as audit context`);
+  assert.deepEqual(final.safetyRestriction.auditBaseTargets.targetRpe, snapshot.basePrescription.targetRpe, `${expectedReason} base RPE must survive only as audit context`);
+}
+
 function collectFailures(checks) {
   const failures = [];
   for (const [label, check] of checks) {
@@ -102,10 +127,22 @@ test("illness and pain have hard readiness precedence", () => {
   const illness = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", readiness: { illness: true }, createdAt });
   assert.equal(illness.finalPrescription.recommendationType, "hold", JSON.stringify(illness.finalPrescription.readinessAdjustment));
   assert.equal(illness.finalPrescription.progressionAction, "stop_for_illness");
+  assertHardSafetyBlocked(illness, "illness", "workout");
   const pain = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", history: progressionHistory(), readiness: { pain: true, affectedMuscle: "Chest" }, createdAt });
   assert.equal(pain.finalPrescription.recommendationType, "substitute", JSON.stringify(pain.finalPrescription.readinessAdjustment));
   assert.equal(pain.finalPrescription.progressionAction, "hold_for_pain_free_substitution");
-  assert.equal(pain.finalPrescription.prescribedLoad, undefined, "pain must not emit a load target for the affected movement");
+  assertHardSafetyBlocked(pain, "pain", "exercise");
+});
+
+test("runtime snapshot validation rejects missing and unknown schema versions", () => {
+  const snapshot = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", createdAt });
+  const missing = structuredClone(snapshot);
+  delete missing.schemaVersion;
+  assert.throws(() => validateSnapshot(missing), /schemaVersion/i);
+  ["1.0.0", "999.0.0"].forEach((schemaVersion) => {
+    const unsupported = { ...structuredClone(snapshot), schemaVersion };
+    assert.throws(() => validateSnapshot(unsupported), /unsupported.*schemaVersion|schemaVersion.*unsupported/i, `${schemaVersion} must fail closed`);
+  });
 });
 
 test("current illness or pain supersedes every deload scope", () => {
@@ -287,6 +324,7 @@ test("hard-safety snapshots reject training overrides and require an explicit co
     createdAt
   });
   assert.equal(snapshot.finalPrescription.recommendationType, "substitute", "fixture must be hard-safety restricted");
+  assert.equal(snapshot.finalPrescription.executionBlocked, true, "fixture must start non-executable");
   const blocked = [
     ["load", { load: 40 }],
     ["set count", { setCount: 2 }],
@@ -311,23 +349,88 @@ test("hard-safety snapshots reject training overrides and require an explicit co
   }, { allowedSafetySubstituteIds: ["not_in_catalog"] }), /unknown allowed safety substitute/i);
   assert.throws(() => engine.applyManualOverride(snapshot, {
     exerciseId: "ex_dumbbell_bench_press",
-    researchExerciseId: "ex_barbell_bench_press"
+    researchExerciseId: "ex_barbell_bench_press",
+    painFreeConfirmed: true
   }, {
     allowedSafetySubstituteIds: ["ex_dumbbell_bench_press"],
     createdAt: "2026-07-12T12:06:00.000Z"
   }), /identity|research/i, "safe substitute must keep coherent exercise/research identity");
-  const substituted = engine.applyManualOverride(snapshot, {
+  assert.throws(() => applyManualOverride(snapshot, {
+    exerciseId: "ex_dumbbell_bench_press",
+    researchExerciseId: "ex_dumbbell_bench_press",
+    painFreeConfirmed: true
+  }, {
+    exerciseCatalog: ["ex_dumbbell_bench_press"],
+    allowedSafetySubstituteIds: ["ex_dumbbell_bench_press"]
+  }), /catalog object|structured catalog/i, "string catalog entries must not establish safety identity");
+  assert.throws(() => applyManualOverride(snapshot, {
+    exerciseId: "ex_dumbbell_bench_press",
+    researchExerciseId: "ex_dumbbell_bench_press",
+    painFreeConfirmed: true
+  }, {
+    exerciseCatalog: [{ exerciseId: "ex_dumbbell_bench_press", researchExerciseId: "ex_dumbbell_bench_press" }],
+    allowedSafetySubstituteIds: ["ex_dumbbell_bench_press"]
+  }), /catalog object|structured catalog/i, "an ID-only object must not masquerade as an actual catalog record");
+  assert.throws(() => engine.applyManualOverride(snapshot, {
     exerciseId: "ex_dumbbell_bench_press",
     researchExerciseId: "ex_dumbbell_bench_press"
   }, {
+    allowedSafetySubstituteIds: ["ex_dumbbell_bench_press"]
+  }), /pain.free.*confirm/i, "pain substitutions require an explicit user confirmation");
+  assert.throws(() => engine.applyManualOverride(snapshot, {
+    exerciseId: "ex_dumbbell_bench_press",
+    researchExerciseId: "ex_dumbbell_bench_press",
+    painFreeConfirmed: true
+  }, {
     allowedSafetySubstituteIds: ["ex_dumbbell_bench_press"],
+    availableEquipment: ["barbell", "plates", "bench", "rack"]
+  }), /equipment/i, "restricted equipment must be checked for safety substitutes");
+  const substituted = engine.applyManualOverride(snapshot, {
+    exerciseId: "ex_dumbbell_bench_press",
+    researchExerciseId: "ex_dumbbell_bench_press",
+    painFreeConfirmed: true
+  }, {
+    allowedSafetySubstituteIds: ["ex_dumbbell_bench_press"],
+    availableEquipment: ["dumbbell", "bench"],
     createdAt: "2026-07-12T12:07:00.000Z"
   });
   assert.equal(substituted.exerciseId, "ex_dumbbell_bench_press");
   assert.equal(substituted.finalPrescription.exerciseId, "ex_dumbbell_bench_press");
   assert.equal(substituted.finalPrescription.researchExerciseId, "ex_dumbbell_bench_press");
   assert.equal(substituted.finalPrescription.recommendationType, "substitute");
+  assert.equal(substituted.finalPrescription.executionBlocked, false, "a confirmed pain-free substitute may become executable");
+  assert.ok(substituted.finalPrescription.workingSets.target >= 1, "confirmed substitute restores bounded base set targets");
+  assert.ok(substituted.finalPrescription.workingSets.min <= substituted.finalPrescription.workingSets.target);
+  assert.ok(substituted.finalPrescription.workingSets.target <= substituted.finalPrescription.workingSets.max);
+  assert.ok(substituted.finalPrescription.repRange.min >= 1 && substituted.finalPrescription.repRange.max <= 100);
+  assert.ok(substituted.finalPrescription.targetRpe.min >= 5 && substituted.finalPrescription.targetRpe.max <= 10);
+  assert.equal(substituted.finalPrescription.prescribedLoad, undefined, "confirmed safety substitutes never infer a load");
+  assert.equal(substituted.finalPrescription.safetyRestriction.status, "resolved_by_confirmed_substitute");
+  assert.equal(substituted.finalPrescription.safetyRestriction.painFreeConfirmed, true);
+  assert.equal(substituted.finalPrescription.safetyRestriction.substituteExerciseId, "ex_dumbbell_bench_press");
+  assert.equal(substituted.manualOverrides.at(-1).changes.safetyConfirmation.painFreeConfirmed, true, "confirmation must remain auditable");
   assert.doesNotThrow(() => validateSnapshot(substituted));
+  const executableBlockedTamper = structuredClone(snapshot);
+  executableBlockedTamper.finalPrescription.workingSets.target = 1;
+  assert.throws(() => validateSnapshot(executableBlockedTamper), /working sets/i, "runtime validation must reject executable work on a blocked output");
+  const substituteLoadTamper = structuredClone(substituted);
+  substituteLoadTamper.finalPrescription.prescribedLoad = { target: 1, reason: "spoofed" };
+  assert.throws(() => validateSnapshot(substituteLoadTamper), /substitute load/i, "runtime validation must reject an inferred substitute load");
+
+  const illness = engine.prescribeExercise({
+    exerciseId: "ex_barbell_bench_press",
+    muscleGroupId: "chest",
+    readiness: { illness: true },
+    createdAt
+  });
+  assert.throws(() => engine.applyManualOverride(illness, {
+    exerciseId: "ex_dumbbell_bench_press",
+    researchExerciseId: "ex_dumbbell_bench_press",
+    painFreeConfirmed: true
+  }, {
+    allowedSafetySubstituteIds: ["ex_dumbbell_bench_press"],
+    availableEquipment: ["dumbbell", "bench"]
+  }), /illness/i, "illness cannot be unblocked by an exercise override");
 });
 
 test("stale history is wired through scoring and snapshots by default", () => {
@@ -363,6 +466,14 @@ test("unavailable-muscle fallback plans expose complete zeroed volume fields", (
   assert.equal(plan.indirectSets, 0);
   assert.equal(plan.incidentalSets, 0);
   assert.equal(plan.isometricExposure, 0);
+  assert.equal(plan.taxonomyVersion, evidence.research.version, "fallback muscle plans must retain taxonomy provenance");
+});
+
+test("legacy target conversion is contractually required to honor executionBlocked", () => {
+  const source = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+  const converter = source.match(/function legacyTargetFromSnapshot\([\s\S]*?\n\s*function unifiedTargetContext\(/)?.[0];
+  assert.ok(converter, "legacyTargetFromSnapshot must remain discoverable for the app contract");
+  assert.match(converter, /executionBlocked/, "index integration required: legacyTargetFromSnapshot must return a non-executable target whenever finalPrescription.executionBlocked is true");
 });
 
 test("recommendation IDs distinguish different readiness contexts", () => {

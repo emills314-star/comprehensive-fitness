@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://comprehensive-fitness.local/schemas/exercise-prescription.v2.schema.json",
-  "title": "ExercisePrescription v2",
+  "title": "ExercisePrescription v2.1",
   "description": "The canonical, explainable exercise-level decision returned by the unified prescription engine. Ranges are inclusive. Evidence weights must sum to 1 within normal floating-point tolerance.",
   "type": "object",
   "additionalProperties": false,
@@ -37,11 +37,12 @@
     "muscleSpecificScore",
     "staleness",
     "deloadStatus",
-    "mesocycleId"
+    "mesocycleId",
+    "executionBlocked"
   ],
   "properties": {
     "schemaVersion": {
-      "const": "2.0.0"
+      "const": "2.1.0"
     },
     "exerciseId": {
       "$ref": "#/$defs/id"
@@ -103,6 +104,13 @@
     },
     "manualOverride": {
       "$ref": "#/$defs/prescriptionManualOverride"
+    },
+    "executionBlocked": {
+      "type": "boolean",
+      "description": "When true, no working set may be created or executed from this prescription. Consumers must stop before converting legacy targets."
+    },
+    "safetyRestriction": {
+      "$ref": "#/$defs/hardSafetyRestriction"
     },
     "volume": {
       "$ref": "#/$defs/volumePrescription"
@@ -229,6 +237,55 @@
           "topSet"
         ]
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "executionBlocked": {
+            "const": true
+          }
+        },
+        "required": [
+          "executionBlocked"
+        ]
+      },
+      "then": {
+        "required": [
+          "safetyRestriction"
+        ],
+        "properties": {
+          "workingSets": {
+            "type": "object",
+            "required": [
+              "min",
+              "target",
+              "max"
+            ],
+            "properties": {
+              "min": { "const": 0 },
+              "target": { "const": 0 },
+              "max": { "const": 0 }
+            }
+          },
+          "safetyRestriction": {
+            "allOf": [
+              { "$ref": "#/$defs/hardSafetyRestriction" },
+              {
+                "properties": {
+                  "status": { "const": "blocked" }
+                }
+              }
+            ]
+          }
+        },
+        "not": {
+          "anyOf": [
+            { "required": ["prescribedLoad"] },
+            { "required": ["topSet"] },
+            { "required": ["backoffSets"] }
+          ]
+        }
+      }
     }
   ],
   "$defs": {
@@ -253,6 +310,73 @@
       "minLength": 1,
       "maxLength": 4000,
       "pattern": "^(?=.*\\S)[\\s\\S]+$"
+    },
+    "hardSafetyAuditTargets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exerciseId",
+        "researchExerciseId",
+        "workingSets",
+        "repRange",
+        "targetRpe",
+        "targetRir",
+        "restSeconds",
+        "volume"
+      ],
+      "properties": {
+        "exerciseId": { "$ref": "#/$defs/id" },
+        "researchExerciseId": { "$ref": "#/$defs/nullableId" },
+        "workingSets": { "$ref": "#/$defs/setRange" },
+        "repRange": { "$ref": "#/$defs/repRange" },
+        "targetRpe": { "$ref": "#/$defs/rpeRange" },
+        "targetRir": { "$ref": "#/$defs/rirRange" },
+        "restSeconds": { "$ref": "#/$defs/restRange" },
+        "volume": { "$ref": "#/$defs/volumePrescription" },
+        "prescribedLoad": { "$ref": "#/$defs/loadTarget" }
+      }
+    },
+    "hardSafetyRestriction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "status",
+        "scope",
+        "reason",
+        "resumeCriteria",
+        "originalExerciseId",
+        "painFreeConfirmed",
+        "substituteExerciseId",
+        "substituteResearchExerciseId",
+        "confirmedAt",
+        "auditBaseTargets"
+      ],
+      "properties": {
+        "schemaVersion": { "const": "hard-safety/1.0.0" },
+        "status": {
+          "type": "string",
+          "enum": ["blocked", "resolved_by_confirmed_substitute"]
+        },
+        "scope": {
+          "type": "string",
+          "enum": ["exercise", "workout"]
+        },
+        "reason": {
+          "type": "string",
+          "enum": ["pain", "illness"]
+        },
+        "resumeCriteria": { "$ref": "#/$defs/nonEmptyString" },
+        "originalExerciseId": { "$ref": "#/$defs/id" },
+        "painFreeConfirmed": { "type": "boolean" },
+        "substituteExerciseId": { "$ref": "#/$defs/nullableId" },
+        "substituteResearchExerciseId": { "$ref": "#/$defs/nullableId" },
+        "confirmedAt": {
+          "type": ["string", "null"],
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T"
+        },
+        "auditBaseTargets": { "$ref": "#/$defs/hardSafetyAuditTargets" }
+      }
     },
     "weight": {
       "type": "number",
@@ -783,6 +907,7 @@
             "subjective_readiness",
             "recent_performance",
             "nutrition",
+            "illness",
             "pain",
             "body_weight_trend"
           ]

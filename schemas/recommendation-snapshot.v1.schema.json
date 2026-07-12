@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://comprehensive-fitness.local/schemas/recommendation-snapshot.v1.schema.json",
-  "title": "Immutable recommendation snapshot and manual override audit log v1",
+  "title": "Immutable recommendation snapshot and manual override audit log v1.1",
   "description": "Append-only workout recommendation evidence. Historical workouts render basePrescription and finalPrescription from this snapshot rather than recomputing them with a newer engine. Adding an override produces a new checksummed snapshot value and preserves the prior final prescription in the override entry.",
   "type": "object",
   "additionalProperties": false,
@@ -35,7 +35,7 @@
       "$ref": "exercise-prescription.v2.schema.json#/$defs/id"
     },
     "schemaVersion": {
-      "const": "1.0.0"
+      "const": "1.1.0"
     },
     "recommendationVersion": {
       "$ref": "#/$defs/versionIdentifier"
@@ -279,6 +279,30 @@
         }
       }
     },
+    "safetyConfirmation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exerciseId",
+        "researchExerciseId",
+        "painFreeConfirmed",
+        "confirmedAt"
+      ],
+      "properties": {
+        "exerciseId": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/id"
+        },
+        "researchExerciseId": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/id"
+        },
+        "painFreeConfirmed": {
+          "const": true
+        },
+        "confirmedAt": {
+          "$ref": "#/$defs/dateTime"
+        }
+      }
+    },
     "overrideChanges": {
       "type": "object",
       "additionalProperties": false,
@@ -307,6 +331,9 @@
         },
         "mesocycleId": {
           "$ref": "#/$defs/mesocycleIdChange"
+        },
+        "safetyConfirmation": {
+          "$ref": "#/$defs/safetyConfirmation"
         }
       }
     },
