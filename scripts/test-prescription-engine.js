@@ -562,8 +562,9 @@ test("full-program portfolio scoring and lifecycle protections are explicit", ()
 test("mesocycle volume and frequency are balanced across coherent sessions", () => {
   const evidence = loadEvidenceFromFiles(path.resolve(__dirname, ".."), { includeSessionMetrics: false, includeWeeklyVolume: false });
   const engine = createPrescriptionEngine(evidence);
+  const practicalScope = ["chest", "upper_back", "lats", "quads", "hamstrings", "glutes", "side_delts", "biceps", "triceps", "calves"];
   [3, 4, 5].forEach((trainingDays) => {
-    const mesocycle = engine.createMesocycle({ trainingDays, availableEquipment: ["barbell", "dumbbell", "machine", "cable", "bodyweight"] });
+    const mesocycle = engine.createMesocycle({ trainingDays, includedMuscleGroupIds: practicalScope, availableEquipment: ["all"] });
     const chest = mesocycle.programReview.musclePlans.find((plan) => plan.muscleGroupId === "chest");
     assert(chest && chest.effectiveSets >= chest.weeklyTargetRange.min, "Chest must meet its evidence-adjusted minimum");
     mesocycle.programReview.musclePlans.forEach((plan) => assert(plan.plannedFrequency >= plan.targetFrequency, `${plan.muscleGroupId} must meet planned frequency`));
@@ -573,6 +574,54 @@ test("mesocycle volume and frequency are balanced across coherent sessions", () 
     });
     assert(mesocycle.sessions.every((session) => session.primaryPurpose), "Every session needs a coherent named purpose");
   });
+});
+
+test("four-day broad scope is constructed within hard daily limits", () => {
+  const evidence = loadEvidenceFromFiles(path.resolve(__dirname, ".."), { includeSessionMetrics: false, includeWeeklyVolume: false });
+  const engine = createPrescriptionEngine(evidence);
+  const seed = engine.createMesocycle({ trainingDays: 4, availableEquipment: ["all"] });
+  const scope = seed.availableMuscleGroupIds.filter((muscle) => !["abs", "neck"].includes(muscle));
+  const mesocycle = engine.createMesocycle({ trainingDays: 4, includedMuscleGroupIds: scope, availableEquipment: ["all"] });
+  mesocycle.sessions.forEach((session) => {
+    const workingSets = session.exercises.reduce((total, exercise) => total + Number(exercise.plannedSets || 0), 0);
+    assert(workingSets <= 18, `${session.name} exceeded 18 working sets`);
+    const counts = new Map();
+    session.exercises.forEach((exercise) => exercise.targetMuscleGroupIds.forEach((muscle) => counts.set(muscle, (counts.get(muscle) || 0) + 1)));
+    counts.forEach((count, muscle) => assert(count <= 2, `${session.name} assigned ${count} exercises to ${muscle}`));
+    assert(session.exercises.length <= 10, `${session.name} is not practical at ${session.exercises.length} exercises`);
+  });
+  ["chest", "upper_back", "lats", "quads", "hamstrings", "glutes"].forEach((muscle) => {
+    const plan = mesocycle.programReview.musclePlans.find((item) => item.muscleGroupId === muscle);
+    assert(plan && plan.directSets >= Math.min(plan.weeklyTargetRange.min, plan.weeklyTargetVolume), `${muscle} should receive direct work before supplemental muscles`);
+  });
+  mesocycle.programReview.musclePlans.forEach((plan) => {
+    assert(Number.isFinite(plan.directSets) && Number.isFinite(plan.secondarySets) && Number.isFinite(plan.incidentalSets));
+    assert.strictEqual(plan.incidentalSets, 0, "incidental stabilization must not count as hypertrophy volume");
+  });
+});
+
+test("limited schedule reports capacity instead of forcing oversized sessions", () => {
+  const evidence = loadEvidenceFromFiles(path.resolve(__dirname, ".."), { includeSessionMetrics: false, includeWeeklyVolume: false });
+  const engine = createPrescriptionEngine(evidence);
+  const mesocycle = engine.createMesocycle({ trainingDays: 1, availableEquipment: ["all"] });
+  assert(mesocycle.sessions.every((session) => session.workingSetCount <= 18));
+  const capacity = mesocycle.programReview.warnings.find((warning) => warning.type === "schedule_capacity");
+  assert(capacity && capacity.severity === "blocking");
+  assert.deepStrictEqual(capacity.resolutionOptions, ["increase_training_days", "reduce_scope", "reduce_direct_volume", "maintenance_volume", "change_objective"]);
+  const regenerated = engine.refreshMesocycle(mesocycle, { autoFix: true });
+  assert(regenerated.sessions.every((session) => session.workingSetCount <= 18), "regeneration must retain the hard daily cap");
+});
+
+test("secondary contribution remains fractional and cannot become hidden direct volume", () => {
+  const evidence = loadEvidenceFromFiles(path.resolve(__dirname, ".."), { includeSessionMetrics: false, includeWeeklyVolume: false });
+  const engine = createPrescriptionEngine(evidence);
+  const mesocycle = engine.createMesocycle({ trainingDays: 4, includedMuscleGroupIds: ["chest", "triceps", "front_delts", "quads", "glutes", "adductors"], availableEquipment: ["all"] });
+  mesocycle.programReview.musclePlans.forEach((plan) => {
+    assert.strictEqual(plan.effectiveSets, Number((plan.directSets + plan.secondarySets).toFixed(1)));
+    assert(plan.secondarySets <= mesocycle.sessions.flatMap((session) => session.exercises).reduce((total, exercise) => total + Number(exercise.plannedSets || 0), 0) * 0.35);
+  });
+  const adductors = mesocycle.programReview.musclePlans.find((plan) => plan.muscleGroupId === "adductors");
+  assert(adductors && adductors.directSets >= 0 && adductors.secondarySets >= 0);
 });
 
 test("blocking validation prevents an under-prescribed program from being treated as confirmable", () => {

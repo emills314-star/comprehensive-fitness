@@ -35,7 +35,7 @@
       "$ref": "exercise-prescription.v2.schema.json#/$defs/id"
     },
     "schemaVersion": {
-      "enum": ["mesocycle/1.0.0", "mesocycle/2.0.0", "mesocycle/2.1.0", "mesocycle/2.2.0", "mesocycle/2.3.0"]
+      "enum": ["mesocycle/1.0.0", "mesocycle/2.0.0", "mesocycle/2.1.0", "mesocycle/2.2.0", "mesocycle/2.3.0", "mesocycle/2.4.0"]
     },
     "type": {
       "$ref": "#/$defs/mesocycleType"

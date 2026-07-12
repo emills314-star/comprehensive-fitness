@@ -56,7 +56,10 @@ assert.match(html, /toggle-mesocycle-alternates[\s\S]*View Alternates/, "Alterna
 assert.match(html, /program-slot-nav[\s\S]*jump-mesocycle-slot/, "Exercise assignments need compact jump navigation");
 assert.match(html, /All Equipment \/ Standard Gym[\s\S]*Bodyweight[\s\S]*Bands[\s\S]*Dumbbells[\s\S]*Barbell[\s\S]*Rack[\s\S]*Cable Station/, "Planner equipment choices must use the simplified capability bundles");
 assert.match(html, /Why the Score\?[\s\S]*Target-Muscle Fit[\s\S]*Equipment Compatibility[\s\S]*Program Redundancy/, "Candidate scores need an expandable explanation tied to real factors");
-assert.match(html, /Blocking Issues[\s\S]*Recommended Changes[\s\S]*Warnings[\s\S]*Informational Notes[\s\S]*Passed Checks/, "Program review findings must be prioritized by severity");
+assert.match(html, /Blocking Issues[\s\S]*Recommended Changes[\s\S]*Warnings[\s\S]*Optional Suggestions/, "Program review findings must be prioritized by severity");
+assert.doesNotMatch(html, />Passed Checks</, "Passed checks must stay hidden from the normal planner review");
+assert.doesNotMatch(html, />Informational Notes</, "Low-value informational notes must stay hidden from the normal planner review");
+assert.match(html, /Regenerate with Practical Limits[\s\S]*18-set daily maximum[\s\S]*two-exercise muscle limit/, "Actionable review findings need a constrained regeneration action");
 assert.match(html, /renderMesocycleCandidate[\s\S]*Deload and Rotation Triggers[\s\S]*Preferred Replacement/, "Candidate cards must explain progression, deload, rotation and replacement");
 assert.match(html, /Base prescription[\s\S]*Today only/, "Live UI must keep base and readiness-adjusted prescriptions distinct");
 assert.match(html, /data-action="template-readiness-nutrition"[\s\S]*data-action="template-readiness-protein"/, "Workout readiness must collect current nutrition and protein context");

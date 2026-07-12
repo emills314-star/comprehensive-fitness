@@ -13,7 +13,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function prescriptionEngineFactory() {
   "use strict";
 
-  const ENGINE_VERSION = "2.3.0";
+  const ENGINE_VERSION = "2.4.0";
   const PRESCRIPTION_SCHEMA_VERSION = "2.0.0";
   const SNAPSHOT_SCHEMA_VERSION = "1.0.0";
   const HISTORY_STORAGE_KEY = "comprehensiveFitness.recommendationHistory.v1";
@@ -86,10 +86,13 @@
     maximumExercisesPerSession: 8,
     absoluteMaximumExercisesPerSession: 10,
     maximumWorkingSetsPerSession: 18,
-    absoluteMaximumWorkingSetsPerSession: 22,
+    absoluteMaximumWorkingSetsPerSession: 18,
+    maximumExercisesPerMusclePerSession: 2,
     maximumSessionSpinalLoad: 180,
     maximumSessionGripDemand: 190
   });
+
+  const MAJOR_PROGRAM_MUSCLES = Object.freeze(new Set(["chest", "upper_back", "lats", "quads", "hamstrings", "glutes", "front_delts", "side_delts", "rear_delts"]));
 
   const CONFIDENCE_SCORE = Object.freeze({
     very_high: 95,
@@ -2084,7 +2087,7 @@
     const selected = [];
     const byId = new Map();
     const currentIds = new Set(asArray(options.currentProgramExerciseIds || options.currentExerciseIds));
-    const orderedSlots = slots.slice().sort((a, b) => b.selectionRequired - a.selectionRequired || a.muscleGroupId.localeCompare(b.muscleGroupId));
+    const orderedSlots = slots.slice().sort((a, b) => Number(MAJOR_PROGRAM_MUSCLES.has(muscleFamily(b.muscleGroupId))) - Number(MAJOR_PROGRAM_MUSCLES.has(muscleFamily(a.muscleGroupId))) || b.selectionRequired - a.selectionRequired || a.muscleGroupId.localeCompare(b.muscleGroupId));
     orderedSlots.forEach((slot) => {
       const pool = pools[slot.muscleGroupId];
       for (let pick = 0; pick < slot.selectionRequired; pick += 1) {
@@ -2150,21 +2153,41 @@
       if (session.primaryPurpose === "Upper") return matches(lower) ? (matches(accessory) ? 20 : 90) : 0;
       return 0;
     };
-    const ordered = portfolio.slice().sort((a, b) => Number(b.scores.highFatigueCompound) - Number(a.scores.highFatigueCompound) || b.scores.systemicFatigue - a.scores.systemicFatigue);
+    const policy = { ...DEFAULT_POLICY, ...(options.policy || {}) };
+    const capacityIssues = [];
+    const sessionWorkingSets = (session) => sum(session.exercises.map((item) => number(item.plannedSets, 0)));
+    const targetedExerciseCount = (session, exercise) => {
+      const targets = new Set(asArray(exercise.targetMuscleGroupIds).map(muscleFamily));
+      return session.exercises.filter((item) => asArray(item.targetMuscleGroupIds).map(muscleFamily).some((muscle) => targets.has(muscle))).length;
+    };
+    const ordered = portfolio.slice().sort((a, b) => {
+      const aMajor = asArray(a.targetMuscleGroupIds).some((muscle) => MAJOR_PROGRAM_MUSCLES.has(muscleFamily(muscle)));
+      const bMajor = asArray(b.targetMuscleGroupIds).some((muscle) => MAJOR_PROGRAM_MUSCLES.has(muscleFamily(muscle)));
+      return Number(bMajor) - Number(aMajor)
+        || Number(b.intendedRole === "primary_progression_lift") - Number(a.intendedRole === "primary_progression_lift")
+        || Number(b.scores.highFatigueCompound) - Number(a.scores.highFatigueCompound)
+        || b.scores.systemicFatigue - a.scores.systemicFatigue;
+    });
     ordered.forEach((exercise) => {
       const relatedSlots = asArray(options.slots).filter((slot) => exercise.programSlotIds.includes(slot.id));
       const weeklySets = Math.max(1, Math.round(sum(relatedSlots.map((slot) => slot.weeklySetsTarget / Math.max(1, slot.selectionRequired))) || number(exercise.recommendedSetRange?.target, 3)));
       const exposures = Math.min(dayCount, weeklySets, Math.max(1, Math.ceil(Math.max(...relatedSlots.map((slot) => slot.weeklyExposuresTarget / Math.max(1, slot.selectionRequired)), 1))));
       const chosen = [];
+      const plannedExposureSets = Array.from({ length: exposures }, (_, exposureIndex) => Math.floor(weeklySets / exposures) + (exposureIndex < weeklySets % exposures ? 1 : 0));
       for (let exposure = 0; exposure < exposures; exposure += 1) {
-        const rankedSessions = sessions.filter((session) => !chosen.includes(session)).map((session, index) => {
+        const setsForExposure = plannedExposureSets[exposure];
+        const rankedSessions = sessions.filter((session) => !chosen.some((item) => item.session === session)
+          && sessionWorkingSets(session) + setsForExposure <= policy.maximumWorkingSetsPerSession
+          && targetedExerciseCount(session, exercise) < policy.maximumExercisesPerMusclePerSession).map((session, index) => {
           const adjacentSameExercise = sessions.filter((other) => Math.abs(other.dayIndex - session.dayIndex) === 1 && other.exercises.some((item) => item.exerciseId === exercise.exerciseId)).length;
-          return { session, cost: focusFit(session, exercise) + sessionPlacementCost(session, exercise, index, sessions) + adjacentSameExercise * (exercise.scores.highFatigueCompound ? 500 : 120) };
+          const equipmentChanges = session.exercises.length && !session.exercises.some((item) => item.diversitySignature?.equipment === exercise.diversitySignature?.equipment) ? 8 : 0;
+          const densityCost = session.exercises.length >= policy.maximumExercisesPerSession ? 120 : session.exercises.length * 4;
+          return { session, cost: focusFit(session, exercise) + sessionPlacementCost(session, exercise, index, sessions) + adjacentSameExercise * (exercise.scores.highFatigueCompound ? 500 : 120) + equipmentChanges + densityCost };
         }).sort((a, b) => a.cost - b.cost);
-        if (rankedSessions[0]) chosen.push(rankedSessions[0].session);
+        if (rankedSessions[0]) chosen.push({ session: rankedSessions[0].session, sets: setsForExposure });
+        else capacityIssues.push({ exerciseId: exercise.exerciseId, exerciseName: exercise.exerciseName, muscleGroupIds: exercise.targetMuscleGroupIds, unallocatedSets: setsForExposure, reason: `No session can accept ${setsForExposure} more working sets without exceeding ${policy.maximumWorkingSetsPerSession} sets or ${policy.maximumExercisesPerMusclePerSession} exercises for the same muscle.` });
       }
-      chosen.forEach((target, exposureIndex) => {
-        const sets = Math.floor(weeklySets / chosen.length) + (exposureIndex < weeklySets % chosen.length ? 1 : 0);
+      chosen.forEach(({ session: target, sets }, exposureIndex) => {
         const rest = number(exercise.recommendedRestSeconds?.target || exercise.restSeconds?.target, exercise.scores.highFatigueCompound ? 180 : 90);
         target.exercises.push({ ...exercise, plannedSets: sets, weeklySets, exposureIndex: exposureIndex + 1 });
         target.estimatedDurationMinutes = round(target.estimatedDurationMinutes + sets * (rest + 42) / 60 + 2, 1);
@@ -2175,6 +2198,7 @@
       });
     });
     sessions.forEach((session) => session.exercises.sort((a, b) => (a.intendedRole === "primary_progression_lift" ? -1 : 1) - (b.intendedRole === "primary_progression_lift" ? -1 : 1) || b.scores.systemicFatigue - a.scores.systemicFatigue));
+    sessions.capacityIssues = capacityIssues;
     return sessions;
   }
 
@@ -2187,10 +2211,14 @@
       const workingSets = sum(session.exercises.map((item) => number(item.plannedSets, 0)));
       session.exerciseCount = session.exercises.length;
       session.workingSetCount = workingSets;
+      const exercisesByMuscle = groupBy(session.exercises.flatMap((exercise) => asArray(exercise.targetMuscleGroupIds).map((muscle) => ({ muscle: muscleFamily(muscle), exercise }))), (item) => item.muscle);
+      exercisesByMuscle.forEach((items, muscle) => {
+        const distinct = unique(items.map((item) => item.exercise.exerciseId));
+        if (distinct.length > policy.maximumExercisesPerMusclePerSession) warnings.push({ severity: "blocking", type: "muscle_exercise_count", sessionId: session.id, muscleGroupId: muscle, exerciseIds: distinct, conflict: `${session.name} assigns ${distinct.length} exercises to ${muscle.replaceAll("_", " ")}.`, why: `A session may use at most ${policy.maximumExercisesPerMusclePerSession} exercises for one muscle so lower-value duplication cannot crowd out primary work.`, recommendation: "Keep the highest-value compound and, when useful, one mechanically complementary exercise; remove or relocate the rest.", correctiveAction: "regenerate_affected_sessions" });
+      });
       if (session.exercises.length > policy.absoluteMaximumExercisesPerSession) warnings.push({ severity: "blocking", type: "exercise_count", sessionId: session.id, exerciseIds: session.exercises.map((item) => item.exerciseId), conflict: `${session.name} contains ${session.exercises.length} exercises.`, why: "Too many separate exercises increases setup time and makes later work less likely to remain productive.", recommendation: "Remove the lowest-value redundant accessory or move it to a shorter compatible day." });
       else if (session.exercises.length > policy.maximumExercisesPerSession) warnings.push({ severity: "review", type: "exercise_count", sessionId: session.id, exerciseIds: session.exercises.map((item) => item.exerciseId), conflict: `${session.name} contains ${session.exercises.length} exercises.`, why: "The session is dense enough that setup time and later-set quality require review.", recommendation: "Prefer removing a redundant accessory or moving it to a shorter compatible day." });
-      if (workingSets > policy.absoluteMaximumWorkingSetsPerSession) warnings.push({ severity: "blocking", type: "working_set_count", sessionId: session.id, exerciseIds: session.exercises.map((item) => item.exerciseId), conflict: `${session.name} contains ${workingSets} working sets.`, why: "The session exceeds the absolute sustainability guardrail before accounting for warm-ups.", recommendation: "Redistribute direct volume or remove low-value overlap before activation." });
-      else if (workingSets > policy.maximumWorkingSetsPerSession) warnings.push({ severity: "review", type: "working_set_count", sessionId: session.id, exerciseIds: session.exercises.map((item) => item.exerciseId), conflict: `${session.name} contains ${workingSets} working sets.`, why: "This may be viable for an experienced trainee with low-fatigue exercise choices, but adherence and set quality require review.", recommendation: "Prefer redistributing accessory volume; retain the session only when duration and fatigue remain within range." });
+      if (workingSets > policy.maximumWorkingSetsPerSession) warnings.push({ severity: "blocking", type: "working_set_count", sessionId: session.id, exerciseIds: session.exercises.map((item) => item.exerciseId), conflict: `${session.name} contains ${workingSets} working sets.`, why: `The session exceeds the hard ${policy.maximumWorkingSetsPerSession}-working-set daily limit; warm-ups are excluded.`, recommendation: "Redistribute direct volume or remove lower-priority work before activation.", correctiveAction: "regenerate_affected_sessions" });
       if (session.spinalLoad > policy.maximumSessionSpinalLoad) warnings.push({ severity: "serious", type: "spinal_load", sessionId: session.id, exerciseIds: session.exercises.filter((item) => item.scores.spinalLoad >= 65).map((item) => item.exerciseId), conflict: `Excessive spinal loading in ${session.name}: ${names.join(", ")}.`, why: "Several axially or isometrically demanding movements may reduce later-set quality and extend recovery.", recommendation: "Move one hinge, squat, or unsupported row to another day, or choose a supported/machine alternative." });
       if (highFatigue.length > policy.maximumHighFatigueCompoundsPerSession) warnings.push({ severity: "serious", type: "compound_concentration", sessionId: session.id, exerciseIds: highFatigue.map((item) => item.exerciseId), conflict: `Too many high-fatigue compounds in ${session.name}: ${highFatigue.map((item) => item.exerciseName).join(", ")}.`, why: "The session concentrates systemic fatigue and may make later exercises poor-quality work.", recommendation: "Distribute the compounds across the week or replace the lowest-priority one with a lower-fatigue accessory." });
       if (session.gripDemand > policy.maximumSessionGripDemand) warnings.push({ severity: "review", type: "grip_fatigue", sessionId: session.id, exerciseIds: session.exercises.filter((item) => item.scores.gripDemand >= 65).map((item) => item.exerciseId), conflict: `Grip demand is concentrated in ${session.name}.`, why: "Grip may limit target-muscle performance across pulls, rows, carries, and hinges.", recommendation: "Separate grip-limited lifts, use straps where appropriate, or choose a supported/cable alternative." });
@@ -2198,23 +2226,26 @@
       const redundantPairs = [];
       session.exercises.forEach((exercise, index) => session.exercises.slice(index + 1).forEach((other) => {
         const similarity = mechanicalRedundancyScore(exercise, other);
-        if (similarity >= 0.72) redundantPairs.push({ exercise, other, similarity });
+        if (similarity >= 0.82) redundantPairs.push({ exercise, other, similarity });
       }));
-      redundantPairs.forEach(({ exercise, other, similarity }) => warnings.push({ severity: "review", type: "redundant_pattern", sessionId: session.id, exerciseIds: [exercise.exerciseId, other.exerciseId], conflict: `${exercise.exerciseName} and ${other.exerciseName} may duplicate the same training role in ${session.name}.`, why: `They share a primary target, joint action, movement pattern, and similar loading or role profile (${Math.round(similarity * 100)}% mechanical similarity).`, recommendation: "Keep both only when their resistance profile, regional emphasis, or progression purpose is intentionally distinct; otherwise replace the lower-priority option." }));
-      const unclassified = session.exercises.filter((item) => !item.diversitySignature?.movement || item.diversitySignature.movement === "unknown");
-      if (unclassified.length) warnings.push({ severity: "informational", type: "movement_metadata_incomplete", sessionId: session.id, exerciseIds: unclassified.map((item) => item.exerciseId), conflict: `${unclassified.map((item) => item.exerciseName).join(", ")} ${unclassified.length === 1 ? "has" : "have"} unclassified movement metadata.`, why: "Unknown classifications are excluded from redundancy decisions rather than treated as matching patterns.", recommendation: "Review and classify the movement metadata when reliable source information is available; no conflict is assumed meanwhile." });
+      redundantPairs.forEach(({ exercise, other, similarity }) => warnings.push({ severity: "review", type: "redundant_pattern", sessionId: session.id, exerciseIds: [exercise.exerciseId, other.exerciseId], conflict: `${exercise.exerciseName} and ${other.exerciseName} duplicate the same training role in ${session.name}.`, why: `They share a primary target, joint action, movement pattern, and closely similar loading/role profile (${Math.round(similarity * 100)}% mechanical similarity), so the second exercise crowds out more distinct work.`, recommendation: "Keep the higher-priority option and replace the other with a mechanically complementary exercise or remove it.", correctiveAction: "apply_recommended_fix" }));
+    });
+    groupBy(asArray(sessions.capacityIssues), (issue) => issue.exerciseId).forEach((issues) => {
+      const issue = issues[0];
+      const unallocatedSets = sum(issues.map((item) => item.unallocatedSets));
+      warnings.push({ severity: "blocking", type: "schedule_capacity", sessionId: null, muscleGroupId: issue.muscleGroupIds?.[0] || null, exerciseIds: [issue.exerciseId], conflict: `${issue.exerciseName} has ${unallocatedSets} working set${unallocatedSets === 1 ? "" : "s"} that cannot fit the selected schedule.`, why: issue.reason, recommendation: "Increase training days, reduce selected scope or direct volume, use maintenance volume for a lower-priority muscle, or change the mesocycle objective.", resolutionOptions: ["increase_training_days", "reduce_scope", "reduce_direct_volume", "maintenance_volume", "change_objective"], correctiveAction: "regenerate_with_practical_limits" });
     });
     const musclePlans = slots.map((slot) => {
       const selected = portfolio.filter((item) => item.programSlotIds.includes(slot.id));
       const directSets = sum(sessions.flatMap((session) => session.exercises).filter((item) => item.programSlotIds.includes(slot.id)).map((item) => number(item.plannedSets, 0)));
-      const indirectSets = sum(sessions.flatMap((session) => session.exercises).filter((item) => !item.programSlotIds.includes(slot.id) && item.secondaryMuscles?.some((muscle) => researchMuscleMatch(evidence.research, slot.muscleGroupId, muscle))).map((item) => number(item.plannedSets, 0) * 0.5));
+      const secondarySets = sum(sessions.flatMap((session) => session.exercises).filter((item) => !item.programSlotIds.includes(slot.id) && item.secondaryMuscles?.some((muscle) => researchMuscleMatch(evidence.research, slot.muscleGroupId, muscle))).map((item) => number(item.plannedSets, 0) * 0.35));
       const sessionIds = sessions.filter((session) => session.exercises.some((item) => item.programSlotIds.includes(slot.id))).map((session) => session.id);
-      const effectiveSets = round(directSets + indirectSets, 1);
-      return { muscleGroupId: slot.muscleGroupId, weeklyTargetRange: slot.weeklySetsRange, weeklyTargetVolume: slot.weeklySetsTarget, plannedFrequency: sessionIds.length, targetFrequency: slot.weeklyExposuresTarget, selectedExerciseIds: selected.map((item) => item.exerciseId), directSets, indirectSets: round(indirectSets, 1), effectiveSets, targetMet: effectiveSets >= slot.weeklySetsRange.min && effectiveSets <= slot.weeklySetsRange.max && sessionIds.length >= slot.weeklyExposuresTarget, localFatigue: round(average(selected.map((item) => item.scores.fatigueCost)), 1), programWideFatigue: round(sum(selected.map((item) => item.scores.systemicFatigue + item.scores.spinalLoad * 0.5)), 1), sessionIds, overlapNotes: selected.flatMap((item) => item.secondaryMuscles).length ? "Secondary-muscle work is counted fractionally and reviewed with the rest of the portfolio." : "No material indirect overlap was identified." };
+      const effectiveSets = round(directSets + secondarySets, 1);
+      return { muscleGroupId: slot.muscleGroupId, weeklyTargetRange: slot.weeklySetsRange, weeklyTargetVolume: slot.weeklySetsTarget, plannedFrequency: sessionIds.length, targetFrequency: slot.weeklyExposuresTarget, selectedExerciseIds: selected.map((item) => item.exerciseId), directSets, secondarySets: round(secondarySets, 1), indirectSets: round(secondarySets, 1), incidentalSets: 0, effectiveSets, targetMet: directSets >= slot.weeklySetsRange.min && directSets <= slot.weeklySetsRange.max && sessionIds.length >= slot.weeklyExposuresTarget, localFatigue: round(average(selected.map((item) => item.scores.fatigueCost)), 1), programWideFatigue: round(sum(selected.map((item) => item.scores.systemicFatigue + item.scores.spinalLoad * 0.5)), 1), sessionIds, overlapNotes: secondarySets > 0 ? "Only meaningfully mapped secondary work receives 0.35 credit; stabilization and incidental involvement receive zero." : "No material secondary contribution was identified." };
     });
     musclePlans.forEach((plan) => {
       if (!plan.selectedExerciseIds.length) warnings.push({ severity: "serious", type: "missing_exposure", sessionId: null, exerciseIds: [], conflict: `${plan.muscleGroupId.replaceAll("_", " ")} has no selected exercise.`, why: "The complete program would omit a represented training requirement.", recommendation: "Select an eligible candidate or explicitly remove the program slot." });
-      else if (plan.effectiveSets < plan.weeklyTargetRange.min) warnings.push({ severity: "blocking", type: "volume_below_target", sessionId: null, exerciseIds: plan.selectedExerciseIds, conflict: `${plan.muscleGroupId.replaceAll("_", " ")} receives ${plan.effectiveSets} effective sets, below its ${plan.weeklyTargetRange.min}-${plan.weeklyTargetRange.max} range.`, why: "The selected portfolio does not provide the evidence-adjusted minimum weekly stimulus.", recommendation: "Add sets to a selected exercise or choose a complementary secondary lift." });
+      else if (plan.directSets < plan.weeklyTargetRange.min) warnings.push({ severity: MAJOR_PROGRAM_MUSCLES.has(muscleFamily(plan.muscleGroupId)) ? "blocking" : "warning", type: "volume_below_target", sessionId: null, muscleGroupId: plan.muscleGroupId, exerciseIds: plan.selectedExerciseIds, conflict: `${plan.muscleGroupId.replaceAll("_", " ")} receives ${plan.directSets} direct sets, below its ${plan.weeklyTargetRange.min}-${plan.weeklyTargetRange.max} range.`, why: "Primary requirements are evaluated from direct working sets; secondary participation cannot silently replace them.", recommendation: "Add direct sets if schedule capacity remains, or reduce scope/use maintenance volume for a lower-priority muscle.", correctiveAction: "regenerate_with_practical_limits" });
       else if (plan.effectiveSets > plan.weeklyTargetRange.max) warnings.push({ severity: "warning", type: "volume_above_target", sessionId: null, exerciseIds: plan.selectedExerciseIds, conflict: `${plan.muscleGroupId.replaceAll("_", " ")} receives ${plan.effectiveSets} effective sets, above its ${plan.weeklyTargetRange.min}-${plan.weeklyTargetRange.max} range.`, why: "Extra overlap may add fatigue without a proportional benefit.", recommendation: "Remove low-value overlap or reduce one contributing exercise." });
       if (plan.plannedFrequency < plan.targetFrequency) warnings.push({ severity: "blocking", type: "frequency_below_target", sessionId: null, exerciseIds: plan.selectedExerciseIds, conflict: `${plan.muscleGroupId.replaceAll("_", " ")} is trained ${plan.plannedFrequency} time(s), below its ${plan.targetFrequency}-exposure target.`, why: "The allocated weekly sets are too concentrated for the intended frequency.", recommendation: "Distribute the selected exercise or a complementary lift to another compatible session." });
     });
@@ -2303,7 +2334,7 @@
     const id = options.id || `meso_${normalizeText(type)}_${dateOnly(createdAt).replace(/-/g, "")}_${stableHash({ type, durationWeeks, groups: Object.keys(pools), createdAt }).slice(0, 6)}`;
     const draft = {
       id,
-      schemaVersion: "mesocycle/2.3.0",
+      schemaVersion: "mesocycle/2.4.0",
       type,
       name: options.name || ({
         [MESOCYCLE_TYPES.PRIMARY]: "Primary progression mesocycle",

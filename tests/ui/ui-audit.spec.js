@@ -172,7 +172,16 @@ test("Mesocycle Planner progresses from compact setup to full review", async ({ 
   await expect(page.getByText("Selected Program-Wide Exercise Portfolio")).toBeVisible();
   await expect(page.locator(".compact-program-review").getByText("Full Program Review")).toBeVisible();
   await expect(page.locator(".review-session-card").first()).toBeVisible();
-  await expect(page.locator(".review-groups")).toBeVisible();
+  expect(await page.locator(".review-groups").count()).toBeLessThanOrEqual(1);
+  expect(await page.getByText("Passed Checks", { exact: true }).count()).toBe(0);
+  expect(await page.getByText("Informational Notes", { exact: true }).count()).toBe(0);
+  const sessionTotals = await page.evaluate(() => [...document.querySelectorAll(".review-session-card")].map((card) => ({ header: card.querySelector(".review-session-title span")?.textContent || "", sets: [...card.querySelectorAll(".review-session-exercises li > strong:last-child")].reduce((sum, item) => sum + Number.parseInt(item.textContent, 10), 0) })));
+  expect(sessionTotals.length).toBe(4);
+  sessionTotals.forEach((session) => expect(session.sets).toBeLessThanOrEqual(18));
+  if (await page.getByRole("button", { name: "Regenerate with Practical Limits" }).count()) {
+    await page.getByRole("button", { name: "Regenerate with Practical Limits" }).click();
+    await expect(page.locator(".review-session-card").first()).toBeVisible();
+  }
   await expect(page.getByRole("button", { name: /View Alternates/ })).toBeVisible();
   await page.getByRole("button", { name: /View Alternates/ }).click();
   expect(await page.getByText("Alternative Replacement").count()).toBeGreaterThan(0);
