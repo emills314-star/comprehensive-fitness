@@ -539,7 +539,7 @@ test("file adapters load the real private aggregates locally without embedding t
 test("full-program portfolio scoring and lifecycle protections are explicit", () => {
   const evidence = loadEvidenceFromFiles(path.resolve(__dirname, ".."), { includeSessionMetrics: false, includeWeeklyVolume: false });
   const engine = createPrescriptionEngine(evidence);
-  const mesocycle = engine.createMesocycle({ trainingDays: 4, currentProgramExerciseIds: ["ex_barbell_bench_press"], availableEquipment: ["barbell", "dumbbell", "machine", "cable", "bodyweight"] });
+  const mesocycle = engine.createMesocycle({ trainingDays: 4, includedMuscleGroupIds: ["chest", "upper_back", "quads", "hamstrings", "glutes", "abs"], currentProgramExerciseIds: ["ex_barbell_bench_press"], availableEquipment: ["barbell", "dumbbell", "machine", "cable", "bodyweight"] });
   assert(mesocycle.programSlots.every((slot) => slot.selectionRequired >= 1 && slot.selectedExerciseIds.length >= 1));
   assert(mesocycle.selectedPortfolio.every((candidate) => Number.isFinite(candidate.scores.predictedProgramEffectiveness) && Number.isFinite(candidate.scores.fullProgramFit)));
   assert(mesocycle.sessions.every((session) => session.baseSessionIntent && Number.isFinite(session.spinalLoad) && Number.isFinite(session.estimatedDurationMinutes)));
@@ -548,7 +548,7 @@ test("full-program portfolio scoring and lifecycle protections are explicit", ()
     assert(Array.isArray(warning.exerciseIds));
   });
   assert.strictEqual(canDeleteMesocycle(mesocycle), true);
-  const planned = transitionMesocycle(mesocycle, "plan");
+  const planned = transitionMesocycle({ ...mesocycle, scopeConfirmed: true }, "plan");
   const active = transitionMesocycle(planned, "start");
   assert.strictEqual(canDeleteMesocycle(active), false);
   const completed = transitionMesocycle(active, "complete");
@@ -582,6 +582,19 @@ test("blocking validation prevents an under-prescribed program from being treate
   assert(review.warnings.some((warning) => warning.type === "volume_below_target" && warning.severity === "blocking"));
 });
 
+test("session sustainability guardrails flag excessive exercise and working-set counts", () => {
+  const evidence = loadEvidenceFromFiles(path.resolve(__dirname, ".."), { includeSessionMetrics: false, includeWeeklyVolume: false });
+  const engine = createPrescriptionEngine(evidence);
+  const mesocycle = engine.createMesocycle({ trainingDays: 4 });
+  const overloadedExercise = { ...mesocycle.selectedPortfolio[0], plannedSets: 3 };
+  const overloaded = { ...mesocycle.sessions[0], exercises: Array.from({ length: 11 }, (_, index) => ({ ...overloadedExercise, exerciseId: `${overloadedExercise.exerciseId}_${index}` })) };
+  const review = require("../prescription-engine").reviewFullProgram(mesocycle.selectedPortfolio, [overloaded, ...mesocycle.sessions.slice(1)], mesocycle.programSlots, engine.evidence);
+  assert(review.warnings.some((warning) => warning.type === "exercise_count" && warning.severity === "blocking"));
+  assert(review.warnings.some((warning) => warning.type === "working_set_count" && warning.severity === "blocking"));
+  assert.strictEqual(overloaded.exerciseCount, 11);
+  assert.strictEqual(overloaded.workingSetCount, 33);
+});
+
 test("user-defined muscle scope is respected and omissions require explicit confirmation", () => {
   const evidence = loadEvidenceFromFiles(path.resolve(__dirname, ".."), { includeSessionMetrics: false, includeWeeklyVolume: false });
   const engine = createPrescriptionEngine(evidence);
@@ -591,6 +604,7 @@ test("user-defined muscle scope is respected and omissions require explicit conf
   assert(mesocycle.programSlots.every((slot) => included.includes(slot.muscleGroupId)));
   assert(mesocycle.omittedMuscleGroups.some((item) => item.muscleGroupId === "lats" && item.importance === "major" && item.explanation.length > 60));
   assert(mesocycle.omittedMuscleGroups.some((item) => item.importance === "smaller"));
+  assert(mesocycle.omittedMuscleGroups.every((item) => item.reasonCode && item.explanation.length > 40));
   assert.strictEqual(mesocycle.scopeConfirmed, false);
   assert.throws(() => transitionMesocycle(mesocycle, "plan"), /omitted muscle groups/i);
   const confirmed = { ...mesocycle, scopeConfirmed: true };

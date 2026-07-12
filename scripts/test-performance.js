@@ -76,6 +76,7 @@ assert.match(templateRenderer, /const advice = null;/, "Template-list rendering 
 assert.match(templateRenderer, /const editorExpanded = expandedTemplateEditorIds\.has\(template\.id\)/, "Template editors must be expanded explicitly");
 assert.match(templateRenderer, /\$\{editorExpanded \? `<div class="disclosure-body">/, "Collapsed template editors must not generate their exercise controls");
 assert.match(html, /mesocyclePlannerExpanded \? renderMesocycleCard/, "The full planner review must render only on explicit demand");
+assert.match(html, /if \(!selected && !alternatesExpanded\) return "";/, "Unselected alternates must not render until the slot is expanded");
 const historicalRenderer = section("function renderHistoricalMesocycles()", "function renderTemplates()");
 assert.match(historicalRenderer, /historical\.map\(\(mesocycle\) => '<article class="mesocycle-card mesocycle-history-summary/, "Historical mesocycles must use compact summaries");
 assert.doesNotMatch(historicalRenderer, /renderMesocycleCard\(/, "History must not eagerly render full candidate and program reviews");

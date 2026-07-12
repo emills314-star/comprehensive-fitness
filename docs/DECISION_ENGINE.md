@@ -106,6 +106,12 @@ Mesocycle lifecycle states are `draft`, `planned`, `active`, `completed`, `revie
 
 ## PRs, volume, grades, and analytics
 
+### Mesocycle slot and session-density refinement
+
+Normal program slots select one exercise so recommended, selected, and replacement roles cannot silently duplicate the same requirement. Specialization slots may select two complementary exercises when distinct patterns or regional emphases justify both.
+
+Session-density review begins above 8 exercises or 18 working sets; activation is blocked above 10 exercises or 22 working sets. These are contextual operational guardrails, not a claim that every session below them is appropriate. Review also identifies demanding muscle overlap on adjacent training days. Frequency targets never override session-density, duration, fatigue, or recovery safeguards.
+
 PRs are calculated only during submission (`submitWorkoutPrs`, `submitWorkout`). Warm-ups and sets excluded from progression do not qualify. Resistance-specific performance semantics distinguish external, bodyweight, added-load, assisted-bodyweight, duration, and distance work. The app preserves PRs on the submitted session and celebrates them in the summary. **NEEDS REVIEW:** the UI uses broader performance-value comparisons rather than a single documented named taxonomy such as “load PR / rep PR / e1RM PR”; product copy should define which PR categories users see.
 
 Weekly muscle volume uses Monday–Sunday submitted history. Direct sets count 1; mapped secondary work is fractional. Warm-ups and excluded sets do not count; explicitly deloaded work is excluded from overload flags (`weeklyMuscleVolume`, `fatigueFlags`). A muscle volume flag activates above its configured upper target; two weighted missed sets can create a caution. A lift high-concern flag can activate at two missed planned sets.

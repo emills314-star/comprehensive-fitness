@@ -117,3 +117,23 @@ test("the authoritative UI documentation remains present", async () => {
     expect(documentation.toLowerCase()).toContain(contract.toLowerCase());
   }
 });
+
+test("Mesocycle Planner progresses from compact setup to full review", async ({ page }, testInfo) => {
+  const nav = page.getByRole("navigation", { name: "Main navigation" });
+  await nav.getByRole("button", { name: /Templates$/ }).click();
+  await page.getByRole("button", { name: /Fatigue Management/ }).click();
+  await expect(page.getByRole("button", { name: /Fatigue Management/ })).toHaveAttribute("aria-pressed", "true");
+  await page.getByLabel("Duration in Weeks").fill("4");
+  await page.getByLabel("Training Days per Week").fill("4");
+  await page.getByRole("button", { name: "Dumbbells" }).click();
+  await page.getByRole("button", { name: "Machines" }).click();
+  await expect(page.getByRole("button", { name: "Dumbbells" })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Build full-program draft" }).click();
+  await expect(page.getByLabel("Mesocycle summary")).toBeVisible();
+  await expect(page.getByText("Selected Program-Wide Exercise Portfolio")).toBeVisible();
+  await expect(page.getByText("Full Program Review")).toBeVisible();
+  await expect(page.getByRole("button", { name: /View Alternates/ })).toBeVisible();
+  await page.getByRole("button", { name: /View Alternates/ }).click();
+  expect(await page.getByText("Alternative Replacement").count()).toBeGreaterThan(0);
+  expect(await page.getByText(/working sets|Blocking/).count()).toBeGreaterThan(0);
+});

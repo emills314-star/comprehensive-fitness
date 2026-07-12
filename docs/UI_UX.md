@@ -76,6 +76,14 @@ The review shows named session purpose, ordered exercises, roles, sets/reps, dir
 
 ### Recovery and nutrition
 
+### Refined mesocycle construction
+
+Mesocycle purpose uses four compact selectable options. Duration and training-day fields remain bounded numeric inputs, while equipment uses standardized selectable chips rather than free text. The generated summary uses labelled metadata for purpose, duration, calculated basis, frequency, lifecycle dates, and program size.
+
+Omitted muscle groups use collapsed `Why Omitted?` explanations that distinguish indirect stimulus, selected scope, and objective deprioritization. Portfolio entries prioritize exercise name, target muscle, program role, and primary/secondary designation without repeating generic boilerplate. Primary, secondary, and destructive lifecycle actions are visually separated.
+
+Program Slots provides compact jump navigation. Selected exercises render first; alternates return no markup until `View Alternates` is requested, then identify themselves as replacements for the slot selection. Full Program Review is a visually separated stage. Session headings distinguish Day number from workout type/purpose. Blocking volume, frequency, consecutive-heavy-pattern, exercise-count, or working-set findings prevent activation; dense sessions and adjacent-session overlap remain visible review warnings.
+
 Readiness capture includes sleep, quality, HRV, resting HR, soreness, illness, affected muscle, nutrition/protein status, and an outside-band note. Guidance uses concise states such as “Go as planned,” monitoring/adjustment, lower-fatigue, or rest guidance. Nutrition is a readiness input, not a standalone food-tracking workflow.
 
 ## Requirement matrix

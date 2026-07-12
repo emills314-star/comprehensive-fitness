@@ -25,7 +25,7 @@ assert.match(html, /applyPrescriptionOverride\(/, "Live workouts must support ex
 assert.match(html, /evaluateWorkoutOverrideOutcomes\(/, "Completed workouts must evaluate override outcomes");
 assert.match(html, /renderMesocyclePlanner\(/, "Plan must expose the mesocycle lifecycle");
 assert.match(html, /Program Slot[\s\S]*Top Exercise Candidates/, "Planner must present program slots and ranked candidate alternatives");
-assert.match(html, /Select for this role/, "Planner candidates must expose an explicit selection control");
+assert.match(html, /Selected for Program[\s\S]*Use as Replacement/, "Planner candidates must distinguish selected exercises from replacements");
 assert.doesNotMatch(html, />Active-program subset</, "Misleading Active Program Subset UI term must be removed");
 assert.doesNotMatch(html, />Preview prescription block</, "Misleading Prescription Block action must be removed");
 assert.match(html, /Predicted Program Effectiveness[\s\S]*Confidence[\s\S]*Evidence/, "Effectiveness must be primary and distinct from confidence/evidence");
@@ -40,11 +40,14 @@ assert.doesNotMatch(html, /It replaces the misleading former/, "Migration termin
 assert.match(html, /recommendation-badge[\s\S]*candidate-heading[\s\S]*Recommended for This Slot/, "Candidate badge, exercise name, and role need separate hierarchy");
 assert.match(html, /programReview\?\.blockingIssueCount[\s\S]*disabled/, "A blocking program review must prevent activation");
 assert.match(html, /Muscle Groups in Scope[\s\S]*mesocycle-muscle-scope/, "Planner must let the user choose every muscle group in scope");
-assert.match(html, /Confirm Intentionally Omitted Muscle Groups[\s\S]*Add to Mesocycle[\s\S]*Keep These Exclusions and Continue/, "Omitted groups need add and explicit-confirmation controls");
+assert.match(html, /Intentionally Omitted Muscle Groups[\s\S]*Why Omitted\?[\s\S]*Add to Mesocycle[\s\S]*Keep These Exclusions and Continue/, "Omitted groups need concise reasons, add-back, and explicit-confirmation controls");
 assert.match(html, /importance === 'major'[\s\S]*Major Muscle Group/, "Major omissions need a stronger explanation marker");
 assert.match(html, /toggle-mesocycle-planner-review[\s\S]*Open Planner Review/, "Full mesocycle review must be progressively disclosed");
 assert.doesNotMatch(html.slice(html.indexOf("function renderHistoricalMesocycles()"), html.indexOf("function renderTemplates()")), /renderMesocycleCard\(/, "Historical mesocycles must not eagerly render full planner cards");
 assert.match(html, /primary_progression[\s\S]*alternative_exercise[\s\S]*lower_fatigue_resensitization[\s\S]*specialization/, "All four mesocycle types must be available");
+assert.match(html, /mesocycle-type-option[\s\S]*toggle-mesocycle-equipment/, "Setup must use compact purpose options and standardized equipment chips");
+assert.match(html, /toggle-mesocycle-alternates[\s\S]*View Alternates/, "Alternate candidates must remain collapsed until requested");
+assert.match(html, /program-slot-nav[\s\S]*jump-mesocycle-slot/, "Program slots need compact jump navigation");
 assert.match(html, /renderMesocycleCandidate[\s\S]*Deload and Rotation Triggers[\s\S]*Preferred Replacement/, "Candidate cards must explain progression, deload, rotation and replacement");
 assert.match(html, /Base prescription[\s\S]*Today only/, "Live UI must keep base and readiness-adjusted prescriptions distinct");
 assert.match(html, /data-action="template-readiness-nutrition"[\s\S]*data-action="template-readiness-protein"/, "Workout readiness must collect current nutrition and protein context");

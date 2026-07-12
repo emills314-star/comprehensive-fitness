@@ -162,6 +162,8 @@ Repository publication follows `AGENTS.md`: verified source, tests, schemas, pub
 
 ## Decisions, risks, and debt
 
+Mesocycle candidate detail remains progressively rendered: Templates defers the full planner review, the review renders one selected Program Slot, and unselected alternates return no markup until explicitly expanded. Standardized equipment IDs are stored in settings and passed unchanged to the engine equipment-family filter; user-facing equipment labels remain a UI concern.
+
 - **Decision:** Local-first static app minimizes infrastructure and account requirements.
 - **Decision:** One prescription snapshot feeds every app surface; tests enforce this.
 - **Decision:** Separate public research, private personal evidence, and operational Redis data.
