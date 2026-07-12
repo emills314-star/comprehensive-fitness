@@ -62,7 +62,7 @@ Manual/custom exercises without a research crosswalk retain their explicit perso
 
 Generated primary IDs are semantic historical identities, not disposable row numbers. Existing ID-to-row mappings in `exercise_muscle_map`, `exercise_progression_metric_map`, `study_exercise_map`, and `rule_exercise_map` must never be renumbered or reused. The exercise source list is append-only. Because the 2.0 rule map was generated rule-first, later compatible exercises use explicit append epochs so their rule relationships are added after every existing ID.
 
-Change history is also append-only. `chg_0002` and `chg_0003` retain their exact 2.0.0 versions and wording; `chg_0004` alone records the compatible 2.1.0 programming-family and cable-woodchop addition. `node scripts/test-taxonomy-stable-ids.js` compares the current source model with the final 2.0.0 parent export, proves that every earlier semantic mapping is unchanged, and permits only higher-numbered cable-woodchop additions.
+Change history is also append-only. `chg_0002` and `chg_0003` retain their exact 2.0.0 versions and wording; `chg_0004` alone records the compatible 2.1.0 programming-family and cable-woodchop addition. `node scripts/test-taxonomy-stable-ids.js` compares the current source model with the checked-in public 2.0.0 digest contract at `scripts/fixtures/taxonomy-v2.0.0-stable-id-contract.json`, proves that every earlier semantic mapping is unchanged, and permits only higher-numbered cable-woodchop additions. The fixture was generated once from the final 2.0.0 parent export and keeps verification independent of Git history or a `.git` directory.
 
 ## Historical recalculation
 
