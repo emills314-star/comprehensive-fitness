@@ -1,7 +1,7 @@
 # Builder, coaching, and load remediation work log
 
 **Date:** 2026-07-12  
-**Status:** IMPLEMENTED LOCALLY — deployment and hosted verification pending
+**Status:** COMPLETE — implemented, deployed, and verified on the hosted website
 
 ## Scope and evidence
 
@@ -56,14 +56,15 @@ Reviewed `PROJECT.md`, `ARCHITECTURE.md`, `DECISION_ENGINE.md`, `UI_UX.md`, `ROA
 
 ## Deployment and hosted verification
 
-- Deployment inspected: pending.
-- Hosted URL: pending.
-- Viewports: pending mobile iPhone and desktop checks.
-- Exact flow: pending Build status, Check/Review/Create completion, workout recommendation explanations, load rendering, and fatigue flags.
-- Expected result: deployed behavior matches the implementation above.
-- Actual result: pending.
-- Console/runtime errors: pending.
-- Remaining issues: none known locally; hosted verification is the required completion gate.
+- Deployment inspected: GitHub `main` at `dbdd6da` (implementation `309c3a8` plus PWA cache correction).
+- Hosted URL: `https://comprehensive-fitness.vercel.app/?verify=dbdd6da`.
+- Viewports: 390 × 844 iPhone-sized viewport and 1280 × 900 desktop viewport.
+- Exact flow: opened hosted app; navigated Workout → Templates → Continue Planning; inspected Build Needs Attention/Completed states and effective-set/frequency values; ran Check Viability; verified grouped blocking/warning counts and Edit Affected Day; switched KG → LB; returned to Workout; confirmed load input `step=0.5`; repeated deployment reload to eliminate stale assets; checked desktop width and horizontal overflow.
+- Expected result: total effective sets render numerically; unresolved frequency is not success-colored/copy; viability distinguishes blockers/warnings; pound entry uses half-pound boundaries; no stale planner module; no runtime errors.
+- Actual result: matched after the PWA cache correction. The prior `undefined total effective sets` defect disappeared, `0 total effective sets` and `Needs Frequency` rendered correctly, Viability reported 18 blockers/21 warnings/0 information for the intentionally incomplete saved draft, pound input used `0.5`, and desktop content did not overflow.
+- Console/runtime errors: none.
+- Visual evidence: live DOM inspection at both viewports; screenshots were unnecessary because the accessible rendered state and exact numeric/status text were authoritative.
+- Remaining issues: the saved production draft is intentionally incomplete, so creation correctly remains locked. Idempotent successful creation/completion is covered by source/integration contracts and local automated validation; no production data was fabricated to force a completion.
 
 ### Hosted defect discovered
 
