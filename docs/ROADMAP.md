@@ -18,6 +18,8 @@ Priority labels reflect risk/dependency where clear; otherwise they are **NEEDS 
 
 The app is a tested local-first PWA/Capacitor workout tracker with templates, active logging, submission/history/editing, progress/volume/fatigue analytics, recovery guidance, versioned evidence-backed prescriptions, private aggregate import, and optional Web Push/workout mutation upload. The full `npm test` suite passes on `main` @ `7c52a2b` (2026-07-11). Direct wearable sync, comprehensive nutrition logging, account/cloud restore, and production/device verification are incomplete or unverified.
 
+All user-facing work now has a mandatory hosted-site browser-verification gate. A work log may say **Complete** only after local validation, intended-branch deployment, and the affected hosted flow has passed mobile/desktop browser checks with console/runtime review. See `docs/DAILY_BROWSER_QA.md` and `docs/WORK_LOG_TEMPLATE.md`.
+
 ## Recently completed
 
 | Item | Status / priority | Acceptance evidence | References / docs |

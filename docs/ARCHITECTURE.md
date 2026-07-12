@@ -149,6 +149,8 @@ Private raw/normalized/derived/reports data must not enter public web assets. `.
 
 ## Testing, build, and deployment
 
+User-facing changes require deployment verification in addition to local validation. The completion gate is: governing documentation review; implementation; tests/lint/build; confirmation that the intended branch and latest deployment are live; browser inspection of the hosted URL through the affected flow at mobile and desktop widths; refresh/repeat to detect stale assets; console/runtime and visual checks; and a work-log entry using `docs/WORK_LOG_TEMPLATE.md`. If the hosted site differs, investigate branch/project, build, cache/service-worker, alias, environment, or runtime causes. Do not mark the work complete from local code or a written summary alone.
+
 - `npm test`: domain, safety, grade, expectation, rest, prescription, contract, integration, performance, set, and private-artifact tests.
 - `npm run research:build` / `research:validate`: regenerate and validate research outputs.
 - `npm run personal:build` / `personal:validate`: local private analysis only.

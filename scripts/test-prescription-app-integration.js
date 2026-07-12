@@ -7,6 +7,9 @@ const engineApi = require("../prescription-engine");
 
 const root = path.resolve(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
+const privacy = fs.readFileSync(path.join(root, "privacy.html"), "utf8");
+const support = fs.readFileSync(path.join(root, "support.html"), "utf8");
+const secondaryPageCss = fs.readFileSync(path.join(root, "resources", "secondary-page.css"), "utf8");
 
 // Compile the single-file application before checking integration contracts.
 [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].forEach((match) => new Function(match[1]));
@@ -59,6 +62,13 @@ assert.match(html, /Base prescription[\s\S]*Today only/, "Live UI must keep base
 assert.match(html, /data-action="template-readiness-nutrition"[\s\S]*data-action="template-readiness-protein"/, "Workout readiness must collect current nutrition and protein context");
 assert.match(html, /nutritionAdequate:[\s\S]*proteinAdequate:[\s\S]*energyAvailabilityLow:/, "Current nutrition must reach the unified readiness evaluation");
 assert.match(html, /private personal evidence package/, "Hosted devices need a privacy-safe local evidence import");
+assert.match(html, /id="support-guidance"/, "Settings support section needs a stable return anchor");
+for (const [name, page, label] of [["privacy", privacy, "Close Privacy Policy"], ["support", support, "Close Support"]]) {
+  assert.match(page, /secondary-page\.css/, `${name} must use the shared secondary-page header styles`);
+  assert.match(page, new RegExp(`aria-label="${label}"`), `${name} must expose an accessible close label`);
+  assert.match(page, /index\.html\?view=settings#support-guidance/, `${name} must return deterministically to Settings`);
+}
+assert.match(secondaryPageCss, /position:\s*sticky/, "shared secondary-page header must remain available while scrolling");
 
 assert.match(html, /RestCompletionController/, "The app must use the deterministic rest-completion controller");
 assert.match(html, /restCompletionController\.complete\(completedTimer/, "Timer completion must route through the single-receipt controller");

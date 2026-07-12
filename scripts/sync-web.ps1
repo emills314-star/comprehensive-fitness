@@ -23,6 +23,7 @@ Copy-Item -LiteralPath (Join-Path $root "resources\icon-512.png") -Destination (
 Copy-Item -LiteralPath (Join-Path $root "resources\icon-maskable-512.png") -Destination (Join-Path $wwwResources "icon-maskable-512.png") -Force
 Copy-Item -LiteralPath (Join-Path $root "resources\icon-1024.png") -Destination (Join-Path $wwwResources "icon-1024.png") -Force
 Copy-Item -LiteralPath (Join-Path $root "resources\splash-1170x2532.png") -Destination (Join-Path $wwwResources "splash-1170x2532.png") -Force
+Copy-Item -LiteralPath (Join-Path $root "resources\secondary-page.css") -Destination (Join-Path $wwwResources "secondary-page.css") -Force
 
 foreach ($researchFile in @("exercise_database.json", "exercise_muscle_map.json", "exercise_substitution_map.json", "muscle_group_recommendations.json", "progression_rules.json", "nutrition_strategies.json", "manifest.json")) {
   Copy-Item -LiteralPath (Join-Path $root "research_database\exports\json\$researchFile") -Destination (Join-Path $wwwResearch $researchFile) -Force

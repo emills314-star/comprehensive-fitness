@@ -10,7 +10,7 @@
 
 ## Living-document rule
 
-Read this document before changing navigation, screens, labels, visual hierarchy, interactions, forms, confirmations, loading/empty/error/success states, accessibility, or responsive behavior. After implementation and UI verification, update the affected workflow and requirement status in the same task and update `ROADMAP.md`. Do not describe intended UI as already present.
+Read this document before changing navigation, screens, labels, visual hierarchy, interactions, forms, confirmations, loading/empty/error/success states, accessibility, or responsive behavior. After implementation and UI verification, update the affected workflow and requirement status in the same task and update `ROADMAP.md`. Do not describe intended UI as already present. Every user-facing UI change also requires hosted-site browser verification after deployment: inspect the actual URL at mobile and desktop widths, repeat the affected flow after refresh, check console/runtime errors and stale assets, and record URL, viewport, steps, expected/actual result, and evidence in `docs/WORK_LOG_TEMPLATE.md`. Local source inspection or a successful build is not completion proof.
 
 ## Experience principles
 
