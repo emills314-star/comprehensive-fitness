@@ -5871,8 +5871,8 @@
           setStructure: candidate.recommendedSetStructure || prescription?.setStructure || "straight_sets", restSeconds: Number(prescription?.restSeconds?.target || 120),
           progressionRule: candidate.progressionInstruction || prescription?.progressionRule || "Use double progression within the recommended rep range.", recommendationSnapshot: recommendation
         };
-        updateGuidedDraft(guidedMesocycleApi.addExercise(draft, dayId, assignment));
         guidedExerciseBrowserDayId = "";
+        updateGuidedDraft(guidedMesocycleApi.addExercise(draft, dayId, assignment));
       }
 
       function checkGuidedViability() {
