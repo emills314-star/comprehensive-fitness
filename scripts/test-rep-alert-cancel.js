@@ -28,11 +28,13 @@ function extractFunction(name) {
 const prescriptionRuntime = new Function(`
   const data = { settings: { weightUnit: "lb" } };
   const setTypeLabels = { top: "Top set", backoff: "Back-off set", straight: "Working set", drop: "Drop set", deload: "Deload set", technique: "Technique set", warmup: "Warm-up set" };
-  function exerciseKey(value) { return String(value || "").toLowerCase(); }
-  function normalizeSetTypeCode(value) { return String(value || "straight").toLowerCase().replace("back-off", "backoff"); }
-  function defaultProgressionRule() { return "Reach the top of the programmed range within the RPE target."; }
-  function formatLoadNumber(value) { return String(Number(value)); }
-  function targetRangeText(low, high) { return Number(low) === Number(high) ? String(Number(high)) : Number(low) + "-" + Number(high); }
+  ${extractFunction("normalizeCanonicalSetType")}
+  ${extractFunction("exerciseKey")}
+  ${extractFunction("resistanceLoad")}
+  ${extractFunction("formatLoadNumber")}
+  ${extractFunction("roundLoadForUnit")}
+  ${extractFunction("normalizeSetTypeCode")}
+  ${extractFunction("targetRangeText")}
   ${extractFunction("progressionProfileForExercise")}
   ${extractFunction("resolveProgrammedRepRange")}
   ${extractFunction("normalizeTargetSetType")}

@@ -9,8 +9,7 @@ const SCRIPTS = path.join(ROOT, "scripts");
 const NON_PUBLIC_TESTS = new Map([
   ["test-personal-fitness-data.js", { label: "PRIVATE-ONLY", reason: "requires ignored normalized/derived personal pipeline artifacts" }],
   ["test-prescription-engine.js", { label: "PRIVATE-ONLY", reason: "contains local private-evidence adapter assertions; public recommendation regressions run as separate test-*.js files" }],
-  ["test-prescription-app-integration.js", { label: "PRIVATE-ONLY", reason: "contains a local private-evidence integration assertion; public app integration regressions run as separate test-*.js files" }],
-  ["test-rep-alert-cancel.js", { label: "QUARANTINED", reason: "pre-existing extracted-function harness omits roundLoadForUnit and fails before assertions; run explicitly with npm run test:rep-alert-cancel" }]
+  ["test-prescription-app-integration.js", { label: "PRIVATE-ONLY", reason: "contains a local private-evidence integration assertion; public app integration regressions run as separate test-*.js files" }]
 ]);
 
 const discovered = fs.readdirSync(SCRIPTS, { withFileTypes: true })
