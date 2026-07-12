@@ -1,6 +1,7 @@
 const { authorizeInstallation, checkRateLimit, rateLimitResponse } = require("../_lib/security");
 const {
   RETENTION_SECONDS,
+  installationKey,
   installationMutationsKey,
   installationWorkoutsKey,
   mutationKey,
@@ -12,13 +13,20 @@ const { isPlainObject, safeJsonValue, validEntityId, validInstallationId, valida
 
 const MAX_WORKOUT_BYTES = 256 * 1024;
 const WORKOUT_COMMIT_SCRIPT = [
-  "if redis.call('EXISTS', KEYS[1]) == 1 then return 'duplicate' end",
+  "-- workout_commit_v2",
+  "local installationStatus=redis.call('HGET',KEYS[5],'status')",
+  "local installationActive=redis.call('HGET',KEYS[5],'active')",
+  "if (installationStatus and installationStatus ~= 'active') or installationActive ~= '1' then return 'revoked' end",
+  "if redis.call('EXISTS', KEYS[1]) == 1 then local mutationStatus=redis.call('GET',KEYS[1]); if mutationStatus == 'synced' then return 'duplicate' end; return mutationStatus or 'duplicate' end",
   "local current=redis.call('HGET',KEYS[2],'revision')",
+  "local currentPayload=redis.call('HGET',KEYS[2],'payload')",
   "local status='stale'",
-  "if (not current) or ARGV[3] >= current then",
+  "if not current or ARGV[3] > current then",
   "redis.call('HSET',KEYS[2],'installationId',ARGV[1],'sessionId',ARGV[2],'revision',ARGV[3],'payload',ARGV[4],'updatedAt',ARGV[5])",
   "redis.call('EXPIRE',KEYS[2],ARGV[6])",
   "status='synced'",
+  "elseif ARGV[3] == current then",
+  "if ARGV[4] == currentPayload then status='idempotent' else status='conflict' end",
   "end",
   "redis.call('SET',KEYS[1],status,'EX',ARGV[7])",
   "redis.call('SADD',KEYS[3],KEYS[2])",
@@ -32,7 +40,8 @@ function validateWorkoutMutation(body) {
   if (!validInstallationId(body.installationId) || !validEntityId(body.mutationId) || !validEntityId(body.sessionId)) {
     return "Invalid workout mutation identifiers.";
   }
-  if (typeof body.revision !== "string" || body.revision.length > 40 || !Number.isFinite(Date.parse(body.revision))) {
+  if (typeof body.revision !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(body.revision) ||
+      !Number.isFinite(Date.parse(body.revision)) || new Date(body.revision).toISOString() !== body.revision) {
     return "Invalid workout mutation revision.";
   }
   if (Date.parse(body.revision) > Date.now() + 5 * 60 * 1000) return "Workout mutation revision is in the future.";
@@ -76,11 +85,12 @@ module.exports = apiHandler(async function handler(req, res) {
   const status = await redis([
     "EVAL",
     WORKOUT_COMMIT_SCRIPT,
-    "4",
+    "5",
     mutationKey(body.installationId, body.mutationId),
     workoutKey(body.installationId, body.sessionId),
     installationWorkoutsKey(body.installationId),
     installationMutationsKey(body.installationId),
+    installationKey(body.installationId),
     body.installationId,
     body.sessionId,
     normalizedRevision,
@@ -89,7 +99,10 @@ module.exports = apiHandler(async function handler(req, res) {
     String(RETENTION_SECONDS.workout),
     String(RETENTION_SECONDS.mutation)
   ]);
-  return json(res, 200, { status: String(status || "synced"), mutationId: body.mutationId });
+  const normalizedStatus = String(status || "synced");
+  if (normalizedStatus === "conflict") return json(res, 409, { status: "conflict", mutationId: body.mutationId, error: "A different mutation already uses this workout revision." });
+  if (normalizedStatus === "revoked") return json(res, 410, { status: "revoked", mutationId: body.mutationId, error: "This installation is deleting or deleted." });
+  return json(res, 200, { status: normalizedStatus, mutationId: body.mutationId });
 });
 
 module.exports.MAX_WORKOUT_BYTES = MAX_WORKOUT_BYTES;

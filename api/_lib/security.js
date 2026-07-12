@@ -27,12 +27,42 @@ async function authorizeInstallation(req, installationId) {
   const record = await getHash(key);
   const token = bearerToken(req);
   if (!record.secretHash || !token || !safeEqual(record.secretHash, hashSecret(token))) return null;
+  if (installationStatus(record) !== "active") return null;
   await expireKey(key, RETENTION_SECONDS.installation);
   return record;
 }
 
+async function authorizeDeletion(req, installationId) {
+  if (!installationId) return null;
+  const key = installationKey(installationId);
+  const record = await getHash(key);
+  const token = bearerToken(req);
+  if (!record.secretHash || !token || !safeEqual(record.secretHash, hashSecret(token))) return null;
+  if (!["active", "deleting", "deleted"].includes(installationStatus(record))) return null;
+  await expireKey(key, RETENTION_SECONDS.installation);
+  return record;
+}
+
+async function authorizeRegistration(req, installationId) {
+  if (!installationId) return null;
+  const key = installationKey(installationId);
+  const record = await getHash(key);
+  const token = bearerToken(req);
+  if (!record.secretHash || !token || !safeEqual(record.secretHash, hashSecret(token))) return null;
+  if (!["active", "inactive"].includes(installationStatus(record))) return null;
+  await expireKey(key, RETENTION_SECONDS.installation);
+  return record;
+}
+
+function installationStatus(record) {
+  const explicit = String(record?.status || "").toLowerCase();
+  if (["active", "deleting", "deleted", "inactive"].includes(explicit)) return explicit;
+  return record?.active === "1" ? "active" : "inactive";
+}
+
 function clientFingerprint(req) {
-  const forwarded = String(req.headers?.["x-forwarded-for"] || "").split(",", 1)[0].trim();
+  const trustVercelProxy = process.env.VERCEL === "1";
+  const forwarded = trustVercelProxy ? String(req.headers?.["x-forwarded-for"] || "").split(",", 1)[0].trim() : "";
   const address = forwarded || String(req.socket?.remoteAddress || "unknown");
   return hashSecret(address).slice(0, 24);
 }
@@ -54,11 +84,14 @@ function rateLimitResponse(res, result) {
 
 module.exports = {
   authorizeInstallation,
+  authorizeDeletion,
+  authorizeRegistration,
   bearerToken,
   checkRateLimit,
   clientFingerprint,
   createSecret,
   hashSecret,
+  installationStatus,
   rateLimitResponse,
   safeEqual
 };

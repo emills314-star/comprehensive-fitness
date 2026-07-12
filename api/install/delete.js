@@ -1,4 +1,4 @@
-const { authorizeInstallation, checkRateLimit, rateLimitResponse } = require("../_lib/security");
+const { authorizeDeletion, checkRateLimit, rateLimitResponse } = require("../_lib/security");
 const {
   RETENTION_SECONDS,
   activeTimerKey,
@@ -49,15 +49,21 @@ module.exports = apiHandler(async function handler(req, res) {
   if (!parsed.ok) return json(res, parsed.status, { error: parsed.error });
   const { installationId } = parsed.body;
   if (!validInstallationId(installationId)) return json(res, 400, { error: "A valid installation is required." });
-  if (!await authorizeInstallation(req, installationId)) return json(res, 401, { error: "Installation authorization failed." });
+  const installation = await authorizeDeletion(req, installationId);
+  if (!installation) return json(res, 401, { error: "Installation authorization failed." });
+  if (installation.status === "deleted") {
+    return json(res, 200, { status: "deleted", installationId, idempotent: true });
+  }
   const limit = await checkRateLimit("installation-delete", installationId, 3, 24 * 60 * 60);
   if (!limit.allowed) return rateLimitResponse(res, limit);
 
   const installKey = installationKey(installationId);
   await setHashWithTtl(installKey, {
+    status: "deleting",
     active: "0",
-    secretHash: "",
-    revokedAt: new Date().toISOString()
+    secretHash: installation.secretHash,
+    revokedAt: installation.revokedAt || new Date().toISOString(),
+    lastDeleteAttemptAt: new Date().toISOString()
   }, RETENTION_SECONDS.installation);
 
   const timerRegistry = installationTimersKey(installationId);
@@ -86,7 +92,7 @@ module.exports = apiHandler(async function handler(req, res) {
     if (record.installationId !== installationId) continue;
     timerKeys.push(key);
     if (record.workoutId) activeKeys.push(activeTimerKey(installationId, record.workoutId));
-    if (record.status === "scheduled" && record.messageId) {
+    if (["scheduling", "scheduled", "retrying", "publish_failed"].includes(record.status) && record.messageId) {
       let canceled = false;
       try { await qstashClient().messages.delete(record.messageId); canceled = true; } catch { canceled = false; }
       if (!canceled) schedulerCancellationFailures += 1;
@@ -101,8 +107,7 @@ module.exports = apiHandler(async function handler(req, res) {
     ...scannedActive.keys.filter((key) => key.startsWith(`cf:active:${installationId}:`)),
     timerRegistry,
     workoutRegistry,
-    mutationRegistry,
-    installKey
+    mutationRegistry
   ])];
   await deleteKeyChunks(allKeys);
   await redis(["SREM", "cf:installations", installationId]);
@@ -110,6 +115,29 @@ module.exports = apiHandler(async function handler(req, res) {
   const cleanupTruncated = [rawTimers, rawWorkouts, rawMutations].some((values) => Array.isArray(values) && values.length > MAX_REGISTERED_KEYS) ||
     [scannedTimers, scannedWorkouts, scannedMutations, scannedActive].some((scan) => scan.truncated) ||
     candidateTimerKeys.length >= MAX_REGISTERED_KEYS;
+  if (cleanupTruncated) {
+    return json(res, 202, {
+      status: "deleting",
+      installationId,
+      deleted: { timers: timerKeys.length, workouts: workoutKeys.length, mutations: mutationKeys.length },
+      schedulerCancellationFailures,
+      cleanupTruncated: true,
+      retryable: true
+    });
+  }
+
+  await setHashWithTtl(installKey, {
+    status: "deleted",
+    active: "0",
+    secretHash: installation.secretHash,
+    endpoint: "",
+    p256dh: "",
+    auth: "",
+    userId: "",
+    deviceId: "",
+    deletedAt: new Date().toISOString(),
+    lastDeleteAttemptAt: new Date().toISOString()
+  }, RETENTION_SECONDS.installation);
   return json(res, 200, {
     status: "deleted",
     installationId,
