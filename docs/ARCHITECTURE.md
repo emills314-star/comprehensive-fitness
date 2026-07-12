@@ -41,6 +41,8 @@ This is a dependency-light static PWA with Capacitor wrappers, not a bundled com
 
 `npm run sync:web` is the canonical copy step from root web assets into `www/`. Root files are the editable source; duplicated `www/` files are packaging outputs.
 
+Any cross-file runtime contract change (for example, `index.html` consuming a new `guided-mesocycle.js` field) must advance `CACHE_NAME` in `sw.js`. This retires the previous app shell and module assets together; otherwise an installed PWA can pair a new UI with an older cached engine.
+
 ## High-level system
 
 ```mermaid

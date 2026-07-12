@@ -64,3 +64,7 @@ Reviewed `PROJECT.md`, `ARCHITECTURE.md`, `DECISION_ENGINE.md`, `UI_UX.md`, `ROA
 - Actual result: pending.
 - Console/runtime errors: pending.
 - Remaining issues: none known locally; hosted verification is the required completion gate.
+
+### Hosted defect discovered
+
+The first production inspection loaded the new Needs Attention UI with the previous cached guided engine and displayed `undefined total effective sets`. Root cause: the service-worker cache name had not advanced with the cross-file planner contract. `sw.js` was advanced from PWA cache v27 to v28 so the page shell and planner engine update atomically. Hosted acceptance must be repeated after this corrective deployment.
