@@ -39,4 +39,19 @@ async function setHash(key, fields) {
   return redis(args);
 }
 
-module.exports = { getHash, isRedisConfigured, redis, setHash };
+async function setHashWithTtl(key, fields, ttlSeconds) {
+  const entries = Object.entries(fields).flatMap(([field, value]) => [field, value == null ? "" : String(value)]);
+  const script = "redis.call('HSET', KEYS[1], unpack(ARGV, 2)); redis.call('EXPIRE', KEYS[1], ARGV[1]); return 1";
+  return redis(["EVAL", script, "1", key, String(ttlSeconds), ...entries]);
+}
+
+async function expireKey(key, ttlSeconds) {
+  return redis(["EXPIRE", key, String(ttlSeconds)]);
+}
+
+async function deleteIfValue(key, expectedValue) {
+  const script = "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) end return 0";
+  return redis(["EVAL", script, "1", key, String(expectedValue)]);
+}
+
+module.exports = { deleteIfValue, expireKey, getHash, isRedisConfigured, redis, setHash, setHashWithTtl };

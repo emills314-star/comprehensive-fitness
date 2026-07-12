@@ -8,7 +8,8 @@ function pushConfigured() {
     process.env.VAPID_SUBJECT &&
     process.env.QSTASH_TOKEN &&
     process.env.QSTASH_CURRENT_SIGNING_KEY &&
-    process.env.QSTASH_NEXT_SIGNING_KEY
+    process.env.QSTASH_NEXT_SIGNING_KEY &&
+    configuredPublicAppUrl()
   );
 }
 
@@ -32,10 +33,25 @@ function qstashReceiver() {
   });
 }
 
-function publicAppUrl(req) {
-  if (process.env.PUBLIC_APP_URL) return String(process.env.PUBLIC_APP_URL).replace(/\/$/, "");
-  const protocol = String(req.headers["x-forwarded-proto"] || "https").split(",")[0];
-  return `${protocol}://${req.headers.host}`;
+function configuredPublicAppUrl() {
+  const configured = String(process.env.PUBLIC_APP_URL || "").trim();
+  if (!configured) return "";
+  try {
+    const parsed = new URL(configured);
+    const developmentLocalhost = process.env.NODE_ENV !== "production" &&
+      parsed.protocol === "http:" && ["localhost", "127.0.0.1", "::1"].includes(parsed.hostname);
+    if ((parsed.protocol !== "https:" && !developmentLocalhost) || parsed.username || parsed.password || parsed.search || parsed.hash) return "";
+    if (parsed.pathname !== "/" && parsed.pathname !== "") return "";
+    return parsed.origin;
+  } catch {
+    return "";
+  }
 }
 
-module.exports = { configureWebPush, publicAppUrl, pushConfigured, qstashClient, qstashReceiver };
+function publicAppUrl() {
+  const configured = configuredPublicAppUrl();
+  if (!configured) throw new Error("A safe PUBLIC_APP_URL is required.");
+  return configured;
+}
+
+module.exports = { configureWebPush, configuredPublicAppUrl, publicAppUrl, pushConfigured, qstashClient, qstashReceiver };

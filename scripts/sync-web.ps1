@@ -2,45 +2,64 @@ $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
 $www = Join-Path $root "www"
-$wwwResources = Join-Path $www "resources"
-$wwwResearch = Join-Path $www "research_database\exports\json"
-$wwwPrivatePersonal = Join-Path $www "private-personal-data"
+$nativePublicRoots = @(
+  $www,
+  (Join-Path $root "android\app\src\main\assets\public"),
+  (Join-Path $root "ios\App\App\public")
+)
+$sensitiveRelativeRoots = @(
+  "private-personal-data",
+  "personal_fitness_data",
+  "personal-fitness-data",
+  "backups",
+  "exports"
+)
 
-New-Item -ItemType Directory -Force -Path $www | Out-Null
-New-Item -ItemType Directory -Force -Path $wwwResources | Out-Null
-New-Item -ItemType Directory -Force -Path $wwwResearch | Out-Null
-
-Copy-Item -LiteralPath (Join-Path $root "index.html") -Destination (Join-Path $www "index.html") -Force
-Copy-Item -LiteralPath (Join-Path $root "privacy.html") -Destination (Join-Path $www "privacy.html") -Force
-Copy-Item -LiteralPath (Join-Path $root "support.html") -Destination (Join-Path $www "support.html") -Force
-Copy-Item -LiteralPath (Join-Path $root "manifest.webmanifest") -Destination (Join-Path $www "manifest.webmanifest") -Force
-Copy-Item -LiteralPath (Join-Path $root "prescription-engine.js") -Destination (Join-Path $www "prescription-engine.js") -Force
-Copy-Item -LiteralPath (Join-Path $root "guided-mesocycle.js") -Destination (Join-Path $www "guided-mesocycle.js") -Force
-Copy-Item -LiteralPath (Join-Path $root "rest-completion-controller.js") -Destination (Join-Path $www "rest-completion-controller.js") -Force
-Copy-Item -LiteralPath (Join-Path $root "sw.js") -Destination (Join-Path $www "sw.js") -Force
-Copy-Item -LiteralPath (Join-Path $root "resources\icon-180.png") -Destination (Join-Path $wwwResources "icon-180.png") -Force
-Copy-Item -LiteralPath (Join-Path $root "resources\icon-192.png") -Destination (Join-Path $wwwResources "icon-192.png") -Force
-Copy-Item -LiteralPath (Join-Path $root "resources\icon-512.png") -Destination (Join-Path $wwwResources "icon-512.png") -Force
-Copy-Item -LiteralPath (Join-Path $root "resources\icon-maskable-512.png") -Destination (Join-Path $wwwResources "icon-maskable-512.png") -Force
-Copy-Item -LiteralPath (Join-Path $root "resources\icon-1024.png") -Destination (Join-Path $wwwResources "icon-1024.png") -Force
-Copy-Item -LiteralPath (Join-Path $root "resources\splash-1170x2532.png") -Destination (Join-Path $wwwResources "splash-1170x2532.png") -Force
-Copy-Item -LiteralPath (Join-Path $root "resources\secondary-page.css") -Destination (Join-Path $wwwResources "secondary-page.css") -Force
-
-foreach ($researchFile in @("exercise_database.json", "exercise_muscle_map.json", "exercise_substitution_map.json", "muscle_group_recommendations.json", "progression_rules.json", "nutrition_strategies.json", "manifest.json")) {
-  Copy-Item -LiteralPath (Join-Path $root "research_database\exports\json\$researchFile") -Destination (Join-Path $wwwResearch $researchFile) -Force
-}
-
-$personalDerived = Join-Path $root "personal_fitness_data\derived"
-$personalReports = Join-Path $root "personal_fitness_data\reports"
-if (Test-Path -LiteralPath $personalDerived) {
-  New-Item -ItemType Directory -Force -Path $wwwPrivatePersonal | Out-Null
-  foreach ($personalFile in @("exercise_prescriptions.json", "exercise_scores.csv", "exercise_muscle_scores.csv", "exercise_session_metrics.csv", "weekly_muscle_volume_response.csv", "recovery_rules.json", "muscle_group_sweet_spots.json")) {
-    $source = Join-Path $personalDerived $personalFile
-    if (Test-Path -LiteralPath $source) { Copy-Item -LiteralPath $source -Destination (Join-Path $wwwPrivatePersonal $personalFile) -Force }
+# Native and PWA packaging is public-only. Remove stale private payloads before copying
+# so a previous local build cannot leak data into a later public/release package.
+foreach ($publicRoot in $nativePublicRoots) {
+  $resolvedPublicRoot = [IO.Path]::GetFullPath($publicRoot).TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
+  foreach ($relative in $sensitiveRelativeRoots) {
+    $candidate = Join-Path $publicRoot $relative
+    $resolvedCandidate = [IO.Path]::GetFullPath($candidate)
+    if (-not $resolvedCandidate.StartsWith($resolvedPublicRoot, [StringComparison]::OrdinalIgnoreCase)) {
+      throw "Refusing to prune a path outside the intended native public root: $resolvedCandidate"
+    }
+    if (Test-Path -LiteralPath $resolvedCandidate) { Remove-Item -LiteralPath $resolvedCandidate -Recurse -Force }
   }
-  $metadata = Join-Path $personalReports "analysis_metadata.json"
-  if (Test-Path -LiteralPath $metadata) { Copy-Item -LiteralPath $metadata -Destination (Join-Path $wwwPrivatePersonal "analysis_metadata.json") -Force }
-  Write-Host "Included private aggregate personal evidence in the local Capacitor payload (excluded from Git and Vercel)."
 }
 
-Write-Host "Synced web app and PWA files into www."
+$publicFiles = @(
+  @{ Source = "index.html"; Destination = "index.html" },
+  @{ Source = "privacy.html"; Destination = "privacy.html" },
+  @{ Source = "support.html"; Destination = "support.html" },
+  @{ Source = "manifest.webmanifest"; Destination = "manifest.webmanifest" },
+  @{ Source = "prescription-engine.js"; Destination = "prescription-engine.js" },
+  @{ Source = "guided-mesocycle.js"; Destination = "guided-mesocycle.js" },
+  @{ Source = "rest-completion-controller.js"; Destination = "rest-completion-controller.js" },
+  @{ Source = "sw.js"; Destination = "sw.js" },
+  @{ Source = "resources\secondary-page.css"; Destination = "resources\secondary-page.css" },
+  @{ Source = "resources\icon-180.png"; Destination = "resources\icon-180.png" },
+  @{ Source = "resources\icon-192.png"; Destination = "resources\icon-192.png" },
+  @{ Source = "resources\icon-512.png"; Destination = "resources\icon-512.png" },
+  @{ Source = "resources\icon-maskable-512.png"; Destination = "resources\icon-maskable-512.png" },
+  @{ Source = "resources\icon-1024.png"; Destination = "resources\icon-1024.png" },
+  @{ Source = "resources\splash-1170x2532.png"; Destination = "resources\splash-1170x2532.png" },
+  @{ Source = "research_database\exports\json\exercise_database.json"; Destination = "research_database\exports\json\exercise_database.json" },
+  @{ Source = "research_database\exports\json\exercise_muscle_map.json"; Destination = "research_database\exports\json\exercise_muscle_map.json" },
+  @{ Source = "research_database\exports\json\exercise_substitution_map.json"; Destination = "research_database\exports\json\exercise_substitution_map.json" },
+  @{ Source = "research_database\exports\json\muscle_group_recommendations.json"; Destination = "research_database\exports\json\muscle_group_recommendations.json" },
+  @{ Source = "research_database\exports\json\progression_rules.json"; Destination = "research_database\exports\json\progression_rules.json" },
+  @{ Source = "research_database\exports\json\nutrition_strategies.json"; Destination = "research_database\exports\json\nutrition_strategies.json" },
+  @{ Source = "research_database\exports\json\manifest.json"; Destination = "research_database\exports\json\manifest.json" }
+)
+
+foreach ($file in $publicFiles) {
+  $source = Join-Path $root $file.Source
+  if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { throw "Missing public source asset: $($file.Source)" }
+  $destination = Join-Path $www $file.Destination
+  New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
+  Copy-Item -LiteralPath $source -Destination $destination -Force
+}
+
+Write-Host "Synced $($publicFiles.Count) public-only web/PWA assets into www and pruned stale private native payloads."

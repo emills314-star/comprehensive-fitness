@@ -1,12 +1,17 @@
-const { authorizeInstallation } = require("../_lib/security");
+const { authorizeInstallation, checkRateLimit, rateLimitResponse } = require("../_lib/security");
 const { configureWebPush } = require("../_lib/push");
-const { json, methodNotAllowed } = require("../_lib/response");
+const { apiHandler, json, methodNotAllowed } = require("../_lib/response");
+const { validInstallationId, validateJsonRequest } = require("../_lib/validation");
 
-module.exports = async function handler(req, res) {
+module.exports = apiHandler(async function handler(req, res) {
   if (req.method !== "POST") return methodNotAllowed(res, ["POST"]);
-  const body = req.body || {};
-  const installation = await authorizeInstallation(req, body.installationId);
+  const parsed = validateJsonRequest(req, 2 * 1024);
+  if (!parsed.ok) return json(res, parsed.status, { error: parsed.error });
+  if (!validInstallationId(parsed.body.installationId)) return json(res, 400, { error: "A valid installation is required." });
+  const installation = await authorizeInstallation(req, parsed.body.installationId);
   if (!installation?.endpoint || installation.active !== "1") return json(res, 401, { error: "No active push subscription is registered." });
+  const limit = await checkRateLimit("push-test", parsed.body.installationId, 5, 60 * 60);
+  if (!limit.allowed) return rateLimitResponse(res, limit);
   try {
     await configureWebPush().sendNotification({
       endpoint: installation.endpoint,
@@ -18,7 +23,7 @@ module.exports = async function handler(req, res) {
       url: "/?view=settings"
     }), { TTL: 60, urgency: "normal" });
     return json(res, 200, { status: "sent" });
-  } catch (error) {
-    return json(res, 502, { error: String(error?.message || "Test notification failed.").slice(0, 240) });
+  } catch {
+    return json(res, 502, { error: "Test notification failed." });
   }
-};
+});
