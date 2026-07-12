@@ -32,6 +32,8 @@ These values are deterministic development benchmarks, not network round-trip ti
 - The latest hypertrophy window uses a lightweight qualifying-week pass and performs the expensive target-aware aggregation once.
 - Set completion and timer adjustment update the relevant DOM nodes instead of rebuilding the application shell.
 - Templates skip coaching calculations while an active workout locks their Start actions.
+- Templates now use progressive disclosure: the initial frame skips completed-history fatigue analysis and per-template prescription work, does not construct collapsed exercise editors, renders the current mesocycle as a summary until requested, and keeps historical mesocycles compact. Muscle-scope checkbox taps update local draft state without a full application render. The previous 71 ms cold / 5.4 ms cached Templates figures predate this planner disclosure boundary and should not be used as the post-change benchmark.
+- The final 2026-07-11 large-history browser regression (180 submitted sessions, 1,440 exercises, 5,760 sets) measured the initial Templates frame at **7.5 ms on the 375 px mobile project** and **6.8 ms on desktop Chromium**. `tests/ui/ui-audit.spec.js` enforces a conservative 250 ms ceiling and verifies that collapsed editors and mesocycle candidates are absent from the initial DOM, then verifies editor open/close behavior. A prior concurrent audit observed a 39.6 ms mobile sample, still comfortably inside the guardrail.
 - Recent History reuses the workout grade saved at submission rather than recalculating it per row.
 - The unused 2.0 MB legacy athlete image was removed from both source assets and web output.
 

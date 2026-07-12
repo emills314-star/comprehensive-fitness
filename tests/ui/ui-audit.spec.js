@@ -69,6 +69,33 @@ for (const tabName of tabs) {
   });
 }
 
+test("Templates initial frame stays progressive under large history", async ({ page }, testInfo) => {
+  await page.goto("/?perf=1&perfFixture=large");
+  await page.waitForLoadState("load");
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: /Templates$/ }).click();
+  await expect(page.getByRole("heading", { name: "Templates", exact: true })).toBeVisible();
+
+  const result = await page.evaluate(() => {
+    const events = (window.__CF_PERF__ || []).filter((event) => event.label === "renderTotal:plan");
+    return {
+      duration: events.at(-1)?.duration ?? Number.POSITIVE_INFINITY,
+      hiddenEditorBodies: document.querySelectorAll(".template-editor .disclosure-body").length,
+      eagerCandidates: document.querySelectorAll(".mesocycle-candidate").length
+    };
+  });
+
+  console.log(`${testInfo.project.name} Templates large-fixture render: ${result.duration.toFixed(1)} ms`);
+  expect(result.duration).toBeLessThan(250);
+  expect(result.hiddenEditorBodies).toBe(0);
+  expect(result.eagerCandidates).toBe(0);
+
+  const editor = page.locator(".template-editor").first();
+  await editor.locator("summary").click();
+  await expect(editor.locator(".disclosure-body")).toHaveCount(1);
+  await editor.locator("summary").click();
+  await expect(editor.locator(".disclosure-body")).toHaveCount(0);
+});
+
 test("design-system source does not accumulate one-off styling", async () => {
   const source = fs.readFileSync(path.join(__dirname, "..", "..", "index.html"), "utf8");
   const style = source.match(/<style>([\s\S]*?)<\/style>/)?.[1] || "";

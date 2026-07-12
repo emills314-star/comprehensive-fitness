@@ -2001,6 +2001,8 @@
       let mesocycleScopeDraft = null;
       let mesocycleComparisonIds = [];
       let pendingDeleteMesocycleId = "";
+      let mesocyclePlannerExpanded = false;
+      const expandedTemplateEditorIds = new Set();
 
       const icon = {
         workout: "Lift",
@@ -5646,6 +5648,7 @@
           split: data.templates.map((template) => template.name)
         });
         selectedPrescriptionPoolMuscle = mesocycle.programSlots?.[0]?.muscleGroupId || Object.keys(mesocycle.pools)[0] || selectedPrescriptionPoolMuscle;
+        mesocyclePlannerExpanded = true;
         commit({ ...data, mesocycles: [mesocycle, ...data.mesocycles] });
       }
 
@@ -5800,6 +5803,7 @@
         const startDate = mesocycle.startedAt || "";
         const endDate = mesocycle.completedAt || mesocycle.abandonedAt || "";
         const actions = [];
+        if (["draft", "planned", "active"].includes(mesocycle.status)) actions.push('<button type="button" data-action="toggle-mesocycle-planner-review">Close Planner Review</button>');
         if (mesocycle.status === "draft") actions.push('<button type="button" data-action="mesocycle-transition" data-mesocycle-action="plan" data-mesocycle-id="' + mesocycle.id + '" ' + ((mesocycle.omittedMuscleGroups || []).length && !mesocycle.scopeConfirmed ? 'disabled title="Confirm omitted muscle groups first"' : '') + '>Save as Planned Mesocycle</button>');
         if (mesocycle.status === "planned") actions.push('<button class="primary-action" type="button" data-action="mesocycle-transition" data-mesocycle-action="start" data-mesocycle-id="' + mesocycle.id + '" ' + (mesocycle.programReview?.blockingIssueCount ? 'disabled title="Resolve blocking program issues first"' : '') + '>Activate mesocycle</button>');
         if (mesocycle.status === "active") actions.push('<button type="button" data-action="mesocycle-transition" data-mesocycle-action="complete" data-mesocycle-id="' + mesocycle.id + '">Complete mesocycle</button>');
@@ -5823,7 +5827,7 @@
       }
 
       function renderMesocyclePlanner() {
-        const latest = data.mesocycles[0];
+        const latest = data.mesocycles.find((mesocycle) => ["draft", "planned", "active"].includes(mesocycle.status)) || null;
         const availableMuscles = prescriptionEngine ? Array.from(new Set(prescriptionApi.representedMuscleGroups(prescriptionEngine.evidence).map(prescriptionApi.muscleFamily))).sort() : [];
         const selectedScope = mesocycleScopeDraft || new Set(availableMuscles);
         return `
@@ -5840,19 +5844,29 @@
               <button class="primary-action" type="button" data-action="preview-mesocycle">Build full-program draft</button>
             </div>
             <p class="settings-note">${escapeHtml(prescriptionEvidenceStatus.message)}</p>
-            ${latest ? renderMesocycleCard(latest) : '<div class="empty-state">Build a draft to review program slots, selectable alternatives, the proposed portfolio, session placement, and full-program fatigue/volume checks.</div>'}
+            ${latest ? (mesocyclePlannerExpanded ? renderMesocycleCard(latest) : '<article class="mesocycle-card"><div class="row split"><div><div class="section-kicker">' + escapeHtml(mesocycleTypeLabel(latest.type)) + '</div><h3>' + escapeHtml(latest.name) + '</h3></div><span class="status-pill neutral">' + escapeHtml(presentationLabel(latest.status)) + '</span></div><p>' + (latest.selectedPortfolio?.length || 0) + ' exercises · ' + (latest.sessions?.length || latest.trainingDays || 0) + ' sessions · ' + (latest.programReview?.blockingIssueCount || 0) + ' blocking issues</p><button type="button" data-action="toggle-mesocycle-planner-review">Open Planner Review</button></article>') : '<div class="empty-state">Build a draft to review program slots, selectable alternatives, the proposed portfolio, session placement, and full-program fatigue/volume checks.</div>'}
           </section>
         `;
       }
 
       function renderHistoricalMesocycles() {
-        const historical = data.mesocycles.slice(1);
-        return `<section class="screen-section mesocycle-history"><div class="section-heading"><div><div class="section-kicker">Template Management</div><h2>Historical Mesocycles</h2><p>Review completed, archived, abandoned, and earlier planned blocks.</p></div></div>${historical.length ? historical.map(renderMesocycleCard).join('') : '<div class="empty-state">Completed and previous mesocycles will appear here.</div>'}</section>`;
+        const current = data.mesocycles.find((mesocycle) => ["draft", "planned", "active"].includes(mesocycle.status));
+        const historical = data.mesocycles.filter((mesocycle) => mesocycle.id !== current?.id);
+        const historyActions = (mesocycle) => {
+          const actions = [];
+          if (["completed", "abandoned"].includes(mesocycle.status)) actions.push('<button type="button" data-action="mesocycle-transition" data-mesocycle-action="archive" data-mesocycle-id="' + mesocycle.id + '">Archive</button>');
+          if (["completed", "archived"].includes(mesocycle.status)) actions.push('<button type="button" data-action="mesocycle-transition" data-mesocycle-action="review" data-mesocycle-id="' + mesocycle.id + '">Review outcomes</button>');
+          if (prescriptionEngine?.canDeleteMesocycle(mesocycle)) actions.push(pendingDeleteMesocycleId === mesocycle.id ? '<span><button class="danger" type="button" data-action="confirm-delete-mesocycle" data-mesocycle-id="' + mesocycle.id + '">Confirm delete</button><button type="button" data-action="cancel-delete-mesocycle">Cancel</button></span>' : '<button class="danger" type="button" data-action="request-delete-mesocycle" data-mesocycle-id="' + mesocycle.id + '">Delete unused draft</button>');
+          return actions.length ? '<div class="row wrap">' + actions.join('') + '</div>' : '';
+        };
+        return `<section class="screen-section mesocycle-history"><div class="section-heading"><div><div class="section-kicker">Template Management</div><h2>Historical Mesocycles</h2><p>Review completed, archived, abandoned, and earlier blocks.</p></div></div>${historical.length ? historical.map((mesocycle) => '<article class="mesocycle-card mesocycle-history-summary"><div class="row split"><div><strong>' + escapeHtml(mesocycle.name) + '</strong><small>' + escapeHtml(mesocycleTypeLabel(mesocycle.type)) + '</small></div><span class="status-pill neutral">' + escapeHtml(presentationLabel(mesocycle.status)) + '</span></div><div class="mesocycle-history-meta"><span>Created ' + formatDate(mesocycle.createdAt) + '</span><span>' + (mesocycle.startedAt ? 'Started ' + formatDate(mesocycle.startedAt) : 'Never activated') + '</span><span>' + (mesocycle.completedAt ? 'Completed ' + formatDate(mesocycle.completedAt) : mesocycle.abandonedAt ? 'Abandoned ' + formatDate(mesocycle.abandonedAt) : 'Not completed') + '</span><span>' + (mesocycle.selectedPortfolio?.length || 0) + ' exercises</span></div>' + historyActions(mesocycle) + '</article>').join('') : '<div class="empty-state">Completed and previous mesocycles will appear here.</div>'}</section>`;
       }
 
       function renderTemplates() {
-        const weekStart = startOfWeekIso(todayIso());
-        const volumeFlags = fatigueFlags(weekStart).filter((flag) => flag.detailType === "weekly-volume");
+        // Weekly fatigue analysis belongs to Dashboard and workout-start coaching. Keeping
+        // it off this navigation path prevents the template library from recalculating
+        // completed history merely to display its first frame.
+        const volumeFlags = [];
         const running = activeWorkoutSession();
         if (planVolumeDetailId) {
           const selectedFlag = volumeFlags.find((flag) => flag.id === planVolumeDetailId);
@@ -5879,8 +5893,9 @@
       function renderTemplateCard(template, running = activeWorkoutSession()) {
         const isActiveTemplate = running?.templateId === template.id;
         const locked = Boolean(running && !isActiveTemplate);
-        const advice = running ? null : cachedTemplateAdvice(template, recoveryRecommendationForSession(activeSession()), { recovery: sessionRecovery(activeSession()) });
+        const advice = null;
         const confirmingDelete = pendingDeleteTemplateId === template.id;
+        const editorExpanded = expandedTemplateEditorIds.has(template.id);
         const prescribedSets = advice?.totalSets ?? templateExerciseCount(template);
         const duration = Math.max(15, Math.round(prescribedSets * 2.5));
         const coachLine = advice ? advice.detail.split(". ").slice(0, 2).join(". ") : "";
@@ -5896,9 +5911,9 @@
             </div>
             ${template.baseSessionIntent ? '<p class="template-coach"><strong>Base Session Intent</strong> ' + escapeHtml(template.baseSessionIntent) + '. Today’s readiness may modify load, sets, RPE, rest, or exercise selection before the workout begins.</p>' : ''}
             ${advice ? '<p class="template-coach"><strong>' + escapeHtml(advice.label) + '</strong> ' + escapeHtml(coachLine) + '</p>' : ''}
-            <details class="compact-disclosure template-editor">
-              <summary>Edit template <span>${template.exercises.length} lifts</span></summary>
-              <div class="disclosure-body">
+            <details class="compact-disclosure template-editor" ${editorExpanded ? 'open' : ''}>
+              <summary data-action="toggle-template-editor" data-template-id="${template.id}">Edit template <span>${template.exercises.length} lifts</span></summary>
+              ${editorExpanded ? `<div class="disclosure-body">
                 <ul class="template-list">
                   ${template.exercises.map((exercise) => `
                     <li>
@@ -5919,7 +5934,7 @@
                   `).join("")}
                 </ul>
                 <button type="button" data-action="add-template-exercise" data-template-id="${template.id}">${icon.add} Exercise</button>
-              </div>
+              </div>` : ''}
             </details>
           </article>
         `;
@@ -9990,7 +10005,13 @@
         }
         if (action === "new-session") addSession();
         if (action === "new-template") addTemplate();
+        if (action === "toggle-template-editor") {
+          const templateId = target.dataset.templateId;
+          if (expandedTemplateEditorIds.has(templateId)) expandedTemplateEditorIds.delete(templateId); else expandedTemplateEditorIds.add(templateId);
+          render();
+        }
         if (action === "preview-mesocycle") previewMesocyclePlan();
+        if (action === "toggle-mesocycle-planner-review") { mesocyclePlannerExpanded = !mesocyclePlannerExpanded; render(); }
         if (action === "mesocycle-transition") transitionMesocyclePlan(target.dataset.mesocycleId, target.dataset.mesocycleAction);
         if (action === "confirm-mesocycle-scope") confirmMesocycleScope(target.dataset.mesocycleId);
         if (action === "add-mesocycle-muscle") addOmittedMuscleAndRebuild(target.dataset.mesocycleId, target.dataset.muscleGroupId);
@@ -10264,7 +10285,6 @@
           const available = prescriptionEngine ? Array.from(new Set(prescriptionApi.representedMuscleGroups(prescriptionEngine.evidence).map(prescriptionApi.muscleFamily))) : [];
           if (!mesocycleScopeDraft) mesocycleScopeDraft = new Set(available);
           if (target.checked) mesocycleScopeDraft.add(target.value); else mesocycleScopeDraft.delete(target.value);
-          render();
         }
         if (action === "mesocycle-pool-muscle") { selectedPrescriptionPoolMuscle = target.value; render(); }
         if (action === "mesocycle-training-days") commit({ ...data, settings: { ...data.settings, trainingDaysPerWeek: Math.max(1, Math.min(7, Number(target.value || 4))) } });

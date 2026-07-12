@@ -71,7 +71,16 @@ assert.equal((templateRenderer.match(/id="active-workout-template-notice"/g) || 
 assert.match(templateRenderer, /Return to Active Workout/, "The compact notice must resume the canonical workout");
 assert.match(templateRenderer, /locked \? 'disabled aria-describedby="active-workout-template-notice"/, "Other template Start buttons must be truly disabled");
 assert.doesNotMatch(templateRenderer, /Submit or cancel .* before starting another template/, "Template cards must not repeat the restriction on every row");
-assert.match(templateRenderer, /running \? null : cachedTemplateAdvice/, "Locked template cards must not recalculate coaching history");
+assert.doesNotMatch(templateRenderer, /fatigueFlags\(/, "Opening Templates must not recalculate completed-history fatigue analysis");
+assert.match(templateRenderer, /const advice = null;/, "Template-list rendering must defer readiness coaching to the start flow");
+assert.match(templateRenderer, /const editorExpanded = expandedTemplateEditorIds\.has\(template\.id\)/, "Template editors must be expanded explicitly");
+assert.match(templateRenderer, /\$\{editorExpanded \? `<div class="disclosure-body">/, "Collapsed template editors must not generate their exercise controls");
+assert.match(html, /mesocyclePlannerExpanded \? renderMesocycleCard/, "The full planner review must render only on explicit demand");
+const historicalRenderer = section("function renderHistoricalMesocycles()", "function renderTemplates()");
+assert.match(historicalRenderer, /historical\.map\(\(mesocycle\) => '<article class="mesocycle-card mesocycle-history-summary/, "Historical mesocycles must use compact summaries");
+assert.doesNotMatch(historicalRenderer, /renderMesocycleCard\(/, "History must not eagerly render full candidate and program reviews");
+assert.match(html, /if \(action === "mesocycle-muscle-scope"\)[\s\S]*mesocycleScopeDraft\.delete\(target\.value\);\s*\}/, "Muscle-scope toggles must update local draft state without rebuilding the Templates tab");
+assert.match(html, /if \(action === "mesocycle-muscle-scope"\) \{[^}]+mesocycleScopeDraft\.delete\(target\.value\);\s*\}\s*if \(action === "mesocycle-pool-muscle"\)/, "Muscle-scope checkbox changes must not trigger a full render or persistence write");
 
 assert.match(recentHistoryRenderer, /class="recent-history-card"/, "Recent History needs a structured mobile card");
 assert.match(recentHistoryRenderer, /session\?\.workoutAnalysis\?\.version === 1/, "Recent History must reuse stored workout grades");

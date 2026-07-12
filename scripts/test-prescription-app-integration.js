@@ -42,6 +42,8 @@ assert.match(html, /programReview\?\.blockingIssueCount[\s\S]*disabled/, "A bloc
 assert.match(html, /Muscle Groups in Scope[\s\S]*mesocycle-muscle-scope/, "Planner must let the user choose every muscle group in scope");
 assert.match(html, /Confirm Intentionally Omitted Muscle Groups[\s\S]*Add to Mesocycle[\s\S]*Keep These Exclusions and Continue/, "Omitted groups need add and explicit-confirmation controls");
 assert.match(html, /importance === 'major'[\s\S]*Major Muscle Group/, "Major omissions need a stronger explanation marker");
+assert.match(html, /toggle-mesocycle-planner-review[\s\S]*Open Planner Review/, "Full mesocycle review must be progressively disclosed");
+assert.doesNotMatch(html.slice(html.indexOf("function renderHistoricalMesocycles()"), html.indexOf("function renderTemplates()")), /renderMesocycleCard\(/, "Historical mesocycles must not eagerly render full planner cards");
 assert.match(html, /primary_progression[\s\S]*alternative_exercise[\s\S]*lower_fatigue_resensitization[\s\S]*specialization/, "All four mesocycle types must be available");
 assert.match(html, /renderMesocycleCandidate[\s\S]*Deload and Rotation Triggers[\s\S]*Preferred Replacement/, "Candidate cards must explain progression, deload, rotation and replacement");
 assert.match(html, /Base prescription[\s\S]*Today only/, "Live UI must keep base and readiness-adjusted prescriptions distinct");
