@@ -1,5 +1,7 @@
 const { defineConfig, devices } = require("@playwright/test");
 
+const hostedBaseUrl = process.env.PLAYWRIGHT_BASE_URL?.trim();
+
 module.exports = defineConfig({
   testDir: "./tests/ui",
   outputDir: "artifacts/ui-audit/test-results",
@@ -14,12 +16,12 @@ module.exports = defineConfig({
     ["html", { outputFolder: "artifacts/ui-audit/html", open: "never" }]
   ],
   use: {
-    baseURL: "http://127.0.0.1:8765",
+    baseURL: hostedBaseUrl || "http://127.0.0.1:8765",
     colorScheme: "light",
     screenshot: "only-on-failure",
     trace: "retain-on-failure"
   },
-  webServer: {
+  webServer: hostedBaseUrl ? undefined : {
     command: "node scripts/serve-local.js",
     url: "http://127.0.0.1:8765",
     reuseExistingServer: !process.env.CI,
