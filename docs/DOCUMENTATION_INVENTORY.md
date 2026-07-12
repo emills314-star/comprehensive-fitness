@@ -19,6 +19,7 @@ No existing Markdown was deleted. The new core documents are authoritative for c
 | `README.md` | **UPDATE** | Keep as contributor/user entry point; link the new core docs and avoid duplicating their detail. |
 | `docs/training-prescription-data.md` | **RETAIN, specialized** | Unique version/count/crosswalk/schema/runtime map. Core principles are summarized in Architecture/Decision Engine; detailed inventories stay here. Some generated counts/status require refresh after rebuild. |
 | `docs/push-backend.md` | **RETAIN, specialized; NEEDS REVIEW** | Unique API/service/Redis/physical-test operations. “Live deployment” claims cannot be proven locally and must be dated/reverified. |
+| `docs/WORK_LOG_TEMPLATE.md` and `docs/work-logs/` | **RETAIN, operational** | Required evidence format for local validation, deployment inspection, and hosted browser verification of user-facing changes. |
 | `docs/performance.md` | **RETAIN as benchmark record** | Unique benchmark method/results. Architecture captures only current performance decisions; rerun benchmark before treating old numbers as current. |
 | `docs/iphone-pwa-personal-coach-setup.md` | **RETAIN, operational; NEEDS REVIEW** | Unique installation/private-import/device acceptance steps. External “complete” claims need human verification. |
 | `personal_fitness_data/README.md` | **RETAIN, specialized/private boundary** | Canonical pipeline layout, calculations, extension process, and privacy guidance. Cross-cutting flow summarized without personal values. |
