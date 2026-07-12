@@ -2,12 +2,18 @@
 
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const ExcelJS = require("exceljs");
 const { VERSION, DELIMITER, controlledVocabularies, tableColumns, data } = require("../research_database/source/database");
+const {
+  CANONICAL_TO_PROGRAMMING_FAMILY,
+  programmingFamilyForMuscle
+} = require("../research_database/source/exercise-muscle-taxonomy");
 
 const errors = [];
 const warnings = [];
 const root = path.resolve(__dirname, "..", "research_database");
+const sha256File = (file) => crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
 const idSets = {};
 const primaryId = {};
 for (const [table, rows] of Object.entries(data)) {
@@ -75,6 +81,45 @@ data.evidence_conclusions.forEach((row) => { if (!row.supporting_study_ids) erro
 const requiredMuscles = ["chest","upper_back","lats","traps","front_delts","side_delts","rear_delts","biceps","triceps","forearms","spinal_erectors","abdominals","obliques","glutes","quadriceps","hamstrings","adductors","abductors","calves","neck_musculature"];
 const presentMuscles = new Set(data.muscle_group_recommendations.map((row) => row.muscle_group));
 requiredMuscles.forEach((muscle) => { if (!presentMuscles.has(muscle)) errors.push(`Required muscle group missing: ${muscle}`); });
+const canonicalIds = new Set(Object.keys(CANONICAL_TO_PROGRAMMING_FAMILY));
+const databaseMuscleIds = new Set(data.muscle_group_recommendations.map((row) => row.muscle_group_id));
+[...canonicalIds].filter((id) => !databaseMuscleIds.has(id)).forEach((id) => errors.push(`Canonical taxonomy ID missing from database: ${id}`));
+[...databaseMuscleIds].filter((id) => !canonicalIds.has(id)).forEach((id) => errors.push(`Database muscle ID lacks a programming-family projection: ${id}`));
+data.muscle_group_recommendations.forEach((row) => {
+  const expected = programmingFamilyForMuscle(row.muscle_group_id);
+  if (row.programming_family_id !== expected) errors.push(`${row.muscle_group_id}: programming_family_id ${row.programming_family_id} should be ${expected}`);
+});
+data.exercise_muscle_map.forEach((row) => {
+  const expected = programmingFamilyForMuscle(row.muscle_group_id);
+  if (row.programming_family_id !== expected) errors.push(`${row.exercise_muscle_map_id}: programming_family_id ${row.programming_family_id} should be ${expected}`);
+});
+const exercisesById = new Map(data.exercise_database.map((row) => [row.exercise_id, row]));
+data.muscle_group_recommendations.forEach((row) => String(row.effective_exercises || "").split(DELIMITER).filter(Boolean).forEach((exerciseId) => {
+  if (!exercisesById.has(exerciseId)) errors.push(`${row.muscle_group_id}: effective exercise does not exist: ${exerciseId}`);
+}));
+data.exercise_database.forEach((row) => {
+  [row.primary_muscles, row.secondary_muscles].flatMap((value) => String(value || "").split(DELIMITER)).filter(Boolean).forEach((muscleId) => {
+    if (!databaseMuscleIds.has(muscleId)) errors.push(`${row.exercise_id}: referenced muscle does not exist: ${muscleId}`);
+  });
+});
+const normalizedExerciseNames = new Map();
+const normalizeExerciseName = (value) => String(value || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+data.exercise_database.forEach((row) => [row.exercise_name, ...String(row.exercise_aliases || "").split(DELIMITER)].filter(Boolean).forEach((name) => {
+  const normalized = normalizeExerciseName(name);
+  const existing = normalizedExerciseNames.get(normalized);
+  if (existing && existing !== row.exercise_id) errors.push(`Exercise name/alias collision: ${name} maps to ${existing} and ${row.exercise_id}`);
+  normalizedExerciseNames.set(normalized, row.exercise_id);
+}));
+const mappedExercises = new Set(data.exercise_muscle_map.map((row) => row.exercise_id));
+data.exercise_database.forEach((row) => { if (!mappedExercises.has(row.exercise_id)) errors.push(`${row.exercise_id}: exercise has no taxonomy relationships`); });
+const relationshipKeys = new Set();
+data.exercise_muscle_map.forEach((row) => {
+  const key = `${row.exercise_id}|${row.muscle_group_id}`;
+  if (relationshipKeys.has(key)) errors.push(`Duplicate exercise/muscle relationship: ${key}`);
+  relationshipKeys.add(key);
+});
+const woodchop = data.exercise_muscle_map.find((row) => row.exercise_id === "ex_cable_woodchop" && row.muscle_group_id === "mg_obliques");
+if (!woodchop || woodchop.relationship_type !== "direct_load" || Number(woodchop.fractional_set_credit) !== 1) errors.push("Cable woodchop must provide direct dynamic oblique loading.");
 const dictionaryFields = new Set(data.definitions_data_dictionary.map((row) => row.field_name));
 Object.values(tableColumns).flat().forEach((field) => { if (!dictionaryFields.has(field)) errors.push(`Data dictionary missing ${field}`); });
 for (const [table, rows] of Object.entries(data)) {
@@ -97,6 +142,29 @@ const expectedFiles = Object.keys(data).flatMap((table) => [path.join(root,"expo
 expectedFiles.forEach((file) => { if (!fs.existsSync(file)) errors.push(`Missing export ${file}`); });
 
 async function finish() {
+  const manifestPath = path.join(root, "exports", "json", "manifest.json");
+  if (!fs.existsSync(manifestPath)) errors.push(`Missing manifest ${manifestPath}`);
+  else {
+    let manifest = null;
+    try { manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8")); } catch (error) { errors.push(`Manifest is not valid JSON: ${error.message}`); }
+    if (manifest) {
+      if (manifest.database_version !== VERSION) errors.push(`Manifest version ${manifest.database_version} does not match source ${VERSION}`);
+      for (const [table, rows] of Object.entries(data)) {
+        const entry = manifest.tables?.[table];
+        if (!entry) { errors.push(`Manifest lacks table ${table}`); continue; }
+        if (entry.record_count !== rows.length) errors.push(`Manifest count for ${table} is ${entry.record_count}; expected ${rows.length}`);
+        const files = {
+          csv_sha256: path.join(root, "exports", "csv", `${table}.csv`),
+          json_sha256: path.join(root, "exports", "json", `${table}.json`),
+          schema_sha256: path.join(root, "schema", `${table}.schema.json`)
+        };
+        for (const [field, file] of Object.entries(files)) {
+          if (!/^[a-f0-9]{64}$/.test(String(entry[field] || ""))) errors.push(`Manifest ${table}.${field} is missing or invalid`);
+          else if (fs.existsSync(file) && sha256File(file) !== entry[field]) errors.push(`Manifest ${table}.${field} does not match ${file}`);
+        }
+      }
+    }
+  }
   const workbookPath = path.join(root, "workbook", `male_exercise_science_database_v${VERSION}.xlsx`);
   if (!fs.existsSync(workbookPath)) errors.push(`Missing workbook ${workbookPath}`);
   else {

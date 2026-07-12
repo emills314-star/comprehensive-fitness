@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://comprehensive-fitness.local/schema/2.0.0/exercise_taxonomy_review_queue.schema.json",
+  "$id": "https://comprehensive-fitness.local/schema/2.1.0/exercise_taxonomy_review_queue.schema.json",
   "title": "exercise_taxonomy_review_queue",
   "type": "array",
   "items": {

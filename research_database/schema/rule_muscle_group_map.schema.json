@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://comprehensive-fitness.local/schema/2.0.0/rule_muscle_group_map.schema.json",
+  "$id": "https://comprehensive-fitness.local/schema/2.1.0/rule_muscle_group_map.schema.json",
   "title": "rule_muscle_group_map",
   "type": "array",
   "items": {

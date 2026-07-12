@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://comprehensive-fitness.local/schema/2.0.0/muscle_group_recommendations.schema.json",
+  "$id": "https://comprehensive-fitness.local/schema/2.1.0/muscle_group_recommendations.schema.json",
   "title": "muscle_group_recommendations",
   "type": "array",
   "items": {
@@ -10,6 +10,7 @@
       "muscle_group_id",
       "muscle_group",
       "muscle_subdivision",
+      "programming_family_id",
       "anatomical_function",
       "effective_exercises",
       "minimum_effective_weekly_sets",
@@ -61,6 +62,13 @@
           "string",
           "null"
         ]
+      },
+      "programming_family_id": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^[a-z][a-z0-9_]*$"
       },
       "anatomical_function": {
         "type": [

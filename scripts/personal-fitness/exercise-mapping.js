@@ -1,6 +1,7 @@
 "use strict";
 
 const { slugify } = require("./utils");
+const { coalesceMuscleMappingsByProgrammingFamily } = require("./config");
 
 function compileMappingRules(document) {
   return (document?.rules || []).map((rule) => ({ ...rule, regex: new RegExp(rule.pattern, "i") }));
@@ -85,7 +86,14 @@ function buildCompleteExerciseCatalog(recordedNames, explicitAliases, explicitMu
     muscles.push(...inferred.muscles.map((mapping) => ({ ...mapping, mapping_source: "fallback_rule" })));
     mappingAudit.push({ recorded_name: recordedName, exercise_id: inferred.alias.exercise_id, mapping_source: "fallback_rule", primary_muscle_group: inferred.alias.primary_muscle_group, mapped_muscle_count: inferred.muscles.length, review_required: inferred.alias.primary_muscle_group === "unmapped" || inferred.muscles.length === 0 });
   }
-  return { aliases, muscles, mappingAudit };
+  const coalescedMuscles = coalesceMuscleMappingsByProgrammingFamily(muscles);
+  const mappedCounts = new Map();
+  coalescedMuscles.forEach((mapping) => mappedCounts.set(mapping.exercise_id, (mappedCounts.get(mapping.exercise_id) || 0) + 1));
+  mappingAudit.forEach((item) => {
+    item.mapped_muscle_count = mappedCounts.get(item.exercise_id) || 0;
+    item.review_required = item.primary_muscle_group === "unmapped" || item.mapped_muscle_count === 0;
+  });
+  return { aliases, muscles: coalescedMuscles, mappingAudit };
 }
 
 module.exports = { buildCompleteExerciseCatalog, compileMappingRules, inferExerciseMapping };

@@ -5,7 +5,7 @@
     "review_reason": "1 low-confidence relationship require future exercise-specific evidence review.",
     "priority": "low",
     "status": "queued",
-    "taxonomy_version": "2.0.0",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -14,7 +14,7 @@
     "review_reason": "1 low-confidence relationship require future exercise-specific evidence review.",
     "priority": "low",
     "status": "queued",
-    "taxonomy_version": "2.0.0",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -23,7 +23,7 @@
     "review_reason": "1 low-confidence relationship require future exercise-specific evidence review.",
     "priority": "low",
     "status": "queued",
-    "taxonomy_version": "2.0.0",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -32,7 +32,7 @@
     "review_reason": "4 low-confidence relationships require future exercise-specific evidence review.",
     "priority": "medium",
     "status": "queued",
-    "taxonomy_version": "2.0.0",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -41,7 +41,7 @@
     "review_reason": "1 low-confidence relationship require future exercise-specific evidence review.",
     "priority": "low",
     "status": "queued",
-    "taxonomy_version": "2.0.0",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -50,7 +50,7 @@
     "review_reason": "1 low-confidence relationship require future exercise-specific evidence review.",
     "priority": "low",
     "status": "queued",
-    "taxonomy_version": "2.0.0",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -59,7 +59,7 @@
     "review_reason": "1 low-confidence relationship require future exercise-specific evidence review.",
     "priority": "low",
     "status": "queued",
-    "taxonomy_version": "2.0.0",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -68,7 +68,7 @@
     "review_reason": "1 low-confidence relationship require future exercise-specific evidence review.",
     "priority": "low",
     "status": "queued",
-    "taxonomy_version": "2.0.0",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -77,7 +77,7 @@
     "review_reason": "1 low-confidence relationship require future exercise-specific evidence review.",
     "priority": "low",
     "status": "queued",
-    "taxonomy_version": "2.0.0",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -86,7 +86,7 @@
     "review_reason": "1 low-confidence relationship require future exercise-specific evidence review.",
     "priority": "low",
     "status": "queued",
-    "taxonomy_version": "2.0.0",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -95,7 +95,16 @@
     "review_reason": "1 low-confidence relationship require future exercise-specific evidence review.",
     "priority": "low",
     "status": "queued",
-    "taxonomy_version": "2.0.0",
+    "taxonomy_version": "2.1.0",
+    "last_reviewed_date": "2026-07-12"
+  },
+  {
+    "taxonomy_review_id": "etr_0012",
+    "exercise_id": "ex_cable_woodchop",
+    "review_reason": "1 low-confidence relationship require future exercise-specific evidence review.",
+    "priority": "medium",
+    "status": "queued",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   }
 ]

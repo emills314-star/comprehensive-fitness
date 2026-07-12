@@ -2,6 +2,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const ExcelJS = require("exceljs");
 const { VERSION, REVIEW_DATE, DELIMITER, controlledVocabularies, tableColumns, data } = require("../research_database/source/database");
 
@@ -18,7 +19,10 @@ const csvEscape = (value) => {
   return /[",\r\n]/.test(string) ? `"${string.replace(/"/g, '""')}"` : string;
 };
 
+const sha256File = (file) => crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
+
 const tableJsonSchemas = {};
+const tableIntegrity = {};
 const propertySchema = (table, field) => {
   const dictionary = data.definitions_data_dictionary.find((row) => row.field_name === field && row.used_in_tabs.split(DELIMITER).includes(table));
   const schema = {};
@@ -37,8 +41,11 @@ for (const [table, rows] of Object.entries(data)) {
   const columns = tableColumns[table];
   if (!columns) throw new Error(`Missing columns for ${table}`);
   const csv = [columns.join(","), ...rows.map((row) => columns.map((column) => csvEscape(row[column])).join(","))].join("\r\n") + "\r\n";
-  fs.writeFileSync(path.join(csvDir, `${table}.csv`), csv, "utf8");
-  fs.writeFileSync(path.join(jsonDir, `${table}.json`), JSON.stringify(rows, null, 2) + "\n", "utf8");
+  const csvPath = path.join(csvDir, `${table}.csv`);
+  const jsonPath = path.join(jsonDir, `${table}.json`);
+  const schemaPath = path.join(schemaDir, `${table}.schema.json`);
+  fs.writeFileSync(csvPath, csv, "utf8");
+  fs.writeFileSync(jsonPath, JSON.stringify(rows, null, 2) + "\n", "utf8");
   tableJsonSchemas[table] = {
     $schema: "https://json-schema.org/draft/2020-12/schema",
     $id: `https://comprehensive-fitness.local/schema/${VERSION}/${table}.schema.json`,
@@ -51,7 +58,14 @@ for (const [table, rows] of Object.entries(data)) {
       properties: Object.fromEntries(columns.map((field) => [field, propertySchema(table, field)]))
     }
   };
-  fs.writeFileSync(path.join(schemaDir, `${table}.schema.json`), JSON.stringify(tableJsonSchemas[table], null, 2) + "\n", "utf8");
+  fs.writeFileSync(schemaPath, JSON.stringify(tableJsonSchemas[table], null, 2) + "\n", "utf8");
+  tableIntegrity[table] = {
+    record_count: rows.length,
+    primary_id_field: columns.find((field) => /(^|_)id$/.test(field)) || null,
+    csv_sha256: sha256File(csvPath),
+    json_sha256: sha256File(jsonPath),
+    schema_sha256: sha256File(schemaPath)
+  };
 }
 
 const manifest = {
@@ -61,7 +75,7 @@ const manifest = {
   population_scope: "resistance-trained and resistance-training-eligible males",
   source_of_truth: "research_database/source/database.js",
   multi_value_delimiter: DELIMITER,
-  tables: Object.fromEntries(Object.entries(data).map(([name, rows]) => [name, { record_count: rows.length, primary_id_field: tableColumns[name].find((field) => /(^|_)id$/.test(field)) || null }])),
+  tables: tableIntegrity,
   controlled_vocabularies: controlledVocabularies,
   caveat: "Operational ranges are not individualized medical advice and low-confidence values are not proven physiological thresholds."
 };

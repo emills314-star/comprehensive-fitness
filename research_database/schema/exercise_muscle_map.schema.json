@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://comprehensive-fitness.local/schema/2.0.0/exercise_muscle_map.schema.json",
+  "$id": "https://comprehensive-fitness.local/schema/2.1.0/exercise_muscle_map.schema.json",
   "title": "exercise_muscle_map",
   "type": "array",
   "items": {
@@ -10,6 +10,7 @@
       "exercise_muscle_map_id",
       "exercise_id",
       "muscle_group_id",
+      "programming_family_id",
       "relationship_type",
       "loading_role",
       "range_of_motion_role",
@@ -39,6 +40,13 @@
         "pattern": "^[a-z][a-z0-9_]*$"
       },
       "muscle_group_id": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "programming_family_id": {
         "type": [
           "string",
           "null"

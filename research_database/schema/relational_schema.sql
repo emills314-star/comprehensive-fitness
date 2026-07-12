@@ -1,4 +1,4 @@
--- Generated schema for male resistance-training evidence database v2.0.0
+-- Generated schema for male resistance-training evidence database v2.1.0
 -- Pipe-delimited list fields have normalized mapping-table equivalents where relationships are frequently queried.
 
 CREATE TABLE executive_summary (
@@ -82,6 +82,7 @@ CREATE TABLE muscle_group_recommendations (
   muscle_group_id TEXT PRIMARY KEY,
   muscle_group TEXT,
   muscle_subdivision TEXT,
+  programming_family_id TEXT,
   anatomical_function TEXT,
   effective_exercises TEXT,
   minimum_effective_weekly_sets INTEGER,
@@ -278,6 +279,7 @@ CREATE TABLE exercise_muscle_map (
   exercise_muscle_map_id TEXT PRIMARY KEY,
   exercise_id TEXT,
   muscle_group_id TEXT,
+  programming_family_id TEXT,
   relationship_type TEXT,
   loading_role TEXT,
   range_of_motion_role TEXT,

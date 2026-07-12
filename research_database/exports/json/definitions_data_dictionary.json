@@ -1156,11 +1156,11 @@
     "display_name": "Movement Pattern",
     "definition": "Structured field for movement pattern; see the owning table and methodology for interpretation.",
     "data_type": "string",
-    "allowed_values": "horizontal_push|vertical_push|horizontal_pull|vertical_pull|squat|hinge|lunge|elbow_flexion|elbow_extension|shoulder_abduction|shoulder_horizontal_abduction|knee_extension|knee_flexion|hip_extension|hip_abduction|hip_adduction|plantar_flexion|spinal_flexion|anti_extension|anti_rotation|loaded_carry|wrist_flexion|wrist_extension|neck_flexion|neck_extension|scapular_elevation",
+    "allowed_values": "horizontal_push|vertical_push|horizontal_pull|vertical_pull|squat|hinge|lunge|elbow_flexion|elbow_extension|shoulder_abduction|shoulder_horizontal_abduction|knee_extension|knee_flexion|hip_extension|hip_abduction|hip_adduction|plantar_flexion|spinal_flexion|trunk_rotation|anti_extension|anti_rotation|loaded_carry|wrist_flexion|wrist_extension|neck_flexion|neck_extension|scapular_elevation",
     "unit": "",
     "nullable": true,
     "example_value": "",
-    "validation_rule": "must_be_one_of:horizontal_push|vertical_push|horizontal_pull|vertical_pull|squat|hinge|lunge|elbow_flexion|elbow_extension|shoulder_abduction|shoulder_horizontal_abduction|knee_extension|knee_flexion|hip_extension|hip_abduction|hip_adduction|plantar_flexion|spinal_flexion|anti_extension|anti_rotation|loaded_carry|wrist_flexion|wrist_extension|neck_flexion|neck_extension|scapular_elevation",
+    "validation_rule": "must_be_one_of:horizontal_push|vertical_push|horizontal_pull|vertical_pull|squat|hinge|lunge|elbow_flexion|elbow_extension|shoulder_abduction|shoulder_horizontal_abduction|knee_extension|knee_flexion|hip_extension|hip_abduction|hip_adduction|plantar_flexion|spinal_flexion|trunk_rotation|anti_extension|anti_rotation|loaded_carry|wrist_flexion|wrist_extension|neck_flexion|neck_extension|scapular_elevation",
     "used_in_tabs": "exercise_database"
   },
   {
@@ -1486,6 +1486,18 @@
     "example_value": "",
     "validation_rule": "type_must_match",
     "used_in_tabs": "exercise_progression_metric_map"
+  },
+  {
+    "field_name": "programming_family_id",
+    "display_name": "Programming Family Id",
+    "definition": "Stable practical training family used to coalesce subdivision relationships for hypertrophy-set accounting without deleting canonical anatomical IDs.",
+    "data_type": "string",
+    "allowed_values": "",
+    "unit": "",
+    "nullable": true,
+    "example_value": "",
+    "validation_rule": "lowercase_snake_case_persistent_id",
+    "used_in_tabs": "muscle_group_recommendations|exercise_muscle_map"
   },
   {
     "field_name": "protein_g_per_kg_high",

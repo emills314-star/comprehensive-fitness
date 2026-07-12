@@ -36,7 +36,7 @@
       "properties": {
         "executive_summary": {
           "$schema": "https://json-schema.org/draft/2020-12/schema",
-          "$id": "https://comprehensive-fitness.local/schema/2.0.0/executive_summary.schema.json",
+          "$id": "https://comprehensive-fitness.local/schema/2.1.0/executive_summary.schema.json",
           "title": "executive_summary",
           "type": "array",
           "items": {
@@ -131,7 +131,7 @@
         },
         "research_library": {
           "$schema": "https://json-schema.org/draft/2020-12/schema",
-          "$id": "https://comprehensive-fitness.local/schema/2.0.0/research_library.schema.json",
+          "$id": "https://comprehensive-fitness.local/schema/2.1.0/research_library.schema.json",
           "title": "research_library",
           "type": "array",
           "items": {
@@ -465,7 +465,7 @@
         },
         "evidence_conclusions": {
           "$schema": "https://json-schema.org/draft/2020-12/schema",
-          "$id": "https://comprehensive-fitness.local/schema/2.0.0/evidence_conclusions.schema.json",
+          "$id": "https://comprehensive-fitness.local/schema/2.1.0/evidence_conclusions.schema.json",
           "title": "evidence_conclusions",
           "type": "array",
           "items": {
@@ -654,7 +654,7 @@
         },
         "muscle_group_recommendations": {
           "$schema": "https://json-schema.org/draft/2020-12/schema",
-          "$id": "https://comprehensive-fitness.local/schema/2.0.0/muscle_group_recommendations.schema.json",
+          "$id": "https://comprehensive-fitness.local/schema/2.1.0/muscle_group_recommendations.schema.json",
           "title": "muscle_group_recommendations",
           "type": "array",
           "items": {
@@ -664,6 +664,7 @@
               "muscle_group_id",
               "muscle_group",
               "muscle_subdivision",
+              "programming_family_id",
               "anatomical_function",
               "effective_exercises",
               "minimum_effective_weekly_sets",
@@ -715,6 +716,13 @@
                   "string",
                   "null"
                 ]
+              },
+              "programming_family_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
               },
               "anatomical_function": {
                 "type": [
@@ -933,7 +941,7 @@
         },
         "exercise_database": {
           "$schema": "https://json-schema.org/draft/2020-12/schema",
-          "$id": "https://comprehensive-fitness.local/schema/2.0.0/exercise_database.schema.json",
+          "$id": "https://comprehensive-fitness.local/schema/2.1.0/exercise_database.schema.json",
           "title": "exercise_database",
           "type": "array",
           "items": {
@@ -1034,6 +1042,7 @@
                   "hip_adduction",
                   "plantar_flexion",
                   "spinal_flexion",
+                  "trunk_rotation",
                   "anti_extension",
                   "anti_rotation",
                   "loaded_carry",
@@ -1325,7 +1334,7 @@
         },
         "progression_rules": {
           "$schema": "https://json-schema.org/draft/2020-12/schema",
-          "$id": "https://comprehensive-fitness.local/schema/2.0.0/progression_rules.schema.json",
+          "$id": "https://comprehensive-fitness.local/schema/2.1.0/progression_rules.schema.json",
           "title": "progression_rules",
           "type": "array",
           "items": {
@@ -1545,7 +1554,7 @@
         },
         "nutrition_strategies": {
           "$schema": "https://json-schema.org/draft/2020-12/schema",
-          "$id": "https://comprehensive-fitness.local/schema/2.0.0/nutrition_strategies.schema.json",
+          "$id": "https://comprehensive-fitness.local/schema/2.1.0/nutrition_strategies.schema.json",
           "title": "nutrition_strategies",
           "type": "array",
           "items": {
@@ -1811,7 +1820,7 @@
         },
         "evidence_gaps": {
           "$schema": "https://json-schema.org/draft/2020-12/schema",
-          "$id": "https://comprehensive-fitness.local/schema/2.0.0/evidence_gaps.schema.json",
+          "$id": "https://comprehensive-fitness.local/schema/2.1.0/evidence_gaps.schema.json",
           "title": "evidence_gaps",
           "type": "array",
           "items": {
@@ -1918,7 +1927,7 @@
         },
         "definitions_data_dictionary": {
           "$schema": "https://json-schema.org/draft/2020-12/schema",
-          "$id": "https://comprehensive-fitness.local/schema/2.0.0/definitions_data_dictionary.schema.json",
+          "$id": "https://comprehensive-fitness.local/schema/2.1.0/definitions_data_dictionary.schema.json",
           "title": "definitions_data_dictionary",
           "type": "array",
           "items": {
@@ -1999,7 +2008,7 @@
         },
         "change_log": {
           "$schema": "https://json-schema.org/draft/2020-12/schema",
-          "$id": "https://comprehensive-fitness.local/schema/2.0.0/change_log.schema.json",
+          "$id": "https://comprehensive-fitness.local/schema/2.1.0/change_log.schema.json",
           "title": "change_log",
           "type": "array",
           "items": {
@@ -2092,7 +2101,7 @@
         },
         "exercise_muscle_map": {
           "$schema": "https://json-schema.org/draft/2020-12/schema",
-          "$id": "https://comprehensive-fitness.local/schema/2.0.0/exercise_muscle_map.schema.json",
+          "$id": "https://comprehensive-fitness.local/schema/2.1.0/exercise_muscle_map.schema.json",
           "title": "exercise_muscle_map",
           "type": "array",
           "items": {
@@ -2102,6 +2111,7 @@
               "exercise_muscle_map_id",
               "exercise_id",
               "muscle_group_id",
+              "programming_family_id",
               "relationship_type",
               "loading_role",
               "range_of_motion_role",
@@ -2131,6 +2141,13 @@
                 "pattern": "^[a-z][a-z0-9_]*$"
               },
               "muscle_group_id": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "programming_family_id": {
                 "type": [
                   "string",
                   "null"
@@ -2223,7 +2240,7 @@
         },
         "exercise_taxonomy_review_queue": {
           "$schema": "https://json-schema.org/draft/2020-12/schema",
-          "$id": "https://comprehensive-fitness.local/schema/2.0.0/exercise_taxonomy_review_queue.schema.json",
+          "$id": "https://comprehensive-fitness.local/schema/2.1.0/exercise_taxonomy_review_queue.schema.json",
           "title": "exercise_taxonomy_review_queue",
           "type": "array",
           "items": {
@@ -2289,7 +2306,7 @@
         },
         "exercise_substitution_map": {
           "$schema": "https://json-schema.org/draft/2020-12/schema",
-          "$id": "https://comprehensive-fitness.local/schema/2.0.0/exercise_substitution_map.schema.json",
+          "$id": "https://comprehensive-fitness.local/schema/2.1.0/exercise_substitution_map.schema.json",
           "title": "exercise_substitution_map",
           "type": "array",
           "items": {
@@ -2356,7 +2373,7 @@
         },
         "study_conclusion_map": {
           "$schema": "https://json-schema.org/draft/2020-12/schema",
-          "$id": "https://comprehensive-fitness.local/schema/2.0.0/study_conclusion_map.schema.json",
+          "$id": "https://comprehensive-fitness.local/schema/2.1.0/study_conclusion_map.schema.json",
           "title": "study_conclusion_map",
           "type": "array",
           "items": {
@@ -2401,7 +2418,7 @@
         },
         "study_exercise_map": {
           "$schema": "https://json-schema.org/draft/2020-12/schema",
-          "$id": "https://comprehensive-fitness.local/schema/2.0.0/study_exercise_map.schema.json",
+          "$id": "https://comprehensive-fitness.local/schema/2.1.0/study_exercise_map.schema.json",
           "title": "study_exercise_map",
           "type": "array",
           "items": {
@@ -2446,7 +2463,7 @@
         },
         "study_muscle_group_map": {
           "$schema": "https://json-schema.org/draft/2020-12/schema",
-          "$id": "https://comprehensive-fitness.local/schema/2.0.0/study_muscle_group_map.schema.json",
+          "$id": "https://comprehensive-fitness.local/schema/2.1.0/study_muscle_group_map.schema.json",
           "title": "study_muscle_group_map",
           "type": "array",
           "items": {
@@ -2491,7 +2508,7 @@
         },
         "rule_exercise_map": {
           "$schema": "https://json-schema.org/draft/2020-12/schema",
-          "$id": "https://comprehensive-fitness.local/schema/2.0.0/rule_exercise_map.schema.json",
+          "$id": "https://comprehensive-fitness.local/schema/2.1.0/rule_exercise_map.schema.json",
           "title": "rule_exercise_map",
           "type": "array",
           "items": {
@@ -2529,7 +2546,7 @@
         },
         "rule_muscle_group_map": {
           "$schema": "https://json-schema.org/draft/2020-12/schema",
-          "$id": "https://comprehensive-fitness.local/schema/2.0.0/rule_muscle_group_map.schema.json",
+          "$id": "https://comprehensive-fitness.local/schema/2.1.0/rule_muscle_group_map.schema.json",
           "title": "rule_muscle_group_map",
           "type": "array",
           "items": {
@@ -2567,7 +2584,7 @@
         },
         "exercise_progression_metric_map": {
           "$schema": "https://json-schema.org/draft/2020-12/schema",
-          "$id": "https://comprehensive-fitness.local/schema/2.0.0/exercise_progression_metric_map.schema.json",
+          "$id": "https://comprehensive-fitness.local/schema/2.1.0/exercise_progression_metric_map.schema.json",
           "title": "exercise_progression_metric_map",
           "type": "array",
           "items": {

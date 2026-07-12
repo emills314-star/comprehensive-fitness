@@ -2834,95 +2834,143 @@
   {
     "study_exercise_map_id": "sem_00473",
     "study_id": "stu_0004",
-    "exercise_id": "ex_neck_flexion",
+    "exercise_id": "ex_cable_woodchop",
     "relationship_type": "movement_pattern_inference"
   },
   {
     "study_exercise_map_id": "sem_00474",
     "study_id": "stu_0005",
-    "exercise_id": "ex_neck_flexion",
+    "exercise_id": "ex_cable_woodchop",
     "relationship_type": "movement_pattern_inference"
   },
   {
     "study_exercise_map_id": "sem_00475",
     "study_id": "stu_0007",
-    "exercise_id": "ex_neck_flexion",
+    "exercise_id": "ex_cable_woodchop",
     "relationship_type": "movement_pattern_inference"
   },
   {
     "study_exercise_map_id": "sem_00476",
     "study_id": "stu_0008",
-    "exercise_id": "ex_neck_flexion",
+    "exercise_id": "ex_cable_woodchop",
     "relationship_type": "movement_pattern_inference"
   },
   {
     "study_exercise_map_id": "sem_00477",
     "study_id": "stu_0009",
-    "exercise_id": "ex_neck_flexion",
+    "exercise_id": "ex_cable_woodchop",
     "relationship_type": "movement_pattern_inference"
   },
   {
     "study_exercise_map_id": "sem_00478",
     "study_id": "stu_0010",
-    "exercise_id": "ex_neck_flexion",
+    "exercise_id": "ex_cable_woodchop",
     "relationship_type": "movement_pattern_inference"
   },
   {
     "study_exercise_map_id": "sem_00479",
     "study_id": "stu_0011",
-    "exercise_id": "ex_neck_flexion",
+    "exercise_id": "ex_cable_woodchop",
     "relationship_type": "movement_pattern_inference"
   },
   {
     "study_exercise_map_id": "sem_00480",
     "study_id": "stu_0012",
-    "exercise_id": "ex_neck_flexion",
+    "exercise_id": "ex_cable_woodchop",
     "relationship_type": "movement_pattern_inference"
   },
   {
     "study_exercise_map_id": "sem_00481",
     "study_id": "stu_0004",
-    "exercise_id": "ex_neck_extension",
+    "exercise_id": "ex_neck_flexion",
     "relationship_type": "movement_pattern_inference"
   },
   {
     "study_exercise_map_id": "sem_00482",
     "study_id": "stu_0005",
-    "exercise_id": "ex_neck_extension",
+    "exercise_id": "ex_neck_flexion",
     "relationship_type": "movement_pattern_inference"
   },
   {
     "study_exercise_map_id": "sem_00483",
     "study_id": "stu_0007",
-    "exercise_id": "ex_neck_extension",
+    "exercise_id": "ex_neck_flexion",
     "relationship_type": "movement_pattern_inference"
   },
   {
     "study_exercise_map_id": "sem_00484",
     "study_id": "stu_0008",
-    "exercise_id": "ex_neck_extension",
+    "exercise_id": "ex_neck_flexion",
     "relationship_type": "movement_pattern_inference"
   },
   {
     "study_exercise_map_id": "sem_00485",
     "study_id": "stu_0009",
-    "exercise_id": "ex_neck_extension",
+    "exercise_id": "ex_neck_flexion",
     "relationship_type": "movement_pattern_inference"
   },
   {
     "study_exercise_map_id": "sem_00486",
     "study_id": "stu_0010",
-    "exercise_id": "ex_neck_extension",
+    "exercise_id": "ex_neck_flexion",
     "relationship_type": "movement_pattern_inference"
   },
   {
     "study_exercise_map_id": "sem_00487",
     "study_id": "stu_0011",
-    "exercise_id": "ex_neck_extension",
+    "exercise_id": "ex_neck_flexion",
     "relationship_type": "movement_pattern_inference"
   },
   {
     "study_exercise_map_id": "sem_00488",
+    "study_id": "stu_0012",
+    "exercise_id": "ex_neck_flexion",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00489",
+    "study_id": "stu_0004",
+    "exercise_id": "ex_neck_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00490",
+    "study_id": "stu_0005",
+    "exercise_id": "ex_neck_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00491",
+    "study_id": "stu_0007",
+    "exercise_id": "ex_neck_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00492",
+    "study_id": "stu_0008",
+    "exercise_id": "ex_neck_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00493",
+    "study_id": "stu_0009",
+    "exercise_id": "ex_neck_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00494",
+    "study_id": "stu_0010",
+    "exercise_id": "ex_neck_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00495",
+    "study_id": "stu_0011",
+    "exercise_id": "ex_neck_extension",
+    "relationship_type": "movement_pattern_inference"
+  },
+  {
+    "study_exercise_map_id": "sem_00496",
     "study_id": "stu_0012",
     "exercise_id": "ex_neck_extension",
     "relationship_type": "movement_pattern_inference"

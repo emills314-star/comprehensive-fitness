@@ -1,7 +1,67 @@
 "use strict";
 
-const TAXONOMY_VERSION = "2.0.0";
+const TAXONOMY_VERSION = "2.1.0";
 const TAXONOMY_REVIEW_DATE = "2026-07-12";
+
+// Canonical anatomical IDs remain stable. Programming families are an explicit
+// projection used only when one exercise would otherwise receive duplicate
+// hypertrophy credit for subdivisions of the same practical training target.
+const CANONICAL_TO_PROGRAMMING_FAMILY = Object.freeze({
+  mg_chest_sternal: "chest",
+  mg_chest_clavicular: "chest",
+  mg_upper_back: "upper_back",
+  mg_lats: "lats",
+  mg_traps_upper: "traps",
+  mg_front_delts: "front_delts",
+  mg_side_delts: "side_delts",
+  mg_rear_delts: "rear_delts",
+  mg_biceps: "biceps",
+  mg_triceps: "triceps",
+  mg_forearms: "forearms",
+  mg_spinal_erectors: "spinal_erectors",
+  mg_abdominals: "abs",
+  mg_obliques: "obliques",
+  mg_glutes_max: "glutes",
+  mg_quadriceps: "quads",
+  mg_hamstrings: "hamstrings",
+  mg_adductors: "adductors",
+  mg_abductors: "abductors",
+  mg_calves_gastroc: "calves",
+  mg_calves_soleus: "calves",
+  mg_neck_flexors: "neck",
+  mg_neck_extensors: "neck"
+});
+
+const PROGRAMMING_FAMILY_ALIASES = Object.freeze({
+  abs: "abs",
+  abdominals: "abs",
+  calves_gastroc: "calves",
+  calves_soleus: "calves",
+  chest_clavicular: "chest",
+  chest_sternal: "chest",
+  glutes_max: "glutes",
+  neck_extensors: "neck",
+  neck_flexors: "neck",
+  neck_musculature: "neck",
+  quads: "quads",
+  quadriceps: "quads",
+  traps_upper: "traps"
+});
+
+const PROGRAMMING_FAMILIES = Object.freeze([...new Set(Object.values(CANONICAL_TO_PROGRAMMING_FAMILY))]);
+
+function normalizeMuscleId(value) {
+  return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+}
+
+function programmingFamilyForMuscle(value) {
+  const normalized = normalizeMuscleId(value);
+  if (!normalized) return null;
+  const canonical = normalized.startsWith("mg_") ? normalized : `mg_${normalized}`;
+  if (CANONICAL_TO_PROGRAMMING_FAMILY[canonical]) return CANONICAL_TO_PROGRAMMING_FAMILY[canonical];
+  const family = PROGRAMMING_FAMILY_ALIASES[normalized] || normalized.replace(/^mg_/, "");
+  return PROGRAMMING_FAMILIES.includes(family) ? family : null;
+}
 
 const TYPES = Object.freeze({
   DIRECT: "direct_load",
@@ -75,7 +135,11 @@ const REVIEWED_OVERRIDES = Object.freeze({
   ex_hanging_leg_raise: [D("mg_abdominals"), S("mg_forearms", 0.5)],
   ex_ab_wheel: [D("mg_abdominals", { loadingRole: "mixed" }), S("mg_lats", 0.4)],
   ex_pallof_press: [S("mg_obliques", 0.8), S("mg_abdominals", 0.5)],
-  ex_side_plank: [S("mg_obliques", 0.8), S("mg_abductors", 0.5)]
+  ex_side_plank: [S("mg_obliques", 0.8), S("mg_abductors", 0.5)],
+  ex_cable_woodchop: [
+    D("mg_obliques", { evidenceBasis: "dynamic_resisted_trunk_rotation_anatomy_and_movement_pattern_inference", confidence: "moderate" }),
+    F("mg_abdominals", 0.25, { evidenceBasis: "trunk_flexion_and_bracing_contribution_varies_with_cable_path", confidence: "low" })
+  ]
 });
 
 function buildExerciseMuscleTaxonomy(exercises) {
@@ -91,6 +155,7 @@ function buildExerciseMuscleTaxonomy(exercises) {
       exercise_muscle_map_id: `emm_${String(rows.length + 1).padStart(4, "0")}`,
       exercise_id: exercise.exercise_id,
       ...entry,
+      programming_family_id: programmingFamilyForMuscle(entry.muscle_group_id),
       taxonomy_version: TAXONOMY_VERSION,
       last_reviewed_date: TAXONOMY_REVIEW_DATE
     }));
@@ -108,4 +173,14 @@ function buildExerciseMuscleTaxonomy(exercises) {
   return { rows, reviewQueue };
 }
 
-module.exports = { TAXONOMY_VERSION, TAXONOMY_REVIEW_DATE, TYPES, REVIEWED_OVERRIDES, buildExerciseMuscleTaxonomy };
+module.exports = {
+  TAXONOMY_VERSION,
+  TAXONOMY_REVIEW_DATE,
+  TYPES,
+  CANONICAL_TO_PROGRAMMING_FAMILY,
+  PROGRAMMING_FAMILY_ALIASES,
+  PROGRAMMING_FAMILIES,
+  programmingFamilyForMuscle,
+  REVIEWED_OVERRIDES,
+  buildExerciseMuscleTaxonomy
+};
