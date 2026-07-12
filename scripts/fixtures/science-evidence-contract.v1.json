@@ -1,0 +1,115 @@
+{
+  "contract_version": "science-evidence-contract/1.0.0",
+  "required_fields": {
+    "research_library": ["pubmed_id", "pmc_id"],
+    "progression_rules": ["supporting_conclusion_ids", "rule_authority", "enforcement_level", "policy_disclosure"]
+  },
+  "field_values": {
+    "rule_authority": ["evidence", "product_policy", "safety"],
+    "enforcement_level": ["advisory", "hard_blocker"]
+  },
+  "required_studies": [
+    {
+      "study_id": "stu_0043",
+      "doi": "10.1249/MSS.0000000000003897",
+      "pubmed_id": "41843416",
+      "pmc_id": "PMC12965823",
+      "publication_year": 2026,
+      "study_type": "position_stand",
+      "male_sample_size": null,
+      "total_sample_size": null,
+      "male_applicability": "indirect",
+      "limitations_pattern": "137|30,?000|umbrella|overlap|male"
+    },
+    {
+      "study_id": "stu_0044",
+      "doi": "10.1007/s40279-024-02069-2",
+      "pubmed_id": "38970765",
+      "pmc_id": "",
+      "publication_year": 2024,
+      "study_type": "systematic_review_meta_analysis",
+      "male_sample_size": null,
+      "total_sample_size": null,
+      "male_applicability": "indirect",
+      "limitations_pattern": "estimated RIR|exploratory|model fit|aggregate"
+    },
+    {
+      "study_id": "stu_0045",
+      "doi": "10.1080/02640414.2024.2321021",
+      "pubmed_id": "38393985",
+      "pmc_id": "",
+      "publication_year": 2024,
+      "study_type": "randomized_controlled_trial",
+      "male_sample_size": 12,
+      "total_sample_size": 18,
+      "male_applicability": "indirect",
+      "limitations_pattern": "small|mixed.sex|quadriceps|eight.week"
+    },
+    {
+      "study_id": "stu_0046",
+      "doi": "10.7717/peerj.16777",
+      "pubmed_id": "38274324",
+      "pmc_id": "PMC10809978",
+      "publication_year": 2024,
+      "study_type": "randomized_controlled_trial",
+      "male_sample_size": 29,
+      "total_sample_size": 39,
+      "male_applicability": "indirect",
+      "limitations_pattern": "cessation|not.*reduced|nine.week|9.week"
+    },
+    {
+      "study_id": "stu_0047",
+      "doi": "10.1519/JSC.0000000000004460",
+      "pubmed_id": "37015016",
+      "pmc_id": "",
+      "publication_year": 2023,
+      "study_type": "randomized_controlled_trial",
+      "male_sample_size": 0,
+      "total_sample_size": 42,
+      "male_applicability": "excluded",
+      "limitations_pattern": "female|women|untrained|gastrocnemius|ultrasound"
+    },
+    {
+      "study_id": "stu_0048",
+      "doi": "10.1016/j.jshs.2020.11.008",
+      "pubmed_id": "33246163",
+      "pmc_id": "PMC9189698",
+      "publication_year": 2022,
+      "study_type": "systematic_review_meta_analysis",
+      "male_sample_size": null,
+      "total_sample_size": 412,
+      "male_applicability": "indirect",
+      "limitations_pattern": "acute|threshold|causal|readiness|heterogen"
+    }
+  ],
+  "existing_study_enrichments": {
+    "stu_0001": { "pubmed_id": "41343037", "publication_year": 2026, "notes_pattern": "ePub|2025|print" },
+    "stu_0004": { "pubmed_id": "33433148", "title_pattern": "Systematic Review|Network Meta-analysis" },
+    "stu_0007": { "pubmed_id": "39205815", "title_pattern": "systematic review|Bayesian meta-analysis" },
+    "stu_0009": { "pubmed_id": "32077380", "title_pattern": "systematic review|meta-analysis" },
+    "stu_0010": { "pubmed_id": "37582807" },
+    "stu_0012": { "pubmed_id": "36662126", "publication_year": 2023, "notes_pattern": "ePub|2022|print" },
+    "stu_0031": { "pubmed_id": "33776802" }
+  },
+  "required_conclusions": [
+    { "conclusion_id": "con_0028", "topic": "resistance_training_scope", "supporting_study_ids": ["stu_0043"] },
+    { "conclusion_id": "con_0029", "topic": "proximity_to_failure_uncertainty", "supporting_study_ids": ["stu_0044", "stu_0045"] },
+    { "conclusion_id": "con_0030", "topic": "deload_uncertainty", "supporting_study_ids": ["stu_0046"] },
+    { "conclusion_id": "con_0031", "topic": "readiness_hrv_uncertainty", "supporting_study_ids": ["stu_0048"] }
+  ],
+  "policy_rule_ids": [
+    "rule_0001", "rule_0002", "rule_0003", "rule_0004", "rule_0005", "rule_0006",
+    "rule_0007", "rule_0008", "rule_0009", "rule_0010", "rule_0011", "rule_0012",
+    "rule_0013", "rule_0014", "rule_0015", "rule_0016", "rule_0017", "rule_0018"
+  ],
+  "immediate_pain_rule_id": "rule_0019",
+  "allowed_hard_blocker_pattern": "illness|pain|explicit.exclusion|equipment|numeric|invalid.value",
+  "policy_disclosure_pattern": "product policy|heuristic|advisory|not universal|configurable",
+  "append_only_baseline": {
+    "database_version": "2.1.0",
+    "research_library": { "id_prefix": "stu_", "maximum_suffix": 42 },
+    "evidence_conclusions": { "id_prefix": "con_", "maximum_suffix": 27 },
+    "progression_rules": { "id_prefix": "rule_", "maximum_suffix": 18 },
+    "change_log": { "id_prefix": "chg_", "maximum_suffix": 4 }
+  }
+}
