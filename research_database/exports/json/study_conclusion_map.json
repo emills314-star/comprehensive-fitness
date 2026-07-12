@@ -328,5 +328,35 @@
     "study_id": "stu_0014",
     "conclusion_id": "con_0027",
     "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0056",
+    "study_id": "stu_0043",
+    "conclusion_id": "con_0028",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0057",
+    "study_id": "stu_0044",
+    "conclusion_id": "con_0029",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0058",
+    "study_id": "stu_0045",
+    "conclusion_id": "con_0029",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0059",
+    "study_id": "stu_0046",
+    "conclusion_id": "con_0030",
+    "relationship_type": "supports"
+  },
+  {
+    "study_conclusion_map_id": "scm_0060",
+    "study_id": "stu_0048",
+    "conclusion_id": "con_0031",
+    "relationship_type": "supports"
   }
 ]

@@ -552,6 +552,18 @@
     "used_in_tabs": "muscle_group_recommendations"
   },
   {
+    "field_name": "enforcement_level",
+    "display_name": "Enforcement Level",
+    "definition": "Whether the rule is advisory or a deterministic hard blocker.",
+    "data_type": "string",
+    "allowed_values": "advisory|hard_blocker",
+    "unit": "",
+    "nullable": true,
+    "example_value": "",
+    "validation_rule": "must_be_one_of:advisory|hard_blocker",
+    "used_in_tabs": "progression_rules"
+  },
+  {
     "field_name": "equipment",
     "display_name": "Equipment",
     "definition": "Structured field for equipment; see the owning table and methodology for interpretation.",
@@ -1368,6 +1380,30 @@
     "used_in_tabs": "research_library"
   },
   {
+    "field_name": "pmc_id",
+    "display_name": "Pmc Id",
+    "definition": "PubMed Central identifier in PMC-plus-digits form; empty only when no verified full-text archive record is available.",
+    "data_type": "string",
+    "allowed_values": "",
+    "unit": "",
+    "nullable": true,
+    "example_value": "",
+    "validation_rule": "empty_or_PMC_followed_by_digits",
+    "used_in_tabs": "research_library"
+  },
+  {
+    "field_name": "policy_disclosure",
+    "display_name": "Policy Disclosure",
+    "definition": "Plain-language disclosure distinguishing configurable operational policy from directly established scientific thresholds.",
+    "data_type": "string",
+    "allowed_values": "",
+    "unit": "",
+    "nullable": true,
+    "example_value": "",
+    "validation_rule": "type_must_match",
+    "used_in_tabs": "progression_rules"
+  },
+  {
     "field_name": "practical_default",
     "display_name": "Practical Default",
     "definition": "Structured field for practical default; see the owning table and methodology for interpretation.",
@@ -1533,6 +1569,18 @@
     "nullable": true,
     "example_value": "",
     "validation_rule": "type_must_match",
+    "used_in_tabs": "research_library"
+  },
+  {
+    "field_name": "pubmed_id",
+    "display_name": "Pubmed Id",
+    "definition": "PubMed identifier as seven to nine digits; empty only when no verified PubMed record is available.",
+    "data_type": "string",
+    "allowed_values": "",
+    "unit": "",
+    "nullable": true,
+    "example_value": "",
+    "validation_rule": "empty_or_7_to_9_digit_pubmed_id",
     "used_in_tabs": "research_library"
   },
   {
@@ -2052,6 +2100,18 @@
     "used_in_tabs": "evidence_gaps"
   },
   {
+    "field_name": "rule_authority",
+    "display_name": "Rule Authority",
+    "definition": "Whether a rule expresses evidence interpretation, configurable product policy, or deterministic safety authority.",
+    "data_type": "string",
+    "allowed_values": "evidence|product_policy|safety",
+    "unit": "",
+    "nullable": true,
+    "example_value": "",
+    "validation_rule": "must_be_one_of:evidence|product_policy|safety",
+    "used_in_tabs": "progression_rules"
+  },
+  {
     "field_name": "rule_category",
     "display_name": "Rule Category",
     "definition": "Structured field for rule category; see the owning table and methodology for interpretation.",
@@ -2422,6 +2482,18 @@
     "example_value": "",
     "validation_rule": "lowercase_snake_case_persistent_id",
     "used_in_tabs": "executive_summary"
+  },
+  {
+    "field_name": "supporting_conclusion_ids",
+    "display_name": "Supporting Conclusion Ids",
+    "definition": "Pipe-delimited persistent evidence-conclusion IDs that explain the rule's scientific scope; at least one cited study must overlap those conclusions.",
+    "data_type": "delimited_string",
+    "allowed_values": "",
+    "unit": "",
+    "nullable": true,
+    "example_value": "",
+    "validation_rule": "type_must_match",
+    "used_in_tabs": "progression_rules"
   },
   {
     "field_name": "supporting_study_ids",

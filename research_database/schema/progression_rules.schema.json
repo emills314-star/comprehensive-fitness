@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://comprehensive-fitness.local/schema/2.1.0/progression_rules.schema.json",
+  "$id": "https://comprehensive-fitness.local/schema/3.0.0/progression_rules.schema.json",
   "title": "progression_rules",
   "type": "array",
   "items": {
@@ -30,6 +30,10 @@
       "rest_adjustment_seconds",
       "exceptions",
       "supporting_study_ids",
+      "supporting_conclusion_ids",
+      "rule_authority",
+      "enforcement_level",
+      "policy_disclosure",
       "direct_or_inferred_rule",
       "evidence_strength",
       "confidence_rating",
@@ -170,6 +174,41 @@
         ]
       },
       "supporting_study_ids": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "supporting_conclusion_ids": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "rule_authority": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "enum": [
+          "evidence",
+          "product_policy",
+          "safety",
+          null
+        ]
+      },
+      "enforcement_level": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "enum": [
+          "advisory",
+          "hard_blocker",
+          null
+        ]
+      },
+      "policy_disclosure": {
         "type": [
           "string",
           "null"

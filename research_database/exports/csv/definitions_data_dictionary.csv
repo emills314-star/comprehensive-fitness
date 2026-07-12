@@ -45,6 +45,7 @@ display_name,Display Name,Structured field for display name; see the owning tabl
 doi,Doi,Structured field for doi; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,research_library
 effect_size,Effect Size,Structured field for effect size; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,research_library
 effective_exercises,Effective Exercises,Structured field for effective exercises; see the owning table and methodology for interpretation.,delimited_string,,,true,,type_must_match,muscle_group_recommendations
+enforcement_level,Enforcement Level,Whether the rule is advisory or a deterministic hard blocker.,string,advisory|hard_blocker,,true,,must_be_one_of:advisory|hard_blocker,progression_rules
 equipment,Equipment,Structured field for equipment; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,exercise_database
 evidence_basis,Evidence Basis,Structured field for evidence basis; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,exercise_muscle_map
 evidence_gap_id,Evidence Gap Id,Structured field for evidence gap id; see the owning table and methodology for interpretation.,string,,,true,,lowercase_snake_case_persistent_id,evidence_gaps
@@ -113,6 +114,8 @@ participant_age_mean,Participant Age Mean,Structured field for participant age m
 participant_age_range,Participant Age Range,Structured field for participant age range; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,research_library
 participant_training_status,Participant Training Status,Structured field for participant training status; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,research_library
 permanent_url,Permanent Url,Structured field for permanent url; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,research_library
+pmc_id,Pmc Id,PubMed Central identifier in PMC-plus-digits form; empty only when no verified full-text archive record is available.,string,,,true,,empty_or_PMC_followed_by_digits,research_library
+policy_disclosure,Policy Disclosure,Plain-language disclosure distinguishing configurable operational policy from directly established scientific thresholds.,string,,,true,,type_must_match,progression_rules
 practical_default,Practical Default,Structured field for practical default; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,evidence_gaps
 practical_range_text,Practical Range Text,Structured field for practical range text; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,evidence_conclusions
 practical_recommendation,Practical Recommendation,Structured field for practical recommendation; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,executive_summary
@@ -127,6 +130,7 @@ programming_family_id,Programming Family Id,Stable practical training family use
 protein_g_per_kg_high,Protein G Per Kg High,Structured field for protein g per kg high; see the owning table and methodology for interpretation.,decimal,,g_per_kg_per_day,true,,type_must_match,nutrition_strategies
 protein_g_per_kg_low,Protein G Per Kg Low,Structured field for protein g per kg low; see the owning table and methodology for interpretation.,decimal,,g_per_kg_per_day,true,,type_must_match,nutrition_strategies
 publication_year,Publication Year,Structured field for publication year; see the owning table and methodology for interpretation.,integer,,,true,,type_must_match,research_library
+pubmed_id,Pubmed Id,PubMed identifier as seven to nine digits; empty only when no verified PubMed record is available.,string,,,true,,empty_or_7_to_9_digit_pubmed_id,research_library
 range_of_motion_criteria,Range Of Motion Criteria,Structured field for range of motion criteria; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,exercise_database
 range_of_motion_role,Range Of Motion Role,Structured field for range of motion role; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,exercise_muscle_map
 reason,Reason,Structured field for reason; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,exercise_substitution_map
@@ -170,6 +174,7 @@ reviewer_notes,Reviewer Notes,Structured field for reviewer notes; see the ownin
 rir_adjustment,Rir Adjustment,Structured field for rir adjustment; see the owning table and methodology for interpretation.,decimal,,,true,,type_must_match,progression_rules
 risk_of_bias,Risk Of Bias,Structured field for risk of bias; see the owning table and methodology for interpretation.,string,low|some_concerns|high|not_formally_assessed|varies_across_included_studies,,true,,must_be_one_of:low|some_concerns|high|not_formally_assessed|varies_across_included_studies,research_library
 risk_of_wrong_application,Risk Of Wrong Application,Structured field for risk of wrong application; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,evidence_gaps
+rule_authority,Rule Authority,"Whether a rule expresses evidence interpretation, configurable product policy, or deterministic safety authority.",string,evidence|product_policy|safety,,true,,must_be_one_of:evidence|product_policy|safety,progression_rules
 rule_category,Rule Category,Structured field for rule category; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,progression_rules
 rule_exercise_map_id,Rule Exercise Map Id,Structured field for rule exercise map id; see the owning table and methodology for interpretation.,string,,,true,,lowercase_snake_case_persistent_id,rule_exercise_map
 rule_id,Rule Id,Persistent unique identifier for an application rule.,string,,,false,,lowercase_snake_case_persistent_id,progression_rules|rule_exercise_map|rule_muscle_group_map
@@ -201,6 +206,7 @@ substitution_similarity,Substitution Similarity,Structured field for substitutio
 substitution_triggers,Substitution Triggers,Structured field for substitution triggers; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,exercise_database
 suggested_substitutions,Suggested Substitutions,Structured field for suggested substitutions; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,exercise_database
 summary_id,Summary Id,Structured field for summary id; see the owning table and methodology for interpretation.,string,,,true,,lowercase_snake_case_persistent_id,executive_summary
+supporting_conclusion_ids,Supporting Conclusion Ids,Pipe-delimited persistent evidence-conclusion IDs that explain the rule's scientific scope; at least one cited study must overlap those conclusions.,delimited_string,,,true,,type_must_match,progression_rules
 supporting_study_ids,Supporting Study Ids,Pipe-delimited persistent study IDs; normalized equivalent is provided in relationship tables.,delimited_string,,,true,,type_must_match,executive_summary|evidence_conclusions|muscle_group_recommendations|exercise_database|progression_rules|nutrition_strategies|evidence_gaps|change_log|exercise_muscle_map
 systemic_fatigue_cost,Systemic Fatigue Cost,Structured field for systemic fatigue cost; see the owning table and methodology for interpretation.,string,,,true,,type_must_match,exercise_database
 target_weight_change_rate_high,Target Weight Change Rate High,Structured field for target weight change rate high; see the owning table and methodology for interpretation.,decimal,,,true,,type_must_match,nutrition_strategies

@@ -1,4 +1,4 @@
--- Generated schema for male resistance-training evidence database v2.1.0
+-- Generated schema for male resistance-training evidence database v3.0.0
 -- Pipe-delimited list fields have normalized mapping-table equivalents where relationships are frequently queried.
 
 CREATE TABLE executive_summary (
@@ -21,6 +21,8 @@ CREATE TABLE research_library (
   study_title TEXT,
   journal TEXT,
   doi TEXT,
+  pubmed_id TEXT,
+  pmc_id TEXT,
   permanent_url TEXT,
   study_type TEXT,
   research_topic TEXT,
@@ -192,6 +194,10 @@ CREATE TABLE progression_rules (
   rest_adjustment_seconds INTEGER,
   exceptions TEXT,
   supporting_study_ids TEXT,
+  supporting_conclusion_ids TEXT,
+  rule_authority TEXT,
+  enforcement_level TEXT,
+  policy_disclosure TEXT,
   direct_or_inferred_rule TEXT,
   evidence_strength TEXT,
   confidence_rating TEXT,

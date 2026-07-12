@@ -1,19 +1,19 @@
 # Bibliography
 
-Database version 2.1.0; reviewed 2026-07-12. IDs are persistent and correspond to the research library. Links resolve through DOI.org when a DOI is available.
+Database version 3.0.0; reviewed 2026-07-12. IDs are persistent and correspond to the research library. Links resolve through DOI.org when a DOI is available.
 
-- **stu_0001** — Pelland et al. (2025). The Resistance Training Dose Response: Meta-Regressions Exploring the Effects of Weekly Volume and Frequency on Muscle Hypertrophy and Strength Gains. Sports Medicine. https://doi.org/10.1007/s40279-025-02344-w
+- **stu_0001** — Pelland et al. (2026). The Resistance Training Dose Response: Meta-Regressions Exploring the Effects of Weekly Volume and Frequency on Muscle Hypertrophy and Strength Gains. Sports Medicine. https://doi.org/10.1007/s40279-025-02344-w
 - **stu_0002** — Schoenfeld, Ogborn, and Krieger (2017). Dose-response relationship between weekly resistance training volume and increases in muscle mass. Journal of Sports Sciences. https://doi.org/10.1080/02640414.2016.1210197
 - **stu_0003** — Schoenfeld, Grgic, and Krieger (2019). How many times per week should a muscle be trained to maximize muscle hypertrophy?. Journal of Sports Sciences. https://doi.org/10.1080/02640414.2018.1555906
-- **stu_0004** — Lopez et al. (2021). Resistance Training Load Effects on Muscle Hypertrophy and Strength Gain. Medicine and Science in Sports and Exercise. https://doi.org/10.1249/MSS.0000000000002585
+- **stu_0004** — Lopez et al. (2021). Resistance Training Load Effects on Muscle Hypertrophy and Strength Gain: Systematic Review and Network Meta-analysis. Medicine and Science in Sports and Exercise. https://doi.org/10.1249/MSS.0000000000002585
 - **stu_0005** — Refalo et al. (2023). Influence of Resistance Training Proximity-to-Failure on Skeletal Muscle Hypertrophy. Sports Medicine. https://doi.org/10.1007/s40279-022-01784-y
 - **stu_0006** — Grgic et al. (2022). Effects of resistance training performed to repetition failure or non-failure. Journal of Sport and Health Science. https://doi.org/10.1016/j.jshs.2021.01.007
-- **stu_0007** — Singer et al. (2024). Give it a rest: effect of inter-set rest interval duration on muscle hypertrophy. Frontiers in Sports and Active Living. https://doi.org/10.3389/fspor.2024.1429789
+- **stu_0007** — Singer et al. (2024). Give it a rest: a systematic review with Bayesian meta-analysis on the effect of inter-set rest interval duration on muscle hypertrophy. Frontiers in Sports and Active Living. https://doi.org/10.3389/fspor.2024.1429789
 - **stu_0008** — Schoenfeld, Ogborn, and Krieger (2015). Effect of repetition duration during resistance training on muscle hypertrophy. Sports Medicine. https://doi.org/10.1007/s40279-015-0304-0
-- **stu_0009** — Nunes et al. (2021). What influence does resistance exercise order have on muscular strength gains and muscle hypertrophy?. European Journal of Sport Science. https://doi.org/10.1080/17461391.2020.1733672
+- **stu_0009** — Nunes et al. (2021). What influence does resistance exercise order have on muscular strength gains and muscle hypertrophy? A systematic review and meta-analysis. European Journal of Sport Science. https://doi.org/10.1080/17461391.2020.1733672
 - **stu_0010** — Haugen et al. (2023). Effect of free-weight vs. machine-based strength training on maximal strength, hypertrophy and jump performance. BMC Sports Science Medicine and Rehabilitation. https://doi.org/10.1186/s13102-023-00713-4
 - **stu_0011** — Pallarés et al. (2021). Effects of range of motion on resistance training adaptations. Scandinavian Journal of Medicine and Science in Sports. https://doi.org/10.1111/sms.14006
-- **stu_0012** — Kassiano et al. (2023). Which ROMs Lead to Rome?. Journal of Strength and Conditioning Research. https://doi.org/10.1519/JSC.0000000000004415
+- **stu_0012** — Kassiano et al. (2023). Which ROMs Lead to Rome? A Systematic Review of the Effects of Range of Motion on Muscle Hypertrophy. Journal of Strength and Conditioning Research. https://doi.org/10.1519/JSC.0000000000004415
 - **stu_0013** — Varovic et al. (2025). Does Muscle Length Influence Regional Hypertrophy?. International Journal of Sports Medicine. https://doi.org/10.1055/a-2615-4935
 - **stu_0014** — Fonseca et al. (2023). Comparison of Traditional and Advanced Resistance Training Paradigms on Muscle Hypertrophy in Trained Individuals. BioMed Research International. https://doi.org/10.1155/2023/9507977
 - **stu_0015** — Moesgaard et al. (2022). Effects of Periodization on Strength and Muscle Hypertrophy in Volume-Equated Resistance Training Programs. Sports Medicine. https://doi.org/10.1007/s40279-021-01636-1
@@ -32,7 +32,7 @@ Database version 2.1.0; reviewed 2026-07-12. IDs are persistent and correspond t
 - **stu_0028** — Androulakis-Korakakis et al. (2020). The Minimum Effective Training Dose Required to Increase 1RM Strength in Resistance-Trained Men. Sports Medicine. https://doi.org/10.1007/s40279-019-01236-0
 - **stu_0029** — Helms et al. (2018). RPE and Velocity Relationships for the Back Squat, Bench Press, and Deadlift in Powerlifters. Journal of Strength and Conditioning Research. https://doi.org/10.1519/JSC.0000000000002778
 - **stu_0030** — Zourdos et al. (2016). Novel Resistance Training-Specific Rating of Perceived Exertion Scale Measuring Repetitions in Reserve. Journal of Strength and Conditioning Research. https://doi.org/10.1519/JSC.0000000000001049
-- **stu_0031** — Zhang et al. (2021). Auto-Regulation Method vs Fixed-Loading Method in Maximum Strength Training for Athletes. Frontiers in Physiology. https://doi.org/10.3389/fphys.2021.651112
+- **stu_0031** — Zhang et al. (2021). Auto-Regulation Method vs. Fixed-Loading Method in Maximum Strength Training for Athletes: A Systematic Review and Meta-Analysis. Frontiers in Physiology. https://doi.org/10.3389/fphys.2021.651112
 - **stu_0032** — Jukic et al. (2021). The Acute and Chronic Effects of Implementing Velocity Loss Thresholds During Resistance Training. Sports Medicine. https://doi.org/10.1007/s40279-020-01382-2
 - **stu_0033** — Schoenfeld and Aragon (2018). How much protein can the body use in a single meal for muscle-building?. Journal of the International Society of Sports Nutrition. https://doi.org/10.1186/s12970-018-0215-1
 - **stu_0034** — Yasuda et al. (2020). Evenly Distributed Protein Intake over 3 Meals Augments Resistance Exercise-Induced Muscle Hypertrophy in Healthy Young Men. Journal of Nutrition. https://doi.org/10.1093/jn/nxaa101
@@ -44,3 +44,9 @@ Database version 2.1.0; reviewed 2026-07-12. IDs are persistent and correspond t
 - **stu_0040** — Alizadeh et al. (2023). Resistance Training Induces Improvements in Range of Motion. Sports Medicine. https://doi.org/10.1007/s40279-022-01804-x
 - **stu_0041** — Martín-Fuentes et al. (2020). Electromyographic activity in deadlift exercise and its variants: a systematic review. PLOS ONE. https://doi.org/10.1371/journal.pone.0229507
 - **stu_0042** — Lee et al. (2018). An electromyographic and kinetic comparison of conventional and Romanian deadlifts. Journal of Exercise Science & Fitness. https://doi.org/10.1016/j.jesf.2018.08.001
+- **stu_0043** — Currier et al. (2026). American College of Sports Medicine Position Stand. Resistance Training Prescription for Muscle Function, Hypertrophy, and Physical Performance in Healthy Adults: An Overview of Reviews. Medicine and Science in Sports and Exercise. https://doi.org/10.1249/MSS.0000000000003897
+- **stu_0044** — Robinson et al. (2024). Exploring the Dose-Response Relationship Between Estimated Resistance Training Proximity to Failure, Strength Gain, and Muscle Hypertrophy: A Series of Meta-Regressions. Sports Medicine. https://doi.org/10.1007/s40279-024-02069-2
+- **stu_0045** — Refalo et al. (2024). Similar muscle hypertrophy following eight weeks of resistance training to momentary muscular failure or with repetitions-in-reserve in resistance-trained individuals. Journal of Sports Sciences. https://doi.org/10.1080/02640414.2024.2321021
+- **stu_0046** — Coleman et al. (2024). Gaining more from doing less? The effects of a one-week deload period during supervised resistance training on muscular adaptations. PeerJ. https://doi.org/10.7717/peerj.16777
+- **stu_0047** — Kassiano et al. (2023). Greater Gastrocnemius Muscle Hypertrophy After Partial Range of Motion Training Performed at Long Muscle Lengths. Journal of Strength and Conditioning Research. https://doi.org/10.1519/JSC.0000000000004460 *(excluded from male recommendation mappings)*
+- **stu_0048** — Marasingha-Arachchige et al. (2022). Factors that affect heart rate variability following acute resistance exercise: A systematic review and meta-analysis. Journal of Sport and Health Science. https://doi.org/10.1016/j.jshs.2020.11.008

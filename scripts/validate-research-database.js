@@ -65,6 +65,33 @@ for (const [table, rows] of Object.entries(data)) rows.forEach((row, index) => O
   if (field === "supporting_study_ids" || field === "conflicting_study_ids") String(value || "").split(DELIMITER).filter(Boolean).forEach((studyId) => { if (!studies.has(studyId)) errors.push(`${table}[${index}].${field}: ${studyId} missing`); });
 }));
 
+const conclusionsById = new Map(data.evidence_conclusions.map((row) => [row.conclusion_id, row]));
+data.progression_rules.forEach((row) => {
+  const ruleStudies = String(row.supporting_study_ids || "").split(DELIMITER).filter(Boolean);
+  const ruleConclusions = String(row.supporting_conclusion_ids || "").split(DELIMITER).filter(Boolean);
+  if (!ruleStudies.length) errors.push(`${row.rule_id}: rule lacks supporting study IDs`);
+  if (!ruleConclusions.length) errors.push(`${row.rule_id}: rule lacks supporting conclusion IDs`);
+  const conclusionStudies = new Set();
+  ruleConclusions.forEach((conclusionId) => {
+    const conclusion = conclusionsById.get(conclusionId);
+    if (!conclusion) errors.push(`${row.rule_id}: missing conclusion ${conclusionId}`);
+    else String(conclusion.supporting_study_ids || "").split(DELIMITER).filter(Boolean).forEach((studyId) => conclusionStudies.add(studyId));
+  });
+  if (ruleStudies.length && ruleConclusions.length && !ruleStudies.some((studyId) => conclusionStudies.has(studyId))) {
+    errors.push(`${row.rule_id}: cited studies do not overlap its supporting conclusions`);
+  }
+  if (row.enforcement_level === "hard_blocker") {
+    const description = [row.rule_name, row.rule_category, row.required_inputs, row.condition_logic, row.recommended_action, row.notes].join(" ");
+    if (row.rule_authority !== "safety") errors.push(`${row.rule_id}: hard blocker must have safety authority`);
+    if (!/illness|pain|explicit.exclusion|equipment|numeric|invalid.value/i.test(description)) errors.push(`${row.rule_id}: hard blocker is outside the safety allowlist`);
+  } else if ((row.threshold_value_1 !== null || row.threshold_value_2 !== null) && row.enforcement_level !== "advisory") {
+    errors.push(`${row.rule_id}: numerical non-safety threshold must remain advisory`);
+  }
+  if (row.rule_authority === "product_policy" && !/product policy|heuristic|advisory|not universal|configurable/i.test(row.policy_disclosure || "")) {
+    errors.push(`${row.rule_id}: product policy lacks a plain-language disclosure`);
+  }
+});
+
 const femaleOnly = data.research_library.filter((row) => row.male_sample_size === 0).map((row) => row.study_id);
 for (const studyId of femaleOnly) if (data.study_conclusion_map.some((row) => row.study_id === studyId)) errors.push(`Female-only ${studyId} mapped to a conclusion`);
 data.research_library.forEach((row) => {
@@ -72,10 +99,19 @@ data.research_library.forEach((row) => {
   if (row.male_sample_size === null) warnings.push(`${row.study_id}: male sample size unavailable and intentionally null`);
 });
 
-const dois = new Map();
-data.research_library.filter((row) => row.doi).forEach((row) => {
-  if (dois.has(row.doi)) errors.push(`Duplicate DOI ${row.doi} in ${dois.get(row.doi)} and ${row.study_id}`);
-  dois.set(row.doi, row.study_id);
+const bibliographicIdentifiers = { doi: new Map(), pubmed_id: new Map(), pmc_id: new Map() };
+data.research_library.forEach((row) => {
+  if (!/^10\.\d{4,9}\/\S+$/i.test(row.doi || "")) errors.push(`${row.study_id}: DOI must use canonical DOI syntax`);
+  if (!/^(?:\d{7,9})?$/.test(row.pubmed_id || "")) errors.push(`${row.study_id}: invalid PubMed identifier`);
+  if (!/^(?:PMC\d+)?$/.test(row.pmc_id || "")) errors.push(`${row.study_id}: invalid PubMed Central identifier`);
+  for (const field of Object.keys(bibliographicIdentifiers)) {
+    const raw = String(row[field] || "");
+    if (!raw) continue;
+    const value = field === "doi" ? raw.toLowerCase() : raw;
+    const seen = bibliographicIdentifiers[field];
+    if (seen.has(value)) errors.push(`Duplicate ${field} ${raw} in ${seen.get(value)} and ${row.study_id}`);
+    seen.set(value, row.study_id);
+  }
 });
 data.evidence_conclusions.forEach((row) => { if (!row.supporting_study_ids) errors.push(`${row.conclusion_id}: conclusion lacks supporting study IDs`); });
 const requiredMuscles = ["chest","upper_back","lats","traps","front_delts","side_delts","rear_delts","biceps","triceps","forearms","spinal_erectors","abdominals","obliques","glutes","quadriceps","hamstrings","adductors","abductors","calves","neck_musculature"];

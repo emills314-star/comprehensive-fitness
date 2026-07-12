@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://comprehensive-fitness.local/schema/2.1.0/executive_summary.schema.json",
+  "$id": "https://comprehensive-fitness.local/schema/3.0.0/executive_summary.schema.json",
   "title": "executive_summary",
   "type": "array",
   "items": {

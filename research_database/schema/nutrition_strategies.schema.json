@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://comprehensive-fitness.local/schema/2.1.0/nutrition_strategies.schema.json",
+  "$id": "https://comprehensive-fitness.local/schema/3.0.0/nutrition_strategies.schema.json",
   "title": "nutrition_strategies",
   "type": "array",
   "items": {

@@ -1,8 +1,8 @@
 {
-  "database_version": "2.1.0",
+  "database_version": "3.0.0",
   "valid": true,
   "errors": [],
-  "warning_count": 31,
+  "warning_count": 34,
   "warnings": [
     "stu_0001: male sample size unavailable and intentionally null",
     "stu_0002: male sample size unavailable and intentionally null",
@@ -34,26 +34,29 @@
     "stu_0038: male sample size unavailable and intentionally null",
     "stu_0039: male sample size unavailable and intentionally null",
     "stu_0040: male sample size unavailable and intentionally null",
-    "stu_0041: male sample size unavailable and intentionally null"
+    "stu_0041: male sample size unavailable and intentionally null",
+    "stu_0043: male sample size unavailable and intentionally null",
+    "stu_0044: male sample size unavailable and intentionally null",
+    "stu_0048: male sample size unavailable and intentionally null"
   ],
   "record_counts": {
     "executive_summary": 14,
-    "research_library": 42,
-    "evidence_conclusions": 27,
+    "research_library": 48,
+    "evidence_conclusions": 31,
     "muscle_group_recommendations": 23,
     "exercise_database": 62,
-    "progression_rules": 18,
+    "progression_rules": 19,
     "nutrition_strategies": 13,
     "evidence_gaps": 15,
-    "definitions_data_dictionary": 252,
-    "change_log": 4,
+    "definitions_data_dictionary": 258,
+    "change_log": 5,
     "exercise_muscle_map": 151,
     "exercise_taxonomy_review_queue": 12,
     "exercise_substitution_map": 93,
-    "study_conclusion_map": 55,
+    "study_conclusion_map": 60,
     "study_exercise_map": 496,
     "study_muscle_group_map": 69,
-    "rule_exercise_map": 765,
+    "rule_exercise_map": 827,
     "rule_muscle_group_map": 46,
     "exercise_progression_metric_map": 372
   }

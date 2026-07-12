@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://comprehensive-fitness.local/schema/2.1.0/research_library.schema.json",
+  "$id": "https://comprehensive-fitness.local/schema/3.0.0/research_library.schema.json",
   "title": "research_library",
   "type": "array",
   "items": {
@@ -14,6 +14,8 @@
       "study_title",
       "journal",
       "doi",
+      "pubmed_id",
+      "pmc_id",
       "permanent_url",
       "study_type",
       "research_topic",
@@ -90,6 +92,20 @@
           "string",
           "null"
         ]
+      },
+      "pubmed_id": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^(?:[0-9]{7,9})?$"
+      },
+      "pmc_id": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "pattern": "^(?:PMC[0-9]+)?$"
       },
       "permanent_url": {
         "type": [

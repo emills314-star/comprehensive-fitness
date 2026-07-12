@@ -33,7 +33,9 @@ const propertySchema = (table, field) => {
   if (dictionary?.data_type === "date") schema.pattern = "^\\d{4}-\\d{2}-\\d{2}$";
   const vocabulary = controlledVocabularies[field] || (field === "male_applicability" ? controlledVocabularies.applicability : null);
   if (vocabulary) schema.enum = schema.type.includes?.("null") ? [...vocabulary, null] : vocabulary;
-  if (/(^|_)id$/.test(field) && !field.endsWith("_ids")) schema.pattern = "^[a-z][a-z0-9_]*$";
+  if (field === "pubmed_id") schema.pattern = "^(?:[0-9]{7,9})?$";
+  else if (field === "pmc_id") schema.pattern = "^(?:PMC[0-9]+)?$";
+  else if (/(^|_)id$/.test(field) && !field.endsWith("_ids")) schema.pattern = "^[a-z][a-z0-9_]*$";
   return schema;
 };
 

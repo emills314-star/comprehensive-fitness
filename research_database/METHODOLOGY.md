@@ -6,11 +6,13 @@ The target population is resistance-trained or resistance-training-eligible male
 
 Mixed-sex research is eligible only as indirect evidence unless male outcomes are separable. Every source records sample sex, known male count, separability, and male applicability. A missing aggregate male count in a review is `null`; it is not estimated from incomplete reporting. Female-only findings cannot support conclusions or rules. Natural and enhanced outcomes are never pooled into one recommendation.
 
-## Search process for version 1.0
+## Search process and targeted version 3.0 update
 
-Search date: 2026-07-11.
+Original search date: 2026-07-11. Targeted science-contract update: 2026-07-12.
 
 Sources searched: PubMed/MEDLINE and PubMed Central via title/topic searches; DOI landing pages and journal records were used for persistent identifiers and source verification. Backward citation knowledge from included syntheses was used to identify foundational trials. Version 1.0 emphasizes high-yield syntheses and male-direct trials and is broad evidence mapping, not a PRISMA-complete systematic review for every database topic.
+
+The targeted 3.0 update verified six public primary records through PubMed/PubMed Central and DOI metadata: the ACSM healthy-adult position stand, proximity-to-failure meta-regression, a resistance-trained RIR trial, a complete-cessation deload trial, a female-only long-muscle-length calf trial retained as an excluded negative control, and an acute HRV review. It also verified identifiers for seven existing high-impact records. This update answers bounded provenance and uncertainty questions; it does not convert the database into a PRISMA-complete review.
 
 Core search concepts were combined in topic-specific queries:
 
@@ -55,11 +57,13 @@ Risk of bias uses the source authors' formal instrument when available (for exam
 
 One structured record is created per paper or major source. Extraction includes population sex, training status, duration, intervention, comparator, nutrition, outcome, effect/statistical result when available, practical meaning, limitations, risk, applicability, replication, and conflicts. Source claims are paraphrased; acute mechanisms are separated from chronic outcomes.
 
-Version 1.0 was extracted by one reviewer-agent. Discrepancies were resolved conservatively: store null rather than guess; downgrade confidence rather than imply certainty; retain conflicting credible sources; and use a conservative practical default when an application requires deterministic behavior. A future two-reviewer workflow should independently screen and extract high-impact updates, then document adjudication in the change log.
+The original evidence map and the targeted 3.0 update were extracted by one reviewer-agent. Discrepancies were resolved conservatively: store null rather than guess; downgrade confidence rather than imply certainty; retain conflicting credible sources; and disclose a configurable practical default when an application needs deterministic behavior. A future two-reviewer workflow should independently screen and extract high-impact updates, then document adjudication in the change log.
 
 ## Translation into application rules
 
-Evidence conclusions describe what the literature supports. Application rules add monitoring inputs, deterministic conditions, and actions. If a numeric threshold is not directly validated, the rule is labeled `inferred`, confidence is reduced, and the evidence-gap table records the uncertainty.
+Evidence conclusions describe what the literature supports. Application rules add monitoring inputs, deterministic conditions, and actions. Each rule cites one or more conclusion IDs plus overlapping study IDs. If a numeric threshold is not directly validated, the rule is labeled `inferred_product_policy`, assigned `product_policy` authority and `advisory` enforcement, disclosed as configurable/non-universal, and confidence is reduced.
+
+`rule_authority` separates `evidence`, `product_policy`, and `safety`. `enforcement_level` separates `advisory` from `hard_blocker`. Hard blockers are restricted to deterministic illness, pain, explicit exclusion, unavailable equipment, or invalid numeric-value domains. Plateau windows, fatigue/readiness scores, RIR bands, set/volume changes, frequency, velocity, rest intervals, and goal/preference logic remain advisory. Pain acts immediately rather than waiting for a multi-session plateau rule, and only a safe pain-free substitution may follow.
 
 Set volume uses the versioned relationship framework in `EXERCISE_MUSCLE_TAXONOMY.md`. Direct dynamic work normally receives 1.0, meaningful fractional dynamic work receives 0.5 or 0.25, and incidental, unknown, or isometric stabilization receives zero hypertrophy-set credit. Isometric/local fatigue is stored separately. These are transparent programming conventions, not physiological constants. EMG is mechanistic support only and cannot independently establish hypertrophy credit.
 

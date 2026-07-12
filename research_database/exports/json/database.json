@@ -1,7 +1,7 @@
 {
   "manifest": {
     "database_name": "male_resistance_training_evidence_database",
-    "database_version": "2.1.0",
+    "database_version": "3.0.0",
     "last_reviewed_date": "2026-07-12",
     "population_scope": "resistance-trained and resistance-training-eligible males",
     "source_of_truth": "research_database/source/database.js",
@@ -12,133 +12,133 @@
         "primary_id_field": "summary_id",
         "csv_sha256": "37543e26f007a478acc10a19787dea8585e9349a9c4719f6d3a219f4fc6df06b",
         "json_sha256": "04e41119f7896cf697fe198085c46d0cd0a68fad6ba5f6461ba2bc0aa95b2e4c",
-        "schema_sha256": "a9ef72aba37f28e5668f776883df5561b55c331bc03cc35d9657ac2fabe82225"
+        "schema_sha256": "c95168a98030e07a180faeae47b0b92839d4f0ec2c3f22d57e2a8331daff52a5"
       },
       "research_library": {
-        "record_count": 42,
+        "record_count": 48,
         "primary_id_field": "study_id",
-        "csv_sha256": "9d3a4e56cb59a27cecdeebe2247b90c11f144cdd470757225fa8e40c0eec5b70",
-        "json_sha256": "f08535baa17b28293b44d1f71aea55de813d84424d450dd89685f70d3d048f81",
-        "schema_sha256": "bd56aef4ae33ad30749f37a4df31f89adbcec44d09f6288d9f3e8b477063a1bd"
+        "csv_sha256": "cef808d10c56cc389e560b681fadf6f9dd6858e03e9e02dafbee52cce59a9b3f",
+        "json_sha256": "56de9539ab95be932484acdb4e1041a69f5ceb43bd98690ee8bcbc8016e8b290",
+        "schema_sha256": "580e408aa52602b7e45ce90f8aca814001ac27728e60fd96bcc834d0e4e4a9f0"
       },
       "evidence_conclusions": {
-        "record_count": 27,
+        "record_count": 31,
         "primary_id_field": "conclusion_id",
-        "csv_sha256": "5d39ddc9c13cf22bc0f7d5a72481698f66875522493b89fc72d0ce4cabc601ec",
-        "json_sha256": "6f5649e82d91da5b7b53e7e836cd41a8302c610c64795890119e32e52bb9a20a",
-        "schema_sha256": "4f574d4055773099f165ba2fc214452921cbc466a91c47a6d7423a94282d6fb2"
+        "csv_sha256": "66bdfefe7fc9be1ee9aeea19cbf5a424aaf6782596d9b4bc1d66013d617064e7",
+        "json_sha256": "060b1ed05ff57d4e6bc1d4c69490d25c3066b7becc80d8dc4e0a233fa26afffd",
+        "schema_sha256": "efadf1f42c5547e71def83f089c5b3395355bbc870e953949b679945dad21282"
       },
       "muscle_group_recommendations": {
         "record_count": 23,
         "primary_id_field": "muscle_group_id",
         "csv_sha256": "0a72176f58d55ffec97f8c29435ff2e3b1a12dab7c66a5c501fe782610a20b82",
         "json_sha256": "8c87be289f2c3300769b4ac11ef9e86aec0a3ac3cc74c2270180365772b3e7c6",
-        "schema_sha256": "703f3ba2136d20344fda753a59b503902d17c1f3cc311ddbc837cf3224a3d921"
+        "schema_sha256": "964a17b216f4224b2e28909178898ef2affb9d9441f8e8ed083a9d7008eb4187"
       },
       "exercise_database": {
         "record_count": 62,
         "primary_id_field": "exercise_id",
         "csv_sha256": "12cae19e2289392f399a9bfae57d7838b35bdae19d60274106fd41bcc02b7b69",
         "json_sha256": "e2d4b1e07829513bb7df4863eb929c797fba7c282b5f6985f3cb4db15595428b",
-        "schema_sha256": "5e25a6472e8e5303cc74f075a5fbd3e89b69660b4060d158f28143ba73a3a89f"
+        "schema_sha256": "e73a9a1b5ce628956324f466e663d3039a62af9418756bef64998b86eb62960c"
       },
       "progression_rules": {
-        "record_count": 18,
+        "record_count": 19,
         "primary_id_field": "rule_id",
-        "csv_sha256": "4e7f91e5cc3298e86517c7c0a6492df5aaf1ec573860113999f6ac875e6a3e75",
-        "json_sha256": "cd7fe10cce2ff5e39efc97d1fcd0d62abd64053d5d52d3ef917820bc04f1f4a8",
-        "schema_sha256": "f350bd2b70a6677eb4a26462f486d6b231502c92134c5892999d1c5252576d0a"
+        "csv_sha256": "da05e0d4a246a804b14599ee90814cc110ea5bcd5d52c3884c023e2429927b4b",
+        "json_sha256": "c83d8965ee2eec90e94bbd5857038996c4453ff97f4facaa717d3a68dcf96fe7",
+        "schema_sha256": "aa0bbdcc74ddfe6c4250814a771328edab26fab33062a07c38343eeb39f2f0e7"
       },
       "nutrition_strategies": {
         "record_count": 13,
         "primary_id_field": "strategy_id",
         "csv_sha256": "d4752c149ece10d21a51519629b5053e0f61d644559f0d6c6d4a7d3cf3af7828",
         "json_sha256": "1c9d752fb8ca67c5b63c1a0517712e90bd830624796bc26f569ab827738fc41a",
-        "schema_sha256": "55221978d2d386a97ab4f1df342dc0eb0eb08890a3b7d8d5ab455a2a24098bd0"
+        "schema_sha256": "1313c58430bbf35d14105c57c562e1fac0b7a3096c73931a39e7e8ff85464357"
       },
       "evidence_gaps": {
         "record_count": 15,
         "primary_id_field": "evidence_gap_id",
         "csv_sha256": "29d1b9e3894ea9b8a83202f1cdfdaedcd9d99f817e1630611d5ff0a33e4452fb",
         "json_sha256": "f3143743e384f55d1357d7f467cbbddcc88ecba5489b816f3d12e15dc17de47d",
-        "schema_sha256": "e4f2f1b07b4de3c8a72d70768277bfd47ced6d04a0b5454687a10a98f8fe1bc2"
+        "schema_sha256": "c9b899b08d3ae3772822d32c9a54d5877c369c5c1653f48a466d6ad002fffdb5"
       },
       "definitions_data_dictionary": {
-        "record_count": 252,
+        "record_count": 258,
         "primary_id_field": null,
-        "csv_sha256": "c9ab85fa43a4b194d215ed59d386d9f14947ccc91af9c89f3b44554806c0abf9",
-        "json_sha256": "4488876d82f6cc2a1249827e4990d1b800f2469bb866e18b01acc4973befee1b",
-        "schema_sha256": "548b881e4272b8a9b68f781eb2c8f804c258817f53f7db316034b52ad6e61f54"
+        "csv_sha256": "491bde573e37dba6b6bba3ec01a4489083b72c0998c318d678622580a9afc52c",
+        "json_sha256": "40ce2e71fa4ff271fec86f42c32dbc882603432f9391355cbcd8a6c6929916a0",
+        "schema_sha256": "949e4423fcf4eefe27789704e9c77783d87642a585e65eae427b78e70ac9a54d"
       },
       "change_log": {
-        "record_count": 4,
+        "record_count": 5,
         "primary_id_field": "change_id",
-        "csv_sha256": "6405e580bf0bc4867f95fc37065d478845d8d0774a74b35124add9631db427c5",
-        "json_sha256": "1dc4219c4377ae66a9c265839298586240f414cdf1d79e0c96e6a25d413f56f7",
-        "schema_sha256": "a11dee19b6b0832a48125503dc297b095a2d1a8fac41c2a63e91f1650ffe5a82"
+        "csv_sha256": "71bad4bcb8d7a916744f59150aa698ce31abe55d083963aed65ff9ff28fca758",
+        "json_sha256": "f15b6ab2e1dfa1a6dc6819e64fdc58e3a6b3af3641863c8f12b8430dc23361bb",
+        "schema_sha256": "1d9bb0b185c3e6ede078645372396dda477a08deea4299c20f6ee95d5a76c717"
       },
       "exercise_muscle_map": {
         "record_count": 151,
         "primary_id_field": "exercise_muscle_map_id",
         "csv_sha256": "efcdef06ead4f9557d4268f97b7b64597e18322432a74044a1207fc9d97522ed",
         "json_sha256": "db68a8aa6ccf02865353ae96c5955fd3578c51b17328ebaf699a8617a9e96d71",
-        "schema_sha256": "3ef7754729e11cef91dcbeb88f8f3ed3ca35796b39101b5b8cced7de9a1b6413"
+        "schema_sha256": "e9ecfa43eb571a74b86ed897c95e5028a58325a189d9b444a26f993582419029"
       },
       "exercise_taxonomy_review_queue": {
         "record_count": 12,
         "primary_id_field": "taxonomy_review_id",
         "csv_sha256": "0604964937e31dab91ca03d009aa20c27661c163b796f6f2cb3f9d28c77b1327",
         "json_sha256": "997a2e0b68d8a3dcd562875183bbab3f8eddd7b46530cc0489de34a877c311a7",
-        "schema_sha256": "6b703450555af1b06801c263d6a825efbe2af7cbd485aa0ac29f53225b886c02"
+        "schema_sha256": "4a6815b4b936a6c4e2dbee8beb8353e5b9ba1fcbd53762ee99978d5cf098ade2"
       },
       "exercise_substitution_map": {
         "record_count": 93,
         "primary_id_field": "exercise_substitution_map_id",
         "csv_sha256": "ed9ed6e825a9ed64b981542d3b4b2e70e9096d025614cb86d71249900d9f0e67",
         "json_sha256": "670681428ee73d348eb878b66f175383401eea47015facc756a87a44a4b7df28",
-        "schema_sha256": "cc061ed82e84eb216819759e3e169efc9c4b7b30f12c2502cbd45ea9399a805d"
+        "schema_sha256": "6ab5d32b9c6e25b48fb26fec664359334398ca9f2e03ca0e98f89feda770c0d1"
       },
       "study_conclusion_map": {
-        "record_count": 55,
+        "record_count": 60,
         "primary_id_field": "study_conclusion_map_id",
-        "csv_sha256": "74949c9394c51147bf3cfa7f9a833e353bfaefeceeb3581ea73592c14a36c186",
-        "json_sha256": "02d3c1e88b7585efb17d4b0fadbf37ddbc4769f474f135a6dbc7b818a4a69e52",
-        "schema_sha256": "bb694149c08949a8fc32e921b6bd45a722e85de39000248967847be3589bb5d1"
+        "csv_sha256": "f25902043e8261dcd5a27827728958f8551ca4db67db54986b0847c343f157ef",
+        "json_sha256": "3763fbfd3b54c5eb4d41923a49f67ff00583b867c6e23ce3f684af024a642843",
+        "schema_sha256": "483ba509adc49cb0a56321b6779af839a46f42c04ca67b0afce8fa649d457778"
       },
       "study_exercise_map": {
         "record_count": 496,
         "primary_id_field": "study_exercise_map_id",
         "csv_sha256": "871548b1774a8bbd84eac170dbe3856b4f985c650864b65748b990729e93f129",
         "json_sha256": "93e4f2dae8a80b4606615f0b4d2003aab571f0df4002cc3c03337005e3f32667",
-        "schema_sha256": "e6c3a7ef1574d1c5490ac9fbd518c5ec55ea478338e146fc484c3d4b62cfbb10"
+        "schema_sha256": "ca65b00848d396ceaba45dc282c6385e7103214af93d814a84461545f3196e51"
       },
       "study_muscle_group_map": {
         "record_count": 69,
         "primary_id_field": "study_muscle_group_map_id",
         "csv_sha256": "d5e5c17c298604e54d46204d6d9f10e222c863256f926cf537f75f33073bde2c",
         "json_sha256": "0d077a93bef767b90896c3d9508b14e8eda19f729febafa573f1cabd74f37b41",
-        "schema_sha256": "1baf950839f70a14a40572e7e391c6584e2605f9e8a7f984fcd2e030b133278c"
+        "schema_sha256": "39959b496b28d41f433021a08aee260ee108c5cd2d0473ccd6f3affb1a208189"
       },
       "rule_exercise_map": {
-        "record_count": 765,
+        "record_count": 827,
         "primary_id_field": "rule_exercise_map_id",
-        "csv_sha256": "92b53fbbebd9aee4367db3c2614e1c0620c919961140f720ac54595257e0c421",
-        "json_sha256": "86c94b7b0daa5dbaeeb0c951b09420e816877969991014ac145c772e9a198d2b",
-        "schema_sha256": "e885c085f70e4628eab6ac7cb2f691ac2a512f26b9f54c765ba6f37fb7f712ee"
+        "csv_sha256": "24f5220e6de852c9ba1ceb8c72bdcfbfaae0919a02a90355ddc461e0402da8a5",
+        "json_sha256": "82a922137dd5142547244606eac11dfd2849125490f9c9f8b0ffd84bc2a06ee5",
+        "schema_sha256": "e2b0bb02502451cd6bb1b7643b18b7bd84436397c1eba04c8d9933b99b9d2f87"
       },
       "rule_muscle_group_map": {
         "record_count": 46,
         "primary_id_field": "rule_muscle_group_map_id",
         "csv_sha256": "60610b7035279737746411e3d550db3cd72c9aaa60b19869be49215746640652",
         "json_sha256": "e01735140f0f5369846ed1b87744cf48078af7d141aae927001375ea8cd29450",
-        "schema_sha256": "9714c757f742f977b63c205f728af0ac3e356667e6d5b5afbbbba8c0a53a7dc4"
+        "schema_sha256": "636de62471baf86b12000707a72fc16895a5cebd19984697af3679d32446583a"
       },
       "exercise_progression_metric_map": {
         "record_count": 372,
         "primary_id_field": "exercise_progression_metric_map_id",
         "csv_sha256": "0a821f8a89c324a4eee278042f2804593ab31c4b251930f5868d9f495205028b",
         "json_sha256": "0f500faa59eb31f79f9224fd0a0e0599ba4c784759ffa3807b1b9cff33bb5f32",
-        "schema_sha256": "3fa3145ac77516e983fb55eb0e1dc1076819e68d55aab7eadd3c49d54f428d00"
+        "schema_sha256": "fad422078a08aad5775d260900ffbdc8e9a426b3af72cdbd8ba5ee679c6c4bb3"
       }
     },
     "controlled_vocabularies": {
@@ -217,6 +217,15 @@
         "high",
         "not_formally_assessed",
         "varies_across_included_studies"
+      ],
+      "rule_authority": [
+        "evidence",
+        "product_policy",
+        "safety"
+      ],
+      "enforcement_level": [
+        "advisory",
+        "hard_blocker"
       ],
       "movement_pattern": [
         "horizontal_push",
@@ -425,12 +434,14 @@
     "research_library": [
       {
         "study_id": "stu_0001",
-        "full_citation": "Pelland et al. (2025). The Resistance Training Dose Response: Meta-Regressions Exploring the Effects of Weekly Volume and Frequency on Muscle Hypertrophy and Strength Gains. Sports Medicine. https://doi.org/10.1007/s40279-025-02344-w",
-        "publication_year": 2025,
+        "full_citation": "Pelland et al. (2026). The Resistance Training Dose Response: Meta-Regressions Exploring the Effects of Weekly Volume and Frequency on Muscle Hypertrophy and Strength Gains. Sports Medicine. https://doi.org/10.1007/s40279-025-02344-w",
+        "publication_year": 2026,
         "authors": "Pelland et al.",
         "study_title": "The Resistance Training Dose Response: Meta-Regressions Exploring the Effects of Weekly Volume and Frequency on Muscle Hypertrophy and Strength Gains",
         "journal": "Sports Medicine",
         "doi": "10.1007/s40279-025-02344-w",
+        "pubmed_id": "41343037",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1007/s40279-025-02344-w",
         "study_type": "systematic_review_meta_analysis",
         "research_topic": "volume_frequency",
@@ -460,7 +471,7 @@
         "confidence_rating": "high",
         "replication_status": "part_of_broader_evidence_base",
         "conflicting_evidence": "See evidence conclusions and gaps tables",
-        "reviewer_notes": "Direct, fractional (0.5), and total indirect-set models were compared; not a per-muscle biological threshold.",
+        "reviewer_notes": "Published online (ePub) in 2025 and assigned to the 2026 print volume. Direct, fractional (0.5), and total indirect-set models were compared; not a per-muscle biological threshold.",
         "date_added": "2026-07-12",
         "last_reviewed_date": "2026-07-12"
       },
@@ -472,6 +483,8 @@
         "study_title": "Dose-response relationship between weekly resistance training volume and increases in muscle mass",
         "journal": "Journal of Sports Sciences",
         "doi": "10.1080/02640414.2016.1210197",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1080/02640414.2016.1210197",
         "study_type": "systematic_review_meta_analysis",
         "research_topic": "training_volume",
@@ -513,6 +526,8 @@
         "study_title": "How many times per week should a muscle be trained to maximize muscle hypertrophy?",
         "journal": "Journal of Sports Sciences",
         "doi": "10.1080/02640414.2018.1555906",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1080/02640414.2018.1555906",
         "study_type": "systematic_review_meta_analysis",
         "research_topic": "training_frequency",
@@ -548,12 +563,14 @@
       },
       {
         "study_id": "stu_0004",
-        "full_citation": "Lopez et al. (2021). Resistance Training Load Effects on Muscle Hypertrophy and Strength Gain. Medicine and Science in Sports and Exercise. https://doi.org/10.1249/MSS.0000000000002585",
+        "full_citation": "Lopez et al. (2021). Resistance Training Load Effects on Muscle Hypertrophy and Strength Gain: Systematic Review and Network Meta-analysis. Medicine and Science in Sports and Exercise. https://doi.org/10.1249/MSS.0000000000002585",
         "publication_year": 2021,
         "authors": "Lopez et al.",
-        "study_title": "Resistance Training Load Effects on Muscle Hypertrophy and Strength Gain",
+        "study_title": "Resistance Training Load Effects on Muscle Hypertrophy and Strength Gain: Systematic Review and Network Meta-analysis",
         "journal": "Medicine and Science in Sports and Exercise",
         "doi": "10.1249/MSS.0000000000002585",
+        "pubmed_id": "33433148",
+        "pmc_id": "PMC8126497",
         "permanent_url": "https://doi.org/10.1249/MSS.0000000000002585",
         "study_type": "systematic_review_meta_analysis",
         "research_topic": "loading",
@@ -595,6 +612,8 @@
         "study_title": "Influence of Resistance Training Proximity-to-Failure on Skeletal Muscle Hypertrophy",
         "journal": "Sports Medicine",
         "doi": "10.1007/s40279-022-01784-y",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1007/s40279-022-01784-y",
         "study_type": "systematic_review_meta_analysis",
         "research_topic": "proximity_to_failure",
@@ -636,6 +655,8 @@
         "study_title": "Effects of resistance training performed to repetition failure or non-failure",
         "journal": "Journal of Sport and Health Science",
         "doi": "10.1016/j.jshs.2021.01.007",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1016/j.jshs.2021.01.007",
         "study_type": "systematic_review_meta_analysis",
         "research_topic": "failure",
@@ -671,12 +692,14 @@
       },
       {
         "study_id": "stu_0007",
-        "full_citation": "Singer et al. (2024). Give it a rest: effect of inter-set rest interval duration on muscle hypertrophy. Frontiers in Sports and Active Living. https://doi.org/10.3389/fspor.2024.1429789",
+        "full_citation": "Singer et al. (2024). Give it a rest: a systematic review with Bayesian meta-analysis on the effect of inter-set rest interval duration on muscle hypertrophy. Frontiers in Sports and Active Living. https://doi.org/10.3389/fspor.2024.1429789",
         "publication_year": 2024,
         "authors": "Singer et al.",
-        "study_title": "Give it a rest: effect of inter-set rest interval duration on muscle hypertrophy",
+        "study_title": "Give it a rest: a systematic review with Bayesian meta-analysis on the effect of inter-set rest interval duration on muscle hypertrophy",
         "journal": "Frontiers in Sports and Active Living",
         "doi": "10.3389/fspor.2024.1429789",
+        "pubmed_id": "39205815",
+        "pmc_id": "PMC11349676",
         "permanent_url": "https://doi.org/10.3389/fspor.2024.1429789",
         "study_type": "systematic_review_meta_analysis",
         "research_topic": "rest_intervals",
@@ -718,6 +741,8 @@
         "study_title": "Effect of repetition duration during resistance training on muscle hypertrophy",
         "journal": "Sports Medicine",
         "doi": "10.1007/s40279-015-0304-0",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1007/s40279-015-0304-0",
         "study_type": "systematic_review_meta_analysis",
         "research_topic": "tempo",
@@ -753,12 +778,14 @@
       },
       {
         "study_id": "stu_0009",
-        "full_citation": "Nunes et al. (2021). What influence does resistance exercise order have on muscular strength gains and muscle hypertrophy?. European Journal of Sport Science. https://doi.org/10.1080/17461391.2020.1733672",
+        "full_citation": "Nunes et al. (2021). What influence does resistance exercise order have on muscular strength gains and muscle hypertrophy? A systematic review and meta-analysis. European Journal of Sport Science. https://doi.org/10.1080/17461391.2020.1733672",
         "publication_year": 2021,
         "authors": "Nunes et al.",
-        "study_title": "What influence does resistance exercise order have on muscular strength gains and muscle hypertrophy?",
+        "study_title": "What influence does resistance exercise order have on muscular strength gains and muscle hypertrophy? A systematic review and meta-analysis",
         "journal": "European Journal of Sport Science",
         "doi": "10.1080/17461391.2020.1733672",
+        "pubmed_id": "32077380",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1080/17461391.2020.1733672",
         "study_type": "systematic_review_meta_analysis",
         "research_topic": "exercise_order",
@@ -800,6 +827,8 @@
         "study_title": "Effect of free-weight vs. machine-based strength training on maximal strength, hypertrophy and jump performance",
         "journal": "BMC Sports Science Medicine and Rehabilitation",
         "doi": "10.1186/s13102-023-00713-4",
+        "pubmed_id": "37582807",
+        "pmc_id": "PMC10426227",
         "permanent_url": "https://doi.org/10.1186/s13102-023-00713-4",
         "study_type": "systematic_review_meta_analysis",
         "research_topic": "exercise_modality",
@@ -841,6 +870,8 @@
         "study_title": "Effects of range of motion on resistance training adaptations",
         "journal": "Scandinavian Journal of Medicine and Science in Sports",
         "doi": "10.1111/sms.14006",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1111/sms.14006",
         "study_type": "systematic_review_meta_analysis",
         "research_topic": "range_of_motion",
@@ -876,12 +907,14 @@
       },
       {
         "study_id": "stu_0012",
-        "full_citation": "Kassiano et al. (2023). Which ROMs Lead to Rome?. Journal of Strength and Conditioning Research. https://doi.org/10.1519/JSC.0000000000004415",
+        "full_citation": "Kassiano et al. (2023). Which ROMs Lead to Rome? A Systematic Review of the Effects of Range of Motion on Muscle Hypertrophy. Journal of Strength and Conditioning Research. https://doi.org/10.1519/JSC.0000000000004415",
         "publication_year": 2023,
         "authors": "Kassiano et al.",
-        "study_title": "Which ROMs Lead to Rome?",
+        "study_title": "Which ROMs Lead to Rome? A Systematic Review of the Effects of Range of Motion on Muscle Hypertrophy",
         "journal": "Journal of Strength and Conditioning Research",
         "doi": "10.1519/JSC.0000000000004415",
+        "pubmed_id": "36662126",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1519/JSC.0000000000004415",
         "study_type": "systematic_review",
         "research_topic": "muscle_length",
@@ -911,7 +944,7 @@
         "confidence_rating": "moderate",
         "replication_status": "part_of_broader_evidence_base",
         "conflicting_evidence": "See evidence conclusions and gaps tables",
-        "reviewer_notes": "Eligibility retained only for male-applicable inference; do not infer a sex-specific effect unless marked direct.",
+        "reviewer_notes": "Published online (ePub) in 2022 and assigned to the 2023 print volume; muscle- and exercise-specific evidence limits universal ROM claims.",
         "date_added": "2026-07-12",
         "last_reviewed_date": "2026-07-12"
       },
@@ -923,6 +956,8 @@
         "study_title": "Does Muscle Length Influence Regional Hypertrophy?",
         "journal": "International Journal of Sports Medicine",
         "doi": "10.1055/a-2615-4935",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1055/a-2615-4935",
         "study_type": "systematic_review_meta_analysis",
         "research_topic": "muscle_length",
@@ -964,6 +999,8 @@
         "study_title": "Comparison of Traditional and Advanced Resistance Training Paradigms on Muscle Hypertrophy in Trained Individuals",
         "journal": "BioMed Research International",
         "doi": "10.1155/2023/9507977",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1155/2023/9507977",
         "study_type": "systematic_review_meta_analysis",
         "research_topic": "advanced_methods",
@@ -1005,6 +1042,8 @@
         "study_title": "Effects of Periodization on Strength and Muscle Hypertrophy in Volume-Equated Resistance Training Programs",
         "journal": "Sports Medicine",
         "doi": "10.1007/s40279-021-01636-1",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1007/s40279-021-01636-1",
         "study_type": "systematic_review_meta_analysis",
         "research_topic": "periodization",
@@ -1046,6 +1085,8 @@
         "study_title": "Protein supplementation and resistance training-induced gains in muscle mass and strength",
         "journal": "British Journal of Sports Medicine",
         "doi": "10.1136/bjsports-2017-097608",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1136/bjsports-2017-097608",
         "study_type": "systematic_review_meta_analysis",
         "research_topic": "protein",
@@ -1087,6 +1128,8 @@
         "study_title": "International Society of Sports Nutrition Position Stand: protein and exercise",
         "journal": "Journal of the International Society of Sports Nutrition",
         "doi": "10.1186/s12970-017-0177-8",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1186/s12970-017-0177-8",
         "study_type": "position_stand",
         "research_topic": "protein",
@@ -1128,6 +1171,8 @@
         "study_title": "Dietary protein during caloric restriction in resistance trained lean athletes",
         "journal": "International Journal of Sport Nutrition and Exercise Metabolism",
         "doi": "10.1123/ijsnem.2013-0054",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1123/ijsnem.2013-0054",
         "study_type": "systematic_review",
         "research_topic": "protein_deficit",
@@ -1169,6 +1214,8 @@
         "study_title": "Energy deficiency impairs resistance training gains in lean mass but not strength",
         "journal": "Scandinavian Journal of Medicine and Science in Sports",
         "doi": "10.1111/sms.14075",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1111/sms.14075",
         "study_type": "systematic_review_meta_analysis",
         "research_topic": "energy_deficit",
@@ -1210,6 +1257,8 @@
         "study_title": "Resistance training volume does not influence lean mass preservation during energy restriction in trained males",
         "journal": "Scandinavian Journal of Medicine and Science in Sports",
         "doi": "10.1111/sms.14237",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1111/sms.14237",
         "study_type": "randomized_controlled_trial",
         "research_topic": "deficit_training_volume",
@@ -1251,6 +1300,8 @@
         "study_title": "Higher compared with lower dietary protein during an energy deficit combined with intense exercise",
         "journal": "American Journal of Clinical Nutrition",
         "doi": "10.3945/ajcn.115.119339",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.3945/ajcn.115.119339",
         "study_type": "randomized_controlled_trial",
         "research_topic": "recomposition",
@@ -1292,6 +1343,8 @@
         "study_title": "Nutrition Recommendations for Bodybuilders in the Off-Season",
         "journal": "Sports",
         "doi": "10.3390/sports7070154",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.3390/sports7070154",
         "study_type": "narrative_review",
         "research_topic": "bulking",
@@ -1333,6 +1386,8 @@
         "study_title": "Body Recomposition: Can Trained Individuals Build Muscle and Lose Fat at the Same Time?",
         "journal": "Strength and Conditioning Journal",
         "doi": "10.1519/SSC.0000000000000584",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1519/SSC.0000000000000584",
         "study_type": "narrative_review",
         "research_topic": "recomposition",
@@ -1374,6 +1429,8 @@
         "study_title": "Effects of High Versus Low Protein Intake on Body Composition and Maximal Strength in Aspiring Female Physique Athletes",
         "journal": "International Journal of Sport Nutrition and Exercise Metabolism",
         "doi": "10.1123/ijsnem.2017-0389",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1123/ijsnem.2017-0389",
         "study_type": "randomized_controlled_trial",
         "research_topic": "protein",
@@ -1415,6 +1472,8 @@
         "study_title": "Resistance Training Volume Enhances Muscle Hypertrophy but Not Strength in Trained Men",
         "journal": "Medicine and Science in Sports and Exercise",
         "doi": "10.1249/MSS.0000000000001764",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1249/MSS.0000000000001764",
         "study_type": "randomized_controlled_trial",
         "research_topic": "training_volume",
@@ -1456,6 +1515,8 @@
         "study_title": "Longer Interset Rest Periods Enhance Muscle Strength and Hypertrophy in Resistance-Trained Men",
         "journal": "Journal of Strength and Conditioning Research",
         "doi": "10.1519/JSC.0000000000001272",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1519/JSC.0000000000001272",
         "study_type": "randomized_controlled_trial",
         "research_topic": "rest_intervals",
@@ -1497,6 +1558,8 @@
         "study_title": "Exercise dosing to retain resistance training adaptations in young and older adults",
         "journal": "Medicine and Science in Sports and Exercise",
         "doi": "10.1249/MSS.0b013e318207c15d",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1249/MSS.0b013e318207c15d",
         "study_type": "randomized_controlled_trial",
         "research_topic": "maintenance_volume",
@@ -1538,6 +1601,8 @@
         "study_title": "The Minimum Effective Training Dose Required to Increase 1RM Strength in Resistance-Trained Men",
         "journal": "Sports Medicine",
         "doi": "10.1007/s40279-019-01236-0",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1007/s40279-019-01236-0",
         "study_type": "systematic_review",
         "research_topic": "minimum_dose_strength",
@@ -1579,6 +1644,8 @@
         "study_title": "RPE and Velocity Relationships for the Back Squat, Bench Press, and Deadlift in Powerlifters",
         "journal": "Journal of Strength and Conditioning Research",
         "doi": "10.1519/JSC.0000000000002778",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1519/JSC.0000000000002778",
         "study_type": "observational_study",
         "research_topic": "rir_rpe_velocity",
@@ -1620,6 +1687,8 @@
         "study_title": "Novel Resistance Training-Specific Rating of Perceived Exertion Scale Measuring Repetitions in Reserve",
         "journal": "Journal of Strength and Conditioning Research",
         "doi": "10.1519/JSC.0000000000001049",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1519/JSC.0000000000001049",
         "study_type": "observational_study",
         "research_topic": "rir_validation",
@@ -1655,12 +1724,14 @@
       },
       {
         "study_id": "stu_0031",
-        "full_citation": "Zhang et al. (2021). Auto-Regulation Method vs Fixed-Loading Method in Maximum Strength Training for Athletes. Frontiers in Physiology. https://doi.org/10.3389/fphys.2021.651112",
+        "full_citation": "Zhang et al. (2021). Auto-Regulation Method vs. Fixed-Loading Method in Maximum Strength Training for Athletes: A Systematic Review and Meta-Analysis. Frontiers in Physiology. https://doi.org/10.3389/fphys.2021.651112",
         "publication_year": 2021,
         "authors": "Zhang et al.",
-        "study_title": "Auto-Regulation Method vs Fixed-Loading Method in Maximum Strength Training for Athletes",
+        "study_title": "Auto-Regulation Method vs. Fixed-Loading Method in Maximum Strength Training for Athletes: A Systematic Review and Meta-Analysis",
         "journal": "Frontiers in Physiology",
         "doi": "10.3389/fphys.2021.651112",
+        "pubmed_id": "33776802",
+        "pmc_id": "PMC7994759",
         "permanent_url": "https://doi.org/10.3389/fphys.2021.651112",
         "study_type": "systematic_review_meta_analysis",
         "research_topic": "autoregulation",
@@ -1702,6 +1773,8 @@
         "study_title": "The Acute and Chronic Effects of Implementing Velocity Loss Thresholds During Resistance Training",
         "journal": "Sports Medicine",
         "doi": "10.1007/s40279-020-01382-2",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1007/s40279-020-01382-2",
         "study_type": "systematic_review",
         "research_topic": "velocity_based_training",
@@ -1743,6 +1816,8 @@
         "study_title": "How much protein can the body use in a single meal for muscle-building?",
         "journal": "Journal of the International Society of Sports Nutrition",
         "doi": "10.1186/s12970-018-0215-1",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1186/s12970-018-0215-1",
         "study_type": "narrative_review",
         "research_topic": "protein_distribution",
@@ -1784,6 +1859,8 @@
         "study_title": "Evenly Distributed Protein Intake over 3 Meals Augments Resistance Exercise-Induced Muscle Hypertrophy in Healthy Young Men",
         "journal": "Journal of Nutrition",
         "doi": "10.1093/jn/nxaa101",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1093/jn/nxaa101",
         "study_type": "randomized_controlled_trial",
         "research_topic": "protein_distribution",
@@ -1825,6 +1902,8 @@
         "study_title": "Intermittent Energy Restriction Attenuates the Loss of Fat Free Mass in Resistance Trained Individuals",
         "journal": "Journal of Functional Morphology and Kinesiology",
         "doi": "10.3390/jfmk6010019",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.3390/jfmk6010019",
         "study_type": "randomized_controlled_trial",
         "research_topic": "refeeds",
@@ -1866,6 +1945,8 @@
         "study_title": "Predicting Adaptations to Resistance Training Plus Overfeeding Using Bayesian Regression",
         "journal": "Journal of Functional Morphology and Kinesiology",
         "doi": "10.3390/jfmk6020036",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.3390/jfmk6020036",
         "study_type": "longitudinal_trial",
         "research_topic": "overfeeding",
@@ -1907,6 +1988,8 @@
         "study_title": "Resistance Training Recommendations to Maximize Muscle Hypertrophy in an Athletic Population: Position Stand of the IUSCA",
         "journal": "International Journal of Strength and Conditioning",
         "doi": "10.47206/ijsc.v1i1.81",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.47206/ijsc.v1i1.81",
         "study_type": "position_stand",
         "research_topic": "programming",
@@ -1948,6 +2031,8 @@
         "study_title": "Effects of short versus long inter-set rest intervals on muscle hypertrophy",
         "journal": "European Journal of Sport Science",
         "doi": "10.1080/17461391.2017.1340524",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1080/17461391.2017.1340524",
         "study_type": "systematic_review",
         "research_topic": "rest_intervals",
@@ -1989,6 +2074,8 @@
         "study_title": "Strength and Hypertrophy Adaptations Between Low- vs High-Load Resistance Training",
         "journal": "Journal of Strength and Conditioning Research",
         "doi": "10.1519/JSC.0000000000002200",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1519/JSC.0000000000002200",
         "study_type": "systematic_review_meta_analysis",
         "research_topic": "loading",
@@ -2030,6 +2117,8 @@
         "study_title": "Resistance Training Induces Improvements in Range of Motion",
         "journal": "Sports Medicine",
         "doi": "10.1007/s40279-022-01804-x",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1007/s40279-022-01804-x",
         "study_type": "systematic_review_meta_analysis",
         "research_topic": "range_of_motion_flexibility",
@@ -2071,6 +2160,8 @@
         "study_title": "Electromyographic activity in deadlift exercise and its variants: a systematic review",
         "journal": "PLOS ONE",
         "doi": "10.1371/journal.pone.0229507",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1371/journal.pone.0229507",
         "study_type": "systematic_review",
         "research_topic": "exercise_biomechanics",
@@ -2112,6 +2203,8 @@
         "study_title": "An electromyographic and kinetic comparison of conventional and Romanian deadlifts",
         "journal": "Journal of Exercise Science & Fitness",
         "doi": "10.1016/j.jesf.2018.08.001",
+        "pubmed_id": "",
+        "pmc_id": "",
         "permanent_url": "https://doi.org/10.1016/j.jesf.2018.08.001",
         "study_type": "acute_mechanistic_study",
         "research_topic": "exercise_biomechanics",
@@ -2142,6 +2235,264 @@
         "replication_status": "part_of_broader_evidence_base",
         "conflicting_evidence": "See evidence conclusions and gaps tables",
         "reviewer_notes": "Supports variation-specific mechanics; acute EMG and kinetics do not prove longitudinal hypertrophy magnitude.",
+        "date_added": "2026-07-12",
+        "last_reviewed_date": "2026-07-12"
+      },
+      {
+        "study_id": "stu_0043",
+        "full_citation": "Currier et al. (2026). American College of Sports Medicine Position Stand. Resistance Training Prescription for Muscle Function, Hypertrophy, and Physical Performance in Healthy Adults: An Overview of Reviews. Medicine and Science in Sports and Exercise. https://doi.org/10.1249/MSS.0000000000003897",
+        "publication_year": 2026,
+        "authors": "Currier et al.",
+        "study_title": "American College of Sports Medicine Position Stand. Resistance Training Prescription for Muscle Function, Hypertrophy, and Physical Performance in Healthy Adults: An Overview of Reviews",
+        "journal": "Medicine and Science in Sports and Exercise",
+        "doi": "10.1249/MSS.0000000000003897",
+        "pubmed_id": "41843416",
+        "pmc_id": "PMC12965823",
+        "permanent_url": "https://doi.org/10.1249/MSS.0000000000003897",
+        "study_type": "position_stand",
+        "research_topic": "resistance_training_scope",
+        "male_only_sample": false,
+        "mixed_sex_sample": true,
+        "male_results_reported_separately": false,
+        "male_sample_size": null,
+        "total_sample_size": null,
+        "participant_training_status": "mixed",
+        "participant_age_mean": null,
+        "participant_age_range": "adult",
+        "natural_or_enhanced": "not_reported",
+        "study_duration_weeks": null,
+        "intervention": "Overview of 137 systematic reviews covering randomized resistance-training trials of at least 6 weeks",
+        "comparator": "No exercise or alternative resistance-training prescriptions",
+        "training_protocol": "Healthy adults across varied resistance-training prescriptions",
+        "nutrition_conditions": "Not consistently controlled",
+        "outcome_measures": "Strength, hypertrophy, power, endurance, balance, gait, and physical function",
+        "main_result": "Progressive resistance training improves muscle function, hypertrophy, and physical performance across healthy adults; some prescription variables influence specific outcomes, but many alternatives remain effective.",
+        "effect_size": "",
+        "statistical_significance": "See source; not reducible to one test",
+        "practical_significance": "Progressive resistance training improves muscle function, hypertrophy, and physical performance across healthy adults; some prescription variables influence specific outcomes, but many alternatives remain effective.",
+        "study_limitations": "Umbrella overview of 137 reviews and more than 30,000 participants; review overlap and heterogeneous methods limit independence, and aggregate male-specific counts or effects were not reported.",
+        "risk_of_bias": "varies_across_included_studies",
+        "male_applicability": "indirect",
+        "evidence_tier": "tier_2",
+        "confidence_rating": "high",
+        "replication_status": "part_of_broader_evidence_base",
+        "conflicting_evidence": "See evidence conclusions and gaps tables",
+        "reviewer_notes": "Broad healthy-adult position stand; do not convert overview-level cut points into universal male-specific algorithms.",
+        "date_added": "2026-07-12",
+        "last_reviewed_date": "2026-07-12"
+      },
+      {
+        "study_id": "stu_0044",
+        "full_citation": "Robinson et al. (2024). Exploring the Dose-Response Relationship Between Estimated Resistance Training Proximity to Failure, Strength Gain, and Muscle Hypertrophy: A Series of Meta-Regressions. Sports Medicine. https://doi.org/10.1007/s40279-024-02069-2",
+        "publication_year": 2024,
+        "authors": "Robinson et al.",
+        "study_title": "Exploring the Dose-Response Relationship Between Estimated Resistance Training Proximity to Failure, Strength Gain, and Muscle Hypertrophy: A Series of Meta-Regressions",
+        "journal": "Sports Medicine",
+        "doi": "10.1007/s40279-024-02069-2",
+        "pubmed_id": "38970765",
+        "pmc_id": "",
+        "permanent_url": "https://doi.org/10.1007/s40279-024-02069-2",
+        "study_type": "systematic_review_meta_analysis",
+        "research_topic": "proximity_to_failure",
+        "male_only_sample": false,
+        "mixed_sex_sample": true,
+        "male_results_reported_separately": false,
+        "male_sample_size": null,
+        "total_sample_size": null,
+        "participant_training_status": "mixed",
+        "participant_age_mean": null,
+        "participant_age_range": "adult",
+        "natural_or_enhanced": "not_reported",
+        "study_duration_weeks": null,
+        "intervention": "Evidence synthesis of resistance-training interventions",
+        "comparator": "Varied by included study",
+        "training_protocol": "Varied by included study",
+        "nutrition_conditions": "Not consistently controlled",
+        "outcome_measures": "Strength and muscle hypertrophy effect sizes modeled against estimated repetitions in reserve",
+        "main_result": "Estimated proximity to failure showed little association with strength gain and a trend toward greater hypertrophy closer to failure, but the exact relationship remains unclear.",
+        "effect_size": "",
+        "statistical_significance": "See source; not reducible to one test",
+        "practical_significance": "Estimated proximity to failure showed little association with strength gain and a trend toward greater hypertrophy closer to failure, but the exact relationship remains unclear.",
+        "study_limitations": "RIR was estimated from aggregate intervention descriptions; analyses were exploratory, model fit was modest, and the source does not establish a validated universal threshold.",
+        "risk_of_bias": "varies_across_included_studies",
+        "male_applicability": "indirect",
+        "evidence_tier": "tier_1",
+        "confidence_rating": "moderate",
+        "replication_status": "part_of_broader_evidence_base",
+        "conflicting_evidence": "See evidence conclusions and gaps tables",
+        "reviewer_notes": "Use for directional uncertainty, not an exact RIR optimizer.",
+        "date_added": "2026-07-12",
+        "last_reviewed_date": "2026-07-12"
+      },
+      {
+        "study_id": "stu_0045",
+        "full_citation": "Refalo et al. (2024). Similar muscle hypertrophy following eight weeks of resistance training to momentary muscular failure or with repetitions-in-reserve in resistance-trained individuals. Journal of Sports Sciences. https://doi.org/10.1080/02640414.2024.2321021",
+        "publication_year": 2024,
+        "authors": "Refalo et al.",
+        "study_title": "Similar muscle hypertrophy following eight weeks of resistance training to momentary muscular failure or with repetitions-in-reserve in resistance-trained individuals",
+        "journal": "Journal of Sports Sciences",
+        "doi": "10.1080/02640414.2024.2321021",
+        "pubmed_id": "38393985",
+        "pmc_id": "",
+        "permanent_url": "https://doi.org/10.1080/02640414.2024.2321021",
+        "study_type": "randomized_controlled_trial",
+        "research_topic": "proximity_to_failure",
+        "male_only_sample": false,
+        "mixed_sex_sample": true,
+        "male_results_reported_separately": false,
+        "male_sample_size": 12,
+        "total_sample_size": 18,
+        "participant_training_status": "intermediate",
+        "participant_age_mean": null,
+        "participant_age_range": "adult",
+        "natural_or_enhanced": "not_reported",
+        "study_duration_weeks": 8,
+        "intervention": "Twice-weekly split-limb leg press and leg extension performed to momentary failure",
+        "comparator": "Contralateral limb trained at perceived 2 RIR and 1 RIR",
+        "training_protocol": "Varied by included study",
+        "nutrition_conditions": "Not consistently controlled",
+        "outcome_measures": "Rectus femoris and vastus lateralis thickness plus repetition and velocity loss",
+        "main_result": "Failure and 1-2 RIR conditions produced similar quadriceps hypertrophy, while failure caused greater acute repetition and velocity loss.",
+        "effect_size": "",
+        "statistical_significance": "See source; not reducible to one test",
+        "practical_significance": "Failure and 1-2 RIR conditions produced similar quadriceps hypertrophy, while failure caused greater acute repetition and velocity loss.",
+        "study_limitations": "Small mixed-sex sample (12 males, 6 females), non-separable sex results, quadriceps-only measures, and an eight-week intervention limit generalization.",
+        "risk_of_bias": "some_concerns",
+        "male_applicability": "indirect",
+        "evidence_tier": "tier_3",
+        "confidence_rating": "moderate",
+        "replication_status": "part_of_broader_evidence_base",
+        "conflicting_evidence": "See evidence conclusions and gaps tables",
+        "reviewer_notes": "Eligibility retained only for male-applicable inference; do not infer a sex-specific effect unless marked direct.",
+        "date_added": "2026-07-12",
+        "last_reviewed_date": "2026-07-12"
+      },
+      {
+        "study_id": "stu_0046",
+        "full_citation": "Coleman et al. (2024). Gaining more from doing less? The effects of a one-week deload period during supervised resistance training on muscular adaptations. PeerJ. https://doi.org/10.7717/peerj.16777",
+        "publication_year": 2024,
+        "authors": "Coleman et al.",
+        "study_title": "Gaining more from doing less? The effects of a one-week deload period during supervised resistance training on muscular adaptations",
+        "journal": "PeerJ",
+        "doi": "10.7717/peerj.16777",
+        "pubmed_id": "38274324",
+        "pmc_id": "PMC10809978",
+        "permanent_url": "https://doi.org/10.7717/peerj.16777",
+        "study_type": "randomized_controlled_trial",
+        "research_topic": "deload",
+        "male_only_sample": false,
+        "mixed_sex_sample": true,
+        "male_results_reported_separately": false,
+        "male_sample_size": 29,
+        "total_sample_size": 39,
+        "participant_training_status": "intermediate",
+        "participant_age_mean": null,
+        "participant_age_range": "adult",
+        "natural_or_enhanced": "not_reported",
+        "study_duration_weeks": 9,
+        "intervention": "One week of complete resistance-training cessation at the midpoint of a high-volume program",
+        "comparator": "Continuous resistance training across the nine-week program",
+        "training_protocol": "Varied by included study",
+        "nutrition_conditions": "Not consistently controlled",
+        "outcome_measures": "Lower-body muscle thickness, strength, endurance, power, and readiness",
+        "main_result": "A one-week mid-program cessation did not improve hypertrophy, power, or endurance and produced smaller strength gains than continuous training.",
+        "effect_size": "",
+        "statistical_significance": "See source; not reducible to one test",
+        "practical_significance": "A one-week mid-program cessation did not improve hypertrophy, power, or endurance and produced smaller strength gains than continuous training.",
+        "study_limitations": "Small mixed-sex sample with non-separable results; the intervention was complete cessation, not a reduced-load deload, within one nine-week program.",
+        "risk_of_bias": "some_concerns",
+        "male_applicability": "indirect",
+        "evidence_tier": "tier_3",
+        "confidence_rating": "low",
+        "replication_status": "part_of_broader_evidence_base",
+        "conflicting_evidence": "See evidence conclusions and gaps tables",
+        "reviewer_notes": "Eligibility retained only for male-applicable inference; do not infer a sex-specific effect unless marked direct.",
+        "date_added": "2026-07-12",
+        "last_reviewed_date": "2026-07-12"
+      },
+      {
+        "study_id": "stu_0047",
+        "full_citation": "Kassiano et al. (2023). Greater Gastrocnemius Muscle Hypertrophy After Partial Range of Motion Training Performed at Long Muscle Lengths. Journal of Strength and Conditioning Research. https://doi.org/10.1519/JSC.0000000000004460",
+        "publication_year": 2023,
+        "authors": "Kassiano et al.",
+        "study_title": "Greater Gastrocnemius Muscle Hypertrophy After Partial Range of Motion Training Performed at Long Muscle Lengths",
+        "journal": "Journal of Strength and Conditioning Research",
+        "doi": "10.1519/JSC.0000000000004460",
+        "pubmed_id": "37015016",
+        "pmc_id": "",
+        "permanent_url": "https://doi.org/10.1519/JSC.0000000000004460",
+        "study_type": "randomized_controlled_trial",
+        "research_topic": "muscle_length",
+        "male_only_sample": false,
+        "mixed_sex_sample": true,
+        "male_results_reported_separately": false,
+        "male_sample_size": 0,
+        "total_sample_size": 42,
+        "participant_training_status": "untrained",
+        "participant_age_mean": null,
+        "participant_age_range": "adult",
+        "natural_or_enhanced": "not_reported",
+        "study_duration_weeks": 8,
+        "intervention": "Three weekly sets of 15-20RM calf raises using full or partial ranges of motion",
+        "comparator": "Full, initial long-length partial, and final short-length partial ranges",
+        "training_protocol": "Varied by included study",
+        "nutrition_conditions": "Not consistently controlled",
+        "outcome_measures": "Ultrasound medial and lateral gastrocnemius muscle thickness",
+        "main_result": "Long-muscle-length partial calf raises increased gastrocnemius thickness more than short-length partials and, for some regions, full range of motion.",
+        "effect_size": "",
+        "statistical_significance": "See source; not reducible to one test",
+        "practical_significance": "Long-muscle-length partial calf raises increased gastrocnemius thickness more than short-length partials and, for some regions, full range of motion.",
+        "study_limitations": "Female-only sample of 42 untrained young women; gastrocnemius-specific ultrasound outcomes cannot establish a male or whole-body rule. The mixed-sex contract flag is true because this cohort is not male-only, while the zero-male count and excluded applicability remain authoritative.",
+        "risk_of_bias": "some_concerns",
+        "male_applicability": "excluded",
+        "evidence_tier": "tier_3",
+        "confidence_rating": "low",
+        "replication_status": "part_of_broader_evidence_base",
+        "conflicting_evidence": "See evidence conclusions and gaps tables",
+        "reviewer_notes": "Negative-control evidence row: retained for bibliography completeness but excluded from all male conclusions and application mappings.",
+        "date_added": "2026-07-12",
+        "last_reviewed_date": "2026-07-12"
+      },
+      {
+        "study_id": "stu_0048",
+        "full_citation": "Marasingha-Arachchige et al. (2022). Factors that affect heart rate variability following acute resistance exercise: A systematic review and meta-analysis. Journal of Sport and Health Science. https://doi.org/10.1016/j.jshs.2020.11.008",
+        "publication_year": 2022,
+        "authors": "Marasingha-Arachchige et al.",
+        "study_title": "Factors that affect heart rate variability following acute resistance exercise: A systematic review and meta-analysis",
+        "journal": "Journal of Sport and Health Science",
+        "doi": "10.1016/j.jshs.2020.11.008",
+        "pubmed_id": "33246163",
+        "pmc_id": "PMC9189698",
+        "permanent_url": "https://doi.org/10.1016/j.jshs.2020.11.008",
+        "study_type": "systematic_review_meta_analysis",
+        "research_topic": "readiness_hrv",
+        "male_only_sample": false,
+        "mixed_sex_sample": true,
+        "male_results_reported_separately": false,
+        "male_sample_size": null,
+        "total_sample_size": 412,
+        "participant_training_status": "mixed",
+        "participant_age_mean": null,
+        "participant_age_range": "adult",
+        "natural_or_enhanced": "not_reported",
+        "study_duration_weeks": null,
+        "intervention": "Acute resistance-exercise sessions from 26 included studies",
+        "comparator": "Pre-exercise HRV and protocol subgroups",
+        "training_protocol": "Heterogeneous acute resistance-exercise protocols",
+        "nutrition_conditions": "Not consistently controlled",
+        "outcome_measures": "Post-exercise heart-rate-variability parameters",
+        "main_result": "Acute resistance exercise transiently alters post-exercise HRV, with volume, set count, intensity, and rest moderating some cardiac autonomic outcomes.",
+        "effect_size": "",
+        "statistical_significance": "See source; not reducible to one test",
+        "practical_significance": "Acute resistance exercise transiently alters post-exercise HRV, with volume, set count, intensity, and rest moderating some cardiac autonomic outcomes.",
+        "study_limitations": "Acute heterogeneous evidence cannot establish a causal pre-session readiness threshold or validate an HRV-based workout prescription algorithm; sex-specific aggregate counts were not reported.",
+        "risk_of_bias": "varies_across_included_studies",
+        "male_applicability": "indirect",
+        "evidence_tier": "tier_1",
+        "confidence_rating": "low",
+        "replication_status": "part_of_broader_evidence_base",
+        "conflicting_evidence": "See evidence conclusions and gaps tables",
+        "reviewer_notes": "Useful for monitoring context only; not direct evidence that HRV should increase or decrease a planned workout.",
         "date_added": "2026-07-12",
         "last_reviewed_date": "2026-07-12"
       }
@@ -2738,6 +3089,94 @@
         "confidence_rating": "moderate",
         "key_limitations": "Most syntheses combine sexes and training statuses; exercise- and muscle-specific data are sparse.",
         "application_rule": "Advanced set systems are mainly time-efficiency or variety tools; they are not reliably superior to traditional sets for hypertrophy.",
+        "exceptions": "Pain, technique failure, medical contraindications, or recovery failure override the default.",
+        "last_reviewed_date": "2026-07-12"
+      },
+      {
+        "conclusion_id": "con_0028",
+        "topic": "resistance_training_scope",
+        "research_question": "What broad resistance-training prescription findings apply to healthy adults?",
+        "male_population": "healthy adult males represented indirectly within the broad ACSM position-stand population",
+        "training_status": "all",
+        "nutrition_context": "all",
+        "conclusion": "Progressive resistance training supports strength, hypertrophy, power, endurance, and physical function; multiple prescriptions work, and outcome-specific priorities should not be treated as one best program for everyone.",
+        "recommended_lower_bound": null,
+        "recommended_upper_bound": null,
+        "recommended_unit": "",
+        "practical_range_text": "No defensible universal numeric range",
+        "supporting_study_ids": "stu_0043",
+        "conflicting_study_ids": "",
+        "direct_or_indirect_evidence": "indirect",
+        "evidence_strength": "very_high",
+        "confidence_rating": "high",
+        "key_limitations": "This ACSM overview synthesizes 137 overlapping reviews and more than 30,000 participants without a separable aggregate male effect; overview cut points describe broad healthy-adult evidence, not male-specific universal thresholds.",
+        "application_rule": "Use the position stand to bound broad healthy-adult options, then apply goal, equipment, experience, adherence, and recovery constraints without claiming one universal prescription.",
+        "exceptions": "Pain, technique failure, medical contraindications, or recovery failure override the default.",
+        "last_reviewed_date": "2026-07-12"
+      },
+      {
+        "conclusion_id": "con_0029",
+        "topic": "proximity_to_failure_uncertainty",
+        "research_question": "Does a precise RIR threshold optimize hypertrophy?",
+        "male_population": "resistance-trained and resistance-training-eligible adult males represented indirectly in mixed evidence",
+        "training_status": "all",
+        "nutrition_context": "all",
+        "conclusion": "Training closer to failure may increase hypertrophy on average, while 1-2 RIR can produce similar quadriceps growth to momentary failure; the exact dose-response and any optimal RIR threshold remain uncertain.",
+        "recommended_lower_bound": null,
+        "recommended_upper_bound": null,
+        "recommended_unit": "",
+        "practical_range_text": "No defensible universal numeric range",
+        "supporting_study_ids": "stu_0044|stu_0045",
+        "conflicting_study_ids": "",
+        "direct_or_indirect_evidence": "indirect",
+        "evidence_strength": "moderate",
+        "confidence_rating": "moderate",
+        "key_limitations": "The meta-regression used estimated RIR with exploratory models and modest fit; the direct trial was an eight-week, small mixed-sex, quadriceps-only study with non-separable male results.",
+        "application_rule": "Treat RIR bands as advisory product policy, preserve user effort and fatigue context, and never present one exact RIR as a validated universal optimizer.",
+        "exceptions": "Pain, technique failure, medical contraindications, or recovery failure override the default.",
+        "last_reviewed_date": "2026-07-12"
+      },
+      {
+        "conclusion_id": "con_0030",
+        "topic": "deload_uncertainty",
+        "research_question": "Does a scheduled deload benefit adaptation?",
+        "male_population": "resistance-trained adult males represented indirectly in one mixed-sex trial",
+        "training_status": "all",
+        "nutrition_context": "all",
+        "conclusion": "One week of complete training cessation in a nine-week program did not benefit hypertrophy and reduced strength gains relative to continuous training; evidence for reduced-load deload timing, triggers, and dose remains insufficient.",
+        "recommended_lower_bound": null,
+        "recommended_upper_bound": null,
+        "recommended_unit": "",
+        "practical_range_text": "No defensible universal numeric range",
+        "supporting_study_ids": "stu_0046",
+        "conflicting_study_ids": "",
+        "direct_or_indirect_evidence": "indirect",
+        "evidence_strength": "low",
+        "confidence_rating": "low",
+        "key_limitations": "This small mixed-sex trial studied complete cessation, not the reduced-volume or reduced-load deload algorithms commonly used in products, so it cannot establish a universal deload trigger.",
+        "application_rule": "Keep deload triggers and numerical reductions advisory and configurable; explain that they are product policy responding to repeated fatigue/performance evidence, not a directly validated schedule.",
+        "exceptions": "Pain, technique failure, medical contraindications, or recovery failure override the default.",
+        "last_reviewed_date": "2026-07-12"
+      },
+      {
+        "conclusion_id": "con_0031",
+        "topic": "readiness_hrv_uncertainty",
+        "research_question": "Can acute HRV evidence validate pre-session readiness changes?",
+        "male_population": "healthy adult males represented indirectly within heterogeneous acute resistance-exercise studies",
+        "training_status": "all",
+        "nutrition_context": "all",
+        "conclusion": "Acute resistance exercise changes post-exercise heart-rate variability, but this does not establish that a pre-session HRV value should automatically increase, reduce, or cancel a planned workout.",
+        "recommended_lower_bound": null,
+        "recommended_upper_bound": null,
+        "recommended_unit": "",
+        "practical_range_text": "No defensible universal numeric range",
+        "supporting_study_ids": "stu_0048",
+        "conflicting_study_ids": "",
+        "direct_or_indirect_evidence": "indirect",
+        "evidence_strength": "low",
+        "confidence_rating": "low",
+        "key_limitations": "The review pooled heterogeneous acute outcomes and protocol moderators; causal readiness thresholds and longitudinal HRV-guided resistance-training algorithms remain unvalidated and uncertain.",
+        "application_rule": "Use HRV, when available, as optional advisory context alongside symptoms and performance; disclose missing data and do not enforce a hard training decision from HRV alone.",
         "exceptions": "Pain, technique failure, medical contraindications, or recovery failure override the default.",
         "last_reviewed_date": "2026-07-12"
       }
@@ -6722,10 +7161,14 @@
         "rest_adjustment_seconds": 0,
         "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
         "supporting_study_ids": "stu_0029|stu_0030|stu_0031",
-        "direct_or_inferred_rule": "inferred",
+        "supporting_conclusion_ids": "con_0015",
+        "rule_authority": "product_policy",
+        "enforcement_level": "advisory",
+        "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+        "direct_or_inferred_rule": "inferred_product_policy",
         "evidence_strength": "low",
         "confidence_rating": "moderate",
-        "notes": "Deterministic operational rule; thresholds are conservative defaults, not proven biological cut points."
+        "notes": "Deterministic operational rule; thresholds are conservative defaults, not validated biological cut points."
       },
       {
         "rule_id": "rule_0002",
@@ -6751,10 +7194,14 @@
         "rest_adjustment_seconds": 0,
         "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
         "supporting_study_ids": "stu_0029|stu_0030|stu_0031",
-        "direct_or_inferred_rule": "inferred",
+        "supporting_conclusion_ids": "con_0015",
+        "rule_authority": "product_policy",
+        "enforcement_level": "advisory",
+        "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+        "direct_or_inferred_rule": "inferred_product_policy",
         "evidence_strength": "low",
         "confidence_rating": "low",
-        "notes": "Deterministic operational rule; thresholds are conservative defaults, not proven biological cut points."
+        "notes": "Deterministic operational rule; thresholds are conservative defaults, not validated biological cut points."
       },
       {
         "rule_id": "rule_0003",
@@ -6780,10 +7227,14 @@
         "rest_adjustment_seconds": 0,
         "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
         "supporting_study_ids": "stu_0029|stu_0030|stu_0031",
-        "direct_or_inferred_rule": "inferred",
+        "supporting_conclusion_ids": "con_0015",
+        "rule_authority": "product_policy",
+        "enforcement_level": "advisory",
+        "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+        "direct_or_inferred_rule": "inferred_product_policy",
         "evidence_strength": "low",
         "confidence_rating": "moderate",
-        "notes": "Deterministic operational rule; thresholds are conservative defaults, not proven biological cut points."
+        "notes": "Deterministic operational rule; thresholds are conservative defaults, not validated biological cut points."
       },
       {
         "rule_id": "rule_0004",
@@ -6809,10 +7260,14 @@
         "rest_adjustment_seconds": 0,
         "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
         "supporting_study_ids": "stu_0029|stu_0030|stu_0031",
-        "direct_or_inferred_rule": "inferred",
+        "supporting_conclusion_ids": "con_0015",
+        "rule_authority": "product_policy",
+        "enforcement_level": "advisory",
+        "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+        "direct_or_inferred_rule": "inferred_product_policy",
         "evidence_strength": "low",
         "confidence_rating": "moderate",
-        "notes": "Deterministic operational rule; thresholds are conservative defaults, not proven biological cut points."
+        "notes": "Deterministic operational rule; thresholds are conservative defaults, not validated biological cut points."
       },
       {
         "rule_id": "rule_0005",
@@ -6838,10 +7293,14 @@
         "rest_adjustment_seconds": 0,
         "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
         "supporting_study_ids": "stu_0029|stu_0030|stu_0031",
-        "direct_or_inferred_rule": "inferred",
+        "supporting_conclusion_ids": "con_0015",
+        "rule_authority": "product_policy",
+        "enforcement_level": "advisory",
+        "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+        "direct_or_inferred_rule": "inferred_product_policy",
         "evidence_strength": "low",
         "confidence_rating": "moderate",
-        "notes": "Deterministic operational rule; thresholds are conservative defaults, not proven biological cut points."
+        "notes": "Deterministic operational rule; thresholds are conservative defaults, not validated biological cut points."
       },
       {
         "rule_id": "rule_0006",
@@ -6867,10 +7326,14 @@
         "rest_adjustment_seconds": 0,
         "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
         "supporting_study_ids": "stu_0029|stu_0030|stu_0031",
-        "direct_or_inferred_rule": "inferred",
+        "supporting_conclusion_ids": "con_0015",
+        "rule_authority": "product_policy",
+        "enforcement_level": "advisory",
+        "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+        "direct_or_inferred_rule": "inferred_product_policy",
         "evidence_strength": "low",
         "confidence_rating": "moderate",
-        "notes": "Deterministic operational rule; thresholds are conservative defaults, not proven biological cut points."
+        "notes": "Deterministic operational rule; thresholds are conservative defaults, not validated biological cut points."
       },
       {
         "rule_id": "rule_0007",
@@ -6896,10 +7359,14 @@
         "rest_adjustment_seconds": 0,
         "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
         "supporting_study_ids": "stu_0029|stu_0030",
-        "direct_or_inferred_rule": "inferred",
+        "supporting_conclusion_ids": "con_0015",
+        "rule_authority": "product_policy",
+        "enforcement_level": "advisory",
+        "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+        "direct_or_inferred_rule": "inferred_product_policy",
         "evidence_strength": "very_low",
         "confidence_rating": "low",
-        "notes": "Deterministic operational rule; thresholds are conservative defaults, not proven biological cut points."
+        "notes": "Deterministic operational rule; thresholds are conservative defaults, not validated biological cut points."
       },
       {
         "rule_id": "rule_0008",
@@ -6925,10 +7392,14 @@
         "rest_adjustment_seconds": 0,
         "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
         "supporting_study_ids": "stu_0029|stu_0030|stu_0031",
-        "direct_or_inferred_rule": "inferred",
+        "supporting_conclusion_ids": "con_0015",
+        "rule_authority": "product_policy",
+        "enforcement_level": "advisory",
+        "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+        "direct_or_inferred_rule": "inferred_product_policy",
         "evidence_strength": "very_low",
         "confidence_rating": "low",
-        "notes": "Deterministic operational rule; thresholds are conservative defaults, not proven biological cut points."
+        "notes": "Deterministic operational rule; thresholds are conservative defaults, not validated biological cut points."
       },
       {
         "rule_id": "rule_0009",
@@ -6954,10 +7425,14 @@
         "rest_adjustment_seconds": 0,
         "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
         "supporting_study_ids": "stu_0029|stu_0030|stu_0031",
-        "direct_or_inferred_rule": "inferred",
+        "supporting_conclusion_ids": "con_0015",
+        "rule_authority": "product_policy",
+        "enforcement_level": "advisory",
+        "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+        "direct_or_inferred_rule": "inferred_product_policy",
         "evidence_strength": "very_low",
         "confidence_rating": "low",
-        "notes": "Deterministic operational rule; thresholds are conservative defaults, not proven biological cut points."
+        "notes": "Deterministic operational rule; thresholds are conservative defaults, not validated biological cut points."
       },
       {
         "rule_id": "rule_0010",
@@ -6983,10 +7458,14 @@
         "rest_adjustment_seconds": 0,
         "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
         "supporting_study_ids": "stu_0001|stu_0002|stu_0025",
-        "direct_or_inferred_rule": "inferred",
+        "supporting_conclusion_ids": "con_0004",
+        "rule_authority": "product_policy",
+        "enforcement_level": "advisory",
+        "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+        "direct_or_inferred_rule": "inferred_product_policy",
         "evidence_strength": "low",
         "confidence_rating": "low",
-        "notes": "Deterministic operational rule; thresholds are conservative defaults, not proven biological cut points."
+        "notes": "Deterministic operational rule; thresholds are conservative defaults, not validated biological cut points."
       },
       {
         "rule_id": "rule_0011",
@@ -7011,11 +7490,15 @@
         "rir_adjustment": 0,
         "rest_adjustment_seconds": 0,
         "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
-        "supporting_study_ids": "stu_0029|stu_0030|stu_0031",
-        "direct_or_inferred_rule": "inferred",
+        "supporting_study_ids": "stu_0001|stu_0002|stu_0025",
+        "supporting_conclusion_ids": "con_0004",
+        "rule_authority": "product_policy",
+        "enforcement_level": "advisory",
+        "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+        "direct_or_inferred_rule": "inferred_product_policy",
         "evidence_strength": "low",
         "confidence_rating": "moderate",
-        "notes": "Deterministic operational rule; thresholds are conservative defaults, not proven biological cut points."
+        "notes": "Deterministic operational rule; thresholds are conservative defaults, not validated biological cut points."
       },
       {
         "rule_id": "rule_0012",
@@ -7026,7 +7509,7 @@
         "applicable_muscle_groups": "",
         "applicable_training_levels": "intermediate|advanced",
         "applicable_nutrition_phases": "all",
-        "required_inputs": "multi_exercise_regressions|fatigue_flags|pain_flags|adherence_pass",
+        "required_inputs": "multi_exercise_regressions|fatigue_flags|adherence_pass",
         "condition_logic": "{\"and\":[{\"gte\":[\"regressed_exercises\",2]},{\"consecutive_weeks_gte\":2},{\"eq\":[\"adherence_pass\",true]},{\"eq\":[\"simple_recovery_fix_failed\",true]}]}",
         "threshold_value_1": 30,
         "threshold_unit_1": "set_reduction_percent",
@@ -7040,11 +7523,15 @@
         "rir_adjustment": 0,
         "rest_adjustment_seconds": 0,
         "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
-        "supporting_study_ids": "stu_0029|stu_0030|stu_0031",
-        "direct_or_inferred_rule": "inferred",
+        "supporting_study_ids": "stu_0046",
+        "supporting_conclusion_ids": "con_0030",
+        "rule_authority": "product_policy",
+        "enforcement_level": "advisory",
+        "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+        "direct_or_inferred_rule": "inferred_product_policy",
         "evidence_strength": "very_low",
         "confidence_rating": "low",
-        "notes": "Deterministic operational rule; thresholds are conservative defaults, not proven biological cut points."
+        "notes": "Deterministic operational rule; thresholds are conservative defaults, not validated biological cut points."
       },
       {
         "rule_id": "rule_0013",
@@ -7055,13 +7542,13 @@
         "applicable_muscle_groups": "",
         "applicable_training_levels": "all",
         "applicable_nutrition_phases": "all",
-        "required_inputs": "pain_sessions|target_muscle_limitation|plateau_status|mesocycle_sessions",
-        "condition_logic": "{\"or\":[{\"pain_sessions_gte\":2},{\"and\":[{\"eq\":[\"target_muscle_is_limiting\",false]},{\"comparable_sessions_gte\":3}]},{\"and\":[{\"eq\":[\"plateau_status\",true]},{\"gte\":[\"mesocycle_sessions\",6]}]}]}",
-        "threshold_value_1": 2,
-        "threshold_unit_1": "pain_sessions",
-        "threshold_value_2": 3,
-        "threshold_unit_2": "limitation_sessions",
-        "minimum_sessions_required": 2,
+        "required_inputs": "target_muscle_limitation|plateau_status|mesocycle_sessions",
+        "condition_logic": "{\"or\":[{\"and\":[{\"eq\":[\"target_muscle_is_limiting\",false]},{\"comparable_sessions_gte\":3}]},{\"and\":[{\"eq\":[\"plateau_status\",true]},{\"gte\":[\"mesocycle_sessions\",6]}]}]}",
+        "threshold_value_1": 3,
+        "threshold_unit_1": "limitation_sessions",
+        "threshold_value_2": 6,
+        "threshold_unit_2": "minimum_mesocycle_sessions",
+        "minimum_sessions_required": 3,
         "recommended_action": "substitute_with_same_primary_muscle_and_lower_limiting_cost",
         "load_adjustment_percent": 0,
         "rep_adjustment": 0,
@@ -7070,10 +7557,14 @@
         "rest_adjustment_seconds": 0,
         "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
         "supporting_study_ids": "stu_0029|stu_0030|stu_0031",
-        "direct_or_inferred_rule": "inferred",
+        "supporting_conclusion_ids": "con_0015",
+        "rule_authority": "product_policy",
+        "enforcement_level": "advisory",
+        "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+        "direct_or_inferred_rule": "inferred_product_policy",
         "evidence_strength": "very_low",
         "confidence_rating": "low",
-        "notes": "Deterministic operational rule; thresholds are conservative defaults, not proven biological cut points."
+        "notes": "Deterministic operational rule; thresholds are conservative defaults, not validated biological cut points."
       },
       {
         "rule_id": "rule_0014",
@@ -7098,11 +7589,15 @@
         "rir_adjustment": 0,
         "rest_adjustment_seconds": 0,
         "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
-        "supporting_study_ids": "stu_0029|stu_0030|stu_0031",
-        "direct_or_inferred_rule": "inferred",
+        "supporting_study_ids": "stu_0020",
+        "supporting_conclusion_ids": "con_0026",
+        "rule_authority": "product_policy",
+        "enforcement_level": "advisory",
+        "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+        "direct_or_inferred_rule": "inferred_product_policy",
         "evidence_strength": "low",
         "confidence_rating": "low",
-        "notes": "During a deficit, stable performance can be a successful outcome; do not lower standards for technique or ROM."
+        "notes": "During a deficit, stable performance can be a successful outcome; do not lower standards for technique or ROM. The -3% tolerance is advisory product policy, not a universal biological boundary."
       },
       {
         "rule_id": "rule_0015",
@@ -7127,11 +7622,15 @@
         "rir_adjustment": 0,
         "rest_adjustment_seconds": 0,
         "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
-        "supporting_study_ids": "stu_0031|stu_0032",
-        "direct_or_inferred_rule": "inferred",
+        "supporting_study_ids": "stu_0031|stu_0032|stu_0048",
+        "supporting_conclusion_ids": "con_0015|con_0031",
+        "rule_authority": "product_policy",
+        "enforcement_level": "advisory",
+        "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+        "direct_or_inferred_rule": "inferred_product_policy",
         "evidence_strength": "low",
         "confidence_rating": "low",
-        "notes": "Deterministic operational rule; thresholds are conservative defaults, not proven biological cut points."
+        "notes": "Deterministic operational rule; thresholds are conservative defaults, not validated biological cut points."
       },
       {
         "rule_id": "rule_0016",
@@ -7157,10 +7656,14 @@
         "rest_adjustment_seconds": 0,
         "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
         "supporting_study_ids": "stu_0029|stu_0030|stu_0031",
-        "direct_or_inferred_rule": "inferred",
+        "supporting_conclusion_ids": "con_0015",
+        "rule_authority": "product_policy",
+        "enforcement_level": "advisory",
+        "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+        "direct_or_inferred_rule": "inferred_product_policy",
         "evidence_strength": "low",
         "confidence_rating": "low",
-        "notes": "Deterministic operational rule; thresholds are conservative defaults, not proven biological cut points."
+        "notes": "Deterministic operational rule; thresholds are conservative defaults, not validated biological cut points."
       },
       {
         "rule_id": "rule_0017",
@@ -7185,11 +7688,15 @@
         "rir_adjustment": 0,
         "rest_adjustment_seconds": 0,
         "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
-        "supporting_study_ids": "stu_0032",
-        "direct_or_inferred_rule": "inferred",
+        "supporting_study_ids": "stu_0031|stu_0032",
+        "supporting_conclusion_ids": "con_0015",
+        "rule_authority": "product_policy",
+        "enforcement_level": "advisory",
+        "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+        "direct_or_inferred_rule": "inferred_product_policy",
         "evidence_strength": "low",
         "confidence_rating": "low",
-        "notes": "Device-dependent and not a hypertrophy-optimization rule; threshold should be individualized."
+        "notes": "Device-dependent and not a hypertrophy-optimization rule; the 20% threshold is configurable advisory product policy and should be individualized."
       },
       {
         "rule_id": "rule_0018",
@@ -7215,10 +7722,47 @@
         "rest_adjustment_seconds": 30,
         "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
         "supporting_study_ids": "stu_0007|stu_0026|stu_0038",
-        "direct_or_inferred_rule": "inferred",
+        "supporting_conclusion_ids": "con_0008",
+        "rule_authority": "product_policy",
+        "enforcement_level": "advisory",
+        "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+        "direct_or_inferred_rule": "inferred_product_policy",
         "evidence_strength": "moderate",
         "confidence_rating": "moderate",
-        "notes": "Deterministic operational rule; thresholds are conservative defaults, not proven biological cut points."
+        "notes": "Deterministic operational rule; thresholds are conservative defaults, not validated biological cut points."
+      },
+      {
+        "rule_id": "rule_0019",
+        "rule_name": "immediate_pain_stop",
+        "rule_category": "pain_safety",
+        "applicable_exercise_types": "all",
+        "applicable_exercise_ids": "",
+        "applicable_muscle_groups": "",
+        "applicable_training_levels": "all",
+        "applicable_nutrition_phases": "all",
+        "required_inputs": "pain",
+        "condition_logic": "{\"eq\":[\"pain\",true]}",
+        "threshold_value_1": null,
+        "threshold_unit_1": "",
+        "threshold_value_2": null,
+        "threshold_unit_2": "",
+        "minimum_sessions_required": 1,
+        "recommended_action": "stop_the_painful_movement_and_only_offer_an_explicit_safe_pain-free_substitute_or_end_the_exercise",
+        "load_adjustment_percent": 0,
+        "rep_adjustment": 0,
+        "set_adjustment": 0,
+        "rir_adjustment": 0,
+        "rest_adjustment_seconds": 0,
+        "exceptions": "No preference, progression target, or readiness score may override current pain; severe, unexplained, or persistent pain warrants qualified professional evaluation.",
+        "supporting_study_ids": "stu_0011|stu_0012|stu_0013",
+        "supporting_conclusion_ids": "con_0010",
+        "rule_authority": "safety",
+        "enforcement_level": "hard_blocker",
+        "policy_disclosure": "Deterministic safety policy: pain overrides preferences and progression; this is a conservative product restriction, not a diagnosis.",
+        "direct_or_inferred_rule": "safety_product_policy",
+        "evidence_strength": "moderate",
+        "confidence_rating": "high",
+        "notes": "Immediate pain handling is separate from advisory exercise-rotation heuristics and must not wait for repeated sessions."
       }
     ],
     "nutrition_strategies": [
@@ -8433,6 +8977,18 @@
         "used_in_tabs": "muscle_group_recommendations"
       },
       {
+        "field_name": "enforcement_level",
+        "display_name": "Enforcement Level",
+        "definition": "Whether the rule is advisory or a deterministic hard blocker.",
+        "data_type": "string",
+        "allowed_values": "advisory|hard_blocker",
+        "unit": "",
+        "nullable": true,
+        "example_value": "",
+        "validation_rule": "must_be_one_of:advisory|hard_blocker",
+        "used_in_tabs": "progression_rules"
+      },
+      {
         "field_name": "equipment",
         "display_name": "Equipment",
         "definition": "Structured field for equipment; see the owning table and methodology for interpretation.",
@@ -9249,6 +9805,30 @@
         "used_in_tabs": "research_library"
       },
       {
+        "field_name": "pmc_id",
+        "display_name": "Pmc Id",
+        "definition": "PubMed Central identifier in PMC-plus-digits form; empty only when no verified full-text archive record is available.",
+        "data_type": "string",
+        "allowed_values": "",
+        "unit": "",
+        "nullable": true,
+        "example_value": "",
+        "validation_rule": "empty_or_PMC_followed_by_digits",
+        "used_in_tabs": "research_library"
+      },
+      {
+        "field_name": "policy_disclosure",
+        "display_name": "Policy Disclosure",
+        "definition": "Plain-language disclosure distinguishing configurable operational policy from directly established scientific thresholds.",
+        "data_type": "string",
+        "allowed_values": "",
+        "unit": "",
+        "nullable": true,
+        "example_value": "",
+        "validation_rule": "type_must_match",
+        "used_in_tabs": "progression_rules"
+      },
+      {
         "field_name": "practical_default",
         "display_name": "Practical Default",
         "definition": "Structured field for practical default; see the owning table and methodology for interpretation.",
@@ -9414,6 +9994,18 @@
         "nullable": true,
         "example_value": "",
         "validation_rule": "type_must_match",
+        "used_in_tabs": "research_library"
+      },
+      {
+        "field_name": "pubmed_id",
+        "display_name": "Pubmed Id",
+        "definition": "PubMed identifier as seven to nine digits; empty only when no verified PubMed record is available.",
+        "data_type": "string",
+        "allowed_values": "",
+        "unit": "",
+        "nullable": true,
+        "example_value": "",
+        "validation_rule": "empty_or_7_to_9_digit_pubmed_id",
         "used_in_tabs": "research_library"
       },
       {
@@ -9933,6 +10525,18 @@
         "used_in_tabs": "evidence_gaps"
       },
       {
+        "field_name": "rule_authority",
+        "display_name": "Rule Authority",
+        "definition": "Whether a rule expresses evidence interpretation, configurable product policy, or deterministic safety authority.",
+        "data_type": "string",
+        "allowed_values": "evidence|product_policy|safety",
+        "unit": "",
+        "nullable": true,
+        "example_value": "",
+        "validation_rule": "must_be_one_of:evidence|product_policy|safety",
+        "used_in_tabs": "progression_rules"
+      },
+      {
         "field_name": "rule_category",
         "display_name": "Rule Category",
         "definition": "Structured field for rule category; see the owning table and methodology for interpretation.",
@@ -10303,6 +10907,18 @@
         "example_value": "",
         "validation_rule": "lowercase_snake_case_persistent_id",
         "used_in_tabs": "executive_summary"
+      },
+      {
+        "field_name": "supporting_conclusion_ids",
+        "display_name": "Supporting Conclusion Ids",
+        "definition": "Pipe-delimited persistent evidence-conclusion IDs that explain the rule's scientific scope; at least one cited study must overlap those conclusions.",
+        "data_type": "delimited_string",
+        "allowed_values": "",
+        "unit": "",
+        "nullable": true,
+        "example_value": "",
+        "validation_rule": "type_must_match",
+        "used_in_tabs": "progression_rules"
       },
       {
         "field_name": "supporting_study_ids",
@@ -10957,6 +11573,19 @@
         "reason_for_change": "Programming-family accounting must not double-count one exercise across anatomical subdivisions, and oblique programming needs at least one honest dynamic candidate.",
         "supporting_study_ids": "stu_0001|stu_0004|stu_0009|stu_0010|stu_0011",
         "reviewer_notes": "The family projection is a product accounting layer, not an anatomical claim. Woodchop classification is movement-pattern inference with explicit uncertainty."
+      },
+      {
+        "change_id": "chg_0005",
+        "change_date": "2026-07-12",
+        "database_version": "3.0.0",
+        "affected_tab": "research_library|evidence_conclusions|progression_rules|definitions_data_dictionary",
+        "affected_record_ids": "stu_0043-stu_0048|con_0028-con_0031|rule_0001-rule_0019",
+        "change_type": "breaking_science_provenance_contract",
+        "previous_value": "Rules cited studies but did not trace through conclusion records, distinguish product policy from safety authority, or expose verified PubMed and PubMed Central identifiers.",
+        "new_value": "Appended six primary evidence records, four scoped conclusions, an immediate pain blocker, bibliographic identifiers, conclusion traceability, authority, enforcement, and product-policy disclosure fields.",
+        "reason_for_change": "Recommendation logic needs auditable evidence scope, explicit uncertainty, and a deterministic separation between hard safety constraints and configurable numerical heuristics.",
+        "supporting_study_ids": "stu_0043|stu_0044|stu_0045|stu_0046|stu_0047|stu_0048",
+        "reviewer_notes": "Version 3.0.0 changes the public table schema. Historical persistent IDs remain unchanged; new records use append-only ID epochs. Numerical thresholds remain advisory product policy unless the rule is an allowlisted safety blocker."
       }
     ],
     "exercise_muscle_map": [
@@ -14864,6 +15493,36 @@
         "study_conclusion_map_id": "scm_0055",
         "study_id": "stu_0014",
         "conclusion_id": "con_0027",
+        "relationship_type": "supports"
+      },
+      {
+        "study_conclusion_map_id": "scm_0056",
+        "study_id": "stu_0043",
+        "conclusion_id": "con_0028",
+        "relationship_type": "supports"
+      },
+      {
+        "study_conclusion_map_id": "scm_0057",
+        "study_id": "stu_0044",
+        "conclusion_id": "con_0029",
+        "relationship_type": "supports"
+      },
+      {
+        "study_conclusion_map_id": "scm_0058",
+        "study_id": "stu_0045",
+        "conclusion_id": "con_0029",
+        "relationship_type": "supports"
+      },
+      {
+        "study_conclusion_map_id": "scm_0059",
+        "study_id": "stu_0046",
+        "conclusion_id": "con_0030",
+        "relationship_type": "supports"
+      },
+      {
+        "study_conclusion_map_id": "scm_0060",
+        "study_id": "stu_0048",
+        "conclusion_id": "con_0031",
         "relationship_type": "supports"
       }
     ],
@@ -22029,62 +22688,372 @@
       },
       {
         "rule_exercise_map_id": "rex_00754",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_barbell_bench_press"
+      },
+      {
+        "rule_exercise_map_id": "rex_00755",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_cambered_barbell_bench_press"
+      },
+      {
+        "rule_exercise_map_id": "rex_00756",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_dumbbell_bench_press"
+      },
+      {
+        "rule_exercise_map_id": "rex_00757",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_incline_dumbbell_press"
+      },
+      {
+        "rule_exercise_map_id": "rex_00758",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_machine_chest_press"
+      },
+      {
+        "rule_exercise_map_id": "rex_00759",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_incline_machine_press"
+      },
+      {
+        "rule_exercise_map_id": "rex_00760",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_cable_fly"
+      },
+      {
+        "rule_exercise_map_id": "rex_00761",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_low_to_high_cable_fly"
+      },
+      {
+        "rule_exercise_map_id": "rex_00762",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_overhead_press"
+      },
+      {
+        "rule_exercise_map_id": "rex_00763",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_machine_shoulder_press"
+      },
+      {
+        "rule_exercise_map_id": "rex_00764",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_cable_lateral_raise"
+      },
+      {
+        "rule_exercise_map_id": "rex_00765",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_dumbbell_lateral_raise"
+      },
+      {
+        "rule_exercise_map_id": "rex_00766",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_machine_lateral_raise"
+      },
+      {
+        "rule_exercise_map_id": "rex_00767",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_pull_up"
+      },
+      {
+        "rule_exercise_map_id": "rex_00768",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_chin_up"
+      },
+      {
+        "rule_exercise_map_id": "rex_00769",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_lat_pulldown"
+      },
+      {
+        "rule_exercise_map_id": "rex_00770",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_one_arm_cable_pulldown"
+      },
+      {
+        "rule_exercise_map_id": "rex_00771",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_chest_supported_row"
+      },
+      {
+        "rule_exercise_map_id": "rex_00772",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_seated_cable_row"
+      },
+      {
+        "rule_exercise_map_id": "rex_00773",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_dumbbell_row"
+      },
+      {
+        "rule_exercise_map_id": "rex_00774",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_reverse_pec_deck"
+      },
+      {
+        "rule_exercise_map_id": "rex_00775",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_cable_rear_delt_fly"
+      },
+      {
+        "rule_exercise_map_id": "rex_00776",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_barbell_shrug"
+      },
+      {
+        "rule_exercise_map_id": "rex_00777",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_dumbbell_shrug"
+      },
+      {
+        "rule_exercise_map_id": "rex_00778",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_back_squat"
+      },
+      {
+        "rule_exercise_map_id": "rex_00779",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_front_squat"
+      },
+      {
+        "rule_exercise_map_id": "rex_00780",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_leg_press"
+      },
+      {
+        "rule_exercise_map_id": "rex_00781",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_hack_squat"
+      },
+      {
+        "rule_exercise_map_id": "rex_00782",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_bulgarian_split_squat"
+      },
+      {
+        "rule_exercise_map_id": "rex_00783",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_leg_extension"
+      },
+      {
+        "rule_exercise_map_id": "rex_00784",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_deadlift"
+      },
+      {
+        "rule_exercise_map_id": "rex_00785",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_romanian_deadlift"
+      },
+      {
+        "rule_exercise_map_id": "rex_00786",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_good_morning"
+      },
+      {
+        "rule_exercise_map_id": "rex_00787",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_hip_thrust"
+      },
+      {
+        "rule_exercise_map_id": "rex_00788",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_back_extension"
+      },
+      {
+        "rule_exercise_map_id": "rex_00789",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_seated_leg_curl"
+      },
+      {
+        "rule_exercise_map_id": "rex_00790",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_lying_leg_curl"
+      },
+      {
+        "rule_exercise_map_id": "rex_00791",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_nordic_curl"
+      },
+      {
+        "rule_exercise_map_id": "rex_00792",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_hip_adduction_machine"
+      },
+      {
+        "rule_exercise_map_id": "rex_00793",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_hip_abduction_machine"
+      },
+      {
+        "rule_exercise_map_id": "rex_00794",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_cable_hip_abduction"
+      },
+      {
+        "rule_exercise_map_id": "rex_00795",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_standing_calf_raise"
+      },
+      {
+        "rule_exercise_map_id": "rex_00796",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_seated_calf_raise"
+      },
+      {
+        "rule_exercise_map_id": "rex_00797",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_leg_press_calf_raise"
+      },
+      {
+        "rule_exercise_map_id": "rex_00798",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_incline_dumbbell_curl"
+      },
+      {
+        "rule_exercise_map_id": "rex_00799",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_preacher_curl"
+      },
+      {
+        "rule_exercise_map_id": "rex_00800",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_cable_curl"
+      },
+      {
+        "rule_exercise_map_id": "rex_00801",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_hammer_curl"
+      },
+      {
+        "rule_exercise_map_id": "rex_00802",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_cable_pushdown"
+      },
+      {
+        "rule_exercise_map_id": "rex_00803",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_overhead_cable_extension"
+      },
+      {
+        "rule_exercise_map_id": "rex_00804",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_close_grip_bench_press"
+      },
+      {
+        "rule_exercise_map_id": "rex_00805",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_wrist_curl"
+      },
+      {
+        "rule_exercise_map_id": "rex_00806",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_reverse_wrist_curl"
+      },
+      {
+        "rule_exercise_map_id": "rex_00807",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_farmers_carry"
+      },
+      {
+        "rule_exercise_map_id": "rex_00808",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_cable_crunch"
+      },
+      {
+        "rule_exercise_map_id": "rex_00809",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_hanging_leg_raise"
+      },
+      {
+        "rule_exercise_map_id": "rex_00810",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_ab_wheel"
+      },
+      {
+        "rule_exercise_map_id": "rex_00811",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_pallof_press"
+      },
+      {
+        "rule_exercise_map_id": "rex_00812",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_side_plank"
+      },
+      {
+        "rule_exercise_map_id": "rex_00813",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_neck_flexion"
+      },
+      {
+        "rule_exercise_map_id": "rex_00814",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_neck_extension"
+      },
+      {
+        "rule_exercise_map_id": "rex_00815",
         "rule_id": "rule_0002",
         "exercise_id": "ex_cable_woodchop"
       },
       {
-        "rule_exercise_map_id": "rex_00755",
+        "rule_exercise_map_id": "rex_00816",
         "rule_id": "rule_0005",
         "exercise_id": "ex_cable_woodchop"
       },
       {
-        "rule_exercise_map_id": "rex_00756",
+        "rule_exercise_map_id": "rex_00817",
         "rule_id": "rule_0006",
         "exercise_id": "ex_cable_woodchop"
       },
       {
-        "rule_exercise_map_id": "rex_00757",
+        "rule_exercise_map_id": "rex_00818",
         "rule_id": "rule_0007",
         "exercise_id": "ex_cable_woodchop"
       },
       {
-        "rule_exercise_map_id": "rex_00758",
+        "rule_exercise_map_id": "rex_00819",
         "rule_id": "rule_0008",
         "exercise_id": "ex_cable_woodchop"
       },
       {
-        "rule_exercise_map_id": "rex_00759",
+        "rule_exercise_map_id": "rex_00820",
         "rule_id": "rule_0009",
         "exercise_id": "ex_cable_woodchop"
       },
       {
-        "rule_exercise_map_id": "rex_00760",
+        "rule_exercise_map_id": "rex_00821",
         "rule_id": "rule_0010",
         "exercise_id": "ex_cable_woodchop"
       },
       {
-        "rule_exercise_map_id": "rex_00761",
+        "rule_exercise_map_id": "rex_00822",
         "rule_id": "rule_0011",
         "exercise_id": "ex_cable_woodchop"
       },
       {
-        "rule_exercise_map_id": "rex_00762",
+        "rule_exercise_map_id": "rex_00823",
         "rule_id": "rule_0012",
         "exercise_id": "ex_cable_woodchop"
       },
       {
-        "rule_exercise_map_id": "rex_00763",
+        "rule_exercise_map_id": "rex_00824",
         "rule_id": "rule_0013",
         "exercise_id": "ex_cable_woodchop"
       },
       {
-        "rule_exercise_map_id": "rex_00764",
+        "rule_exercise_map_id": "rex_00825",
         "rule_id": "rule_0014",
         "exercise_id": "ex_cable_woodchop"
       },
       {
-        "rule_exercise_map_id": "rex_00765",
+        "rule_exercise_map_id": "rex_00826",
         "rule_id": "rule_0018",
+        "exercise_id": "ex_cable_woodchop"
+      },
+      {
+        "rule_exercise_map_id": "rex_00827",
+        "rule_id": "rule_0019",
         "exercise_id": "ex_cable_woodchop"
       }
     ],
