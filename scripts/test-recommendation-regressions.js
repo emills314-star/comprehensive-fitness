@@ -668,6 +668,8 @@ test("no-op and duplicate-dimension requests never become persisted declarations
   }), /duplicate exercise.identity/i, "two selectors cannot declare competing exercise identities");
 
   const replacement = engine.applyManualOverride(snapshot, { exerciseId: "ex_dumbbell_bench_press" }, {
+    allowedExerciseIds: ["ex_dumbbell_bench_press"],
+    availableEquipment: ["dumbbell", "bench"],
     createdAt: "2026-07-12T12:17:00.000Z"
   });
   assert.equal(replacement.finalPrescription.exerciseId, "ex_dumbbell_bench_press");
@@ -675,12 +677,15 @@ test("no-op and duplicate-dimension requests never become persisted declarations
   assert.doesNotThrow(() => deserializeRecommendationSnapshot(replacement), "a valid ordinary catalog-backed exercise replacement must remain supported");
 
   assert.throws(() => engine.applyManualOverride(snapshot, { exerciseId: "custom_dumbbell_press" }, {
+    allowedExerciseIds: ["custom_dumbbell_press"],
     exerciseCatalog: [{ personalExerciseId: "custom_dumbbell_press", researchExerciseId: "ex_dumbbell_bench_press", exerciseName: "Custom dumbbell press" }],
     createdAt: "2026-07-12T12:18:00.000Z"
-  }), /separate research identity|audit contract/i, "an ordinary custom/research identity pair must not exceed the identity information represented by the current audit schema");
+  }), /untrusted|trusted catalog|cannot establish/i, "caller metadata alone must not establish a custom/research identity pair");
 
   const customReplacement = engine.applyManualOverride(snapshot, { exerciseId: "custom_unmapped_press" }, {
     allowedExerciseIds: ["custom_unmapped_press"],
+    trustedExerciseCatalog: [{ personalExerciseId: "custom_unmapped_press", researchExerciseId: null, exerciseName: "Custom unmapped press", equipment: "bodyweight" }],
+    availableEquipment: ["bodyweight"],
     createdAt: "2026-07-12T12:19:00.000Z"
   });
   assert.equal(customReplacement.finalPrescription.researchExerciseId, null, "an unmapped custom exercise must retain an explicit null research identity");
@@ -688,6 +693,113 @@ test("no-op and duplicate-dimension requests never become persisted declarations
   const customResearchTamper = structuredClone(customReplacement);
   customResearchTamper.finalPrescription.researchExerciseId = "ex_dumbbell_bench_press";
   assert.throws(() => deserializeRecommendationSnapshot(refreshRecommendationChecksum(customResearchTamper)), /bijection|research identity|undeclared/i, "a rechecksummed custom replacement cannot gain an undeclared research identity");
+});
+
+test("ordinary exercise replacement resets exercise-specific executable guidance and only retains valid session dose", () => {
+  const snapshot = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", history: progressionHistory(), createdAt });
+  assert.ok(snapshot.finalPrescription.prescribedLoad?.previous > 0, "fixture must contain exercise-specific previous-load guidance");
+  const retainedFields = ["workingSets", "repRange", "targetRpe", "targetRir", "restSeconds", "frequencyPerWeek", "volume", "mesocycleId", "executionBlocked"];
+  const retained = Object.fromEntries(retainedFields.map((field) => [field, structuredClone(snapshot.finalPrescription[field])]));
+
+  const replacement = engine.applyManualOverride(snapshot, { exerciseId: "ex_dumbbell_bench_press" }, {
+    allowedExerciseIds: ["ex_dumbbell_bench_press"],
+    availableEquipment: ["dumbbell", "bench"],
+    createdAt: "2026-07-12T12:20:00.000Z"
+  });
+  const final = replacement.finalPrescription;
+  assert.equal(final.exerciseId, "ex_dumbbell_bench_press");
+  assert.equal(final.researchExerciseId, "ex_dumbbell_bench_press");
+  assert.equal(final.prescribedLoad, undefined, "a different exercise must never inherit load, prior load, increment, unit, or resistance-direction guidance");
+  assert.equal(final.setStructure, "straight_sets", "exercise-specific top/back-off progression structure must reset");
+  assert.equal(final.topSet, undefined);
+  assert.equal(final.backoffSets, undefined);
+  assert.match(final.progressionAction, /baseline|calibrat/i);
+  assert.match(`${final.progressionRule} ${final.holdRule} ${final.userExplanation}`, /load reset|recalibrat|do not transfer/i, "the executable prescription must explain why the replacement load is unset");
+  assert.equal(replacement.explanation, final.userExplanation, "the user-facing snapshot explanation must not retain the replaced exercise's executable guidance");
+  assert.equal(final.preferredReplacementExerciseId, null, "the prior exercise's replacement ranking must not survive the replacement");
+  for (const field of retainedFields) assert.deepEqual(final[field], retained[field], `${field} should remain unchanged because the exercise replacement does not require changing that session constraint`);
+  assert.ok(final.workingSets.target >= 1 && final.workingSets.target <= 20);
+  assert.ok(final.repRange.min >= 1 && final.repRange.max <= 100);
+  assert.ok(replacement.manualOverrides.at(-1).previousFinalPrescription.prescribedLoad, "the prior exercise-specific load remains only in immutable audit history");
+  assert.doesNotThrow(() => deserializeRecommendationSnapshot(replacement));
+
+  const loadResurrection = structuredClone(replacement);
+  loadResurrection.finalPrescription.prescribedLoad = structuredClone(snapshot.finalPrescription.prescribedLoad);
+  assert.throws(() => deserializeRecommendationSnapshot(refreshRecommendationChecksum(loadResurrection)), /bijection|load|replacement|undeclared/i, "a rechecksummed replacement cannot resurrect the prior exercise's load guidance");
+});
+
+test("trusted mapped user exercises preserve composite identity while untrusted duplicates cannot override the mapping", () => {
+  const mappedEngine = createPrescriptionEngine({
+    personalData: {
+      exerciseScores: [{ exercise_id: "custom_db_press", research_exercise_id: "ex_dumbbell_bench_press", exercise_name: "My dumbbell press" }],
+      metadata: { methodology_version: "mapped-custom-test/1.0.0" }
+    },
+    researchData: publicResearchData()
+  });
+  const snapshot = mappedEngine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", history: progressionHistory(), createdAt });
+  const replacement = mappedEngine.applyManualOverride(snapshot, { exerciseId: "custom_db_press" }, {
+    allowedExerciseIds: ["custom_db_press"],
+    availableEquipment: ["dumbbell", "bench"],
+    createdAt: "2026-07-12T12:21:00.000Z"
+  });
+  assert.equal(replacement.finalPrescription.exerciseId, "custom_db_press");
+  assert.equal(replacement.finalPrescription.researchExerciseId, "ex_dumbbell_bench_press");
+  assert.equal(replacement.finalPrescription.prescribedLoad, undefined);
+  assert.doesNotThrow(() => deserializeRecommendationSnapshot(replacement), "the trusted personal-to-research mapping must be audit-bound without changing schemas");
+  const chainedDose = mappedEngine.applyManualOverride(replacement, {
+    setCount: Math.min(18, replacement.finalPrescription.workingSets.target + 1)
+  }, { createdAt: "2026-07-12T12:21:15.000Z" });
+  assert.doesNotThrow(() => deserializeRecommendationSnapshot(chainedDose), "a later dose override must preserve the committed mapped-identity history chain");
+
+  const mappingTamper = structuredClone(replacement);
+  mappingTamper.finalPrescription.researchExerciseId = "ex_machine_chest_press";
+  assert.throws(() => deserializeRecommendationSnapshot(refreshRecommendationChecksum(mappingTamper)), /identity|commit|bijection|lineage/i, "a rechecksummed result cannot change the trusted custom/research mapping without changing its audit commitment");
+
+  assert.throws(() => mappedEngine.applyManualOverride(snapshot, { exerciseId: "custom_db_press" }, {
+    allowedExerciseIds: ["custom_db_press"],
+    exerciseCatalog: [{ personalExerciseId: "custom_db_press", researchExerciseId: "ex_machine_chest_press", exerciseName: "Spoofed duplicate" }]
+  }), /conflict|duplicate|trusted|mapping/i, "caller catalog metadata cannot override a trusted internal custom mapping");
+});
+
+test("an ex_ prefix and allowlist cannot establish a nonexistent or caller-spoofed canonical exercise", () => {
+  const snapshot = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", history: progressionHistory(), createdAt });
+  const sameExerciseLoad = engine.applyManualOverride(snapshot, {
+    exerciseId: "ex_barbell_bench_press",
+    load: snapshot.finalPrescription.prescribedLoad.target + 5
+  }, { createdAt: "2026-07-12T12:21:30.000Z" });
+  assert.equal(sameExerciseLoad.finalPrescription.prescribedLoad.target, snapshot.finalPrescription.prescribedLoad.target + 5, "same-exercise load overrides remain valid and must not be mistaken for replacement load transfer");
+  assert.equal(sameExerciseLoad.manualOverrides.at(-1).changes.exerciseId, undefined, "selecting the current exercise is not an identity transition");
+
+  const spoofId = "ex_nonexistent_spoof_press";
+  assert.throws(() => engine.applyManualOverride(snapshot, { exerciseId: spoofId }, {
+    allowedExerciseIds: [spoofId]
+  }), /unknown|trusted catalog|catalog.backed/i, "an allowlist is not an identity source");
+  assert.throws(() => engine.applyManualOverride(snapshot, { exerciseId: spoofId, researchExerciseId: spoofId }, {
+    allowedExerciseIds: [spoofId],
+    exerciseCatalog: [{ exercise_id: spoofId, exercise_name: "Spoof press", equipment: "dumbbell" }]
+  }), /unknown|trusted catalog|untrusted|catalog.backed/i, "caller catalog metadata and an ex_ prefix cannot forge a canonical identity");
+  assert.throws(() => engine.applyManualOverride(snapshot, { exerciseId: "ex_dumbbell_bench_press" }, {
+    allowedExerciseIds: ["ex_dumbbell_bench_press"],
+    availableEquipment: ["barbell", "plates", "bench", "rack"]
+  }), /equipment/i, "ordinary replacements must satisfy the supplied equipment constraint");
+  assert.throws(() => engine.applyManualOverride(snapshot, {
+    exerciseId: "ex_dumbbell_bench_press",
+    load: snapshot.finalPrescription.prescribedLoad.target
+  }, {
+    allowedExerciseIds: ["ex_dumbbell_bench_press"],
+    availableEquipment: ["dumbbell", "bench"]
+  }), /cannot receive|baseline|transferred load/i, "a caller cannot reintroduce a load target in the replacement transaction");
+  assert.throws(() => engine.applyManualOverride(snapshot, { exerciseId: "ex_dumbbell_bench_press" }), /allow/i, "trusted catalog membership does not replace explicit ordinary-replacement authorization");
+
+  const structured = publicResearchData().exerciseDatabase.find((exercise) => exercise.exercise_id === "ex_dumbbell_bench_press");
+  const structuredReplacement = engine.applyManualOverride(snapshot, {
+    exerciseSelection: { ...structured, researchExerciseId: "ex_dumbbell_bench_press" }
+  }, {
+    allowedExerciseIds: ["ex_dumbbell_bench_press"],
+    availableEquipment: ["dumbbell", "bench"],
+    createdAt: "2026-07-12T12:22:00.000Z"
+  });
+  assert.equal(structuredReplacement.finalPrescription.exerciseId, "ex_dumbbell_bench_press", "structured catalog-backed ordinary replacement input remains supported");
 });
 
 test("hard-safety snapshots reject training overrides and require an explicit coherent safe substitute", () => {
@@ -775,7 +887,7 @@ test("hard-safety snapshots reject training overrides and require an explicit co
     researchExerciseId: "ex_barbell_bench_press",
     painFreeConfirmed: true
   }, {
-    exerciseCatalog: [{
+    trustedExerciseCatalog: [{
       personalExerciseId: "custom_same_bench",
       researchExerciseId: "ex_barbell_bench_press",
       exerciseName: "Custom bench alias",
@@ -789,7 +901,7 @@ test("hard-safety snapshots reject training overrides and require an explicit co
     researchExerciseId: "ex_dumbbell_bench_press",
     painFreeConfirmed: true
   }, {
-    exerciseCatalog: [{
+    trustedExerciseCatalog: [{
       personalExerciseId: "custom_pain_free_press",
       researchExerciseId: "ex_dumbbell_bench_press",
       exerciseName: "Custom pain-free dumbbell press",

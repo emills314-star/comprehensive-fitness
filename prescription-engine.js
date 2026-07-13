@@ -13,7 +13,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function prescriptionEngineFactory() {
   "use strict";
 
-  const ENGINE_VERSION = "3.1.2";
+  const ENGINE_VERSION = "3.1.3";
   const PRESCRIPTION_SCHEMA_VERSION = "2.1.0";
   const SNAPSHOT_SCHEMA_VERSION = "1.1.0";
   const HARD_SAFETY_SCHEMA_VERSION = "hard-safety/1.0.0";
@@ -3015,7 +3015,7 @@
       readinessAdjustment: deepClone(finalPrescription.readinessAdjustment),
       basePrescription: deepClone(basePrescription),
       finalPrescription: deepClone(finalPrescription),
-      explanation: userExplanation,
+      explanation: finalPrescription.userExplanation,
       evidenceSummary,
       confidence: score.confidence,
       createdAt,
@@ -3187,11 +3187,61 @@
       .filter((key) => !auditValuesMatch(expected?.[key], actual?.[key]));
   }
 
-  function auditableResearchIdentityForExerciseId(exerciseId) {
+  // Compatibility for snapshots written before 3.1.3. New replacements never
+  // infer catalog membership from this prefix; they require a trusted record.
+  function legacyPrefixedResearchIdentityForExerciseId(exerciseId) {
     return typeof exerciseId === "string" && /^ex_[a-z0-9_]+$/.test(exerciseId) ? exerciseId : null;
   }
 
-  function validateDeclaredOverrideChanges(entry, previous, result) {
+  function engineVersionAtLeast(actual, minimum) {
+    const parse = (value) => String(value || "0.0.0").split(/[+-]/)[0].split(".").map((part) => number(part, 0));
+    const left = parse(actual);
+    const right = parse(minimum);
+    for (let index = 0; index < Math.max(left.length, right.length, 3); index += 1) {
+      if ((left[index] || 0) !== (right[index] || 0)) return (left[index] || 0) > (right[index] || 0);
+    }
+    return true;
+  }
+
+  function exerciseIdentityOverrideId(recommendationId, createdAt, changes, exerciseId, researchExerciseId) {
+    return `override_${stableHash({
+      recommendationId,
+      createdAt,
+      applied: changes,
+      exerciseIdentity: { exerciseId, researchExerciseId: researchExerciseId ?? null }
+    })}`;
+  }
+
+  function applyRecordedExerciseReplacement(prescription, identity) {
+    const sets = prescription.workingSets;
+    if (!sets || ![sets.min, sets.target, sets.max].every(Number.isInteger) || sets.min < 0 || sets.target < 1 || sets.max > DEFAULT_POLICY.absoluteMaximumWorkingSetsPerSession || sets.min > sets.target || sets.target > sets.max) throw new Error("Invalid manual exercise replacement; retained working sets are outside safe schema bounds.");
+    const reps = prescription.repRange;
+    if (!reps || ![reps.min, reps.target, reps.max].every(Number.isInteger) || reps.min < 1 || reps.max > 100 || reps.min > reps.target || reps.target > reps.max) throw new Error("Invalid manual exercise replacement; retained repetitions are outside safe schema bounds.");
+    prescription.exerciseId = identity.exerciseId;
+    prescription.researchExerciseId = identity.researchExerciseId ?? null;
+    delete prescription.prescribedLoad;
+    delete prescription.topSet;
+    delete prescription.backoffSets;
+    delete prescription.setStructureEvidenceConflict;
+    prescription.setStructure = "straight_sets";
+    prescription.setStructureReason = "Exercise replacement reset: retain only valid session set and repetition constraints while establishing technique and load for the new exercise.";
+    prescription.progressionMethod = "double_progression";
+    prescription.progressionAction = "establish_replacement_baseline";
+    prescription.progressionRule = "Load reset: do not transfer the prior exercise's load, previous-load anchor, increment, assistance direction, or progression decision. Establish a technically sound baseline for this exercise before progressing.";
+    prescription.holdRule = "Hold load progression until at least one pain-free, technically valid exposure establishes exercise-specific repetitions, effort, resistance type, and load.";
+    prescription.regressionRule = "If the replacement cannot be completed within the retained set, repetition, and effort constraints, reduce the session demand or choose another compatible exercise instead of importing the prior exercise's load history.";
+    prescription.deloadRule = "Evaluate this replacement from its own comparable exposures; do not infer an exercise-specific deload from the replaced exercise's history.";
+    prescription.preferredReplacementExerciseId = null;
+    prescription.userExplanation = `The user selected ${identity.exerciseId} as a replacement. Valid session set, repetition, effort, rest, and volume constraints remain, but exercise-specific load and progression guidance were reset. No prior load, increment, or resistance direction transfers to the replacement.`;
+    prescription.evidenceSummary = unique([
+      ...asArray(prescription.evidenceSummary),
+      `Manual replacement identity: ${identity.exerciseId}${identity.researchExerciseId ? ` mapped to ${identity.researchExerciseId}` : " with no canonical research mapping"}. Exercise-specific load and progression guidance require a new baseline.`
+    ]);
+    if (!["full_program_deload", "muscle_group_deload", "light_session", "reduce_volume"].includes(prescription.recommendationType)) prescription.recommendationType = "normal";
+    return prescription;
+  }
+
+  function validateDeclaredOverrideChanges(snapshot, entry, previous, result) {
     const changes = entry.changes;
     const supported = new Set([
       "exerciseId",
@@ -3226,9 +3276,27 @@
 
     const expected = deepClone(previous);
     if (changes.exerciseId) {
-      expected.exerciseId = requireDeclaredChangePair(changes.exerciseId, expected.exerciseId, "exerciseId");
-      if (changes.safetyConfirmation) expected.researchExerciseId = changes.safetyConfirmation.researchExerciseId;
-      else expected.researchExerciseId = auditableResearchIdentityForExerciseId(expected.exerciseId);
+      const exerciseId = requireDeclaredChangePair(changes.exerciseId, expected.exerciseId, "exerciseId");
+      if (changes.safetyConfirmation) {
+        expected.exerciseId = exerciseId;
+        expected.researchExerciseId = changes.safetyConfirmation.researchExerciseId;
+      } else {
+        const resultResearchExerciseId = result.researchExerciseId ?? null;
+        const resultIdentityCommitment = exerciseIdentityOverrideId(snapshot.recommendationId, entry.createdAt, changes, exerciseId, resultResearchExerciseId);
+        const committedIdentityContract = entry.overrideId === resultIdentityCommitment;
+        const legacyCanonicalResearchExerciseId = legacyPrefixedResearchIdentityForExerciseId(exerciseId);
+        const researchExerciseId = committedIdentityContract ? resultResearchExerciseId : legacyCanonicalResearchExerciseId ?? resultResearchExerciseId;
+        if (researchExerciseId !== null && (typeof researchExerciseId !== "string" || !researchExerciseId.trim())) throw new Error("Invalid manual override lineage; an exercise identity change requires a non-empty research identity or explicit null.");
+        if (committedIdentityContract || (legacyCanonicalResearchExerciseId === null && researchExerciseId !== null)) {
+          const committedOverrideId = exerciseIdentityOverrideId(snapshot.recommendationId, entry.createdAt, changes, exerciseId, researchExerciseId);
+          if (entry.overrideId !== committedOverrideId) throw new Error("Invalid manual override lineage identity commitment; the catalog-resolved exercise/research identity is not bound to its override audit.");
+        }
+        if (committedIdentityContract) applyRecordedExerciseReplacement(expected, { exerciseId, researchExerciseId });
+        else {
+          expected.exerciseId = exerciseId;
+          expected.researchExerciseId = researchExerciseId;
+        }
+      }
     }
     if (changes.safetyConfirmation) applyRecordedSafetyConfirmation(expected, changes.safetyConfirmation);
     if (changes.setCount) applyRecordedSetCount(expected, requireDeclaredChangePair(changes.setCount, expected.workingSets?.target, "setCount"));
@@ -3339,7 +3407,7 @@
       boundIdentity([result.manualOverride?.overrideId, entry.overrideId], "resulting prescription/override entry");
       if (result.manualOverride?.lockedForWorkout !== true || result.manualOverride?.explanation !== entry.reason) throw new Error("Invalid manual override lineage; resulting prescription override provenance is incomplete or tampered.");
 
-      validateDeclaredOverrideChanges(entry, previous, result);
+      validateDeclaredOverrideChanges(snapshot, entry, previous, result);
       const hasSafetyContext = Boolean(previous.safetyRestriction || result.safetyRestriction);
       if (hasSafetyContext && !entry.changes.safetyConfirmation) throw new Error("Invalid safety override lineage; a safety-restricted transition is missing its confirmation audit.");
       if (entry.changes.safetyConfirmation) validateSafetyOverrideTransition(snapshot, entry, previous, result);
@@ -3433,6 +3501,7 @@
     if (!ROLES.includes(snapshot.finalPrescription.role)) throw new Error(`Invalid role ${snapshot.finalPrescription.role}.`);
     if (snapshot.exerciseId !== snapshot.finalPrescription.exerciseId) throw new Error("Invalid recommendation snapshot identity binding; snapshot exerciseId must match the final prescription.");
     if ((snapshot.mesocycleId ?? null) !== (snapshot.finalPrescription.mesocycleId ?? null)) throw new Error("Invalid recommendation snapshot mesocycle binding; snapshot and final prescription must match.");
+    if (engineVersionAtLeast(snapshot.engineVersion, "3.1.3") && snapshot.explanation !== snapshot.finalPrescription.userExplanation) throw new Error("Invalid recommendation snapshot explanation binding; the top-level explanation must match the final executable prescription.");
     if (snapshot.finalPrescription.executionBlocked) {
       const final = snapshot.finalPrescription;
       if (!final.safetyRestriction || final.safetyRestriction.schemaVersion !== HARD_SAFETY_SCHEMA_VERSION || final.safetyRestriction.status !== "blocked") throw new Error("Invalid blocked prescription; versioned blocked safetyRestriction metadata is required.");
@@ -3548,16 +3617,77 @@
 
   function catalogIdentity(item) {
     if (!item) return null;
-    if (typeof item === "string") return { exerciseId: item, researchExerciseId: auditableResearchIdentityForExerciseId(item), structured: false, catalogRecord: false, source: null };
+    if (typeof item === "string") return { exerciseId: item, researchExerciseId: null, researchIdentitySpecified: false, structured: false, catalogRecord: false, source: null };
     const exerciseId = firstPresent(item.exerciseId, item.exercise_id, item.personalExerciseId, item.personal_exercise_id);
     if (!exerciseId) return null;
+    const researchIdentitySpecified = ["researchExerciseId", "research_exercise_id", "researchId", "research_id"].some((field) => Object.prototype.hasOwnProperty.call(item, field));
     const explicitResearchId = firstPresent(item.researchExerciseId, item.research_exercise_id, item.researchId, item.research_id);
-    const researchExerciseId = explicitResearchId || (item.exercise_id && /^ex_[a-z0-9_]+$/.test(String(exerciseId)) ? exerciseId : null);
+    const researchExerciseId = explicitResearchId ?? null;
     const catalogRecord = Boolean(
       firstPresent(item.exercise_id, item.personalExerciseId, item.personal_exercise_id)
       && firstPresent(item.exercise_name, item.exerciseName, item.prescription_id, item.score_id, item.equipment, item.equipment_requirements)
     );
-    return { exerciseId, researchExerciseId, structured: true, catalogRecord, source: item };
+    return { exerciseId, researchExerciseId, researchIdentitySpecified, structured: true, catalogRecord, source: item };
+  }
+
+  function buildTrustedExerciseCatalog(options = {}) {
+    const researchIdentities = new Map();
+    const customIdentities = new Map();
+    const addResearch = (item) => {
+      const identity = catalogIdentity(item);
+      if (!identity?.structured || !identity.catalogRecord || !identity.exerciseId) throw new Error("Trusted research exercise catalogs require structured records with stable IDs and metadata.");
+      if (identity.researchExerciseId !== identity.exerciseId) throw new Error(`Trusted research exercise ${identity.exerciseId} must bind its canonical research identity to the same catalog ID.`);
+      const existing = researchIdentities.get(identity.exerciseId);
+      if (existing && existing.researchExerciseId !== identity.researchExerciseId) throw new Error(`Conflicting trusted research catalog mapping for ${identity.exerciseId}.`);
+      if (!existing) researchIdentities.set(identity.exerciseId, identity);
+    };
+    asArray(options.trustedResearchCatalog).forEach(addResearch);
+    const callerCatalog = asArray(options.exerciseCatalog);
+    // The class API always supplies engine-owned research records. Preserve the
+    // raw functional API by treating a fully structured catalog as its explicit
+    // trust root only when no engine-owned research catalog exists.
+    const explicitCallerTrustRoot = researchIdentities.size === 0 && callerCatalog.length > 0;
+    if (explicitCallerTrustRoot) {
+      callerCatalog.forEach((item) => {
+        const supplied = catalogIdentity(item);
+        const sourceResearchId = firstPresent(item?.researchExerciseId, item?.research_exercise_id, item?.researchId, item?.research_id, item?.exercise_id);
+        if (!supplied?.structured || !supplied.catalogRecord || !sourceResearchId || item?.exercise_id !== sourceResearchId) return;
+        addResearch({ ...item, exerciseId: sourceResearchId, researchExerciseId: sourceResearchId });
+      });
+    }
+
+    const addCustom = (item) => {
+      const identity = catalogIdentity(item);
+      if (!identity?.structured || !identity.catalogRecord || !identity.exerciseId) throw new Error("Trusted custom exercise catalogs require structured records with stable IDs and metadata.");
+      if (identity.researchExerciseId !== null && !researchIdentities.has(identity.researchExerciseId)) throw new Error(`Trusted custom exercise ${identity.exerciseId} maps to unknown research exercise ${identity.researchExerciseId}.`);
+      const canonical = researchIdentities.get(identity.exerciseId);
+      if (canonical) {
+        if (identity.researchExerciseId !== null && identity.researchExerciseId !== canonical.researchExerciseId) throw new Error(`Conflicting trusted catalog mapping for canonical exercise ${identity.exerciseId}.`);
+        return;
+      }
+      const existing = customIdentities.get(identity.exerciseId);
+      if (existing && existing.researchExerciseId !== identity.researchExerciseId) throw new Error(`Conflicting trusted custom catalog mapping for ${identity.exerciseId}.`);
+      if (!existing) customIdentities.set(identity.exerciseId, identity);
+    };
+    asArray(options.trustedCustomCatalog).forEach(addCustom);
+    if (explicitCallerTrustRoot) callerCatalog.filter((item) => {
+      const identity = catalogIdentity(item);
+      return identity?.structured && identity.catalogRecord;
+    }).forEach(addCustom);
+
+    const identities = new Map([...researchIdentities, ...customIdentities]);
+    callerCatalog.forEach((item) => {
+      const supplied = catalogIdentity(item);
+      if (!supplied?.structured || !supplied.catalogRecord) throw new Error("Caller exerciseCatalog entries cannot establish identity; each must be a structured catalog object matching a trusted catalog entry.");
+      const trusted = identities.get(supplied.exerciseId);
+      if (!trusted) throw new Error(`Untrusted caller exerciseCatalog entry ${supplied.exerciseId}; caller metadata cannot establish a replacement identity.`);
+      if (supplied.researchIdentitySpecified && supplied.researchExerciseId !== trusted.researchExerciseId) throw new Error(`Caller exerciseCatalog mapping for ${supplied.exerciseId} conflicts with its trusted catalog identity.`);
+    });
+    return { identities, researchIdentities };
+  }
+
+  function equipmentSourceForIdentity(identity, researchIdentities) {
+    return researchIdentities.get(identity?.researchExerciseId)?.source || identity?.source || {};
   }
 
   function applyManualOverride(snapshotInput, override = {}, options = {}) {
@@ -3580,34 +3710,27 @@
     if (suppliedExerciseSelectors.length > 1) throw new Error("Duplicate exercise-identity inputs are unsupported; select one exercise field.");
     if (override.workingSets && Object.keys(override.workingSets).some((field) => field !== "target")) throw new Error("Manual workingSets overrides support only target; min/max remain deterministic audit-derived bounds.");
     if (override.prescribedLoad && Object.keys(override.prescribedLoad).some((field) => field !== "target")) throw new Error("Manual prescribedLoad overrides support only target; unit, assistance direction, prior load, and increment metadata remain bound to the audited prescription.");
-    const catalogSources = [
-      { exerciseId: snapshot.exerciseId, researchExerciseId: firstPresent(snapshot.finalPrescription?.researchExerciseId, snapshot.basePrescription?.researchExerciseId) },
-      { exerciseId: snapshot.basePrescription?.exerciseId, researchExerciseId: snapshot.basePrescription?.researchExerciseId },
-      { exerciseId: snapshot.finalPrescription?.exerciseId, researchExerciseId: snapshot.finalPrescription?.researchExerciseId },
-      snapshot.basePrescription?.preferredReplacementExerciseId,
-      snapshot.finalPrescription?.preferredReplacementExerciseId,
-      ...asArray(options.allowedExerciseIds),
-      ...asArray(options.exerciseCatalog)
-    ];
-    const catalogIdentities = new Map();
-    catalogSources.map(catalogIdentity).filter(Boolean).forEach((identity) => {
-      const existing = catalogIdentities.get(identity.exerciseId);
-      if (!existing?.researchExerciseId || identity.researchExerciseId) catalogIdentities.set(identity.exerciseId, identity);
-    });
-    const exerciseCatalog = new Set(catalogIdentities.keys());
-    const structuredCatalogIdentities = new Map();
-    asArray(options.exerciseCatalog).map(catalogIdentity).filter((identity) => identity?.structured && identity.catalogRecord && identity.exerciseId && identity.researchExerciseId).forEach((identity) => {
-      structuredCatalogIdentities.set(identity.exerciseId, identity);
-    });
+    const { identities: catalogIdentities, researchIdentities } = buildTrustedExerciseCatalog(options);
     const safetyLocked = hasHardSafetyMarker(final) || hasHardSafetyMarker(snapshot.basePrescription);
-    const selectedExerciseId = firstPresent(override.exerciseId, override.exerciseSelection, override.replacementExerciseId);
+    const selectedExerciseInput = firstPresent(override.exerciseId, override.exerciseSelection, override.replacementExerciseId);
+    const suppliedSelectionIdentity = selectedExerciseInput && typeof selectedExerciseInput === "object" ? catalogIdentity(selectedExerciseInput) : null;
+    if (selectedExerciseInput && typeof selectedExerciseInput === "object" && (!suppliedSelectionIdentity?.structured || !suppliedSelectionIdentity.catalogRecord)) throw new Error("Structured exerciseSelection requires a catalog record with a stable exercise ID and metadata.");
+    const selectedExerciseId = suppliedSelectionIdentity?.exerciseId ?? selectedExerciseInput;
+    if (selectedExerciseId !== undefined && selectedExerciseId !== null && (typeof selectedExerciseId !== "string" || !selectedExerciseId.trim())) throw new Error("Manual override exercise identity must be a non-empty string or structured catalog record.");
     if (!selectedExerciseId && firstPresent(override.researchExerciseId, override.research_exercise_id)) throw new Error("A research identity may only accompany a declared exercise identity change.");
     if (!safetyLocked && override.painFreeConfirmed !== undefined) throw new Error("painFreeConfirmed is a safety audit companion and cannot accompany an ordinary manual override.");
+    const allowedExerciseSource = options.allowedExerciseIds;
+    if (allowedExerciseSource !== undefined && !Array.isArray(allowedExerciseSource)) throw new Error("allowedExerciseIds must be an array of exercise IDs.");
+    const allowedExerciseIds = new Set(asArray(allowedExerciseSource).map((value) => {
+      if (typeof value !== "string" || !value.trim()) throw new Error("allowedExerciseIds must contain only non-empty string IDs.");
+      return value;
+    }));
     const allowedSafetySource = options.allowedSafetySubstituteIds;
     if (allowedSafetySource !== undefined && !Array.isArray(allowedSafetySource)) throw new Error("allowedSafetySubstituteIds must be an array of exercise IDs.");
     const allowedSafetySubstituteIds = new Set(asArray(allowedSafetySource).map((value) => {
       if (typeof value !== "string" || !value.trim()) throw new Error("allowedSafetySubstituteIds must contain only non-empty string IDs.");
-      if (!structuredCatalogIdentities.has(value)) throw new Error(`Unknown allowed safety substitute ${value}; an actual structured catalog object with matching exercise/research IDs is required.`);
+      const identity = catalogIdentities.get(value);
+      if (!identity?.catalogRecord || !identity.researchExerciseId) throw new Error(`Unknown allowed safety substitute ${value}; an actual trusted structured catalog object with matching exercise/research IDs is required.`);
       return value;
     }));
     let confirmedSafetyIdentity = null;
@@ -3619,9 +3742,9 @@
       if (final.safetyRestriction?.reason === "illness" || final.progressionAction === "stop_for_illness") throw new Error("Illness requires holding the workout; an exercise override cannot bypass the stop instruction.");
       if (override.painFreeConfirmed !== true) throw new Error("A hard-safety pain substitute requires explicit user pain-free confirmation (painFreeConfirmed: true).");
       if (!allowedSafetySubstituteIds.has(selectedExerciseId)) throw new Error(`Safety substitute ${selectedExerciseId} was not explicitly allowed.`);
-      const identity = structuredCatalogIdentities.get(selectedExerciseId);
+      const identity = catalogIdentities.get(selectedExerciseId);
       const requestedResearchId = firstPresent(override.researchExerciseId, override.research_exercise_id);
-      if (!identity?.structured || !identity.researchExerciseId || !requestedResearchId || requestedResearchId !== identity.researchExerciseId) throw new Error(`Safety substitute ${selectedExerciseId} must preserve its coherent exercise/research identity from an actual catalog object.`);
+      if (!identity?.structured || !identity.catalogRecord || !identity.researchExerciseId || !requestedResearchId || requestedResearchId !== identity.researchExerciseId) throw new Error(`Safety substitute ${selectedExerciseId} must preserve its coherent exercise/research identity from an actual trusted catalog object.`);
       const originalExerciseIds = new Set([
         final.safetyRestriction?.originalExerciseId,
         final.safetyRestriction?.auditBaseTargets?.exerciseId,
@@ -3636,24 +3759,35 @@
       ].filter(Boolean));
       if (originalExerciseIds.has(selectedExerciseId) || originalResearchExerciseIds.has(identity.researchExerciseId)) throw new Error("A pain-free substitute must be a different exercise and research identity from the painful original.");
       if (asArray(options.availableEquipment).length) {
-        const equipment = equipmentCompatible(identity.source, options.availableEquipment);
+        const equipment = equipmentCompatible(equipmentSourceForIdentity(identity, researchIdentities), options.availableEquipment);
         if (!equipment.eligible) throw new Error(`Safety substitute ${selectedExerciseId} is not compatible with the supplied equipment restrictions; missing ${equipment.missing.join(", ") || "verified equipment metadata"}.`);
       }
       confirmedSafetyIdentity = identity;
     }
     if (selectedExerciseId) {
-      if (!exerciseCatalog.has(selectedExerciseId)) throw new Error(`Unknown manual override exercise ${selectedExerciseId}.`);
-      const selectedIdentity = catalogIdentities.get(selectedExerciseId);
       const requestedResearchId = firstPresent(override.researchExerciseId, override.research_exercise_id);
-      if (requestedResearchId && selectedIdentity?.researchExerciseId && requestedResearchId !== selectedIdentity.researchExerciseId) throw new Error(`Manual override exercise ${selectedExerciseId} conflicts with its catalog-backed research identity.`);
-      const selectedResearchExerciseId = firstPresent(selectedIdentity?.researchExerciseId, requestedResearchId, /^ex_[a-z0-9_]+$/.test(selectedExerciseId) ? selectedExerciseId : null) ?? null;
       if (selectedExerciseId !== final.exerciseId) {
-        const auditableResearchExerciseId = confirmedSafetyIdentity?.researchExerciseId ?? auditableResearchIdentityForExerciseId(selectedExerciseId);
-        if (!confirmedSafetyIdentity && selectedResearchExerciseId !== auditableResearchExerciseId) throw new Error(`Manual override exercise ${selectedExerciseId} has a separate research identity that the current ordinary-override audit contract cannot bind; select the canonical research exercise or use an unmapped custom exercise.`);
+        const selectedIdentity = catalogIdentities.get(selectedExerciseId);
+        if (!selectedIdentity?.structured || !selectedIdentity.catalogRecord) throw new Error(`Unknown manual override exercise ${selectedExerciseId}; replacements require a trusted catalog-backed identity.`);
+        if (!confirmedSafetyIdentity && !allowedExerciseIds.has(selectedExerciseId)) throw new Error(`Manual override exercise ${selectedExerciseId} was not explicitly allowed for ordinary replacement.`);
+        if (requestedResearchId && requestedResearchId !== selectedIdentity.researchExerciseId) throw new Error(`Manual override exercise ${selectedExerciseId} conflicts with its trusted catalog-backed research identity.`);
+        if (suppliedSelectionIdentity?.researchIdentitySpecified && suppliedSelectionIdentity.researchExerciseId !== selectedIdentity.researchExerciseId) throw new Error(`Structured exerciseSelection for ${selectedExerciseId} conflicts with its trusted catalog mapping.`);
+        if (!confirmedSafetyIdentity && asArray(options.availableEquipment).length) {
+          const equipment = equipmentCompatible(equipmentSourceForIdentity(selectedIdentity, researchIdentities), options.availableEquipment);
+          if (!equipment.eligible) throw new Error(`Manual override exercise ${selectedExerciseId} is not compatible with the supplied equipment restrictions; missing ${equipment.missing.join(", ") || "verified equipment metadata"}.`);
+        }
+        if (!confirmedSafetyIdentity && (override.load !== undefined || override.prescribedLoad?.target !== undefined)) throw new Error("A replacement exercise cannot receive a transferred load target; establish an exercise-specific baseline first.");
+        if (!confirmedSafetyIdentity && override.setStructure !== undefined) throw new Error("A replacement exercise resets to straight sets; apply a different structure only after establishing its exercise-specific baseline.");
+        const selectedResearchExerciseId = selectedIdentity.researchExerciseId ?? null;
         applied.exerciseId = { from: final.exerciseId, to: selectedExerciseId };
-        final.exerciseId = selectedExerciseId;
-        final.researchExerciseId = auditableResearchExerciseId;
-      } else if (selectedResearchExerciseId !== final.researchExerciseId) throw new Error("A research-identity-only manual override is unsupported; select a different catalog-backed exercise.");
+        if (confirmedSafetyIdentity) {
+          final.exerciseId = selectedExerciseId;
+          final.researchExerciseId = selectedResearchExerciseId;
+        } else applyRecordedExerciseReplacement(final, { exerciseId: selectedExerciseId, researchExerciseId: selectedResearchExerciseId });
+      } else {
+        const selectedResearchExerciseId = requestedResearchId ?? suppliedSelectionIdentity?.researchExerciseId ?? final.researchExerciseId ?? null;
+        if (selectedResearchExerciseId !== (final.researchExerciseId ?? null)) throw new Error("A research-identity-only manual override is unsupported; select a different trusted catalog-backed exercise.");
+      }
     }
     if (confirmedSafetyIdentity) {
       const confirmedAt = options.createdAt || isoNow(options.clock);
@@ -3728,8 +3862,13 @@
     }
     if (!Object.keys(applied).length) throw new Error("No supported manual override field was supplied.");
     const createdAt = options.createdAt || isoNow(options.clock);
+    const derivedExerciseOverrideId = applied.exerciseId
+      ? exerciseIdentityOverrideId(snapshot.recommendationId, createdAt, applied, final.exerciseId, final.researchExerciseId)
+      : null;
+    const ordinaryExerciseReplacement = applied.exerciseId && !applied.safetyConfirmation;
+    if (ordinaryExerciseReplacement && options.overrideId && options.overrideId !== derivedExerciseOverrideId) throw new Error("Ordinary exercise replacements require the derived exercise/research audit identity commitment; a caller overrideId cannot replace it.");
     const entry = {
-      overrideId: options.overrideId || `override_${stableHash({ recommendationId: snapshot.recommendationId, createdAt, applied })}`,
+      overrideId: options.overrideId || derivedExerciseOverrideId || `override_${stableHash({ recommendationId: snapshot.recommendationId, createdAt, applied })}`,
       createdAt,
       actor: options.actor || "user",
       reason: options.reason || override.reason || "Manual workout override",
@@ -3740,6 +3879,8 @@
     final.manualOverride = { overrideId: entry.overrideId, lockedForWorkout: true, explanation: entry.reason };
     snapshot.finalPrescription = final;
     snapshot.exerciseId = final.exerciseId;
+    snapshot.engineVersion = ENGINE_VERSION;
+    snapshot.explanation = final.userExplanation;
     snapshot.readinessAdjustment = deepClone(final.readinessAdjustment);
     snapshot.manualOverrides = [...asArray(snapshot.manualOverrides), entry];
     snapshot.overrideLocked = true;
@@ -3822,8 +3963,12 @@
         const exerciseId = firstPresent(item.exercise_id, item.exerciseId);
         return { ...item, exerciseId, researchExerciseId: this.evidence.personal.crosswalkByPersonalId.get(exerciseId) || null };
       });
-      const exerciseCatalog = [...researchCatalog, ...personalCatalog];
-      return applyManualOverride(snapshot, override, { ...options, exerciseCatalog: [...asArray(options.exerciseCatalog), ...exerciseCatalog] });
+      return applyManualOverride(snapshot, override, {
+        ...options,
+        trustedResearchCatalog: researchCatalog,
+        trustedCustomCatalog: [...personalCatalog, ...asArray(options.trustedExerciseCatalog)],
+        exerciseCatalog: asArray(options.exerciseCatalog)
+      });
     }
     reconcileRecommendation(snapshot, newEngineRecommendation) { return reconcileRecommendation(snapshot, newEngineRecommendation); }
     evaluateOverride(snapshot, outcome, options) { return evaluateManualOverrideOutcome(snapshot, outcome, options); }
