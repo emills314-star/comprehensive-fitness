@@ -15,7 +15,9 @@ Validation checks include:
 - prohibition on female-only evidence mappings;
 - mixed-sex non-separable studies cannot be marked directly male-applicable;
 - presence of CSV, JSON, JSON Schema, SQL, and XLSX artifacts;
-- workbook sheet count and prohibition on merged cells.
+- workbook sheet count and prohibition on merged cells;
+- deterministic current-version archive bytes across checkout line-ending modes; and
+- deterministic workbook cells, ZIP entry order, timestamps, and metadata.
 
 Table JSON Schemas use JSON Schema draft 2020-12. `database.schema.json` validates the combined export. SQL DDL provides portable base tables; commented foreign-key statements are supplied because `ALTER TABLE` syntax differs across database engines.
 
@@ -25,3 +27,4 @@ Application behavior should also fail conservatively: when required progression 
 
 Version 3.0.0 is a breaking public-schema revision. `research_library` adds required `pubmed_id` and `pmc_id` string fields (empty means no verified identifier). `progression_rules` adds required `supporting_conclusion_ids`, `rule_authority`, `enforcement_level`, and `policy_disclosure`. Consumers should reject a rule import that removes these semantics or cites no conclusion with overlapping study evidence.
 
+The current-version artifact contract contains 19 CSV, 21 JSON, 21 schema/SQL, one validation-report, and one 3.0.0 XLSX artifact. Run `node scripts/test-research-archive-integrity.js` and `node scripts/test-research-workbook-determinism.js` after the build/validator when changing source data, generators, schemas, or line-ending policy. Historical versioned workbooks are retained but are not counted as current 3.0.0 outputs.
