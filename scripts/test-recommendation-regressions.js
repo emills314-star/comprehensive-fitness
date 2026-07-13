@@ -399,6 +399,127 @@ test("checksum-valid resolved safety snapshots keep executable and original iden
   }
 });
 
+function chainedPainFreeSubstitutions() {
+  const snapshot = engine.prescribeExercise({
+    exerciseId: "ex_barbell_bench_press",
+    muscleGroupId: "chest",
+    history: progressionHistory(),
+    readiness: { pain: true, affectedMuscle: "Chest" },
+    createdAt
+  });
+  const exerciseCatalog = publicResearchData().exerciseDatabase.filter((exercise) => [
+    "ex_dumbbell_bench_press",
+    "ex_machine_chest_press"
+  ].includes(exercise.exercise_id));
+  const first = engine.applyManualOverride(snapshot, {
+    exerciseId: "ex_dumbbell_bench_press",
+    researchExerciseId: "ex_dumbbell_bench_press",
+    painFreeConfirmed: true
+  }, {
+    exerciseCatalog,
+    allowedSafetySubstituteIds: ["ex_dumbbell_bench_press"],
+    availableEquipment: ["dumbbell", "bench"],
+    createdAt: "2026-07-12T12:08:00.000Z"
+  });
+  const second = engine.applyManualOverride(first, {
+    exerciseId: "ex_machine_chest_press",
+    researchExerciseId: "ex_machine_chest_press",
+    painFreeConfirmed: true
+  }, {
+    exerciseCatalog,
+    allowedSafetySubstituteIds: ["ex_machine_chest_press"],
+    availableEquipment: ["machine"],
+    createdAt: "2026-07-12T12:09:00.000Z"
+  });
+  assert.equal(second.manualOverrides.length, 2, "fixture must retain both pain-free substitutions");
+  assert.doesNotThrow(() => deserializeRecommendationSnapshot(second), "a valid chained pain-free substitution must remain loadable");
+  return { second, exerciseCatalog };
+}
+
+test("every historical safety confirmation remains bound to the prescription it produced", () => {
+  const { second, exerciseCatalog } = chainedPainFreeSubstitutions();
+  const tampered = structuredClone(second);
+  tampered.manualOverrides[0].changes.safetyConfirmation.exerciseId = "ex_barbell_bench_press";
+  tampered.manualOverrides[0].changes.safetyConfirmation.researchExerciseId = "ex_barbell_bench_press";
+  const checksumValid = refreshRecommendationChecksum(tampered);
+
+  assert.throws(
+    () => deserializeRecommendationSnapshot(checksumValid),
+    /identity|bound|lineage|original|substitute|transition/i,
+    "an older safety confirmation must not be rewritten as the painful original even with a recomputed checksum"
+  );
+  assert.throws(() => engine.applyManualOverride(checksumValid, {
+    exerciseId: "ex_dumbbell_bench_press",
+    researchExerciseId: "ex_dumbbell_bench_press",
+    painFreeConfirmed: true
+  }, {
+    exerciseCatalog,
+    allowedSafetySubstituteIds: ["ex_dumbbell_bench_press"],
+    availableEquipment: ["dumbbell", "bench"]
+  }), /identity|bound|lineage|original|substitute|transition/i, "apply must validate every prior safety confirmation before adding another override");
+});
+
+test("resolved safety prescription history cannot collapse a prior substitute onto its painful original", () => {
+  const { second } = chainedPainFreeSubstitutions();
+  const tampered = structuredClone(second);
+  const priorResolved = tampered.manualOverrides[1].previousFinalPrescription;
+  priorResolved.exerciseId = "ex_barbell_bench_press";
+  priorResolved.researchExerciseId = "ex_barbell_bench_press";
+  priorResolved.safetyRestriction.substituteExerciseId = "ex_barbell_bench_press";
+  priorResolved.safetyRestriction.substituteResearchExerciseId = "ex_barbell_bench_press";
+  const checksumValid = refreshRecommendationChecksum(tampered);
+
+  assert.throws(
+    () => deserializeRecommendationSnapshot(checksumValid),
+    /identity|bound|lineage|original|substitute|transition/i,
+    "a prior resolved substitute must remain different from its recorded painful original"
+  );
+});
+
+test("ordinary multi-override history remains valid while incomplete and duplicate lineage fails closed", () => {
+  const snapshot = engine.prescribeExercise({
+    exerciseId: "ex_barbell_bench_press",
+    muscleGroupId: "chest",
+    history: progressionHistory(),
+    createdAt
+  });
+  const first = engine.applyManualOverride(snapshot, {
+    setCount: Math.min(18, snapshot.finalPrescription.workingSets.target + 1)
+  }, {
+    overrideId: "override_ordinary_sets",
+    createdAt: "2026-07-12T12:10:00.000Z",
+    reason: "Use one additional working set"
+  });
+  const second = engine.applyManualOverride(first, {
+    repRange: { min: 7, max: 9 }
+  }, {
+    overrideId: "override_ordinary_reps",
+    createdAt: "2026-07-12T12:11:00.000Z",
+    reason: "Use a narrower repetition range"
+  });
+  assert.doesNotThrow(() => deserializeRecommendationSnapshot(second), "ordinary chained overrides must remain valid");
+  assert.equal(second.manualOverrides.length, 2);
+  assert.equal(second.finalPrescription.workingSets.target, first.finalPrescription.workingSets.target);
+  assert.deepEqual(second.finalPrescription.repRange, { min: 7, target: 8, max: 9 });
+
+  const incomplete = structuredClone(second);
+  delete incomplete.manualOverrides[1].previousFinalPrescription.manualOverride;
+  assert.throws(
+    () => deserializeRecommendationSnapshot(refreshRecommendationChecksum(incomplete)),
+    /lineage|identity|bound|prior/i,
+    "an override entry cannot omit its link to the preceding result"
+  );
+
+  const duplicate = structuredClone(second);
+  duplicate.manualOverrides[1].overrideId = duplicate.manualOverrides[0].overrideId;
+  duplicate.finalPrescription.manualOverride.overrideId = duplicate.manualOverrides[0].overrideId;
+  assert.throws(
+    () => deserializeRecommendationSnapshot(refreshRecommendationChecksum(duplicate)),
+    /duplicate.*override/i,
+    "duplicate override identities must not masquerade as an append-only chain"
+  );
+});
+
 test("hard-safety snapshots reject training overrides and require an explicit coherent safe substitute", () => {
   const snapshot = engine.prescribeExercise({
     exerciseId: "ex_barbell_bench_press",

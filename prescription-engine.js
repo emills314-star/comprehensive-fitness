@@ -13,7 +13,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function prescriptionEngineFactory() {
   "use strict";
 
-  const ENGINE_VERSION = "3.1.0";
+  const ENGINE_VERSION = "3.1.1";
   const PRESCRIPTION_SCHEMA_VERSION = "2.1.0";
   const SNAPSHOT_SCHEMA_VERSION = "1.1.0";
   const HARD_SAFETY_SCHEMA_VERSION = "hard-safety/1.0.0";
@@ -3073,6 +3073,161 @@
     return normalized[0];
   }
 
+  function auditValuesMatch(actual, expected) {
+    return stableStringify(actual) === stableStringify(expected);
+  }
+
+  function requireAuditTransition(actual, expected, label) {
+    if (!auditValuesMatch(actual, expected)) throw new Error(`Invalid manual override lineage identity transition binding; ${label} does not match its recorded prescription transition.`);
+  }
+
+  function validateDeclaredOverrideChanges(entry, previous, result) {
+    const changes = entry.changes;
+    const supported = new Set([
+      "exerciseId",
+      "setCount",
+      "repRange",
+      "load",
+      "setStructure",
+      "deloadRecommendation",
+      "exerciseRotation",
+      "mesocycleId",
+      "safetyConfirmation"
+    ]);
+    const unknown = Object.keys(changes).filter((field) => !supported.has(field));
+    if (unknown.length) throw new Error(`Invalid manual override lineage; unsupported recorded changes: ${unknown.join(", ")}.`);
+
+    const transition = (field, previousValue, resultValue) => {
+      const change = changes[field];
+      if (!change || typeof change !== "object" || Array.isArray(change) || !("from" in change) || !("to" in change) || change.from === undefined || change.to === undefined) throw new Error(`Invalid manual override lineage; ${field} requires complete from/to values.`);
+      requireAuditTransition(change.from, previousValue, `${field}.from`);
+      requireAuditTransition(change.to, resultValue, `${field}.to`);
+    };
+    if (changes.exerciseId) transition("exerciseId", previous.exerciseId, result.exerciseId);
+    if (changes.setCount) transition("setCount", previous.workingSets?.target, result.workingSets?.target);
+    if (changes.repRange) transition("repRange", previous.repRange, result.repRange);
+    if (changes.load) transition("load", previous.prescribedLoad?.target ?? null, result.prescribedLoad?.target ?? null);
+    if (changes.setStructure) transition("setStructure", previous.setStructure, result.setStructure);
+    let recommendationType = previous.recommendationType;
+    if (changes.deloadRecommendation) {
+      const change = changes.deloadRecommendation;
+      if (!change || typeof change !== "object" || Array.isArray(change) || !("from" in change) || !("to" in change) || change.from === undefined || change.to === undefined) throw new Error("Invalid manual override lineage; deloadRecommendation requires complete from/to values.");
+      requireAuditTransition(change.from, recommendationType, "deloadRecommendation.from");
+      recommendationType = change.to;
+    }
+    if (changes.exerciseRotation) {
+      const change = changes.exerciseRotation;
+      if (!change || typeof change !== "object" || Array.isArray(change) || !("from" in change) || !("to" in change) || change.from === undefined || change.to === undefined) throw new Error("Invalid manual override lineage; exerciseRotation requires complete from/to values.");
+      requireAuditTransition(change.from, recommendationType, "exerciseRotation.from");
+      recommendationType = change.to;
+    }
+    if (changes.deloadRecommendation || changes.exerciseRotation) requireAuditTransition(recommendationType, result.recommendationType, "recommendationType result");
+    if (changes.mesocycleId) transition("mesocycleId", previous.mesocycleId ?? null, result.mesocycleId ?? null);
+  }
+
+  function validateSafetyOverrideTransition(snapshot, entry, previous, result) {
+    const confirmation = entry.changes.safetyConfirmation;
+    const previousRestriction = previous.safetyRestriction;
+    const resultRestriction = result.safetyRestriction;
+    if (!confirmation || typeof confirmation !== "object" || Array.isArray(confirmation)) throw new Error("Invalid safety override lineage; a complete safety confirmation is required.");
+    if (!previousRestriction || !resultRestriction) throw new Error("Invalid safety override lineage; both prior and resulting prescriptions must retain safety restrictions.");
+    if (previousRestriction.reason !== "pain" || resultRestriction.reason !== "pain") throw new Error("Invalid safety override lineage; only a pain restriction can be resolved by a pain-free exercise confirmation.");
+    if (confirmation.painFreeConfirmed !== true || typeof confirmation.confirmedAt !== "string" || !confirmation.confirmedAt.trim()) throw new Error("Invalid safety override lineage; pain-free confirmation and its timestamp are required.");
+    if (!entry.changes.exerciseId) throw new Error("Invalid safety override lineage; a safety confirmation requires its exercise transition audit.");
+
+    const originalExerciseId = boundIdentity([
+      snapshot.basePrescription.exerciseId,
+      previousRestriction.originalExerciseId,
+      previousRestriction.auditBaseTargets?.exerciseId,
+      resultRestriction.originalExerciseId,
+      resultRestriction.auditBaseTargets?.exerciseId
+    ], "override-history original exercise");
+    const originalResearchExerciseId = boundIdentity([
+      snapshot.basePrescription.researchExerciseId,
+      previousRestriction.auditBaseTargets?.researchExerciseId,
+      resultRestriction.auditBaseTargets?.researchExerciseId
+    ], "override-history original research exercise", { allowNull: true });
+
+    if (previousRestriction.status === "blocked") {
+      boundIdentity([originalExerciseId, previous.exerciseId], "blocked override-history original exercise");
+      boundIdentity([originalResearchExerciseId, previous.researchExerciseId], "blocked override-history original research exercise", { allowNull: true });
+      if (previous.executionBlocked !== true) throw new Error("Invalid safety override lineage; a blocked prior prescription must remain non-executable.");
+    } else if (previousRestriction.status === "resolved_by_confirmed_substitute") {
+      const previousSubstituteExerciseId = boundIdentity([
+        previous.exerciseId,
+        previousRestriction.substituteExerciseId
+      ], "prior resolved substitute exercise");
+      const previousSubstituteResearchExerciseId = boundIdentity([
+        previous.researchExerciseId,
+        previousRestriction.substituteResearchExerciseId
+      ], "prior resolved substitute research exercise");
+      if (previousSubstituteExerciseId === originalExerciseId || (originalResearchExerciseId !== null && previousSubstituteResearchExerciseId === originalResearchExerciseId)) throw new Error("Invalid safety override lineage; a prior substitute cannot collapse onto its painful original identity.");
+      if (previous.executionBlocked !== false || previousRestriction.painFreeConfirmed !== true) throw new Error("Invalid safety override lineage; a prior resolved substitute must retain its executable pain-free confirmation state.");
+    } else throw new Error("Invalid safety override lineage; unsupported prior safety-restriction status.");
+
+    if (resultRestriction.status !== "resolved_by_confirmed_substitute" || resultRestriction.painFreeConfirmed !== true || result.executionBlocked !== false) throw new Error("Invalid safety override lineage; the resulting prescription must be a confirmed executable substitute.");
+    const substituteExerciseId = boundIdentity([
+      entry.changes.exerciseId.to,
+      confirmation.exerciseId,
+      result.exerciseId,
+      resultRestriction.substituteExerciseId
+    ], "safety-confirmation resulting substitute exercise");
+    const substituteResearchExerciseId = boundIdentity([
+      confirmation.researchExerciseId,
+      result.researchExerciseId,
+      resultRestriction.substituteResearchExerciseId
+    ], "safety-confirmation resulting substitute research exercise");
+    boundIdentity([entry.changes.exerciseId.from, previous.exerciseId], "safety-confirmation prior exercise");
+    boundIdentity([entry.createdAt, confirmation.confirmedAt, resultRestriction.confirmedAt], "safety-confirmation timestamp");
+    if (substituteExerciseId === originalExerciseId || (originalResearchExerciseId !== null && substituteResearchExerciseId === originalResearchExerciseId)) throw new Error("Invalid safety override lineage; each substitute must remain different from the painful original exercise and research identity.");
+    if (substituteExerciseId === previous.exerciseId || substituteResearchExerciseId === previous.researchExerciseId) throw new Error("Invalid safety override lineage; duplicate safety substitutions do not establish a new prescription transition.");
+    if (result.prescribedLoad) throw new Error("Invalid safety override lineage; a confirmed substitute must not inherit a load target.");
+  }
+
+  function validateManualOverrideLineage(snapshot) {
+    if (!Array.isArray(snapshot.manualOverrides)) throw new Error("Invalid manual override lineage; manualOverrides must be an array.");
+    const entries = snapshot.manualOverrides;
+    if (!entries.length) {
+      if (snapshot.overrideLocked !== false || snapshot.finalPrescription?.manualOverride) throw new Error("Invalid manual override lineage; an empty history cannot retain an override lock or final override marker.");
+      return true;
+    }
+    if (snapshot.overrideLocked !== true) throw new Error("Invalid manual override lineage; a non-empty override history must remain locked for the workout.");
+
+    const overrideIds = new Set();
+    entries.forEach((entry, index) => {
+      if (!entry || typeof entry !== "object" || Array.isArray(entry)) throw new Error(`Invalid manual override lineage; entry ${index} must be an object.`);
+      const required = ["overrideId", "createdAt", "actor", "reason", "workoutId", "changes", "previousFinalPrescription"];
+      const missing = required.filter((field) => !Object.prototype.hasOwnProperty.call(entry, field) || entry[field] === undefined);
+      if (missing.length) throw new Error(`Invalid manual override lineage; entry ${index} is missing ${missing.join(", ")}.`);
+      if ([entry.overrideId, entry.createdAt, entry.actor, entry.reason].some((value) => typeof value !== "string" || !value.trim())) throw new Error(`Invalid manual override lineage; entry ${index} has incomplete audit identity or provenance.`);
+      if (overrideIds.has(entry.overrideId)) throw new Error(`Invalid manual override lineage; duplicate overrideId ${entry.overrideId}.`);
+      overrideIds.add(entry.overrideId);
+      if (!entry.changes || typeof entry.changes !== "object" || Array.isArray(entry.changes) || !Object.keys(entry.changes).length) throw new Error(`Invalid manual override lineage; entry ${index} has no recorded changes.`);
+
+      const previous = entry.previousFinalPrescription;
+      const result = entries[index + 1]?.previousFinalPrescription || snapshot.finalPrescription;
+      if (!previous || typeof previous !== "object" || !result || typeof result !== "object") throw new Error(`Invalid manual override lineage; entry ${index} requires prior and resulting prescriptions.`);
+      if (previous.schemaVersion !== PRESCRIPTION_SCHEMA_VERSION || result.schemaVersion !== PRESCRIPTION_SCHEMA_VERSION) throw new Error(`Invalid manual override lineage; entry ${index} uses an unsupported prescription schema.`);
+      if (typeof previous.executionBlocked !== "boolean" || typeof result.executionBlocked !== "boolean") throw new Error(`Invalid manual override lineage; entry ${index} prescriptions require explicit executionBlocked state.`);
+
+      if (index === 0) {
+        if (previous.manualOverride) throw new Error("Invalid manual override lineage; the first prior prescription references an unrecorded earlier override.");
+      } else {
+        const priorEntry = entries[index - 1];
+        boundIdentity([previous.manualOverride?.overrideId, priorEntry.overrideId], "prior prescription/override entry");
+        if (previous.manualOverride?.lockedForWorkout !== true || previous.manualOverride?.explanation !== priorEntry.reason) throw new Error("Invalid manual override lineage; prior prescription override provenance is incomplete or tampered.");
+      }
+      boundIdentity([result.manualOverride?.overrideId, entry.overrideId], "resulting prescription/override entry");
+      if (result.manualOverride?.lockedForWorkout !== true || result.manualOverride?.explanation !== entry.reason) throw new Error("Invalid manual override lineage; resulting prescription override provenance is incomplete or tampered.");
+
+      validateDeclaredOverrideChanges(entry, previous, result);
+      const hasSafetyContext = Boolean(previous.safetyRestriction || result.safetyRestriction);
+      if (hasSafetyContext && !entry.changes.safetyConfirmation) throw new Error("Invalid safety override lineage; a safety-restricted transition is missing its confirmation audit.");
+      if (entry.changes.safetyConfirmation) validateSafetyOverrideTransition(snapshot, entry, previous, result);
+    });
+    return true;
+  }
+
   function validateSafetyIdentityBinding(snapshot) {
     const base = snapshot.basePrescription;
     const final = snapshot.finalPrescription;
@@ -3144,7 +3299,7 @@
   }
 
   function validateSnapshot(snapshot) {
-    const required = ["recommendationId", "schemaVersion", "recommendationVersion", "engineVersion", "personalDataVersion", "researchDatabaseVersion", "basePrescription", "finalPrescription", "createdAt", "checksum"];
+    const required = ["recommendationId", "schemaVersion", "recommendationVersion", "engineVersion", "personalDataVersion", "researchDatabaseVersion", "basePrescription", "finalPrescription", "createdAt", "manualOverrides", "overrideLocked", "checksum"];
     const missing = required.filter((field) => snapshot?.[field] === undefined || snapshot?.[field] === null);
     if (missing.length) throw new Error(`Invalid recommendation snapshot; missing ${missing.join(", ")}.`);
     if (typeof snapshot.checksum !== "string" || !SNAPSHOT_CHECKSUM_PATTERN.test(snapshot.checksum)) throw new Error("Invalid recommendation snapshot checksum; expected the current lowercase 8-hex checksum format.");
@@ -3183,6 +3338,7 @@
       if (originalExerciseIds.has(restriction.substituteExerciseId) || originalResearchExerciseIds.has(restriction.substituteResearchExerciseId)) throw new Error("Invalid resolved safety prescription; a pain-free substitute must be different from the painful original exercise and research identity.");
       if (final.prescribedLoad) throw new Error("Invalid resolved safety prescription; a substitute load must not be inferred.");
     }
+    validateManualOverrideLineage(snapshot);
     validateSafetyIdentityBinding(snapshot);
     return true;
   }
@@ -3194,6 +3350,10 @@
 
   function verifySnapshotChecksum(snapshot) {
     validateSnapshot(snapshot);
+    // This unkeyed checksum plus lineage validation detects stale, partial, and
+    // internally incoherent rewrites. It is not authentication: a writer who
+    // can coherently replace the whole snapshot and recompute the checksum is
+    // outside this local integrity contract.
     const expected = stableHash({ ...snapshot, checksum: undefined });
     if (expected !== snapshot.checksum) throw new Error("Recommendation snapshot checksum does not match; historical evidence may have been altered.");
     return true;
@@ -3491,6 +3651,7 @@
     snapshot.manualOverrides = [...asArray(snapshot.manualOverrides), entry];
     snapshot.overrideLocked = true;
     snapshot.checksum = stableHash({ ...snapshot, checksum: undefined });
+    verifySnapshotChecksum(snapshot);
     return snapshot;
   }
 
