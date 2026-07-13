@@ -1,5 +1,5 @@
 {
-  "fixture_schema": "taxonomy-stable-id-contract/1.0.0",
+  "fixture_schema": "taxonomy-stable-id-contract/2.0.0",
   "baseline": {
     "database_version": "2.0.0",
     "source_commit": "5edcd4b9040f03cae6a0d9618084f52b4a92b316",
@@ -15,7 +15,60 @@
       "id_field": "exercise_muscle_map_id",
       "baseline_count": 149,
       "baseline_max_numeric_suffix": 149,
-      "allowed_append_exercise_id": "ex_cable_woodchop",
+      "append_fields": [
+        "exercise_muscle_map_id",
+        "exercise_id",
+        "muscle_group_id",
+        "relationship_type",
+        "loading_role",
+        "range_of_motion_role",
+        "fractional_set_credit",
+        "local_fatigue_weight",
+        "evidence_basis",
+        "evidence_notes",
+        "supporting_study_ids",
+        "confidence_rating",
+        "review_status",
+        "programming_family_id",
+        "taxonomy_version",
+        "last_reviewed_date"
+      ],
+      "future_attribution_fields": [
+        "exercise_muscle_map_id",
+        "exercise_id",
+        "muscle_group_id"
+      ],
+      "known_append_epochs": [
+        {
+          "change_id": "chg_0004",
+          "database_version": "2.1.0",
+          "first_id": "emm_0150",
+          "last_id": "emm_0151",
+          "count": 2,
+          "change_attribution": {
+            "table": "exercise_database",
+            "record_id": "ex_cable_woodchop"
+          },
+          "selector_fields": [
+            "exercise_id",
+            "muscle_group_id"
+          ],
+          "row_selectors": [
+            [
+              "ex_cable_woodchop",
+              "mg_obliques"
+            ],
+            [
+              "ex_cable_woodchop",
+              "mg_abdominals"
+            ]
+          ],
+          "row_digests": [
+            "f90437f2f06d05011a57c21f2c7d71a2017dc160f6098e8278c6c5bcb7a33d4e",
+            "e7232dc96c3f0dad4a8f2c4e70ba3beda0ff61ffa3d7840aff478058c8e65b66"
+          ]
+        }
+      ],
       "baseline_fields": [
         "exercise_muscle_map_id",
         "exercise_id",
@@ -205,7 +258,70 @@
       "id_field": "exercise_progression_metric_map_id",
       "baseline_count": 366,
       "baseline_max_numeric_suffix": 366,
-      "allowed_append_exercise_id": "ex_cable_woodchop",
+      "append_fields": [
+        "exercise_progression_metric_map_id",
+        "exercise_id",
+        "metric",
+        "priority_rank",
+        "use_case",
+        "confidence_rating"
+      ],
+      "future_attribution_fields": [
+        "exercise_progression_metric_map_id",
+        "exercise_id",
+        "metric"
+      ],
+      "known_append_epochs": [
+        {
+          "change_id": "chg_0004",
+          "database_version": "2.1.0",
+          "first_id": "epm_00367",
+          "last_id": "epm_00372",
+          "count": 6,
+          "change_attribution": {
+            "table": "exercise_database",
+            "record_id": "ex_cable_woodchop"
+          },
+          "selector_fields": [
+            "exercise_id",
+            "metric"
+          ],
+          "row_selectors": [
+            [
+              "ex_cable_woodchop",
+              "repetitions_at_load_and_rir"
+            ],
+            [
+              "ex_cable_woodchop",
+              "load"
+            ],
+            [
+              "ex_cable_woodchop",
+              "repetitions"
+            ],
+            [
+              "ex_cable_woodchop",
+              "rir"
+            ],
+            [
+              "ex_cable_woodchop",
+              "range_of_motion"
+            ],
+            [
+              "ex_cable_woodchop",
+              "technique_quality"
+            ]
+          ],
+          "row_digests": [
+            "5338ca164e9e01e2cb2ffc87691a375c55a54c46a965cf37b14630337745f2d1",
+            "183a1952bb1394e325bd0077fa0c2a62a7c0c95ecce5c9b233b055e1c6481644",
+            "ff2b9f25360b0e7c1061d8e63c0f6c0c11375c0014de208f0bc59298ee6d1c24",
+            "f51092887cb546d79f13bc5404caf2e9ded434c79d45ed3de4d8e3340628a16b",
+            "7ce3a8dd78f5dc20bf5593e0cdd16207d9cefabebb2ab28623bcdbd21cb9f52b",
+            "6b0a0af39f39821cdc36cafe5573091072fdbe653a370d8ae45a158b53963ef8"
+          ]
+        }
+      ],
       "baseline_fields": [
         "exercise_progression_metric_map_id",
         "exercise_id",
@@ -595,7 +711,78 @@
       "id_field": "study_exercise_map_id",
       "baseline_count": 488,
       "baseline_max_numeric_suffix": 488,
-      "allowed_append_exercise_id": "ex_cable_woodchop",
+      "append_fields": [
+        "study_exercise_map_id",
+        "study_id",
+        "exercise_id",
+        "relationship_type"
+      ],
+      "future_attribution_fields": [
+        "study_exercise_map_id",
+        "study_id",
+        "exercise_id"
+      ],
+      "known_append_epochs": [
+        {
+          "change_id": "chg_0004",
+          "database_version": "2.1.0",
+          "first_id": "sem_00489",
+          "last_id": "sem_00496",
+          "count": 8,
+          "change_attribution": {
+            "table": "exercise_database",
+            "record_id": "ex_cable_woodchop"
+          },
+          "selector_fields": [
+            "exercise_id",
+            "study_id"
+          ],
+          "row_selectors": [
+            [
+              "ex_cable_woodchop",
+              "stu_0004"
+            ],
+            [
+              "ex_cable_woodchop",
+              "stu_0005"
+            ],
+            [
+              "ex_cable_woodchop",
+              "stu_0007"
+            ],
+            [
+              "ex_cable_woodchop",
+              "stu_0008"
+            ],
+            [
+              "ex_cable_woodchop",
+              "stu_0009"
+            ],
+            [
+              "ex_cable_woodchop",
+              "stu_0010"
+            ],
+            [
+              "ex_cable_woodchop",
+              "stu_0011"
+            ],
+            [
+              "ex_cable_woodchop",
+              "stu_0012"
+            ]
+          ],
+          "row_digests": [
+            "a968cfabd358ddac6ee69d6b9780aed6b46a7a4224481e1890291597a43f791e",
+            "a3b14e8ab084fedfd419535da87890c29a2a7493c8e9717479dbada062c9bdbd",
+            "2db745dad443ae66086b810718ef5f5152edba3d7543e3148de4b3415317f478",
+            "e3f4b990b9be3c423e7f97aa187773b138dff36ad9d7b139b3e3b7882a5d40bd",
+            "183092421bd9d25371c70798d949262dd5c7d342c3fd0c4e596bc21fcf8fc084",
+            "2befb48dc6f5a54148ca23ed6e0cefd75a87af4baadcf9e57ba5984f81d12354",
+            "693a6424b45cc0c5e2c0839d7b569bdcac1c5e4e6874c5a60d3bd37315a5a331",
+            "2880ebe2d59c6e5aef3ba69ba53bb6776c4c3d2bcf088f6f7633c27604db65a3"
+          ]
+        }
+      ],
       "baseline_fields": [
         "study_exercise_map_id",
         "study_id",
@@ -1103,7 +1290,126 @@
       "id_field": "rule_exercise_map_id",
       "baseline_count": 753,
       "baseline_max_numeric_suffix": 753,
-      "allowed_append_exercise_id": "ex_cable_woodchop",
+      "append_fields": [
+        "rule_exercise_map_id",
+        "rule_id",
+        "exercise_id"
+      ],
+      "future_attribution_fields": [
+        "rule_exercise_map_id",
+        "rule_id",
+        "exercise_id"
+      ],
+      "known_append_epochs": [
+        {
+          "change_id": "chg_0004",
+          "database_version": "2.1.0",
+          "first_id": "rex_00754",
+          "last_id": "rex_00765",
+          "count": 12,
+          "change_attribution": {
+            "table": "exercise_database",
+            "record_id": "ex_cable_woodchop"
+          },
+          "selector_fields": [
+            "exercise_id",
+            "rule_id"
+          ],
+          "row_selectors": [
+            ["ex_cable_woodchop", "rule_0002"],
+            ["ex_cable_woodchop", "rule_0005"],
+            ["ex_cable_woodchop", "rule_0006"],
+            ["ex_cable_woodchop", "rule_0007"],
+            ["ex_cable_woodchop", "rule_0008"],
+            ["ex_cable_woodchop", "rule_0009"],
+            ["ex_cable_woodchop", "rule_0010"],
+            ["ex_cable_woodchop", "rule_0011"],
+            ["ex_cable_woodchop", "rule_0012"],
+            ["ex_cable_woodchop", "rule_0013"],
+            ["ex_cable_woodchop", "rule_0014"],
+            ["ex_cable_woodchop", "rule_0018"]
+          ]
+        },
+        {
+          "change_id": "chg_0005",
+          "database_version": "3.0.0",
+          "first_id": "rex_00766",
+          "last_id": "rex_00827",
+          "count": 62,
+          "change_attribution": {
+            "table": "rule_exercise_map",
+            "record_id": "rule_0019"
+          },
+          "selector_fields": [
+            "rule_id",
+            "exercise_id"
+          ],
+          "row_selectors": [
+            ["rule_0019", "ex_barbell_bench_press"],
+            ["rule_0019", "ex_cambered_barbell_bench_press"],
+            ["rule_0019", "ex_dumbbell_bench_press"],
+            ["rule_0019", "ex_incline_dumbbell_press"],
+            ["rule_0019", "ex_machine_chest_press"],
+            ["rule_0019", "ex_incline_machine_press"],
+            ["rule_0019", "ex_cable_fly"],
+            ["rule_0019", "ex_low_to_high_cable_fly"],
+            ["rule_0019", "ex_overhead_press"],
+            ["rule_0019", "ex_machine_shoulder_press"],
+            ["rule_0019", "ex_cable_lateral_raise"],
+            ["rule_0019", "ex_dumbbell_lateral_raise"],
+            ["rule_0019", "ex_machine_lateral_raise"],
+            ["rule_0019", "ex_pull_up"],
+            ["rule_0019", "ex_chin_up"],
+            ["rule_0019", "ex_lat_pulldown"],
+            ["rule_0019", "ex_one_arm_cable_pulldown"],
+            ["rule_0019", "ex_chest_supported_row"],
+            ["rule_0019", "ex_seated_cable_row"],
+            ["rule_0019", "ex_dumbbell_row"],
+            ["rule_0019", "ex_reverse_pec_deck"],
+            ["rule_0019", "ex_cable_rear_delt_fly"],
+            ["rule_0019", "ex_barbell_shrug"],
+            ["rule_0019", "ex_dumbbell_shrug"],
+            ["rule_0019", "ex_back_squat"],
+            ["rule_0019", "ex_front_squat"],
+            ["rule_0019", "ex_leg_press"],
+            ["rule_0019", "ex_hack_squat"],
+            ["rule_0019", "ex_bulgarian_split_squat"],
+            ["rule_0019", "ex_leg_extension"],
+            ["rule_0019", "ex_deadlift"],
+            ["rule_0019", "ex_romanian_deadlift"],
+            ["rule_0019", "ex_good_morning"],
+            ["rule_0019", "ex_hip_thrust"],
+            ["rule_0019", "ex_back_extension"],
+            ["rule_0019", "ex_seated_leg_curl"],
+            ["rule_0019", "ex_lying_leg_curl"],
+            ["rule_0019", "ex_nordic_curl"],
+            ["rule_0019", "ex_hip_adduction_machine"],
+            ["rule_0019", "ex_hip_abduction_machine"],
+            ["rule_0019", "ex_cable_hip_abduction"],
+            ["rule_0019", "ex_standing_calf_raise"],
+            ["rule_0019", "ex_seated_calf_raise"],
+            ["rule_0019", "ex_leg_press_calf_raise"],
+            ["rule_0019", "ex_incline_dumbbell_curl"],
+            ["rule_0019", "ex_preacher_curl"],
+            ["rule_0019", "ex_cable_curl"],
+            ["rule_0019", "ex_hammer_curl"],
+            ["rule_0019", "ex_cable_pushdown"],
+            ["rule_0019", "ex_overhead_cable_extension"],
+            ["rule_0019", "ex_close_grip_bench_press"],
+            ["rule_0019", "ex_wrist_curl"],
+            ["rule_0019", "ex_reverse_wrist_curl"],
+            ["rule_0019", "ex_farmers_carry"],
+            ["rule_0019", "ex_cable_crunch"],
+            ["rule_0019", "ex_hanging_leg_raise"],
+            ["rule_0019", "ex_ab_wheel"],
+            ["rule_0019", "ex_pallof_press"],
+            ["rule_0019", "ex_side_plank"],
+            ["rule_0019", "ex_neck_flexion"],
+            ["rule_0019", "ex_neck_extension"],
+            ["rule_0019", "ex_cable_woodchop"]
+          ]
+        }
+      ],
       "baseline_fields": [
         "rule_exercise_map_id",
         "rule_id",
@@ -1873,6 +2179,19 @@
   },
   "change_log": {
     "historical_records": {
+      "chg_0001": {
+        "change_id": "chg_0001",
+        "change_date": "2026-07-12",
+        "database_version": "1.0.0",
+        "affected_tab": "all",
+        "affected_record_ids": "all_v1_records",
+        "change_type": "initial_release",
+        "previous_value": "",
+        "new_value": "Initial male-specific evidence database release",
+        "reason_for_change": "Created normalized evidence, application rules, exports, methodology, and validation package.",
+        "supporting_study_ids": "stu_0001|stu_0004|stu_0016|stu_0019",
+        "reviewer_notes": "Version 1.0 is broad but not an exhaustive systematic review; low-confidence operational defaults are explicitly labeled."
+      },
       "chg_0002": {
         "change_id": "chg_0002",
         "change_date": "2026-07-12",
@@ -1898,15 +2217,42 @@
         "reason_for_change": "Hypertrophy volume and fatigue exposure require different semantics, and compound exercises require multi-muscle biomechanical classification.",
         "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011|stu_0041|stu_0042",
         "reviewer_notes": "Weights are transparent programming conventions, not proven physiological constants; low-confidence entries remain queued."
+      },
+      "chg_0004": {
+        "change_id": "chg_0004",
+        "change_date": "2026-07-12",
+        "database_version": "2.1.0",
+        "affected_tab": "muscle_group_recommendations|exercise_database|exercise_muscle_map",
+        "affected_record_ids": "all_23_canonical_muscle_ids|ex_cable_woodchop",
+        "change_type": "compatible_programming_family_projection",
+        "previous_value": "Canonical subdivisions were projected through incomplete runtime name heuristics; the referenced cable woodchop exercise was absent.",
+        "new_value": "Added a complete canonical-to-programming-family projection, a dynamic cable woodchop record, and family-aware relationship metadata while preserving every canonical muscle ID.",
+        "reason_for_change": "Programming-family accounting must not double-count one exercise across anatomical subdivisions, and oblique programming needs at least one honest dynamic candidate.",
+        "supporting_study_ids": "stu_0001|stu_0004|stu_0009|stu_0010|stu_0011",
+        "reviewer_notes": "The family projection is a product accounting layer, not an anatomical claim. Woodchop classification is movement-pattern inference with explicit uncertainty."
+      },
+      "chg_0005": {
+        "change_id": "chg_0005",
+        "change_date": "2026-07-12",
+        "database_version": "3.0.0",
+        "affected_tab": "research_library|evidence_conclusions|progression_rules|rule_exercise_map|definitions_data_dictionary",
+        "affected_record_ids": "stu_0043-stu_0048|con_0028-con_0031|rule_0001-rule_0019",
+        "change_type": "breaking_science_provenance_contract",
+        "previous_value": "Rules cited studies but did not trace through conclusion records, distinguish product policy from safety authority, or expose verified PubMed and PubMed Central identifiers.",
+        "new_value": "Appended six primary evidence records, four scoped conclusions, an immediate pain blocker, bibliographic identifiers, conclusion traceability, authority, enforcement, and product-policy disclosure fields.",
+        "reason_for_change": "Recommendation logic needs auditable evidence scope, explicit uncertainty, and a deterministic separation between hard safety constraints and configurable numerical heuristics.",
+        "supporting_study_ids": "stu_0043|stu_0044|stu_0045|stu_0046|stu_0047|stu_0048",
+        "reviewer_notes": "Version 3.0.0 changes the public table schema. Historical persistent IDs remain unchanged; new records use append-only ID epochs. Numerical thresholds remain advisory product policy unless the rule is an allowlisted safety blocker."
       }
     },
     "expected_current_order": [
       "chg_0001",
       "chg_0002",
       "chg_0003",
-      "chg_0004"
+      "chg_0004",
+      "chg_0005"
     ],
-    "appended_change_id": "chg_0004",
-    "appended_database_version": "2.1.0"
+    "appended_change_id": "chg_0005",
+    "appended_database_version": "3.0.0"
   }
 }
