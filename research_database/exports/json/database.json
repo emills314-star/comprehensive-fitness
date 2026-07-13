@@ -73,8 +73,8 @@
       "change_log": {
         "record_count": 5,
         "primary_id_field": "change_id",
-        "csv_sha256": "851d3f74242c98c56962051278538e76e6e2027e4ffd96bb160b4e87d90683d9",
-        "json_sha256": "f15b6ab2e1dfa1a6dc6819e64fdc58e3a6b3af3641863c8f12b8430dc23361bb",
+        "csv_sha256": "9a1045ba0dac9f864adfe6a850bbd99b47a41d62959e65c13497487d486cbe82",
+        "json_sha256": "ea45f75e42bec159aa5473ea46836e8de4de8e0130550abe18dde544b6958aaa",
         "schema_sha256": "1d9bb0b185c3e6ede078645372396dda477a08deea4299c20f6ee95d5a76c717"
       },
       "exercise_muscle_map": {
@@ -122,8 +122,8 @@
       "rule_exercise_map": {
         "record_count": 827,
         "primary_id_field": "rule_exercise_map_id",
-        "csv_sha256": "027a2ae8545c63f96b7c95ab29508e27cdf5a030f5f0bb8b0457a8c74518aba9",
-        "json_sha256": "82a922137dd5142547244606eac11dfd2849125490f9c9f8b0ffd84bc2a06ee5",
+        "csv_sha256": "aa693f57102d3c2ea4b3508e9ca4383c57e919a16f39d55af0cb6e98fc6c6d0a",
+        "json_sha256": "a86bd22ba15ed92b0b68d7f20c3ed9cdf8b47e4a92f3bdc8ce5077ef147b598c",
         "schema_sha256": "e2b0bb02502451cd6bb1b7643b18b7bd84436397c1eba04c8d9933b99b9d2f87"
       },
       "rule_muscle_group_map": {
@@ -11578,7 +11578,7 @@
         "change_id": "chg_0005",
         "change_date": "2026-07-12",
         "database_version": "3.0.0",
-        "affected_tab": "research_library|evidence_conclusions|progression_rules|definitions_data_dictionary",
+        "affected_tab": "research_library|evidence_conclusions|progression_rules|rule_exercise_map|definitions_data_dictionary",
         "affected_record_ids": "stu_0043-stu_0048|con_0028-con_0031|rule_0001-rule_0019",
         "change_type": "breaking_science_provenance_contract",
         "previous_value": "Rules cited studies but did not trace through conclusion records, distinguish product policy from safety authority, or expose verified PubMed and PubMed Central identifiers.",
@@ -22688,368 +22688,368 @@
       },
       {
         "rule_exercise_map_id": "rex_00754",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_barbell_bench_press"
-      },
-      {
-        "rule_exercise_map_id": "rex_00755",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_cambered_barbell_bench_press"
-      },
-      {
-        "rule_exercise_map_id": "rex_00756",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_dumbbell_bench_press"
-      },
-      {
-        "rule_exercise_map_id": "rex_00757",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_incline_dumbbell_press"
-      },
-      {
-        "rule_exercise_map_id": "rex_00758",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_machine_chest_press"
-      },
-      {
-        "rule_exercise_map_id": "rex_00759",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_incline_machine_press"
-      },
-      {
-        "rule_exercise_map_id": "rex_00760",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_cable_fly"
-      },
-      {
-        "rule_exercise_map_id": "rex_00761",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_low_to_high_cable_fly"
-      },
-      {
-        "rule_exercise_map_id": "rex_00762",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_overhead_press"
-      },
-      {
-        "rule_exercise_map_id": "rex_00763",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_machine_shoulder_press"
-      },
-      {
-        "rule_exercise_map_id": "rex_00764",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_cable_lateral_raise"
-      },
-      {
-        "rule_exercise_map_id": "rex_00765",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_dumbbell_lateral_raise"
-      },
-      {
-        "rule_exercise_map_id": "rex_00766",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_machine_lateral_raise"
-      },
-      {
-        "rule_exercise_map_id": "rex_00767",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_pull_up"
-      },
-      {
-        "rule_exercise_map_id": "rex_00768",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_chin_up"
-      },
-      {
-        "rule_exercise_map_id": "rex_00769",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_lat_pulldown"
-      },
-      {
-        "rule_exercise_map_id": "rex_00770",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_one_arm_cable_pulldown"
-      },
-      {
-        "rule_exercise_map_id": "rex_00771",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_chest_supported_row"
-      },
-      {
-        "rule_exercise_map_id": "rex_00772",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_seated_cable_row"
-      },
-      {
-        "rule_exercise_map_id": "rex_00773",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_dumbbell_row"
-      },
-      {
-        "rule_exercise_map_id": "rex_00774",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_reverse_pec_deck"
-      },
-      {
-        "rule_exercise_map_id": "rex_00775",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_cable_rear_delt_fly"
-      },
-      {
-        "rule_exercise_map_id": "rex_00776",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_barbell_shrug"
-      },
-      {
-        "rule_exercise_map_id": "rex_00777",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_dumbbell_shrug"
-      },
-      {
-        "rule_exercise_map_id": "rex_00778",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_back_squat"
-      },
-      {
-        "rule_exercise_map_id": "rex_00779",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_front_squat"
-      },
-      {
-        "rule_exercise_map_id": "rex_00780",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_leg_press"
-      },
-      {
-        "rule_exercise_map_id": "rex_00781",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_hack_squat"
-      },
-      {
-        "rule_exercise_map_id": "rex_00782",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_bulgarian_split_squat"
-      },
-      {
-        "rule_exercise_map_id": "rex_00783",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_leg_extension"
-      },
-      {
-        "rule_exercise_map_id": "rex_00784",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_deadlift"
-      },
-      {
-        "rule_exercise_map_id": "rex_00785",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_romanian_deadlift"
-      },
-      {
-        "rule_exercise_map_id": "rex_00786",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_good_morning"
-      },
-      {
-        "rule_exercise_map_id": "rex_00787",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_hip_thrust"
-      },
-      {
-        "rule_exercise_map_id": "rex_00788",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_back_extension"
-      },
-      {
-        "rule_exercise_map_id": "rex_00789",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_seated_leg_curl"
-      },
-      {
-        "rule_exercise_map_id": "rex_00790",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_lying_leg_curl"
-      },
-      {
-        "rule_exercise_map_id": "rex_00791",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_nordic_curl"
-      },
-      {
-        "rule_exercise_map_id": "rex_00792",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_hip_adduction_machine"
-      },
-      {
-        "rule_exercise_map_id": "rex_00793",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_hip_abduction_machine"
-      },
-      {
-        "rule_exercise_map_id": "rex_00794",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_cable_hip_abduction"
-      },
-      {
-        "rule_exercise_map_id": "rex_00795",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_standing_calf_raise"
-      },
-      {
-        "rule_exercise_map_id": "rex_00796",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_seated_calf_raise"
-      },
-      {
-        "rule_exercise_map_id": "rex_00797",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_leg_press_calf_raise"
-      },
-      {
-        "rule_exercise_map_id": "rex_00798",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_incline_dumbbell_curl"
-      },
-      {
-        "rule_exercise_map_id": "rex_00799",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_preacher_curl"
-      },
-      {
-        "rule_exercise_map_id": "rex_00800",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_cable_curl"
-      },
-      {
-        "rule_exercise_map_id": "rex_00801",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_hammer_curl"
-      },
-      {
-        "rule_exercise_map_id": "rex_00802",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_cable_pushdown"
-      },
-      {
-        "rule_exercise_map_id": "rex_00803",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_overhead_cable_extension"
-      },
-      {
-        "rule_exercise_map_id": "rex_00804",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_close_grip_bench_press"
-      },
-      {
-        "rule_exercise_map_id": "rex_00805",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_wrist_curl"
-      },
-      {
-        "rule_exercise_map_id": "rex_00806",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_reverse_wrist_curl"
-      },
-      {
-        "rule_exercise_map_id": "rex_00807",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_farmers_carry"
-      },
-      {
-        "rule_exercise_map_id": "rex_00808",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_cable_crunch"
-      },
-      {
-        "rule_exercise_map_id": "rex_00809",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_hanging_leg_raise"
-      },
-      {
-        "rule_exercise_map_id": "rex_00810",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_ab_wheel"
-      },
-      {
-        "rule_exercise_map_id": "rex_00811",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_pallof_press"
-      },
-      {
-        "rule_exercise_map_id": "rex_00812",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_side_plank"
-      },
-      {
-        "rule_exercise_map_id": "rex_00813",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_neck_flexion"
-      },
-      {
-        "rule_exercise_map_id": "rex_00814",
-        "rule_id": "rule_0019",
-        "exercise_id": "ex_neck_extension"
-      },
-      {
-        "rule_exercise_map_id": "rex_00815",
         "rule_id": "rule_0002",
         "exercise_id": "ex_cable_woodchop"
       },
       {
-        "rule_exercise_map_id": "rex_00816",
+        "rule_exercise_map_id": "rex_00755",
         "rule_id": "rule_0005",
         "exercise_id": "ex_cable_woodchop"
       },
       {
-        "rule_exercise_map_id": "rex_00817",
+        "rule_exercise_map_id": "rex_00756",
         "rule_id": "rule_0006",
         "exercise_id": "ex_cable_woodchop"
       },
       {
-        "rule_exercise_map_id": "rex_00818",
+        "rule_exercise_map_id": "rex_00757",
         "rule_id": "rule_0007",
         "exercise_id": "ex_cable_woodchop"
       },
       {
-        "rule_exercise_map_id": "rex_00819",
+        "rule_exercise_map_id": "rex_00758",
         "rule_id": "rule_0008",
         "exercise_id": "ex_cable_woodchop"
       },
       {
-        "rule_exercise_map_id": "rex_00820",
+        "rule_exercise_map_id": "rex_00759",
         "rule_id": "rule_0009",
         "exercise_id": "ex_cable_woodchop"
       },
       {
-        "rule_exercise_map_id": "rex_00821",
+        "rule_exercise_map_id": "rex_00760",
         "rule_id": "rule_0010",
         "exercise_id": "ex_cable_woodchop"
       },
       {
-        "rule_exercise_map_id": "rex_00822",
+        "rule_exercise_map_id": "rex_00761",
         "rule_id": "rule_0011",
         "exercise_id": "ex_cable_woodchop"
       },
       {
-        "rule_exercise_map_id": "rex_00823",
+        "rule_exercise_map_id": "rex_00762",
         "rule_id": "rule_0012",
         "exercise_id": "ex_cable_woodchop"
       },
       {
-        "rule_exercise_map_id": "rex_00824",
+        "rule_exercise_map_id": "rex_00763",
         "rule_id": "rule_0013",
         "exercise_id": "ex_cable_woodchop"
       },
       {
-        "rule_exercise_map_id": "rex_00825",
+        "rule_exercise_map_id": "rex_00764",
         "rule_id": "rule_0014",
         "exercise_id": "ex_cable_woodchop"
       },
       {
-        "rule_exercise_map_id": "rex_00826",
+        "rule_exercise_map_id": "rex_00765",
         "rule_id": "rule_0018",
         "exercise_id": "ex_cable_woodchop"
+      },
+      {
+        "rule_exercise_map_id": "rex_00766",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_barbell_bench_press"
+      },
+      {
+        "rule_exercise_map_id": "rex_00767",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_cambered_barbell_bench_press"
+      },
+      {
+        "rule_exercise_map_id": "rex_00768",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_dumbbell_bench_press"
+      },
+      {
+        "rule_exercise_map_id": "rex_00769",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_incline_dumbbell_press"
+      },
+      {
+        "rule_exercise_map_id": "rex_00770",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_machine_chest_press"
+      },
+      {
+        "rule_exercise_map_id": "rex_00771",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_incline_machine_press"
+      },
+      {
+        "rule_exercise_map_id": "rex_00772",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_cable_fly"
+      },
+      {
+        "rule_exercise_map_id": "rex_00773",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_low_to_high_cable_fly"
+      },
+      {
+        "rule_exercise_map_id": "rex_00774",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_overhead_press"
+      },
+      {
+        "rule_exercise_map_id": "rex_00775",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_machine_shoulder_press"
+      },
+      {
+        "rule_exercise_map_id": "rex_00776",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_cable_lateral_raise"
+      },
+      {
+        "rule_exercise_map_id": "rex_00777",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_dumbbell_lateral_raise"
+      },
+      {
+        "rule_exercise_map_id": "rex_00778",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_machine_lateral_raise"
+      },
+      {
+        "rule_exercise_map_id": "rex_00779",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_pull_up"
+      },
+      {
+        "rule_exercise_map_id": "rex_00780",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_chin_up"
+      },
+      {
+        "rule_exercise_map_id": "rex_00781",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_lat_pulldown"
+      },
+      {
+        "rule_exercise_map_id": "rex_00782",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_one_arm_cable_pulldown"
+      },
+      {
+        "rule_exercise_map_id": "rex_00783",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_chest_supported_row"
+      },
+      {
+        "rule_exercise_map_id": "rex_00784",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_seated_cable_row"
+      },
+      {
+        "rule_exercise_map_id": "rex_00785",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_dumbbell_row"
+      },
+      {
+        "rule_exercise_map_id": "rex_00786",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_reverse_pec_deck"
+      },
+      {
+        "rule_exercise_map_id": "rex_00787",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_cable_rear_delt_fly"
+      },
+      {
+        "rule_exercise_map_id": "rex_00788",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_barbell_shrug"
+      },
+      {
+        "rule_exercise_map_id": "rex_00789",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_dumbbell_shrug"
+      },
+      {
+        "rule_exercise_map_id": "rex_00790",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_back_squat"
+      },
+      {
+        "rule_exercise_map_id": "rex_00791",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_front_squat"
+      },
+      {
+        "rule_exercise_map_id": "rex_00792",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_leg_press"
+      },
+      {
+        "rule_exercise_map_id": "rex_00793",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_hack_squat"
+      },
+      {
+        "rule_exercise_map_id": "rex_00794",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_bulgarian_split_squat"
+      },
+      {
+        "rule_exercise_map_id": "rex_00795",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_leg_extension"
+      },
+      {
+        "rule_exercise_map_id": "rex_00796",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_deadlift"
+      },
+      {
+        "rule_exercise_map_id": "rex_00797",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_romanian_deadlift"
+      },
+      {
+        "rule_exercise_map_id": "rex_00798",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_good_morning"
+      },
+      {
+        "rule_exercise_map_id": "rex_00799",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_hip_thrust"
+      },
+      {
+        "rule_exercise_map_id": "rex_00800",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_back_extension"
+      },
+      {
+        "rule_exercise_map_id": "rex_00801",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_seated_leg_curl"
+      },
+      {
+        "rule_exercise_map_id": "rex_00802",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_lying_leg_curl"
+      },
+      {
+        "rule_exercise_map_id": "rex_00803",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_nordic_curl"
+      },
+      {
+        "rule_exercise_map_id": "rex_00804",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_hip_adduction_machine"
+      },
+      {
+        "rule_exercise_map_id": "rex_00805",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_hip_abduction_machine"
+      },
+      {
+        "rule_exercise_map_id": "rex_00806",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_cable_hip_abduction"
+      },
+      {
+        "rule_exercise_map_id": "rex_00807",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_standing_calf_raise"
+      },
+      {
+        "rule_exercise_map_id": "rex_00808",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_seated_calf_raise"
+      },
+      {
+        "rule_exercise_map_id": "rex_00809",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_leg_press_calf_raise"
+      },
+      {
+        "rule_exercise_map_id": "rex_00810",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_incline_dumbbell_curl"
+      },
+      {
+        "rule_exercise_map_id": "rex_00811",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_preacher_curl"
+      },
+      {
+        "rule_exercise_map_id": "rex_00812",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_cable_curl"
+      },
+      {
+        "rule_exercise_map_id": "rex_00813",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_hammer_curl"
+      },
+      {
+        "rule_exercise_map_id": "rex_00814",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_cable_pushdown"
+      },
+      {
+        "rule_exercise_map_id": "rex_00815",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_overhead_cable_extension"
+      },
+      {
+        "rule_exercise_map_id": "rex_00816",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_close_grip_bench_press"
+      },
+      {
+        "rule_exercise_map_id": "rex_00817",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_wrist_curl"
+      },
+      {
+        "rule_exercise_map_id": "rex_00818",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_reverse_wrist_curl"
+      },
+      {
+        "rule_exercise_map_id": "rex_00819",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_farmers_carry"
+      },
+      {
+        "rule_exercise_map_id": "rex_00820",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_cable_crunch"
+      },
+      {
+        "rule_exercise_map_id": "rex_00821",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_hanging_leg_raise"
+      },
+      {
+        "rule_exercise_map_id": "rex_00822",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_ab_wheel"
+      },
+      {
+        "rule_exercise_map_id": "rex_00823",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_pallof_press"
+      },
+      {
+        "rule_exercise_map_id": "rex_00824",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_side_plank"
+      },
+      {
+        "rule_exercise_map_id": "rex_00825",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_neck_flexion"
+      },
+      {
+        "rule_exercise_map_id": "rex_00826",
+        "rule_id": "rule_0019",
+        "exercise_id": "ex_neck_extension"
       },
       {
         "rule_exercise_map_id": "rex_00827",

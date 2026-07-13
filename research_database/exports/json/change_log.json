@@ -55,7 +55,7 @@
     "change_id": "chg_0005",
     "change_date": "2026-07-12",
     "database_version": "3.0.0",
-    "affected_tab": "research_library|evidence_conclusions|progression_rules|definitions_data_dictionary",
+    "affected_tab": "research_library|evidence_conclusions|progression_rules|rule_exercise_map|definitions_data_dictionary",
     "affected_record_ids": "stu_0043-stu_0048|con_0028-con_0031|rule_0001-rule_0019",
     "change_type": "breaking_science_provenance_contract",
     "previous_value": "Rules cited studies but did not trace through conclusion records, distinguish product policy from safety authority, or expose verified PubMed and PubMed Central identifiers.",

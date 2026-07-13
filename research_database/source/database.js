@@ -415,18 +415,53 @@ const studyMuscleGroupMap = [];
 muscleGroups.forEach((muscle)=>["stu_0001","stu_0002","stu_0025"].forEach((studyId)=>studyMuscleGroupMap.push({study_muscle_group_map_id:`smg_${String(studyMuscleGroupMap.length+1).padStart(4,"0")}`,study_id:studyId,muscle_group_id:muscle.muscle_group_id,relationship_type:"general_volume_inference"})));
 
 const ruleExerciseMap = [];
-// Rule-map IDs in 2.0.0 were generated rule-first. Each later exercise therefore
-// needs its own append epoch; inserting it into every legacy rule would renumber
-// the remaining historical rows. Add future compatible exercises as new epochs.
-const ruleExerciseAppendEpochs = Object.freeze([
-  Object.freeze(["ex_cable_woodchop"])
+// Rule-map IDs are historical identities. Keep each source epoch explicit so a
+// later exercise or rule cannot be inserted into an older rule-first sequence.
+const orderedIdsThrough = (rows, idField, terminalId, includeTerminal = true) => {
+  const terminalIndex = rows.findIndex((row) => row[idField] === terminalId);
+  if (terminalIndex < 0) throw new Error(`Missing rule-map epoch terminal ${terminalId}`);
+  return Object.freeze(rows.slice(0, terminalIndex + (includeTerminal ? 1 : 0)).map((row) => row[idField]));
+};
+const v2RuleIds = orderedIdsThrough(progressionRules, "rule_id", "rule_0018");
+const v2ExerciseIds = orderedIdsThrough(exercises, "exercise_id", "ex_cable_woodchop", false);
+const v3ExerciseIds = orderedIdsThrough(exercises, "exercise_id", "ex_cable_woodchop");
+const ruleExerciseEpochs = Object.freeze([
+  Object.freeze({ epoch_id: "v2.0.0_baseline", prior_max_suffix: 0, expected_max_suffix: 753, rule_ids: v2RuleIds, exercise_ids: v2ExerciseIds }),
+  Object.freeze({ epoch_id: "chg_0004", prior_max_suffix: 753, expected_max_suffix: 765, rule_ids: v2RuleIds, exercise_ids: Object.freeze(["ex_cable_woodchop"]) }),
+  Object.freeze({ epoch_id: "chg_0005", prior_max_suffix: 765, expected_max_suffix: 827, rule_ids: Object.freeze(["rule_0019"]), exercise_ids: v3ExerciseIds })
 ]);
-const ruleExerciseAppendIds = new Set(ruleExerciseAppendEpochs.flat());
+const ruleById = new Map(progressionRules.map((rule) => [rule.rule_id, rule]));
+const exerciseById = new Map(exercises.map((exercise) => [exercise.exercise_id, exercise]));
+const exerciseTypeById = new Map(exerciseSpecs.map((spec) => [spec[0], spec[7]]));
 const ruleAppliesToExercise = (rule, exercise) => rule.applicable_exercise_types === "all"
-  || rule.applicable_exercise_types.split(DELIMITER).includes(exerciseSpecs.find((x) => x[0] === exercise.exercise_id)[7]);
-const appendRuleExerciseCohort = (cohort) => progressionRules.forEach((rule) => cohort.filter((exercise) => ruleAppliesToExercise(rule, exercise)).forEach((exercise) => ruleExerciseMap.push({rule_exercise_map_id:`rex_${String(ruleExerciseMap.length+1).padStart(5,"0")}`,rule_id:rule.rule_id,exercise_id:exercise.exercise_id})));
-appendRuleExerciseCohort(exercises.filter((exercise) => !ruleExerciseAppendIds.has(exercise.exercise_id)));
-ruleExerciseAppendEpochs.forEach((exerciseIds) => appendRuleExerciseCohort(exerciseIds.map((exerciseId) => exercises.find((exercise) => exercise.exercise_id === exerciseId))));
+  || rule.applicable_exercise_types.split(DELIMITER).includes(exerciseTypeById.get(exercise.exercise_id));
+const configuredRuleIds = new Set(ruleExerciseEpochs.flatMap((epoch) => epoch.rule_ids));
+const configuredExerciseIds = new Set(ruleExerciseEpochs.flatMap((epoch) => epoch.exercise_ids));
+const unconfiguredRuleIds = progressionRules.map((rule) => rule.rule_id).filter((ruleId) => !configuredRuleIds.has(ruleId));
+const unconfiguredExerciseIds = exercises.map((exercise) => exercise.exercise_id).filter((exerciseId) => !configuredExerciseIds.has(exerciseId));
+if (unconfiguredRuleIds.length || unconfiguredExerciseIds.length) {
+  throw new Error(`Rule-map source additions require an explicit append epoch after rex_00827: rules=${unconfiguredRuleIds.join(DELIMITER) || "none"}; exercises=${unconfiguredExerciseIds.join(DELIMITER) || "none"}`);
+}
+const ruleExerciseSelectors = new Set();
+let ruleExerciseMaxSuffix = 0;
+ruleExerciseEpochs.forEach((epoch) => {
+  if (ruleExerciseMaxSuffix !== epoch.prior_max_suffix) throw new Error(`${epoch.epoch_id} must append after rex_${String(epoch.prior_max_suffix).padStart(5, "0")}`);
+  epoch.rule_ids.forEach((ruleId) => {
+    const rule = ruleById.get(ruleId);
+    if (!rule) throw new Error(`${epoch.epoch_id} references missing rule ${ruleId}`);
+    epoch.exercise_ids.forEach((exerciseId) => {
+      const exercise = exerciseById.get(exerciseId);
+      if (!exercise) throw new Error(`${epoch.epoch_id} references missing exercise ${exerciseId}`);
+      if (!ruleAppliesToExercise(rule, exercise)) return;
+      const selector = `${ruleId}${DELIMITER}${exerciseId}`;
+      if (ruleExerciseSelectors.has(selector)) throw new Error(`${epoch.epoch_id} duplicates rule-map selector ${selector}`);
+      ruleExerciseSelectors.add(selector);
+      ruleExerciseMaxSuffix += 1;
+      ruleExerciseMap.push({rule_exercise_map_id:`rex_${String(ruleExerciseMaxSuffix).padStart(5,"0")}`,rule_id:ruleId,exercise_id:exerciseId});
+    });
+  });
+  if (ruleExerciseMaxSuffix !== epoch.expected_max_suffix) throw new Error(`${epoch.epoch_id} must end at rex_${String(epoch.expected_max_suffix).padStart(5, "0")}; generated rex_${String(ruleExerciseMaxSuffix).padStart(5, "0")}`);
+});
 const ruleMuscleGroupMap = [];
 progressionRules.filter((rule)=>["set_progression","volume_reduction"].includes(rule.rule_category)).forEach((rule)=>muscleGroups.forEach((muscle)=>ruleMuscleGroupMap.push({rule_muscle_group_map_id:`rmg_${String(ruleMuscleGroupMap.length+1).padStart(4,"0")}`,rule_id:rule.rule_id,muscle_group_id:muscle.muscle_group_id})));
 const exerciseProgressionMetricMap = [];
@@ -503,7 +538,7 @@ const changeLog = [
   {change_id:"chg_0002",change_date:REVIEW_DATE,database_version:"2.0.0",affected_tab:"exercise_database|muscle_group_recommendations",affected_record_ids:"ex_cambered_barbell_bench_press|mg_chest_sternal",change_type:"exercise_library_addition",previous_value:"Cambered bench aliases were not discoverable.",new_value:"Added one canonical cambered-barbell bench record with three aliases and normal chest mapping.",reason_for_change:"Exercise discovery must evaluate eligible canonical library variations instead of silently omitting unrecognized aliases.",supporting_study_ids:"stu_0004|stu_0009|stu_0010|stu_0011",reviewer_notes:"This is a movement-specific research default, not a claim that camber geometry guarantees superior hypertrophy."}
   ,{change_id:"chg_0003",change_date:REVIEW_DATE,database_version:"2.0.0",affected_tab:"exercise_muscle_map|exercise_taxonomy_review_queue",affected_record_ids:"all_exercise_muscle_relationships",change_type:"breaking_taxonomy_migration",previous_value:"Primary 1.0 and blanket secondary 0.5 relationships generated from legacy exercise columns.",new_value:"Taxonomy 2.0.0: direct, fractional, incidental, isometric, and unknown relationships with exercise-specific credit, fatigue, confidence, evidence, and review metadata.",reason_for_change:"Hypertrophy volume and fatigue exposure require different semantics, and compound exercises require multi-muscle biomechanical classification.",supporting_study_ids:"stu_0001|stu_0009|stu_0010|stu_0011|stu_0041|stu_0042",reviewer_notes:"Weights are transparent programming conventions, not proven physiological constants; low-confidence entries remain queued."}
   ,{change_id:"chg_0004",change_date:REVIEW_DATE,database_version:"2.1.0",affected_tab:"muscle_group_recommendations|exercise_database|exercise_muscle_map",affected_record_ids:"all_23_canonical_muscle_ids|ex_cable_woodchop",change_type:"compatible_programming_family_projection",previous_value:"Canonical subdivisions were projected through incomplete runtime name heuristics; the referenced cable woodchop exercise was absent.",new_value:"Added a complete canonical-to-programming-family projection, a dynamic cable woodchop record, and family-aware relationship metadata while preserving every canonical muscle ID.",reason_for_change:"Programming-family accounting must not double-count one exercise across anatomical subdivisions, and oblique programming needs at least one honest dynamic candidate.",supporting_study_ids:"stu_0001|stu_0004|stu_0009|stu_0010|stu_0011",reviewer_notes:"The family projection is a product accounting layer, not an anatomical claim. Woodchop classification is movement-pattern inference with explicit uncertainty."}
-  ,{change_id:"chg_0005",change_date:REVIEW_DATE,database_version:VERSION,affected_tab:"research_library|evidence_conclusions|progression_rules|definitions_data_dictionary",affected_record_ids:"stu_0043-stu_0048|con_0028-con_0031|rule_0001-rule_0019",change_type:"breaking_science_provenance_contract",previous_value:"Rules cited studies but did not trace through conclusion records, distinguish product policy from safety authority, or expose verified PubMed and PubMed Central identifiers.",new_value:"Appended six primary evidence records, four scoped conclusions, an immediate pain blocker, bibliographic identifiers, conclusion traceability, authority, enforcement, and product-policy disclosure fields.",reason_for_change:"Recommendation logic needs auditable evidence scope, explicit uncertainty, and a deterministic separation between hard safety constraints and configurable numerical heuristics.",supporting_study_ids:"stu_0043|stu_0044|stu_0045|stu_0046|stu_0047|stu_0048",reviewer_notes:"Version 3.0.0 changes the public table schema. Historical persistent IDs remain unchanged; new records use append-only ID epochs. Numerical thresholds remain advisory product policy unless the rule is an allowlisted safety blocker."}
+  ,{change_id:"chg_0005",change_date:REVIEW_DATE,database_version:VERSION,affected_tab:"research_library|evidence_conclusions|progression_rules|rule_exercise_map|definitions_data_dictionary",affected_record_ids:"stu_0043-stu_0048|con_0028-con_0031|rule_0001-rule_0019",change_type:"breaking_science_provenance_contract",previous_value:"Rules cited studies but did not trace through conclusion records, distinguish product policy from safety authority, or expose verified PubMed and PubMed Central identifiers.",new_value:"Appended six primary evidence records, four scoped conclusions, an immediate pain blocker, bibliographic identifiers, conclusion traceability, authority, enforcement, and product-policy disclosure fields.",reason_for_change:"Recommendation logic needs auditable evidence scope, explicit uncertainty, and a deterministic separation between hard safety constraints and configurable numerical heuristics.",supporting_study_ids:"stu_0043|stu_0044|stu_0045|stu_0046|stu_0047|stu_0048",reviewer_notes:"Version 3.0.0 changes the public table schema. Historical persistent IDs remain unchanged; new records use append-only ID epochs. Numerical thresholds remain advisory product policy unless the rule is an allowlisted safety blocker."}
 ];
 
 const data = {
