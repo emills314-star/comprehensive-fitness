@@ -1,0 +1,21 @@
+# Research hashes are byte contracts. Keep every hashed/generated text surface LF
+# in archives and working trees, independent of the caller's core.autocrlf value.
+.gitattributes text eol=lf
+research_database/exports/csv/*.csv text eol=lf
+research_database/exports/json/*.json text eol=lf
+research_database/schema/*.json text eol=lf
+research_database/schema/*.sql text eol=lf
+research_database/source/*.js text eol=lf
+research_database/validation/*.json text eol=lf
+research_database/*.md text eol=lf
+scripts/build-research-database.js text eol=lf
+scripts/validate-research-database.js text eol=lf
+scripts/test-research-archive-integrity.js text eol=lf
+scripts/test-science-evidence-contracts.js text eol=lf
+scripts/test-taxonomy-*.js text eol=lf
+scripts/fixtures/science-evidence-contract.v1.json text eol=lf
+
+# Known binary formats must never pass through text conversion.
+*.xlsx -text
+*.png -text
+*.jar -text

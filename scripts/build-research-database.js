@@ -42,7 +42,7 @@ const propertySchema = (table, field) => {
 for (const [table, rows] of Object.entries(data)) {
   const columns = tableColumns[table];
   if (!columns) throw new Error(`Missing columns for ${table}`);
-  const csv = [columns.join(","), ...rows.map((row) => columns.map((column) => csvEscape(row[column])).join(","))].join("\r\n") + "\r\n";
+  const csv = [columns.join(","), ...rows.map((row) => columns.map((column) => csvEscape(row[column])).join(","))].join("\n") + "\n";
   const csvPath = path.join(csvDir, `${table}.csv`);
   const jsonPath = path.join(jsonDir, `${table}.json`);
   const schemaPath = path.join(schemaDir, `${table}.schema.json`);
