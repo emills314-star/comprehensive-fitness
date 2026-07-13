@@ -7,6 +7,7 @@ const engineApi = require("../prescription-engine");
 const guidedApi = require("../guided-mesocycle");
 
 const root = path.resolve(__dirname, "..");
+const publicCheckout = process.env.CF_PUBLIC_CHECKOUT === "1";
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const privacy = fs.readFileSync(path.join(root, "privacy.html"), "utf8");
 const support = fs.readFileSync(path.join(root, "support.html"), "utf8");
@@ -132,11 +133,22 @@ represented.forEach((muscle) => {
 });
 
 const personal = evidence.personal.exerciseScores.find((item) => Number(item.comparable_session_count || 0) >= 5 && evidence.personal.historyFor(item.exercise_id).length >= 3);
-assert(personal, "Real personal evidence needs at least one prescribable exercise");
-const muscleRecord = evidence.personal.muscleScoresFor(personal.exercise_id)[0];
-const muscle = muscleRecord?.muscle_group || evidence.personal.prescriptionsFor(personal.exercise_id)[0]?.muscle_group_id;
-assert(muscle, "Personal exercise needs a represented muscle group");
-const snapshot = engine.prescribeExercise({ exerciseId: personal.exercise_id, muscleGroupId: muscle, createdAt: "2026-07-11T12:00:00.000Z" });
+let privateAssertionsSkipped = 0;
+let exerciseId;
+let muscle;
+if (publicCheckout) {
+  privateAssertionsSkipped = 1;
+  muscle = represented.find((muscleId) => pools[muscleId]?.candidates?.length);
+  exerciseId = pools[muscle].candidates[0].exerciseId;
+} else {
+  assert(personal, "Real personal evidence needs at least one prescribable exercise");
+  const muscleRecord = evidence.personal.muscleScoresFor(personal.exercise_id)[0];
+  muscle = muscleRecord?.muscle_group || evidence.personal.prescriptionsFor(personal.exercise_id)[0]?.muscle_group_id;
+  assert(muscle, "Personal exercise needs a represented muscle group");
+  exerciseId = personal.exercise_id;
+}
+assert(muscle && exerciseId, "A public research or authorized private candidate is required for integration coverage");
+const snapshot = engine.prescribeExercise({ exerciseId, muscleGroupId: muscle, createdAt: "2026-07-11T12:00:00.000Z" });
 const surfaces = ["coach", "template", "chart", "workout_start", "live_workout", "deload", "mesocycle"].map((surface) => engine.forSurface(snapshot, surface));
 surfaces.forEach((surface) => {
   assert.equal(surface.recommendationId, snapshot.recommendationId);
@@ -158,4 +170,4 @@ const overridden = engine.applyManualOverride(snapshot, { setCount: snapshot.fin
 assert.equal(overridden.overrideLocked, true);
 assert.equal(engine.reconcileRecommendation(overridden, snapshot).checksum, overridden.checksum, "An intentional workout override must not be undone in the same workout");
 
-console.log(`Prescription app integration passed (${represented.length} real muscle pools; all app surfaces share ${snapshot.recommendationId}).`);
+console.log(`Prescription app integration passed (${represented.length} public muscle pools; all app surfaces share ${snapshot.recommendationId}; ${privateAssertionsSkipped} truly private fixture assertion skipped).`);

@@ -7,9 +7,7 @@ const { spawnSync } = require("node:child_process");
 const ROOT = path.resolve(__dirname, "..");
 const SCRIPTS = path.join(ROOT, "scripts");
 const NON_PUBLIC_TESTS = new Map([
-  ["test-personal-fitness-data.js", { label: "PRIVATE-ONLY", reason: "requires ignored normalized/derived personal pipeline artifacts" }],
-  ["test-prescription-engine.js", { label: "PRIVATE-ONLY", reason: "contains local private-evidence adapter assertions; public recommendation regressions run as separate test-*.js files" }],
-  ["test-prescription-app-integration.js", { label: "PRIVATE-ONLY", reason: "contains a local private-evidence integration assertion; public app integration regressions run as separate test-*.js files" }]
+  ["test-personal-fitness-data.js", { label: "PRIVATE-ONLY", reason: "requires ignored normalized/derived personal pipeline artifacts" }]
 ]);
 
 const discovered = fs.readdirSync(SCRIPTS, { withFileTypes: true })
@@ -23,7 +21,7 @@ if (!publicTests.length) {
   process.exit(1);
 }
 
-console.log(`Public test gate: ${publicTests.length} script(s).`);
+console.log(`Public test discovery: ${discovered.length} found; ${publicTests.length} selected; ${discovered.length - publicTests.length} private-only harness excluded.`);
 for (const [name, exclusion] of NON_PUBLIC_TESTS) {
   if (discovered.includes(name)) console.log(`${exclusion.label} ${name}: ${exclusion.reason}.`);
 }
@@ -47,4 +45,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log(`\nPublic test gate passed (${publicTests.length}/${publicTests.length}).`);
+console.log(`\nPublic test gate passed (${publicTests.length}/${publicTests.length} selected scripts; ${discovered.length} discovered).`);

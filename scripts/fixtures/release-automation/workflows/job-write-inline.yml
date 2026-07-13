@@ -1,0 +1,10 @@
+name: Job write bypass
+on: { pull_request: {} }
+permissions: { contents: read }
+jobs:
+  test:
+    permissions: { contents: write }
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        with: { persist-credentials: false }

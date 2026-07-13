@@ -36,7 +36,9 @@ const {
 } = require("../prescription-engine");
 
 const tests = [];
-function test(name, fn) { tests.push({ name, fn }); }
+const PUBLIC_CHECKOUT = process.env.CF_PUBLIC_CHECKOUT === "1";
+function test(name, fn, options = {}) { tests.push({ name, fn, privateOnly: options.privateOnly === true }); }
+function privateTest(name, fn) { test(name, fn, { privateOnly: true }); }
 
 function exercise(id, name, movement, equipment, extra = {}) {
   return {
@@ -533,7 +535,7 @@ test("manual overrides are audited and locked for the workout", () => {
   assert.strictEqual(evaluated.manualOverrides[0].outcomeEvaluation.result, "override_outperformed_or_supported");
 });
 
-test("file adapters load the real private aggregates locally without embedding them", () => {
+privateTest("file adapters load the real private aggregates locally without embedding them", () => {
   const evidence = loadEvidenceFromFiles(path.resolve(__dirname, ".."), { includeSessionMetrics: false, includeWeeklyVolume: false });
   assert(evidence.personal.exerciseScores.length >= 100);
   assert(evidence.personal.exercisePrescriptions.length >= 100);
@@ -825,8 +827,14 @@ test("straight-set load progression requires a top first set and acceptable late
 
 (async function run() {
   let passed = 0;
+  let skippedPrivate = 0;
   const failures = [];
   for (const item of tests) {
+    if (PUBLIC_CHECKOUT && item.privateOnly) {
+      skippedPrivate += 1;
+      console.log(`SKIP PRIVATE ${item.name}: protected local aggregates are intentionally absent in CF_PUBLIC_CHECKOUT=1.`);
+      continue;
+    }
     try {
       await item.fn();
       passed += 1;
@@ -837,6 +845,7 @@ test("straight-set load progression requires a top first set and acceptable late
       console.error(error.stack || error.message || error);
     }
   }
-  console.log(`\nPrescription engine ${ENGINE_VERSION}: ${passed}/${tests.length} tests passed.`);
+  const executed = tests.length - skippedPrivate;
+  console.log(`\nPrescription engine ${ENGINE_VERSION}: ${passed}/${executed} executed tests passed; ${skippedPrivate} truly private test skipped; ${tests.length} total discovered.`);
   if (failures.length) process.exitCode = 1;
 })();

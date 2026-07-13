@@ -5,8 +5,8 @@ const { spawnSync } = require("node:child_process");
 
 const ROOT = path.resolve(__dirname, "..");
 const SUITES = Object.freeze({
-  public: ["lint", "check:privacy", "test:public", "research:validate", "verify:pwa"],
-  release: ["check:public", "audit:ui"],
+  public: ["lint", "check:workflows", "check:privacy", "audit:dependencies:full", "audit:dependencies:production", "test:public", "research:validate", "verify:pwa"],
+  release: ["check:clean-source", "check:public", "audit:ui"],
   "all-local": ["test:public", "test:private"]
 });
 const requested = process.argv[2];
