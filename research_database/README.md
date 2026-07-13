@@ -4,7 +4,7 @@ Version 3.0.0 is a structured, male-scoped evidence and application database for
 
 ## Important scope statement
 
-This is an evidence-informed application database, not a medical device and not a completed formal systematic review of every question. It prioritizes male-only evidence and labels mixed-sex evidence as indirect unless male outcomes are separable. Missing male counts are stored as `null`, never guessed. Female-only evidence is excluded from recommendation mappings; one excluded negative-control row demonstrates that validation rule.
+This is an evidence-informed application database, not a medical device and not a completed formal systematic review of every question. It prioritizes male-only evidence and labels mixed-sex evidence as indirect unless male outcomes are separable. Missing male counts are stored as `null`, never guessed. Female-only evidence is excluded from recommendation mappings; excluded negative-control rows demonstrate that validation rule.
 
 Muscle-volume thresholds, fractional set credit, plateau windows, deload triggers, and exercise-specific rep bands frequently require practical inference. These records are deliberately low-confidence where direct evidence is absent. A numerical default is an operational input for an application, not proof of a biological threshold.
 

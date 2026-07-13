@@ -53,9 +53,13 @@ function assertRequiredStudy(expected) {
     assert.equal(study[field], expected[field], `${expected.study_id}.${field}`);
   });
   assert.equal(study.male_only_sample, false, `${expected.study_id} must not be labeled male-only`);
-  if (expected.male_sample_size !== null && expected.total_sample_size > expected.male_sample_size) {
-    assert.equal(study.mixed_sex_sample, true, `${expected.study_id} must disclose its mixed-sex sample`);
-    assert.equal(study.male_results_reported_separately, false, `${expected.study_id} must not imply separable male outcomes`);
+  if (expected.male_sample_size !== null && expected.total_sample_size !== null) {
+    const mixedSexByKnownCounts = expected.male_sample_size > 0 && expected.total_sample_size > expected.male_sample_size;
+    assert.equal(expected.mixed_sex_sample, mixedSexByKnownCounts, `${expected.study_id} fixture mixed-sex classification must match its known sex counts`);
+    assert.equal(study.mixed_sex_sample, mixedSexByKnownCounts, `${expected.study_id} mixed-sex classification must require both male and non-male participants`);
+    if (mixedSexByKnownCounts) {
+      assert.equal(study.male_results_reported_separately, false, `${expected.study_id} must not imply separable male outcomes`);
+    }
   }
   const limitations = `${study.study_limitations || ""} ${study.reviewer_notes || ""}`;
   assert.match(limitations, new RegExp(expected.limitations_pattern, "i"), `${expected.study_id} must disclose population/directness limitations`);
@@ -172,14 +176,25 @@ test("every rule traces to valid conclusions and overlapping studies", () => {
 
 test("female-only evidence is excluded from male conclusions", () => {
   const femaleOnly = data.research_library.filter((study) => study.male_sample_size === 0 || study.male_applicability === "excluded");
-  assert.ok(femaleOnly.some((study) => study.study_id === "stu_0047"), "stu_0047 must be classified as female-only/excluded for male inference");
+  ["stu_0024", "stu_0047"].forEach((studyId) => {
+    assert.ok(femaleOnly.some((study) => study.study_id === studyId), `${studyId} must be classified as female-only/excluded for male inference`);
+  });
   const conclusionCitations = new Set(data.evidence_conclusions.flatMap((row) => ids(row.supporting_study_ids)));
   const mapped = new Set(data.study_conclusion_map.map((row) => row.study_id));
+  const recommendationTables = Object.entries(tableColumns)
+    .filter(([table, columns]) => columns.includes("supporting_study_ids") && !["evidence_conclusions", "change_log"].includes(table))
+    .map(([table]) => table);
   femaleOnly.forEach((study) => {
+    assert.equal(study.mixed_sex_sample, false, `${study.study_id} female-only population cannot be labeled mixed-sex`);
     assert.equal(study.male_sample_size, 0, `${study.study_id} excluded population must disclose zero males`);
     assert.equal(study.male_applicability, "excluded", `${study.study_id} must be excluded from male applicability`);
     assert.ok(!conclusionCitations.has(study.study_id), `${study.study_id} cannot support a male conclusion`);
     assert.ok(!mapped.has(study.study_id), `${study.study_id} cannot appear in study_conclusion_map`);
+    recommendationTables.forEach((table) => {
+      data[table].forEach((row) => {
+        assert.ok(!ids(row.supporting_study_ids).includes(study.study_id), `${study.study_id} cannot support ${table}`);
+      });
+    });
   });
 });
 

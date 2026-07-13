@@ -17,8 +17,8 @@
       "research_library": {
         "record_count": 48,
         "primary_id_field": "study_id",
-        "csv_sha256": "9c37a2c786b930f4575b6c15a2fa070e7fd394a9a35b7e511ce5759b52da8333",
-        "json_sha256": "56de9539ab95be932484acdb4e1041a69f5ceb43bd98690ee8bcbc8016e8b290",
+        "csv_sha256": "573f80e720b8dbcb8d360c28455db1c7f0fa2cfe766aec966be1d1a714c94b2f",
+        "json_sha256": "04f436348c82602bc6958258d0c39cacbc7a59cfdcdbc09508ef56e1fff109e3",
         "schema_sha256": "580e408aa52602b7e45ce90f8aca814001ac27728e60fd96bcc834d0e4e4a9f0"
       },
       "evidence_conclusions": {
@@ -2424,7 +2424,7 @@
         "study_type": "randomized_controlled_trial",
         "research_topic": "muscle_length",
         "male_only_sample": false,
-        "mixed_sex_sample": true,
+        "mixed_sex_sample": false,
         "male_results_reported_separately": false,
         "male_sample_size": 0,
         "total_sample_size": 42,
@@ -2442,7 +2442,7 @@
         "effect_size": "",
         "statistical_significance": "See source; not reducible to one test",
         "practical_significance": "Long-muscle-length partial calf raises increased gastrocnemius thickness more than short-length partials and, for some regions, full range of motion.",
-        "study_limitations": "Female-only sample of 42 untrained young women; gastrocnemius-specific ultrasound outcomes cannot establish a male or whole-body rule. The mixed-sex contract flag is true because this cohort is not male-only, while the zero-male count and excluded applicability remain authoritative.",
+        "study_limitations": "Female-only sample of 42 untrained young women; gastrocnemius-specific ultrasound outcomes cannot establish a male or whole-body rule. Because all 42 participants were women, the mixed-sex contract flag is false; the zero-male count and excluded applicability remain authoritative.",
         "risk_of_bias": "some_concerns",
         "male_applicability": "excluded",
         "evidence_tier": "tier_3",
