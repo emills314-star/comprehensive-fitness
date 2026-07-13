@@ -2,9 +2,9 @@
 
 This document is the durable map for future recommendation-engine iterations. It describes what is in the personal analysis and exercise-science database, how the app is allowed to use each source, and which files are canonical. Keep it current whenever a source schema, database version, engine version, or app persistence contract changes.
 
-## Exercise–muscle taxonomy 2.0
+## Exercise–muscle taxonomy 2.1
 
-The canonical relationship source is `research_database/source/exercise-muscle-taxonomy.js`; generated `exercise_muscle_map` and `exercise_taxonomy_review_queue` artifacts are the runtime/data-contract outputs. Every mapped row includes classification, loading/ROM role, hypertrophy credit, local-fatigue weight, confidence, evidence notes/IDs, review state/date, and taxonomy version. See `research_database/EXERCISE_MUSCLE_TAXONOMY.md`. Legacy binary mappings are compatibility-only.
+The canonical relationship source is `research_database/source/exercise-muscle-taxonomy.js`; generated `exercise_muscle_map` and `exercise_taxonomy_review_queue` artifacts are the runtime/data-contract outputs. Every mapped row includes classification, loading/ROM role, hypertrophy credit, local-fatigue weight, confidence, evidence notes/IDs, review state/date, and taxonomy version. The 23 canonical anatomical IDs project into 20 programming families for derived accounting; relationships and history keep their canonical IDs. See `research_database/EXERCISE_MUSCLE_TAXONOMY.md`. Legacy binary mappings are compatibility-only.
 
 ## Current versions
 
@@ -12,18 +12,18 @@ The canonical relationship source is `research_database/source/exercise-muscle-t
 | --- | --- | --- | --- |
 | Personal analysis pipeline | `1.1.0` | 2026-07-11 | `scripts/personal-fitness/` plus `personal_fitness_data/config/` |
 | Personal analysis methodology | `1.1.0` | 2026-07-11 | `personal_fitness_data/reports/analysis_metadata.json` |
-| Exercise-science database and muscle taxonomy | `2.0.0` | 2026-07-12 | `research_database/source/database.js` and `research_database/source/exercise-muscle-taxonomy.js` |
+| Exercise-science database / muscle taxonomy | `3.0.0` / `2.1.0` | 2026-07-13 | `research_database/source/database.js` and `research_database/source/exercise-muscle-taxonomy.js` |
 | Unified prescription engine | `3.0.0` | 2026-07-12 | `prescription-engine.js` |
 | App prescription schema | `2.0.0` | 2026-07-11 | `prescription-engine.js` and the app prescription JSON Schemas |
-| Push/sync operational database | `1.0.0` | deployed/verified 2026-07-11 | `docs/push-backend.md` and `api/` |
+| Push/sync backend contract | Unversioned endpoints | code-reviewed 2026-07-13; external status **NEEDS REVIEW** | `docs/push-backend.md` and `api/` |
 
-The existing private personal-analysis snapshot predates taxonomy 2.0. The runtime resolves its persistent research exercise crosswalk against taxonomy 2.0 and preserves both source versions in recommendation snapshots; the updated private pipeline will use taxonomy 2.0 on its next local rebuild. Raw/private data remains unpublished.
+The existing private personal-analysis snapshot retains its own source provenance. The runtime resolves its persistent research exercise crosswalk against the loaded taxonomy 2.1.0 and preserves both source versions in recommendation snapshots; only a deliberate local private rebuild may advance the private source version. Raw/private data remains unpublished.
 
-Canonical taxonomy controls target-muscle candidate eligibility. A personal `exercise_muscle_scores` row can reweight a valid direct or positive-credit fractional relationship, but it cannot promote a canonical isometric-only, incidental, unknown, or zero-credit relationship into a hypertrophy candidate pool. This resolves version drift such as the older private Ab Wheel → Lats secondary row: taxonomy 2.0 classifies the lat role as isometric stabilization with zero hypertrophy credit, so Ab Wheel is eligible for abdominal selection but not lat selection. Personal-only/custom exercises without a canonical crosswalk remain eligible only from an explicit positive direct/fractional personal relationship and retain review-queue provenance.
+Canonical taxonomy controls target-muscle candidate eligibility. A personal `exercise_muscle_scores` row can reweight a valid direct or positive-credit fractional relationship, but it cannot promote a canonical isometric-only, incidental, unknown, or zero-credit relationship into a hypertrophy candidate pool. This resolves version drift such as the older private Ab Wheel → Lats secondary row: taxonomy 2.1 classifies the lat role as isometric stabilization with zero hypertrophy credit, so Ab Wheel is eligible for abdominal selection but not lat selection. Personal-only/custom exercises without a canonical crosswalk remain eligible only from an explicit positive direct/fractional personal relationship and retain review-queue provenance.
 
 Candidate scores now keep three questions separate: `targetMuscleEffectiveness` estimates usefulness for the selected muscle; `confidence` reports evidence certainty; `overallRecommendationStrength` remains a broader ranking input. Guided UI must label the selected-muscle value (for example, Lat Effectiveness) and may not present the overall score as muscle-specific.
 
-The live operational database is separate from both evidence sources. Upstash Redis stores only installation-scoped push, timer, idempotency, and workout-sync records; it does not contain or replace the private personal-analysis package or the public research database. Its exact key and field inventory, free-tier resource regions, and current deployment status are maintained in `docs/push-backend.md`.
+The operational database is separate from both evidence sources. Upstash Redis stores only installation-scoped push, timer, deletion-index, idempotency, and workout-sync records under bounded retention; it does not contain or replace the private personal-analysis package or the public research database. Its exact keys, lifecycle, retention, and external-status verification procedure are maintained in `docs/push-backend.md`.
 
 Current personal analysis identity: `analysis_9a245e42ebd6605a3ef6`; 81,313 source/normalized records from 2019-03-02 through 2026-07-11; overall evidence confidence `moderate` (`64.77/100`). Preserve this ID in audit work so outputs from a later rebuild are not mistaken for the evidence used by an older recommendation snapshot.
 
@@ -54,27 +54,27 @@ Known limitations that must lower personal evidence weight include absent direct
 
 ## Exercise-science database contents
 
-The public research database contains 18 normalized tables. The application-relevant tables are:
+The public research database contains 19 normalized tables. The application-relevant tables are:
 
 | Table | Records | Engine use |
 | --- | ---: | --- |
-| `exercise_database` | 60 | Exercise traits, rep/set/RIR/rest defaults, progression model, fatigue, stability/skill, substitution and deload criteria |
+| `exercise_database` | 62 | Exercise traits, rep/set/RIR/rest defaults, progression model, fatigue, stability/skill, substitution and deload criteria |
 | `muscle_group_recommendations` | 23 | Weekly/session volume, frequency, rep, RIR and rest ranges for muscle groups/subdivisions |
-| `exercise_muscle_map` | 149 | Direct, fractional, incidental, isometric, confidence, evidence, fatigue, and versioned muscle attribution |
-| `exercise_taxonomy_review_queue` | 11 | Low-confidence exercise/family relationships awaiting future focused review |
-| `exercise_substitution_map` | 90 | Preferred same-function replacements with similarity and confidence |
-| `progression_rules` | 18 | Double, dynamic, load/rep, technique, volume, deload and fatigue-management actions |
+| `exercise_muscle_map` | 151 | Direct, fractional, incidental, isometric, confidence, evidence, fatigue, and versioned muscle attribution |
+| `exercise_taxonomy_review_queue` | 12 | Low-confidence exercise/family relationships awaiting future focused review |
+| `exercise_substitution_map` | 93 | Preferred same-function replacements with similarity and confidence |
+| `progression_rules` | 19 | Double, dynamic, load/rep, technique, volume, deload and fatigue-management actions plus conclusion, authority, enforcement, and disclosure provenance |
 | `nutrition_strategies` | 13 | Goal/phase-specific nutrition modifiers and evidence confidence |
-| `exercise_progression_metric_map` | 360 | Exercise-appropriate progression measures |
-| `research_library` | 40 | Study metadata and evidence provenance |
-| `evidence_conclusions` | 27 | Graded research conclusions used by application rules |
+| `exercise_progression_metric_map` | 372 | Exercise-appropriate progression measures |
+| `research_library` | 48 | Study metadata, DOI, and verified PubMed/PMC provenance where available |
+| `evidence_conclusions` | 31 | Graded research conclusions used by application rules |
 | `evidence_gaps` | 15 | Explicit uncertainty and inference boundaries |
-| `rule_exercise_map` | 738 | Rule-to-exercise applicability |
+| `rule_exercise_map` | 827 | Rule-to-exercise applicability |
 | `rule_muscle_group_map` | 46 | Rule-to-muscle applicability |
-| `study_exercise_map` | 480 | Study-to-exercise evidence links |
+| `study_exercise_map` | 496 | Study-to-exercise evidence links |
 | `study_muscle_group_map` | 69 | Study-to-muscle evidence links |
 
-The remaining tables are `executive_summary` (14), `definitions_data_dictionary` (241), `change_log` (1), and `study_conclusion_map` (55). `research_database/exports/json/manifest.json` is the machine-readable inventory.
+The remaining tables are `executive_summary` (14), `definitions_data_dictionary` (258), `change_log` (5), and `study_conclusion_map` (60). `research_database/exports/json/manifest.json` is the machine-readable inventory.
 
 ## Crosswalk and evidence hierarchy
 
