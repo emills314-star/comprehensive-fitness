@@ -13,7 +13,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function prescriptionEngineFactory() {
   "use strict";
 
-  const ENGINE_VERSION = "3.1.3";
+  const ENGINE_VERSION = "3.1.4";
   const PRESCRIPTION_SCHEMA_VERSION = "2.1.0";
   const SNAPSHOT_SCHEMA_VERSION = "1.1.0";
   const HARD_SAFETY_SCHEMA_VERSION = "hard-safety/1.0.0";
@@ -1483,25 +1483,135 @@
     ex_standing_calf_raise: "selectorized_machine|dumbbell|barbell+plates", ex_neck_flexion: "neck_harness|plates", ex_neck_extension: "neck_harness|bands"
   });
 
+  const EQUIPMENT_REQUIREMENT_FIELDS = Object.freeze([
+    "equipment_requirements", "equipmentRequirements", "required_equipment", "requiredEquipment"
+  ]);
+  const EQUIPMENT_SUMMARY_FIELDS = Object.freeze(["equipment", "equipment_type", "equipmentType"]);
+  const PRIMARY_EQUIPMENT_FAMILIES = Object.freeze(new Set([
+    "barbell", "dumbbell", "cable", "machine", "bodyweight", "bands", "kettlebell", "trap_bar", "cambered_bar", "ez_bar"
+  ]));
+
   function normalizeEquipmentItem(value) {
-    const item = normalizeText(value).replace(/dumbbells?/, "dumbbell").replace(/^cable$/, "cable_station");
-    if (item === "machine") return "selectorized_machine";
-    if (item === "leg_press") return "leg_press_machine";
-    return item;
+    if (typeof value !== "string" || !value.trim()) throw new Error("Equipment values must be non-empty strings.");
+    const item = normalizeText(value);
+    const aliases = {
+      dumbbells: "dumbbell",
+      cables: "cable_station",
+      cable: "cable_station",
+      cable_machine: "cable_station",
+      machine: "selectorized_machine",
+      leg_press: "leg_press_machine"
+    };
+    return aliases[item] || item;
+  }
+
+  function normalizeEquipmentRequirementOptions(options, label) {
+    if (!Array.isArray(options) || !options.length) throw new Error(`${label} must declare at least one equipment option.`);
+    const seen = new Set();
+    const normalized = [];
+    options.forEach((option) => {
+      if (!Array.isArray(option) || !option.length) throw new Error(`${label} contains an empty or malformed equipment option.`);
+      const items = unique(option.map((item) => normalizeEquipmentItem(item)));
+      if (!items.length) throw new Error(`${label} contains an empty equipment option.`);
+      const key = [...items].sort().join("+");
+      if (!seen.has(key)) {
+        seen.add(key);
+        normalized.push(items);
+      }
+    });
+    return normalized;
+  }
+
+  function parseEquipmentRequirementString(value, label) {
+    const raw = value.trim();
+    if (!raw) throw new Error(`${label} must be a non-empty string or string array.`);
+    const normalizedKey = normalizeText(raw);
+    const special = {
+      bodyweight: [["bodyweight"]],
+      bodyweight_or_belt: [["bodyweight"], ["bodyweight", "dip_belt", "plates"]],
+      cable_machine: [["cable_station"]],
+      dumbbell_or_machine: [["dumbbell"], ["selectorized_machine"]],
+      machine_or_free_weight: [["selectorized_machine"], ["dumbbell"], ["barbell", "plates"]]
+    };
+    if (special[normalizedKey]) return normalizeEquipmentRequirementOptions(special[normalizedKey], label);
+    const delimited = raw
+      .replace(/_or_|\s+or\s+/gi, "|")
+      .replace(/_and_|\s+and\s+/gi, "+");
+    const options = delimited.split("|").map((option) => option.split("+"));
+    if (options.some((option) => option.some((item) => !item.trim()))) throw new Error(`${label} contains an empty or malformed equipment value.`);
+    return normalizeEquipmentRequirementOptions(options, label);
+  }
+
+  function parseEquipmentRequirementValue(value, label) {
+    if (typeof value === "string") return parseEquipmentRequirementString(value, label);
+    if (!Array.isArray(value) || !value.length) throw new Error(`${label} must be a non-empty string or string array.`);
+    const nested = value.every(Array.isArray);
+    const flat = value.every((item) => !Array.isArray(item));
+    if (!nested && !flat) throw new Error(`${label} cannot mix equipment strings and option arrays.`);
+    const options = nested ? value : [value];
+    options.forEach((option) => {
+      if (!option.length || option.some((item) => typeof item !== "string" || !item.trim())) throw new Error(`${label} contains a malformed equipment array.`);
+      if (option.some((item) => /[|+]|_or_|_and_|\s+or\s+|\s+and\s+/i.test(item))) {
+        throw new Error(`${label} array entries must be atomic equipment names; express alternatives as nested arrays.`);
+      }
+    });
+    return normalizeEquipmentRequirementOptions(options, label);
+  }
+
+  function equipmentOptionsKey(options) {
+    return options.map((option) => [...option].sort().join("+")).sort().join("|");
+  }
+
+  function declaredEquipmentMetadata(exercise, fields, label) {
+    const entries = fields
+      .filter((field) => Object.prototype.hasOwnProperty.call(exercise, field))
+      .map((field) => ({ field, options: parseEquipmentRequirementValue(exercise[field], `${label} field ${field}`) }));
+    if (!entries.length) return { declared: false, options: [] };
+    const expected = equipmentOptionsKey(entries[0].options);
+    const conflicting = entries.find((entry) => equipmentOptionsKey(entry.options) !== expected);
+    if (conflicting) throw new Error(`Contradictory ${label} aliases ${entries[0].field} and ${conflicting.field}.`);
+    return { declared: true, options: entries[0].options };
+  }
+
+  function equipmentOptionFamilies(option) {
+    const families = unique(option.map(equipmentFamily));
+    const primary = families.filter((family) => PRIMARY_EQUIPMENT_FAMILIES.has(family));
+    return primary.length ? primary : families;
+  }
+
+  function equipmentMetadataIsConsistent(requirements, summary) {
+    return requirements.every((requirementOption) => {
+      const requirementFamilies = equipmentOptionFamilies(requirementOption);
+      return summary.some((summaryOption) => {
+        const summaryFamilies = equipmentOptionFamilies(summaryOption);
+        return requirementFamilies.some((family) => summaryFamilies.includes(family));
+      });
+    });
+  }
+
+  function hasDeclaredEquipmentMetadata(exercise) {
+    return Boolean(exercise && typeof exercise === "object" && !Array.isArray(exercise)
+      && [...EQUIPMENT_REQUIREMENT_FIELDS, ...EQUIPMENT_SUMMARY_FIELDS].some((field) => Object.prototype.hasOwnProperty.call(exercise, field)));
   }
 
   function equipmentRequirementOptions(exercise = {}) {
-    const explicit = String(exercise.equipment_requirements || exercise.equipmentRequirements || EQUIPMENT_REQUIREMENT_OVERRIDES[exercise.exercise_id || exercise.exerciseId] || "");
-    if (explicit) return explicit.split("|").map((option) => option.split("+").map(normalizeEquipmentItem).filter(Boolean)).filter((option) => option.length);
-    const raw = String(exercise.equipment || "").toLowerCase();
-    if (!raw) return [];
-    if (raw === "bodyweight") return [["bodyweight"]];
-    if (raw === "bodyweight_or_belt") return [["bodyweight"], ["bodyweight", "dip_belt", "plates"]];
-    if (raw === "cable_machine") return [["cable_station"]];
-    if (raw === "dumbbell_or_machine") return [["dumbbell"], ["selectorized_machine"]];
-    if (raw === "machine_or_free_weight") return [["selectorized_machine"], ["dumbbell"], ["barbell", "plates"]];
-    const normalized = raw.replaceAll("_and_", "+").replaceAll("_or_", "|");
-    return normalized.split("|").map((option) => option.split("+").map(normalizeEquipmentItem).filter(Boolean)).filter((option) => option.length);
+    if (!exercise || typeof exercise !== "object" || Array.isArray(exercise)) throw new Error("Equipment metadata must be supplied as an exercise object.");
+    const requirements = declaredEquipmentMetadata(exercise, EQUIPMENT_REQUIREMENT_FIELDS, "equipment requirements");
+    const summary = declaredEquipmentMetadata(exercise, EQUIPMENT_SUMMARY_FIELDS, "equipment summary");
+    if (requirements.declared && summary.declared && !equipmentMetadataIsConsistent(requirements.options, summary.options)) {
+      throw new Error("Contradictory equipment requirements and equipment summary metadata.");
+    }
+    if (requirements.declared) return requirements.options;
+    const override = EQUIPMENT_REQUIREMENT_OVERRIDES[exercise.exercise_id || exercise.exerciseId];
+    if (override) return parseEquipmentRequirementString(override, "built-in equipment requirements");
+    return summary.options;
+  }
+
+  function normalizeAvailableEquipment(availableEquipment) {
+    if (availableEquipment === undefined || availableEquipment === null || availableEquipment === "") return [];
+    const values = Array.isArray(availableEquipment) ? availableEquipment : [availableEquipment];
+    if (values.some(Array.isArray)) throw new Error("Available equipment must be a flat array of equipment names.");
+    return unique(values.map((value) => normalizeEquipmentItem(value)));
   }
 
   function equipmentCompatible(exercise, availableEquipment) {
@@ -1510,10 +1620,10 @@
       barbell: ["barbell", "plates"], rack: ["rack", "bench", "incline_bench", "pull_up_bar", "nordic_anchor"],
       cable_station: ["cable_station", "pull_up_bar"]
     };
-    const selected = asArray(availableEquipment).map(normalizeEquipmentItem);
-    const available = new Set(selected.flatMap((item) => bundles[item] || [item]));
-    if (!available.size || available.has("all")) return { eligible: true, requirements: equipmentRequirementOptions(exercise), missing: [] };
     const requirements = equipmentRequirementOptions(exercise);
+    const selected = normalizeAvailableEquipment(availableEquipment);
+    const available = new Set(selected.flatMap((item) => bundles[item] || [item]));
+    if (!available.size || available.has("all")) return { eligible: true, requirements, missing: [] };
     if (!requirements.length) return { eligible: false, requirements, missing: ["verified equipment metadata"] };
     const matched = requirements.some((option) => option.every((item) => available.has(item)));
     const missing = requirements.map((option) => option.filter((item) => !available.has(item))).sort((a, b) => a.length - b.length)[0] || [];
@@ -3625,7 +3735,11 @@
     const researchExerciseId = explicitResearchId ?? null;
     const catalogRecord = Boolean(
       firstPresent(item.exercise_id, item.personalExerciseId, item.personal_exercise_id)
-      && firstPresent(item.exercise_name, item.exerciseName, item.prescription_id, item.score_id, item.equipment, item.equipment_requirements)
+      && firstPresent(
+        item.exercise_name, item.exerciseName, item.prescription_id, item.score_id,
+        item.equipment, item.equipment_type, item.equipmentType,
+        item.equipment_requirements, item.equipmentRequirements, item.required_equipment, item.requiredEquipment
+      )
     );
     return { exerciseId, researchExerciseId, researchIdentitySpecified, structured: true, catalogRecord, source: item };
   }
@@ -3687,7 +3801,9 @@
   }
 
   function equipmentSourceForIdentity(identity, researchIdentities) {
-    return researchIdentities.get(identity?.researchExerciseId)?.source || identity?.source || {};
+    const selectedSource = identity?.source || {};
+    if (hasDeclaredEquipmentMetadata(selectedSource)) return selectedSource;
+    return researchIdentities.get(identity?.researchExerciseId)?.source || selectedSource;
   }
 
   function applyManualOverride(snapshotInput, override = {}, options = {}) {

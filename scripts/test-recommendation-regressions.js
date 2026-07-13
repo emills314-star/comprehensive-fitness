@@ -11,6 +11,7 @@ const {
   determineProgressionDecision,
   deserializeRecommendationSnapshot,
   equipmentCompatible,
+  equipmentRequirementOptions,
   evaluateReadiness,
   normalizeEvidenceBundle,
   rankExercisePool,
@@ -759,6 +760,145 @@ test("trusted mapped user exercises preserve composite identity while untrusted 
     allowedExerciseIds: ["custom_db_press"],
     exerciseCatalog: [{ personalExerciseId: "custom_db_press", researchExerciseId: "ex_machine_chest_press", exerciseName: "Spoofed duplicate" }]
   }), /conflict|duplicate|trusted|mapping/i, "caller catalog metadata cannot override a trusted internal custom mapping");
+});
+
+test("custom equipment requirements override mapped canonical equipment for ordinary and pain-safety replacement", () => {
+  const customEngine = createPrescriptionEngine({
+    personalData: {
+      exerciseScores: [{
+        exercise_id: "custom_cable_press",
+        research_exercise_id: "ex_dumbbell_bench_press",
+        exercise_name: "My cable press",
+        equipment: "cable"
+      }],
+      metadata: { methodology_version: "custom-equipment-test/1.0.0" }
+    },
+    researchData: publicResearchData()
+  });
+  const ordinary = customEngine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", history: progressionHistory(), createdAt });
+  const ordinaryOverride = { exerciseId: "custom_cable_press" };
+  const ordinaryOptions = { allowedExerciseIds: ["custom_cable_press"], createdAt: "2026-07-12T12:21:30.000Z" };
+  const painful = customEngine.prescribeExercise({
+    exerciseId: "ex_barbell_bench_press",
+    muscleGroupId: "chest",
+    history: progressionHistory(),
+    readiness: { pain: true, affectedMuscle: "chest" },
+    createdAt
+  });
+  const safetyOverride = {
+    exerciseId: "custom_cable_press",
+    researchExerciseId: "ex_dumbbell_bench_press",
+    painFreeConfirmed: true
+  };
+  const safetyOptions = { allowedSafetySubstituteIds: ["custom_cable_press"], createdAt: "2026-07-12T12:21:45.000Z" };
+  collectFailures([
+    ["ordinary custom rejects canonical-only equipment", () => assert.throws(() => customEngine.applyManualOverride(ordinary, ordinaryOverride, {
+      ...ordinaryOptions,
+      availableEquipment: ["dumbbell", "bench"]
+    }), /equipment|cable|compatible/i, "custom cable requirements must not fall back to the mapped canonical dumbbell requirements")],
+    ["ordinary custom accepts declared cable equipment", () => {
+      const ordinaryCable = customEngine.applyManualOverride(ordinary, ordinaryOverride, {
+        ...ordinaryOptions,
+        availableEquipment: ["cable_station"]
+      });
+      assert.equal(ordinaryCable.finalPrescription.exerciseId, "custom_cable_press");
+      assert.equal(ordinaryCable.finalPrescription.researchExerciseId, "ex_dumbbell_bench_press");
+      assert.equal(ordinaryCable.finalPrescription.prescribedLoad, undefined);
+      assert.doesNotThrow(() => deserializeRecommendationSnapshot(ordinaryCable));
+    }],
+    ["pain-safety custom rejects canonical-only equipment", () => assert.throws(() => customEngine.applyManualOverride(painful, safetyOverride, {
+      ...safetyOptions,
+      availableEquipment: ["dumbbell", "bench"]
+    }), /equipment|cable|compatible/i, "pain-safety substitution must use the same custom-first equipment precedence as ordinary replacement")],
+    ["pain-safety custom accepts declared cable equipment", () => {
+      const safetyCable = customEngine.applyManualOverride(painful, safetyOverride, {
+        ...safetyOptions,
+        availableEquipment: ["cable"]
+      });
+      assert.equal(safetyCable.finalPrescription.exerciseId, "custom_cable_press");
+      assert.equal(safetyCable.finalPrescription.safetyRestriction.status, "resolved_by_confirmed_substitute");
+      assert.doesNotThrow(() => deserializeRecommendationSnapshot(safetyCable));
+    }],
+    ["canonical equipment remains unchanged", () => assert.throws(() => customEngine.applyManualOverride(ordinary, { exerciseId: "ex_dumbbell_bench_press" }, {
+      allowedExerciseIds: ["ex_dumbbell_bench_press"],
+      availableEquipment: ["cable"]
+    }), /equipment/i, "canonical dumbbell bench behavior must remain unchanged by custom-source precedence")]
+  ]);
+});
+
+test("custom equipment metadata normalizes aliases and arrays, falls back only when absent, and rejects malformed contradictions", () => {
+  assert.deepEqual(
+    equipmentRequirementOptions({ equipmentRequirements: [["cables"]], equipment_type: "cable machine" }),
+    [["cable_station"]],
+    "nested arrays and summary aliases must normalize to the same canonical equipment value"
+  );
+  assert.deepEqual(
+    equipmentRequirementOptions({ requiredEquipment: ["dumbbells", "bench"] }),
+    [["dumbbell", "bench"]],
+    "a flat requirements array is one deterministic AND bundle"
+  );
+  assert.equal(equipmentCompatible({ equipment: "cables" }, ["cable_machine"]).eligible, true, "metadata and availability aliases must normalize identically");
+  assert.throws(
+    () => equipmentRequirementOptions({ equipment: "cable", equipmentRequirements: "dumbbell" }),
+    /contradictory.*equipment/i,
+    "a detailed requirement cannot contradict the declared equipment summary"
+  );
+  assert.throws(
+    () => equipmentRequirementOptions({ equipment_requirements: "cable", equipmentRequirements: [["dumbbell"]] }),
+    /contradictory.*aliases/i,
+    "conflicting field aliases must fail closed"
+  );
+  assert.throws(
+    () => equipmentRequirementOptions({ equipment: { type: "cable" } }),
+    /non-empty string|string array|equipment summary/i,
+    "object-shaped equipment metadata must fail closed instead of stringifying"
+  );
+  assert.throws(
+    () => equipmentRequirementOptions({ equipmentRequirements: [] }),
+    /non-empty|string array|equipment requirements/i,
+    "empty requirement arrays must fail closed"
+  );
+
+  const customEngine = createPrescriptionEngine({
+    personalData: {
+      exerciseScores: [{
+        exercise_id: "custom_array_cable_press",
+        research_exercise_id: "ex_dumbbell_bench_press",
+        exercise_name: "Array cable press",
+        equipmentRequirements: [["cables"]],
+        equipment_type: "cable machine"
+      }, {
+        exercise_id: "custom_fallback_press",
+        research_exercise_id: "ex_dumbbell_bench_press",
+        exercise_name: "Fallback press"
+      }, {
+        exercise_id: "custom_conflicting_press",
+        research_exercise_id: "ex_dumbbell_bench_press",
+        exercise_name: "Conflicting press",
+        equipment: "cable",
+        equipmentRequirements: "dumbbell"
+      }, {
+        exercise_id: "custom_malformed_press",
+        research_exercise_id: "ex_dumbbell_bench_press",
+        exercise_name: "Malformed press",
+        equipment: { type: "cable" }
+      }],
+      metadata: { methodology_version: "custom-equipment-validation-test/1.0.0" }
+    },
+    researchData: publicResearchData()
+  });
+  const snapshot = customEngine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", history: progressionHistory(), createdAt });
+  const replace = (exerciseId, availableEquipment) => customEngine.applyManualOverride(snapshot, { exerciseId }, {
+    allowedExerciseIds: [exerciseId],
+    availableEquipment,
+    createdAt: "2026-07-12T12:21:50.000Z"
+  });
+  assert.equal(replace("custom_array_cable_press", ["cable"]).finalPrescription.exerciseId, "custom_array_cable_press", "normalized custom arrays remain authoritative over mapped canonical equipment");
+  assert.throws(() => replace("custom_array_cable_press", ["dumbbell", "bench"]), /equipment/i, "a normalized custom array cannot leak through canonical equipment");
+  assert.equal(replace("custom_fallback_press", ["dumbbell", "bench"]).finalPrescription.exerciseId, "custom_fallback_press", "mapped canonical equipment remains the fallback when custom requirements are absent");
+  assert.throws(() => replace("custom_fallback_press", ["cable"]), /equipment/i, "an equipment-free custom record must not bypass its mapped canonical requirements");
+  assert.throws(() => replace("custom_conflicting_press", ["cable", "dumbbell"]), /contradictory.*equipment/i, "trusted but contradictory custom metadata must fail closed");
+  assert.throws(() => replace("custom_malformed_press", ["cable"]), /non-empty string|string array|equipment summary/i, "trusted but malformed custom metadata must fail closed");
 });
 
 test("an ex_ prefix and allowlist cannot establish a nonexistent or caller-spoofed canonical exercise", () => {
