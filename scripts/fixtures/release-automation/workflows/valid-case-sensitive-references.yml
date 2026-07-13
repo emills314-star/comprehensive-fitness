@@ -1,0 +1,9 @@
+name: Valid case-sensitive references
+on: pull_request
+permissions: { contents: read }
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ./Actions/Checkout
+      - uses: Acme/Safe-Action@cccccccccccccccccccccccccccccccccccccccc

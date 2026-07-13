@@ -65,6 +65,18 @@ assert(jobWrite.some((error) => /write permission/.test(error)), "inline job per
 const stringFalse = workflows.validateWorkflowFile(path.join(FIXTURES, "checkout-string-false.yml"));
 assert(stringFalse.some((error) => /persist-credentials/.test(error)), "quoted false must not satisfy literal checkout credential disabling");
 
+const mixedCaseCheckout = workflows.validateWorkflowFile(path.join(FIXTURES, "checkout-mixed-case-missing-persist.yml"));
+assert(mixedCaseCheckout.some((error) => /persist-credentials/.test(error)), "mixed-case actions/checkout identity must not bypass credential disabling");
+
+const mixedCaseSetupNode = workflows.validateWorkflowFile(path.join(FIXTURES, "setup-node-mixed-case-unpinned-version.yml"));
+assert(mixedCaseSetupNode.some((error) => /pinned Node\.js/.test(error)), "mixed-case actions/setup-node identity must not bypass the exact Node.js pin");
+
+const validCaseSensitiveReferences = workflows.validateWorkflowFile(path.join(FIXTURES, "valid-case-sensitive-references.yml"));
+assert.deepEqual(validCaseSensitiveReferences, [], `local paths and unrelated action references must retain their original case:\n${validCaseSensitiveReferences.join("\n")}`);
+
+const invalidActionUrl = workflows.validateWorkflowFile(path.join(FIXTURES, "invalid-action-url.yml"));
+assert(invalidActionUrl.some((error) => /owner\/repository|URL/i.test(error)), "URL-shaped uses references must not bypass owner/repository action identity checks");
+
 const auditReport = (counts) => ({ metadata: { vulnerabilities: { info: 0, low: 0, moderate: 0, high: 0, critical: 0, total: 0, ...counts } } });
 assert.equal(audits.evaluateFullAudit(auditReport({ moderate: 2, total: 2 }), auditReport({})).errors.length, 0, "moderate dev-only findings must be reported without weakening the high/critical full-tree threshold");
 assert.equal(audits.evaluateFullAudit(auditReport({ high: 1, total: 1 }), auditReport({})).errors.length, 1, "full-tree high vulnerabilities must fail");
@@ -77,4 +89,4 @@ assert.equal(fs.readFileSync(path.join(ROOT, ".nvmrc"), "utf8").trim(), "22.23.1
 assert.equal(fs.readFileSync(path.join(ROOT, ".node-version"), "utf8").trim(), "22.23.1");
 assert.equal(packageData.devDependencies.yaml, "2.9.0", "semantic YAML parser must remain exact-pinned");
 
-console.log("Release automation negative/positive fixtures passed (22 focused privacy, workflow, audit-threshold, and runtime-pin contracts)." );
+console.log("Release automation negative/positive fixtures passed (26 focused privacy, workflow, audit-threshold, and runtime-pin contracts)." );

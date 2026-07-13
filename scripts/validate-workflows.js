@@ -62,6 +62,27 @@ function collectUses(value, location = "workflow", records = []) {
   return records;
 }
 
+function parseActionReference(reference) {
+  if (reference.startsWith("./")) return { kind: "local", reference };
+  const at = reference.lastIndexOf("@");
+  const actionPath = at >= 0 ? reference.slice(0, at) : reference;
+  const revision = at >= 0 ? reference.slice(at + 1) : "";
+  const segments = actionPath.split("/");
+  const validRepositoryPath = !actionPath.includes("://")
+    && segments.length >= 2
+    && Boolean(segments[0])
+    && Boolean(segments[1]);
+  return {
+    kind: "external",
+    reference,
+    revision,
+    validRepositoryPath,
+    repositoryIdentity: validRepositoryPath
+      ? `${segments[0].toLowerCase()}/${segments[1].toLowerCase()}`
+      : null
+  };
+}
+
 function validateWorkflowObject(workflow, relative) {
   const errors = [];
   if (!isMapping(workflow)) return [`${relative}: workflow root must be a mapping`];
@@ -91,16 +112,16 @@ function validateWorkflowObject(workflow, relative) {
       continue;
     }
     const reference = record.value;
-    if (!reference.startsWith("./")) {
-      const at = reference.lastIndexOf("@");
-      const revision = at >= 0 ? reference.slice(at + 1) : "";
-      if (!EXTERNAL_ACTION_SHA.test(revision)) errors.push(`${relative}: external action is not pinned to a lowercase 40-character commit SHA: ${reference}`);
+    const action = parseActionReference(reference);
+    if (action.kind === "external") {
+      if (!action.validRepositoryPath) errors.push(`${relative}: external uses reference must use owner/repository[/path]@sha syntax; URL references are not allowed: ${reference}`);
+      if (!EXTERNAL_ACTION_SHA.test(action.revision)) errors.push(`${relative}: external action is not pinned to a lowercase 40-character commit SHA: ${reference}`);
     }
-    if (reference.startsWith("actions/checkout@")) {
+    if (action.repositoryIdentity === "actions/checkout") {
       const withOptions = record.step.with;
       if (!isMapping(withOptions) || withOptions["persist-credentials"] !== false) errors.push(`${relative}: checkout must set literal persist-credentials: false`);
     }
-    if (reference.startsWith("actions/setup-node@")) {
+    if (action.repositoryIdentity === "actions/setup-node") {
       const withOptions = record.step.with;
       if (!isMapping(withOptions) || String(withOptions["node-version"]) !== PINNED_NODE_VERSION) errors.push(`${relative}: setup-node must use pinned Node.js ${PINNED_NODE_VERSION} consistently`);
     }
@@ -158,6 +179,7 @@ module.exports = {
   PINNED_NODE_VERSION,
   normalizedTriggers,
   validatePermissions,
+  parseActionReference,
   validateWorkflowObject,
   validateWorkflowSource,
   validateWorkflowFile,
