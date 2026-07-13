@@ -13,7 +13,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function prescriptionEngineFactory() {
   "use strict";
 
-  const ENGINE_VERSION = "3.1.1";
+  const ENGINE_VERSION = "3.1.2";
   const PRESCRIPTION_SCHEMA_VERSION = "2.1.0";
   const SNAPSHOT_SCHEMA_VERSION = "1.1.0";
   const HARD_SAFETY_SCHEMA_VERSION = "hard-safety/1.0.0";
@@ -3081,6 +3081,116 @@
     if (!auditValuesMatch(actual, expected)) throw new Error(`Invalid manual override lineage identity transition binding; ${label} does not match its recorded prescription transition.`);
   }
 
+  function requireDeclaredChangePair(change, expectedFrom, label) {
+    if (!change || typeof change !== "object" || Array.isArray(change) || !("from" in change) || !("to" in change) || change.from === undefined || change.to === undefined) throw new Error(`Invalid manual override lineage; ${label} requires complete from/to values.`);
+    requireAuditTransition(change.from, expectedFrom, `${label}.from`);
+    if (auditValuesMatch(change.from, change.to)) throw new Error(`Invalid manual override lineage bijection; ${label} is a no-op declaration.`);
+    return deepClone(change.to);
+  }
+
+  function applyRecordedSetCount(prescription, target) {
+    prescription.workingSets.target = target;
+    prescription.workingSets.min = Math.min(prescription.workingSets.min, target);
+    prescription.workingSets.max = Math.max(prescription.workingSets.max, target);
+    return prescription;
+  }
+
+  function applyRecordedLoad(prescription, target) {
+    prescription.prescribedLoad = {
+      ...(prescription.prescribedLoad || {}),
+      target,
+      reason: "Manual user override; engine recommendation remains in the audit record."
+    };
+    return prescription;
+  }
+
+  function applyRecordedSetStructure(prescription, setStructure) {
+    prescription.setStructure = setStructure;
+    prescription.setStructureReason = "Manual user override for this workout; the decision engine will not replace it during the same workout.";
+    if (setStructure === "top_set_backoff") {
+      const topMax = Math.max(prescription.repRange.min + 1, number(prescription.repRange.target, prescription.repRange.max - 1));
+      prescription.topSet = deepClone(prescription.topSet || {
+        enabled: true,
+        count: 1,
+        repRange: { min: prescription.repRange.min, max: topMax },
+        targetRpe: number(prescription.targetRpe?.max, 8.5),
+        targetRir: number(prescription.targetRir?.min, 1.5)
+      });
+      prescription.backoffSets = deepClone(prescription.backoffSets || {
+        count: Math.max(1, prescription.workingSets.target - 1),
+        loadReductionPercent: deepClone(DEFAULT_POLICY.backoffReduction),
+        repRange: { min: Math.max(prescription.repRange.min, number(prescription.repRange.target, prescription.repRange.min + 1)), max: prescription.repRange.max },
+        targetRpe: Math.max(5, number(prescription.targetRpe?.max, 8) - 0.5),
+        targetRir: number(prescription.targetRir?.min, 2) + 0.5,
+        maximumAcceptableRepLossPercent: DEFAULT_POLICY.maximumRepLossPercent,
+        maximumAcceptableLoadReductionPercent: DEFAULT_POLICY.maximumBackoffLoadReductionPercent,
+        conversionRule: "Convert to lighter straight sets if pain, technique loss, excessive rep loss, or excessive load reduction appears."
+      });
+    } else if (setStructure === "multiple_top_sets") {
+      prescription.topSet = deepClone(prescription.topSet || {
+        enabled: true,
+        count: prescription.workingSets.target,
+        repRange: { min: prescription.repRange.min, max: prescription.repRange.max },
+        targetRpe: number(prescription.targetRpe?.max, 8.5),
+        targetRir: number(prescription.targetRir?.min, 1.5)
+      });
+      delete prescription.backoffSets;
+    } else {
+      delete prescription.backoffSets;
+      delete prescription.topSet;
+    }
+    return prescription;
+  }
+
+  function applyRecordedDeloadRecommendation(prescription, recommendationType) {
+    prescription.recommendationType = recommendationType;
+    if (["exercise_deload", "muscle_group_deload", "full_program_deload"].includes(recommendationType)) {
+      prescription.targetRpe = { min: 5.5, max: recommendationType === "full_program_deload" ? 6.5 : 7 };
+      prescription.targetRir = { min: recommendationType === "full_program_deload" ? 3.5 : 3, max: 4.5 };
+      prescription.progressionRule = "Do not progress load during the manual deload; preserve controlled technique and stop well short of failure.";
+      prescription.holdRule = "Keep this reduced prescription for the selected deload scope, then reassess before resuming normal progression.";
+    }
+    return prescription;
+  }
+
+  function applyRecordedSafetyConfirmation(prescription, confirmation) {
+    const auditTargets = prescription.safetyRestriction?.auditBaseTargets;
+    if (!auditTargets?.workingSets || !auditTargets.repRange || !auditTargets.targetRpe || !auditTargets.targetRir || !auditTargets.restSeconds || !auditTargets.volume) throw new Error("Invalid safety override lineage; blocked safety prescription is missing coherent base-target audit context.");
+    prescription.executionBlocked = false;
+    prescription.workingSets = deepClone(auditTargets.workingSets);
+    prescription.repRange = deepClone(auditTargets.repRange);
+    prescription.targetRpe = deepClone(auditTargets.targetRpe);
+    prescription.targetRir = deepClone(auditTargets.targetRir);
+    prescription.restSeconds = deepClone(auditTargets.restSeconds);
+    prescription.volume = deepClone(auditTargets.volume);
+    prescription.setStructure = "straight_sets";
+    prescription.setStructureReason = "Explicitly confirmed pain-free substitute using bounded base set, repetition, and effort targets; no load is inferred for a different exercise.";
+    prescription.progressionAction = "use_confirmed_pain_free_substitute_without_load_target";
+    prescription.progressionRule = "Complete only the confirmed pain-free substitute inside the restored base set, repetition, and RPE bounds; stop if pain occurs and do not infer a load from the original exercise.";
+    prescription.userExplanation = "The painful exercise remains blocked. The user explicitly confirmed this catalog-backed substitute as pain-free, so bounded non-load targets are available for the substitute only.";
+    prescription.safetyRestriction = {
+      ...prescription.safetyRestriction,
+      status: "resolved_by_confirmed_substitute",
+      painFreeConfirmed: true,
+      substituteExerciseId: confirmation.exerciseId,
+      substituteResearchExerciseId: confirmation.researchExerciseId,
+      confirmedAt: confirmation.confirmedAt
+    };
+    delete prescription.prescribedLoad;
+    delete prescription.topSet;
+    delete prescription.backoffSets;
+    return prescription;
+  }
+
+  function prescriptionDifferenceKeys(expected, actual) {
+    return [...new Set([...Object.keys(expected || {}), ...Object.keys(actual || {})])]
+      .filter((key) => !auditValuesMatch(expected?.[key], actual?.[key]));
+  }
+
+  function auditableResearchIdentityForExerciseId(exerciseId) {
+    return typeof exerciseId === "string" && /^ex_[a-z0-9_]+$/.test(exerciseId) ? exerciseId : null;
+  }
+
   function validateDeclaredOverrideChanges(entry, previous, result) {
     const changes = entry.changes;
     const supported = new Set([
@@ -3097,32 +3207,41 @@
     const unknown = Object.keys(changes).filter((field) => !supported.has(field));
     if (unknown.length) throw new Error(`Invalid manual override lineage; unsupported recorded changes: ${unknown.join(", ")}.`);
 
-    const transition = (field, previousValue, resultValue) => {
-      const change = changes[field];
-      if (!change || typeof change !== "object" || Array.isArray(change) || !("from" in change) || !("to" in change) || change.from === undefined || change.to === undefined) throw new Error(`Invalid manual override lineage; ${field} requires complete from/to values.`);
-      requireAuditTransition(change.from, previousValue, `${field}.from`);
-      requireAuditTransition(change.to, resultValue, `${field}.to`);
-    };
-    if (changes.exerciseId) transition("exerciseId", previous.exerciseId, result.exerciseId);
-    if (changes.setCount) transition("setCount", previous.workingSets?.target, result.workingSets?.target);
-    if (changes.repRange) transition("repRange", previous.repRange, result.repRange);
-    if (changes.load) transition("load", previous.prescribedLoad?.target ?? null, result.prescribedLoad?.target ?? null);
-    if (changes.setStructure) transition("setStructure", previous.setStructure, result.setStructure);
-    let recommendationType = previous.recommendationType;
-    if (changes.deloadRecommendation) {
-      const change = changes.deloadRecommendation;
-      if (!change || typeof change !== "object" || Array.isArray(change) || !("from" in change) || !("to" in change) || change.from === undefined || change.to === undefined) throw new Error("Invalid manual override lineage; deloadRecommendation requires complete from/to values.");
-      requireAuditTransition(change.from, recommendationType, "deloadRecommendation.from");
-      recommendationType = change.to;
+    // Declared-change bijection. Each persisted declaration owns exactly one
+    // user-facing dimension. Its helper below replays every deterministic
+    // derived field in that dimension, and the final whole-prescription
+    // comparison rejects undeclared changes in identity/research identity,
+    // working sets, repetitions, full resistance/load metadata (including
+    // assistance direction), RPE/RIR, rest, structure/top/back-off targets,
+    // recommendation policy, safety state, volume, or mesocycle binding.
+    // safetyConfirmation is the sole audit companion: it must accompany the
+    // exercise identity declaration and owns the deterministic safety-derived
+    // fields rather than representing a second independent identity change.
+    if (changes.deloadRecommendation && changes.exerciseRotation) throw new Error("Invalid manual override lineage bijection; deloadRecommendation and exerciseRotation duplicate the recommendation-type dimension.");
+    if (changes.safetyConfirmation) {
+      const illegalSafetyCompanions = Object.keys(changes).filter((field) => !["exerciseId", "safetyConfirmation"].includes(field));
+      if (illegalSafetyCompanions.length) throw new Error(`Invalid safety override lineage; safetyConfirmation cannot hide unrelated declarations: ${illegalSafetyCompanions.join(", ")}.`);
+      if (!changes.exerciseId) throw new Error("Invalid safety override lineage; safetyConfirmation requires one exercise identity declaration.");
     }
-    if (changes.exerciseRotation) {
-      const change = changes.exerciseRotation;
-      if (!change || typeof change !== "object" || Array.isArray(change) || !("from" in change) || !("to" in change) || change.from === undefined || change.to === undefined) throw new Error("Invalid manual override lineage; exerciseRotation requires complete from/to values.");
-      requireAuditTransition(change.from, recommendationType, "exerciseRotation.from");
-      recommendationType = change.to;
+
+    const expected = deepClone(previous);
+    if (changes.exerciseId) {
+      expected.exerciseId = requireDeclaredChangePair(changes.exerciseId, expected.exerciseId, "exerciseId");
+      if (changes.safetyConfirmation) expected.researchExerciseId = changes.safetyConfirmation.researchExerciseId;
+      else expected.researchExerciseId = auditableResearchIdentityForExerciseId(expected.exerciseId);
     }
-    if (changes.deloadRecommendation || changes.exerciseRotation) requireAuditTransition(recommendationType, result.recommendationType, "recommendationType result");
-    if (changes.mesocycleId) transition("mesocycleId", previous.mesocycleId ?? null, result.mesocycleId ?? null);
+    if (changes.safetyConfirmation) applyRecordedSafetyConfirmation(expected, changes.safetyConfirmation);
+    if (changes.setCount) applyRecordedSetCount(expected, requireDeclaredChangePair(changes.setCount, expected.workingSets?.target, "setCount"));
+    if (changes.repRange) expected.repRange = requireDeclaredChangePair(changes.repRange, expected.repRange, "repRange");
+    if (changes.load) applyRecordedLoad(expected, requireDeclaredChangePair(changes.load, expected.prescribedLoad?.target ?? null, "load"));
+    if (changes.setStructure) applyRecordedSetStructure(expected, requireDeclaredChangePair(changes.setStructure, expected.setStructure, "setStructure"));
+    if (changes.deloadRecommendation) applyRecordedDeloadRecommendation(expected, requireDeclaredChangePair(changes.deloadRecommendation, expected.recommendationType, "deloadRecommendation"));
+    if (changes.exerciseRotation) expected.recommendationType = requireDeclaredChangePair(changes.exerciseRotation, expected.recommendationType, "exerciseRotation");
+    if (changes.mesocycleId) expected.mesocycleId = requireDeclaredChangePair(changes.mesocycleId, expected.mesocycleId ?? null, "mesocycleId");
+    expected.manualOverride = { overrideId: entry.overrideId, lockedForWorkout: true, explanation: entry.reason };
+
+    const unexpected = prescriptionDifferenceKeys(expected, result);
+    if (unexpected.length) throw new Error(`Invalid manual override lineage identity/dimension bijection; actual before-to-after prescription contains undeclared or incorrectly derived changes in ${unexpected.join(", ")}.`);
   }
 
   function validateSafetyOverrideTransition(snapshot, entry, previous, result) {
@@ -3312,6 +3431,8 @@
     if (!RECOMMENDATION_TYPES.includes(snapshot.finalPrescription.recommendationType)) throw new Error(`Invalid recommendation type ${snapshot.finalPrescription.recommendationType}.`);
     if (!SET_STRUCTURES.includes(snapshot.finalPrescription.setStructure)) throw new Error(`Invalid set structure ${snapshot.finalPrescription.setStructure}.`);
     if (!ROLES.includes(snapshot.finalPrescription.role)) throw new Error(`Invalid role ${snapshot.finalPrescription.role}.`);
+    if (snapshot.exerciseId !== snapshot.finalPrescription.exerciseId) throw new Error("Invalid recommendation snapshot identity binding; snapshot exerciseId must match the final prescription.");
+    if ((snapshot.mesocycleId ?? null) !== (snapshot.finalPrescription.mesocycleId ?? null)) throw new Error("Invalid recommendation snapshot mesocycle binding; snapshot and final prescription must match.");
     if (snapshot.finalPrescription.executionBlocked) {
       const final = snapshot.finalPrescription;
       if (!final.safetyRestriction || final.safetyRestriction.schemaVersion !== HARD_SAFETY_SCHEMA_VERSION || final.safetyRestriction.status !== "blocked") throw new Error("Invalid blocked prescription; versioned blocked safetyRestriction metadata is required.");
@@ -3427,7 +3548,7 @@
 
   function catalogIdentity(item) {
     if (!item) return null;
-    if (typeof item === "string") return { exerciseId: item, researchExerciseId: item, structured: false, catalogRecord: false, source: null };
+    if (typeof item === "string") return { exerciseId: item, researchExerciseId: auditableResearchIdentityForExerciseId(item), structured: false, catalogRecord: false, source: null };
     const exerciseId = firstPresent(item.exerciseId, item.exercise_id, item.personalExerciseId, item.personal_exercise_id);
     if (!exerciseId) return null;
     const explicitResearchId = firstPresent(item.researchExerciseId, item.research_exercise_id, item.researchId, item.research_id);
@@ -3444,6 +3565,21 @@
     const before = deepClone(snapshot.finalPrescription);
     const final = deepClone(snapshot.finalPrescription);
     const applied = {};
+    const supportedOverrideInputFields = new Set([
+      "exerciseId", "exerciseSelection", "replacementExerciseId", "researchExerciseId", "research_exercise_id",
+      "painFreeConfirmed", "reason", "setCount", "workingSets", "repRange", "load", "prescribedLoad",
+      "setStructure", "topSet", "backoffSets", "deloadRecommendation", "exerciseRotation", "mesocycleId"
+    ]);
+    const unsupportedOverrideInputs = Object.keys(override).filter((field) => override[field] !== undefined && !supportedOverrideInputFields.has(field));
+    if (unsupportedOverrideInputs.length) throw new Error(`Unsupported manual override fields are not represented by the current audit contract: ${unsupportedOverrideInputs.join(", ")}.`);
+    if (override.topSet !== undefined || override.backoffSets !== undefined) throw new Error("Manual topSet/backoffSets payloads are unsupported because the current audit contract records only a deterministic set-structure transition.");
+    if (override.setCount !== undefined && override.workingSets?.target !== undefined) throw new Error("Duplicate set-count inputs are unsupported; use either setCount or workingSets.target.");
+    if (override.load !== undefined && override.prescribedLoad?.target !== undefined) throw new Error("Duplicate load inputs are unsupported; use either load or prescribedLoad.target.");
+    if (override.researchExerciseId !== undefined && override.research_exercise_id !== undefined) throw new Error("Duplicate research-identity inputs are unsupported.");
+    const suppliedExerciseSelectors = [override.exerciseId, override.exerciseSelection, override.replacementExerciseId].filter((value) => value !== undefined && value !== null && value !== "");
+    if (suppliedExerciseSelectors.length > 1) throw new Error("Duplicate exercise-identity inputs are unsupported; select one exercise field.");
+    if (override.workingSets && Object.keys(override.workingSets).some((field) => field !== "target")) throw new Error("Manual workingSets overrides support only target; min/max remain deterministic audit-derived bounds.");
+    if (override.prescribedLoad && Object.keys(override.prescribedLoad).some((field) => field !== "target")) throw new Error("Manual prescribedLoad overrides support only target; unit, assistance direction, prior load, and increment metadata remain bound to the audited prescription.");
     const catalogSources = [
       { exerciseId: snapshot.exerciseId, researchExerciseId: firstPresent(snapshot.finalPrescription?.researchExerciseId, snapshot.basePrescription?.researchExerciseId) },
       { exerciseId: snapshot.basePrescription?.exerciseId, researchExerciseId: snapshot.basePrescription?.researchExerciseId },
@@ -3465,6 +3601,8 @@
     });
     const safetyLocked = hasHardSafetyMarker(final) || hasHardSafetyMarker(snapshot.basePrescription);
     const selectedExerciseId = firstPresent(override.exerciseId, override.exerciseSelection, override.replacementExerciseId);
+    if (!selectedExerciseId && firstPresent(override.researchExerciseId, override.research_exercise_id)) throw new Error("A research identity may only accompany a declared exercise identity change.");
+    if (!safetyLocked && override.painFreeConfirmed !== undefined) throw new Error("painFreeConfirmed is a safety audit companion and cannot accompany an ordinary manual override.");
     const allowedSafetySource = options.allowedSafetySubstituteIds;
     if (allowedSafetySource !== undefined && !Array.isArray(allowedSafetySource)) throw new Error("allowedSafetySubstituteIds must be an array of exercise IDs.");
     const allowedSafetySubstituteIds = new Set(asArray(allowedSafetySource).map((value) => {
@@ -3505,43 +3643,27 @@
     }
     if (selectedExerciseId) {
       if (!exerciseCatalog.has(selectedExerciseId)) throw new Error(`Unknown manual override exercise ${selectedExerciseId}.`);
-      applied.exerciseId = { from: final.exerciseId, to: selectedExerciseId };
-      final.exerciseId = selectedExerciseId;
-      if (override.researchExerciseId !== undefined) final.researchExerciseId = override.researchExerciseId;
+      const selectedIdentity = catalogIdentities.get(selectedExerciseId);
+      const requestedResearchId = firstPresent(override.researchExerciseId, override.research_exercise_id);
+      if (requestedResearchId && selectedIdentity?.researchExerciseId && requestedResearchId !== selectedIdentity.researchExerciseId) throw new Error(`Manual override exercise ${selectedExerciseId} conflicts with its catalog-backed research identity.`);
+      const selectedResearchExerciseId = firstPresent(selectedIdentity?.researchExerciseId, requestedResearchId, /^ex_[a-z0-9_]+$/.test(selectedExerciseId) ? selectedExerciseId : null) ?? null;
+      if (selectedExerciseId !== final.exerciseId) {
+        const auditableResearchExerciseId = confirmedSafetyIdentity?.researchExerciseId ?? auditableResearchIdentityForExerciseId(selectedExerciseId);
+        if (!confirmedSafetyIdentity && selectedResearchExerciseId !== auditableResearchExerciseId) throw new Error(`Manual override exercise ${selectedExerciseId} has a separate research identity that the current ordinary-override audit contract cannot bind; select the canonical research exercise or use an unmapped custom exercise.`);
+        applied.exerciseId = { from: final.exerciseId, to: selectedExerciseId };
+        final.exerciseId = selectedExerciseId;
+        final.researchExerciseId = auditableResearchExerciseId;
+      } else if (selectedResearchExerciseId !== final.researchExerciseId) throw new Error("A research-identity-only manual override is unsupported; select a different catalog-backed exercise.");
     }
     if (confirmedSafetyIdentity) {
-      const auditTargets = final.safetyRestriction?.auditBaseTargets;
-      if (!auditTargets?.workingSets || !auditTargets.repRange || !auditTargets.targetRpe || !auditTargets.targetRir || !auditTargets.restSeconds || !auditTargets.volume) throw new Error("Blocked safety prescription is missing coherent base-target audit context.");
       const confirmedAt = options.createdAt || isoNow(options.clock);
-      final.executionBlocked = false;
-      final.workingSets = deepClone(auditTargets.workingSets);
-      final.repRange = deepClone(auditTargets.repRange);
-      final.targetRpe = deepClone(auditTargets.targetRpe);
-      final.targetRir = deepClone(auditTargets.targetRir);
-      final.restSeconds = deepClone(auditTargets.restSeconds);
-      final.volume = deepClone(auditTargets.volume);
-      final.setStructure = "straight_sets";
-      final.setStructureReason = "Explicitly confirmed pain-free substitute using bounded base set, repetition, and effort targets; no load is inferred for a different exercise.";
-      final.progressionAction = "use_confirmed_pain_free_substitute_without_load_target";
-      final.progressionRule = "Complete only the confirmed pain-free substitute inside the restored base set, repetition, and RPE bounds; stop if pain occurs and do not infer a load from the original exercise.";
-      final.userExplanation = "The painful exercise remains blocked. The user explicitly confirmed this catalog-backed substitute as pain-free, so bounded non-load targets are available for the substitute only.";
-      final.safetyRestriction = {
-        ...final.safetyRestriction,
-        status: "resolved_by_confirmed_substitute",
-        painFreeConfirmed: true,
-        substituteExerciseId: confirmedSafetyIdentity.exerciseId,
-        substituteResearchExerciseId: confirmedSafetyIdentity.researchExerciseId,
-        confirmedAt
-      };
-      delete final.prescribedLoad;
-      delete final.topSet;
-      delete final.backoffSets;
       applied.safetyConfirmation = {
         exerciseId: confirmedSafetyIdentity.exerciseId,
         researchExerciseId: confirmedSafetyIdentity.researchExerciseId,
         painFreeConfirmed: true,
         confirmedAt
       };
+      applyRecordedSafetyConfirmation(final, applied.safetyConfirmation);
     }
     const rawSetCount = firstPresent(override.setCount, override.workingSets?.target);
     const setCount = nullableNumber(rawSetCount);
@@ -3549,86 +3671,57 @@
     if (setCount !== null) {
       if (!Number.isInteger(setCount) || setCount < 1 || setCount > DEFAULT_POLICY.absoluteMaximumWorkingSetsPerSession) throw new Error(`Manual set count must be an integer from 1 to ${DEFAULT_POLICY.absoluteMaximumWorkingSetsPerSession}.`);
       const target = setCount;
-      applied.setCount = { from: final.workingSets.target, to: target };
-      final.workingSets.target = target;
-      final.workingSets.min = Math.min(final.workingSets.min, target);
-      final.workingSets.max = Math.max(final.workingSets.max, target);
+      if (target !== final.workingSets.target) {
+        applied.setCount = { from: final.workingSets.target, to: target };
+        applyRecordedSetCount(final, target);
+      }
     }
     if (override.repRange) {
       const range = normalizeRange(override.repRange, null, true);
       if (!range) throw new Error("Manual repRange override must contain min and/or max.");
       if (range.min < 1 || range.max > 100) throw new Error("Manual repRange override must stay between 1 and 100 repetitions.");
       const normalized = targetRange(range, true);
-      applied.repRange = { from: deepClone(final.repRange), to: normalized };
-      final.repRange = normalized;
+      if (!auditValuesMatch(normalized, final.repRange)) {
+        applied.repRange = { from: deepClone(final.repRange), to: deepClone(normalized) };
+        final.repRange = deepClone(normalized);
+      }
     }
     const rawLoad = firstPresent(override.load, override.prescribedLoad?.target);
     const load = nullableNumber(rawLoad);
     if (rawLoad !== undefined && rawLoad !== null && load === null) throw new Error("Manual load override must be numeric.");
     if (load !== null) {
       if (load < 0 || load > 1000000) throw new Error("Manual load override must be between 0 and 1,000,000 logged units.");
-      applied.load = { from: final.prescribedLoad?.target ?? null, to: load };
-      final.prescribedLoad = { ...(final.prescribedLoad || {}), target: load, reason: "Manual user override; engine recommendation remains in the audit record." };
+      if (load !== (final.prescribedLoad?.target ?? null)) {
+        applied.load = { from: final.prescribedLoad?.target ?? null, to: load };
+        applyRecordedLoad(final, load);
+      }
     }
     if (override.setStructure) {
       if (!SET_STRUCTURES.includes(override.setStructure)) throw new Error(`Invalid manual set structure ${override.setStructure}.`);
-      applied.setStructure = { from: final.setStructure, to: override.setStructure };
-      final.setStructure = override.setStructure;
-      final.setStructureReason = "Manual user override for this workout; the decision engine will not replace it during the same workout.";
-      if (override.setStructure === "top_set_backoff") {
-        const topMax = Math.max(final.repRange.min + 1, number(final.repRange.target, final.repRange.max - 1));
-        final.topSet = deepClone(override.topSet || final.topSet || {
-          enabled: true,
-          count: 1,
-          repRange: { min: final.repRange.min, max: topMax },
-          targetRpe: number(final.targetRpe?.max, 8.5),
-          targetRir: number(final.targetRir?.min, 1.5)
-        });
-        final.backoffSets = deepClone(override.backoffSets || final.backoffSets || {
-          count: Math.max(1, final.workingSets.target - 1),
-          loadReductionPercent: deepClone(DEFAULT_POLICY.backoffReduction),
-          repRange: { min: Math.max(final.repRange.min, number(final.repRange.target, final.repRange.min + 1)), max: final.repRange.max },
-          targetRpe: Math.max(5, number(final.targetRpe?.max, 8) - 0.5),
-          targetRir: number(final.targetRir?.min, 2) + 0.5,
-          maximumAcceptableRepLossPercent: DEFAULT_POLICY.maximumRepLossPercent,
-          maximumAcceptableLoadReductionPercent: DEFAULT_POLICY.maximumBackoffLoadReductionPercent,
-          conversionRule: "Convert to lighter straight sets if pain, technique loss, excessive rep loss, or excessive load reduction appears."
-        });
-      } else if (override.setStructure === "multiple_top_sets") {
-        final.topSet = deepClone(override.topSet || final.topSet || {
-          enabled: true,
-          count: final.workingSets.target,
-          repRange: { min: final.repRange.min, max: final.repRange.max },
-          targetRpe: number(final.targetRpe?.max, 8.5),
-          targetRir: number(final.targetRir?.min, 1.5)
-        });
-        delete final.backoffSets;
-      } else {
-        delete final.backoffSets;
-        delete final.topSet;
+      if (override.setStructure !== final.setStructure) {
+        applied.setStructure = { from: final.setStructure, to: override.setStructure };
+        applyRecordedSetStructure(final, override.setStructure);
       }
     }
     if (override.deloadRecommendation !== undefined) {
       const requested = normalizedBoolean(override.deloadRecommendation, null) === false ? "normal" : normalizedBoolean(override.deloadRecommendation, null) === true ? "exercise_deload" : override.deloadRecommendation;
       if (!RECOMMENDATION_TYPES.includes(requested)) throw new Error(`Invalid manual deload recommendation ${requested}.`);
       const to = safetyLocked ? final.recommendationType : requested;
-      applied.deloadRecommendation = { from: final.recommendationType, to };
-      final.recommendationType = to;
-      if (["exercise_deload", "muscle_group_deload", "full_program_deload"].includes(to)) {
-        final.targetRpe = { min: 5.5, max: to === "full_program_deload" ? 6.5 : 7 };
-        final.targetRir = { min: to === "full_program_deload" ? 3.5 : 3, max: 4.5 };
-        final.progressionRule = "Do not progress load during the manual deload; preserve controlled technique and stop well short of failure.";
-        final.holdRule = "Keep this reduced prescription for the selected deload scope, then reassess before resuming normal progression.";
+      if (to !== final.recommendationType) {
+        applied.deloadRecommendation = { from: final.recommendationType, to };
+        applyRecordedDeloadRecommendation(final, to);
       }
     }
     if (override.exerciseRotation !== undefined) {
       const requested = normalizedBoolean(override.exerciseRotation, null) === false ? "hold" : normalizedBoolean(override.exerciseRotation, null) === true ? "rotate_exercise" : override.exerciseRotation;
       if (!RECOMMENDATION_TYPES.includes(requested)) throw new Error(`Invalid manual rotation recommendation ${requested}.`);
       const to = safetyLocked ? final.recommendationType : requested;
-      applied.exerciseRotation = { from: final.recommendationType, to };
-      final.recommendationType = to;
+      if (to !== final.recommendationType) {
+        applied.exerciseRotation = { from: final.recommendationType, to };
+        final.recommendationType = to;
+      }
     }
-    if (override.mesocycleId) {
+    if (override.mesocycleId && override.mesocycleId !== snapshot.mesocycleId) {
       applied.mesocycleId = { from: snapshot.mesocycleId, to: override.mesocycleId };
       snapshot.mesocycleId = override.mesocycleId;
       final.mesocycleId = override.mesocycleId;

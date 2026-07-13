@@ -520,6 +520,176 @@ test("ordinary multi-override history remains valid while incomplete and duplica
   );
 });
 
+function fiveSetPrescriptionWithLaterRepOverride() {
+  const snapshot = engine.prescribeExercise({
+    exerciseId: "ex_barbell_bench_press",
+    muscleGroupId: "chest",
+    history: progressionHistory(),
+    createdAt
+  });
+  assert.equal(snapshot.finalPrescription.workingSets.target, 4, "fixture must begin with four working sets");
+  const fiveSets = engine.applyManualOverride(snapshot, { setCount: 5 }, {
+    overrideId: "override_four_to_five_sets",
+    createdAt: "2026-07-12T12:12:00.000Z",
+    reason: "Use five working sets"
+  });
+  const laterRepOverride = engine.applyManualOverride(fiveSets, { repRange: { min: 6, max: 9 } }, {
+    overrideId: "override_later_rep_range",
+    createdAt: "2026-07-12T12:13:00.000Z",
+    reason: "Use six to nine repetitions"
+  });
+  assert.equal(laterRepOverride.finalPrescription.workingSets.target, 5);
+  assert.doesNotThrow(() => deserializeRecommendationSnapshot(laterRepOverride));
+  return laterRepOverride;
+}
+
+test("a truthful no-op declaration cannot replace an omitted four-to-five set-count transition", () => {
+  const tampered = structuredClone(fiveSetPrescriptionWithLaterRepOverride());
+  const setTransition = tampered.manualOverrides[0];
+  const resultingPrescription = tampered.manualOverrides[1].previousFinalPrescription;
+  assert.deepEqual(setTransition.changes.setCount, { from: 4, to: 5 });
+  setTransition.changes = {
+    repRange: {
+      from: structuredClone(setTransition.previousFinalPrescription.repRange),
+      to: structuredClone(resultingPrescription.repRange)
+    }
+  };
+  assert.deepEqual(setTransition.changes.repRange.from, setTransition.changes.repRange.to, "replacement declaration must be a truthful no-op");
+
+  assert.throws(
+    () => deserializeRecommendationSnapshot(refreshRecommendationChecksum(tampered)),
+    /undeclared|no.op|bijection|set count|working sets|lineage/i,
+    "an omitted real 4-to-5 set-count change must not be hidden behind a truthful no-op declaration"
+  );
+});
+
+test("final working-set tampering requires a declared last-entry set-count transition", () => {
+  const tampered = structuredClone(fiveSetPrescriptionWithLaterRepOverride());
+  assert.equal(tampered.manualOverrides.at(-1).changes.setCount, undefined, "last fixture entry must not declare a set-count change");
+  tampered.finalPrescription.workingSets.target = 2;
+
+  assert.throws(
+    () => deserializeRecommendationSnapshot(refreshRecommendationChecksum(tampered)),
+    /undeclared|bijection|set count|working sets|lineage/i,
+    "a rechecksummed final 5-to-2 set-count rewrite must fail without a matching last-entry declaration"
+  );
+});
+
+test("declared-change replay rejects undeclared identity, dose, resistance, effort, rest, structure, policy, and scope rewrites", () => {
+  const valid = fiveSetPrescriptionWithLaterRepOverride();
+  const tamperCases = [
+    ["exercise identity", (item) => { item.finalPrescription.exerciseId = "ex_machine_chest_press"; }],
+    ["research identity", (item) => { item.finalPrescription.researchExerciseId = "ex_machine_chest_press"; }],
+    ["set-range boundary", (item) => { item.finalPrescription.workingSets.min = 1; }],
+    ["declared repetition result", (item) => { item.finalPrescription.repRange.max = 10; }],
+    ["load target", (item) => { item.finalPrescription.prescribedLoad.target += 5; }],
+    ["assistance/load direction", (item) => { item.finalPrescription.prescribedLoad.direction = "less_assistance_is_progress"; }],
+    ["load history", (item) => { item.finalPrescription.prescribedLoad.previous += 5; }],
+    ["RPE", (item) => { item.finalPrescription.targetRpe.min += 0.5; }],
+    ["RIR", (item) => { item.finalPrescription.targetRir.max += 0.5; }],
+    ["rest", (item) => { item.finalPrescription.restSeconds.target += 15; }],
+    ["nested set structure", (item) => { item.finalPrescription.topSet.count += 1; }],
+    ["recommendation policy", (item) => { item.finalPrescription.recommendationType = "hold"; }],
+    ["volume", (item) => { item.finalPrescription.volume.perExercise.currentPrescribed += 1; }],
+    ["mesocycle", (item) => { item.finalPrescription.mesocycleId = "meso_forged"; }]
+  ];
+  for (const [label, mutate] of tamperCases) {
+    const tampered = structuredClone(valid);
+    mutate(tampered);
+    assert.throws(
+      () => deserializeRecommendationSnapshot(refreshRecommendationChecksum(tampered)),
+      /bijection|undeclared|identity|derived|lineage|binding|mesocycle/i,
+      `${label} escaped complete declared-change replay`
+    );
+  }
+
+  const base = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", history: progressionHistory(), createdAt });
+  const loadOverride = engine.applyManualOverride(base, { load: base.finalPrescription.prescribedLoad.target + 5 }, {
+    createdAt: "2026-07-12T12:14:00.000Z"
+  });
+  const loadMetadataTamper = structuredClone(loadOverride);
+  loadMetadataTamper.finalPrescription.prescribedLoad.direction = "less_assistance_is_progress";
+  assert.throws(() => deserializeRecommendationSnapshot(refreshRecommendationChecksum(loadMetadataTamper)), /bijection|resistance|load|derived/i, "a declared load target must bind the complete resistance object");
+
+  const structureOverride = engine.applyManualOverride(base, { setStructure: "multiple_top_sets" }, {
+    createdAt: "2026-07-12T12:15:00.000Z"
+  });
+  const structureTamper = structuredClone(structureOverride);
+  structureTamper.finalPrescription.topSet.targetRpe -= 0.5;
+  assert.throws(() => deserializeRecommendationSnapshot(refreshRecommendationChecksum(structureTamper)), /bijection|structure|derived/i, "a set-structure declaration must bind its generated top/back-off targets");
+
+  const deloadOverride = engine.applyManualOverride(base, { deloadRecommendation: "full_program_deload" }, {
+    createdAt: "2026-07-12T12:16:00.000Z"
+  });
+  const deloadEffortTamper = structuredClone(deloadOverride);
+  deloadEffortTamper.finalPrescription.targetRir.min = 2;
+  assert.throws(() => deserializeRecommendationSnapshot(refreshRecommendationChecksum(deloadEffortTamper)), /bijection|effort|derived/i, "a deload declaration must bind its derived RPE/RIR and policy rules");
+
+  const safetyResolved = chainedPainFreeSubstitutions().second;
+  const safetyRestTamper = structuredClone(safetyResolved);
+  safetyRestTamper.finalPrescription.restSeconds.target += 15;
+  assert.throws(() => deserializeRecommendationSnapshot(refreshRecommendationChecksum(safetyRestTamper)), /bijection|safety|rest|derived/i, "a safety confirmation must bind restored rest and dose targets");
+});
+
+test("no-op and duplicate-dimension requests never become persisted declarations", () => {
+  const snapshot = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", history: progressionHistory(), createdAt });
+  assert.throws(() => engine.applyManualOverride(snapshot, {
+    setCount: snapshot.finalPrescription.workingSets.target,
+    repRange: structuredClone(snapshot.finalPrescription.repRange),
+    load: snapshot.finalPrescription.prescribedLoad.target,
+    setStructure: snapshot.finalPrescription.setStructure,
+    mesocycleId: snapshot.mesocycleId
+  }), /no supported manual override field/i, "an all-no-op request must not create an audit entry");
+  assert.throws(() => engine.applyManualOverride(snapshot, {
+    deloadRecommendation: "exercise_deload",
+    exerciseRotation: "hold"
+  }), /duplicate.*recommendation|bijection/i, "two declarations cannot own the same recommendation-type dimension");
+  assert.throws(() => engine.applyManualOverride(snapshot, {
+    setStructure: "multiple_top_sets",
+    topSet: { count: 2 }
+  }), /topSet|audit contract|unsupported/i, "unmodeled nested structure payloads must fail instead of bypassing the declared mapping");
+  assert.throws(() => engine.applyManualOverride(snapshot, {
+    setCount: 5,
+    targetRpe: { min: 6, max: 7 }
+  }), /unsupported.*audit contract/i, "an unsupported effort field must not be silently omitted from an otherwise valid override");
+  assert.throws(() => engine.applyManualOverride(snapshot, {
+    workingSets: { min: 1, target: 5, max: 6 }
+  }), /only target|deterministic/i, "working-set min/max inputs must not bypass the set-count declaration");
+  assert.throws(() => engine.applyManualOverride(snapshot, {
+    prescribedLoad: { target: 105, direction: "less_assistance_is_progress" }
+  }), /only target|direction.*bound/i, "resistance direction must remain bound rather than becoming an unaudited input");
+  assert.throws(() => engine.applyManualOverride(snapshot, {
+    setCount: 5,
+    workingSets: { target: 5 }
+  }), /duplicate set.count/i, "two aliases cannot declare the same set-count dimension");
+  assert.throws(() => engine.applyManualOverride(snapshot, {
+    exerciseId: "ex_dumbbell_bench_press",
+    replacementExerciseId: "ex_machine_chest_press"
+  }), /duplicate exercise.identity/i, "two selectors cannot declare competing exercise identities");
+
+  const replacement = engine.applyManualOverride(snapshot, { exerciseId: "ex_dumbbell_bench_press" }, {
+    createdAt: "2026-07-12T12:17:00.000Z"
+  });
+  assert.equal(replacement.finalPrescription.exerciseId, "ex_dumbbell_bench_press");
+  assert.equal(replacement.finalPrescription.researchExerciseId, "ex_dumbbell_bench_press", "canonical exercise and research identities must move together");
+  assert.doesNotThrow(() => deserializeRecommendationSnapshot(replacement), "a valid ordinary catalog-backed exercise replacement must remain supported");
+
+  assert.throws(() => engine.applyManualOverride(snapshot, { exerciseId: "custom_dumbbell_press" }, {
+    exerciseCatalog: [{ personalExerciseId: "custom_dumbbell_press", researchExerciseId: "ex_dumbbell_bench_press", exerciseName: "Custom dumbbell press" }],
+    createdAt: "2026-07-12T12:18:00.000Z"
+  }), /separate research identity|audit contract/i, "an ordinary custom/research identity pair must not exceed the identity information represented by the current audit schema");
+
+  const customReplacement = engine.applyManualOverride(snapshot, { exerciseId: "custom_unmapped_press" }, {
+    allowedExerciseIds: ["custom_unmapped_press"],
+    createdAt: "2026-07-12T12:19:00.000Z"
+  });
+  assert.equal(customReplacement.finalPrescription.researchExerciseId, null, "an unmapped custom exercise must retain an explicit null research identity");
+  assert.doesNotThrow(() => deserializeRecommendationSnapshot(customReplacement), "an unmapped custom exercise remains a valid auditable user choice");
+  const customResearchTamper = structuredClone(customReplacement);
+  customResearchTamper.finalPrescription.researchExerciseId = "ex_dumbbell_bench_press";
+  assert.throws(() => deserializeRecommendationSnapshot(refreshRecommendationChecksum(customResearchTamper)), /bijection|research identity|undeclared/i, "a rechecksummed custom replacement cannot gain an undeclared research identity");
+});
+
 test("hard-safety snapshots reject training overrides and require an explicit coherent safe substitute", () => {
   const snapshot = engine.prescribeExercise({
     exerciseId: "ex_barbell_bench_press",
@@ -614,6 +784,24 @@ test("hard-safety snapshots reject training overrides and require an explicit co
     allowedSafetySubstituteIds: ["custom_same_bench"],
     availableEquipment: ["barbell", "plates", "bench", "rack"]
   }), /different|original|painful/i, "a different catalog ID cannot disguise the same painful research exercise");
+  const customSubstituted = engine.applyManualOverride(snapshot, {
+    exerciseId: "custom_pain_free_press",
+    researchExerciseId: "ex_dumbbell_bench_press",
+    painFreeConfirmed: true
+  }, {
+    exerciseCatalog: [{
+      personalExerciseId: "custom_pain_free_press",
+      researchExerciseId: "ex_dumbbell_bench_press",
+      exerciseName: "Custom pain-free dumbbell press",
+      equipment: "dumbbell|bench"
+    }],
+    allowedSafetySubstituteIds: ["custom_pain_free_press"],
+    availableEquipment: ["dumbbell", "bench"],
+    createdAt: "2026-07-12T12:06:30.000Z"
+  });
+  assert.equal(customSubstituted.finalPrescription.exerciseId, "custom_pain_free_press");
+  assert.equal(customSubstituted.finalPrescription.researchExerciseId, "ex_dumbbell_bench_press", "the safety confirmation must bind both custom and research identities");
+  assert.doesNotThrow(() => deserializeRecommendationSnapshot(customSubstituted), "the explicit safety audit companion keeps a composite custom/research substitute representable");
   const substituted = engine.applyManualOverride(snapshot, {
     exerciseId: "ex_dumbbell_bench_press",
     researchExerciseId: "ex_dumbbell_bench_press",
