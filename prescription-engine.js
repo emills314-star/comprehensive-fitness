@@ -17,6 +17,7 @@
   const PRESCRIPTION_SCHEMA_VERSION = "2.1.0";
   const SNAPSHOT_SCHEMA_VERSION = "1.1.0";
   const HARD_SAFETY_SCHEMA_VERSION = "hard-safety/1.0.0";
+  const SNAPSHOT_CHECKSUM_PATTERN = /^[0-9a-f]{8}$/;
   const HISTORY_STORAGE_KEY = "comprehensiveFitness.recommendationHistory.v1";
 
   const MESOCYCLE_TYPES = Object.freeze({
@@ -3065,10 +3066,88 @@
     };
   }
 
+  function boundIdentity(values, label, options = {}) {
+    const normalized = values.map((value) => value === undefined ? null : value);
+    if (!options.allowNull && normalized.some((value) => typeof value !== "string" || !value.trim())) throw new Error(`Invalid safety identity binding; ${label} requires non-empty identities.`);
+    if (normalized.some((value) => !Object.is(value, normalized[0]))) throw new Error(`Invalid safety identity binding; ${label} identities must remain internally bound.`);
+    return normalized[0];
+  }
+
+  function validateSafetyIdentityBinding(snapshot) {
+    const base = snapshot.basePrescription;
+    const final = snapshot.finalPrescription;
+    const restriction = final.safetyRestriction;
+    if (!restriction) return true;
+    const audit = restriction.auditBaseTargets || {};
+    const originalExerciseId = boundIdentity([
+      base.exerciseId,
+      restriction.originalExerciseId,
+      audit.exerciseId
+    ], "base/restriction/audit original exercise");
+    const originalResearchExerciseId = boundIdentity([
+      base.researchExerciseId,
+      audit.researchExerciseId
+    ], "base/audit original research exercise", { allowNull: true });
+
+    if (restriction.status === "blocked") {
+      boundIdentity([
+        snapshot.exerciseId,
+        final.exerciseId,
+        originalExerciseId
+      ], "blocked snapshot/final/original exercise");
+      boundIdentity([
+        final.researchExerciseId,
+        originalResearchExerciseId
+      ], "blocked final/original research exercise", { allowNull: true });
+      return true;
+    }
+
+    if (restriction.status !== "resolved_by_confirmed_substitute") return true;
+    const substituteExerciseId = boundIdentity([
+      snapshot.exerciseId,
+      final.exerciseId,
+      restriction.substituteExerciseId
+    ], "resolved snapshot/final/substitute exercise");
+    const substituteResearchExerciseId = boundIdentity([
+      final.researchExerciseId,
+      restriction.substituteResearchExerciseId
+    ], "resolved final/substitute research exercise");
+    if (substituteExerciseId === originalExerciseId || (originalResearchExerciseId !== null && substituteResearchExerciseId === originalResearchExerciseId)) throw new Error("Invalid resolved safety prescription; substitute identity must remain different from the painful original.");
+
+    const safetyEntries = asArray(snapshot.manualOverrides).filter((entry) => entry?.changes?.safetyConfirmation);
+    if (!safetyEntries.length) throw new Error("Invalid resolved safety prescription; a bound safety-confirmation audit entry is required.");
+    for (const entry of safetyEntries) {
+      const previous = entry.previousFinalPrescription;
+      const previousRestriction = previous?.safetyRestriction;
+      if (!previous || !previousRestriction) throw new Error("Invalid resolved safety prescription; safety audit history must retain the previous restricted prescription.");
+      boundIdentity([
+        originalExerciseId,
+        previousRestriction.originalExerciseId,
+        previousRestriction.auditBaseTargets?.exerciseId
+      ], "resolved/base/audit-history original exercise");
+      boundIdentity([
+        originalResearchExerciseId,
+        previousRestriction.auditBaseTargets?.researchExerciseId
+      ], "resolved/base/audit-history original research exercise", { allowNull: true });
+      if (previousRestriction.status === "blocked") {
+        boundIdentity([originalExerciseId, previous.exerciseId], "blocked audit-history original exercise");
+        boundIdentity([originalResearchExerciseId, previous.researchExerciseId], "blocked audit-history original research exercise", { allowNull: true });
+      } else if (previousRestriction.status === "resolved_by_confirmed_substitute") {
+        boundIdentity([previous.exerciseId, previousRestriction.substituteExerciseId], "resolved audit-history substitute exercise");
+        boundIdentity([previous.researchExerciseId, previousRestriction.substituteResearchExerciseId], "resolved audit-history substitute research exercise");
+      } else throw new Error("Invalid resolved safety prescription; safety audit history has an unsupported restriction status.");
+    }
+    const latestConfirmation = safetyEntries[safetyEntries.length - 1].changes.safetyConfirmation;
+    boundIdentity([substituteExerciseId, latestConfirmation.exerciseId], "resolved/latest-audit substitute exercise");
+    boundIdentity([substituteResearchExerciseId, latestConfirmation.researchExerciseId], "resolved/latest-audit substitute research exercise");
+    return true;
+  }
+
   function validateSnapshot(snapshot) {
-    const required = ["recommendationId", "schemaVersion", "recommendationVersion", "engineVersion", "personalDataVersion", "researchDatabaseVersion", "basePrescription", "finalPrescription", "createdAt"];
+    const required = ["recommendationId", "schemaVersion", "recommendationVersion", "engineVersion", "personalDataVersion", "researchDatabaseVersion", "basePrescription", "finalPrescription", "createdAt", "checksum"];
     const missing = required.filter((field) => snapshot?.[field] === undefined || snapshot?.[field] === null);
     if (missing.length) throw new Error(`Invalid recommendation snapshot; missing ${missing.join(", ")}.`);
+    if (typeof snapshot.checksum !== "string" || !SNAPSHOT_CHECKSUM_PATTERN.test(snapshot.checksum)) throw new Error("Invalid recommendation snapshot checksum; expected the current lowercase 8-hex checksum format.");
     if (snapshot.schemaVersion !== SNAPSHOT_SCHEMA_VERSION) throw new Error(`Unsupported recommendation snapshot schemaVersion ${snapshot.schemaVersion}; supported version is ${SNAPSHOT_SCHEMA_VERSION}.`);
     ["basePrescription", "finalPrescription"].forEach((field) => {
       const prescription = snapshot[field];
@@ -3104,21 +3183,25 @@
       if (originalExerciseIds.has(restriction.substituteExerciseId) || originalResearchExerciseIds.has(restriction.substituteResearchExerciseId)) throw new Error("Invalid resolved safety prescription; a pain-free substitute must be different from the painful original exercise and research identity.");
       if (final.prescribedLoad) throw new Error("Invalid resolved safety prescription; a substitute load must not be inferred.");
     }
+    validateSafetyIdentityBinding(snapshot);
     return true;
   }
 
   function serializeRecommendationSnapshot(snapshot) {
-    validateSnapshot(snapshot);
+    verifySnapshotChecksum(snapshot);
     return JSON.stringify(deepClone(snapshot));
   }
 
-  function deserializeRecommendationSnapshot(serialized, options = {}) {
-    const snapshot = typeof serialized === "string" ? JSON.parse(serialized) : deepClone(serialized);
+  function verifySnapshotChecksum(snapshot) {
     validateSnapshot(snapshot);
-    if (options.verifyChecksum !== false && snapshot.checksum) {
-      const expected = stableHash({ ...snapshot, checksum: undefined });
-      if (expected !== snapshot.checksum) throw new Error("Recommendation snapshot checksum does not match; historical evidence may have been altered.");
-    }
+    const expected = stableHash({ ...snapshot, checksum: undefined });
+    if (expected !== snapshot.checksum) throw new Error("Recommendation snapshot checksum does not match; historical evidence may have been altered.");
+    return true;
+  }
+
+  function deserializeRecommendationSnapshot(serialized) {
+    const snapshot = typeof serialized === "string" ? JSON.parse(serialized) : deepClone(serialized);
+    verifySnapshotChecksum(snapshot);
     return snapshot;
   }
 
@@ -3137,15 +3220,18 @@
 
   function appendRecommendationHistory(storage, snapshot, options = {}) {
     if (!storage || typeof storage.getItem !== "function" || typeof storage.setItem !== "function") throw new Error("A Storage-compatible implementation is required.");
-    validateSnapshot(snapshot);
     const key = options.key || HISTORY_STORAGE_KEY;
     const history = JSON.parse(storage.getItem(key) || "[]");
     const existing = history.find((item) => item.recommendationId === snapshot.recommendationId);
     if (existing) {
       if (stableStringify(existing) !== stableStringify(snapshot) && !options.allowExplicitReplace) throw new Error("A historical recommendation with this ID already exists; refusing to silently rewrite it.");
+      verifySnapshotChecksum(snapshot);
       if (!options.allowExplicitReplace) return history;
       history.splice(history.indexOf(existing), 1, deepClone(snapshot));
-    } else history.push(deepClone(snapshot));
+    } else {
+      verifySnapshotChecksum(snapshot);
+      history.push(deepClone(snapshot));
+    }
     storage.setItem(key, JSON.stringify(history));
     return history;
   }
@@ -3194,7 +3280,7 @@
   }
 
   function applyManualOverride(snapshotInput, override = {}, options = {}) {
-    const snapshot = deserializeRecommendationSnapshot(snapshotInput, { verifyChecksum: false });
+    const snapshot = deserializeRecommendationSnapshot(snapshotInput);
     const before = deepClone(snapshot.finalPrescription);
     const final = deepClone(snapshot.finalPrescription);
     const applied = {};
@@ -3420,7 +3506,7 @@
   }
 
   function evaluateManualOverrideOutcome(snapshotInput, outcome = {}, options = {}) {
-    const snapshot = deserializeRecommendationSnapshot(snapshotInput, { verifyChecksum: false });
+    const snapshot = deserializeRecommendationSnapshot(snapshotInput);
     if (!snapshot.manualOverrides?.length) throw new Error("This recommendation has no manual override to evaluate.");
     const index = snapshot.manualOverrides.length - 1;
     const entry = snapshot.manualOverrides[index];

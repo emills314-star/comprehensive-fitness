@@ -9,12 +9,14 @@ const {
   assessExerciseStaleness,
   createPrescriptionEngine,
   determineProgressionDecision,
+  deserializeRecommendationSnapshot,
   equipmentCompatible,
   evaluateReadiness,
   normalizeEvidenceBundle,
   rankExercisePool,
   readinessAdjustmentFor,
   recalculateHistoricalMuscleVolume,
+  refreshRecommendationChecksum,
   validateSnapshot
 } = require("../prescription-engine");
 
@@ -314,6 +316,87 @@ test("manual overrides cannot disable hard deload or rotation safety", () => {
   assert.equal(ordinary.finalPrescription.recommendationType, "exercise_deload", "fixture must start as a non-safety policy deload");
   const overridden = applyManualOverride(ordinary, { deloadRecommendation: false }, { createdAt: "2026-07-12T12:04:00.000Z" });
   assert.equal(overridden.finalPrescription.recommendationType, "normal", "ordinary policy deload should remain an audited user choice");
+});
+
+test("manual overrides reject checksum-stale rewrites of every painful-original identity", () => {
+  const snapshot = engine.prescribeExercise({
+    exerciseId: "ex_barbell_bench_press",
+    muscleGroupId: "chest",
+    history: progressionHistory(),
+    readiness: { pain: true, affectedMuscle: "Chest" },
+    createdAt
+  });
+  const tampered = structuredClone(snapshot);
+  const forgedOriginal = "ex_dumbbell_bench_press";
+  tampered.exerciseId = forgedOriginal;
+  tampered.basePrescription.exerciseId = forgedOriginal;
+  tampered.basePrescription.researchExerciseId = forgedOriginal;
+  tampered.finalPrescription.exerciseId = forgedOriginal;
+  tampered.finalPrescription.researchExerciseId = forgedOriginal;
+  tampered.finalPrescription.safetyRestriction.originalExerciseId = forgedOriginal;
+  tampered.finalPrescription.safetyRestriction.auditBaseTargets.exerciseId = forgedOriginal;
+  tampered.finalPrescription.safetyRestriction.auditBaseTargets.researchExerciseId = forgedOriginal;
+
+  assert.throws(() => engine.applyManualOverride(tampered, {
+    exerciseId: "ex_barbell_bench_press",
+    researchExerciseId: "ex_barbell_bench_press",
+    painFreeConfirmed: true
+  }, {
+    allowedSafetySubstituteIds: ["ex_barbell_bench_press"],
+    availableEquipment: ["barbell", "plates", "bench", "rack"]
+  }), /checksum/i, "stale-checksum identity rewrites must fail before the real painful original can be allowlisted");
+
+  for (const invalidChecksum of [undefined, "legacy-checksum", "00000000"]) {
+    const invalid = structuredClone(snapshot);
+    if (invalidChecksum === undefined) delete invalid.checksum;
+    else invalid.checksum = invalidChecksum;
+    assert.throws(() => engine.applyManualOverride(invalid, {
+      exerciseId: "ex_dumbbell_bench_press",
+      researchExerciseId: "ex_dumbbell_bench_press",
+      painFreeConfirmed: true
+    }, {
+      allowedSafetySubstituteIds: ["ex_dumbbell_bench_press"],
+      availableEquipment: ["dumbbell", "bench"]
+    }), /checksum/i, `manual override accepted invalid checksum ${String(invalidChecksum)}`);
+  }
+});
+
+test("checksum-valid resolved safety snapshots keep executable and original identity chains bound", () => {
+  const snapshot = engine.prescribeExercise({
+    exerciseId: "ex_barbell_bench_press",
+    muscleGroupId: "chest",
+    history: progressionHistory(),
+    readiness: { pain: true, affectedMuscle: "Chest" },
+    createdAt
+  });
+  const substituted = engine.applyManualOverride(snapshot, {
+    exerciseId: "ex_dumbbell_bench_press",
+    researchExerciseId: "ex_dumbbell_bench_press",
+    painFreeConfirmed: true
+  }, {
+    allowedSafetySubstituteIds: ["ex_dumbbell_bench_press"],
+    availableEquipment: ["dumbbell", "bench"],
+    createdAt: "2026-07-12T12:07:00.000Z"
+  });
+  const tamperCases = [
+    ["snapshot executable identity", (item) => { item.exerciseId = "forged_snapshot_identity"; }],
+    ["base original identity", (item) => { item.basePrescription.exerciseId = "forged_base_identity"; }],
+    ["base research identity", (item) => { item.basePrescription.researchExerciseId = "forged_base_research_identity"; }],
+    ["restriction original identity", (item) => { item.finalPrescription.safetyRestriction.originalExerciseId = "forged_restriction_identity"; }],
+    ["audit original identity", (item) => { item.finalPrescription.safetyRestriction.auditBaseTargets.exerciseId = "forged_audit_identity"; }],
+    ["audit research identity", (item) => { item.finalPrescription.safetyRestriction.auditBaseTargets.researchExerciseId = "forged_audit_research_identity"; }],
+    ["prior final original identity", (item) => { item.manualOverrides.at(-1).previousFinalPrescription.exerciseId = "forged_prior_identity"; }],
+    ["prior final research identity", (item) => { item.manualOverrides.at(-1).previousFinalPrescription.researchExerciseId = "forged_prior_research_identity"; }],
+    ["prior restriction original identity", (item) => { item.manualOverrides.at(-1).previousFinalPrescription.safetyRestriction.originalExerciseId = "forged_prior_restriction_identity"; }],
+    ["prior audit original identity", (item) => { item.manualOverrides.at(-1).previousFinalPrescription.safetyRestriction.auditBaseTargets.exerciseId = "forged_prior_audit_identity"; }],
+    ["prior audit research identity", (item) => { item.manualOverrides.at(-1).previousFinalPrescription.safetyRestriction.auditBaseTargets.researchExerciseId = "forged_prior_audit_research_identity"; }]
+  ];
+  for (const [label, mutate] of tamperCases) {
+    const tampered = structuredClone(substituted);
+    mutate(tampered);
+    const checksumValid = refreshRecommendationChecksum(tampered);
+    assert.throws(() => deserializeRecommendationSnapshot(checksumValid), /identity|bound|original|substitute/i, `${label} escaped checksum-valid internal identity binding`);
+  }
 });
 
 test("hard-safety snapshots reject training overrides and require an explicit coherent safe substitute", () => {

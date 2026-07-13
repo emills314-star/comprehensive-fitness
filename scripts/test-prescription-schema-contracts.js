@@ -272,6 +272,7 @@ assertIncludesAll(snapshot.required, [
   "readinessAdjustment", "basePrescription", "finalPrescription", "explanation", "evidenceSummary",
   "confidence", "createdAt", "manualOverrides", "overrideLocked", "checksum"
 ], "RecommendationSnapshot.required");
+assert.equal(snapshot.properties.checksum.pattern, "^[0-9a-f]{8}$", "RecommendationSnapshot.checksum must accept only the engine's current checksum format");
 assertIncludesAll(Object.keys(snapshot.$defs.overrideChanges.properties), [
   "exerciseId", "setCount", "repRange", "load", "setStructure", "deloadRecommendation",
   "exerciseRotation", "mesocycleId", "safetyConfirmation"
