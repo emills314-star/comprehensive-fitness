@@ -1100,7 +1100,7 @@
         fractionalSets: mapping.relationship_type === "meaningful_fractional_load" ? round(workingSets * setCredit, 2) : 0,
         weightedHypertrophySets: round(workingSets * setCredit, 2),
         isometricExposure: mapping.relationship_type === "isometric_stabilizing_load" ? round(workingSets * number(mapping.local_fatigue_weight, 0), 2) : 0,
-        taxonomyVersion: mapping.taxonomy_version || research.version,
+        taxonomyVersion: String(firstPresent(mapping.taxonomy_version, mapping.taxonomyVersion) || "").trim() || null,
         confidence: mapping.confidence_rating,
         evidenceNotes: mapping.evidence_notes
       };
@@ -1111,9 +1111,15 @@
     const evidence = evidenceInput?.research ? evidenceInput : normalizeEvidenceBundle(evidenceInput || {});
     const snapshot = deepClone(records);
     const totals = new Map();
+    const taxonomyVersions = new Set();
+    let missingTaxonomyProvenance = snapshot.length === 0;
     snapshot.forEach((record) => {
       const canonicalId = firstPresent(record.researchExerciseId, evidence.research.exerciseIdByAlias.get(normalizeText(record.exerciseName)), record.exerciseId);
-      calculateExerciseMuscleContributions(evidence.research, canonicalId, number(record.workingSets, record.sets || 0)).forEach((entry) => {
+      const contributions = calculateExerciseMuscleContributions(evidence.research, canonicalId, number(record.workingSets, record.sets || 0));
+      if (!contributions.length) missingTaxonomyProvenance = true;
+      contributions.forEach((entry) => {
+        if (entry.taxonomyVersion) taxonomyVersions.add(entry.taxonomyVersion);
+        else missingTaxonomyProvenance = true;
         if (!totals.has(entry.muscleGroupId)) totals.set(entry.muscleGroupId, { muscleGroupId: entry.muscleGroupId, directSets: 0, fractionalSets: 0, weightedHypertrophySets: 0, isometricExposure: 0, contributions: [] });
         const total = totals.get(entry.muscleGroupId);
         total.directSets += entry.directSets;
@@ -1123,7 +1129,12 @@
         total.contributions.push(entry);
       });
     });
-    return { taxonomyVersion: evidence.research.version, sourceRecords: snapshot, muscleTotals: [...totals.values()].map((item) => ({ ...item, directSets: round(item.directSets, 2), fractionalSets: round(item.fractionalSets, 2), weightedHypertrophySets: round(item.weightedHypertrophySets, 2), isometricExposure: round(item.isometricExposure, 2) })) };
+    const taxonomyVersion = taxonomyVersions.size === 0
+      ? "unknown"
+      : missingTaxonomyProvenance || taxonomyVersions.size > 1
+        ? "mixed"
+        : [...taxonomyVersions][0];
+    return { taxonomyVersion, sourceRecords: snapshot, muscleTotals: [...totals.values()].map((item) => ({ ...item, directSets: round(item.directSets, 2), fractionalSets: round(item.fractionalSets, 2), weightedHypertrophySets: round(item.weightedHypertrophySets, 2), isometricExposure: round(item.isometricExposure, 2) })) };
   }
 
   function aggregateMuscleResearchDefaults(research, muscleGroupId) {
@@ -3079,6 +3090,18 @@
       const restriction = final.safetyRestriction;
       if (restriction.schemaVersion !== HARD_SAFETY_SCHEMA_VERSION || restriction.status !== "resolved_by_confirmed_substitute" || restriction.reason !== "pain" || restriction.painFreeConfirmed !== true) throw new Error("Invalid resolved safety prescription; confirmed pain-free substitute metadata is required.");
       if (!restriction.substituteExerciseId || restriction.substituteExerciseId !== final.exerciseId || !restriction.substituteResearchExerciseId || restriction.substituteResearchExerciseId !== final.researchExerciseId) throw new Error("Invalid resolved safety prescription; substitute exercise/research identity must match the executable prescription.");
+      const originalExerciseIds = new Set([
+        restriction.originalExerciseId,
+        restriction.auditBaseTargets?.exerciseId,
+        snapshot.basePrescription?.exerciseId
+      ].filter(Boolean));
+      const originalResearchExerciseIds = new Set([
+        restriction.auditBaseTargets?.researchExerciseId,
+        snapshot.basePrescription?.researchExerciseId,
+        snapshot.basePrescription?.exerciseId,
+        restriction.originalExerciseId
+      ].filter(Boolean));
+      if (originalExerciseIds.has(restriction.substituteExerciseId) || originalResearchExerciseIds.has(restriction.substituteResearchExerciseId)) throw new Error("Invalid resolved safety prescription; a pain-free substitute must be different from the painful original exercise and research identity.");
       if (final.prescribedLoad) throw new Error("Invalid resolved safety prescription; a substitute load must not be inferred.");
     }
     return true;
@@ -3215,6 +3238,19 @@
       const identity = structuredCatalogIdentities.get(selectedExerciseId);
       const requestedResearchId = firstPresent(override.researchExerciseId, override.research_exercise_id);
       if (!identity?.structured || !identity.researchExerciseId || !requestedResearchId || requestedResearchId !== identity.researchExerciseId) throw new Error(`Safety substitute ${selectedExerciseId} must preserve its coherent exercise/research identity from an actual catalog object.`);
+      const originalExerciseIds = new Set([
+        final.safetyRestriction?.originalExerciseId,
+        final.safetyRestriction?.auditBaseTargets?.exerciseId,
+        snapshot.basePrescription?.exerciseId,
+        snapshot.exerciseId
+      ].filter(Boolean));
+      const originalResearchExerciseIds = new Set([
+        final.safetyRestriction?.auditBaseTargets?.researchExerciseId,
+        snapshot.basePrescription?.researchExerciseId,
+        final.researchExerciseId,
+        final.safetyRestriction?.originalExerciseId
+      ].filter(Boolean));
+      if (originalExerciseIds.has(selectedExerciseId) || originalResearchExerciseIds.has(identity.researchExerciseId)) throw new Error("A pain-free substitute must be a different exercise and research identity from the painful original.");
       if (asArray(options.availableEquipment).length) {
         const equipment = equipmentCompatible(identity.source, options.availableEquipment);
         if (!equipment.eligible) throw new Error(`Safety substitute ${selectedExerciseId} is not compatible with the supplied equipment restrictions; missing ${equipment.missing.join(", ") || "verified equipment metadata"}.`);

@@ -796,7 +796,9 @@ test("weighted taxonomy volume is traceable, deterministic, and leaves logged re
   const second = recalculateHistoricalMuscleVolume(evidence, logged);
   assert.strictEqual(JSON.stringify(logged), before, "Historical logged performance must remain immutable");
   assert.deepStrictEqual(first, second, "Recalculation must be deterministic");
-  assert.strictEqual(first.taxonomyVersion, "2.0.0");
+  const relationshipTaxonomyVersions = [...new Set((evidence.research.muscleMapsByExercise.get("ex_deadlift") || []).map((row) => row.taxonomy_version).filter(Boolean))];
+  assert.strictEqual(relationshipTaxonomyVersions.length, 1, "The deadlift fixture must use exactly one relationship taxonomy version");
+  assert.strictEqual(first.taxonomyVersion, relationshipTaxonomyVersions[0], "Historical recalculation must report relationship taxonomy provenance rather than the overall research database version");
   const glutes = first.muscleTotals.find((row) => row.muscleGroupId === "mg_glutes_max");
   const quads = first.muscleTotals.find((row) => row.muscleGroupId === "mg_quadriceps");
   const erectors = first.muscleTotals.find((row) => row.muscleGroupId === "mg_spinal_erectors");

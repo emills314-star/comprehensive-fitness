@@ -14,6 +14,7 @@ const {
   normalizeEvidenceBundle,
   rankExercisePool,
   readinessAdjustmentFor,
+  recalculateHistoricalMuscleVolume,
   validateSnapshot
 } = require("../prescription-engine");
 
@@ -385,6 +386,30 @@ test("hard-safety snapshots reject training overrides and require an explicit co
     allowedSafetySubstituteIds: ["ex_dumbbell_bench_press"],
     availableEquipment: ["barbell", "plates", "bench", "rack"]
   }), /equipment/i, "restricted equipment must be checked for safety substitutes");
+  assert.throws(() => engine.applyManualOverride(snapshot, {
+    exerciseId: "ex_barbell_bench_press",
+    researchExerciseId: "ex_barbell_bench_press",
+    painFreeConfirmed: true
+  }, {
+    allowedSafetySubstituteIds: ["ex_barbell_bench_press"],
+    availableEquipment: ["barbell", "plates", "bench", "rack"]
+  }), /different|original|painful/i, "the painful original exercise cannot be allowlisted as its own safe substitute");
+  assert.equal(snapshot.finalPrescription.executionBlocked, true, "a rejected same-exercise override must leave the original snapshot blocked");
+  assert.equal(snapshot.finalPrescription.safetyRestriction.status, "blocked", "a rejected same-exercise override must not resolve the safety restriction");
+  assert.throws(() => engine.applyManualOverride(snapshot, {
+    exerciseId: "custom_same_bench",
+    researchExerciseId: "ex_barbell_bench_press",
+    painFreeConfirmed: true
+  }, {
+    exerciseCatalog: [{
+      personalExerciseId: "custom_same_bench",
+      researchExerciseId: "ex_barbell_bench_press",
+      exerciseName: "Custom bench alias",
+      equipment: "barbell|plates|bench|rack"
+    }],
+    allowedSafetySubstituteIds: ["custom_same_bench"],
+    availableEquipment: ["barbell", "plates", "bench", "rack"]
+  }), /different|original|painful/i, "a different catalog ID cannot disguise the same painful research exercise");
   const substituted = engine.applyManualOverride(snapshot, {
     exerciseId: "ex_dumbbell_bench_press",
     researchExerciseId: "ex_dumbbell_bench_press",
@@ -410,6 +435,13 @@ test("hard-safety snapshots reject training overrides and require an explicit co
   assert.equal(substituted.finalPrescription.safetyRestriction.substituteExerciseId, "ex_dumbbell_bench_press");
   assert.equal(substituted.manualOverrides.at(-1).changes.safetyConfirmation.painFreeConfirmed, true, "confirmation must remain auditable");
   assert.doesNotThrow(() => validateSnapshot(substituted));
+  const sameOriginalTamper = structuredClone(substituted);
+  sameOriginalTamper.finalPrescription.safetyRestriction.originalExerciseId = "ex_dumbbell_bench_press";
+  assert.throws(() => validateSnapshot(sameOriginalTamper), /different|original|painful/i, "runtime validation must reject a resolved restriction whose substitute is the recorded original");
+  const sameAuditOriginalTamper = structuredClone(substituted);
+  sameAuditOriginalTamper.finalPrescription.safetyRestriction.auditBaseTargets.exerciseId = "ex_dumbbell_bench_press";
+  sameAuditOriginalTamper.finalPrescription.safetyRestriction.auditBaseTargets.researchExerciseId = "ex_dumbbell_bench_press";
+  assert.throws(() => validateSnapshot(sameAuditOriginalTamper), /different|original|painful/i, "runtime validation must reject a resolved restriction whose substitute is the audited original");
   const executableBlockedTamper = structuredClone(snapshot);
   executableBlockedTamper.finalPrescription.workingSets.target = 1;
   assert.throws(() => validateSnapshot(executableBlockedTamper), /working sets/i, "runtime validation must reject executable work on a blocked output");
@@ -431,6 +463,44 @@ test("hard-safety snapshots reject training overrides and require an explicit co
     allowedSafetySubstituteIds: ["ex_dumbbell_bench_press"],
     availableEquipment: ["dumbbell", "bench"]
   }), /illness/i, "illness cannot be unblocked by an exercise override");
+});
+
+test("historical volume reports relationship taxonomy provenance and fails closed for missing or mixed rows", () => {
+  const source = publicResearchData();
+  const deadliftRows = source.exerciseMuscleMap.filter((row) => row.exercise_id === "ex_deadlift");
+  const publicRelationshipVersions = [...new Set(deadliftRows.map((row) => row.taxonomy_version).filter(Boolean))];
+  assert.equal(publicRelationshipVersions.length, 1, "the public deadlift fixture must use one relationship taxonomy version");
+  const logged = [{ researchExerciseId: "ex_deadlift", workingSets: 4 }];
+  const publicResult = recalculateHistoricalMuscleVolume(evidence, logged);
+  assert.equal(publicResult.taxonomyVersion, publicRelationshipVersions[0], "top-level provenance must reflect the relationship rows used in the calculation");
+
+  function evidenceWithDeadliftVersions(versionForIndex) {
+    return normalizeEvidenceBundle({
+      personalData: {},
+      researchData: {
+        ...source,
+        manifest: { ...source.manifest, database_version: "3.0.0" },
+        exerciseMuscleMap: source.exerciseMuscleMap.map((row) => {
+          if (row.exercise_id !== "ex_deadlift") return row;
+          const next = { ...row };
+          const version = versionForIndex(deadliftRows.findIndex((candidate) => candidate.exercise_muscle_map_id === row.exercise_muscle_map_id));
+          if (version === null) delete next.taxonomy_version;
+          else next.taxonomy_version = version;
+          return next;
+        })
+      }
+    });
+  }
+
+  const integrated = recalculateHistoricalMuscleVolume(evidenceWithDeadliftVersions(() => "2.1.0"), logged);
+  assert.equal(integrated.taxonomyVersion, "2.1.0", "research database 3.0.0 must not overwrite relationship taxonomy 2.1.0 provenance");
+  const mixed = recalculateHistoricalMuscleVolume(evidenceWithDeadliftVersions((index) => index % 2 ? "2.2.0" : "2.1.0"), logged);
+  assert.equal(mixed.taxonomyVersion, "mixed", "multiple relationship taxonomy versions must be reported explicitly");
+  const missing = recalculateHistoricalMuscleVolume(evidenceWithDeadliftVersions(() => null), logged);
+  assert.equal(missing.taxonomyVersion, "unknown", "entirely missing relationship taxonomy provenance must fail closed");
+  const partiallyMissing = recalculateHistoricalMuscleVolume(evidenceWithDeadliftVersions((index) => index === 0 ? "2.1.0" : null), logged);
+  assert.equal(partiallyMissing.taxonomyVersion, "mixed", "partial relationship taxonomy provenance must fail closed as mixed");
+  assert.equal(recalculateHistoricalMuscleVolume(evidence, []).taxonomyVersion, "unknown", "an empty recalculation has no relationship taxonomy provenance");
 });
 
 test("stale history is wired through scoring and snapshots by default", () => {
