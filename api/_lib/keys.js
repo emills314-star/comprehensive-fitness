@@ -43,6 +43,10 @@ function installationMutationsKey(installationId) {
   return `cf:mutations:${installationId}`;
 }
 
+function installationDeletionKeysKey(installationId) {
+  return `cf:delete:${installationId}:keys`;
+}
+
 function scopedTimerId(installationId, requestedId) {
   return `t_${crypto.createHash("sha256").update(`${installationId}:${requestedId}`).digest("base64url").slice(0, 40)}`;
 }
@@ -52,6 +56,7 @@ module.exports = {
   activeTimerKey,
   installationKey,
   installationMutationsKey,
+  installationDeletionKeysKey,
   installationTimersKey,
   installationWorkoutsKey,
   legacyTimerKey,

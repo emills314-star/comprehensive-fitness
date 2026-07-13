@@ -21,6 +21,8 @@ const PREPARE_TIMER_SCRIPT = [
   "if (installationStatus and installationStatus ~= 'active') or installationActive ~= '1' then return {'revoked','',-1} end",
   "local existingStatus=redis.call('HGET',KEYS[1],'status')",
   "if existingStatus == 'delivered' or existingStatus == 'canceled' then return {existingStatus,'',-1} end",
+  "if existingStatus == 'scheduled' or existingStatus == 'retrying' or existingStatus == 'delivering' then return {existingStatus,'',-1} end",
+  "if existingStatus == 'scheduling' then return {'busy','',-1} end",
   "redis.call('HSET',KEYS[1],unpack(ARGV,4))",
   "redis.call('EXPIRE',KEYS[1],ARGV[1])",
   "redis.call('SADD',KEYS[2],KEYS[1])",
@@ -32,12 +34,13 @@ const PREPARE_TIMER_SCRIPT = [
 ].join(";");
 
 const FINALIZE_TIMER_SCRIPT = [
-  "-- timer_finalize_v2",
+  "-- timer_finalize_v3",
   "local installationStatus=redis.call('HGET',KEYS[2],'status')",
   "local installationActive=redis.call('HGET',KEYS[2],'active')",
   "if (installationStatus and installationStatus ~= 'active') or installationActive ~= '1' then return 'revoked' end",
   "local currentStatus=redis.call('HGET',KEYS[1],'status')",
   "if currentStatus == 'delivered' then return 'delivered' end",
+  "if currentStatus == 'delivering' or currentStatus == 'retrying' then redis.call('HSET',KEYS[1],'messageId',ARGV[1]); redis.call('EXPIRE',KEYS[1],ARGV[2]); return currentStatus end",
   "if currentStatus ~= 'scheduling' and currentStatus ~= 'publish_failed' then return currentStatus or 'missing' end",
   "redis.call('HSET',KEYS[1],'status','scheduled','messageId',ARGV[1],'schedulingError','')",
   "redis.call('EXPIRE',KEYS[1],ARGV[2])",
@@ -45,27 +48,31 @@ const FINALIZE_TIMER_SCRIPT = [
 ].join(";");
 
 const FAIL_TIMER_SCRIPT = [
-  "-- timer_publish_failed_v2",
+  "-- timer_publish_failed_v3",
   "local installationStatus=redis.call('HGET',KEYS[3],'status')",
   "local installationActive=redis.call('HGET',KEYS[3],'active')",
   "if (installationStatus and installationStatus ~= 'active') or installationActive ~= '1' then return 'revoked' end",
-  "if redis.call('EXISTS',KEYS[1]) == 1 and redis.call('HGET',KEYS[1],'status') == 'scheduling' then",
+  "if redis.call('EXISTS',KEYS[1]) == 0 then return 'missing' end",
+  "local currentStatus=redis.call('HGET',KEYS[1],'status')",
+  "if currentStatus ~= 'scheduling' then return currentStatus end",
   "redis.call('HSET',KEYS[1],'status','publish_failed','schedulingError',ARGV[4])",
   "redis.call('EXPIRE',KEYS[1],ARGV[5])",
-  "end",
   "if redis.call('GET',KEYS[2]) == ARGV[1] then",
   "if ARGV[2] ~= '' and tonumber(ARGV[3]) and tonumber(ARGV[3]) > 0 then redis.call('SET',KEYS[2],ARGV[2],'PX',ARGV[3]) else redis.call('DEL',KEYS[2]) end",
   "end",
   "return 'publish_failed'"
 ].join(";");
 const REPLACE_TIMER_SCRIPT = [
-  "-- timer_replace_v2",
+  "-- timer_replace_v3",
   "local installationStatus=redis.call('HGET',KEYS[2],'status')",
   "local installationActive=redis.call('HGET',KEYS[2],'active')",
   "if (installationStatus and installationStatus ~= 'active') or installationActive ~= '1' then return 'revoked' end",
   "if redis.call('EXISTS',KEYS[1]) == 0 then return 'missing' end",
+  "if redis.call('HGET',KEYS[1],'notificationId') ~= ARGV[3] then return 'stale' end",
+  "if (redis.call('HGET',KEYS[1],'timerVersion') or '1') ~= ARGV[4] then return 'stale' end",
   "redis.call('HSET',KEYS[1],'status','canceled','canceledAt',ARGV[1],'cancelReason',ARGV[2])",
-  "redis.call('EXPIRE',KEYS[1],ARGV[3])",
+  "redis.call('HDEL',KEYS[1],'deliveryAttemptToken','deliveryClaimedAt','deliveryClaimExpiresAtMs')",
+  "redis.call('EXPIRE',KEYS[1],ARGV[5])",
   "return 'canceled'"
 ].join(";");
 
@@ -81,14 +88,15 @@ async function loadTimerRecord(installationId, notificationId) {
 async function cancelRecord(installationId, notificationId, reason) {
   if (!notificationId) return;
   const { key, record } = await loadTimerRecord(installationId, notificationId);
-  if (!record.notificationId || !["scheduling", "scheduled", "retrying", "publish_failed"].includes(record.status)) return;
-  if (record.messageId) {
-    try { await qstashClient().messages.delete(record.messageId); } catch { /* Expiry and active-key checks remain authoritative. */ }
-  }
-  await redis([
+  if (!record.notificationId || !["scheduling", "scheduled", "retrying", "publish_failed", "delivering"].includes(record.status)) return;
+  const canceled = String(await redis([
     "EVAL", REPLACE_TIMER_SCRIPT, "2", key, installationKey(installationId),
-    new Date().toISOString(), boundedString(reason, 64) || "replaced", String(RETENTION_SECONDS.timer)
-  ]);
+    new Date().toISOString(), boundedString(reason, 64) || "replaced",
+    record.notificationId, String(Number(record.timerVersion || 1)), String(RETENTION_SECONDS.timer)
+  ]) || "");
+  if (canceled === "canceled" && record.messageId) {
+    try { await qstashClient().messages.delete(record.messageId); } catch { /* Redis cancellation remains authoritative. */ }
+  }
 }
 
 module.exports = apiHandler(async function handler(req, res) {
@@ -144,7 +152,11 @@ module.exports = apiHandler(async function handler(req, res) {
     canceledAt: "",
     deliveredAt: "",
     messageId: "",
-    schedulingError: ""
+    schedulingError: "",
+    deliveryAttemptToken: "",
+    deliveryClaimedAt: "",
+    deliveryClaimExpiresAtMs: "",
+    deliveryAttemptNumber: "0"
   };
   const prepared = await redis([
     "EVAL", PREPARE_TIMER_SCRIPT, "4", recordKey, timersKey, installKey, activeKey,
@@ -155,7 +167,9 @@ module.exports = apiHandler(async function handler(req, res) {
   const previousId = String(Array.isArray(prepared) ? prepared[1] || "" : "");
   const previousTtl = Number(Array.isArray(prepared) ? prepared[2] : -1);
   if (prepareStatus === "revoked") return json(res, 410, { status: "revoked", error: "This installation is deleting or deleted." });
-  if (["delivered", "canceled"].includes(prepareStatus)) return json(res, 200, { notificationId, status: prepareStatus, idempotent: true });
+  if (["delivered", "canceled", "scheduled", "retrying", "delivering"].includes(prepareStatus)) {
+    return json(res, 200, { notificationId, status: prepareStatus === "delivering" || prepareStatus === "retrying" ? "scheduled" : prepareStatus, idempotent: true });
+  }
   if (prepareStatus !== "prepared") return json(res, 409, { status: prepareStatus || "conflict", error: "Timer scheduling state could not be prepared." });
 
   let response;
@@ -174,6 +188,9 @@ module.exports = apiHandler(async function handler(req, res) {
       notificationId, previousId, String(previousTtl), String(error?.message || error).slice(0, 240), String(RETENTION_SECONDS.timer)
     ]);
     if (failedState === "revoked") return json(res, 410, { status: "revoked", error: "This installation is deleting or deleted." });
+    if (["scheduled", "retrying", "delivering", "delivered"].includes(String(failedState))) {
+      return json(res, 200, { notificationId, status: failedState === "delivered" ? "delivered" : "scheduled", idempotent: true });
+    }
     return json(res, 502, { status: "publish_failed", error: "Timer scheduling failed and can be retried." });
   }
 
@@ -184,6 +201,9 @@ module.exports = apiHandler(async function handler(req, res) {
       notificationId, previousId, String(previousTtl), "Scheduler returned an invalid response.", String(RETENTION_SECONDS.timer)
     ]);
     if (failedState === "revoked") return json(res, 410, { status: "revoked", error: "This installation is deleting or deleted." });
+    if (["scheduled", "retrying", "delivering", "delivered"].includes(String(failedState))) {
+      return json(res, 200, { notificationId, status: failedState === "delivered" ? "delivered" : "scheduled", idempotent: true });
+    }
     return json(res, 502, { status: "publish_failed", error: "The scheduler returned an invalid response." });
   }
   const finalized = String(await redis([
@@ -192,6 +212,10 @@ module.exports = apiHandler(async function handler(req, res) {
   if (finalized === "revoked") {
     try { await qstashClient().messages.delete(messageId); } catch { /* Tombstone makes any signed delivery inactive. */ }
     return json(res, 410, { status: "revoked", error: "This installation is deleting or deleted." });
+  }
+  if (["canceled", "missing"].includes(finalized)) {
+    try { await qstashClient().messages.delete(messageId); } catch { /* Redis terminal state remains authoritative. */ }
+    return json(res, 200, { notificationId, status: finalized === "canceled" ? "canceled" : "not-found", idempotent: true });
   }
   if (previousId && previousId !== notificationId) await cancelRecord(body.installationId, previousId, "replaced");
   return json(res, 200, { notificationId, messageId, status: finalized === "delivered" ? "delivered" : "scheduled" });

@@ -38,7 +38,7 @@ async function authorizeDeletion(req, installationId) {
   const record = await getHash(key);
   const token = bearerToken(req);
   if (!record.secretHash || !token || !safeEqual(record.secretHash, hashSecret(token))) return null;
-  if (!["active", "deleting", "deleted"].includes(installationStatus(record))) return null;
+  if (!["active", "inactive", "deleting", "deleted"].includes(installationStatus(record))) return null;
   await expireKey(key, RETENTION_SECONDS.installation);
   return record;
 }

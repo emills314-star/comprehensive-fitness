@@ -1,15 +1,16 @@
 const { RETENTION_SECONDS, installationKey } = require("../_lib/keys");
 const { getHash, isRedisConfigured, redis } = require("../_lib/redis");
-const { pushConfigured } = require("../_lib/push");
+const { pushConfigured, pushEndpointAllowed } = require("../_lib/push");
 const { authorizeRegistration, checkRateLimit, clientFingerprint, createSecret, hashSecret, rateLimitResponse } = require("../_lib/security");
 const { apiHandler, json, methodNotAllowed } = require("../_lib/response");
 const { boundedString, validHttpsUrl, validInstallationId, validateJsonRequest } = require("../_lib/validation");
 
 function validSubscription(subscription) {
-  return subscription &&
+  return Boolean(subscription &&
     validHttpsUrl(subscription.endpoint) &&
+    pushEndpointAllowed(subscription.endpoint) &&
     boundedString(subscription.keys?.p256dh, 512) &&
-    boundedString(subscription.keys?.auth, 256);
+    boundedString(subscription.keys?.auth, 256));
 }
 
 const REGISTER_INSTALLATION_SCRIPT = [

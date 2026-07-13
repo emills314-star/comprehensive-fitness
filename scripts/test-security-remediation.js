@@ -69,10 +69,18 @@ async function testDeletingAuthorizationIsRejected() {
   }, async () => {
     assert.equal(await security.authorizeInstallation(request({}), INSTALLATION_ID), null, "ordinary authorization must reject a deleting tombstone");
   });
+  await withRedisFetch(async (command) => {
+    if (command[0] === "HGETALL") return ["installationId", INSTALLATION_ID, "secretHash", hashSecret(TOKEN), "active", "0", "status", "inactive"];
+    if (command[0] === "EXPIRE") return 1;
+    throw new Error(`Unexpected command ${JSON.stringify(command)}`);
+  }, async () => {
+    assert.ok(await security.authorizeDeletion(request({}), INSTALLATION_ID), "an expired/inactive push subscription must remain credential-deletable");
+  });
 }
 
 async function testTransientPushFailureRetries() {
   let timerStatus = "scheduled";
+  let attemptToken = "";
   let sendAttempts = 0;
   const timerRecord = () => ({
     notificationId: "timer-server", clientTimerId: "timer-client", installationId: INSTALLATION_ID,
@@ -82,9 +90,10 @@ async function testTransientPushFailureRetries() {
   const redisMock = {
     getHash: async () => ({ installationId: INSTALLATION_ID, active: "1", endpoint: "https://push.example/sub", p256dh: "key", auth: "auth" }),
     redis: async (command) => {
-      if (command[0] === "GET") return "timer-server";
-      if (command[0] === "EVAL" && String(command[1]).includes("timer_state_v2")) { timerStatus = "retrying"; return "updated"; }
-      if (command[0] === "EVAL" && String(command[1]).includes("timer_delivery_success_v2")) { timerStatus = "delivered"; return "delivered"; }
+      if (command[0] === "EVAL" && String(command[1]).includes("timer_delivery_claim_v3")) { timerStatus = "delivering"; attemptToken = String(command[8]); return "claimed"; }
+      if (command[0] === "EVAL" && String(command[1]).includes("timer_delivery_confirm_v3")) return attemptToken === String(command[8]) ? "confirmed" : "claim_lost";
+      if (command[0] === "EVAL" && String(command[1]).includes("timer_delivery_retry_v3")) { timerStatus = "retrying"; attemptToken = ""; return "retrying"; }
+      if (command[0] === "EVAL" && String(command[1]).includes("timer_delivery_success_v3")) { timerStatus = "delivered"; attemptToken = ""; return "delivered"; }
       throw new Error(`Unexpected Redis ${JSON.stringify(command)}`);
     },
     setHashWithTtl: async (_key, fields) => { if (fields.status) timerStatus = fields.status; return 1; },
@@ -93,6 +102,7 @@ async function testTransientPushFailureRetries() {
   const pushMock = {
     configuredPublicAppUrl: () => "https://fitness.example",
     qstashReceiver: () => ({ verify: async () => true }),
+    pushEndpointAllowed: () => true,
     configureWebPush: () => ({ sendNotification: async () => { sendAttempts += 1; if (sendAttempts === 1) throw new Error("transient"); } })
   };
   const deliver = loadFresh("../api/push/deliver", {
@@ -124,8 +134,8 @@ async function testSchedulePersistsBeforePublishAndRecoversFailure() {
     setHashWithTtl: async () => { events.push("persist"); return 1; },
     redis: async (command) => {
       if (command[0] === "EVAL" && String(command[1]).includes("timer_prepare_v2")) { events.push("persist"); return ["prepared", ""]; }
-      if (command[0] === "EVAL" && String(command[1]).includes("timer_finalize_v2")) return "scheduled";
-      if (command[0] === "EVAL" && String(command[1]).includes("timer_publish_failed_v2")) return "publish_failed";
+      if (command[0] === "EVAL" && String(command[1]).includes("timer_finalize_v3")) return "scheduled";
+      if (command[0] === "EVAL" && String(command[1]).includes("timer_publish_failed_v3")) return "publish_failed";
       if (command[0] === "SADD" || command[0] === "EXPIRE" || command[0] === "SET") return "";
       throw new Error(`Unexpected Redis ${JSON.stringify(command)}`);
     }
@@ -169,9 +179,11 @@ async function testDurableDeletionTombstone() {
     getHash: async () => ({}),
     setHashWithTtl: async (key, fields) => { writes.push({ key, fields }); return 1; },
     redis: async (command) => {
-      if (failCleanup && command[0] === "SMEMBERS") throw new Error("synthetic cleanup failure");
-      if (command[0] === "SMEMBERS") return [];
+      if (failCleanup && command[0] === "SSCAN") throw new Error("synthetic cleanup failure");
+      if (command[0] === "SSCAN") return ["0", []];
       if (command[0] === "SCAN") return ["0", []];
+      if (command[0] === "SRANDMEMBER") return [];
+      if (command[0] === "SCARD") return 0;
       if (command[0] === "DEL") { deletedKeys.push(...command.slice(1)); return command.length - 1; }
       if (command[0] === "SREM") return 1;
       throw new Error(`Unexpected Redis ${JSON.stringify(command)}`);
@@ -230,7 +242,7 @@ async function testCancellationMappingAndVersion() {
   const redisMock = {
     redis: async (command) => {
       if (command[0] === "GET") return "timer-server-v2";
-      if (command[0] === "EVAL" && String(command[1]).includes("timer_cancel_v2")) { canceled.push(command); return "canceled"; }
+      if (command[0] === "EVAL" && String(command[1]).includes("timer_cancel_v3")) { canceled.push(command); return "canceled"; }
       throw new Error(`Unexpected Redis ${JSON.stringify(command)}`);
     }
   };
@@ -274,7 +286,7 @@ async function testTrustedRateIdentityAndRegistrationOrdering() {
       setHashWithTtl: async () => 1,
       redis: async () => 1
     },
-    "../_lib/push": { pushConfigured: () => true },
+    "../_lib/push": { pushConfigured: () => true, pushEndpointAllowed: () => true },
     "../_lib/security": {
       authorizeRegistration: async () => null,
       checkRateLimit: async (scope) => { scopes.push(scope); return { allowed: true }; },
@@ -306,9 +318,12 @@ function testAllWriteScriptsRecheckRevocation() {
     schedule.FINALIZE_TIMER_SCRIPT,
     schedule.FAIL_TIMER_SCRIPT,
     schedule.REPLACE_TIMER_SCRIPT,
+    deliver.CLAIM_DELIVERY_SCRIPT,
+    deliver.CONFIRM_DELIVERY_CLAIM_SCRIPT,
     deliver.UPDATE_TIMER_STATE_SCRIPT,
     deliver.DELIVERY_SUCCESS_SCRIPT,
     deliver.INVALIDATE_SUBSCRIPTION_SCRIPT,
+    deliver.RETRY_DELIVERY_SCRIPT,
     cancel.CANCEL_TIMER_SCRIPT,
     register.REGISTER_INSTALLATION_SCRIPT
   ];

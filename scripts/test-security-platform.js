@@ -179,6 +179,7 @@ async function testDeletionScopeAndRevocation() {
   const ownWorkoutKey = `cf:workout:${INSTALLATION_ID}:session-1`;
   const otherWorkoutKey = `cf:workout:${OTHER_INSTALLATION_ID}:session-2`;
   const ownMutationKey = `cf:mutation:${INSTALLATION_ID}:mutation-1`;
+  const cleanupKeys = new Set();
   await withRedisMock((command) => {
     if (command[0] === "HGETALL" && command[1] === `cf:install:${INSTALLATION_ID}`) {
       return redisResponse(["installationId", INSTALLATION_ID, "secretHash", hashSecret(TOKEN), "active", "1"]);
@@ -194,14 +195,28 @@ async function testDeletionScopeAndRevocation() {
     }
     if (command[0] === "EXPIRE") return redisResponse(1);
     if (command[0] === "EVAL" && String(command[1]).includes("INCR")) return redisResponse([1, 86400]);
+    if (command[0] === "EVAL" && String(command[1]).includes("installation_delete_revoke_timer_v3")) return redisResponse("canceled");
     if (command[0] === "EVAL" && String(command[1]).includes("HSET") && !String(command[1]).includes("status='synced'")) return redisResponse(1);
-    if (command[0] === "SMEMBERS" && command[1] === `cf:timers:${INSTALLATION_ID}`) return redisResponse([ownTimerKey, otherTimerKey]);
-    if (command[0] === "SMEMBERS" && command[1] === `cf:workouts:${INSTALLATION_ID}`) return redisResponse([ownWorkoutKey, otherWorkoutKey]);
-    if (command[0] === "SMEMBERS" && command[1] === `cf:mutations:${INSTALLATION_ID}`) return redisResponse([ownMutationKey]);
+    if (command[0] === "SSCAN" && command[1] === `cf:timers:${INSTALLATION_ID}`) return redisResponse(["0", [ownTimerKey, otherTimerKey]]);
+    if (command[0] === "SSCAN" && command[1] === `cf:workouts:${INSTALLATION_ID}`) return redisResponse(["0", [ownWorkoutKey, otherWorkoutKey]]);
+    if (command[0] === "SSCAN" && command[1] === `cf:mutations:${INSTALLATION_ID}`) return redisResponse(["0", [ownMutationKey]]);
     if (command[0] === "SCAN" && command[3] === "cf:timer:*") return redisResponse(["0", [ownTimerKey, legacyTimerKey, otherTimerKey]]);
     if (command[0] === "SCAN" && command[3] === `cf:workout:${INSTALLATION_ID}:*`) return redisResponse(["0", [ownWorkoutKey, otherWorkoutKey]]);
     if (command[0] === "SCAN" && command[3] === `cf:mutation:${INSTALLATION_ID}:*`) return redisResponse(["0", [ownMutationKey]]);
     if (command[0] === "SCAN" && command[3] === `cf:active:${INSTALLATION_ID}:*`) return redisResponse(["0", []]);
+    if (command[0] === "SADD" && command[1] === `cf:delete:${INSTALLATION_ID}:keys`) {
+      command.slice(2).forEach((key) => cleanupKeys.add(key));
+      return redisResponse(command.length - 2);
+    }
+    if (command[0] === "SRANDMEMBER" && command[1] === `cf:delete:${INSTALLATION_ID}:keys`) {
+      const values = [...cleanupKeys];
+      return redisResponse(values);
+    }
+    if (command[0] === "SREM" && command[1] === `cf:delete:${INSTALLATION_ID}:keys`) {
+      command.slice(2).forEach((key) => cleanupKeys.delete(key));
+      return redisResponse(command.length - 2);
+    }
+    if (command[0] === "SCARD") return redisResponse(cleanupKeys.size);
     if (command[0] === "DEL" || command[0] === "SREM") return redisResponse(command.length - 1);
     throw new Error(`Unexpected Redis command: ${JSON.stringify(command)}`);
   }, async (commands) => {

@@ -1,5 +1,5 @@
 const { authorizeInstallation, checkRateLimit, rateLimitResponse } = require("../_lib/security");
-const { configureWebPush } = require("../_lib/push");
+const { configureWebPush, pushEndpointAllowed } = require("../_lib/push");
 const { apiHandler, json, methodNotAllowed } = require("../_lib/response");
 const { validInstallationId, validateJsonRequest } = require("../_lib/validation");
 
@@ -10,6 +10,7 @@ module.exports = apiHandler(async function handler(req, res) {
   if (!validInstallationId(parsed.body.installationId)) return json(res, 400, { error: "A valid installation is required." });
   const installation = await authorizeInstallation(req, parsed.body.installationId);
   if (!installation?.endpoint || installation.active !== "1") return json(res, 401, { error: "No active push subscription is registered." });
+  if (!pushEndpointAllowed(installation.endpoint)) return json(res, 409, { error: "The stored push provider is not allowed; register notifications again." });
   const limit = await checkRateLimit("push-test", parsed.body.installationId, 5, 60 * 60);
   if (!limit.allowed) return rateLimitResponse(res, limit);
   try {
