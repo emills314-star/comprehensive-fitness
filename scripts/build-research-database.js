@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const ExcelJS = require("exceljs");
+const JSZip = require("jszip");
 const { VERSION, REVIEW_DATE, DELIMITER, controlledVocabularies, tableColumns, data } = require("../research_database/source/database");
 
 const root = path.resolve(__dirname, "..", "research_database");
@@ -163,6 +164,36 @@ for (const [table, rows] of Object.entries(data)) {
   sheet.eachColumnKey = undefined;
 }
 const workbookPath = path.join(workbookDir, `male_exercise_science_database_v${VERSION}.xlsx`);
-workbook.xlsx.writeFile(workbookPath).then(() => {
+async function deterministicWorkbookBytes(sourceWorkbook) {
+  const serialized = Buffer.from(await sourceWorkbook.xlsx.writeBuffer());
+  const sourceZip = await JSZip.loadAsync(serialized);
+  const deterministicZip = new JSZip();
+  const fixedEntryDate = new Date(`${REVIEW_DATE}T00:00:00.000Z`);
+  const entryNames = Object.keys(sourceZip.files).sort();
+  for (const name of entryNames) {
+    const entry = sourceZip.files[name];
+    const content = entry.dir ? null : await entry.async("nodebuffer");
+    deterministicZip.file(name, content, {
+      binary: !entry.dir,
+      comment: "",
+      compression: entry.dir ? "STORE" : "DEFLATE",
+      compressionOptions: entry.dir ? undefined : { level: 9 },
+      createFolders: false,
+      date: fixedEntryDate,
+      dir: entry.dir,
+      dosPermissions: entry.dir ? 0x10 : 0
+    });
+  }
+  return deterministicZip.generateAsync({
+    type: "nodebuffer",
+    platform: "DOS",
+    compression: "DEFLATE",
+    compressionOptions: { level: 9 },
+    streamFiles: false,
+    comment: ""
+  });
+}
+
+deterministicWorkbookBytes(workbook).then((bytes) => fs.promises.writeFile(workbookPath, bytes)).then(() => {
   console.log(JSON.stringify({ version: VERSION, workbook: workbookPath, tables: Object.fromEntries(Object.entries(data).map(([name, rows]) => [name, rows.length])) }, null, 2));
 }).catch((error) => { console.error(error); process.exitCode = 1; });

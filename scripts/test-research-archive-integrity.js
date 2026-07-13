@@ -62,7 +62,7 @@ const temporaryRoot = fs.mkdtempSync(path.join(ARTIFACT_ROOT, "research-archive-
 try {
   // A clean CI checkout has the committed tree in its index. Using write-tree also
   // lets this contract verify the exact candidate tree before it is committed.
-  const candidateTree = run("git", ["write-tree"]);
+  const candidateTree = run("git", ["-c", "core.fsmonitor=false", "write-tree"]);
   const lfArchiveFile = path.join(temporaryRoot, "repository-lf.tar");
   const lfArchiveRoot = path.join(temporaryRoot, "archive-lf");
   const autocrlfArchiveFile = path.join(temporaryRoot, "repository-autocrlf.tar");
