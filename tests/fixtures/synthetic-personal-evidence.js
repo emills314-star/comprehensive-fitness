@@ -191,6 +191,62 @@ function conflictingIdentityPersonalEvidencePackage() {
   return value;
 }
 
+function rowWithCustomIdentity(row, exerciseId, exerciseName) {
+  const value = clone(row);
+  value.exercise_id = exerciseId;
+  value.exercise_name = exerciseName;
+  delete value.research_exercise_id;
+  value.source_references = (value.source_references || []).map((reference) => ({
+    ...reference,
+    source_record_id: exerciseId
+  }));
+  return value;
+}
+
+function threeSourcePersonalEvidencePackage(options = {}) {
+  const version = options.version || "1.0.6";
+  const value = syntheticPersonalEvidencePackage({ version });
+  const identities = {
+    score: {
+      id: options.scoreId || "custom_synthetic_score_source_press",
+      name: options.scoreName || "Synthetic Score Source Press"
+    },
+    prescription: {
+      id: options.prescriptionId || "custom_synthetic_prescription_source_press",
+      name: options.prescriptionName || "Synthetic Prescription Source Press"
+    },
+    muscle: {
+      id: options.muscleId || "custom_explicit_muscle_source_press",
+      name: options.muscleName || "Synthetic Muscle Source Press"
+    }
+  };
+  value.personalData.exerciseScores = [rowWithCustomIdentity(
+    value.personalData.exerciseScores[0],
+    identities.score.id,
+    identities.score.name
+  )];
+  value.personalData.exercisePrescriptions = [rowWithCustomIdentity(
+    value.personalData.exercisePrescriptions[0],
+    identities.prescription.id,
+    identities.prescription.name
+  )];
+  value.personalData.exercisePrescriptions[0].prescription_id = `prescription_${identities.prescription.id}`;
+  value.personalData.exerciseMuscleScores = [rowWithCustomIdentity(
+    value.personalData.exerciseMuscleScores[0],
+    identities.muscle.id,
+    identities.muscle.name
+  )];
+  value.personalData.metadata.methodology_version = version;
+  value.personalData.metadata.pipeline_version = version;
+  return value;
+}
+
+function invalidMuscleScoreOnlyPersonalEvidencePackage(options = {}) {
+  const value = threeSourcePersonalEvidencePackage({ ...options, version: options.version || "1.0.7" });
+  value.personalData.exerciseMuscleScores[0].research_exercise_id = options.invalidResearchExerciseId || "ex_synthetic_unknown_research_press";
+  return value;
+}
+
 function partialPersonalEvidencePackage(missingCollection) {
   const value = syntheticPersonalEvidencePackage({
     exerciseId: `custom_synthetic_partial_${missingCollection}`,
@@ -205,6 +261,7 @@ module.exports = {
   PERSONAL_EVIDENCE_BOUNDARIES,
   clone,
   conflictingIdentityPersonalEvidencePackage,
+  invalidMuscleScoreOnlyPersonalEvidencePackage,
   jsonDepth,
   jsonObjectAtWidth,
   jsonValueAtDepth,
@@ -215,5 +272,6 @@ module.exports = {
   personalEvidenceAtStableIdLength,
   personalEvidenceAtTextLength,
   personalEvidenceWithMatchedCoreCount,
-  syntheticPersonalEvidencePackage
+  syntheticPersonalEvidencePackage,
+  threeSourcePersonalEvidencePackage
 };

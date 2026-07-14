@@ -3,8 +3,8 @@
 ## Metadata
 
 - **Purpose:** Catalog of implemented and intended logic that turns history, research, and readiness into guidance
-- **Last verified:** 2026-07-13
-- **Repository:** integrated foundation `ce13f1e` plus accepted taxonomy-source repairs `5d95f40` and `90cb27a`
+- **Last verified:** 2026-07-14
+- **Repository:** integrated foundation plus accepted private-import and workout-safety composition
 - **Verification status:** VERIFIED against `prescription-engine.js`, relevant `index.html` logic, schemas, data pipelines, and tests
 - **Related:** [Project](PROJECT.md), [architecture](ARCHITECTURE.md), [UI/UX](UI_UX.md), [training data map](training-prescription-data.md), [research methodology](../research_database/METHODOLOGY.md)
 
@@ -38,6 +38,8 @@ Implemented precedence is tested as:
 4. Research defaults when meaningful personal evidence is absent.
 
 Fewer than three comparable exposures remain research-led (`DEFAULT_POLICY.minimumComparableExposures`, `scripts/test-prescription-engine.js`). Confidence considers exposure count/span, variation consistency, RPE, recovery, nutrition completeness, data completeness, and confounding (`derivePersonalEvidenceMetrics`, `calculateEvidenceWeight`). Exact IDs/aliases are preferred; unresolved variants remain separate.
+
+Private exercise identity reconciliation examines all three executable personal sources: exercise scores, exercise prescriptions, and exercise-muscle scores. A newly selected evidence file or backup is rejected atomically when any reconciled identity is invalid; no runtime engine, IndexedDB record, revision, completed-analysis cache, prescription cache, or muscle-assignment cache is changed. An invalid identity already present in persisted legacy data is preserved for audit and marked invalid by the reconciler, but canonical identity, prescription, muscle assignment, history grouping, and volume consumers fail closed for that exercise. A successful evidence replacement invalidates every dependent cache before new results are consumed.
 
 ## Inputs
 
@@ -77,6 +79,8 @@ Missing markers do not count as zeros. Sparse input reduces the number of indepe
 
 `createExercisePrescriptionSnapshot` combines personal/research defaults, selected set structure, volume, progression, staleness, deload, readiness, and explanation. `createWorkoutPrescription` groups immutable exercise snapshots.
 
+The app maps only recognized native `Error` constraint failures with exact supported messages to executable hard-constraint explanations. Unexpected exceptions, including lookalike `TypeError` messages, become a non-executable `engine_failure`; they cannot revive legacy Dashboard advice or be misreported as an ordinary equipment/exclusion condition.
+
 Implemented progression considers exercise/resistance type, rep-range position, completion, RPE/RIR, prior comparable exposure, increment size, technique/pain flags, and trends. Outcomes include normal, progress, hold, reduced volume, light session, scoped/full deload, substitute, and rotate. Exact next actions can add reps, add/reduce load or assistance, hold, reduce volume, or change exercise. Isolation/bodyweight cases prefer rep progression when load jumps are disproportionate (`index.html:progressionProfileForExercise` and recommendation helpers; `determineProgressionDecision`).
 
 For comparable straight sets, load progression requires the first set to reach the top of the prescribed range within the RPE ceiling and every later set to remain within the configured acceptable rep-loss limit. Otherwise the next action is rep-first: keep load constant and add a repetition to the first eligible set below the retention threshold. Once the lead set and retained sets qualify, increase every straight set by the smallest supported equipment increment. A `progress` label is invalid unless load, reps, sets, assistance, execution target, or another explicit performance variable changes.
@@ -104,13 +108,15 @@ Implemented notable thresholds include recovery cost at least 60 on repeated exp
 
 Pain blocks automatic progression and can support substitution/rotation; medical diagnosis is outside scope.
 
+A pain-blocked exercise becomes executable only after the user selects and confirms a distinct evidence-linked substitute whose observed workout name resolves to the same current catalog identity recorded by the prescription and safety audit. The app revalidates that identity, current equipment, exclusions, mesocycle scope, and substitution map whenever it renders or executes the workout. Identity drift or a newly incompatible constraint restores the block and asks for a new explicit pain-free confirmation; it never silently falls back to the original exercise.
+
 ## Full-program mesocycle planning and candidate scoring
 
 This is the authoritative program-planning section. The planner uses a two-stage process: first choose one program-wide exercise portfolio, then distribute that portfolio across sessions. A `Program Slot` is a muscle-group coverage and exercise-role requirement inside the complete plan; it replaces the former ambiguous “Prescription Block” term. Each slot states its required selection count, weekly sets/exposures, selected exercise, candidate alternatives, planned sessions, and rationale. Five candidates means up to five alternatives for a slot, never five mandatory weekly exercises.
 
 Candidate discovery evaluates the entire compatible research exercise library plus traceable personal/current sources. `Current Program Exercises` means exercises in templates attached to the active mesocycle. `Recent Exercises` means submitted exercise exposures within the last 56 days. `Previously Successful Exercises` requires adequate comparable personal history. `Eligible Exercise Library` is the compatible canonical research library after equipment and restriction filters. Every displayed candidate carries a source trace; equipment exclusions are retained with an inspectable reason. Aliases must normalize to one canonical research ID. Camber Bar Bench Press, Cambered Bench Press, and Cambered Barbell Bench Press resolve to `ex_cambered_barbell_bench_press`.
 
-Equipment filtering uses explicit requirement alternatives. Each alternative is an AND-list (for example barbell + plates + bench + rack); alternatives are OR paths (for example dumbbell, or selectorized machine). The UI exposes seven predictable bundles: Standard Gym (`all`) bypasses restriction; Bodyweight, Bands, and Dumbbells add only their named capability; Barbell adds plates but not a rack; Rack adds rack, flat/incline bench, pull-up bar, and Nordic anchor; Cable Station adds cable and the station's common pull-up bar. Bodyweight alone does not satisfy a pull-up bar, Nordic anchor, ab wheel, cable, machine, dumbbell, or barbell requirement. Missing verified equipment metadata fails closed whenever restrictions are active.
+Equipment filtering uses explicit requirement alternatives. Each alternative is an AND-list (for example barbell + plates + bench + rack); alternatives are OR paths (for example dumbbell, or selectorized machine). The UI exposes seven predictable bundles: Standard Gym (`all`) bypasses restriction; a legacy empty Settings selection has the same Standard Gym meaning. Bodyweight, Bands, and Dumbbells add only their named capability; Barbell adds plates but not a rack; Rack adds rack, flat/incline bench, pull-up bar, and Nordic anchor; Cable Station adds cable and the station's common pull-up bar. An explicit mesocycle equipment restriction narrows Settings equipment: it replaces unrestricted `all`, intersects with any explicit Settings restriction, and fails closed when the intersection is empty. Bodyweight alone does not satisfy a pull-up bar, Nordic anchor, ab wheel, cable, machine, dumbbell, or barbell requirement. Missing verified equipment metadata fails closed whenever restrictions are active.
 
 `Predicted Program Effectiveness` estimates usefulness for the proposed slot and plan; it does not guarantee hypertrophy. The implemented score is 72% isolated target-muscle recommendation strength and 28% full-program fit. The isolated score already blends personal hypertrophy/progression/recovery/repeatability/tolerance evidence with muscle specificity, lengthened loading, stability, progression ease, fatigue cost, research support, and personal confidence. Full-program fit then adjusts for redundant patterns, local/systemic fatigue, spinal load, grip demand, joint stress, equipment, current portfolio, and lower-fatigue role value. Candidate ordering is recomputed after selection. Confidence separately describes evidence quality; Evidence identifies the sources. Positive and limiting factors explain the score.
 

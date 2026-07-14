@@ -14,6 +14,7 @@ const {
   PERSONAL_EVIDENCE_BOUNDARIES,
   clone: clonePersonalEvidence,
   conflictingIdentityPersonalEvidencePackage,
+  invalidMuscleScoreOnlyPersonalEvidencePackage,
   jsonDepth: personalEvidenceJsonDepth,
   jsonObjectAtWidth,
   jsonValueAtDepth,
@@ -649,6 +650,11 @@ test("personal evidence import canonically persists valid replacement and atomic
       expectedRejection: /identity|conflict|reconcil/i
     },
     {
+      name: "synthetic-invalid-muscle-source-personal-evidence.json",
+      raw: JSON.stringify(invalidMuscleScoreOnlyPersonalEvidencePackage({ version: "1.0.6" })),
+      expectedRejection: /identity|conflict|reconcil|unknown research/i
+    },
+    {
       name: "synthetic-build-failure-personal-evidence.json",
       raw: JSON.stringify(buildFailurePackage),
       failBuildVersion: "1.0.3",
@@ -1212,7 +1218,8 @@ test("primary navigation exposes a skip target and moves focus into the selected
 
   const dashboard = page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: /Dashboard$/ });
   await dashboard.click();
-  await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
+  await expect(page.locator(".dashboard-view")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Volume and fatigue", exact: true })).toBeVisible();
   const focusIsInView = await page.evaluate(() => {
     const active = document.activeElement;
     const main = document.querySelector("#main-content");
