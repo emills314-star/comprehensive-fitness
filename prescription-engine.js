@@ -13,7 +13,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function prescriptionEngineFactory() {
   "use strict";
 
-  const ENGINE_VERSION = "3.1.8";
+  const ENGINE_VERSION = "3.1.9";
   const PRESCRIPTION_SCHEMA_VERSION = "2.1.0";
   const SNAPSHOT_SCHEMA_VERSION = "1.1.0";
   const HARD_SAFETY_SCHEMA_VERSION = "hard-safety/1.0.0";
@@ -503,28 +503,18 @@
   function normalizeEvidenceBundle(input = {}) {
     const personal = input.personal?.kind === "personal_evidence_adapter" ? input.personal : createPersonalDataAdapter(input.personalData || input.personal || {});
     const research = input.research?.kind === "research_evidence_adapter" ? input.research : createResearchDataAdapter(input.researchData || input.research || {});
-    personal.exerciseScores.forEach((score) => {
-      const personalId = score.exercise_id || score.exerciseId;
-      if (!personalId || personal.crosswalkByPersonalId.has(personalId)) return;
-      const candidates = [score.exercise_name, score.exerciseName, score.exercise_name_recorded, score.exerciseNameRecorded, personalId];
-      const researchId = candidates.map((name) => research.exerciseIdByAlias.get(normalizeText(name))).find(Boolean);
-      if (!researchId) return;
-      personal.crosswalkByPersonalId.set(personalId, researchId);
-      if (!personal.personalIdsByResearchId.has(researchId)) personal.personalIdsByResearchId.set(researchId, []);
-      if (!personal.personalIdsByResearchId.get(researchId).includes(personalId)) personal.personalIdsByResearchId.get(researchId).push(personalId);
-    });
-    personal.exercisePrescriptions.forEach((prescription) => {
-      const personalId = prescription.exercise_id || prescription.exerciseId;
-      if (!personalId || personal.crosswalkByPersonalId.has(personalId)) return;
-      const researchId = [prescription.exercise_name, prescription.exerciseName, personalId].map((name) => research.exerciseIdByAlias.get(normalizeText(name))).find(Boolean);
-      if (!researchId) return;
-      personal.crosswalkByPersonalId.set(personalId, researchId);
-      if (!personal.personalIdsByResearchId.has(researchId)) personal.personalIdsByResearchId.set(researchId, []);
-      if (!personal.personalIdsByResearchId.get(researchId).includes(personalId)) personal.personalIdsByResearchId.get(researchId).push(personalId);
-    });
     const reconciledPersonalIdentities = buildReconciledPersonalIdentityIndex(personal, research);
     personal.reconciledIdentityByExerciseId = reconciledPersonalIdentities.identities;
     personal.reconciledPersonalIdsByResearchId = reconciledPersonalIdentities.personalIdsByResearchId;
+    personal.selectedPersonalIdByResearchId = reconciledPersonalIdentities.selectedPersonalIdByResearchId;
+    personal.crosswalkByPersonalId.clear();
+    personal.personalIdsByResearchId.clear();
+    reconciledPersonalIdentities.identities.forEach((identity, exerciseId) => {
+      if (!identity.invalid && identity.researchExerciseId) personal.crosswalkByPersonalId.set(exerciseId, identity.researchExerciseId);
+    });
+    reconciledPersonalIdentities.personalIdsByResearchId.forEach((exerciseIds, researchExerciseId) => {
+      personal.personalIdsByResearchId.set(researchExerciseId, [...exerciseIds]);
+    });
     return {
       personal,
       research,
@@ -1237,9 +1227,11 @@
       const prescriptions = personal.prescriptionsFor(exerciseId, muscleGroupId);
       const prescription = prescriptions[0] || (personal.prescriptionsByExercise.get(exerciseId) || [])[0] || {};
       const selectedIdentity = personal.reconciledIdentityByExerciseId?.get(exerciseId) || null;
-      const researchExerciseId = selectedIdentity?.invalid
-        ? null
-        : firstPresent(selectedIdentity?.researchExerciseId, score.research_exercise_id, prescription.research_exercise_id, personal.crosswalkByPersonalId.get(exerciseId));
+      const researchExerciseId = selectedIdentity?.invalid ? null : selectedIdentity?.researchExerciseId || null;
+      // Resolve the custom/canonical identity before equipment filtering. A valid
+      // selected custom variation owns this canonical slot even when its actual
+      // equipment is unavailable; ranking must not resurrect a duplicate later.
+      if (researchExerciseId && personal.selectedPersonalIdByResearchId?.get(researchExerciseId) !== exerciseId) return;
       const researchExercise = research.exerciseById.get(researchExerciseId) || null;
       const mappings = researchExerciseId ? research.muscleMapsByExercise.get(researchExerciseId) || [] : [];
       candidates.set(exerciseId, {
@@ -1273,9 +1265,19 @@
       const researchExerciseId = exercise.exercise_id || exercise.exerciseId;
       const mappings = research.muscleMapsByExercise.get(researchExerciseId) || [];
       if (!mappings.some((mapping) => number(mapping.fractional_set_credit, 0) > 0 && researchMuscleMatch(research, muscleGroupId, mapping.muscle_group_id || mapping.muscleGroupId))) return;
-      const linkedPersonalIds = personal.reconciledPersonalIdsByResearchId?.get(researchExerciseId) || [];
-      if (linkedPersonalIds.some((id) => candidates.has(id))) return;
       const relevantMapping = mappings.find((mapping) => researchMuscleMatch(research, muscleGroupId, mapping.muscle_group_id || mapping.muscleGroupId)) || {};
+      const selectedPersonalId = personal.selectedPersonalIdByResearchId?.get(researchExerciseId);
+      if (selectedPersonalId && !candidates.has(selectedPersonalId)) {
+        addPersonal({
+          exercise_id: selectedPersonalId,
+          exercise_name: personal.reconciledIdentityByExerciseId.get(selectedPersonalId)?.source?.exercise_name,
+          muscle_group: muscleGroupId,
+          muscle_role: relevantMapping.relationship_type,
+          contribution_weight: relevantMapping.fractional_set_credit,
+          research_muscle_group_id: relevantMapping.muscle_group_id
+        });
+      }
+      if (selectedPersonalId && candidates.has(selectedPersonalId)) return;
       candidates.set(researchExerciseId, {
         exerciseId: researchExerciseId,
         researchExerciseId,
@@ -2266,25 +2268,22 @@
         && replacementAllowed(item.candidate)
       ));
       if (ranked) return ranked.candidate.exerciseId;
-      const linkedPersonalIds = unique([
-        ...(evidence.personal.personalIdsByResearchId.get(targetResearchId) || []),
-        ...(evidence.personal.reconciledPersonalIdsByResearchId?.get(targetResearchId) || [])
-      ]).sort();
-      for (const personalId of linkedPersonalIds) {
-        if (personalId === candidate.exerciseId) continue;
+      const personalId = evidence.personal.selectedPersonalIdByResearchId?.get(targetResearchId);
+      if (personalId && personalId !== candidate.exerciseId) {
         const selectedIdentity = evidence.personal.reconciledIdentityByExerciseId?.get(personalId);
-        if (!selectedIdentity || selectedIdentity.invalid || selectedIdentity.researchExerciseId !== targetResearchId) continue;
-        const researchExercise = research.exerciseById.get(targetResearchId) || null;
-        const linkedCandidate = {
-          exerciseId: personalId,
-          researchExerciseId: targetResearchId,
-          selectedIdentity,
-          researchExercise
-        };
-        linkedCandidate.equipmentProfile = resolveCandidateEquipmentProfile(linkedCandidate);
-        if (replacementAllowed(linkedCandidate)) return personalId;
+        if (selectedIdentity && !selectedIdentity.invalid && selectedIdentity.researchExerciseId === targetResearchId) {
+          const researchExercise = research.exerciseById.get(targetResearchId) || null;
+          const linkedCandidate = {
+            exerciseId: personalId,
+            researchExerciseId: targetResearchId,
+            selectedIdentity,
+            researchExercise
+          };
+          linkedCandidate.equipmentProfile = resolveCandidateEquipmentProfile(linkedCandidate);
+          if (replacementAllowed(linkedCandidate)) return personalId;
+        }
       }
-      if (linkedPersonalIds.length) continue;
+      if (personalId) continue;
       const researchExercise = research.exerciseById.get(targetResearchId);
       if (researchExercise) {
         const canonicalCandidate = {
@@ -3021,15 +3020,15 @@
 
   function resolveExerciseCandidate(evidence, exerciseId, muscleGroupId, options = {}) {
     const candidates = buildMergedExerciseCandidates(evidence, muscleGroupId, options);
-    let candidate = candidates.find((item) => item.exerciseId === exerciseId || item.researchExerciseId === exerciseId);
+    const requestedPersonalIdentity = evidence.personal.reconciledIdentityByExerciseId?.get(exerciseId) || null;
+    let candidate = candidates.find((item) => item.exerciseId === exerciseId);
+    if (!candidate && !requestedPersonalIdentity) candidate = candidates.find((item) => item.researchExerciseId === exerciseId);
     if (candidate) {
       if (options.history) candidate.history = options.history;
       return candidate;
     }
-    const selectedIdentity = evidence.personal.reconciledIdentityByExerciseId?.get(exerciseId) || null;
-    const selectedResearchExerciseId = selectedIdentity?.invalid
-      ? null
-      : firstPresent(selectedIdentity?.researchExerciseId, evidence.personal.crosswalkByPersonalId.get(exerciseId));
+    const selectedIdentity = requestedPersonalIdentity;
+    const selectedResearchExerciseId = selectedIdentity?.invalid ? null : selectedIdentity?.researchExerciseId || null;
     const researchExercise = evidence.research.exerciseById.get(exerciseId) || evidence.research.exerciseById.get(selectedResearchExerciseId);
     const score = evidence.personal.scoreByExercise.get(exerciseId) || {};
     const prescription = evidence.personal.prescriptionsFor(exerciseId, muscleGroupId)[0] || (evidence.personal.prescriptionsByExercise.get(exerciseId) || [])[0] || {};
@@ -3902,7 +3901,7 @@
 
   function catalogIdentity(item) {
     if (!item) return null;
-    if (typeof item === "string") return { exerciseId: item, researchExerciseId: null, researchIdentitySpecified: false, structured: false, catalogRecord: false, source: null };
+    if (typeof item === "string") return { exerciseId: item, researchExerciseId: null, researchIdentitySpecified: false, researchIdentityFieldPresence: "absent", structured: false, catalogRecord: false, source: null };
     const exerciseId = firstPresent(item.exerciseId, item.exercise_id, item.personalExerciseId, item.personal_exercise_id);
     if (!exerciseId) return null;
     const researchIdentityFields = ["researchExerciseId", "research_exercise_id", "researchId", "research_id"];
@@ -3912,6 +3911,11 @@
       .map((field) => item[field]));
     const explicitResearchId = firstPresent(...declaredResearchIds);
     const researchExerciseId = explicitResearchId ?? null;
+    const researchIdentityFieldPresence = !researchIdentitySpecified
+      ? "absent"
+      : researchExerciseId
+        ? "value"
+        : "blank_or_null";
     const catalogRecord = Boolean(
       firstPresent(item.exercise_id, item.personalExerciseId, item.personal_exercise_id)
       && firstPresent(
@@ -3924,6 +3928,7 @@
       exerciseId,
       researchExerciseId,
       researchIdentitySpecified,
+      researchIdentityFieldPresence,
       researchIdentityConflict: declaredResearchIds.length > 1,
       structured: true,
       catalogRecord,
@@ -4031,6 +4036,11 @@
       exerciseId,
       researchExerciseId,
       researchIdentitySpecified: identities.some((identity) => identity.researchIdentitySpecified),
+      researchIdentityFieldPresence: identities.some((identity) => identity.researchIdentityFieldPresence === "value")
+        ? "value"
+        : identities.some((identity) => identity.researchIdentityFieldPresence === "blank_or_null")
+          ? "blank_or_null"
+          : "absent",
       researchIdentityConflict: false,
       structured: true,
       catalogRecord: identities.every((identity) => identity.catalogRecord),
@@ -4059,22 +4069,52 @@
     const identities = new Map();
     [...recordsByExercise.entries()].sort(([left], [right]) => left.localeCompare(right)).forEach(([exerciseId, records]) => {
       const batch = records.map(catalogIdentity).filter((identity) => identity?.structured && identity.exerciseId === exerciseId);
-      const inferredResearchId = personal.crosswalkByPersonalId.get(exerciseId) || (researchIdentities.has(exerciseId) ? exerciseId : null);
-      if (inferredResearchId && !batch.some((identity) => identity.researchIdentitySpecified)) {
-        batch.push({
+      const explicitResearchIds = unique(batch.map((identity) => identity.researchExerciseId));
+      const fieldPresence = explicitResearchIds.length
+        ? "value"
+        : batch.some((identity) => identity.researchIdentitySpecified)
+          ? "blank_or_null"
+          : "absent";
+      let researchIdentitySource = explicitResearchIds.length ? "explicit_crosswalk" : "unresolved";
+      if (!explicitResearchIds.length) {
+        // Pipeline crosswalks are nullable because most rows have no confident
+        // explicit match. Preserve the documented fallback: blank/null and an
+        // absent field may use an exact trusted name alias; a nonblank explicit
+        // ID is authoritative and therefore never falls through to this branch.
+        const exactCanonicalId = researchIdentities.has(exerciseId) ? exerciseId : null;
+        const aliasResearchIds = unique(records.flatMap((record) => [
+          record.exercise_name,
+          record.exerciseName,
+          record.exercise_name_recorded,
+          record.exerciseNameRecorded,
+          record.canonical_exercise_name,
+          record.canonicalExerciseName
+        ]).map((name) => research.exerciseIdByAlias.get(normalizeText(name))));
+        const inferredResearchIds = unique([exactCanonicalId, ...aliasResearchIds]);
+        researchIdentitySource = exactCanonicalId ? "canonical_id" : inferredResearchIds.length ? "alias_inference" : "unresolved";
+        inferredResearchIds.forEach((researchExerciseId) => batch.push({
           exerciseId,
-          researchExerciseId: inferredResearchId,
-          researchIdentitySpecified: true,
+          researchExerciseId,
+          researchIdentitySpecified: false,
+          researchIdentityFieldPresence: "absent",
           researchIdentityConflict: false,
           structured: true,
           catalogRecord: true,
           source: {}
-        });
+        }));
       }
       try {
-        identities.set(exerciseId, reconcileTrustedCustomIdentityBatch(batch, researchIdentities));
+        identities.set(exerciseId, {
+          ...reconcileTrustedCustomIdentityBatch(batch, researchIdentities),
+          researchIdentityFieldPresence: fieldPresence,
+          researchIdentitySource
+        });
       } catch (error) {
-        identities.set(exerciseId, invalidTrustedCustomIdentity(exerciseId, batch, error));
+        identities.set(exerciseId, {
+          ...invalidTrustedCustomIdentity(exerciseId, batch, error),
+          researchIdentityFieldPresence: fieldPresence,
+          researchIdentitySource: "invalid"
+        });
       }
     });
     const personalIdsByResearchId = new Map();
@@ -4083,8 +4123,16 @@
       if (!personalIdsByResearchId.has(identity.researchExerciseId)) personalIdsByResearchId.set(identity.researchExerciseId, []);
       personalIdsByResearchId.get(identity.researchExerciseId).push(exerciseId);
     });
-    personalIdsByResearchId.forEach((exerciseIds) => exerciseIds.sort());
-    return { identities, personalIdsByResearchId };
+    const sourcePriority = { explicit_crosswalk: 3, canonical_id: 2, alias_inference: 1, unresolved: 0 };
+    // One canonical research identity owns one automatic-program slot. Prefer a
+    // trusted explicit mapping, then an exact canonical ID, then alias inference;
+    // stable personal IDs make equal-precedence batches order-independent.
+    personalIdsByResearchId.forEach((exerciseIds) => exerciseIds.sort((left, right) => {
+      const priorityDifference = number(sourcePriority[identities.get(right)?.researchIdentitySource]) - number(sourcePriority[identities.get(left)?.researchIdentitySource]);
+      return priorityDifference || left.localeCompare(right);
+    }));
+    const selectedPersonalIdByResearchId = new Map([...personalIdsByResearchId.entries()].map(([researchExerciseId, exerciseIds]) => [researchExerciseId, exerciseIds[0]]));
+    return { identities, personalIdsByResearchId, selectedPersonalIdByResearchId };
   }
 
   function invalidTrustedCustomIdentity(exerciseId, identities, error) {
@@ -4092,6 +4140,11 @@
       exerciseId,
       researchExerciseId: null,
       researchIdentitySpecified: identities.some((identity) => identity.researchIdentitySpecified),
+      researchIdentityFieldPresence: identities.some((identity) => identity.researchIdentityFieldPresence === "value")
+        ? "value"
+        : identities.some((identity) => identity.researchIdentityFieldPresence === "blank_or_null")
+          ? "blank_or_null"
+          : "absent",
       researchIdentityConflict: identities.some((identity) => identity.researchIdentityConflict),
       structured: true,
       catalogRecord: true,
@@ -4454,7 +4507,8 @@
       }));
       const personalCatalog = [...this.evidence.personal.exerciseScores, ...this.evidence.personal.exercisePrescriptions].map((item) => {
         const exerciseId = firstPresent(item.exercise_id, item.exerciseId);
-        return { ...item, exerciseId, researchExerciseId: this.evidence.personal.crosswalkByPersonalId.get(exerciseId) || null };
+        const reconciledIdentity = this.evidence.personal.reconciledIdentityByExerciseId?.get(exerciseId);
+        return { ...item, exerciseId, researchExerciseId: reconciledIdentity?.invalid ? null : reconciledIdentity?.researchExerciseId || null };
       });
       return applyManualOverride(snapshot, override, {
         ...options,

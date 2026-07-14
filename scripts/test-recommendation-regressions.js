@@ -1737,6 +1737,124 @@ test("ranking uses one custom-first equipment identity for eligibility, output, 
   assert.ok(fallbackCable.excludedCandidates.some((item) => item.exerciseId === fallbackId), "the canonical fallback must remain binding when unavailable");
 });
 
+test("one reconciled research identity governs nullable crosswalks, aliases, canonical suppression, resolution, and substitutions", () => {
+  const ids = {
+    absent: "custom_absent_alias_press",
+    blank: "custom_blank_alias_press",
+    nullable: "custom_null_alias_press",
+    unresolved: "custom_unresolved_press",
+    explicit: "custom_explicit_machine_press",
+    invalid: "custom_invalid_research_press",
+    camberedAlias: "custom_cambered_alias_press"
+  };
+  const score = (exerciseId, exerciseName, extra = {}) => ({
+    exercise_id: exerciseId,
+    exercise_name: exerciseName,
+    equipment: "cable",
+    comparable_session_count: 12,
+    observation_span_days: 180,
+    data_confidence_score: 0.95,
+    hypertrophy_support_score: 100,
+    progression_score: 100,
+    recovery_efficiency_score: 100,
+    repeatability_score: 100,
+    ...extra
+  });
+  const muscleScore = (exerciseId) => ({
+    exercise_id: exerciseId,
+    exercise_name: exerciseId,
+    muscle_group: "chest",
+    muscle_role: "primary",
+    contribution_weight: 1,
+    research_muscle_group_id: "chest"
+  });
+  const identityScores = [
+    score(ids.absent, "Dumbbell Bench Press"),
+    score(ids.blank, "Dumbbell Bench Press", { research_exercise_id: "" }),
+    score(ids.nullable, "Dumbbell Bench Press", { research_exercise_id: null }),
+    score(ids.unresolved, "Unlisted Quantum Press"),
+    score(ids.explicit, "Dumbbell Bench Press", { research_exercise_id: "ex_machine_chest_press", equipment: "machine" }),
+    score(ids.invalid, "Dumbbell Bench Press", { research_exercise_id: "ex_unknown_research_press", equipment: "dumbbell" }),
+    score(ids.camberedAlias, "Cambered Bench Press", { equipment: "barbell" })
+  ];
+  const identityMuscleScores = Object.values(ids).map(muscleScore);
+  const identityEngine = createPrescriptionEngine({
+    personalData: {
+      exerciseScores: identityScores,
+      exerciseMuscleScores: identityMuscleScores,
+      metadata: { methodology_version: "research-identity-reconciliation-test/1.0.0" }
+    },
+    researchData: publicResearchData()
+  });
+  const identities = identityEngine.evidence.personal.reconciledIdentityByExerciseId;
+  for (const exerciseId of [ids.absent, ids.blank, ids.nullable]) {
+    assert.equal(identities.get(exerciseId).researchExerciseId, "ex_dumbbell_bench_press", `${exerciseId} must share the documented alias fallback`);
+    assert.equal(identities.get(exerciseId).researchIdentitySource, "alias_inference");
+  }
+  assert.equal(identities.get(ids.absent).researchIdentityFieldPresence, "absent");
+  assert.equal(identities.get(ids.blank).researchIdentityFieldPresence, "blank_or_null");
+  assert.equal(identities.get(ids.nullable).researchIdentityFieldPresence, "blank_or_null");
+  assert.equal(identities.get(ids.unresolved).researchExerciseId, null, "an absent crosswalk without a trusted alias remains personal-only");
+  assert.equal(identities.get(ids.unresolved).researchIdentitySource, "unresolved");
+  assert.equal(identities.get(ids.explicit).researchExerciseId, "ex_machine_chest_press", "an explicit valid crosswalk wins over a contradictory name alias");
+  assert.equal(identities.get(ids.explicit).researchIdentitySource, "explicit_crosswalk");
+  assert.equal(identities.get(ids.camberedAlias).researchExerciseId, "ex_cambered_barbell_bench_press", "declared research aliases remain eligible for fallback inference");
+  assert.equal(identities.get(ids.camberedAlias).researchIdentitySource, "alias_inference");
+  assert.equal(identities.get(ids.invalid).invalid, true, "an explicit unknown research ID must fail closed instead of falling back through the name");
+  assert.match(identities.get(ids.invalid).invalidReason, /unknown research exercise/i);
+
+  const selectedByResearch = identityEngine.evidence.personal.selectedPersonalIdByResearchId;
+  assert.equal(selectedByResearch.get("ex_dumbbell_bench_press"), ids.absent, "equal-precedence custom aliases use stable exercise-ID order");
+  const reverseOrderEngine = createPrescriptionEngine({
+    personalData: {
+      exerciseScores: [...identityScores].reverse(),
+      exerciseMuscleScores: [...identityMuscleScores].reverse(),
+      metadata: { methodology_version: "research-identity-reconciliation-order-test/1.0.0" }
+    },
+    researchData: publicResearchData()
+  });
+  assert.equal(
+    reverseOrderEngine.evidence.personal.selectedPersonalIdByResearchId.get("ex_dumbbell_bench_press"),
+    ids.absent,
+    "canonical slot ownership must be invariant to input record order"
+  );
+  assert.deepEqual(
+    reverseOrderEngine.rankExercisePool("chest", { availableEquipment: ["cable"], maxCandidates: 5 }).candidates
+      .filter((candidate) => candidate.researchExerciseId === "ex_dumbbell_bench_press")
+      .map((candidate) => candidate.exerciseId),
+    [ids.absent],
+    "order-independent reconciliation must flow through ranking output"
+  );
+  const cablePool = identityEngine.rankExercisePool("chest", { availableEquipment: ["cable"], maxCandidates: 5 });
+  const dumbbellIdentitySlots = cablePool.candidates.filter((candidate) => candidate.researchExerciseId === "ex_dumbbell_bench_press");
+  assert.deepEqual(dumbbellIdentitySlots.map((candidate) => candidate.exerciseId), [ids.absent], "one canonical research identity may occupy at most one ranked slot");
+  assert.ok(!cablePool.candidates.some((candidate) => candidate.exerciseId === "ex_dumbbell_bench_press"), "the selected valid custom identity suppresses its canonical duplicate");
+  const cableFly = cablePool.candidates.find((candidate) => candidate.researchExerciseId === "ex_cable_fly");
+  assert.ok(cableFly);
+  assert.equal(cableFly.preferredReplacementExerciseId, ids.absent, "substitution output must use the same selected reverse identity");
+  assert.equal(identityEngine.scoreExercise("ex_dumbbell_bench_press", "chest").exerciseId, ids.absent, "canonical resolution must use the selected reverse identity");
+  assert.equal(identityEngine.scoreExercise(ids.blank, "chest").researchExerciseId, "ex_dumbbell_bench_press", "direct custom resolution must retain its reconciled research identity");
+  assert.equal(identityEngine.scoreExercise(ids.unresolved, "chest").researchExerciseId, null);
+  assert.equal(identityEngine.scoreExercise(ids.explicit, "chest").researchExerciseId, "ex_machine_chest_press");
+  assert.throws(() => identityEngine.scoreExercise(ids.invalid, "chest"), /unknown research exercise/i);
+
+  const incompatiblePool = identityEngine.rankExercisePool("chest", { availableEquipment: ["dumbbell", "bench"], maxCandidates: 5 });
+  assert.ok(incompatiblePool.excludedCandidates.some((candidate) => candidate.exerciseId === ids.absent), "the selected custom identity is evaluated against its own equipment");
+  assert.ok(!incompatiblePool.candidates.some((candidate) => candidate.researchExerciseId === "ex_dumbbell_bench_press"), "custom-first identity policy intentionally does not resurrect the canonical duplicate after equipment filtering");
+
+  const invalidOnlyEngine = createPrescriptionEngine({
+    personalData: {
+      exerciseScores: [score(ids.invalid, "Dumbbell Bench Press", { research_exercise_id: "ex_unknown_research_press", equipment: "dumbbell" })],
+      exerciseMuscleScores: [muscleScore(ids.invalid)],
+      metadata: { methodology_version: "invalid-research-identity-test/1.0.0" }
+    },
+    researchData: publicResearchData()
+  });
+  const invalidOnlyPool = invalidOnlyEngine.rankExercisePool("chest", { availableEquipment: ["dumbbell", "bench"], maxCandidates: 5 });
+  assert.ok(invalidOnlyPool.excludedCandidates.some((candidate) => candidate.exerciseId === ids.invalid && /invalid|unknown/i.test(`${candidate.reasonCode} ${candidate.explanation}`)));
+  assert.ok(invalidOnlyPool.candidates.some((candidate) => candidate.exerciseId === "ex_dumbbell_bench_press"), "an invalid custom identity never suppresses the valid canonical exercise");
+});
+
 test("recommendation ranking has no canonical-first equipment expressions outside its resolver", () => {
   const source = fs.readFileSync(path.join(ROOT, "prescription-engine.js"), "utf8");
   assert.doesNotMatch(source, /equipmentCompatible\(\s*candidate\.researchExercise\s*\|\|/);
@@ -1744,6 +1862,12 @@ test("recommendation ranking has no canonical-first equipment expressions outsid
   const diversity = source.match(/function diversitySignature\([\s\S]*?\n\s*function diversityPenalty\(/)?.[0] || "";
   assert.match(diversity, /candidateEquipmentProfile\(candidate\)/);
   assert.doesNotMatch(diversity, /equipmentFamily\(exercise\.equipment\)|equipmentRequirementOptions\(exercise\)/);
+  const mergedCandidates = source.match(/function buildMergedExerciseCandidates\([\s\S]*?\n\s*function fatigueCostScore\(/)?.[0] || "";
+  const resolver = source.match(/function resolveExerciseCandidate\([\s\S]*?\n\s*function prescribedLoadFromHistory\(/)?.[0] || "";
+  const substitutions = source.match(/function preferredReplacementFor\([\s\S]*?\n\s*function recommendationReasons\(/)?.[0] || "";
+  assert.doesNotMatch(mergedCandidates, /firstPresent\([\s\S]{0,180}crosswalkByPersonalId/);
+  assert.doesNotMatch(resolver, /crosswalkByPersonalId/);
+  assert.doesNotMatch(substitutions, /personalIdsByResearchId/);
 });
 
 test("restricted candidate pools and substitutes are deterministic and equipment-safe", () => {
