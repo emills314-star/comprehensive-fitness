@@ -1628,6 +1628,124 @@ test("recommendation IDs distinguish different readiness contexts", () => {
   assert.notEqual(normal.recommendationId, reduced.recommendationId, `different outputs collided on ${normal.recommendationId}`);
 });
 
+test("ranking uses one custom-first equipment identity for eligibility, output, diversity, and substitutions", () => {
+  const mappedId = "custom_ranked_cable_press";
+  const unmappedId = "custom_ranked_unmapped_cable_press";
+  const invalidId = "custom_ranked_invalid_press";
+  const highPersonalScore = {
+    comparable_session_count: 12,
+    session_count: 12,
+    observation_span_days: 180,
+    data_confidence_score: 0.95,
+    hypertrophy_support_score: 100,
+    progression_score: 100,
+    recovery_efficiency_score: 100,
+    repeatability_score: 100
+  };
+  const muscleScore = (exerciseId) => ({
+    exercise_id: exerciseId,
+    exercise_name: exerciseId,
+    muscle_group: "chest",
+    muscle_role: "primary",
+    contribution_weight: 1,
+    research_muscle_group_id: "chest"
+  });
+  const customEngine = createPrescriptionEngine({
+    personalData: {
+      exerciseScores: [{
+        ...highPersonalScore,
+        exercise_id: mappedId,
+        research_exercise_id: "ex_dumbbell_bench_press",
+        exercise_name: "Mapped custom cable press",
+        equipment: "cable"
+      }, {
+        ...highPersonalScore,
+        exercise_id: unmappedId,
+        exercise_name: "Unmapped custom cable press",
+        equipmentRequirements: [["cables"]]
+      }, {
+        ...highPersonalScore,
+        exercise_id: invalidId,
+        research_exercise_id: "ex_dumbbell_bench_press",
+        exercise_name: "Invalid custom press",
+        equipment: "cable"
+      }],
+      exercisePrescriptions: [{
+        exercise_id: invalidId,
+        research_exercise_id: "ex_dumbbell_bench_press",
+        exercise_name: "Invalid custom press",
+        muscle_group_id: "chest",
+        equipmentRequirements: [["dumbbell"]]
+      }],
+      exerciseMuscleScores: [muscleScore(mappedId), muscleScore(unmappedId), muscleScore(invalidId)],
+      metadata: { methodology_version: "ranked-custom-equipment-test/1.0.0" }
+    },
+    researchData: publicResearchData()
+  });
+
+  const dumbbellPool = customEngine.rankExercisePool("chest", { availableEquipment: ["dumbbell", "bench", "selectorized_machine"], maxCandidates: 5 });
+  assert.ok(dumbbellPool.excludedCandidates.some((item) => item.exerciseId === mappedId), "mapped custom cable equipment must override canonical dumbbell eligibility");
+  assert.ok(dumbbellPool.excludedCandidates.some((item) => item.exerciseId === unmappedId), "an unmapped custom exercise must use its own declared equipment");
+  assert.ok(dumbbellPool.excludedCandidates.some((item) => item.exerciseId === invalidId && /invalid|conflict/i.test(`${item.reasonCode} ${item.explanation}`)), "conflicting trusted equipment metadata must fail the ranked identity closed");
+  assert.ok(!dumbbellPool.candidates.some((item) => item.exerciseId === mappedId || item.exerciseId === unmappedId || item.exerciseId === invalidId));
+  const machine = dumbbellPool.candidates.find((item) => item.researchExerciseId === "ex_machine_chest_press");
+  assert.ok(machine, "the substitution counterfactual requires a compatible machine chest press");
+  assert.notEqual(machine.preferredReplacementExerciseId, mappedId, "substitution selection must not return a custom identity whose actual equipment is unavailable");
+
+  const cablePool = customEngine.rankExercisePool("chest", { availableEquipment: ["cable"], maxCandidates: 5 });
+  const mapped = cablePool.candidates.find((item) => item.exerciseId === mappedId);
+  const unmapped = cablePool.candidates.find((item) => item.exerciseId === unmappedId);
+  assert.ok(mapped, "mapped custom cable exercise must remain eligible with cable equipment");
+  assert.ok(unmapped, "unmapped custom cable exercise must remain eligible with cable equipment");
+  assert.deepEqual(mapped.equipmentRequirements, [["cable_station"]], "emitted requirements must describe the selected custom source");
+  assert.deepEqual(mapped.diversitySignature.equipmentRequirements, [["cable_station"]], "deduplication must use the same selected custom source");
+  assert.equal(mapped.diversitySignature.equipment, "cable", "the diversity family must match the emitted cable requirements");
+  assert.deepEqual(unmapped.equipmentRequirements, [["cable_station"]]);
+  assert.ok(!cablePool.candidates.some((item) => item.exerciseId === "ex_dumbbell_bench_press"), "a linked canonical duplicate must not be emitted beside its selected custom identity");
+  const cableFly = cablePool.candidates.find((item) => item.researchExerciseId === "ex_cable_fly");
+  assert.ok(cableFly, "the positive substitution counterfactual requires cable fly");
+  assert.equal(cableFly.preferredReplacementExerciseId, mappedId, "substitution output must return the compatible custom identity that was actually checked");
+
+  const canonicalDumbbell = engine.rankExercisePool("chest", { availableEquipment: ["dumbbell", "bench"], maxCandidates: 5 });
+  assert.ok(canonicalDumbbell.candidates.some((item) => item.exerciseId === "ex_dumbbell_bench_press"), "canonical-only equipment behavior must remain available");
+  const canonicalCable = engine.rankExercisePool("chest", { availableEquipment: ["cable"], maxCandidates: 5 });
+  assert.ok(canonicalCable.excludedCandidates.some((item) => item.exerciseId === "ex_dumbbell_bench_press"), "canonical-only equipment behavior must remain restricted");
+
+  const fallbackId = "custom_ranked_canonical_fallback_press";
+  const fallbackEngine = createPrescriptionEngine({
+    personalData: {
+      exerciseScores: [{
+        ...highPersonalScore,
+        exercise_id: fallbackId,
+        research_exercise_id: "ex_dumbbell_bench_press",
+        exercise_name: "Custom press without equipment metadata"
+      }],
+      exerciseMuscleScores: [muscleScore(fallbackId)],
+      metadata: { methodology_version: "ranked-canonical-fallback-test/1.0.0" }
+    },
+    researchData: publicResearchData()
+  });
+  const fallbackDumbbell = fallbackEngine.rankExercisePool("chest", { availableEquipment: ["dumbbell", "bench"], maxCandidates: 5 });
+  const fallback = fallbackDumbbell.candidates.find((item) => item.exerciseId === fallbackId);
+  assert.ok(fallback, "a mapped custom identity without equipment metadata must use its canonical fallback");
+  const canonicalRequirements = equipmentRequirementOptions(evidence.research.exerciseById.get("ex_dumbbell_bench_press"))
+    .map((option) => [...option].sort())
+    .sort((left, right) => left.join("+").localeCompare(right.join("+")));
+  assert.deepEqual(fallback.equipmentRequirements, canonicalRequirements);
+  assert.ok(!fallbackDumbbell.candidates.some((item) => item.exerciseId === "ex_dumbbell_bench_press"), "canonical fallback must retain the selected custom output identity without a duplicate");
+  const fallbackCable = fallbackEngine.rankExercisePool("chest", { availableEquipment: ["cable"], maxCandidates: 5 });
+  assert.ok(fallbackCable.excludedCandidates.some((item) => item.exerciseId === fallbackId), "the canonical fallback must remain binding when unavailable");
+});
+
+test("recommendation ranking has no canonical-first equipment expressions outside its resolver", () => {
+  const source = fs.readFileSync(path.join(ROOT, "prescription-engine.js"), "utf8");
+  assert.doesNotMatch(source, /equipmentCompatible\(\s*candidate\.researchExercise\s*\|\|/);
+  assert.doesNotMatch(source, /equipmentRequirementOptions\(\s*candidate\.researchExercise\s*\|\|/);
+  const diversity = source.match(/function diversitySignature\([\s\S]*?\n\s*function diversityPenalty\(/)?.[0] || "";
+  assert.match(diversity, /candidateEquipmentProfile\(candidate\)/);
+  assert.doesNotMatch(diversity, /equipmentFamily\(exercise\.equipment\)|equipmentRequirementOptions\(exercise\)/);
+});
+
 test("restricted candidate pools and substitutes are deterministic and equipment-safe", () => {
   const options = { availableEquipment: ["dumbbell"], maxCandidates: 5, generatedAt: createdAt };
   const first = rankExercisePool(evidence, "biceps", options);

@@ -13,7 +13,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function prescriptionEngineFactory() {
   "use strict";
 
-  const ENGINE_VERSION = "3.1.7";
+  const ENGINE_VERSION = "3.1.8";
   const PRESCRIPTION_SCHEMA_VERSION = "2.1.0";
   const SNAPSHOT_SCHEMA_VERSION = "1.1.0";
   const HARD_SAFETY_SCHEMA_VERSION = "hard-safety/1.0.0";
@@ -522,6 +522,9 @@
       if (!personal.personalIdsByResearchId.has(researchId)) personal.personalIdsByResearchId.set(researchId, []);
       if (!personal.personalIdsByResearchId.get(researchId).includes(personalId)) personal.personalIdsByResearchId.get(researchId).push(personalId);
     });
+    const reconciledPersonalIdentities = buildReconciledPersonalIdentityIndex(personal, research);
+    personal.reconciledIdentityByExerciseId = reconciledPersonalIdentities.identities;
+    personal.reconciledPersonalIdsByResearchId = reconciledPersonalIdentities.personalIdsByResearchId;
     return {
       personal,
       research,
@@ -1233,7 +1236,10 @@
       const score = personal.scoreByExercise.get(exerciseId) || {};
       const prescriptions = personal.prescriptionsFor(exerciseId, muscleGroupId);
       const prescription = prescriptions[0] || (personal.prescriptionsByExercise.get(exerciseId) || [])[0] || {};
-      const researchExerciseId = firstPresent(score.research_exercise_id, prescription.research_exercise_id, personal.crosswalkByPersonalId.get(exerciseId));
+      const selectedIdentity = personal.reconciledIdentityByExerciseId?.get(exerciseId) || null;
+      const researchExerciseId = selectedIdentity?.invalid
+        ? null
+        : firstPresent(selectedIdentity?.researchExerciseId, score.research_exercise_id, prescription.research_exercise_id, personal.crosswalkByPersonalId.get(exerciseId));
       const researchExercise = research.exerciseById.get(researchExerciseId) || null;
       const mappings = researchExerciseId ? research.muscleMapsByExercise.get(researchExerciseId) || [] : [];
       candidates.set(exerciseId, {
@@ -1246,6 +1252,7 @@
         history: options.histories?.[exerciseId] || personal.historyFor(exerciseId),
         researchExercise,
         researchMappings: mappings,
+        selectedIdentity,
         source: researchExercise ? "personal_and_research" : "personal_only"
       });
     };
@@ -1266,7 +1273,7 @@
       const researchExerciseId = exercise.exercise_id || exercise.exerciseId;
       const mappings = research.muscleMapsByExercise.get(researchExerciseId) || [];
       if (!mappings.some((mapping) => number(mapping.fractional_set_credit, 0) > 0 && researchMuscleMatch(research, muscleGroupId, mapping.muscle_group_id || mapping.muscleGroupId))) return;
-      const linkedPersonalIds = personal.personalIdsByResearchId.get(researchExerciseId) || [];
+      const linkedPersonalIds = personal.reconciledPersonalIdsByResearchId?.get(researchExerciseId) || [];
       if (linkedPersonalIds.some((id) => candidates.has(id))) return;
       const relevantMapping = mappings.find((mapping) => researchMuscleMatch(research, muscleGroupId, mapping.muscle_group_id || mapping.muscleGroupId)) || {};
       candidates.set(researchExerciseId, {
@@ -1284,6 +1291,7 @@
         history: options.histories?.[researchExerciseId] || [],
         researchExercise: exercise,
         researchMappings: mappings,
+        selectedIdentity: null,
         source: "research_only"
       });
     });
@@ -1296,7 +1304,7 @@
       const relevant = canonicalMappings.filter((mapping) => researchMuscleMatch(research, muscleGroupId, mapping.muscle_group_id || mapping.muscleGroupId));
       if (!relevant.length) return false;
       return relevant.some((mapping) => ["direct_load", "meaningful_fractional_load", "primary", "secondary"].includes(mapping.relationship_type || mapping.relationshipType) && number(mapping.fractional_set_credit ?? mapping.setContribution, 0) > 0);
-    });
+    }).map((candidate) => ({ ...candidate, equipmentProfile: resolveCandidateEquipmentProfile(candidate) }));
   }
 
   function fatigueCostScore(exercise) {
@@ -1373,6 +1381,12 @@
     const muscleScore = candidate.muscleScore || {};
     const prescription = candidate.personalPrescription || {};
     const exercise = candidate.researchExercise || {};
+    const equipmentProfile = candidateEquipmentProfile(candidate);
+    if (equipmentProfile.invalid) throw new Error(equipmentProfile.invalidReason);
+    const equipmentAwareExercise = {
+      ...exercise,
+      equipment: equipmentRequirementFamilySignature(equipmentProfile.requirements)
+    };
     const evidenceMetrics = derivePersonalEvidenceMetrics({ score, prescription, muscleScore, history: candidate.history });
     const weights = calculateEvidenceWeight(evidenceMetrics, { ...DEFAULT_POLICY, ...(options.policy || {}) });
     const personalHypertrophySupport = number(firstPresent(score.hypertrophy_support_score, score.hypertrophySupportScore), 50);
@@ -1390,10 +1404,10 @@
     const personalMuscleEstimate = number(firstPresent(muscleScore.muscle_specific_effectiveness_score, muscleScore.muscleSpecificEffectivenessScore), canonicalContribution * 100);
     const muscleSpecificity = clamp(canonicalDynamic ? Math.min(personalMuscleEstimate, canonicalContribution >= 1 ? 100 : canonicalContribution * 100) : 0, 0, 100);
     const lengthenedPositionLoading = lengthenedPositionScore(exercise);
-    const stability = stabilityScore(exercise);
-    const easeOfProgression = easeOfProgressionScore(exercise);
+    const stability = stabilityScore(equipmentAwareExercise);
+    const easeOfProgression = easeOfProgressionScore(equipmentAwareExercise);
     const fatigueCost = fatigueCostScore(exercise);
-    const demands = exerciseDemandProfile(exercise);
+    const demands = exerciseDemandProfile(equipmentAwareExercise);
     const painCount = normalizeHistory(candidate.history).filter((item) => item.pain).length;
     const jointTolerance = clamp(82 - Math.min(50, painCount * 20), 10, 95);
     const researchSupport = clamp(confidenceValue(exercise.confidence_rating || exercise.evidence_quality, 55) + (exercise.direct_exercise_evidence ? 5 : 0), 0, 100);
@@ -1672,6 +1686,79 @@
     return { eligible: matched, requirements, missing, equipmentInput: input };
   }
 
+  function reconciledEquipmentSource(selectedIdentity, canonicalSource = null) {
+    rejectInvalidTrustedIdentity(selectedIdentity);
+    const selectedSource = selectedIdentity?.source || {};
+    const source = hasDeclaredEquipmentMetadata(selectedSource) ? selectedSource : canonicalSource || selectedSource;
+    equipmentRequirementOptions(source);
+    return source;
+  }
+
+  function fallbackSelectedIdentityForCandidate(candidate) {
+    const sources = [candidate.personalScore, candidate.personalPrescription, candidate.muscleScore]
+      .filter((source) => source && typeof source === "object" && Object.keys(source).length);
+    if (!sources.length) return null;
+    const identities = sources.map((source) => ({ source }));
+    const equipment = reconcileTrustedEquipmentDeclarationBatch(identities, candidate.exerciseId || "candidate");
+    return {
+      exerciseId: candidate.exerciseId || null,
+      researchExerciseId: candidate.researchExerciseId || null,
+      invalid: false,
+      source: mergeTrustedCatalogSourceBatch(identities, equipment, candidate.researchExerciseId || null)
+    };
+  }
+
+  function resolveCandidateEquipmentProfile(candidate) {
+    try {
+      const selectedIdentity = Object.prototype.hasOwnProperty.call(candidate, "selectedIdentity")
+        ? candidate.selectedIdentity
+        : fallbackSelectedIdentityForCandidate(candidate);
+      const source = reconciledEquipmentSource(selectedIdentity, candidate.researchExercise || null);
+      const requirements = canonicalEquipmentOptions(equipmentRequirementOptions(source));
+      return {
+        invalid: false,
+        invalidReason: null,
+        origin: selectedIdentity && hasDeclaredEquipmentMetadata(selectedIdentity.source || {}) ? "personal" : candidate.researchExercise ? "research" : "unmapped_personal",
+        source,
+        requirements
+      };
+    } catch (error) {
+      return {
+        invalid: true,
+        invalidReason: error instanceof Error ? error.message : String(error || "Invalid reconciled equipment identity."),
+        origin: "invalid",
+        source: {},
+        requirements: []
+      };
+    }
+  }
+
+  function candidateEquipmentProfile(candidate) {
+    return candidate.equipmentProfile || resolveCandidateEquipmentProfile(candidate);
+  }
+
+  function equipmentCompatibilityForCandidate(candidate, availableEquipment) {
+    const profile = candidateEquipmentProfile(candidate);
+    if (profile.invalid) {
+      return {
+        eligible: false,
+        requirements: [],
+        missing: ["valid reconciled equipment identity"],
+        equipmentInput: normalizeAvailableEquipmentInput(availableEquipment),
+        invalidReason: profile.invalidReason
+      };
+    }
+    return equipmentCompatible(profile.source, availableEquipment);
+  }
+
+  function equipmentRequirementFamilySignature(requirements) {
+    if (!requirements.length) return "other";
+    return canonicalEquipmentOptions(requirements)
+      .map((option) => equipmentOptionFamilies(option).sort().join("+"))
+      .sort()
+      .join("|") || "other";
+  }
+
   const JOINT_ACTIONS_BY_PATTERN = Object.freeze({
     horizontal_push: ["shoulder_horizontal_adduction", "elbow_extension"], vertical_push: ["shoulder_flexion", "elbow_extension"],
     horizontal_pull: ["shoulder_extension", "scapular_retraction", "elbow_flexion"], vertical_pull: ["shoulder_adduction", "elbow_flexion"],
@@ -1696,11 +1783,13 @@
 
   function diversitySignature(candidate) {
     const exercise = candidate.researchExercise || {};
+    const equipmentProfile = candidateEquipmentProfile(candidate);
+    if (equipmentProfile.invalid) throw new Error(equipmentProfile.invalidReason);
     const repLow = number(exercise.recommended_rep_range_low, 8);
     return {
       movement: exercise.movement_pattern || "unknown",
-      equipment: equipmentFamily(exercise.equipment),
-      equipmentRequirements: equipmentRequirementOptions(exercise),
+      equipment: equipmentRequirementFamilySignature(equipmentProfile.requirements),
+      equipmentRequirements: deepClone(equipmentProfile.requirements),
       jointActions: jointActionsForExercise(exercise),
       region: exercise.muscle_subdivisions_emphasized || candidate.muscleScore?.regional_function || candidate.muscleScore?.regionalFunction || "general",
       stability: String(exercise.stability_demand || "moderate"),
@@ -2163,24 +2252,52 @@
 
   function preferredReplacementFor(candidate, evidence, rankedCandidates = [], options = {}) {
     const research = evidence.research;
-    const equipmentInput = normalizeAvailableEquipmentInput(options.availableEquipment);
-    const restrictionsActive = equipmentInput.provided && (!equipmentInput.valid || !equipmentInput.values.includes("all"));
-    const replacementAllowed = (researchExerciseId) => {
-      if (!restrictionsActive) return true;
-      const exercise = research.exerciseById.get(researchExerciseId);
-      return Boolean(exercise && equipmentCompatible(exercise, options.availableEquipment).eligible);
-    };
+    const replacementAllowed = (replacementCandidate) => Boolean(
+      replacementCandidate
+      && !candidateEquipmentProfile(replacementCandidate).invalid
+      && equipmentCompatibilityForCandidate(replacementCandidate, options.availableEquipment).eligible
+    );
     const substitutions = research.substitutionsByExercise.get(candidate.researchExerciseId) || [];
     for (const mapping of substitutions) {
       const targetResearchId = mapping.substitute_exercise_id || mapping.substituteExerciseId;
-      if (!replacementAllowed(targetResearchId)) continue;
-      const ranked = rankedCandidates.find((item) => item.candidate.researchExerciseId === targetResearchId || item.candidate.exerciseId === targetResearchId);
+      const ranked = rankedCandidates.find((item) => (
+        item.candidate.exerciseId !== candidate.exerciseId
+        && (item.candidate.researchExerciseId === targetResearchId || item.candidate.exerciseId === targetResearchId)
+        && replacementAllowed(item.candidate)
+      ));
       if (ranked) return ranked.candidate.exerciseId;
-      const personalId = evidence.personal.personalIdsByResearchId.get(targetResearchId)?.[0];
-      if (personalId) return personalId;
-      if (research.exerciseById.has(targetResearchId)) return targetResearchId;
+      const linkedPersonalIds = unique([
+        ...(evidence.personal.personalIdsByResearchId.get(targetResearchId) || []),
+        ...(evidence.personal.reconciledPersonalIdsByResearchId?.get(targetResearchId) || [])
+      ]).sort();
+      for (const personalId of linkedPersonalIds) {
+        if (personalId === candidate.exerciseId) continue;
+        const selectedIdentity = evidence.personal.reconciledIdentityByExerciseId?.get(personalId);
+        if (!selectedIdentity || selectedIdentity.invalid || selectedIdentity.researchExerciseId !== targetResearchId) continue;
+        const researchExercise = research.exerciseById.get(targetResearchId) || null;
+        const linkedCandidate = {
+          exerciseId: personalId,
+          researchExerciseId: targetResearchId,
+          selectedIdentity,
+          researchExercise
+        };
+        linkedCandidate.equipmentProfile = resolveCandidateEquipmentProfile(linkedCandidate);
+        if (replacementAllowed(linkedCandidate)) return personalId;
+      }
+      if (linkedPersonalIds.length) continue;
+      const researchExercise = research.exerciseById.get(targetResearchId);
+      if (researchExercise) {
+        const canonicalCandidate = {
+          exerciseId: targetResearchId,
+          researchExerciseId: targetResearchId,
+          selectedIdentity: null,
+          researchExercise
+        };
+        canonicalCandidate.equipmentProfile = resolveCandidateEquipmentProfile(canonicalCandidate);
+        if (replacementAllowed(canonicalCandidate)) return targetResearchId;
+      }
     }
-    return rankedCandidates.find((item) => item.candidate.exerciseId !== candidate.exerciseId)?.candidate.exerciseId || null;
+    return rankedCandidates.find((item) => item.candidate.exerciseId !== candidate.exerciseId && replacementAllowed(item.candidate))?.candidate.exerciseId || null;
   }
 
   function recommendationReasons(selected, entry, index) {
@@ -2202,9 +2319,20 @@
     const equipmentInput = normalizeAvailableEquipmentInput(options.availableEquipment);
     let candidates = buildMergedExerciseCandidates(evidence, muscleGroupId, options);
     const excludedCandidates = [];
+    candidates = candidates.filter((candidate) => {
+      const profile = candidateEquipmentProfile(candidate);
+      if (!profile.invalid) return true;
+      excludedCandidates.push({
+        exerciseId: candidate.exerciseId,
+        exerciseName: candidate.exerciseName,
+        reasonCode: "invalid_equipment_identity",
+        explanation: `Excluded because the trusted equipment identity is invalid: ${profile.invalidReason}`
+      });
+      return false;
+    });
     if (equipmentInput.provided && (!equipmentInput.valid || !equipmentInput.values.includes("all"))) {
       const compatible = candidates.filter((candidate) => {
-        const compatibility = equipmentCompatible(candidate.researchExercise || candidate.personalScore || {}, options.availableEquipment);
+        const compatibility = equipmentCompatibilityForCandidate(candidate, options.availableEquipment);
         if (!compatibility.eligible) excludedCandidates.push({
           exerciseId: candidate.exerciseId,
           exerciseName: candidate.exerciseName,
@@ -2273,7 +2401,7 @@
         setStructure: structure.setStructure,
         progressionMethod: candidate.researchExercise?.preferred_progression_model
       });
-      const preferredReplacementExerciseId = preferredReplacementFor(candidate, evidence, selected, options);
+      const preferredReplacementExerciseId = preferredReplacementFor(candidate, evidence, scored, options);
       const taxonomy = asArray(candidate.researchMappings).length ? asArray(candidate.researchMappings) : [{
         muscle_group_id: candidate.muscleScore?.research_muscle_group_id || candidate.muscleScore?.muscle_group || muscleGroupId,
         relationship_type: number(candidate.muscleScore?.contribution_weight, 1) >= 1 ? "direct_load" : "meaningful_fractional_load",
@@ -2300,7 +2428,7 @@
         secondaryMuscles,
         stabilizingMuscles,
         muscleRelationships: taxonomy,
-        equipmentRequirements: equipmentRequirementOptions(candidate.researchExercise || candidate.personalScore),
+        equipmentRequirements: deepClone(candidateEquipmentProfile(candidate).requirements),
         jointActions: jointActionsForExercise(candidate.researchExercise || candidate.personalScore),
         recommendedSetStructure: structure.setStructure,
         setStructureReason: structure.reasoning,
@@ -2898,11 +3026,15 @@
       if (options.history) candidate.history = options.history;
       return candidate;
     }
-    const researchExercise = evidence.research.exerciseById.get(exerciseId) || evidence.research.exerciseById.get(evidence.personal.crosswalkByPersonalId.get(exerciseId));
+    const selectedIdentity = evidence.personal.reconciledIdentityByExerciseId?.get(exerciseId) || null;
+    const selectedResearchExerciseId = selectedIdentity?.invalid
+      ? null
+      : firstPresent(selectedIdentity?.researchExerciseId, evidence.personal.crosswalkByPersonalId.get(exerciseId));
+    const researchExercise = evidence.research.exerciseById.get(exerciseId) || evidence.research.exerciseById.get(selectedResearchExerciseId);
     const score = evidence.personal.scoreByExercise.get(exerciseId) || {};
     const prescription = evidence.personal.prescriptionsFor(exerciseId, muscleGroupId)[0] || (evidence.personal.prescriptionsByExercise.get(exerciseId) || [])[0] || {};
     if (!researchExercise && !Object.keys(score).length && !Object.keys(prescription).length) throw new Error(`Unknown exercise ${exerciseId} for muscle group ${muscleGroupId}.`);
-    const researchExerciseId = researchExercise?.exercise_id || evidence.personal.crosswalkByPersonalId.get(exerciseId) || null;
+    const researchExerciseId = selectedIdentity?.invalid ? null : researchExercise?.exercise_id || selectedResearchExerciseId || null;
     const mappings = evidence.research.muscleMapsByExercise.get(researchExerciseId) || [];
     const relevantMapping = mappings.find((mapping) => researchMuscleMatch(evidence.research, muscleGroupId, mapping.muscle_group_id)) || {};
     return {
@@ -2920,6 +3052,7 @@
       history: options.history || options.histories?.[exerciseId] || evidence.personal.historyFor(exerciseId),
       researchExercise: researchExercise || null,
       researchMappings: mappings,
+      selectedIdentity,
       source: researchExercise && (Object.keys(score).length || Object.keys(prescription).length) ? "personal_and_research" : researchExercise ? "research_only" : "personal_only"
     };
   }
@@ -3905,6 +4038,55 @@
     };
   }
 
+  function buildReconciledPersonalIdentityIndex(personal, research) {
+    const researchIdentities = new Map(research.exerciseDatabase.map((source) => {
+      const exerciseId = firstPresent(source.exercise_id, source.exerciseId);
+      return [exerciseId, {
+        exerciseId,
+        researchExerciseId: exerciseId,
+        researchIdentitySpecified: true,
+        researchIdentityConflict: false,
+        structured: true,
+        catalogRecord: true,
+        source
+      }];
+    }).filter(([exerciseId]) => Boolean(exerciseId)));
+    const recordsByExercise = groupBy([
+      ...personal.exerciseScores,
+      ...personal.exercisePrescriptions,
+      ...personal.exerciseMuscleScores
+    ], (record) => firstPresent(record.exercise_id, record.exerciseId, record.personalExerciseId, record.personal_exercise_id));
+    const identities = new Map();
+    [...recordsByExercise.entries()].sort(([left], [right]) => left.localeCompare(right)).forEach(([exerciseId, records]) => {
+      const batch = records.map(catalogIdentity).filter((identity) => identity?.structured && identity.exerciseId === exerciseId);
+      const inferredResearchId = personal.crosswalkByPersonalId.get(exerciseId) || (researchIdentities.has(exerciseId) ? exerciseId : null);
+      if (inferredResearchId && !batch.some((identity) => identity.researchIdentitySpecified)) {
+        batch.push({
+          exerciseId,
+          researchExerciseId: inferredResearchId,
+          researchIdentitySpecified: true,
+          researchIdentityConflict: false,
+          structured: true,
+          catalogRecord: true,
+          source: {}
+        });
+      }
+      try {
+        identities.set(exerciseId, reconcileTrustedCustomIdentityBatch(batch, researchIdentities));
+      } catch (error) {
+        identities.set(exerciseId, invalidTrustedCustomIdentity(exerciseId, batch, error));
+      }
+    });
+    const personalIdsByResearchId = new Map();
+    identities.forEach((identity, exerciseId) => {
+      if (identity.invalid || !identity.researchExerciseId) return;
+      if (!personalIdsByResearchId.has(identity.researchExerciseId)) personalIdsByResearchId.set(identity.researchExerciseId, []);
+      personalIdsByResearchId.get(identity.researchExerciseId).push(exerciseId);
+    });
+    personalIdsByResearchId.forEach((exerciseIds) => exerciseIds.sort());
+    return { identities, personalIdsByResearchId };
+  }
+
   function invalidTrustedCustomIdentity(exerciseId, identities, error) {
     return {
       exerciseId,
@@ -3992,9 +4174,7 @@
   }
 
   function equipmentSourceForIdentity(identity, researchIdentities) {
-    const selectedSource = identity?.source || {};
-    if (hasDeclaredEquipmentMetadata(selectedSource)) return selectedSource;
-    return researchIdentities.get(identity?.researchExerciseId)?.source || selectedSource;
+    return reconciledEquipmentSource(identity, researchIdentities.get(identity?.researchExerciseId)?.source || null);
   }
 
   function equipmentCompatibilityForIdentity(identity, researchIdentities, availableEquipment) {
