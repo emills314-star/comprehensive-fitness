@@ -15,6 +15,10 @@ exercise -> one or more typed muscle relationships
 
 Historical workout facts remain unchanged. The active taxonomy version recalculates derived volume/reporting views; aliases preserve legacy and user-facing values.
 
+## Snapshot and worktree scope
+
+This report records evidence produced in the isolated taxonomy worktrees and accepted in integration commit `b98022d`. The documentation worktree containing this report is based on the historical `main` snapshot and intentionally does not contain those application/data commits; running taxonomy code from this docs-only checkout will therefore show the older catalog. That checkout mismatch is not evidence against the accepted integration result of 23 canonical IDs, 20 programming families, 62 exercises, and 151 relationships. Final frontend/PWA adoption remains a separate integration task.
+
 ## Baseline defects
 
 - App identity normalization used spaces while the engine alias map used underscores. Measured baseline direct hits were 0/61 canonical names and 6/124 names plus aliases; canonical Dashboard/history data therefore fell back to name regexes.
@@ -116,4 +120,4 @@ Rollback does not delete data. Restore the prior public taxonomy export/version 
 - Schema, domain-integrity, and performance tests — PASS.
 - Manifest validation now checks SHA-256 for generated CSV/JSON/schema outputs and canonical/alias/referential contracts.
 
-**NEEDS REVIEW:** application integration must adopt the canonical resolver and taxonomy 2.1.0 expectation; the isolated taxonomy branch intentionally did not edit `index.html` or `prescription-engine.js`. Private local aggregates must be rebuilt only locally after integration; no personal values were inspected or migrated during this change.
+**Snapshot note:** when this report was authored, application integration still needed to adopt the canonical resolver and taxonomy 2.1.0 expectation. Accepted integration `b98022d` now contains the audited public taxonomy/source/test changes. Frontend consumption and any private aggregate rebuild remain separate local-only work; no personal values were inspected or migrated here.
