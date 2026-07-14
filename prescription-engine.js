@@ -13,9 +13,28 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function prescriptionEngineFactory() {
   "use strict";
 
-  const ENGINE_VERSION = "3.0.0";
-  const PRESCRIPTION_SCHEMA_VERSION = "2.0.0";
-  const SNAPSHOT_SCHEMA_VERSION = "1.0.0";
+  const ENGINE_VERSION = "3.3.4";
+  const PRESCRIPTION_SCHEMA_VERSION = "2.3.0";
+  const SNAPSHOT_SCHEMA_VERSION = "1.3.0";
+  const TRAINING_PROFILE_VERSION = "training-profile/1.1.0";
+  const MESOCYCLE_SCHEMA_VERSION = "mesocycle/2.6.0";
+  const SCIENTIFIC_PROVENANCE_SCHEMA_VERSION = "recommendation-provenance/1.0.0";
+  const PROGRESSION_CONFIRMATION_SCHEMA_VERSION = "progression-confirmation/1.0.0";
+  const GOAL_POLICY_CONFLICT_SCHEMA_VERSION = "goal-policy-conflict/1.0.0";
+  const SUPPORTED_PRESCRIPTION_SCHEMA_VERSIONS = Object.freeze(new Set(["2.0.0", "2.1.0", "2.2.0", PRESCRIPTION_SCHEMA_VERSION]));
+  const SUPPORTED_SNAPSHOT_SCHEMA_VERSIONS = Object.freeze(new Set(["1.0.0", "1.1.0", "1.2.0", SNAPSHOT_SCHEMA_VERSION]));
+  const SNAPSHOT_PRESCRIPTION_SCHEMA_PAIRS = Object.freeze({
+    "1.0.0": "2.0.0",
+    "1.1.0": "2.1.0",
+    "1.2.0": "2.2.0",
+    "1.3.0": "2.3.0"
+  });
+  // Historical snapshots are validated and returned unchanged. The reader
+  // intentionally does not synthesize current personalization, provenance, or
+  // confirmation fields because their values were unknown when those records
+  // were created; only newly generated recommendations use the current pair.
+  const HARD_SAFETY_SCHEMA_VERSION = "hard-safety/1.0.0";
+  const SNAPSHOT_CHECKSUM_PATTERN = /^[0-9a-f]{8}$/;
   const HISTORY_STORAGE_KEY = "comprehensiveFitness.recommendationHistory.v1";
 
   const MESOCYCLE_TYPES = Object.freeze({
@@ -47,6 +66,13 @@
     "substitute",
     "rotate_exercise"
   ]);
+
+  const HARD_SAFETY_PROGRESSION_ACTIONS = Object.freeze(new Set([
+    "hold_for_pain_free_modification",
+    "hold_for_pain_free_substitution",
+    "hold_for_technique",
+    "stop_for_illness"
+  ]));
 
   const ROLES = Object.freeze([
     "primary_progression_lift",
@@ -80,6 +106,7 @@
     lowerFatigueVolumeFactor: 0.72,
     specializationVolumeFactor: 1.2,
     recentExerciseWindowDays: 56,
+    maximumReturnGapDays: 56,
     sessionDurationTargetMinutes: 75,
     sessionDurationMaximumMinutes: 100,
     maximumHighFatigueCompoundsPerSession: 3,
@@ -90,6 +117,74 @@
     maximumExercisesPerMusclePerSession: 2,
     maximumSessionSpinalLoad: 180,
     maximumSessionGripDemand: 190
+  });
+
+  const GOAL_PROFILES = Object.freeze({
+    strength: Object.freeze({
+      value: "strength",
+      primaryRepRange: Object.freeze({ min: 3, max: 8 }),
+      restRange: Object.freeze({ min: 180, max: 300 }),
+      selectionEmphasis: "repeatable force production, measurable progression, and adequate between-set recovery"
+    }),
+    hypertrophy: Object.freeze({
+      value: "hypertrophy",
+      repRange: Object.freeze({ min: 6, max: 15 }),
+      compoundRestRange: Object.freeze({ min: 120, max: 300 }),
+      isolationRestRange: Object.freeze({ min: 60, max: 180 }),
+      selectionEmphasis: "target-muscle stimulus, progression, tolerability, and recoverable volume"
+    }),
+    muscular_endurance: Object.freeze({
+      value: "muscular_endurance",
+      repRange: Object.freeze({ min: 12, max: 20 }),
+      skillCompoundRepRange: Object.freeze({ min: 8, max: 15 }),
+      restRange: Object.freeze({ min: 60, max: 120 }),
+      selectionEmphasis: "repeatable submaximal work, fatigue efficiency, and sustainable set quality"
+    }),
+    general_fitness: Object.freeze({
+      value: "general_fitness",
+      repRange: Object.freeze({ min: 8, max: 12 }),
+      restRange: Object.freeze({ min: 90, max: 180 }),
+      selectionEmphasis: "balanced movement practice, manageable fatigue, and simple measurable progression"
+    })
+  });
+
+  const NUTRITION_PHASES = Object.freeze(["deficit", "maintenance", "recomposition", "surplus"]);
+
+  const GOAL_LABELS = Object.freeze({
+    strength: "Strength",
+    hypertrophy: "Hypertrophy",
+    muscular_endurance: "Muscular endurance",
+    general_fitness: "General fitness"
+  });
+
+  const GOAL_SESSION_INTENTS = Object.freeze({
+    strength: "strength practice and progression",
+    hypertrophy: "hypertrophy and progression",
+    muscular_endurance: "muscular endurance and progression",
+    general_fitness: "general fitness resistance training"
+  });
+
+  const EXPERIENCE_PROFILES = Object.freeze({
+    unspecified: Object.freeze({
+      value: "novice_safe_default",
+      progressionConfirmationExposures: 3,
+      complexityPolicy: "Do not infer training skill. Prefer stable, explainable choices and conservative progression granularity until experience is supplied."
+    }),
+    novice: Object.freeze({
+      value: "novice",
+      progressionConfirmationExposures: 2,
+      complexityPolicy: "Prefer stable exercises, straight sets, one progression lever at a time, and conservative research starting dose."
+    }),
+    intermediate: Object.freeze({
+      value: "intermediate",
+      progressionConfirmationExposures: 2,
+      complexityPolicy: "Allow moderate exercise and set-structure complexity when it improves tracking or fatigue distribution."
+    }),
+    advanced: Object.freeze({
+      value: "advanced",
+      progressionConfirmationExposures: 3,
+      complexityPolicy: "Permit justified advanced structures and exercise specificity, but never add dose or intensity solely because of the label."
+    })
   });
 
   const MAJOR_PROGRAM_MUSCLES = Object.freeze(new Set(["chest", "upper_back", "lats", "quads", "hamstrings", "glutes", "front_delts", "side_delts", "rear_delts"]));
@@ -116,6 +211,21 @@
     if (value === null || value === undefined || value === "") return null;
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function normalizedBoolean(value, fallback = null) {
+    if (value === true || value === false) return value;
+    if (value === 1 || value === 0) return value === 1;
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      if (["true", "1", "yes", "y", "on"].includes(normalized)) return true;
+      if (["false", "0", "no", "n", "off", ""].includes(normalized)) return false;
+    }
+    return fallback;
+  }
+
+  function anyExplicitTrue(...values) {
+    return values.some((value) => normalizedBoolean(value, false) === true);
   }
 
   function clamp(value, min, max) {
@@ -186,6 +296,293 @@
     if (muscle.includes("abdominal") || muscle === "abs") return "abs";
     if (muscle.includes("neck")) return "neck";
     return muscle;
+  }
+
+  function hasOwn(object, key) {
+    return Object.prototype.hasOwnProperty.call(object || {}, key);
+  }
+
+  function normalizeGoal(value, options = {}) {
+    const provided = hasOwn(options, "provided") ? options.provided : value !== undefined;
+    if (!provided) return { ...GOAL_PROFILES.general_fitness, requestedValue: null, source: "population_default", missing: true };
+    if (typeof value !== "string" || !value.trim()) throw new Error("goal must be one of strength, hypertrophy, muscular_endurance, or general_fitness.");
+    const normalized = normalizeText(value);
+    const aliases = { general: "general_fitness", fitness: "general_fitness", endurance: "muscular_endurance" };
+    const canonical = aliases[normalized] || normalized;
+    const profile = GOAL_PROFILES[canonical];
+    if (!profile) throw new Error(`Unsupported goal ${value}; supported goals are strength, hypertrophy, muscular_endurance, and general_fitness.`);
+    return { ...profile, requestedValue: value.trim(), source: options.source || "canonical_user_input", inputField: options.inputField || "trainingGoal", missing: false };
+  }
+
+  function normalizeExperience(value, options = {}) {
+    const provided = hasOwn(options, "provided") ? options.provided : value !== undefined;
+    if (!provided) return { ...EXPERIENCE_PROFILES.unspecified, requestedValue: null, source: "novice_safe_default", missing: true };
+    if (typeof value !== "string" || !value.trim()) throw new Error("experience must be one of novice, intermediate, or advanced.");
+    const normalized = normalizeText(value);
+    const aliases = { beginner: "novice" };
+    const canonical = aliases[normalized] || normalized;
+    if (canonical === "unspecified" || !EXPERIENCE_PROFILES[canonical]) throw new Error(`Unsupported experience ${value}; supported experience levels are novice, intermediate, and advanced.`);
+    return { ...EXPERIENCE_PROFILES[canonical], requestedValue: value.trim(), source: options.source || "canonical_user_input", inputField: options.inputField || "experienceLevel", missing: false };
+  }
+
+  function resolveGoalInput(options = {}) {
+    const canonicalProvided = hasOwn(options, "trainingGoal");
+    const legacyProvided = hasOwn(options, "goal");
+    if (legacyProvided && options.legacyGoalSemantics !== "training_goal") throw new Error("Legacy goal input is overloaded; set legacyGoalSemantics to training_goal or use canonical trainingGoal. Nutrition phases belong in nutritionPhase.");
+    const canonical = canonicalProvided ? normalizeGoal(options.trainingGoal, { provided: true, source: "canonical_user_input", inputField: "trainingGoal" }) : null;
+    const legacy = legacyProvided ? normalizeGoal(options.goal, { provided: true, source: "legacy_alias", inputField: "goal" }) : null;
+    if (canonical && legacy && canonical.value !== legacy.value) throw new Error(`Conflicting trainingGoal (${canonical.value}) and legacy goal (${legacy.value}) inputs.`);
+    if (canonical && legacy) return { ...canonical, source: "canonical_with_matching_legacy_alias", inputField: "trainingGoal+goal" };
+    return canonical || legacy || { ...normalizeGoal(undefined, { provided: false }), inputField: "default" };
+  }
+
+  function resolveExperienceInput(options = {}) {
+    const canonicalProvided = hasOwn(options, "experienceLevel");
+    const legacyProvided = hasOwn(options, "experience");
+    if (legacyProvided && options.legacyExperienceSemantics !== "training_experience") throw new Error("Legacy experience input requires legacyExperienceSemantics=training_experience or canonical experienceLevel.");
+    const canonical = canonicalProvided ? normalizeExperience(options.experienceLevel, { provided: true, source: "canonical_user_input", inputField: "experienceLevel" }) : null;
+    const legacy = legacyProvided ? normalizeExperience(options.experience, { provided: true, source: "legacy_alias", inputField: "experience" }) : null;
+    if (canonical && legacy && canonical.value !== legacy.value) throw new Error(`Conflicting experienceLevel (${canonical.value}) and legacy experience (${legacy.value}) inputs.`);
+    if (canonical && legacy) return { ...canonical, source: "canonical_with_matching_legacy_alias", inputField: "experienceLevel+experience" };
+    return canonical || legacy || { ...normalizeExperience(undefined, { provided: false }), inputField: "default" };
+  }
+
+  function resolveNutritionPhaseInput(options = {}) {
+    if (!hasOwn(options, "nutritionPhase")) return {
+      requestedValue: null,
+      resolvedValue: null,
+      source: "unspecified",
+      missing: false
+    };
+    const value = options.nutritionPhase;
+    if (typeof value !== "string" || !value.trim()) throw new Error(`nutritionPhase must be one of ${NUTRITION_PHASES.join(", ")}.`);
+    const normalized = normalizeText(value);
+    if (!NUTRITION_PHASES.includes(normalized)) throw new Error(`Unsupported nutritionPhase ${value}; supported phases are ${NUTRITION_PHASES.join(", ")}.`);
+    return {
+      requestedValue: value.trim(),
+      resolvedValue: normalized,
+      source: "canonical_user_input",
+      missing: false
+    };
+  }
+
+  function resolveReturningAfterGapInput(options = {}) {
+    if (!hasOwn(options, "returningAfterGap")) return {
+      requestedValue: null,
+      resolvedValue: null,
+      source: "unspecified"
+    };
+    const value = options.returningAfterGap;
+    if (value !== null && typeof value !== "boolean") throw new Error("returningAfterGap must be true, false, or null.");
+    return {
+      requestedValue: value,
+      resolvedValue: value,
+      source: "canonical_user_input"
+    };
+  }
+
+  function scientificSource(options = {}) {
+    return {
+      authority: options.authority || "evidence",
+      studyIds: asArray(options.studyIds),
+      conclusionIds: asArray(options.conclusionIds),
+      population: options.population || "Healthy adults eligible for resistance training; individual applicability varies.",
+      directness: options.directness || "mixed",
+      evidenceStrength: options.evidenceStrength || "moderate",
+      uncertainty: options.uncertainty || "Exercise-, population-, and individual-response heterogeneity limits exact prescription precision."
+    };
+  }
+
+  function nutritionScientificSource(phase) {
+    if (phase === "deficit") return scientificSource({
+      authority: "evidence",
+      studyIds: ["stu_0020"],
+      conclusionIds: ["con_0026"],
+      population: "Resistance-trained natural males in an energy deficit.",
+      directness: "mixed",
+      evidenceStrength: "moderate",
+      uncertainty: "Evidence does not establish a universal automatic volume reduction; performance and recovery must justify any change."
+    });
+    return scientificSource({
+      authority: "product_policy",
+      population: "Resistance-training users with no phase-specific qualifying response evidence.",
+      directness: "product_policy_translation",
+      evidenceStrength: "low",
+      uncertainty: "The nutrition phase is context only and does not prove a training-dose change."
+    });
+  }
+
+  function materialScientificProvenance(goal) {
+    const exactGoalPolicy = ["strength", "hypertrophy", "muscular_endurance", "general_fitness"].includes(goal);
+    return {
+      schemaVersion: SCIENTIFIC_PROVENANCE_SCHEMA_VERSION,
+      repRange: scientificSource({
+        authority: exactGoalPolicy ? "product_policy" : "evidence",
+        studyIds: ["stu_0004", "stu_0039"],
+        conclusionIds: ["con_0001"],
+        population: "Healthy adult resistance-training populations; studies combine training statuses and sexes.",
+        directness: exactGoalPolicy ? "product_policy_translation" : "mixed",
+        evidenceStrength: exactGoalPolicy ? "low" : "high",
+        uncertainty: goal === "hypertrophy"
+          ? "The cited high-strength broad-load conclusion supports hypertrophy across approximately 5-30 repetitions when effort is sufficient; the exact 6-15 band is a limited product-policy translation, not a directly validated optimum."
+          : exactGoalPolicy
+            ? "The exact goal-specific repetition band is a directional product policy inside a broad evidence-supported loading spectrum."
+          : "Exercise- and muscle-specific optimal repetition thresholds are not established."
+      }),
+      restSeconds: scientificSource({
+        authority: "product_policy",
+        studyIds: ["stu_0007", "stu_0026", "stu_0038"],
+        conclusionIds: ["con_0008"],
+        population: "Healthy adult resistance-training populations across compound and isolation exercises.",
+        directness: "mixed",
+        evidenceStrength: "moderate",
+        uncertainty: "Rest should preserve intended performance; exact seconds depend on exercise, load, and the individual."
+      }),
+      workingSets: scientificSource({
+        authority: "product_policy",
+        studyIds: ["stu_0001", "stu_0002", "stu_0025"],
+        conclusionIds: ["con_0004"],
+        population: "Healthy adults eligible for resistance training across training statuses.",
+        directness: "mixed",
+        evidenceStrength: "moderate",
+        uncertainty: "Starting set caps are operational defaults, not universal physiological ceilings; productive personal evidence takes precedence."
+      }),
+      selectionOrder: scientificSource({
+        authority: "evidence",
+        studyIds: ["stu_0009"],
+        conclusionIds: ["con_0012"],
+        population: "Healthy adult resistance-training populations.",
+        directness: "mixed",
+        evidenceStrength: "moderate",
+        uncertainty: "Exercise-specific strength favors earlier placement, while broad hypertrophy differences across order strategies appear small."
+      }),
+      progression: scientificSource({
+        authority: "product_policy",
+        studyIds: ["stu_0029", "stu_0030", "stu_0031"],
+        conclusionIds: ["con_0015"],
+        population: "Healthy adult resistance-training populations; progression criteria are an expert synthesis.",
+        directness: "expert_inference",
+        evidenceStrength: "low",
+        uncertainty: "No single progression algorithm is validated for every exercise or trainee."
+      }),
+      confirmation: scientificSource({
+        authority: "product_policy",
+        studyIds: ["stu_0029", "stu_0030", "stu_0031"],
+        conclusionIds: ["con_0016"],
+        population: "Healthy adult resistance-training populations; confirmation windows are exercise-specific expert inference.",
+        directness: "expert_inference",
+        evidenceStrength: "low",
+        uncertainty: "One-to-three-session confirmation windows are a conservative product policy, not a universal biological constant."
+      })
+    };
+  }
+
+  function programmingContext(options = {}, score = {}) {
+    if (options.resolvedProgrammingContext) return deepClone(options.resolvedProgrammingContext);
+    const goal = resolveGoalInput(options);
+    const experience = resolveExperienceInput(options);
+    const nutritionPhase = resolveNutritionPhaseInput(options);
+    const returningAfterGap = resolveReturningAfterGapInput(options);
+    const personalEvidenceAvailable = number(score.personalEvidenceWeight, 0) > 0;
+    const comparableExposureCount = Math.max(0, Math.round(number(firstPresent(score.staleness?.exposureCount, score.staleness?.metrics?.exposureCount), 0)));
+    const explicitComplexityPreference = options.setStructurePreference === "advanced_if_supported";
+    const productiveHistorySupport = personalEvidenceAvailable
+      && comparableExposureCount >= DEFAULT_POLICY.minimumComparableExposures
+      && score.staleness?.classification === STALENESS.PRODUCTIVE;
+    const complexStructureAllowed = ["intermediate", "advanced"].includes(experience.value) && (explicitComplexityPreference || productiveHistorySupport);
+    const complexitySupportedBy = explicitComplexityPreference ? "explicit_preference" : productiveHistorySupport ? "productive_history" : "none";
+    const goalDisclosure = goal.value === "general_fitness"
+      ? "General fitness uses balanced resistance-training defaults; resistance-only programming does not fully cover cardiorespiratory fitness, so aerobic activity must be planned separately."
+      : `Directional ${goal.value.replaceAll("_", " ")} emphasis is a transparent product-policy translation inside existing evidence-supported ranges, not a universal scientific cutoff.`;
+    const nutritionDisclosure = nutritionPhase.resolvedValue === "deficit"
+      ? "Deficit context uses con_0026 / stu_0020: no pre-emptive volume cut is applied; low-value sets change only after qualifying performance or recovery deterioration."
+      : nutritionPhase.resolvedValue
+        ? `${nutritionPhase.resolvedValue.replaceAll("_", " ")} is recorded as context only; it does not automatically change resistance-training dose without qualifying performance or recovery evidence.`
+        : "Nutrition phase is unspecified; no phase-specific training adjustment is inferred.";
+    return {
+      profileVersion: TRAINING_PROFILE_VERSION,
+      missingInputs: [goal.missing ? "trainingGoal" : null, experience.missing ? "experienceLevel" : null].filter(Boolean),
+      policyDisclosures: [
+        "Goal ranges are transparent product-policy defaults informed by the current repository evidence ledger and practical program design; they are not rigid universal cutoffs.",
+        "Experience changes stability, complexity, confirmation, and progression granularity, not automatic volume, intensity, repetition, or rest multipliers.",
+        "Hard equipment, exclusion, time, taxonomy, and safety constraints always take precedence."
+      ],
+      goal: {
+        value: goal.value,
+        requestedValue: goal.requestedValue,
+        resolvedValue: goal.value,
+        source: goal.source,
+        inputField: goal.inputField,
+        authority: "product_policy",
+        disclosure: goalDisclosure,
+        selectionEmphasis: goal.selectionEmphasis
+      },
+      experience: {
+        value: experience.value,
+        requestedValue: experience.requestedValue,
+        resolvedValue: experience.value,
+        source: experience.source,
+        inputField: experience.inputField,
+        authority: "product_policy",
+        progressionConfirmationExposures: experience.progressionConfirmationExposures,
+        complexStructureAllowed,
+        complexitySupportedBy,
+        complexityPolicy: experience.complexityPolicy,
+        disclosure: experience.missing
+          ? "Training experience is missing, so the engine does not infer skill and keeps the default structure evidence-led."
+          : `The ${experience.value} label changes suitable complexity and selection preferences; it never proves tolerance or automatically adds sets or intensity.`
+      },
+      nutritionPhase: {
+        requestedValue: nutritionPhase.requestedValue,
+        resolvedValue: nutritionPhase.resolvedValue,
+        source: nutritionPhase.source,
+        authority: "product_policy",
+        doseAdjustmentApplied: false,
+        disclosure: nutritionDisclosure,
+        scientificProvenance: nutritionScientificSource(nutritionPhase.resolvedValue)
+      },
+      returningAfterGap: {
+        requestedValue: returningAfterGap.requestedValue,
+        resolvedValue: returningAfterGap.resolvedValue,
+        source: returningAfterGap.source,
+        authority: "product_policy",
+        disclosure: returningAfterGap.resolvedValue === true
+          ? "A declared return after a gap forces a conservative current baseline without changing or inferring training experience."
+          : returningAfterGap.resolvedValue === false
+            ? "The user explicitly reports no return gap; normal evidence and confirmation rules apply."
+            : "Return-after-gap status is unspecified; recency is evaluated from comparable history without inferring a gap."
+      },
+      personalization: {
+        personalEvidenceAvailable,
+        comparableExposureCount,
+        source: personalEvidenceAvailable ? "personal_and_research" : "research_population_default",
+        missingData: personalEvidenceAvailable ? [] : ["qualifying_comparable_personal_exposures"],
+        disclosure: personalEvidenceAvailable
+          ? "Qualifying comparable personal observations are blended with research according to their measured confidence."
+          : "No qualifying comparable personal evidence is available; population research defaults control and missing personal data is disclosed rather than fabricated."
+      }
+    };
+  }
+
+  function normalizeTrainingDays(options = {}, fallback = 4) {
+    if (!hasOwn(options, "trainingDays") || options.trainingDays === undefined) return fallback;
+    const value = options.trainingDays;
+    if (typeof value !== "number" || !Number.isInteger(value) || value < 1 || value > 7) throw new Error("trainingDays must be an integer from 1 through 7.");
+    return value;
+  }
+
+  function normalizeDurationValue(options, key, fallback) {
+    if (!hasOwn(options, key) || options[key] === undefined) return fallback;
+    const value = options[key];
+    if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) throw new Error(`${key} must be a positive finite number of minutes.`);
+    return round(value, 1);
+  }
+
+  function normalizeSessionDurationConstraints(options = {}, policy = DEFAULT_POLICY) {
+    const target = normalizeDurationValue(options, "sessionDurationTargetMinutes", number(policy.sessionDurationTargetMinutes, DEFAULT_POLICY.sessionDurationTargetMinutes));
+    const maximum = normalizeDurationValue(options, "sessionDurationMaximumMinutes", number(policy.sessionDurationMaximumMinutes, DEFAULT_POLICY.sessionDurationMaximumMinutes));
+    if (target > maximum) throw new Error("Session duration target must not exceed the session duration maximum.");
+    return { target, maximum };
   }
 
   function isoNow(clock) {
@@ -478,24 +875,17 @@
   function normalizeEvidenceBundle(input = {}) {
     const personal = input.personal?.kind === "personal_evidence_adapter" ? input.personal : createPersonalDataAdapter(input.personalData || input.personal || {});
     const research = input.research?.kind === "research_evidence_adapter" ? input.research : createResearchDataAdapter(input.researchData || input.research || {});
-    personal.exerciseScores.forEach((score) => {
-      const personalId = score.exercise_id || score.exerciseId;
-      if (!personalId || personal.crosswalkByPersonalId.has(personalId)) return;
-      const candidates = [score.exercise_name, score.exerciseName, score.exercise_name_recorded, score.exerciseNameRecorded, personalId];
-      const researchId = candidates.map((name) => research.exerciseIdByAlias.get(normalizeText(name))).find(Boolean);
-      if (!researchId) return;
-      personal.crosswalkByPersonalId.set(personalId, researchId);
-      if (!personal.personalIdsByResearchId.has(researchId)) personal.personalIdsByResearchId.set(researchId, []);
-      if (!personal.personalIdsByResearchId.get(researchId).includes(personalId)) personal.personalIdsByResearchId.get(researchId).push(personalId);
+    const reconciledPersonalIdentities = buildReconciledPersonalIdentityIndex(personal, research);
+    personal.reconciledIdentityByExerciseId = reconciledPersonalIdentities.identities;
+    personal.reconciledPersonalIdsByResearchId = reconciledPersonalIdentities.personalIdsByResearchId;
+    personal.selectedPersonalIdByResearchId = reconciledPersonalIdentities.selectedPersonalIdByResearchId;
+    personal.crosswalkByPersonalId.clear();
+    personal.personalIdsByResearchId.clear();
+    reconciledPersonalIdentities.identities.forEach((identity, exerciseId) => {
+      if (!identity.invalid && identity.researchExerciseId) personal.crosswalkByPersonalId.set(exerciseId, identity.researchExerciseId);
     });
-    personal.exercisePrescriptions.forEach((prescription) => {
-      const personalId = prescription.exercise_id || prescription.exerciseId;
-      if (!personalId || personal.crosswalkByPersonalId.has(personalId)) return;
-      const researchId = [prescription.exercise_name, prescription.exerciseName, personalId].map((name) => research.exerciseIdByAlias.get(normalizeText(name))).find(Boolean);
-      if (!researchId) return;
-      personal.crosswalkByPersonalId.set(personalId, researchId);
-      if (!personal.personalIdsByResearchId.has(researchId)) personal.personalIdsByResearchId.set(researchId, []);
-      if (!personal.personalIdsByResearchId.get(researchId).includes(personalId)) personal.personalIdsByResearchId.get(researchId).push(personalId);
+    reconciledPersonalIdentities.personalIdsByResearchId.forEach((exerciseIds, researchExerciseId) => {
+      personal.personalIdsByResearchId.set(researchExerciseId, [...exerciseIds]);
     });
     return {
       personal,
@@ -707,6 +1097,11 @@
       const repetitions = splitMulti(item.set_repetitions || item.setRepetitions || item.reps).map(number);
       const rpes = splitMulti(item.set_rpes || item.setRpes).map((value) => nullableNumber(value)).filter((value) => value !== null);
       const loads = splitMulti(item.set_loads || item.setLoads).map(number);
+      const completedSetCount = nullableNumber(firstPresent(item.completedSetCount, item.completed_set_count));
+      const prescribedSetCount = nullableNumber(firstPresent(item.prescribedSetCount, item.prescribed_set_count, item.plannedSetCount, item.planned_set_count));
+      const completedSetRatio = nullableNumber(firstPresent(item.completedSetRatio, item.completed_set_ratio, item.adherence));
+      const techniqueValid = normalizedBoolean(firstPresent(item.techniqueValid, item.technique_valid), null);
+      const techniqueQuality = normalizeText(firstPresent(item.techniqueQuality, item.technique_quality));
       return {
         raw: item,
         index,
@@ -722,16 +1117,22 @@
         recoveryCost: nullableNumber(firstPresent(item.recovery_strain_score, item.recoveryStrainScore, item.recoveryCost)),
         plateauExposures: number(item.plateau_duration_exposures || item.plateauExposures),
         regressionExposures: number(item.regression_duration_exposures || item.regressionExposures),
-        pain: Boolean(item.pain || item.discomfort || item.painReported || item.pain_reported),
-        adherence: nullableNumber(firstPresent(item.adherence, item.completedSetRatio, item.completed_set_ratio)),
+        pain: anyExplicitTrue(item.pain, item.discomfort, item.painReported, item.pain_reported),
+        techniqueValid,
+        techniqueQuality,
+        completedSetCount,
+        prescribedSetCount,
+        incompletePrescribedWork: (completedSetRatio !== null && completedSetRatio < 0.999) || (completedSetCount !== null && prescribedSetCount !== null && completedSetCount < prescribedSetCount),
+        adherence: completedSetRatio,
         reps: repetitions.length ? repetitions : asArray(item.reps).map(number),
+        rpes,
         loads: loads.length ? loads : asArray(item.loads).map(number),
         setTypes: splitMulti(item.set_types || item.setTypes),
         topSetCount: number(item.top_set_count || item.topSetCount),
         backoffSetCount: number(item.back_off_set_count || item.backoffSetCount),
         straightSetCount: number(item.straight_working_set_count || item.straightSetCount),
         progressionPercent: nullableNumber(item.progression_pct_vs_prior || item.progressionPercent),
-        prescribedReduction: Boolean(item.prescribed_reduction || item.prescribedReduction || /planned[_ -]?reduction|light[_ -]?session|deload/.test(status))
+        prescribedReduction: anyExplicitTrue(item.prescribed_reduction, item.prescribedReduction) || /planned[_ -]?reduction|light[_ -]?session|deload/.test(status)
       };
     }).sort((left, right) => (left.date || "9999").localeCompare(right.date || "9999") || left.index - right.index);
   }
@@ -749,6 +1150,20 @@
     const exposures = normalizeHistory(history).filter((item) => !item.prescribedReduction);
     const recent = exposures.slice(-Math.max(3, number(options.lookbackExposures, 6)));
     const minimum = number(options.minimumComparableExposures, DEFAULT_POLICY.minimumComparableExposures);
+    const insufficientMetrics = {
+      progressionTrend: 0,
+      rpeTrend: 0,
+      estimated1RmTrend: 0,
+      backoffTrend: 0,
+      setRepLossFlag: false,
+      recoveryCostFlag: false,
+      painFlag: false,
+      adherenceFlag: false,
+      averageAdherence: null,
+      improvedExposures: 0,
+      heldExposures: 0,
+      regressedExposures: 0
+    };
     if (recent.length < minimum) {
       return {
         score: 0,
@@ -758,8 +1173,26 @@
         rotationRecommended: false,
         deloadCandidate: false,
         reasons: [`Only ${recent.length} recent comparable exposure${recent.length === 1 ? "" : "s"}; continue collecting consistent performance and RPE data.`],
-        metrics: { progressionTrend: 0, rpeTrend: 0, estimated1RmTrend: 0, backoffTrend: 0 }
+        metrics: insufficientMetrics
       };
+    }
+    const asOfDate = dateOnly(firstPresent(options.asOfDate, options.createdAt));
+    const latestDate = recent.at(-1)?.date;
+    const maximumReturnGapDays = number(options.maximumReturnGapDays, DEFAULT_POLICY.maximumReturnGapDays);
+    if (asOfDate && latestDate && maximumReturnGapDays > 0) {
+      const elapsedDays = Math.floor((new Date(`${asOfDate}T00:00:00Z`).getTime() - new Date(`${latestDate}T00:00:00Z`).getTime()) / 86400000);
+      if (Number.isFinite(elapsedDays) && elapsedDays > maximumReturnGapDays) {
+        return {
+          score: 0,
+          classification: STALENESS.INSUFFICIENT,
+          label: "Insufficient evidence",
+          exposureCount: recent.length,
+          rotationRecommended: false,
+          deloadCandidate: false,
+          reasons: [`The latest comparable exposure is ${elapsedDays} days old; establish a return-to-training baseline before diagnosing a plateau or progressing load.`],
+          metrics: insufficientMetrics
+        };
+      }
     }
     const statusCounts = {
       improved: recent.filter((item) => /improv|progress/.test(item.status) || number(item.progressionPercent) >= 1).length,
@@ -849,27 +1282,39 @@
     const hrvRatio = nullableNumber(firstPresent(readiness.hrvRatio, readiness.hrvPctOfBaseline !== undefined ? number(readiness.hrvPctOfBaseline) / 100 : null, readiness.hrv !== undefined && readiness.baselineHrv ? number(readiness.hrv) / number(readiness.baselineHrv) : null));
     const rhrRatio = nullableNumber(firstPresent(readiness.restingHeartRateRatio, readiness.restingHeartRatePctOfBaseline !== undefined ? number(readiness.restingHeartRatePctOfBaseline) / 100 : null, readiness.restingHeartRate !== undefined && readiness.baselineRestingHeartRate ? number(readiness.restingHeartRate) / number(readiness.baselineRestingHeartRate) : null));
     const sleepRatio = nullableNumber(firstPresent(readiness.sleepRatio, readiness.sleepHours !== undefined && readiness.baselineSleepHours ? number(readiness.sleepHours) / number(readiness.baselineSleepHours) : null));
-    if (hrvRatio !== null && hrvRatio < 0.9) add("hrv", hrvRatio < 0.82 ? 2 : 1, `HRV is ${Math.round((1 - hrvRatio) * 100)}% below baseline.`);
-    if (rhrRatio !== null && rhrRatio > 1.07) add("resting_heart_rate", rhrRatio > 1.12 ? 2 : 1, `Resting heart rate is ${Math.round((rhrRatio - 1) * 100)}% above baseline.`);
+    const illness = anyExplicitTrue(readiness.illness, readiness.isIll, readiness.illnessReported);
+    const pain = anyExplicitTrue(readiness.pain, readiness.discomfort, readiness.injury, readiness.painReported);
+    if (illness) add("illness", 3, "Illness is a hard readiness restriction; do not progress training stress today.");
+    if (pain) add("pain", 3, `Pain${readiness.affectedMuscle ? ` affecting ${readiness.affectedMuscle}` : ""} requires a pain-free modification or stopping the affected work.`);
+    const autonomicReasons = [];
+    if (hrvRatio !== null && hrvRatio < 0.9) autonomicReasons.push(`HRV is ${Math.round((1 - hrvRatio) * 100)}% below baseline.`);
+    if (rhrRatio !== null && rhrRatio > 1.07) autonomicReasons.push(`Resting heart rate is ${Math.round((rhrRatio - 1) * 100)}% above baseline.`);
+    if (autonomicReasons.length) {
+      const autonomicSeverity = (hrvRatio !== null && hrvRatio < 0.82) || (rhrRatio !== null && rhrRatio > 1.12) ? 2 : 1;
+      add(hrvRatio !== null && hrvRatio < 0.9 ? "hrv" : "resting_heart_rate", autonomicSeverity, autonomicReasons.join(" "));
+    }
     if ((sleepRatio !== null && sleepRatio < 0.85) || (nullableNumber(readiness.sleepHours) !== null && number(readiness.sleepHours) < 6)) add("sleep", sleepRatio !== null && sleepRatio < 0.7 ? 2 : 1, "Sleep was materially below the personal baseline.");
     if (number(readiness.soreness) >= 7 || number(readiness.fatigue) >= 7) add("subjective_recovery", number(readiness.soreness) >= 9 || number(readiness.fatigue) >= 9 ? 2 : 1, "Soreness or fatigue is high enough to affect training quality.");
     if (number(readiness.readinessScore, 10) <= 4) add("subjective_readiness", number(readiness.readinessScore, 10) <= 2 ? 2 : 1, "Readiness is below the usual training range.");
-    if (readiness.previousExposureRegressed || number(readiness.consecutiveRegressions) >= 1) add("recent_performance", number(readiness.consecutiveRegressions) >= 2 ? 2 : 1, "The previous comparable exposure regressed.");
-    if (readiness.nutritionAdequate === false || readiness.proteinAdequate === false || readiness.energyAvailabilityLow) add("nutrition", readiness.energyAvailabilityLow ? 2 : 1, "Nutrition or energy availability is below the planned condition.");
+    if (anyExplicitTrue(readiness.previousExposureRegressed) || number(readiness.consecutiveRegressions) >= 1) add("recent_performance", number(readiness.consecutiveRegressions) >= 2 ? 2 : 1, "The previous comparable exposure regressed.");
+    const energyAvailabilityLow = anyExplicitTrue(readiness.energyAvailabilityLow);
+    if (normalizedBoolean(readiness.nutritionAdequate, null) === false || normalizedBoolean(readiness.proteinAdequate, null) === false || energyAvailabilityLow) add("nutrition", energyAvailabilityLow ? 2 : 1, "Nutrition or energy availability is below the planned condition.");
     const severity = sum(signals.map((signal) => signal.severity));
     const persistent = number(readiness.consecutiveLowReadinessDays || readiness.consecutiveAdverseDays) >= 2;
+    const hardSafety = illness || pain;
     return {
       signalCount: signals.length,
       severity,
       signals,
       persistent,
-      state: signals.length >= 3 || severity >= 4 ? "low" : signals.length >= 2 ? "below_baseline" : signals.length === 1 ? "monitor" : "normal"
+      state: hardSafety || signals.length >= 3 || severity >= 4 ? "low" : signals.length >= 2 ? "below_baseline" : signals.length === 1 ? "monitor" : "normal"
     };
   }
 
   function readinessAdjustmentFor(basePrescription, readiness = {}) {
     const evaluation = evaluateReadiness(readiness);
-    if (evaluation.signalCount < 2) {
+    const hardSafetySignals = evaluation.signals.filter((signal) => signal.domain === "illness" || signal.domain === "pain");
+    if (evaluation.signalCount < 2 && !hardSafetySignals.length) {
       return {
         changed: false,
         temporary: true,
@@ -880,6 +1325,21 @@
         rpeChange: 0,
         explanation: evaluation.signalCount === 1 ? `${evaluation.signals[0].explanation} One isolated marker is monitored without rewriting today's prescription.` : "Readiness supports the base prescription.",
         resumeRule: "Continue the base progression unless another independent recovery or performance signal also worsens.",
+        signals: evaluation.signals
+      };
+    }
+    if (hardSafetySignals.length) {
+      const illness = hardSafetySignals.some((signal) => signal.domain === "illness");
+      return {
+        changed: true,
+        temporary: true,
+        affectsMesocycle: false,
+        setChange: 0,
+        loadChangePercent: 0,
+        repTargetChange: 0,
+        rpeChange: 0,
+        explanation: `${hardSafetySignals.map((signal) => signal.explanation).join(" ")} ${illness ? "Hold the workout rather than testing readiness with a lighter session." : "Do not test the affected movement at a lower load; use a pain-free substitute or stop that work."}`,
+        resumeRule: illness ? "Resume training only after the acute illness restriction has resolved; seek qualified guidance when symptoms are severe, unexplained, or persistent." : "Resume the affected movement only when it is pain-free; seek qualified evaluation when pain is severe, unexplained, or persistent.",
         signals: evaluation.signals
       };
     }
@@ -906,6 +1366,57 @@
     const change = readinessAdjustmentFor(basePrescription, readiness);
     adjusted.readinessAdjustment = change;
     if (!change.changed) return adjusted;
+    const illness = change.signals.some((signal) => signal.domain === "illness");
+    const pain = change.signals.some((signal) => signal.domain === "pain");
+    if (illness || pain) {
+      const auditBaseTargets = {
+        exerciseId: adjusted.exerciseId,
+        researchExerciseId: adjusted.researchExerciseId,
+        workingSets: deepClone(adjusted.workingSets),
+        repRange: deepClone(adjusted.repRange),
+        targetRpe: deepClone(adjusted.targetRpe),
+        targetRir: deepClone(adjusted.targetRir),
+        restSeconds: deepClone(adjusted.restSeconds),
+        volume: deepClone(adjusted.volume),
+        ...(adjusted.prescribedLoad ? { prescribedLoad: deepClone(adjusted.prescribedLoad) } : {})
+      };
+      adjusted.recommendationType = illness ? "hold" : "substitute";
+      adjusted.progressionAction = illness ? "stop_for_illness" : "hold_for_pain_free_substitution";
+      adjusted.progressionRule = change.explanation;
+      adjusted.holdRule = change.resumeRule;
+      adjusted.userExplanation = change.explanation;
+      adjusted.executionBlocked = true;
+      adjusted.workingSets = { min: 0, target: 0, max: 0 };
+      const zeroRange = { min: 0, target: 0, max: 0 };
+      const zeroVolumeLevel = { recommendedStarting: 0, normalOperatingRange: deepClone(zeroRange), currentPrescribed: 0, highestRecoverableObserved: null, deload: 0, researchFallbackRange: deepClone(zeroRange) };
+      adjusted.volume = {
+        adjustmentType: "reduce_volume",
+        perExercise: deepClone(zeroVolumeLevel),
+        perMusclePerSession: deepClone(zeroRange),
+        perMusclePerWeek: deepClone(zeroVolumeLevel),
+        reason: "Hard safety restriction: executable volume is zero; the base volume remains available only in safetyRestriction.auditBaseTargets."
+      };
+      adjusted.setStructure = "straight_sets";
+      adjusted.setStructureReason = "Hard safety restriction: no working-set structure is executable until the restriction is resolved.";
+      adjusted.safetyRestriction = {
+        schemaVersion: HARD_SAFETY_SCHEMA_VERSION,
+        status: "blocked",
+        scope: illness ? "workout" : "exercise",
+        reason: illness ? "illness" : "pain",
+        resumeCriteria: change.resumeRule,
+        originalExerciseId: adjusted.exerciseId,
+        painFreeConfirmed: false,
+        substituteExerciseId: null,
+        substituteResearchExerciseId: null,
+        confirmedAt: null,
+        auditBaseTargets
+      };
+      delete adjusted.prescribedLoad;
+      delete adjusted.topSet;
+      delete adjusted.backoffSets;
+      if (pain) adjusted.substitutionRule = "Use only a pain-free alternative that preserves all equipment, exclusion, and safety constraints; stop the affected work if no such option exists.";
+      return adjusted;
+    }
     adjusted.workingSets.target = Math.max(1, adjusted.workingSets.target + change.setChange);
     adjusted.workingSets.min = Math.min(adjusted.workingSets.min, adjusted.workingSets.target);
     adjusted.workingSets.max = Math.max(adjusted.workingSets.target, adjusted.workingSets.max + Math.min(0, change.setChange));
@@ -955,7 +1466,7 @@
         fractionalSets: mapping.relationship_type === "meaningful_fractional_load" ? round(workingSets * setCredit, 2) : 0,
         weightedHypertrophySets: round(workingSets * setCredit, 2),
         isometricExposure: mapping.relationship_type === "isometric_stabilizing_load" ? round(workingSets * number(mapping.local_fatigue_weight, 0), 2) : 0,
-        taxonomyVersion: mapping.taxonomy_version || research.version,
+        taxonomyVersion: String(firstPresent(mapping.taxonomy_version, mapping.taxonomyVersion) || "").trim() || null,
         confidence: mapping.confidence_rating,
         evidenceNotes: mapping.evidence_notes
       };
@@ -966,9 +1477,15 @@
     const evidence = evidenceInput?.research ? evidenceInput : normalizeEvidenceBundle(evidenceInput || {});
     const snapshot = deepClone(records);
     const totals = new Map();
+    const taxonomyVersions = new Set();
+    let missingTaxonomyProvenance = snapshot.length === 0;
     snapshot.forEach((record) => {
       const canonicalId = firstPresent(record.researchExerciseId, evidence.research.exerciseIdByAlias.get(normalizeText(record.exerciseName)), record.exerciseId);
-      calculateExerciseMuscleContributions(evidence.research, canonicalId, number(record.workingSets, record.sets || 0)).forEach((entry) => {
+      const contributions = calculateExerciseMuscleContributions(evidence.research, canonicalId, number(record.workingSets, record.sets || 0));
+      if (!contributions.length) missingTaxonomyProvenance = true;
+      contributions.forEach((entry) => {
+        if (entry.taxonomyVersion) taxonomyVersions.add(entry.taxonomyVersion);
+        else missingTaxonomyProvenance = true;
         if (!totals.has(entry.muscleGroupId)) totals.set(entry.muscleGroupId, { muscleGroupId: entry.muscleGroupId, directSets: 0, fractionalSets: 0, weightedHypertrophySets: 0, isometricExposure: 0, contributions: [] });
         const total = totals.get(entry.muscleGroupId);
         total.directSets += entry.directSets;
@@ -978,7 +1495,12 @@
         total.contributions.push(entry);
       });
     });
-    return { taxonomyVersion: evidence.research.version, sourceRecords: snapshot, muscleTotals: [...totals.values()].map((item) => ({ ...item, directSets: round(item.directSets, 2), fractionalSets: round(item.fractionalSets, 2), weightedHypertrophySets: round(item.weightedHypertrophySets, 2), isometricExposure: round(item.isometricExposure, 2) })) };
+    const taxonomyVersion = taxonomyVersions.size === 0
+      ? "unknown"
+      : missingTaxonomyProvenance || taxonomyVersions.size > 1
+        ? "mixed"
+        : [...taxonomyVersions][0];
+    return { taxonomyVersion, sourceRecords: snapshot, muscleTotals: [...totals.values()].map((item) => ({ ...item, directSets: round(item.directSets, 2), fractionalSets: round(item.fractionalSets, 2), weightedHypertrophySets: round(item.weightedHypertrophySets, 2), isometricExposure: round(item.isometricExposure, 2) })) };
   }
 
   function aggregateMuscleResearchDefaults(research, muscleGroupId) {
@@ -1066,6 +1588,109 @@
     return muscle === requested || research === requested || muscle.startsWith(`${requested}_`) || requested.startsWith(`${muscle}_`) || research.startsWith(`${requested}_`);
   }
 
+  function resolveExerciseExclusions(evidenceInput, rawExclusions) {
+    const evidence = evidenceInput.personal ? evidenceInput : normalizeEvidenceBundle(evidenceInput);
+    if (rawExclusions === undefined) return {
+      provided: false,
+      requestedValues: [],
+      excludedExerciseIds: [],
+      excludedResearchExerciseIds: [],
+      resolutions: []
+    };
+    if (!Array.isArray(rawExclusions)) throw new Error("excludedExerciseIds must be an array of canonical IDs, custom IDs, or exact research aliases.");
+    const requestedValues = [...new Set(rawExclusions.map((value) => {
+      if (typeof value !== "string" || !value.trim()) throw new Error("excludedExerciseIds must contain only non-empty string identities.");
+      return value.trim();
+    }))];
+    const excludedExerciseIds = new Set();
+    const excludedResearchExerciseIds = new Set();
+    const resolutions = [];
+    requestedValues.forEach((requestedValue) => {
+      const directResearchId = evidence.research.exerciseById.has(requestedValue) ? requestedValue : null;
+      const aliasResearchId = evidence.research.exerciseIdByAlias.get(normalizeText(requestedValue)) || null;
+      const personalIdentity = evidence.personal.reconciledIdentityByExerciseId?.get(requestedValue) || null;
+      if (personalIdentity?.invalid) throw new Error(`Excluded exercise ${requestedValue} has an invalid trusted identity and cannot be resolved safely.`);
+      const researchExerciseId = directResearchId || personalIdentity?.researchExerciseId || aliasResearchId || null;
+      const knownCustom = Boolean(personalIdentity);
+      if (!researchExerciseId && !knownCustom) throw new Error(`Unknown excluded exercise ${requestedValue}; exclusions must resolve to a trusted custom or research identity.`);
+      if (knownCustom) excludedExerciseIds.add(requestedValue);
+      if (researchExerciseId) {
+        excludedResearchExerciseIds.add(researchExerciseId);
+        asArray(evidence.personal.reconciledPersonalIdsByResearchId?.get(researchExerciseId)).forEach((exerciseId) => excludedExerciseIds.add(exerciseId));
+      }
+      resolutions.push({
+        requestedValue,
+        resolutionType: directResearchId ? "canonical_research_id" : personalIdentity ? "trusted_custom_id" : "research_alias",
+        exerciseId: personalIdentity ? requestedValue : researchExerciseId,
+        researchExerciseId
+      });
+    });
+    return {
+      provided: true,
+      requestedValues,
+      excludedExerciseIds: [...excludedExerciseIds].sort(),
+      excludedResearchExerciseIds: [...excludedResearchExerciseIds].sort(),
+      resolutions
+    };
+  }
+
+  function candidateIsExcluded(candidate, resolution) {
+    return resolution.excludedExerciseIds.includes(candidate.exerciseId)
+      || Boolean(candidate.researchExerciseId && resolution.excludedResearchExerciseIds.includes(candidate.researchExerciseId));
+  }
+
+  function historyIdentityForRow(row, evidence) {
+    const explicitExerciseId = firstPresent(row.exercise_id, row.exerciseId, row.personal_exercise_id, row.personalExerciseId);
+    const explicitResearchId = firstPresent(row.research_exercise_id, row.researchExerciseId);
+    const name = firstPresent(row.exercise_name, row.exerciseName, row.name);
+    const personalIdentity = explicitExerciseId ? evidence.personal.reconciledIdentityByExerciseId?.get(explicitExerciseId) : null;
+    const aliasResearchId = name ? evidence.research.exerciseIdByAlias.get(normalizeText(name)) : null;
+    const researchExerciseId = evidence.research.exerciseById.has(explicitExerciseId)
+      ? explicitExerciseId
+      : personalIdentity?.invalid
+        ? null
+        : explicitResearchId || personalIdentity?.researchExerciseId || aliasResearchId || null;
+    const scoped = Boolean(explicitExerciseId || explicitResearchId || name);
+    return { scoped, exerciseId: explicitExerciseId || null, researchExerciseId };
+  }
+
+  function filterHistoryForCandidate(history, candidate, evidence) {
+    const rows = asArray(history);
+    const identified = rows.map((row) => ({ row, identity: historyIdentityForRow(row, evidence) }));
+    const hasScopedRows = identified.some((entry) => entry.identity.scoped);
+    const matched = identified.filter((entry) => {
+      if (!hasScopedRows) return true;
+      if (!entry.identity.scoped) return false;
+      return entry.identity.exerciseId === candidate.exerciseId
+        || Boolean(candidate.researchExerciseId && entry.identity.researchExerciseId === candidate.researchExerciseId);
+    });
+    return {
+      history: matched.map((entry) => entry.row),
+      resolution: {
+        mode: hasScopedRows ? "identity_filtered" : "legacy_caller_scoped",
+        suppliedRowCount: rows.length,
+        matchedRowCount: matched.length,
+        ignoredUnrelatedRowCount: rows.length - matched.length,
+        selectedExerciseId: candidate.exerciseId,
+        selectedResearchExerciseId: candidate.researchExerciseId || null
+      }
+    };
+  }
+
+  function candidateHasPositiveTargetRelationship(candidate, evidence, muscleGroupId) {
+    const mappings = asArray(candidate.researchMappings);
+    if (candidate.researchExerciseId || mappings.length) {
+      return mappings.some((mapping) => researchMuscleMatch(evidence.research, muscleGroupId, mapping.muscle_group_id || mapping.muscleGroupId)
+        && ["direct_load", "meaningful_fractional_load", "primary", "secondary"].includes(mapping.relationship_type || mapping.relationshipType)
+        && number(mapping.fractional_set_credit ?? mapping.setContribution, 0) > 0);
+    }
+    const role = String(candidate.muscleScore?.muscle_role || candidate.muscleScore?.muscleRole || "").toLowerCase();
+    const requested = normalizeMuscleId(muscleGroupId);
+    const mapped = normalizeMuscleId(firstPresent(candidate.muscleScore?.research_muscle_group_id, candidate.muscleScore?.researchMuscleGroupId, candidate.muscleScore?.muscle_group, candidate.muscleScore?.muscleGroup));
+    const contribution = number(candidate.muscleScore?.contribution_weight ?? candidate.muscleScore?.contributionWeight, ["primary", "direct_load"].includes(role) ? 1 : ["secondary", "meaningful_fractional_load"].includes(role) ? 0.5 : 0);
+    return contribution > 0 && (mapped === requested || mapped.startsWith(`${requested}_`) || requested.startsWith(`${mapped}_`));
+  }
+
   function buildMergedExerciseCandidates(evidence, muscleGroupId, options = {}) {
     const bundle = evidence.personal ? evidence : normalizeEvidenceBundle(evidence);
     const { personal, research } = bundle;
@@ -1076,19 +1701,26 @@
       const score = personal.scoreByExercise.get(exerciseId) || {};
       const prescriptions = personal.prescriptionsFor(exerciseId, muscleGroupId);
       const prescription = prescriptions[0] || (personal.prescriptionsByExercise.get(exerciseId) || [])[0] || {};
-      const researchExerciseId = firstPresent(score.research_exercise_id, prescription.research_exercise_id, personal.crosswalkByPersonalId.get(exerciseId));
+      const selectedIdentity = personal.reconciledIdentityByExerciseId?.get(exerciseId) || null;
+      const researchExerciseId = selectedIdentity?.invalid ? null : selectedIdentity?.researchExerciseId || null;
+      // Resolve the custom/canonical identity before equipment filtering. A valid
+      // selected custom variation owns this canonical slot even when its actual
+      // equipment is unavailable; ranking must not resurrect a duplicate later.
+      if (researchExerciseId && personal.selectedPersonalIdByResearchId?.get(researchExerciseId) !== exerciseId) return;
       const researchExercise = research.exerciseById.get(researchExerciseId) || null;
       const mappings = researchExerciseId ? research.muscleMapsByExercise.get(researchExerciseId) || [] : [];
+      const canonicalIdentity = researchExerciseId === exerciseId && selectedIdentity?.researchIdentitySource === "canonical_id";
       candidates.set(exerciseId, {
         exerciseId,
         researchExerciseId: researchExerciseId || null,
-        exerciseName: firstPresent(score.exercise_name, muscleScore.exercise_name, prescription.exercise_name, researchExercise?.exercise_name, exerciseId),
+        exerciseName: firstPresent(canonicalIdentity ? researchExercise?.exercise_name : null, score.exercise_name, muscleScore.exercise_name, prescription.exercise_name, researchExercise?.exercise_name, exerciseId),
         personalScore: score,
         personalPrescription: prescription,
         muscleScore,
         history: options.histories?.[exerciseId] || personal.historyFor(exerciseId),
         researchExercise,
         researchMappings: mappings,
+        selectedIdentity,
         source: researchExercise ? "personal_and_research" : "personal_only"
       });
     };
@@ -1109,9 +1741,19 @@
       const researchExerciseId = exercise.exercise_id || exercise.exerciseId;
       const mappings = research.muscleMapsByExercise.get(researchExerciseId) || [];
       if (!mappings.some((mapping) => number(mapping.fractional_set_credit, 0) > 0 && researchMuscleMatch(research, muscleGroupId, mapping.muscle_group_id || mapping.muscleGroupId))) return;
-      const linkedPersonalIds = personal.personalIdsByResearchId.get(researchExerciseId) || [];
-      if (linkedPersonalIds.some((id) => candidates.has(id))) return;
       const relevantMapping = mappings.find((mapping) => researchMuscleMatch(research, muscleGroupId, mapping.muscle_group_id || mapping.muscleGroupId)) || {};
+      const selectedPersonalId = personal.selectedPersonalIdByResearchId?.get(researchExerciseId);
+      if (selectedPersonalId && !candidates.has(selectedPersonalId)) {
+        addPersonal({
+          exercise_id: selectedPersonalId,
+          exercise_name: personal.reconciledIdentityByExerciseId.get(selectedPersonalId)?.source?.exercise_name,
+          muscle_group: muscleGroupId,
+          muscle_role: relevantMapping.relationship_type,
+          contribution_weight: relevantMapping.fractional_set_credit,
+          research_muscle_group_id: relevantMapping.muscle_group_id
+        });
+      }
+      if (selectedPersonalId && candidates.has(selectedPersonalId)) return;
       candidates.set(researchExerciseId, {
         exerciseId: researchExerciseId,
         researchExerciseId,
@@ -1127,6 +1769,7 @@
         history: options.histories?.[researchExerciseId] || [],
         researchExercise: exercise,
         researchMappings: mappings,
+        selectedIdentity: null,
         source: "research_only"
       });
     });
@@ -1139,7 +1782,7 @@
       const relevant = canonicalMappings.filter((mapping) => researchMuscleMatch(research, muscleGroupId, mapping.muscle_group_id || mapping.muscleGroupId));
       if (!relevant.length) return false;
       return relevant.some((mapping) => ["direct_load", "meaningful_fractional_load", "primary", "secondary"].includes(mapping.relationship_type || mapping.relationshipType) && number(mapping.fractional_set_credit ?? mapping.setContribution, 0) > 0);
-    });
+    }).map((candidate) => ({ ...candidate, equipmentProfile: resolveCandidateEquipmentProfile(candidate) }));
   }
 
   function fatigueCostScore(exercise) {
@@ -1216,6 +1859,12 @@
     const muscleScore = candidate.muscleScore || {};
     const prescription = candidate.personalPrescription || {};
     const exercise = candidate.researchExercise || {};
+    const equipmentProfile = candidateEquipmentProfile(candidate);
+    if (equipmentProfile.invalid) throw new Error(equipmentProfile.invalidReason);
+    const equipmentAwareExercise = {
+      ...exercise,
+      equipment: equipmentRequirementFamilySignature(equipmentProfile.requirements)
+    };
     const evidenceMetrics = derivePersonalEvidenceMetrics({ score, prescription, muscleScore, history: candidate.history });
     const weights = calculateEvidenceWeight(evidenceMetrics, { ...DEFAULT_POLICY, ...(options.policy || {}) });
     const personalHypertrophySupport = number(firstPresent(score.hypertrophy_support_score, score.hypertrophySupportScore), 50);
@@ -1233,10 +1882,10 @@
     const personalMuscleEstimate = number(firstPresent(muscleScore.muscle_specific_effectiveness_score, muscleScore.muscleSpecificEffectivenessScore), canonicalContribution * 100);
     const muscleSpecificity = clamp(canonicalDynamic ? Math.min(personalMuscleEstimate, canonicalContribution >= 1 ? 100 : canonicalContribution * 100) : 0, 0, 100);
     const lengthenedPositionLoading = lengthenedPositionScore(exercise);
-    const stability = stabilityScore(exercise);
-    const easeOfProgression = easeOfProgressionScore(exercise);
+    const stability = stabilityScore(equipmentAwareExercise);
+    const easeOfProgression = easeOfProgressionScore(equipmentAwareExercise);
     const fatigueCost = fatigueCostScore(exercise);
-    const demands = exerciseDemandProfile(exercise);
+    const demands = exerciseDemandProfile(equipmentAwareExercise);
     const painCount = normalizeHistory(candidate.history).filter((item) => item.pain).length;
     const jointTolerance = clamp(82 - Math.min(50, painCount * 20), 10, 95);
     const researchSupport = clamp(confidenceValue(exercise.confidence_rating || exercise.evidence_quality, 55) + (exercise.direct_exercise_evidence ? 5 : 0), 0, 100);
@@ -1250,7 +1899,9 @@
     const staleness = assessExerciseStaleness(candidate.history, {
       currentExerciseScore: number(score.overall_personal_exercise_score, personalOverall),
       bestAlternativeScore: options.bestAlternativeScore,
-      currentMesocycleExposures: options.currentMesocycleExposures
+      currentMesocycleExposures: options.currentMesocycleExposures,
+      asOfDate: firstPresent(options.asOfDate, options.createdAt),
+      maximumReturnGapDays: firstPresent(options.maximumReturnGapDays, options.policy?.maximumReturnGapDays, DEFAULT_POLICY.maximumReturnGapDays)
     });
     const targetMuscleEffectiveness = round(clamp(
       muscleSpecificity * 0.55 + progressionQuality * 0.16 + recoveryEfficiency * 0.12 + researchSupport * 0.1 + (100 - fatigueCost) * 0.07,
@@ -1265,6 +1916,29 @@
     if (mesocycleType === MESOCYCLE_TYPES.PRIMARY) overallRecommendationStrength += progressionQuality * 0.07 + easeOfProgression * 0.04;
     if (mesocycleType === MESOCYCLE_TYPES.ALTERNATIVE && options.currentExerciseIds?.includes(candidate.exerciseId) && staleness.classification !== STALENESS.PRODUCTIVE) overallRecommendationStrength -= 7;
     if (mesocycleType === MESOCYCLE_TYPES.SPECIALIZATION && asArray(options.specializationMuscleGroups).map(normalizeMuscleId).includes(normalizeMuscleId(muscleGroupId))) overallRecommendationStrength += muscleSpecificity * 0.06;
+    const goalProfile = options.resolvedProgrammingContext?.goal || resolveGoalInput(options);
+    const experienceProfile = options.resolvedProgrammingContext?.experience || resolveExperienceInput(options);
+    const goalValue = goalProfile.resolvedValue || goalProfile.value;
+    const experienceValue = experienceProfile.resolvedValue || experienceProfile.value;
+    if (goalValue === "strength") overallRecommendationStrength += progressionQuality * 0.035 + easeOfProgression * 0.025;
+    else if (goalValue === "muscular_endurance") overallRecommendationStrength += recoveryEfficiency * 0.035 + (100 - fatigueCost) * 0.035;
+    else if (goalValue === "general_fitness") overallRecommendationStrength += stability * 0.025 + easeOfProgression * 0.02 + (100 - fatigueCost) * 0.015;
+    if (["novice", "novice_safe_default"].includes(experienceValue)) {
+      overallRecommendationStrength += stability * 0.04 + easeOfProgression * 0.025;
+      if (demands.highFatigueCompound) overallRecommendationStrength -= 3;
+    } else if (experienceValue === "advanced") {
+      overallRecommendationStrength += muscleSpecificity * 0.015;
+    }
+    const goalRole = normalizeRole(options.role || candidate.personalPrescription?.role, exercise);
+    const goalRanges = goalPolicyRanges(goalValue, goalRole, exercise);
+    const exerciseRepRange = { min: number(exercise.recommended_rep_range_low, 6), max: number(exercise.recommended_rep_range_high, 15) };
+    const exerciseRestRange = { min: number(exercise.recommended_rest_seconds_low, 60), max: number(exercise.recommended_rest_seconds_high, 300) };
+    const goalPolicyCompatibility = {
+      repRange: policyRangesOverlap(exerciseRepRange, goalRanges.repRange),
+      restSeconds: policyRangesOverlap(exerciseRestRange, goalRanges.restSeconds)
+    };
+    goalPolicyCompatibility.compatible = goalPolicyCompatibility.repRange && goalPolicyCompatibility.restSeconds;
+    if (!goalPolicyCompatibility.compatible) overallRecommendationStrength -= 18;
     overallRecommendationStrength = round(clamp(overallRecommendationStrength, 0, 100), 2);
     return {
       exerciseId: candidate.exerciseId,
@@ -1288,6 +1962,7 @@
       gripDemand: round(demands.gripDemand, 2),
       jointStress: round(demands.jointStress, 2),
       highFatigueCompound: demands.highFatigueCompound,
+      goalPolicyCompatibility,
       researchSupport: round(researchSupport, 2),
       personalDataConfidence,
       overallRecommendationStrength,
@@ -1324,25 +1999,175 @@
     ex_standing_calf_raise: "selectorized_machine|dumbbell|barbell+plates", ex_neck_flexion: "neck_harness|plates", ex_neck_extension: "neck_harness|bands"
   });
 
+  const EQUIPMENT_REQUIREMENT_FIELDS = Object.freeze([
+    "equipment_requirements", "equipmentRequirements", "required_equipment", "requiredEquipment"
+  ]);
+  const EQUIPMENT_SUMMARY_FIELDS = Object.freeze(["equipment", "equipment_type", "equipmentType"]);
+  const PRIMARY_EQUIPMENT_FAMILIES = Object.freeze(new Set([
+    "barbell", "dumbbell", "cable", "machine", "bodyweight", "bands", "kettlebell", "trap_bar", "cambered_bar", "ez_bar"
+  ]));
+
   function normalizeEquipmentItem(value) {
-    const item = normalizeText(value).replace(/dumbbells?/, "dumbbell").replace(/^cable$/, "cable_station");
-    if (item === "machine") return "selectorized_machine";
-    if (item === "leg_press") return "leg_press_machine";
-    return item;
+    if (typeof value !== "string" || !value.trim()) throw new Error("Equipment values must be non-empty strings.");
+    const item = normalizeText(value);
+    if (!item) throw new Error("Equipment values must contain a recognized name.");
+    const aliases = {
+      dumbbells: "dumbbell",
+      cables: "cable_station",
+      cable: "cable_station",
+      cable_machine: "cable_station",
+      none: "bodyweight",
+      no_equipment: "bodyweight",
+      machine: "selectorized_machine",
+      leg_press: "leg_press_machine"
+    };
+    return aliases[item] || item;
+  }
+
+  function normalizeEquipmentRequirementOptions(options, label) {
+    if (!Array.isArray(options) || !options.length) throw new Error(`${label} must declare at least one equipment option.`);
+    const normalized = options.map((option) => {
+      if (!Array.isArray(option) || !option.length) throw new Error(`${label} contains an empty or malformed equipment option.`);
+      const items = unique(option.map((item) => normalizeEquipmentItem(item)));
+      if (!items.length) throw new Error(`${label} contains an empty equipment option.`);
+      return items;
+    });
+    return minimizePositiveEquipmentOptions(normalized);
+  }
+
+  function minimizePositiveEquipmentOptions(options) {
+    if (!Array.isArray(options)) throw new Error("Equipment Boolean options must be an array.");
+    const seen = new Set();
+    const deduplicated = [];
+    options.forEach((option) => {
+      if (!Array.isArray(option) || !option.length || option.some((item) => typeof item !== "string" || !item.trim())) {
+        throw new Error("Equipment Boolean options cannot contain empty or malformed conjunctions.");
+      }
+      const items = unique(option);
+      const key = [...items].sort().join("+");
+      if (!seen.has(key)) {
+        seen.add(key);
+        deduplicated.push(items);
+      }
+    });
+    return deduplicated.filter((candidate) => !deduplicated.some((broader) => (
+      broader.length < candidate.length && broader.every((item) => candidate.includes(item))
+    )));
+  }
+
+  function canonicalEquipmentOptions(options) {
+    return minimizePositiveEquipmentOptions(options)
+      .map((option) => [...option].sort())
+      .sort((left, right) => left.join("+").localeCompare(right.join("+")));
+  }
+
+  function parseEquipmentRequirementString(value, label) {
+    const raw = value.trim();
+    if (!raw) throw new Error(`${label} must be a non-empty string or string array.`);
+    const normalizedKey = normalizeText(raw);
+    const special = {
+      bodyweight: [["bodyweight"]],
+      bodyweight_or_belt: [["bodyweight"], ["bodyweight", "dip_belt", "plates"]],
+      cable_machine: [["cable_station"]],
+      dumbbell_or_machine: [["dumbbell"], ["selectorized_machine"]],
+      machine_or_free_weight: [["selectorized_machine"], ["dumbbell"], ["barbell", "plates"]]
+    };
+    if (special[normalizedKey]) return normalizeEquipmentRequirementOptions(special[normalizedKey], label);
+    const delimited = raw
+      .replace(/_or_|\s+or\s+/gi, "|")
+      .replace(/_and_|\s+and\s+/gi, "+");
+    const options = delimited.split("|").map((option) => option.split("+"));
+    if (options.some((option) => option.some((item) => !item.trim()))) throw new Error(`${label} contains an empty or malformed equipment value.`);
+    return normalizeEquipmentRequirementOptions(options, label);
+  }
+
+  function parseEquipmentRequirementValue(value, label) {
+    if (typeof value === "string") return parseEquipmentRequirementString(value, label);
+    if (!Array.isArray(value) || !value.length) throw new Error(`${label} must be a non-empty string or string array.`);
+    const nested = value.every(Array.isArray);
+    const flat = value.every((item) => !Array.isArray(item));
+    if (!nested && !flat) throw new Error(`${label} cannot mix equipment strings and option arrays.`);
+    const options = nested ? value : [value];
+    options.forEach((option) => {
+      if (!option.length || option.some((item) => typeof item !== "string" || !item.trim())) throw new Error(`${label} contains a malformed equipment array.`);
+      if (option.some((item) => /[|+]|_or_|_and_|\s+or\s+|\s+and\s+/i.test(item))) {
+        throw new Error(`${label} array entries must be atomic equipment names; express alternatives as nested arrays.`);
+      }
+    });
+    return normalizeEquipmentRequirementOptions(options, label);
+  }
+
+  function equipmentOptionsKey(options) {
+    return canonicalEquipmentOptions(options).map((option) => option.join("+")).join("|");
+  }
+
+  function declaredEquipmentMetadata(exercise, fields, label) {
+    const entries = fields
+      .filter((field) => Object.prototype.hasOwnProperty.call(exercise, field))
+      .map((field) => ({ field, options: parseEquipmentRequirementValue(exercise[field], `${label} field ${field}`) }));
+    if (!entries.length) return { declared: false, options: [] };
+    const expected = equipmentOptionsKey(entries[0].options);
+    const conflicting = entries.find((entry) => equipmentOptionsKey(entry.options) !== expected);
+    if (conflicting) throw new Error(`Contradictory ${label} aliases ${entries[0].field} and ${conflicting.field}.`);
+    return { declared: true, options: entries[0].options };
+  }
+
+  function equipmentOptionFamilies(option) {
+    const families = unique(option.map(equipmentFamily));
+    const primary = families.filter((family) => PRIMARY_EQUIPMENT_FAMILIES.has(family));
+    return primary.length ? primary : families;
+  }
+
+  function equipmentMetadataIsConsistent(requirements, summary) {
+    const minimizedRequirements = minimizePositiveEquipmentOptions(requirements);
+    const minimizedSummary = minimizePositiveEquipmentOptions(summary);
+    return minimizedRequirements.every((requirementOption) => {
+      const requirementFamilies = equipmentOptionFamilies(requirementOption);
+      return minimizedSummary.some((summaryOption) => {
+        const summaryFamilies = equipmentOptionFamilies(summaryOption);
+        return requirementFamilies.some((family) => summaryFamilies.includes(family));
+      });
+    });
+  }
+
+  function hasDeclaredEquipmentMetadata(exercise) {
+    return Boolean(exercise && typeof exercise === "object" && !Array.isArray(exercise)
+      && [...EQUIPMENT_REQUIREMENT_FIELDS, ...EQUIPMENT_SUMMARY_FIELDS].some((field) => Object.prototype.hasOwnProperty.call(exercise, field)));
+  }
+
+  function resolveDeclaredEquipmentMetadata(exercise) {
+    if (!exercise || typeof exercise !== "object" || Array.isArray(exercise)) throw new Error("Equipment metadata must be supplied as an exercise object.");
+    const requirements = declaredEquipmentMetadata(exercise, EQUIPMENT_REQUIREMENT_FIELDS, "equipment requirements");
+    const summary = declaredEquipmentMetadata(exercise, EQUIPMENT_SUMMARY_FIELDS, "equipment summary");
+    if (requirements.declared && summary.declared && !equipmentMetadataIsConsistent(requirements.options, summary.options)) {
+      throw new Error("Contradictory equipment requirements and equipment summary metadata.");
+    }
+    if (requirements.declared) return { declared: true, detailLevel: 2, options: requirements.options };
+    if (summary.declared) return { declared: true, detailLevel: 1, options: summary.options };
+    return { declared: false, detailLevel: 0, options: [] };
   }
 
   function equipmentRequirementOptions(exercise = {}) {
-    const explicit = String(exercise.equipment_requirements || exercise.equipmentRequirements || EQUIPMENT_REQUIREMENT_OVERRIDES[exercise.exercise_id || exercise.exerciseId] || "");
-    if (explicit) return explicit.split("|").map((option) => option.split("+").map(normalizeEquipmentItem).filter(Boolean)).filter((option) => option.length);
-    const raw = String(exercise.equipment || "").toLowerCase();
-    if (!raw) return [];
-    if (raw === "bodyweight") return [["bodyweight"]];
-    if (raw === "bodyweight_or_belt") return [["bodyweight"], ["bodyweight", "dip_belt", "plates"]];
-    if (raw === "cable_machine") return [["cable_station"]];
-    if (raw === "dumbbell_or_machine") return [["dumbbell"], ["selectorized_machine"]];
-    if (raw === "machine_or_free_weight") return [["selectorized_machine"], ["dumbbell"], ["barbell", "plates"]];
-    const normalized = raw.replaceAll("_and_", "+").replaceAll("_or_", "|");
-    return normalized.split("|").map((option) => option.split("+").map(normalizeEquipmentItem).filter(Boolean)).filter((option) => option.length);
+    const declared = resolveDeclaredEquipmentMetadata(exercise);
+    if (declared.detailLevel === 2) return declared.options;
+    const override = EQUIPMENT_REQUIREMENT_OVERRIDES[exercise.exercise_id || exercise.exerciseId];
+    if (override) return parseEquipmentRequirementString(override, "built-in equipment requirements");
+    return declared.options;
+  }
+
+  function normalizeAvailableEquipmentInput(availableEquipment) {
+    if (availableEquipment === undefined || availableEquipment === null) return { provided: false, valid: true, values: [] };
+    if (typeof availableEquipment !== "string" && !Array.isArray(availableEquipment)) return { provided: true, valid: false, values: [] };
+    const values = Array.isArray(availableEquipment) ? availableEquipment : [availableEquipment];
+    if (!values.length || values.some((value) => typeof value !== "string" || !value.trim() || Array.isArray(value))) {
+      return { provided: true, valid: false, values: [] };
+    }
+    if (values.some((value) => /[|+;,/]|_or_|_and_|\s+or\s+|\s+and\s+/i.test(value))) return { provided: true, valid: false, values: [] };
+    try {
+      return { provided: true, valid: true, values: unique(values.map((value) => normalizeEquipmentItem(value))) };
+    } catch (_error) {
+      return { provided: true, valid: false, values: [] };
+    }
   }
 
   function equipmentCompatible(exercise, availableEquipment) {
@@ -1351,14 +2176,93 @@
       barbell: ["barbell", "plates"], rack: ["rack", "bench", "incline_bench", "pull_up_bar", "nordic_anchor"],
       cable_station: ["cable_station", "pull_up_bar"]
     };
-    const selected = asArray(availableEquipment).map(normalizeEquipmentItem);
-    const available = new Set(selected.flatMap((item) => bundles[item] || [item]));
-    if (!available.size || available.has("all")) return { eligible: true, requirements: equipmentRequirementOptions(exercise), missing: [] };
-    const requirements = equipmentRequirementOptions(exercise);
-    if (!requirements.length) return { eligible: false, requirements, missing: ["verified equipment metadata"] };
+    const requirements = minimizePositiveEquipmentOptions(equipmentRequirementOptions(exercise));
+    const input = normalizeAvailableEquipmentInput(availableEquipment);
+    if (!input.valid) return { eligible: false, requirements, missing: ["valid available equipment input"], equipmentInput: input };
+    if (!input.provided) return { eligible: true, requirements, missing: [], equipmentInput: input };
+    const available = new Set(input.values.flatMap((item) => bundles[item] || [item]));
+    if (available.has("all")) return { eligible: true, requirements, missing: [], equipmentInput: input };
+    if (!requirements.length) return { eligible: false, requirements, missing: ["verified equipment metadata"], equipmentInput: input };
     const matched = requirements.some((option) => option.every((item) => available.has(item)));
     const missing = requirements.map((option) => option.filter((item) => !available.has(item))).sort((a, b) => a.length - b.length)[0] || [];
-    return { eligible: matched, requirements, missing };
+    return { eligible: matched, requirements, missing, equipmentInput: input };
+  }
+
+  function reconciledEquipmentSource(selectedIdentity, canonicalSource = null) {
+    rejectInvalidTrustedIdentity(selectedIdentity);
+    const selectedSource = selectedIdentity?.source || {};
+    const source = hasDeclaredEquipmentMetadata(selectedSource) ? selectedSource : canonicalSource || selectedSource;
+    equipmentRequirementOptions(source);
+    return source;
+  }
+
+  function fallbackSelectedIdentityForCandidate(candidate) {
+    const sources = [candidate.personalScore, candidate.personalPrescription, candidate.muscleScore]
+      .filter((source) => source && typeof source === "object" && Object.keys(source).length);
+    if (!sources.length) return null;
+    const identities = sources.map((source) => ({ source }));
+    const equipment = reconcileTrustedEquipmentDeclarationBatch(identities, candidate.exerciseId || "candidate");
+    return {
+      exerciseId: candidate.exerciseId || null,
+      researchExerciseId: candidate.researchExerciseId || null,
+      invalid: false,
+      source: mergeTrustedCatalogSourceBatch(identities, equipment, candidate.researchExerciseId || null)
+    };
+  }
+
+  function resolveCandidateEquipmentProfile(candidate) {
+    try {
+      const selectedIdentity = Object.prototype.hasOwnProperty.call(candidate, "selectedIdentity")
+        ? candidate.selectedIdentity
+        : fallbackSelectedIdentityForCandidate(candidate);
+      const source = reconciledEquipmentSource(selectedIdentity, candidate.researchExercise || null);
+      const requirements = canonicalEquipmentOptions(equipmentRequirementOptions(source));
+      return {
+        invalid: false,
+        invalidReason: null,
+        origin: selectedIdentity?.researchIdentitySource === "canonical_id"
+          ? "research"
+          : selectedIdentity && hasDeclaredEquipmentMetadata(selectedIdentity.source || {})
+            ? "personal"
+            : candidate.researchExercise ? "research" : "unmapped_personal",
+        source,
+        requirements
+      };
+    } catch (error) {
+      return {
+        invalid: true,
+        invalidReason: error instanceof Error ? error.message : String(error || "Invalid reconciled equipment identity."),
+        origin: "invalid",
+        source: {},
+        requirements: []
+      };
+    }
+  }
+
+  function candidateEquipmentProfile(candidate) {
+    return candidate.equipmentProfile || resolveCandidateEquipmentProfile(candidate);
+  }
+
+  function equipmentCompatibilityForCandidate(candidate, availableEquipment) {
+    const profile = candidateEquipmentProfile(candidate);
+    if (profile.invalid) {
+      return {
+        eligible: false,
+        requirements: [],
+        missing: ["valid reconciled equipment identity"],
+        equipmentInput: normalizeAvailableEquipmentInput(availableEquipment),
+        invalidReason: profile.invalidReason
+      };
+    }
+    return equipmentCompatible(profile.source, availableEquipment);
+  }
+
+  function equipmentRequirementFamilySignature(requirements) {
+    if (!requirements.length) return "other";
+    return canonicalEquipmentOptions(requirements)
+      .map((option) => equipmentOptionFamilies(option).sort().join("+"))
+      .sort()
+      .join("|") || "other";
   }
 
   const JOINT_ACTIONS_BY_PATTERN = Object.freeze({
@@ -1385,11 +2289,13 @@
 
   function diversitySignature(candidate) {
     const exercise = candidate.researchExercise || {};
+    const equipmentProfile = candidateEquipmentProfile(candidate);
+    if (equipmentProfile.invalid) throw new Error(equipmentProfile.invalidReason);
     const repLow = number(exercise.recommended_rep_range_low, 8);
     return {
       movement: exercise.movement_pattern || "unknown",
-      equipment: equipmentFamily(exercise.equipment),
-      equipmentRequirements: equipmentRequirementOptions(exercise),
+      equipment: equipmentRequirementFamilySignature(equipmentProfile.requirements),
+      equipmentRequirements: deepClone(equipmentProfile.requirements),
       jointActions: jointActionsForExercise(exercise),
       region: exercise.muscle_subdivisions_emphasized || candidate.muscleScore?.regional_function || candidate.muscleScore?.regionalFunction || "general",
       stability: String(exercise.stability_demand || "moderate"),
@@ -1433,6 +2339,7 @@
   }
 
   function isIsolationExercise(exercise = {}) {
+    exercise = exercise || {};
     const type = String(exercise.exercise_type || exercise.exerciseType || "").toLowerCase();
     const pattern = `${exercise.movement_pattern || exercise.movementPattern || ""} ${exercise.exercise_name || exercise.exerciseName || ""}`.toLowerCase();
     return /isolation/.test(type) || /elbow_flexion|elbow_extension|knee_extension|knee_flexion|shoulder_abduction|fly|curl|extension/.test(pattern);
@@ -1554,7 +2461,9 @@
     const staleness = options.staleness || {};
     const mesocycleType = options.mesocycleType;
     const specialization = asArray(options.specializationMuscleGroups).map(normalizeMuscleId).includes(normalizeMuscleId(options.muscleGroupId));
-    let reason = "The current set target blends the personal productive range with the research operating range.";
+    let reason = number(options.personalEvidenceWeight, 0) > 0
+      ? "The current set target blends qualifying personal observations with the research operating range."
+      : "The current set target uses a population research default because qualifying comparable personal data is missing.";
     if (mesocycleType === MESOCYCLE_TYPES.LOWER_FATIGUE) {
       targetSets = Math.max(1, Math.round(targetSets * DEFAULT_POLICY.lowerFatigueVolumeFactor));
       weeklyTarget = Math.max(targetSets, Math.round(weeklyTarget * DEFAULT_POLICY.lowerFatigueVolumeFactor));
@@ -1609,6 +2518,188 @@
     };
   }
 
+  function progressionExposureIdentifiers(item) {
+    const raw = item.raw || {};
+    const candidates = [
+      ["exposure", [raw.exposure_id, raw.exposureId, raw.exercise_exposure_id, raw.exerciseExposureId]],
+      ["workout_exercise", [raw.workout_exercise_id, raw.workoutExerciseId]],
+      ["session_exercise", [raw.session_exercise_id, raw.sessionExerciseId]],
+      ["workout", [raw.workout_id, raw.workoutId]],
+      ["session", [raw.session_id, raw.sessionId, raw.workout_session_id, raw.workoutSessionId]]
+    ];
+    return unique(candidates.flatMap(([type, values]) => values.map((rawValue) => {
+      const value = typeof rawValue === "string" ? rawValue.trim() : rawValue;
+      return (typeof value === "string" && value) || (typeof value === "number" && Number.isFinite(value))
+        ? `${type}:${value}`
+        : null;
+    })));
+  }
+
+  function groupProgressionExposures(history) {
+    const entries = history.map((item, order) => ({ item, order, identifiers: progressionExposureIdentifiers(item) }));
+    const parent = entries.map((_, index) => index);
+    const find = (index) => {
+      let root = index;
+      while (parent[root] !== root) root = parent[root];
+      while (parent[index] !== index) {
+        const next = parent[index];
+        parent[index] = root;
+        index = next;
+      }
+      return root;
+    };
+    const unite = (left, right) => {
+      const leftRoot = find(left);
+      const rightRoot = find(right);
+      if (leftRoot !== rightRoot) parent[rightRoot] = leftRoot;
+    };
+    const firstEntryByIdentifier = new Map();
+    entries.forEach((entry, index) => {
+      entry.identifiers.forEach((identifier) => {
+        if (firstEntryByIdentifier.has(identifier)) unite(index, firstEntryByIdentifier.get(identifier));
+        else firstEntryByIdentifier.set(identifier, index);
+      });
+    });
+
+    const stableComponentsByRoot = new Map();
+    entries.forEach((entry, index) => {
+      if (!entry.identifiers.length) return;
+      const root = find(index);
+      if (!stableComponentsByRoot.has(root)) stableComponentsByRoot.set(root, { rows: [], firstOrder: entry.order, ambiguous: false });
+      const component = stableComponentsByRoot.get(root);
+      component.rows.push(entry.item);
+      component.firstOrder = Math.min(component.firstOrder, entry.order);
+    });
+    const components = [...stableComponentsByRoot.values()];
+    const stableComponentsByDate = new Map();
+    components.forEach((component) => {
+      unique(component.rows.map((item) => item.date)).forEach((date) => {
+        if (!stableComponentsByDate.has(date)) stableComponentsByDate.set(date, new Set());
+        stableComponentsByDate.get(date).add(component);
+      });
+    });
+
+    const unidentifiedByDate = new Map();
+    entries.filter((entry) => !entry.identifiers.length).forEach((entry) => {
+      const date = entry.item.date || "";
+      if (!unidentifiedByDate.has(date)) unidentifiedByDate.set(date, []);
+      unidentifiedByDate.get(date).push(entry);
+    });
+    unidentifiedByDate.forEach((unidentified, date) => {
+      const candidates = date ? [...(stableComponentsByDate.get(date) || [])] : [];
+      if (candidates.length === 1) {
+        candidates[0].rows.push(...unidentified.map((entry) => entry.item));
+        candidates[0].firstOrder = Math.min(candidates[0].firstOrder, ...unidentified.map((entry) => entry.order));
+        return;
+      }
+      components.push({
+        rows: unidentified.map((entry) => entry.item),
+        firstOrder: Math.min(...unidentified.map((entry) => entry.order)),
+        ambiguous: candidates.length > 1
+      });
+    });
+
+    return components.map((group) => ({
+      ...group,
+      date: unique(group.rows.map((item) => item.date)).at(-1) || null
+    })).sort((left, right) => {
+      const chronological = (left.date || "9999").localeCompare(right.date || "9999");
+      if (chronological) return chronological;
+      if (left.ambiguous !== right.ambiguous) return left.ambiguous ? 1 : -1;
+      return left.firstOrder - right.firstOrder;
+    });
+  }
+
+  function progressionConfirmationFor(options = {}) {
+    const history = normalizeHistory(options.history).filter((item) => !item.prescribedReduction);
+    const researchExercise = options.researchExercise || {};
+    const context = options.context || programmingContext({}, {});
+    const stableLowFatigueIsolation = isIsolationExercise(researchExercise)
+      && stabilityScore(researchExercise) >= 65
+      && fatigueCostScore(researchExercise) <= 60;
+    const requiredExposures = stableLowFatigueIsolation ? 1 : Math.max(1, number(context.experience?.progressionConfirmationExposures, 3));
+    const targetRpe = options.targetRpe || { min: 6, max: 9 };
+    const evaluatedRows = history.map((item) => {
+      const complete = (item.adherence !== null && item.adherence >= 0.999)
+        || (item.completedSetCount !== null && item.prescribedSetCount !== null && item.completedSetCount >= item.prescribedSetCount);
+      const techniqueQuality = String(item.techniqueQuality || "").trim().toLowerCase();
+      const techniqueValid = item.techniqueValid === true || /^(valid|good|stable|repeatable|controlled)(?:\b|_)/.test(techniqueQuality);
+      const effortValues = item.rpes.length ? item.rpes : item.averageRpe !== null ? [item.averageRpe] : [];
+      const effortValid = effortValues.length > 0 && effortValues.every((value) => value >= number(targetRpe.min, 5) && value <= number(targetRpe.max, 10));
+      const comparablePerformance = item.reps.length > 0 && (item.loads.length > 0 || item.performance !== null);
+      const qualifies = complete && techniqueValid && effortValid && !item.pain && comparablePerformance;
+      return {
+        date: item.date || null,
+        qualifies,
+        complete,
+        techniqueValid,
+        effortValid,
+        painFree: !item.pain,
+        comparablePerformance
+      };
+    });
+    const rowEvaluationByIndex = new Map(evaluatedRows.map((item, index) => [history[index].index, item]));
+    const evaluated = groupProgressionExposures(history).map((group) => {
+      const rows = group.rows.map((item) => rowEvaluationByIndex.get(item.index));
+      return {
+        date: group.date,
+        qualifies: !group.ambiguous && rows.length > 0 && rows.every((item) => item.qualifies),
+        complete: rows.length > 0 && rows.every((item) => item.complete),
+        techniqueValid: rows.length > 0 && rows.every((item) => item.techniqueValid),
+        effortValid: rows.length > 0 && rows.every((item) => item.effortValid),
+        painFree: rows.length > 0 && rows.every((item) => item.painFree),
+        comparablePerformance: rows.length > 0 && rows.every((item) => item.comparablePerformance)
+      };
+    });
+    let observedQualifyingExposures = 0;
+    for (let index = evaluated.length - 1; index >= 0; index -= 1) {
+      if (!evaluated[index].qualifies) break;
+      observedQualifyingExposures += 1;
+    }
+    const satisfied = observedQualifyingExposures >= requiredExposures;
+    return {
+      schemaVersion: PROGRESSION_CONFIRMATION_SCHEMA_VERSION,
+      requiredExposures,
+      observedQualifyingExposures,
+      satisfied,
+      exceptionApplied: stableLowFatigueIsolation ? "stable_low_fatigue_isolation" : null,
+      criteria: ["complete_prescribed_work", "valid_technique", "target_effort", "pain_free", "comparable_performance"],
+      qualifyingExposureDates: observedQualifyingExposures === 0
+        ? []
+        : unique(evaluated.slice(-observedQualifyingExposures).map((item) => item.date)),
+      explanation: satisfied
+        ? `${observedQualifyingExposures} consecutive qualifying comparable exposure${observedQualifyingExposures === 1 ? "" : "s"} satisfy the ${requiredExposures}-exposure confirmation policy.`
+        : `${observedQualifyingExposures} consecutive qualifying comparable exposure${observedQualifyingExposures === 1 ? " was" : "s were"} observed; ${requiredExposures} are required before progression. Missing or invalid evidence is not treated as confirmation.`
+    };
+  }
+
+  function enforceProgressionConfirmation(decisionInput, confirmation, context) {
+    const decision = deepClone(decisionInput);
+    if (context.returningAfterGap?.resolvedValue === true) return {
+      action: "establish_baseline",
+      recommendationType: "hold",
+      progressionMethod: decision.progressionMethod,
+      instruction: "Hold progression and establish a controlled return-after-gap baseline at pain-free technique and target effort before changing load, repetitions, or volume.",
+      holdRule: "Keep prior performance as historical context only until a current qualifying baseline is recorded.",
+      regressionRule: "Adjust conservatively if the return exposure exceeds target effort, loses technique, causes pain, or cannot complete prescribed work."
+    };
+    if (confirmation.satisfied) return decision;
+    if (["exercise_deload", "reduce_volume", "hold"].includes(decision.recommendationType) && decision.action !== "establish_baseline") return decision;
+    if (decision.action === "establish_baseline") return {
+      ...decision,
+      recommendationType: "hold",
+      instruction: `${decision.instruction} ${confirmation.explanation}`
+    };
+    return {
+      action: "hold_for_confirmation",
+      recommendationType: "hold",
+      progressionMethod: decision.progressionMethod,
+      instruction: `Hold progression: ${confirmation.explanation}`,
+      holdRule: "Repeat the same prescription until consecutive comparable exposures meet completion, technique, target-effort, pain-free, and performance criteria.",
+      regressionRule: "Reduce load or complexity if qualifying evidence cannot be established without technique loss, excessive effort, incomplete work, or pain."
+    };
+  }
+
   function determineProgressionDecision(options = {}) {
     const history = normalizeHistory(options.history).filter((item) => !item.prescribedReduction);
     const recent = history.slice(-4);
@@ -1629,6 +2720,18 @@
         regressionRule: "If the first comparable exposure is outside the target, adjust the load before changing volume."
       };
     }
+    const returnBaselineRequired = staleness.classification === STALENESS.INSUFFICIENT
+      && asArray(staleness.reasons).some((reason) => /latest comparable exposure|return-to-training baseline/i.test(reason));
+    if (returnBaselineRequired) {
+      return {
+        action: "establish_baseline",
+        recommendationType: "hold",
+        progressionMethod: method,
+        instruction: "Hold progression and establish a controlled return-to-training baseline at pain-free technique and target effort before changing load, repetitions, or volume.",
+        holdRule: "Keep the last normal prescription as historical context only; the first current comparable exposure establishes the new baseline.",
+        regressionRule: "Adjust conservatively if the return exposure exceeds target effort, loses technique, or cannot complete the prescribed work."
+      };
+    }
     const regressions = recent.slice(-2).filter((item) => /regress|declin/.test(item.status) || number(item.progressionPercent) < -1.5).length;
     const risingRpe = linearSlope(recent.map((item) => item.averageRpe)) >= 0.3;
     const lastReps = last.reps.length ? last.reps : [number(last.raw.reps || last.raw.repetitions)];
@@ -1636,7 +2739,8 @@
     const firstSetAtTop = lastReps.length > 0 && lastReps[0] >= number(repRange.max);
     const laterSetsConverged = lastReps.slice(1).every((reps) => reps >= Math.ceil(number(repRange.max) * (1 - acceptableRepLoss)));
     const allAtTop = firstSetAtTop && laterSetsConverged;
-    const effortAcceptable = last.averageRpe === null || last.averageRpe <= number(rpeRange.max, 9);
+    const effortRecorded = last.averageRpe !== null || last.rpes.length > 0;
+    const effortAcceptable = effortRecorded && (last.averageRpe === null || last.averageRpe <= number(rpeRange.max, 9)) && last.rpes.every((rpe) => rpe <= number(rpeRange.max, 9));
     const topReached = lastReps[0] >= number(repRange.max) && effortAcceptable;
     if (staleness.deloadCandidate && regressions >= 2) {
       return {
@@ -1646,6 +2750,25 @@
         instruction: "Begin an exercise-specific deload: reduce working sets about 50%, lower load 7.5-12%, avoid failure work, and reassess after one lower-fatigue exposure.",
         holdRule: "Do not resume progression until warm-ups and a comparable work set stabilize.",
         regressionRule: "If regression or pain persists after the deload, rotate to the preferred replacement."
+      };
+    }
+    const invalidTechnique = last.techniqueValid === false || /invalid|poor|breakdown|failed/.test(last.techniqueQuality);
+    const effortTooHigh = effortRecorded && !effortAcceptable;
+    const blockers = [
+      last.pain ? "current pain or discomfort" : "",
+      invalidTechnique ? "invalid or deteriorated technique" : "",
+      !effortRecorded ? "missing RPE evidence" : "",
+      effortTooHigh ? "RPE above the prescribed ceiling" : "",
+      last.incompletePrescribedWork ? "incomplete prescribed working sets" : ""
+    ].filter(Boolean);
+    if (blockers.length) {
+      return {
+        action: last.pain ? "hold_for_pain_free_modification" : invalidTechnique ? "hold_for_technique" : "hold_for_complete_evidence",
+        recommendationType: "hold",
+        progressionMethod: method,
+        instruction: `Do not progress this exposure because of ${blockers.join(", ")}. Repeat only with pain-free execution, complete prescribed work, valid technique, and recorded effort inside the target range.`,
+        holdRule: "Hold load, repetitions, and volume until the blocking evidence is resolved on a comparable exposure.",
+        regressionRule: last.pain ? "Use a pain-free substitute or seek qualified evaluation when pain is severe, unexplained, or persistent." : "Reduce load or complexity if valid technique and target effort cannot be restored."
       };
     }
     if (risingRpe && !allAtTop) {
@@ -1818,18 +2941,53 @@
     };
   }
 
-  function preferredReplacementFor(candidate, evidence, rankedCandidates = []) {
+  function preferredReplacementFor(candidate, evidence, rankedCandidates = [], options = {}) {
     const research = evidence.research;
+    const exclusions = resolveExerciseExclusions(evidence, options.excludedExerciseIds);
+    const replacementAllowed = (replacementCandidate) => Boolean(
+      replacementCandidate
+      && !candidateIsExcluded(replacementCandidate, exclusions)
+      && !candidateEquipmentProfile(replacementCandidate).invalid
+      && equipmentCompatibilityForCandidate(replacementCandidate, options.availableEquipment).eligible
+    );
     const substitutions = research.substitutionsByExercise.get(candidate.researchExerciseId) || [];
     for (const mapping of substitutions) {
       const targetResearchId = mapping.substitute_exercise_id || mapping.substituteExerciseId;
-      const ranked = rankedCandidates.find((item) => item.candidate.researchExerciseId === targetResearchId || item.candidate.exerciseId === targetResearchId);
+      const ranked = rankedCandidates.find((item) => (
+        item.candidate.exerciseId !== candidate.exerciseId
+        && (item.candidate.researchExerciseId === targetResearchId || item.candidate.exerciseId === targetResearchId)
+        && replacementAllowed(item.candidate)
+      ));
       if (ranked) return ranked.candidate.exerciseId;
-      const personalId = evidence.personal.personalIdsByResearchId.get(targetResearchId)?.[0];
-      if (personalId) return personalId;
-      if (research.exerciseById.has(targetResearchId)) return targetResearchId;
+      const personalId = evidence.personal.selectedPersonalIdByResearchId?.get(targetResearchId);
+      if (personalId && personalId !== candidate.exerciseId) {
+        const selectedIdentity = evidence.personal.reconciledIdentityByExerciseId?.get(personalId);
+        if (selectedIdentity && !selectedIdentity.invalid && selectedIdentity.researchExerciseId === targetResearchId) {
+          const researchExercise = research.exerciseById.get(targetResearchId) || null;
+          const linkedCandidate = {
+            exerciseId: personalId,
+            researchExerciseId: targetResearchId,
+            selectedIdentity,
+            researchExercise
+          };
+          linkedCandidate.equipmentProfile = resolveCandidateEquipmentProfile(linkedCandidate);
+          if (replacementAllowed(linkedCandidate)) return personalId;
+        }
+      }
+      if (personalId) continue;
+      const researchExercise = research.exerciseById.get(targetResearchId);
+      if (researchExercise) {
+        const canonicalCandidate = {
+          exerciseId: targetResearchId,
+          researchExerciseId: targetResearchId,
+          selectedIdentity: null,
+          researchExercise
+        };
+        canonicalCandidate.equipmentProfile = resolveCandidateEquipmentProfile(canonicalCandidate);
+        if (replacementAllowed(canonicalCandidate)) return targetResearchId;
+      }
     }
-    return rankedCandidates.find((item) => item.candidate.exerciseId !== candidate.exerciseId)?.candidate.exerciseId || null;
+    return rankedCandidates.find((item) => item.candidate.exerciseId !== candidate.exerciseId && replacementAllowed(item.candidate))?.candidate.exerciseId || null;
   }
 
   function recommendationReasons(selected, entry, index) {
@@ -1847,13 +3005,41 @@
 
   function rankExercisePool(evidenceInput, muscleGroupId, options = {}) {
     const evidence = evidenceInput.personal ? evidenceInput : normalizeEvidenceBundle(evidenceInput);
+    resolveGoalInput(options);
+    resolveExperienceInput(options);
+    resolveNutritionPhaseInput(options);
+    resolveReturningAfterGapInput(options);
+    const poolContext = programmingContext(options, {});
     const maxCandidates = clamp(number(options.maxCandidates, DEFAULT_POLICY.candidatePoolSize), 1, 5);
-    const availableEquipment = asArray(options.availableEquipment);
+    const equipmentInput = normalizeAvailableEquipmentInput(options.availableEquipment);
+    const exclusionResolution = resolveExerciseExclusions(evidence, options.excludedExerciseIds);
     let candidates = buildMergedExerciseCandidates(evidence, muscleGroupId, options);
     const excludedCandidates = [];
-    if (availableEquipment.length && !availableEquipment.includes("all")) {
+    candidates = candidates.filter((candidate) => {
+      if (!candidateIsExcluded(candidate, exclusionResolution)) return true;
+      excludedCandidates.push({
+        exerciseId: candidate.exerciseId,
+        canonicalResearchExerciseId: candidate.researchExerciseId || null,
+        exerciseName: candidate.exerciseName,
+        reasonCode: "user_exclusion",
+        explanation: "Excluded by a user-supplied canonical, custom, or research-alias identity before scoring and substitution resolution."
+      });
+      return false;
+    });
+    candidates = candidates.filter((candidate) => {
+      const profile = candidateEquipmentProfile(candidate);
+      if (!profile.invalid) return true;
+      excludedCandidates.push({
+        exerciseId: candidate.exerciseId,
+        exerciseName: candidate.exerciseName,
+        reasonCode: "invalid_equipment_identity",
+        explanation: `Excluded because the trusted equipment identity is invalid: ${profile.invalidReason}`
+      });
+      return false;
+    });
+    if (equipmentInput.provided && (!equipmentInput.valid || !equipmentInput.values.includes("all"))) {
       const compatible = candidates.filter((candidate) => {
-        const compatibility = equipmentCompatible(candidate.researchExercise || candidate.personalScore || {}, availableEquipment);
+        const compatibility = equipmentCompatibilityForCandidate(candidate, options.availableEquipment);
         if (!compatibility.eligible) excludedCandidates.push({
           exerciseId: candidate.exerciseId,
           exerciseName: candidate.exerciseName,
@@ -1887,7 +3073,8 @@
       const muscleDefaults = aggregateMuscleResearchDefaults(evidence.research, muscleGroupId);
       const researchDefaults = researchExerciseDefaults(candidate.researchExercise, muscleDefaults);
       const personalRanges = personalPrescriptionRanges(candidate.personalPrescription);
-      const repRange = blendRange(personalRanges.repRange, researchDefaults.repRange, entry.score.personalEvidenceWeight, { integer: true, minimumWidth: DEFAULT_POLICY.minimumRepRangeWidth, floor: 3, ceiling: 30 });
+      const rawRepRange = blendRange(personalRanges.repRange, researchDefaults.repRange, entry.score.personalEvidenceWeight, { integer: true, minimumWidth: DEFAULT_POLICY.minimumRepRangeWidth, floor: 3, ceiling: 30 });
+      const rawRestSeconds = blendRange(personalRanges.restSeconds, researchDefaults.restSeconds, entry.score.personalEvidenceWeight, { integer: true, floor: 30, ceiling: 600 }) || { min: 90, target: 150, max: 240 };
       const volume = determineVolumePrescription({
         personalRanges,
         researchDefaults,
@@ -1898,11 +3085,31 @@
         specializationMuscleGroups: options.specializationMuscleGroups,
         muscleGroupId
       });
-      const workingSets = {
+      const rawWorkingSets = {
         min: volume.perExercise.normalOperatingRange.min,
         target: volume.perExercise.currentPrescribed,
         max: volume.perExercise.normalOperatingRange.max
       };
+      const context = options.resolvedProgrammingContext ? deepClone(options.resolvedProgrammingContext) : programmingContext(options, entry.score);
+      const goalPolicy = applyGoalPolicyToDose({
+        context,
+        role,
+        researchExercise: candidate.researchExercise,
+        exerciseId: candidate.exerciseId,
+        exerciseName: candidate.exerciseName,
+        repRange: rawRepRange,
+        restSeconds: rawRestSeconds,
+        workingSets: rawWorkingSets,
+        personalEvidenceWeight: entry.score.personalEvidenceWeight,
+        staleness: entry.score.staleness
+      });
+      const workingSets = {
+        min: Math.min(rawWorkingSets.min, goalPolicy.goalSetTarget),
+        target: goalPolicy.goalSetTarget,
+        max: Math.max(goalPolicy.goalSetTarget, rawWorkingSets.max)
+      };
+      const repRange = goalPolicy.repRange;
+      const restSeconds = goalPolicy.restSeconds;
       const structure = chooseSetStructure({
         researchExercise: candidate.researchExercise,
         personalPrescription: candidate.personalPrescription,
@@ -1914,15 +3121,27 @@
       });
       const targetRir = blendRange(personalRanges.rir, researchDefaults.rir, entry.score.personalEvidenceWeight, { floor: 0, ceiling: 5 }) || { min: 1, target: 2, max: 3 };
       const frequency = blendRange(personalRanges.frequency, researchDefaults.frequency, entry.score.personalEvidenceWeight, { floor: 1, ceiling: 7 });
-      const progression = determineProgressionDecision({
+      const targetRpe = { min: 10 - targetRir.max, max: 10 - targetRir.min };
+      const progressionConfirmation = progressionConfirmationFor({
+        history: candidate.history,
+        researchExercise: candidate.researchExercise,
+        role,
+        context,
+        targetRpe
+      });
+      const progressionMethod = context.goal.resolvedValue === "muscular_endurance"
+        ? "rep_first_progression"
+        : candidate.researchExercise?.preferred_progression_model;
+      const progression = enforceProgressionConfirmation(determineProgressionDecision({
         history: candidate.history,
         repRange,
-        targetRpe: { min: 10 - targetRir.max, max: 10 - targetRir.min },
+        targetRpe,
         staleness: entry.score.staleness,
         setStructure: structure.setStructure,
-        progressionMethod: candidate.researchExercise?.preferred_progression_model
-      });
-      const preferredReplacementExerciseId = preferredReplacementFor(candidate, evidence, selected);
+        workingSets,
+        progressionMethod
+      }), progressionConfirmation, context);
+      const preferredReplacementExerciseId = preferredReplacementFor(candidate, evidence, scored, options);
       const taxonomy = asArray(candidate.researchMappings).length ? asArray(candidate.researchMappings) : [{
         muscle_group_id: candidate.muscleScore?.research_muscle_group_id || candidate.muscleScore?.muscle_group || muscleGroupId,
         relationship_type: number(candidate.muscleScore?.contribution_weight, 1) >= 1 ? "direct_load" : "meaningful_fractional_load",
@@ -1949,17 +3168,22 @@
         secondaryMuscles,
         stabilizingMuscles,
         muscleRelationships: taxonomy,
-        equipmentRequirements: equipmentRequirementOptions(candidate.researchExercise || candidate.personalScore),
+        equipmentRequirements: deepClone(candidateEquipmentProfile(candidate).requirements),
         jointActions: jointActionsForExercise(candidate.researchExercise || candidate.personalScore),
         recommendedSetStructure: structure.setStructure,
         setStructureReason: structure.reasoning,
         recommendedSetRange: workingSets,
         recommendedRepRange: repRange,
+        recommendedRestSeconds: restSeconds,
         recommendedRpe: { min: round(10 - targetRir.max, 1), max: round(10 - targetRir.min, 1) },
         recommendedRir: { min: targetRir.min, max: targetRir.max },
         recommendedFrequency: frequency,
         progressionMethod: progression.progressionMethod,
         progressionInstruction: progression.instruction,
+        progressionConfirmation,
+        programmingContext: deepClone(context),
+        scientificProvenance: materialScientificProvenance(context.goal.resolvedValue),
+        ...(goalPolicy.conflict ? { goalPolicyConflict: goalPolicy.conflict } : {}),
         deloadTrigger: candidate.researchExercise?.deload_criteria || candidate.personalPrescription?.deload_rule?.trigger || "Two confirmed regressions plus fatigue or pain; one noisy session is insufficient.",
         rotationTrigger: entry.score.staleness.reasons.join(" ") || candidate.researchExercise?.substitution_triggers,
         preferredReplacementExerciseId,
@@ -1981,6 +3205,12 @@
         diversitySignature: diversitySignature(candidate)
       };
     });
+    items.forEach((item) => {
+      if (!item.goalPolicyConflict) return;
+      const alternative = items.find((candidate) => candidate.exerciseId !== item.exerciseId && !candidate.goalPolicyConflict);
+      item.goalPolicyConflict.alternativeExerciseId = alternative?.exerciseId || null;
+      if (alternative) item.preferredReplacementExerciseId = alternative.exerciseId;
+    });
     return {
       muscleGroupId,
       mesocycleType: options.mesocycleType || MESOCYCLE_TYPES.PRIMARY,
@@ -1989,6 +3219,8 @@
       availableViableExerciseCount: scored.length,
       candidates: items,
       excludedCandidates,
+      exclusionResolution,
+      programmingContext: deepClone(poolContext),
       diversificationApplied: true,
       explanation: `These are the top ${Math.min(maxCandidates, items.length)} alternatives for one program role, not exercises that must all be performed. Ranking uses predicted target-muscle value, personal evidence, research, equipment, fatigue, and redundancy.`
     };
@@ -2028,7 +3260,7 @@
   }
 
   function selectActiveExercisesFromPools(pools, options = {}) {
-    const trainingDays = clamp(number(options.trainingDays, 4), 1, 7);
+    const trainingDays = normalizeTrainingDays(options, 4);
     const currentIds = new Set(asArray(options.currentExerciseIds));
     const readiness = evaluateReadiness(options.readiness || {});
     const specializationGroups = new Set(asArray(options.specializationMuscleGroups).map(normalizeMuscleId));
@@ -2105,6 +3337,10 @@
     if (candidate.scores.recoveryEfficiency >= 70) positiveFactors.push("Personal or blended evidence supports good recovery efficiency.");
     if (candidate.scores.easeOfProgression >= 75) positiveFactors.push("Load or repetition progression is easy to measure.");
     if (candidate.scores.personalEvidenceWeight >= 0.6) positiveFactors.push("Adequate comparable personal evidence informs the estimate.");
+    if (candidate.goalPolicyConflict) {
+      fit -= 25;
+      limitingFactors.push(candidate.goalPolicyConflict.explanation);
+    }
     if (redundant.length) {
       fit -= 9 + (redundant.length - 1) * 5;
       limitingFactors.push(`Mechanically redundant with ${redundant.slice(0, 3).map((entry) => entry.item.exerciseName).join(", ")}: shared primary target, joint action, movement pattern, and similar program role or loading profile.`);
@@ -2137,7 +3373,7 @@
     const grouped = new Map();
     Object.values(pools).forEach((pool) => {
       const family = muscleFamily(pool.muscleGroupId);
-      if (!grouped.has(family)) grouped.set(family, { muscleGroupId: family, mesocycleType: pool.mesocycleType, generatedAt: pool.generatedAt, candidates: [], excludedCandidates: [], availableViableExerciseCount: 0, sourceMuscleGroupIds: [] });
+      if (!grouped.has(family)) grouped.set(family, { muscleGroupId: family, mesocycleType: pool.mesocycleType, generatedAt: pool.generatedAt, candidates: [], excludedCandidates: [], exclusionResolution: pool.exclusionResolution, programmingContext: deepClone(pool.programmingContext), availableViableExerciseCount: 0, sourceMuscleGroupIds: [] });
       const target = grouped.get(family);
       target.sourceMuscleGroupIds.push(pool.muscleGroupId);
       target.availableViableExerciseCount += number(pool.availableViableExerciseCount, pool.candidates.length);
@@ -2153,16 +3389,20 @@
   function createProgramSlots(pools, options = {}) {
     const specialization = new Set(asArray(options.specializationMuscleGroups).map(normalizeMuscleId));
     return Object.values(pools).filter((pool) => pool.candidates.length > 0).map((pool, index) => {
+      const context = options.resolvedProgrammingContext || pool.programmingContext || programmingContext(options, {});
+      const goalLabel = GOAL_LABELS[context.goal.resolvedValue] || context.goal.resolvedValue;
       const defaults = options.evidence ? aggregateMuscleResearchDefaults(options.evidence.research, pool.muscleGroupId) : null;
       const specialized = specialization.has(normalizeMuscleId(pool.muscleGroupId));
       const objectiveFactor = options.type === MESOCYCLE_TYPES.LOWER_FATIGUE ? 0.72 : specialized ? 1.2 : 1;
       const weeklyTarget = Math.max(2, Math.round(number(defaults?.weeklySets?.min, pool.candidates[0]?.recommendedSetRange?.target || 3) * objectiveFactor));
-      const frequencyTarget = Math.min(weeklyTarget, number(options.trainingDays, 4), specialized ? 3 : 2, Math.max(1, Math.round(number(defaults?.frequency?.target, pool.candidates[0]?.recommendedFrequency?.target || 2))));
+      const evidenceFrequencyTarget = Math.min(weeklyTarget, number(options.trainingDays, 4), specialized ? 3 : 2, Math.max(1, Math.round(number(defaults?.frequency?.target, pool.candidates[0]?.recommendedFrequency?.target || 2))));
+      const directCandidateCount = pool.candidates.filter((candidate) => asArray(candidate.muscleRelationships).some((mapping) => mapping.relationship_type === "direct_load" && researchMuscleMatch(options.evidence?.research, pool.muscleGroupId, mapping.muscle_group_id))).length;
+      const frequencyTarget = Math.min(evidenceFrequencyTarget, Math.max(1, directCandidateCount));
       const desiredSelections = frequencyTarget;
       return ({
       id: `slot_${normalizeText(pool.muscleGroupId)}_${index + 1}`,
       muscleGroupId: pool.muscleGroupId,
-      trainingPurpose: specialized ? "Specialization volume and progression" : "Meet evidence-adjusted weekly volume and frequency",
+      trainingPurpose: specialized ? `${goalLabel} specialization volume and progression` : `Meet evidence-adjusted ${goalLabel.toLowerCase()} volume and frequency`,
       role: pool.candidates[0]?.intendedRole || "secondary_hypertrophy_lift",
       selectionRequired: Math.min(pool.candidates.length, desiredSelections),
       selectedExerciseIds: [],
@@ -2171,7 +3411,8 @@
       weeklySetsTarget: weeklyTarget,
       weeklyExposuresTarget: frequencyTarget,
       plannedSessionIds: [],
-      rationale: `This slot ensures ${pool.muscleGroupId.replaceAll("_", " ")} receives its evidence-adjusted volume across ${frequencyTarget} weekly exposure${frequencyTarget === 1 ? "" : "s"}.`
+      programmingContext: deepClone(context),
+      rationale: `This ${goalLabel.toLowerCase()} slot ensures ${pool.muscleGroupId.replaceAll("_", " ")} receives its evidence-adjusted direct volume across ${frequencyTarget} weekly exposure${frequencyTarget === 1 ? "" : "s"}.${frequencyTarget < evidenceFrequencyTarget ? " Frequency is capped by the number of distinct direct-load candidates in the verified catalog; fractional involvement is not relabeled as direct work." : ""}`
     });
     });
   }
@@ -2230,10 +3471,27 @@
   }
 
   function distributePortfolioAcrossSessions(portfolio, options = {}) {
-    const dayCount = clamp(number(options.trainingDays, 4), 1, 7);
+    const dayCount = normalizeTrainingDays(options, 4);
+    const context = options.resolvedProgrammingContext || programmingContext(options, {});
+    const goal = context.goal.resolvedValue;
+    const goalIntent = GOAL_SESSION_INTENTS[goal] || `${goal.replaceAll("_", " ")} resistance training`;
     const splitByDays = { 1: ["Full Body"], 2: ["Upper", "Lower"], 3: ["Upper", "Lower", "Full Body"], 4: ["Upper", "Lower", "Upper", "Lower"], 5: ["Upper", "Lower", "Push", "Pull", "Accessories"], 6: ["Upper", "Lower", "Push", "Pull", "Upper", "Lower"], 7: ["Upper", "Lower", "Push", "Pull", "Upper", "Lower", "Accessories"] };
     const focuses = splitByDays[dayCount];
-    const sessions = Array.from({ length: dayCount }, (_, index) => ({ id: `session_${index + 1}`, dayIndex: index, name: `Day ${index + 1}`, workoutType: focuses[index], primaryPurpose: focuses[index], baseSessionIntent: options.type === MESOCYCLE_TYPES.LOWER_FATIGUE ? "Lower-fatigue practice session" : `${focuses[index]} hypertrophy and progression`, exercises: [], estimatedDurationMinutes: 0, systemicFatigue: 0, spinalLoad: 0, gripDemand: 0, jointStress: 0 }));
+    const sessions = Array.from({ length: dayCount }, (_, index) => ({
+      id: `session_${index + 1}`,
+      dayIndex: index,
+      name: `Day ${index + 1}: ${focuses[index]} ${GOAL_LABELS[goal] || goal}`,
+      workoutType: focuses[index],
+      primaryPurpose: focuses[index],
+      baseSessionIntent: options.type === MESOCYCLE_TYPES.LOWER_FATIGUE ? `Lower-fatigue ${goalIntent}` : `${focuses[index]} ${goalIntent}`,
+      programmingContext: deepClone(context),
+      exercises: [],
+      estimatedDurationMinutes: 0,
+      systemicFatigue: 0,
+      spinalLoad: 0,
+      gripDemand: 0,
+      jointStress: 0
+    }));
     const lower = new Set(["quads", "hamstrings", "glutes", "calves", "adductors", "abductors"]);
     const push = new Set(["chest", "front_delts", "side_delts", "triceps"]);
     const pull = new Set(["upper_back", "lats", "rear_delts", "biceps", "forearms", "traps"]);
@@ -2250,6 +3508,7 @@
       return 0;
     };
     const policy = { ...DEFAULT_POLICY, ...(options.policy || {}) };
+    const duration = normalizeSessionDurationConstraints(options, policy);
     const capacityIssues = [];
     const sessionWorkingSets = (session) => sum(session.exercises.map((item) => number(item.plannedSets, 0)));
     const targetedExerciseCount = (session, exercise) => {
@@ -2273,16 +3532,21 @@
       const plannedExposureSets = Array.from({ length: exposures }, (_, exposureIndex) => Math.floor(weeklySets / exposures) + (exposureIndex < weeklySets % exposures ? 1 : 0));
       for (let exposure = 0; exposure < exposures; exposure += 1) {
         const setsForExposure = plannedExposureSets[exposure];
+        const rest = number(exercise.recommendedRestSeconds?.target || exercise.restSeconds?.target, exercise.scores.highFatigueCompound ? 180 : 90);
+        const addedDurationMinutes = round(setsForExposure * (rest + 42) / 60 + 2, 1);
         const rankedSessions = sessions.filter((session) => !chosen.some((item) => item.session === session)
           && sessionWorkingSets(session) + setsForExposure <= policy.maximumWorkingSetsPerSession
-          && targetedExerciseCount(session, exercise) < policy.maximumExercisesPerMusclePerSession).map((session, index) => {
+          && targetedExerciseCount(session, exercise) < policy.maximumExercisesPerMusclePerSession
+          && session.estimatedDurationMinutes + addedDurationMinutes <= duration.maximum).map((session, index) => {
           const adjacentSameExercise = sessions.filter((other) => Math.abs(other.dayIndex - session.dayIndex) === 1 && other.exercises.some((item) => item.exerciseId === exercise.exerciseId)).length;
           const equipmentChanges = session.exercises.length && !session.exercises.some((item) => item.diversitySignature?.equipment === exercise.diversitySignature?.equipment) ? 8 : 0;
           const densityCost = session.exercises.length >= policy.maximumExercisesPerSession ? 120 : session.exercises.length * 4;
-          return { session, cost: focusFit(session, exercise) + sessionPlacementCost(session, exercise, index, sessions) + adjacentSameExercise * (exercise.scores.highFatigueCompound ? 500 : 120) + equipmentChanges + densityCost };
+          const projectedDuration = session.estimatedDurationMinutes + addedDurationMinutes;
+          const targetDurationCost = projectedDuration > duration.target ? (projectedDuration - duration.target) * 24 : Math.abs(duration.target - projectedDuration) * 0.08;
+          return { session, cost: focusFit(session, exercise) + sessionPlacementCost(session, exercise, index, sessions) + adjacentSameExercise * (exercise.scores.highFatigueCompound ? 500 : 120) + equipmentChanges + densityCost + targetDurationCost };
         }).sort((a, b) => a.cost - b.cost);
         if (rankedSessions[0]) chosen.push({ session: rankedSessions[0].session, sets: setsForExposure });
-        else capacityIssues.push({ exerciseId: exercise.exerciseId, exerciseName: exercise.exerciseName, muscleGroupIds: exercise.targetMuscleGroupIds, unallocatedSets: setsForExposure, reason: `No session can accept ${setsForExposure} more working sets without exceeding ${policy.maximumWorkingSetsPerSession} sets or ${policy.maximumExercisesPerMusclePerSession} exercises for the same muscle.` });
+        else capacityIssues.push({ exerciseId: exercise.exerciseId, exerciseName: exercise.exerciseName, muscleGroupIds: exercise.targetMuscleGroupIds, unallocatedSets: setsForExposure, reason: `No session can accept ${setsForExposure} more working sets within the hard ${duration.maximum}-minute duration maximum, ${policy.maximumWorkingSetsPerSession}-set limit, and ${policy.maximumExercisesPerMusclePerSession}-exercise target-muscle limit.` });
       }
       chosen.forEach(({ session: target, sets }, exposureIndex) => {
         const rest = number(exercise.recommendedRestSeconds?.target || exercise.restSeconds?.target, exercise.scores.highFatigueCompound ? 180 : 90);
@@ -2301,6 +3565,8 @@
 
   function reviewFullProgram(portfolio, sessions, slots, evidence, options = {}) {
     const policy = { ...DEFAULT_POLICY, ...(options.policy || {}) };
+    const context = options.resolvedProgrammingContext || programmingContext(options, {});
+    const duration = normalizeSessionDurationConstraints(options, policy);
     const warnings = [];
     const scheduledCanonicalIds = new Map();
     sessions.forEach((session) => {
@@ -2325,7 +3591,7 @@
       if (session.spinalLoad > policy.maximumSessionSpinalLoad) warnings.push({ severity: "serious", type: "spinal_load", sessionId: session.id, exerciseIds: session.exercises.filter((item) => item.scores.spinalLoad >= 65).map((item) => item.exerciseId), conflict: `Excessive spinal loading in ${session.name}: ${names.join(", ")}.`, why: "Several axially or isometrically demanding movements may reduce later-set quality and extend recovery.", recommendation: "Move one hinge, squat, or unsupported row to another day, or choose a supported/machine alternative." });
       if (highFatigue.length > policy.maximumHighFatigueCompoundsPerSession) warnings.push({ severity: "serious", type: "compound_concentration", sessionId: session.id, exerciseIds: highFatigue.map((item) => item.exerciseId), conflict: `Too many high-fatigue compounds in ${session.name}: ${highFatigue.map((item) => item.exerciseName).join(", ")}.`, why: "The session concentrates systemic fatigue and may make later exercises poor-quality work.", recommendation: "Distribute the compounds across the week or replace the lowest-priority one with a lower-fatigue accessory." });
       if (session.gripDemand > policy.maximumSessionGripDemand) warnings.push({ severity: "review", type: "grip_fatigue", sessionId: session.id, exerciseIds: session.exercises.filter((item) => item.scores.gripDemand >= 65).map((item) => item.exerciseId), conflict: `Grip demand is concentrated in ${session.name}.`, why: "Grip may limit target-muscle performance across pulls, rows, carries, and hinges.", recommendation: "Separate grip-limited lifts, use straps where appropriate, or choose a supported/cable alternative." });
-      if (session.estimatedDurationMinutes > policy.sessionDurationMaximumMinutes) warnings.push({ severity: "serious", type: "session_duration", sessionId: session.id, exerciseIds: session.exercises.map((item) => item.exerciseId), conflict: `${session.name} is estimated at ${session.estimatedDurationMinutes} minutes.`, why: "An overly long session can reduce adherence and set quality.", recommendation: "Move accessory work to a shorter day or reduce redundant sets." });
+      if (session.estimatedDurationMinutes > duration.maximum) warnings.push({ severity: "blocking", type: "session_duration", sessionId: session.id, exerciseIds: session.exercises.map((item) => item.exerciseId), conflict: `${session.name} is estimated at ${session.estimatedDurationMinutes} minutes.`, why: `The session exceeds the explicit hard ${duration.maximum}-minute maximum.`, recommendation: "Move accessory work to a shorter day or reduce lower-priority work.", correctiveAction: "regenerate_with_practical_limits" });
       const redundantPairs = [];
       session.exercises.forEach((exercise, index) => session.exercises.slice(index + 1).forEach((other) => {
         const similarity = mechanicalRedundancyScore(exercise, other);
@@ -2340,6 +3606,22 @@
       const issue = issues[0];
       const unallocatedSets = sum(issues.map((item) => item.unallocatedSets));
       warnings.push({ severity: "blocking", type: "schedule_capacity", sessionId: null, muscleGroupId: issue.muscleGroupIds?.[0] || null, exerciseIds: [issue.exerciseId], conflict: `${issue.exerciseName} has ${unallocatedSets} working set${unallocatedSets === 1 ? "" : "s"} that cannot fit the selected schedule.`, why: issue.reason, recommendation: "Increase training days, reduce selected scope or direct volume, use maintenance volume for a lower-priority muscle, or change the mesocycle objective.", resolutionOptions: ["increase_training_days", "reduce_scope", "reduce_direct_volume", "maintenance_volume", "change_objective"], correctiveAction: "regenerate_with_practical_limits" });
+    });
+    portfolio.filter((item) => item.goalPolicyConflict).forEach((item) => {
+      const conflict = item.goalPolicyConflict;
+      const session = sessions.find((candidateSession) => candidateSession.exercises.some((exercise) => exercise.exerciseId === item.exerciseId));
+      warnings.push({
+        severity: "review",
+        type: "goal_policy_conflict",
+        sessionId: session?.id || null,
+        exerciseIds: [item.exerciseId],
+        conflict: conflict.explanation,
+        why: `The selected exercise's verified safe range does not overlap the ${GOAL_LABELS[context.goal.resolvedValue]} product-policy target, so the engine preserved the exercise-specific range instead of making a false goal-policy claim.`,
+        recommendation: conflict.alternativeExerciseId
+          ? `Review ${conflict.alternativeExerciseName || conflict.alternativeExerciseId} as the compatible alternative.`
+          : "Review the exercise choice or accept the disclosed safe-range limitation; no compatible alternative was available.",
+        correctiveAction: conflict.alternativeExerciseId ? "review_compatible_alternative" : "review_goal_policy_conflict"
+      });
     });
     const musclePlans = slots.map((slot) => {
       const selected = portfolio.filter((item) => item.programSlotIds.includes(slot.id));
@@ -2372,7 +3654,7 @@
       if (demandingOverlap.length >= 2) warnings.push({ severity: "review", type: "adjacent_session_overlap", sessionId: session.id, exerciseIds: session.exercises.filter((item) => item.targetMuscleGroupIds?.some((muscle) => demandingOverlap.includes(muscleFamily(muscle)))).map((item) => item.exerciseId), conflict: `${prior.name} and ${session.name} repeat demanding work for ${demandingOverlap.join(", ")}.`, why: "Consecutive high-cost exposure may reduce recovery and next-session performance.", recommendation: "Move one demanding pattern, use a lower-fatigue complement, or insert more recovery between these sessions." });
     });
     const explanation = [
-      "The exercise portfolio was selected before session construction.",
+      `The ${GOAL_LABELS[context.goal.resolvedValue]} exercise portfolio was selected before session construction using ${context.profileVersion}.`,
       "Demanding compounds were distributed using systemic fatigue, spinal load, grip demand, muscle overlap, and estimated duration.",
       warnings.length ? `${warnings.length} interaction warning${warnings.length === 1 ? " requires" : "s require"} review before activation.` : "No serious program interaction remains unresolved."
     ];
@@ -2381,8 +3663,9 @@
 
   function refreshMesocycleProgram(mesocycle, evidenceInput, options = {}) {
     const evidence = evidenceInput.personal ? evidenceInput : normalizeEvidenceBundle(evidenceInput);
+    const context = options.resolvedProgrammingContext || mesocycle.programmingContext || programmingContext(options, {});
     const slots = deepClone(mesocycle.programSlots || []);
-    let portfolio = buildProgramPortfolio(mesocycle.pools, slots, { ...mesocycle.constraints, ...options, evidence, currentProgramExerciseIds: options.currentProgramExerciseIds || mesocycle.currentProgramExerciseIds, specializationMuscleGroups: mesocycle.specializationMuscleGroups, type: mesocycle.type });
+    let portfolio = buildProgramPortfolio(mesocycle.pools, slots, { ...mesocycle.constraints, ...options, resolvedProgrammingContext: context, evidence, currentProgramExerciseIds: options.currentProgramExerciseIds || mesocycle.currentProgramExerciseIds, specializationMuscleGroups: mesocycle.specializationMuscleGroups, type: mesocycle.type });
     if (options.selections) {
       slots.forEach((slot) => {
         const requested = asArray(options.selections[slot.id]);
@@ -2397,34 +3680,51 @@
         return { ...deepClone(candidate), muscleGroupId: slot.muscleGroupId, targetMuscleGroupIds: relatedSlots.map((item) => item.muscleGroupId), programSlotIds: relatedSlots.map((item) => item.id), selectionReason: "Selected by the user for this program slot; the engine will not undo it inside this mesocycle draft.", ...fit };
       }).filter(Boolean);
     }
-    const pools = rerankPoolsForPortfolio(mesocycle.pools, portfolio, options);
+    const pools = rerankPoolsForPortfolio(mesocycle.pools, portfolio, { ...options, resolvedProgrammingContext: context });
     portfolio = portfolio.map((item) => {
       const ranked = pools[item.muscleGroupId]?.candidates.find((candidate) => candidate.exerciseId === item.exerciseId) || item;
       return { ...item, ...candidateProgramFit(ranked, portfolio.filter((other) => other.exerciseId !== item.exerciseId), { ...DEFAULT_POLICY, ...(options.policy || {}) }), scores: ranked.scores, scoreExplanation: ranked.scoreExplanation };
     });
-    const sessions = distributePortfolioAcrossSessions(portfolio, { ...options, slots, trainingDays: mesocycle.trainingDays, type: mesocycle.type });
+    const sessions = distributePortfolioAcrossSessions(portfolio, { ...mesocycle.constraints, ...options, resolvedProgrammingContext: context, evidence, slots, trainingDays: mesocycle.trainingDays, type: mesocycle.type });
     slots.forEach((slot) => { slot.plannedSessionIds = sessions.filter((session) => session.exercises.some((item) => item.programSlotIds.includes(slot.id))).map((session) => session.id); });
-    const programReview = reviewFullProgram(portfolio, sessions, slots, evidence, options);
+    const programReview = reviewFullProgram(portfolio, sessions, slots, evidence, { ...mesocycle.constraints, ...options, resolvedProgrammingContext: context });
     asArray(mesocycle.equipmentUnavailableMuscleGroupIds).forEach((muscleGroupId) => {
       if (!programReview.warnings.some((warning) => warning.type === "equipment_blocks_muscle" && warning.muscleGroupId === muscleGroupId)) programReview.warnings.push({ severity: "blocking", type: "equipment_blocks_muscle", muscleGroupId, sessionId: null, exerciseIds: [], conflict: `${muscleGroupId.replaceAll("_", " ")} has no exercise compatible with the selected equipment.`, why: "This muscle is in scope, but every known candidate requires equipment that is unavailable or has incomplete verified equipment metadata.", recommendation: "Add compatible equipment, add a verified exercise to the library, or intentionally remove this muscle from scope." });
-      if (!programReview.musclePlans.some((plan) => plan.muscleGroupId === muscleGroupId)) programReview.musclePlans.push({ muscleGroupId, weeklyTargetRange: { min: 0, target: 0, max: 0 }, weeklyTargetVolume: 0, plannedFrequency: 0, targetFrequency: 0, selectedExerciseIds: [], directSets: 0, indirectSets: 0, effectiveSets: 0, targetMet: false, localFatigue: 0, programWideFatigue: 0, sessionIds: [], overlapNotes: "No equipment-compatible exercise is currently available." });
+      if (!programReview.musclePlans.some((plan) => plan.muscleGroupId === muscleGroupId)) programReview.musclePlans.push({ muscleGroupId, taxonomyVersion: evidence.research.version, weeklyTargetRange: { min: 0, target: 0, max: 0 }, weeklyTargetVolume: 0, plannedFrequency: 0, targetFrequency: 0, selectedExerciseIds: [], directSets: 0, secondarySets: 0, indirectSets: 0, incidentalSets: 0, isometricExposure: 0, effectiveSets: 0, targetMet: false, localFatigue: 0, programWideFatigue: 0, sessionIds: [], overlapNotes: "No equipment-compatible exercise is currently available." });
     });
     programReview.blockingIssueCount = programReview.warnings.filter((item) => item.severity === "blocking").length;
     programReview.seriousWarningCount = programReview.warnings.filter((item) => ["blocking", "serious"].includes(item.severity)).length;
-    return { ...mesocycle, pools, programSlots: slots, selectedPortfolio: portfolio, activeExercises: portfolio, sessions, programReview, planningStep: Math.max(number(mesocycle.planningStep, 1), 5) };
+    return { ...mesocycle, schemaVersion: MESOCYCLE_SCHEMA_VERSION, programmingContext: context, pools, programSlots: slots, selectedPortfolio: portfolio, activeExercises: portfolio, sessions, programReview, planningStep: Math.max(number(mesocycle.planningStep, 1), 5) };
   }
 
   function createMesocyclePlan(evidenceInput, options = {}) {
     const evidence = evidenceInput.personal ? evidenceInput : normalizeEvidenceBundle(evidenceInput);
     const type = Object.values(MESOCYCLE_TYPES).includes(options.type) ? options.type : MESOCYCLE_TYPES.PRIMARY;
     const createdAt = options.createdAt || isoNow(options.clock);
+    const trainingDays = normalizeTrainingDays(options, 4);
+    const duration = normalizeSessionDurationConstraints(options, { ...DEFAULT_POLICY, ...(options.policy || {}) });
+    const planComparableExposures = Math.max(0, ...evidence.personal.exerciseScores.map((item) => number(item.comparable_session_count || item.comparableSessionCount, 0)));
+    const context = programmingContext(options, {
+      personalEvidenceWeight: planComparableExposures >= DEFAULT_POLICY.minimumComparableExposures ? 0.5 : 0,
+      staleness: { metrics: { exposureCount: planComparableExposures } }
+    });
+    const exclusionResolution = resolveExerciseExclusions(evidence, options.excludedExerciseIds);
     const durationWeeks = chooseMesocycleDuration(evidence, { ...options, type });
-    const poolOptions = { ...options, mesocycleType: type, maxCandidates: 5 };
-    const unrestrictedPools = consolidateProgramPools(buildAllCandidatePools(evidence, { ...poolOptions, availableEquipment: [] }));
+    const poolOptions = { ...options, resolvedProgrammingContext: context, trainingDays, generatedAt: options.generatedAt || createdAt, mesocycleType: type, maxCandidates: 5 };
+    const unrestrictedPools = consolidateProgramPools(buildAllCandidatePools(evidence, { ...poolOptions, availableEquipment: undefined }));
     const allPools = consolidateProgramPools(buildAllCandidatePools(evidence, poolOptions));
     const availableMuscleGroupIds = Object.keys(unrestrictedPools);
-    const requestedScope = asArray(options.includedMuscleGroupIds).map(muscleFamily).filter(Boolean);
-    const includedMuscleGroupIds = requestedScope.length ? unique(requestedScope).filter((id) => availableMuscleGroupIds.includes(id)) : availableMuscleGroupIds;
+    let includedMuscleGroupIds = availableMuscleGroupIds;
+    if (hasOwn(options, "includedMuscleGroupIds")) {
+      if (!Array.isArray(options.includedMuscleGroupIds) || !options.includedMuscleGroupIds.length) throw new Error("includedMuscleGroupIds scope must be a non-empty array when explicitly supplied.");
+      const requestedScope = options.includedMuscleGroupIds.map((value) => {
+        if (typeof value !== "string" || !value.trim()) throw new Error("includedMuscleGroupIds scope must contain only non-empty muscle IDs.");
+        return muscleFamily(value);
+      });
+      const unknown = unique(requestedScope).filter((id) => !availableMuscleGroupIds.includes(id));
+      if (unknown.length) throw new Error(`includedMuscleGroupIds scope contains unknown or unavailable muscle values: ${unknown.join(", ")}.`);
+      includedMuscleGroupIds = unique(requestedScope);
+    }
     const pools = Object.fromEntries(Object.entries(allPools).filter(([muscleGroupId]) => includedMuscleGroupIds.includes(muscleGroupId)));
     const equipmentUnavailableMuscleGroupIds = includedMuscleGroupIds.filter((muscleGroupId) => !pools[muscleGroupId]?.candidates?.length);
     const majorMuscleGroups = new Set(["chest", "upper_back", "lats", "quads", "hamstrings", "glutes", "front_delts", "side_delts", "rear_delts"]);
@@ -2438,37 +3738,40 @@
           ? `${muscleGroupId.replaceAll("_", " ")} can receive indirect stimulus from selected presses, pulls, or grip-demanding movements. It is intentionally deprioritized unless direct development is a goal.`
           : `${muscleGroupId.replaceAll("_", " ")} is outside the current objective and receives no dedicated slot. Add it when direct development, resilience, or skill is a priority.`
     }));
-    const programSlots = createProgramSlots(pools, { ...options, type, evidence });
-    const id = options.id || `meso_${normalizeText(type)}_${dateOnly(createdAt).replace(/-/g, "")}_${stableHash({ type, durationWeeks, groups: Object.keys(pools), createdAt }).slice(0, 6)}`;
+    const programSlots = createProgramSlots(pools, { ...options, resolvedProgrammingContext: context, trainingDays, type, evidence });
+    const id = options.id || `meso_${normalizeText(type)}_${dateOnly(createdAt).replace(/-/g, "")}_${stableHash({ type, durationWeeks, groups: Object.keys(pools), createdAt, programmingContext: context }).slice(0, 6)}`;
     const draft = {
       id,
-      schemaVersion: "mesocycle/2.4.0",
+      schemaVersion: MESOCYCLE_SCHEMA_VERSION,
       type,
       name: options.name || ({
-        [MESOCYCLE_TYPES.PRIMARY]: "Primary progression mesocycle",
-        [MESOCYCLE_TYPES.ALTERNATIVE]: "Alternative exercise mesocycle",
-        [MESOCYCLE_TYPES.LOWER_FATIGUE]: "Lower-fatigue resensitization mesocycle",
-        [MESOCYCLE_TYPES.SPECIALIZATION]: "Specialization mesocycle"
+        [MESOCYCLE_TYPES.PRIMARY]: `${GOAL_LABELS[context.goal.resolvedValue]} primary progression mesocycle`,
+        [MESOCYCLE_TYPES.ALTERNATIVE]: `${GOAL_LABELS[context.goal.resolvedValue]} alternative exercise mesocycle`,
+        [MESOCYCLE_TYPES.LOWER_FATIGUE]: `${GOAL_LABELS[context.goal.resolvedValue]} lower-fatigue resensitization mesocycle`,
+        [MESOCYCLE_TYPES.SPECIALIZATION]: `${GOAL_LABELS[context.goal.resolvedValue]} specialization mesocycle`
       })[type],
       status: "draft",
       createdAt,
       durationWeeks,
       durationBasis: number(options.durationWeeks) > 0 ? "User-configured duration within safety bounds." : "Derived from mesocycle purpose, personal plateau history, research evaluation windows, and expected weekly exposure frequency.",
       specializationMuscleGroups: type === MESOCYCLE_TYPES.SPECIALIZATION ? asArray(options.specializationMuscleGroups).map(normalizeMuscleId) : [],
-      trainingDays: number(options.trainingDays, 4),
+      trainingDays,
       split: options.split || null,
       availableEquipment: asArray(options.availableEquipment),
       constraints: {
-        trainingDays: number(options.trainingDays, 4),
+        trainingDays,
         split: options.split || null,
         availableEquipment: asArray(options.availableEquipment),
-        sessionDurationTargetMinutes: number(options.sessionDurationTargetMinutes, DEFAULT_POLICY.sessionDurationTargetMinutes),
-        sessionDurationMaximumMinutes: number(options.sessionDurationMaximumMinutes, DEFAULT_POLICY.sessionDurationMaximumMinutes)
+        excludedExerciseIds: exclusionResolution.requestedValues,
+        sessionDurationTargetMinutes: duration.target,
+        sessionDurationMaximumMinutes: duration.maximum
       },
       planningStep: 3,
       availableMuscleGroupIds,
       includedMuscleGroupIds,
       equipmentUnavailableMuscleGroupIds,
+      exclusionResolution,
+      programmingContext: context,
       omittedMuscleGroups,
       scopeConfirmed: omittedMuscleGroups.length === 0,
       currentProgramExerciseIds: asArray(options.currentProgramExerciseIds || options.currentExerciseIds),
@@ -2483,7 +3786,7 @@
       versions: deepClone(evidence.versions),
       lifecycle: [{ status: "draft", at: createdAt }]
     };
-    const refreshed = refreshMesocycleProgram(draft, evidence, options);
+    const refreshed = refreshMesocycleProgram(draft, evidence, { ...options, resolvedProgrammingContext: context });
     refreshed.preservedProductiveExerciseIds = refreshed.selectedPortfolio.filter((item) => refreshed.currentProgramExerciseIds.includes(item.exerciseId) && item.scores.staleness.classification === STALENESS.PRODUCTIVE).map((item) => item.exerciseId);
     return refreshed;
   }
@@ -2542,22 +3845,24 @@
 
   function resolveExerciseCandidate(evidence, exerciseId, muscleGroupId, options = {}) {
     const candidates = buildMergedExerciseCandidates(evidence, muscleGroupId, options);
-    let candidate = candidates.find((item) => item.exerciseId === exerciseId || item.researchExerciseId === exerciseId);
-    if (candidate) {
-      if (options.history) candidate.history = options.history;
-      return candidate;
-    }
-    const researchExercise = evidence.research.exerciseById.get(exerciseId) || evidence.research.exerciseById.get(evidence.personal.crosswalkByPersonalId.get(exerciseId));
+    const requestedPersonalIdentity = evidence.personal.reconciledIdentityByExerciseId?.get(exerciseId) || null;
+    let candidate = candidates.find((item) => item.exerciseId === exerciseId);
+    if (!candidate && !requestedPersonalIdentity) candidate = candidates.find((item) => item.researchExerciseId === exerciseId);
+    if (candidate) return candidate;
+    const selectedIdentity = requestedPersonalIdentity;
+    const selectedResearchExerciseId = selectedIdentity?.invalid ? null : selectedIdentity?.researchExerciseId || null;
+    const researchExercise = evidence.research.exerciseById.get(exerciseId) || evidence.research.exerciseById.get(selectedResearchExerciseId);
     const score = evidence.personal.scoreByExercise.get(exerciseId) || {};
     const prescription = evidence.personal.prescriptionsFor(exerciseId, muscleGroupId)[0] || (evidence.personal.prescriptionsByExercise.get(exerciseId) || [])[0] || {};
     if (!researchExercise && !Object.keys(score).length && !Object.keys(prescription).length) throw new Error(`Unknown exercise ${exerciseId} for muscle group ${muscleGroupId}.`);
-    const researchExerciseId = researchExercise?.exercise_id || evidence.personal.crosswalkByPersonalId.get(exerciseId) || null;
+    const researchExerciseId = selectedIdentity?.invalid ? null : researchExercise?.exercise_id || selectedResearchExerciseId || null;
     const mappings = evidence.research.muscleMapsByExercise.get(researchExerciseId) || [];
     const relevantMapping = mappings.find((mapping) => researchMuscleMatch(evidence.research, muscleGroupId, mapping.muscle_group_id)) || {};
+    const canonicalIdentity = researchExerciseId === exerciseId && selectedIdentity?.researchIdentitySource === "canonical_id";
     return {
       exerciseId,
       researchExerciseId,
-      exerciseName: firstPresent(score.exercise_name, prescription.exercise_name, researchExercise?.exercise_name, exerciseId),
+      exerciseName: firstPresent(canonicalIdentity ? researchExercise?.exercise_name : null, score.exercise_name, prescription.exercise_name, researchExercise?.exercise_name, exerciseId),
       personalScore: score,
       personalPrescription: prescription,
       muscleScore: evidence.personal.muscleScoresFor(exerciseId, muscleGroupId)[0] || {
@@ -2569,18 +3874,26 @@
       history: options.history || options.histories?.[exerciseId] || evidence.personal.historyFor(exerciseId),
       researchExercise: researchExercise || null,
       researchMappings: mappings,
+      selectedIdentity,
       source: researchExercise && (Object.keys(score).length || Object.keys(prescription).length) ? "personal_and_research" : researchExercise ? "research_only" : "personal_only"
     };
   }
 
   function prescribedLoadFromHistory(candidate, progression, deloadState, options = {}) {
-    const history = normalizeHistory(candidate.history);
+    const history = normalizeHistory(candidate.history).filter((item) => !item.prescribedReduction);
     const last = history.at(-1);
     const loads = last?.loads?.filter((value) => value > 0) || [];
     const current = loads.length ? Math.max(...loads) : number(firstPresent(last?.raw?.max_load, last?.raw?.weight, last?.raw?.load), 0);
     if (!current) return undefined;
     const exercise = candidate.researchExercise || {};
-    const assisted = String(candidate.personalScore?.resistance_type || "").toLowerCase() === "assisted_bodyweight";
+    const resistanceType = normalizeText(firstPresent(
+      options.resistanceType,
+      last?.raw?.resistanceType,
+      last?.raw?.resistance_type,
+      candidate.personalScore?.resistance_type,
+      candidate.personalScore?.resistanceType
+    ));
+    const assisted = resistanceType === "assisted_bodyweight";
     let target = current;
     let reason = "Hold the most recent comparable load.";
     if (progression.action === "increase_load" || progression.action === "increase_top_set_load" || progression.action === "increase_load_first") {
@@ -2638,13 +3951,26 @@
     const evidence = evidenceInput.personal ? evidenceInput : normalizeEvidenceBundle(evidenceInput);
     const muscleGroupId = options.muscleGroupId;
     if (!options.exerciseId || !muscleGroupId) throw new Error("exerciseId and muscleGroupId are required.");
+    resolveGoalInput(options);
+    resolveExperienceInput(options);
+    resolveNutritionPhaseInput(options);
+    resolveReturningAfterGapInput(options);
+    const createdAt = options.createdAt || isoNow(options.clock);
     const candidate = resolveExerciseCandidate(evidence, options.exerciseId, muscleGroupId, options);
-    if (options.history) candidate.history = options.history;
+    const exclusions = resolveExerciseExclusions(evidence, options.excludedExerciseIds);
+    if (candidateIsExcluded(candidate, exclusions)) throw new Error(`Exercise ${options.exerciseId} is excluded by the supplied canonical/custom exercise restrictions.`);
+    const equipment = equipmentCompatibilityForCandidate(candidate, options.availableEquipment);
+    if (!equipment.eligible) throw new Error(`Exercise ${options.exerciseId} is not compatible with the supplied equipment restrictions; missing ${equipment.missing.join(", ") || "valid verified equipment"}.`);
+    if (!candidateHasPositiveTargetRelationship(candidate, evidence, muscleGroupId)) throw new Error(`Exercise ${options.exerciseId} has no positive dynamic taxonomy target relationship to ${muscleGroupId}.`);
+    const filteredHistory = filterHistoryForCandidate(options.history === undefined ? candidate.history : options.history, candidate, evidence);
+    candidate.history = filteredHistory.history;
     const score = scoreExerciseCandidate(candidate, evidence, muscleGroupId, {
       ...options,
+      createdAt,
       mesocycleType: options.mesocycle?.type || options.mesocycleType,
       specializationMuscleGroups: options.mesocycle?.specializationMuscleGroups || options.specializationMuscleGroups
     });
+    const context = programmingContext(options, score);
     const muscleDefaults = aggregateMuscleResearchDefaults(evidence.research, muscleGroupId);
     const researchDefaults = researchExerciseDefaults(candidate.researchExercise, muscleDefaults);
     const personalRanges = personalPrescriptionRanges(candidate.personalPrescription);
@@ -2686,7 +4012,14 @@
       repRange,
       personalEvidenceWeight: score.personalEvidenceWeight
     });
-    const progression = determineProgressionDecision({
+    const progressionConfirmation = progressionConfirmationFor({
+      history: candidate.history,
+      researchExercise: candidate.researchExercise,
+      role,
+      context,
+      targetRpe
+    });
+    const progression = enforceProgressionConfirmation(determineProgressionDecision({
       history: candidate.history,
       repRange,
       targetRpe,
@@ -2694,7 +4027,7 @@
       setStructure: structure.setStructure,
       workingSets,
       progressionMethod: candidate.researchExercise?.preferred_progression_model || "double_progression"
-    });
+    }), progressionConfirmation, context);
     const deloadStatus = assessDeloadNeed({
       exerciseStaleness: score.staleness,
       exerciseHistory: candidate.history,
@@ -2709,7 +4042,7 @@
       mesocycleType,
       maxCandidates: 5
     });
-    const preferredReplacementExerciseId = pool.candidates.find((item) => item.exerciseId === candidate.exerciseId)?.preferredReplacementExerciseId || preferredReplacementFor(candidate, evidence, []);
+    const preferredReplacementExerciseId = pool.candidates.find((item) => item.exerciseId === candidate.exerciseId)?.preferredReplacementExerciseId || preferredReplacementFor(candidate, evidence, [], options);
     let recommendationType = volume.adjustmentType === "reduce_volume" ? "reduce_volume" : progression.recommendationType;
     if (score.staleness.rotationRecommended && !deloadStatus.exerciseSpecific) recommendationType = score.staleness.metrics.painFlag ? "substitute" : "rotate_exercise";
     const evidenceSummary = unique([
@@ -2762,22 +4095,95 @@
       personalEvidenceWeight: score.personalEvidenceWeight,
       researchEvidenceWeight: score.researchEvidenceWeight,
       confidence: score.confidence,
+      executionBlocked: false,
       evidenceSummary,
       userExplanation,
       exerciseScore: score.overallRecommendationStrength,
       muscleSpecificScore: score.muscleSpecificity,
       staleness: score.staleness,
       deloadStatus,
-      mesocycleId: options.mesocycle?.id || options.mesocycleId || null
+      mesocycleId: options.mesocycle?.id || options.mesocycleId || null,
+      historyResolution: filteredHistory.resolution,
+      progressionConfirmation
     };
-    const load = prescribedLoadFromHistory(candidate, progression, deloadStatus, options);
+    basePrescription = applyProgrammingPolicy(basePrescription, context, {
+      researchExercise: candidate.researchExercise,
+      exerciseName: candidate.exerciseName
+    });
+    if (basePrescription.goalPolicyConflict) {
+      const alternative = pool.candidates.find((item) => item.exerciseId !== candidate.exerciseId && !item.goalPolicyConflict);
+      basePrescription.goalPolicyConflict.alternativeExerciseId = alternative?.exerciseId || null;
+      if (alternative) basePrescription.preferredReplacementExerciseId = alternative.exerciseId;
+    }
+    const policyConfirmation = progressionConfirmationFor({
+      history: candidate.history,
+      researchExercise: candidate.researchExercise,
+      role,
+      context,
+      targetRpe
+    });
+    const policyProgression = enforceProgressionConfirmation(determineProgressionDecision({
+      history: candidate.history,
+      repRange: basePrescription.repRange,
+      targetRpe,
+      staleness: score.staleness,
+      setStructure: basePrescription.setStructure,
+      workingSets: basePrescription.workingSets,
+      progressionMethod: basePrescription.progressionMethod
+    }), policyConfirmation, context);
+    basePrescription.progressionConfirmation = policyConfirmation;
+    if (!score.staleness.rotationRecommended && volume.adjustmentType !== "reduce_volume") basePrescription.recommendationType = policyProgression.recommendationType;
+    basePrescription.progressionMethod = policyProgression.progressionMethod;
+    basePrescription.progressionAction = policyProgression.action;
+    basePrescription.progressionRule = volume.adjustmentType === "reduce_volume"
+      ? `Perform ${basePrescription.workingSets.target} working set${basePrescription.workingSets.target === 1 ? "" : "s"} this exposure; do not add volume until performance and recovery are stable inside the blended weekly range.`
+      : policyProgression.instruction;
+    basePrescription.holdRule = policyProgression.holdRule;
+    basePrescription.regressionRule = policyProgression.regressionRule;
+    const personalExplanation = context.personalization.personalEvidenceAvailable
+      ? `Personal evidence contributes ${Math.round(score.personalEvidenceWeight * 100)}% and research contributes ${Math.round(score.researchEvidenceWeight * 100)}%; ${score.weightingReason}`
+      : "No qualifying comparable personal evidence is available; this prescription uses a population/research default and discloses the missing personal data.";
+    basePrescription.evidenceSummary = unique([
+      ...basePrescription.evidenceSummary,
+      context.goal.disclosure,
+      context.experience.disclosure,
+      context.nutritionPhase.disclosure,
+      context.returningAfterGap.disclosure,
+      basePrescription.goalPolicyConflict?.explanation,
+      context.personalization.disclosure
+    ]);
+    basePrescription.userExplanation = [
+      `${candidate.exerciseName} is assigned as a ${role.replace(/_/g, " ")} because its blended recommendation strength is ${Math.round(score.overallRecommendationStrength)}/100.`,
+      `${basePrescription.volume.reason} The active target is ${basePrescription.workingSets.target} sets of ${basePrescription.repRange.min}-${basePrescription.repRange.max} reps at RPE ${targetRpe.min}-${targetRpe.max} (${targetRir.min}-${targetRir.max} RIR).`,
+      basePrescription.setStructureReason,
+      basePrescription.progressionRule,
+      deloadStatus.explanation,
+      `${context.goal.resolvedValue.replaceAll("_", " ")} goal (${context.goal.source}) uses a directional product-policy profile. ${context.experience.disclosure}`,
+      context.nutritionPhase.disclosure,
+      context.returningAfterGap.disclosure,
+      basePrescription.goalPolicyConflict?.explanation,
+      personalExplanation,
+      "The recommendation would change after confirmed comparable performance, repeated fatigue or pain, a materially different readiness pattern, or outcome data showing a less redundant substitute performs better."
+    ].filter(Boolean).join(" ");
+    const load = prescribedLoadFromHistory(candidate, policyProgression, deloadStatus, options);
     if (load) basePrescription.prescribedLoad = load;
     basePrescription = applyDeloadState(basePrescription, deloadStatus);
-    const finalPrescription = ["exercise_deload", "muscle_group_deload", "full_program_deload"].includes(deloadStatus.state)
-      ? { ...deepClone(basePrescription), readinessAdjustment: { ...readinessAdjustmentFor(basePrescription, options.readiness || {}), changed: false, explanation: `${deloadStatus.explanation} The deload already supersedes a smaller readiness adjustment.` } }
-      : applyReadinessAdjustment(basePrescription, options.readiness || {});
-    const createdAt = options.createdAt || isoNow(options.clock);
-    const recommendationId = options.recommendationId || `rx_${normalizeText(candidate.exerciseId)}_${dateOnly(createdAt).replace(/-/g, "")}_${stableHash({ candidate: candidate.exerciseId, muscleGroupId, createdAt, mesocycle: basePrescription.mesocycleId }).slice(0, 8)}`;
+    const readinessChange = readinessAdjustmentFor(basePrescription, options.readiness || {});
+    const hardSafetyReadiness = readinessChange.signals.some((signal) => signal.domain === "illness" || signal.domain === "pain");
+    const finalPrescription = hardSafetyReadiness
+      ? applyReadinessAdjustment(basePrescription, options.readiness || {})
+      : ["exercise_deload", "muscle_group_deload", "full_program_deload"].includes(deloadStatus.state)
+        ? { ...deepClone(basePrescription), readinessAdjustment: { ...readinessChange, changed: false, explanation: `${deloadStatus.explanation} The deload already supersedes a smaller readiness adjustment.` } }
+        : applyReadinessAdjustment(basePrescription, options.readiness || {});
+    const recommendationId = options.recommendationId || `rx_${normalizeText(candidate.exerciseId)}_${dateOnly(createdAt).replace(/-/g, "")}_${stableHash({
+      candidate: candidate.exerciseId,
+      muscleGroupId,
+      createdAt,
+      mesocycle: basePrescription.mesocycleId,
+      basePrescription,
+      finalPrescription,
+      readinessAdjustment: finalPrescription.readinessAdjustment || null
+    }).slice(0, 8)}`;
     const snapshot = {
       recommendationId,
       schemaVersion: SNAPSHOT_SCHEMA_VERSION,
@@ -2795,8 +4201,8 @@
       readinessAdjustment: deepClone(finalPrescription.readinessAdjustment),
       basePrescription: deepClone(basePrescription),
       finalPrescription: deepClone(finalPrescription),
-      explanation: userExplanation,
-      evidenceSummary,
+      explanation: finalPrescription.userExplanation,
+      evidenceSummary: deepClone(finalPrescription.evidenceSummary),
       confidence: score.confidence,
       createdAt,
       manualOverrides: [],
@@ -2827,13 +4233,31 @@
   function createWorkoutPrescription(evidenceInput, options = {}) {
     const evidence = evidenceInput.personal ? evidenceInput : normalizeEvidenceBundle(evidenceInput);
     const createdAt = options.createdAt || isoNow(options.clock);
-    const recommendations = asArray(options.exercises).map((exercise) => createExercisePrescriptionSnapshot(evidence, {
-      ...options,
-      ...exercise,
-      createdAt,
-      readiness: options.readiness,
-      mesocycle: options.mesocycle
-    }));
+    const recommendations = [];
+    const removed = [];
+    const canonicalIds = new Set();
+    const recommendationSlotIds = new Set();
+    asArray(options.exercises).forEach((exercise, inputIndex) => {
+      const snapshot = createExercisePrescriptionSnapshot(evidence, {
+        ...options,
+        ...exercise,
+        createdAt,
+        readiness: options.readiness,
+        mesocycle: options.mesocycle
+      });
+      const canonicalId = snapshot.finalPrescription.researchExerciseId || snapshot.exerciseId;
+      const slotId = firstPresent(exercise.recommendationSlotId, exercise.programSlotId, exercise.slotId) || null;
+      let reason = null;
+      if (canonicalIds.has(canonicalId)) reason = "duplicate_canonical_exercise";
+      else if (slotId && recommendationSlotIds.has(slotId)) reason = "duplicate_recommendation_slot";
+      if (reason) {
+        removed.push({ inputIndex, exerciseId: snapshot.exerciseId, researchExerciseId: snapshot.finalPrescription.researchExerciseId || null, recommendationSlotId: slotId, reason });
+        return;
+      }
+      canonicalIds.add(canonicalId);
+      if (slotId) recommendationSlotIds.add(slotId);
+      recommendations.push(snapshot);
+    });
     return {
       workoutPrescriptionId: options.workoutPrescriptionId || `workout_rx_${dateOnly(createdAt).replace(/-/g, "")}_${stableHash(recommendations.map((item) => item.recommendationId)).slice(0, 8)}`,
       schemaVersion: "workout-prescription/1.0.0",
@@ -2842,32 +4266,546 @@
       recommendationVersion: PRESCRIPTION_SCHEMA_VERSION,
       personalDataVersion: evidence.versions.personal,
       researchDatabaseVersion: evidence.versions.research,
+      deduplication: {
+        removedCount: removed.length,
+        removed,
+        explanation: removed.length
+          ? "Duplicate canonical exercise identities and recommendation slots were removed deterministically in caller order."
+          : "No duplicate canonical exercise identity or recommendation slot was supplied."
+      },
       recommendations
     };
   }
 
+  function boundIdentity(values, label, options = {}) {
+    const normalized = values.map((value) => value === undefined ? null : value);
+    if (!options.allowNull && normalized.some((value) => typeof value !== "string" || !value.trim())) throw new Error(`Invalid safety identity binding; ${label} requires non-empty identities.`);
+    if (normalized.some((value) => !Object.is(value, normalized[0]))) throw new Error(`Invalid safety identity binding; ${label} identities must remain internally bound.`);
+    return normalized[0];
+  }
+
+  function auditValuesMatch(actual, expected) {
+    return stableStringify(actual) === stableStringify(expected);
+  }
+
+  function requireAuditTransition(actual, expected, label) {
+    if (!auditValuesMatch(actual, expected)) throw new Error(`Invalid manual override lineage identity transition binding; ${label} does not match its recorded prescription transition.`);
+  }
+
+  function requireDeclaredChangePair(change, expectedFrom, label) {
+    if (!change || typeof change !== "object" || Array.isArray(change) || !("from" in change) || !("to" in change) || change.from === undefined || change.to === undefined) throw new Error(`Invalid manual override lineage; ${label} requires complete from/to values.`);
+    requireAuditTransition(change.from, expectedFrom, `${label}.from`);
+    if (auditValuesMatch(change.from, change.to)) throw new Error(`Invalid manual override lineage bijection; ${label} is a no-op declaration.`);
+    return deepClone(change.to);
+  }
+
+  function applyRecordedSetCount(prescription, target) {
+    prescription.workingSets.target = target;
+    prescription.workingSets.min = Math.min(prescription.workingSets.min, target);
+    prescription.workingSets.max = Math.max(prescription.workingSets.max, target);
+    return prescription;
+  }
+
+  function applyRecordedLoad(prescription, target) {
+    prescription.prescribedLoad = {
+      ...(prescription.prescribedLoad || {}),
+      target,
+      reason: "Manual user override; engine recommendation remains in the audit record."
+    };
+    return prescription;
+  }
+
+  function applyRecordedSetStructure(prescription, setStructure) {
+    prescription.setStructure = setStructure;
+    prescription.setStructureReason = "Manual user override for this workout; the decision engine will not replace it during the same workout.";
+    if (setStructure === "top_set_backoff") {
+      const topMax = Math.max(prescription.repRange.min + 1, number(prescription.repRange.target, prescription.repRange.max - 1));
+      prescription.topSet = deepClone(prescription.topSet || {
+        enabled: true,
+        count: 1,
+        repRange: { min: prescription.repRange.min, max: topMax },
+        targetRpe: number(prescription.targetRpe?.max, 8.5),
+        targetRir: number(prescription.targetRir?.min, 1.5)
+      });
+      prescription.backoffSets = deepClone(prescription.backoffSets || {
+        count: Math.max(1, prescription.workingSets.target - 1),
+        loadReductionPercent: deepClone(DEFAULT_POLICY.backoffReduction),
+        repRange: { min: Math.max(prescription.repRange.min, number(prescription.repRange.target, prescription.repRange.min + 1)), max: prescription.repRange.max },
+        targetRpe: Math.max(5, number(prescription.targetRpe?.max, 8) - 0.5),
+        targetRir: number(prescription.targetRir?.min, 2) + 0.5,
+        maximumAcceptableRepLossPercent: DEFAULT_POLICY.maximumRepLossPercent,
+        maximumAcceptableLoadReductionPercent: DEFAULT_POLICY.maximumBackoffLoadReductionPercent,
+        conversionRule: "Convert to lighter straight sets if pain, technique loss, excessive rep loss, or excessive load reduction appears."
+      });
+    } else if (setStructure === "multiple_top_sets") {
+      prescription.topSet = deepClone(prescription.topSet || {
+        enabled: true,
+        count: prescription.workingSets.target,
+        repRange: { min: prescription.repRange.min, max: prescription.repRange.max },
+        targetRpe: number(prescription.targetRpe?.max, 8.5),
+        targetRir: number(prescription.targetRir?.min, 1.5)
+      });
+      delete prescription.backoffSets;
+    } else {
+      delete prescription.backoffSets;
+      delete prescription.topSet;
+    }
+    return prescription;
+  }
+
+  function applyRecordedDeloadRecommendation(prescription, recommendationType) {
+    prescription.recommendationType = recommendationType;
+    if (["exercise_deload", "muscle_group_deload", "full_program_deload"].includes(recommendationType)) {
+      prescription.targetRpe = { min: 5.5, max: recommendationType === "full_program_deload" ? 6.5 : 7 };
+      prescription.targetRir = { min: recommendationType === "full_program_deload" ? 3.5 : 3, max: 4.5 };
+      prescription.progressionRule = "Do not progress load during the manual deload; preserve controlled technique and stop well short of failure.";
+      prescription.holdRule = "Keep this reduced prescription for the selected deload scope, then reassess before resuming normal progression.";
+    }
+    return prescription;
+  }
+
+  function applyRecordedSafetyConfirmation(prescription, confirmation) {
+    const auditTargets = prescription.safetyRestriction?.auditBaseTargets;
+    if (!auditTargets?.workingSets || !auditTargets.repRange || !auditTargets.targetRpe || !auditTargets.targetRir || !auditTargets.restSeconds || !auditTargets.volume) throw new Error("Invalid safety override lineage; blocked safety prescription is missing coherent base-target audit context.");
+    prescription.executionBlocked = false;
+    prescription.workingSets = deepClone(auditTargets.workingSets);
+    prescription.repRange = deepClone(auditTargets.repRange);
+    prescription.targetRpe = deepClone(auditTargets.targetRpe);
+    prescription.targetRir = deepClone(auditTargets.targetRir);
+    prescription.restSeconds = deepClone(auditTargets.restSeconds);
+    prescription.volume = deepClone(auditTargets.volume);
+    prescription.setStructure = "straight_sets";
+    prescription.setStructureReason = "Explicitly confirmed pain-free substitute using bounded base set, repetition, and effort targets; no load is inferred for a different exercise.";
+    prescription.progressionAction = "use_confirmed_pain_free_substitute_without_load_target";
+    prescription.progressionRule = "Complete only the confirmed pain-free substitute inside the restored base set, repetition, and RPE bounds; stop if pain occurs and do not infer a load from the original exercise.";
+    prescription.userExplanation = "The painful exercise remains blocked. The user explicitly confirmed this catalog-backed substitute as pain-free, so bounded non-load targets are available for the substitute only.";
+    prescription.safetyRestriction = {
+      ...prescription.safetyRestriction,
+      status: "resolved_by_confirmed_substitute",
+      painFreeConfirmed: true,
+      substituteExerciseId: confirmation.exerciseId,
+      substituteResearchExerciseId: confirmation.researchExerciseId,
+      confirmedAt: confirmation.confirmedAt
+    };
+    delete prescription.prescribedLoad;
+    delete prescription.topSet;
+    delete prescription.backoffSets;
+    return prescription;
+  }
+
+  function prescriptionDifferenceKeys(expected, actual) {
+    return [...new Set([...Object.keys(expected || {}), ...Object.keys(actual || {})])]
+      .filter((key) => !auditValuesMatch(expected?.[key], actual?.[key]));
+  }
+
+  // Compatibility for snapshots written before 3.1.3. New replacements never
+  // infer catalog membership from this prefix; they require a trusted record.
+  function legacyPrefixedResearchIdentityForExerciseId(exerciseId) {
+    return typeof exerciseId === "string" && /^ex_[a-z0-9_]+$/.test(exerciseId) ? exerciseId : null;
+  }
+
+  function engineVersionAtLeast(actual, minimum) {
+    const parse = (value) => String(value || "0.0.0").split(/[+-]/)[0].split(".").map((part) => number(part, 0));
+    const left = parse(actual);
+    const right = parse(minimum);
+    for (let index = 0; index < Math.max(left.length, right.length, 3); index += 1) {
+      if ((left[index] || 0) !== (right[index] || 0)) return (left[index] || 0) > (right[index] || 0);
+    }
+    return true;
+  }
+
+  function exerciseIdentityOverrideId(recommendationId, createdAt, changes, exerciseId, researchExerciseId) {
+    return `override_${stableHash({
+      recommendationId,
+      createdAt,
+      applied: changes,
+      exerciseIdentity: { exerciseId, researchExerciseId: researchExerciseId ?? null }
+    })}`;
+  }
+
+  function applyRecordedExerciseReplacement(prescription, identity) {
+    const sets = prescription.workingSets;
+    if (!sets || ![sets.min, sets.target, sets.max].every(Number.isInteger) || sets.min < 0 || sets.target < 1 || sets.max > DEFAULT_POLICY.absoluteMaximumWorkingSetsPerSession || sets.min > sets.target || sets.target > sets.max) throw new Error("Invalid manual exercise replacement; retained working sets are outside safe schema bounds.");
+    const reps = prescription.repRange;
+    if (!reps || ![reps.min, reps.target, reps.max].every(Number.isInteger) || reps.min < 1 || reps.max > 100 || reps.min > reps.target || reps.target > reps.max) throw new Error("Invalid manual exercise replacement; retained repetitions are outside safe schema bounds.");
+    prescription.exerciseId = identity.exerciseId;
+    prescription.researchExerciseId = identity.researchExerciseId ?? null;
+    delete prescription.prescribedLoad;
+    delete prescription.topSet;
+    delete prescription.backoffSets;
+    delete prescription.setStructureEvidenceConflict;
+    prescription.setStructure = "straight_sets";
+    prescription.setStructureReason = "Exercise replacement reset: retain only valid session set and repetition constraints while establishing technique and load for the new exercise.";
+    prescription.progressionMethod = "double_progression";
+    prescription.progressionAction = "establish_replacement_baseline";
+    prescription.progressionRule = "Load reset: do not transfer the prior exercise's load, previous-load anchor, increment, assistance direction, or progression decision. Establish a technically sound baseline for this exercise before progressing.";
+    prescription.holdRule = "Hold load progression until at least one pain-free, technically valid exposure establishes exercise-specific repetitions, effort, resistance type, and load.";
+    prescription.regressionRule = "If the replacement cannot be completed within the retained set, repetition, and effort constraints, reduce the session demand or choose another compatible exercise instead of importing the prior exercise's load history.";
+    prescription.deloadRule = "Evaluate this replacement from its own comparable exposures; do not infer an exercise-specific deload from the replaced exercise's history.";
+    prescription.preferredReplacementExerciseId = null;
+    prescription.userExplanation = `The user selected ${identity.exerciseId} as a replacement. Valid session set, repetition, effort, rest, and volume constraints remain, but exercise-specific load and progression guidance were reset. No prior load, increment, or resistance direction transfers to the replacement.`;
+    prescription.evidenceSummary = unique([
+      ...asArray(prescription.evidenceSummary),
+      `Manual replacement identity: ${identity.exerciseId}${identity.researchExerciseId ? ` mapped to ${identity.researchExerciseId}` : " with no canonical research mapping"}. Exercise-specific load and progression guidance require a new baseline.`
+    ]);
+    if (!["full_program_deload", "muscle_group_deload", "light_session", "reduce_volume"].includes(prescription.recommendationType)) prescription.recommendationType = "normal";
+    return prescription;
+  }
+
+  function validateDeclaredOverrideChanges(snapshot, entry, previous, result) {
+    const changes = entry.changes;
+    const supported = new Set([
+      "exerciseId",
+      "setCount",
+      "repRange",
+      "load",
+      "setStructure",
+      "deloadRecommendation",
+      "exerciseRotation",
+      "mesocycleId",
+      "safetyConfirmation"
+    ]);
+    const unknown = Object.keys(changes).filter((field) => !supported.has(field));
+    if (unknown.length) throw new Error(`Invalid manual override lineage; unsupported recorded changes: ${unknown.join(", ")}.`);
+
+    // Declared-change bijection. Each persisted declaration owns exactly one
+    // user-facing dimension. Its helper below replays every deterministic
+    // derived field in that dimension, and the final whole-prescription
+    // comparison rejects undeclared changes in identity/research identity,
+    // working sets, repetitions, full resistance/load metadata (including
+    // assistance direction), RPE/RIR, rest, structure/top/back-off targets,
+    // recommendation policy, safety state, volume, or mesocycle binding.
+    // safetyConfirmation is the sole audit companion: it must accompany the
+    // exercise identity declaration and owns the deterministic safety-derived
+    // fields rather than representing a second independent identity change.
+    if (changes.deloadRecommendation && changes.exerciseRotation) throw new Error("Invalid manual override lineage bijection; deloadRecommendation and exerciseRotation duplicate the recommendation-type dimension.");
+    if (changes.safetyConfirmation) {
+      const illegalSafetyCompanions = Object.keys(changes).filter((field) => !["exerciseId", "safetyConfirmation"].includes(field));
+      if (illegalSafetyCompanions.length) throw new Error(`Invalid safety override lineage; safetyConfirmation cannot hide unrelated declarations: ${illegalSafetyCompanions.join(", ")}.`);
+      if (!changes.exerciseId) throw new Error("Invalid safety override lineage; safetyConfirmation requires one exercise identity declaration.");
+    }
+
+    const expected = deepClone(previous);
+    if (changes.exerciseId) {
+      const exerciseId = requireDeclaredChangePair(changes.exerciseId, expected.exerciseId, "exerciseId");
+      if (changes.safetyConfirmation) {
+        expected.exerciseId = exerciseId;
+        expected.researchExerciseId = changes.safetyConfirmation.researchExerciseId;
+      } else {
+        const resultResearchExerciseId = result.researchExerciseId ?? null;
+        const resultIdentityCommitment = exerciseIdentityOverrideId(snapshot.recommendationId, entry.createdAt, changes, exerciseId, resultResearchExerciseId);
+        const committedIdentityContract = entry.overrideId === resultIdentityCommitment;
+        const legacyCanonicalResearchExerciseId = legacyPrefixedResearchIdentityForExerciseId(exerciseId);
+        const researchExerciseId = committedIdentityContract ? resultResearchExerciseId : legacyCanonicalResearchExerciseId ?? resultResearchExerciseId;
+        if (researchExerciseId !== null && (typeof researchExerciseId !== "string" || !researchExerciseId.trim())) throw new Error("Invalid manual override lineage; an exercise identity change requires a non-empty research identity or explicit null.");
+        if (committedIdentityContract || (legacyCanonicalResearchExerciseId === null && researchExerciseId !== null)) {
+          const committedOverrideId = exerciseIdentityOverrideId(snapshot.recommendationId, entry.createdAt, changes, exerciseId, researchExerciseId);
+          if (entry.overrideId !== committedOverrideId) throw new Error("Invalid manual override lineage identity commitment; the catalog-resolved exercise/research identity is not bound to its override audit.");
+        }
+        if (committedIdentityContract) applyRecordedExerciseReplacement(expected, { exerciseId, researchExerciseId });
+        else {
+          expected.exerciseId = exerciseId;
+          expected.researchExerciseId = researchExerciseId;
+        }
+      }
+    }
+    if (changes.safetyConfirmation) applyRecordedSafetyConfirmation(expected, changes.safetyConfirmation);
+    if (changes.setCount) applyRecordedSetCount(expected, requireDeclaredChangePair(changes.setCount, expected.workingSets?.target, "setCount"));
+    if (changes.repRange) expected.repRange = requireDeclaredChangePair(changes.repRange, expected.repRange, "repRange");
+    if (changes.load) applyRecordedLoad(expected, requireDeclaredChangePair(changes.load, expected.prescribedLoad?.target ?? null, "load"));
+    if (changes.setStructure) applyRecordedSetStructure(expected, requireDeclaredChangePair(changes.setStructure, expected.setStructure, "setStructure"));
+    if (changes.deloadRecommendation) applyRecordedDeloadRecommendation(expected, requireDeclaredChangePair(changes.deloadRecommendation, expected.recommendationType, "deloadRecommendation"));
+    if (changes.exerciseRotation) expected.recommendationType = requireDeclaredChangePair(changes.exerciseRotation, expected.recommendationType, "exerciseRotation");
+    if (changes.mesocycleId) expected.mesocycleId = requireDeclaredChangePair(changes.mesocycleId, expected.mesocycleId ?? null, "mesocycleId");
+    expected.manualOverride = { overrideId: entry.overrideId, lockedForWorkout: true, explanation: entry.reason };
+
+    const unexpected = prescriptionDifferenceKeys(expected, result);
+    if (unexpected.length) throw new Error(`Invalid manual override lineage identity/dimension bijection; actual before-to-after prescription contains undeclared or incorrectly derived changes in ${unexpected.join(", ")}.`);
+  }
+
+  function validateSafetyOverrideTransition(snapshot, entry, previous, result) {
+    const confirmation = entry.changes.safetyConfirmation;
+    const previousRestriction = previous.safetyRestriction;
+    const resultRestriction = result.safetyRestriction;
+    if (!confirmation || typeof confirmation !== "object" || Array.isArray(confirmation)) throw new Error("Invalid safety override lineage; a complete safety confirmation is required.");
+    if (!previousRestriction || !resultRestriction) throw new Error("Invalid safety override lineage; both prior and resulting prescriptions must retain safety restrictions.");
+    if (previousRestriction.reason !== "pain" || resultRestriction.reason !== "pain") throw new Error("Invalid safety override lineage; only a pain restriction can be resolved by a pain-free exercise confirmation.");
+    if (confirmation.painFreeConfirmed !== true || typeof confirmation.confirmedAt !== "string" || !confirmation.confirmedAt.trim()) throw new Error("Invalid safety override lineage; pain-free confirmation and its timestamp are required.");
+    if (!entry.changes.exerciseId) throw new Error("Invalid safety override lineage; a safety confirmation requires its exercise transition audit.");
+
+    const originalExerciseId = boundIdentity([
+      snapshot.basePrescription.exerciseId,
+      previousRestriction.originalExerciseId,
+      previousRestriction.auditBaseTargets?.exerciseId,
+      resultRestriction.originalExerciseId,
+      resultRestriction.auditBaseTargets?.exerciseId
+    ], "override-history original exercise");
+    const originalResearchExerciseId = boundIdentity([
+      snapshot.basePrescription.researchExerciseId,
+      previousRestriction.auditBaseTargets?.researchExerciseId,
+      resultRestriction.auditBaseTargets?.researchExerciseId
+    ], "override-history original research exercise", { allowNull: true });
+
+    if (previousRestriction.status === "blocked") {
+      boundIdentity([originalExerciseId, previous.exerciseId], "blocked override-history original exercise");
+      boundIdentity([originalResearchExerciseId, previous.researchExerciseId], "blocked override-history original research exercise", { allowNull: true });
+      if (previous.executionBlocked !== true) throw new Error("Invalid safety override lineage; a blocked prior prescription must remain non-executable.");
+    } else if (previousRestriction.status === "resolved_by_confirmed_substitute") {
+      const previousSubstituteExerciseId = boundIdentity([
+        previous.exerciseId,
+        previousRestriction.substituteExerciseId
+      ], "prior resolved substitute exercise");
+      const previousSubstituteResearchExerciseId = boundIdentity([
+        previous.researchExerciseId,
+        previousRestriction.substituteResearchExerciseId
+      ], "prior resolved substitute research exercise");
+      if (previousSubstituteExerciseId === originalExerciseId || (originalResearchExerciseId !== null && previousSubstituteResearchExerciseId === originalResearchExerciseId)) throw new Error("Invalid safety override lineage; a prior substitute cannot collapse onto its painful original identity.");
+      if (previous.executionBlocked !== false || previousRestriction.painFreeConfirmed !== true) throw new Error("Invalid safety override lineage; a prior resolved substitute must retain its executable pain-free confirmation state.");
+    } else throw new Error("Invalid safety override lineage; unsupported prior safety-restriction status.");
+
+    if (resultRestriction.status !== "resolved_by_confirmed_substitute" || resultRestriction.painFreeConfirmed !== true || result.executionBlocked !== false) throw new Error("Invalid safety override lineage; the resulting prescription must be a confirmed executable substitute.");
+    const substituteExerciseId = boundIdentity([
+      entry.changes.exerciseId.to,
+      confirmation.exerciseId,
+      result.exerciseId,
+      resultRestriction.substituteExerciseId
+    ], "safety-confirmation resulting substitute exercise");
+    const substituteResearchExerciseId = boundIdentity([
+      confirmation.researchExerciseId,
+      result.researchExerciseId,
+      resultRestriction.substituteResearchExerciseId
+    ], "safety-confirmation resulting substitute research exercise");
+    boundIdentity([entry.changes.exerciseId.from, previous.exerciseId], "safety-confirmation prior exercise");
+    boundIdentity([entry.createdAt, confirmation.confirmedAt, resultRestriction.confirmedAt], "safety-confirmation timestamp");
+    if (substituteExerciseId === originalExerciseId || (originalResearchExerciseId !== null && substituteResearchExerciseId === originalResearchExerciseId)) throw new Error("Invalid safety override lineage; each substitute must remain different from the painful original exercise and research identity.");
+    if (substituteExerciseId === previous.exerciseId || substituteResearchExerciseId === previous.researchExerciseId) throw new Error("Invalid safety override lineage; duplicate safety substitutions do not establish a new prescription transition.");
+    if (result.prescribedLoad) throw new Error("Invalid safety override lineage; a confirmed substitute must not inherit a load target.");
+  }
+
+  function validateManualOverrideLineage(snapshot) {
+    if (!Array.isArray(snapshot.manualOverrides)) throw new Error("Invalid manual override lineage; manualOverrides must be an array.");
+    const entries = snapshot.manualOverrides;
+    if (!entries.length) {
+      if (snapshot.overrideLocked !== false || snapshot.finalPrescription?.manualOverride) throw new Error("Invalid manual override lineage; an empty history cannot retain an override lock or final override marker.");
+      return true;
+    }
+    if (snapshot.overrideLocked !== true) throw new Error("Invalid manual override lineage; a non-empty override history must remain locked for the workout.");
+
+    const overrideIds = new Set();
+    entries.forEach((entry, index) => {
+      if (!entry || typeof entry !== "object" || Array.isArray(entry)) throw new Error(`Invalid manual override lineage; entry ${index} must be an object.`);
+      const required = ["overrideId", "createdAt", "actor", "reason", "workoutId", "changes", "previousFinalPrescription"];
+      const missing = required.filter((field) => !Object.prototype.hasOwnProperty.call(entry, field) || entry[field] === undefined);
+      if (missing.length) throw new Error(`Invalid manual override lineage; entry ${index} is missing ${missing.join(", ")}.`);
+      if ([entry.overrideId, entry.createdAt, entry.actor, entry.reason].some((value) => typeof value !== "string" || !value.trim())) throw new Error(`Invalid manual override lineage; entry ${index} has incomplete audit identity or provenance.`);
+      if (overrideIds.has(entry.overrideId)) throw new Error(`Invalid manual override lineage; duplicate overrideId ${entry.overrideId}.`);
+      overrideIds.add(entry.overrideId);
+      if (!entry.changes || typeof entry.changes !== "object" || Array.isArray(entry.changes) || !Object.keys(entry.changes).length) throw new Error(`Invalid manual override lineage; entry ${index} has no recorded changes.`);
+
+      const previous = entry.previousFinalPrescription;
+      const result = entries[index + 1]?.previousFinalPrescription || snapshot.finalPrescription;
+      if (!previous || typeof previous !== "object" || !result || typeof result !== "object") throw new Error(`Invalid manual override lineage; entry ${index} requires prior and resulting prescriptions.`);
+      if (previous.schemaVersion !== PRESCRIPTION_SCHEMA_VERSION || result.schemaVersion !== PRESCRIPTION_SCHEMA_VERSION) throw new Error(`Invalid manual override lineage; entry ${index} uses an unsupported prescription schema.`);
+      if (typeof previous.executionBlocked !== "boolean" || typeof result.executionBlocked !== "boolean") throw new Error(`Invalid manual override lineage; entry ${index} prescriptions require explicit executionBlocked state.`);
+
+      if (index === 0) {
+        if (previous.manualOverride) throw new Error("Invalid manual override lineage; the first prior prescription references an unrecorded earlier override.");
+      } else {
+        const priorEntry = entries[index - 1];
+        boundIdentity([previous.manualOverride?.overrideId, priorEntry.overrideId], "prior prescription/override entry");
+        if (previous.manualOverride?.lockedForWorkout !== true || previous.manualOverride?.explanation !== priorEntry.reason) throw new Error("Invalid manual override lineage; prior prescription override provenance is incomplete or tampered.");
+      }
+      boundIdentity([result.manualOverride?.overrideId, entry.overrideId], "resulting prescription/override entry");
+      if (result.manualOverride?.lockedForWorkout !== true || result.manualOverride?.explanation !== entry.reason) throw new Error("Invalid manual override lineage; resulting prescription override provenance is incomplete or tampered.");
+
+      validateDeclaredOverrideChanges(snapshot, entry, previous, result);
+      const hasSafetyContext = Boolean(previous.safetyRestriction || result.safetyRestriction);
+      if (hasSafetyContext && !entry.changes.safetyConfirmation) throw new Error("Invalid safety override lineage; a safety-restricted transition is missing its confirmation audit.");
+      if (entry.changes.safetyConfirmation) validateSafetyOverrideTransition(snapshot, entry, previous, result);
+    });
+    return true;
+  }
+
+  function validateSafetyIdentityBinding(snapshot) {
+    const base = snapshot.basePrescription;
+    const final = snapshot.finalPrescription;
+    const restriction = final.safetyRestriction;
+    if (!restriction) return true;
+    const audit = restriction.auditBaseTargets || {};
+    const originalExerciseId = boundIdentity([
+      base.exerciseId,
+      restriction.originalExerciseId,
+      audit.exerciseId
+    ], "base/restriction/audit original exercise");
+    const originalResearchExerciseId = boundIdentity([
+      base.researchExerciseId,
+      audit.researchExerciseId
+    ], "base/audit original research exercise", { allowNull: true });
+
+    if (restriction.status === "blocked") {
+      boundIdentity([
+        snapshot.exerciseId,
+        final.exerciseId,
+        originalExerciseId
+      ], "blocked snapshot/final/original exercise");
+      boundIdentity([
+        final.researchExerciseId,
+        originalResearchExerciseId
+      ], "blocked final/original research exercise", { allowNull: true });
+      return true;
+    }
+
+    if (restriction.status !== "resolved_by_confirmed_substitute") return true;
+    const substituteExerciseId = boundIdentity([
+      snapshot.exerciseId,
+      final.exerciseId,
+      restriction.substituteExerciseId
+    ], "resolved snapshot/final/substitute exercise");
+    const substituteResearchExerciseId = boundIdentity([
+      final.researchExerciseId,
+      restriction.substituteResearchExerciseId
+    ], "resolved final/substitute research exercise");
+    if (substituteExerciseId === originalExerciseId || (originalResearchExerciseId !== null && substituteResearchExerciseId === originalResearchExerciseId)) throw new Error("Invalid resolved safety prescription; substitute identity must remain different from the painful original.");
+
+    const safetyEntries = asArray(snapshot.manualOverrides).filter((entry) => entry?.changes?.safetyConfirmation);
+    if (!safetyEntries.length) throw new Error("Invalid resolved safety prescription; a bound safety-confirmation audit entry is required.");
+    for (const entry of safetyEntries) {
+      const previous = entry.previousFinalPrescription;
+      const previousRestriction = previous?.safetyRestriction;
+      if (!previous || !previousRestriction) throw new Error("Invalid resolved safety prescription; safety audit history must retain the previous restricted prescription.");
+      boundIdentity([
+        originalExerciseId,
+        previousRestriction.originalExerciseId,
+        previousRestriction.auditBaseTargets?.exerciseId
+      ], "resolved/base/audit-history original exercise");
+      boundIdentity([
+        originalResearchExerciseId,
+        previousRestriction.auditBaseTargets?.researchExerciseId
+      ], "resolved/base/audit-history original research exercise", { allowNull: true });
+      if (previousRestriction.status === "blocked") {
+        boundIdentity([originalExerciseId, previous.exerciseId], "blocked audit-history original exercise");
+        boundIdentity([originalResearchExerciseId, previous.researchExerciseId], "blocked audit-history original research exercise", { allowNull: true });
+      } else if (previousRestriction.status === "resolved_by_confirmed_substitute") {
+        boundIdentity([previous.exerciseId, previousRestriction.substituteExerciseId], "resolved audit-history substitute exercise");
+        boundIdentity([previous.researchExerciseId, previousRestriction.substituteResearchExerciseId], "resolved audit-history substitute research exercise");
+      } else throw new Error("Invalid resolved safety prescription; safety audit history has an unsupported restriction status.");
+    }
+    const latestConfirmation = safetyEntries[safetyEntries.length - 1].changes.safetyConfirmation;
+    boundIdentity([substituteExerciseId, latestConfirmation.exerciseId], "resolved/latest-audit substitute exercise");
+    boundIdentity([substituteResearchExerciseId, latestConfirmation.researchExerciseId], "resolved/latest-audit substitute research exercise");
+    return true;
+  }
+
+  function validateLegacyManualOverrideLineage(snapshot, prescriptionSchemaVersion) {
+    if (!Array.isArray(snapshot.manualOverrides)) throw new Error("Invalid legacy manual override lineage; manualOverrides must be an array.");
+    if (!snapshot.manualOverrides.length) {
+      if (snapshot.overrideLocked !== false || snapshot.finalPrescription?.manualOverride) throw new Error("Invalid legacy manual override lineage; an empty history cannot retain an override lock or final override marker.");
+      return true;
+    }
+    if (snapshot.overrideLocked !== true) throw new Error("Invalid legacy manual override lineage; a non-empty override history must remain locked for the workout.");
+    const overrideIds = new Set();
+    snapshot.manualOverrides.forEach((entry, index) => {
+      if (!entry || typeof entry !== "object" || Array.isArray(entry)) throw new Error(`Invalid legacy manual override lineage; entry ${index} must be an object.`);
+      const required = ["overrideId", "createdAt", "actor", "reason", "changes", "previousFinalPrescription"];
+      const missing = required.filter((field) => !hasOwn(entry, field) || entry[field] === undefined);
+      if (missing.length) throw new Error(`Invalid legacy manual override lineage; entry ${index} is missing ${missing.join(", ")}.`);
+      if ([entry.overrideId, entry.createdAt, entry.actor, entry.reason].some((value) => typeof value !== "string" || !value.trim())) throw new Error(`Invalid legacy manual override lineage; entry ${index} has incomplete audit provenance.`);
+      if (overrideIds.has(entry.overrideId)) throw new Error(`Invalid legacy manual override lineage; duplicate overrideId ${entry.overrideId}.`);
+      overrideIds.add(entry.overrideId);
+      if (!entry.changes || typeof entry.changes !== "object" || Array.isArray(entry.changes) || !Object.keys(entry.changes).length) throw new Error(`Invalid legacy manual override lineage; entry ${index} has no recorded changes.`);
+      if (!entry.previousFinalPrescription || entry.previousFinalPrescription.schemaVersion !== prescriptionSchemaVersion) throw new Error(`Invalid legacy manual override lineage; entry ${index} does not preserve its ${prescriptionSchemaVersion} prior prescription.`);
+    });
+    const finalOverrideId = snapshot.finalPrescription?.manualOverride?.overrideId;
+    if (finalOverrideId && finalOverrideId !== snapshot.manualOverrides.at(-1).overrideId) throw new Error("Invalid legacy manual override lineage; final override identity does not match the append-only audit tail.");
+    return true;
+  }
+
   function validateSnapshot(snapshot) {
-    const required = ["recommendationId", "recommendationVersion", "engineVersion", "personalDataVersion", "researchDatabaseVersion", "basePrescription", "finalPrescription", "createdAt"];
+    const required = ["recommendationId", "schemaVersion", "recommendationVersion", "engineVersion", "personalDataVersion", "researchDatabaseVersion", "basePrescription", "finalPrescription", "createdAt", "manualOverrides", "overrideLocked"];
     const missing = required.filter((field) => snapshot?.[field] === undefined || snapshot?.[field] === null);
     if (missing.length) throw new Error(`Invalid recommendation snapshot; missing ${missing.join(", ")}.`);
+    if (!SUPPORTED_SNAPSHOT_SCHEMA_VERSIONS.has(snapshot.schemaVersion)) throw new Error(`Unsupported recommendation snapshot schemaVersion ${snapshot.schemaVersion}; supported versions are ${[...SUPPORTED_SNAPSHOT_SCHEMA_VERSIONS].join(", ")}.`);
+    const expectedPrescriptionSchemaVersion = SNAPSHOT_PRESCRIPTION_SCHEMA_PAIRS[snapshot.schemaVersion];
+    if (snapshot.recommendationVersion !== expectedPrescriptionSchemaVersion) throw new Error(`Invalid recommendation snapshot version pair; ${snapshot.schemaVersion} requires recommendationVersion ${expectedPrescriptionSchemaVersion}.`);
+    if (snapshot.checksum === undefined || snapshot.checksum === null) {
+      if (snapshot.schemaVersion !== "1.0.0") throw new Error("Invalid recommendation snapshot; missing checksum.");
+    } else {
+      const checksumPattern = snapshot.schemaVersion === "1.0.0" ? /^[0-9a-f]{8,128}$/ : SNAPSHOT_CHECKSUM_PATTERN;
+      if (typeof snapshot.checksum !== "string" || !checksumPattern.test(snapshot.checksum)) throw new Error("Invalid recommendation snapshot checksum; expected a lowercase hexadecimal checksum in the historical format for this schema.");
+    }
+    ["basePrescription", "finalPrescription"].forEach((field) => {
+      const prescription = snapshot[field];
+      if (!SUPPORTED_PRESCRIPTION_SCHEMA_VERSIONS.has(prescription?.schemaVersion)) throw new Error(`Unsupported ${field} schemaVersion ${prescription?.schemaVersion}; supported versions are ${[...SUPPORTED_PRESCRIPTION_SCHEMA_VERSIONS].join(", ")}.`);
+      if (prescription.schemaVersion !== expectedPrescriptionSchemaVersion) throw new Error(`Invalid recommendation snapshot version pair; ${field} must use ${expectedPrescriptionSchemaVersion}.`);
+      if (prescription.schemaVersion === "2.0.0") {
+        if (prescription.executionBlocked !== undefined && typeof prescription.executionBlocked !== "boolean") throw new Error(`Invalid ${field}; legacy executionBlocked must be boolean when present.`);
+      } else if (typeof prescription.executionBlocked !== "boolean") throw new Error(`Invalid ${field}; executionBlocked must be boolean.`);
+      if (prescription.schemaVersion === PRESCRIPTION_SCHEMA_VERSION) {
+        const currentRequired = ["programmingContext", "historyResolution", "progressionConfirmation", "scientificProvenance"];
+        const missingCurrent = currentRequired.filter((requiredField) => !prescription[requiredField]);
+        if (missingCurrent.length) throw new Error(`Invalid ${field}; current prescriptions require ${currentRequired.join(", ")}.`);
+        if (prescription.programmingContext.profileVersion !== TRAINING_PROFILE_VERSION) throw new Error(`Invalid ${field}; current prescriptions require ${TRAINING_PROFILE_VERSION}.`);
+      }
+    });
     if (!RECOMMENDATION_TYPES.includes(snapshot.finalPrescription.recommendationType)) throw new Error(`Invalid recommendation type ${snapshot.finalPrescription.recommendationType}.`);
     if (!SET_STRUCTURES.includes(snapshot.finalPrescription.setStructure)) throw new Error(`Invalid set structure ${snapshot.finalPrescription.setStructure}.`);
     if (!ROLES.includes(snapshot.finalPrescription.role)) throw new Error(`Invalid role ${snapshot.finalPrescription.role}.`);
+    if (snapshot.exerciseId !== snapshot.finalPrescription.exerciseId) throw new Error("Invalid recommendation snapshot identity binding; snapshot exerciseId must match the final prescription.");
+    if ((snapshot.mesocycleId ?? null) !== (snapshot.finalPrescription.mesocycleId ?? null)) throw new Error("Invalid recommendation snapshot mesocycle binding; snapshot and final prescription must match.");
+    if (engineVersionAtLeast(snapshot.engineVersion, "3.1.3") && snapshot.explanation !== snapshot.finalPrescription.userExplanation) throw new Error("Invalid recommendation snapshot explanation binding; the top-level explanation must match the final executable prescription.");
+    if (snapshot.finalPrescription.executionBlocked) {
+      const final = snapshot.finalPrescription;
+      if (!final.safetyRestriction || final.safetyRestriction.schemaVersion !== HARD_SAFETY_SCHEMA_VERSION || final.safetyRestriction.status !== "blocked") throw new Error("Invalid blocked prescription; versioned blocked safetyRestriction metadata is required.");
+      if (!["exercise", "workout"].includes(final.safetyRestriction.scope) || !["pain", "illness"].includes(final.safetyRestriction.reason) || !String(final.safetyRestriction.resumeCriteria || "").trim() || !final.safetyRestriction.auditBaseTargets?.workingSets) throw new Error("Invalid blocked prescription; explicit safety scope, reason, resume criteria, and base-target audit context are required.");
+      if ([final.workingSets?.min, final.workingSets?.target, final.workingSets?.max].some((value) => value !== 0)) throw new Error("Invalid blocked prescription; executable working sets must all be zero.");
+      if (final.volume?.perExercise?.currentPrescribed !== 0 || final.volume?.perExercise?.deload !== 0 || final.volume?.perMusclePerSession?.target !== 0 || final.volume?.perMusclePerWeek?.currentPrescribed !== 0) throw new Error("Invalid blocked prescription; executable volume targets must all be zero.");
+      if (final.prescribedLoad || final.topSet || final.backoffSets) throw new Error("Invalid blocked prescription; load, top-set, and back-off targets are forbidden.");
+    } else if (snapshot.finalPrescription.safetyRestriction) {
+      const final = snapshot.finalPrescription;
+      const restriction = final.safetyRestriction;
+      if (restriction.schemaVersion !== HARD_SAFETY_SCHEMA_VERSION || restriction.status !== "resolved_by_confirmed_substitute" || restriction.reason !== "pain" || restriction.painFreeConfirmed !== true) throw new Error("Invalid resolved safety prescription; confirmed pain-free substitute metadata is required.");
+      if (!restriction.substituteExerciseId || restriction.substituteExerciseId !== final.exerciseId || !restriction.substituteResearchExerciseId || restriction.substituteResearchExerciseId !== final.researchExerciseId) throw new Error("Invalid resolved safety prescription; substitute exercise/research identity must match the executable prescription.");
+      const originalExerciseIds = new Set([
+        restriction.originalExerciseId,
+        restriction.auditBaseTargets?.exerciseId,
+        snapshot.basePrescription?.exerciseId
+      ].filter(Boolean));
+      const originalResearchExerciseIds = new Set([
+        restriction.auditBaseTargets?.researchExerciseId,
+        snapshot.basePrescription?.researchExerciseId,
+        snapshot.basePrescription?.exerciseId,
+        restriction.originalExerciseId
+      ].filter(Boolean));
+      if (originalExerciseIds.has(restriction.substituteExerciseId) || originalResearchExerciseIds.has(restriction.substituteResearchExerciseId)) throw new Error("Invalid resolved safety prescription; a pain-free substitute must be different from the painful original exercise and research identity.");
+      if (final.prescribedLoad) throw new Error("Invalid resolved safety prescription; a substitute load must not be inferred.");
+    }
+    if (snapshot.schemaVersion === SNAPSHOT_SCHEMA_VERSION) {
+      validateManualOverrideLineage(snapshot);
+      validateSafetyIdentityBinding(snapshot);
+    } else validateLegacyManualOverrideLineage(snapshot, expectedPrescriptionSchemaVersion);
     return true;
   }
 
   function serializeRecommendationSnapshot(snapshot) {
-    validateSnapshot(snapshot);
+    verifySnapshotChecksum(snapshot);
     return JSON.stringify(deepClone(snapshot));
   }
 
-  function deserializeRecommendationSnapshot(serialized, options = {}) {
-    const snapshot = typeof serialized === "string" ? JSON.parse(serialized) : deepClone(serialized);
+  function verifySnapshotChecksum(snapshot) {
     validateSnapshot(snapshot);
-    if (options.verifyChecksum !== false && snapshot.checksum) {
-      const expected = stableHash({ ...snapshot, checksum: undefined });
-      if (expected !== snapshot.checksum) throw new Error("Recommendation snapshot checksum does not match; historical evidence may have been altered.");
-    }
+    // This unkeyed checksum plus lineage validation detects stale, partial, and
+    // internally incoherent rewrites. It is not authentication: a writer who
+    // can coherently replace the whole snapshot and recompute the checksum is
+    // outside this local integrity contract.
+    if (snapshot.checksum === undefined || snapshot.checksum === null) return true;
+    const expected = stableHash({ ...snapshot, checksum: undefined });
+    if (expected !== snapshot.checksum) throw new Error("Recommendation snapshot checksum does not match; historical evidence may have been altered.");
+    return true;
+  }
+
+  function deserializeRecommendationSnapshot(serialized) {
+    const snapshot = typeof serialized === "string" ? JSON.parse(serialized) : deepClone(serialized);
+    verifySnapshotChecksum(snapshot);
     return snapshot;
   }
 
@@ -2886,15 +4824,18 @@
 
   function appendRecommendationHistory(storage, snapshot, options = {}) {
     if (!storage || typeof storage.getItem !== "function" || typeof storage.setItem !== "function") throw new Error("A Storage-compatible implementation is required.");
-    validateSnapshot(snapshot);
     const key = options.key || HISTORY_STORAGE_KEY;
     const history = JSON.parse(storage.getItem(key) || "[]");
     const existing = history.find((item) => item.recommendationId === snapshot.recommendationId);
     if (existing) {
       if (stableStringify(existing) !== stableStringify(snapshot) && !options.allowExplicitReplace) throw new Error("A historical recommendation with this ID already exists; refusing to silently rewrite it.");
+      verifySnapshotChecksum(snapshot);
       if (!options.allowExplicitReplace) return history;
       history.splice(history.indexOf(existing), 1, deepClone(snapshot));
-    } else history.push(deepClone(snapshot));
+    } else {
+      verifySnapshotChecksum(snapshot);
+      history.push(deepClone(snapshot));
+    }
     storage.setItem(key, JSON.stringify(history));
     return history;
   }
@@ -2916,102 +4857,710 @@
     return value ? JSON.parse(value) : null;
   }
 
+  function hasHardSafetyMarker(prescription = {}) {
+    const signals = [
+      ...asArray(prescription.readinessAdjustment?.signals),
+      ...asArray(prescription.deloadStatus?.readinessEvaluation?.signals)
+    ];
+    return prescription.executionBlocked === true
+      || ["blocked", "resolved_by_confirmed_substitute"].includes(prescription.safetyRestriction?.status)
+      || signals.some((signal) => signal?.domain === "illness" || signal?.domain === "pain")
+      || prescription.staleness?.metrics?.painFlag === true
+      || HARD_SAFETY_PROGRESSION_ACTIONS.has(prescription.progressionAction);
+  }
+
+  function catalogIdentity(item) {
+    if (!item) return null;
+    if (typeof item === "string") return { exerciseId: item, researchExerciseId: null, researchIdentitySpecified: false, researchIdentityFieldPresence: "absent", structured: false, catalogRecord: false, source: null };
+    const exerciseId = firstPresent(item.exerciseId, item.exercise_id, item.personalExerciseId, item.personal_exercise_id);
+    if (!exerciseId) return null;
+    const researchIdentityFields = ["researchExerciseId", "research_exercise_id", "researchId", "research_id"];
+    const researchIdentitySpecified = researchIdentityFields.some((field) => Object.prototype.hasOwnProperty.call(item, field));
+    const declaredResearchIds = unique(researchIdentityFields
+      .filter((field) => Object.prototype.hasOwnProperty.call(item, field))
+      .map((field) => item[field]));
+    const explicitResearchId = firstPresent(...declaredResearchIds);
+    const researchExerciseId = explicitResearchId ?? null;
+    const researchIdentityFieldPresence = !researchIdentitySpecified
+      ? "absent"
+      : researchExerciseId
+        ? "value"
+        : "blank_or_null";
+    const catalogRecord = Boolean(
+      firstPresent(item.exercise_id, item.personalExerciseId, item.personal_exercise_id)
+      && firstPresent(
+        item.exercise_name, item.exerciseName, item.prescription_id, item.score_id,
+        item.equipment, item.equipment_type, item.equipmentType,
+        item.equipment_requirements, item.equipmentRequirements, item.required_equipment, item.requiredEquipment
+      )
+    );
+    return {
+      exerciseId,
+      researchExerciseId,
+      researchIdentitySpecified,
+      researchIdentityFieldPresence,
+      researchIdentityConflict: declaredResearchIds.length > 1,
+      structured: true,
+      catalogRecord,
+      source: item
+    };
+  }
+
+  function intersectPolicyRange(existing, policyRange, integer = true) {
+    if (!existing || !policyRange) return existing;
+    const min = Math.max(number(existing.min), number(policyRange.min));
+    const max = Math.min(number(existing.max), number(policyRange.max));
+    if (min > max) return existing;
+    const target = (min + max) / 2;
+    return { min, target: integer ? Math.round(target) : round(target, 1), max };
+  }
+
+  function policyRangesOverlap(existing, policyRange) {
+    if (!existing || !policyRange) return true;
+    return Math.max(number(existing.min), number(policyRange.min)) <= Math.min(number(existing.max), number(policyRange.max));
+  }
+
+  function goalPolicyRanges(goal, role, researchExercise = {}) {
+    const isolation = isIsolationExercise(researchExercise);
+    if (goal === "strength" && role === "primary_progression_lift") return {
+      repRange: GOAL_PROFILES.strength.primaryRepRange,
+      restSeconds: GOAL_PROFILES.strength.restRange
+    };
+    if (goal === "hypertrophy") return {
+      repRange: GOAL_PROFILES.hypertrophy.repRange,
+      restSeconds: isolation ? GOAL_PROFILES.hypertrophy.isolationRestRange : GOAL_PROFILES.hypertrophy.compoundRestRange
+    };
+    if (goal === "muscular_endurance") return {
+      repRange: isolation ? GOAL_PROFILES.muscular_endurance.repRange : GOAL_PROFILES.muscular_endurance.skillCompoundRepRange,
+      restSeconds: GOAL_PROFILES.muscular_endurance.restRange
+    };
+    if (goal === "general_fitness") return {
+      repRange: GOAL_PROFILES.general_fitness.repRange,
+      restSeconds: GOAL_PROFILES.general_fitness.restRange
+    };
+    return { repRange: null, restSeconds: null };
+  }
+
+  function applyGoalPolicyToDose(input = {}) {
+    const goal = input.context.goal.resolvedValue;
+    const policy = goalPolicyRanges(goal, input.role, input.researchExercise);
+    const repOverlap = policyRangesOverlap(input.repRange, policy.repRange);
+    const restOverlap = policyRangesOverlap(input.restSeconds, policy.restSeconds);
+    const repRange = intersectPolicyRange(input.repRange, policy.repRange, true);
+    const restSeconds = intersectPolicyRange(input.restSeconds, policy.restSeconds, true);
+    const qualifyingProductivePersonalEvidence = number(input.personalEvidenceWeight, 0) >= 0.6
+      && input.staleness?.classification === STALENESS.PRODUCTIVE;
+    const priorSetTarget = number(input.workingSets?.target, 0);
+    const missingDataSetCap = goal === "general_fitness" ? 2 : 3;
+    const goalSetTarget = qualifyingProductivePersonalEvidence ? priorSetTarget : Math.min(priorSetTarget, missingDataSetCap);
+    const conflictingFields = [!repOverlap ? "repRange" : null, !restOverlap ? "restSeconds" : null].filter(Boolean);
+    const conflict = conflictingFields.length ? {
+      schemaVersion: GOAL_POLICY_CONFLICT_SCHEMA_VERSION,
+      field: conflictingFields[0],
+      conflictingFields,
+      goal,
+      requestedGoalRange: deepClone(conflictingFields[0] === "repRange" ? policy.repRange : policy.restSeconds),
+      preservedExerciseRange: deepClone(conflictingFields[0] === "repRange" ? input.repRange : input.restSeconds),
+      alternativeExerciseId: null,
+      explanation: `${input.exerciseName || input.exerciseId || "This exercise"} has a safe exercise-specific ${conflictingFields.join(" and ")} range that does not overlap the directional ${goal.replaceAll("_", " ")} policy. The exercise range is preserved; the recommendation does not claim the goal policy was applied.`
+    } : null;
+    return {
+      repRange,
+      restSeconds,
+      goalSetTarget,
+      priorSetTarget,
+      qualifyingProductivePersonalEvidence,
+      conflict,
+      policy
+    };
+  }
+
+  function alignNestedRepRange(range, outer) {
+    if (!range) return range;
+    const min = Math.max(number(range.min), number(outer.min));
+    const max = Math.min(number(range.max), number(outer.max));
+    if (min > max) return { min: outer.min, max: outer.max };
+    return { min, max };
+  }
+
+  function applyProgrammingPolicy(prescriptionInput, context, options = {}) {
+    const prescription = deepClone(prescriptionInput);
+    const goal = context.goal.resolvedValue;
+    const role = prescription.role;
+    const applied = applyGoalPolicyToDose({
+      context,
+      role,
+      researchExercise: options.researchExercise,
+      exerciseId: prescription.exerciseId,
+      exerciseName: options.exerciseName,
+      repRange: prescription.repRange,
+      restSeconds: prescription.restSeconds,
+      workingSets: prescription.workingSets,
+      personalEvidenceWeight: prescription.personalEvidenceWeight,
+      staleness: prescription.staleness
+    });
+    prescription.repRange = applied.repRange;
+    prescription.restSeconds = applied.restSeconds;
+    if (goal === "muscular_endurance") {
+      prescription.progressionMethod = "rep_first_progression";
+      prescription.progressionRule = "Use rep-first progression inside the saved range; preserve technique and set quality before changing resistance.";
+    }
+    const priorSetTarget = applied.priorSetTarget;
+    const goalSetTarget = applied.goalSetTarget;
+    if (goalSetTarget > 0 && goalSetTarget !== priorSetTarget) {
+      prescription.workingSets.target = goalSetTarget;
+      prescription.workingSets.min = Math.min(number(prescription.workingSets.min), goalSetTarget);
+      prescription.workingSets.max = Math.max(goalSetTarget, number(prescription.workingSets.max));
+      prescription.volume.perExercise.currentPrescribed = goalSetTarget;
+      prescription.volume.perExercise.deload = Math.max(1, Math.round(goalSetTarget * DEFAULT_POLICY.deloadVolumeFactor));
+      prescription.volume.perMusclePerSession.target = goalSetTarget;
+      const plannedFrequency = Math.max(1, number(prescription.frequencyPerWeek?.target, 2));
+      prescription.volume.perMusclePerWeek.currentPrescribed = Math.min(number(prescription.volume.perMusclePerWeek.currentPrescribed), Math.round(goalSetTarget * plannedFrequency));
+      prescription.volume.perMusclePerWeek.deload = Math.max(2, Math.round(prescription.volume.perMusclePerWeek.currentPrescribed * DEFAULT_POLICY.deloadVolumeFactor));
+      prescription.volume.reason += ` The ${goal.replaceAll("_", " ")} product-policy profile starts this exercise at ${goalSetTarget} working sets; this is a conservative starting prescription, not a universal dose ceiling.`;
+    } else if (applied.qualifyingProductivePersonalEvidence) {
+      prescription.volume.reason += " High-confidence productive personal evidence takes precedence over the missing-data starting-set cap, so the observed recoverable dose is preserved.";
+    }
+    if (prescription.topSet) prescription.topSet.repRange = alignNestedRepRange(prescription.topSet.repRange, prescription.repRange);
+    if (prescription.backoffSets) {
+      prescription.backoffSets.repRange = alignNestedRepRange(prescription.backoffSets.repRange, prescription.repRange);
+      prescription.backoffSets.count = Math.max(1, goalSetTarget - 1);
+    }
+    if (!context.experience.complexStructureAllowed && ["top_set_backoff", "multiple_top_sets"].includes(prescription.setStructure)) {
+      prescription.setStructure = "straight_sets";
+      prescription.setStructureReason = `${context.experience.complexityPolicy} The same evidence-derived dose is expressed as straight sets; experience alone did not change sets, intensity, repetitions, or rest.`;
+      delete prescription.topSet;
+      delete prescription.backoffSets;
+    }
+    if (applied.conflict) prescription.goalPolicyConflict = applied.conflict;
+    else delete prescription.goalPolicyConflict;
+    prescription.scientificProvenance = materialScientificProvenance(goal);
+    prescription.programmingContext = deepClone(context);
+    return prescription;
+  }
+
+  function equipmentOptionRefines(candidateOption, broaderOption, broaderDetailLevel) {
+    return broaderOption.every((broaderItem) => candidateOption.some((candidateItem) => {
+      if (candidateItem === broaderItem) return true;
+      return broaderDetailLevel === 1
+        && PRIMARY_EQUIPMENT_FAMILIES.has(equipmentFamily(broaderItem))
+        && equipmentFamily(candidateItem) === equipmentFamily(broaderItem);
+    }));
+  }
+
+  function equipmentDeclarationRefines(candidate, broader) {
+    const candidateOptions = minimizePositiveEquipmentOptions(candidate.options);
+    const broaderOptions = minimizePositiveEquipmentOptions(broader.options);
+    return candidateOptions.every((candidateOption) => broaderOptions.some((broaderOption) => (
+      equipmentOptionRefines(candidateOption, broaderOption, broader.detailLevel)
+    )));
+  }
+
+  function reconcileTrustedEquipmentDeclarationBatch(identities, exerciseId) {
+    const declarationsBySignature = new Map();
+    [...identities]
+      .sort((left, right) => String(stableStringify(left.source)).localeCompare(String(stableStringify(right.source))))
+      .forEach((identity) => {
+        const declaration = resolveDeclaredEquipmentMetadata(identity.source || {});
+        if (!declaration.declared) return;
+        const normalized = { ...declaration, options: canonicalEquipmentOptions(declaration.options) };
+        const signature = `${normalized.detailLevel}:${equipmentOptionsKey(normalized.options)}`;
+        if (!declarationsBySignature.has(signature)) declarationsBySignature.set(signature, normalized);
+      });
+    const declarations = [...declarationsBySignature.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([, declaration]) => declaration);
+    if (!declarations.length) return { declared: false, detailLevel: 0, options: [] };
+    if (declarations.length === 1) return declarations[0];
+    const refinements = declarations.filter((candidate) => declarations.every((broader) => equipmentDeclarationRefines(candidate, broader)));
+    if (!refinements.length) throw new Error(`Conflicting trusted custom equipment requirements for ${exerciseId}.`);
+    const highestDetailLevel = Math.max(...refinements.map((declaration) => declaration.detailLevel));
+    const mostSpecific = refinements.filter((declaration) => declaration.detailLevel === highestDetailLevel);
+    if (mostSpecific.length === 1) return mostSpecific[0];
+    const uniqueRequirementKeys = unique(mostSpecific.map((declaration) => equipmentOptionsKey(declaration.options)));
+    if (uniqueRequirementKeys.length === 1) return mostSpecific[0];
+    throw new Error(`Conflicting trusted custom equipment requirements for ${exerciseId}.`);
+  }
+
+  function catalogMetadataPresent(value) {
+    if (value === undefined || value === null) return false;
+    if (typeof value === "string") return Boolean(value.trim());
+    if (Array.isArray(value)) return value.length > 0;
+    if (typeof value === "object") return Object.keys(value).length > 0;
+    return true;
+  }
+
+  function catalogMetadataRichness(value) {
+    if (!catalogMetadataPresent(value)) return 0;
+    const serializedLength = String(stableStringify(value)).length;
+    if (Array.isArray(value)) return 300 + value.length * 10 + serializedLength;
+    if (typeof value === "object") return 250 + Object.keys(value).length * 10 + serializedLength;
+    if (typeof value === "string") return 100 + value.trim().length;
+    return 50 + serializedLength;
+  }
+
+  function richestCatalogMetadata(values) {
+    const ranked = values.filter(catalogMetadataPresent).sort((left, right) => {
+      const scoreDifference = catalogMetadataRichness(right) - catalogMetadataRichness(left);
+      return scoreDifference || String(stableStringify(left)).localeCompare(String(stableStringify(right)));
+    });
+    return ranked.length ? deepClone(ranked[0]) : undefined;
+  }
+
+  function mergeTrustedCatalogSourceBatch(identities, equipment, researchExerciseId) {
+    const equipmentFields = new Set([...EQUIPMENT_REQUIREMENT_FIELDS, ...EQUIPMENT_SUMMARY_FIELDS]);
+    const researchIdentityFields = new Set(["researchExerciseId", "research_exercise_id", "researchId", "research_id"]);
+    const merged = {};
+    unique(identities.flatMap((identity) => Object.keys(identity.source || {}))).sort().forEach((field) => {
+      if (equipmentFields.has(field) || researchIdentityFields.has(field)) return;
+      const value = richestCatalogMetadata(identities.map((identity) => identity.source?.[field]));
+      if (catalogMetadataPresent(value)) merged[field] = value;
+    });
+    if (equipment.declared) {
+      const field = equipment.detailLevel === 2 ? "equipmentRequirements" : "equipment";
+      merged[field] = canonicalEquipmentOptions(equipment.options);
+    }
+    if (researchExerciseId) merged.researchExerciseId = researchExerciseId;
+    return merged;
+  }
+
+  function reconcileTrustedCustomIdentityBatch(identities, researchIdentities) {
+    if (!identities.length) throw new Error("Trusted custom identity reconciliation requires at least one record.");
+    const exerciseIds = unique(identities.map((identity) => identity.exerciseId));
+    if (exerciseIds.length !== 1) throw new Error("Trusted custom identity reconciliation requires matching exercise IDs.");
+    const exerciseId = exerciseIds[0];
+    if (identities.some((identity) => identity.researchIdentityConflict)) throw new Error(`Conflicting trusted custom research identities for ${exerciseId}.`);
+    const researchExerciseIds = unique(identities.map((identity) => identity.researchExerciseId));
+    if (researchExerciseIds.length > 1) throw new Error(`Conflicting trusted custom research identities for ${exerciseId}.`);
+    const researchExerciseId = researchExerciseIds[0] || null;
+    if (researchExerciseId && !researchIdentities.has(researchExerciseId)) throw new Error(`Trusted custom exercise ${exerciseId} maps to unknown research exercise ${researchExerciseId}.`);
+    const equipment = reconcileTrustedEquipmentDeclarationBatch(identities, exerciseId);
+    return {
+      exerciseId,
+      researchExerciseId,
+      researchIdentitySpecified: identities.some((identity) => identity.researchIdentitySpecified),
+      researchIdentityFieldPresence: identities.some((identity) => identity.researchIdentityFieldPresence === "value")
+        ? "value"
+        : identities.some((identity) => identity.researchIdentityFieldPresence === "blank_or_null")
+          ? "blank_or_null"
+          : "absent",
+      researchIdentityConflict: false,
+      structured: true,
+      catalogRecord: identities.every((identity) => identity.catalogRecord),
+      source: mergeTrustedCatalogSourceBatch(identities, equipment, researchExerciseId)
+    };
+  }
+
+  function buildReconciledPersonalIdentityIndex(personal, research) {
+    const researchIdentities = new Map(research.exerciseDatabase.map((source) => {
+      const exerciseId = firstPresent(source.exercise_id, source.exerciseId);
+      return [exerciseId, {
+        exerciseId,
+        researchExerciseId: exerciseId,
+        researchIdentitySpecified: true,
+        researchIdentityConflict: false,
+        structured: true,
+        catalogRecord: true,
+        source
+      }];
+    }).filter(([exerciseId]) => Boolean(exerciseId)));
+    const recordsByExercise = groupBy([
+      ...personal.exerciseScores,
+      ...personal.exercisePrescriptions,
+      ...personal.exerciseMuscleScores
+    ], (record) => firstPresent(record.exercise_id, record.exerciseId, record.personalExerciseId, record.personal_exercise_id));
+    const identities = new Map();
+    [...recordsByExercise.entries()].sort(([left], [right]) => left.localeCompare(right)).forEach(([exerciseId, records]) => {
+      const batch = records.map(catalogIdentity).filter((identity) => identity?.structured && identity.exerciseId === exerciseId);
+      const explicitResearchIds = unique(batch.map((identity) => identity.researchExerciseId));
+      const fieldPresence = explicitResearchIds.length
+        ? "value"
+        : batch.some((identity) => identity.researchIdentitySpecified)
+          ? "blank_or_null"
+          : "absent";
+      const canonicalIdentity = researchIdentities.get(exerciseId);
+      if (canonicalIdentity) {
+        // Public research IDs are the authoritative namespace. Personal rows may
+        // still contribute performance evidence, but their name, mapping, and
+        // equipment metadata cannot replace or invalidate the canonical record.
+        identities.set(exerciseId, {
+          ...canonicalIdentity,
+          researchIdentityFieldPresence: fieldPresence,
+          researchIdentitySource: "canonical_id",
+          canonicalMetadataQuarantined: true,
+          canonicalMetadataRecordCount: records.length
+        });
+        return;
+      }
+      let researchIdentitySource = explicitResearchIds.length ? "explicit_crosswalk" : "unresolved";
+      if (!explicitResearchIds.length) {
+        // Pipeline crosswalks are nullable because most rows have no confident
+        // explicit match. Preserve the documented fallback: blank/null and an
+        // absent field may use an exact trusted name alias; a nonblank explicit
+        // ID is authoritative and therefore never falls through to this branch.
+        const exactCanonicalId = researchIdentities.has(exerciseId) ? exerciseId : null;
+        const aliasResearchIds = unique(records.flatMap((record) => [
+          record.exercise_name,
+          record.exerciseName,
+          record.exercise_name_recorded,
+          record.exerciseNameRecorded,
+          record.canonical_exercise_name,
+          record.canonicalExerciseName
+        ]).map((name) => research.exerciseIdByAlias.get(normalizeText(name))));
+        const inferredResearchIds = unique([exactCanonicalId, ...aliasResearchIds]);
+        researchIdentitySource = exactCanonicalId ? "canonical_id" : inferredResearchIds.length ? "alias_inference" : "unresolved";
+        inferredResearchIds.forEach((researchExerciseId) => batch.push({
+          exerciseId,
+          researchExerciseId,
+          researchIdentitySpecified: false,
+          researchIdentityFieldPresence: "absent",
+          researchIdentityConflict: false,
+          structured: true,
+          catalogRecord: true,
+          source: {}
+        }));
+      }
+      try {
+        identities.set(exerciseId, {
+          ...reconcileTrustedCustomIdentityBatch(batch, researchIdentities),
+          researchIdentityFieldPresence: fieldPresence,
+          researchIdentitySource
+        });
+      } catch (error) {
+        identities.set(exerciseId, {
+          ...invalidTrustedCustomIdentity(exerciseId, batch, error),
+          researchIdentityFieldPresence: fieldPresence,
+          researchIdentitySource: "invalid"
+        });
+      }
+    });
+    const personalIdsByResearchId = new Map();
+    identities.forEach((identity, exerciseId) => {
+      if (identity.invalid || !identity.researchExerciseId) return;
+      if (!personalIdsByResearchId.has(identity.researchExerciseId)) personalIdsByResearchId.set(identity.researchExerciseId, []);
+      personalIdsByResearchId.get(identity.researchExerciseId).push(exerciseId);
+    });
+    const sourcePriority = { explicit_crosswalk: 3, canonical_id: 2, alias_inference: 1, unresolved: 0 };
+    // One canonical research identity owns one automatic-program slot. Prefer a
+    // trusted explicit mapping, then an exact canonical ID, then alias inference;
+    // stable personal IDs make equal-precedence batches order-independent.
+    personalIdsByResearchId.forEach((exerciseIds) => exerciseIds.sort((left, right) => {
+      const priorityDifference = number(sourcePriority[identities.get(right)?.researchIdentitySource]) - number(sourcePriority[identities.get(left)?.researchIdentitySource]);
+      return priorityDifference || left.localeCompare(right);
+    }));
+    const selectedPersonalIdByResearchId = new Map([...personalIdsByResearchId.entries()].map(([researchExerciseId, exerciseIds]) => [researchExerciseId, exerciseIds[0]]));
+    return { identities, personalIdsByResearchId, selectedPersonalIdByResearchId };
+  }
+
+  function invalidTrustedCustomIdentity(exerciseId, identities, error) {
+    return {
+      exerciseId,
+      researchExerciseId: null,
+      researchIdentitySpecified: identities.some((identity) => identity.researchIdentitySpecified),
+      researchIdentityFieldPresence: identities.some((identity) => identity.researchIdentityFieldPresence === "value")
+        ? "value"
+        : identities.some((identity) => identity.researchIdentityFieldPresence === "blank_or_null")
+          ? "blank_or_null"
+          : "absent",
+      researchIdentityConflict: identities.some((identity) => identity.researchIdentityConflict),
+      structured: true,
+      catalogRecord: true,
+      invalid: true,
+      invalidReason: error instanceof Error ? error.message : String(error || `Invalid trusted custom catalog identity ${exerciseId}.`),
+      source: {}
+    };
+  }
+
+  function rejectInvalidTrustedIdentity(identity) {
+    if (identity?.invalid) throw new Error(identity.invalidReason || `Invalid trusted custom catalog identity ${identity.exerciseId}.`);
+  }
+
+  function buildTrustedExerciseCatalog(options = {}) {
+    const researchIdentities = new Map();
+    const customIdentityBatches = new Map();
+    const reconciledCustomIdentityProfiles = new Map();
+    const addResearch = (item) => {
+      const identity = catalogIdentity(item);
+      if (!identity?.structured || !identity.catalogRecord || !identity.exerciseId) throw new Error("Trusted research exercise catalogs require structured records with stable IDs and metadata.");
+      if (identity.researchIdentityConflict) throw new Error(`Conflicting trusted research identities for ${identity.exerciseId}.`);
+      if (identity.researchExerciseId !== identity.exerciseId) throw new Error(`Trusted research exercise ${identity.exerciseId} must bind its canonical research identity to the same catalog ID.`);
+      const existing = researchIdentities.get(identity.exerciseId);
+      if (existing && existing.researchExerciseId !== identity.researchExerciseId) throw new Error(`Conflicting trusted research catalog mapping for ${identity.exerciseId}.`);
+      if (!existing) researchIdentities.set(identity.exerciseId, identity);
+    };
+    asArray(options.trustedResearchCatalog).forEach(addResearch);
+    const callerCatalog = asArray(options.exerciseCatalog);
+    // The class API always supplies engine-owned research records. Preserve the
+    // raw functional API by treating a fully structured catalog as its explicit
+    // trust root only when no engine-owned research catalog exists.
+    const explicitCallerTrustRoot = researchIdentities.size === 0 && callerCatalog.length > 0;
+    if (explicitCallerTrustRoot) {
+      callerCatalog.forEach((item) => {
+        const supplied = catalogIdentity(item);
+        const sourceResearchId = firstPresent(item?.researchExerciseId, item?.research_exercise_id, item?.researchId, item?.research_id, item?.exercise_id);
+        if (!supplied?.structured || !supplied.catalogRecord || !sourceResearchId || item?.exercise_id !== sourceResearchId) return;
+        addResearch({ ...item, exerciseId: sourceResearchId, researchExerciseId: sourceResearchId });
+      });
+    }
+
+    const addCustom = (item) => {
+      const identity = catalogIdentity(item);
+      if (!identity?.structured || !identity.catalogRecord || !identity.exerciseId) throw new Error("Trusted custom exercise catalogs require structured records with stable IDs and metadata.");
+      const canonical = researchIdentities.get(identity.exerciseId);
+      if (canonical) {
+        if (identity.researchIdentityConflict) throw new Error(`Conflicting trusted catalog mapping for canonical exercise ${identity.exerciseId}.`);
+        if (identity.researchExerciseId !== null && identity.researchExerciseId !== canonical.researchExerciseId) throw new Error(`Conflicting trusted catalog mapping for canonical exercise ${identity.exerciseId}.`);
+        return;
+      }
+      if (!customIdentityBatches.has(identity.exerciseId)) customIdentityBatches.set(identity.exerciseId, []);
+      customIdentityBatches.get(identity.exerciseId).push(identity);
+    };
+    const addReconciledCustomIdentityProfile = (profile) => {
+      if (!profile || typeof profile !== "object" || !profile.exerciseId || !profile.structured || !profile.catalogRecord) {
+        throw new Error("Trusted reconciled custom identity profiles require structured catalog identities with stable IDs and metadata.");
+      }
+      const canonical = researchIdentities.get(profile.exerciseId);
+      // Canonical research identities always win. Reconciled personal profiles,
+      // including invalid ones, are quarantined and never enter the custom map.
+      if (canonical) return;
+      if (!profile.invalid && profile.researchExerciseId && !researchIdentities.has(profile.researchExerciseId)) {
+        throw new Error(`Trusted reconciled custom exercise ${profile.exerciseId} maps to unknown research exercise ${profile.researchExerciseId}.`);
+      }
+      if (profile.invalid && !String(profile.invalidReason || "").trim()) {
+        throw new Error(`Invalid trusted custom catalog identity ${profile.exerciseId} must preserve its rejection reason.`);
+      }
+      const existing = reconciledCustomIdentityProfiles.get(profile.exerciseId);
+      if (existing && stableStringify(existing) !== stableStringify(profile)) {
+        throw new Error(`Conflicting trusted reconciled custom identity profiles for ${profile.exerciseId}.`);
+      }
+      if (!existing) reconciledCustomIdentityProfiles.set(profile.exerciseId, deepClone(profile));
+    };
+    asArray(options.trustedCustomIdentityProfiles).forEach(addReconciledCustomIdentityProfile);
+    asArray(options.trustedCustomCatalog).forEach(addCustom);
+    if (explicitCallerTrustRoot) callerCatalog.filter((item) => {
+      const identity = catalogIdentity(item);
+      return identity?.structured && identity.catalogRecord;
+    }).forEach(addCustom);
+
+    const customExerciseIds = unique([
+      ...reconciledCustomIdentityProfiles.keys(),
+      ...customIdentityBatches.keys()
+    ]).sort();
+    const customIdentities = new Map(customExerciseIds.map((exerciseId) => {
+      const profile = reconciledCustomIdentityProfiles.get(exerciseId);
+      const batch = customIdentityBatches.get(exerciseId) || [];
+      if (profile?.invalid) return [exerciseId, profile];
+      if (profile && !batch.length) return [exerciseId, profile];
+      const identitiesToReconcile = profile ? [profile, ...batch] : batch;
+      try {
+        return [exerciseId, reconcileTrustedCustomIdentityBatch(identitiesToReconcile, researchIdentities)];
+      } catch (error) {
+        return [exerciseId, invalidTrustedCustomIdentity(exerciseId, identitiesToReconcile, error)];
+      }
+    }));
+
+    const identities = new Map([...researchIdentities, ...customIdentities]);
+    callerCatalog.forEach((item) => {
+      const supplied = catalogIdentity(item);
+      if (!supplied?.structured || !supplied.catalogRecord) throw new Error("Caller exerciseCatalog entries cannot establish identity; each must be a structured catalog object matching a trusted catalog entry.");
+      if (supplied.researchIdentityConflict) throw new Error(`Caller exerciseCatalog entry ${supplied.exerciseId} declares conflicting research identities.`);
+      const trusted = identities.get(supplied.exerciseId);
+      if (!trusted) throw new Error(`Untrusted caller exerciseCatalog entry ${supplied.exerciseId}; caller metadata cannot establish a replacement identity.`);
+      rejectInvalidTrustedIdentity(trusted);
+      if (supplied.researchIdentitySpecified && supplied.researchExerciseId !== trusted.researchExerciseId) throw new Error(`Caller exerciseCatalog mapping for ${supplied.exerciseId} conflicts with its trusted catalog identity.`);
+    });
+    return { identities, researchIdentities };
+  }
+
+  function equipmentSourceForIdentity(identity, researchIdentities) {
+    return reconciledEquipmentSource(identity, researchIdentities.get(identity?.researchExerciseId)?.source || null);
+  }
+
+  function equipmentCompatibilityForIdentity(identity, researchIdentities, availableEquipment) {
+    return equipmentCompatible(equipmentSourceForIdentity(identity, researchIdentities), availableEquipment);
+  }
+
   function applyManualOverride(snapshotInput, override = {}, options = {}) {
-    const snapshot = deserializeRecommendationSnapshot(snapshotInput, { verifyChecksum: false });
+    const snapshot = deserializeRecommendationSnapshot(snapshotInput);
     const before = deepClone(snapshot.finalPrescription);
     const final = deepClone(snapshot.finalPrescription);
     const applied = {};
-    const selectedExerciseId = firstPresent(override.exerciseId, override.exerciseSelection, override.replacementExerciseId);
-    if (selectedExerciseId) {
-      applied.exerciseId = { from: final.exerciseId, to: selectedExerciseId };
-      final.exerciseId = selectedExerciseId;
-      if (override.researchExerciseId !== undefined) final.researchExerciseId = override.researchExerciseId;
+    const supportedOverrideInputFields = new Set([
+      "exerciseId", "exerciseSelection", "replacementExerciseId", "researchExerciseId", "research_exercise_id",
+      "painFreeConfirmed", "reason", "setCount", "workingSets", "repRange", "load", "prescribedLoad",
+      "setStructure", "topSet", "backoffSets", "deloadRecommendation", "exerciseRotation", "mesocycleId"
+    ]);
+    const unsupportedOverrideInputs = Object.keys(override).filter((field) => override[field] !== undefined && !supportedOverrideInputFields.has(field));
+    if (unsupportedOverrideInputs.length) throw new Error(`Unsupported manual override fields are not represented by the current audit contract: ${unsupportedOverrideInputs.join(", ")}.`);
+    if (override.topSet !== undefined || override.backoffSets !== undefined) throw new Error("Manual topSet/backoffSets payloads are unsupported because the current audit contract records only a deterministic set-structure transition.");
+    if (override.setCount !== undefined && override.workingSets?.target !== undefined) throw new Error("Duplicate set-count inputs are unsupported; use either setCount or workingSets.target.");
+    if (override.load !== undefined && override.prescribedLoad?.target !== undefined) throw new Error("Duplicate load inputs are unsupported; use either load or prescribedLoad.target.");
+    if (override.researchExerciseId !== undefined && override.research_exercise_id !== undefined) throw new Error("Duplicate research-identity inputs are unsupported.");
+    const suppliedExerciseSelectors = [override.exerciseId, override.exerciseSelection, override.replacementExerciseId].filter((value) => value !== undefined && value !== null && value !== "");
+    if (suppliedExerciseSelectors.length > 1) throw new Error("Duplicate exercise-identity inputs are unsupported; select one exercise field.");
+    if (override.workingSets && Object.keys(override.workingSets).some((field) => field !== "target")) throw new Error("Manual workingSets overrides support only target; min/max remain deterministic audit-derived bounds.");
+    if (override.prescribedLoad && Object.keys(override.prescribedLoad).some((field) => field !== "target")) throw new Error("Manual prescribedLoad overrides support only target; unit, assistance direction, prior load, and increment metadata remain bound to the audited prescription.");
+    const { identities: catalogIdentities, researchIdentities } = buildTrustedExerciseCatalog(options);
+    const safetyLocked = hasHardSafetyMarker(final) || hasHardSafetyMarker(snapshot.basePrescription);
+    const selectedExerciseInput = firstPresent(override.exerciseId, override.exerciseSelection, override.replacementExerciseId);
+    const suppliedSelectionIdentity = selectedExerciseInput && typeof selectedExerciseInput === "object" ? catalogIdentity(selectedExerciseInput) : null;
+    if (selectedExerciseInput && typeof selectedExerciseInput === "object" && (!suppliedSelectionIdentity?.structured || !suppliedSelectionIdentity.catalogRecord)) throw new Error("Structured exerciseSelection requires a catalog record with a stable exercise ID and metadata.");
+    if (suppliedSelectionIdentity?.researchIdentityConflict) throw new Error("Structured exerciseSelection declares conflicting research identities.");
+    const selectedExerciseId = suppliedSelectionIdentity?.exerciseId ?? selectedExerciseInput;
+    if (selectedExerciseId !== undefined && selectedExerciseId !== null && (typeof selectedExerciseId !== "string" || !selectedExerciseId.trim())) throw new Error("Manual override exercise identity must be a non-empty string or structured catalog record.");
+    if (!selectedExerciseId && firstPresent(override.researchExerciseId, override.research_exercise_id)) throw new Error("A research identity may only accompany a declared exercise identity change.");
+    if (!safetyLocked && override.painFreeConfirmed !== undefined) throw new Error("painFreeConfirmed is a safety audit companion and cannot accompany an ordinary manual override.");
+    const allowedExerciseSource = options.allowedExerciseIds;
+    if (allowedExerciseSource !== undefined && !Array.isArray(allowedExerciseSource)) throw new Error("allowedExerciseIds must be an array of exercise IDs.");
+    const allowedExerciseIds = new Set(asArray(allowedExerciseSource).map((value) => {
+      if (typeof value !== "string" || !value.trim()) throw new Error("allowedExerciseIds must contain only non-empty string IDs.");
+      return value;
+    }));
+    const allowedSafetySource = options.allowedSafetySubstituteIds;
+    if (allowedSafetySource !== undefined && !Array.isArray(allowedSafetySource)) throw new Error("allowedSafetySubstituteIds must be an array of exercise IDs.");
+    const allowedSafetySubstituteIds = new Set(asArray(allowedSafetySource).map((value) => {
+      if (typeof value !== "string" || !value.trim()) throw new Error("allowedSafetySubstituteIds must contain only non-empty string IDs.");
+      const identity = catalogIdentities.get(value);
+      rejectInvalidTrustedIdentity(identity);
+      if (!identity?.catalogRecord || !identity.researchExerciseId) throw new Error(`Unknown allowed safety substitute ${value}; an actual trusted structured catalog object with matching exercise/research IDs is required.`);
+      return value;
+    }));
+    let confirmedSafetyIdentity = null;
+    if (safetyLocked) {
+      const allowedOverrideFields = new Set(["exerciseId", "exerciseSelection", "replacementExerciseId", "researchExerciseId", "painFreeConfirmed", "reason"]);
+      const blockedFields = Object.keys(override).filter((key) => override[key] !== undefined && !allowedOverrideFields.has(key));
+      if (blockedFields.length) throw new Error(`Hard-safety prescriptions reject training override fields: ${blockedFields.join(", ")}.`);
+      if (!selectedExerciseId) throw new Error("Hard-safety prescriptions may only accept an explicitly allowed safe substitute.");
+      if (final.safetyRestriction?.reason === "illness" || final.progressionAction === "stop_for_illness") throw new Error("Illness requires holding the workout; an exercise override cannot bypass the stop instruction.");
+      if (override.painFreeConfirmed !== true) throw new Error("A hard-safety pain substitute requires explicit user pain-free confirmation (painFreeConfirmed: true).");
+      if (!allowedSafetySubstituteIds.has(selectedExerciseId)) throw new Error(`Safety substitute ${selectedExerciseId} was not explicitly allowed.`);
+      const identity = catalogIdentities.get(selectedExerciseId);
+      rejectInvalidTrustedIdentity(identity);
+      const requestedResearchId = firstPresent(override.researchExerciseId, override.research_exercise_id);
+      if (!identity?.structured || !identity.catalogRecord || !identity.researchExerciseId || !requestedResearchId || requestedResearchId !== identity.researchExerciseId) throw new Error(`Safety substitute ${selectedExerciseId} must preserve its coherent exercise/research identity from an actual trusted catalog object.`);
+      const originalExerciseIds = new Set([
+        final.safetyRestriction?.originalExerciseId,
+        final.safetyRestriction?.auditBaseTargets?.exerciseId,
+        snapshot.basePrescription?.exerciseId,
+        snapshot.exerciseId
+      ].filter(Boolean));
+      const originalResearchExerciseIds = new Set([
+        final.safetyRestriction?.auditBaseTargets?.researchExerciseId,
+        snapshot.basePrescription?.researchExerciseId,
+        final.researchExerciseId,
+        final.safetyRestriction?.originalExerciseId
+      ].filter(Boolean));
+      if (originalExerciseIds.has(selectedExerciseId) || originalResearchExerciseIds.has(identity.researchExerciseId)) throw new Error("A pain-free substitute must be a different exercise and research identity from the painful original.");
+      const equipment = equipmentCompatibilityForIdentity(identity, researchIdentities, options.availableEquipment);
+      if (!equipment.eligible) throw new Error(`Safety substitute ${selectedExerciseId} is not compatible with the supplied equipment restrictions; missing ${equipment.missing.join(", ") || "verified equipment metadata"}.`);
+      confirmedSafetyIdentity = identity;
     }
-    const setCount = nullableNumber(firstPresent(override.setCount, override.workingSets?.target));
+    if (selectedExerciseId) {
+      const requestedResearchId = firstPresent(override.researchExerciseId, override.research_exercise_id);
+      if (selectedExerciseId !== final.exerciseId) {
+        const selectedIdentity = catalogIdentities.get(selectedExerciseId);
+        rejectInvalidTrustedIdentity(selectedIdentity);
+        if (!selectedIdentity?.structured || !selectedIdentity.catalogRecord) throw new Error(`Unknown manual override exercise ${selectedExerciseId}; replacements require a trusted catalog-backed identity.`);
+        if (!confirmedSafetyIdentity && !allowedExerciseIds.has(selectedExerciseId)) throw new Error(`Manual override exercise ${selectedExerciseId} was not explicitly allowed for ordinary replacement.`);
+        if (requestedResearchId && requestedResearchId !== selectedIdentity.researchExerciseId) throw new Error(`Manual override exercise ${selectedExerciseId} conflicts with its trusted catalog-backed research identity.`);
+        if (suppliedSelectionIdentity?.researchIdentitySpecified && suppliedSelectionIdentity.researchExerciseId !== selectedIdentity.researchExerciseId) throw new Error(`Structured exerciseSelection for ${selectedExerciseId} conflicts with its trusted catalog mapping.`);
+        if (!confirmedSafetyIdentity) {
+          const equipment = equipmentCompatibilityForIdentity(selectedIdentity, researchIdentities, options.availableEquipment);
+          if (!equipment.eligible) throw new Error(`Manual override exercise ${selectedExerciseId} is not compatible with the supplied equipment restrictions; missing ${equipment.missing.join(", ") || "verified equipment metadata"}.`);
+        }
+        if (!confirmedSafetyIdentity && (override.load !== undefined || override.prescribedLoad?.target !== undefined)) throw new Error("A replacement exercise cannot receive a transferred load target; establish an exercise-specific baseline first.");
+        if (!confirmedSafetyIdentity && override.setStructure !== undefined) throw new Error("A replacement exercise resets to straight sets; apply a different structure only after establishing its exercise-specific baseline.");
+        const selectedResearchExerciseId = selectedIdentity.researchExerciseId ?? null;
+        applied.exerciseId = { from: final.exerciseId, to: selectedExerciseId };
+        if (confirmedSafetyIdentity) {
+          final.exerciseId = selectedExerciseId;
+          final.researchExerciseId = selectedResearchExerciseId;
+        } else applyRecordedExerciseReplacement(final, { exerciseId: selectedExerciseId, researchExerciseId: selectedResearchExerciseId });
+      } else {
+        const selectedResearchExerciseId = requestedResearchId ?? suppliedSelectionIdentity?.researchExerciseId ?? final.researchExerciseId ?? null;
+        if (selectedResearchExerciseId !== (final.researchExerciseId ?? null)) throw new Error("A research-identity-only manual override is unsupported; select a different trusted catalog-backed exercise.");
+      }
+    }
+    if (confirmedSafetyIdentity) {
+      const confirmedAt = options.createdAt || isoNow(options.clock);
+      applied.safetyConfirmation = {
+        exerciseId: confirmedSafetyIdentity.exerciseId,
+        researchExerciseId: confirmedSafetyIdentity.researchExerciseId,
+        painFreeConfirmed: true,
+        confirmedAt
+      };
+      applyRecordedSafetyConfirmation(final, applied.safetyConfirmation);
+    }
+    const rawSetCount = firstPresent(override.setCount, override.workingSets?.target);
+    const setCount = nullableNumber(rawSetCount);
+    if (rawSetCount !== undefined && rawSetCount !== null && setCount === null) throw new Error("Manual set count must be numeric.");
     if (setCount !== null) {
-      const target = Math.max(1, Math.round(setCount));
-      applied.setCount = { from: final.workingSets.target, to: target };
-      final.workingSets.target = target;
-      final.workingSets.min = Math.min(final.workingSets.min, target);
-      final.workingSets.max = Math.max(final.workingSets.max, target);
+      if (!Number.isInteger(setCount) || setCount < 1 || setCount > DEFAULT_POLICY.absoluteMaximumWorkingSetsPerSession) throw new Error(`Manual set count must be an integer from 1 to ${DEFAULT_POLICY.absoluteMaximumWorkingSetsPerSession}.`);
+      const target = setCount;
+      if (target !== final.workingSets.target) {
+        applied.setCount = { from: final.workingSets.target, to: target };
+        applyRecordedSetCount(final, target);
+      }
     }
     if (override.repRange) {
       const range = normalizeRange(override.repRange, null, true);
       if (!range) throw new Error("Manual repRange override must contain min and/or max.");
+      if (range.min < 1 || range.max > 100) throw new Error("Manual repRange override must stay between 1 and 100 repetitions.");
       const normalized = targetRange(range, true);
-      applied.repRange = { from: deepClone(final.repRange), to: normalized };
-      final.repRange = normalized;
+      if (!auditValuesMatch(normalized, final.repRange)) {
+        applied.repRange = { from: deepClone(final.repRange), to: deepClone(normalized) };
+        final.repRange = deepClone(normalized);
+      }
     }
-    const load = nullableNumber(firstPresent(override.load, override.prescribedLoad?.target));
+    const rawLoad = firstPresent(override.load, override.prescribedLoad?.target);
+    const load = nullableNumber(rawLoad);
+    if (rawLoad !== undefined && rawLoad !== null && load === null) throw new Error("Manual load override must be numeric.");
     if (load !== null) {
-      applied.load = { from: final.prescribedLoad?.target ?? null, to: load };
-      final.prescribedLoad = { ...(final.prescribedLoad || {}), target: load, reason: "Manual user override; engine recommendation remains in the audit record." };
+      if (load < 0 || load > 1000000) throw new Error("Manual load override must be between 0 and 1,000,000 logged units.");
+      if (load !== (final.prescribedLoad?.target ?? null)) {
+        applied.load = { from: final.prescribedLoad?.target ?? null, to: load };
+        applyRecordedLoad(final, load);
+      }
     }
     if (override.setStructure) {
       if (!SET_STRUCTURES.includes(override.setStructure)) throw new Error(`Invalid manual set structure ${override.setStructure}.`);
-      applied.setStructure = { from: final.setStructure, to: override.setStructure };
-      final.setStructure = override.setStructure;
-      final.setStructureReason = "Manual user override for this workout; the decision engine will not replace it during the same workout.";
-      if (override.setStructure === "top_set_backoff") {
-        const topMax = Math.max(final.repRange.min + 1, number(final.repRange.target, final.repRange.max - 1));
-        final.topSet = deepClone(override.topSet || final.topSet || {
-          enabled: true,
-          count: 1,
-          repRange: { min: final.repRange.min, max: topMax },
-          targetRpe: number(final.targetRpe?.max, 8.5),
-          targetRir: number(final.targetRir?.min, 1.5)
-        });
-        final.backoffSets = deepClone(override.backoffSets || final.backoffSets || {
-          count: Math.max(1, final.workingSets.target - 1),
-          loadReductionPercent: deepClone(DEFAULT_POLICY.backoffReduction),
-          repRange: { min: Math.max(final.repRange.min, number(final.repRange.target, final.repRange.min + 1)), max: final.repRange.max },
-          targetRpe: Math.max(5, number(final.targetRpe?.max, 8) - 0.5),
-          targetRir: number(final.targetRir?.min, 2) + 0.5,
-          maximumAcceptableRepLossPercent: DEFAULT_POLICY.maximumRepLossPercent,
-          maximumAcceptableLoadReductionPercent: DEFAULT_POLICY.maximumBackoffLoadReductionPercent,
-          conversionRule: "Convert to lighter straight sets if pain, technique loss, excessive rep loss, or excessive load reduction appears."
-        });
-      } else if (override.setStructure === "multiple_top_sets") {
-        final.topSet = deepClone(override.topSet || final.topSet || {
-          enabled: true,
-          count: final.workingSets.target,
-          repRange: { min: final.repRange.min, max: final.repRange.max },
-          targetRpe: number(final.targetRpe?.max, 8.5),
-          targetRir: number(final.targetRir?.min, 1.5)
-        });
-        delete final.backoffSets;
-      } else {
-        delete final.backoffSets;
-        delete final.topSet;
+      if (override.setStructure !== final.setStructure) {
+        applied.setStructure = { from: final.setStructure, to: override.setStructure };
+        applyRecordedSetStructure(final, override.setStructure);
       }
     }
     if (override.deloadRecommendation !== undefined) {
-      const to = override.deloadRecommendation === false ? "normal" : override.deloadRecommendation === true ? "exercise_deload" : override.deloadRecommendation;
-      if (!RECOMMENDATION_TYPES.includes(to)) throw new Error(`Invalid manual deload recommendation ${to}.`);
-      applied.deloadRecommendation = { from: final.recommendationType, to };
-      final.recommendationType = to;
-      if (["exercise_deload", "muscle_group_deload", "full_program_deload"].includes(to)) {
-        final.targetRpe = { min: 5.5, max: to === "full_program_deload" ? 6.5 : 7 };
-        final.targetRir = { min: to === "full_program_deload" ? 3.5 : 3, max: 4.5 };
-        final.progressionRule = "Do not progress load during the manual deload; preserve controlled technique and stop well short of failure.";
-        final.holdRule = "Keep this reduced prescription for the selected deload scope, then reassess before resuming normal progression.";
+      const requested = normalizedBoolean(override.deloadRecommendation, null) === false ? "normal" : normalizedBoolean(override.deloadRecommendation, null) === true ? "exercise_deload" : override.deloadRecommendation;
+      if (!RECOMMENDATION_TYPES.includes(requested)) throw new Error(`Invalid manual deload recommendation ${requested}.`);
+      const to = safetyLocked ? final.recommendationType : requested;
+      if (to !== final.recommendationType) {
+        applied.deloadRecommendation = { from: final.recommendationType, to };
+        applyRecordedDeloadRecommendation(final, to);
       }
     }
     if (override.exerciseRotation !== undefined) {
-      const to = override.exerciseRotation === false ? "hold" : override.exerciseRotation === true ? "rotate_exercise" : override.exerciseRotation;
-      if (!RECOMMENDATION_TYPES.includes(to)) throw new Error(`Invalid manual rotation recommendation ${to}.`);
-      applied.exerciseRotation = { from: final.recommendationType, to };
-      final.recommendationType = to;
+      const requested = normalizedBoolean(override.exerciseRotation, null) === false ? "hold" : normalizedBoolean(override.exerciseRotation, null) === true ? "rotate_exercise" : override.exerciseRotation;
+      if (!RECOMMENDATION_TYPES.includes(requested)) throw new Error(`Invalid manual rotation recommendation ${requested}.`);
+      const to = safetyLocked ? final.recommendationType : requested;
+      if (to !== final.recommendationType) {
+        applied.exerciseRotation = { from: final.recommendationType, to };
+        final.recommendationType = to;
+      }
     }
-    if (override.mesocycleId) {
+    if (override.mesocycleId && override.mesocycleId !== snapshot.mesocycleId) {
       applied.mesocycleId = { from: snapshot.mesocycleId, to: override.mesocycleId };
       snapshot.mesocycleId = override.mesocycleId;
       final.mesocycleId = override.mesocycleId;
     }
     if (!Object.keys(applied).length) throw new Error("No supported manual override field was supplied.");
     const createdAt = options.createdAt || isoNow(options.clock);
+    const derivedExerciseOverrideId = applied.exerciseId
+      ? exerciseIdentityOverrideId(snapshot.recommendationId, createdAt, applied, final.exerciseId, final.researchExerciseId)
+      : null;
+    const ordinaryExerciseReplacement = applied.exerciseId && !applied.safetyConfirmation;
+    if (ordinaryExerciseReplacement && options.overrideId && options.overrideId !== derivedExerciseOverrideId) throw new Error("Ordinary exercise replacements require the derived exercise/research audit identity commitment; a caller overrideId cannot replace it.");
     const entry = {
-      overrideId: options.overrideId || `override_${stableHash({ recommendationId: snapshot.recommendationId, createdAt, applied })}`,
+      overrideId: options.overrideId || derivedExerciseOverrideId || `override_${stableHash({ recommendationId: snapshot.recommendationId, createdAt, applied })}`,
       createdAt,
       actor: options.actor || "user",
       reason: options.reason || override.reason || "Manual workout override",
@@ -3022,15 +5571,23 @@
     final.manualOverride = { overrideId: entry.overrideId, lockedForWorkout: true, explanation: entry.reason };
     snapshot.finalPrescription = final;
     snapshot.exerciseId = final.exerciseId;
+    snapshot.engineVersion = ENGINE_VERSION;
+    snapshot.explanation = final.userExplanation;
     snapshot.readinessAdjustment = deepClone(final.readinessAdjustment);
     snapshot.manualOverrides = [...asArray(snapshot.manualOverrides), entry];
     snapshot.overrideLocked = true;
     snapshot.checksum = stableHash({ ...snapshot, checksum: undefined });
+    verifySnapshotChecksum(snapshot);
     return snapshot;
   }
 
-  function reconcileRecommendation(snapshot, _newEngineRecommendation) {
+  function reconcileRecommendation(snapshot, _newEngineRecommendation, options = {}) {
     if (snapshot?.overrideLocked) return deepClone(snapshot);
+    const identityChanged = snapshot?.recommendationId && _newEngineRecommendation?.recommendationId
+      && snapshot.recommendationId !== _newEngineRecommendation.recommendationId;
+    const schemaChanged = snapshot?.schemaVersion && _newEngineRecommendation?.schemaVersion
+      && snapshot.schemaVersion !== _newEngineRecommendation.schemaVersion;
+    if ((identityChanged || schemaChanged) && !options.allowExplicitReplace) return deepClone(snapshot);
     return deepClone(_newEngineRecommendation || snapshot);
   }
 
@@ -3041,7 +5598,7 @@
   }
 
   function evaluateManualOverrideOutcome(snapshotInput, outcome = {}, options = {}) {
-    const snapshot = deserializeRecommendationSnapshot(snapshotInput, { verifyChecksum: false });
+    const snapshot = deserializeRecommendationSnapshot(snapshotInput);
     if (!snapshot.manualOverrides?.length) throw new Error("This recommendation has no manual override to evaluate.");
     const index = snapshot.manualOverrides.length - 1;
     const entry = snapshot.manualOverrides[index];
@@ -3093,8 +5650,24 @@
     prescribeExercise(options = {}) { return createExercisePrescriptionSnapshot(this.evidence, { ...options, policy: this.policy }); }
     prescribeWorkout(options = {}) { return createWorkoutPrescription(this.evidence, { ...options, policy: this.policy }); }
     forSurface(snapshot, surface) { return recommendationForSurface(snapshot, surface); }
-    applyManualOverride(snapshot, override, options) { return applyManualOverride(snapshot, override, options); }
-    reconcileRecommendation(snapshot, newEngineRecommendation) { return reconcileRecommendation(snapshot, newEngineRecommendation); }
+    applyManualOverride(snapshot, override, options = {}) {
+      const researchCatalog = this.evidence.research.exerciseDatabase.map((item) => ({
+        ...item,
+        exerciseId: firstPresent(item.exercise_id, item.exerciseId),
+        researchExerciseId: firstPresent(item.exercise_id, item.exerciseId)
+      }));
+      return applyManualOverride(snapshot, override, {
+        ...options,
+        trustedResearchCatalog: researchCatalog,
+        // Preserve the engine's reconciled valid/invalid state directly. Turning
+        // an invalid identity into a nullable catalog record would incorrectly
+        // let it re-enter the override path as a genuinely unmapped exercise.
+        trustedCustomIdentityProfiles: [...this.evidence.personal.reconciledIdentityByExerciseId.values()],
+        trustedCustomCatalog: asArray(options.trustedExerciseCatalog),
+        exerciseCatalog: asArray(options.exerciseCatalog)
+      });
+    }
+    reconcileRecommendation(snapshot, newEngineRecommendation, options) { return reconcileRecommendation(snapshot, newEngineRecommendation, options); }
     evaluateOverride(snapshot, outcome, options) { return evaluateManualOverrideOutcome(snapshot, outcome, options); }
   }
 
@@ -3106,6 +5679,7 @@
     ENGINE_VERSION,
     PRESCRIPTION_SCHEMA_VERSION,
     SNAPSHOT_SCHEMA_VERSION,
+    HARD_SAFETY_SCHEMA_VERSION,
     HISTORY_STORAGE_KEY,
     MESOCYCLE_TYPES,
     STALENESS,
@@ -3136,6 +5710,7 @@
     assessDeloadNeed,
     rankExercisePool,
     equipmentRequirementOptions,
+    normalizeAvailableEquipmentInput,
     equipmentCompatible,
     jointActionsForExercise,
     representedMuscleGroups,

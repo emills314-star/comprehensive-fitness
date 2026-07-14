@@ -439,7 +439,12 @@ test("nutrition is one readiness domain and needs an independent signal to chang
   assert.strictEqual(converging.signalCount, 2);
   const engine = createPrescriptionEngine(fixture());
   const snapshot = engine.prescribeExercise({ exerciseId: "personal_press", muscleGroupId: "chest", history: improvingHistory, readiness: { nutritionAdequate: false, sleepHours: 5.5, baselineSleepHours: 8 }, createdAt: "2026-07-11T12:00:00.000Z" });
-  assert(snapshot.finalPrescription.workingSets.target < snapshot.basePrescription.workingSets.target);
+  assert(
+    snapshot.finalPrescription.workingSets.target < snapshot.basePrescription.workingSets.target
+      || snapshot.finalPrescription.targetRpe.max < snapshot.basePrescription.targetRpe.max
+      || Number(snapshot.finalPrescription.prescribedLoad?.target) < Number(snapshot.basePrescription.prescribedLoad?.target),
+    "converging readiness domains must produce a truthful temporary set, effort, or load reduction"
+  );
   assert.strictEqual(snapshot.finalPrescription.readinessAdjustment.temporary, true);
 });
 
@@ -452,7 +457,12 @@ test("low readiness changes today without rewriting the base or mesocycle", () =
   });
   assert.strictEqual(snapshot.basePrescription.mesocycleId, "meso_fixed");
   assert.strictEqual(snapshot.finalPrescription.mesocycleId, "meso_fixed");
-  assert(snapshot.finalPrescription.workingSets.target < snapshot.basePrescription.workingSets.target);
+  assert(
+    snapshot.finalPrescription.workingSets.target < snapshot.basePrescription.workingSets.target
+      || snapshot.finalPrescription.targetRpe.max < snapshot.basePrescription.targetRpe.max
+      || Number(snapshot.finalPrescription.prescribedLoad?.target) < Number(snapshot.basePrescription.prescribedLoad?.target),
+    "low readiness must produce a truthful temporary set, effort, or load reduction"
+  );
   assert.strictEqual(snapshot.finalPrescription.readinessAdjustment.temporary, true);
   assert.strictEqual(snapshot.finalPrescription.readinessAdjustment.affectsMesocycle, false);
 });
@@ -462,7 +472,7 @@ test("all four mesocycle types create five-candidate pools and lifecycle states"
   Object.values(MESOCYCLE_TYPES).forEach((type) => {
     const mesocycle = engine.createMesocycle({
       type, muscleGroupIds: ["chest"], histories: { personal_press: improvingHistory },
-      currentExerciseIds: ["personal_press"], specializationMuscleGroups: ["chest"], createdAt: "2026-07-11T12:00:00.000Z"
+      currentExerciseIds: ["personal_press"], specializationMuscleGroups: ["chest"], maximumReturnGapDays: 365, createdAt: "2026-07-11T12:00:00.000Z"
     });
     assert(mesocycle.durationWeeks >= 2 && mesocycle.durationWeeks <= 12);
     assert.strictEqual(mesocycle.pools.chest.candidates.length, 5);
@@ -798,7 +808,9 @@ test("weighted taxonomy volume is traceable, deterministic, and leaves logged re
   const second = recalculateHistoricalMuscleVolume(evidence, logged);
   assert.strictEqual(JSON.stringify(logged), before, "Historical logged performance must remain immutable");
   assert.deepStrictEqual(first, second, "Recalculation must be deterministic");
-  assert.strictEqual(first.taxonomyVersion, "2.0.0");
+  const relationshipTaxonomyVersions = [...new Set((evidence.research.muscleMapsByExercise.get("ex_deadlift") || []).map((row) => row.taxonomy_version).filter(Boolean))];
+  assert.strictEqual(relationshipTaxonomyVersions.length, 1, "The deadlift fixture must use exactly one relationship taxonomy version");
+  assert.strictEqual(first.taxonomyVersion, relationshipTaxonomyVersions[0], "Historical recalculation must report relationship taxonomy provenance rather than the overall research database version");
   const glutes = first.muscleTotals.find((row) => row.muscleGroupId === "mg_glutes_max");
   const quads = first.muscleTotals.find((row) => row.muscleGroupId === "mg_quadriceps");
   const erectors = first.muscleTotals.find((row) => row.muscleGroupId === "mg_spinal_erectors");

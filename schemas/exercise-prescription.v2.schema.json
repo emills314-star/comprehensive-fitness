@@ -1,8 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://comprehensive-fitness.local/schemas/exercise-prescription.v2.schema.json",
-  "title": "ExercisePrescription v2",
+  "title": "ExercisePrescription v2.3",
   "description": "The canonical, explainable exercise-level decision returned by the unified prescription engine. Ranges are inclusive. Evidence weights must sum to 1 within normal floating-point tolerance.",
+  "x-runtimeReadCompatibility": {
+    "mode": "preserve_legacy_without_fabricating_current_fields",
+    "currentEmission": "2.3.0",
+    "supportedVersions": ["2.0.0", "2.1.0", "2.2.0", "2.3.0"]
+  },
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -37,11 +42,16 @@
     "muscleSpecificScore",
     "staleness",
     "deloadStatus",
-    "mesocycleId"
+    "mesocycleId",
+    "executionBlocked",
+    "programmingContext",
+    "historyResolution",
+    "progressionConfirmation",
+    "scientificProvenance"
   ],
   "properties": {
     "schemaVersion": {
-      "const": "2.0.0"
+      "const": "2.3.0"
     },
     "exerciseId": {
       "$ref": "#/$defs/id"
@@ -103,6 +113,28 @@
     },
     "manualOverride": {
       "$ref": "#/$defs/prescriptionManualOverride"
+    },
+    "executionBlocked": {
+      "type": "boolean",
+      "description": "When true, no working set may be created or executed from this prescription. Consumers must stop before converting legacy targets."
+    },
+    "programmingContext": {
+      "$ref": "#/$defs/programmingContext"
+    },
+    "historyResolution": {
+      "$ref": "#/$defs/historyResolution"
+    },
+    "progressionConfirmation": {
+      "$ref": "#/$defs/progressionConfirmation"
+    },
+    "scientificProvenance": {
+      "$ref": "#/$defs/scientificProvenance"
+    },
+    "goalPolicyConflict": {
+      "$ref": "#/$defs/goalPolicyConflict"
+    },
+    "safetyRestriction": {
+      "$ref": "#/$defs/hardSafetyRestriction"
     },
     "volume": {
       "$ref": "#/$defs/volumePrescription"
@@ -229,6 +261,55 @@
           "topSet"
         ]
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "executionBlocked": {
+            "const": true
+          }
+        },
+        "required": [
+          "executionBlocked"
+        ]
+      },
+      "then": {
+        "required": [
+          "safetyRestriction"
+        ],
+        "properties": {
+          "workingSets": {
+            "type": "object",
+            "required": [
+              "min",
+              "target",
+              "max"
+            ],
+            "properties": {
+              "min": { "const": 0 },
+              "target": { "const": 0 },
+              "max": { "const": 0 }
+            }
+          },
+          "safetyRestriction": {
+            "allOf": [
+              { "$ref": "#/$defs/hardSafetyRestriction" },
+              {
+                "properties": {
+                  "status": { "const": "blocked" }
+                }
+              }
+            ]
+          }
+        },
+        "not": {
+          "anyOf": [
+            { "required": ["prescribedLoad"] },
+            { "required": ["topSet"] },
+            { "required": ["backoffSets"] }
+          ]
+        }
+      }
     }
   ],
   "$defs": {
@@ -253,6 +334,73 @@
       "minLength": 1,
       "maxLength": 4000,
       "pattern": "^(?=.*\\S)[\\s\\S]+$"
+    },
+    "hardSafetyAuditTargets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exerciseId",
+        "researchExerciseId",
+        "workingSets",
+        "repRange",
+        "targetRpe",
+        "targetRir",
+        "restSeconds",
+        "volume"
+      ],
+      "properties": {
+        "exerciseId": { "$ref": "#/$defs/id" },
+        "researchExerciseId": { "$ref": "#/$defs/nullableId" },
+        "workingSets": { "$ref": "#/$defs/setRange" },
+        "repRange": { "$ref": "#/$defs/repRange" },
+        "targetRpe": { "$ref": "#/$defs/rpeRange" },
+        "targetRir": { "$ref": "#/$defs/rirRange" },
+        "restSeconds": { "$ref": "#/$defs/restRange" },
+        "volume": { "$ref": "#/$defs/volumePrescription" },
+        "prescribedLoad": { "$ref": "#/$defs/loadTarget" }
+      }
+    },
+    "hardSafetyRestriction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "status",
+        "scope",
+        "reason",
+        "resumeCriteria",
+        "originalExerciseId",
+        "painFreeConfirmed",
+        "substituteExerciseId",
+        "substituteResearchExerciseId",
+        "confirmedAt",
+        "auditBaseTargets"
+      ],
+      "properties": {
+        "schemaVersion": { "const": "hard-safety/1.0.0" },
+        "status": {
+          "type": "string",
+          "enum": ["blocked", "resolved_by_confirmed_substitute"]
+        },
+        "scope": {
+          "type": "string",
+          "enum": ["exercise", "workout"]
+        },
+        "reason": {
+          "type": "string",
+          "enum": ["pain", "illness"]
+        },
+        "resumeCriteria": { "$ref": "#/$defs/nonEmptyString" },
+        "originalExerciseId": { "$ref": "#/$defs/id" },
+        "painFreeConfirmed": { "type": "boolean" },
+        "substituteExerciseId": { "$ref": "#/$defs/nullableId" },
+        "substituteResearchExerciseId": { "$ref": "#/$defs/nullableId" },
+        "confirmedAt": {
+          "type": ["string", "null"],
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T"
+        },
+        "auditBaseTargets": { "$ref": "#/$defs/hardSafetyAuditTargets" }
+      }
     },
     "weight": {
       "type": "number",
@@ -783,6 +931,7 @@
             "subjective_readiness",
             "recent_performance",
             "nutrition",
+            "illness",
             "pain",
             "body_weight_trend"
           ]
@@ -1167,6 +1316,16 @@
         "predictedProgramEffectiveness": {
           "$ref": "#/$defs/score"
         },
+        "goalPolicyCompatibility": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["repRange", "restSeconds", "compatible"],
+          "properties": {
+            "repRange": { "type": "boolean" },
+            "restSeconds": { "type": "boolean" },
+            "compatible": { "type": "boolean" }
+          }
+        },
         "researchSupport": {
           "$ref": "#/$defs/score"
         },
@@ -1211,6 +1370,159 @@
         "explanation": {
           "$ref": "#/$defs/nonEmptyString"
         }
+      }
+    },
+    "scientificSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authority", "studyIds", "conclusionIds", "population", "directness", "evidenceStrength", "uncertainty"],
+      "properties": {
+        "authority": { "enum": ["evidence", "product_policy", "safety"] },
+        "studyIds": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^stu_[0-9]{4}$" } },
+        "conclusionIds": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^con_[0-9]{4}$" } },
+        "population": { "$ref": "#/$defs/nonEmptyString" },
+        "directness": { "enum": ["direct", "indirect", "mixed", "expert_inference", "product_policy_translation"] },
+        "evidenceStrength": { "enum": ["high", "moderate", "low", "very_low"] },
+        "uncertainty": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "scientificProvenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "repRange", "restSeconds", "workingSets", "selectionOrder", "progression", "confirmation"],
+      "properties": {
+        "schemaVersion": { "const": "recommendation-provenance/1.0.0" },
+        "repRange": { "$ref": "#/$defs/scientificSource" },
+        "restSeconds": { "$ref": "#/$defs/scientificSource" },
+        "workingSets": { "$ref": "#/$defs/scientificSource" },
+        "selectionOrder": { "$ref": "#/$defs/scientificSource" },
+        "progression": { "$ref": "#/$defs/scientificSource" },
+        "confirmation": { "$ref": "#/$defs/scientificSource" }
+      }
+    },
+    "progressionConfirmation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "requiredExposures", "observedQualifyingExposures", "satisfied", "exceptionApplied", "criteria", "qualifyingExposureDates", "explanation"],
+      "properties": {
+        "schemaVersion": { "const": "progression-confirmation/1.0.0" },
+        "requiredExposures": { "type": "integer", "minimum": 1, "maximum": 3 },
+        "observedQualifyingExposures": { "type": "integer", "minimum": 0 },
+        "satisfied": { "type": "boolean" },
+        "exceptionApplied": { "type": ["string", "null"], "enum": ["stable_low_fatigue_isolation", null] },
+        "criteria": { "type": "array", "minItems": 5, "uniqueItems": true, "items": { "$ref": "#/$defs/id" } },
+        "qualifyingExposureDates": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/nonEmptyString" } },
+        "explanation": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "goalPolicyConflict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "field", "conflictingFields", "goal", "requestedGoalRange", "preservedExerciseRange", "alternativeExerciseId", "explanation"],
+      "properties": {
+        "schemaVersion": { "const": "goal-policy-conflict/1.0.0" },
+        "field": { "enum": ["repRange", "restSeconds"] },
+        "conflictingFields": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["repRange", "restSeconds"] } },
+        "goal": { "enum": ["strength", "hypertrophy", "muscular_endurance", "general_fitness"] },
+        "requestedGoalRange": { "type": "object", "additionalProperties": false, "required": ["min", "max"], "properties": { "min": { "type": "number", "minimum": 0 }, "max": { "type": "number", "minimum": 0 } } },
+        "preservedExerciseRange": { "$ref": "#/$defs/repRange" },
+        "alternativeExerciseId": { "$ref": "#/$defs/nullableId" },
+        "alternativeExerciseName": { "type": ["string", "null"] },
+        "explanation": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "programmingContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profileVersion", "missingInputs", "policyDisclosures", "goal", "experience", "nutritionPhase", "returningAfterGap", "personalization"],
+      "properties": {
+        "profileVersion": { "const": "training-profile/1.1.0" },
+        "missingInputs": { "type": "array", "uniqueItems": true, "items": { "enum": ["trainingGoal", "experienceLevel"] } },
+        "policyDisclosures": { "type": "array", "minItems": 3, "items": { "$ref": "#/$defs/nonEmptyString" } },
+        "goal": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value", "requestedValue", "resolvedValue", "source", "inputField", "authority", "disclosure", "selectionEmphasis"],
+          "properties": {
+            "value": { "enum": ["strength", "hypertrophy", "muscular_endurance", "general_fitness"] },
+            "requestedValue": { "type": ["string", "null"] },
+            "resolvedValue": { "enum": ["strength", "hypertrophy", "muscular_endurance", "general_fitness"] },
+            "source": { "enum": ["canonical_user_input", "legacy_alias", "canonical_with_matching_legacy_alias", "population_default"] },
+            "inputField": { "enum": ["trainingGoal", "goal", "trainingGoal+goal", "default"] },
+            "authority": { "const": "product_policy" },
+            "disclosure": { "$ref": "#/$defs/nonEmptyString" },
+            "selectionEmphasis": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        },
+        "experience": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value", "requestedValue", "resolvedValue", "source", "inputField", "authority", "progressionConfirmationExposures", "complexStructureAllowed", "complexitySupportedBy", "complexityPolicy", "disclosure"],
+          "properties": {
+            "value": { "enum": ["novice_safe_default", "novice", "intermediate", "advanced"] },
+            "requestedValue": { "type": ["string", "null"] },
+            "resolvedValue": { "enum": ["novice_safe_default", "novice", "intermediate", "advanced"] },
+            "source": { "enum": ["novice_safe_default", "canonical_user_input", "legacy_alias", "canonical_with_matching_legacy_alias"] },
+            "inputField": { "enum": ["experienceLevel", "experience", "experienceLevel+experience", "default"] },
+            "authority": { "const": "product_policy" },
+            "progressionConfirmationExposures": { "type": "integer", "minimum": 1, "maximum": 10 },
+            "complexStructureAllowed": { "type": "boolean" },
+            "complexitySupportedBy": { "enum": ["none", "explicit_preference", "productive_history"] },
+            "complexityPolicy": { "$ref": "#/$defs/nonEmptyString" },
+            "disclosure": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        },
+        "nutritionPhase": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["requestedValue", "resolvedValue", "source", "authority", "doseAdjustmentApplied", "disclosure", "scientificProvenance"],
+          "properties": {
+            "requestedValue": { "type": ["string", "null"] },
+            "resolvedValue": { "type": ["string", "null"], "enum": ["deficit", "maintenance", "recomposition", "surplus", null] },
+            "source": { "enum": ["canonical_user_input", "unspecified"] },
+            "authority": { "const": "product_policy" },
+            "doseAdjustmentApplied": { "const": false },
+            "disclosure": { "$ref": "#/$defs/nonEmptyString" },
+            "scientificProvenance": { "$ref": "#/$defs/scientificSource" }
+          }
+        },
+        "returningAfterGap": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["requestedValue", "resolvedValue", "source", "authority", "disclosure"],
+          "properties": {
+            "requestedValue": { "type": ["boolean", "null"] },
+            "resolvedValue": { "type": ["boolean", "null"] },
+            "source": { "enum": ["canonical_user_input", "unspecified"] },
+            "authority": { "const": "product_policy" },
+            "disclosure": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        },
+        "personalization": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["personalEvidenceAvailable", "comparableExposureCount", "source", "missingData", "disclosure"],
+          "properties": {
+            "personalEvidenceAvailable": { "type": "boolean" },
+            "comparableExposureCount": { "type": "integer", "minimum": 0 },
+            "source": { "enum": ["personal_and_research", "research_population_default"] },
+            "missingData": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/id" } },
+            "disclosure": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        }
+      }
+    },
+    "historyResolution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "suppliedRowCount", "matchedRowCount", "ignoredUnrelatedRowCount", "selectedExerciseId", "selectedResearchExerciseId"],
+      "properties": {
+        "mode": { "enum": ["identity_filtered", "legacy_caller_scoped"] },
+        "suppliedRowCount": { "type": "integer", "minimum": 0 },
+        "matchedRowCount": { "type": "integer", "minimum": 0 },
+        "ignoredUnrelatedRowCount": { "type": "integer", "minimum": 0 },
+        "selectedExerciseId": { "$ref": "#/$defs/id" },
+        "selectedResearchExerciseId": { "$ref": "#/$defs/nullableId" }
       }
     },
     "explanationDetails": {
