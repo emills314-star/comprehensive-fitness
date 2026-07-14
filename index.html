@@ -2585,6 +2585,69 @@
         };
       }
 
+      function workoutMutationSafetyDecision(action, context = {}) {
+        const executableActions = ["add-exercise", "add-set", "add-warmup-set", "duplicate-set", "toggle-set", "toggle-skip-set", "start-timer"];
+        if (!executableActions.includes(String(action || ""))) return { allowed: true, scope: "none", reason: "not_executable" };
+        const normalize = (value) => String(value || "").toLowerCase().replace(/^mg_/, "").replace(/[^a-z0-9]+/g, " ").trim();
+        const recovery = context.recovery || {};
+        const exercise = context.exercise || null;
+        const restriction = exercise?.safetyRestriction || exercise?.finalPrescription?.safetyRestriction || exercise?.recommendationSnapshot?.finalPrescription?.safetyRestriction || null;
+        const blockedBySnapshot = exercise?.executionBlocked === true
+          || exercise?.finalPrescription?.executionBlocked === true
+          || exercise?.recommendationSnapshot?.finalPrescription?.executionBlocked === true;
+        const block = (scope, reason, message) => ({ allowed: false, executable: false, executionBlocked: true, scope, reason, message });
+        if (recovery.illness === true) return block("workout", "illness", "Current illness blocks executable workout actions.");
+        const affectedMuscle = normalize(recovery.affectedMuscle);
+        if (recovery.pain === true && !affectedMuscle) return block("workout", "pain", "Pain without a specified affected area blocks executable workout actions.");
+        if (blockedBySnapshot) {
+          return block(restriction?.scope || "exercise", restriction?.reason || "pain", "This exercise remains non-executable until its hard-safety restriction is resolved.");
+        }
+        if (recovery.pain !== true) return { allowed: true, scope: "none", reason: "clear" };
+        const confirmedSubstitute = restriction?.status === "resolved_by_confirmed_substitute"
+          && restriction?.painFreeConfirmed === true
+          && restriction?.substituteExerciseId;
+        if (confirmedSubstitute) return { allowed: true, scope: "exercise", reason: "confirmed_pain_free_substitute" };
+        const exerciseMuscles = (Array.isArray(context.exerciseMuscles) ? context.exerciseMuscles : [])
+          .map((item) => normalize(typeof item === "string" ? item : item?.muscle || item?.programmingFamilyId || item?.programming_family_id))
+          .filter(Boolean);
+        if (!exercise || context.taxonomyResolved !== true || !exerciseMuscles.length) {
+          return block("exercise", "pain", "The exercise taxonomy is unresolved, so a localized pain restriction must fail closed.");
+        }
+        if (exerciseMuscles.includes(affectedMuscle)) {
+          return block("exercise", "pain", "This exercise trains the affected area and is blocked until a validated pain-free substitute is confirmed.");
+        }
+        return { allowed: true, scope: "exercise", reason: "catalog_resolved_nonmatch" };
+      }
+
+      function workoutMutationSafetyContext(action, identifiers = {}) {
+        const set = identifiers.set || (identifiers.setId ? setById(identifiers.setId) : null);
+        const exercise = identifiers.exercise
+          || (identifiers.exerciseId ? exerciseById(identifiers.exerciseId) : null)
+          || (set ? exerciseById(set.exerciseId) : null)
+          || (action === "add-exercise" && addExerciseDraft.trim() ? { name: addExerciseDraft.trim(), primaryMuscle: addExercisePrimaryMuscle, secondaryMuscle: addExerciseSecondaryMuscle } : null);
+        const session = exercise?.sessionId ? sessionById(exercise.sessionId) : activeSession();
+        const enforceCurrentWorkoutSafety = Boolean(session && !isSessionSubmitted(session) && (session.id === activeWorkoutId || session.workoutState === "active"));
+        const taxonomy = exercise ? taxonomyMusclesForExercise(exercise) : [];
+        return {
+          recovery: enforceCurrentWorkoutSafety ? cleanRecovery(session.recovery || {}) : cleanRecovery({}),
+          exercise,
+          exerciseMuscles: taxonomy.map((item) => item.muscle),
+          taxonomyResolved: taxonomy.length > 0
+        };
+      }
+
+      function guardWorkoutMutation(action, identifiers = {}, notify = true) {
+        const decision = workoutMutationSafetyDecision(action, workoutMutationSafetyContext(action, identifiers));
+        if (!decision.allowed && notify) showAppToast(decision.message || "This action is blocked by the current workout safety restriction.");
+        return decision;
+      }
+
+      function workoutSafetyDisabledAttributes(decision, fallbackLabel) {
+        if (decision?.allowed !== false) return "";
+        const label = decision.message || fallbackLabel || "Blocked by the current workout safety restriction";
+        return ` disabled aria-disabled="true" data-safety-reason="${escapeHtml(label)}"`;
+      }
+
       function normalizeLoadedData(model) {
         const storedSettings = model.settings || {};
         const legacyGoal = String(storedSettings.goal || "").trim().toLowerCase();
@@ -2833,6 +2896,7 @@
           || personal.exercisePrescriptions.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === requested);
         const personalId = personalRecord?.exercise_id || personalRecord?.exerciseId || "";
         const reconciled = personal.reconciledIdentityByExerciseId?.get(personalId);
+        if (reconciled?.invalid) return null;
         if (reconciled && !reconciled.invalid && reconciled.researchExerciseId) return reconciled.researchExerciseId;
         return /^(?:custom|user)(?::|_)/.test(personalId) ? personalId : null;
       }
@@ -2930,11 +2994,60 @@
 
       function unifiedPrescriptionSnapshot(exerciseOrName, options = {}) {
         if (!prescriptionEngine || prescriptionEvidenceStatus.state === "error") return null;
+        const hardConstraintRejection = (reason, message, cause) => {
+          const normalizedReason = String(reason || "engine_rejection").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+          return {
+            type: "hard_constraint_rejection",
+            kind: "hard_constraint_rejection",
+            code: `HARD_CONSTRAINT_${normalizedReason.toUpperCase()}`,
+            hardConstraint: true,
+            executionBlocked: true,
+            executable: false,
+            status: "blocked",
+            reason: normalizedReason,
+            message: String(message || "The workout request violates a hard constraint."),
+            causeMessage: cause ? String(cause?.message || cause) : "",
+            decision: "hold",
+            mode: "stop-modify",
+            interventionType: "stop_modify",
+            sets: 0,
+            reps: 0,
+            repLow: 0,
+            repHigh: 0,
+            weight: 0,
+            addedLoad: 0,
+            assistanceLoad: 0,
+            rpe: 0,
+            restSeconds: 0,
+            warmups: [],
+            executableActions: [],
+            safetyRestriction: {
+              schemaVersion: "hard-safety/1.0.0",
+              status: "blocked",
+              scope: normalizedReason === "empty_muscle_scope" || normalizedReason === "invalid_time_constraint" ? "workout" : "exercise",
+              reason: normalizedReason,
+              resumeCriteria: "Correct the rejected hard constraint before generating or executing this workout."
+            }
+          };
+        };
         const exercise = typeof exerciseOrName === "string" ? { name: exerciseOrName } : (exerciseOrName || {});
         if (exercise.recommendationSnapshot) return exercise.recommendationSnapshot;
         const exerciseId = options.exerciseId || prescriptionExerciseIdentity(exercise.name);
         const muscleGroupId = normalizePrescriptionIdentity(options.muscleGroupId || prescriptionMuscleGroup(exercise));
-        if (!exerciseId || !muscleGroupId) return null;
+        if (!exerciseId) return hardConstraintRejection("invalid_exercise_identity", "The exercise does not have a valid reconciled public or trusted custom identity.");
+        if (!muscleGroupId || muscleGroupId === "general") return hardConstraintRejection("invalid_muscle_identity", "The exercise does not have a resolved canonical muscle-group identity.");
+        const explicitScope = Object.prototype.hasOwnProperty.call(options, "includedMuscleGroupIds")
+          ? options.includedMuscleGroupIds
+          : Object.prototype.hasOwnProperty.call(options, "muscleScope") ? options.muscleScope : undefined;
+        if (explicitScope !== undefined && (!Array.isArray(explicitScope) || explicitScope.length === 0)) {
+          return hardConstraintRejection("empty_muscle_scope", "At least one canonical muscle group must remain in scope.");
+        }
+        const explicitDurationValues = ["sessionDurationMinutes", "timeConstraintMinutes", "maxSessionMinutes", "sessionDurationMaximumMinutes"]
+          .filter((field) => Object.prototype.hasOwnProperty.call(options, field))
+          .map((field) => options[field]);
+        if (explicitDurationValues.some((value) => !Number.isFinite(Number(value)) || Number(value) <= 0)) {
+          return hardConstraintRejection("invalid_time_constraint", "Session duration constraints must be finite positive minutes.");
+        }
         const throughDate = options.throughDate || todayIso();
         const history = options.history || prescriptionHistoryForExercise(exercise.name, exerciseId, options);
         const mesocycle = options.mesocycle === undefined ? currentMesocycle() : options.mesocycle;
@@ -2989,8 +3102,12 @@
           if (!options.fresh) prescriptionSnapshotCache.set(cacheKey, snapshot);
           return snapshot;
         } catch (error) {
-          if (options.throwOnError) throw error;
-          return null;
+          const detail = `${error?.code || ""} ${error?.message || error || ""}`.toLowerCase();
+          const reason = /exclud/.test(detail) ? "excluded_exercise"
+            : /equipment|compatible/.test(detail) ? "unavailable_equipment"
+              : /identity|unknown exercise|not found|unmapped/.test(detail) ? "invalid_exercise_identity"
+                : "engine_rejection";
+          return hardConstraintRejection(reason, error?.message || "The prescription engine rejected a hard workout constraint.", error);
         }
       }
 
@@ -3027,6 +3144,7 @@
 
       function legacyRecommendationFromSnapshot(snapshot, exerciseName) {
         if (!snapshot) return null;
+        if (snapshot.hardConstraint === true || snapshot.type === "hard_constraint_rejection" || snapshot.kind === "hard_constraint_rejection") return snapshot;
         const prescription = snapshot.finalPrescription;
         const type = prescription.recommendationType;
         const deload = ["exercise_deload", "muscle_group_deload", "full_program_deload"].includes(type);
@@ -3070,6 +3188,7 @@
 
       function legacyTargetFromSnapshot(snapshot, templateExercise = {}, options = {}) {
         if (!snapshot) return null;
+        if (snapshot.hardConstraint === true || snapshot.type === "hard_constraint_rejection" || snapshot.kind === "hard_constraint_rejection") return snapshot;
         const prescription = options.useBase ? snapshot.basePrescription : snapshot.finalPrescription;
         const type = prescription.recommendationType;
         const resistanceType = templateExercise.resistanceType || inferResistanceType(templateExercise.name || prescription.exerciseId, templateExercise);
@@ -4379,15 +4498,24 @@
 
       function coachTargetForTemplateExercise(templateExercise, options = {}) {
         if (typeof unifiedPrescriptionSnapshot === "function") {
-          const snapshot = unifiedPrescriptionSnapshot(templateExercise, {
-            throughDate: options.throughDate || options.asOfDate || todayIso(),
-            historical: Boolean(options.historical),
-            recovery: {},
-            template: options.template,
-            role: templateExercise.role,
-            equipmentIncrement: templateExercise.increment,
-            mesocycle: options.historical ? null : undefined
-          });
+          let snapshot;
+          try {
+            snapshot = unifiedPrescriptionSnapshot(templateExercise, {
+              throughDate: options.throughDate || options.asOfDate || todayIso(),
+              historical: Boolean(options.historical),
+              recovery: {},
+              template: options.template,
+              role: templateExercise.role,
+              equipmentIncrement: templateExercise.increment,
+              mesocycle: options.historical ? null : undefined
+            });
+          } catch (error) {
+            const detail = error?.error || error;
+            const code = String(detail?.code || "");
+            if (detail?.hardConstraint === true || detail?.type === "hard_constraint_rejection" || detail?.kind === "hard_constraint_rejection" || /^HARD_CONSTRAINT_/i.test(code)) return detail;
+            throw error;
+          }
+          if (snapshot?.hardConstraint === true || snapshot?.type === "hard_constraint_rejection" || snapshot?.kind === "hard_constraint_rejection") return snapshot;
           if (snapshot) return legacyTargetFromSnapshot(snapshot, templateExercise, { useBase: true });
         }
         const profile = progressionProfileForExercise(templateExercise.name);
@@ -4922,6 +5050,7 @@
         if (liftHomeIsVisible()) return renderLiftHome();
         const editingHistory = isEditingHistorySession(session.id);
         const historyReadOnly = isSessionSubmitted(session) && !editingHistory;
+        const addExerciseSafety = guardWorkoutMutation("add-exercise", {}, false);
         if (activeWorkoutId === session.id) ensureActiveSet();
         const progress = workoutProgress();
         const quickStartHtml = measurePerformance("lift:quickTemplates", renderQuickStartTemplates);
@@ -4946,7 +5075,7 @@
               <div class="disclosure-body">
                 <div class="row">
                   <input value="${escapeHtml(addExerciseDraft)}" data-action="add-exercise-draft" placeholder="Exercise name" aria-label="New exercise name" />
-                  <button class="icon-button" type="button" data-action="add-exercise" title="Add exercise">${icon.add}</button>
+                  <button class="icon-button" type="button" data-action="add-exercise" title="Add exercise"${workoutSafetyDisabledAttributes(addExerciseSafety)}>${icon.add}</button>
                 </div>
                 <div class="muscle-select-grid">
                   <label>Primary muscle<select data-action="add-exercise-primary" aria-label="Primary muscle for new exercise">${muscleOptions(addExercisePrimaryMuscle, true, "Auto classify")}</select></label>
@@ -5665,17 +5794,65 @@
         return renderWorkoutAdvice({ label: recommendationLabel(type), detail, items });
       }
 
+      function safetySubstituteContext(snapshot) {
+        const research = prescriptionEngine?.evidence?.research;
+        const prescription = snapshot?.finalPrescription;
+        if (!research?.substitutionsByExercise || !research?.exerciseById || !prescription?.executionBlocked) {
+          return { allowedSafetySubstituteIds: [], exerciseCatalog: [], availableEquipment: [], preferred: null };
+        }
+        const originalExerciseId = prescription.safetyRestriction?.originalExerciseId || prescription.exerciseId || snapshot.exerciseId;
+        const originalResearchExerciseId = prescription.safetyRestriction?.auditBaseTargets?.researchExerciseId
+          || prescription.researchExerciseId
+          || snapshot.basePrescription?.researchExerciseId
+          || research.exerciseById.has(originalExerciseId) && originalExerciseId
+          || originalExerciseId;
+        const substitutionRows = research.substitutionsByExercise.get(originalResearchExerciseId) || [];
+        const mappedIds = Array.from(new Set(substitutionRows.map((item) => item.substitute_exercise_id || item.substituteExerciseId).filter(Boolean)));
+        const configuredEquipment = Array.isArray(data.settings.availableEquipment) && data.settings.availableEquipment.length ? data.settings.availableEquipment : ["all"];
+        const excludedExerciseIds = new Set([...(data.settings.excludedExerciseIds || []), ...(currentMesocycle()?.constraints?.excludedExerciseIds || [])]);
+        let rankedById = new Map();
+        try {
+          const ranked = prescriptionEngine.rankExercisePool(snapshot.muscleGroupId, { availableEquipment: configuredEquipment });
+          rankedById = new Map((ranked.candidates || []).map((candidate) => [candidate.exerciseId, candidate]));
+        } catch { /* A restricted pool fails closed below. */ }
+        const originalIds = new Set([originalExerciseId, originalResearchExerciseId, snapshot.exerciseId, snapshot.basePrescription?.exerciseId].filter(Boolean));
+        const allowedSafetySubstituteIds = mappedIds.filter((exerciseId) => (
+          research.exerciseById.has(exerciseId)
+          && !originalIds.has(exerciseId)
+          && !excludedExerciseIds.has(exerciseId)
+          && (configuredEquipment.includes("all") || rankedById.has(exerciseId))
+        ));
+        const exerciseCatalog = allowedSafetySubstituteIds.map((exerciseId) => research.exerciseById.get(exerciseId)).filter(Boolean);
+        const preferredId = allowedSafetySubstituteIds.includes(prescription.preferredReplacementExerciseId)
+          ? prescription.preferredReplacementExerciseId
+          : allowedSafetySubstituteIds.find((exerciseId) => rankedById.has(exerciseId)) || allowedSafetySubstituteIds[0] || "";
+        const preferredRecord = preferredId ? research.exerciseById.get(preferredId) : null;
+        return {
+          originalExerciseId,
+          originalResearchExerciseId,
+          allowedSafetySubstituteIds,
+          exerciseCatalog,
+          availableEquipment: configuredEquipment,
+          excludedExerciseIds: Array.from(excludedExerciseIds),
+          preferred: preferredRecord ? { exerciseId: preferredId, researchExerciseId: preferredId, exerciseName: preferredRecord.exercise_name } : null
+        };
+      }
+
       function renderPrescriptionOverrideControls(exercise) {
         const snapshot = exercise.recommendationSnapshot;
         if (!snapshot || exercise.sessionId !== activeWorkoutId || isSessionSubmitted(activeSession())) return "";
         const prescription = snapshot.finalPrescription;
+        const safetyContext = prescription.executionBlocked ? safetySubstituteContext(snapshot) : null;
+        const safetyListId = `safety-substitutes-${exercise.id}`;
+        const safetyOptions = safetyContext?.exerciseCatalog.map((item) => `<option value="${escapeHtml(item.exercise_name)}"></option>`).join("") || "";
         return `
           <details class="compact-disclosure prescription-override" data-override-form="${exercise.id}">
-            <summary>Override this prescription <span>${snapshot.overrideLocked ? 'Locked for workout' : 'Optional'}</span></summary>
+            <summary>${prescription.executionBlocked ? "Choose a pain-free substitute" : "Override this prescription"} <span>${snapshot.overrideLocked ? 'Locked for workout' : prescription.executionBlocked ? 'Confirmation required' : 'Optional'}</span></summary>
             <div class="disclosure-body">
-              <p class="settings-note">Overrides are saved with the original recommendation and will not be undone during this workout. Later outcomes are used to evaluate the choice.</p>
+              <p class="settings-note">${prescription.executionBlocked ? "The original exercise remains blocked. Only a distinct, catalog-backed substitute allowed by the current equipment and exclusion settings can become executable after you explicitly confirm it is pain-free." : "Overrides are saved with the original recommendation and will not be undone during this workout. Later outcomes are used to evaluate the choice."}</p>
               <div class="override-grid">
-                <label>Replacement exercise<input data-override-field="exercise" placeholder="Keep ${escapeHtml(exercise.name)}" /></label>
+                <label>Replacement exercise<input data-override-field="exercise" ${prescription.executionBlocked ? `list="${safetyListId}"` : ""} placeholder="${prescription.executionBlocked && safetyContext?.preferred ? escapeHtml(safetyContext.preferred.exerciseName) : `Keep ${escapeHtml(exercise.name)}`}" /></label>
+                ${prescription.executionBlocked ? `<datalist id="${safetyListId}">${safetyOptions}</datalist><label class="toggle-line override-reason"><input type="checkbox" data-override-field="pain-free-confirmed" />I explicitly confirm this substitute is pain-free for today</label>` : ""}
                 <label>Working sets<input type="number" min="1" max="12" value="${prescription.workingSets.target}" data-override-field="sets" /></label>
                 <label>Rep minimum<input type="number" min="1" max="50" value="${prescription.repRange.min}" data-override-field="rep-min" /></label>
                 <label>Rep maximum<input type="number" min="1" max="50" value="${prescription.repRange.max}" data-override-field="rep-max" /></label>
@@ -5694,6 +5871,9 @@
 
       function renderExercise(exercise) {
         const exerciseSets = setsForExercise(exercise.id);
+        const addSetSafety = guardWorkoutMutation("add-set", { exercise }, false);
+        const addWarmupSafety = guardWorkoutMutation("add-warmup-set", { exercise }, false);
+        const duplicateSetSafety = guardWorkoutMutation("duplicate-set", { exercise }, false);
         const firstWorkSet = exerciseSets.find((set) => isWorkingSet(set, "score")) || exerciseSets[0];
         const restSeconds = Number(exercise.restSeconds || data.settings.defaultRestSeconds || 90);
         const previousSets = exerciseSets.some((set) => isWorkingSet(set, "progression")) ? measurePerformance("lift:previousPerformance", () => getMostRecentWorkoutSets(exercise.name, { excludeSessionId: exercise.sessionId }), { exerciseId: exercise.id }) : [];
@@ -5718,9 +5898,9 @@
             ${renderPrescriptionDetails(exercise)}
             ${setHtml}
             <div class="row wrap">
-              <button type="button" data-action="add-set" data-exercise-id="${exercise.id}">${icon.add} Set</button>
-              <button type="button" data-action="add-warmup-set" data-exercise-id="${exercise.id}">+ Warm-up</button>
-              <button type="button" data-action="duplicate-set" data-exercise-id="${exercise.id}">${icon.duplicate} Duplicate</button>
+              <button type="button" data-action="add-set" data-exercise-id="${exercise.id}"${workoutSafetyDisabledAttributes(addSetSafety)}>${icon.add} Set</button>
+              <button type="button" data-action="add-warmup-set" data-exercise-id="${exercise.id}"${workoutSafetyDisabledAttributes(addWarmupSafety)}>+ Warm-up</button>
+              <button type="button" data-action="duplicate-set" data-exercise-id="${exercise.id}"${workoutSafetyDisabledAttributes(duplicateSetSafety)}>${icon.duplicate} Duplicate</button>
             </div>
             <details class="exercise-options">
               <summary>Exercise options <span>${restSeconds}s rest</span></summary>
@@ -5738,6 +5918,9 @@
 
       function renderSet(set, exercise, context = {}) {
         const restSeconds = Number(context.restSeconds || exercise.restSeconds || data.settings.defaultRestSeconds || 90);
+        const completionSafety = guardWorkoutMutation("toggle-set", { exercise, set }, false);
+        const skipSafety = guardWorkoutMutation("toggle-skip-set", { exercise, set }, false);
+        const timerSafety = guardWorkoutMutation("start-timer", { exercise, set }, false);
         const resistanceType = resistanceTypeFor(exercise, set);
         const visualState = setVisualState(set);
         const isNext = visualState === "current";
@@ -5777,15 +5960,15 @@
               ${performanceField}
               ${loadField}
               <label class="set-field"><span>RPE</span><input type="number" min="0" max="10" step="0.5" value="${set.rpe}" data-action="set-rpe" data-set-id="${set.id}" aria-label="Set ${set.setNumber} RPE" /></label>
-              <div class="set-field set-status"><span>Status</span><button class="check-button ${set.completed ? "checked" : ""}" type="button" data-action="toggle-set" data-set-id="${set.id}" title="${set.completed ? "Completed" : "Mark set complete"}" aria-label="${set.completed ? "Set completed" : "Mark set complete"}" aria-pressed="${set.completed ? "true" : "false"}">${icon.done}</button></div>
+              <div class="set-field set-status"><span>Status</span><button class="check-button ${set.completed ? "checked" : ""}" type="button" data-action="toggle-set" data-set-id="${set.id}" title="${set.completed ? "Completed" : "Mark set complete"}" aria-label="${set.completed ? "Set completed" : "Mark set complete"}" aria-pressed="${set.completed ? "true" : "false"}"${workoutSafetyDisabledAttributes(completionSafety)}>${icon.done}</button></div>
             </div>
             ${!setTypeSemantics(set).isWarmup ? '<div class="set-prescription-context"><div><span>Last time</span><strong>' + escapeHtml(previousText) + '</strong></div><div><span>Today</span><strong>' + escapeHtml(targetLoadText) + '</strong><small>' + escapeHtml(targetRepText + ' · ' + targetRpeText) + '</small></div><div><span>Next increment</span><strong>' + escapeHtml(nextIncrementText) + '</strong><small>' + escapeHtml(String(set.setPrescription?.confidence || set.prescriptionConfidence || 'low') + ' confidence') + '</small></div><div class="set-progress-rule"><span>Progress when</span><strong>' + escapeHtml(progressionRule) + '</strong></div></div>' : ""}
             ${isNext ? '<div class="next-set-banner"><span aria-hidden="true">&#10148;</span><span>' + escapeHtml(activeSetAcknowledged ? "Current set" : activeSetNotice || "Current set") + '</span></div>' : ""}
             <div class="set-actions">
-              <button class="mini-button set-rest-button" type="button" data-action="start-timer" data-exercise-id="${exercise.id}" data-set-id="${set.id}">${icon.clock} ${formatTimer(restSeconds)}</button>
+              <button class="mini-button set-rest-button" type="button" data-action="start-timer" data-exercise-id="${exercise.id}" data-set-id="${set.id}"${workoutSafetyDisabledAttributes(timerSafety)}>${icon.clock} ${formatTimer(restSeconds)}</button>
               ${isEditingHistorySession() ? '<label class="set-type-editor"><span>Set type</span><select data-action="set-type-override" data-set-id="' + set.id + '">' + ['warmup','straight','top','backoff','drop'].map((type) => '<option value="' + type + '" ' + (normalizeSetTypeCode(set.setType, set.isWarmup) === type ? 'selected' : '') + '>' + escapeHtml(setTypeLabels[type]) + '</option>').join('') + '</select></label>' : ''}
               ${set.manualOverride && isEditingHistorySession() && set.classificationUndo ? '<button class="mini-button" type="button" data-action="undo-set-type-override" data-set-id="' + set.id + '">Undo type change</button>' : ''}
-              <button class="mini-button set-skip-button ${set.skipped ? "active" : ""}" type="button" data-action="toggle-skip-set" data-set-id="${set.id}">${set.skipped ? "Skipped" : "Skip"}</button>
+              <button class="mini-button set-skip-button ${set.skipped ? "active" : ""}" type="button" data-action="toggle-skip-set" data-set-id="${set.id}"${workoutSafetyDisabledAttributes(skipSafety)}>${set.skipped ? "Skipped" : "Skip"}</button>
               <button class="mini-button" type="button" data-action="delete-set" data-set-id="${set.id}">Remove</button>
               ${visualState === "edited" ? '<span class="edited-indicator">Edited, not completed</span>' : ""}
             </div>
@@ -8262,6 +8445,8 @@
         const exercise = exerciseById(exerciseId);
         if (!exercise?.recommendationSnapshot || !prescriptionEngine || !form) return;
         const current = exercise.recommendationSnapshot.finalPrescription;
+        const safetyLocked = current.executionBlocked === true || current.safetyRestriction?.status === "blocked";
+        const safetyContext = safetyLocked ? safetySubstituteContext(exercise.recommendationSnapshot) : null;
         const read = (field) => form.querySelector(`[data-override-field="${field}"]`)?.value ?? "";
         const override = {};
         const replacementName = String(read("exercise")).trim();
@@ -8269,23 +8454,33 @@
         if (replacementName) {
           replacementId = prescriptionExerciseIdentity(replacementName) || "";
           if (!replacementId) return showAppToast("That replacement is not in the personal or research exercise database.");
-          if (replacementId !== current.exerciseId) override.exerciseId = replacementId;
+          if (safetyLocked) {
+            if (!safetyContext.allowedSafetySubstituteIds.includes(replacementId)) return showAppToast("That exercise is not an engine-confirmed substitute under the current equipment and exclusion settings.");
+            const catalogRecord = safetyContext.exerciseCatalog.find((item) => item.exercise_id === replacementId);
+            if (!catalogRecord) return showAppToast("That substitute does not retain a coherent public catalog identity.");
+            override.exerciseId = replacementId;
+            override.researchExerciseId = catalogRecord.exercise_id;
+            override.painFreeConfirmed = form.querySelector('[data-override-field="pain-free-confirmed"]')?.checked === true;
+          } else if (replacementId !== current.exerciseId) override.exerciseId = replacementId;
         }
-        const sets = Number(read("sets"));
-        if (sets && sets !== Number(current.workingSets.target)) override.setCount = sets;
-        const repMin = Number(read("rep-min"));
-        const repMax = Number(read("rep-max"));
-        if (repMin && repMax && (repMin !== Number(current.repRange.min) || repMax !== Number(current.repRange.max))) override.repRange = { min: Math.min(repMin, repMax), max: Math.max(repMin, repMax) };
-        const load = read("load") === "" ? null : Number(read("load"));
-        if (load !== null && load !== Number(current.prescribedLoad?.target ?? 0)) override.load = load;
-        const structure = read("structure");
-        if (structure && structure !== current.setStructure) override.setStructure = structure;
-        const deload = read("deload");
-        if (deload && deload !== "engine") override.deloadRecommendation = deload;
-        const rotation = read("rotation");
-        if (rotation && rotation !== "engine") override.exerciseRotation = rotation;
-        const mesocycleId = read("mesocycle");
-        if (mesocycleId && mesocycleId !== exercise.recommendationSnapshot.mesocycleId) override.mesocycleId = mesocycleId;
+        if (safetyLocked && !replacementName) return showAppToast("Choose a distinct engine-confirmed substitute before resolving this safety restriction.");
+        if (!safetyLocked) {
+          const sets = Number(read("sets"));
+          if (sets && sets !== Number(current.workingSets.target)) override.setCount = sets;
+          const repMin = Number(read("rep-min"));
+          const repMax = Number(read("rep-max"));
+          if (repMin && repMax && (repMin !== Number(current.repRange.min) || repMax !== Number(current.repRange.max))) override.repRange = { min: Math.min(repMin, repMax), max: Math.max(repMin, repMax) };
+          const load = read("load") === "" ? null : Number(read("load"));
+          if (load !== null && load !== Number(current.prescribedLoad?.target ?? 0)) override.load = load;
+          const structure = read("structure");
+          if (structure && structure !== current.setStructure) override.setStructure = structure;
+          const deload = read("deload");
+          if (deload && deload !== "engine") override.deloadRecommendation = deload;
+          const rotation = read("rotation");
+          if (rotation && rotation !== "engine") override.exerciseRotation = rotation;
+          const mesocycleId = read("mesocycle");
+          if (mesocycleId && mesocycleId !== exercise.recommendationSnapshot.mesocycleId) override.mesocycleId = mesocycleId;
+        }
         const reason = String(read("reason")).trim() || "Intentional workout prescription override";
         if (override.deloadRecommendation && override.deloadRecommendation !== "normal" && !current.recommendationType.includes("deload")) {
           if (override.setCount === undefined) override.setCount = Math.max(1, Math.ceil(current.workingSets.target * 0.5));
@@ -8295,7 +8490,14 @@
         if (!Object.keys(override).length) return showAppToast("No prescription field changed.");
         let snapshot;
         try {
-          snapshot = prescriptionEngine.applyManualOverride(exercise.recommendationSnapshot, override, { workoutId: exercise.sessionId, reason });
+          snapshot = prescriptionEngine.applyManualOverride(exercise.recommendationSnapshot, override, {
+            workoutId: exercise.sessionId,
+            reason,
+            createdAt: isoNow(),
+            allowedSafetySubstituteIds: safetyContext?.allowedSafetySubstituteIds,
+            exerciseCatalog: safetyContext?.exerciseCatalog,
+            availableEquipment: safetyContext?.availableEquipment
+          });
         } catch (error) {
           showAppToast(error?.message || "The override could not be applied.");
           return;
@@ -8343,7 +8545,7 @@
         const replacedSetIds = new Set(incompleteWorking.map((set) => set.id));
         const nextName = replacementId ? exerciseNameForPrescriptionId(replacementId, replacementName) : exercise.name;
         const overrideEntry = { ...snapshot.manualOverrides.at(-1), recommendationId: snapshot.recommendationId, exerciseRuntimeId: exercise.id, sessionId: exercise.sessionId };
-        const nextExercise = { ...exercise, name: nextName, recommendationSnapshot: snapshot, finalPrescription: prescription, prescription: target, adjustmentReason: target.adjustmentReason || "", isDeload: prescription.recommendationType.includes("deload"), manualOverrides: [...(exercise.manualOverrides || []), overrideEntry], overrideLocked: true, restSeconds: prescription.restSeconds.target };
+        const nextExercise = { ...exercise, name: nextName, recommendationSnapshot: snapshot, basePrescription: snapshot.basePrescription, finalPrescription: prescription, prescription: target, adjustmentReason: target.adjustmentReason || "", isDeload: prescription.recommendationType.includes("deload"), executionBlocked: Boolean(prescription.executionBlocked), safetyRestriction: prescription.safetyRestriction || null, manualOverrides: [...(exercise.manualOverrides || []), overrideEntry], overrideLocked: true, restSeconds: prescription.restSeconds.target };
         const session = sessionById(exercise.sessionId);
         const workoutRecommendations = session?.workoutPrescription?.recommendations || [];
         const workoutPrescription = session?.workoutPrescription ? {
@@ -8499,6 +8701,7 @@
         const interactionStartedAt = performanceNow();
         const set = setById(setId);
         if (!set) return;
+        if (!guardWorkoutMutation("toggle-set", { set }).allowed) return;
         const completing = !set.completed;
         if (isEditingHistorySession()) {
           patchSet(set.id, { completed: completing, skipped: false, edited: true });
@@ -8531,6 +8734,7 @@
       function toggleSetSkipped(setId) {
         const set = data.sets.find((item) => item.id === setId);
         if (!set) return;
+        if (!guardWorkoutMutation("toggle-skip-set", { set }).allowed) return;
         const skipped = !set.skipped;
         if (isEditingHistorySession()) {
           patchSet(set.id, { skipped, completed: false, edited: true });
@@ -8618,6 +8822,7 @@
         const session = activeSession();
         const name = addExerciseDraft;
         if (!session || !name || !name.trim()) return;
+        if (!guardWorkoutMutation("add-exercise").allowed) return;
         if (isSessionSubmitted(session)) {
           showAppToast("Logged workouts cannot become active again. Start a new workout first.");
           return;
@@ -8798,11 +9003,29 @@
       }
 
       function addSet(exerciseId, duplicate) {
+        const action = duplicate ? "duplicate-set" : "add-set";
+        if (!guardWorkoutMutation(action, { exerciseId }).allowed) return;
         const sets = setsForExercise(exerciseId);
         logWorkoutOverride(exerciseById(exerciseId), "setCount", sets.filter((set) => isWorkingSet(set, "score")).length, sets.filter((set) => isWorkingSet(set, "score")).length + 1, { action: duplicate ? "duplicate_set" : "add_set" });
         const sequenceIndex = sets.length ? Math.max(...sets.map(canonicalSetSequence)) + 1 : 0;
         const previous = duplicate ? sets[sets.length - 1] : undefined;
         commit({ ...data, sets: [...data.sets, createSet(exerciseId, sets.filter((set) => !setTypeSemantics(set).isWarmup).length + 1, { ...(previous || {}), sequenceIndex, sequence: sequenceIndex, completed: false, skipped: false, edited: false })] }, true, { invalidateAnalysis: false, deferPersistence: true });
+      }
+
+      function addWarmupSet(exerciseId) {
+        if (!guardWorkoutMutation("add-warmup-set", { exerciseId }).allowed) return;
+        const sets = setsForExercise(exerciseId);
+        const warmups = sets.filter((set) => setTypeSemantics(set).isWarmup);
+        const sequenceIndex = warmups.length;
+        const priorWarmup = warmups.at(-1);
+        const shifted = data.sets.map((set) => set.exerciseId === exerciseId && canonicalSetSequence(set) >= sequenceIndex ? { ...set, sequenceIndex: canonicalSetSequence(set) + 1, sequence: canonicalSetSequence(set) + 1 } : set);
+        const warmupSet = createSet(exerciseId, warmups.length + 1, { ...(priorWarmup || {}), sequenceIndex, sequence: sequenceIndex, setTypeIndex: warmups.length, completed: false, skipped: false, edited: false, isWarmup: true, setType: "warmup", countsTowardScore: false, countsTowardVolume: false, countsTowardProgression: false, rpe: 5 });
+        const current = data.sets.find((set) => set.id === activeSetId);
+        const nextWarmup = warmups.find((set) => !set.completed && !set.skipped) || warmupSet;
+        const nextWarmupIndex = nextWarmup.id === warmupSet.id ? warmups.length : warmups.findIndex((set) => set.id === nextWarmup.id);
+        const shouldActivateWarmup = !sets.some((set) => set.completed || set.skipped) && (!current || !setTypeSemantics(current).isWarmup);
+        if (shouldActivateWarmup) setActiveSet(nextWarmup.id, "Warm-Up " + (nextWarmupIndex + 1) + " of " + (warmups.length + 1) + " is ready", false);
+        commit({ ...data, sets: [...shifted, warmupSet] }, true, { invalidateAnalysis: false, deferPersistence: true });
       }
 
       function moveExercise(exerciseId, direction) {
@@ -9165,6 +9388,7 @@
       }
 
       function startTimer(exerciseId, setId, options = {}) {
+        if (!guardWorkoutMutation("start-timer", { exerciseId, setId }).allowed) return false;
         const previousTimer = timer ? { ...timer } : null;
         window.clearInterval(timerInterval);
         releaseTimerWakeLock();
@@ -10053,12 +10277,17 @@
 
       function taxonomyMusclesForExercise(exercise) {
         const research = prescriptionEngine?.evidence?.research;
-        if (!research?.exerciseIdByAlias || !research?.muscleMapsByExercise) return [];
-        const canonicalId = research.exerciseIdByAlias.get(normalizePrescriptionIdentity(exercise.name));
+        if (!research?.exerciseIdByAlias || !research?.muscleMapsByExercise || !research?.exerciseById) return [];
+        const requestedIdentity = exercise.researchExerciseId || exercise.research_exercise_id || exercise.exerciseId || "";
+        const normalizedName = normalizePrescriptionIdentity(exercise.name);
+        const canonicalId = research.exerciseIdByAlias.get(normalizedName)
+          || research.exerciseIdByAlias.get(normalizedName.replace(/\s+/g, "_"))
+          || research.exerciseDatabase?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === normalizedName)?.exercise_id
+          || (research.exerciseById.has(requestedIdentity) ? requestedIdentity : "");
         if (!canonicalId) return [];
         return normalizeMuscleMatches((research.muscleMapsByExercise.get(canonicalId) || [])
           .filter((mapping) => Number(mapping.fractional_set_credit || 0) > 0)
-          .map((mapping) => [displayMuscleForTaxonomyId(mapping.muscle_group_id), Number(mapping.fractional_set_credit || 0)]))
+          .map((mapping) => [displayMuscleForTaxonomyId(mapping.programming_family_id || mapping.muscle_group_id), Number(mapping.fractional_set_credit || 0)]))
           .map((item) => ({ ...item, canonicalExerciseId: canonicalId, taxonomyVersion: research.version }));
       }
 
@@ -10186,7 +10415,10 @@
         const template = { id: `fatigue-${flag.id}`, exercises: names.map((name) => ({ name })) };
         const priority = { full_program_deload: 9, muscle_group_deload: 8, exercise_deload: 7, rotate_exercise: 6, substitute: 6, reduce_volume: 5, light_session: 4, hold: 3, normal: 2, progress: 1 };
         return names.map((name) => unifiedPrescriptionSnapshot({ name }, { throughDate, historical: true, template, mesocycle: null, fresh: true }))
-          .filter(Boolean)
+          .filter((snapshot) => snapshot?.finalPrescription
+            && snapshot.hardConstraint !== true
+            && snapshot.type !== "hard_constraint_rejection"
+            && snapshot.kind !== "hard_constraint_rejection")
           .sort((a, b) => Number(priority[b.finalPrescription.recommendationType] || 0) - Number(priority[a.finalPrescription.recommendationType] || 0))[0] || null;
       }
 
@@ -10734,6 +10966,11 @@
         const target = event.target.closest("[data-action]");
         if (!target) return;
         const action = target.dataset.action;
+        const executableWorkoutMutationActions = ["add-exercise", "add-set", "add-warmup-set", "duplicate-set", "toggle-set", "toggle-skip-set", "start-timer"];
+        if (executableWorkoutMutationActions.includes(action) && !guardWorkoutMutation(action, { exerciseId: target.dataset.exerciseId, setId: target.dataset.setId }).allowed) {
+          event.preventDefault();
+          return;
+        }
         if (historyMutationIsLocked(action)) {
           showAppToast("Choose Edit History before changing a logged workout.");
           render();
@@ -10967,20 +11204,7 @@
           ensureActiveSet();
         }
         if (action === "add-set") addSet(target.dataset.exerciseId, false);
-        if (action === "add-warmup-set") {
-          const sets = setsForExercise(target.dataset.exerciseId);
-          const warmups = sets.filter((set) => setTypeSemantics(set).isWarmup);
-          const sequenceIndex = warmups.length;
-          const priorWarmup = warmups.at(-1);
-          const shifted = data.sets.map((set) => set.exerciseId === target.dataset.exerciseId && canonicalSetSequence(set) >= sequenceIndex ? { ...set, sequenceIndex: canonicalSetSequence(set) + 1, sequence: canonicalSetSequence(set) + 1 } : set);
-          const warmupSet = createSet(target.dataset.exerciseId, warmups.length + 1, { ...(priorWarmup || {}), sequenceIndex, sequence: sequenceIndex, setTypeIndex: warmups.length, completed: false, skipped: false, edited: false, isWarmup: true, setType: "warmup", countsTowardScore: false, countsTowardVolume: false, countsTowardProgression: false, rpe: 5 });
-          const current = data.sets.find((set) => set.id === activeSetId);
-          const nextWarmup = warmups.find((set) => !set.completed && !set.skipped) || warmupSet;
-          const nextWarmupIndex = nextWarmup.id === warmupSet.id ? warmups.length : warmups.findIndex((set) => set.id === nextWarmup.id);
-          const shouldActivateWarmup = !sets.some((set) => set.completed || set.skipped) && (!current || !setTypeSemantics(current).isWarmup);
-          if (shouldActivateWarmup) setActiveSet(nextWarmup.id, "Warm-Up " + (nextWarmupIndex + 1) + " of " + (warmups.length + 1) + " is ready", false);
-          commit({ ...data, sets: [...shifted, warmupSet] }, true, { invalidateAnalysis: false, deferPersistence: true });
-        }
+        if (action === "add-warmup-set") addWarmupSet(target.dataset.exerciseId);
         if (action === "duplicate-set") addSet(target.dataset.exerciseId, true);
         if (action === "delete-set") {
           if (timer?.setId === target.dataset.setId || timer?.pendingNextSetId === target.dataset.setId) cancelTimer("set-deleted", false);
@@ -11351,7 +11575,17 @@
           target.value = replacement;
           target.dataset.replaceOnNextInput = "false";
         }
-        if (action === "add-exercise-draft") addExerciseDraft = target.value;
+        if (action === "add-exercise-draft") {
+          addExerciseDraft = target.value;
+          const addButton = root.querySelector('[data-action="add-exercise"]');
+          const safety = guardWorkoutMutation("add-exercise", {}, false);
+          if (addButton) {
+            addButton.disabled = !safety.allowed;
+            addButton.setAttribute("aria-disabled", safety.allowed ? "false" : "true");
+            if (safety.allowed) addButton.removeAttribute("data-safety-reason");
+            else addButton.dataset.safetyReason = safety.message || "Blocked by the current workout safety restriction";
+          }
+        }
         if (action === "mesocycle-duration") mesocycleDurationDraft = target.value;
         if (action === "review-exercise-input") {
           chartExerciseDraft = target.value;
