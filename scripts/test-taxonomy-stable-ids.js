@@ -21,6 +21,16 @@ const NEGATIVE_CASES = [
   "reordered change history",
   "rewritten change history"
 ];
+const SOURCE_REGISTRY_NEGATIVE_CASES = [
+  "zero-row new rule",
+  "deleted rule",
+  "reordered rule",
+  "duplicate rule",
+  "zero-row new exercise",
+  "deleted exercise",
+  "reordered exercise",
+  "duplicate exercise"
+];
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -385,7 +395,82 @@ function runSyntheticCases() {
   return { negative: NEGATIVE_CASES, positive: ["known epochs", "valid future epoch"] };
 }
 
+function runSourceRegistryCases() {
+  const contract = database.ruleExerciseEpochContract;
+  assert.ok(contract, "Source must expose the rule/exercise epoch registry contract");
+  assert.equal(typeof contract.assertExactSourceIds, "function", "Source epoch registry must expose exact ordered-ID validation");
+  const ruleMapFixture = fixture.tables.rule_exercise_map;
+  const expectedRuleIds = Array.from({ length: 19 }, (_, index) => `rule_${String(index + 1).padStart(4, "0")}`);
+  const rule0019Epoch = ruleMapFixture.known_append_epochs.find((epoch) => epoch.change_id === "chg_0005");
+  const expectedExerciseIds = rule0019Epoch.row_selectors.map((selector) => selector[1]);
+  assert.deepEqual(contract.ruleIds, expectedRuleIds, "Complete rule registry must remain independent of live source order");
+  assert.deepEqual(contract.exerciseIds, expectedExerciseIds, "Complete exercise registry must remain independent of live source order");
+  assert.deepEqual(
+    contract.ruleSourceEpochs.map((epoch) => ({ epoch_id: epoch.epoch_id, ids: epoch.ids })),
+    [
+      { epoch_id: "v2.0.0_baseline", ids: expectedRuleIds.slice(0, 18) },
+      { epoch_id: "chg_0005", ids: ["rule_0019"] }
+    ],
+    "Rule source registry must retain immutable historical epochs"
+  );
+  assert.deepEqual(
+    contract.exerciseSourceEpochs.map((epoch) => ({ epoch_id: epoch.epoch_id, ids: epoch.ids })),
+    [
+      { epoch_id: "v2.0.0_baseline", ids: expectedExerciseIds.slice(0, -1) },
+      { epoch_id: "chg_0004", ids: ["ex_cable_woodchop"] }
+    ],
+    "Exercise source registry must retain immutable historical epochs"
+  );
+  assert.deepEqual(
+    contract.mappingEpochs.map((epoch) => ({
+      epoch_id: epoch.epoch_id,
+      row_count: epoch.expected_max_suffix - epoch.prior_max_suffix,
+      attribution_table: epoch.attribution_table || null,
+      attribution_ids: epoch.attribution_ids || []
+    })),
+    [
+      { epoch_id: "v2.0.0_baseline", row_count: 753, attribution_table: null, attribution_ids: [] },
+      { epoch_id: "chg_0004", row_count: 12, attribution_table: "exercise_database", attribution_ids: ["ex_cable_woodchop"] },
+      { epoch_id: "chg_0005", row_count: 62, attribution_table: "rule_exercise_map", attribution_ids: ["rule_0019"] }
+    ],
+    "Rule-map epochs must preserve the 753 + 12 + 62 suffix strategy and explicit change attribution"
+  );
+  const ruleIds = database.data.progression_rules.map((row) => row.rule_id);
+  const exerciseIds = database.data.exercise_database.map((row) => row.exercise_id);
+  assert.doesNotThrow(() => contract.assertExactSourceIds(ruleIds, exerciseIds), "Current source IDs must match the configured epoch registry");
+
+  const expectFailure = (name, candidateRuleIds, candidateExerciseIds) => {
+    assert.throws(
+      () => contract.assertExactSourceIds(candidateRuleIds, candidateExerciseIds),
+      /explicit append epoch|exact ordered source IDs/i,
+      `${name} must fail before rule/exercise applicability can yield zero rows`
+    );
+  };
+
+  const newRuleIds = [...ruleIds];
+  newRuleIds.splice(newRuleIds.indexOf("rule_0018"), 0, "rule_0099");
+  expectFailure("zero-row new rule", newRuleIds, exerciseIds);
+  expectFailure("deleted rule", ruleIds.slice(1), exerciseIds);
+  const reorderedRuleIds = [...ruleIds];
+  [reorderedRuleIds[0], reorderedRuleIds[1]] = [reorderedRuleIds[1], reorderedRuleIds[0]];
+  expectFailure("reordered rule", reorderedRuleIds, exerciseIds);
+  expectFailure("duplicate rule", [ruleIds[0], ...ruleIds], exerciseIds);
+
+  const newExerciseIds = [...exerciseIds];
+  newExerciseIds.splice(newExerciseIds.indexOf("ex_cable_woodchop"), 0, "ex_zero_row_future");
+  expectFailure("zero-row new exercise", ruleIds, newExerciseIds);
+  expectFailure("deleted exercise", ruleIds, exerciseIds.slice(1));
+  const reorderedExerciseIds = [...exerciseIds];
+  [reorderedExerciseIds[0], reorderedExerciseIds[1]] = [reorderedExerciseIds[1], reorderedExerciseIds[0]];
+  expectFailure("reordered exercise", ruleIds, reorderedExerciseIds);
+  expectFailure("duplicate exercise", ruleIds, [exerciseIds[0], ...exerciseIds]);
+
+  return { negative: SOURCE_REGISTRY_NEGATIVE_CASES, positive: ["current exact ordered source IDs"] };
+}
+
 function main() {
+  const sourceRegistryCases = runSourceRegistryCases();
+  console.log(JSON.stringify({ source_epoch_registry_cases_passed: sourceRegistryCases }, null, 2));
   const syntheticCases = runSyntheticCases();
   console.log(JSON.stringify({ synthetic_contract_cases_passed: syntheticCases }, null, 2));
   const totals = validateStableIdContract(database.data);

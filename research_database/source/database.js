@@ -415,20 +415,117 @@ const studyMuscleGroupMap = [];
 muscleGroups.forEach((muscle)=>["stu_0001","stu_0002","stu_0025"].forEach((studyId)=>studyMuscleGroupMap.push({study_muscle_group_map_id:`smg_${String(studyMuscleGroupMap.length+1).padStart(4,"0")}`,study_id:studyId,muscle_group_id:muscle.muscle_group_id,relationship_type:"general_volume_inference"})));
 
 const ruleExerciseMap = [];
-// Rule-map IDs are historical identities. Keep each source epoch explicit so a
-// later exercise or rule cannot be inserted into an older rule-first sequence.
-const orderedIdsThrough = (rows, idField, terminalId, includeTerminal = true) => {
-  const terminalIndex = rows.findIndex((row) => row[idField] === terminalId);
-  if (terminalIndex < 0) throw new Error(`Missing rule-map epoch terminal ${terminalId}`);
-  return Object.freeze(rows.slice(0, terminalIndex + (includeTerminal ? 1 : 0)).map((row) => row[idField]));
+// Source IDs and rule-map IDs are historical identities. These registries must
+// not be derived from the live arrays: doing so would let a new zero-row rule or
+// exercise silently enter an older epoch. Additions require a named append
+// epoch, matching change-log attribution, and a higher rule-map suffix range.
+const ruleSourceEpochs = Object.freeze([
+  Object.freeze({
+    epoch_id: "v2.0.0_baseline",
+    ids: Object.freeze([
+      "rule_0001", "rule_0002", "rule_0003", "rule_0004", "rule_0005", "rule_0006",
+      "rule_0007", "rule_0008", "rule_0009", "rule_0010", "rule_0011", "rule_0012",
+      "rule_0013", "rule_0014", "rule_0015", "rule_0016", "rule_0017", "rule_0018"
+    ])
+  }),
+  Object.freeze({ epoch_id: "chg_0005", ids: Object.freeze(["rule_0019"]) })
+]);
+const exerciseSourceEpochs = Object.freeze([
+  Object.freeze({
+    epoch_id: "v2.0.0_baseline",
+    ids: Object.freeze([
+      "ex_barbell_bench_press",
+      "ex_cambered_barbell_bench_press",
+      "ex_dumbbell_bench_press",
+      "ex_incline_dumbbell_press",
+      "ex_machine_chest_press",
+      "ex_incline_machine_press",
+      "ex_cable_fly",
+      "ex_low_to_high_cable_fly",
+      "ex_overhead_press",
+      "ex_machine_shoulder_press",
+      "ex_cable_lateral_raise",
+      "ex_dumbbell_lateral_raise",
+      "ex_machine_lateral_raise",
+      "ex_pull_up",
+      "ex_chin_up",
+      "ex_lat_pulldown",
+      "ex_one_arm_cable_pulldown",
+      "ex_chest_supported_row",
+      "ex_seated_cable_row",
+      "ex_dumbbell_row",
+      "ex_reverse_pec_deck",
+      "ex_cable_rear_delt_fly",
+      "ex_barbell_shrug",
+      "ex_dumbbell_shrug",
+      "ex_back_squat",
+      "ex_front_squat",
+      "ex_leg_press",
+      "ex_hack_squat",
+      "ex_bulgarian_split_squat",
+      "ex_leg_extension",
+      "ex_deadlift",
+      "ex_romanian_deadlift",
+      "ex_good_morning",
+      "ex_hip_thrust",
+      "ex_back_extension",
+      "ex_seated_leg_curl",
+      "ex_lying_leg_curl",
+      "ex_nordic_curl",
+      "ex_hip_adduction_machine",
+      "ex_hip_abduction_machine",
+      "ex_cable_hip_abduction",
+      "ex_standing_calf_raise",
+      "ex_seated_calf_raise",
+      "ex_leg_press_calf_raise",
+      "ex_incline_dumbbell_curl",
+      "ex_preacher_curl",
+      "ex_cable_curl",
+      "ex_hammer_curl",
+      "ex_cable_pushdown",
+      "ex_overhead_cable_extension",
+      "ex_close_grip_bench_press",
+      "ex_wrist_curl",
+      "ex_reverse_wrist_curl",
+      "ex_farmers_carry",
+      "ex_cable_crunch",
+      "ex_hanging_leg_raise",
+      "ex_ab_wheel",
+      "ex_pallof_press",
+      "ex_side_plank",
+      "ex_neck_flexion",
+      "ex_neck_extension"
+    ])
+  }),
+  Object.freeze({ epoch_id: "chg_0004", ids: Object.freeze(["ex_cable_woodchop"]) })
+]);
+const flattenSourceEpochIds = (epochs, sourceName) => {
+  const ids = epochs.flatMap((epoch) => epoch.ids);
+  const duplicateIds = ids.filter((id, index) => ids.indexOf(id) !== index);
+  if (duplicateIds.length) throw new Error(`${sourceName} epoch registry contains duplicate IDs: ${[...new Set(duplicateIds)].join(DELIMITER)}`);
+  return Object.freeze(ids);
 };
-const v2RuleIds = orderedIdsThrough(progressionRules, "rule_id", "rule_0018");
-const v2ExerciseIds = orderedIdsThrough(exercises, "exercise_id", "ex_cable_woodchop", false);
-const v3ExerciseIds = orderedIdsThrough(exercises, "exercise_id", "ex_cable_woodchop");
+const registeredRuleIds = flattenSourceEpochIds(ruleSourceEpochs, "Rule");
+const registeredExerciseIds = flattenSourceEpochIds(exerciseSourceEpochs, "Exercise");
+const exactOrderedIdsMatch = (actual, expected) => actual.length === expected.length
+  && actual.every((id, index) => id === expected[index]);
+const assertExactSourceIds = (ruleIds, exerciseIds) => {
+  const invalidRules = !Array.isArray(ruleIds) || !exactOrderedIdsMatch(ruleIds, registeredRuleIds);
+  const invalidExercises = !Array.isArray(exerciseIds) || !exactOrderedIdsMatch(exerciseIds, registeredExerciseIds);
+  if (invalidRules || invalidExercises) {
+    throw new Error("Rule and exercise sources must match the exact ordered source IDs; any addition requires an explicit append epoch, change attribution, and higher rule-map suffix range, while deletion, reordering, or duplication is forbidden");
+  }
+};
+assertExactSourceIds(
+  progressionRules.map((rule) => rule.rule_id),
+  exercises.map((exercise) => exercise.exercise_id)
+);
+const v2RuleIds = ruleSourceEpochs[0].ids;
+const v2ExerciseIds = exerciseSourceEpochs[0].ids;
 const ruleExerciseEpochs = Object.freeze([
   Object.freeze({ epoch_id: "v2.0.0_baseline", prior_max_suffix: 0, expected_max_suffix: 753, rule_ids: v2RuleIds, exercise_ids: v2ExerciseIds }),
-  Object.freeze({ epoch_id: "chg_0004", prior_max_suffix: 753, expected_max_suffix: 765, rule_ids: v2RuleIds, exercise_ids: Object.freeze(["ex_cable_woodchop"]) }),
-  Object.freeze({ epoch_id: "chg_0005", prior_max_suffix: 765, expected_max_suffix: 827, rule_ids: Object.freeze(["rule_0019"]), exercise_ids: v3ExerciseIds })
+  Object.freeze({ epoch_id: "chg_0004", prior_max_suffix: 753, expected_max_suffix: 765, rule_ids: v2RuleIds, exercise_ids: exerciseSourceEpochs[1].ids, attribution_table: "exercise_database", attribution_ids: exerciseSourceEpochs[1].ids }),
+  Object.freeze({ epoch_id: "chg_0005", prior_max_suffix: 765, expected_max_suffix: 827, rule_ids: ruleSourceEpochs[1].ids, exercise_ids: registeredExerciseIds, attribution_table: "rule_exercise_map", attribution_ids: ruleSourceEpochs[1].ids })
 ]);
 const ruleById = new Map(progressionRules.map((rule) => [rule.rule_id, rule]));
 const exerciseById = new Map(exercises.map((exercise) => [exercise.exercise_id, exercise]));
@@ -446,6 +543,7 @@ const ruleExerciseSelectors = new Set();
 let ruleExerciseMaxSuffix = 0;
 ruleExerciseEpochs.forEach((epoch) => {
   if (ruleExerciseMaxSuffix !== epoch.prior_max_suffix) throw new Error(`${epoch.epoch_id} must append after rex_${String(epoch.prior_max_suffix).padStart(5, "0")}`);
+  if (epoch.epoch_id !== "v2.0.0_baseline" && epoch.expected_max_suffix <= epoch.prior_max_suffix) throw new Error(`${epoch.epoch_id} must reserve a higher rule-map suffix range; zero-row append epochs are forbidden`);
   epoch.rule_ids.forEach((ruleId) => {
     const rule = ruleById.get(ruleId);
     if (!rule) throw new Error(`${epoch.epoch_id} references missing rule ${ruleId}`);
@@ -541,6 +639,47 @@ const changeLog = [
   ,{change_id:"chg_0005",change_date:REVIEW_DATE,database_version:VERSION,affected_tab:"research_library|evidence_conclusions|progression_rules|rule_exercise_map|definitions_data_dictionary",affected_record_ids:"stu_0043-stu_0048|con_0028-con_0031|rule_0001-rule_0019",change_type:"breaking_science_provenance_contract",previous_value:"Rules cited studies but did not trace through conclusion records, distinguish product policy from safety authority, or expose verified PubMed and PubMed Central identifiers.",new_value:"Appended six primary evidence records, four scoped conclusions, an immediate pain blocker, bibliographic identifiers, conclusion traceability, authority, enforcement, and product-policy disclosure fields.",reason_for_change:"Recommendation logic needs auditable evidence scope, explicit uncertainty, and a deterministic separation between hard safety constraints and configurable numerical heuristics.",supporting_study_ids:"stu_0043|stu_0044|stu_0045|stu_0046|stu_0047|stu_0048",reviewer_notes:"Version 3.0.0 changes the public table schema. Historical persistent IDs remain unchanged; new records use append-only ID epochs. Numerical thresholds remain advisory product policy unless the rule is an allowlisted safety blocker."}
 ];
 
+const affectedRecordTokenCovers = (token, recordId) => {
+  if (token === recordId) return true;
+  const range = token.match(/^([a-z]+_)(\d+)-([a-z]+_)(\d+)$/);
+  const record = recordId.match(/^([a-z]+_)(\d+)$/);
+  if (!range || !record || range[1] !== range[3] || range[1] !== record[1]) return false;
+  const value = Number(record[2]);
+  return value >= Number(range[2]) && value <= Number(range[4]);
+};
+const sourceAppendEpochs = [...ruleSourceEpochs, ...exerciseSourceEpochs]
+  .filter((epoch) => epoch.epoch_id !== "v2.0.0_baseline");
+sourceAppendEpochs.forEach((sourceEpoch) => {
+  const matchingMapEpochs = ruleExerciseEpochs.filter((epoch) => epoch.epoch_id === sourceEpoch.epoch_id);
+  if (matchingMapEpochs.length !== 1) throw new Error(`${sourceEpoch.epoch_id} requires exactly one explicit rule-map append epoch`);
+});
+ruleExerciseEpochs.filter((epoch) => epoch.epoch_id !== "v2.0.0_baseline").forEach((epoch) => {
+  const attributedSourceIds = sourceAppendEpochs
+    .filter((sourceEpoch) => sourceEpoch.epoch_id === epoch.epoch_id)
+    .flatMap((sourceEpoch) => sourceEpoch.ids);
+  if (!exactOrderedIdsMatch(epoch.attribution_ids || [], attributedSourceIds)) {
+    throw new Error(`${epoch.epoch_id} must attribute every appended source ID in exact source-epoch order`);
+  }
+  const matchingChanges = changeLog.filter((change) => change.change_id === epoch.epoch_id);
+  if (matchingChanges.length !== 1) throw new Error(`${epoch.epoch_id} requires exactly one matching change-log row`);
+  const change = matchingChanges[0];
+  if (!change.affected_tab.split(DELIMITER).includes(epoch.attribution_table)) {
+    throw new Error(`${epoch.epoch_id} change log must attribute ${epoch.attribution_table}`);
+  }
+  const affectedRecordTokens = change.affected_record_ids.split(DELIMITER);
+  const unattributedIds = epoch.attribution_ids.filter((recordId) => !affectedRecordTokens.some((token) => affectedRecordTokenCovers(token, recordId)));
+  if (unattributedIds.length) throw new Error(`${epoch.epoch_id} change log does not attribute source IDs: ${unattributedIds.join(DELIMITER)}`);
+});
+
+const ruleExerciseEpochContract = Object.freeze({
+  ruleIds: registeredRuleIds,
+  exerciseIds: registeredExerciseIds,
+  ruleSourceEpochs,
+  exerciseSourceEpochs,
+  mappingEpochs: ruleExerciseEpochs,
+  assertExactSourceIds
+});
+
 const data = {
   executive_summary: executiveSummary,
   research_library: studies,
@@ -563,4 +702,4 @@ const data = {
   exercise_progression_metric_map: exerciseProgressionMetricMap
 };
 
-module.exports = { VERSION, REVIEW_DATE, DELIMITER, controlledVocabularies, tableColumns, data, CANONICAL_TO_PROGRAMMING_FAMILY };
+module.exports = { VERSION, REVIEW_DATE, DELIMITER, controlledVocabularies, tableColumns, data, CANONICAL_TO_PROGRAMMING_FAMILY, ruleExerciseEpochContract };
