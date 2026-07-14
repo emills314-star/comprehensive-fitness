@@ -1,4 +1,4 @@
-const CACHE_NAME = "comprehensive-fitness-pwa-v30";
+const CACHE_NAME = "comprehensive-fitness-pwa-v31";
 const CACHE_PREFIX = "comprehensive-fitness-pwa-";
 const APP_SHELL = Object.freeze([
   "/",
@@ -92,6 +92,11 @@ function timerWasCanceled(timerId, now = Date.now(), timerVersion = 1) {
   return true;
 }
 
+function pushPayloadWasCanceled(payload = {}, now = Date.now()) {
+  const timerVersion = payload.timerVersion || 1;
+  return timerWasCanceled(payload.notificationId, now, timerVersion) || timerWasCanceled(payload.timerId, now, timerVersion);
+}
+
 function safeNotificationUrl(value, origin) {
   try {
     if (String(value || "").length > 2048) return `${origin}/`;
@@ -162,7 +167,7 @@ if (typeof self !== "undefined" && self.addEventListener) {
     let payload = {};
     try { payload = event.data?.json() || {}; } catch { payload = {}; }
     event.waitUntil(Promise.resolve().then(async () => {
-      if (timerWasCanceled(payload.notificationId || payload.timerId, Date.now(), payload.timerVersion || 1)) return;
+      if (pushPayloadWasCanceled(payload, Date.now())) return;
       const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
       const visible = windows.find((client) => client.visibilityState === "visible");
       if (visible) {
@@ -208,6 +213,7 @@ if (typeof module !== "undefined") {
     isPublicCacheUrl,
     isSensitivePath,
     normalizedPathname,
+    pushPayloadWasCanceled,
     rememberCanceledTimer,
     responseCanBeCached,
     safeNotificationUrl,

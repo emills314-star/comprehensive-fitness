@@ -132,11 +132,11 @@ Recommended app settings:
 
 ### Optional workout upload
 
-**Upload installation-authorized workout mutations to the optional cloud backend** is separate from notification permission and defaults off. Enable it only if you want the current installation to send bounded workout mutations to the configured backend. Turning it off cancels pending upload work and clears the local upload queue. This service is write-only: it is not account history, cross-device continuity, or restore. Continue exporting app backups.
+**Upload installation-authorized workout mutations to the optional cloud backend** is separate from notification permission and defaults off. Enable it only if you want the current installation to send bounded workout mutations to the configured backend. Turning it off invalidates queued work, aborts an active upload, and clears the local upload queue before any later re-enable starts a fresh consent generation. This service is write-only: it is not account history, cross-device continuity, or restore. Continue exporting app backups.
 
 ### Delete remote installation data
 
-Settings > **Danger Zone > Delete Remote Installation Data** revokes the backend installation while preserving local workouts. Cleanup may show **deleting** and continue in bounded retries; keep the app online or reopen it later until Settings reports deletion. Do not clear browser storage or uninstall during that process if you expect the client to continue using its installation authorization. A non-retryable authorization error stays visible and requires a manual retry. An alert already dispatched to the browser push service cannot be recalled, although revoked server state cannot create later retries.
+Settings > **Danger Zone > Delete Remote Installation Data** revokes the backend installation while preserving local workouts. Cleanup may show **deleting** and continue in bounded retries; keep the app online or reopen it later until Settings reports deletion. **Clear All Local App Data** is paused while cleanup needs the retained authorization and while an active rest notification cannot be canceled reliably. Once neither condition applies, local clearing is available, but it is local-only unless remote deletion already completed. A non-retryable authorization error stays visible and requires a manual retry. An alert already dispatched to the browser push service cannot be recalled, although revoked server state cannot create later retries.
 
 ## 5. Physical acceptance test
 
@@ -180,7 +180,7 @@ Settings > **Danger Zone > Delete Remote Installation Data** revokes the backend
 | Background delivery needs connectivity | Keep cellular data enabled when starting a rest period. Foreground timing remains local if the backend cannot be reached. |
 | iOS can evict web storage | Export a backup weekly and before iOS upgrades, domain changes, clearing Safari data, or reinstalling the PWA. |
 | Redis workout sync is not a restore service | Treat exported app JSON as the authoritative backup. Do not delete the installed PWA based only on a successful sync status. |
-| Remote cleanup is resumable rather than instantaneous | Leave the installation authorization intact until Settings reports remote data deleted; retry after reconnecting if an error remains visible. |
+| Remote cleanup is resumable rather than instantaneous | Leave the installation authorization intact until Settings reports remote data deleted; the app pauses local clearing while that authorization is required. Retry after reconnecting if an error remains visible. |
 | PWA update appears delayed | Export first, open the PWA online, wait briefly, close it from the app switcher, and reopen it. Delete/reinstall only after a verified backup. |
 
 ## Manual account-security task

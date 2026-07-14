@@ -70,9 +70,9 @@ Only one active workout is allowed. Other starts are disabled with one canonical
 
 ### Settings privacy and data controls
 
-- Lock-screen notifications and cloud workout upload are separate controls. Upload defaults off and is enabled only by its own checkbox; turning it off clears the pending mutation queue without treating notification permission as consent.
+- Lock-screen notifications and cloud workout upload are separate controls. Upload defaults off and is enabled only by its own checkbox; turning it off immediately invalidates old upload work, aborts an in-flight request, and clears the pending mutation queue without treating notification permission as consent.
 - Backup and personal-evidence import announce an attempt-specific pending, success, or error state in a polite live region. Invalid, oversized, overly deep/wide, executable-key, duplicate, or orphaned data is rejected without replacing current data.
-- **Delete Remote Installation Data** is a separate Danger Zone action from **Clear All Local App Data**. Remote deletion preserves local workouts, displays deleting/retry/error/deleted status, and resumes bounded server cleanup; local clearing does not claim to delete server records.
+- **Delete Remote Installation Data** is a separate Danger Zone action from **Clear All Local App Data**. Remote deletion preserves local workouts, displays deleting/retry/error/deleted status, and resumes bounded server cleanup. Local clearing shows a status and pauses while that cleanup still needs its bearer or while an active rest notification cannot yet be canceled. With no such pending work, explicit local clearing remains available and does not claim to delete server records.
 - Exported app JSON remains the only implemented user-managed recovery source. Cloud workout upload is write-only and must never be labeled restore, cloud history, or an account.
 
 ### History and progress

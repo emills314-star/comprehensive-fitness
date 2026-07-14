@@ -15,7 +15,7 @@
     <h2>Third Parties</h2>
     <p>The app does not include advertising or analytics trackers. Optional notifications and consented workout upload use Vercel Functions and Upstash Redis; notifications also use Upstash QStash and the browser push service. Push endpoints and encryption keys are used only to deliver requested alerts. The workout endpoint is write-only and is not an account, cloud-history, or restore service.</p>
     <h2>Your Control</h2>
-    <p>You can export your data, import a validated backup, revoke workout-upload consent, clear local data, or request deletion of this installation's remote records from Settings. Remote deletion preserves local workouts and may continue through a visible retry state until the server confirms deletion. Exported app backups remain the recovery method.</p>
+    <p>You can export your data, import a validated backup, revoke workout-upload consent, clear local data, or request deletion of this installation's remote records from Settings. Remote deletion preserves local workouts and may continue through a visible retry state until the server confirms deletion; local clearing pauses while that authorization or an unresolved active-timer cancellation must be retained. Otherwise, clearing local data does not delete remote records unless you completed the separate remote-deletion action. Exported app backups remain the recovery method.</p>
     <h2>Training Guidance</h2>
     <p>Progression recommendations are informational fitness guidance. The app does not diagnose medical conditions or provide medical treatment. Stop for severe, unexplained, or worsening pain and consult a qualified professional before making health or training decisions.</p>
     <h2>Contact</h2>

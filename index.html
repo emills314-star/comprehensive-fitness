@@ -2058,6 +2058,13 @@
       let updateAvailable = false;
       let persistenceReady = false;
       let syncFlushTimer = 0;
+      let syncConsentEpoch = 0;
+      let syncConsentTransition = Promise.resolve();
+      const activeWorkoutSyncOperations = new Set();
+      const activeWorkoutSyncAbortControllers = new Set();
+      const restSchedulePromises = new Map();
+      const canceledRestScheduleKeys = new Map();
+      let pushOperationWriteChain = Promise.resolve();
       let selectedExerciseId = "";
       let chartExerciseDraft = "";
       let chartExerciseSearchOpen = false;
@@ -8450,6 +8457,7 @@
         const pushStatus = notificationStatus();
         const migration = data.migrationAudit?.at(-1);
         const reviewSets = data.sets.filter((set) => set.reviewRequired);
+        const localClearBlock = localClearBlockReason();
         return `
           <section class="view settings-view">
             <div class="screen-heading"><div><div class="section-kicker">Settings</div><h1>Training setup</h1></div></div>
@@ -8555,13 +8563,14 @@
               <button type="button" data-action="export-data">${icon.download} data</button>
               ${exportText ? '<textarea class="export-box" readonly aria-label="Exported backup JSON">' + escapeHtml(exportText) + '</textarea>' : ""}
               <label class="import-button">${icon.upload} ${importInProgress ? "importing..." : "backup or Strong CSV"}<input type="file" accept=".json,.csv,application/json,text/csv" data-action="import-data" ${importInProgress ? "disabled" : ""} /></label>
-              ${migration ? '<div class="inline-panel"><strong>Strong data migration v' + migration.version + '</strong><p class="settings-note">Inspected ' + migration.inspected + ' sets; changed ' + migration.changed + '; preserved ' + migration.manualOverridesPreserved + ' manual corrections; identified ' + migration.warmups + ' warm-ups, ' + migration.topSets + ' top sets, ' + migration.backoffSets + ' back-off sets, and ' + migration.dropSets + ' drop sets. ' + migration.ambiguous + ' sets need review. ' + (migration.templatesReseeded || 0) + ' Strong templates were reseeded from active working sets.</p></div>' : ''}
+              ${migration ? '<div class="inline-panel"><strong>Strong data migration v' + escapeHtml(migration.version) + '</strong><p class="settings-note">Inspected ' + escapeHtml(migration.inspected) + ' sets; changed ' + escapeHtml(migration.changed) + '; preserved ' + escapeHtml(migration.manualOverridesPreserved) + ' manual corrections; identified ' + escapeHtml(migration.warmups) + ' warm-ups, ' + escapeHtml(migration.topSets) + ' top sets, ' + escapeHtml(migration.backoffSets) + ' back-off sets, and ' + escapeHtml(migration.dropSets) + ' drop sets. ' + escapeHtml(migration.ambiguous) + ' sets need review. ' + escapeHtml(migration.templatesReseeded || 0) + ' Strong templates were reseeded from active working sets.</p></div>' : ''}
               <div class="inline-panel"><strong>Recoverability</strong><p class="settings-note">${data.rawImports?.length || 0} raw Strong import${(data.rawImports?.length || 0) === 1 ? '' : 's'} retained. Older completed workouts remain in the retention archive and are included in exports, but excluded from current analysis.</p></div>
               ${reviewSets.length ? '<div class="inline-panel"><strong>Manual review queue · ' + reviewSets.length + '</strong><p class="settings-note">These imported sets could not be classified confidently. Open the submitted workout from History, choose Edit, then select the set type.</p></div>' : ''}
             </div></details>
             <details class="settings-group danger-zone"><summary>Danger Zone <span>High-risk actions</span></summary><div class="disclosure-body settings-panel">
               <div><strong>Clear All Local App Data</strong><p class="settings-note">Removes app data stored on this device. It does not submit, cancel, or delete cloud account data.</p></div>
-              <button class="danger-button" type="button" data-action="clear-data">${icon.delete} Clear All Local App Data</button>
+              <button class="danger-button" type="button" data-action="clear-data" ${localClearBlock ? "disabled" : ""}>${icon.delete} Clear All Local App Data</button>
+              ${localClearBlock ? '<p class="settings-note" role="status">' + escapeHtml(localClearBlock) + '</p>' : ''}
               <div><strong>Delete Remote Installation Data</strong><p class="settings-note">Revokes this installation and resumes bounded server cleanup until deletion is confirmed. Local workout data remains on this device.</p></div>
               <button class="danger-button" type="button" data-action="delete-remote-installation" ${pushIdentity?.token ? "" : "disabled"}>${icon.delete} ${pushIdentity?.deletion?.retryable ? "Retry Remote Deletion" : "Delete Remote Installation Data"}</button>
               ${pushIdentity?.deletion?.message ? '<p class="settings-note" role="status">' + escapeHtml(pushIdentity.deletion.message) + '</p>' : ''}
@@ -8573,22 +8582,31 @@
 
       async function inspectUnsynchronizedData() {
         let queue = [];
-        const syncConsented = data.settings.cloudWorkoutSyncConsent === true;
-        if (syncConsented) {
+        const epoch = syncConsentEpoch;
+        const syncConsented = workoutSyncConsentIsCurrent(epoch);
+        if (syncConsented && workoutSyncConsentIsCurrent(epoch)) {
           try { queue = await readIndexedValue("sync-queue") || []; } catch { queue = []; }
+          if (!workoutSyncConsentIsCurrent(epoch)) queue = [];
         }
         const draftSessions = data.sessions.filter((session) => !isSessionSubmitted(session) && data.exercises.some((exercise) => exercise.sessionId === session.id));
         const draftIds = new Set(draftSessions.map((session) => session.id));
         const draftExerciseIds = new Set(data.exercises.filter((exercise) => draftIds.has(exercise.sessionId)).map((exercise) => exercise.id));
         const unsavedSetChanges = data.sets.filter((set) => draftExerciseIds.has(set.exerciseId) && (set.edited || set.completed || Number(set.reps || 0) > 0 || Number(set.weight || 0) > 0)).length;
         const workoutIds = new Set([...queue.map((item) => item.sessionId), ...draftSessions.map((session) => session.id)]);
-        return { queueCount: queue.length, workoutCount: workoutIds.size, setChanges: unsavedSetChanges, canSync: Boolean(syncConsented && navigator.onLine && pushIdentity?.token && queue.length) };
+        return { queueCount: queue.length, workoutCount: workoutIds.size, setChanges: unsavedSetChanges, canSync: Boolean(workoutSyncConsentIsCurrent(epoch) && navigator.onLine && pushIdentity?.token && queue.length) };
       }
 
       async function requestClearLocalData() {
+        const remoteBlock = localClearBlockReason();
+        if (remoteBlock) {
+          settingsMessage = remoteBlock;
+          render();
+          return false;
+        }
         const unsynced = await inspectUnsynchronizedData();
         clearDataFlow = { open: true, acknowledged: false, phrase: "", unsynced };
         render();
+        return true;
       }
 
       function closeClearDataFlow() {
@@ -8599,12 +8617,15 @@
       function renderClearDataSheet() {
         if (!clearDataFlow?.open) return "";
         const unsynced = clearDataFlow.unsynced || { workoutCount: 0, setChanges: 0, queueCount: 0, canSync: false };
-        const unlocked = clearDataFlow.acknowledged && clearDataFlow.phrase === "CLEAR";
+        const remoteBlock = localClearBlockReason();
+        const blockedMessage = remoteBlock || clearDataFlow.blockedMessage || "";
+        const unlocked = clearDataFlow.acknowledged && clearDataFlow.phrase === "CLEAR" && !blockedMessage;
         const risk = unsynced.workoutCount || unsynced.setChanges || unsynced.queueCount;
         return `
           <div class="sheet-backdrop" role="presentation">
             <section class="bottom-sheet destructive-sheet clear-data-sheet" role="dialog" aria-modal="true" aria-labelledby="clear-data-title" data-sheet-content>
               <div><div class="section-kicker">Danger Zone</div><h2 id="clear-data-title">Clear All Local App Data?</h2><p>This removes the active workout, unsaved sets, offline and cached workout data, cached templates and history, local preferences, app notification settings, IndexedDB records, local storage, service-worker caches, and pending sync operations from this device.</p></div>
+              ${blockedMessage ? '<div class="destructive-warning" role="status"><strong>Local clearing is paused</strong><span>' + escapeHtml(blockedMessage) + '</span></div>' : ''}
               ${risk ? '<div class="destructive-warning"><strong>Unsynchronized data detected</strong><span>This device contains ' + unsynced.workoutCount + ' unsynchronized workout' + (unsynced.workoutCount === 1 ? '' : 's') + ' and ' + unsynced.setChanges + ' unsaved set change' + (unsynced.setChanges === 1 ? '' : 's') + '. Clearing now may permanently delete them.</span>' + (unsynced.canSync ? '<button type="button" data-action="sync-before-clear">Sync Now</button>' : '<small>Sync is unavailable or not configured. Export a backup before clearing if this data matters.</small>') + '</div>' : '<div class="inline-panel"><strong>No pending local workout changes were detected.</strong></div>'}
               <div class="clear-data-scope"><strong>What remains</strong><span>This action does not delete any server-side account data. Any data that exists only on this device will be lost.</span></div>
               <label class="toggle-line destructive-ack"><input type="checkbox" data-action="clear-data-ack" ${clearDataFlow.acknowledged ? 'checked' : ''} />I understand that unsynchronized data may be permanently deleted</label>
@@ -8626,15 +8647,36 @@
         });
       }
 
+      function localClearBlockReason() {
+        if (!pushIdentity?.token) return "";
+        const deletionStatus = pushIdentity.deletion?.status || "";
+        if (window.__cfRemoteDeletionInFlight || pushIdentity.status === "deleting" || deletionStatus === "deleting" || deletionStatus === "error" || pushIdentity.deletion?.retryable === true) return "Remote installation deletion is still in progress. Reconnect or reopen the app and wait for deletion to finish before clearing local data, so the cleanup authorization is not lost.";
+        return "";
+      }
+
       async function permanentlyClearLocalData() {
         if (!clearDataFlow?.acknowledged || clearDataFlow.phrase !== "CLEAR") return;
+        const remoteBlock = localClearBlockReason();
+        if (remoteBlock) {
+          clearDataFlow = { ...clearDataFlow, blockedMessage: remoteBlock };
+          settingsMessage = remoteBlock;
+          render();
+          return false;
+        }
         if (timer) {
           const previous = { ...timer };
+          const cancellationConfirmed = await cancelRestPush(previous, "local-data-cleared");
+          if (!cancellationConfirmed) {
+            const blockedMessage = "The active rest notification could not be canceled yet. Reconnect and retry local clearing; its durable cancellation record and installation authorization were preserved.";
+            clearDataFlow = { ...clearDataFlow, blockedMessage };
+            settingsMessage = blockedMessage;
+            render();
+            return false;
+          }
           window.clearInterval(timerInterval);
           timerInterval = 0;
           releaseTimerWakeLock();
           timer = null;
-          cancelRestPush(previous, "local-data-cleared");
         }
         try { (await navigator.serviceWorker?.ready)?.pushManager && (await (await navigator.serviceWorker.ready).pushManager.getSubscription())?.unsubscribe(); } catch { /* Local cleanup continues. */ }
         try { for (const key of await caches.keys()) if (key.startsWith("comprehensive-fitness")) await caches.delete(key); } catch { /* Cache API is optional. */ }
@@ -8661,6 +8703,7 @@
         saveRuntime();
         setActiveTab("lift", { replace: true, renderNow: false });
         render();
+        return true;
       }
 
       function patchSession(patch, shouldRender = true) {
@@ -9452,11 +9495,12 @@
         return pushIdentity?.token ? { Authorization: "Bearer " + pushIdentity.token } : {};
       }
 
-      async function pushApi(path, body) {
+      async function pushApi(path, body, options = {}) {
         const response = await fetch(path, {
           method: "POST",
           headers: { "Content-Type": "application/json", ...pushAuthorizationHeaders() },
-          body: JSON.stringify(body)
+          body: JSON.stringify(body),
+          signal: options.signal
         });
         const payload = await response.json().catch(() => ({}));
         const retryAfterValue = String(response.headers?.get?.("Retry-After") || "").trim();
@@ -9543,60 +9587,54 @@
         render();
       }
 
-      async function scheduleRestPush(timerSnapshot) {
-        if (!data.settings.timerNotifications || !pushIdentity?.token || Notification.permission !== "granted" || !navigator.onLine) return false;
-        const session = sessionById(timerSnapshot.workoutId) || activeWorkoutSession();
-        const exercise = exerciseById(timerSnapshot.exerciseId);
-        const upcoming = setById(timerSnapshot.pendingNextSetId);
-        try {
-          const result = await pushApi("/api/push/schedule", {
-            installationId: pushIdentity.installationId,
-            notificationId: timerSnapshot.id,
-            workoutId: timerSnapshot.workoutId || session?.id,
-            exerciseId: upcoming?.exerciseId || timerSnapshot.exerciseId,
-            setId: timerSnapshot.setId,
-            upcomingSetId: upcoming?.id || "",
-            upcomingSetNumber: upcoming?.isWarmup ? "WU" : upcoming?.setNumber || "",
-            upcomingSetLabel: upcoming ? setExecutionLabel(upcoming) : "",
-            timerVersion: Number(timerSnapshot.version || 1),
-            exerciseName: exerciseById(upcoming?.exerciseId)?.name || exercise?.name || "Workout",
-            messageDetail: data.settings.notificationMessageDetail,
-            restEndTime: timerSnapshot.endsAt
-          });
-          if (timer?.id === timerSnapshot.id) {
-            timer.notificationStatus = result.status;
-            timer.serverNotificationId = result.notificationId;
-            saveRuntime();
-            syncTimerDom();
-          }
-          return true;
-        } catch (error) {
-          if (timer?.id === timerSnapshot.id) {
-            timer.notificationStatus = navigator.onLine ? "error" : "pending";
-            saveRuntime();
-            syncTimerDom();
-          }
-          return false;
-        }
+      function restTimerScheduleKey(timerId, timerVersion = 1) {
+        const idValue = String(timerId || "").slice(0, 160);
+        const versionValue = Math.max(1, Math.floor(Number(timerVersion || 1)));
+        return idValue ? `${idValue}::v${versionValue}` : "";
       }
 
-      async function cancelRestPush(timerSnapshot, reason = "canceled") {
-        if (!timerSnapshot?.id) return false;
-        const timerVersion = Number(timerSnapshot.version || timerSnapshot.timerVersion || 1);
-        navigator.serviceWorker?.controller?.postMessage({ type: "CANCEL_REST_TIMER", timerId: timerSnapshot.serverNotificationId || timerSnapshot.id, timerVersion });
-        const operation = {
-          installationId: pushIdentity?.installationId,
-          workoutId: timerSnapshot.workoutId || activeWorkoutId,
-          notificationId: timerSnapshot.serverNotificationId || timerSnapshot.id,
-          timerVersion,
-          reason
-        };
-        if (!pushIdentity?.token || !navigator.onLine) {
+      function rememberCanceledRestSchedule(timerId, timerVersion = 1, now = Date.now()) {
+        const key = restTimerScheduleKey(timerId, timerVersion);
+        if (!key) return "";
+        for (const [storedKey, expiresAt] of canceledRestScheduleKeys) if (expiresAt <= now) canceledRestScheduleKeys.delete(storedKey);
+        canceledRestScheduleKeys.set(key, now + 26 * 60 * 60 * 1000);
+        while (canceledRestScheduleKeys.size > 256) canceledRestScheduleKeys.delete(canceledRestScheduleKeys.keys().next().value);
+        return key;
+      }
+
+      function restScheduleWasCanceled(timerId, timerVersion = 1, now = Date.now()) {
+        const key = restTimerScheduleKey(timerId, timerVersion);
+        const expiresAt = canceledRestScheduleKeys.get(key) || 0;
+        if (expiresAt <= now) {
+          canceledRestScheduleKeys.delete(key);
+          return false;
+        }
+        return true;
+      }
+
+      function notifyServiceWorkerOfRestCancellation(timerId, timerVersion) {
+        if (!timerId) return;
+        navigator.serviceWorker?.controller?.postMessage({ type: "CANCEL_REST_TIMER", timerId, timerVersion: Number(timerVersion || 1) });
+      }
+
+      function queueDurableRestCancellation(operation) {
+        const write = pushOperationWriteChain.catch(() => undefined).then(async () => {
           let pending = [];
           try { pending = await readIndexedValue("push-operations") || []; } catch { return false; }
-          pending = pending.filter((item) => item.notificationId !== operation.notificationId || Number(item.timerVersion || 1) !== operation.timerVersion);
+          pending = pending.filter((item) => item.notificationId !== operation.notificationId || Number(item.timerVersion || 1) !== Number(operation.timerVersion || 1));
           pending.push(operation);
-          await writeIndexedValue("push-operations", pending).catch(() => undefined);
+          try { await writeIndexedValue("push-operations", pending); } catch { return false; }
+          return true;
+        });
+        pushOperationWriteChain = write.catch(() => false);
+        return write;
+      }
+
+      async function performRestCancellation(operation) {
+        if (!operation?.notificationId) return true;
+        if (!pushIdentity?.token) return true;
+        if (!navigator.onLine) {
+          await queueDurableRestCancellation(operation);
           return false;
         }
         try {
@@ -9604,14 +9642,129 @@
           return true;
         } catch (error) {
           const statusCode = Number(error?.status || 0);
-          if (statusCode && statusCode !== 429 && statusCode < 500) return false;
-          let pending = [];
-          try { pending = await readIndexedValue("push-operations") || []; } catch { return false; }
-          pending = pending.filter((item) => item.notificationId !== operation.notificationId || Number(item.timerVersion || 1) !== operation.timerVersion);
-          pending.push(operation);
-          await writeIndexedValue("push-operations", pending).catch(() => undefined);
+          if ([409, 410].includes(statusCode)) return true;
+          await queueDurableRestCancellation(operation);
           return false;
         }
+      }
+
+      function scheduleRestPush(timerSnapshot) {
+        const timerVersion = Number(timerSnapshot?.version || timerSnapshot?.timerVersion || 1);
+        const scheduleKey = restTimerScheduleKey(timerSnapshot?.id, timerVersion);
+        if (!timerSnapshot?.id || restScheduleWasCanceled(timerSnapshot.id, timerVersion)) return Promise.resolve(false);
+        if (!data.settings.timerNotifications || !pushIdentity?.token || Notification.permission !== "granted" || !navigator.onLine) return Promise.resolve(false);
+        if (restSchedulePromises.has(scheduleKey)) return restSchedulePromises.get(scheduleKey).then((outcome) => outcome.scheduled === true);
+        const session = sessionById(timerSnapshot.workoutId) || activeWorkoutSession();
+        const exercise = exerciseById(timerSnapshot.exerciseId);
+        const upcoming = setById(timerSnapshot.pendingNextSetId);
+        const lifecycle = (async () => {
+          try {
+            const result = await pushApi("/api/push/schedule", {
+              installationId: pushIdentity.installationId,
+              notificationId: timerSnapshot.id,
+              workoutId: timerSnapshot.workoutId || session?.id,
+              exerciseId: upcoming?.exerciseId || timerSnapshot.exerciseId,
+              setId: timerSnapshot.setId,
+              upcomingSetId: upcoming?.id || "",
+              upcomingSetNumber: upcoming?.isWarmup ? "WU" : upcoming?.setNumber || "",
+              upcomingSetLabel: upcoming ? setExecutionLabel(upcoming) : "",
+              timerVersion,
+              exerciseName: exerciseById(upcoming?.exerciseId)?.name || exercise?.name || "Workout",
+              messageDetail: data.settings.notificationMessageDetail,
+              restEndTime: timerSnapshot.endsAt
+            });
+            const authoritativeNotificationId = result.notificationId || timerSnapshot.id;
+            if (restScheduleWasCanceled(timerSnapshot.id, timerVersion)) {
+              rememberCanceledRestSchedule(authoritativeNotificationId, timerVersion);
+              notifyServiceWorkerOfRestCancellation(authoritativeNotificationId, timerVersion);
+              const cancellationConfirmed = await performRestCancellation({
+                installationId: pushIdentity?.installationId,
+                workoutId: timerSnapshot.workoutId || activeWorkoutId,
+                notificationId: authoritativeNotificationId,
+                timerVersion,
+                reason: "canceled-before-schedule-completed"
+              });
+              return { scheduled: false, canceled: true, cancellationConfirmed, notificationId: authoritativeNotificationId };
+            }
+            if (timer?.id === timerSnapshot.id && Number(timer.version || 1) === timerVersion) {
+              timer.notificationStatus = result.status;
+              timer.serverNotificationId = authoritativeNotificationId;
+              saveRuntime();
+              syncTimerDom();
+            }
+            return { scheduled: true, canceled: false, cancellationConfirmed: false, notificationId: authoritativeNotificationId };
+          } catch (error) {
+            const canceledWhileScheduling = restScheduleWasCanceled(timerSnapshot.id, timerVersion);
+            if (canceledWhileScheduling) {
+              notifyServiceWorkerOfRestCancellation(timerSnapshot.id, timerVersion);
+              await queueDurableRestCancellation({
+                installationId: pushIdentity?.installationId,
+                workoutId: timerSnapshot.workoutId || activeWorkoutId,
+                notificationId: timerSnapshot.id,
+                timerVersion,
+                reason: "canceled-with-ambiguous-schedule-result"
+              });
+              return { scheduled: false, canceled: true, cancellationConfirmed: false, notificationId: timerSnapshot.id };
+            }
+            if (timer?.id === timerSnapshot.id && Number(timer.version || 1) === timerVersion) {
+              timer.notificationStatus = navigator.onLine ? "error" : "pending";
+              saveRuntime();
+              syncTimerDom();
+            }
+            return { scheduled: false, canceled: false, cancellationConfirmed: false, notificationId: timerSnapshot.id };
+          }
+        })();
+        restSchedulePromises.set(scheduleKey, lifecycle);
+        lifecycle.finally(() => { if (restSchedulePromises.get(scheduleKey) === lifecycle) restSchedulePromises.delete(scheduleKey); }).catch(() => undefined);
+        return lifecycle.then((outcome) => outcome.scheduled === true);
+      }
+
+      async function cancelRestPush(timerSnapshot, reason = "canceled") {
+        if (!timerSnapshot?.id) return false;
+        const timerVersion = Number(timerSnapshot.version || timerSnapshot.timerVersion || 1);
+        const scheduleKey = typeof restTimerScheduleKey === "function" ? restTimerScheduleKey(timerSnapshot.id, timerVersion) : `${timerSnapshot.id}::v${timerVersion}`;
+        if (typeof rememberCanceledRestSchedule === "function") rememberCanceledRestSchedule(timerSnapshot.id, timerVersion);
+        navigator.serviceWorker?.controller?.postMessage({ type: "CANCEL_REST_TIMER", timerId: timerSnapshot.id, timerVersion });
+        if (timerSnapshot.serverNotificationId && timerSnapshot.serverNotificationId !== timerSnapshot.id) navigator.serviceWorker?.controller?.postMessage({ type: "CANCEL_REST_TIMER", timerId: timerSnapshot.serverNotificationId, timerVersion });
+        const sendCancellation = typeof performRestCancellation === "function" ? performRestCancellation : async (operation) => {
+          if (!pushIdentity?.token) return true;
+          if (!navigator.onLine) {
+            let pending = [];
+            try { pending = await readIndexedValue("push-operations") || []; } catch { return false; }
+            pending = pending.filter((item) => item.notificationId !== operation.notificationId || Number(item.timerVersion || 1) !== operation.timerVersion);
+            pending.push(operation);
+            await writeIndexedValue("push-operations", pending).catch(() => undefined);
+            return false;
+          }
+          try { await pushApi("/api/push/cancel", operation); return true; }
+          catch (error) {
+            const statusCode = Number(error?.status || 0);
+            if ([409, 410].includes(statusCode)) return true;
+            let pending = [];
+            try { pending = await readIndexedValue("push-operations") || []; } catch { return false; }
+            pending = pending.filter((item) => item.notificationId !== operation.notificationId || Number(item.timerVersion || 1) !== operation.timerVersion);
+            pending.push(operation);
+            await writeIndexedValue("push-operations", pending).catch(() => undefined);
+            return false;
+          }
+        };
+        const inFlightSchedule = typeof restSchedulePromises !== "undefined" ? restSchedulePromises.get(scheduleKey) : null;
+        if (inFlightSchedule) {
+          const outcome = await inFlightSchedule;
+          if (outcome.canceled) return outcome.cancellationConfirmed;
+          if (!outcome.scheduled) return true;
+          const authoritativeNotificationId = outcome.notificationId || timerSnapshot.serverNotificationId || timerSnapshot.id;
+          if (typeof rememberCanceledRestSchedule === "function") rememberCanceledRestSchedule(authoritativeNotificationId, timerVersion);
+          navigator.serviceWorker?.controller?.postMessage({ type: "CANCEL_REST_TIMER", timerId: authoritativeNotificationId, timerVersion });
+          return sendCancellation({ installationId: pushIdentity?.installationId, workoutId: timerSnapshot.workoutId || activeWorkoutId, notificationId: authoritativeNotificationId, timerVersion, reason });
+        }
+        return sendCancellation({
+          installationId: pushIdentity?.installationId,
+          workoutId: timerSnapshot.workoutId || activeWorkoutId,
+          notificationId: timerSnapshot.serverNotificationId || timerSnapshot.id,
+          timerVersion,
+          reason
+        });
       }
 
       async function flushPendingPushOperations() {
@@ -9646,40 +9799,124 @@
         render();
       }
 
-      async function queueActiveWorkoutSync() {
-        if (data.settings.cloudWorkoutSyncConsent !== true) return;
-        const session = activeWorkoutSession() || (completedSummarySessionId ? data.sessions.find((item) => item.id === completedSummarySessionId) : null);
-        if (!session) return;
-        const index = dataEntityIndex();
-        const exercises = (index.exerciseIndicesBySession.get(session.id) || []).map((exerciseIndex) => data.exercises[exerciseIndex]);
-        const payload = {
-          session,
-          exercises,
-          sets: exercises.flatMap((exercise) => (index.setIndicesByExercise.get(exercise.id) || []).map((setIndex) => data.sets[setIndex]))
-        };
-        let queue = [];
-        try { queue = await readIndexedValue("sync-queue") || []; } catch { return; }
-        queue = queue.filter((item) => item.sessionId !== session.id);
-        queue.push({ mutationId: id(), sessionId: session.id, revision: isoNow(), payload });
-        await writeIndexedValue("sync-queue", queue).catch(() => undefined);
-        window.clearTimeout(syncFlushTimer);
-        syncFlushTimer = window.setTimeout(flushWorkoutSyncQueue, 900);
+      function workoutSyncConsentIsCurrent(epoch = syncConsentEpoch) {
+        return data.settings.cloudWorkoutSyncConsent === true && Number(epoch) === Number(syncConsentEpoch);
       }
 
-      async function flushWorkoutSyncQueue() {
-        if (data.settings.cloudWorkoutSyncConsent !== true) return;
-        if (!navigator.onLine || !pushIdentity?.token) return;
-        let queue = [];
-        try { queue = await readIndexedValue("sync-queue") || []; } catch { return; }
-        const remaining = [];
-        for (const mutation of queue) {
-          try {
-            await pushApi("/api/sync/workout", { installationId: pushIdentity.installationId, ...mutation });
-          } catch {
-            remaining.push(mutation);
+      function trackWorkoutSyncOperation(operation) {
+        activeWorkoutSyncOperations.add(operation);
+        operation.finally(() => activeWorkoutSyncOperations.delete(operation)).catch(() => undefined);
+        return operation;
+      }
+
+      function queueActiveWorkoutSync(expectedEpoch) {
+        const epoch = Number(expectedEpoch ?? (typeof syncConsentEpoch === "number" ? syncConsentEpoch : 0));
+        const consentIsCurrent = () => data.settings.cloudWorkoutSyncConsent === true && (typeof syncConsentEpoch !== "number" || Number(epoch) === Number(syncConsentEpoch));
+        if (!consentIsCurrent()) return Promise.resolve(false);
+        const operation = (async () => {
+          if (!consentIsCurrent()) return false;
+          const session = activeWorkoutSession() || (completedSummarySessionId ? data.sessions.find((item) => item.id === completedSummarySessionId) : null);
+          if (!session || !consentIsCurrent()) return false;
+          const index = dataEntityIndex();
+          const exercises = (index.exerciseIndicesBySession.get(session.id) || []).map((exerciseIndex) => data.exercises[exerciseIndex]);
+          const payload = {
+            session,
+            exercises,
+            sets: exercises.flatMap((exercise) => (index.setIndicesByExercise.get(exercise.id) || []).map((setIndex) => data.sets[setIndex]))
+          };
+          if (!consentIsCurrent()) return false;
+          let queue = [];
+          try { queue = await readIndexedValue("sync-queue") || []; } catch { return false; }
+          if (!consentIsCurrent()) return false;
+          queue = queue.filter((item) => item.sessionId !== session.id);
+          queue.push({ mutationId: id(), sessionId: session.id, revision: isoNow(), payload });
+          if (!consentIsCurrent()) return false;
+          try { await writeIndexedValue("sync-queue", queue); } catch { return false; }
+          if (!consentIsCurrent()) return false;
+          window.clearTimeout(syncFlushTimer);
+          if (!consentIsCurrent()) return false;
+          syncFlushTimer = window.setTimeout(() => {
+            syncFlushTimer = 0;
+            if (consentIsCurrent()) flushWorkoutSyncQueue(epoch);
+          }, 900);
+          if (!consentIsCurrent()) {
+            window.clearTimeout(syncFlushTimer);
+            syncFlushTimer = 0;
+            return false;
           }
-        }
-        await writeIndexedValue("sync-queue", remaining).catch(() => undefined);
+          return true;
+        })();
+        return typeof trackWorkoutSyncOperation === "function" ? trackWorkoutSyncOperation(operation) : operation;
+      }
+
+      function flushWorkoutSyncQueue(expectedEpoch) {
+        const epoch = Number(expectedEpoch ?? (typeof syncConsentEpoch === "number" ? syncConsentEpoch : 0));
+        const consentIsCurrent = () => data.settings.cloudWorkoutSyncConsent === true && (typeof syncConsentEpoch !== "number" || Number(epoch) === Number(syncConsentEpoch));
+        if (!consentIsCurrent() || !navigator.onLine || !pushIdentity?.token) return Promise.resolve(false);
+        const operation = (async () => {
+          if (!consentIsCurrent()) return false;
+          let queue = [];
+          try { queue = await readIndexedValue("sync-queue") || []; } catch { return false; }
+          if (!consentIsCurrent()) return false;
+          const remaining = [];
+          for (const mutation of queue) {
+            if (!consentIsCurrent()) return false;
+            const controller = typeof AbortController === "function" ? new AbortController() : null;
+            if (controller && typeof activeWorkoutSyncAbortControllers !== "undefined") activeWorkoutSyncAbortControllers.add(controller);
+            try {
+              if (!consentIsCurrent()) {
+                controller?.abort();
+                return false;
+              }
+              await pushApi("/api/sync/workout", { installationId: pushIdentity.installationId, ...mutation }, { signal: controller?.signal });
+              if (!consentIsCurrent()) return false;
+            } catch (error) {
+              if (!consentIsCurrent() || error?.name === "AbortError") return false;
+              remaining.push(mutation);
+            } finally {
+              if (controller && typeof activeWorkoutSyncAbortControllers !== "undefined") activeWorkoutSyncAbortControllers.delete(controller);
+            }
+          }
+          if (!consentIsCurrent()) return false;
+          try { await writeIndexedValue("sync-queue", remaining); } catch { return false; }
+          if (!consentIsCurrent()) return false;
+          return true;
+        })();
+        return typeof trackWorkoutSyncOperation === "function" ? trackWorkoutSyncOperation(operation) : operation;
+      }
+
+      function setCloudWorkoutSyncConsent(consent) {
+        const requestedConsent = consent === true;
+        syncConsentEpoch += 1;
+        const epoch = syncConsentEpoch;
+        window.clearTimeout(syncFlushTimer);
+        syncFlushTimer = 0;
+        activeWorkoutSyncAbortControllers.forEach((controller) => controller.abort());
+        commit({ ...data, settings: { ...data.settings, cloudWorkoutSyncConsent: requestedConsent } });
+        const priorOperations = [...activeWorkoutSyncOperations];
+        const transition = syncConsentTransition.catch(() => undefined).then(async () => {
+          if (priorOperations.length) await Promise.allSettled(priorOperations);
+          if (!requestedConsent) {
+            // Revocation cleanup is serialized ahead of any later re-enable, so this
+            // clear must finish even when a newer consent epoch is already waiting.
+            try { await writeIndexedValue("sync-queue", []); }
+            catch {
+              if (Number(epoch) === Number(syncConsentEpoch) && data.settings.cloudWorkoutSyncConsent !== true) {
+                settingsMessage = "Workout upload is off, but the pending upload queue could not be cleared. Keep the app open and try again before clearing local data.";
+                render();
+              }
+              return false;
+            }
+            return true;
+          }
+          if (Number(epoch) !== Number(syncConsentEpoch)) return false;
+          if (!workoutSyncConsentIsCurrent(epoch)) return false;
+          const queued = await queueActiveWorkoutSync(epoch);
+          if (!workoutSyncConsentIsCurrent(epoch)) return false;
+          return queued;
+        });
+        syncConsentTransition = transition.catch(() => false);
+        return transition;
       }
 
       function restNavigationPayload(timerSnapshot, nextOverride = null) {
@@ -11292,6 +11529,7 @@
         const allowedOverrideFields = new Set(["overrideId", "recommendationId", "sessionId", "workoutId", "exerciseRuntimeId", "exerciseId", "setId", "field", "from", "to", "createdAt", "actor", "reason", "lockedForWorkout", "changes", "previousFinalPrescription", "outcome", "outcomeEvaluation", "action"]);
         const allowedRawImportFields = new Set(["id", "source", "importedAt", "originalText", "sessionExternalIds"]);
         const allowedMigrationFields = new Set(["version", "startedAt", "completedAt", "inspected", "changed", "explicitRetained", "manualOverridesPreserved", "warmups", "topSets", "backoffSets", "dropSets", "ambiguous", "templatesReseeded", "changes"]);
+        const allowedMigrationChangeFields = new Set(["setId", "exerciseId", "from", "to", "reason", "confidence"]);
         const VALID_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
         const MAX_SESSIONS = limits.maxSessions;
         const MAX_EXERCISES = limits.maxExercises;
@@ -11443,6 +11681,28 @@
           if (!Array.isArray(record.sessionExternalIds) || record.sessionExternalIds.length > MAX_SESSIONS || record.sessionExternalIds.some((value) => typeof value !== "string" || value.length > 128)) throw new Error(`Raw import ${index + 1} session references are invalid.`);
         });
         const migrationAudit = boundedRecords(imported.migrationAudit, "Migration audit", 128, allowedMigrationFields);
+        migrationAudit.forEach((record, index) => {
+          const label = `Migration audit ${index + 1}`;
+          if (!Number.isInteger(record.version) || record.version < 1 || record.version > 10000) throw new Error(`${label} version must be an integer between 1 and 10000.`);
+          for (const field of ["startedAt", "completedAt"]) {
+            if (record[field] != null && (typeof record[field] !== "string" || !record[field] || record[field].length > 64 || !Number.isFinite(Date.parse(record[field])))) throw new Error(`${label} ${field} must be a valid timestamp of at most 64 characters.`);
+          }
+          for (const field of ["inspected", "changed", "explicitRetained", "manualOverridesPreserved", "warmups", "topSets", "backoffSets", "dropSets", "ambiguous"]) {
+            if (record[field] != null && (!Number.isInteger(record[field]) || record[field] < 0 || record[field] > MAX_SETS)) throw new Error(`${label} ${field} must be a non-negative integer within the set limit.`);
+          }
+          if (record.templatesReseeded != null && (!Number.isInteger(record.templatesReseeded) || record.templatesReseeded < 0 || record.templatesReseeded > MAX_TEMPLATES)) throw new Error(`${label} templatesReseeded must be a non-negative integer within the template limit.`);
+          if (record.changes != null && (!Array.isArray(record.changes) || record.changes.length > MAX_SETS)) throw new Error(`${label} changes must be an array within the set limit.`);
+          record.changes = (record.changes || []).map((change, changeIndex) => {
+            const changeLabel = `${label} change ${changeIndex + 1}`;
+            assertAllowed(change, allowedMigrationChangeFields, changeLabel);
+            if (change.setId != null) assertId(change.setId, `${changeLabel} set`);
+            if (change.exerciseId != null) assertId(change.exerciseId, `${changeLabel} exercise`);
+            for (const field of ["from", "to"]) if (change[field] != null && (typeof change[field] !== "string" || change[field].length > 128)) throw new Error(`${changeLabel} ${field} must be a string of at most 128 characters.`);
+            assertText(change.reason, `${changeLabel} reason`);
+            if (change.confidence != null && (typeof change.confidence !== "number" || !Number.isFinite(change.confidence) || change.confidence < 0 || change.confidence > 1)) throw new Error(`${changeLabel} confidence must be a number between 0 and 1.`);
+            return copyAllowed(change, allowedMigrationChangeFields);
+          });
+        });
         const result = {
           appDataVersion,
           sessions,
@@ -12015,14 +12275,14 @@
           setActiveTab("lift");
         }
         if (action === "export-data") exportData();
-        if (action === "delete-remote-installation") deleteRemoteInstallationData();
-        if (action === "clear-data") requestClearLocalData();
+        if (action === "delete-remote-installation") await deleteRemoteInstallationData();
+        if (action === "clear-data") await requestClearLocalData();
         if (action === "cancel-clear-data") closeClearDataFlow();
         if (action === "sync-before-clear") { await flushWorkoutSyncQueue(); clearDataFlow = { ...clearDataFlow, unsynced: await inspectUnsynchronizedData() }; render(); }
-        if (action === "confirm-clear-data") permanentlyClearLocalData();
+        if (action === "confirm-clear-data") await permanentlyClearLocalData();
       });
 
-      root.addEventListener("change", (event) => {
+      root.addEventListener("change", async (event) => {
         const target = event.target.closest("[data-action]");
         if (!target) return;
         const action = target.dataset.action;
@@ -12100,15 +12360,7 @@
         if (action === "experience-level") commit({ ...data, settings: { ...data.settings, experienceLevel: target.value } });
         if (action === "returning-after-gap") commit({ ...data, settings: { ...data.settings, returningAfterGap: target.value === "" ? null : target.value === "true" } });
         if (action === "cloud-workout-sync-consent") {
-          const consent = target.checked === true;
-          commit({ ...data, settings: { ...data.settings, cloudWorkoutSyncConsent: consent } });
-          if (!consent) {
-            window.clearTimeout(syncFlushTimer);
-            syncFlushTimer = 0;
-            writeIndexedValue("sync-queue", []).catch(() => undefined);
-          } else {
-            queueActiveWorkoutSync();
-          }
+          await setCloudWorkoutSyncConsent(target.checked === true);
         }
         if (action === "mesocycle-type") { mesocycleDraftType = target.value; render(); }
         if (action === "mesocycle-specialization") { mesocycleSpecializationMuscle = target.value; render(); }
