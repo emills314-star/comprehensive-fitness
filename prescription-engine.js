@@ -13,7 +13,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function prescriptionEngineFactory() {
   "use strict";
 
-  const ENGINE_VERSION = "3.1.5";
+  const ENGINE_VERSION = "3.1.6";
   const PRESCRIPTION_SCHEMA_VERSION = "2.1.0";
   const SNAPSHOT_SCHEMA_VERSION = "1.1.0";
   const HARD_SAFETY_SCHEMA_VERSION = "hard-safety/1.0.0";
@@ -3780,28 +3780,44 @@
     return options.map((option) => [...option].sort()).sort((left, right) => left.join("+").localeCompare(right.join("+")));
   }
 
-  function reconcileTrustedEquipmentDeclarations(leftSource, rightSource, exerciseId) {
-    const left = resolveDeclaredEquipmentMetadata(leftSource || {});
-    const right = resolveDeclaredEquipmentMetadata(rightSource || {});
-    if (!left.declared && !right.declared) return { declared: false, detailLevel: 0, options: [] };
-    if (!left.declared || !right.declared) {
-      const declared = left.declared ? left : right;
-      return { ...declared, options: canonicalEquipmentOptions(declared.options) };
-    }
-    if (equipmentOptionsKey(left.options) === equipmentOptionsKey(right.options)) {
-      return {
-        declared: true,
-        detailLevel: Math.max(left.detailLevel, right.detailLevel),
-        options: canonicalEquipmentOptions(left.options)
-      };
-    }
-    if (left.detailLevel !== right.detailLevel) {
-      const detailed = left.detailLevel > right.detailLevel ? left : right;
-      const summary = left.detailLevel > right.detailLevel ? right : left;
-      if (equipmentMetadataIsConsistent(detailed.options, summary.options)) {
-        return { ...detailed, options: canonicalEquipmentOptions(detailed.options) };
-      }
-    }
+  function equipmentOptionRefines(candidateOption, broaderOption, broaderDetailLevel) {
+    return broaderOption.every((broaderItem) => candidateOption.some((candidateItem) => {
+      if (candidateItem === broaderItem) return true;
+      return broaderDetailLevel === 1
+        && PRIMARY_EQUIPMENT_FAMILIES.has(equipmentFamily(broaderItem))
+        && equipmentFamily(candidateItem) === equipmentFamily(broaderItem);
+    }));
+  }
+
+  function equipmentDeclarationRefines(candidate, broader) {
+    return candidate.options.every((candidateOption) => broader.options.some((broaderOption) => (
+      equipmentOptionRefines(candidateOption, broaderOption, broader.detailLevel)
+    )));
+  }
+
+  function reconcileTrustedEquipmentDeclarationBatch(identities, exerciseId) {
+    const declarationsBySignature = new Map();
+    [...identities]
+      .sort((left, right) => String(stableStringify(left.source)).localeCompare(String(stableStringify(right.source))))
+      .forEach((identity) => {
+        const declaration = resolveDeclaredEquipmentMetadata(identity.source || {});
+        if (!declaration.declared) return;
+        const normalized = { ...declaration, options: canonicalEquipmentOptions(declaration.options) };
+        const signature = `${normalized.detailLevel}:${equipmentOptionsKey(normalized.options)}`;
+        if (!declarationsBySignature.has(signature)) declarationsBySignature.set(signature, normalized);
+      });
+    const declarations = [...declarationsBySignature.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([, declaration]) => declaration);
+    if (!declarations.length) return { declared: false, detailLevel: 0, options: [] };
+    if (declarations.length === 1) return declarations[0];
+    const refinements = declarations.filter((candidate) => declarations.every((broader) => equipmentDeclarationRefines(candidate, broader)));
+    if (!refinements.length) throw new Error(`Conflicting trusted custom equipment requirements for ${exerciseId}.`);
+    const highestDetailLevel = Math.max(...refinements.map((declaration) => declaration.detailLevel));
+    const mostSpecific = refinements.filter((declaration) => declaration.detailLevel === highestDetailLevel);
+    if (mostSpecific.length === 1) return mostSpecific[0];
+    const uniqueRequirementKeys = unique(mostSpecific.map((declaration) => equipmentOptionsKey(declaration.options)));
+    if (uniqueRequirementKeys.length === 1) return mostSpecific[0];
     throw new Error(`Conflicting trusted custom equipment requirements for ${exerciseId}.`);
   }
 
@@ -3822,51 +3838,74 @@
     return 50 + serializedLength;
   }
 
-  function richerCatalogMetadata(left, right) {
-    if (!catalogMetadataPresent(left)) return deepClone(right);
-    if (!catalogMetadataPresent(right)) return deepClone(left);
-    if (stableStringify(left) === stableStringify(right)) return deepClone(left);
-    const leftScore = catalogMetadataRichness(left);
-    const rightScore = catalogMetadataRichness(right);
-    if (leftScore !== rightScore) return deepClone(leftScore > rightScore ? left : right);
-    return deepClone(String(stableStringify(left)).localeCompare(String(stableStringify(right))) <= 0 ? left : right);
+  function richestCatalogMetadata(values) {
+    const ranked = values.filter(catalogMetadataPresent).sort((left, right) => {
+      const scoreDifference = catalogMetadataRichness(right) - catalogMetadataRichness(left);
+      return scoreDifference || String(stableStringify(left)).localeCompare(String(stableStringify(right)));
+    });
+    return ranked.length ? deepClone(ranked[0]) : undefined;
   }
 
-  function mergeTrustedCatalogSources(leftSource, rightSource, equipment, researchExerciseId) {
+  function mergeTrustedCatalogSourceBatch(identities, equipment, researchExerciseId) {
     const equipmentFields = new Set([...EQUIPMENT_REQUIREMENT_FIELDS, ...EQUIPMENT_SUMMARY_FIELDS]);
+    const researchIdentityFields = new Set(["researchExerciseId", "research_exercise_id", "researchId", "research_id"]);
     const merged = {};
-    unique([...Object.keys(leftSource || {}), ...Object.keys(rightSource || {})]).sort().forEach((field) => {
-      if (equipmentFields.has(field)) return;
-      const value = richerCatalogMetadata(leftSource?.[field], rightSource?.[field]);
+    unique(identities.flatMap((identity) => Object.keys(identity.source || {}))).sort().forEach((field) => {
+      if (equipmentFields.has(field) || researchIdentityFields.has(field)) return;
+      const value = richestCatalogMetadata(identities.map((identity) => identity.source?.[field]));
       if (catalogMetadataPresent(value)) merged[field] = value;
     });
-    if (equipment.declared) merged.equipmentRequirements = canonicalEquipmentOptions(equipment.options);
+    if (equipment.declared) {
+      const field = equipment.detailLevel === 2 ? "equipmentRequirements" : "equipment";
+      merged[field] = canonicalEquipmentOptions(equipment.options);
+    }
     if (researchExerciseId) merged.researchExerciseId = researchExerciseId;
     return merged;
   }
 
-  function mergeTrustedCustomIdentities(left, right) {
-    if (left.exerciseId !== right.exerciseId) throw new Error("Trusted custom identity reconciliation requires matching exercise IDs.");
-    if (left.researchIdentityConflict || right.researchIdentityConflict) throw new Error(`Conflicting trusted custom research identities for ${left.exerciseId}.`);
-    if (left.researchExerciseId && right.researchExerciseId && left.researchExerciseId !== right.researchExerciseId) {
-      throw new Error(`Conflicting trusted custom research identities for ${left.exerciseId}.`);
-    }
-    const researchExerciseId = left.researchExerciseId || right.researchExerciseId || null;
-    const equipment = reconcileTrustedEquipmentDeclarations(left.source, right.source, left.exerciseId);
+  function reconcileTrustedCustomIdentityBatch(identities, researchIdentities) {
+    if (!identities.length) throw new Error("Trusted custom identity reconciliation requires at least one record.");
+    const exerciseIds = unique(identities.map((identity) => identity.exerciseId));
+    if (exerciseIds.length !== 1) throw new Error("Trusted custom identity reconciliation requires matching exercise IDs.");
+    const exerciseId = exerciseIds[0];
+    if (identities.some((identity) => identity.researchIdentityConflict)) throw new Error(`Conflicting trusted custom research identities for ${exerciseId}.`);
+    const researchExerciseIds = unique(identities.map((identity) => identity.researchExerciseId));
+    if (researchExerciseIds.length > 1) throw new Error(`Conflicting trusted custom research identities for ${exerciseId}.`);
+    const researchExerciseId = researchExerciseIds[0] || null;
+    if (researchExerciseId && !researchIdentities.has(researchExerciseId)) throw new Error(`Trusted custom exercise ${exerciseId} maps to unknown research exercise ${researchExerciseId}.`);
+    const equipment = reconcileTrustedEquipmentDeclarationBatch(identities, exerciseId);
     return {
-      exerciseId: left.exerciseId,
+      exerciseId,
       researchExerciseId,
-      researchIdentitySpecified: left.researchIdentitySpecified || right.researchIdentitySpecified,
+      researchIdentitySpecified: identities.some((identity) => identity.researchIdentitySpecified),
       researchIdentityConflict: false,
       structured: true,
-      catalogRecord: left.catalogRecord || right.catalogRecord,
-      source: mergeTrustedCatalogSources(left.source, right.source, equipment, researchExerciseId)
+      catalogRecord: identities.every((identity) => identity.catalogRecord),
+      source: mergeTrustedCatalogSourceBatch(identities, equipment, researchExerciseId)
     };
+  }
+
+  function invalidTrustedCustomIdentity(exerciseId, identities, error) {
+    return {
+      exerciseId,
+      researchExerciseId: null,
+      researchIdentitySpecified: identities.some((identity) => identity.researchIdentitySpecified),
+      researchIdentityConflict: identities.some((identity) => identity.researchIdentityConflict),
+      structured: true,
+      catalogRecord: true,
+      invalid: true,
+      invalidReason: error instanceof Error ? error.message : String(error || `Invalid trusted custom catalog identity ${exerciseId}.`),
+      source: {}
+    };
+  }
+
+  function rejectInvalidTrustedIdentity(identity) {
+    if (identity?.invalid) throw new Error(identity.invalidReason || `Invalid trusted custom catalog identity ${identity.exerciseId}.`);
   }
 
   function buildTrustedExerciseCatalog(options = {}) {
     const researchIdentities = new Map();
-    const customIdentities = new Map();
+    const customIdentityBatches = new Map();
     const addResearch = (item) => {
       const identity = catalogIdentity(item);
       if (!identity?.structured || !identity.catalogRecord || !identity.exerciseId) throw new Error("Trusted research exercise catalogs require structured records with stable IDs and metadata.");
@@ -3894,21 +3933,30 @@
     const addCustom = (item) => {
       const identity = catalogIdentity(item);
       if (!identity?.structured || !identity.catalogRecord || !identity.exerciseId) throw new Error("Trusted custom exercise catalogs require structured records with stable IDs and metadata.");
-      if (identity.researchIdentityConflict) throw new Error(`Conflicting trusted custom research identities for ${identity.exerciseId}.`);
-      if (identity.researchExerciseId !== null && !researchIdentities.has(identity.researchExerciseId)) throw new Error(`Trusted custom exercise ${identity.exerciseId} maps to unknown research exercise ${identity.researchExerciseId}.`);
       const canonical = researchIdentities.get(identity.exerciseId);
       if (canonical) {
+        if (identity.researchIdentityConflict) throw new Error(`Conflicting trusted catalog mapping for canonical exercise ${identity.exerciseId}.`);
         if (identity.researchExerciseId !== null && identity.researchExerciseId !== canonical.researchExerciseId) throw new Error(`Conflicting trusted catalog mapping for canonical exercise ${identity.exerciseId}.`);
         return;
       }
-      const existing = customIdentities.get(identity.exerciseId);
-      customIdentities.set(identity.exerciseId, existing ? mergeTrustedCustomIdentities(existing, identity) : identity);
+      if (!customIdentityBatches.has(identity.exerciseId)) customIdentityBatches.set(identity.exerciseId, []);
+      customIdentityBatches.get(identity.exerciseId).push(identity);
     };
     asArray(options.trustedCustomCatalog).forEach(addCustom);
     if (explicitCallerTrustRoot) callerCatalog.filter((item) => {
       const identity = catalogIdentity(item);
       return identity?.structured && identity.catalogRecord;
     }).forEach(addCustom);
+
+    const customIdentities = new Map([...customIdentityBatches.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([exerciseId, batch]) => {
+        try {
+          return [exerciseId, reconcileTrustedCustomIdentityBatch(batch, researchIdentities)];
+        } catch (error) {
+          return [exerciseId, invalidTrustedCustomIdentity(exerciseId, batch, error)];
+        }
+      }));
 
     const identities = new Map([...researchIdentities, ...customIdentities]);
     callerCatalog.forEach((item) => {
@@ -3917,6 +3965,7 @@
       if (supplied.researchIdentityConflict) throw new Error(`Caller exerciseCatalog entry ${supplied.exerciseId} declares conflicting research identities.`);
       const trusted = identities.get(supplied.exerciseId);
       if (!trusted) throw new Error(`Untrusted caller exerciseCatalog entry ${supplied.exerciseId}; caller metadata cannot establish a replacement identity.`);
+      rejectInvalidTrustedIdentity(trusted);
       if (supplied.researchIdentitySpecified && supplied.researchExerciseId !== trusted.researchExerciseId) throw new Error(`Caller exerciseCatalog mapping for ${supplied.exerciseId} conflicts with its trusted catalog identity.`);
     });
     return { identities, researchIdentities };
@@ -3973,6 +4022,7 @@
     const allowedSafetySubstituteIds = new Set(asArray(allowedSafetySource).map((value) => {
       if (typeof value !== "string" || !value.trim()) throw new Error("allowedSafetySubstituteIds must contain only non-empty string IDs.");
       const identity = catalogIdentities.get(value);
+      rejectInvalidTrustedIdentity(identity);
       if (!identity?.catalogRecord || !identity.researchExerciseId) throw new Error(`Unknown allowed safety substitute ${value}; an actual trusted structured catalog object with matching exercise/research IDs is required.`);
       return value;
     }));
@@ -3986,6 +4036,7 @@
       if (override.painFreeConfirmed !== true) throw new Error("A hard-safety pain substitute requires explicit user pain-free confirmation (painFreeConfirmed: true).");
       if (!allowedSafetySubstituteIds.has(selectedExerciseId)) throw new Error(`Safety substitute ${selectedExerciseId} was not explicitly allowed.`);
       const identity = catalogIdentities.get(selectedExerciseId);
+      rejectInvalidTrustedIdentity(identity);
       const requestedResearchId = firstPresent(override.researchExerciseId, override.research_exercise_id);
       if (!identity?.structured || !identity.catalogRecord || !identity.researchExerciseId || !requestedResearchId || requestedResearchId !== identity.researchExerciseId) throw new Error(`Safety substitute ${selectedExerciseId} must preserve its coherent exercise/research identity from an actual trusted catalog object.`);
       const originalExerciseIds = new Set([
@@ -4009,6 +4060,7 @@
       const requestedResearchId = firstPresent(override.researchExerciseId, override.research_exercise_id);
       if (selectedExerciseId !== final.exerciseId) {
         const selectedIdentity = catalogIdentities.get(selectedExerciseId);
+        rejectInvalidTrustedIdentity(selectedIdentity);
         if (!selectedIdentity?.structured || !selectedIdentity.catalogRecord) throw new Error(`Unknown manual override exercise ${selectedExerciseId}; replacements require a trusted catalog-backed identity.`);
         if (!confirmedSafetyIdentity && !allowedExerciseIds.has(selectedExerciseId)) throw new Error(`Manual override exercise ${selectedExerciseId} was not explicitly allowed for ordinary replacement.`);
         if (requestedResearchId && requestedResearchId !== selectedIdentity.researchExerciseId) throw new Error(`Manual override exercise ${selectedExerciseId} conflicts with its trusted catalog-backed research identity.`);

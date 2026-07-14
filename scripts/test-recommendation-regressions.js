@@ -1079,6 +1079,138 @@ test("trusted custom duplicates reconcile order-independently while conflicting 
   assert.throws(() => safetyWith([conflictingResearch, cableRequirements]), /conflicting trusted custom.*research|research.*conflict|mapping/i, "research conflicts reject pain-safety selection independently of source order");
 });
 
+test("trusted custom catalog reconciliation is associative and commutative across sparse, summary, and detailed records", () => {
+  const permutations = (items) => items.length <= 1
+    ? [items]
+    : items.flatMap((item, index) => permutations([...items.slice(0, index), ...items.slice(index + 1)]).map((tail) => [item, ...tail]));
+  const customId = "custom_permuted_dumbbell_press";
+  const batchEngine = createPrescriptionEngine({
+    personalData: {
+      exerciseScores: [{ exercise_id: customId, exercise_name: "Sparse batch personal score" }],
+      metadata: { methodology_version: "trusted-catalog-batch-test/1.0.0" }
+    },
+    researchData: publicResearchData()
+  });
+  const ordinary = batchEngine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", history: progressionHistory(), createdAt });
+  const painful = batchEngine.prescribeExercise({
+    exerciseId: "ex_barbell_bench_press",
+    muscleGroupId: "chest",
+    history: progressionHistory(),
+    readiness: { pain: true, affectedMuscle: "chest" },
+    createdAt
+  });
+  const sparse = {
+    personalExerciseId: customId,
+    exerciseName: "Sparse trusted record",
+    notes: "complementary sparse metadata"
+  };
+  const summary = {
+    personalExerciseId: customId,
+    researchExerciseId: "ex_dumbbell_bench_press",
+    exerciseName: "Dumbbell summary record",
+    equipment: "dumbbell",
+    movementPattern: "horizontal_push"
+  };
+  const detailed = {
+    personalExerciseId: customId,
+    researchExerciseId: "ex_dumbbell_bench_press",
+    exerciseName: "Dumbbell and bench detail",
+    equipmentRequirements: [["dumbbells", "bench"]],
+    primaryMuscle: "chest"
+  };
+  const summaryAlias = {
+    personalExerciseId: customId,
+    researchExerciseId: "ex_dumbbell_bench_press",
+    exerciseName: "Duplicate normalized summary",
+    equipment_type: [["dumbbells"]],
+    modality: "free_weight"
+  };
+  const moreDetailed = {
+    personalExerciseId: customId,
+    researchExerciseId: "ex_dumbbell_bench_press",
+    exerciseName: "Dumbbell bench and rack detail",
+    requiredEquipment: [["dumbbell", "bench", "rack"]],
+    secondaryMuscle: "triceps"
+  };
+  const equivalentDetail = {
+    personalExerciseId: customId,
+    researchExerciseId: "ex_dumbbell_bench_press",
+    exerciseName: "Equivalent detailed record",
+    equipment_requirements: "dumbbell"
+  };
+  const incomparableDetail = {
+    personalExerciseId: customId,
+    researchExerciseId: "ex_dumbbell_bench_press",
+    exerciseName: "Incomparable dumbbell rack detail",
+    equipmentRequirements: [["dumbbell", "rack"]]
+  };
+  const ordinaryWith = (trustedExerciseCatalog, availableEquipment, extra = {}) => batchEngine.applyManualOverride(ordinary, { exerciseId: customId }, {
+    allowedExerciseIds: [customId],
+    trustedExerciseCatalog,
+    availableEquipment,
+    createdAt: "2026-07-12T12:22:02.000Z",
+    ...extra
+  });
+  const safetyWith = (trustedExerciseCatalog, availableEquipment, extra = {}) => batchEngine.applyManualOverride(painful, {
+    exerciseId: customId,
+    researchExerciseId: "ex_dumbbell_bench_press",
+    painFreeConfirmed: true
+  }, {
+    allowedSafetySubstituteIds: [customId],
+    trustedExerciseCatalog,
+    availableEquipment,
+    createdAt: "2026-07-12T12:22:04.000Z",
+    ...extra
+  });
+
+  const refinementOrdinarySignatures = new Set();
+  const refinementSafetySignatures = new Set();
+  permutations([sparse, summary, detailed]).forEach((records, index) => {
+    const ordinaryReplacement = ordinaryWith(records, ["dumbbell", "bench"]);
+    const safetyReplacement = safetyWith(records, ["dumbbell", "bench"]);
+    assert.equal(ordinaryReplacement.finalPrescription.researchExerciseId, "ex_dumbbell_bench_press", `permutation ${index} must adopt the sole non-null research mapping`);
+    assert.equal(safetyReplacement.finalPrescription.safetyRestriction.status, "resolved_by_confirmed_substitute", `pain-safety permutation ${index} must resolve through the same batch identity`);
+    assert.throws(() => ordinaryWith(records, ["dumbbell"]), /equipment/i, `permutation ${index} must retain the more-specific bench requirement`);
+    assert.throws(() => safetyWith(records, ["dumbbell"]), /equipment/i, `pain-safety permutation ${index} must retain the more-specific bench requirement`);
+    refinementOrdinarySignatures.add(JSON.stringify({ final: ordinaryReplacement.finalPrescription, changes: ordinaryReplacement.manualOverrides.at(-1)?.changes }));
+    refinementSafetySignatures.add(JSON.stringify({ final: safetyReplacement.finalPrescription, changes: safetyReplacement.manualOverrides.at(-1)?.changes }));
+  });
+  assert.equal(refinementOrdinarySignatures.size, 1, "ordinary replacement output must be invariant across every sparse/summary/detail ordering");
+  assert.equal(refinementSafetySignatures.size, 1, "pain-safety output must be invariant across every sparse/summary/detail ordering");
+
+  permutations([summary, detailed, moreDetailed]).forEach((records, index) => {
+    assert.equal(ordinaryWith(records, ["dumbbell", "bench", "rack"]).finalPrescription.exerciseId, customId, `multiple-detail permutation ${index} must choose the uniquely most-specific compatible declaration`);
+    assert.equal(safetyWith(records, ["dumbbell", "bench", "rack"]).finalPrescription.exerciseId, customId, `pain-safety multiple-detail permutation ${index} must choose the same declaration`);
+    assert.throws(() => ordinaryWith(records, ["dumbbell", "bench"]), /equipment/i, `multiple-detail permutation ${index} must retain the rack requirement`);
+  });
+
+  permutations([sparse, summary, equivalentDetail]).forEach((records, index) => {
+    assert.equal(ordinaryWith(records, ["dumbbell"]).finalPrescription.exerciseId, customId, `equivalent summary/detail permutation ${index} must reconcile without conflict`);
+    assert.equal(safetyWith(records, ["dumbbell"]).finalPrescription.exerciseId, customId, `pain-safety equivalent permutation ${index} must reconcile without conflict`);
+  });
+
+  permutations([sparse, summary, summaryAlias]).forEach((records, index) => {
+    assert.equal(ordinaryWith(records, ["dumbbell"]).finalPrescription.exerciseId, customId, `exact normalized duplicate permutation ${index} must be discarded safely`);
+    assert.equal(safetyWith(records, ["dumbbell"]).finalPrescription.exerciseId, customId, `pain-safety exact duplicate permutation ${index} must be discarded safely`);
+  });
+
+  permutations([summary, detailed, incomparableDetail]).forEach((records, index) => {
+    assert.throws(() => ordinaryWith(records, ["all"]), /conflicting trusted custom.*equipment|equipment.*conflict/i, `incomparable ordinary permutation ${index} must fail closed`);
+    assert.throws(() => safetyWith(records, ["all"]), /conflicting trusted custom.*equipment|equipment.*conflict/i, `incomparable pain-safety permutation ${index} must fail closed`);
+  });
+
+  const callerSpoof = [{
+    personalExerciseId: customId,
+    researchExerciseId: "ex_dumbbell_bench_press",
+    exerciseName: "Caller barbell spoof",
+    equipment: "barbell"
+  }];
+  const trustedBatch = [moreDetailed, sparse, summary, detailed];
+  assert.equal(ordinaryWith(trustedBatch, ["dumbbell", "bench", "rack"], { exerciseCatalog: callerSpoof }).finalPrescription.exerciseId, customId, "caller metadata cannot alter a reconciled trusted batch");
+  assert.throws(() => ordinaryWith(trustedBatch, ["barbell", "rack"], { exerciseCatalog: callerSpoof }), /equipment/i, "caller equipment cannot replace the batch-selected trusted requirements");
+  assert.throws(() => safetyWith(trustedBatch, ["barbell", "rack"], { exerciseCatalog: callerSpoof }), /equipment/i, "caller equipment cannot influence pain-safety batch reconciliation");
+});
+
 test("an ex_ prefix and allowlist cannot establish a nonexistent or caller-spoofed canonical exercise", () => {
   const snapshot = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", history: progressionHistory(), createdAt });
   const sameExerciseLoad = engine.applyManualOverride(snapshot, {
