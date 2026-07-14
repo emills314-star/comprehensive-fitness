@@ -2585,28 +2585,104 @@
         };
       }
 
+      function resolveWorkoutMutationTarget(action, identifiers = {}) {
+        const executableActions = ["add-exercise", "add-set", "add-warmup-set", "duplicate-set", "toggle-set", "toggle-skip-set", "start-timer"];
+        const normalizedAction = String(action || "");
+        if (!executableActions.includes(normalizedAction)) return { authorized: true, authorizationMode: "not_executable", action: normalizedAction, exercise: null, set: null, session: null };
+        const failure = (reason, message) => ({ authorized: false, authorizationMode: "blocked", action: normalizedAction, exercise: null, set: null, session: null, reason, message });
+        const hasValue = (value) => value !== undefined && value !== null;
+        const explicitExerciseId = hasValue(identifiers.exerciseId) ? String(identifiers.exerciseId).trim() : "";
+        const explicitSetId = hasValue(identifiers.setId) ? String(identifiers.setId).trim() : "";
+        const explicitSessionId = hasValue(identifiers.sessionId) ? String(identifiers.sessionId).trim() : "";
+        if (hasValue(identifiers.exerciseId) && !explicitExerciseId) return failure("invalid_exercise_target", "The requested exercise target is missing or invalid.");
+        if (hasValue(identifiers.setId) && !explicitSetId) return failure("invalid_set_target", "The requested set target is missing or invalid.");
+        if (hasValue(identifiers.sessionId) && !explicitSessionId) return failure("invalid_session_target", "The requested workout target is missing or invalid.");
+
+        const objectExerciseId = hasValue(identifiers.exercise) ? String(identifiers.exercise?.id || "").trim() : "";
+        const objectSetId = hasValue(identifiers.set) ? String(identifiers.set?.id || "").trim() : "";
+        const objectSessionId = hasValue(identifiers.session) ? String(identifiers.session?.id || "").trim() : "";
+        if (hasValue(identifiers.exercise) && !objectExerciseId) return failure("invalid_exercise_target", "The requested exercise target is not an authoritative application exercise.");
+        if (hasValue(identifiers.set) && !objectSetId) return failure("invalid_set_target", "The requested set target is not an authoritative application set.");
+        if (hasValue(identifiers.session) && !objectSessionId) return failure("invalid_session_target", "The requested workout target is not an authoritative application session.");
+        if (explicitExerciseId && objectExerciseId && explicitExerciseId !== objectExerciseId) return failure("mixed_exercise_target", "The requested exercise identities do not match.");
+        if (explicitSetId && objectSetId && explicitSetId !== objectSetId) return failure("mixed_set_target", "The requested set identities do not match.");
+        if (explicitSessionId && objectSessionId && explicitSessionId !== objectSessionId) return failure("mixed_session_target", "The requested workout identities do not match.");
+
+        const requestedExerciseId = explicitExerciseId || objectExerciseId;
+        const requestedSetId = explicitSetId || objectSetId;
+        const requestedSessionId = explicitSessionId || objectSessionId;
+        let set = requestedSetId ? setById(requestedSetId) : null;
+        let exercise = requestedExerciseId ? exerciseById(requestedExerciseId) : null;
+        let session = requestedSessionId ? sessionById(requestedSessionId) : null;
+        if (requestedSetId && !set) return failure("unknown_set_target", "The requested set no longer exists.");
+        if (requestedExerciseId && !exercise) return failure("unknown_exercise_target", "The requested exercise no longer exists.");
+        if (requestedSessionId && !session) return failure("unknown_session_target", "The requested workout no longer exists.");
+
+        if (set) {
+          const setExercise = exerciseById(set.exerciseId);
+          if (!setExercise) return failure("orphaned_set_target", "The requested set is not attached to a valid exercise.");
+          if (exercise && exercise.id !== setExercise.id) return failure("mixed_exercise_set_target", "The requested set does not belong to the requested exercise.");
+          exercise = setExercise;
+        }
+        if (normalizedAction === "start-timer" && (!set || !exercise)) return failure("incomplete_timer_target", "A rest timer requires one matching exercise and set.");
+        if (["toggle-set", "toggle-skip-set"].includes(normalizedAction) && !set) return failure("missing_set_target", "This action requires a valid set target.");
+        if (["add-set", "add-warmup-set", "duplicate-set"].includes(normalizedAction) && !exercise) return failure("missing_exercise_target", "This action requires a valid exercise target.");
+        if (normalizedAction === "add-exercise" && (set || exercise)) return failure("unexpected_exercise_target", "Adding an exercise must target the current workout session directly.");
+
+        const derivedSession = exercise?.sessionId ? sessionById(exercise.sessionId) : null;
+        if (exercise && !derivedSession) return failure("orphaned_exercise_target", "The requested exercise is not attached to a valid workout.");
+        if (session && derivedSession && session.id !== derivedSession.id) return failure("mixed_session_target", "The requested entities do not belong to the same workout.");
+        session = derivedSession || session || (normalizedAction === "add-exercise" ? activeSession() : null);
+        if (!session) return failure("missing_session_target", "This action requires a valid workout target.");
+
+        const exactHistoryEdit = isSessionSubmitted(session)
+          && activeSessionId === session.id
+          && historyEditFlow?.sessionId === session.id;
+        const exactActiveWorkout = !isSessionSubmitted(session) && activeWorkoutId === session.id;
+        const newWorkoutExercise = normalizedAction === "add-exercise"
+          && !isSessionSubmitted(session)
+          && !activeWorkoutId
+          && activeSessionId === session.id;
+        if (normalizedAction === "start-timer") {
+          if (!exactActiveWorkout || !sessionHasStarted(session)) return failure("timer_requires_active_workout", "Rest timers can run only for the exact active workout.");
+          return { authorized: true, authorizationMode: "active_workout", action: normalizedAction, exercise, set, session };
+        }
+        if (exactHistoryEdit) return { authorized: true, authorizationMode: "history_edit", action: normalizedAction, exercise, set, session };
+        if (exactActiveWorkout || newWorkoutExercise) return { authorized: true, authorizationMode: exactActiveWorkout ? "active_workout" : "new_workout", action: normalizedAction, exercise, set, session };
+        return failure("unauthorized_workout_target", "This action does not belong to the exact active workout or history-edit session.");
+      }
+
       function workoutMutationSafetyDecision(action, context = {}) {
         const executableActions = ["add-exercise", "add-set", "add-warmup-set", "duplicate-set", "toggle-set", "toggle-skip-set", "start-timer"];
         if (!executableActions.includes(String(action || ""))) return { allowed: true, scope: "none", reason: "not_executable" };
         const normalize = (value) => String(value || "").toLowerCase().replace(/^mg_/, "").replace(/[^a-z0-9]+/g, " ").trim();
+        const block = (scope, reason, message) => ({ allowed: false, executable: false, executionBlocked: true, scope, reason, message });
+        if (context.authorization?.authorized === false) {
+          return block("workout", context.authorization.reason || "unauthorized_workout_target", context.authorization.message || "This action is not authorized for the requested workout.");
+        }
+        if (context.authorization?.authorizationMode === "history_edit") {
+          return { allowed: true, scope: "history", reason: "authorized_history_correction" };
+        }
         const recovery = context.recovery || {};
         const exercise = context.exercise || null;
         const restriction = exercise?.safetyRestriction || exercise?.finalPrescription?.safetyRestriction || exercise?.recommendationSnapshot?.finalPrescription?.safetyRestriction || null;
         const blockedBySnapshot = exercise?.executionBlocked === true
           || exercise?.finalPrescription?.executionBlocked === true
           || exercise?.recommendationSnapshot?.finalPrescription?.executionBlocked === true;
-        const block = (scope, reason, message) => ({ allowed: false, executable: false, executionBlocked: true, scope, reason, message });
         if (recovery.illness === true) return block("workout", "illness", "Current illness blocks executable workout actions.");
         const affectedMuscle = normalize(recovery.affectedMuscle);
         if (recovery.pain === true && !affectedMuscle) return block("workout", "pain", "Pain without a specified affected area blocks executable workout actions.");
         if (blockedBySnapshot) {
           return block(restriction?.scope || "exercise", restriction?.reason || "pain", "This exercise remains non-executable until its hard-safety restriction is resolved.");
         }
-        if (recovery.pain !== true) return { allowed: true, scope: "none", reason: "clear" };
         const confirmedSubstitute = restriction?.status === "resolved_by_confirmed_substitute"
           && restriction?.painFreeConfirmed === true
           && restriction?.substituteExerciseId;
-        if (confirmedSubstitute) return { allowed: true, scope: "exercise", reason: "confirmed_pain_free_substitute" };
+        if (confirmedSubstitute) {
+          if (context.substituteValidation?.valid === true) return { allowed: true, scope: "exercise", reason: "confirmed_pain_free_substitute" };
+          return block("exercise", context.substituteValidation?.reason || "substitute_constraints_changed", context.substituteValidation?.message || "This confirmed substitute no longer satisfies the current catalog, equipment, exclusion, or program constraints.");
+        }
+        if (recovery.pain !== true) return { allowed: true, scope: "none", reason: "clear" };
         const exerciseMuscles = (Array.isArray(context.exerciseMuscles) ? context.exerciseMuscles : [])
           .map((item) => normalize(typeof item === "string" ? item : item?.muscle || item?.programmingFamilyId || item?.programming_family_id))
           .filter(Boolean);
@@ -2619,27 +2695,33 @@
         return { allowed: true, scope: "exercise", reason: "catalog_resolved_nonmatch" };
       }
 
-      function workoutMutationSafetyContext(action, identifiers = {}) {
-        const set = identifiers.set || (identifiers.setId ? setById(identifiers.setId) : null);
-        const exercise = identifiers.exercise
-          || (identifiers.exerciseId ? exerciseById(identifiers.exerciseId) : null)
-          || (set ? exerciseById(set.exerciseId) : null)
+      function workoutMutationSafetyContext(action, identifiers = {}, authorization = resolveWorkoutMutationTarget(action, identifiers)) {
+        const exercise = authorization.exercise
           || (action === "add-exercise" && addExerciseDraft.trim() ? { name: addExerciseDraft.trim(), primaryMuscle: addExercisePrimaryMuscle, secondaryMuscle: addExerciseSecondaryMuscle } : null);
-        const session = exercise?.sessionId ? sessionById(exercise.sessionId) : activeSession();
-        const enforceCurrentWorkoutSafety = Boolean(session && !isSessionSubmitted(session) && (session.id === activeWorkoutId || session.workoutState === "active"));
+        const session = authorization.session;
         const taxonomy = exercise ? taxonomyMusclesForExercise(exercise) : [];
+        const restriction = exercise?.safetyRestriction || exercise?.finalPrescription?.safetyRestriction || exercise?.recommendationSnapshot?.finalPrescription?.safetyRestriction || null;
+        const substituteValidation = identifiers.substituteValidation !== undefined
+          ? identifiers.substituteValidation
+          : restriction?.status === "resolved_by_confirmed_substitute" && exercise?.recommendationSnapshot
+            ? safetySubstituteContext(exercise.recommendationSnapshot, { exercise, session }).resolvedValidation
+            : null;
         return {
-          recovery: enforceCurrentWorkoutSafety ? cleanRecovery(session.recovery || {}) : cleanRecovery({}),
+          authorization,
+          recovery: authorization.authorized && authorization.authorizationMode !== "history_edit" && session ? cleanRecovery(session.recovery || {}) : cleanRecovery({}),
           exercise,
           exerciseMuscles: taxonomy.map((item) => item.muscle),
-          taxonomyResolved: taxonomy.length > 0
+          taxonomyResolved: taxonomy.length > 0,
+          substituteValidation
         };
       }
 
       function guardWorkoutMutation(action, identifiers = {}, notify = true) {
-        const decision = workoutMutationSafetyDecision(action, workoutMutationSafetyContext(action, identifiers));
-        if (!decision.allowed && notify) showAppToast(decision.message || "This action is blocked by the current workout safety restriction.");
-        return decision;
+        const target = resolveWorkoutMutationTarget(action, identifiers);
+        const decision = workoutMutationSafetyDecision(action, workoutMutationSafetyContext(action, identifiers, target));
+        const result = { ...decision, target };
+        if (!result.allowed && notify) showAppToast(result.message || "This action is blocked by the current workout safety restriction.");
+        return result;
       }
 
       function workoutSafetyDisabledAttributes(decision, fallbackLabel) {
@@ -2994,8 +3076,8 @@
 
       function unifiedPrescriptionSnapshot(exerciseOrName, options = {}) {
         if (!prescriptionEngine || prescriptionEvidenceStatus.state === "error") return null;
-        const hardConstraintRejection = (reason, message, cause) => {
-          const normalizedReason = String(reason || "engine_rejection").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+        const hardConstraintRejection = (reason, message) => {
+          const normalizedReason = String(reason || "constraint_rejection").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
           return {
             type: "hard_constraint_rejection",
             kind: "hard_constraint_rejection",
@@ -3006,7 +3088,6 @@
             status: "blocked",
             reason: normalizedReason,
             message: String(message || "The workout request violates a hard constraint."),
-            causeMessage: cause ? String(cause?.message || cause) : "",
             decision: "hold",
             mode: "stop-modify",
             interventionType: "stop_modify",
@@ -3030,6 +3111,32 @@
             }
           };
         };
+        const engineFailure = () => ({
+          type: "engine_failure",
+          kind: "engine_failure",
+          code: "PRESCRIPTION_ENGINE_FAILURE",
+          hardConstraint: false,
+          executionBlocked: true,
+          executable: false,
+          status: "unavailable",
+          recommendationStatus: "unavailable",
+          reason: "engine_failure",
+          message: "Recommendation guidance is unavailable because the prescription engine could not generate a recommendation.",
+          decision: "hold",
+          mode: "stop-modify",
+          interventionType: "stop_modify",
+          sets: 0,
+          reps: 0,
+          repLow: 0,
+          repHigh: 0,
+          weight: 0,
+          addedLoad: 0,
+          assistanceLoad: 0,
+          rpe: 0,
+          restSeconds: 0,
+          warmups: [],
+          executableActions: []
+        });
         const exercise = typeof exerciseOrName === "string" ? { name: exerciseOrName } : (exerciseOrName || {});
         if (exercise.recommendationSnapshot) return exercise.recommendationSnapshot;
         const exerciseId = options.exerciseId || prescriptionExerciseIdentity(exercise.name);
@@ -3103,11 +3210,20 @@
           return snapshot;
         } catch (error) {
           const detail = `${error?.code || ""} ${error?.message || error || ""}`.toLowerCase();
-          const reason = /exclud/.test(detail) ? "excluded_exercise"
-            : /equipment|compatible/.test(detail) ? "unavailable_equipment"
-              : /identity|unknown exercise|not found|unmapped/.test(detail) ? "invalid_exercise_identity"
-                : "engine_rejection";
-          return hardConstraintRejection(reason, error?.message || "The prescription engine rejected a hard workout constraint.", error);
+          const reason = /exercise .+ is excluded by the supplied|excluded exercise .+ (?:invalid|unknown)|exclusions? must resolve|excludedexerciseids must/.test(detail)
+            ? "excluded_exercise"
+            : /exercise .+ is not compatible with the supplied equipment|available equipment (?:input|restriction)|equipment restrictions?; missing/.test(detail)
+              ? "unavailable_equipment"
+              : /unknown exercise .+ for muscle group|exerciseid and musclegroupid are required|invalid trusted identity|no positive dynamic taxonomy target relationship/.test(detail)
+                ? "invalid_exercise_identity"
+                : /includedmusclegroupids scope/.test(detail)
+                  ? "invalid_muscle_scope"
+                  : /session duration .+(?:positive finite|must not exceed)|positive finite number of minutes/.test(detail)
+                    ? "invalid_time_constraint"
+                    : "";
+          return reason
+            ? hardConstraintRejection(reason, error?.message || "The prescription engine rejected a recognized hard workout constraint.")
+            : engineFailure();
         }
       }
 
@@ -3144,7 +3260,7 @@
 
       function legacyRecommendationFromSnapshot(snapshot, exerciseName) {
         if (!snapshot) return null;
-        if (snapshot.hardConstraint === true || snapshot.type === "hard_constraint_rejection" || snapshot.kind === "hard_constraint_rejection") return snapshot;
+        if (snapshot.executionBlocked === true && snapshot.executable === false && ["hard_constraint_rejection", "engine_failure"].includes(snapshot.type || snapshot.kind)) return snapshot;
         const prescription = snapshot.finalPrescription;
         const type = prescription.recommendationType;
         const deload = ["exercise_deload", "muscle_group_deload", "full_program_deload"].includes(type);
@@ -3188,7 +3304,7 @@
 
       function legacyTargetFromSnapshot(snapshot, templateExercise = {}, options = {}) {
         if (!snapshot) return null;
-        if (snapshot.hardConstraint === true || snapshot.type === "hard_constraint_rejection" || snapshot.kind === "hard_constraint_rejection") return snapshot;
+        if (snapshot.executionBlocked === true && snapshot.executable === false && ["hard_constraint_rejection", "engine_failure"].includes(snapshot.type || snapshot.kind)) return snapshot;
         const prescription = options.useBase ? snapshot.basePrescription : snapshot.finalPrescription;
         const type = prescription.recommendationType;
         const resistanceType = templateExercise.resistanceType || inferResistanceType(templateExercise.name || prescription.exerciseId, templateExercise);
@@ -3631,11 +3747,12 @@
         const canonicalByExerciseId = new Map();
         data.exercises.forEach((exercise) => {
           if (!sessionById.has(exercise.sessionId)) return;
+          const canonicalId = canonicalExerciseId(exercise.name);
+          if (!canonicalId) return;
           exerciseById.set(exercise.id, exercise);
           const sessionExercises = exercisesBySession.get(exercise.sessionId) || [];
           sessionExercises.push(exercise);
           exercisesBySession.set(exercise.sessionId, sessionExercises);
-          const canonicalId = canonicalExerciseId(exercise.name);
           canonicalByExerciseId.set(exercise.id, canonicalId);
           const list = exercisesByCanonical.get(canonicalId) || [];
           list.push(exercise);
@@ -3834,6 +3951,7 @@
           || evidence?.personal?.exercisePrescriptions?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === normalized);
         const personalId = personalRecord?.exercise_id || personalRecord?.exerciseId || "";
         const reconciled = evidence?.personal?.reconciledIdentityByExerciseId?.get(personalId);
+        if (reconciled?.invalid) return null;
         if (reconciled && !reconciled.invalid && reconciled.researchExerciseId) return reconciled.researchExerciseId;
         if (/^(?:custom|user)(?::|_)/.test(personalId)) return personalId;
         return `custom_${normalized.replace(/\s+/g, "_")}`;
@@ -3873,7 +3991,7 @@
         const normalized = canonicalExerciseId(query);
         const recentRank = new Map(recentChartExerciseIds.map((id, index) => [id, index]));
         return exerciseCatalog()
-          .filter((exercise) => !normalized || exercise.id.includes(normalized) || canonicalExerciseId(exercise.name).includes(normalized))
+          .filter((exercise) => !normalized || exercise.id.includes(normalized) || canonicalExerciseId(exercise.name)?.includes(normalized))
           .sort((a, b) => {
             const aExact = a.id === normalized ? 0 : a.id.startsWith(normalized) ? 1 : 2;
             const bExact = b.id === normalized ? 0 : b.id.startsWith(normalized) ? 1 : 2;
@@ -4512,10 +4630,10 @@
           } catch (error) {
             const detail = error?.error || error;
             const code = String(detail?.code || "");
-            if (detail?.hardConstraint === true || detail?.type === "hard_constraint_rejection" || detail?.kind === "hard_constraint_rejection" || /^HARD_CONSTRAINT_/i.test(code)) return detail;
+            if (detail?.hardConstraint === true || ["hard_constraint_rejection", "engine_failure"].includes(detail?.type || detail?.kind) || /^HARD_CONSTRAINT_/i.test(code)) return detail;
             throw error;
           }
-          if (snapshot?.hardConstraint === true || snapshot?.type === "hard_constraint_rejection" || snapshot?.kind === "hard_constraint_rejection") return snapshot;
+          if (snapshot?.executionBlocked === true && snapshot?.executable === false && ["hard_constraint_rejection", "engine_failure"].includes(snapshot?.type || snapshot?.kind)) return snapshot;
           if (snapshot) return legacyTargetFromSnapshot(snapshot, templateExercise, { useBase: true });
         }
         const profile = progressionProfileForExercise(templateExercise.name);
@@ -5794,39 +5912,124 @@
         return renderWorkoutAdvice({ label: recommendationLabel(type), detail, items });
       }
 
-      function safetySubstituteContext(snapshot) {
+      function safetySubstituteContext(snapshot, options = {}) {
         const research = prescriptionEngine?.evidence?.research;
         const prescription = snapshot?.finalPrescription;
-        if (!research?.substitutionsByExercise || !research?.exerciseById || !prescription?.executionBlocked) {
-          return { allowedSafetySubstituteIds: [], exerciseCatalog: [], availableEquipment: [], preferred: null };
-        }
-        const originalExerciseId = prescription.safetyRestriction?.originalExerciseId || prescription.exerciseId || snapshot.exerciseId;
-        const originalResearchExerciseId = prescription.safetyRestriction?.auditBaseTargets?.researchExerciseId
-          || prescription.researchExerciseId
+        const restriction = prescription?.safetyRestriction || null;
+        const empty = (reason = "missing_safety_context", message = "The safety-substitute context is incomplete.") => ({
+          allowedSafetySubstituteIds: [],
+          exerciseCatalog: [],
+          availableEquipment: [],
+          excludedExerciseIds: [],
+          preferred: null,
+          resolvedValidation: { valid: false, reason, message }
+        });
+        if (!research?.substitutionsByExercise || !research?.exerciseById || !prescription || !restriction) return empty();
+
+        const exercise = options.exercise || null;
+        const session = options.session || (exercise?.sessionId ? sessionById(exercise.sessionId) : null);
+        const referencedMesocycleId = session?.mesocycleId || snapshot.mesocycleId || "";
+        const mesocycle = referencedMesocycleId ? data.mesocycles.find((item) => item.id === referencedMesocycleId) || null : null;
+        const mesocycleReferenceValid = !referencedMesocycleId || Boolean(mesocycle);
+        const constraints = mesocycle?.constraints || {};
+        const mesocycleEquipmentSource = Object.prototype.hasOwnProperty.call(mesocycle || {}, "availableEquipment")
+          ? mesocycle.availableEquipment
+          : Object.prototype.hasOwnProperty.call(constraints, "availableEquipment")
+            ? constraints.availableEquipment
+            : undefined;
+        const normalizeEquipment = (source) => Array.isArray(source)
+          ? Array.from(new Set(source.map((item) => String(item || "").trim()).filter(Boolean)))
+          : [];
+        const currentEquipment = normalizeEquipment(data.settings.availableEquipment);
+        const mesocycleEquipment = mesocycleEquipmentSource === undefined ? null : normalizeEquipment(mesocycleEquipmentSource);
+        const configuredEquipment = mesocycleEquipment === null
+          ? currentEquipment
+          : currentEquipment.includes("all")
+            ? mesocycleEquipment
+            : mesocycleEquipment.includes("all")
+              ? currentEquipment
+              : currentEquipment.filter((item) => mesocycleEquipment.includes(item));
+        const equipmentInputValid = configuredEquipment.length > 0;
+        const excludedExerciseIds = new Set([
+          ...(Array.isArray(data.settings.excludedExerciseIds) ? data.settings.excludedExerciseIds : []),
+          ...(Array.isArray(mesocycle?.excludedExerciseIds) ? mesocycle.excludedExerciseIds : []),
+          ...(Array.isArray(constraints.excludedExerciseIds) ? constraints.excludedExerciseIds : [])
+        ].map((item) => String(item || "").trim()).filter(Boolean));
+        const scopedMuscleIds = Object.prototype.hasOwnProperty.call(mesocycle || {}, "includedMuscleGroupIds")
+          ? mesocycle.includedMuscleGroupIds
+          : Object.prototype.hasOwnProperty.call(constraints, "includedMuscleGroupIds") ? constraints.includedMuscleGroupIds : undefined;
+        const muscleGroupId = normalizePrescriptionIdentity(snapshot.muscleGroupId || prescription.muscleGroupId || "");
+        const scopeValid = scopedMuscleIds === undefined || (Array.isArray(scopedMuscleIds)
+          && scopedMuscleIds.length > 0
+          && scopedMuscleIds.some((item) => normalizePrescriptionIdentity(item) === muscleGroupId));
+
+        const originalExerciseId = restriction.originalExerciseId
+          || restriction.auditBaseTargets?.exerciseId
+          || snapshot.basePrescription?.exerciseId
+          || prescription.exerciseId;
+        const originalResearchExerciseId = restriction.auditBaseTargets?.researchExerciseId
           || snapshot.basePrescription?.researchExerciseId
-          || research.exerciseById.has(originalExerciseId) && originalExerciseId
+          || (research.exerciseById.has(originalExerciseId) ? originalExerciseId : "")
           || originalExerciseId;
         const substitutionRows = research.substitutionsByExercise.get(originalResearchExerciseId) || [];
         const mappedIds = Array.from(new Set(substitutionRows.map((item) => item.substitute_exercise_id || item.substituteExerciseId).filter(Boolean)));
-        const configuredEquipment = Array.isArray(data.settings.availableEquipment) && data.settings.availableEquipment.length ? data.settings.availableEquipment : ["all"];
-        const excludedExerciseIds = new Set([...(data.settings.excludedExerciseIds || []), ...(currentMesocycle()?.constraints?.excludedExerciseIds || [])]);
+        const originalIds = new Set([originalExerciseId, originalResearchExerciseId, restriction.auditBaseTargets?.exerciseId, restriction.auditBaseTargets?.researchExerciseId, snapshot.basePrescription?.exerciseId, snapshot.basePrescription?.researchExerciseId].filter(Boolean));
         let rankedById = new Map();
-        try {
-          const ranked = prescriptionEngine.rankExercisePool(snapshot.muscleGroupId, { availableEquipment: configuredEquipment });
-          rankedById = new Map((ranked.candidates || []).map((candidate) => [candidate.exerciseId, candidate]));
-        } catch { /* A restricted pool fails closed below. */ }
-        const originalIds = new Set([originalExerciseId, originalResearchExerciseId, snapshot.exerciseId, snapshot.basePrescription?.exerciseId].filter(Boolean));
-        const allowedSafetySubstituteIds = mappedIds.filter((exerciseId) => (
+        if (mesocycleReferenceValid && equipmentInputValid && scopeValid && muscleGroupId) {
+          try {
+            const ranked = prescriptionEngine.rankExercisePool(muscleGroupId, {
+              availableEquipment: configuredEquipment,
+              excludedExerciseIds: Array.from(excludedExerciseIds),
+              mesocycleType: mesocycle?.type,
+              maxCandidates: 100
+            });
+            rankedById = new Map((ranked.candidates || []).map((candidate) => [candidate.exerciseId, candidate]));
+          } catch { /* Invalid or incompatible current constraints fail closed below. */ }
+        }
+        const resolvedSubstituteId = restriction.substituteResearchExerciseId || restriction.substituteExerciseId || "";
+        const resolved = restriction.status === "resolved_by_confirmed_substitute" && restriction.painFreeConfirmed === true;
+        const eligibleSafetySubstituteIds = mappedIds.filter((exerciseId) => (
           research.exerciseById.has(exerciseId)
           && !originalIds.has(exerciseId)
           && !excludedExerciseIds.has(exerciseId)
-          && (configuredEquipment.includes("all") || rankedById.has(exerciseId))
+          && rankedById.has(exerciseId)
         ));
+        const allowedSafetySubstituteIds = resolved
+          ? eligibleSafetySubstituteIds.filter((exerciseId) => exerciseId !== resolvedSubstituteId)
+          : eligibleSafetySubstituteIds;
         const exerciseCatalog = allowedSafetySubstituteIds.map((exerciseId) => research.exerciseById.get(exerciseId)).filter(Boolean);
         const preferredId = allowedSafetySubstituteIds.includes(prescription.preferredReplacementExerciseId)
           ? prescription.preferredReplacementExerciseId
-          : allowedSafetySubstituteIds.find((exerciseId) => rankedById.has(exerciseId)) || allowedSafetySubstituteIds[0] || "";
+          : allowedSafetySubstituteIds[0] || "";
         const preferredRecord = preferredId ? research.exerciseById.get(preferredId) : null;
+
+        const observedExerciseId = exercise?.name ? prescriptionExerciseIdentity(exercise.name) || "" : "";
+        const declaredResolvedIds = [
+          restriction.substituteExerciseId,
+          restriction.substituteResearchExerciseId,
+          prescription.exerciseId,
+          prescription.researchExerciseId,
+          observedExerciseId
+        ].filter(Boolean).map((exerciseId) => {
+          if (research.exerciseById.has(exerciseId)) return exerciseId;
+          const reconciled = prescriptionEngine?.evidence?.personal?.reconciledIdentityByExerciseId?.get(exerciseId);
+          return reconciled?.invalid ? "" : reconciled?.researchExerciseId || exerciseId;
+        });
+        const identityCoherent = Boolean(resolvedSubstituteId)
+          && declaredResolvedIds.length > 0
+          && declaredResolvedIds.every((exerciseId) => exerciseId === resolvedSubstituteId)
+          && research.exerciseById.has(resolvedSubstituteId)
+          && !originalIds.has(resolvedSubstituteId);
+        let resolvedValidation = { valid: false, reason: "unresolved_safety_restriction", message: "The painful original exercise remains blocked until a distinct pain-free substitute is confirmed." };
+        if (resolved) {
+          if (!mesocycleReferenceValid) resolvedValidation = { valid: false, reason: "missing_mesocycle_context", message: "The saved substitute cannot be revalidated because its workout mesocycle no longer exists." };
+          else if (!identityCoherent) resolvedValidation = { valid: false, reason: "substitute_identity_drift", message: "The confirmed substitute no longer retains one coherent current catalog identity." };
+          else if (excludedExerciseIds.has(resolvedSubstituteId)) resolvedValidation = { valid: false, reason: "substitute_excluded", message: "The confirmed substitute is now excluded from this workout." };
+          else if (!equipmentInputValid || !rankedById.has(resolvedSubstituteId)) resolvedValidation = { valid: false, reason: "unavailable_equipment", message: "The confirmed substitute is not compatible with the currently available equipment." };
+          else if (!scopeValid) resolvedValidation = { valid: false, reason: "substitute_out_of_scope", message: "The confirmed substitute no longer satisfies the current mesocycle muscle scope." };
+          else if (!mappedIds.includes(resolvedSubstituteId) || !eligibleSafetySubstituteIds.includes(resolvedSubstituteId)) resolvedValidation = { valid: false, reason: "substitute_not_allowed", message: "The confirmed substitute is no longer a valid evidence-linked alternative for the painful original exercise." };
+          else resolvedValidation = { valid: true, reason: "confirmed_pain_free_substitute", message: "The confirmed substitute still satisfies current identity, equipment, exclusion, and program constraints." };
+        }
         return {
           originalExerciseId,
           originalResearchExerciseId,
@@ -5834,25 +6037,37 @@
           exerciseCatalog,
           availableEquipment: configuredEquipment,
           excludedExerciseIds: Array.from(excludedExerciseIds),
-          preferred: preferredRecord ? { exerciseId: preferredId, researchExerciseId: preferredId, exerciseName: preferredRecord.exercise_name } : null
+          preferred: preferredRecord ? { exerciseId: preferredId, researchExerciseId: preferredId, exerciseName: preferredRecord.exercise_name } : null,
+          resolvedValidation
         };
       }
 
-      function renderPrescriptionOverrideControls(exercise) {
+      function renderPrescriptionOverrideControls(exercise, precomputedSafetyContext = null) {
         const snapshot = exercise.recommendationSnapshot;
         if (!snapshot || exercise.sessionId !== activeWorkoutId || isSessionSubmitted(activeSession())) return "";
         const prescription = snapshot.finalPrescription;
-        const safetyContext = prescription.executionBlocked ? safetySubstituteContext(snapshot) : null;
+        const restriction = prescription.safetyRestriction || null;
+        const hasSafetyRestriction = restriction?.status === "blocked" || restriction?.status === "resolved_by_confirmed_substitute";
+        const currentSafetyContext = hasSafetyRestriction
+          ? precomputedSafetyContext || safetySubstituteContext(snapshot, { exercise, session: sessionById(exercise.sessionId) })
+          : null;
+        const safetyLocked = prescription.executionBlocked === true
+          || restriction?.status === "blocked"
+          || (restriction?.status === "resolved_by_confirmed_substitute" && currentSafetyContext?.resolvedValidation?.valid !== true);
+        const safetyContext = safetyLocked ? currentSafetyContext : null;
         const safetyListId = `safety-substitutes-${exercise.id}`;
         const safetyOptions = safetyContext?.exerciseCatalog.map((item) => `<option value="${escapeHtml(item.exercise_name)}"></option>`).join("") || "";
+        const safetyNote = restriction?.status === "resolved_by_confirmed_substitute"
+          ? "The previously confirmed substitute no longer satisfies current identity, equipment, exclusion, or program constraints. Choose a different current catalog-backed substitute and confirm it is pain-free before continuing."
+          : "The original exercise remains blocked. Only a distinct, catalog-backed substitute allowed by the current equipment and exclusion settings can become executable after you explicitly confirm it is pain-free.";
         return `
           <details class="compact-disclosure prescription-override" data-override-form="${exercise.id}">
-            <summary>${prescription.executionBlocked ? "Choose a pain-free substitute" : "Override this prescription"} <span>${snapshot.overrideLocked ? 'Locked for workout' : prescription.executionBlocked ? 'Confirmation required' : 'Optional'}</span></summary>
+            <summary>${safetyLocked ? "Choose a pain-free substitute" : "Override this prescription"} <span>${safetyLocked ? 'Confirmation required' : snapshot.overrideLocked ? 'Locked for workout' : 'Optional'}</span></summary>
             <div class="disclosure-body">
-              <p class="settings-note">${prescription.executionBlocked ? "The original exercise remains blocked. Only a distinct, catalog-backed substitute allowed by the current equipment and exclusion settings can become executable after you explicitly confirm it is pain-free." : "Overrides are saved with the original recommendation and will not be undone during this workout. Later outcomes are used to evaluate the choice."}</p>
+              <p class="settings-note">${safetyLocked ? safetyNote : "Overrides are saved with the original recommendation and will not be undone during this workout. Later outcomes are used to evaluate the choice."}</p>
               <div class="override-grid">
-                <label>Replacement exercise<input data-override-field="exercise" ${prescription.executionBlocked ? `list="${safetyListId}"` : ""} placeholder="${prescription.executionBlocked && safetyContext?.preferred ? escapeHtml(safetyContext.preferred.exerciseName) : `Keep ${escapeHtml(exercise.name)}`}" /></label>
-                ${prescription.executionBlocked ? `<datalist id="${safetyListId}">${safetyOptions}</datalist><label class="toggle-line override-reason"><input type="checkbox" data-override-field="pain-free-confirmed" />I explicitly confirm this substitute is pain-free for today</label>` : ""}
+                <label>Replacement exercise<input data-override-field="exercise" ${safetyLocked ? `list="${safetyListId}"` : ""} placeholder="${safetyLocked && safetyContext?.preferred ? escapeHtml(safetyContext.preferred.exerciseName) : `Keep ${escapeHtml(exercise.name)}`}" /></label>
+                ${safetyLocked ? `<datalist id="${safetyListId}">${safetyOptions}</datalist><label class="toggle-line override-reason"><input type="checkbox" data-override-field="pain-free-confirmed" />I explicitly confirm this substitute is pain-free for today</label>` : ""}
                 <label>Working sets<input type="number" min="1" max="12" value="${prescription.workingSets.target}" data-override-field="sets" /></label>
                 <label>Rep minimum<input type="number" min="1" max="50" value="${prescription.repRange.min}" data-override-field="rep-min" /></label>
                 <label>Rep maximum<input type="number" min="1" max="50" value="${prescription.repRange.max}" data-override-field="rep-max" /></label>
@@ -5871,16 +6086,21 @@
 
       function renderExercise(exercise) {
         const exerciseSets = setsForExercise(exercise.id);
-        const addSetSafety = guardWorkoutMutation("add-set", { exercise }, false);
-        const addWarmupSafety = guardWorkoutMutation("add-warmup-set", { exercise }, false);
-        const duplicateSetSafety = guardWorkoutMutation("duplicate-set", { exercise }, false);
+        const restriction = exercise.safetyRestriction || exercise.finalPrescription?.safetyRestriction || exercise.recommendationSnapshot?.finalPrescription?.safetyRestriction || null;
+        const resolvedSafetyContext = restriction?.status === "resolved_by_confirmed_substitute" && exercise.recommendationSnapshot
+          ? safetySubstituteContext(exercise.recommendationSnapshot, { exercise, session: sessionById(exercise.sessionId) })
+          : null;
+        const substituteValidation = resolvedSafetyContext?.resolvedValidation;
+        const addSetSafety = guardWorkoutMutation("add-set", { exercise, substituteValidation }, false);
+        const addWarmupSafety = guardWorkoutMutation("add-warmup-set", { exercise, substituteValidation }, false);
+        const duplicateSetSafety = guardWorkoutMutation("duplicate-set", { exercise, substituteValidation }, false);
         const firstWorkSet = exerciseSets.find((set) => isWorkingSet(set, "score")) || exerciseSets[0];
         const restSeconds = Number(exercise.restSeconds || data.settings.defaultRestSeconds || 90);
         const previousSets = exerciseSets.some((set) => isWorkingSet(set, "progression")) ? measurePerformance("lift:previousPerformance", () => getMostRecentWorkoutSets(exercise.name, { excludeSessionId: exercise.sessionId }), { exerciseId: exercise.id }) : [];
         const warmupIds = exerciseSets.filter((set) => setTypeSemantics(set).isWarmup).map((set) => set.id);
-        const renderContext = { restSeconds, previousSets, warmupIds };
+        const renderContext = { restSeconds, previousSets, warmupIds, substituteValidation };
         const setHtml = measurePerformance("lift:setRows", () => exerciseSets.map((set) => renderSet(set, exercise, renderContext)).join(""), { exerciseId: exercise.id, count: exerciseSets.length });
-        const optionsHtml = measurePerformance("lift:exerciseOptions", () => renderPlateCalculator(exercise, firstWorkSet) + renderMuscleSelectors(exercise) + renderExerciseGuidance(exercise) + renderPrescriptionOverrideControls(exercise), { exerciseId: exercise.id });
+        const optionsHtml = measurePerformance("lift:exerciseOptions", () => renderPlateCalculator(exercise, firstWorkSet) + renderMuscleSelectors(exercise) + renderExerciseGuidance(exercise) + renderPrescriptionOverrideControls(exercise, resolvedSafetyContext), { exerciseId: exercise.id });
         return `
           <article class="exercise-card">
             <div class="exercise-header">
@@ -5918,9 +6138,9 @@
 
       function renderSet(set, exercise, context = {}) {
         const restSeconds = Number(context.restSeconds || exercise.restSeconds || data.settings.defaultRestSeconds || 90);
-        const completionSafety = guardWorkoutMutation("toggle-set", { exercise, set }, false);
-        const skipSafety = guardWorkoutMutation("toggle-skip-set", { exercise, set }, false);
-        const timerSafety = guardWorkoutMutation("start-timer", { exercise, set }, false);
+        const completionSafety = guardWorkoutMutation("toggle-set", { exercise, set, substituteValidation: context.substituteValidation }, false);
+        const skipSafety = guardWorkoutMutation("toggle-skip-set", { exercise, set, substituteValidation: context.substituteValidation }, false);
+        const timerSafety = guardWorkoutMutation("start-timer", { exercise, set, substituteValidation: context.substituteValidation }, false);
         const resistanceType = resistanceTypeFor(exercise, set);
         const visualState = setVisualState(set);
         const isNext = visualState === "current";
@@ -8445,8 +8665,14 @@
         const exercise = exerciseById(exerciseId);
         if (!exercise?.recommendationSnapshot || !prescriptionEngine || !form) return;
         const current = exercise.recommendationSnapshot.finalPrescription;
-        const safetyLocked = current.executionBlocked === true || current.safetyRestriction?.status === "blocked";
-        const safetyContext = safetyLocked ? safetySubstituteContext(exercise.recommendationSnapshot) : null;
+        const restriction = current.safetyRestriction || null;
+        const currentSafetyContext = restriction
+          ? safetySubstituteContext(exercise.recommendationSnapshot, { exercise, session: sessionById(exercise.sessionId) })
+          : null;
+        const safetyLocked = current.executionBlocked === true
+          || restriction?.status === "blocked"
+          || (restriction?.status === "resolved_by_confirmed_substitute" && currentSafetyContext?.resolvedValidation?.valid !== true);
+        const safetyContext = safetyLocked ? currentSafetyContext : null;
         const read = (field) => form.querySelector(`[data-override-field="${field}"]`)?.value ?? "";
         const override = {};
         const replacementName = String(read("exercise")).trim();
@@ -8699,11 +8925,11 @@
 
       function toggleSetCompletion(setId) {
         const interactionStartedAt = performanceNow();
-        const set = setById(setId);
-        if (!set) return;
-        if (!guardWorkoutMutation("toggle-set", { set }).allowed) return;
+        const authorization = guardWorkoutMutation("toggle-set", { setId });
+        if (!authorization.allowed) return;
+        const set = authorization.target.set;
         const completing = !set.completed;
-        if (isEditingHistorySession()) {
+        if (authorization.target.authorizationMode === "history_edit") {
           patchSet(set.id, { completed: completing, skipped: false, edited: true });
           return;
         }
@@ -8732,11 +8958,11 @@
       }
 
       function toggleSetSkipped(setId) {
-        const set = data.sets.find((item) => item.id === setId);
-        if (!set) return;
-        if (!guardWorkoutMutation("toggle-skip-set", { set }).allowed) return;
+        const authorization = guardWorkoutMutation("toggle-skip-set", { setId });
+        if (!authorization.allowed) return;
+        const set = authorization.target.set;
         const skipped = !set.skipped;
-        if (isEditingHistorySession()) {
+        if (authorization.target.authorizationMode === "history_edit") {
           patchSet(set.id, { skipped, completed: false, edited: true });
           return;
         }
@@ -8819,15 +9045,17 @@
       }
 
       function addExercise() {
-        const session = activeSession();
         const name = addExerciseDraft;
-        if (!session || !name || !name.trim()) return;
-        if (!guardWorkoutMutation("add-exercise").allowed) return;
-        if (isSessionSubmitted(session)) {
+        if (!name || !name.trim()) return;
+        const authorization = guardWorkoutMutation("add-exercise");
+        if (!authorization.allowed) return;
+        const session = authorization.target.session;
+        const historyCorrection = authorization.target.authorizationMode === "history_edit";
+        if (isSessionSubmitted(session) && !historyCorrection) {
           showAppToast("Logged workouts cannot become active again. Start a new workout first.");
           return;
         }
-        if (hasActiveWorkout() && session.id !== activeWorkoutId) {
+        if (!historyCorrection && hasActiveWorkout() && session.id !== activeWorkoutId) {
           activeSessionId = activeWorkoutId;
           setActiveTab("lift", { replace: true, renderNow: false });
           showAppToast("You already have an active workout. Resume or cancel it before adding another.");
@@ -8835,15 +9063,17 @@
           return;
         }
         const resistanceType = inferResistanceType(name.trim());
-        const exercise = { id: id(), sessionId: session.id, name: name.trim(), primaryMuscle: addExercisePrimaryMuscle, secondaryMuscle: addExerciseSecondaryMuscle, notes: "", order: activeExercises().length, restSeconds: recommendedRestSeconds(name.trim()), resistanceType, isBodyweight: isBodyweightResistance(resistanceType), isDeload: false };
+        const exercise = { id: id(), sessionId: session.id, name: name.trim(), primaryMuscle: addExercisePrimaryMuscle, secondaryMuscle: addExerciseSecondaryMuscle, notes: "", order: data.exercises.filter((item) => item.sessionId === session.id).length, restSeconds: recommendedRestSeconds(name.trim()), resistanceType, isBodyweight: isBodyweightResistance(resistanceType), isDeload: false };
         addExerciseDraft = "";
         addExercisePrimaryMuscle = "";
         addExerciseSecondaryMuscle = "";
-        activeWorkoutId = session.id;
-        session.workoutStarted = true;
-        session.workoutState = "active";
-        if (!session.startedAt) session.startedAt = isoNow();
-        commit({ ...data, sessions: data.sessions.map((item) => item.id === session.id ? { ...session, updatedAt: isoNow() } : item), exercises: [...data.exercises, exercise], sets: [...data.sets, createSet(exercise.id, 1, { resistanceType })] }, true, { invalidateAnalysis: false, deferPersistence: true });
+        if (!historyCorrection) {
+          activeWorkoutId = session.id;
+          session.workoutStarted = true;
+          session.workoutState = "active";
+          if (!session.startedAt) session.startedAt = isoNow();
+        }
+        commit({ ...data, sessions: data.sessions.map((item) => item.id === session.id ? { ...session, updatedAt: isoNow() } : item), exercises: [...data.exercises, exercise], sets: [...data.sets, createSet(exercise.id, 1, { resistanceType })] }, true, { invalidateAnalysis: historyCorrection, deferPersistence: !historyCorrection });
       }
 
       function addTemplate() {
@@ -9004,28 +9234,33 @@
 
       function addSet(exerciseId, duplicate) {
         const action = duplicate ? "duplicate-set" : "add-set";
-        if (!guardWorkoutMutation(action, { exerciseId }).allowed) return;
-        const sets = setsForExercise(exerciseId);
-        logWorkoutOverride(exerciseById(exerciseId), "setCount", sets.filter((set) => isWorkingSet(set, "score")).length, sets.filter((set) => isWorkingSet(set, "score")).length + 1, { action: duplicate ? "duplicate_set" : "add_set" });
+        const authorization = guardWorkoutMutation(action, { exerciseId });
+        if (!authorization.allowed) return;
+        const exercise = authorization.target.exercise;
+        const targetExerciseId = exercise.id;
+        const sets = setsForExercise(targetExerciseId);
+        logWorkoutOverride(exercise, "setCount", sets.filter((set) => isWorkingSet(set, "score")).length, sets.filter((set) => isWorkingSet(set, "score")).length + 1, { action: duplicate ? "duplicate_set" : "add_set" });
         const sequenceIndex = sets.length ? Math.max(...sets.map(canonicalSetSequence)) + 1 : 0;
         const previous = duplicate ? sets[sets.length - 1] : undefined;
-        commit({ ...data, sets: [...data.sets, createSet(exerciseId, sets.filter((set) => !setTypeSemantics(set).isWarmup).length + 1, { ...(previous || {}), sequenceIndex, sequence: sequenceIndex, completed: false, skipped: false, edited: false })] }, true, { invalidateAnalysis: false, deferPersistence: true });
+        commit({ ...data, sets: [...data.sets, createSet(targetExerciseId, sets.filter((set) => !setTypeSemantics(set).isWarmup).length + 1, { ...(previous || {}), sequenceIndex, sequence: sequenceIndex, completed: false, skipped: false, edited: false })] }, true, { invalidateAnalysis: authorization.target.authorizationMode === "history_edit", deferPersistence: authorization.target.authorizationMode !== "history_edit" });
       }
 
       function addWarmupSet(exerciseId) {
-        if (!guardWorkoutMutation("add-warmup-set", { exerciseId }).allowed) return;
-        const sets = setsForExercise(exerciseId);
+        const authorization = guardWorkoutMutation("add-warmup-set", { exerciseId });
+        if (!authorization.allowed) return;
+        const targetExerciseId = authorization.target.exercise.id;
+        const sets = setsForExercise(targetExerciseId);
         const warmups = sets.filter((set) => setTypeSemantics(set).isWarmup);
         const sequenceIndex = warmups.length;
         const priorWarmup = warmups.at(-1);
-        const shifted = data.sets.map((set) => set.exerciseId === exerciseId && canonicalSetSequence(set) >= sequenceIndex ? { ...set, sequenceIndex: canonicalSetSequence(set) + 1, sequence: canonicalSetSequence(set) + 1 } : set);
-        const warmupSet = createSet(exerciseId, warmups.length + 1, { ...(priorWarmup || {}), sequenceIndex, sequence: sequenceIndex, setTypeIndex: warmups.length, completed: false, skipped: false, edited: false, isWarmup: true, setType: "warmup", countsTowardScore: false, countsTowardVolume: false, countsTowardProgression: false, rpe: 5 });
+        const shifted = data.sets.map((set) => set.exerciseId === targetExerciseId && canonicalSetSequence(set) >= sequenceIndex ? { ...set, sequenceIndex: canonicalSetSequence(set) + 1, sequence: canonicalSetSequence(set) + 1 } : set);
+        const warmupSet = createSet(targetExerciseId, warmups.length + 1, { ...(priorWarmup || {}), sequenceIndex, sequence: sequenceIndex, setTypeIndex: warmups.length, completed: false, skipped: false, edited: false, isWarmup: true, setType: "warmup", countsTowardScore: false, countsTowardVolume: false, countsTowardProgression: false, rpe: 5 });
         const current = data.sets.find((set) => set.id === activeSetId);
         const nextWarmup = warmups.find((set) => !set.completed && !set.skipped) || warmupSet;
         const nextWarmupIndex = nextWarmup.id === warmupSet.id ? warmups.length : warmups.findIndex((set) => set.id === nextWarmup.id);
         const shouldActivateWarmup = !sets.some((set) => set.completed || set.skipped) && (!current || !setTypeSemantics(current).isWarmup);
         if (shouldActivateWarmup) setActiveSet(nextWarmup.id, "Warm-Up " + (nextWarmupIndex + 1) + " of " + (warmups.length + 1) + " is ready", false);
-        commit({ ...data, sets: [...shifted, warmupSet] }, true, { invalidateAnalysis: false, deferPersistence: true });
+        commit({ ...data, sets: [...shifted, warmupSet] }, true, { invalidateAnalysis: authorization.target.authorizationMode === "history_edit", deferPersistence: authorization.target.authorizationMode !== "history_edit" });
       }
 
       function moveExercise(exerciseId, direction) {
@@ -9388,17 +9623,19 @@
       }
 
       function startTimer(exerciseId, setId, options = {}) {
-        if (!guardWorkoutMutation("start-timer", { exerciseId, setId }).allowed) return false;
+        const authorization = guardWorkoutMutation("start-timer", { exerciseId, setId });
+        if (!authorization.allowed) return false;
+        const exercise = authorization.target.exercise;
+        const set = authorization.target.set;
+        const requestedNext = options.pendingNextSetId ? setById(options.pendingNextSetId) : null;
+        const requestedNextExercise = requestedNext ? exerciseById(requestedNext.exerciseId) : null;
+        if (options.pendingNextSetId && (!requestedNext || requestedNextExercise?.sessionId !== authorization.target.session.id)) return false;
         const previousTimer = timer ? { ...timer } : null;
         window.clearInterval(timerInterval);
         releaseTimerWakeLock();
         if (previousTimer) cancelRestPush(previousTimer, "replaced");
-        const exercise = exerciseById(exerciseId);
-        const set = setById(setId);
         const seconds = Number(options.seconds || exercise?.restSeconds || data.settings.defaultRestSeconds || 90);
-        const next = options.pendingNextSetId
-          ? setById(options.pendingNextSetId)
-          : set?.completed || set?.skipped ? nextIncompleteSet(setId) : set;
+        const next = requestedNext || (set?.completed || set?.skipped ? nextIncompleteSet(set.id) : set);
         restCompletionController?.dismiss("replaced_by_new_timer");
         timerCompleteNotice = null;
         measurePerformance("timer:primeAlerts", () => primeTimerAlerts());
@@ -9409,8 +9646,8 @@
           id: id(),
           version: Number(previousTimer?.version || 0) + 1,
           workoutId: activeWorkoutId || exercise?.sessionId || "",
-          exerciseId,
-          setId,
+          exerciseId: exercise.id,
+          setId: set.id,
           pendingNextSetId,
           durationSeconds: seconds,
           remainingSeconds: seconds,
@@ -10297,9 +10534,19 @@
         if (muscleAssignmentCache.has(cacheKey)) return muscleAssignmentCache.get(cacheKey);
         let result;
         const canonicalId = canonicalExerciseId(exercise.name);
+        const evidence = prescriptionEngine?.evidence;
+        const normalizedName = normalizePrescriptionIdentity(exercise.name);
+        const publicResearchId = evidence?.research?.exerciseIdByAlias?.get(normalizedName)
+          || evidence?.research?.exerciseDatabase?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === normalizedName)?.exercise_id;
+        const personalRecord = !publicResearchId && (evidence?.personal?.exerciseScores?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === normalizedName)
+          || evidence?.personal?.exercisePrescriptions?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === normalizedName));
+        const personalId = personalRecord?.exercise_id || personalRecord?.exerciseId || "";
+        const invalidReconciledIdentity = Boolean(personalId && evidence?.personal?.reconciledIdentityByExerciseId?.get(personalId)?.invalid);
         const customOrUnmappedExercise = !canonicalId || /^(?:custom|user)(?::|_)/.test(canonicalId);
         const taxonomy = taxonomyMusclesForExercise(exercise);
-        if (taxonomy.length) {
+        if (invalidReconciledIdentity) {
+          result = [];
+        } else if (taxonomy.length) {
           result = taxonomy;
         } else if (!customOrUnmappedExercise) {
           result = [];
@@ -10414,11 +10661,13 @@
         if (!names.length) return null;
         const template = { id: `fatigue-${flag.id}`, exercises: names.map((name) => ({ name })) };
         const priority = { full_program_deload: 9, muscle_group_deload: 8, exercise_deload: 7, rotate_exercise: 6, substitute: 6, reduce_volume: 5, light_session: 4, hold: 3, normal: 2, progress: 1 };
-        return names.map((name) => unifiedPrescriptionSnapshot({ name }, { throughDate, historical: true, template, mesocycle: null, fresh: true }))
-          .filter((snapshot) => snapshot?.finalPrescription
-            && snapshot.hardConstraint !== true
-            && snapshot.type !== "hard_constraint_rejection"
-            && snapshot.kind !== "hard_constraint_rejection")
+        const snapshots = names.map((name) => unifiedPrescriptionSnapshot({ name }, { throughDate, historical: true, template, mesocycle: null, fresh: true }));
+        const engineFailure = snapshots.find((snapshot) => (snapshot?.type || snapshot?.kind) === "engine_failure");
+        if (engineFailure) return engineFailure;
+        return snapshots.filter((snapshot) => snapshot?.finalPrescription
+          && snapshot.hardConstraint !== true
+          && snapshot.type !== "hard_constraint_rejection"
+          && snapshot.kind !== "hard_constraint_rejection")
           .sort((a, b) => Number(priority[b.finalPrescription.recommendationType] || 0) - Number(priority[a.finalPrescription.recommendationType] || 0))[0] || null;
       }
 
@@ -10452,6 +10701,20 @@
         const unifiedFlags = flags.map((flag) => {
           const snapshot = unifiedSnapshotForFatigueFlag(flag, weekStart);
           if (!snapshot) return flag;
+          if ((snapshot.type || snapshot.kind) === "engine_failure") {
+            const unavailableMessage = "Recommendation guidance is unavailable because the prescription engine could not generate a recommendation.";
+            return {
+              ...flag,
+              recommendation: unavailableMessage,
+              recommendationUnavailable: true,
+              recommendationStatus: "unavailable",
+              recommendationType: "engine_failure",
+              recommendationId: null,
+              engineFailure: { type: "engine_failure", code: snapshot.code || "PRESCRIPTION_ENGINE_FAILURE", status: "unavailable", message: unavailableMessage },
+              evidence: [...flag.evidence, "Unified prescription guidance was unavailable for this retrospective flag."],
+              rule: `${flag.rule} The retrospective flag remains visible, but no executable recommendation was generated.`
+            };
+          }
           const prescription = snapshot.finalPrescription;
           return {
             ...flag,
