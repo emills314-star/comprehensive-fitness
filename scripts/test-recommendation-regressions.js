@@ -1855,6 +1855,95 @@ test("one reconciled research identity governs nullable crosswalks, aliases, can
   assert.ok(invalidOnlyPool.candidates.some((candidate) => candidate.exerciseId === "ex_dumbbell_bench_press"), "an invalid custom identity never suppresses the valid canonical exercise");
 });
 
+test("reconciled invalid custom identities cannot re-enter overrides as genuinely unmapped exercises", () => {
+  const invalidId = "custom_conflicting_alias_press";
+  const unmappedId = "custom_genuinely_unmapped_press";
+  const invalidIdentityEngine = createPrescriptionEngine({
+    personalData: {
+      exerciseScores: [{
+        exercise_id: invalidId,
+        exercise_name: "Dumbbell Bench Press",
+        equipment: "cable"
+      }, {
+        exercise_id: unmappedId,
+        exercise_name: "Unlisted Quantum Press",
+        equipment: "cable"
+      }],
+      exerciseMuscleScores: [{
+        exercise_id: invalidId,
+        exercise_name: "Machine Chest Press",
+        muscle_group: "chest",
+        muscle_role: "primary",
+        contribution_weight: 1,
+        research_muscle_group_id: "chest"
+      }, {
+        exercise_id: unmappedId,
+        exercise_name: "Unlisted Quantum Press",
+        muscle_group: "chest",
+        muscle_role: "primary",
+        contribution_weight: 1,
+        research_muscle_group_id: "chest"
+      }],
+      metadata: { methodology_version: "invalid-identity-propagation-test/1.0.0" }
+    },
+    researchData: publicResearchData()
+  });
+  const invalidIdentity = invalidIdentityEngine.evidence.personal.reconciledIdentityByExerciseId.get(invalidId);
+  assert.equal(invalidIdentity.invalid, true, "contradictory trusted aliases must reconcile to one invalid identity");
+  assert.match(invalidIdentity.invalidReason, /conflicting trusted custom research identities/i);
+  assert.throws(
+    () => invalidIdentityEngine.scoreExercise(invalidId, "chest"),
+    /conflicting trusted custom research identities/i,
+    "scoring must reject the reconciled invalid identity"
+  );
+
+  const ordinary = invalidIdentityEngine.prescribeExercise({
+    exerciseId: "ex_barbell_bench_press",
+    muscleGroupId: "chest",
+    history: progressionHistory(),
+    createdAt
+  });
+  assert.throws(
+    () => invalidIdentityEngine.applyManualOverride(ordinary, { exerciseId: invalidId }, {
+      allowedExerciseIds: [invalidId],
+      availableEquipment: ["cable"],
+      createdAt: "2026-07-12T12:22:10.000Z"
+    }),
+    /conflicting trusted custom research identities/i,
+    "ordinary replacement must preserve and reject the engine's invalid identity state"
+  );
+
+  const painful = invalidIdentityEngine.prescribeExercise({
+    exerciseId: "ex_barbell_bench_press",
+    muscleGroupId: "chest",
+    history: progressionHistory(),
+    readiness: { pain: true, affectedMuscle: "chest" },
+    createdAt
+  });
+  assert.throws(
+    () => invalidIdentityEngine.applyManualOverride(painful, {
+      exerciseId: invalidId,
+      researchExerciseId: "ex_dumbbell_bench_press",
+      painFreeConfirmed: true
+    }, {
+      allowedSafetySubstituteIds: [invalidId],
+      availableEquipment: ["cable"],
+      createdAt: "2026-07-12T12:22:20.000Z"
+    }),
+    /conflicting trusted custom research identities/i,
+    "hard-safety replacement must reject the same preserved invalid identity and reason"
+  );
+
+  const unmapped = invalidIdentityEngine.applyManualOverride(ordinary, { exerciseId: unmappedId }, {
+    allowedExerciseIds: [unmappedId],
+    availableEquipment: ["cable"],
+    createdAt: "2026-07-12T12:22:30.000Z"
+  });
+  assert.equal(unmapped.finalPrescription.exerciseId, unmappedId);
+  assert.equal(unmapped.finalPrescription.researchExerciseId, null, "a genuinely unmapped valid custom identity remains an auditable ordinary replacement");
+  assert.doesNotThrow(() => deserializeRecommendationSnapshot(unmapped));
+});
+
 test("recommendation ranking has no canonical-first equipment expressions outside its resolver", () => {
   const source = fs.readFileSync(path.join(ROOT, "prescription-engine.js"), "utf8");
   assert.doesNotMatch(source, /equipmentCompatible\(\s*candidate\.researchExercise\s*\|\|/);
@@ -1868,6 +1957,12 @@ test("recommendation ranking has no canonical-first equipment expressions outsid
   assert.doesNotMatch(mergedCandidates, /firstPresent\([\s\S]{0,180}crosswalkByPersonalId/);
   assert.doesNotMatch(resolver, /crosswalkByPersonalId/);
   assert.doesNotMatch(substitutions, /personalIdsByResearchId/);
+  const prescriptionEngineClass = source.match(/class PrescriptionEngine[\s\S]*?\n\s*function createPrescriptionEngine\(/)?.[0] || "";
+  assert.match(prescriptionEngineClass, /trustedCustomIdentityProfiles/);
+  assert.equal((prescriptionEngineClass.match(/trustedResearchCatalog:/g) || []).length, 1, "the class has one audited trusted-catalog rebuild path");
+  assert.equal((prescriptionEngineClass.match(/trustedCustomIdentityProfiles:/g) || []).length, 1, "every class catalog rebuild must carry reconciled profiles directly");
+  assert.doesNotMatch(prescriptionEngineClass, /const personalCatalog/);
+  assert.doesNotMatch(prescriptionEngineClass, /reconciledIdentity\?\.invalid\s*\?\s*null/);
 });
 
 test("restricted candidate pools and substitutes are deterministic and equipment-safe", () => {

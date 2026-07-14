@@ -13,7 +13,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function prescriptionEngineFactory() {
   "use strict";
 
-  const ENGINE_VERSION = "3.1.9";
+  const ENGINE_VERSION = "3.1.10";
   const PRESCRIPTION_SCHEMA_VERSION = "2.1.0";
   const SNAPSHOT_SCHEMA_VERSION = "1.1.0";
   const HARD_SAFETY_SCHEMA_VERSION = "hard-safety/1.0.0";
@@ -4161,6 +4161,7 @@
   function buildTrustedExerciseCatalog(options = {}) {
     const researchIdentities = new Map();
     const customIdentityBatches = new Map();
+    const reconciledCustomIdentityProfiles = new Map();
     const addResearch = (item) => {
       const identity = catalogIdentity(item);
       if (!identity?.structured || !identity.catalogRecord || !identity.exerciseId) throw new Error("Trusted research exercise catalogs require structured records with stable IDs and metadata.");
@@ -4197,21 +4198,52 @@
       if (!customIdentityBatches.has(identity.exerciseId)) customIdentityBatches.set(identity.exerciseId, []);
       customIdentityBatches.get(identity.exerciseId).push(identity);
     };
+    const addReconciledCustomIdentityProfile = (profile) => {
+      if (!profile || typeof profile !== "object" || !profile.exerciseId || !profile.structured || !profile.catalogRecord) {
+        throw new Error("Trusted reconciled custom identity profiles require structured catalog identities with stable IDs and metadata.");
+      }
+      const canonical = researchIdentities.get(profile.exerciseId);
+      if (!profile.invalid && canonical) {
+        if (profile.researchIdentityConflict || (profile.researchExerciseId !== null && profile.researchExerciseId !== canonical.researchExerciseId)) {
+          throw new Error(`Conflicting trusted catalog mapping for canonical exercise ${profile.exerciseId}.`);
+        }
+        return;
+      }
+      if (!profile.invalid && profile.researchExerciseId && !researchIdentities.has(profile.researchExerciseId)) {
+        throw new Error(`Trusted reconciled custom exercise ${profile.exerciseId} maps to unknown research exercise ${profile.researchExerciseId}.`);
+      }
+      if (profile.invalid && !String(profile.invalidReason || "").trim()) {
+        throw new Error(`Invalid trusted custom catalog identity ${profile.exerciseId} must preserve its rejection reason.`);
+      }
+      const existing = reconciledCustomIdentityProfiles.get(profile.exerciseId);
+      if (existing && stableStringify(existing) !== stableStringify(profile)) {
+        throw new Error(`Conflicting trusted reconciled custom identity profiles for ${profile.exerciseId}.`);
+      }
+      if (!existing) reconciledCustomIdentityProfiles.set(profile.exerciseId, deepClone(profile));
+    };
+    asArray(options.trustedCustomIdentityProfiles).forEach(addReconciledCustomIdentityProfile);
     asArray(options.trustedCustomCatalog).forEach(addCustom);
     if (explicitCallerTrustRoot) callerCatalog.filter((item) => {
       const identity = catalogIdentity(item);
       return identity?.structured && identity.catalogRecord;
     }).forEach(addCustom);
 
-    const customIdentities = new Map([...customIdentityBatches.entries()]
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([exerciseId, batch]) => {
-        try {
-          return [exerciseId, reconcileTrustedCustomIdentityBatch(batch, researchIdentities)];
-        } catch (error) {
-          return [exerciseId, invalidTrustedCustomIdentity(exerciseId, batch, error)];
-        }
-      }));
+    const customExerciseIds = unique([
+      ...reconciledCustomIdentityProfiles.keys(),
+      ...customIdentityBatches.keys()
+    ]).sort();
+    const customIdentities = new Map(customExerciseIds.map((exerciseId) => {
+      const profile = reconciledCustomIdentityProfiles.get(exerciseId);
+      const batch = customIdentityBatches.get(exerciseId) || [];
+      if (profile?.invalid) return [exerciseId, profile];
+      if (profile && !batch.length) return [exerciseId, profile];
+      const identitiesToReconcile = profile ? [profile, ...batch] : batch;
+      try {
+        return [exerciseId, reconcileTrustedCustomIdentityBatch(identitiesToReconcile, researchIdentities)];
+      } catch (error) {
+        return [exerciseId, invalidTrustedCustomIdentity(exerciseId, identitiesToReconcile, error)];
+      }
+    }));
 
     const identities = new Map([...researchIdentities, ...customIdentities]);
     callerCatalog.forEach((item) => {
@@ -4505,15 +4537,14 @@
         exerciseId: firstPresent(item.exercise_id, item.exerciseId),
         researchExerciseId: firstPresent(item.exercise_id, item.exerciseId)
       }));
-      const personalCatalog = [...this.evidence.personal.exerciseScores, ...this.evidence.personal.exercisePrescriptions].map((item) => {
-        const exerciseId = firstPresent(item.exercise_id, item.exerciseId);
-        const reconciledIdentity = this.evidence.personal.reconciledIdentityByExerciseId?.get(exerciseId);
-        return { ...item, exerciseId, researchExerciseId: reconciledIdentity?.invalid ? null : reconciledIdentity?.researchExerciseId || null };
-      });
       return applyManualOverride(snapshot, override, {
         ...options,
         trustedResearchCatalog: researchCatalog,
-        trustedCustomCatalog: [...personalCatalog, ...asArray(options.trustedExerciseCatalog)],
+        // Preserve the engine's reconciled valid/invalid state directly. Turning
+        // an invalid identity into a nullable catalog record would incorrectly
+        // let it re-enter the override path as a genuinely unmapped exercise.
+        trustedCustomIdentityProfiles: [...this.evidence.personal.reconciledIdentityByExerciseId.values()],
+        trustedCustomCatalog: asArray(options.trustedExerciseCatalog),
         exerciseCatalog: asArray(options.exerciseCatalog)
       });
     }
