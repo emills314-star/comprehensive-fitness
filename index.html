@@ -2888,13 +2888,16 @@
         if (persistenceReady && stored) writeIndexedValue("app-data", data).catch(() => undefined);
       }
 
-      async function initializePrescriptionEvidence() {
+      async function loadPrescriptionEvidence(options = {}) {
         if (!prescriptionApi) {
           prescriptionEvidenceStatus = { state: "unavailable", personalRecords: 0, researchExercises: 0, personalVersion: "unknown", researchVersion: "unknown", message: "The unified prescription module did not load." };
           return false;
         }
         const researchBaseUrl = "./research_database/exports/json";
-        const persistedPersonalData = data.personalEvidencePackage?.personalData || null;
+        const personalEvidencePackage = Object.prototype.hasOwnProperty.call(options, "personalEvidencePackage")
+          ? options.personalEvidencePackage
+          : data.personalEvidencePackage;
+        const persistedPersonalData = personalEvidencePackage?.personalData || null;
         let bundle = null;
         let sourceLabel = persistedPersonalData ? "imported local evidence" : "research defaults";
         try {
@@ -2940,10 +2943,9 @@
             }
           }
           if (!bundle) bundle = researchBundle;
-          prescriptionEngine = prescriptionApi.createPrescriptionEngine(bundle);
-          prescriptionSnapshotCache.clear();
+          const nextPrescriptionEngine = prescriptionApi.createPrescriptionEngine(bundle);
           const personalRecords = bundle.personal.exercisePrescriptions.length + bundle.personal.exerciseScores.length + bundle.personal.exerciseMuscleScores.length;
-          prescriptionEvidenceStatus = {
+          const nextPrescriptionEvidenceStatus = {
             state: bundle.research.exerciseDatabase.length ? "ready" : "research_unavailable",
             source: sourceLabel,
             personalRecords,
@@ -2954,16 +2956,37 @@
               ? `Unified engine loaded ${personalRecords} personal prescription/score records and ${bundle.research.exerciseDatabase.length} research exercises from ${sourceLabel}.`
               : `Unified engine loaded ${bundle.research.exerciseDatabase.length} research exercises. Import the private personal evidence package on devices that cannot access the protected local files.`
           };
+          prescriptionEngine = nextPrescriptionEngine;
+          prescriptionEvidenceStatus = nextPrescriptionEvidenceStatus;
+          invalidateCompletedAnalysis();
           return true;
         } catch (error) {
+          if (options.preserveCurrentOnFailure === true) return false;
           prescriptionEngine = prescriptionApi.createPrescriptionEngine({});
           prescriptionEvidenceStatus = { state: "error", personalRecords: 0, researchExercises: 0, personalVersion: "unknown", researchVersion: "unknown", message: `Prescription evidence could not be loaded: ${error?.message || error}` };
+          invalidateCompletedAnalysis();
           return false;
         }
       }
 
+      async function initializePrescriptionEvidence() {
+        return loadPrescriptionEvidence();
+      }
+
       function normalizePrescriptionIdentity(value) {
         return String(value || "").toLowerCase().replace(/^ex_/, "").replace(/[^a-z0-9]+/g, " ").trim();
+      }
+
+      function personalExerciseRecordForName(exerciseName, evidence = prescriptionEngine?.evidence) {
+        const requested = normalizePrescriptionIdentity(exerciseName);
+        const personal = evidence?.personal;
+        if (!requested || !personal) return null;
+        const matchesRequestedName = (item) => normalizePrescriptionIdentity(item?.exercise_name || item?.exerciseName || item?.exercise_id || item?.exerciseId) === requested;
+        for (const records of [personal.exerciseScores, personal.exercisePrescriptions, personal.exerciseMuscleScores]) {
+          const match = Array.isArray(records) ? records.find(matchesRequestedName) : null;
+          if (match) return match;
+        }
+        return null;
       }
 
       function prescriptionExerciseIdentity(exerciseName) {
@@ -2974,8 +2997,11 @@
           || evidence.research.exerciseDatabase.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === requested)?.exercise_id;
         if (researchId) return researchId;
         const personal = evidence.personal;
-        const personalRecord = personal.exerciseScores.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === requested)
-          || personal.exercisePrescriptions.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === requested);
+        const personalRecord = typeof personalExerciseRecordForName === "function"
+          ? personalExerciseRecordForName(exerciseName, evidence)
+          : personal.exerciseScores?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === requested)
+            || personal.exercisePrescriptions?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === requested)
+            || personal.exerciseMuscleScores?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === requested);
         const personalId = personalRecord?.exercise_id || personalRecord?.exerciseId || "";
         const reconciled = personal.reconciledIdentityByExerciseId?.get(personalId);
         if (reconciled?.invalid) return null;
@@ -3209,8 +3235,11 @@
           if (!options.fresh) prescriptionSnapshotCache.set(cacheKey, snapshot);
           return snapshot;
         } catch (error) {
-          const detail = `${error?.code || ""} ${error?.message || error || ""}`.toLowerCase();
-          const reason = /exercise .+ is excluded by the supplied|excluded exercise .+ (?:invalid|unknown)|exclusions? must resolve|excludedexerciseids must/.test(detail)
+          const recognizedConstraintError = error?.name === "Error" && error?.constructor?.name === "Error";
+          const detail = recognizedConstraintError
+            ? `${error?.code || ""} ${error?.message || error || ""}`.toLowerCase()
+            : "";
+          const reason = recognizedConstraintError && /exercise .+ is excluded by the supplied|excluded exercise .+ (?:invalid|unknown)|exclusions? must resolve|excludedexerciseids must/.test(detail)
             ? "excluded_exercise"
             : /exercise .+ is not compatible with the supplied equipment|available equipment (?:input|restriction)|equipment restrictions?; missing/.test(detail)
               ? "unavailable_equipment"
@@ -3685,6 +3714,7 @@
         exerciseProgressCache.clear();
         previousPerformanceCache.clear();
         prescriptionSnapshotCache.clear();
+        muscleAssignmentCache.clear();
       }
 
       function arrayIdentityChanged(previous, next) {
@@ -3947,8 +3977,11 @@
         const researchId = evidence?.research?.exerciseIdByAlias?.get(normalized)
           || evidence?.research?.exerciseDatabase?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === normalized)?.exercise_id;
         if (researchId) return researchId;
-        const personalRecord = evidence?.personal?.exerciseScores?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === normalized)
-          || evidence?.personal?.exercisePrescriptions?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === normalized);
+        const personalRecord = typeof personalExerciseRecordForName === "function"
+          ? personalExerciseRecordForName(name, evidence)
+          : evidence?.personal?.exerciseScores?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === normalized)
+            || evidence?.personal?.exercisePrescriptions?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === normalized)
+            || evidence?.personal?.exerciseMuscleScores?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === normalized);
         const personalId = personalRecord?.exercise_id || personalRecord?.exerciseId || "";
         const reconciled = evidence?.personal?.reconciledIdentityByExerciseId?.get(personalId);
         if (reconciled?.invalid) return null;
@@ -5940,7 +5973,10 @@
         const normalizeEquipment = (source) => Array.isArray(source)
           ? Array.from(new Set(source.map((item) => String(item || "").trim()).filter(Boolean)))
           : [];
-        const currentEquipment = normalizeEquipment(data.settings.availableEquipment);
+        const currentEquipmentSource = data.settings.availableEquipment;
+        const currentEquipment = Array.isArray(currentEquipmentSource) && currentEquipmentSource.length === 0
+          ? ["all"]
+          : normalizeEquipment(currentEquipmentSource);
         const mesocycleEquipment = mesocycleEquipmentSource === undefined ? null : normalizeEquipment(mesocycleEquipmentSource);
         const configuredEquipment = mesocycleEquipment === null
           ? currentEquipment
@@ -6008,16 +6044,18 @@
           restriction.substituteExerciseId,
           restriction.substituteResearchExerciseId,
           prescription.exerciseId,
-          prescription.researchExerciseId,
-          observedExerciseId
+          prescription.researchExerciseId
         ].filter(Boolean).map((exerciseId) => {
           if (research.exerciseById.has(exerciseId)) return exerciseId;
           const reconciled = prescriptionEngine?.evidence?.personal?.reconciledIdentityByExerciseId?.get(exerciseId);
           return reconciled?.invalid ? "" : reconciled?.researchExerciseId || exerciseId;
         });
+        const observedIdentityCoherent = !exercise
+          || (Boolean(observedExerciseId) && observedExerciseId === resolvedSubstituteId);
         const identityCoherent = Boolean(resolvedSubstituteId)
           && declaredResolvedIds.length > 0
           && declaredResolvedIds.every((exerciseId) => exerciseId === resolvedSubstituteId)
+          && observedIdentityCoherent
           && research.exerciseById.has(resolvedSubstituteId)
           && !originalIds.has(resolvedSubstituteId);
         let resolvedValidation = { valid: false, reason: "unresolved_safety_restriction", message: "The painful original exercise remains blocked until a distinct pain-free substitute is confirmed." };
@@ -6094,6 +6132,9 @@
         const addSetSafety = guardWorkoutMutation("add-set", { exercise, substituteValidation }, false);
         const addWarmupSafety = guardWorkoutMutation("add-warmup-set", { exercise, substituteValidation }, false);
         const duplicateSetSafety = guardWorkoutMutation("duplicate-set", { exercise, substituteValidation }, false);
+        const substituteRecoveryHtml = restriction?.status === "resolved_by_confirmed_substitute" && substituteValidation?.valid !== true
+          ? `<div class="program-warning blocking" data-safety-substitute-recovery="${exercise.id}" role="alert"><strong>Choose a pain-free substitute</strong><span>${escapeHtml(substituteValidation?.message || "The confirmed substitute no longer satisfies the current workout constraints.")}</span><small>Open Exercise options, choose a current catalog-backed replacement, and explicitly confirm it is pain-free before continuing.</small></div>`
+          : "";
         const firstWorkSet = exerciseSets.find((set) => isWorkingSet(set, "score")) || exerciseSets[0];
         const restSeconds = Number(exercise.restSeconds || data.settings.defaultRestSeconds || 90);
         const previousSets = exerciseSets.some((set) => isWorkingSet(set, "progression")) ? measurePerformance("lift:previousPerformance", () => getMostRecentWorkoutSets(exercise.name, { excludeSessionId: exercise.sessionId }), { exerciseId: exercise.id }) : [];
@@ -6116,6 +6157,7 @@
               <label class="resistance-type-control"><span>Resistance</span><select data-action="exercise-resistance-type" data-exercise-id="${exercise.id}" aria-label="Resistance type for ${escapeHtml(exercise.name)}">${resistanceTypeOptions(resistanceTypeFor(exercise))}</select></label>
             </div>
             ${renderPrescriptionDetails(exercise)}
+            ${substituteRecoveryHtml}
             ${setHtml}
             <div class="row wrap">
               <button type="button" data-action="add-set" data-exercise-id="${exercise.id}"${workoutSafetyDisabledAttributes(addSetSafety)}>${icon.add} Set</button>
@@ -8646,7 +8688,8 @@
         const personal = prescriptionEngine?.evidence.personal;
         const research = prescriptionEngine?.evidence.research;
         const personalRecord = personal?.exerciseScores.find((item) => (item.exercise_id || item.exerciseId) === exerciseId)
-          || personal?.exercisePrescriptions.find((item) => (item.exercise_id || item.exerciseId) === exerciseId);
+          || personal?.exercisePrescriptions.find((item) => (item.exercise_id || item.exerciseId) === exerciseId)
+          || personal?.exerciseMuscleScores.find((item) => (item.exercise_id || item.exerciseId) === exerciseId);
         const researchId = personal?.crosswalkByPersonalId.get(exerciseId) || exerciseId;
         return personalRecord?.exercise_name || personalRecord?.exerciseName || research?.exerciseById.get(researchId)?.exercise_name || fallback;
       }
@@ -10538,8 +10581,11 @@
         const normalizedName = normalizePrescriptionIdentity(exercise.name);
         const publicResearchId = evidence?.research?.exerciseIdByAlias?.get(normalizedName)
           || evidence?.research?.exerciseDatabase?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === normalizedName)?.exercise_id;
-        const personalRecord = !publicResearchId && (evidence?.personal?.exerciseScores?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === normalizedName)
-          || evidence?.personal?.exercisePrescriptions?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === normalizedName));
+        const personalRecord = !publicResearchId && (typeof personalExerciseRecordForName === "function"
+          ? personalExerciseRecordForName(exercise.name, evidence)
+          : evidence?.personal?.exerciseScores?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === normalizedName)
+            || evidence?.personal?.exercisePrescriptions?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === normalizedName)
+            || evidence?.personal?.exerciseMuscleScores?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === normalizedName));
         const personalId = personalRecord?.exercise_id || personalRecord?.exerciseId || "";
         const invalidReconciledIdentity = Boolean(personalId && evidence?.personal?.reconciledIdentityByExerciseId?.get(personalId)?.invalid);
         const customOrUnmappedExercise = !canonicalId || /^(?:custom|user)(?::|_)/.test(canonicalId);
@@ -11158,8 +11204,18 @@
             && Array.isArray(personalData.exerciseScores || personalData.exercise_scores)
             && Array.isArray(personalData.exerciseMuscleScores || personalData.exercise_muscle_scores);
           if (!hasCoreData) throw new Error("Personal evidence package must contain exercise prescriptions, exercise scores, and exercise-muscle scores.");
-          data = { ...data, personalEvidencePackage: { schemaVersion: parsed.schemaVersion || "personal-evidence-package/1.0.0", importedAt: isoNow(), personalData } };
-          await initializePrescriptionEvidence();
+          const personalEvidencePackage = {
+            schemaVersion: parsed.schemaVersion || "personal-evidence-package/1.0.0",
+            createdAt: parsed.createdAt,
+            personalDataVersion: parsed.personalDataVersion,
+            researchDatabaseVersion: parsed.researchDatabaseVersion,
+            privacy: parsed.privacy,
+            importedAt: isoNow(),
+            personalData
+          };
+          const loaded = await loadPrescriptionEvidence({ personalEvidencePackage, preserveCurrentOnFailure: true });
+          if (!loaded) throw new Error("The personal evidence package could not be validated, so the existing evidence remains active.");
+          data = { ...data, personalEvidencePackage };
           settingsMessage = `Private evidence imported: ${prescriptionEvidenceStatus.personalRecords} aggregate records, personal version ${prescriptionEvidenceStatus.personalVersion}.`;
           saveData();
           render();
