@@ -3,11 +3,19 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const vm = require("node:vm");
 
 const ROOT = path.resolve(__dirname, "..");
 const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
 const publicExercises = require(path.join(ROOT, "research_database", "exports", "json", "exercise_database.json"));
 const prescriptionApi = require(path.join(ROOT, "prescription-engine.js"));
+const {
+  BACKUP_BOUNDARIES,
+  buildEntityCollectionCase,
+  entityCollectionCases,
+  jsonShapeCases,
+  legacyState
+} = require(path.join(ROOT, "tests", "fixtures", "synthetic-app-backups.js"));
 
 const tests = [];
 
@@ -25,6 +33,15 @@ function functionSource(name) {
   const start = declarations[index].index;
   const end = declarations[index + 1]?.index || html.length;
   return html.slice(start, end);
+}
+
+function evaluateFunction(name, context = {}) {
+  return vm.runInNewContext(`(${functionSource(name).trim()})`, context, { filename: `index.html#${name}` });
+}
+
+function plain(value) {
+  if (value === undefined) return undefined;
+  return JSON.parse(JSON.stringify(value));
 }
 
 function collectAssertions(assertions) {
@@ -75,6 +92,62 @@ test("readiness adapter preserves explicit safety inputs without inventing fatig
   ]);
 });
 
+test("safety adapters distinguish workout illness from affected-exercise pain and erase executable targets", () => {
+  const readiness = evaluateFunction("prescriptionReadiness", {
+    cleanRecovery: (value) => ({
+      sleepHours: "", sleepQuality: "", hrv: "", restingHr: "", soreness: "",
+      nutritionStatus: "", proteinStatus: "", outsideBandNote: "", illness: false,
+      pain: false, affectedMuscle: "", ...value
+    }),
+    readinessBaseline: () => ({}),
+    data: { settings: { nutritionPhase: "maintenance" } }
+  });
+  const illnessReadiness = plain(readiness({ illness: true, pain: false, affectedMuscle: "" }, []));
+  const painReadiness = plain(readiness({ illness: false, pain: true, affectedMuscle: "chest" }, []));
+  assert.equal(illnessReadiness.illness, true, "Illness must remain an explicit whole-workout safety input");
+  assert.equal(illnessReadiness.pain, false, "Illness must not fabricate pain");
+  assert.equal(painReadiness.illness, false, "Pain must not fabricate illness");
+  assert.equal(painReadiness.pain, true, "Pain must remain an explicit affected-exercise safety input");
+  assert.equal(painReadiness.affectedMuscle, "chest", "Pain scope must preserve the affected muscle");
+
+  const converter = evaluateFunction("legacyTargetFromSnapshot", {
+    data: { settings: { weightUnit: "lb" } },
+    inferResistanceType: () => "external",
+    convertWeightValue: (value) => value,
+    isBodyweightResistance: () => false,
+    progressionProfileForExercise: () => ({ increment: 5 }),
+    legacyRecommendationFromSnapshot: () => ({}),
+    targetText: () => ""
+  });
+  const blocked = (reason, scope) => ({
+    recommendationId: `blocked-${reason}`,
+    basePrescription: {},
+    finalPrescription: {
+      exerciseId: "ex_barbell_bench_press",
+      recommendationType: reason === "illness" ? "hold" : "substitute",
+      executionBlocked: true,
+      workingSets: { min: 0, target: 0, max: 0 },
+      repRange: { min: 6, target: 8, max: 10 },
+      targetRpe: { min: 7, max: 8 },
+      restSeconds: { min: 120, target: 180, max: 240 },
+      setStructure: "straight_sets",
+      userExplanation: "Synthetic safety fixture",
+      confidence: "high",
+      safetyRestriction: { schemaVersion: "hard-safety/1.0.0", status: "blocked", reason, scope }
+    }
+  });
+  for (const [reason, scope] of [["illness", "workout"], ["pain", "exercise"]]) {
+    const target = plain(converter(blocked(reason, scope), { name: "Bench Press", resistanceType: "external" }));
+    assert.equal(target.executionBlocked, true, `${reason} must remain explicitly non-executable in the app target`);
+    assert.equal(target.safetyRestriction?.scope, scope, `${reason} must retain its ${scope} safety scope`);
+    for (const field of ["sets", "reps", "repLow", "repHigh", "weight", "addedLoad", "assistanceLoad"]) {
+      assert.equal(Number(target[field] || 0), 0, `Blocked ${reason} target leaked executable ${field}`);
+    }
+    assert.deepEqual(target.warmups || [], [], `Blocked ${reason} target leaked warm-ups`);
+    assert.deepEqual(target.executableActions || [], [], `Blocked ${reason} target leaked executable actions`);
+  }
+});
+
 test("unified prescriptions preserve template intent and all hard workout constraints", () => {
   const unified = functionSource("unifiedPrescriptionSnapshot");
   const start = functionSource("startTemplate");
@@ -87,6 +160,184 @@ test("unified prescriptions preserve template intent and all hard workout constr
     ["exercise exclusions", () => assertContains(unified, /\b(?:excludedExerciseIds|exerciseExclusions)\s*:/, "The engine call must receive exercise exclusions")],
     ["muscle scope", () => assertContains(unified, /\b(?:includedMuscleGroupIds|muscleScope)\s*:/, "The engine call must receive the selected muscle scope")],
     ["exercise/set resistance fallback", () => assert.ok(resistanceFallbacks.length >= 2, `Started exercises and generated sets must retain template resistance when an engine target omits it; found ${resistanceFallbacks.length} guarded assignment(s)`)]
+  ]);
+});
+
+test("template start resolves one resistance type for the exercise, warm-ups, and every working set", () => {
+  let committed = null;
+  let nextId = 0;
+  const context = {
+    data: {
+      templates: [{
+        id: "template-1",
+        name: "Synthetic template",
+        exercises: [{
+          id: "template-exercise-1", name: "Synthetic press", resistanceType: "cable",
+          primaryMuscle: "Chest", secondaryMuscle: "Triceps", restSeconds: 90,
+          warmups: [{ id: "warmup-1", reps: 10, weight: 10 }]
+        }]
+      }],
+      sessions: [], exercises: [], sets: [], recommendationHistory: [], mesocycles: [], settings: { weightUnit: "lb" }
+    },
+    defaultRecovery: () => ({}),
+    hasActiveWorkout: () => false,
+    activeSession: () => null,
+    todayIso: () => "2026-07-14",
+    isSessionSubmitted: () => false,
+    cleanRecovery: (value) => value,
+    createSession: () => ({ id: "session-1", date: "2026-07-14", title: "Synthetic template" }),
+    recoveryRecommendationForSession: () => ({ decision: "normal" }),
+    inferResistanceType: () => "cable",
+    coachTargetForTemplateExercise: () => ({
+      sets: 2, reps: 8, repLow: 6, repHigh: 10, weight: 40, weightUnit: "lb", rpe: 8,
+      restSeconds: 90, mode: "maintenance", confidence: "medium", reason: "Synthetic target",
+      adjusted: false, triggerLabels: [], recommendationSnapshot: null
+    }),
+    isBodyweightResistance: () => false,
+    recommendedRestSeconds: () => 90,
+    adjustTargetForRecovery: (target) => ({ ...target, resistanceType: undefined }),
+    unifiedTargetContext: () => null,
+    exerciseTargetContext: () => ({ setTypes: [] }),
+    resolvedSetTypesForPrescription: () => [{
+      id: "straight-1", type: "straight", setCount: 2, repMin: 6, repMax: 10,
+      rpeMin: 7, rpeMax: 8, restSeconds: 90, countsTowardScore: true, countsTowardVolume: true
+    }],
+    id: () => `generated-${++nextId}`,
+    getMostRecentWorkoutSets: () => [],
+    setPrescriptionForRole: ({ setType, setTypeIndex, sequenceIndex }) => ({
+      setType: "straight", setTypeIndex, sequenceIndex, targetReps: 8, targetLoad: 40,
+      repMin: 6, repMax: 10, rpeMin: 7, rpeMax: 8, restSeconds: setType.restSeconds,
+      reason: "Synthetic role", previousComparableSet: null
+    }),
+    validateGeneratedSetPrescriptions: (items) => items,
+    normalizeSetTypeCode: (value) => value || "straight",
+    setTypeLabels: { straight: "Working set" },
+    createSet: (exerciseId, setNumber, source) => ({ id: `set-${setNumber}-${nextId}`, exerciseId, setNumber, ...source }),
+    currentMesocycle: () => null,
+    prescriptionApi: { PRESCRIPTION_SCHEMA_VERSION: "exercise-prescription/2.0.0" },
+    prescriptionEvidenceStatus: { personalVersion: "synthetic", researchVersion: "synthetic" },
+    isoNow: () => "2026-07-14T12:00:00.000Z",
+    setActiveTab: () => {},
+    canonicalSetSequence: (set) => Number(set.sequenceIndex || 0),
+    commit: (model) => { committed = plain(model); },
+    activeSessionId: "",
+    activeWorkoutId: "",
+    viewingHistorySessionId: "",
+    templateStartFlow: null,
+    activeSetId: "",
+    activeSetAcknowledged: false,
+    activeSetNotice: ""
+  };
+  const startTemplate = evaluateFunction("startTemplate", context);
+  startTemplate("template-1", {}, "usual");
+  const exercise = committed?.exercises?.find((item) => item.sessionId === "session-1");
+  const generatedSets = committed?.sets?.filter((item) => item.exerciseId === exercise?.id) || [];
+  assert.equal(exercise?.resistanceType, "cable", "The started exercise must fall back to the resolved template resistance type");
+  assert.equal(generatedSets.length, 3, "The synthetic template should generate one warm-up and two working sets");
+  generatedSets.forEach((set) => assert.equal(set.resistanceType, "cable", `Generated set ${set.id} lost the resolved resistance type`));
+});
+
+test("unified prescription invocation forwards canonical profile fields and hard constraints unchanged", () => {
+  let captured = null;
+  const unified = evaluateFunction("unifiedPrescriptionSnapshot", {
+    prescriptionEngine: { prescribeExercise: (input) => { captured = input; return { recommendationId: "synthetic" }; } },
+    prescriptionEvidenceStatus: { state: "ready" },
+    prescriptionExerciseIdentity: () => "ex_barbell_bench_press",
+    normalizePrescriptionIdentity: (value) => String(value || "").trim(),
+    prescriptionMuscleGroup: () => "chest",
+    todayIso: () => "2026-07-14",
+    prescriptionHistoryForExercise: () => [],
+    prescriptionReadiness: () => ({}),
+    currentMesocycle: () => null,
+    prescriptionScopeHistories: () => ({ muscleExerciseHistories: [], programMuscleHistories: [] }),
+    musclesForExercise: () => [{ muscle: "Chest" }],
+    appMuscleFromPrescriptionGroup: () => "Chest",
+    weeklyMuscleVolume: () => [],
+    startOfWeekIso: (value) => value,
+    prescriptionSnapshotCache: new Map(),
+    analysisRevision: 1,
+    JSON
+  });
+  const requested = {
+    plannedWorkingSets: 3,
+    resistanceType: "external",
+    sessionDurationMinutes: 35,
+    availableEquipment: ["dumbbell", "bench"],
+    excludedExerciseIds: ["ex_barbell_bench_press"],
+    includedMuscleGroupIds: ["chest"],
+    trainingGoal: "hypertrophy",
+    nutritionPhase: "deficit",
+    experienceLevel: "intermediate",
+    createdAt: "2026-07-14T12:00:00.000Z",
+    fresh: true
+  };
+  unified({ name: "Bench Press" }, requested);
+  for (const field of [
+    "plannedWorkingSets", "resistanceType", "sessionDurationMinutes", "availableEquipment",
+    "excludedExerciseIds", "includedMuscleGroupIds", "trainingGoal", "nutritionPhase", "experienceLevel"
+  ]) {
+    assert.deepEqual(plain(captured?.[field]), plain(requested[field]), `Unified adapter dropped or rewrote ${field}`);
+  }
+});
+
+test("settings use separate canonical training, nutrition, and experience fields with legacy migration", () => {
+  const defaultsStart = html.indexOf("const defaultSettings");
+  assert.notEqual(defaultsStart, -1, "Missing defaultSettings");
+  const defaults = html.slice(defaultsStart, defaultsStart + 3500);
+  const normalize = functionSource("normalizeLoadedData");
+  const unified = functionSource("unifiedPrescriptionSnapshot");
+  collectAssertions([
+    ["canonical defaults", () => {
+      assertContains(defaults, /trainingGoal\s*:/, "Settings need a canonical trainingGoal");
+      assertContains(defaults, /nutritionPhase\s*:/, "Settings need a separate nutritionPhase");
+      assertContains(defaults, /experienceLevel\s*:/, "Settings need a canonical experienceLevel");
+    }],
+    ["canonical persistence", () => {
+      assertContains(normalize, /trainingGoal\s*:/, "Loaded settings must preserve trainingGoal");
+      assertContains(normalize, /nutritionPhase\s*:/, "Loaded settings must preserve nutritionPhase");
+      assertContains(normalize, /experienceLevel\s*:/, "Loaded settings must preserve experienceLevel");
+    }],
+    ["legacy migration", () => {
+      assertContains(normalize, /(?:migrate|legacy)[\s\S]{0,900}(?:storedSettings\.)?goal/i, "Legacy overloaded goal values need an explicit migration");
+      assertContains(normalize, /(?:migrate|legacy)[\s\S]{0,900}(?:storedSettings\.)?trainingStatus/i, "Legacy trainingStatus needs an explicit experience migration");
+    }],
+    ["engine receives canonical fields", () => {
+      assertContains(unified, /trainingGoal\s*:/, "Prescription invocation must receive trainingGoal");
+      assertContains(unified, /nutritionPhase\s*:/, "Prescription invocation must receive nutritionPhase separately");
+      assertContains(unified, /experienceLevel\s*:/, "Prescription invocation must receive experienceLevel");
+    }]
+  ]);
+});
+
+test("legacy cut settings migrate at runtime without inheriting the hypertrophy default", () => {
+  const normalizeLoadedData = evaluateFunction("normalizeLoadedData", {
+    defaultSettings: {
+      weightUnit: "lb",
+      goal: "hypertrophy",
+      trainingStatus: "intermediate",
+      trainingGoal: "hypertrophy",
+      nutritionPhase: "maintenance",
+      experienceLevel: "intermediate",
+      readinessBaseline: {}
+    },
+    cleanReadinessBaseline: (value) => value || {},
+    cleanRecovery: (value) => value || {},
+    isBodyweightExerciseName: () => false,
+    inferResistanceType: (_name, source) => source?.resistanceType || "external",
+    isBodyweightResistance: () => false,
+    normalizeResistanceSet: (set, resistanceType) => ({ ...set, resistanceType }),
+    resistanceTypeValues: ["external", "bodyweight", "cable"],
+    normalizeTargetSetType: (value) => value,
+    migrateDomainData: (model) => model
+  });
+  const migrated = plain(normalizeLoadedData(legacyState()));
+  collectAssertions([
+    ["training goal", () => assert.equal(migrated.settings.trainingGoal, "general_fitness", "Legacy goal=cut must resolve to a neutral training goal")],
+    ["nutrition phase", () => assert.equal(migrated.settings.nutritionPhase, "deficit", "Legacy goal=cut must preserve the nutrition meaning")],
+    ["experience", () => assert.equal(migrated.settings.experienceLevel, "novice", "Legacy trainingStatus must migrate to experienceLevel")],
+    ["no inherited hypertrophy", () => assert.notEqual(migrated.settings.trainingGoal, "hypertrophy", "A missing legacy training goal must not inherit the new hypertrophy default")],
+    ["legacy goal removed", () => assert.equal(migrated.settings.goal, undefined, "The overloaded legacy goal must stop being authoritative")],
+    ["legacy status removed", () => assert.equal(migrated.settings.trainingStatus, undefined, "The legacy training status must stop being authoritative")]
   ]);
 });
 
@@ -111,6 +362,37 @@ test("canonical exercise and taxonomy resolution are registry-first and exhausti
   ]);
 });
 
+test("frontend identity resolution prefers the public alias registry and namespaces uncatalogued exercises", () => {
+  const normalize = (value) => String(value || "").toLowerCase().replace(/^ex_/, "").replace(/[^a-z0-9]+/g, " ").trim();
+  const evidence = {
+    personal: {
+      exerciseScores: [
+        { exercise_id: "custom_spoofed_bench", exercise_name: "Bench Press" },
+        { exercise_id: "custom_my_press", exercise_name: "My Garage Press" }
+      ],
+      exercisePrescriptions: []
+    },
+    research: {
+      exerciseIdByAlias: new Map([["bench press", "ex_barbell_bench_press"], ["flat bench", "ex_barbell_bench_press"]]),
+      exerciseDatabase: [{ exercise_id: "ex_barbell_bench_press", exercise_name: "Barbell Bench Press" }]
+    }
+  };
+  const prescriptionIdentity = evaluateFunction("prescriptionExerciseIdentity", {
+    prescriptionEngine: { evidence },
+    normalizePrescriptionIdentity: normalize
+  });
+  assert.equal(prescriptionIdentity("Flat Bench"), "ex_barbell_bench_press", "A public alias must resolve to its canonical research ID");
+  assert.equal(prescriptionIdentity("Bench Press"), "ex_barbell_bench_press", "A custom name collision must not shadow the public registry");
+  assert.equal(prescriptionIdentity("My Garage Press"), "custom_my_press", "A trusted custom identity must remain in its custom namespace");
+
+  const canonicalId = evaluateFunction("canonicalExerciseId", {
+    prescriptionEngine: { evidence },
+    normalizePrescriptionIdentity: normalize
+  });
+  assert.equal(canonicalId("Flat Bench"), "ex_barbell_bench_press");
+  assert.match(canonicalId("Uncatalogued Garage Press"), /^custom(?::|_)/, "An uncatalogued name must not become an unnamespaced pseudo-canonical ID");
+});
+
 test("backup import is bounded, allowlisted, and hostile-field safe", () => {
   const importSource = functionSource("importDataFile");
   const validatorMatch = html.match(/(?:function\s+(?:validate|sanitize|parse)(?:Backup|Imported|AppData)\w*\s*\([^)]*\)\s*\{|const\s+(?:validate|sanitize|parse)(?:Backup|Imported|AppData)\w*\s*=)/i);
@@ -122,11 +404,116 @@ test("backup import is bounded, allowlisted, and hostile-field safe", () => {
     ["no wholesale object spread", () => assert.doesNotMatch(importSource, /normalizeLoadedData\s*\(\s*\{[\s\S]{0,120}\.\.\.imported/, "Untrusted backup fields must not be spread wholesale into application state")],
     ["ID validation", () => assertContains(validator, /(?:ID_PATTERN|VALID_ID|validateId|safeId|invalid id)/i, "Session, exercise, set, and template IDs require a strict validation rule")],
     ["field allowlists", () => assertContains(validator, /(?:allowed|allowlist|permitted)[A-Za-z]*(?:Fields|Keys)|(?:Fields|Keys)[A-Za-z]*(?:allowed|allowlist|permitted)/i, "Imported entity fields must be allowlisted")],
-    ["executable/prototype fields rejected", () => assertContains(validator, /__proto__|prototype|constructor|\^on|startsWith\(["']on/i, "Executable on* attributes and prototype-pollution fields must be rejected")]
+    ["executable/prototype fields rejected", () => assertContains(validator, /__proto__|prototype|constructor|\^on|startsWith\(["']on/i, "Executable on* attributes and prototype-pollution fields must be rejected")],
+    ["bounded collections", () => assertContains(validator, /MAX_(?:SESSIONS|EXERCISES|SETS|TEMPLATES)|(?:sessions|exercises|sets|templates)\.length[\s\S]{0,100}(?:MAX|LIMIT)/i, "Backup entity counts require explicit bounds")],
+    ["duplicate rejection", () => assertContains(validator, /duplicate|seenIds|\.has\s*\([^)]*\.id/i, "Duplicate entity IDs must be rejected")],
+    ["referential integrity", () => assertContains(validator, /orphan|sessionIds|exerciseIds|reference/i, "Orphaned exercise, set, and active-plan references must be rejected")],
+    ["versioned legacy migration", () => assertContains(validator, /appDataVersion[\s\S]{0,500}(?:legacy|migrat|version)/i, "Supported legacy backups need an explicit versioned migration path")]
   ]);
 });
 
-test("cloud workout sync has separate explicit default-off consent and fails closed", () => {
+test("dedicated JSON shape validation accepts exact depth and width boundaries and rejects overflow", () => {
+  assert.match(
+    html,
+    /(?:async\s+)?function\s+validateBackupJsonShape\s*\(/,
+    "Missing dedicated validateBackupJsonShape production helper for executable depth/width checks"
+  );
+  const validateBackupJsonShape = evaluateFunction("validateBackupJsonShape", {
+    BACKUP_IMPORT_LIMITS: {
+      maxJsonDepth: BACKUP_BOUNDARIES.jsonDepth,
+      maxObjectKeys: BACKUP_BOUNDARIES.objectKeys
+    }
+  });
+  const options = {
+    maxDepth: BACKUP_BOUNDARIES.jsonDepth,
+    maxObjectKeys: BACKUP_BOUNDARIES.objectKeys
+  };
+  for (const shapeCase of jsonShapeCases()) {
+    let result;
+    let error = null;
+    try {
+      result = validateBackupJsonShape(shapeCase.value, options);
+    } catch (caught) {
+      error = caught;
+    }
+    const rejected = Boolean(error) || result === false || result?.valid === false;
+    if (shapeCase.expected === "accepted") {
+      assert.equal(rejected, false, `${shapeCase.name} was rejected: ${error?.message || JSON.stringify(result)}`);
+    } else {
+      assert.equal(rejected, true, `${shapeCase.name} must be rejected by the executable shape validator`);
+      if (error) assert.match(String(error.message || error), /depth|key|width|shape|limit/i, `${shapeCase.name} needs an actionable structural-limit error`);
+    }
+  }
+});
+
+test("strict backup validation accepts every exact entity boundary and rejects boundary plus one", () => {
+  assert.match(
+    html,
+    /(?:async\s+)?function\s+validateImportedAppData\s*\(/,
+    "Missing dedicated validateImportedAppData production helper for executable entity-count checks"
+  );
+  const limits = {
+    maxFileBytes: BACKUP_BOUNDARIES.fileBytes,
+    maxJsonDepth: BACKUP_BOUNDARIES.jsonDepth,
+    maxObjectKeys: BACKUP_BOUNDARIES.objectKeys,
+    maxSessions: BACKUP_BOUNDARIES.sessions,
+    maxExercises: BACKUP_BOUNDARIES.exercises,
+    maxSets: BACKUP_BOUNDARIES.sets,
+    maxTemplates: BACKUP_BOUNDARIES.templates
+  };
+  const validateImportedAppData = evaluateFunction("validateImportedAppData", {
+    BACKUP_IMPORT_LIMITS: limits,
+    validateBackupJsonShape: () => true
+  });
+  for (const descriptor of entityCollectionCases()) {
+    const fixture = buildEntityCollectionCase(descriptor);
+    let result;
+    let error = null;
+    try {
+      result = validateImportedAppData(fixture, limits);
+    } catch (caught) {
+      error = caught;
+    }
+    const rejected = Boolean(error) || result === false || result?.valid === false;
+    if (descriptor.expected === "accepted") {
+      assert.equal(rejected, false, `${descriptor.name} was rejected: ${error?.message || JSON.stringify(result)}`);
+    } else {
+      assert.equal(rejected, true, `${descriptor.name} must be rejected by the executable import validator`);
+      if (error) assert.match(String(error.message || error), /session|exercise|set|template|count|limit/i, `${descriptor.name} needs an actionable entity-limit error`);
+    }
+  }
+});
+
+test("synthetic entity boundary fixtures are exact, relationally valid, and below the file limit", () => {
+  for (const descriptor of entityCollectionCases()) {
+    const fixture = buildEntityCollectionCase(descriptor);
+    assert.equal(fixture[descriptor.collection].length, descriptor.count, `${descriptor.name} has the wrong entity count`);
+    const bytes = Buffer.byteLength(JSON.stringify(fixture), "utf8");
+    assert.ok(bytes < BACKUP_BOUNDARIES.fileBytes, `${descriptor.name} is ${bytes} bytes and would conflate entity count with the ${BACKUP_BOUNDARIES.fileBytes}-byte file boundary`);
+    const sessionIds = new Set(fixture.sessions.map((item) => item.id));
+    const exerciseIds = new Set(fixture.exercises.map((item) => item.id));
+    assert.ok(fixture.exercises.every((item) => sessionIds.has(item.sessionId)), `${descriptor.name} contains an orphan exercise`);
+    assert.ok(fixture.sets.every((item) => exerciseIds.has(item.exerciseId)), `${descriptor.name} contains an orphan set`);
+    for (const collection of [fixture.sessions, fixture.exercises, fixture.sets, fixture.templates]) {
+      assert.equal(new Set(collection.map((item) => item.id)).size, collection.length, `${descriptor.name} contains a duplicate entity ID`);
+    }
+  }
+});
+
+test("synthetic JSON shape fixtures land exactly on and one beyond each boundary", () => {
+  const containerDepth = (value) => {
+    if (!value || typeof value !== "object") return 0;
+    const children = Array.isArray(value) ? value : Object.values(value);
+    return 1 + children.reduce((maximum, child) => Math.max(maximum, containerDepth(child)), 0);
+  };
+  const fixtures = new Map(jsonShapeCases().map((item) => [item.name, item.value]));
+  assert.equal(containerDepth(fixtures.get("json-depth-at-boundary")), BACKUP_BOUNDARIES.jsonDepth);
+  assert.equal(containerDepth(fixtures.get("json-depth-over-boundary")), BACKUP_BOUNDARIES.jsonDepth + 1);
+  assert.equal(Object.keys(fixtures.get("object-width-at-boundary")).length, BACKUP_BOUNDARIES.objectKeys);
+  assert.equal(Object.keys(fixtures.get("object-width-over-boundary")).length, BACKUP_BOUNDARIES.objectKeys + 1);
+});
+
+test("cloud workout sync performs no queue or flush work without explicit true consent", async () => {
   const defaultsStart = html.indexOf("const defaultSettings");
   assert.notEqual(defaultsStart, -1, "Missing defaultSettings");
   const defaults = html.slice(defaultsStart, defaultsStart + 3500);
@@ -136,6 +523,56 @@ test("cloud workout sync has separate explicit default-off consent and fails clo
   const notifications = functionSource("enablePushNotifications");
   const notificationActionWindows = [...html.matchAll(/action\s*===\s*["'](?:request-notifications|toggle-rest-notifications|timer-notifications)["']/g)]
     .map((match) => html.slice(match.index, match.index + 900));
+
+  async function run(consent) {
+    const settings = {};
+    if (consent !== undefined) settings.cloudWorkoutSyncConsent = consent;
+    const session = { id: "session-1" };
+    const model = { settings, exercises: [{ id: "exercise-1", sessionId: session.id }], sets: [{ id: "set-1", exerciseId: "exercise-1" }] };
+    const queueEvents = { reads: [], writes: [], timers: 0 };
+    const queueContext = {
+      data: model,
+      activeWorkoutSession: () => session,
+      completedSummarySessionId: "",
+      dataEntityIndex: () => ({
+        exerciseIndicesBySession: new Map([[session.id, [0]]]),
+        setIndicesByExercise: new Map([["exercise-1", [0]]])
+      }),
+      readIndexedValue: async (key) => { queueEvents.reads.push(key); return []; },
+      writeIndexedValue: async (key, value) => { queueEvents.writes.push({ key, value: plain(value) }); },
+      id: () => "mutation-1",
+      isoNow: () => "2026-07-14T12:00:00.000Z",
+      window: {
+        clearTimeout: () => {},
+        setTimeout: () => { queueEvents.timers += 1; return 1; }
+      },
+      syncFlushTimer: 0,
+      flushWorkoutSyncQueue: () => {}
+    };
+    await evaluateFunction("queueActiveWorkoutSync", queueContext)();
+
+    const flushEvents = { reads: [], writes: [], requests: [] };
+    const mutation = { mutationId: "mutation-1", sessionId: session.id, revision: "2026-07-14T12:00:00.000Z", payload: {} };
+    const flushContext = {
+      data: model,
+      navigator: { onLine: true },
+      pushIdentity: { installationId: "installation-1", token: "synthetic-token" },
+      readIndexedValue: async (key) => { flushEvents.reads.push(key); return [mutation]; },
+      writeIndexedValue: async (key, value) => { flushEvents.writes.push({ key, value: plain(value) }); },
+      pushApi: async (url, body) => { flushEvents.requests.push({ url, body: plain(body) }); return { status: "synced" }; }
+    };
+    await evaluateFunction("flushWorkoutSyncQueue", flushContext)();
+    return { queueEvents, flushEvents };
+  }
+
+  for (const consent of [undefined, false]) {
+    const result = await run(consent);
+    assert.deepEqual(result.queueEvents, { reads: [], writes: [], timers: 0 }, `${String(consent)} consent queued workout data`);
+    assert.deepEqual(result.flushEvents, { reads: [], writes: [], requests: [] }, `${String(consent)} consent flushed workout data`);
+  }
+  const allowed = await run(true);
+  assert.equal(allowed.queueEvents.writes.length, 1, "Explicit consent must permit queueing");
+  assert.equal(allowed.flushEvents.requests.length, 1, "Explicit consent must permit flushing");
   collectAssertions([
     ["default off", () => assertContains(defaults, /cloudWorkoutSyncConsent\s*:\s*false/, "Cloud workout sync consent must default to false")],
     ["persisted independently", () => assertContains(normalize, /cloudWorkoutSyncConsent\s*:\s*storedSettings\.cloudWorkoutSyncConsent/, "Cloud workout sync consent must have its own persisted setting")],
@@ -145,6 +582,72 @@ test("cloud workout sync has separate explicit default-off consent and fails clo
     ["notification setup remains separate", () => assert.doesNotMatch(notifications, /cloudWorkoutSyncConsent/, "Enabling notifications must not enable workout upload")],
     ["notification toggles remain separate", () => assert.ok(notificationActionWindows.every((source) => !/cloudWorkoutSyncConsent\s*:\s*true/.test(source)), "A notification preference handler must never grant workout-upload consent")]
   ]);
+});
+
+test("remote deletion function exists and retains authorization until terminal deleted", async () => {
+  assert.match(
+    html,
+    /(?:async\s+)?function\s+deleteRemoteInstallationData\s*\(/,
+    "Missing production deleteRemoteInstallationData; behavioral assertions below execute as soon as the function exists"
+  );
+  const context = {
+    pushIdentity: { installationId: "installation-1", deviceId: "device-1", token: "synthetic-bearer", status: "enabled" },
+    settingsMessage: "",
+    render: () => {},
+    persistPushIdentity: async () => true,
+    writeIndexedValue: async () => true,
+    isoNow: () => "2026-07-14T12:00:00.000Z",
+    window: { setTimeout: () => 1, clearTimeout: () => {} },
+    pushApi: async () => ({ status: "deleting", retryable: true, phase: "discover" })
+  };
+  const remove = evaluateFunction("deleteRemoteInstallationData", context);
+
+  const deleting = plain(await remove());
+  assert.equal(deleting.status, "deleting");
+  assert.equal(deleting.retryable, true);
+  assert.equal(context.pushIdentity.token, "synthetic-bearer", "A 202/deleting response must retain the bearer for retry");
+
+  context.pushApi = async () => { const error = new Error("Synthetic network failure"); error.status = 503; throw error; };
+  let failure = null;
+  try { failure = plain(await remove()); }
+  catch (error) { failure = { status: "error", retryable: error.retryable === true }; }
+  assert.equal(failure?.retryable, true, "A failed delete must expose retryable state");
+  assert.equal(context.pushIdentity.token, "synthetic-bearer", "A failed delete must retain the bearer for retry");
+
+  context.pushApi = async () => ({ status: "deleted", retryable: false });
+  const deleted = plain(await remove());
+  assert.equal(deleted.status, "deleted");
+  assert.equal(Boolean(context.pushIdentity?.token), false, "Only terminal deleted may clear the bearer");
+});
+
+test("timer cancellation sends timerVersion and deduplicates only the same notification version", async () => {
+  const immediateRequests = [];
+  const immediateContext = {
+    navigator: { onLine: true, serviceWorker: { controller: { postMessage: () => {} } } },
+    pushIdentity: { installationId: "installation-1", token: "synthetic-bearer" },
+    activeWorkoutId: "workout-1",
+    pushApi: async (url, body) => { immediateRequests.push({ url, body: plain(body) }); return { status: "canceled" }; },
+    readIndexedValue: async () => [],
+    writeIndexedValue: async () => true
+  };
+  await evaluateFunction("cancelRestPush", immediateContext)({ id: "timer-1", workoutId: "workout-1", version: 7 }, "adjusted");
+  assert.equal(immediateRequests[0]?.body?.timerVersion, 7, "Immediate cancellation must carry the exact timer version");
+
+  let pending = [];
+  const offlineContext = {
+    navigator: { onLine: false, serviceWorker: { controller: { postMessage: () => {} } } },
+    pushIdentity: { installationId: "installation-1", token: "synthetic-bearer" },
+    activeWorkoutId: "workout-1",
+    pushApi: async () => { throw new Error("Offline requests must not run"); },
+    readIndexedValue: async () => plain(pending),
+    writeIndexedValue: async (_key, value) => { pending = plain(value); return true; }
+  };
+  const cancelOffline = evaluateFunction("cancelRestPush", offlineContext);
+  await cancelOffline({ id: "timer-1", workoutId: "workout-1", version: 7 }, "adjusted");
+  await cancelOffline({ id: "timer-1", workoutId: "workout-1", version: 7 }, "duplicate");
+  await cancelOffline({ id: "timer-1", workoutId: "workout-1", version: 8 }, "adjusted-again");
+  assert.equal(pending.length, 2, "Queue deduplication must retain one operation for each distinct timer version");
+  assert.deepEqual(pending.map((item) => item.timerVersion).sort((a, b) => a - b), [7, 8]);
 });
 
 test("quick-start cards retain native button semantics", () => {
