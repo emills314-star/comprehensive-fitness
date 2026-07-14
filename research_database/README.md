@@ -30,6 +30,8 @@ npm.cmd run research:build
 npm.cmd run research:validate
 ```
 
+The 3.0.0 current-version build comprises 63 artifacts: 19 CSV files, 21 JSON files, 21 schema/SQL files, one validation report, and the 3.0.0 workbook. Older versioned workbooks are retained separately. `scripts/test-research-archive-integrity.js` verifies the tracked generated archive independently of checkout line-ending conversion, and `scripts/test-research-workbook-determinism.js` verifies deterministic XLSX content and ZIP metadata. A clean rebuild must not change tracked output bytes or workbook structure unless the canonical source/version intentionally changes.
+
 Multiple values in denormalized display fields use the pipe character (`|`). Frequently queried relationships are also supplied as normalized mapping tables. Dates use `YYYY-MM-DD`; booleans are true/false; RIR is numeric; rest is seconds; protein and fat are grams per kilogram per day; weight-change rates are percent body weight per week.
 
 Every progression rule must cite at least one conclusion and at least one overlapping study. Importers must preserve `rule_authority`, `enforcement_level`, and `policy_disclosure`; dropping these fields can turn a configurable heuristic into a misleading scientific or safety claim.

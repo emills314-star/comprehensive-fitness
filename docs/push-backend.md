@@ -1,37 +1,28 @@
-# Rest Notification Backend
+# Rest Notification and Workout Sync Backend
 
-Comprehensive Fitness uses standards-based Web Push for locked-screen rest alerts. The browser never receives VAPID private keys, QStash credentials, Redis credentials, or database service credentials.
+## Status and boundary
 
-## Services
+- **Last code review:** 2026-07-13, accepted foundation changes through `ce13f1e`
+- **Backend contract:** **IMPLEMENTED** in `api/`
+- **Frontend lifecycle:** **PLANNED / NEEDS REVIEW** for complete disable/unsubscribe/delete orchestration
+- **Production/device status:** **NEEDS REVIEW**; repository state cannot prove current Vercel, Upstash, QStash, or physical iPhone behavior
 
-- Vercel Functions host `/api/push/*` and `/api/sync/workout`.
-- Upstash QStash schedules one delayed delivery per active rest timer.
-- Upstash Redis stores installation-scoped push subscriptions, scheduled timers, idempotency records, and workout sync payloads.
-- `web-push` encrypts each payload for the browser subscription using VAPID.
+Comprehensive Fitness can use standards-based Web Push for background rest alerts and an installation-authorized, write-only workout mutation endpoint. Foreground timers and the local IndexedDB workout log continue to work when the backend is absent. The browser never receives VAPID private keys, QStash signing keys, or Redis credentials.
 
-All three services have free tiers suitable for personal use. The foreground timer and IndexedDB workout log continue to work when the notification backend is not configured.
+## Services and trust boundaries
 
-## Live Free-Tier Deployment
+- Vercel Functions host `/api/push/*`, `/api/install/delete`, and `/api/sync/workout`.
+- Upstash QStash schedules delayed calls to `/api/push/deliver`; delivery verifies the QStash signature.
+- Upstash Redis stores installation records, scoped timer state, deletion indexes, mutation receipts, and serialized workout payloads.
+- `web-push` encrypts browser payloads with VAPID.
+- There is no account authentication or cross-device restore API. Authorization is scoped to a random per-installation bearer secret; Redis stores only its SHA-256 hash and compares it in constant time.
 
-Production was configured and verified on 2026-07-11. No paid plan or payment method is required by the current implementation.
+## Environment variables
 
-| Component | Live resource | Free-plan details used by this app |
-| --- | --- | --- |
-| Vercel | Hobby project `comprehensive-fitness`, production domain `https://comprehensive-fitness.vercel.app`, functions in `iad1` | Hosts the PWA and seven Node.js API functions |
-| Upstash Redis | Database `comprehensive-fitness`, AWS `us-east-2`, Free Tier | 500,000 commands/month, 256 MB storage, 50 GB monthly bandwidth |
-| Upstash QStash | `US Region`, AWS `us-east-1`, Free | 1,000 messages/day, 50 GB monthly bandwidth, three retries, 1 MB messages |
-| Web Push | One production VAPID key pair generated 2026-07-11 | Private key exists only in Vercel Production environment variables |
-
-The nine variables below are present only in Vercel Production. The latest deployment is `READY`, and `GET /api/push/config` returns `configured: true` with scheduler `qstash`. A temporary `cf:smoke:*` Redis key was written, read, and deleted successfully during setup, so no smoke-test record remains.
-
-Before an iPhone enables notifications, Redis is expected to contain no persistent app records. The first installed-PWA registration creates the installation hash and registry membership documented below; timers and workout sync keys appear only as those features are used.
-
-## Environment Variables
-
-Set these in Vercel for Production, Preview, and Development as appropriate:
+Set secrets in the deployment environment, never in source:
 
 ```text
-PUBLIC_APP_URL=https://comprehensive-fitness.vercel.app
+PUBLIC_APP_URL=https://example.com
 VAPID_SUBJECT=mailto:you@example.com
 VAPID_PUBLIC_KEY=generated-public-key
 VAPID_PRIVATE_KEY=generated-private-key
@@ -40,66 +31,63 @@ QSTASH_CURRENT_SIGNING_KEY=from-upstash-qstash
 QSTASH_NEXT_SIGNING_KEY=from-upstash-qstash
 UPSTASH_REDIS_REST_URL=from-upstash-redis
 UPSTASH_REDIS_REST_TOKEN=from-upstash-redis
+WEB_PUSH_ALLOWED_ORIGINS=https://additional-provider.example
 ```
 
-Generate VAPID keys locally once:
+`WEB_PUSH_ALLOWED_ORIGINS` is optional. Without it, the backend permits the HTTPS origins for Firebase Cloud Messaging, Mozilla Push, and Apple Push. Extra entries must be HTTPS origins without credentials, ports, paths, queries, fragments, local hosts, or IP literals. `PUBLIC_APP_URL` must be a safe HTTPS root origin outside local development.
 
-```powershell
-npx web-push generate-vapid-keys
-```
+Generate VAPID keys locally once with `npx web-push generate-vapid-keys`, retain the private key server-side, and redeploy after changing credentials.
 
-Keep the private key server-side. Redeploy after setting all variables.
+## Storage model and retention
 
-## Redis Schema
+| Purpose | Redis key | Retention |
+| --- | --- | --- |
+| Installation authorization, subscription, lifecycle, and deletion cursors | `cf:install:{installationId}` | rolling 180-day hash TTL; deletion continuation refreshes the tombstone TTL |
+| Global installation registry | `cf:installations` | no key/member TTL; membership is removed at completed deletion |
+| Scoped timer | `cf:timer:{installationId}:{scopedTimerId}` | 7 days |
+| Legacy timer compatibility during deletion | `cf:timer:{notificationId}` | discovered in bounded scans |
+| Active workout timer pointer | `cf:active:{installationId}:{workoutId}` | timer lifecycle |
+| Per-installation timer/workout/mutation indexes | `cf:timers:{installationId}`, `cf:workouts:{installationId}`, `cf:mutations:{installationId}` | corresponding record lifecycle |
+| Workout payload | `cf:workout:{installationId}:{sessionId}` | 90 days |
+| Mutation idempotency receipt | `cf:mutation:{installationId}:{mutationId}` | 90 days |
+| Bounded deletion work set | `cf:delete:{installationId}:keys` | deletion lifecycle |
 
-### Push subscriptions
+Registration returns the bearer secret once. Supported installation updates refresh the 180-day record TTL. A record in `deleting` or `deleted` state is a tombstone and cannot be reactivated with old credentials. Push responses `404` or `410` invalidate the subscription. Expiration of an installation hash does not itself remove its ID from the global registry; completed deletion does.
 
-Key: `cf:install:{installationId}` (hash)
+Timer IDs are derived from the installation ID plus the caller's requested ID, so two installations cannot address the same timer key. Every schedule includes a `timerVersion`. Active-pointer, cancellation, delivery, and completion writes check both ownership and version; a stale request receives a conflict instead of changing the replacement timer.
 
-Fields: `installationId`, `userId`, `endpoint`, `p256dh`, `auth`, `createdAt`, `updatedAt`, `lastSuccessfulDeliveryAt`, `deviceId`, `active`, `invalidAt`, `secretHash`.
+## Scheduling, cancellation, and delivery
 
-Key: `cf:installations` (set) contains registered installation IDs for operational auditing.
+1. `POST /api/push/register` validates an allowed push endpoint and creates or refreshes an active installation.
+2. `POST /api/push/schedule` writes authoritative Redis state before publishing to QStash. Replacing a workout timer revokes the prior state and claim.
+3. QStash calls `/api/push/deliver`. The handler verifies the signature, acquires a short-lived delivery claim, and checks installation state, timer ownership/version, and active pointer.
+4. Immediately before Web Push, delivery confirms the same claim and state again. Success, retry, and invalidation updates can commit only while that claim remains current.
+5. `POST /api/push/cancel` revokes Redis state and the delivery claim before attempting scheduler cleanup. A QStash deletion failure cannot make the canceled timer authoritative again.
 
-The browser receives a random installation bearer token once. Only its SHA-256 hash is stored. Expired subscriptions are marked inactive after a `404` or `410` push response.
+The material race boundary is explicit: once the server has dispatched a Web Push network request, it cannot recall that request. Cancellation or deletion still revokes the Redis claim, so the request cannot commit success, schedule a retry, or resurrect timer state. User-facing copy and tests must not promise perfect recall after dispatch.
 
-### Scheduled rest notifications
+Only allowlisted HTTPS push origins may be registered or delivered. Timer state, installation lifecycle, and version checks are deterministic safety/security controls; QStash and Web Push availability remain external operational dependencies.
 
-Key: `cf:timer:{notificationId}` (hash)
+## Installation deletion
 
-Fields: `notificationId`, `installationId`, `userId`, `workoutId`, `exerciseId`, `setId`, `upcomingSetId`, `upcomingSetNumber`, `upcomingSetLabel`, `timerVersion`, `exerciseName`, `messageDetail`, `scheduledCompletionAt`, `status`, `createdAt`, `canceledAt`, `deliveredAt`, `messageId`, `cancelReason`, `deliveryError`.
+`POST` or `DELETE /api/install/delete` immediately moves an authorized installation to `deleting`, clears active credentials/subscription use, and begins cleanup. Per-installation registries are scanned in bounded pages; compatibility scans are also capped, and deletion processes a bounded batch per request.
 
-Key: `cf:active:{installationId}:{workoutId}` points to the only active notification ID for that workout. Scheduling a replacement cancels the prior QStash message first.
+If work remains, the endpoint returns HTTP 202 with `status: "deleting"`, `cleanupTruncated: true`, and `retryable: true`. The caller must repeat the authorized request until HTTP 200 returns `status: "deleted"`. Continuation is idempotent and is not blocked by the initial deletion rate limit. The final 180-day tombstone keeps the installation ID unusable and blanks the subscription endpoint/key material while retaining the secret hash for authorized idempotent status checks. Scheduler cancellation failures are reported separately; Redis revocation remains authoritative.
 
-### Workout synchronization
+**PLANNED / NEEDS REVIEW:** accepted frontend code does not yet prove that disabling notifications, clearing local app data, or resetting the app always cancels active timers, unsubscribes the browser, and continues this endpoint to terminal deletion. Do not describe the user-facing deletion lifecycle as complete until those paths and retry/reload behavior are integrated and tested.
 
-Key: `cf:workout:{installationId}:{sessionId}` (hash)
+## Workout mutation sync
 
-Fields: `installationId`, `sessionId`, `revision`, `payload`, `updatedAt`.
+`POST /api/sync/workout` is installation-authorized and write-only. It enforces a 256 KiB request limit, at most 100 exercises and 1,000 sets, referential consistency, and bounded identifiers. Mutation IDs provide idempotency. A repeated revision with different content returns a conflict, a stale revision cannot overwrite newer data, and a deleting/deleted installation is rejected. Payloads and mutation receipts expire after 90 days.
 
-Key: `cf:mutation:{installationId}:{mutationId}` is an expiring idempotency record. Duplicate mutations return success without creating duplicate workout or set records.
+This is not cloud history, backup recovery, or multi-device continuity. There is no read/restore endpoint, account ownership model, or verified restore UI. Exported local app backups remain the only implemented user-managed restore source.
 
-## Free-Tier Operations
+## Verification
 
-- Check Upstash Redis **Commands**, **Storage**, and **Bandwidth** monthly. The personal app should remain far below the free limits; do not select **Upgrade** or add a payment method.
-- Check QStash **Messages**, **DLQ**, and **Schedules** if a locked-screen notification fails. The current free allowance is ample for personal rest timers.
-- Rotate Redis, QStash, or VAPID credentials only when compromised or intentionally migrating. Update all matching Vercel Production variables together and redeploy immediately.
-- Historical workout recommendation snapshots are client-side IndexedDB data and are not silently rewritten by these backend services. Exported app backups remain the authoritative restore source.
+Repository verification should include the backend security/race tests, public privacy scan, workflow validator, public test gate, and release gate. Exact commands are maintained in `package.json`; the principal entry points are `npm test`, `npm run check:public`, and `npm run release:verify`.
 
-## Delivery Flow
+External verification is separate and must be dated. Confirm environment configuration without printing values, `GET /api/push/config`, registration and test delivery, schedule/replace/cancel races, resumable deletion, Redis/QStash cleanup, and physical iPhone lock-screen behavior. Desktop emulation cannot validate iOS installation, suspension, Focus/Silent Mode, or delivery timing. Never place credentials, subscription endpoints, bearer secrets, or workout payloads in a work log.
 
-1. The installed PWA requests permission only after the user taps Enable.
-2. The push subscription is registered with an installation-scoped secret.
-3. Starting a timer stores an absolute end timestamp and schedules a QStash message using a unique notification ID.
-4. Adding time, pausing, canceling, skipping, deleting, or ending the workout cancels that exact message.
-5. QStash signs calls to `/api/push/deliver`; the function verifies the signature before reading timer data.
-6. The service worker shows `Rest complete` and deep-links to the active workout and upcoming set.
+## Dated operational observation
 
-## Physical iPhone Test
-
-Desktop emulation cannot validate iOS installation, suspension, Silent Mode, Focus, or lock-screen delivery. On an iPhone:
-
-1. Install from Safari using Add to Home Screen.
-2. Open Settings > iPhone app setup and enable notifications.
-3. Send the test notification while the phone is locked.
-4. Start a short rest timer, switch apps, and verify delivery and deep linking.
-5. Repeat after extending, pausing, skipping, and canceling the timer to confirm stale notifications do not arrive.
+Repository history records that production was configured and smoke-tested on 2026-07-11. That is a historical observation, not proof of current service state, plan limits, billing, region, readiness, or device behavior. Reverify external status before making a release claim; do not create or upgrade a paid service without authorization.

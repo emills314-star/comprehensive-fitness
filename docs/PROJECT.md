@@ -3,8 +3,8 @@
 ## Metadata
 
 - **Purpose:** Product vision, verified scope, and boundary between current and intended behavior
-- **Last verified:** 2026-07-11
-- **Repository:** `main` @ `7c52a2b`
+- **Last verified:** 2026-07-13
+- **Repository:** integrated foundation `ce13f1e` plus accepted taxonomy-source repairs `5d95f40` and `90cb27a`
 - **Verification status:** VERIFIED from application code, tests, schemas, configuration, and existing docs; open conflicts are labeled
 - **Related:** [Architecture](ARCHITECTURE.md), [Decision engine](DECISION_ENGINE.md), [UI/UX](UI_UX.md), [Roadmap](ROADMAP.md), [documentation inventory](DOCUMENTATION_INVENTORY.md)
 
@@ -52,11 +52,11 @@ Product principles evidenced in the repository:
 | Progress and volume analytics | **IMPLEMENTED** | Interactive exercise charts, session detail, weekly weighted muscle volume, fatigue flags, hypertrophy scoring, and recent/all history. |
 | Recovery readiness | **IMPLEMENTED** | User-entered sleep, HRV, resting heart rate, soreness, illness, nutrition/protein status, personal baseline, readiness band, and conservative adjustment guidance. |
 | Prescription and mesocycle engine | **IMPLEMENTED** | User-defined muscle scope with explicit omission confirmation, versioned rules, traceable candidate pools, evidence-derived weekly set/frequency slots, portfolio-first full-program construction, split-aware session allocation, blocking validation, four mesocycle types, progression/hold/deload/rotation decisions, confidence, snapshots, and audited overrides in `prescription-engine.js`. |
-| Exercise-science database | **IMPLEMENTED** | Versioned JSON/CSV/XLSX/SQL exports, schemas, mappings, bibliography, build, and validation under `research_database/`. |
+| Exercise-science database | **IMPLEMENTED** | Version 3.0.0 publishes source-provenance identifiers, rule-to-conclusion traceability, explicit evidence/product-policy/safety authority, advisory versus allowlisted hard-blocker enforcement, deterministic CSV/JSON/XLSX/SQL/schema outputs, bibliography, build, and validation under `research_database/`. |
 | Private personal evidence pipeline | **IMPLEMENTED** | Local normalization/analysis of workout, Fitbit/Google Health, nutrition, and body-composition sources; aggregates can be packaged/imported without public deployment (`scripts/personal-fitness/`, `scripts/build-app-personal-evidence.js`). |
 | Nutrition tracking | **PARTIALLY IMPLEMENTED** | Research strategies, historical analysis pipeline, and daily adequacy inputs influence context. There is no verified in-app meal/food/macronutrient logger. |
 | Fitbit integration | **PARTIALLY IMPLEMENTED** | Exported Fitbit/Google Health data is normalized by the private pipeline. No OAuth, live sync, or direct wearable connection is implemented. |
-| Optional push and workout backup | **PARTIALLY IMPLEMENTED** | Installation-scoped Web Push/rest scheduling and write-only workout mutation sync use Vercel Functions/Upstash. There is no verified cross-device restore UI or account-backed cloud history. |
+| Optional push and workout backup | **PARTIALLY IMPLEMENTED** | The Vercel/Upstash backend implements installation-scoped authorization, scoped timer identities and versions, delivery claims, revocation tombstones, bounded resumable deletion, allowed Web Push origins, retention limits, and write-only workout mutation sync. **PLANNED / NEEDS REVIEW:** the frontend does not yet prove the complete cancel/unsubscribe/delete lifecycle, and there is no cross-device restore UI or account-backed cloud history. |
 | Native packaging | **PARTIALLY IMPLEMENTED** | Capacitor iOS/Android projects exist; store signing/submission and physical-device behavior remain operational tasks. |
 | Account authentication/profile service | **PLANNED / NEEDS REVIEW** | No user account login exists. Local settings provide a lightweight training profile; backend authorization is installation-secret based. Product intent for accounts is not established. |
 
@@ -81,12 +81,13 @@ Product principles evidenced in the repository:
 - **Mesocycle:** A decision context (primary, alternative, lower-fatigue, or specialization), not an automatic calendar rotation.
 - **PR:** A submitted-workout performance record under implemented comparison semantics; see `docs/DECISION_ENGINE.md`.
 - **Weighted muscle volume:** Versioned canonical relationships count direct dynamic sets fully, meaningful fractional dynamic work at its configured weight, and incidental/unknown/isometric work at zero hypertrophy credit while retaining fatigue exposure separately.
+- **Programming family:** A derived accounting projection from 23 stable anatomical muscle IDs into 20 practical families. It prevents paired subdivisions from double-counting program volume without rewriting exercise relationships, filters, history, or canonical IDs.
 
 ## Data sources and privacy
 
 Public/runtime sources include submitted app workouts and the research JSON exports cached by `sw.js`. Private local sources can include Strong exports, Fitbit/Google Health exports, nutrition exports, body-composition records, and generated aggregates. Raw and generated personal data are excluded from public deployment by `.gitignore`/`.vercelignore`; the app imports only a user-provided aggregate evidence package into local IndexedDB.
 
-Do not treat the optional Redis backend as the personal evidence database. It stores installation/push/timer records and serialized workout mutations (`api/`, `docs/push-backend.md`). No raw personal values or credentials belong in public documentation.
+Do not treat the optional Redis backend as the personal evidence database. It stores installation/push/timer records and serialized workout mutations (`api/`, `docs/push-backend.md`). Record hashes use documented rolling TTLs; the global installation registry persists until completed deletion. Deletion immediately revokes the installation and continues in bounded indexed batches; a retained tombstone prevents credential reuse. An already-dispatched Web Push network request cannot be recalled. No raw personal values or credentials belong in public documentation.
 
 ## Non-goals and boundaries
 
@@ -101,5 +102,5 @@ Do not treat the optional Redis backend as the personal evidence database. It st
 - **PARTIALLY IMPLEMENTED:** “Fitness, food, and wearable data in one app” currently means offline analysis/import and readiness context, not live Fitbit or food tracking.
 - **PARTIALLY IMPLEMENTED:** Workout sync uploads mutations but the UI remains local-first and has no verified remote restore/read API.
 - **IMPLEMENTED:** lb/kg changes atomically convert load-bearing app data, retain per-record provenance, preserve private source packages, normalize source-unit prescriptions at the UI boundary, and refresh converted snapshot checksums.
-- **NEEDS REVIEW:** Existing setup docs state live deployment status that cannot be proven from repository state alone.
+- **NEEDS REVIEW:** Live deployment and physical-device status cannot be proven from repository state alone; dated operational observations must be reverified before release claims.
 - **NEEDS REVIEW:** Research scope is male-specific; desired inclusivity/population expansion is not documented.

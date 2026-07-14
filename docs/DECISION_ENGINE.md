@@ -3,8 +3,8 @@
 ## Metadata
 
 - **Purpose:** Catalog of implemented and intended logic that turns history, research, and readiness into guidance
-- **Last verified:** 2026-07-11
-- **Repository:** `main` @ `7c52a2b`
+- **Last verified:** 2026-07-13
+- **Repository:** integrated foundation `ce13f1e` plus accepted taxonomy-source repairs `5d95f40` and `90cb27a`
 - **Verification status:** VERIFIED against `prescription-engine.js`, relevant `index.html` logic, schemas, data pipelines, and tests
 - **Related:** [Project](PROJECT.md), [architecture](ARCHITECTURE.md), [UI/UX](UI_UX.md), [training data map](training-prescription-data.md), [research methodology](../research_database/METHODOLOGY.md)
 
@@ -48,7 +48,7 @@ Fewer than three comparable exposures remain research-led (`DEFAULT_POLICY.minim
 | Fitbit-derived signals | **PARTIALLY IMPLEMENTED** | Offline exported sleep/HRV/RHR/activity/body-composition data feed aggregate analysis. No live Fitbit API. |
 | Nutrition data | **PARTIALLY IMPLEMENTED** | Offline nutrition normalization, research strategies, and same-day adequacy/protein inputs; no meal logger. |
 | User recovery report | **IMPLEMENTED** | Sleep hours/quality, HRV, resting HR, soreness, illness, affected muscle, nutrition/protein status, note. |
-| Research database | **IMPLEMENTED** | Exercise defaults, muscle recommendations, progression rules, substitutions, nutrition strategies, evidence conclusions/mappings. |
+| Research database | **IMPLEMENTED** | Version 3.0.0 exercise defaults, muscle recommendations, progression rules, substitutions, nutrition strategies, verified PubMed/PMC provenance, rule-to-conclusion mappings, and explicit authority/enforcement/disclosure semantics. |
 | Technique, velocity, pain series | **PARTIALLY IMPLEMENTED** | Rules can account for flags/notes, but complete longitudinal technique, velocity, and pain data are not generally present. |
 
 ## Readiness and recovery
@@ -116,7 +116,7 @@ Equipment filtering uses explicit requirement alternatives. Each alternative is 
 
 Mechanical redundancy requires a known shared primary movement pattern, overlapping primary muscle family, and compatible joint action. The implemented similarity also considers role, loading profile, stability, regional emphasis, and equipment; the review requires at least 0.82 similarity before showing a user-facing duplication warning. Unknown or missing patterns score zero and remain internal data-quality work rather than normal user review. Shared equipment, generic compound status, broad push/pull labels, or incidental secondary overlap cannot create redundancy. Repeated same-role hinges for one target can trigger review, while press/fly overlap remains complementary unless the actual role/loading profile is nearly identical. Systemic, spinal, grip, or joint conflicts remain separate fatigue/recovery findings.
 
-Generation order is objective/schedule/equipment/scope; evidence-adjusted effective-volume targets; muscle priority; major compounds/high-value lifts; session distribution and recovery; secondary/isolation work; hard daily-limit enforcement; taxonomy-weighted volume calculation; automatic balancing; then unresolved actionable review. Major program muscles are allocated before smaller supplemental muscles. Research taxonomy 2.0 assigns direct dynamic work 1.0, meaningful fractional work 0.5 or 0.25, and incidental/unknown/isometric relationships zero hypertrophy credit. Isometric local fatigue remains separate. Credited fractional work contributes to the same effective-set target as direct work; the UI preserves the breakdown and separately warns when frequency, distribution, or evidence confidence remains inadequate.
+Generation order is objective/schedule/equipment/scope; evidence-adjusted effective-volume targets; muscle priority; major compounds/high-value lifts; session distribution and recovery; secondary/isolation work; hard daily-limit enforcement; taxonomy-weighted volume calculation; automatic balancing; then unresolved actionable review. Major program muscles are allocated before smaller supplemental muscles. Research taxonomy 2.1.0 retains 23 canonical anatomical muscle IDs across 62 exercises and 151 relationships, then projects them into 20 programming families. Direct dynamic work receives 1.0, meaningful fractional work 0.5 or 0.25, and incidental/unknown/isometric relationships receive zero hypertrophy credit. In the guided builder's family ledger, the strongest qualifying relationship is counted once per exercise/family, local fatigue remains additive, and only final exposed values are rounded. Credited fractional work contributes to the same guided effective-set target as direct work; the UI preserves the breakdown and separately warns when frequency, distribution, or evidence confidence remains inadequate. **PLANNED / NEEDS REVIEW:** the recommendation/prescription historical path has not yet adopted this family-ledger/version contract.
 
 The retained automatic generator may schedule each canonical exercise on only one day. Guided plans may intentionally reuse the same exercise across different days. Within one training day, the same canonical exercise or alias is invalid: candidate selection disables it, domain validation rejects it, move/import paths surface it, and viability blocks legacy duplicates. The intended correction is to merge or restructure the existing assignment, not add a duplicate card.
 
@@ -138,7 +138,7 @@ Session-density review begins above eight exercises; more than ten exercises rem
 
 PRs are calculated only during submission (`submitWorkoutPrs`, `submitWorkout`). Warm-ups and sets excluded from progression do not qualify. Resistance-specific performance semantics distinguish external, bodyweight, added-load, assisted-bodyweight, duration, and distance work. The app preserves PRs on the submitted session and celebrates them in the summary. **NEEDS REVIEW:** the UI uses broader performance-value comparisons rather than a single documented named taxonomy such as “load PR / rep PR / e1RM PR”; product copy should define which PR categories users see.
 
-Weekly muscle volume uses Monday–Sunday submitted history. Canonical taxonomy direct sets count 1; exercise-specific fractional work counts 0.5 or 0.25; incidental and unknown relationships count zero. Isometric exposure affects fatigue context, not hypertrophy-set totals. Warm-ups and excluded sets do not count; explicitly deloaded work is excluded from overload flags (`weeklyMuscleVolume`, `fatigueFlags`). Historical derived volume is recalculated from the single loaded taxonomy version without changing logged performance data.
+Weekly muscle volume uses Monday–Sunday submitted history. The current prescription/app historical path calculates canonical muscle rows: direct sets count 1; exercise-specific fractional work counts 0.5 or 0.25; incidental and unknown relationships count zero; isometric exposure affects fatigue context rather than hypertrophy-set totals. Warm-ups and excluded sets do not count; explicitly deloaded work is excluded from overload flags (`weeklyMuscleVolume`, `fatigueFlags`). Logged workout facts remain unchanged by this derived view. **PLANNED / NEEDS REVIEW:** integrate the programming-family ledger, explicit taxonomy 2.1 provenance, migration/rollback behavior, and final-only rounding into the recommendation/historical path before describing those semantics as implemented there.
 
 Workout grades use progression, program adherence, working-set completion/consistency, RPE compliance/logging, adjustment intent, and severe fatigue safeguards (`calculateWorkoutAnalysis`, `scoreWorkoutGradeMetrics`; `scripts/test-workout-grade.js`). Warm-ups are excluded. A well-executed planned deload can earn an A-level grade; reduced load is not intrinsically failure.
 
@@ -146,7 +146,7 @@ Hypertrophy scoring requires qualifying submitted weeks and reports insufficient
 
 ## Research translation and guardrails
 
-Research selection, population, grading, conflicts, and update policy live in `research_database/METHODOLOGY.md`; sources are indexed in `research_database/BIBLIOGRAPHY.md`. Build validation enforces mappings, population exclusions, controlled vocabularies, and referential integrity. Operational rules unsupported by direct validation are labeled as inference in the research database.
+Research selection, population, grading, conflicts, and update policy live in `research_database/METHODOLOGY.md`; sources are indexed in `research_database/BIBLIOGRAPHY.md`. Research database 3.0.0 validates PubMed/PMC provenance where verified, rule-to-conclusion-to-study overlap, population exclusions, controlled vocabularies, and referential integrity. `rule_authority` distinguishes evidence, product policy, and safety; `enforcement_level` distinguishes advisory rules from a narrow allowlist of deterministic hard blockers. Unsupported numeric or timing policies remain disclosed, configurable product judgments rather than settled science. Importers must preserve authority, enforcement, and policy disclosure fields.
 
 Guardrails:
 

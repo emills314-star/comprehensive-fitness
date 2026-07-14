@@ -3,8 +3,8 @@
 ## Metadata
 
 - **Purpose:** Verified technical architecture, data flows, and operational boundaries
-- **Last verified:** 2026-07-11
-- **Repository:** `main` @ `7c52a2b`
+- **Last verified:** 2026-07-13
+- **Repository:** integrated foundation `ce13f1e` plus accepted taxonomy-source repairs `5d95f40` and `90cb27a`
 - **Verification status:** VERIFIED locally; external deployment/device status is not repository-verifiable
 - **Related:** [Project](PROJECT.md), [decision engine](DECISION_ENGINE.md), [UI/UX](UI_UX.md), [roadmap](ROADMAP.md), [push backend](push-backend.md)
 
@@ -37,7 +37,7 @@ This is a dependency-light static PWA with Capacitor wrappers, not a bundled com
 | Research data | Source, schemas, exports, workbook, and validation under `research_database/` |
 | Private analysis | Pipeline/config/schemas under `scripts/personal-fitness/` and `personal_fitness_data/` |
 | Contracts | JSON Schema files under root `schemas/` |
-| Verification | Dependency-free Node tests in `scripts/test-*.js`; PWA PowerShell verifier |
+| Verification | Dependency-free Node tests in `scripts/test-*.js`; Node-based public/private/release gates; Playwright/axe UI audit; GitHub Actions |
 
 `npm run sync:web` is the canonical copy step from root web assets into `www/`. Root files are the editable source; duplicated `www/` files are packaging outputs.
 
@@ -111,7 +111,7 @@ The root JSON Schemas are application decision contracts. `personal_fitness_data
 ```mermaid
 flowchart TD
   ResearchSource[research_database/source/database.js] --> Build[scripts/build-research-database.js]
-  Build --> ResearchExports[validated public JSON/CSV/XLSX]
+  Build --> ResearchExports[validated public CSV/JSON/XLSX/SQL/schema artifacts]
   PrivateExports[Strong + Fitbit/Google Health + nutrition + body composition] --> PersonalPipeline[scripts/personal-fitness/pipeline.js]
   PersonalPipeline --> Aggregates[private derived aggregates]
   Aggregates --> EvidenceBuilder[scripts/build-app-personal-evidence.js]
@@ -125,7 +125,11 @@ flowchart TD
 
 The retained legacy automatic engine is portfolio-first and priority-ordered; it remains available for historical-plan compatibility and engine tests, not for creating new guided plans. New guided construction is user-directed. It uses the same taxonomy-defined direct sets, 0.5/0.25 fractional contribution, zero-credit incidental/unknown relationships, separate isometric fatigue, frequency, and capacity rules as live feedback and viability validation.
 
-`research_database/source/exercise-muscle-taxonomy.js` is the single exercise–muscle relationship authority. Database 2.0 generates versioned mapping and review-queue exports. The browser engine, planner, weekly/historical analytics, and private personal-evidence config adapter consume those mappings. Legacy name rules and personal mappings are fallback-only for custom exercises without a canonical research crosswalk. Historical volume is derived atomically from one loaded taxonomy version; logged workout facts remain immutable.
+`research_database/source/exercise-muscle-taxonomy.js` is the single exercise–muscle relationship authority. Taxonomy 2.1.0 covers 62 canonical exercises with 151 exercise-muscle relationships and retains all 23 canonical anatomical muscle IDs. A complete projection maps them into 20 programming families; only the sternal/clavicular chest, gastrocnemius/soleus calf, and flexor/extensor neck pairs coalesce. The browser engine, planner, weekly/historical analytics, and private personal-evidence config adapter consume the mappings. Legacy name rules and personal mappings are fallback-only for custom exercises without a canonical research crosswalk.
+
+Programming families are derived accounting, not a destructive taxonomy migration. The guided-mesocycle family ledger selects the strongest qualifying relationship once per exercise, adds local-fatigue exposure, retains full precision through aggregation, and rounds only its final exposed values. This final-only rounding statement is specific to the guided ledger. The existing prescription/historical path still calculates canonical muscle rows under its current rounding and version fields. **PLANNED / NEEDS REVIEW:** recommendation integration must establish explicit taxonomy-version provenance and verified rollback semantics before documentation can claim family-aware historical recalculation or atomic rollback.
+
+Persistent source and mapping IDs are fail-closed. The 2.0.0 digest fixture protects 1,756 prior mappings; `rex_00754`–`rex_00765` are the `chg_0004` Cable Woodchop append, and `rex_00766`–`rex_00827` are the `chg_0005` `rule_0019` append across all 62 registered exercises. Explicit ordered registries reject undeclared, deleted, reordered, or duplicate rule/exercise source IDs—including additions that would generate zero mapping rows—and every append epoch requires a higher suffix range and matching change-log attribution.
 
 Canonical taxonomy also controls hypertrophy-candidate eligibility. A personal-derived mapping may rank an eligible direct or positive-credit fractional relationship, but cannot promote an isometric-only, incidental, unknown, or zero-credit canonical relationship into the target muscle's candidate pool. The engine exposes `targetMuscleEffectiveness`, relationship type, set contribution, confidence, and separate overall recommendation strength. The guided UI displays the target-specific value.
 
@@ -147,9 +151,13 @@ The header/settings controls use one `convertAppWeightUnit` boundary. It convert
 
 ## Authentication, backend, and external integration
 
-There is no account authentication. `api/push/register.js` creates or refreshes an installation record and returns a secret; later requests use a bearer token whose hash is compared in constant time (`api/_lib/security.js`). Workout sync is installation-authorized and idempotent by mutation ID. It writes serialized payloads to Redis but exposes no read endpoint.
+There is no account authentication. `api/push/register.js` creates or refreshes an installation record and returns a secret; later requests use a bearer token whose hash is compared in constant time (`api/_lib/security.js`). Deleted or deleting installation tombstones cannot be reactivated. Timer IDs are installation-scoped hashes and every schedule carries a `timerVersion`; cancellation, delivery, and active-pointer checks reject stale versions.
 
-Rest completion can be entirely foreground/local. Optional background delivery schedules QStash, records ownership/status in Redis, delivers Web Push, and lets `sw.js` show or route a notification. Web platform constraints mean custom sound/haptic/lock-screen timing cannot be guaranteed.
+Rest completion can be entirely foreground/local. Optional background delivery writes authoritative Redis state before QStash publication. Delivery obtains a short-lived claim token, rechecks the installation, timer version, and active pointer immediately before Web Push, and may commit success/retry state only while it still owns that claim. Cancellation and installation deletion revoke claims before scheduler cleanup. The server accepts only HTTPS push endpoints on the default FCM, Mozilla, and Apple origins or an explicitly configured `WEB_PUSH_ALLOWED_ORIGINS` allowlist. Web platform constraints mean custom sound/haptic/lock-screen timing cannot be guaranteed.
+
+Installation deletion is immediately revoking and bounded: indexed per-install registries are scanned in pages, cleanup is limited per request, and an HTTP 202 response instructs the caller to continue until the retained tombstone reaches `deleted`. Installation/tombstone hashes use a rolling 180-day TTL; timers use 7 days; workout payloads and mutation receipts use 90 days. The global `cf:installations` registry has no member TTL; the installation's membership is removed on completed deletion. An already-in-flight Web Push network request cannot be recalled, but its revoked claim cannot commit success, retry, or resurrect state. Workout sync is installation-authorized, payload- and relationship-bounded, idempotent by mutation ID, conflict-aware by revision and content, and write-only; it exposes no read/restore endpoint.
+
+**PLANNED / NEEDS REVIEW:** the accepted backend contract does not prove that every frontend notification-disable, local-data-clear, or reset path calls cancel, unsubscribe, and resumable installation deletion to completion. It also does not provide an account-backed restore lifecycle.
 
 Required server environment names are documented without values in `.env.example`. Secrets must remain in deployment configuration.
 
@@ -157,22 +165,26 @@ Required server environment names are documented without values in `.env.example
 
 Persistence falls back from IndexedDB to localStorage. Personal evidence URL loading tolerates protected/unavailable private sources and continues research-led. APIs return structured JSON errors and fail authorization. Service-worker navigation falls back to cached `index.html`.
 
-Private raw/normalized/derived/reports data must not enter public web assets. `.vercelignore` blocks private payload paths; `sync:web` only creates an ignored private native payload when locally available. Exported app backups and Redis workout payloads may contain personal workout data and should be treated as sensitive.
+Private raw/normalized/derived/reports data must not enter public web assets. `.vercelignore` blocks private payload paths; `sync:web` only creates an ignored private native payload when locally available. Exported app backups and Redis workout payloads may contain personal workout data and should be treated as sensitive. Redis TTLs and resumable deletion reduce retention but do not make those payloads public or anonymous.
 
 ## Testing, build, and deployment
 
 User-facing changes require deployment verification in addition to local validation. The completion gate is: governing documentation review; implementation; tests/lint/build; confirmation that the intended branch and latest deployment are live; browser inspection of the hosted URL through the affected flow at mobile and desktop widths; refresh/repeat to detect stale assets; console/runtime and visual checks; and a work-log entry using `docs/WORK_LOG_TEMPLATE.md`. If the hosted site differs, investigate branch/project, build, cache/service-worker, alias, environment, or runtime causes. Do not mark the work complete from local code or a written summary alone.
 
-- `npm test`: domain, safety, grade, expectation, rest, prescription, contract, integration, performance, set, and private-artifact tests.
+- Runtime pins are Node `22.23.1` and npm `10.9.8` (`.node-version`, `.nvmrc`, `package.json`). GitHub Actions use the same Node patch release and immutable 40-character action SHAs with read-only permissions and disabled checkout credential persistence.
+- `npm test` / `npm run test:public`: discover filesystem entries matching `scripts/test-*.js`, sort them, and exclude the explicitly private `test-personal-fitness-data.js` harness. `npm run test:private` is an explicit local-only gate that requires ignored personal artifacts; `npm run test:all-local` combines both.
 - `npm run research:build` / `research:validate`: regenerate and validate research outputs.
 - `npm run personal:build` / `personal:validate`: local private analysis only.
-- `npm run sync:web` then `npm run verify:pwa`: synchronize packaging payload and verify PWA parity/assets.
+- `npm run check:public`: lint, workflow validation, privacy scanning, full and production dependency audit policies, public tests, research validation, and PWA verification.
+- `npm run release:verify`: clean-source verification, the complete public gate, and the Playwright UI audit. `npm run verify:pwa` is the cross-platform Node verifier; `npm run sync:web` remains the canonical packaging synchronization command.
+- `npm run check:workflows` parses workflow YAML and enforces immutable action SHAs, least-privilege permissions, disabled persisted checkout credentials, the exact Node patch, and prohibition of `pull_request_target`. `npm run check:privacy` scans tracked/archive paths and content for personal-data and secret patterns. `npm run check:clean-source` prevents release from an uncommitted tracked-source state.
+- `npm run audit:dependencies:full` fails on high/critical findings while reporting accepted moderate development-only findings; `npm run audit:dependencies:production` fails on any production severity. `npm run test:release-automation` regression-tests these gates. CI installs with `npm ci --ignore-scripts` before running them.
 - Daily Codex browser QA follows `docs/DAILY_BROWSER_QA.md`: it traverses primary navigation and the critical workout lifecycle at desktop/mobile widths, checks console and visual state, and requires a regression test plus browser re-verification for each fix.
 - Repository-owned Playwright UI QA runs through `npm run audit:ui`. It covers all five primary destinations at mobile/desktop Chromium viewports, axe WCAG A/AA rules, overflow/clipping, console errors, source-style ceilings, documentation presence, and approved screenshots. Set `PLAYWRIGHT_BASE_URL` to run the same suite against the public hosted origin; this disables the local test server. Deployment-specific Vercel URLs may require an authenticated browser, so unattended hosted automation should use the public production alias while the signed-in browser is used for deployment-specific inspection. GitHub Actions runs the local audit weekly and on manual dispatch; artifacts and the structured Markdown report are retained for review.
 - `npm run cap:sync`: copy web assets and update native projects.
 - `npm run dev`: dependency-light local server.
 
-Deployment configuration is inferred as Vercel from `api/`, `.vercelignore`, and docs; no `vercel.json` or CI workflow is present. Native release requires external signing/toolchains.
+Deployment configuration is inferred as Vercel from `api/`, `.vercelignore`, and docs; no `vercel.json` is present. `.github/workflows/public-ci.yml` runs public domain/schema, research/PWA, and Chromium UI jobs for pull requests and `main`; `.github/workflows/weekly-ui-audit.yml` provides the scheduled/manual audit. Private evidence validation is deliberately excluded from public CI. Native release still requires external signing/toolchains.
 
 Repository publication follows `AGENTS.md`: verified source, tests, schemas, public research exports, and documentation are committed and pushed to GitHub `main` by default. Raw/normalized/derived/reported or packaged personal evidence, app exports, local databases, credentials, and secrets remain local and must be excluded after an explicit staged-file privacy review. Ignore rules provide defense in depth but do not replace that review.
 
@@ -187,5 +199,5 @@ Mesocycle candidate detail remains progressively rendered: Templates defers the 
 - **Risk:** Root/`www` duplication requires disciplined synchronization.
 - **Decision:** The prescription engine is the only readiness-scoring path. If unavailable, the app conservatively holds the base plan; illness/pain still forces rest/modify guidance.
 - **Risk:** Redis sync is write-only and may create an expectation of recoverability not supported by UI/API.
-- **Risk:** Static regex/Node tests verify many contracts but there is no browser E2E, accessibility automation, or native-device CI.
+- **PARTIALLY IMPLEMENTED:** Public CI includes Playwright, axe, responsive/overflow, console, and approved-screenshot checks. Richer protected Lift/Dashboard visual baselines are **PLANNED** pending their separate merge; physical native-device CI remains absent.
 - **NEEDS REVIEW:** External production, Upstash region/status, and physical iPhone acceptance claims in operational docs require human re-verification.
