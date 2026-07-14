@@ -13,7 +13,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function prescriptionEngineFactory() {
   "use strict";
 
-  const ENGINE_VERSION = "3.1.4";
+  const ENGINE_VERSION = "3.1.5";
   const PRESCRIPTION_SCHEMA_VERSION = "2.1.0";
   const SNAPSHOT_SCHEMA_VERSION = "1.1.0";
   const HARD_SAFETY_SCHEMA_VERSION = "hard-safety/1.0.0";
@@ -1494,11 +1494,14 @@
   function normalizeEquipmentItem(value) {
     if (typeof value !== "string" || !value.trim()) throw new Error("Equipment values must be non-empty strings.");
     const item = normalizeText(value);
+    if (!item) throw new Error("Equipment values must contain a recognized name.");
     const aliases = {
       dumbbells: "dumbbell",
       cables: "cable_station",
       cable: "cable_station",
       cable_machine: "cable_station",
+      none: "bodyweight",
+      no_equipment: "bodyweight",
       machine: "selectorized_machine",
       leg_press: "leg_press_machine"
     };
@@ -1594,24 +1597,39 @@
       && [...EQUIPMENT_REQUIREMENT_FIELDS, ...EQUIPMENT_SUMMARY_FIELDS].some((field) => Object.prototype.hasOwnProperty.call(exercise, field)));
   }
 
-  function equipmentRequirementOptions(exercise = {}) {
+  function resolveDeclaredEquipmentMetadata(exercise) {
     if (!exercise || typeof exercise !== "object" || Array.isArray(exercise)) throw new Error("Equipment metadata must be supplied as an exercise object.");
     const requirements = declaredEquipmentMetadata(exercise, EQUIPMENT_REQUIREMENT_FIELDS, "equipment requirements");
     const summary = declaredEquipmentMetadata(exercise, EQUIPMENT_SUMMARY_FIELDS, "equipment summary");
     if (requirements.declared && summary.declared && !equipmentMetadataIsConsistent(requirements.options, summary.options)) {
       throw new Error("Contradictory equipment requirements and equipment summary metadata.");
     }
-    if (requirements.declared) return requirements.options;
-    const override = EQUIPMENT_REQUIREMENT_OVERRIDES[exercise.exercise_id || exercise.exerciseId];
-    if (override) return parseEquipmentRequirementString(override, "built-in equipment requirements");
-    return summary.options;
+    if (requirements.declared) return { declared: true, detailLevel: 2, options: requirements.options };
+    if (summary.declared) return { declared: true, detailLevel: 1, options: summary.options };
+    return { declared: false, detailLevel: 0, options: [] };
   }
 
-  function normalizeAvailableEquipment(availableEquipment) {
-    if (availableEquipment === undefined || availableEquipment === null || availableEquipment === "") return [];
+  function equipmentRequirementOptions(exercise = {}) {
+    const declared = resolveDeclaredEquipmentMetadata(exercise);
+    if (declared.detailLevel === 2) return declared.options;
+    const override = EQUIPMENT_REQUIREMENT_OVERRIDES[exercise.exercise_id || exercise.exerciseId];
+    if (override) return parseEquipmentRequirementString(override, "built-in equipment requirements");
+    return declared.options;
+  }
+
+  function normalizeAvailableEquipmentInput(availableEquipment) {
+    if (availableEquipment === undefined || availableEquipment === null) return { provided: false, valid: true, values: [] };
+    if (typeof availableEquipment !== "string" && !Array.isArray(availableEquipment)) return { provided: true, valid: false, values: [] };
     const values = Array.isArray(availableEquipment) ? availableEquipment : [availableEquipment];
-    if (values.some(Array.isArray)) throw new Error("Available equipment must be a flat array of equipment names.");
-    return unique(values.map((value) => normalizeEquipmentItem(value)));
+    if (!values.length || values.some((value) => typeof value !== "string" || !value.trim() || Array.isArray(value))) {
+      return { provided: true, valid: false, values: [] };
+    }
+    if (values.some((value) => /[|+;,/]|_or_|_and_|\s+or\s+|\s+and\s+/i.test(value))) return { provided: true, valid: false, values: [] };
+    try {
+      return { provided: true, valid: true, values: unique(values.map((value) => normalizeEquipmentItem(value))) };
+    } catch (_error) {
+      return { provided: true, valid: false, values: [] };
+    }
   }
 
   function equipmentCompatible(exercise, availableEquipment) {
@@ -1621,13 +1639,15 @@
       cable_station: ["cable_station", "pull_up_bar"]
     };
     const requirements = equipmentRequirementOptions(exercise);
-    const selected = normalizeAvailableEquipment(availableEquipment);
-    const available = new Set(selected.flatMap((item) => bundles[item] || [item]));
-    if (!available.size || available.has("all")) return { eligible: true, requirements, missing: [] };
-    if (!requirements.length) return { eligible: false, requirements, missing: ["verified equipment metadata"] };
+    const input = normalizeAvailableEquipmentInput(availableEquipment);
+    if (!input.valid) return { eligible: false, requirements, missing: ["valid available equipment input"], equipmentInput: input };
+    if (!input.provided) return { eligible: true, requirements, missing: [], equipmentInput: input };
+    const available = new Set(input.values.flatMap((item) => bundles[item] || [item]));
+    if (available.has("all")) return { eligible: true, requirements, missing: [], equipmentInput: input };
+    if (!requirements.length) return { eligible: false, requirements, missing: ["verified equipment metadata"], equipmentInput: input };
     const matched = requirements.some((option) => option.every((item) => available.has(item)));
     const missing = requirements.map((option) => option.filter((item) => !available.has(item))).sort((a, b) => a.length - b.length)[0] || [];
-    return { eligible: matched, requirements, missing };
+    return { eligible: matched, requirements, missing, equipmentInput: input };
   }
 
   const JOINT_ACTIONS_BY_PATTERN = Object.freeze({
@@ -2121,12 +2141,12 @@
 
   function preferredReplacementFor(candidate, evidence, rankedCandidates = [], options = {}) {
     const research = evidence.research;
-    const availableEquipment = asArray(options.availableEquipment);
-    const restrictionsActive = availableEquipment.length > 0 && !availableEquipment.includes("all");
+    const equipmentInput = normalizeAvailableEquipmentInput(options.availableEquipment);
+    const restrictionsActive = equipmentInput.provided && (!equipmentInput.valid || !equipmentInput.values.includes("all"));
     const replacementAllowed = (researchExerciseId) => {
       if (!restrictionsActive) return true;
       const exercise = research.exerciseById.get(researchExerciseId);
-      return Boolean(exercise && equipmentCompatible(exercise, availableEquipment).eligible);
+      return Boolean(exercise && equipmentCompatible(exercise, options.availableEquipment).eligible);
     };
     const substitutions = research.substitutionsByExercise.get(candidate.researchExerciseId) || [];
     for (const mapping of substitutions) {
@@ -2157,12 +2177,12 @@
   function rankExercisePool(evidenceInput, muscleGroupId, options = {}) {
     const evidence = evidenceInput.personal ? evidenceInput : normalizeEvidenceBundle(evidenceInput);
     const maxCandidates = clamp(number(options.maxCandidates, DEFAULT_POLICY.candidatePoolSize), 1, 5);
-    const availableEquipment = asArray(options.availableEquipment);
+    const equipmentInput = normalizeAvailableEquipmentInput(options.availableEquipment);
     let candidates = buildMergedExerciseCandidates(evidence, muscleGroupId, options);
     const excludedCandidates = [];
-    if (availableEquipment.length && !availableEquipment.includes("all")) {
+    if (equipmentInput.provided && (!equipmentInput.valid || !equipmentInput.values.includes("all"))) {
       const compatible = candidates.filter((candidate) => {
-        const compatibility = equipmentCompatible(candidate.researchExercise || candidate.personalScore || {}, availableEquipment);
+        const compatibility = equipmentCompatible(candidate.researchExercise || candidate.personalScore || {}, options.availableEquipment);
         if (!compatibility.eligible) excludedCandidates.push({
           exerciseId: candidate.exerciseId,
           exerciseName: candidate.exerciseName,
@@ -2729,7 +2749,7 @@
     const createdAt = options.createdAt || isoNow(options.clock);
     const durationWeeks = chooseMesocycleDuration(evidence, { ...options, type });
     const poolOptions = { ...options, mesocycleType: type, maxCandidates: 5 };
-    const unrestrictedPools = consolidateProgramPools(buildAllCandidatePools(evidence, { ...poolOptions, availableEquipment: [] }));
+    const unrestrictedPools = consolidateProgramPools(buildAllCandidatePools(evidence, { ...poolOptions, availableEquipment: undefined }));
     const allPools = consolidateProgramPools(buildAllCandidatePools(evidence, poolOptions));
     const availableMuscleGroupIds = Object.keys(unrestrictedPools);
     const requestedScope = asArray(options.includedMuscleGroupIds).map(muscleFamily).filter(Boolean);
@@ -3730,8 +3750,12 @@
     if (typeof item === "string") return { exerciseId: item, researchExerciseId: null, researchIdentitySpecified: false, structured: false, catalogRecord: false, source: null };
     const exerciseId = firstPresent(item.exerciseId, item.exercise_id, item.personalExerciseId, item.personal_exercise_id);
     if (!exerciseId) return null;
-    const researchIdentitySpecified = ["researchExerciseId", "research_exercise_id", "researchId", "research_id"].some((field) => Object.prototype.hasOwnProperty.call(item, field));
-    const explicitResearchId = firstPresent(item.researchExerciseId, item.research_exercise_id, item.researchId, item.research_id);
+    const researchIdentityFields = ["researchExerciseId", "research_exercise_id", "researchId", "research_id"];
+    const researchIdentitySpecified = researchIdentityFields.some((field) => Object.prototype.hasOwnProperty.call(item, field));
+    const declaredResearchIds = unique(researchIdentityFields
+      .filter((field) => Object.prototype.hasOwnProperty.call(item, field))
+      .map((field) => item[field]));
+    const explicitResearchId = firstPresent(...declaredResearchIds);
     const researchExerciseId = explicitResearchId ?? null;
     const catalogRecord = Boolean(
       firstPresent(item.exercise_id, item.personalExerciseId, item.personal_exercise_id)
@@ -3741,7 +3765,103 @@
         item.equipment_requirements, item.equipmentRequirements, item.required_equipment, item.requiredEquipment
       )
     );
-    return { exerciseId, researchExerciseId, researchIdentitySpecified, structured: true, catalogRecord, source: item };
+    return {
+      exerciseId,
+      researchExerciseId,
+      researchIdentitySpecified,
+      researchIdentityConflict: declaredResearchIds.length > 1,
+      structured: true,
+      catalogRecord,
+      source: item
+    };
+  }
+
+  function canonicalEquipmentOptions(options) {
+    return options.map((option) => [...option].sort()).sort((left, right) => left.join("+").localeCompare(right.join("+")));
+  }
+
+  function reconcileTrustedEquipmentDeclarations(leftSource, rightSource, exerciseId) {
+    const left = resolveDeclaredEquipmentMetadata(leftSource || {});
+    const right = resolveDeclaredEquipmentMetadata(rightSource || {});
+    if (!left.declared && !right.declared) return { declared: false, detailLevel: 0, options: [] };
+    if (!left.declared || !right.declared) {
+      const declared = left.declared ? left : right;
+      return { ...declared, options: canonicalEquipmentOptions(declared.options) };
+    }
+    if (equipmentOptionsKey(left.options) === equipmentOptionsKey(right.options)) {
+      return {
+        declared: true,
+        detailLevel: Math.max(left.detailLevel, right.detailLevel),
+        options: canonicalEquipmentOptions(left.options)
+      };
+    }
+    if (left.detailLevel !== right.detailLevel) {
+      const detailed = left.detailLevel > right.detailLevel ? left : right;
+      const summary = left.detailLevel > right.detailLevel ? right : left;
+      if (equipmentMetadataIsConsistent(detailed.options, summary.options)) {
+        return { ...detailed, options: canonicalEquipmentOptions(detailed.options) };
+      }
+    }
+    throw new Error(`Conflicting trusted custom equipment requirements for ${exerciseId}.`);
+  }
+
+  function catalogMetadataPresent(value) {
+    if (value === undefined || value === null) return false;
+    if (typeof value === "string") return Boolean(value.trim());
+    if (Array.isArray(value)) return value.length > 0;
+    if (typeof value === "object") return Object.keys(value).length > 0;
+    return true;
+  }
+
+  function catalogMetadataRichness(value) {
+    if (!catalogMetadataPresent(value)) return 0;
+    const serializedLength = String(stableStringify(value)).length;
+    if (Array.isArray(value)) return 300 + value.length * 10 + serializedLength;
+    if (typeof value === "object") return 250 + Object.keys(value).length * 10 + serializedLength;
+    if (typeof value === "string") return 100 + value.trim().length;
+    return 50 + serializedLength;
+  }
+
+  function richerCatalogMetadata(left, right) {
+    if (!catalogMetadataPresent(left)) return deepClone(right);
+    if (!catalogMetadataPresent(right)) return deepClone(left);
+    if (stableStringify(left) === stableStringify(right)) return deepClone(left);
+    const leftScore = catalogMetadataRichness(left);
+    const rightScore = catalogMetadataRichness(right);
+    if (leftScore !== rightScore) return deepClone(leftScore > rightScore ? left : right);
+    return deepClone(String(stableStringify(left)).localeCompare(String(stableStringify(right))) <= 0 ? left : right);
+  }
+
+  function mergeTrustedCatalogSources(leftSource, rightSource, equipment, researchExerciseId) {
+    const equipmentFields = new Set([...EQUIPMENT_REQUIREMENT_FIELDS, ...EQUIPMENT_SUMMARY_FIELDS]);
+    const merged = {};
+    unique([...Object.keys(leftSource || {}), ...Object.keys(rightSource || {})]).sort().forEach((field) => {
+      if (equipmentFields.has(field)) return;
+      const value = richerCatalogMetadata(leftSource?.[field], rightSource?.[field]);
+      if (catalogMetadataPresent(value)) merged[field] = value;
+    });
+    if (equipment.declared) merged.equipmentRequirements = canonicalEquipmentOptions(equipment.options);
+    if (researchExerciseId) merged.researchExerciseId = researchExerciseId;
+    return merged;
+  }
+
+  function mergeTrustedCustomIdentities(left, right) {
+    if (left.exerciseId !== right.exerciseId) throw new Error("Trusted custom identity reconciliation requires matching exercise IDs.");
+    if (left.researchIdentityConflict || right.researchIdentityConflict) throw new Error(`Conflicting trusted custom research identities for ${left.exerciseId}.`);
+    if (left.researchExerciseId && right.researchExerciseId && left.researchExerciseId !== right.researchExerciseId) {
+      throw new Error(`Conflicting trusted custom research identities for ${left.exerciseId}.`);
+    }
+    const researchExerciseId = left.researchExerciseId || right.researchExerciseId || null;
+    const equipment = reconcileTrustedEquipmentDeclarations(left.source, right.source, left.exerciseId);
+    return {
+      exerciseId: left.exerciseId,
+      researchExerciseId,
+      researchIdentitySpecified: left.researchIdentitySpecified || right.researchIdentitySpecified,
+      researchIdentityConflict: false,
+      structured: true,
+      catalogRecord: left.catalogRecord || right.catalogRecord,
+      source: mergeTrustedCatalogSources(left.source, right.source, equipment, researchExerciseId)
+    };
   }
 
   function buildTrustedExerciseCatalog(options = {}) {
@@ -3750,6 +3870,7 @@
     const addResearch = (item) => {
       const identity = catalogIdentity(item);
       if (!identity?.structured || !identity.catalogRecord || !identity.exerciseId) throw new Error("Trusted research exercise catalogs require structured records with stable IDs and metadata.");
+      if (identity.researchIdentityConflict) throw new Error(`Conflicting trusted research identities for ${identity.exerciseId}.`);
       if (identity.researchExerciseId !== identity.exerciseId) throw new Error(`Trusted research exercise ${identity.exerciseId} must bind its canonical research identity to the same catalog ID.`);
       const existing = researchIdentities.get(identity.exerciseId);
       if (existing && existing.researchExerciseId !== identity.researchExerciseId) throw new Error(`Conflicting trusted research catalog mapping for ${identity.exerciseId}.`);
@@ -3773,6 +3894,7 @@
     const addCustom = (item) => {
       const identity = catalogIdentity(item);
       if (!identity?.structured || !identity.catalogRecord || !identity.exerciseId) throw new Error("Trusted custom exercise catalogs require structured records with stable IDs and metadata.");
+      if (identity.researchIdentityConflict) throw new Error(`Conflicting trusted custom research identities for ${identity.exerciseId}.`);
       if (identity.researchExerciseId !== null && !researchIdentities.has(identity.researchExerciseId)) throw new Error(`Trusted custom exercise ${identity.exerciseId} maps to unknown research exercise ${identity.researchExerciseId}.`);
       const canonical = researchIdentities.get(identity.exerciseId);
       if (canonical) {
@@ -3780,8 +3902,7 @@
         return;
       }
       const existing = customIdentities.get(identity.exerciseId);
-      if (existing && existing.researchExerciseId !== identity.researchExerciseId) throw new Error(`Conflicting trusted custom catalog mapping for ${identity.exerciseId}.`);
-      if (!existing) customIdentities.set(identity.exerciseId, identity);
+      customIdentities.set(identity.exerciseId, existing ? mergeTrustedCustomIdentities(existing, identity) : identity);
     };
     asArray(options.trustedCustomCatalog).forEach(addCustom);
     if (explicitCallerTrustRoot) callerCatalog.filter((item) => {
@@ -3793,6 +3914,7 @@
     callerCatalog.forEach((item) => {
       const supplied = catalogIdentity(item);
       if (!supplied?.structured || !supplied.catalogRecord) throw new Error("Caller exerciseCatalog entries cannot establish identity; each must be a structured catalog object matching a trusted catalog entry.");
+      if (supplied.researchIdentityConflict) throw new Error(`Caller exerciseCatalog entry ${supplied.exerciseId} declares conflicting research identities.`);
       const trusted = identities.get(supplied.exerciseId);
       if (!trusted) throw new Error(`Untrusted caller exerciseCatalog entry ${supplied.exerciseId}; caller metadata cannot establish a replacement identity.`);
       if (supplied.researchIdentitySpecified && supplied.researchExerciseId !== trusted.researchExerciseId) throw new Error(`Caller exerciseCatalog mapping for ${supplied.exerciseId} conflicts with its trusted catalog identity.`);
@@ -3804,6 +3926,10 @@
     const selectedSource = identity?.source || {};
     if (hasDeclaredEquipmentMetadata(selectedSource)) return selectedSource;
     return researchIdentities.get(identity?.researchExerciseId)?.source || selectedSource;
+  }
+
+  function equipmentCompatibilityForIdentity(identity, researchIdentities, availableEquipment) {
+    return equipmentCompatible(equipmentSourceForIdentity(identity, researchIdentities), availableEquipment);
   }
 
   function applyManualOverride(snapshotInput, override = {}, options = {}) {
@@ -3831,6 +3957,7 @@
     const selectedExerciseInput = firstPresent(override.exerciseId, override.exerciseSelection, override.replacementExerciseId);
     const suppliedSelectionIdentity = selectedExerciseInput && typeof selectedExerciseInput === "object" ? catalogIdentity(selectedExerciseInput) : null;
     if (selectedExerciseInput && typeof selectedExerciseInput === "object" && (!suppliedSelectionIdentity?.structured || !suppliedSelectionIdentity.catalogRecord)) throw new Error("Structured exerciseSelection requires a catalog record with a stable exercise ID and metadata.");
+    if (suppliedSelectionIdentity?.researchIdentityConflict) throw new Error("Structured exerciseSelection declares conflicting research identities.");
     const selectedExerciseId = suppliedSelectionIdentity?.exerciseId ?? selectedExerciseInput;
     if (selectedExerciseId !== undefined && selectedExerciseId !== null && (typeof selectedExerciseId !== "string" || !selectedExerciseId.trim())) throw new Error("Manual override exercise identity must be a non-empty string or structured catalog record.");
     if (!selectedExerciseId && firstPresent(override.researchExerciseId, override.research_exercise_id)) throw new Error("A research identity may only accompany a declared exercise identity change.");
@@ -3874,10 +4001,8 @@
         final.safetyRestriction?.originalExerciseId
       ].filter(Boolean));
       if (originalExerciseIds.has(selectedExerciseId) || originalResearchExerciseIds.has(identity.researchExerciseId)) throw new Error("A pain-free substitute must be a different exercise and research identity from the painful original.");
-      if (asArray(options.availableEquipment).length) {
-        const equipment = equipmentCompatible(equipmentSourceForIdentity(identity, researchIdentities), options.availableEquipment);
-        if (!equipment.eligible) throw new Error(`Safety substitute ${selectedExerciseId} is not compatible with the supplied equipment restrictions; missing ${equipment.missing.join(", ") || "verified equipment metadata"}.`);
-      }
+      const equipment = equipmentCompatibilityForIdentity(identity, researchIdentities, options.availableEquipment);
+      if (!equipment.eligible) throw new Error(`Safety substitute ${selectedExerciseId} is not compatible with the supplied equipment restrictions; missing ${equipment.missing.join(", ") || "verified equipment metadata"}.`);
       confirmedSafetyIdentity = identity;
     }
     if (selectedExerciseId) {
@@ -3888,8 +4013,8 @@
         if (!confirmedSafetyIdentity && !allowedExerciseIds.has(selectedExerciseId)) throw new Error(`Manual override exercise ${selectedExerciseId} was not explicitly allowed for ordinary replacement.`);
         if (requestedResearchId && requestedResearchId !== selectedIdentity.researchExerciseId) throw new Error(`Manual override exercise ${selectedExerciseId} conflicts with its trusted catalog-backed research identity.`);
         if (suppliedSelectionIdentity?.researchIdentitySpecified && suppliedSelectionIdentity.researchExerciseId !== selectedIdentity.researchExerciseId) throw new Error(`Structured exerciseSelection for ${selectedExerciseId} conflicts with its trusted catalog mapping.`);
-        if (!confirmedSafetyIdentity && asArray(options.availableEquipment).length) {
-          const equipment = equipmentCompatible(equipmentSourceForIdentity(selectedIdentity, researchIdentities), options.availableEquipment);
+        if (!confirmedSafetyIdentity) {
+          const equipment = equipmentCompatibilityForIdentity(selectedIdentity, researchIdentities, options.availableEquipment);
           if (!equipment.eligible) throw new Error(`Manual override exercise ${selectedExerciseId} is not compatible with the supplied equipment restrictions; missing ${equipment.missing.join(", ") || "verified equipment metadata"}.`);
         }
         if (!confirmedSafetyIdentity && (override.load !== undefined || override.prescribedLoad?.target !== undefined)) throw new Error("A replacement exercise cannot receive a transferred load target; establish an exercise-specific baseline first.");
@@ -4129,6 +4254,7 @@
     assessDeloadNeed,
     rankExercisePool,
     equipmentRequirementOptions,
+    normalizeAvailableEquipmentInput,
     equipmentCompatible,
     jointActionsForExercise,
     representedMuscleGroups,

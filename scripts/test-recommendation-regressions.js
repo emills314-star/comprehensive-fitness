@@ -13,6 +13,7 @@ const {
   equipmentCompatible,
   equipmentRequirementOptions,
   evaluateReadiness,
+  normalizeAvailableEquipmentInput,
   normalizeEvidenceBundle,
   rankExercisePool,
   readinessAdjustmentFor,
@@ -899,6 +900,183 @@ test("custom equipment metadata normalizes aliases and arrays, falls back only w
   assert.throws(() => replace("custom_fallback_press", ["cable"]), /equipment/i, "an equipment-free custom record must not bypass its mapped canonical requirements");
   assert.throws(() => replace("custom_conflicting_press", ["cable", "dumbbell"]), /contradictory.*equipment/i, "trusted but contradictory custom metadata must fail closed");
   assert.throws(() => replace("custom_malformed_press", ["cable"]), /non-empty string|string array|equipment summary/i, "trusted but malformed custom metadata must fail closed");
+});
+
+test("available-equipment input distinguishes omission from explicit empty or malformed restrictions in ordinary and pain-safety paths", () => {
+  assert.deepEqual(normalizeAvailableEquipmentInput(undefined), { provided: false, valid: true, values: [] }, "undefined records an omitted restriction explicitly");
+  assert.deepEqual(normalizeAvailableEquipmentInput(null), { provided: false, valid: true, values: [] }, "null records an omitted restriction explicitly");
+  assert.deepEqual(normalizeAvailableEquipmentInput(""), { provided: true, valid: false, values: [] }, "an explicit blank is provided but invalid");
+  assert.deepEqual(normalizeAvailableEquipmentInput([]), { provided: true, valid: false, values: [] }, "an explicit empty array is provided but invalid");
+  assert.deepEqual(normalizeAvailableEquipmentInput("@@@"), { provided: true, valid: false, values: [] }, "a symbol-only scalar is malformed rather than an empty capability");
+  assert.deepEqual(normalizeAvailableEquipmentInput("cable|dumbbell"), { provided: true, valid: false, values: [] }, "available-equipment entries are atomic capabilities, not requirement expressions");
+  assert.deepEqual(normalizeAvailableEquipmentInput(["no equipment"]), { provided: true, valid: true, values: ["bodyweight"] }, "no-equipment is an explicit bodyweight-only capability");
+  assert.equal(equipmentCompatible({ equipment: "cable" }, undefined).eligible, true, "omitted equipment is unrestricted at the shared compatibility boundary");
+  assert.equal(equipmentCompatible({ equipment: "cable" }, []).eligible, false, "an explicit empty array cannot become unrestricted at the shared compatibility boundary");
+  assert.equal(equipmentCompatible({ equipment: "bodyweight" }, ["no equipment"]).eligible, true, "the no-equipment control admits bodyweight requirements only");
+  const inputEngine = createPrescriptionEngine({
+    personalData: {
+      exerciseScores: [{
+        exercise_id: "custom_input_cable_press",
+        research_exercise_id: "ex_dumbbell_bench_press",
+        exercise_name: "Input cable press",
+        equipment: "cable"
+      }, {
+        exercise_id: "custom_input_bodyweight",
+        research_exercise_id: "ex_side_plank",
+        exercise_name: "Input bodyweight movement",
+        equipment: "bodyweight"
+      }],
+      metadata: { methodology_version: "available-equipment-input-test/1.0.0" }
+    },
+    researchData: publicResearchData()
+  });
+  const ordinary = inputEngine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", history: progressionHistory(), createdAt });
+  const painful = inputEngine.prescribeExercise({
+    exerciseId: "ex_barbell_bench_press",
+    muscleGroupId: "chest",
+    history: progressionHistory(),
+    readiness: { pain: true, affectedMuscle: "chest" },
+    createdAt
+  });
+  const ordinaryReplace = (exerciseId, extra = {}) => inputEngine.applyManualOverride(ordinary, { exerciseId }, {
+    allowedExerciseIds: [exerciseId],
+    createdAt: "2026-07-12T12:21:52.000Z",
+    ...extra
+  });
+  const safetyReplace = (exerciseId, researchExerciseId, extra = {}) => inputEngine.applyManualOverride(painful, {
+    exerciseId,
+    researchExerciseId,
+    painFreeConfirmed: true
+  }, {
+    allowedSafetySubstituteIds: [exerciseId],
+    createdAt: "2026-07-12T12:21:54.000Z",
+    ...extra
+  });
+
+  assert.equal(ordinaryReplace("custom_input_cable_press").finalPrescription.exerciseId, "custom_input_cable_press", "an omitted equipment restriction remains intentionally unrestricted");
+  assert.equal(ordinaryReplace("custom_input_cable_press", { availableEquipment: null }).finalPrescription.exerciseId, "custom_input_cable_press", "null is the explicit adapter representation of an omitted restriction");
+  assert.equal(safetyReplace("custom_input_cable_press", "ex_dumbbell_bench_press").finalPrescription.exerciseId, "custom_input_cable_press", "safety replacement shares omitted-input semantics");
+  assert.equal(safetyReplace("custom_input_cable_press", "ex_dumbbell_bench_press", { availableEquipment: null }).finalPrescription.exerciseId, "custom_input_cable_press", "safety replacement shares null-input semantics");
+
+  const invalidInputs = [
+    ["blank scalar", ""],
+    ["whitespace scalar", "   "],
+    ["empty array", []],
+    ["blank array entry", [""]],
+    ["whitespace array entry", ["   "]],
+    ["null array entry", [null]],
+    ["object", { equipment: "cable" }],
+    ["number", 0],
+    ["nested array", [["cable"]]]
+  ];
+  collectFailures(invalidInputs.flatMap(([label, availableEquipment]) => [
+    [`ordinary ${label} equipment input`, () => assert.throws(
+      () => ordinaryReplace("custom_input_cable_press", { availableEquipment }),
+      /available equipment|equipment input|valid equipment|malformed/i,
+      `ordinary replacement must reject ${label} instead of treating it as unrestricted`
+    )],
+    [`pain-safety ${label} equipment input`, () => assert.throws(
+      () => safetyReplace("custom_input_cable_press", "ex_dumbbell_bench_press", { availableEquipment }),
+      /available equipment|equipment input|valid equipment|malformed/i,
+      `pain-safety replacement must reject ${label} instead of treating it as unrestricted`
+    )]
+  ]));
+
+  assert.equal(ordinaryReplace("custom_input_bodyweight", { availableEquipment: ["bodyweight"] }).finalPrescription.exerciseId, "custom_input_bodyweight", "bodyweight is a valid explicit equipment capability");
+  assert.equal(safetyReplace("custom_input_bodyweight", "ex_side_plank", { availableEquipment: ["bodyweight"] }).finalPrescription.exerciseId, "custom_input_bodyweight", "pain-safety accepts the same explicit bodyweight capability");
+  assert.equal(ordinaryReplace("custom_input_bodyweight", { availableEquipment: ["no equipment"] }).finalPrescription.exerciseId, "custom_input_bodyweight", "the explicit no-equipment alias means bodyweight capability, not unrestricted access");
+  assert.equal(safetyReplace("custom_input_bodyweight", "ex_side_plank", { availableEquipment: ["no_equipment"] }).finalPrescription.exerciseId, "custom_input_bodyweight", "pain-safety normalizes the no-equipment alias identically");
+  assert.throws(() => ordinaryReplace("custom_input_cable_press", { availableEquipment: ["no_equipment"] }), /equipment/i, "no-equipment must not satisfy a cable requirement");
+  assert.throws(() => safetyReplace("custom_input_cable_press", "ex_dumbbell_bench_press", { availableEquipment: ["no equipment"] }), /equipment/i, "pain-safety no-equipment must not satisfy a cable requirement");
+});
+
+test("trusted custom duplicates reconcile order-independently while conflicting or caller-owned metadata cannot influence selection", () => {
+  const customId = "custom_reconciled_cable_press";
+  const duplicateEngine = createPrescriptionEngine({
+    personalData: {
+      exerciseScores: [{ exercise_id: customId, exercise_name: "Sparse personal score" }],
+      metadata: { methodology_version: "trusted-catalog-reconciliation-test/1.0.0" }
+    },
+    researchData: publicResearchData()
+  });
+  const ordinary = duplicateEngine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", history: progressionHistory(), createdAt });
+  const painful = duplicateEngine.prescribeExercise({
+    exerciseId: "ex_barbell_bench_press",
+    muscleGroupId: "chest",
+    history: progressionHistory(),
+    readiness: { pain: true, affectedMuscle: "chest" },
+    createdAt
+  });
+  const cableSummary = {
+    personalExerciseId: customId,
+    researchExerciseId: "ex_dumbbell_bench_press",
+    exerciseName: "Trusted cable summary",
+    equipment: "cables",
+    movementPattern: "horizontal_push"
+  };
+  const cableRequirements = {
+    personalExerciseId: customId,
+    researchExerciseId: "ex_dumbbell_bench_press",
+    exerciseName: "Trusted cable requirements",
+    equipmentRequirements: [["cable_station"]],
+    notes: "richer trusted metadata"
+  };
+  const ordinaryWith = (trustedExerciseCatalog, extra = {}) => duplicateEngine.applyManualOverride(ordinary, { exerciseId: customId }, {
+    allowedExerciseIds: [customId],
+    trustedExerciseCatalog,
+    availableEquipment: ["cable"],
+    createdAt: "2026-07-12T12:21:56.000Z",
+    ...extra
+  });
+  const safetyWith = (trustedExerciseCatalog, extra = {}) => duplicateEngine.applyManualOverride(painful, {
+    exerciseId: customId,
+    researchExerciseId: "ex_dumbbell_bench_press",
+    painFreeConfirmed: true
+  }, {
+    allowedSafetySubstituteIds: [customId],
+    trustedExerciseCatalog,
+    availableEquipment: ["cable"],
+    createdAt: "2026-07-12T12:21:58.000Z",
+    ...extra
+  });
+  const forward = ordinaryWith([cableSummary, cableRequirements]);
+  const reverse = ordinaryWith([cableRequirements, cableSummary]);
+  assert.equal(forward.finalPrescription.exerciseId, customId, "richer trusted metadata augments the sparse personal record");
+  assert.equal(forward.finalPrescription.researchExerciseId, "ex_dumbbell_bench_press", "a declared trusted mapping augments an absent personal mapping");
+  assert.equal(reverse.finalPrescription.exerciseId, forward.finalPrescription.exerciseId, "equivalent duplicates reconcile independently of source order");
+  assert.equal(reverse.finalPrescription.researchExerciseId, forward.finalPrescription.researchExerciseId, "research identity reconciliation is order-independent");
+  assert.equal(safetyWith([cableRequirements, cableSummary]).finalPrescription.safetyRestriction.status, "resolved_by_confirmed_substitute", "pain-safety uses the same reconciled trusted identity");
+
+  const callerSpoof = [{
+    personalExerciseId: customId,
+    researchExerciseId: "ex_dumbbell_bench_press",
+    exerciseName: "Caller dumbbell spoof",
+    equipment: "dumbbell"
+  }];
+  assert.equal(ordinaryWith([cableSummary, cableRequirements], { exerciseCatalog: callerSpoof }).finalPrescription.exerciseId, customId, "an equivalent caller identity cannot override reconciled trusted equipment");
+  assert.throws(
+    () => ordinaryWith([cableSummary, cableRequirements], { exerciseCatalog: callerSpoof, availableEquipment: ["dumbbell", "bench"] }),
+    /equipment/i,
+    "caller-owned duplicate metadata cannot make a trusted cable exercise dumbbell-compatible"
+  );
+
+  const conflictingEquipment = {
+    personalExerciseId: customId,
+    researchExerciseId: "ex_dumbbell_bench_press",
+    exerciseName: "Conflicting trusted dumbbell record",
+    equipment: "dumbbell"
+  };
+  assert.throws(() => ordinaryWith([cableSummary, conflictingEquipment]), /conflicting trusted custom.*equipment|equipment.*conflict/i, "conflicting trusted requirements invalidate the custom identity");
+  assert.throws(() => safetyWith([conflictingEquipment, cableRequirements]), /conflicting trusted custom.*equipment|equipment.*conflict/i, "conflicting trusted requirements invalidate the same identity in pain-safety regardless of order");
+
+  const conflictingResearch = {
+    personalExerciseId: customId,
+    researchExerciseId: "ex_machine_chest_press",
+    exerciseName: "Conflicting trusted research mapping",
+    equipment: "cable"
+  };
+  assert.throws(() => ordinaryWith([cableSummary, conflictingResearch]), /conflicting trusted custom.*research|research.*conflict|mapping/i, "conflicting non-null research identities invalidate the custom identity");
+  assert.throws(() => safetyWith([conflictingResearch, cableRequirements]), /conflicting trusted custom.*research|research.*conflict|mapping/i, "research conflicts reject pain-safety selection independently of source order");
 });
 
 test("an ex_ prefix and allowlist cannot establish a nonexistent or caller-spoofed canonical exercise", () => {
