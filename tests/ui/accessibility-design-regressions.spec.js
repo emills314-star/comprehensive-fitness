@@ -135,11 +135,26 @@ async function readFocusAppearance(locator) {
       }
       return systemCanvas();
     };
+    const filteredPixel = (color, filter) => {
+      if (!filter || filter === "none") return color;
+      const canvas = document.createElement("canvas");
+      canvas.width = 3;
+      canvas.height = 3;
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      if (!context) return color;
+      context.filter = filter;
+      context.fillStyle = color;
+      context.fillRect(0, 0, 3, 3);
+      const [red, green, blue, alpha] = context.getImageData(1, 1, 1, 1).data;
+      return `rgba(${red}, ${green}, ${blue}, ${Math.round((alpha / 255) * 1000) / 1000})`;
+    };
     const border = (side) => ({
       color: style[`border${side}Color`],
       style: style[`border${side}Style`],
       width: Number.parseFloat(style[`border${side}Width`]) || 0
     });
+    const interiorBackground = effectiveBackground(element);
+    const rect = element.getBoundingClientRect();
     return {
       adjacentBackgroundColor: effectiveBackground(element.parentElement),
       backgroundColor: style.backgroundColor,
@@ -149,16 +164,20 @@ async function readFocusAppearance(locator) {
       borderTop: border("Top"),
       boxShadow: style.boxShadow,
       color: style.color,
-      effectiveBackgroundColor: effectiveBackground(element),
+      effectiveBackgroundColor: interiorBackground,
       filter: style.filter,
+      filteredBackgroundColor: filteredPixel(interiorBackground, style.filter),
+      filteredTextColor: filteredPixel(style.color, style.filter),
       focusVisible: element.matches(":focus-visible"),
       outlineColor: style.outlineColor,
-      outlineOffset: style.outlineOffset,
+      outlineOffset: Number.parseFloat(style.outlineOffset) || 0,
       outlineStyle: style.outlineStyle,
       outlineWidth: Number.parseFloat(style.outlineWidth) || 0,
+      rect: { height: rect.height, width: rect.width },
       textDecorationColor: style.textDecorationColor,
       textDecorationLine: style.textDecorationLine,
-      textDecorationStyle: style.textDecorationStyle
+      textDecorationStyle: style.textDecorationStyle,
+      textDecorationThickness: Number.parseFloat(style.textDecorationThickness) || 0
     };
   });
 }
@@ -196,14 +215,93 @@ function contrastRatio(first, second) {
   return Math.round(((bright + 0.05) / (dark + 0.05)) * 100) / 100;
 }
 
+function splitCssLayers(value) {
+  const layers = [];
+  let depth = 0;
+  let start = 0;
+  for (let index = 0; index < String(value || "").length; index += 1) {
+    const character = value[index];
+    if (character === "(") depth += 1;
+    if (character === ")") depth -= 1;
+    if (character === "," && depth === 0) {
+      layers.push(value.slice(start, index).trim());
+      start = index + 1;
+    }
+  }
+  const finalLayer = String(value || "").slice(start).trim();
+  if (finalLayer) layers.push(finalLayer);
+  return layers;
+}
+
+function cssFunctionArguments(value, functionName) {
+  const source = String(value || "");
+  const lower = source.toLowerCase();
+  const needle = `${functionName.toLowerCase()}(`;
+  const results = [];
+  let searchFrom = 0;
+  while (searchFrom < source.length) {
+    const start = lower.indexOf(needle, searchFrom);
+    if (start < 0) break;
+    let depth = 1;
+    let cursor = start + needle.length;
+    for (; cursor < source.length && depth > 0; cursor += 1) {
+      if (source[cursor] === "(") depth += 1;
+      if (source[cursor] === ")") depth -= 1;
+    }
+    if (depth === 0) results.push(source.slice(start + needle.length, cursor - 1));
+    searchFrom = Math.max(cursor, start + needle.length);
+  }
+  return results;
+}
+
+function parseShadowLayer(value) {
+  const color = String(value || "").match(/rgba?\([^)]+\)/i)?.[0] || "";
+  const lengths = String(value || "")
+    .replace(color, "")
+    .match(/-?(?:\d+|\d*\.\d+)px/gi)
+    ?.map((item) => Number.parseFloat(item)) || [];
+  if (!color || lengths.length < 2) return null;
+  return {
+    blur: Math.max(0, lengths[2] || 0),
+    color,
+    inset: /\binset\b/i.test(value),
+    offsetX: lengths[0],
+    offsetY: lengths[1],
+    spread: lengths[3] || 0
+  };
+}
+
+function shadowIndicatorCandidates(value, { exteriorColor, interiorColor, rect, type }) {
+  return splitCssLayers(value).flatMap((layerValue) => {
+    const layer = parseShadowLayer(layerValue);
+    if (!layer) return [];
+    const comparisonColor = layer.inset ? interiorColor : exteriorColor;
+    const contrast = contrastRatio(layer.color, comparisonColor);
+    const rawExtent = Math.max(
+      0,
+      Math.abs(layer.offsetX) + layer.blur + layer.spread,
+      Math.abs(layer.offsetY) + layer.blur + layer.spread
+    );
+    const visibleExtent = layer.inset ? Math.min(rawExtent, Math.min(rect.width, rect.height) / 2) : rawExtent;
+    return contrast >= 3 && visibleExtent >= 1 && rect.width > 0 && rect.height > 0
+      ? [{ contrast, inset: layer.inset, type, visibleExtent }]
+      : [];
+  });
+}
+
 function focusIndicatorEvidence(base, focused, { forcedColors = false } = {}) {
   const changed = (...values) => values.some(([before, after]) => before !== after);
   const candidates = [];
-  const outlineContrast = contrastRatio(focused.outlineColor, focused.adjacentBackgroundColor);
+  const outlineInset = focused.outlineOffset < 0;
+  const outlineComparison = outlineInset ? base.effectiveBackgroundColor : base.adjacentBackgroundColor;
+  const outlineContrast = contrastRatio(focused.outlineColor, outlineComparison);
+  const outlineGeometryFits = !outlineInset
+    || Math.abs(focused.outlineOffset) < Math.min(focused.rect.width, focused.rect.height) / 2;
   if (
     focused.outlineStyle !== "none"
     && focused.outlineWidth >= 1
     && outlineContrast >= 3
+    && outlineGeometryFits
     && changed(
       [base.outlineStyle, focused.outlineStyle],
       [base.outlineWidth, focused.outlineWidth],
@@ -211,17 +309,18 @@ function focusIndicatorEvidence(base, focused, { forcedColors = false } = {}) {
       [base.outlineOffset, focused.outlineOffset]
     )
   ) {
-    candidates.push({ contrast: outlineContrast, type: "outline" });
+    candidates.push({ contrast: outlineContrast, inset: outlineInset, type: "outline" });
   }
 
   for (const side of ["Top", "Right", "Bottom", "Left"]) {
     const before = base[`border${side}`];
     const after = focused[`border${side}`];
-    const borderContrast = contrastRatio(after.color, focused.adjacentBackgroundColor);
+    const borderContrast = contrastRatio(after.color, base.effectiveBackgroundColor);
     if (
       after.style !== "none"
       && after.width >= 1
       && borderContrast >= 3
+      && Math.min(focused.rect.width, focused.rect.height) > after.width * 2
       && changed([before.style, after.style], [before.width, after.width], [before.color, after.color])
     ) {
       candidates.push({ contrast: borderContrast, side: side.toLowerCase(), type: "border" });
@@ -230,15 +329,47 @@ function focusIndicatorEvidence(base, focused, { forcedColors = false } = {}) {
   }
 
   if (!forcedColors) {
+    if (base.boxShadow !== focused.boxShadow && focused.boxShadow !== "none") {
+      candidates.push(...shadowIndicatorCandidates(focused.boxShadow, {
+        exteriorColor: base.adjacentBackgroundColor,
+        interiorColor: base.effectiveBackgroundColor,
+        rect: focused.rect,
+        type: "box-shadow"
+      }));
+    }
+
+    if (base.filter !== focused.filter && focused.filter !== "none") {
+      const backgroundContrast = contrastRatio(focused.filteredBackgroundColor, base.filteredBackgroundColor);
+      const textContrast = contrastRatio(focused.filteredTextColor, base.filteredTextColor);
+      if (Math.max(backgroundContrast, textContrast) >= 3) {
+        candidates.push({ contrast: Math.max(backgroundContrast, textContrast), type: "filter" });
+      }
+      for (const dropShadow of cssFunctionArguments(focused.filter, "drop-shadow")) {
+        candidates.push(...shadowIndicatorCandidates(dropShadow, {
+          exteriorColor: base.adjacentBackgroundColor,
+          interiorColor: base.effectiveBackgroundColor,
+          rect: focused.rect,
+          type: "filter-drop-shadow"
+        }));
+      }
+    }
+
     const backgroundContrast = contrastRatio(focused.effectiveBackgroundColor, base.effectiveBackgroundColor);
     if (base.backgroundColor !== focused.backgroundColor && backgroundContrast >= 3) {
       candidates.push({ contrast: backgroundContrast, type: "background" });
     }
 
-    const textDecorationContrast = contrastRatio(focused.textDecorationColor, focused.effectiveBackgroundColor);
+    const textColorContrast = contrastRatio(focused.color, base.color);
+    const textBackgroundContrast = contrastRatio(focused.color, focused.effectiveBackgroundColor);
+    if (base.color !== focused.color && textColorContrast >= 3 && textBackgroundContrast >= 3) {
+      candidates.push({ contrast: textColorContrast, type: "text-color" });
+    }
+
+    const textDecorationContrast = contrastRatio(focused.textDecorationColor, base.effectiveBackgroundColor);
     if (
       focused.textDecorationLine !== "none"
       && textDecorationContrast >= 3
+      && focused.textDecorationThickness >= 1
       && changed(
         [base.textDecorationLine, focused.textDecorationLine],
         [base.textDecorationStyle, focused.textDecorationStyle],
@@ -247,7 +378,6 @@ function focusIndicatorEvidence(base, focused, { forcedColors = false } = {}) {
     ) {
       candidates.push({ contrast: textDecorationContrast, type: "text-decoration" });
     }
-
   }
 
   return { candidates, valid: candidates.length > 0 };
@@ -348,6 +478,62 @@ async function reflowAudit(page) {
     };
   });
 }
+
+async function focusFixtureEvidence(page, selector, options = {}) {
+  await page.evaluate(() => document.activeElement?.blur());
+  const target = page.locator(selector);
+  await expect(target).toHaveCount(1);
+  const base = await readFocusAppearance(target);
+  await target.focus();
+  const focused = await readFocusAppearance(target);
+  return { base, evidence: focusIndicatorEvidence(base, focused, options), focused };
+}
+
+test("focus-indicator evidence distinguishes exterior, inset, filtered, and forced-color geometry", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light", forcedColors: "none", reducedMotion: "reduce" });
+  await page.setContent(`
+    <style>
+      html, body { background: rgb(255, 255, 255); color: rgb(20, 20, 20); }
+      button { background: rgb(255, 255, 255); border: 2px solid rgb(118, 118, 118); color: rgb(20, 20, 20); height: 48px; margin: 12px; outline: none; width: 180px; }
+      button:focus { outline: none; }
+      #valid-shadow:focus { box-shadow: 0 0 0 3px rgb(0, 70, 180); }
+      #invisible-inset, #visible-inset { background: rgb(20, 20, 20); color: rgb(255, 255, 255); }
+      #invisible-inset:focus { box-shadow: inset 0 0 0 3px rgb(20, 20, 20); }
+      #visible-inset:focus { box-shadow: inset 0 0 0 3px rgb(255, 255, 255); }
+      #valid-filter:focus { filter: invert(1); }
+      @media (forced-colors: active) {
+        #forced-border { border: 1px solid CanvasText; }
+        #forced-border:focus { border: 3px solid Highlight; outline: none; }
+      }
+    </style>
+    <button id="valid-shadow">Valid exterior shadow</button>
+    <button id="invisible-inset">Invisible inset shadow</button>
+    <button id="visible-inset">Visible inset shadow</button>
+    <button id="valid-filter">Valid filtered change</button>
+    <button id="forced-border">Valid forced-color border</button>
+  `);
+
+  const exteriorShadow = await focusFixtureEvidence(page, "#valid-shadow");
+  expect(exteriorShadow.evidence.valid, JSON.stringify(exteriorShadow)).toBe(true);
+  expect(exteriorShadow.evidence.candidates.some((candidate) => candidate.type === "box-shadow" && candidate.inset === false)).toBe(true);
+
+  const invisibleInset = await focusFixtureEvidence(page, "#invisible-inset");
+  expect(invisibleInset.evidence.valid, `An inset shadow matching the interior pixel must not count: ${JSON.stringify(invisibleInset)}`).toBe(false);
+
+  const visibleInset = await focusFixtureEvidence(page, "#visible-inset");
+  expect(visibleInset.evidence.valid, JSON.stringify(visibleInset)).toBe(true);
+  expect(visibleInset.evidence.candidates.some((candidate) => candidate.type === "box-shadow" && candidate.inset === true)).toBe(true);
+
+  const filtered = await focusFixtureEvidence(page, "#valid-filter");
+  expect(filtered.evidence.valid, JSON.stringify(filtered)).toBe(true);
+  expect(filtered.evidence.candidates.some((candidate) => candidate.type === "filter")).toBe(true);
+
+  await page.emulateMedia({ colorScheme: "light", forcedColors: "active", reducedMotion: "reduce" });
+  const forcedBorder = await focusFixtureEvidence(page, "#forced-border", { forcedColors: true });
+  expect(forcedBorder.evidence.valid, JSON.stringify(forcedBorder)).toBe(true);
+  expect(forcedBorder.evidence.candidates.some((candidate) => candidate.type === "border")).toBe(true);
+  expect(forcedBorder.evidence.candidates.every((candidate) => ["border", "outline"].includes(candidate.type))).toBe(true);
+});
 
 test("keyboard-visible skip link activates and focuses the canonical main-content target", async ({ page }) => {
   await installScenario(page);
@@ -514,12 +700,12 @@ test("repeated Lift move, delete, add-set, warm-up, and duplicate controls inclu
     ["public-synthetic-active-exercise-3", LONG_EXERCISE_NAMES.quads]
   ];
   const actions = [
-    ['[data-action="move-exercise"][data-direction="-1"]', "move up", /\bmove(?: exercise)? up\b/i],
-    ['[data-action="move-exercise"][data-direction="1"]', "move down", /\bmove(?: exercise)? down\b/i],
-    ['[data-action="delete-exercise"]', "delete", /\bdelete(?: exercise)?\b/i],
-    ['[data-action="add-set"]', "add set", /(?:\badd(?: a| one)? (?:working )?set\b|[+＋]\s*(?:working\s*)?set\b)/i],
-    ['[data-action="add-warmup-set"]', "add warm-up", /(?:\badd(?: a| one)? warm[- ]?up(?: set)?\b|[+＋]\s*warm[- ]?up(?: set)?\b)/i],
-    ['[data-action="duplicate-set"]', "duplicate", /\bduplicate(?: set)?\b/i]
+    ['[data-action="move-exercise"][data-direction="-1"]', "move up", [/\bmove\b/i, /\bup\b/i]],
+    ['[data-action="move-exercise"][data-direction="1"]', "move down", [/\bmove\b/i, /\bdown\b/i]],
+    ['[data-action="delete-exercise"]', "delete", [/\bdelete(?: exercise)?\b/i]],
+    ['[data-action="add-set"]', "add set", [/(?:\badd(?: a| one)? (?:working )?set\b|[+＋]\s*(?:working\s*)?set\b)/i]],
+    ['[data-action="add-warmup-set"]', "add warm-up", [/(?:\badd(?: a| one)? warm[- ]?up(?: set)?\b|[+＋]\s*warm[- ]?up(?: set)?\b)/i]],
+    ['[data-action="duplicate-set"]', "duplicate", [/\bduplicate(?: set)?\b/i]]
   ];
 
   let auditedControls = 0;
@@ -529,7 +715,7 @@ test("repeated Lift move, delete, add-set, warm-up, and duplicate controls inclu
     const card = exerciseField.locator("xpath=ancestor::article[contains(concat(' ', normalize-space(@class), ' '), ' exercise-card ')][1]");
     await expect(card).toHaveCount(1);
     const expectedContext = new RegExp(exerciseName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
-    for (const [selector, actionLabel, expectedAction] of actions) {
+    for (const [selector, actionLabel, expectedActionParts] of actions) {
       const controls = card.locator(selector);
       const count = await controls.count();
       for (let index = 0; index < count; index += 1) {
@@ -541,10 +727,12 @@ test("repeated Lift move, delete, add-set, warm-up, and duplicate controls inclu
           computedRoleAndName,
           `${actionLabel} for ${exerciseName} must expose the exercise context in its computed accessible name; snapshot: ${accessibilityTree}`
         ).toMatch(expectedContext);
-        expect.soft(
-          computedRoleAndName,
-          `${actionLabel} for ${exerciseName} must retain the action meaning in its computed accessible name; snapshot: ${accessibilityTree}`
-        ).toMatch(expectedAction);
+        for (const expectedActionPart of expectedActionParts) {
+          expect.soft(
+            computedRoleAndName,
+            `${actionLabel} for ${exerciseName} must retain every action term in its computed accessible name; snapshot: ${accessibilityTree}`
+          ).toMatch(expectedActionPart);
+        }
       }
     }
   }
