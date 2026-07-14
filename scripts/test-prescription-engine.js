@@ -437,7 +437,12 @@ test("nutrition is one readiness domain and needs an independent signal to chang
   assert.strictEqual(converging.signalCount, 2);
   const engine = createPrescriptionEngine(fixture());
   const snapshot = engine.prescribeExercise({ exerciseId: "personal_press", muscleGroupId: "chest", history: improvingHistory, readiness: { nutritionAdequate: false, sleepHours: 5.5, baselineSleepHours: 8 }, createdAt: "2026-07-11T12:00:00.000Z" });
-  assert(snapshot.finalPrescription.workingSets.target < snapshot.basePrescription.workingSets.target);
+  assert(
+    snapshot.finalPrescription.workingSets.target < snapshot.basePrescription.workingSets.target
+      || snapshot.finalPrescription.targetRpe.max < snapshot.basePrescription.targetRpe.max
+      || Number(snapshot.finalPrescription.prescribedLoad?.target) < Number(snapshot.basePrescription.prescribedLoad?.target),
+    "converging readiness domains must produce a truthful temporary set, effort, or load reduction"
+  );
   assert.strictEqual(snapshot.finalPrescription.readinessAdjustment.temporary, true);
 });
 
@@ -450,7 +455,12 @@ test("low readiness changes today without rewriting the base or mesocycle", () =
   });
   assert.strictEqual(snapshot.basePrescription.mesocycleId, "meso_fixed");
   assert.strictEqual(snapshot.finalPrescription.mesocycleId, "meso_fixed");
-  assert(snapshot.finalPrescription.workingSets.target < snapshot.basePrescription.workingSets.target);
+  assert(
+    snapshot.finalPrescription.workingSets.target < snapshot.basePrescription.workingSets.target
+      || snapshot.finalPrescription.targetRpe.max < snapshot.basePrescription.targetRpe.max
+      || Number(snapshot.finalPrescription.prescribedLoad?.target) < Number(snapshot.basePrescription.prescribedLoad?.target),
+    "low readiness must produce a truthful temporary set, effort, or load reduction"
+  );
   assert.strictEqual(snapshot.finalPrescription.readinessAdjustment.temporary, true);
   assert.strictEqual(snapshot.finalPrescription.readinessAdjustment.affectsMesocycle, false);
 });

@@ -234,7 +234,7 @@ test("11 goal is validated, persisted, explained, and directionally changes prog
   const strength = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", trainingGoal: "strength", createdAt: CREATED_AT });
   const endurance = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", trainingGoal: "muscular_endurance", createdAt: CREATED_AT });
   assert.equal(strength.basePrescription.programmingContext.goal.value, "strength");
-  assert.equal(strength.basePrescription.programmingContext.profileVersion, "training-profile/1.0.0");
+  assert.equal(strength.basePrescription.programmingContext.profileVersion, "training-profile/1.1.0");
   assert.equal(strength.basePrescription.programmingContext.goal.authority, "product_policy");
   assert.match(strength.finalPrescription.userExplanation, /strength/i);
   assert.match(strength.finalPrescription.userExplanation, /product policy|directional/i);

@@ -38,6 +38,64 @@ function publicResearchData() {
 
 const evidence = normalizeEvidenceBundle({ personalData: {}, researchData: publicResearchData() });
 const engine = createPrescriptionEngine(evidence);
+const overrideAuditEngine = createPrescriptionEngine({
+  personalData: {
+    exerciseScores: [{
+      exercise_id: "custom_override_audit_press",
+      exercise_name: "Synthetic Override Audit Press",
+      research_exercise_id: "ex_barbell_bench_press",
+      equipment: "barbell_and_bench",
+      progression_score: 92,
+      hypertrophy_support_score: 90,
+      recovery_efficiency_score: 90,
+      repeatability_score: 94,
+      overall_personal_exercise_score: 92,
+      data_confidence_score: 95,
+      comparable_session_count: 12,
+      session_count: 14,
+      observation_span_days: 180,
+      rpe_completeness_pct: 100,
+      recovery_completeness_pct: 100,
+      nutrition_completeness_pct: 100
+    }],
+    exerciseMuscleScores: [{
+      exercise_id: "custom_override_audit_press",
+      exercise_name: "Synthetic Override Audit Press",
+      muscle_group: "chest",
+      research_muscle_group_id: "mg_chest_sternal",
+      muscle_role: "primary",
+      contribution_weight: 1,
+      muscle_specific_effectiveness_score: 92,
+      progression_score: 92,
+      recovery_efficiency_score: 90
+    }],
+    exercisePrescriptions: [{
+      exercise_id: "custom_override_audit_press",
+      exercise_name: "Synthetic Override Audit Press",
+      research_exercise_id: "ex_barbell_bench_press",
+      muscle_group_id: "chest",
+      research_muscle_group_id: "mg_chest_sternal",
+      role: "primary_progression_lift",
+      recommended_sets_per_session: { min: 4, max: 4 },
+      recommended_weekly_sets: { min: 8, max: 10 },
+      recommended_sessions_per_week: { min: 2, max: 2 },
+      recommended_rep_range: { min: 6, max: 10 },
+      recommended_rpe: { min: 7.5, max: 8.5 },
+      recommended_rir: { min: 1.5, max: 2.5 },
+      recommended_rest_seconds: { min: 120, max: 240 },
+      top_set_structure: { recommended_count: 1 },
+      backoff_set_structure: { recommended_count: 3 },
+      observed_best_range: { qualifying_sessions: 12 },
+      highest_recoverable_range_observed: { max_sets_per_session: 4, max_weekly_hard_sets: 10 },
+      confidence_level: "high",
+      confidence_score: 95,
+      sample_size: 12,
+      evidence_summary: "Synthetic high-confidence productive override-audit fixture."
+    }],
+    metadata: { methodology_version: "override-audit-fixture/1.0.0" }
+  },
+  researchData: publicResearchData()
+});
 const createdAt = "2026-07-12T12:00:00.000Z";
 const tests = [];
 
@@ -219,15 +277,23 @@ test("assisted-bodyweight progression reduces assistance", () => {
   const snapshot = engine.prescribeExercise({
     exerciseId: "ex_pull_up",
     muscleGroupId: "lats",
-    history: [{
-      workout_date: "2026-07-10",
+    history: [8, 9, 10].map((day) => ({
+      workout_date: `2026-07-${day}`,
       progression_status: "held",
+      comparison_performance_value: 100 + day,
       set_repetitions: "[12,12,12]",
       set_loads: "[100,100,100]",
       set_rpes: "[8,8,8]",
+      average_rpe: 8,
+      completedSetRatio: 1,
+      completedSetCount: 3,
+      prescribedSetCount: 3,
+      techniqueValid: true,
+      techniqueQuality: "valid",
+      pain: false,
       backoffReps: [12, 12],
       resistanceType: "assisted_bodyweight"
-    }],
+    })),
     resistanceType: "assisted_bodyweight",
     equipmentIncrement: 5,
     createdAt
@@ -525,21 +591,36 @@ test("ordinary multi-override history remains valid while incomplete and duplica
 });
 
 function fiveSetPrescriptionWithLaterRepOverride() {
-  const snapshot = engine.prescribeExercise({
-    exerciseId: "ex_barbell_bench_press",
+  const qualifyingProductiveHistory = [8, 9, 10].map((day) => progressionHistory({
+    workout_date: `2026-07-${day}`,
+    progression_status: day === 8 ? "baseline" : "improved",
+    progression_pct_vs_prior: day === 8 ? 0 : 2,
+    comparison_performance_value: 100 + day,
+    best_epley_e1rm: 100 + day,
+    completedSetCount: 3,
+    prescribedSetCount: 3,
+    techniqueValid: true,
+    techniqueQuality: "valid",
+    pain: false,
+    recovery_strain_score: 25,
+    max_set_rep_loss_pct: 0,
+    max_set_load_reduction_pct: 0
+  })[0]);
+  const snapshot = overrideAuditEngine.prescribeExercise({
+    exerciseId: "custom_override_audit_press",
     muscleGroupId: "chest",
-    history: progressionHistory(),
+    history: qualifyingProductiveHistory,
     experienceLevel: "advanced",
     setStructurePreference: "advanced_if_supported",
     createdAt
   });
-  assert.equal(snapshot.finalPrescription.workingSets.target, 4, "fixture must begin with four working sets");
-  const fiveSets = engine.applyManualOverride(snapshot, { setCount: 5 }, {
+  assert.equal(snapshot.finalPrescription.workingSets.target, 4, "productive personal evidence must preserve the four-set override-audit fixture");
+  const fiveSets = overrideAuditEngine.applyManualOverride(snapshot, { setCount: 5 }, {
     overrideId: "override_four_to_five_sets",
     createdAt: "2026-07-12T12:12:00.000Z",
     reason: "Use five working sets"
   });
-  const laterRepOverride = engine.applyManualOverride(fiveSets, { repRange: { min: 6, max: 9 } }, {
+  const laterRepOverride = overrideAuditEngine.applyManualOverride(fiveSets, { repRange: { min: 6, max: 9 } }, {
     overrideId: "override_later_rep_range",
     createdAt: "2026-07-12T12:13:00.000Z",
     reason: "Use six to nine repetitions"

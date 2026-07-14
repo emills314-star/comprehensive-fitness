@@ -219,8 +219,11 @@ const mesocycle = load(SCHEMA_FILES[1]).schema;
 const snapshot = load(SCHEMA_FILES[2]).schema;
 const engineSource = fs.readFileSync(path.resolve(ROOT, "prescription-engine.js"), "utf8");
 
-assert.equal(exercise.properties.schemaVersion.const, "2.2.0");
-assertIncludesAll(exercise.required, ["programmingContext", "historyResolution"], "ExercisePrescription.required");
+assert.equal(exercise.properties.schemaVersion.const, "2.3.0");
+assertIncludesAll(exercise.required, ["programmingContext", "historyResolution", "progressionConfirmation", "scientificProvenance"], "ExercisePrescription.required");
+assert.equal(exercise.$defs.programmingContext.properties.profileVersion.const, "training-profile/1.1.0");
+assertIncludesAll(exercise.$defs.programmingContext.required, ["nutritionPhase", "returningAfterGap"], "programmingContext.required");
+assertIncludesAll(exercise.$defs.scientificProvenance.required, ["repRange", "restSeconds", "workingSets", "selectionOrder", "progression", "confirmation"], "scientificProvenance.required");
 assert.equal(exercise.additionalProperties, false);
 assertIncludesAll(exercise.required, [
   "exerciseId", "muscleGroupId", "recommendationType", "role", "setStructure",
@@ -249,6 +252,7 @@ assert.match(conditionalText, /multiple_top_sets/);
 
 assert(mesocycle.properties.schemaVersion.enum.includes("mesocycle/2.0.0"));
 assert(mesocycle.properties.schemaVersion.enum.includes("mesocycle/2.5.0"));
+assert(mesocycle.properties.schemaVersion.enum.includes("mesocycle/2.6.0"));
 assert.equal(mesocycle.additionalProperties, false);
 assertExactEnum(mesocycle.$defs.mesocycleType.enum, extractFrozenObjectValues(engineSource, "MESOCYCLE_TYPES"), "mesocycleType");
 assertIncludesAll(mesocycle.$defs.mesocycleStatus.enum, ["draft", "planned", "active", "completed", "abandoned", "archived"]);
@@ -258,15 +262,15 @@ assert.equal(propertyAt(mesocycle, "$defs", "candidatePool", "properties", "cand
 assertIncludesAll(mesocycle.required, ["programSlots", "selectedPortfolio", "sessions", "programReview", "planningStep"], "MesocyclePlan.required");
 assertIncludesAll(mesocycle.$defs.candidateCore.required, [
   "rank", "rawScoreRank", "exerciseId", "intendedRole", "primaryMuscles", "secondaryMuscles",
-  "recommendedSetStructure", "recommendedSetRange", "recommendedRepRange", "recommendedRpe",
-  "recommendedRir", "recommendedFrequency", "progressionMethod", "deloadTrigger", "rotationTrigger",
+  "recommendedSetStructure", "recommendedSetRange", "recommendedRepRange", "recommendedRestSeconds", "recommendedRpe",
+  "recommendedRir", "recommendedFrequency", "programmingContext", "progressionConfirmation", "scientificProvenance", "progressionMethod", "deloadTrigger", "rotationTrigger",
   "preferredReplacementExerciseId", "reasonForMesocycle", "personalDataConfidence",
   "researchDataConfidence", "scores", "diversitySignature"
 ], "candidate.required");
 assert.equal(mesocycle.$defs.candidate.unevaluatedProperties, false);
 assert.equal(mesocycle.$defs.activeExercise.unevaluatedProperties, false);
 
-assert.equal(snapshot.properties.schemaVersion.const, "1.2.0");
+assert.equal(snapshot.properties.schemaVersion.const, "1.3.0");
 assert.equal(snapshot.additionalProperties, false);
 assertIncludesAll(snapshot.required, [
   "recommendationId", "recommendationVersion", "engineVersion", "personalDataVersion",

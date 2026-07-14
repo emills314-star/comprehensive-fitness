@@ -37,7 +37,7 @@
       "$ref": "exercise-prescription.v2.schema.json#/$defs/id"
     },
     "schemaVersion": {
-      "enum": ["mesocycle/1.0.0", "mesocycle/2.0.0", "mesocycle/2.1.0", "mesocycle/2.2.0", "mesocycle/2.3.0", "mesocycle/2.4.0", "mesocycle/2.5.0"]
+      "enum": ["mesocycle/1.0.0", "mesocycle/2.0.0", "mesocycle/2.1.0", "mesocycle/2.2.0", "mesocycle/2.3.0", "mesocycle/2.4.0", "mesocycle/2.5.0", "mesocycle/2.6.0"]
     },
     "type": {
       "$ref": "#/$defs/mesocycleType"
@@ -223,6 +223,7 @@
         "availableViableExerciseCount",
         "candidates",
         "exclusionResolution",
+        "programmingContext",
         "diversificationApplied",
         "explanation"
       ],
@@ -263,6 +264,7 @@
           "items": { "type": "object", "additionalProperties": true }
         },
         "exclusionResolution": { "$ref": "#/$defs/exclusionResolution" },
+        "programmingContext": { "$ref": "exercise-prescription.v2.schema.json#/$defs/programmingContext" },
         "sourceMuscleGroupIds": { "$ref": "#/$defs/idList" }
       }
     },
@@ -283,9 +285,13 @@
         "setStructureReason",
         "recommendedSetRange",
         "recommendedRepRange",
+        "recommendedRestSeconds",
         "recommendedRpe",
         "recommendedRir",
         "recommendedFrequency",
+        "programmingContext",
+        "progressionConfirmation",
+        "scientificProvenance",
         "progressionMethod",
         "progressionInstruction",
         "deloadTrigger",
@@ -373,6 +379,9 @@
         "recommendedRepRange": {
           "$ref": "exercise-prescription.v2.schema.json#/$defs/repRange"
         },
+        "recommendedRestSeconds": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/restRange"
+        },
         "recommendedRpe": {
           "$ref": "exercise-prescription.v2.schema.json#/$defs/rpeRange"
         },
@@ -381,6 +390,18 @@
         },
         "recommendedFrequency": {
           "$ref": "exercise-prescription.v2.schema.json#/$defs/frequencyRange"
+        },
+        "programmingContext": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/programmingContext"
+        },
+        "progressionConfirmation": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/progressionConfirmation"
+        },
+        "scientificProvenance": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/scientificProvenance"
+        },
+        "goalPolicyConflict": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/goalPolicyConflict"
         },
         "progressionMethod": {
           "$ref": "exercise-prescription.v2.schema.json#/$defs/progressionMethod"
@@ -520,7 +541,7 @@
     "programSlot": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "muscleGroupId", "trainingPurpose", "role", "selectionRequired", "selectedExerciseIds", "candidateExerciseIds", "weeklySetsTarget", "weeklyExposuresTarget", "plannedSessionIds", "rationale"],
+      "required": ["id", "muscleGroupId", "trainingPurpose", "role", "selectionRequired", "selectedExerciseIds", "candidateExerciseIds", "weeklySetsTarget", "weeklyExposuresTarget", "plannedSessionIds", "rationale", "programmingContext"],
       "properties": {
         "id": { "$ref": "exercise-prescription.v2.schema.json#/$defs/id" },
         "muscleGroupId": { "$ref": "exercise-prescription.v2.schema.json#/$defs/id" },
@@ -533,13 +554,14 @@
         "weeklySetsRange": { "type": "object", "additionalProperties": false, "required": ["min", "target", "max"], "properties": { "min": { "type": "number", "minimum": 0 }, "target": { "type": "number", "minimum": 0 }, "max": { "type": "number", "minimum": 0 } } },
         "weeklyExposuresTarget": { "type": "number", "minimum": 0 },
         "plannedSessionIds": { "$ref": "#/$defs/idList" },
-        "rationale": { "$ref": "exercise-prescription.v2.schema.json#/$defs/nonEmptyString" }
+        "rationale": { "$ref": "exercise-prescription.v2.schema.json#/$defs/nonEmptyString" },
+        "programmingContext": { "$ref": "exercise-prescription.v2.schema.json#/$defs/programmingContext" }
       }
     },
     "programSession": {
       "type": "object",
       "additionalProperties": true,
-      "required": ["id", "dayIndex", "name", "baseSessionIntent", "exercises", "estimatedDurationMinutes", "systemicFatigue", "spinalLoad", "gripDemand", "jointStress"],
+      "required": ["id", "dayIndex", "name", "baseSessionIntent", "exercises", "estimatedDurationMinutes", "systemicFatigue", "spinalLoad", "gripDemand", "jointStress", "programmingContext"],
       "properties": {
         "id": { "$ref": "exercise-prescription.v2.schema.json#/$defs/id" },
         "dayIndex": { "type": "integer", "minimum": 0 },
@@ -550,7 +572,8 @@
         "systemicFatigue": { "type": "number", "minimum": 0 },
         "spinalLoad": { "type": "number", "minimum": 0 },
         "gripDemand": { "type": "number", "minimum": 0 },
-        "jointStress": { "type": "number", "minimum": 0 }
+        "jointStress": { "type": "number", "minimum": 0 },
+        "programmingContext": { "$ref": "exercise-prescription.v2.schema.json#/$defs/programmingContext" }
       }
     },
     "programReview": {

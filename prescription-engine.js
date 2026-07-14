@@ -13,11 +13,16 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function prescriptionEngineFactory() {
   "use strict";
 
-  const ENGINE_VERSION = "3.2.0";
-  const PRESCRIPTION_SCHEMA_VERSION = "2.2.0";
-  const SNAPSHOT_SCHEMA_VERSION = "1.2.0";
-  const SUPPORTED_PRESCRIPTION_SCHEMA_VERSIONS = Object.freeze(new Set(["2.1.0", PRESCRIPTION_SCHEMA_VERSION]));
-  const SUPPORTED_SNAPSHOT_SCHEMA_VERSIONS = Object.freeze(new Set(["1.1.0", SNAPSHOT_SCHEMA_VERSION]));
+  const ENGINE_VERSION = "3.3.0";
+  const PRESCRIPTION_SCHEMA_VERSION = "2.3.0";
+  const SNAPSHOT_SCHEMA_VERSION = "1.3.0";
+  const TRAINING_PROFILE_VERSION = "training-profile/1.1.0";
+  const MESOCYCLE_SCHEMA_VERSION = "mesocycle/2.6.0";
+  const SCIENTIFIC_PROVENANCE_SCHEMA_VERSION = "recommendation-provenance/1.0.0";
+  const PROGRESSION_CONFIRMATION_SCHEMA_VERSION = "progression-confirmation/1.0.0";
+  const GOAL_POLICY_CONFLICT_SCHEMA_VERSION = "goal-policy-conflict/1.0.0";
+  const SUPPORTED_PRESCRIPTION_SCHEMA_VERSIONS = Object.freeze(new Set(["2.2.0", PRESCRIPTION_SCHEMA_VERSION]));
+  const SUPPORTED_SNAPSHOT_SCHEMA_VERSIONS = Object.freeze(new Set(["1.2.0", SNAPSHOT_SCHEMA_VERSION]));
   const HARD_SAFETY_SCHEMA_VERSION = "hard-safety/1.0.0";
   const SNAPSHOT_CHECKSUM_PATTERN = /^[0-9a-f]{8}$/;
   const HISTORY_STORAGE_KEY = "comprehensiveFitness.recommendationHistory.v1";
@@ -131,6 +136,22 @@
       restRange: Object.freeze({ min: 90, max: 180 }),
       selectionEmphasis: "balanced movement practice, manageable fatigue, and simple measurable progression"
     })
+  });
+
+  const NUTRITION_PHASES = Object.freeze(["deficit", "maintenance", "recomposition", "surplus"]);
+
+  const GOAL_LABELS = Object.freeze({
+    strength: "Strength",
+    hypertrophy: "Hypertrophy",
+    muscular_endurance: "Muscular endurance",
+    general_fitness: "General fitness"
+  });
+
+  const GOAL_SESSION_INTENTS = Object.freeze({
+    strength: "strength practice and progression",
+    hypertrophy: "hypertrophy and progression",
+    muscular_endurance: "muscular endurance and progression",
+    general_fitness: "general fitness resistance training"
   });
 
   const EXPERIENCE_PROFILES = Object.freeze({
@@ -316,9 +337,140 @@
     return canonical || legacy || { ...normalizeExperience(undefined, { provided: false }), inputField: "default" };
   }
 
+  function resolveNutritionPhaseInput(options = {}) {
+    if (!hasOwn(options, "nutritionPhase")) return {
+      requestedValue: null,
+      resolvedValue: null,
+      source: "unspecified",
+      missing: false
+    };
+    const value = options.nutritionPhase;
+    if (typeof value !== "string" || !value.trim()) throw new Error(`nutritionPhase must be one of ${NUTRITION_PHASES.join(", ")}.`);
+    const normalized = normalizeText(value);
+    if (!NUTRITION_PHASES.includes(normalized)) throw new Error(`Unsupported nutritionPhase ${value}; supported phases are ${NUTRITION_PHASES.join(", ")}.`);
+    return {
+      requestedValue: value.trim(),
+      resolvedValue: normalized,
+      source: "canonical_user_input",
+      missing: false
+    };
+  }
+
+  function resolveReturningAfterGapInput(options = {}) {
+    if (!hasOwn(options, "returningAfterGap")) return {
+      requestedValue: null,
+      resolvedValue: null,
+      source: "unspecified"
+    };
+    const value = options.returningAfterGap;
+    if (value !== null && typeof value !== "boolean") throw new Error("returningAfterGap must be true, false, or null.");
+    return {
+      requestedValue: value,
+      resolvedValue: value,
+      source: "canonical_user_input"
+    };
+  }
+
+  function scientificSource(options = {}) {
+    return {
+      authority: options.authority || "evidence",
+      studyIds: asArray(options.studyIds),
+      conclusionIds: asArray(options.conclusionIds),
+      population: options.population || "Healthy adults eligible for resistance training; individual applicability varies.",
+      directness: options.directness || "mixed",
+      evidenceStrength: options.evidenceStrength || "moderate",
+      uncertainty: options.uncertainty || "Exercise-, population-, and individual-response heterogeneity limits exact prescription precision."
+    };
+  }
+
+  function nutritionScientificSource(phase) {
+    if (phase === "deficit") return scientificSource({
+      authority: "evidence",
+      studyIds: ["stu_0020"],
+      conclusionIds: ["con_0026"],
+      population: "Resistance-trained natural males in an energy deficit.",
+      directness: "mixed",
+      evidenceStrength: "moderate",
+      uncertainty: "Evidence does not establish a universal automatic volume reduction; performance and recovery must justify any change."
+    });
+    return scientificSource({
+      authority: "product_policy",
+      population: "Resistance-training users with no phase-specific qualifying response evidence.",
+      directness: "product_policy_translation",
+      evidenceStrength: "low",
+      uncertainty: "The nutrition phase is context only and does not prove a training-dose change."
+    });
+  }
+
+  function materialScientificProvenance(goal) {
+    const exactGoalPolicy = ["strength", "muscular_endurance", "general_fitness"].includes(goal);
+    return {
+      schemaVersion: SCIENTIFIC_PROVENANCE_SCHEMA_VERSION,
+      repRange: scientificSource({
+        authority: exactGoalPolicy ? "product_policy" : "evidence",
+        studyIds: ["stu_0004", "stu_0039"],
+        conclusionIds: ["con_0001"],
+        population: "Healthy adult resistance-training populations; studies combine training statuses and sexes.",
+        directness: exactGoalPolicy ? "product_policy_translation" : "mixed",
+        evidenceStrength: exactGoalPolicy ? "low" : "high",
+        uncertainty: exactGoalPolicy
+          ? "The exact goal-specific repetition band is a directional product policy inside a broad evidence-supported loading spectrum."
+          : "Exercise- and muscle-specific optimal repetition thresholds are not established."
+      }),
+      restSeconds: scientificSource({
+        authority: "product_policy",
+        studyIds: ["stu_0007", "stu_0026", "stu_0038"],
+        conclusionIds: ["con_0008"],
+        population: "Healthy adult resistance-training populations across compound and isolation exercises.",
+        directness: "mixed",
+        evidenceStrength: "moderate",
+        uncertainty: "Rest should preserve intended performance; exact seconds depend on exercise, load, and the individual."
+      }),
+      workingSets: scientificSource({
+        authority: "product_policy",
+        studyIds: ["stu_0001", "stu_0002", "stu_0025"],
+        conclusionIds: ["con_0004"],
+        population: "Healthy adults eligible for resistance training across training statuses.",
+        directness: "mixed",
+        evidenceStrength: "moderate",
+        uncertainty: "Starting set caps are operational defaults, not universal physiological ceilings; productive personal evidence takes precedence."
+      }),
+      selectionOrder: scientificSource({
+        authority: "evidence",
+        studyIds: ["stu_0009"],
+        conclusionIds: ["con_0012"],
+        population: "Healthy adult resistance-training populations.",
+        directness: "mixed",
+        evidenceStrength: "moderate",
+        uncertainty: "Exercise-specific strength favors earlier placement, while broad hypertrophy differences across order strategies appear small."
+      }),
+      progression: scientificSource({
+        authority: "product_policy",
+        studyIds: ["stu_0029", "stu_0030", "stu_0031"],
+        conclusionIds: ["con_0015"],
+        population: "Healthy adult resistance-training populations; progression criteria are an expert synthesis.",
+        directness: "expert_inference",
+        evidenceStrength: "low",
+        uncertainty: "No single progression algorithm is validated for every exercise or trainee."
+      }),
+      confirmation: scientificSource({
+        authority: "product_policy",
+        studyIds: ["stu_0029", "stu_0030", "stu_0031"],
+        conclusionIds: ["con_0016"],
+        population: "Healthy adult resistance-training populations; confirmation windows are exercise-specific expert inference.",
+        directness: "expert_inference",
+        evidenceStrength: "low",
+        uncertainty: "One-to-three-session confirmation windows are a conservative product policy, not a universal biological constant."
+      })
+    };
+  }
+
   function programmingContext(options = {}, score = {}) {
+    if (options.resolvedProgrammingContext) return deepClone(options.resolvedProgrammingContext);
     const goal = resolveGoalInput(options);
     const experience = resolveExperienceInput(options);
+    const nutritionPhase = resolveNutritionPhaseInput(options);
+    const returningAfterGap = resolveReturningAfterGapInput(options);
     const personalEvidenceAvailable = number(score.personalEvidenceWeight, 0) > 0;
     const comparableExposureCount = Math.max(0, Math.round(number(firstPresent(score.staleness?.exposureCount, score.staleness?.metrics?.exposureCount), 0)));
     const explicitComplexityPreference = options.setStructurePreference === "advanced_if_supported";
@@ -327,11 +479,19 @@
       && score.staleness?.classification === STALENESS.PRODUCTIVE;
     const complexStructureAllowed = ["intermediate", "advanced"].includes(experience.value) && (explicitComplexityPreference || productiveHistorySupport);
     const complexitySupportedBy = explicitComplexityPreference ? "explicit_preference" : productiveHistorySupport ? "productive_history" : "none";
+    const goalDisclosure = goal.value === "general_fitness"
+      ? "General fitness uses balanced resistance-training defaults; resistance-only programming does not fully cover cardiorespiratory fitness, so aerobic activity must be planned separately."
+      : `Directional ${goal.value.replaceAll("_", " ")} emphasis is a transparent product-policy translation inside existing evidence-supported ranges, not a universal scientific cutoff.`;
+    const nutritionDisclosure = nutritionPhase.resolvedValue === "deficit"
+      ? "Deficit context uses con_0026 / stu_0020: no pre-emptive volume cut is applied; low-value sets change only after qualifying performance or recovery deterioration."
+      : nutritionPhase.resolvedValue
+        ? `${nutritionPhase.resolvedValue.replaceAll("_", " ")} is recorded as context only; it does not automatically change resistance-training dose without qualifying performance or recovery evidence.`
+        : "Nutrition phase is unspecified; no phase-specific training adjustment is inferred.";
     return {
-      profileVersion: "training-profile/1.0.0",
+      profileVersion: TRAINING_PROFILE_VERSION,
       missingInputs: [goal.missing ? "trainingGoal" : null, experience.missing ? "experienceLevel" : null].filter(Boolean),
       policyDisclosures: [
-        "Goal ranges are transparent product-policy defaults informed by ACSM 2026 (PMID 41843416), the repository evidence ledger, and practical program design; they are not rigid universal cutoffs.",
+        "Goal ranges are transparent product-policy defaults informed by the current repository evidence ledger and practical program design; they are not rigid universal cutoffs.",
         "Experience changes stability, complexity, confirmation, and progression granularity, not automatic volume, intensity, repetition, or rest multipliers.",
         "Hard equipment, exclusion, time, taxonomy, and safety constraints always take precedence."
       ],
@@ -342,7 +502,7 @@
         source: goal.source,
         inputField: goal.inputField,
         authority: "product_policy",
-        disclosure: `Directional ${goal.value.replaceAll("_", " ")} emphasis is a transparent product-policy translation inside existing evidence-supported ranges, not a universal scientific cutoff.`,
+        disclosure: goalDisclosure,
         selectionEmphasis: goal.selectionEmphasis
       },
       experience: {
@@ -359,6 +519,26 @@
         disclosure: experience.missing
           ? "Training experience is missing, so the engine does not infer skill and keeps the default structure evidence-led."
           : `The ${experience.value} label changes suitable complexity and selection preferences; it never proves tolerance or automatically adds sets or intensity.`
+      },
+      nutritionPhase: {
+        requestedValue: nutritionPhase.requestedValue,
+        resolvedValue: nutritionPhase.resolvedValue,
+        source: nutritionPhase.source,
+        authority: "product_policy",
+        doseAdjustmentApplied: false,
+        disclosure: nutritionDisclosure,
+        scientificProvenance: nutritionScientificSource(nutritionPhase.resolvedValue)
+      },
+      returningAfterGap: {
+        requestedValue: returningAfterGap.requestedValue,
+        resolvedValue: returningAfterGap.resolvedValue,
+        source: returningAfterGap.source,
+        authority: "product_policy",
+        disclosure: returningAfterGap.resolvedValue === true
+          ? "A declared return after a gap forces a conservative current baseline without changing or inferring training experience."
+          : returningAfterGap.resolvedValue === false
+            ? "The user explicitly reports no return gap; normal evidence and confirmation rules apply."
+            : "Return-after-gap status is unspecified; recency is evaluated from comparable history without inferring a gap."
       },
       personalization: {
         personalEvidenceAvailable,
@@ -1724,17 +1904,29 @@
     if (mesocycleType === MESOCYCLE_TYPES.PRIMARY) overallRecommendationStrength += progressionQuality * 0.07 + easeOfProgression * 0.04;
     if (mesocycleType === MESOCYCLE_TYPES.ALTERNATIVE && options.currentExerciseIds?.includes(candidate.exerciseId) && staleness.classification !== STALENESS.PRODUCTIVE) overallRecommendationStrength -= 7;
     if (mesocycleType === MESOCYCLE_TYPES.SPECIALIZATION && asArray(options.specializationMuscleGroups).map(normalizeMuscleId).includes(normalizeMuscleId(muscleGroupId))) overallRecommendationStrength += muscleSpecificity * 0.06;
-    const goalProfile = resolveGoalInput(options);
-    const experienceProfile = resolveExperienceInput(options);
-    if (goalProfile.value === "strength") overallRecommendationStrength += progressionQuality * 0.035 + easeOfProgression * 0.025;
-    else if (goalProfile.value === "muscular_endurance") overallRecommendationStrength += recoveryEfficiency * 0.035 + (100 - fatigueCost) * 0.035;
-    else if (goalProfile.value === "general_fitness") overallRecommendationStrength += stability * 0.025 + easeOfProgression * 0.02 + (100 - fatigueCost) * 0.015;
-    if (["novice", "novice_safe_default"].includes(experienceProfile.value)) {
+    const goalProfile = options.resolvedProgrammingContext?.goal || resolveGoalInput(options);
+    const experienceProfile = options.resolvedProgrammingContext?.experience || resolveExperienceInput(options);
+    const goalValue = goalProfile.resolvedValue || goalProfile.value;
+    const experienceValue = experienceProfile.resolvedValue || experienceProfile.value;
+    if (goalValue === "strength") overallRecommendationStrength += progressionQuality * 0.035 + easeOfProgression * 0.025;
+    else if (goalValue === "muscular_endurance") overallRecommendationStrength += recoveryEfficiency * 0.035 + (100 - fatigueCost) * 0.035;
+    else if (goalValue === "general_fitness") overallRecommendationStrength += stability * 0.025 + easeOfProgression * 0.02 + (100 - fatigueCost) * 0.015;
+    if (["novice", "novice_safe_default"].includes(experienceValue)) {
       overallRecommendationStrength += stability * 0.04 + easeOfProgression * 0.025;
       if (demands.highFatigueCompound) overallRecommendationStrength -= 3;
-    } else if (experienceProfile.value === "advanced") {
+    } else if (experienceValue === "advanced") {
       overallRecommendationStrength += muscleSpecificity * 0.015;
     }
+    const goalRole = normalizeRole(options.role || candidate.personalPrescription?.role, exercise);
+    const goalRanges = goalPolicyRanges(goalValue, goalRole, exercise);
+    const exerciseRepRange = { min: number(exercise.recommended_rep_range_low, 6), max: number(exercise.recommended_rep_range_high, 15) };
+    const exerciseRestRange = { min: number(exercise.recommended_rest_seconds_low, 60), max: number(exercise.recommended_rest_seconds_high, 300) };
+    const goalPolicyCompatibility = {
+      repRange: policyRangesOverlap(exerciseRepRange, goalRanges.repRange),
+      restSeconds: policyRangesOverlap(exerciseRestRange, goalRanges.restSeconds)
+    };
+    goalPolicyCompatibility.compatible = goalPolicyCompatibility.repRange && goalPolicyCompatibility.restSeconds;
+    if (!goalPolicyCompatibility.compatible) overallRecommendationStrength -= 18;
     overallRecommendationStrength = round(clamp(overallRecommendationStrength, 0, 100), 2);
     return {
       exerciseId: candidate.exerciseId,
@@ -1758,6 +1950,7 @@
       gripDemand: round(demands.gripDemand, 2),
       jointStress: round(demands.jointStress, 2),
       highFatigueCompound: demands.highFatigueCompound,
+      goalPolicyCompatibility,
       researchSupport: round(researchSupport, 2),
       personalDataConfidence,
       overallRecommendationStrength,
@@ -2134,6 +2327,7 @@
   }
 
   function isIsolationExercise(exercise = {}) {
+    exercise = exercise || {};
     const type = String(exercise.exercise_type || exercise.exerciseType || "").toLowerCase();
     const pattern = `${exercise.movement_pattern || exercise.movementPattern || ""} ${exercise.exercise_name || exercise.exerciseName || ""}`.toLowerCase();
     return /isolation/.test(type) || /elbow_flexion|elbow_extension|knee_extension|knee_flexion|shoulder_abduction|fly|curl|extension/.test(pattern);
@@ -2309,6 +2503,80 @@
         researchFallbackRange: { min: number(research.weeklySets?.min, 6), max: number(research.weeklySets?.max, 16) }
       },
       reason
+    };
+  }
+
+  function progressionConfirmationFor(options = {}) {
+    const history = normalizeHistory(options.history).filter((item) => !item.prescribedReduction);
+    const researchExercise = options.researchExercise || {};
+    const context = options.context || programmingContext({}, {});
+    const stableLowFatigueIsolation = isIsolationExercise(researchExercise)
+      && stabilityScore(researchExercise) >= 65
+      && fatigueCostScore(researchExercise) <= 60;
+    const requiredExposures = stableLowFatigueIsolation ? 1 : Math.max(1, number(context.experience?.progressionConfirmationExposures, 3));
+    const targetRpe = options.targetRpe || { min: 6, max: 9 };
+    const evaluated = history.map((item) => {
+      const complete = (item.adherence !== null && item.adherence >= 0.999)
+        || (item.completedSetCount !== null && item.prescribedSetCount !== null && item.completedSetCount >= item.prescribedSetCount);
+      const techniqueValid = item.techniqueValid === true || /valid|good|stable|repeatable|controlled/.test(item.techniqueQuality);
+      const effortValues = item.rpes.length ? item.rpes : item.averageRpe !== null ? [item.averageRpe] : [];
+      const effortValid = effortValues.length > 0 && effortValues.every((value) => value >= number(targetRpe.min, 5) && value <= number(targetRpe.max, 10));
+      const comparablePerformance = item.reps.length > 0 && (item.loads.length > 0 || item.performance !== null);
+      const qualifies = complete && techniqueValid && effortValid && !item.pain && comparablePerformance;
+      return {
+        date: item.date || null,
+        qualifies,
+        complete,
+        techniqueValid,
+        effortValid,
+        painFree: !item.pain,
+        comparablePerformance
+      };
+    });
+    let observedQualifyingExposures = 0;
+    for (let index = evaluated.length - 1; index >= 0; index -= 1) {
+      if (!evaluated[index].qualifies) break;
+      observedQualifyingExposures += 1;
+    }
+    const satisfied = observedQualifyingExposures >= requiredExposures;
+    return {
+      schemaVersion: PROGRESSION_CONFIRMATION_SCHEMA_VERSION,
+      requiredExposures,
+      observedQualifyingExposures,
+      satisfied,
+      exceptionApplied: stableLowFatigueIsolation ? "stable_low_fatigue_isolation" : null,
+      criteria: ["complete_prescribed_work", "valid_technique", "target_effort", "pain_free", "comparable_performance"],
+      qualifyingExposureDates: evaluated.filter((item) => item.qualifies).slice(-observedQualifyingExposures || evaluated.length).map((item) => item.date).filter(Boolean),
+      explanation: satisfied
+        ? `${observedQualifyingExposures} consecutive qualifying comparable exposure${observedQualifyingExposures === 1 ? "" : "s"} satisfy the ${requiredExposures}-exposure confirmation policy.`
+        : `${observedQualifyingExposures} consecutive qualifying comparable exposure${observedQualifyingExposures === 1 ? " was" : "s were"} observed; ${requiredExposures} are required before progression. Missing or invalid evidence is not treated as confirmation.`
+    };
+  }
+
+  function enforceProgressionConfirmation(decisionInput, confirmation, context) {
+    const decision = deepClone(decisionInput);
+    if (context.returningAfterGap?.resolvedValue === true) return {
+      action: "establish_baseline",
+      recommendationType: "hold",
+      progressionMethod: decision.progressionMethod,
+      instruction: "Hold progression and establish a controlled return-after-gap baseline at pain-free technique and target effort before changing load, repetitions, or volume.",
+      holdRule: "Keep prior performance as historical context only until a current qualifying baseline is recorded.",
+      regressionRule: "Adjust conservatively if the return exposure exceeds target effort, loses technique, causes pain, or cannot complete prescribed work."
+    };
+    if (confirmation.satisfied) return decision;
+    if (["exercise_deload", "reduce_volume", "hold"].includes(decision.recommendationType) && decision.action !== "establish_baseline") return decision;
+    if (decision.action === "establish_baseline") return {
+      ...decision,
+      recommendationType: "hold",
+      instruction: `${decision.instruction} ${confirmation.explanation}`
+    };
+    return {
+      action: "hold_for_confirmation",
+      recommendationType: "hold",
+      progressionMethod: decision.progressionMethod,
+      instruction: `Hold progression: ${confirmation.explanation}`,
+      holdRule: "Repeat the same prescription until consecutive comparable exposures meet completion, technique, target-effort, pain-free, and performance criteria.",
+      regressionRule: "Reduce load or complexity if qualifying evidence cannot be established without technique loss, excessive effort, incomplete work, or pain."
     };
   }
 
@@ -2619,6 +2887,9 @@
     const evidence = evidenceInput.personal ? evidenceInput : normalizeEvidenceBundle(evidenceInput);
     resolveGoalInput(options);
     resolveExperienceInput(options);
+    resolveNutritionPhaseInput(options);
+    resolveReturningAfterGapInput(options);
+    const poolContext = programmingContext(options, {});
     const maxCandidates = clamp(number(options.maxCandidates, DEFAULT_POLICY.candidatePoolSize), 1, 5);
     const equipmentInput = normalizeAvailableEquipmentInput(options.availableEquipment);
     const exclusionResolution = resolveExerciseExclusions(evidence, options.excludedExerciseIds);
@@ -2682,7 +2953,8 @@
       const muscleDefaults = aggregateMuscleResearchDefaults(evidence.research, muscleGroupId);
       const researchDefaults = researchExerciseDefaults(candidate.researchExercise, muscleDefaults);
       const personalRanges = personalPrescriptionRanges(candidate.personalPrescription);
-      const repRange = blendRange(personalRanges.repRange, researchDefaults.repRange, entry.score.personalEvidenceWeight, { integer: true, minimumWidth: DEFAULT_POLICY.minimumRepRangeWidth, floor: 3, ceiling: 30 });
+      const rawRepRange = blendRange(personalRanges.repRange, researchDefaults.repRange, entry.score.personalEvidenceWeight, { integer: true, minimumWidth: DEFAULT_POLICY.minimumRepRangeWidth, floor: 3, ceiling: 30 });
+      const rawRestSeconds = blendRange(personalRanges.restSeconds, researchDefaults.restSeconds, entry.score.personalEvidenceWeight, { integer: true, floor: 30, ceiling: 600 }) || { min: 90, target: 150, max: 240 };
       const volume = determineVolumePrescription({
         personalRanges,
         researchDefaults,
@@ -2693,11 +2965,31 @@
         specializationMuscleGroups: options.specializationMuscleGroups,
         muscleGroupId
       });
-      const workingSets = {
+      const rawWorkingSets = {
         min: volume.perExercise.normalOperatingRange.min,
         target: volume.perExercise.currentPrescribed,
         max: volume.perExercise.normalOperatingRange.max
       };
+      const context = options.resolvedProgrammingContext ? deepClone(options.resolvedProgrammingContext) : programmingContext(options, entry.score);
+      const goalPolicy = applyGoalPolicyToDose({
+        context,
+        role,
+        researchExercise: candidate.researchExercise,
+        exerciseId: candidate.exerciseId,
+        exerciseName: candidate.exerciseName,
+        repRange: rawRepRange,
+        restSeconds: rawRestSeconds,
+        workingSets: rawWorkingSets,
+        personalEvidenceWeight: entry.score.personalEvidenceWeight,
+        staleness: entry.score.staleness
+      });
+      const workingSets = {
+        min: Math.min(rawWorkingSets.min, goalPolicy.goalSetTarget),
+        target: goalPolicy.goalSetTarget,
+        max: Math.max(goalPolicy.goalSetTarget, rawWorkingSets.max)
+      };
+      const repRange = goalPolicy.repRange;
+      const restSeconds = goalPolicy.restSeconds;
       const structure = chooseSetStructure({
         researchExercise: candidate.researchExercise,
         personalPrescription: candidate.personalPrescription,
@@ -2709,14 +3001,26 @@
       });
       const targetRir = blendRange(personalRanges.rir, researchDefaults.rir, entry.score.personalEvidenceWeight, { floor: 0, ceiling: 5 }) || { min: 1, target: 2, max: 3 };
       const frequency = blendRange(personalRanges.frequency, researchDefaults.frequency, entry.score.personalEvidenceWeight, { floor: 1, ceiling: 7 });
-      const progression = determineProgressionDecision({
+      const targetRpe = { min: 10 - targetRir.max, max: 10 - targetRir.min };
+      const progressionConfirmation = progressionConfirmationFor({
+        history: candidate.history,
+        researchExercise: candidate.researchExercise,
+        role,
+        context,
+        targetRpe
+      });
+      const progressionMethod = context.goal.resolvedValue === "muscular_endurance"
+        ? "rep_first_progression"
+        : candidate.researchExercise?.preferred_progression_model;
+      const progression = enforceProgressionConfirmation(determineProgressionDecision({
         history: candidate.history,
         repRange,
-        targetRpe: { min: 10 - targetRir.max, max: 10 - targetRir.min },
+        targetRpe,
         staleness: entry.score.staleness,
         setStructure: structure.setStructure,
-        progressionMethod: candidate.researchExercise?.preferred_progression_model
-      });
+        workingSets,
+        progressionMethod
+      }), progressionConfirmation, context);
       const preferredReplacementExerciseId = preferredReplacementFor(candidate, evidence, scored, options);
       const taxonomy = asArray(candidate.researchMappings).length ? asArray(candidate.researchMappings) : [{
         muscle_group_id: candidate.muscleScore?.research_muscle_group_id || candidate.muscleScore?.muscle_group || muscleGroupId,
@@ -2750,11 +3054,16 @@
         setStructureReason: structure.reasoning,
         recommendedSetRange: workingSets,
         recommendedRepRange: repRange,
+        recommendedRestSeconds: restSeconds,
         recommendedRpe: { min: round(10 - targetRir.max, 1), max: round(10 - targetRir.min, 1) },
         recommendedRir: { min: targetRir.min, max: targetRir.max },
         recommendedFrequency: frequency,
         progressionMethod: progression.progressionMethod,
         progressionInstruction: progression.instruction,
+        progressionConfirmation,
+        programmingContext: deepClone(context),
+        scientificProvenance: materialScientificProvenance(context.goal.resolvedValue),
+        ...(goalPolicy.conflict ? { goalPolicyConflict: goalPolicy.conflict } : {}),
         deloadTrigger: candidate.researchExercise?.deload_criteria || candidate.personalPrescription?.deload_rule?.trigger || "Two confirmed regressions plus fatigue or pain; one noisy session is insufficient.",
         rotationTrigger: entry.score.staleness.reasons.join(" ") || candidate.researchExercise?.substitution_triggers,
         preferredReplacementExerciseId,
@@ -2776,6 +3085,12 @@
         diversitySignature: diversitySignature(candidate)
       };
     });
+    items.forEach((item) => {
+      if (!item.goalPolicyConflict) return;
+      const alternative = items.find((candidate) => candidate.exerciseId !== item.exerciseId && !candidate.goalPolicyConflict);
+      item.goalPolicyConflict.alternativeExerciseId = alternative?.exerciseId || null;
+      if (alternative) item.preferredReplacementExerciseId = alternative.exerciseId;
+    });
     return {
       muscleGroupId,
       mesocycleType: options.mesocycleType || MESOCYCLE_TYPES.PRIMARY,
@@ -2785,6 +3100,7 @@
       candidates: items,
       excludedCandidates,
       exclusionResolution,
+      programmingContext: deepClone(poolContext),
       diversificationApplied: true,
       explanation: `These are the top ${Math.min(maxCandidates, items.length)} alternatives for one program role, not exercises that must all be performed. Ranking uses predicted target-muscle value, personal evidence, research, equipment, fatigue, and redundancy.`
     };
@@ -2901,6 +3217,10 @@
     if (candidate.scores.recoveryEfficiency >= 70) positiveFactors.push("Personal or blended evidence supports good recovery efficiency.");
     if (candidate.scores.easeOfProgression >= 75) positiveFactors.push("Load or repetition progression is easy to measure.");
     if (candidate.scores.personalEvidenceWeight >= 0.6) positiveFactors.push("Adequate comparable personal evidence informs the estimate.");
+    if (candidate.goalPolicyConflict) {
+      fit -= 25;
+      limitingFactors.push(candidate.goalPolicyConflict.explanation);
+    }
     if (redundant.length) {
       fit -= 9 + (redundant.length - 1) * 5;
       limitingFactors.push(`Mechanically redundant with ${redundant.slice(0, 3).map((entry) => entry.item.exerciseName).join(", ")}: shared primary target, joint action, movement pattern, and similar program role or loading profile.`);
@@ -2933,7 +3253,7 @@
     const grouped = new Map();
     Object.values(pools).forEach((pool) => {
       const family = muscleFamily(pool.muscleGroupId);
-      if (!grouped.has(family)) grouped.set(family, { muscleGroupId: family, mesocycleType: pool.mesocycleType, generatedAt: pool.generatedAt, candidates: [], excludedCandidates: [], exclusionResolution: pool.exclusionResolution, availableViableExerciseCount: 0, sourceMuscleGroupIds: [] });
+      if (!grouped.has(family)) grouped.set(family, { muscleGroupId: family, mesocycleType: pool.mesocycleType, generatedAt: pool.generatedAt, candidates: [], excludedCandidates: [], exclusionResolution: pool.exclusionResolution, programmingContext: deepClone(pool.programmingContext), availableViableExerciseCount: 0, sourceMuscleGroupIds: [] });
       const target = grouped.get(family);
       target.sourceMuscleGroupIds.push(pool.muscleGroupId);
       target.availableViableExerciseCount += number(pool.availableViableExerciseCount, pool.candidates.length);
@@ -2949,16 +3269,20 @@
   function createProgramSlots(pools, options = {}) {
     const specialization = new Set(asArray(options.specializationMuscleGroups).map(normalizeMuscleId));
     return Object.values(pools).filter((pool) => pool.candidates.length > 0).map((pool, index) => {
+      const context = options.resolvedProgrammingContext || pool.programmingContext || programmingContext(options, {});
+      const goalLabel = GOAL_LABELS[context.goal.resolvedValue] || context.goal.resolvedValue;
       const defaults = options.evidence ? aggregateMuscleResearchDefaults(options.evidence.research, pool.muscleGroupId) : null;
       const specialized = specialization.has(normalizeMuscleId(pool.muscleGroupId));
       const objectiveFactor = options.type === MESOCYCLE_TYPES.LOWER_FATIGUE ? 0.72 : specialized ? 1.2 : 1;
       const weeklyTarget = Math.max(2, Math.round(number(defaults?.weeklySets?.min, pool.candidates[0]?.recommendedSetRange?.target || 3) * objectiveFactor));
-      const frequencyTarget = Math.min(weeklyTarget, number(options.trainingDays, 4), specialized ? 3 : 2, Math.max(1, Math.round(number(defaults?.frequency?.target, pool.candidates[0]?.recommendedFrequency?.target || 2))));
+      const evidenceFrequencyTarget = Math.min(weeklyTarget, number(options.trainingDays, 4), specialized ? 3 : 2, Math.max(1, Math.round(number(defaults?.frequency?.target, pool.candidates[0]?.recommendedFrequency?.target || 2))));
+      const directCandidateCount = pool.candidates.filter((candidate) => asArray(candidate.muscleRelationships).some((mapping) => mapping.relationship_type === "direct_load" && researchMuscleMatch(options.evidence?.research, pool.muscleGroupId, mapping.muscle_group_id))).length;
+      const frequencyTarget = Math.min(evidenceFrequencyTarget, Math.max(1, directCandidateCount));
       const desiredSelections = frequencyTarget;
       return ({
       id: `slot_${normalizeText(pool.muscleGroupId)}_${index + 1}`,
       muscleGroupId: pool.muscleGroupId,
-      trainingPurpose: specialized ? "Specialization volume and progression" : "Meet evidence-adjusted weekly volume and frequency",
+      trainingPurpose: specialized ? `${goalLabel} specialization volume and progression` : `Meet evidence-adjusted ${goalLabel.toLowerCase()} volume and frequency`,
       role: pool.candidates[0]?.intendedRole || "secondary_hypertrophy_lift",
       selectionRequired: Math.min(pool.candidates.length, desiredSelections),
       selectedExerciseIds: [],
@@ -2967,7 +3291,8 @@
       weeklySetsTarget: weeklyTarget,
       weeklyExposuresTarget: frequencyTarget,
       plannedSessionIds: [],
-      rationale: `This slot ensures ${pool.muscleGroupId.replaceAll("_", " ")} receives its evidence-adjusted volume across ${frequencyTarget} weekly exposure${frequencyTarget === 1 ? "" : "s"}.`
+      programmingContext: deepClone(context),
+      rationale: `This ${goalLabel.toLowerCase()} slot ensures ${pool.muscleGroupId.replaceAll("_", " ")} receives its evidence-adjusted direct volume across ${frequencyTarget} weekly exposure${frequencyTarget === 1 ? "" : "s"}.${frequencyTarget < evidenceFrequencyTarget ? " Frequency is capped by the number of distinct direct-load candidates in the verified catalog; fractional involvement is not relabeled as direct work." : ""}`
     });
     });
   }
@@ -3027,9 +3352,26 @@
 
   function distributePortfolioAcrossSessions(portfolio, options = {}) {
     const dayCount = normalizeTrainingDays(options, 4);
+    const context = options.resolvedProgrammingContext || programmingContext(options, {});
+    const goal = context.goal.resolvedValue;
+    const goalIntent = GOAL_SESSION_INTENTS[goal] || `${goal.replaceAll("_", " ")} resistance training`;
     const splitByDays = { 1: ["Full Body"], 2: ["Upper", "Lower"], 3: ["Upper", "Lower", "Full Body"], 4: ["Upper", "Lower", "Upper", "Lower"], 5: ["Upper", "Lower", "Push", "Pull", "Accessories"], 6: ["Upper", "Lower", "Push", "Pull", "Upper", "Lower"], 7: ["Upper", "Lower", "Push", "Pull", "Upper", "Lower", "Accessories"] };
     const focuses = splitByDays[dayCount];
-    const sessions = Array.from({ length: dayCount }, (_, index) => ({ id: `session_${index + 1}`, dayIndex: index, name: `Day ${index + 1}`, workoutType: focuses[index], primaryPurpose: focuses[index], baseSessionIntent: options.type === MESOCYCLE_TYPES.LOWER_FATIGUE ? "Lower-fatigue practice session" : `${focuses[index]} hypertrophy and progression`, exercises: [], estimatedDurationMinutes: 0, systemicFatigue: 0, spinalLoad: 0, gripDemand: 0, jointStress: 0 }));
+    const sessions = Array.from({ length: dayCount }, (_, index) => ({
+      id: `session_${index + 1}`,
+      dayIndex: index,
+      name: `Day ${index + 1}: ${focuses[index]} ${GOAL_LABELS[goal] || goal}`,
+      workoutType: focuses[index],
+      primaryPurpose: focuses[index],
+      baseSessionIntent: options.type === MESOCYCLE_TYPES.LOWER_FATIGUE ? `Lower-fatigue ${goalIntent}` : `${focuses[index]} ${goalIntent}`,
+      programmingContext: deepClone(context),
+      exercises: [],
+      estimatedDurationMinutes: 0,
+      systemicFatigue: 0,
+      spinalLoad: 0,
+      gripDemand: 0,
+      jointStress: 0
+    }));
     const lower = new Set(["quads", "hamstrings", "glutes", "calves", "adductors", "abductors"]);
     const push = new Set(["chest", "front_delts", "side_delts", "triceps"]);
     const pull = new Set(["upper_back", "lats", "rear_delts", "biceps", "forearms", "traps"]);
@@ -3103,6 +3445,7 @@
 
   function reviewFullProgram(portfolio, sessions, slots, evidence, options = {}) {
     const policy = { ...DEFAULT_POLICY, ...(options.policy || {}) };
+    const context = options.resolvedProgrammingContext || programmingContext(options, {});
     const duration = normalizeSessionDurationConstraints(options, policy);
     const warnings = [];
     const scheduledCanonicalIds = new Map();
@@ -3144,6 +3487,22 @@
       const unallocatedSets = sum(issues.map((item) => item.unallocatedSets));
       warnings.push({ severity: "blocking", type: "schedule_capacity", sessionId: null, muscleGroupId: issue.muscleGroupIds?.[0] || null, exerciseIds: [issue.exerciseId], conflict: `${issue.exerciseName} has ${unallocatedSets} working set${unallocatedSets === 1 ? "" : "s"} that cannot fit the selected schedule.`, why: issue.reason, recommendation: "Increase training days, reduce selected scope or direct volume, use maintenance volume for a lower-priority muscle, or change the mesocycle objective.", resolutionOptions: ["increase_training_days", "reduce_scope", "reduce_direct_volume", "maintenance_volume", "change_objective"], correctiveAction: "regenerate_with_practical_limits" });
     });
+    portfolio.filter((item) => item.goalPolicyConflict).forEach((item) => {
+      const conflict = item.goalPolicyConflict;
+      const session = sessions.find((candidateSession) => candidateSession.exercises.some((exercise) => exercise.exerciseId === item.exerciseId));
+      warnings.push({
+        severity: "review",
+        type: "goal_policy_conflict",
+        sessionId: session?.id || null,
+        exerciseIds: [item.exerciseId],
+        conflict: conflict.explanation,
+        why: `The selected exercise's verified safe range does not overlap the ${GOAL_LABELS[context.goal.resolvedValue]} product-policy target, so the engine preserved the exercise-specific range instead of making a false goal-policy claim.`,
+        recommendation: conflict.alternativeExerciseId
+          ? `Review ${conflict.alternativeExerciseName || conflict.alternativeExerciseId} as the compatible alternative.`
+          : "Review the exercise choice or accept the disclosed safe-range limitation; no compatible alternative was available.",
+        correctiveAction: conflict.alternativeExerciseId ? "review_compatible_alternative" : "review_goal_policy_conflict"
+      });
+    });
     const musclePlans = slots.map((slot) => {
       const selected = portfolio.filter((item) => item.programSlotIds.includes(slot.id));
       const contributions = sessions.flatMap((session) => session.exercises.map((item) => ({ session, item, mapping: taxonomyContributionFor(evidence.research, item, slot.muscleGroupId) }))).filter((entry) => entry.mapping);
@@ -3175,7 +3534,7 @@
       if (demandingOverlap.length >= 2) warnings.push({ severity: "review", type: "adjacent_session_overlap", sessionId: session.id, exerciseIds: session.exercises.filter((item) => item.targetMuscleGroupIds?.some((muscle) => demandingOverlap.includes(muscleFamily(muscle)))).map((item) => item.exerciseId), conflict: `${prior.name} and ${session.name} repeat demanding work for ${demandingOverlap.join(", ")}.`, why: "Consecutive high-cost exposure may reduce recovery and next-session performance.", recommendation: "Move one demanding pattern, use a lower-fatigue complement, or insert more recovery between these sessions." });
     });
     const explanation = [
-      "The exercise portfolio was selected before session construction.",
+      `The ${GOAL_LABELS[context.goal.resolvedValue]} exercise portfolio was selected before session construction using ${context.profileVersion}.`,
       "Demanding compounds were distributed using systemic fatigue, spinal load, grip demand, muscle overlap, and estimated duration.",
       warnings.length ? `${warnings.length} interaction warning${warnings.length === 1 ? " requires" : "s require"} review before activation.` : "No serious program interaction remains unresolved."
     ];
@@ -3184,8 +3543,9 @@
 
   function refreshMesocycleProgram(mesocycle, evidenceInput, options = {}) {
     const evidence = evidenceInput.personal ? evidenceInput : normalizeEvidenceBundle(evidenceInput);
+    const context = options.resolvedProgrammingContext || mesocycle.programmingContext || programmingContext(options, {});
     const slots = deepClone(mesocycle.programSlots || []);
-    let portfolio = buildProgramPortfolio(mesocycle.pools, slots, { ...mesocycle.constraints, ...options, evidence, currentProgramExerciseIds: options.currentProgramExerciseIds || mesocycle.currentProgramExerciseIds, specializationMuscleGroups: mesocycle.specializationMuscleGroups, type: mesocycle.type });
+    let portfolio = buildProgramPortfolio(mesocycle.pools, slots, { ...mesocycle.constraints, ...options, resolvedProgrammingContext: context, evidence, currentProgramExerciseIds: options.currentProgramExerciseIds || mesocycle.currentProgramExerciseIds, specializationMuscleGroups: mesocycle.specializationMuscleGroups, type: mesocycle.type });
     if (options.selections) {
       slots.forEach((slot) => {
         const requested = asArray(options.selections[slot.id]);
@@ -3200,21 +3560,21 @@
         return { ...deepClone(candidate), muscleGroupId: slot.muscleGroupId, targetMuscleGroupIds: relatedSlots.map((item) => item.muscleGroupId), programSlotIds: relatedSlots.map((item) => item.id), selectionReason: "Selected by the user for this program slot; the engine will not undo it inside this mesocycle draft.", ...fit };
       }).filter(Boolean);
     }
-    const pools = rerankPoolsForPortfolio(mesocycle.pools, portfolio, options);
+    const pools = rerankPoolsForPortfolio(mesocycle.pools, portfolio, { ...options, resolvedProgrammingContext: context });
     portfolio = portfolio.map((item) => {
       const ranked = pools[item.muscleGroupId]?.candidates.find((candidate) => candidate.exerciseId === item.exerciseId) || item;
       return { ...item, ...candidateProgramFit(ranked, portfolio.filter((other) => other.exerciseId !== item.exerciseId), { ...DEFAULT_POLICY, ...(options.policy || {}) }), scores: ranked.scores, scoreExplanation: ranked.scoreExplanation };
     });
-    const sessions = distributePortfolioAcrossSessions(portfolio, { ...mesocycle.constraints, ...options, slots, trainingDays: mesocycle.trainingDays, type: mesocycle.type });
+    const sessions = distributePortfolioAcrossSessions(portfolio, { ...mesocycle.constraints, ...options, resolvedProgrammingContext: context, evidence, slots, trainingDays: mesocycle.trainingDays, type: mesocycle.type });
     slots.forEach((slot) => { slot.plannedSessionIds = sessions.filter((session) => session.exercises.some((item) => item.programSlotIds.includes(slot.id))).map((session) => session.id); });
-    const programReview = reviewFullProgram(portfolio, sessions, slots, evidence, { ...mesocycle.constraints, ...options });
+    const programReview = reviewFullProgram(portfolio, sessions, slots, evidence, { ...mesocycle.constraints, ...options, resolvedProgrammingContext: context });
     asArray(mesocycle.equipmentUnavailableMuscleGroupIds).forEach((muscleGroupId) => {
       if (!programReview.warnings.some((warning) => warning.type === "equipment_blocks_muscle" && warning.muscleGroupId === muscleGroupId)) programReview.warnings.push({ severity: "blocking", type: "equipment_blocks_muscle", muscleGroupId, sessionId: null, exerciseIds: [], conflict: `${muscleGroupId.replaceAll("_", " ")} has no exercise compatible with the selected equipment.`, why: "This muscle is in scope, but every known candidate requires equipment that is unavailable or has incomplete verified equipment metadata.", recommendation: "Add compatible equipment, add a verified exercise to the library, or intentionally remove this muscle from scope." });
       if (!programReview.musclePlans.some((plan) => plan.muscleGroupId === muscleGroupId)) programReview.musclePlans.push({ muscleGroupId, taxonomyVersion: evidence.research.version, weeklyTargetRange: { min: 0, target: 0, max: 0 }, weeklyTargetVolume: 0, plannedFrequency: 0, targetFrequency: 0, selectedExerciseIds: [], directSets: 0, secondarySets: 0, indirectSets: 0, incidentalSets: 0, isometricExposure: 0, effectiveSets: 0, targetMet: false, localFatigue: 0, programWideFatigue: 0, sessionIds: [], overlapNotes: "No equipment-compatible exercise is currently available." });
     });
     programReview.blockingIssueCount = programReview.warnings.filter((item) => item.severity === "blocking").length;
     programReview.seriousWarningCount = programReview.warnings.filter((item) => ["blocking", "serious"].includes(item.severity)).length;
-    return { ...mesocycle, pools, programSlots: slots, selectedPortfolio: portfolio, activeExercises: portfolio, sessions, programReview, planningStep: Math.max(number(mesocycle.planningStep, 1), 5) };
+    return { ...mesocycle, schemaVersion: MESOCYCLE_SCHEMA_VERSION, programmingContext: context, pools, programSlots: slots, selectedPortfolio: portfolio, activeExercises: portfolio, sessions, programReview, planningStep: Math.max(number(mesocycle.planningStep, 1), 5) };
   }
 
   function createMesocyclePlan(evidenceInput, options = {}) {
@@ -3230,7 +3590,7 @@
     });
     const exclusionResolution = resolveExerciseExclusions(evidence, options.excludedExerciseIds);
     const durationWeeks = chooseMesocycleDuration(evidence, { ...options, type });
-    const poolOptions = { ...options, trainingDays, generatedAt: options.generatedAt || createdAt, mesocycleType: type, maxCandidates: 5 };
+    const poolOptions = { ...options, resolvedProgrammingContext: context, trainingDays, generatedAt: options.generatedAt || createdAt, mesocycleType: type, maxCandidates: 5 };
     const unrestrictedPools = consolidateProgramPools(buildAllCandidatePools(evidence, { ...poolOptions, availableEquipment: undefined }));
     const allPools = consolidateProgramPools(buildAllCandidatePools(evidence, poolOptions));
     const availableMuscleGroupIds = Object.keys(unrestrictedPools);
@@ -3258,17 +3618,17 @@
           ? `${muscleGroupId.replaceAll("_", " ")} can receive indirect stimulus from selected presses, pulls, or grip-demanding movements. It is intentionally deprioritized unless direct development is a goal.`
           : `${muscleGroupId.replaceAll("_", " ")} is outside the current objective and receives no dedicated slot. Add it when direct development, resilience, or skill is a priority.`
     }));
-    const programSlots = createProgramSlots(pools, { ...options, trainingDays, type, evidence });
-    const id = options.id || `meso_${normalizeText(type)}_${dateOnly(createdAt).replace(/-/g, "")}_${stableHash({ type, durationWeeks, groups: Object.keys(pools), createdAt }).slice(0, 6)}`;
+    const programSlots = createProgramSlots(pools, { ...options, resolvedProgrammingContext: context, trainingDays, type, evidence });
+    const id = options.id || `meso_${normalizeText(type)}_${dateOnly(createdAt).replace(/-/g, "")}_${stableHash({ type, durationWeeks, groups: Object.keys(pools), createdAt, programmingContext: context }).slice(0, 6)}`;
     const draft = {
       id,
-      schemaVersion: "mesocycle/2.5.0",
+      schemaVersion: MESOCYCLE_SCHEMA_VERSION,
       type,
       name: options.name || ({
-        [MESOCYCLE_TYPES.PRIMARY]: "Primary progression mesocycle",
-        [MESOCYCLE_TYPES.ALTERNATIVE]: "Alternative exercise mesocycle",
-        [MESOCYCLE_TYPES.LOWER_FATIGUE]: "Lower-fatigue resensitization mesocycle",
-        [MESOCYCLE_TYPES.SPECIALIZATION]: "Specialization mesocycle"
+        [MESOCYCLE_TYPES.PRIMARY]: `${GOAL_LABELS[context.goal.resolvedValue]} primary progression mesocycle`,
+        [MESOCYCLE_TYPES.ALTERNATIVE]: `${GOAL_LABELS[context.goal.resolvedValue]} alternative exercise mesocycle`,
+        [MESOCYCLE_TYPES.LOWER_FATIGUE]: `${GOAL_LABELS[context.goal.resolvedValue]} lower-fatigue resensitization mesocycle`,
+        [MESOCYCLE_TYPES.SPECIALIZATION]: `${GOAL_LABELS[context.goal.resolvedValue]} specialization mesocycle`
       })[type],
       status: "draft",
       createdAt,
@@ -3306,7 +3666,7 @@
       versions: deepClone(evidence.versions),
       lifecycle: [{ status: "draft", at: createdAt }]
     };
-    const refreshed = refreshMesocycleProgram(draft, evidence, options);
+    const refreshed = refreshMesocycleProgram(draft, evidence, { ...options, resolvedProgrammingContext: context });
     refreshed.preservedProductiveExerciseIds = refreshed.selectedPortfolio.filter((item) => refreshed.currentProgramExerciseIds.includes(item.exerciseId) && item.scores.staleness.classification === STALENESS.PRODUCTIVE).map((item) => item.exerciseId);
     return refreshed;
   }
@@ -3473,6 +3833,8 @@
     if (!options.exerciseId || !muscleGroupId) throw new Error("exerciseId and muscleGroupId are required.");
     resolveGoalInput(options);
     resolveExperienceInput(options);
+    resolveNutritionPhaseInput(options);
+    resolveReturningAfterGapInput(options);
     const createdAt = options.createdAt || isoNow(options.clock);
     const candidate = resolveExerciseCandidate(evidence, options.exerciseId, muscleGroupId, options);
     const exclusions = resolveExerciseExclusions(evidence, options.excludedExerciseIds);
@@ -3530,7 +3892,14 @@
       repRange,
       personalEvidenceWeight: score.personalEvidenceWeight
     });
-    const progression = determineProgressionDecision({
+    const progressionConfirmation = progressionConfirmationFor({
+      history: candidate.history,
+      researchExercise: candidate.researchExercise,
+      role,
+      context,
+      targetRpe
+    });
+    const progression = enforceProgressionConfirmation(determineProgressionDecision({
       history: candidate.history,
       repRange,
       targetRpe,
@@ -3538,7 +3907,7 @@
       setStructure: structure.setStructure,
       workingSets,
       progressionMethod: candidate.researchExercise?.preferred_progression_model || "double_progression"
-    });
+    }), progressionConfirmation, context);
     const deloadStatus = assessDeloadNeed({
       exerciseStaleness: score.staleness,
       exerciseHistory: candidate.history,
@@ -3614,10 +3983,26 @@
       staleness: score.staleness,
       deloadStatus,
       mesocycleId: options.mesocycle?.id || options.mesocycleId || null,
-      historyResolution: filteredHistory.resolution
+      historyResolution: filteredHistory.resolution,
+      progressionConfirmation
     };
-    basePrescription = applyProgrammingPolicy(basePrescription, context);
-    const policyProgression = determineProgressionDecision({
+    basePrescription = applyProgrammingPolicy(basePrescription, context, {
+      researchExercise: candidate.researchExercise,
+      exerciseName: candidate.exerciseName
+    });
+    if (basePrescription.goalPolicyConflict) {
+      const alternative = pool.candidates.find((item) => item.exerciseId !== candidate.exerciseId && !item.goalPolicyConflict);
+      basePrescription.goalPolicyConflict.alternativeExerciseId = alternative?.exerciseId || null;
+      if (alternative) basePrescription.preferredReplacementExerciseId = alternative.exerciseId;
+    }
+    const policyConfirmation = progressionConfirmationFor({
+      history: candidate.history,
+      researchExercise: candidate.researchExercise,
+      role,
+      context,
+      targetRpe
+    });
+    const policyProgression = enforceProgressionConfirmation(determineProgressionDecision({
       history: candidate.history,
       repRange: basePrescription.repRange,
       targetRpe,
@@ -3625,7 +4010,8 @@
       setStructure: basePrescription.setStructure,
       workingSets: basePrescription.workingSets,
       progressionMethod: basePrescription.progressionMethod
-    });
+    }), policyConfirmation, context);
+    basePrescription.progressionConfirmation = policyConfirmation;
     if (!score.staleness.rotationRecommended && volume.adjustmentType !== "reduce_volume") basePrescription.recommendationType = policyProgression.recommendationType;
     basePrescription.progressionMethod = policyProgression.progressionMethod;
     basePrescription.progressionAction = policyProgression.action;
@@ -3641,18 +4027,24 @@
       ...basePrescription.evidenceSummary,
       context.goal.disclosure,
       context.experience.disclosure,
+      context.nutritionPhase.disclosure,
+      context.returningAfterGap.disclosure,
+      basePrescription.goalPolicyConflict?.explanation,
       context.personalization.disclosure
     ]);
     basePrescription.userExplanation = [
       `${candidate.exerciseName} is assigned as a ${role.replace(/_/g, " ")} because its blended recommendation strength is ${Math.round(score.overallRecommendationStrength)}/100.`,
-      `${volume.reason} The active target is ${basePrescription.workingSets.target} sets of ${basePrescription.repRange.min}-${basePrescription.repRange.max} reps at RPE ${targetRpe.min}-${targetRpe.max} (${targetRir.min}-${targetRir.max} RIR).`,
+      `${basePrescription.volume.reason} The active target is ${basePrescription.workingSets.target} sets of ${basePrescription.repRange.min}-${basePrescription.repRange.max} reps at RPE ${targetRpe.min}-${targetRpe.max} (${targetRir.min}-${targetRir.max} RIR).`,
       basePrescription.setStructureReason,
-      policyProgression.instruction,
+      basePrescription.progressionRule,
       deloadStatus.explanation,
       `${context.goal.resolvedValue.replaceAll("_", " ")} goal (${context.goal.source}) uses a directional product-policy profile. ${context.experience.disclosure}`,
+      context.nutritionPhase.disclosure,
+      context.returningAfterGap.disclosure,
+      basePrescription.goalPolicyConflict?.explanation,
       personalExplanation,
       "The recommendation would change after confirmed comparable performance, repeated fatigue or pain, a materially different readiness pattern, or outcome data showing a less redundant substitute performs better."
-    ].join(" ");
+    ].filter(Boolean).join(" ");
     const load = prescribedLoadFromHistory(candidate, policyProgression, deloadStatus, options);
     if (load) basePrescription.prescribedLoad = load;
     basePrescription = applyDeloadState(basePrescription, deloadStatus);
@@ -4194,7 +4586,12 @@
       const prescription = snapshot[field];
       if (!SUPPORTED_PRESCRIPTION_SCHEMA_VERSIONS.has(prescription?.schemaVersion)) throw new Error(`Unsupported ${field} schemaVersion ${prescription?.schemaVersion}; supported versions are ${[...SUPPORTED_PRESCRIPTION_SCHEMA_VERSIONS].join(", ")}.`);
       if (typeof prescription.executionBlocked !== "boolean") throw new Error(`Invalid ${field}; executionBlocked must be boolean.`);
-      if (prescription.schemaVersion === PRESCRIPTION_SCHEMA_VERSION && (!prescription.programmingContext || !prescription.historyResolution)) throw new Error(`Invalid ${field}; current prescriptions require programmingContext and historyResolution.`);
+      if (prescription.schemaVersion === PRESCRIPTION_SCHEMA_VERSION) {
+        const currentRequired = ["programmingContext", "historyResolution", "progressionConfirmation", "scientificProvenance"];
+        const missingCurrent = currentRequired.filter((requiredField) => !prescription[requiredField]);
+        if (missingCurrent.length) throw new Error(`Invalid ${field}; current prescriptions require ${currentRequired.join(", ")}.`);
+        if (prescription.programmingContext.profileVersion !== TRAINING_PROFILE_VERSION) throw new Error(`Invalid ${field}; current prescriptions require ${TRAINING_PROFILE_VERSION}.`);
+      }
     });
     if (!RECOMMENDATION_TYPES.includes(snapshot.finalPrescription.recommendationType)) throw new Error(`Invalid recommendation type ${snapshot.finalPrescription.recommendationType}.`);
     if (!SET_STRUCTURES.includes(snapshot.finalPrescription.setStructure)) throw new Error(`Invalid set structure ${snapshot.finalPrescription.setStructure}.`);
@@ -4361,6 +4758,66 @@
     return { min, target: integer ? Math.round(target) : round(target, 1), max };
   }
 
+  function policyRangesOverlap(existing, policyRange) {
+    if (!existing || !policyRange) return true;
+    return Math.max(number(existing.min), number(policyRange.min)) <= Math.min(number(existing.max), number(policyRange.max));
+  }
+
+  function goalPolicyRanges(goal, role, researchExercise = {}) {
+    const isolation = isIsolationExercise(researchExercise);
+    if (goal === "strength" && role === "primary_progression_lift") return {
+      repRange: GOAL_PROFILES.strength.primaryRepRange,
+      restSeconds: GOAL_PROFILES.strength.restRange
+    };
+    if (goal === "hypertrophy") return {
+      repRange: GOAL_PROFILES.hypertrophy.repRange,
+      restSeconds: isolation ? GOAL_PROFILES.hypertrophy.isolationRestRange : GOAL_PROFILES.hypertrophy.compoundRestRange
+    };
+    if (goal === "muscular_endurance") return {
+      repRange: isolation ? GOAL_PROFILES.muscular_endurance.repRange : GOAL_PROFILES.muscular_endurance.skillCompoundRepRange,
+      restSeconds: GOAL_PROFILES.muscular_endurance.restRange
+    };
+    if (goal === "general_fitness") return {
+      repRange: GOAL_PROFILES.general_fitness.repRange,
+      restSeconds: GOAL_PROFILES.general_fitness.restRange
+    };
+    return { repRange: null, restSeconds: null };
+  }
+
+  function applyGoalPolicyToDose(input = {}) {
+    const goal = input.context.goal.resolvedValue;
+    const policy = goalPolicyRanges(goal, input.role, input.researchExercise);
+    const repOverlap = policyRangesOverlap(input.repRange, policy.repRange);
+    const restOverlap = policyRangesOverlap(input.restSeconds, policy.restSeconds);
+    const repRange = intersectPolicyRange(input.repRange, policy.repRange, true);
+    const restSeconds = intersectPolicyRange(input.restSeconds, policy.restSeconds, true);
+    const qualifyingProductivePersonalEvidence = number(input.personalEvidenceWeight, 0) >= 0.6
+      && input.staleness?.classification === STALENESS.PRODUCTIVE;
+    const priorSetTarget = number(input.workingSets?.target, 0);
+    const missingDataSetCap = goal === "general_fitness" ? 2 : 3;
+    const goalSetTarget = qualifyingProductivePersonalEvidence ? priorSetTarget : Math.min(priorSetTarget, missingDataSetCap);
+    const conflictingFields = [!repOverlap ? "repRange" : null, !restOverlap ? "restSeconds" : null].filter(Boolean);
+    const conflict = conflictingFields.length ? {
+      schemaVersion: GOAL_POLICY_CONFLICT_SCHEMA_VERSION,
+      field: conflictingFields[0],
+      conflictingFields,
+      goal,
+      requestedGoalRange: deepClone(conflictingFields[0] === "repRange" ? policy.repRange : policy.restSeconds),
+      preservedExerciseRange: deepClone(conflictingFields[0] === "repRange" ? input.repRange : input.restSeconds),
+      alternativeExerciseId: null,
+      explanation: `${input.exerciseName || input.exerciseId || "This exercise"} has a safe exercise-specific ${conflictingFields.join(" and ")} range that does not overlap the directional ${goal.replaceAll("_", " ")} policy. The exercise range is preserved; the recommendation does not claim the goal policy was applied.`
+    } : null;
+    return {
+      repRange,
+      restSeconds,
+      goalSetTarget,
+      priorSetTarget,
+      qualifyingProductivePersonalEvidence,
+      conflict,
+      policy
+    };
+  }
+
   function alignNestedRepRange(range, outer) {
     if (!range) return range;
     const min = Math.max(number(range.min), number(outer.min));
@@ -4369,35 +4826,30 @@
     return { min, max };
   }
 
-  function applyProgrammingPolicy(prescriptionInput, context) {
+  function applyProgrammingPolicy(prescriptionInput, context, options = {}) {
     const prescription = deepClone(prescriptionInput);
     const goal = context.goal.resolvedValue;
-    const experience = context.experience.resolvedValue;
     const role = prescription.role;
-    const exerciseType = normalizeText(prescription.setStructure === "straight_sets" && role !== "primary_progression_lift" ? "isolation" : "compound");
-    let repPolicy = null;
-    let restPolicy = null;
-    if (goal === "strength" && role === "primary_progression_lift") {
-      repPolicy = GOAL_PROFILES.strength.primaryRepRange;
-      restPolicy = GOAL_PROFILES.strength.restRange;
-    } else if (goal === "hypertrophy") {
-      repPolicy = GOAL_PROFILES.hypertrophy.repRange;
-      restPolicy = exerciseType === "isolation" ? GOAL_PROFILES.hypertrophy.isolationRestRange : GOAL_PROFILES.hypertrophy.compoundRestRange;
-    } else if (goal === "muscular_endurance") {
-      repPolicy = role === "primary_progression_lift" ? GOAL_PROFILES.muscular_endurance.skillCompoundRepRange : GOAL_PROFILES.muscular_endurance.repRange;
-      restPolicy = GOAL_PROFILES.muscular_endurance.restRange;
+    const applied = applyGoalPolicyToDose({
+      context,
+      role,
+      researchExercise: options.researchExercise,
+      exerciseId: prescription.exerciseId,
+      exerciseName: options.exerciseName,
+      repRange: prescription.repRange,
+      restSeconds: prescription.restSeconds,
+      workingSets: prescription.workingSets,
+      personalEvidenceWeight: prescription.personalEvidenceWeight,
+      staleness: prescription.staleness
+    });
+    prescription.repRange = applied.repRange;
+    prescription.restSeconds = applied.restSeconds;
+    if (goal === "muscular_endurance") {
       prescription.progressionMethod = "rep_first_progression";
       prescription.progressionRule = "Use rep-first progression inside the saved range; preserve technique and set quality before changing resistance.";
-    } else if (goal === "general_fitness") {
-      repPolicy = GOAL_PROFILES.general_fitness.repRange;
-      restPolicy = GOAL_PROFILES.general_fitness.restRange;
     }
-    prescription.repRange = intersectPolicyRange(prescription.repRange, repPolicy, true);
-    prescription.restSeconds = intersectPolicyRange(prescription.restSeconds, restPolicy, true);
-    const priorSetTarget = number(prescription.workingSets?.target, 0);
-    const goalSetTarget = context.goal.source !== "population_default"
-      ? goal === "general_fitness" ? Math.min(priorSetTarget, 2) : Math.min(priorSetTarget, 3)
-      : priorSetTarget;
+    const priorSetTarget = applied.priorSetTarget;
+    const goalSetTarget = applied.goalSetTarget;
     if (goalSetTarget > 0 && goalSetTarget !== priorSetTarget) {
       prescription.workingSets.target = goalSetTarget;
       prescription.workingSets.min = Math.min(number(prescription.workingSets.min), goalSetTarget);
@@ -4409,6 +4861,8 @@
       prescription.volume.perMusclePerWeek.currentPrescribed = Math.min(number(prescription.volume.perMusclePerWeek.currentPrescribed), Math.round(goalSetTarget * plannedFrequency));
       prescription.volume.perMusclePerWeek.deload = Math.max(2, Math.round(prescription.volume.perMusclePerWeek.currentPrescribed * DEFAULT_POLICY.deloadVolumeFactor));
       prescription.volume.reason += ` The ${goal.replaceAll("_", " ")} product-policy profile starts this exercise at ${goalSetTarget} working sets; this is a conservative starting prescription, not a universal dose ceiling.`;
+    } else if (applied.qualifyingProductivePersonalEvidence) {
+      prescription.volume.reason += " High-confidence productive personal evidence takes precedence over the missing-data starting-set cap, so the observed recoverable dose is preserved.";
     }
     if (prescription.topSet) prescription.topSet.repRange = alignNestedRepRange(prescription.topSet.repRange, prescription.repRange);
     if (prescription.backoffSets) {
@@ -4421,6 +4875,9 @@
       delete prescription.topSet;
       delete prescription.backoffSets;
     }
+    if (applied.conflict) prescription.goalPolicyConflict = applied.conflict;
+    else delete prescription.goalPolicyConflict;
+    prescription.scientificProvenance = materialScientificProvenance(goal);
     prescription.programmingContext = deepClone(context);
     return prescription;
   }

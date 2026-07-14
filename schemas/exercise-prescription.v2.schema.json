@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://comprehensive-fitness.local/schemas/exercise-prescription.v2.schema.json",
-  "title": "ExercisePrescription v2.2",
+  "title": "ExercisePrescription v2.3",
   "description": "The canonical, explainable exercise-level decision returned by the unified prescription engine. Ranges are inclusive. Evidence weights must sum to 1 within normal floating-point tolerance.",
   "type": "object",
   "additionalProperties": false,
@@ -40,11 +40,13 @@
     "mesocycleId",
     "executionBlocked",
     "programmingContext",
-    "historyResolution"
+    "historyResolution",
+    "progressionConfirmation",
+    "scientificProvenance"
   ],
   "properties": {
     "schemaVersion": {
-      "const": "2.2.0"
+      "const": "2.3.0"
     },
     "exerciseId": {
       "$ref": "#/$defs/id"
@@ -116,6 +118,15 @@
     },
     "historyResolution": {
       "$ref": "#/$defs/historyResolution"
+    },
+    "progressionConfirmation": {
+      "$ref": "#/$defs/progressionConfirmation"
+    },
+    "scientificProvenance": {
+      "$ref": "#/$defs/scientificProvenance"
+    },
+    "goalPolicyConflict": {
+      "$ref": "#/$defs/goalPolicyConflict"
     },
     "safetyRestriction": {
       "$ref": "#/$defs/hardSafetyRestriction"
@@ -1300,6 +1311,16 @@
         "predictedProgramEffectiveness": {
           "$ref": "#/$defs/score"
         },
+        "goalPolicyCompatibility": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["repRange", "restSeconds", "compatible"],
+          "properties": {
+            "repRange": { "type": "boolean" },
+            "restSeconds": { "type": "boolean" },
+            "compatible": { "type": "boolean" }
+          }
+        },
         "researchSupport": {
           "$ref": "#/$defs/score"
         },
@@ -1346,12 +1367,71 @@
         }
       }
     },
+    "scientificSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authority", "studyIds", "conclusionIds", "population", "directness", "evidenceStrength", "uncertainty"],
+      "properties": {
+        "authority": { "enum": ["evidence", "product_policy", "safety"] },
+        "studyIds": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^stu_[0-9]{4}$" } },
+        "conclusionIds": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^con_[0-9]{4}$" } },
+        "population": { "$ref": "#/$defs/nonEmptyString" },
+        "directness": { "enum": ["direct", "indirect", "mixed", "expert_inference", "product_policy_translation"] },
+        "evidenceStrength": { "enum": ["high", "moderate", "low", "very_low"] },
+        "uncertainty": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "scientificProvenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "repRange", "restSeconds", "workingSets", "selectionOrder", "progression", "confirmation"],
+      "properties": {
+        "schemaVersion": { "const": "recommendation-provenance/1.0.0" },
+        "repRange": { "$ref": "#/$defs/scientificSource" },
+        "restSeconds": { "$ref": "#/$defs/scientificSource" },
+        "workingSets": { "$ref": "#/$defs/scientificSource" },
+        "selectionOrder": { "$ref": "#/$defs/scientificSource" },
+        "progression": { "$ref": "#/$defs/scientificSource" },
+        "confirmation": { "$ref": "#/$defs/scientificSource" }
+      }
+    },
+    "progressionConfirmation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "requiredExposures", "observedQualifyingExposures", "satisfied", "exceptionApplied", "criteria", "qualifyingExposureDates", "explanation"],
+      "properties": {
+        "schemaVersion": { "const": "progression-confirmation/1.0.0" },
+        "requiredExposures": { "type": "integer", "minimum": 1, "maximum": 3 },
+        "observedQualifyingExposures": { "type": "integer", "minimum": 0 },
+        "satisfied": { "type": "boolean" },
+        "exceptionApplied": { "type": ["string", "null"], "enum": ["stable_low_fatigue_isolation", null] },
+        "criteria": { "type": "array", "minItems": 5, "uniqueItems": true, "items": { "$ref": "#/$defs/id" } },
+        "qualifyingExposureDates": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/nonEmptyString" } },
+        "explanation": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "goalPolicyConflict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "field", "conflictingFields", "goal", "requestedGoalRange", "preservedExerciseRange", "alternativeExerciseId", "explanation"],
+      "properties": {
+        "schemaVersion": { "const": "goal-policy-conflict/1.0.0" },
+        "field": { "enum": ["repRange", "restSeconds"] },
+        "conflictingFields": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["repRange", "restSeconds"] } },
+        "goal": { "enum": ["strength", "hypertrophy", "muscular_endurance", "general_fitness"] },
+        "requestedGoalRange": { "type": "object", "additionalProperties": false, "required": ["min", "max"], "properties": { "min": { "type": "number", "minimum": 0 }, "max": { "type": "number", "minimum": 0 } } },
+        "preservedExerciseRange": { "$ref": "#/$defs/repRange" },
+        "alternativeExerciseId": { "$ref": "#/$defs/nullableId" },
+        "alternativeExerciseName": { "type": ["string", "null"] },
+        "explanation": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
     "programmingContext": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["profileVersion", "missingInputs", "policyDisclosures", "goal", "experience", "personalization"],
+      "required": ["profileVersion", "missingInputs", "policyDisclosures", "goal", "experience", "nutritionPhase", "returningAfterGap", "personalization"],
       "properties": {
-        "profileVersion": { "const": "training-profile/1.0.0" },
+        "profileVersion": { "const": "training-profile/1.1.0" },
         "missingInputs": { "type": "array", "uniqueItems": true, "items": { "enum": ["trainingGoal", "experienceLevel"] } },
         "policyDisclosures": { "type": "array", "minItems": 3, "items": { "$ref": "#/$defs/nonEmptyString" } },
         "goal": {
@@ -1384,6 +1464,32 @@
             "complexStructureAllowed": { "type": "boolean" },
             "complexitySupportedBy": { "enum": ["none", "explicit_preference", "productive_history"] },
             "complexityPolicy": { "$ref": "#/$defs/nonEmptyString" },
+            "disclosure": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        },
+        "nutritionPhase": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["requestedValue", "resolvedValue", "source", "authority", "doseAdjustmentApplied", "disclosure", "scientificProvenance"],
+          "properties": {
+            "requestedValue": { "type": ["string", "null"] },
+            "resolvedValue": { "type": ["string", "null"], "enum": ["deficit", "maintenance", "recomposition", "surplus", null] },
+            "source": { "enum": ["canonical_user_input", "unspecified"] },
+            "authority": { "const": "product_policy" },
+            "doseAdjustmentApplied": { "const": false },
+            "disclosure": { "$ref": "#/$defs/nonEmptyString" },
+            "scientificProvenance": { "$ref": "#/$defs/scientificSource" }
+          }
+        },
+        "returningAfterGap": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["requestedValue", "resolvedValue", "source", "authority", "disclosure"],
+          "properties": {
+            "requestedValue": { "type": ["boolean", "null"] },
+            "resolvedValue": { "type": ["boolean", "null"] },
+            "source": { "enum": ["canonical_user_input", "unspecified"] },
+            "authority": { "const": "product_policy" },
             "disclosure": { "$ref": "#/$defs/nonEmptyString" }
           }
         },
