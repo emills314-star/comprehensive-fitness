@@ -7,8 +7,23 @@ const {
   entityScopedUniquenessState,
   hostileCases,
   legacyState,
+  safetyWorkoutState,
   validFullState
 } = require("../fixtures/synthetic-app-backups");
+const prescriptionApi = require("../../prescription-engine");
+
+function publicResearchData() {
+  const read = (name) => require(`../../research_database/exports/json/${name}.json`);
+  return {
+    exerciseDatabase: read("exercise_database"),
+    exerciseMuscleMap: read("exercise_muscle_map"),
+    exerciseSubstitutionMap: read("exercise_substitution_map"),
+    muscleGroupRecommendations: read("muscle_group_recommendations"),
+    progressionRules: read("progression_rules"),
+    nutritionStrategies: read("nutrition_strategies"),
+    manifest: read("manifest")
+  };
+}
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -19,6 +34,75 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/");
   await page.waitForLoadState("load");
 });
+
+async function seedApplicationState(page, state) {
+  const seeded = await page.evaluate((model) => {
+    data = model;
+    entityStructureRevision += 1;
+    entityIndexCache = null;
+    activeSessionId = model.sessions[0].id;
+    activeWorkoutId = model.sessions[0].id;
+    viewingHistorySessionId = "";
+    completedSummarySessionId = "";
+    activeSetId = model.sets[0]?.id || "";
+    timer = null;
+    render();
+    return {
+      activeSessionId,
+      activeWorkoutId,
+      exerciseCount: data.exercises.length,
+      title: data.sessions[0].title
+    };
+  }, state);
+  expect(seeded).toMatchObject({
+    activeSessionId: state.sessions[0].id,
+    activeWorkoutId: state.sessions[0].id,
+    exerciseCount: state.exercises.length,
+    title: "Synthetic Safety Workout"
+  });
+  await expect(page.getByRole("heading", { name: "Synthetic Safety Workout" })).toBeVisible();
+}
+
+async function runtimeWorkoutState(page) {
+  return page.evaluate(() => ({
+    exercises: data.exercises.map((item) => ({ id: item.id, name: item.name, executionBlocked: item.executionBlocked, finalPrescription: item.finalPrescription })),
+    sets: data.sets.map((item) => ({ id: item.id, exerciseId: item.exerciseId, completed: item.completed, skipped: item.skipped, isWarmup: item.isWarmup })),
+    timer: timer ? { exerciseId: timer.exerciseId, setId: timer.setId, isActive: timer.isActive } : null
+  }));
+}
+
+async function dispatchForgedWorkoutAction(page, action, identifiers = {}) {
+  const attempt = await page.evaluate(({ requestedAction, ids }) => {
+    if (requestedAction === "add-exercise") addExerciseDraft = "Synthetic Forbidden Exercise";
+    const control = document.createElement("button");
+    control.type = "button";
+    control.dataset.action = requestedAction;
+    if (ids.exerciseId) control.dataset.exerciseId = ids.exerciseId;
+    if (ids.setId) control.dataset.setId = ids.setId;
+    let observedAfterDelegatedHandler = 0;
+    const observe = (event) => {
+      if (event.target === control) observedAfterDelegatedHandler += 1;
+    };
+    root.addEventListener("click", observe, { once: true });
+    root.appendChild(control);
+    const dispatched = control.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    control.remove();
+    return { dispatched, observedAfterDelegatedHandler };
+  }, { requestedAction: action, ids: identifiers });
+  expect(attempt.observedAfterDelegatedHandler, `${action} must traverse the delegated Lift click handler before state is asserted`).toBe(1);
+  return attempt;
+}
+
+async function expectMutationControlsBlocked(scope, message) {
+  const actions = ["add-set", "add-warmup-set", "duplicate-set", "toggle-set", "toggle-skip-set", "start-timer"];
+  for (const action of actions) {
+    const controls = scope.locator(`[data-action="${action}"]`);
+    const allBlocked = await controls.evaluateAll((nodes) => nodes.every((node) => (
+      node.hasAttribute("disabled") || node.getAttribute("aria-disabled") === "true"
+    )));
+    expect.soft(allBlocked, `${message}: ${action} must be omitted or disabled`).toBe(true);
+  }
+}
 
 async function openBackupSettings(page) {
   const navigation = page.getByRole("navigation", { name: "Main navigation" });
@@ -148,6 +232,96 @@ async function exportedBackup(group) {
   await group.locator('[data-action="export-data"]').click();
   return JSON.parse(await group.getByLabel("Exported backup JSON").inputValue());
 }
+
+test("hard-safety UI and delegated handlers refuse illness, unsited pain, matching pain, and unknown taxonomy", async ({ page }) => {
+  test.setTimeout(90_000);
+  const actions = ["add-exercise", "add-set", "add-warmup-set", "duplicate-set", "toggle-set", "toggle-skip-set", "start-timer"];
+
+  await test.step("illness blocks every mutation across the workout", async () => {
+    const fixture = safetyWorkoutState({ illness: true, pain: false, affectedMuscle: "" });
+    await seedApplicationState(page, fixture.state);
+    const addExerciseControls = page.locator('[data-action="add-exercise"]');
+    expect.soft(await addExerciseControls.evaluateAll((nodes) => nodes.every((node) => node.disabled || node.getAttribute("aria-disabled") === "true")), "Illness must omit or disable Add Exercise").toBe(true);
+    await expectMutationControlsBlocked(page.locator("#main-content"), "Illness whole-workout restriction");
+    const before = await runtimeWorkoutState(page);
+    for (const action of actions) {
+      await dispatchForgedWorkoutAction(page, action, {
+        exerciseId: fixture.exerciseIds.bench,
+        setId: IDS.set
+      });
+    }
+    expect(await runtimeWorkoutState(page), "Forged illness mutations must leave exercises, sets, and timer unchanged").toEqual(before);
+  });
+
+  await test.step("pain without an affected area blocks the whole workout", async () => {
+    const fixture = safetyWorkoutState({ illness: false, pain: true, affectedMuscle: "" });
+    await seedApplicationState(page, fixture.state);
+    await expectMutationControlsBlocked(page.locator("#main-content"), "Unsited pain whole-workout restriction");
+    const before = await runtimeWorkoutState(page);
+    await dispatchForgedWorkoutAction(page, "add-set", { exerciseId: fixture.exerciseIds.legPress });
+    expect(await runtimeWorkoutState(page), "Unsited pain must refuse even a nonmatching exercise mutation").toEqual(before);
+  });
+
+  await test.step("localized pain blocks matches and unknowns but permits a known nonmatch", async () => {
+    const fixture = safetyWorkoutState({ illness: false, pain: true, affectedMuscle: "Chest" });
+    await seedApplicationState(page, fixture.state);
+    const card = (id) => page.locator(`.exercise-card:has([data-exercise-id="${id}"])`).first();
+    await expectMutationControlsBlocked(card(fixture.exerciseIds.bench), "Localized matching exercise");
+    await expectMutationControlsBlocked(card(fixture.exerciseIds.unknown), "Unresolved taxonomy exercise");
+    const legAddSet = card(fixture.exerciseIds.legPress).locator('[data-action="add-set"]');
+    await expect.soft(legAddSet, "A known nonmatching exercise must stay actionable").toBeEnabled();
+
+    const before = await runtimeWorkoutState(page);
+    await dispatchForgedWorkoutAction(page, "add-set", { exerciseId: fixture.exerciseIds.bench });
+    await dispatchForgedWorkoutAction(page, "add-set", { exerciseId: fixture.exerciseIds.unknown });
+    const afterBlockedAttempts = await runtimeWorkoutState(page);
+    expect(afterBlockedAttempts.sets, "Matching and unresolved exercise mutations must fail closed").toEqual(before.sets);
+
+    await dispatchForgedWorkoutAction(page, "add-set", { exerciseId: fixture.exerciseIds.legPress });
+    const afterAllowed = await runtimeWorkoutState(page);
+    expect(afterAllowed.sets.filter((item) => item.exerciseId === fixture.exerciseIds.legPress)).toHaveLength(
+      before.sets.filter((item) => item.exerciseId === fixture.exerciseIds.legPress).length + 1
+    );
+  });
+});
+
+test("confirmed pain-free substitution uses an explicit catalog-backed UI flow and preserves the original block", async ({ page }) => {
+  const research = publicResearchData();
+  const engine = prescriptionApi.createPrescriptionEngine({ researchData: research });
+  const originalId = "ex_barbell_bench_press";
+  const substituteId = "ex_incline_dumbbell_press";
+  const blocked = engine.prescribeExercise({
+    exerciseId: originalId,
+    muscleGroupId: "chest",
+    readiness: { pain: true, affectedMuscle: "chest" },
+    availableEquipment: ["all"],
+    trainingGoal: "hypertrophy",
+    experienceLevel: "intermediate",
+    nutritionPhase: "maintenance",
+    createdAt: "2026-07-14T12:00:00.000Z"
+  });
+  const fixture = safetyWorkoutState({ illness: false, pain: true, affectedMuscle: "Chest" }, { recommendationSnapshot: blocked });
+  await seedApplicationState(page, fixture.state);
+
+  const card = page.locator(`.exercise-card:has([data-exercise-id="${fixture.exerciseIds.bench}"])`).first();
+  await card.locator("details.exercise-options > summary").click();
+  const override = card.locator("details.prescription-override");
+  await override.locator("summary").click();
+  await override.locator('[data-override-field="exercise"]').fill("Incline Dumbbell Press");
+  const confirmation = override.locator('[data-override-field="pain-free-confirmed"]');
+  await expect.soft(confirmation, "Safety substitution requires an explicit pain-free confirmation control").toHaveCount(1);
+  if (await confirmation.count()) await confirmation.check();
+  await override.locator('[data-action="apply-prescription-override"]').click();
+
+  const runtime = await runtimeWorkoutState(page);
+  const substituted = runtime.exercises.find((item) => item.id === fixture.exerciseIds.bench);
+  expect.soft(substituted?.name).toBe("Incline Dumbbell Press");
+  expect.soft(substituted?.finalPrescription?.exerciseId).toBe(substituteId);
+  expect.soft(substituted?.finalPrescription?.executionBlocked).toBe(false);
+  expect.soft(substituted?.finalPrescription?.safetyRestriction?.painFreeConfirmed).toBe(true);
+  expect.soft(substituted?.finalPrescription?.safetyRestriction?.originalExerciseId, "The painful original must remain bound in the safety audit").toBe(originalId);
+  expect.soft(blocked.finalPrescription.executionBlocked, "The source recommendation snapshot must remain blocked").toBe(true);
+});
 
 test("primary navigation exposes a skip target and moves focus into the selected view", async ({ page }) => {
   const skipLink = page.getByRole("link", { name: /skip.*content/i });

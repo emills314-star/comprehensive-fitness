@@ -5,17 +5,20 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 
-const ROOT = path.resolve(__dirname, "..");
-const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
-const publicExercises = require(path.join(ROOT, "research_database", "exports", "json", "exercise_database.json"));
-const prescriptionApi = require(path.join(ROOT, "prescription-engine.js"));
+const TEST_ROOT = path.resolve(__dirname, "..");
+const APP_ROOT = process.env.APP_CONTRACT_ROOT
+  ? path.resolve(process.env.APP_CONTRACT_ROOT)
+  : TEST_ROOT;
+const html = fs.readFileSync(path.join(APP_ROOT, "index.html"), "utf8");
+const publicExercises = require(path.join(APP_ROOT, "research_database", "exports", "json", "exercise_database.json"));
+const prescriptionApi = require(path.join(APP_ROOT, "prescription-engine.js"));
 const {
   BACKUP_BOUNDARIES,
   buildEntityCollectionCase,
   entityCollectionCases,
   jsonShapeCases,
   legacyState
-} = require(path.join(ROOT, "tests", "fixtures", "synthetic-app-backups.js"));
+} = require(path.join(TEST_ROOT, "tests", "fixtures", "synthetic-app-backups.js"));
 
 const tests = [];
 
@@ -37,6 +40,12 @@ function functionSource(name) {
 
 function evaluateFunction(name, context = {}) {
   return vm.runInNewContext(`(${functionSource(name).trim()})`, context, { filename: `index.html#${name}` });
+}
+
+function firstFunctionName(candidates) {
+  const name = candidates.find((candidate) => new RegExp(`(?:async\\s+)?function\\s+${candidate}\\s*\\(`).test(html));
+  assert.ok(name, `Missing required production function; expected one of ${candidates.join(", ")}`);
+  return name;
 }
 
 function plain(value) {
@@ -68,7 +77,7 @@ function normalizeIdentity(value) {
 }
 
 function publicResearchData() {
-  const read = (name) => require(path.join(ROOT, "research_database", "exports", "json", `${name}.json`));
+  const read = (name) => require(path.join(APP_ROOT, "research_database", "exports", "json", `${name}.json`));
   return {
     exerciseDatabase: publicExercises,
     exerciseMuscleMap: read("exercise_muscle_map"),
@@ -146,6 +155,249 @@ test("safety adapters distinguish workout illness from affected-exercise pain an
     assert.deepEqual(target.warmups || [], [], `Blocked ${reason} target leaked warm-ups`);
     assert.deepEqual(target.executableActions || [], [], `Blocked ${reason} target leaked executable actions`);
   }
+});
+
+test("hard-safety mutation policy blocks illness, unsited pain, matching pain, and unresolved taxonomy", () => {
+  const policyName = firstFunctionName([
+    "workoutMutationSafetyDecision",
+    "workoutSafetyMutationDecision",
+    "workoutMutationSafetyPolicy"
+  ]);
+  const decide = evaluateFunction(policyName);
+  const executableActions = [
+    "add-exercise", "add-set", "add-warmup-set", "duplicate-set",
+    "toggle-set", "toggle-skip-set", "start-timer"
+  ];
+  const decision = (action, recovery, exercise = null, exerciseMuscles = [], taxonomyResolved = true) => plain(decide(action, {
+    recovery,
+    exercise,
+    exerciseMuscles,
+    taxonomyResolved
+  }));
+  const expectBlocked = (result, scope, reason, label) => {
+    assert.equal(result?.allowed, false, `${label} must refuse the mutation`);
+    assert.equal(result?.scope, scope, `${label} must expose ${scope} scope`);
+    assert.equal(result?.reason, reason, `${label} must expose the ${reason} restriction`);
+  };
+
+  for (const action of executableActions) {
+    expectBlocked(
+      decision(action, { illness: true, pain: false, affectedMuscle: "" }),
+      "workout",
+      "illness",
+      `illness ${action}`
+    );
+    expectBlocked(
+      decision(action, { illness: false, pain: true, affectedMuscle: "" }),
+      "workout",
+      "pain",
+      `pain without an affected area ${action}`
+    );
+  }
+
+  const chestPain = { illness: false, pain: true, affectedMuscle: "Chest" };
+  expectBlocked(
+    decision("add-set", chestPain, { id: "bench", name: "Barbell Bench Press" }, ["Chest", "Triceps"], true),
+    "exercise",
+    "pain",
+    "localized matching exercise"
+  );
+  assert.equal(
+    decision("add-set", chestPain, { id: "leg-press", name: "Leg Press" }, ["Quadriceps", "Glutes"], true)?.allowed,
+    true,
+    "A catalog-resolved exercise outside the affected area must remain usable"
+  );
+  expectBlocked(
+    decision("add-set", chestPain, { id: "unknown", name: "Unmapped Synthetic Movement" }, [], false),
+    "exercise",
+    "pain",
+    "unresolved exercise taxonomy"
+  );
+});
+
+test("Lift render and mutation dispatch paths both enforce the hard-safety policy", () => {
+  const guardPattern = /workoutMutationSafetyDecision|workoutSafetyMutationDecision|workoutMutationSafetyPolicy|assertWorkoutMutationAllowed|guardWorkoutMutation/;
+  const renderSources = [functionSource("renderWorkout"), functionSource("renderExercise"), functionSource("renderSet")].join("\n");
+  const namedMutators = ["addExercise", "addSet", "toggleSetCompletion", "toggleSetSkipped", "startTimer"];
+  const clickStart = html.indexOf('root.addEventListener("click"');
+  assert.notEqual(clickStart, -1, "Missing delegated Lift click handler");
+  const clickEnd = html.indexOf('root.addEventListener("change"', clickStart);
+  const clickHandler = html.slice(clickStart, clickEnd > clickStart ? clickEnd : clickStart + 40000);
+  collectAssertions([
+    ["blocked controls", () => assertContains(renderSources, guardPattern, "Blocked Lift controls must be omitted or disabled from the same executable policy used by mutations")],
+    ["delegated event guard", () => assertContains(clickHandler, guardPattern, "Forged click events must be refused before reaching Add Exercise/Set/Warm-up/Duplicate/toggle/timer handlers")],
+    ...namedMutators.map((name) => [name, () => assertContains(functionSource(name), guardPattern, `${name} must independently refuse blocked data mutations`)]),
+    ["all mutation actions remain covered", () => executableMutationActions().forEach((action) => assertContains(clickHandler, new RegExp(`(?:action\\s*===\\s*["']${action}["']|["']${action}["'])`), `Missing ${action} mutation path`))]
+  ]);
+});
+
+function executableMutationActions() {
+  return ["add-exercise", "add-set", "add-warmup-set", "duplicate-set", "toggle-set", "toggle-skip-set", "start-timer"];
+}
+
+test("confirmed pain-free substitute stays distinct, catalog-backed, equipment-compatible, and auditable", () => {
+  const engine = prescriptionApi.createPrescriptionEngine({ researchData: publicResearchData() });
+  const originalId = "ex_barbell_bench_press";
+  const substituteId = "ex_incline_dumbbell_press";
+  const substituteRecord = publicExercises.find((item) => item.exercise_id === substituteId);
+  assert.ok(substituteRecord, "Synthetic safety test requires a public catalog substitute");
+  const blocked = engine.prescribeExercise({
+    exerciseId: originalId,
+    muscleGroupId: "chest",
+    readiness: { pain: true, affectedMuscle: "chest" },
+    availableEquipment: ["all"],
+    trainingGoal: "hypertrophy",
+    experienceLevel: "intermediate",
+    nutritionPhase: "maintenance",
+    createdAt: "2026-07-14T12:00:00.000Z"
+  });
+  const options = {
+    allowedSafetySubstituteIds: [substituteId],
+    exerciseCatalog: [substituteRecord],
+    availableEquipment: ["all"],
+    createdAt: "2026-07-14T12:05:00.000Z"
+  };
+  const substitute = { exerciseId: substituteId, researchExerciseId: substituteId, reason: "Synthetic pain-free alternative" };
+
+  assert.throws(
+    () => engine.applyManualOverride(blocked, substitute, options),
+    /pain-free confirmation|painFreeConfirmed/i,
+    "A substitute without explicit painFreeConfirmed=true must remain blocked"
+  );
+  assert.throws(
+    () => engine.applyManualOverride(blocked, { ...substitute, exerciseId: originalId, researchExerciseId: originalId, painFreeConfirmed: true }, { ...options, allowedSafetySubstituteIds: [originalId], exerciseCatalog: [publicExercises.find((item) => item.exercise_id === originalId)] }),
+    /different exercise|painful original/i,
+    "The painful original cannot be re-labelled as its own safe alternative"
+  );
+  assert.throws(
+    () => engine.applyManualOverride(blocked, { ...substitute, painFreeConfirmed: true }, { ...options, availableEquipment: ["bodyweight"] }),
+    /equipment/i,
+    "An equipment-incompatible alternative must remain blocked"
+  );
+
+  const resolved = engine.applyManualOverride(blocked, { ...substitute, painFreeConfirmed: true }, options);
+  assert.equal(blocked.finalPrescription.executionBlocked, true, "Resolving an alternative must not mutate the original blocked snapshot");
+  assert.equal(blocked.finalPrescription.exerciseId, originalId, "The original blocked identity must remain unchanged");
+  assert.equal(resolved.finalPrescription.executionBlocked, false, "Only the validated substitute may become executable");
+  assert.equal(resolved.finalPrescription.exerciseId, substituteId);
+  assert.equal(resolved.finalPrescription.safetyRestriction.originalExerciseId, originalId);
+  assert.equal(resolved.finalPrescription.safetyRestriction.painFreeConfirmed, true);
+
+  const frontendOverride = functionSource("applyPrescriptionOverride");
+  collectAssertions([
+    ["explicit confirmation", () => assertContains(frontendOverride, /painFreeConfirmed/, "The UI adapter must forward explicit pain-free confirmation")],
+    ["engine candidate allowlist", () => assertContains(frontendOverride, /allowedSafetySubstituteIds/, "The UI adapter must pass an engine-validated safety-substitute allowlist")],
+    ["equipment restrictions", () => assertContains(frontendOverride, /availableEquipment/, "The UI adapter must preserve current equipment restrictions")],
+    ["catalog identity", () => assertContains(frontendOverride, /researchExerciseId|exerciseCatalog|trustedExerciseCatalog/, "The UI adapter must pass a coherent catalog/research identity")]
+  ]);
+});
+
+test("engine hard-constraint rejections stay typed and never enter legacy target fallback", () => {
+  const rejectionScenarios = [
+    ["excluded_exercise", "Exercise is excluded by the supplied restrictions."],
+    ["unavailable_equipment", "Exercise is not compatible with available equipment."],
+    ["empty_muscle_scope", "Muscle scope must be a non-empty array."],
+    ["invalid_time_constraint", "Session time must be a positive finite number."],
+    ["invalid_exercise_identity", "Exercise identity is invalid or contradictory."]
+  ];
+  const isTypedRejection = (value) => {
+    const detail = value?.error || value;
+    const code = String(detail?.code || value?.code || "");
+    const typed = detail?.hardConstraint === true || detail?.type === "hard_constraint_rejection" || /^HARD_CONSTRAINT_/i.test(code);
+    const blocked = detail?.executionBlocked === true || detail?.executable === false || value?.executionBlocked === true || value?.executable === false;
+    return typed && blocked;
+  };
+
+  for (const [reason, message] of rejectionScenarios) {
+    const error = Object.assign(new Error(message), {
+      code: `HARD_CONSTRAINT_${reason.toUpperCase()}`,
+      hardConstraint: true,
+      executionBlocked: true,
+      executable: false,
+      constraint: reason
+    });
+    const context = {
+      prescriptionEngine: { prescribeExercise: () => { throw error; } },
+      prescriptionEvidenceStatus: { state: "ready" },
+      prescriptionExerciseIdentity: () => "ex_barbell_bench_press",
+      normalizePrescriptionIdentity: (value) => String(value || "").trim().toLowerCase(),
+      prescriptionMuscleGroup: () => "chest",
+      todayIso: () => "2026-07-14",
+      prescriptionHistoryForExercise: () => [],
+      prescriptionReadiness: () => ({}),
+      currentMesocycle: () => null,
+      prescriptionScopeHistories: () => ({ muscleExerciseHistories: [], programMuscleHistories: [] }),
+      musclesForExercise: () => [{ muscle: "Chest" }],
+      appMuscleFromPrescriptionGroup: () => "Chest",
+      weeklyMuscleVolume: () => [],
+      startOfWeekIso: (value) => value,
+      prescriptionSnapshotCache: new Map(),
+      analysisRevision: 1,
+      data: { settings: {} },
+      JSON
+    };
+    const unified = evaluateFunction("unifiedPrescriptionSnapshot", context);
+    let result;
+    let thrown = null;
+    try {
+      result = unified({ name: "Barbell Bench Press" }, {
+        fresh: true,
+        excludedExerciseIds: reason === "excluded_exercise" ? ["ex_barbell_bench_press"] : [],
+        availableEquipment: reason === "unavailable_equipment" ? ["bodyweight"] : ["all"],
+        includedMuscleGroupIds: reason === "empty_muscle_scope" ? [] : ["chest"],
+        sessionDurationMinutes: reason === "invalid_time_constraint" ? 0 : 45
+      });
+    } catch (caught) {
+      thrown = caught;
+    }
+    assert.equal(isTypedRejection(thrown || result), true, `${reason} was swallowed into an untyped/null fallback`);
+  }
+
+  const typedRejection = {
+    type: "hard_constraint_rejection",
+    code: "HARD_CONSTRAINT_EXCLUDED_EXERCISE",
+    hardConstraint: true,
+    executionBlocked: true,
+    executable: false,
+    constraint: "excluded_exercise"
+  };
+  let legacyCalls = 0;
+  const coach = evaluateFunction("coachTargetForTemplateExercise", {
+    unifiedPrescriptionSnapshot: () => typedRejection,
+    legacyTargetFromSnapshot: () => { legacyCalls += 1; return { sets: 3, executable: true }; },
+    todayIso: () => "2026-07-14"
+  });
+  let target;
+  let thrown = null;
+  try { target = coach({ name: "Barbell Bench Press" }, {}); }
+  catch (caught) { thrown = caught; }
+  assert.equal(legacyCalls, 0, "A hard-constraint rejection must never enter legacyTargetFromSnapshot or legacy workout construction");
+  assert.equal(isTypedRejection(thrown || target), true, "Coach target resolution must retain the typed non-executable rejection");
+});
+
+test("invalid reconciled custom exercise identity resolves to null instead of an ordinary custom ID", () => {
+  const invalidId = "custom_conflicting_press";
+  const resolver = evaluateFunction("prescriptionExerciseIdentity", {
+    prescriptionEngine: {
+      evidence: {
+        research: { exerciseIdByAlias: new Map(), exerciseDatabase: [] },
+        personal: {
+          exerciseScores: [{ exercise_id: invalidId, exercise_name: "Conflicting Garage Press" }],
+          exercisePrescriptions: [],
+          reconciledIdentityByExerciseId: new Map([[invalidId, {
+            exerciseId: invalidId,
+            researchExerciseId: "ex_barbell_bench_press",
+            invalid: true,
+            invalidReason: "Synthetic contradictory trusted aliases"
+          }]])
+        }
+      }
+    },
+    normalizePrescriptionIdentity: normalizeIdentity
+  });
+  const resolved = resolver("Conflicting Garage Press");
+  assert.equal(resolved, null, "An invalid reconciled identity must fail closed instead of re-entering the custom exercise path");
+  assert.notEqual(resolved, invalidId, "Invalid reconciliation must never return an ordinary custom ID");
 });
 
 test("unified prescriptions preserve template intent and all hard workout constraints", () => {
