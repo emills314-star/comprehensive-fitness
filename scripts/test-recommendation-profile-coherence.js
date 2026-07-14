@@ -383,7 +383,7 @@ test("material recommendation fields carry structured, referentially valid scien
 });
 
 test("material contract versions are coherent, deterministic, and retain repository-known read compatibility", () => {
-  assert.equal(ENGINE_VERSION, "3.3.2");
+  assert.equal(ENGINE_VERSION, "3.3.3");
   const options = { trainingGoal: "strength", experienceLevel: "advanced", nutritionPhase: "maintenance" };
   const first = prescribeBench(options);
   const second = prescribeBench(options);

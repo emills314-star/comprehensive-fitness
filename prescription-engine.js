@@ -13,7 +13,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function prescriptionEngineFactory() {
   "use strict";
 
-  const ENGINE_VERSION = "3.3.2";
+  const ENGINE_VERSION = "3.3.3";
   const PRESCRIPTION_SCHEMA_VERSION = "2.3.0";
   const SNAPSHOT_SCHEMA_VERSION = "1.3.0";
   const TRAINING_PROFILE_VERSION = "training-profile/1.1.0";
@@ -413,7 +413,7 @@
   }
 
   function materialScientificProvenance(goal) {
-    const exactGoalPolicy = ["strength", "muscular_endurance", "general_fitness"].includes(goal);
+    const exactGoalPolicy = ["strength", "hypertrophy", "muscular_endurance", "general_fitness"].includes(goal);
     return {
       schemaVersion: SCIENTIFIC_PROVENANCE_SCHEMA_VERSION,
       repRange: scientificSource({
@@ -423,8 +423,10 @@
         population: "Healthy adult resistance-training populations; studies combine training statuses and sexes.",
         directness: exactGoalPolicy ? "product_policy_translation" : "mixed",
         evidenceStrength: exactGoalPolicy ? "low" : "high",
-        uncertainty: exactGoalPolicy
-          ? "The exact goal-specific repetition band is a directional product policy inside a broad evidence-supported loading spectrum."
+        uncertainty: goal === "hypertrophy"
+          ? "The cited high-strength broad-load conclusion supports hypertrophy across approximately 5-30 repetitions when effort is sufficient; the exact 6-15 band is a limited product-policy translation, not a directly validated optimum."
+          : exactGoalPolicy
+            ? "The exact goal-specific repetition band is a directional product policy inside a broad evidence-supported loading spectrum."
           : "Exercise- and muscle-specific optimal repetition thresholds are not established."
       }),
       restSeconds: scientificSource({
@@ -2516,36 +2518,96 @@
     };
   }
 
-  function progressionExposureIdentity(item) {
+  function progressionExposureIdentifiers(item) {
     const raw = item.raw || {};
     const candidates = [
-      ["exposure", firstPresent(raw.exposure_id, raw.exposureId, raw.exercise_exposure_id, raw.exerciseExposureId)],
-      ["workout_exercise", firstPresent(raw.workout_exercise_id, raw.workoutExerciseId)],
-      ["session_exercise", firstPresent(raw.session_exercise_id, raw.sessionExerciseId)],
-      ["workout", firstPresent(raw.workout_id, raw.workoutId)],
-      ["session", firstPresent(raw.session_id, raw.sessionId, raw.workout_session_id, raw.workoutSessionId)]
+      ["exposure", [raw.exposure_id, raw.exposureId, raw.exercise_exposure_id, raw.exerciseExposureId]],
+      ["workout_exercise", [raw.workout_exercise_id, raw.workoutExerciseId]],
+      ["session_exercise", [raw.session_exercise_id, raw.sessionExerciseId]],
+      ["workout", [raw.workout_id, raw.workoutId]],
+      ["session", [raw.session_id, raw.sessionId, raw.workout_session_id, raw.workoutSessionId]]
     ];
-    for (const [type, rawValue] of candidates) {
+    return unique(candidates.flatMap(([type, values]) => values.map((rawValue) => {
       const value = typeof rawValue === "string" ? rawValue.trim() : rawValue;
-      if ((typeof value === "string" && value) || (typeof value === "number" && Number.isFinite(value))) return `${type}:${value}`;
-    }
-    // Histories reach this point only after candidate identity filtering, so a
-    // date is a bounded fallback for rows of the same resolved exercise. Rows
-    // without either a stable identity or date are conservatively one group.
-    return item.date ? `date:${item.date}` : "unknown_exposure";
+      return (typeof value === "string" && value) || (typeof value === "number" && Number.isFinite(value))
+        ? `${type}:${value}`
+        : null;
+    })));
   }
 
   function groupProgressionExposures(history) {
-    const groups = new Map();
-    history.forEach((item, order) => {
-      const identity = progressionExposureIdentity(item);
-      if (!groups.has(identity)) groups.set(identity, { identity, rows: [], firstOrder: order });
-      groups.get(identity).rows.push(item);
+    const entries = history.map((item, order) => ({ item, order, identifiers: progressionExposureIdentifiers(item) }));
+    const parent = entries.map((_, index) => index);
+    const find = (index) => {
+      let root = index;
+      while (parent[root] !== root) root = parent[root];
+      while (parent[index] !== index) {
+        const next = parent[index];
+        parent[index] = root;
+        index = next;
+      }
+      return root;
+    };
+    const unite = (left, right) => {
+      const leftRoot = find(left);
+      const rightRoot = find(right);
+      if (leftRoot !== rightRoot) parent[rightRoot] = leftRoot;
+    };
+    const firstEntryByIdentifier = new Map();
+    entries.forEach((entry, index) => {
+      entry.identifiers.forEach((identifier) => {
+        if (firstEntryByIdentifier.has(identifier)) unite(index, firstEntryByIdentifier.get(identifier));
+        else firstEntryByIdentifier.set(identifier, index);
+      });
     });
-    return [...groups.values()].map((group) => ({
+
+    const stableComponentsByRoot = new Map();
+    entries.forEach((entry, index) => {
+      if (!entry.identifiers.length) return;
+      const root = find(index);
+      if (!stableComponentsByRoot.has(root)) stableComponentsByRoot.set(root, { rows: [], firstOrder: entry.order, ambiguous: false });
+      const component = stableComponentsByRoot.get(root);
+      component.rows.push(entry.item);
+      component.firstOrder = Math.min(component.firstOrder, entry.order);
+    });
+    const components = [...stableComponentsByRoot.values()];
+    const stableComponentsByDate = new Map();
+    components.forEach((component) => {
+      unique(component.rows.map((item) => item.date)).forEach((date) => {
+        if (!stableComponentsByDate.has(date)) stableComponentsByDate.set(date, new Set());
+        stableComponentsByDate.get(date).add(component);
+      });
+    });
+
+    const unidentifiedByDate = new Map();
+    entries.filter((entry) => !entry.identifiers.length).forEach((entry) => {
+      const date = entry.item.date || "";
+      if (!unidentifiedByDate.has(date)) unidentifiedByDate.set(date, []);
+      unidentifiedByDate.get(date).push(entry);
+    });
+    unidentifiedByDate.forEach((unidentified, date) => {
+      const candidates = date ? [...(stableComponentsByDate.get(date) || [])] : [];
+      if (candidates.length === 1) {
+        candidates[0].rows.push(...unidentified.map((entry) => entry.item));
+        candidates[0].firstOrder = Math.min(candidates[0].firstOrder, ...unidentified.map((entry) => entry.order));
+        return;
+      }
+      components.push({
+        rows: unidentified.map((entry) => entry.item),
+        firstOrder: Math.min(...unidentified.map((entry) => entry.order)),
+        ambiguous: candidates.length > 1
+      });
+    });
+
+    return components.map((group) => ({
       ...group,
       date: unique(group.rows.map((item) => item.date)).at(-1) || null
-    })).sort((left, right) => (left.date || "9999").localeCompare(right.date || "9999") || left.firstOrder - right.firstOrder);
+    })).sort((left, right) => {
+      const chronological = (left.date || "9999").localeCompare(right.date || "9999");
+      if (chronological) return chronological;
+      if (left.ambiguous !== right.ambiguous) return left.ambiguous ? 1 : -1;
+      return left.firstOrder - right.firstOrder;
+    });
   }
 
   function progressionConfirmationFor(options = {}) {
@@ -2581,7 +2643,7 @@
       const rows = group.rows.map((item) => rowEvaluationByIndex.get(item.index));
       return {
         date: group.date,
-        qualifies: rows.length > 0 && rows.every((item) => item.qualifies),
+        qualifies: !group.ambiguous && rows.length > 0 && rows.every((item) => item.qualifies),
         complete: rows.length > 0 && rows.every((item) => item.complete),
         techniqueValid: rows.length > 0 && rows.every((item) => item.techniqueValid),
         effortValid: rows.length > 0 && rows.every((item) => item.effortValid),
