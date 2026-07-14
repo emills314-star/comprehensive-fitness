@@ -318,27 +318,69 @@ test("resolved pain-free substitutions revalidate current equipment and exclusio
     return {
       substituteExerciseId: selected.exerciseId,
       invalidEquipment: selected.invalidEquipment,
-      unrelatedExcludedExerciseId: "ex_leg_press"
+      unrelatedExcludedExerciseId: "ex_leg_press",
+      substituteExerciseName: catalogRecord.exercise_name,
+      differentObservedExerciseName: [...research.exerciseById.entries()]
+        .find(([id]) => id !== selected.exerciseId && id !== originalResearchId)?.[1]?.exercise_name || "Leg Press"
     };
   }, { runtimeExerciseId: fixture.exerciseIds.bench });
 
   const results = await page.evaluate(({ runtimeExerciseId, constraints }) => {
     const originalSets = structuredClone(data.sets);
-    const run = ({ availableEquipment, excludedExerciseIds }) => {
+    activeTab = "lift";
+    const run = ({ availableEquipment, excludedExerciseIds, mesocycleEquipment, observedExerciseName = constraints.substituteExerciseName }) => {
       data.sets = structuredClone(originalSets);
+      const exercise = exerciseById(runtimeExerciseId);
+      const session = sessionById(exercise.sessionId);
+      exercise.name = observedExerciseName;
       data.settings = { ...data.settings, availableEquipment, excludedExerciseIds };
+      if (mesocycleEquipment === undefined) {
+        data.mesocycles = [];
+        session.mesocycleId = "";
+      } else {
+        const mesocycleId = "15151515-1515-4515-8515-151515151515";
+        data.mesocycles = [{
+          id: mesocycleId,
+          name: "Synthetic restrictive substitute mesocycle",
+          status: "active",
+          type: "primary_progression",
+          availableEquipment: mesocycleEquipment
+        }];
+        session.mesocycleId = mesocycleId;
+      }
       entityStructureRevision += 1;
       entityIndexCache = null;
       invalidateCompletedAnalysis();
       const before = setsForExercise(runtimeExerciseId).length;
       const decision = guardWorkoutMutation("add-set", { exerciseId: runtimeExerciseId }, false);
       addSet(runtimeExerciseId, false);
-      return { decision, added: setsForExercise(runtimeExerciseId).length - before };
+      render();
+      const addSetControl = root.querySelector(`[data-action="add-set"][data-exercise-id="${runtimeExerciseId}"]`);
+      const recoveryControl = root.querySelector(`[data-safety-substitute-recovery="${runtimeExerciseId}"]`)
+        || root.querySelector(`[data-override-form="${runtimeExerciseId}"]`);
+      return {
+        decision,
+        added: setsForExercise(runtimeExerciseId).length - before,
+        addSetDisabled: addSetControl?.disabled === true,
+        recoveryText: recoveryControl?.innerText || ""
+      };
     };
     return {
       invalidEquipment: run({ availableEquipment: [constraints.invalidEquipment], excludedExerciseIds: [] }),
       excludedSubstitute: run({ availableEquipment: ["all"], excludedExerciseIds: [constraints.substituteExerciseId] }),
-      unrelatedChange: run({ availableEquipment: ["all"], excludedExerciseIds: [constraints.unrelatedExcludedExerciseId] })
+      unrelatedChange: run({ availableEquipment: ["all"], excludedExerciseIds: [constraints.unrelatedExcludedExerciseId] }),
+      defaultEquipment: run({ availableEquipment: [], excludedExerciseIds: [] }),
+      restrictiveMesocycle: run({ availableEquipment: [], excludedExerciseIds: [], mesocycleEquipment: [constraints.invalidEquipment] }),
+      missingObservedIdentity: run({
+        availableEquipment: ["all"],
+        excludedExerciseIds: [],
+        observedExerciseName: "Synthetic Unresolvable Substitute Name"
+      }),
+      differentObservedIdentity: run({
+        availableEquipment: ["all"],
+        excludedExerciseIds: [],
+        observedExerciseName: constraints.differentObservedExerciseName
+      })
     };
   }, { runtimeExerciseId: fixture.exerciseIds.bench, constraints: seeded });
 
@@ -348,6 +390,19 @@ test("resolved pain-free substitutions revalidate current equipment and exclusio
   expect.soft(results.excludedSubstitute.added, "Excluded resolved substitutes must not add executable sets").toBe(0);
   expect.soft(results.unrelatedChange.decision.allowed, "An unrelated exclusion must not invalidate a still-eligible resolved substitute").toBe(true);
   expect.soft(results.unrelatedChange.added, "A still-valid confirmed substitute remains executable").toBe(1);
+  expect.soft(results.defaultEquipment.decision.allowed, "The default empty settings array means unrestricted/all equipment").toBe(true);
+  expect.soft(results.defaultEquipment.added, "A valid resolved substitute remains executable under default equipment settings").toBe(1);
+  expect.soft(results.restrictiveMesocycle.decision.allowed, "An explicit restrictive mesocycle must still intersect default equipment settings").toBe(false);
+  expect.soft(results.restrictiveMesocycle.added, "A mesocycle-incompatible substitute must not add executable sets").toBe(0);
+  for (const [label, observed] of [
+    ["unresolvable", results.missingObservedIdentity],
+    ["different", results.differentObservedIdentity]
+  ]) {
+    expect.soft(observed.decision.allowed, `A ${label} observed substitute identity must fail closed`).toBe(false);
+    expect.soft(observed.added, `A ${label} observed substitute identity must not add executable sets`).toBe(0);
+    expect.soft(observed.addSetDisabled, `A ${label} observed substitute identity must render disabled workout controls`).toBe(true);
+    expect.soft(observed.recoveryText, `A ${label} observed substitute identity must render substitute recovery UI`).toMatch(/choose a pain-free substitute|confirmation required/i);
+  }
 });
 
 test("unexpected engine faults stay distinct, non-executable, and visible instead of reviving legacy Dashboard advice", async ({ page }) => {
@@ -381,7 +436,7 @@ test("unexpected engine faults stay distinct, non-executable, and visible instea
 
     const originalPrescribeExercise = prescriptionEngine.prescribeExercise;
     prescriptionEngine.prescribeExercise = () => {
-      throw new TypeError("Synthetic internal prescription adapter fault");
+      throw new TypeError("Available equipment input is malformed after a synthetic internal prescription adapter fault");
     };
     try {
       invalidateCompletedAnalysis();
@@ -614,4 +669,194 @@ test("canonical exercise analytics reject reconciler-built invalid identities wh
   expect.soft(result.validMuscles.some((item) => item.muscle === "Chest"), "Valid trusted custom manual taxonomy remains supported").toBe(true);
   expect.soft(result.validAnalyticsCanonicalId, "Valid trusted custom history retains its canonical grouping").toBe("custom_synthetic_valid_identity_press");
   expect.soft(result.validGrouped, "Valid trusted custom history remains present in its canonical analytics bucket").toBe(true);
+});
+
+test("runtime evidence replacement is atomic, invalidates dependent caches, and recognizes muscle-score-only identities", async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const invalidId = "custom_synthetic_muscle_score_only_invalid_press";
+    const invalidName = "Synthetic Muscle Score Only Invalid Press";
+    const scoreOnlyId = "custom_synthetic_score_only_press";
+    const scoreOnlyName = "Synthetic Score Only Press";
+    const prescriptionOnlyId = "custom_synthetic_prescription_only_press";
+    const prescriptionOnlyName = "Synthetic Prescription Only Press";
+    const originalEngine = prescriptionEngine;
+    const originalStatus = prescriptionEvidenceStatus;
+    const originalData = data;
+    const originalActiveSessionId = activeSessionId;
+    const originalActiveWorkoutId = activeWorkoutId;
+    const originalActiveTab = activeTab;
+    const sessionId = "16161616-1616-4616-8616-161616161616";
+    const runtimeExerciseId = "17171717-1717-4717-8717-171717171717";
+    try {
+      data = emptyData();
+      data.sessions = [{
+        id: sessionId,
+        date: todayIso(),
+        title: "Synthetic runtime evidence cache",
+        submitted: true,
+        workoutStarted: false,
+        workoutState: "completed",
+        completedAt: `${todayIso()}T13:00:00.000Z`,
+        recovery: { illness: false, pain: false, affectedMuscle: "" }
+      }];
+      data.exercises = [{
+        id: runtimeExerciseId,
+        sessionId,
+        name: invalidName,
+        primaryMuscle: "Chest",
+        secondaryMuscle: "",
+        order: 0,
+        resistanceType: "external"
+      }];
+      data.sets = [{
+        id: "18181818-1818-4818-8818-181818181818",
+        exerciseId: runtimeExerciseId,
+        setNumber: 1,
+        sequenceIndex: 0,
+        setType: "straight",
+        reps: 8,
+        weight: 100,
+        weightUnit: "lb",
+        resistanceType: "external",
+        rpe: 8,
+        completed: true,
+        skipped: false,
+        isWarmup: false,
+        countsTowardScore: true,
+        countsTowardVolume: true,
+        countsTowardProgression: true
+      }];
+      activeSessionId = sessionId;
+      activeWorkoutId = "";
+      activeTab = "settings";
+      entityStructureRevision += 1;
+      entityIndexCache = null;
+      invalidateCompletedAnalysis();
+
+      const exercise = data.exercises[0];
+      const beforeMuscles = musclesForExercise(exercise);
+      const beforeAnalytics = completedAnalysisIndex();
+      const weekStart = startOfWeekIso(todayIso());
+      const beforeVolume = weeklyMuscleVolume(weekStart);
+      const revisionBeforeImport = analysisRevision;
+      const cacheSizeBeforeImport = muscleAssignmentCache.size;
+
+      const personalData = {
+        exerciseScores: [{
+          exercise_id: scoreOnlyId,
+          exercise_name: scoreOnlyName,
+          equipment: "cable"
+        }],
+        exercisePrescriptions: [{
+          exercise_id: prescriptionOnlyId,
+          exercise_name: prescriptionOnlyName,
+          muscle_group_id: "chest",
+          equipment: "cable"
+        }],
+        exerciseMuscleScores: [{
+          exercise_id: invalidId,
+          exercise_name: invalidName,
+          research_exercise_id: "ex_synthetic_unknown_research_press",
+          muscle_group: "chest",
+          research_muscle_group_id: "mg_chest_sternal",
+          muscle_role: "primary",
+          contribution_weight: 1
+        }],
+        metadata: { methodology_version: "synthetic-runtime-evidence-cache/1.0.0" }
+      };
+      const replacementFile = new File([JSON.stringify({
+        schemaVersion: "personal-evidence-package/1.0.0",
+        createdAt: isoNow(),
+        personalDataVersion: personalData.metadata.methodology_version,
+        researchDatabaseVersion: prescriptionEngine.evidence.research.version,
+        privacy: "private_local_only_do_not_deploy",
+        personalData
+      })], "synthetic-personal-evidence.json", { type: "application/json" });
+      await importPersonalEvidenceFile(replacementFile);
+
+      const invalidProfile = prescriptionEngine.evidence.personal.reconciledIdentityByExerciseId.get(invalidId);
+      const lookup = (name) => typeof personalExerciseRecordForName === "function"
+        ? personalExerciseRecordForName(name)
+        : null;
+      const afterMuscles = musclesForExercise(exercise);
+      const afterAnalytics = completedAnalysisIndex();
+      const afterVolume = weeklyMuscleVolume(weekStart);
+      const successfulPackage = data.personalEvidencePackage;
+      const successfulEngine = prescriptionEngine;
+      const successfulStatus = prescriptionEvidenceStatus;
+      const revisionAfterSuccess = analysisRevision;
+      const cacheSentinel = Object.freeze({ retained: true });
+      muscleAssignmentCache.set("synthetic-rejected-replacement-sentinel", cacheSentinel);
+
+      const rejectedFile = new File([JSON.stringify({ personalData: { exerciseScores: [] } })], "invalid-personal-evidence.json", { type: "application/json" });
+      await importPersonalEvidenceFile(rejectedFile);
+      const rejectedState = {
+        engineUnchanged: prescriptionEngine === successfulEngine,
+        statusUnchanged: prescriptionEvidenceStatus === successfulStatus,
+        packageUnchanged: data.personalEvidencePackage === successfulPackage,
+        revisionUnchanged: analysisRevision === revisionAfterSuccess,
+        cacheSentinelRetained: muscleAssignmentCache.get("synthetic-rejected-replacement-sentinel") === cacheSentinel
+      };
+
+      return {
+        beforeMuscles,
+        beforeAnalyticsIndexed: beforeAnalytics.canonicalByExerciseId.has(runtimeExerciseId),
+        beforeVolume,
+        cacheSizeBeforeImport,
+        revisionBeforeImport,
+        revisionAfterSuccess,
+        invalidProfile: { invalid: invalidProfile?.invalid, invalidReason: invalidProfile?.invalidReason },
+        lookupIds: {
+          score: lookup(scoreOnlyName)?.exercise_id || lookup(scoreOnlyName)?.exerciseId,
+          prescription: lookup(prescriptionOnlyName)?.exercise_id || lookup(prescriptionOnlyName)?.exerciseId,
+          muscle: lookup(invalidName)?.exercise_id || lookup(invalidName)?.exerciseId
+        },
+        invalidCanonicalId: canonicalExerciseId(invalidName),
+        invalidPrescriptionId: prescriptionExerciseIdentity(invalidName),
+        afterMuscles,
+        afterAnalyticsIndexed: afterAnalytics.canonicalByExerciseId.has(runtimeExerciseId),
+        afterAnalyticsGrouped: [...afterAnalytics.exercisesByCanonical.values()].some((items) => items.some((item) => item.id === runtimeExerciseId)),
+        afterVolume,
+        importedRecords: successfulStatus.personalRecords,
+        rejectedState
+      };
+    } finally {
+      prescriptionEngine = originalEngine;
+      prescriptionEvidenceStatus = originalStatus;
+      data = originalData;
+      activeSessionId = originalActiveSessionId;
+      activeWorkoutId = originalActiveWorkoutId;
+      activeTab = originalActiveTab;
+      entityStructureRevision += 1;
+      entityIndexCache = null;
+      invalidateCompletedAnalysis();
+    }
+  });
+
+  expect.soft(result.beforeMuscles.some((item) => item.muscle === "Chest"), "The stale-cache reproduction must start with the manual Chest assignment cached").toBe(true);
+  expect.soft(result.beforeAnalyticsIndexed, "The stale-cache reproduction must start with the completed custom exercise indexed").toBe(true);
+  expect.soft(result.beforeVolume.some((item) => item.muscle === "Chest" && item.sets > 0), "The stale-cache reproduction must start with completed Chest analytics").toBe(true);
+  expect.soft(result.cacheSizeBeforeImport, "The stale-cache reproduction must populate the muscle-assignment cache before replacement").toBeGreaterThan(0);
+  expect.soft(result.invalidProfile.invalid, "The real reconciler must invalidate the muscle-score-only unknown research identity").toBe(true);
+  expect.soft(result.invalidProfile.invalidReason).toMatch(/unknown research exercise/i);
+  expect.soft(result.lookupIds).toEqual({
+    score: "custom_synthetic_score_only_press",
+    prescription: "custom_synthetic_prescription_only_press",
+    muscle: "custom_synthetic_muscle_score_only_invalid_press"
+  });
+  expect.soft(result.invalidCanonicalId, "Muscle-score-only invalid reconciliation must not yield a canonical identity").toBeNull();
+  expect.soft(result.invalidPrescriptionId, "Muscle-score-only invalid reconciliation must not yield a prescription identity").toBeNull();
+  expect.soft(result.afterMuscles, "Successful evidence replacement must evict the stale manual muscle assignment").toEqual([]);
+  expect.soft(result.afterAnalyticsIndexed, "Invalid muscle-score-only identities must be omitted from completed analytics").toBe(false);
+  expect.soft(result.afterAnalyticsGrouped, "Invalid muscle-score-only identities must not remain in a completed analytics group").toBe(false);
+  expect.soft(result.afterVolume.some((item) => item.muscle === "Chest" && item.sets > 0), "Invalid muscle-score-only identities must contribute no completed muscle analytics").toBe(false);
+  expect.soft(result.revisionAfterSuccess, "Successful runtime evidence replacement must invalidate revisioned analysis caches").toBeGreaterThan(result.revisionBeforeImport);
+  expect.soft(result.importedRecords, "All three personal identity sources must survive runtime normalization").toBe(3);
+  expect.soft(result.rejectedState, "A rejected runtime replacement must leave engine, evidence status, package, revision, and caches unchanged").toEqual({
+    engineUnchanged: true,
+    statusUnchanged: true,
+    packageUnchanged: true,
+    revisionUnchanged: true,
+    cacheSentinelRetained: true
+  });
 });
