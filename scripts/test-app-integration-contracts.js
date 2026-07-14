@@ -9,6 +9,13 @@ const ROOT = path.resolve(__dirname, "..");
 const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
 const publicExercises = require(path.join(ROOT, "research_database", "exports", "json", "exercise_database.json"));
 const prescriptionApi = require(path.join(ROOT, "prescription-engine.js"));
+const {
+  BACKUP_BOUNDARIES,
+  buildEntityCollectionCase,
+  entityCollectionCases,
+  jsonShapeCases,
+  legacyState
+} = require(path.join(ROOT, "tests", "fixtures", "synthetic-app-backups.js"));
 
 const tests = [];
 
@@ -299,6 +306,38 @@ test("settings use separate canonical training, nutrition, and experience fields
   ]);
 });
 
+test("legacy cut settings migrate at runtime without inheriting the hypertrophy default", () => {
+  const normalizeLoadedData = evaluateFunction("normalizeLoadedData", {
+    defaultSettings: {
+      weightUnit: "lb",
+      goal: "hypertrophy",
+      trainingStatus: "intermediate",
+      trainingGoal: "hypertrophy",
+      nutritionPhase: "maintenance",
+      experienceLevel: "intermediate",
+      readinessBaseline: {}
+    },
+    cleanReadinessBaseline: (value) => value || {},
+    cleanRecovery: (value) => value || {},
+    isBodyweightExerciseName: () => false,
+    inferResistanceType: (_name, source) => source?.resistanceType || "external",
+    isBodyweightResistance: () => false,
+    normalizeResistanceSet: (set, resistanceType) => ({ ...set, resistanceType }),
+    resistanceTypeValues: ["external", "bodyweight", "cable"],
+    normalizeTargetSetType: (value) => value,
+    migrateDomainData: (model) => model
+  });
+  const migrated = plain(normalizeLoadedData(legacyState()));
+  collectAssertions([
+    ["training goal", () => assert.equal(migrated.settings.trainingGoal, "general_fitness", "Legacy goal=cut must resolve to a neutral training goal")],
+    ["nutrition phase", () => assert.equal(migrated.settings.nutritionPhase, "deficit", "Legacy goal=cut must preserve the nutrition meaning")],
+    ["experience", () => assert.equal(migrated.settings.experienceLevel, "novice", "Legacy trainingStatus must migrate to experienceLevel")],
+    ["no inherited hypertrophy", () => assert.notEqual(migrated.settings.trainingGoal, "hypertrophy", "A missing legacy training goal must not inherit the new hypertrophy default")],
+    ["legacy goal removed", () => assert.equal(migrated.settings.goal, undefined, "The overloaded legacy goal must stop being authoritative")],
+    ["legacy status removed", () => assert.equal(migrated.settings.trainingStatus, undefined, "The legacy training status must stop being authoritative")]
+  ]);
+});
+
 test("canonical exercise and taxonomy resolution are registry-first and exhaustive", () => {
   const evidence = prescriptionApi.normalizeEvidenceBundle({ researchData: publicResearchData() });
   const unresolved = [];
@@ -370,6 +409,107 @@ test("backup import is bounded, allowlisted, and hostile-field safe", () => {
   ]);
 });
 
+test("dedicated JSON shape validation accepts exact depth and width boundaries and rejects overflow", () => {
+  assert.match(
+    html,
+    /(?:async\s+)?function\s+validateBackupJsonShape\s*\(/,
+    "Missing dedicated validateBackupJsonShape production helper for executable depth/width checks"
+  );
+  const validateBackupJsonShape = evaluateFunction("validateBackupJsonShape", {
+    BACKUP_IMPORT_LIMITS: {
+      maxJsonDepth: BACKUP_BOUNDARIES.jsonDepth,
+      maxObjectKeys: BACKUP_BOUNDARIES.objectKeys
+    }
+  });
+  const options = {
+    maxDepth: BACKUP_BOUNDARIES.jsonDepth,
+    maxObjectKeys: BACKUP_BOUNDARIES.objectKeys
+  };
+  for (const shapeCase of jsonShapeCases()) {
+    let result;
+    let error = null;
+    try {
+      result = validateBackupJsonShape(shapeCase.value, options);
+    } catch (caught) {
+      error = caught;
+    }
+    const rejected = Boolean(error) || result === false || result?.valid === false;
+    if (shapeCase.expected === "accepted") {
+      assert.equal(rejected, false, `${shapeCase.name} was rejected: ${error?.message || JSON.stringify(result)}`);
+    } else {
+      assert.equal(rejected, true, `${shapeCase.name} must be rejected by the executable shape validator`);
+      if (error) assert.match(String(error.message || error), /depth|key|width|shape|limit/i, `${shapeCase.name} needs an actionable structural-limit error`);
+    }
+  }
+});
+
+test("strict backup validation accepts every exact entity boundary and rejects boundary plus one", () => {
+  assert.match(
+    html,
+    /(?:async\s+)?function\s+validateImportedAppData\s*\(/,
+    "Missing dedicated validateImportedAppData production helper for executable entity-count checks"
+  );
+  const limits = {
+    maxFileBytes: BACKUP_BOUNDARIES.fileBytes,
+    maxJsonDepth: BACKUP_BOUNDARIES.jsonDepth,
+    maxObjectKeys: BACKUP_BOUNDARIES.objectKeys,
+    maxSessions: BACKUP_BOUNDARIES.sessions,
+    maxExercises: BACKUP_BOUNDARIES.exercises,
+    maxSets: BACKUP_BOUNDARIES.sets,
+    maxTemplates: BACKUP_BOUNDARIES.templates
+  };
+  const validateImportedAppData = evaluateFunction("validateImportedAppData", {
+    BACKUP_IMPORT_LIMITS: limits,
+    validateBackupJsonShape: () => true
+  });
+  for (const descriptor of entityCollectionCases()) {
+    const fixture = buildEntityCollectionCase(descriptor);
+    let result;
+    let error = null;
+    try {
+      result = validateImportedAppData(fixture, limits);
+    } catch (caught) {
+      error = caught;
+    }
+    const rejected = Boolean(error) || result === false || result?.valid === false;
+    if (descriptor.expected === "accepted") {
+      assert.equal(rejected, false, `${descriptor.name} was rejected: ${error?.message || JSON.stringify(result)}`);
+    } else {
+      assert.equal(rejected, true, `${descriptor.name} must be rejected by the executable import validator`);
+      if (error) assert.match(String(error.message || error), /session|exercise|set|template|count|limit/i, `${descriptor.name} needs an actionable entity-limit error`);
+    }
+  }
+});
+
+test("synthetic entity boundary fixtures are exact, relationally valid, and below the file limit", () => {
+  for (const descriptor of entityCollectionCases()) {
+    const fixture = buildEntityCollectionCase(descriptor);
+    assert.equal(fixture[descriptor.collection].length, descriptor.count, `${descriptor.name} has the wrong entity count`);
+    const bytes = Buffer.byteLength(JSON.stringify(fixture), "utf8");
+    assert.ok(bytes < BACKUP_BOUNDARIES.fileBytes, `${descriptor.name} is ${bytes} bytes and would conflate entity count with the ${BACKUP_BOUNDARIES.fileBytes}-byte file boundary`);
+    const sessionIds = new Set(fixture.sessions.map((item) => item.id));
+    const exerciseIds = new Set(fixture.exercises.map((item) => item.id));
+    assert.ok(fixture.exercises.every((item) => sessionIds.has(item.sessionId)), `${descriptor.name} contains an orphan exercise`);
+    assert.ok(fixture.sets.every((item) => exerciseIds.has(item.exerciseId)), `${descriptor.name} contains an orphan set`);
+    for (const collection of [fixture.sessions, fixture.exercises, fixture.sets, fixture.templates]) {
+      assert.equal(new Set(collection.map((item) => item.id)).size, collection.length, `${descriptor.name} contains a duplicate entity ID`);
+    }
+  }
+});
+
+test("synthetic JSON shape fixtures land exactly on and one beyond each boundary", () => {
+  const containerDepth = (value) => {
+    if (!value || typeof value !== "object") return 0;
+    const children = Array.isArray(value) ? value : Object.values(value);
+    return 1 + children.reduce((maximum, child) => Math.max(maximum, containerDepth(child)), 0);
+  };
+  const fixtures = new Map(jsonShapeCases().map((item) => [item.name, item.value]));
+  assert.equal(containerDepth(fixtures.get("json-depth-at-boundary")), BACKUP_BOUNDARIES.jsonDepth);
+  assert.equal(containerDepth(fixtures.get("json-depth-over-boundary")), BACKUP_BOUNDARIES.jsonDepth + 1);
+  assert.equal(Object.keys(fixtures.get("object-width-at-boundary")).length, BACKUP_BOUNDARIES.objectKeys);
+  assert.equal(Object.keys(fixtures.get("object-width-over-boundary")).length, BACKUP_BOUNDARIES.objectKeys + 1);
+});
+
 test("cloud workout sync performs no queue or flush work without explicit true consent", async () => {
   async function run(consent) {
     const settings = {};
@@ -422,7 +562,12 @@ test("cloud workout sync performs no queue or flush work without explicit true c
   assert.equal(allowed.flushEvents.requests.length, 1, "Explicit consent must permit flushing");
 });
 
-test("remote deletion retains authorization for 202 and failures, then clears only after terminal deleted", async () => {
+test("remote deletion function exists and retains authorization until terminal deleted", async () => {
+  assert.match(
+    html,
+    /(?:async\s+)?function\s+deleteRemoteInstallationData\s*\(/,
+    "Missing production deleteRemoteInstallationData; behavioral assertions below execute as soon as the function exists"
+  );
   const context = {
     pushIdentity: { installationId: "installation-1", deviceId: "device-1", token: "synthetic-bearer", status: "enabled" },
     settingsMessage: "",

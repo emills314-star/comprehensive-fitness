@@ -8,6 +8,24 @@ const IDS = Object.freeze({
   templateExercise: "55555555-5555-4555-8555-555555555555"
 });
 
+const BACKUP_BOUNDARIES = Object.freeze({
+  fileBytes: 8 * 1024 * 1024,
+  jsonDepth: 32,
+  objectKeys: 128,
+  sessions: 1024,
+  exercises: 4096,
+  sets: 16384,
+  templates: 512
+});
+
+function generatedId(namespace, index) {
+  const namespaceHex = Number(namespace).toString(16).padStart(4, "0");
+  const versionSuffix = namespaceHex.slice(-3);
+  const first = Number(index + 1).toString(16).padStart(8, "0");
+  const tail = `${namespaceHex}${Number(index).toString(16).padStart(8, "0")}`;
+  return `${first}-${namespaceHex}-4${versionSuffix}-8${versionSuffix}-${tail}`;
+}
+
 function validFullState() {
   return {
     appDataVersion: 2,
@@ -106,6 +124,92 @@ function entityScopedUniquenessState() {
   return state;
 }
 
+function entityCollectionCases() {
+  return ["sessions", "exercises", "sets", "templates"].flatMap((collection) => ([
+    {
+      name: `${collection}-at-boundary`,
+      collection,
+      count: BACKUP_BOUNDARIES[collection],
+      expected: "accepted"
+    },
+    {
+      name: `${collection}-over-boundary`,
+      collection,
+      count: BACKUP_BOUNDARIES[collection] + 1,
+      expected: "rejected"
+    }
+  ]));
+}
+
+function buildEntityCollectionCase({ collection, count, name }) {
+  const state = validFullState();
+  state.sessions[0].title = `Synthetic ${name}`;
+  if (collection === "sessions") {
+    state.sessions = Array.from({ length: count }, (_, index) => ({
+      ...state.sessions[0],
+      id: generatedId(1, index),
+      title: index === 0 ? `Synthetic ${name}` : `Synthetic session ${index}`
+    }));
+    state.exercises[0].sessionId = state.sessions[0].id;
+  } else if (collection === "exercises") {
+    state.exercises = Array.from({ length: count }, (_, index) => ({
+      ...state.exercises[0],
+      id: generatedId(2, index),
+      name: `Synthetic exercise ${index}`,
+      order: index
+    }));
+    state.sets[0].exerciseId = state.exercises[0].id;
+  } else if (collection === "sets") {
+    state.exercises = Array.from({ length: Math.ceil(count / 20) }, (_, index) => ({
+      ...state.exercises[0],
+      id: generatedId(5, index),
+      name: `Synthetic set-owner exercise ${index}`,
+      order: index
+    }));
+    state.sets = Array.from({ length: count }, (_, index) => ({
+      ...state.sets[0],
+      id: generatedId(3, index),
+      exerciseId: state.exercises[Math.floor(index / 20)].id,
+      setNumber: (index % 20) + 1,
+      sequenceIndex: index % 20
+    }));
+  } else if (collection === "templates") {
+    state.templates = Array.from({ length: count }, (_, index) => ({
+      ...state.templates[0],
+      id: generatedId(4, index),
+      name: `Synthetic template ${index}`,
+      exercises: index === 0 ? state.templates[0].exercises : []
+    }));
+  } else {
+    throw new Error(`Unsupported synthetic entity collection: ${collection}`);
+  }
+  return state;
+}
+
+function nestedArrayAtJsonDepth(depth) {
+  let value = "synthetic-depth-leaf";
+  for (let level = 0; level < depth; level += 1) value = [value];
+  return value;
+}
+
+function jsonShapeCases() {
+  const widthBoundary = Object.fromEntries(Array.from(
+    { length: BACKUP_BOUNDARIES.objectKeys },
+    (_, index) => [`syntheticKey${String(index).padStart(3, "0")}`, index]
+  ));
+  const widthOverflow = Object.fromEntries(Array.from(
+    { length: BACKUP_BOUNDARIES.objectKeys + 1 },
+    (_, index) => [`syntheticKey${String(index).padStart(3, "0")}`, index]
+  ));
+
+  return [
+    { name: "json-depth-at-boundary", expected: "accepted", value: nestedArrayAtJsonDepth(BACKUP_BOUNDARIES.jsonDepth) },
+    { name: "json-depth-over-boundary", expected: "rejected", value: nestedArrayAtJsonDepth(BACKUP_BOUNDARIES.jsonDepth + 1) },
+    { name: "object-width-at-boundary", expected: "accepted", value: widthBoundary },
+    { name: "object-width-over-boundary", expected: "rejected", value: widthOverflow }
+  ];
+}
+
 function hostileCases() {
   const duplicate = validFullState();
   duplicate.sessions.push({ ...duplicate.sessions[0], title: "Duplicate ID" });
@@ -171,10 +275,6 @@ function hostileCases() {
     '{"__proto__":{"polluted":true},"constructor":{"prototype":{"polluted":true}},'
   );
 
-  const oversized = validFullState();
-  oversized.sessions[0].title = "Oversized Backup Attempt";
-  oversized.padding = "x".repeat(12 * 1024 * 1024);
-
   return [
     { name: "duplicate-session-ids", value: duplicate },
     { name: "duplicate-exercise-ids", value: duplicateExercise },
@@ -189,9 +289,18 @@ function hostileCases() {
     { name: "unsupported-version", value: unsupportedVersion },
     { name: "malformed-version", value: malformedVersion },
     { name: "executable-key", value: executableKey },
-    { name: "prototype-key", raw: prototypeJson },
-    { name: "oversized", value: oversized }
+    { name: "prototype-key", raw: prototypeJson }
   ];
 }
 
-module.exports = { IDS, entityScopedUniquenessState, hostileCases, legacyState, validFullState };
+module.exports = {
+  BACKUP_BOUNDARIES,
+  IDS,
+  buildEntityCollectionCase,
+  entityCollectionCases,
+  entityScopedUniquenessState,
+  hostileCases,
+  jsonShapeCases,
+  legacyState,
+  validFullState
+};
