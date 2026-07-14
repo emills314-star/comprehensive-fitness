@@ -1211,6 +1211,126 @@ test("trusted custom catalog reconciliation is associative and commutative acros
   assert.throws(() => safetyWith(trustedBatch, ["barbell", "rack"], { exerciseCatalog: callerSpoof }), /equipment/i, "caller equipment cannot influence pain-safety batch reconciliation");
 });
 
+test("positive equipment requirements apply Boolean absorption before ordinary and pain-safety catalog reconciliation", () => {
+  const permutations = (items) => items.length <= 1
+    ? [items]
+    : items.flatMap((item, index) => permutations([...items.slice(0, index), ...items.slice(index + 1)]).map((tail) => [item, ...tail]));
+  const reviewerCases = [{
+    label: "single dominated branch",
+    exerciseId: "custom_absorbed_dumbbell_press",
+    researchExerciseId: "ex_dumbbell_bench_press",
+    redundantRequirements: "dumbbell|dumbbell+bench",
+    canonicalRequirements: [["dumbbells"]],
+    ordinaryEquipment: ["dumbbell"],
+    safetyEquipment: ["dumbbell"],
+    rejectedEquipment: ["cable"]
+  }, {
+    label: "duplicate-token dominance chain",
+    exerciseId: "custom_absorbed_dominance_chain",
+    researchExerciseId: "ex_dumbbell_bench_press",
+    redundantRequirements: [["dumbbells", "dumbbell"], ["dumbbell", "bench", "bench"], ["dumbbell", "bench"], ["dumbbell", "bench", "rack"]],
+    canonicalRequirements: "dumbbell",
+    ordinaryEquipment: ["dumbbell"],
+    safetyEquipment: ["dumbbell"],
+    rejectedEquipment: ["bodyweight"]
+  }, {
+    label: "mixed incomparable alternatives",
+    exerciseId: "custom_absorbed_mixed_press",
+    researchExerciseId: "ex_dumbbell_bench_press",
+    redundantRequirements: "dumbbell|dumbbells+bench|cable|cables",
+    canonicalRequirements: [["cable_station"], ["dumbbell"]],
+    ordinaryEquipment: ["dumbbell"],
+    safetyEquipment: ["cable"],
+    rejectedEquipment: ["bodyweight"]
+  }, {
+    label: "bodyweight no-equipment absorption",
+    exerciseId: "custom_absorbed_bodyweight",
+    researchExerciseId: "ex_side_plank",
+    redundantRequirements: "bodyweight|bodyweight+dip_belt+plates",
+    canonicalRequirements: [["bodyweight"]],
+    ordinaryEquipment: ["no equipment"],
+    safetyEquipment: ["no_equipment"],
+    rejectedEquipment: ["dumbbell"]
+  }];
+  const absorptionEngine = createPrescriptionEngine({
+    personalData: {
+      exerciseScores: reviewerCases.map((item) => ({ exercise_id: item.exerciseId, exercise_name: `${item.label} sparse score` })),
+      metadata: { methodology_version: "equipment-boolean-absorption-test/1.0.0" }
+    },
+    researchData: publicResearchData()
+  });
+  const ordinary = absorptionEngine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", history: progressionHistory(), createdAt });
+  const painful = absorptionEngine.prescribeExercise({
+    exerciseId: "ex_barbell_bench_press",
+    muscleGroupId: "chest",
+    history: progressionHistory(),
+    readiness: { pain: true, affectedMuscle: "chest" },
+    createdAt
+  });
+
+  reviewerCases.forEach((item) => {
+    const sparse = { personalExerciseId: item.exerciseId, exerciseName: `${item.label} sparse trusted record`, notes: "complementary metadata" };
+    const redundant = {
+      personalExerciseId: item.exerciseId,
+      researchExerciseId: item.researchExerciseId,
+      exerciseName: `${item.label} redundant Boolean form`,
+      equipmentRequirements: item.redundantRequirements
+    };
+    const canonical = {
+      personalExerciseId: item.exerciseId,
+      researchExerciseId: item.researchExerciseId,
+      exerciseName: `${item.label} canonical Boolean form`,
+      requiredEquipment: item.canonicalRequirements
+    };
+    const ordinarySignatures = new Set();
+    const safetySignatures = new Set();
+    permutations([sparse, redundant, canonical]).forEach((trustedExerciseCatalog, index) => {
+      const ordinaryReplacement = absorptionEngine.applyManualOverride(ordinary, { exerciseId: item.exerciseId }, {
+        allowedExerciseIds: [item.exerciseId],
+        trustedExerciseCatalog,
+        availableEquipment: item.ordinaryEquipment,
+        createdAt: "2026-07-12T12:22:06.000Z"
+      });
+      const safetyReplacement = absorptionEngine.applyManualOverride(painful, {
+        exerciseId: item.exerciseId,
+        researchExerciseId: item.researchExerciseId,
+        painFreeConfirmed: true
+      }, {
+        allowedSafetySubstituteIds: [item.exerciseId],
+        trustedExerciseCatalog,
+        availableEquipment: item.safetyEquipment,
+        createdAt: "2026-07-12T12:22:08.000Z"
+      });
+      assert.equal(ordinaryReplacement.finalPrescription.exerciseId, item.exerciseId, `${item.label} ordinary permutation ${index} must reconcile after absorption`);
+      assert.equal(safetyReplacement.finalPrescription.safetyRestriction.status, "resolved_by_confirmed_substitute", `${item.label} pain-safety permutation ${index} must reconcile after absorption`);
+      assert.throws(() => absorptionEngine.applyManualOverride(ordinary, { exerciseId: item.exerciseId }, {
+        allowedExerciseIds: [item.exerciseId],
+        trustedExerciseCatalog,
+        availableEquipment: item.rejectedEquipment
+      }), /equipment/i, `${item.label} ordinary permutation ${index} must preserve non-dominated constraints`);
+      assert.throws(() => absorptionEngine.applyManualOverride(painful, {
+        exerciseId: item.exerciseId,
+        researchExerciseId: item.researchExerciseId,
+        painFreeConfirmed: true
+      }, {
+        allowedSafetySubstituteIds: [item.exerciseId],
+        trustedExerciseCatalog,
+        availableEquipment: item.rejectedEquipment
+      }), /equipment/i, `${item.label} pain-safety permutation ${index} must preserve non-dominated constraints`);
+      ordinarySignatures.add(JSON.stringify({ final: ordinaryReplacement.finalPrescription, changes: ordinaryReplacement.manualOverrides.at(-1)?.changes }));
+      safetySignatures.add(JSON.stringify({ final: safetyReplacement.finalPrescription, changes: safetyReplacement.manualOverrides.at(-1)?.changes }));
+    });
+    assert.equal(ordinarySignatures.size, 1, `${item.label} ordinary output must be permutation-invariant`);
+    assert.equal(safetySignatures.size, 1, `${item.label} pain-safety output must be permutation-invariant`);
+  });
+
+  assert.deepEqual(equipmentRequirementOptions({ equipmentRequirements: "dumbbell|dumbbell+bench|dumbbell+bench+rack" }), [["dumbbell"]], "a full dominance chain minimizes to its least restrictive conjunction");
+  assert.deepEqual(equipmentRequirementOptions({ equipmentRequirements: "dumbbell|dumbbell+bench|cable" }), [["dumbbell"], ["cable_station"]], "absorption removes dominated branches while preserving incomparable alternatives");
+  assert.deepEqual(equipmentRequirementOptions({ equipmentRequirements: "bodyweight|bodyweight+dip_belt+plates" }), [["bodyweight"]], "bodyweight absorbs its equipment-assisted superset");
+  assert.throws(() => equipmentRequirementOptions({ equipmentRequirements: [[]] }), /empty|malformed|equipment/i, "Boolean minimization must not make an empty option valid");
+  assert.throws(() => equipmentRequirementOptions({ equipmentRequirements: [["dumbbell", ""]] }), /empty|malformed|equipment/i, "Boolean minimization must not discard malformed blank tokens");
+});
+
 test("an ex_ prefix and allowlist cannot establish a nonexistent or caller-spoofed canonical exercise", () => {
   const snapshot = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", history: progressionHistory(), createdAt });
   const sameExerciseLoad = engine.applyManualOverride(snapshot, {

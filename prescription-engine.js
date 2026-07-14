@@ -13,7 +13,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function prescriptionEngineFactory() {
   "use strict";
 
-  const ENGINE_VERSION = "3.1.6";
+  const ENGINE_VERSION = "3.1.7";
   const PRESCRIPTION_SCHEMA_VERSION = "2.1.0";
   const SNAPSHOT_SCHEMA_VERSION = "1.1.0";
   const HARD_SAFETY_SCHEMA_VERSION = "hard-safety/1.0.0";
@@ -1510,19 +1510,39 @@
 
   function normalizeEquipmentRequirementOptions(options, label) {
     if (!Array.isArray(options) || !options.length) throw new Error(`${label} must declare at least one equipment option.`);
-    const seen = new Set();
-    const normalized = [];
-    options.forEach((option) => {
+    const normalized = options.map((option) => {
       if (!Array.isArray(option) || !option.length) throw new Error(`${label} contains an empty or malformed equipment option.`);
       const items = unique(option.map((item) => normalizeEquipmentItem(item)));
       if (!items.length) throw new Error(`${label} contains an empty equipment option.`);
+      return items;
+    });
+    return minimizePositiveEquipmentOptions(normalized);
+  }
+
+  function minimizePositiveEquipmentOptions(options) {
+    if (!Array.isArray(options)) throw new Error("Equipment Boolean options must be an array.");
+    const seen = new Set();
+    const deduplicated = [];
+    options.forEach((option) => {
+      if (!Array.isArray(option) || !option.length || option.some((item) => typeof item !== "string" || !item.trim())) {
+        throw new Error("Equipment Boolean options cannot contain empty or malformed conjunctions.");
+      }
+      const items = unique(option);
       const key = [...items].sort().join("+");
       if (!seen.has(key)) {
         seen.add(key);
-        normalized.push(items);
+        deduplicated.push(items);
       }
     });
-    return normalized;
+    return deduplicated.filter((candidate) => !deduplicated.some((broader) => (
+      broader.length < candidate.length && broader.every((item) => candidate.includes(item))
+    )));
+  }
+
+  function canonicalEquipmentOptions(options) {
+    return minimizePositiveEquipmentOptions(options)
+      .map((option) => [...option].sort())
+      .sort((left, right) => left.join("+").localeCompare(right.join("+")));
   }
 
   function parseEquipmentRequirementString(value, label) {
@@ -1562,7 +1582,7 @@
   }
 
   function equipmentOptionsKey(options) {
-    return options.map((option) => [...option].sort().join("+")).sort().join("|");
+    return canonicalEquipmentOptions(options).map((option) => option.join("+")).join("|");
   }
 
   function declaredEquipmentMetadata(exercise, fields, label) {
@@ -1583,9 +1603,11 @@
   }
 
   function equipmentMetadataIsConsistent(requirements, summary) {
-    return requirements.every((requirementOption) => {
+    const minimizedRequirements = minimizePositiveEquipmentOptions(requirements);
+    const minimizedSummary = minimizePositiveEquipmentOptions(summary);
+    return minimizedRequirements.every((requirementOption) => {
       const requirementFamilies = equipmentOptionFamilies(requirementOption);
-      return summary.some((summaryOption) => {
+      return minimizedSummary.some((summaryOption) => {
         const summaryFamilies = equipmentOptionFamilies(summaryOption);
         return requirementFamilies.some((family) => summaryFamilies.includes(family));
       });
@@ -1638,7 +1660,7 @@
       barbell: ["barbell", "plates"], rack: ["rack", "bench", "incline_bench", "pull_up_bar", "nordic_anchor"],
       cable_station: ["cable_station", "pull_up_bar"]
     };
-    const requirements = equipmentRequirementOptions(exercise);
+    const requirements = minimizePositiveEquipmentOptions(equipmentRequirementOptions(exercise));
     const input = normalizeAvailableEquipmentInput(availableEquipment);
     if (!input.valid) return { eligible: false, requirements, missing: ["valid available equipment input"], equipmentInput: input };
     if (!input.provided) return { eligible: true, requirements, missing: [], equipmentInput: input };
@@ -3776,10 +3798,6 @@
     };
   }
 
-  function canonicalEquipmentOptions(options) {
-    return options.map((option) => [...option].sort()).sort((left, right) => left.join("+").localeCompare(right.join("+")));
-  }
-
   function equipmentOptionRefines(candidateOption, broaderOption, broaderDetailLevel) {
     return broaderOption.every((broaderItem) => candidateOption.some((candidateItem) => {
       if (candidateItem === broaderItem) return true;
@@ -3790,7 +3808,9 @@
   }
 
   function equipmentDeclarationRefines(candidate, broader) {
-    return candidate.options.every((candidateOption) => broader.options.some((broaderOption) => (
+    const candidateOptions = minimizePositiveEquipmentOptions(candidate.options);
+    const broaderOptions = minimizePositiveEquipmentOptions(broader.options);
+    return candidateOptions.every((candidateOption) => broaderOptions.some((broaderOption) => (
       equipmentOptionRefines(candidateOption, broaderOption, broader.detailLevel)
     )));
   }
