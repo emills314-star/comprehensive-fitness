@@ -1,0 +1,96 @@
+model = "gpt-5.6-sol"
+model_reasoning_effort = "max"
+
+[agents]
+max_threads = 24
+max_depth = 1
+job_max_runtime_seconds = 7200
+interrupt_message = true
+
+[agents.lead_orchestrator]
+description = "Coordinates the full audit, implementation, verification, scoring, and release workflow."
+config_file = "agents/lead_orchestrator.toml"
+
+[agents.repo_explorer]
+description = "Read-only repository mapper for routes, modules, schemas, tests, and data flows."
+config_file = "agents/repo_explorer.toml"
+
+[agents.bulk_case_generator]
+description = "Read-only generator of structured test matrices and boundary cases."
+config_file = "agents/bulk_case_generator.toml"
+
+[agents.architecture_auditor]
+description = "Read-only architecture, modularity, state, and dependency-direction auditor."
+config_file = "agents/architecture_auditor.toml"
+
+[agents.database_taxonomy_auditor]
+description = "Read-only data-schema, migration, taxonomy, and integrity auditor."
+config_file = "agents/database_taxonomy_auditor.toml"
+
+[agents.exercise_science_researcher]
+description = "Read-only primary-source exercise-science researcher and evidence-ledger maintainer."
+config_file = "agents/exercise_science_researcher.toml"
+
+[agents.recommendation_logic_auditor]
+description = "Read-only end-to-end recommendation-rule and personalization auditor."
+config_file = "agents/recommendation_logic_auditor.toml"
+
+[agents.recommendation_test_engineer]
+description = "Isolated-worktree test engineer for recommendation evals and regressions."
+config_file = "agents/recommendation_test_engineer.toml"
+
+[agents.ui_design_system_auditor]
+description = "Read-only visual-system, shared-component, and screen-migration auditor."
+config_file = "agents/ui_design_system_auditor.toml"
+
+[agents.visual_test_engineer]
+description = "Read-only browser and visual-regression specialist protecting Lift and Dashboard."
+config_file = "agents/visual_test_engineer.toml"
+
+[agents.accessibility_tester]
+description = "Read-only automated and manual accessibility specialist."
+config_file = "agents/accessibility_tester.toml"
+
+[agents.feature_test_engineer]
+description = "Isolated-worktree feature test engineer for standard-risk surfaces."
+config_file = "agents/feature_test_engineer.toml"
+
+[agents.feature_test_engineer_critical]
+description = "Isolated-worktree feature test engineer for recommendations, data, Lift, Dashboard, and migrations."
+config_file = "agents/feature_test_engineer_critical.toml"
+
+[agents.implementation_worker]
+description = "Isolated-worktree implementation worker for bounded routine changes."
+config_file = "agents/implementation_worker.toml"
+
+[agents.implementation_worker_structural]
+description = "Isolated-worktree implementation worker for structural, recommendation, data, or security-sensitive changes."
+config_file = "agents/implementation_worker_structural.toml"
+
+[agents.migration_verifier]
+description = "Read-only verifier of migrations, backfills, aliases, counts, and historical preservation."
+config_file = "agents/migration_verifier.toml"
+
+[agents.performance_profiler]
+description = "Read-only runtime, rendering, data, bundle, and recommendation performance profiler."
+config_file = "agents/performance_profiler.toml"
+
+[agents.security_privacy_reviewer]
+description = "Read-only security, authorization, secrets, privacy, and recommendation-safety reviewer."
+config_file = "agents/security_privacy_reviewer.toml"
+
+[agents.documentation_maintainer]
+description = "Documentation-only isolated-worktree maintainer for verified behavior and audit records."
+config_file = "agents/documentation_maintainer.toml"
+
+[agents.independent_reviewer]
+description = "Fresh-context read-only reviewer for correctness, regressions, and requirement gaps."
+config_file = "agents/independent_reviewer.toml"
+
+[agents.independent_scoring_auditor]
+description = "Fresh-context read-only auditor applying fixed quality rubrics without score inflation."
+config_file = "agents/independent_scoring_auditor.toml"
+
+[agents.release_verifier]
+description = "Read-only final release verifier for tests, build, browser, data, docs, and readiness."
+config_file = "agents/release_verifier.toml"
