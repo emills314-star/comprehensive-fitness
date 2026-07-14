@@ -4,7 +4,7 @@ This document is the durable map for future recommendation-engine iterations. It
 
 ## Exercise–muscle taxonomy 2.1
 
-The canonical relationship source is `research_database/source/exercise-muscle-taxonomy.js`; generated `exercise_muscle_map` and `exercise_taxonomy_review_queue` artifacts are the runtime/data-contract outputs. Every mapped row includes classification, loading/ROM role, hypertrophy credit, local-fatigue weight, confidence, evidence notes/IDs, review state/date, and taxonomy version. The 23 canonical anatomical IDs project into 20 programming families for derived accounting; relationships and history keep their canonical IDs. See `research_database/EXERCISE_MUSCLE_TAXONOMY.md`. Legacy binary mappings are compatibility-only.
+The canonical relationship source is `research_database/source/exercise-muscle-taxonomy.js`; generated `exercise_muscle_map` and `exercise_taxonomy_review_queue` artifacts are the runtime/data-contract outputs. Every mapped row includes classification, loading/ROM role, hypertrophy credit, local-fatigue weight, confidence, evidence notes/IDs, review state/date, and taxonomy version. The 23 canonical anatomical IDs project into 20 programming families for guided-plan accounting; relationships and history keep their canonical IDs. Final-only family rounding is implemented in the guided ledger, not yet in the separate recommendation/historical calculation. See `research_database/EXERCISE_MUSCLE_TAXONOMY.md`. Legacy binary mappings are compatibility-only.
 
 ## Current versions
 
@@ -12,7 +12,7 @@ The canonical relationship source is `research_database/source/exercise-muscle-t
 | --- | --- | --- | --- |
 | Personal analysis pipeline | `1.1.0` | 2026-07-11 | `scripts/personal-fitness/` plus `personal_fitness_data/config/` |
 | Personal analysis methodology | `1.1.0` | 2026-07-11 | `personal_fitness_data/reports/analysis_metadata.json` |
-| Exercise-science database / muscle taxonomy | `3.0.0` / `2.1.0` | 2026-07-13 | `research_database/source/database.js` and `research_database/source/exercise-muscle-taxonomy.js` |
+| Exercise-science database / muscle taxonomy | `3.0.0` / `2.1.0` | 2026-07-12 | `research_database/source/database.js` and `research_database/source/exercise-muscle-taxonomy.js` |
 | Unified prescription engine | `3.0.0` | 2026-07-12 | `prescription-engine.js` |
 | App prescription schema | `2.0.0` | 2026-07-11 | `prescription-engine.js` and the app prescription JSON Schemas |
 | Push/sync backend contract | Unversioned endpoints | code-reviewed 2026-07-13; external status **NEEDS REVIEW** | `docs/push-backend.md` and `api/` |
@@ -23,7 +23,7 @@ Canonical taxonomy controls target-muscle candidate eligibility. A personal `exe
 
 Candidate scores now keep three questions separate: `targetMuscleEffectiveness` estimates usefulness for the selected muscle; `confidence` reports evidence certainty; `overallRecommendationStrength` remains a broader ranking input. Guided UI must label the selected-muscle value (for example, Lat Effectiveness) and may not present the overall score as muscle-specific.
 
-The operational database is separate from both evidence sources. Upstash Redis stores only installation-scoped push, timer, deletion-index, idempotency, and workout-sync records under bounded retention; it does not contain or replace the private personal-analysis package or the public research database. Its exact keys, lifecycle, retention, and external-status verification procedure are maintained in `docs/push-backend.md`.
+The operational database is separate from both evidence sources. Upstash Redis stores installation-scoped push, timer, deletion-index, idempotency, and workout-sync records. Record hashes use documented TTLs; the global installation registry persists until completed deletion. It does not contain or replace the private personal-analysis package or the public research database. Exact keys, lifecycle, retention, and the external-status verification procedure are maintained in `docs/push-backend.md`.
 
 Current personal analysis identity: `analysis_9a245e42ebd6605a3ef6`; 81,313 source/normalized records from 2019-03-02 through 2026-07-11; overall evidence confidence `moderate` (`64.77/100`). Preserve this ID in audit work so outputs from a later rebuild are not mistaken for the evidence used by an older recommendation snapshot.
 
@@ -66,7 +66,7 @@ The public research database contains 19 normalized tables. The application-rele
 | `progression_rules` | 19 | Double, dynamic, load/rep, technique, volume, deload and fatigue-management actions plus conclusion, authority, enforcement, and disclosure provenance |
 | `nutrition_strategies` | 13 | Goal/phase-specific nutrition modifiers and evidence confidence |
 | `exercise_progression_metric_map` | 372 | Exercise-appropriate progression measures |
-| `research_library` | 48 | Study metadata, DOI, and verified PubMed/PMC provenance where available |
+| `research_library` | 48 | Bibliographic/source records with DOI and verified PubMed/PMC provenance where available |
 | `evidence_conclusions` | 31 | Graded research conclusions used by application rules |
 | `evidence_gaps` | 15 | Explicit uncertainty and inference boundaries |
 | `rule_exercise_map` | 827 | Rule-to-exercise applicability |

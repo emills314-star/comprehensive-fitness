@@ -4,7 +4,7 @@
 
 - **Purpose:** Product vision, verified scope, and boundary between current and intended behavior
 - **Last verified:** 2026-07-13
-- **Repository:** accepted foundation changes through `ce13f1e`
+- **Repository:** integrated foundation `ce13f1e` plus accepted taxonomy-source repairs `5d95f40` and `90cb27a`
 - **Verification status:** VERIFIED from application code, tests, schemas, configuration, and existing docs; open conflicts are labeled
 - **Related:** [Architecture](ARCHITECTURE.md), [Decision engine](DECISION_ENGINE.md), [UI/UX](UI_UX.md), [Roadmap](ROADMAP.md), [documentation inventory](DOCUMENTATION_INVENTORY.md)
 
@@ -87,7 +87,7 @@ Product principles evidenced in the repository:
 
 Public/runtime sources include submitted app workouts and the research JSON exports cached by `sw.js`. Private local sources can include Strong exports, Fitbit/Google Health exports, nutrition exports, body-composition records, and generated aggregates. Raw and generated personal data are excluded from public deployment by `.gitignore`/`.vercelignore`; the app imports only a user-provided aggregate evidence package into local IndexedDB.
 
-Do not treat the optional Redis backend as the personal evidence database. It stores installation/push/timer records and serialized workout mutations (`api/`, `docs/push-backend.md`) under bounded retention. Deletion immediately revokes the installation and continues in bounded indexed batches; a retained tombstone prevents credential reuse. An already-dispatched Web Push network request cannot be recalled. No raw personal values or credentials belong in public documentation.
+Do not treat the optional Redis backend as the personal evidence database. It stores installation/push/timer records and serialized workout mutations (`api/`, `docs/push-backend.md`). Record hashes use documented rolling TTLs; the global installation registry persists until completed deletion. Deletion immediately revokes the installation and continues in bounded indexed batches; a retained tombstone prevents credential reuse. An already-dispatched Web Push network request cannot be recalled. No raw personal values or credentials belong in public documentation.
 
 ## Non-goals and boundaries
 

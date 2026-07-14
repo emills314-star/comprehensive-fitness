@@ -42,8 +42,8 @@ Generate VAPID keys locally once with `npx web-push generate-vapid-keys`, retain
 
 | Purpose | Redis key | Retention |
 | --- | --- | --- |
-| Installation authorization, subscription, lifecycle, and deletion cursors | `cf:install:{installationId}` | 180 days |
-| Installation registry | `cf:installations` | membership removed at completed deletion |
+| Installation authorization, subscription, lifecycle, and deletion cursors | `cf:install:{installationId}` | rolling 180-day hash TTL; deletion continuation refreshes the tombstone TTL |
+| Global installation registry | `cf:installations` | no key/member TTL; membership is removed at completed deletion |
 | Scoped timer | `cf:timer:{installationId}:{scopedTimerId}` | 7 days |
 | Legacy timer compatibility during deletion | `cf:timer:{notificationId}` | discovered in bounded scans |
 | Active workout timer pointer | `cf:active:{installationId}:{workoutId}` | timer lifecycle |
@@ -52,7 +52,7 @@ Generate VAPID keys locally once with `npx web-push generate-vapid-keys`, retain
 | Mutation idempotency receipt | `cf:mutation:{installationId}:{mutationId}` | 90 days |
 | Bounded deletion work set | `cf:delete:{installationId}:keys` | deletion lifecycle |
 
-Registration returns the bearer secret once. A record in `deleting` or `deleted` state is a tombstone and cannot be reactivated with old credentials. Push responses `404` or `410` invalidate the subscription.
+Registration returns the bearer secret once. Supported installation updates refresh the 180-day record TTL. A record in `deleting` or `deleted` state is a tombstone and cannot be reactivated with old credentials. Push responses `404` or `410` invalidate the subscription. Expiration of an installation hash does not itself remove its ID from the global registry; completed deletion does.
 
 Timer IDs are derived from the installation ID plus the caller's requested ID, so two installations cannot address the same timer key. Every schedule includes a `timerVersion`. Active-pointer, cancellation, delivery, and completion writes check both ownership and version; a stale request receives a conflict instead of changing the replacement timer.
 

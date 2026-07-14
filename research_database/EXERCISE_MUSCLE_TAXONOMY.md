@@ -28,7 +28,7 @@ Variation records are reviewed independently where mechanics materially differ. 
 
 The persistent anatomical taxonomy retains all 23 canonical muscle IDs. A separate, complete projection maps those IDs to 20 practical programming families. Only the sternal/clavicular chest, gastrocnemius/soleus calf, and flexor/extensor neck pairs coalesce for family-level programming. Upper back, lats, and upper traps remain distinct because their movement roles and programming value differ.
 
-The projection is an accounting layer, not an anatomical consolidation or data migration. Exercise relationships, historical records, filters, evidence, and reporting retain canonical IDs. For one exercise, family-aware volume selects the strongest qualifying hypertrophy relationship once so subdivisions do not double count. Local-fatigue weights remain additive within the family, are multiplied without intermediate rounding, and only the final displayed exposure is rounded.
+The projection is an accounting layer, not an anatomical consolidation or data migration. Exercise relationships, historical records, filters, evidence, and reporting retain canonical IDs. In the implemented guided-mesocycle family ledger, one exercise selects the strongest qualifying hypertrophy relationship once per family so subdivisions do not double count. Local-fatigue weights remain additive, calculations retain full precision through aggregation, and only the ledger's final exposed values are rounded. This final-only rounding contract does not yet describe the separate prescription/historical calculation path.
 
 ## Conventional Deadlift example
 
@@ -52,23 +52,26 @@ All canonical consumers use `exercise_muscle_map`:
 - program portfolio construction and direct-volume priority;
 - fractional-volume balancing and hidden-volume checks;
 - redundancy and fatigue interpretation;
-- weekly/historical volume displays;
-- private personal-evidence analysis after canonical exercise crosswalk;
-- deterministic historical derived-metric recalculation.
+- guided-plan family volume/status and canonical prescription volume inputs;
+- private personal-evidence analysis after canonical exercise crosswalk.
 
 Manual/custom exercises without a research crosswalk retain their explicit personal mapping and are labelled `personal_mapping_review_queue`; they do not silently alter the public taxonomy.
 
 ## Persistent-ID and provenance contract
 
-Generated primary IDs are semantic historical identities, not disposable row numbers. Existing ID-to-row mappings in `exercise_muscle_map`, `exercise_progression_metric_map`, `study_exercise_map`, and `rule_exercise_map` must never be renumbered or reused. The exercise source list is append-only. Because the 2.0 rule map was generated rule-first, later compatible exercises use explicit append epochs so their rule relationships are added after every existing ID.
+Generated primary IDs are semantic historical identities, not disposable row numbers. Existing ID-to-row mappings in `exercise_muscle_map`, `exercise_progression_metric_map`, `study_exercise_map`, and `rule_exercise_map` must never be renumbered or reused. Rule and exercise source identities are registered in explicit ordered epochs rather than derived from the live arrays. Undeclared additions, deletion, reordering, or duplication fail closed—even when a new source would create zero applicable mapping rows.
 
-Change history is also append-only. `chg_0002` and `chg_0003` retain their exact 2.0.0 versions and wording; `chg_0004` records the compatible 2.1.0 programming-family and cable-woodchop addition. The checked-in public 2.0.0 digest contract at `scripts/fixtures/taxonomy-v2.0.0-stable-id-contract.json` encodes all 1,756 prior semantic identities independently of Git history or a `.git` directory. A compatible append epoch must preserve every fixture identity, use new higher-numbered IDs, and append change history.
+Change history is also append-only. `chg_0002` and `chg_0003` retain their exact 2.0.0 versions and wording. The checked-in public 2.0.0 digest contract at `scripts/fixtures/taxonomy-v2.0.0-stable-id-contract.json` protects all 1,756 prior semantic identities independently of Git history or a `.git` directory. The repaired mapping epochs are explicit:
 
-**NEEDS REVIEW:** `node scripts/test-taxonomy-stable-ids.js` still treats Cable Woodchop as the only allowed post-2.0 relationship-map addition. Research database 3.0.0 legitimately appends later rule mappings, so the current test fails at `rule_exercise_map.rex_00754` even after comparing the historical rows. Advance the explicit append-epoch contract so it continues to reject renumbering/reuse while accepting declared post-2.1 science mappings; do not claim the current stable-ID gate passes until that regression is fixed.
+- `v2.0.0_baseline`: `rex_00001`–`rex_00753`.
+- `chg_0004`: `rex_00754`–`rex_00765`, the Cable Woodchop exercise appended against the applicable baseline rules.
+- `chg_0005`: `rex_00766`–`rex_00827`, `rule_0019` appended across all 62 registered exercises and attributed to `rule_exercise_map` in the change log.
+
+**IMPLEMENTED:** accepted source repairs `5d95f40` and `90cb27a` preserve those ranges, require a higher suffix range and exact change attribution for every future epoch, expose the full ordered source registry contract, and add positive/negative stable-ID coverage. `node scripts/test-taxonomy-stable-ids.js` verifies the historical fixture, known epochs, valid future-epoch behavior, and rejection of undeclared, deleted, reordered, or duplicate rule/exercise IDs.
 
 ## Historical recalculation
 
-Logged dates, loads, repetitions, RPE, completion, and exercise identity remain immutable. Muscle volume is a derived view and is recalculated atomically from one loaded taxonomy version. Cache keys include the taxonomy version, and `recalculateHistoricalMuscleVolume` returns the version plus traceable per-exercise contributions without mutating source records. Rollback means loading the prior complete public research export and recomputing all derived totals; partial mixed-version totals are not persisted. Calculations retain full precision through family aggregation and round only the final displayed exposure.
+Logged dates, loads, repetitions, RPE, completion, and exercise identity remain immutable in the current application. The accepted taxonomy source repair does not itself change the separate prescription engine's canonical historical calculation, establish an explicit historical taxonomy-version field, or prove atomic rollback. **PLANNED / NEEDS REVIEW:** recommendation integration must define version provenance, migration/recalculation boundaries, failure behavior, rollback, and family-level rounding before those semantics can be claimed for historical analytics.
 
 ## Review queue
 
