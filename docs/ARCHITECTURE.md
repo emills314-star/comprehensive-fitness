@@ -3,7 +3,7 @@
 ## Metadata
 
 - **Purpose:** Verified technical architecture, data flows, and operational boundaries
-- **Last verified:** 2026-07-13
+- **Last verified:** 2026-07-14
 - **Repository:** integrated foundation `ce13f1e` plus accepted taxonomy-source repairs `5d95f40` and `90cb27a`
 - **Verification status:** VERIFIED locally; external deployment/device status is not repository-verifiable
 - **Related:** [Project](PROJECT.md), [decision engine](DECISION_ENGINE.md), [UI/UX](UI_UX.md), [roadmap](ROADMAP.md), [push backend](push-backend.md)
@@ -71,6 +71,8 @@ flowchart LR
 The normalized app object (`emptyData`, `normalizeLoadedData`) contains sessions, exercises, sets, templates, mesocycles, recommendation history, manual overrides, an optional personal evidence package, raw-import metadata, migration audit, revision, and settings. IDs are UUIDs when supported. The domain migration and set classifier preserve semantics across legacy data.
 
 IndexedDB database `comprehensive-fitness`, store `state`, key `app-data` is primary. `comprehensive-fitness-data-v1` supports legacy/fallback state; runtime and a compact active draft use separate localStorage keys. Draft writes are debounced and the compact synchronous fallback protects immediate-close recovery. Completed-history calculations use revisioned caches (`scripts/test-performance.js`).
+
+JSON replacement imports are an explicit trust boundary. Backup and private-evidence files are limited to 8 MiB using both the browser file size and the actual UTF-8 byte count; iterative shape validation caps depth/object width and rejects prototype or event-handler keys. Backup records pass versioned top-level/entity allowlists, bounded identifiers/text/collections, duplicate checks, and relationship checks before a canonical replacement is produced. A private-evidence replacement is reconciled with the loaded research data and used to construct a complete candidate engine before the single IndexedDB write. Only after that write succeeds does runtime state change and every completed-analysis, entity-index, recommendation, and muscle-assignment cache invalidate. Rejection preserves the previous IndexedDB record, engine, runtime data, and caches. Import status is attempt-scoped and exposed through an accessible live region.
 
 The Templates navigation path uses progressive rendering. Its first frame renders template summaries, the mesocycle controls/current-plan summary, and compact historical summaries only. Exercise editors and the full current mesocycle candidate/session review are generated after an explicit disclosure action. Template-list rendering does not run completed-history fatigue analysis or construct per-template readiness prescriptions; those decisions remain on Dashboard and in the workout-start flow. Historical records are never passed through the full editable planner renderer. This boundary is covered by `scripts/test-performance.js` and prevents hidden controls and candidate trees from dominating tab latency.
 
@@ -157,13 +159,17 @@ Rest completion can be entirely foreground/local. Optional background delivery w
 
 Installation deletion is immediately revoking and bounded: indexed per-install registries are scanned in pages, cleanup is limited per request, and an HTTP 202 response instructs the caller to continue until the retained tombstone reaches `deleted`. Installation/tombstone hashes use a rolling 180-day TTL; timers use 7 days; workout payloads and mutation receipts use 90 days. The global `cf:installations` registry has no member TTL; the installation's membership is removed on completed deletion. An already-in-flight Web Push network request cannot be recalled, but its revoked claim cannot commit success, retry, or resurrect state. Workout sync is installation-authorized, payload- and relationship-bounded, idempotent by mutation ID, conflict-aware by revision and content, and write-only; it exposes no read/restore endpoint.
 
-**PLANNED / NEEDS REVIEW:** the accepted backend contract does not prove that every frontend notification-disable, local-data-clear, or reset path calls cancel, unsubscribe, and resumable installation deletion to completion. It also does not provide an account-backed restore lifecycle.
+Workout-mutation upload now has a separate persisted user consent that defaults off. Queue creation, queue inspection, and queue flushing return before reading or writing sync storage unless that consent is exactly `true`; revocation cancels the pending flush and clears this installation's queue. Notification permission does not imply workout-upload consent.
+
+The Settings Danger Zone exposes explicit remote installation deletion. The client retains the installation identifier and bearer authorization only while it follows HTTP 202 cleanup, honors `Retry-After`, prevents overlapping continuations, resumes after reload/online recovery, and clears the token and local sync queue only after terminal `deleted`. Non-retryable authorization failures remain visible for a manual retry. Rest cancellation sends the exact `timerVersion`; the service worker's cache version 30 remembers cancellation by notification ID plus version so cancellation of an older timer does not suppress its replacement.
+
+**PARTIALLY IMPLEMENTED / NEEDS REVIEW:** explicit remote deletion and versioned timer cancellation are integrated, but automatic notification-disable, local-data-clear, or reset orchestration does not yet prove browser unsubscription plus terminal remote deletion in every path. There is still no account-backed restore lifecycle.
 
 Required server environment names are documented without values in `.env.example`. Secrets must remain in deployment configuration.
 
 ## Error handling and privacy boundaries
 
-Persistence falls back from IndexedDB to localStorage. Personal evidence URL loading tolerates protected/unavailable private sources and continues research-led. APIs return structured JSON errors and fail authorization. Service-worker navigation falls back to cached `index.html`.
+Persistence falls back from IndexedDB to localStorage. Public research data is fetched once. Optional private-evidence URL discovery occurs only on exact loopback hosts or a Capacitor native runtime, resolves every candidate URL against the current document, requires the exact same origin, and uses `credentials: "same-origin"` with `cache: "no-store"`; a hosted PWA never probes private paths. Protected/unavailable local sources therefore fall back to research-led behavior. APIs return structured JSON errors and fail authorization. Service-worker navigation falls back to cached `index.html`.
 
 Private raw/normalized/derived/reports data must not enter public web assets. `.vercelignore` blocks private payload paths; `sync:web` only creates an ignored private native payload when locally available. Exported app backups and Redis workout payloads may contain personal workout data and should be treated as sensitive. Redis TTLs and resumable deletion reduce retention but do not make those payloads public or anonymous.
 

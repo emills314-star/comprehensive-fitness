@@ -1950,11 +1950,31 @@
       const ACTIVE_HISTORY_MONTHS = 6;
       const SET_CLASSIFIER_VERSION = 2;
       const DOMAIN_MIGRATION_VERSION = 3;
+      const BACKUP_IMPORT_LIMITS = Object.freeze({
+        maxFileBytes: 8 * 1024 * 1024,
+        maxJsonDepth: 32,
+        maxObjectKeys: 128,
+        maxSessions: 1024,
+        maxExercises: 4096,
+        maxSets: 16384,
+        maxTemplates: 512
+      });
+      const PERSONAL_EVIDENCE_IMPORT_LIMITS = Object.freeze({
+        maxFileBytes: 8 * 1024 * 1024,
+        maxJsonDepth: 32,
+        maxObjectKeys: 128,
+        maxCoreCollectionItems: 1024,
+        maxStableIdChars: 128,
+        maxNameChars: 256,
+        maxTextChars: 4096
+      });
       const root = document.getElementById("root");
       const defaultReadinessBaseline = { sleepHours: 7.5, sleepQuality: 4, hrv: "", restingHr: "", soreness: 2, band: 8 };
       const defaultSettings = {
         weightUnit: "lb",
         trainingGoal: "",
+        trainingGoalSource: "missing_default",
+        trainingGoalDisclosure: "General fitness is used as the disclosed default until a training goal is selected.",
         nutritionPhase: "",
         experienceLevel: "",
         returningAfterGap: null,
@@ -1980,6 +2000,7 @@
         autoScrollNextSet: true,
         installGuideDismissed: false,
         setupSoundConfirmed: false,
+        cloudWorkoutSyncConsent: false,
         readinessBaseline: { ...defaultReadinessBaseline }
       };
       let data = emptyData();
@@ -2061,6 +2082,8 @@
       let dashboardReturnScroll = 0;
       let settingsMessage = "";
       let importInProgress = false;
+      let importAttempt = 0;
+      let importStatus = { state: "idle", message: "" };
       let saveTimer = 0;
       let draftSaveTimer = 0;
       let idleSaveHandle = 0;
@@ -2752,6 +2775,8 @@
         const safeSettings = {
           weightUnit: storedSettings.weightUnit,
           trainingGoal,
+          trainingGoalSource: validTrainingGoals.has(storedSettings.trainingGoal) ? (storedSettings.trainingGoalSource || "explicit") : (storedSettings.trainingGoalSource || "missing_default"),
+          trainingGoalDisclosure: validTrainingGoals.has(storedSettings.trainingGoal) ? (storedSettings.trainingGoalDisclosure || "") : (storedSettings.trainingGoalDisclosure || "General fitness default used because the legacy nutrition goal did not specify a training goal."),
           nutritionPhase,
           experienceLevel,
           returningAfterGap,
@@ -2776,7 +2801,8 @@
           autoHighlightNextSet: storedSettings.autoHighlightNextSet,
           autoScrollNextSet: storedSettings.autoScrollNextSet,
           installGuideDismissed: storedSettings.installGuideDismissed,
-          setupSoundConfirmed: storedSettings.setupSoundConfirmed
+          setupSoundConfirmed: storedSettings.setupSoundConfirmed,
+          cloudWorkoutSyncConsent: storedSettings.cloudWorkoutSyncConsent === true
         };
         model.settings = { ...defaultSettings, ...Object.fromEntries(Object.entries(safeSettings).filter(([, value]) => value != null)), readinessBaseline: cleanReadinessBaseline(storedSettings.readinessBaseline || {}) };
         delete model.settings.goal;
@@ -2902,13 +2928,21 @@
           if (persistedPersonalData) {
             bundle = prescriptionApi.normalizeEvidenceBundle({ personalData: persistedPersonalData, research: researchBundle.research });
           } else {
+            const evidenceHostname = String(window.location.hostname || "").toLowerCase().replace(/^\[|\]$/g, "");
+            const loopbackEvidenceOrigin = evidenceHostname === "localhost" || evidenceHostname === "127.0.0.1" || evidenceHostname === "::1";
+            const nativeEvidenceOrigin = window.Capacitor?.isNativePlatform?.() === true;
+            if (!loopbackEvidenceOrigin && !nativeEvidenceOrigin) {
+              bundle = researchBundle;
+            } else {
             const personalSources = [
               { base: "./private-personal-data", metadata: "./private-personal-data/analysis_metadata.json", label: "private native evidence" },
               { base: "./personal_fitness_data/derived", metadata: "./personal_fitness_data/reports/analysis_metadata.json", label: "local protected evidence" }
             ];
             const fetchOptional = async (url, kind) => {
               try {
-                const response = await fetch(url, { credentials: "same-origin" });
+                const resolved = new URL(url, window.location.href);
+                if (resolved.origin !== window.location.origin) return kind === "csv" ? [] : kind === "metadata" ? {} : [];
+                const response = await fetch(resolved.href, { credentials: "same-origin", cache: "no-store" });
                 if (!response.ok) return kind === "csv" ? [] : kind === "metadata" ? {} : [];
                 return kind === "csv" ? prescriptionApi.parseCsv(await response.text()) : response.json();
               } catch {
@@ -2937,6 +2971,7 @@
               bundle = candidate;
               sourceLabel = source.label;
               break;
+            }
             }
           }
           if (!bundle) bundle = researchBundle;
@@ -3684,6 +3719,7 @@
         coachRecommendationCache.clear();
         exerciseProgressCache.clear();
         previousPerformanceCache.clear();
+        muscleAssignmentCache.clear();
         prescriptionSnapshotCache.clear();
       }
 
@@ -8434,6 +8470,8 @@
             <details class="settings-group" open><summary>iPhone app setup <span class="status-pill ${pushStatus.className}">${pushStatus.label}</span></summary><div class="disclosure-body settings-panel">
               ${renderPwaSetup()}
               ${notificationMessage ? '<p class="settings-note">' + escapeHtml(notificationMessage) + '</p>' : ""}
+              <label class="toggle-line"><input type="checkbox" data-action="cloud-workout-sync-consent" ${data.settings.cloudWorkoutSyncConsent === true ? "checked" : ""} />Upload installation-authorized workout mutations to the optional cloud backend</label>
+              <p class="settings-note">Cloud workout upload is separate from notifications and defaults off. Turning it off clears this device's pending upload queue; exported app backups remain the recovery source.</p>
             </div></details>
             <details class="settings-group"><summary>Training defaults <span>Goal</span></summary><div class="disclosure-body settings-panel">
               <label>Training goal
@@ -8512,6 +8550,7 @@
               <label class="import-button">${icon.upload} private personal evidence package<input type="file" accept=".json,application/json" data-action="import-personal-evidence" /></label>
               <p class="settings-note">The evidence package stays in this device's IndexedDB and exports. Protected personal analysis files are never included in the public deployment.</p>
               ${settingsMessage ? '<p class="settings-note">' + escapeHtml(settingsMessage) + '</p>' : ""}
+              ${importAttempt ? '<p role="status" aria-live="polite" data-import-status data-import-state="' + escapeHtml(importStatus.state) + '" data-import-attempt="' + importAttempt + '">' + escapeHtml(importStatus.message) + '</p>' : ''}
               ${importInProgress ? '<p class="settings-note">Importing workout history. This can take a moment on iPhone, but navigation will recover automatically when it finishes.</p>' : ""}
               <button type="button" data-action="export-data">${icon.download} data</button>
               ${exportText ? '<textarea class="export-box" readonly aria-label="Exported backup JSON">' + escapeHtml(exportText) + '</textarea>' : ""}
@@ -8523,6 +8562,9 @@
             <details class="settings-group danger-zone"><summary>Danger Zone <span>High-risk actions</span></summary><div class="disclosure-body settings-panel">
               <div><strong>Clear All Local App Data</strong><p class="settings-note">Removes app data stored on this device. It does not submit, cancel, or delete cloud account data.</p></div>
               <button class="danger-button" type="button" data-action="clear-data">${icon.delete} Clear All Local App Data</button>
+              <div><strong>Delete Remote Installation Data</strong><p class="settings-note">Revokes this installation and resumes bounded server cleanup until deletion is confirmed. Local workout data remains on this device.</p></div>
+              <button class="danger-button" type="button" data-action="delete-remote-installation" ${pushIdentity?.token ? "" : "disabled"}>${icon.delete} ${pushIdentity?.deletion?.retryable ? "Retry Remote Deletion" : "Delete Remote Installation Data"}</button>
+              ${pushIdentity?.deletion?.message ? '<p class="settings-note" role="status">' + escapeHtml(pushIdentity.deletion.message) + '</p>' : ''}
             </div></details>
             <details class="settings-group" id="support-guidance"><summary>Support and guidance <span>Privacy</span></summary><div class="disclosure-body settings-panel"><p class="settings-note">Progression guidance is informational fitness guidance, not medical advice. Stop if something hurts and use your own judgment.</p><p class="settings-links"><a href="./privacy.html">Privacy Policy</a><a href="./support.html">Support</a></p></div></details>
           </section>
@@ -8531,13 +8573,16 @@
 
       async function inspectUnsynchronizedData() {
         let queue = [];
-        try { queue = await readIndexedValue("sync-queue") || []; } catch { queue = []; }
+        const syncConsented = data.settings.cloudWorkoutSyncConsent === true;
+        if (syncConsented) {
+          try { queue = await readIndexedValue("sync-queue") || []; } catch { queue = []; }
+        }
         const draftSessions = data.sessions.filter((session) => !isSessionSubmitted(session) && data.exercises.some((exercise) => exercise.sessionId === session.id));
         const draftIds = new Set(draftSessions.map((session) => session.id));
         const draftExerciseIds = new Set(data.exercises.filter((exercise) => draftIds.has(exercise.sessionId)).map((exercise) => exercise.id));
         const unsavedSetChanges = data.sets.filter((set) => draftExerciseIds.has(set.exerciseId) && (set.edited || set.completed || Number(set.reps || 0) > 0 || Number(set.weight || 0) > 0)).length;
         const workoutIds = new Set([...queue.map((item) => item.sessionId), ...draftSessions.map((session) => session.id)]);
-        return { queueCount: queue.length, workoutCount: workoutIds.size, setChanges: unsavedSetChanges, canSync: Boolean(navigator.onLine && pushIdentity?.token && queue.length) };
+        return { queueCount: queue.length, workoutCount: workoutIds.size, setChanges: unsavedSetChanges, canSync: Boolean(syncConsented && navigator.onLine && pushIdentity?.token && queue.length) };
       }
 
       async function requestClearLocalData() {
@@ -9308,6 +9353,83 @@
         return true;
       }
 
+      async function deleteRemoteInstallationData(options = {}) {
+        const identity = pushIdentity;
+        if (!identity?.installationId || !identity?.token) {
+          const unavailable = { status: "unavailable", retryable: false, message: "No authorized remote installation is available to delete." };
+          settingsMessage = unavailable.message;
+          render();
+          return unavailable;
+        }
+        if (window.__cfRemoteDeletionInFlight) return { status: "deleting", retryable: true, inFlight: true };
+        window.__cfRemoteDeletionInFlight = true;
+        const finish = (result) => {
+          window.__cfRemoteDeletionInFlight = false;
+          return result;
+        };
+        const retainedToken = identity.token;
+        const retainedInstallationId = identity.installationId;
+        const retainedDeviceId = identity.deviceId;
+        const scheduleRetry = (delayMs = 5000) => {
+          if (options.scheduleRetry === false || typeof window?.setTimeout !== "function") return;
+          if (window.__cfRemoteDeletionRetryTimer) window.clearTimeout(window.__cfRemoteDeletionRetryTimer);
+          window.__cfRemoteDeletionRetryTimer = window.setTimeout(() => {
+            window.__cfRemoteDeletionRetryTimer = 0;
+            deleteRemoteInstallationData({ automatic: true });
+          }, Math.max(1000, Math.min(300000, Number(delayMs || 5000))));
+        };
+        try {
+          const result = await pushApi("/api/install/delete", { installationId: retainedInstallationId });
+          if (result?.status === "deleted") {
+            pushIdentity = {
+              ...identity,
+              installationId: retainedInstallationId,
+              deviceId: retainedDeviceId,
+              token: "",
+              status: "deleted",
+              deletion: { status: "deleted", retryable: false, completedAt: isoNow(), message: "Remote installation data was deleted. Local workout data remains on this device." }
+            };
+            await persistPushIdentity();
+            await writeIndexedValue("sync-queue", []).catch(() => undefined);
+            settingsMessage = pushIdentity.deletion.message;
+            render();
+            if (window.__cfRemoteDeletionRetryTimer) window.clearTimeout(window.__cfRemoteDeletionRetryTimer);
+            window.__cfRemoteDeletionRetryTimer = 0;
+            return finish({ status: "deleted", retryable: false });
+          }
+          const deleting = {
+            status: "deleting",
+            retryable: true,
+            phase: result?.phase || "cleanup",
+            updatedAt: isoNow(),
+            message: "Remote deletion is in progress. Authorization is retained only to resume cleanup."
+          };
+          pushIdentity = { ...identity, installationId: retainedInstallationId, deviceId: retainedDeviceId, token: retainedToken, status: "deleting", deletion: deleting };
+          await persistPushIdentity();
+          settingsMessage = deleting.message;
+          render();
+          scheduleRetry(result?.retryAfterMs);
+          return finish({ status: "deleting", retryable: true, phase: deleting.phase });
+        } catch (error) {
+          const statusCode = Number(error?.status || 0);
+          const retryable = !statusCode || statusCode === 429 || statusCode >= 500;
+          const failed = {
+            status: "error",
+            retryable,
+            updatedAt: isoNow(),
+            message: retryable
+              ? "Remote deletion was interrupted and will retry while this installation remains authorized."
+              : "Remote deletion could not continue. Retry from Settings; local data was not changed."
+          };
+          pushIdentity = { ...identity, installationId: retainedInstallationId, deviceId: retainedDeviceId, token: retainedToken, status: retryable ? "deleting" : identity.status, deletion: failed };
+          await persistPushIdentity();
+          settingsMessage = failed.message;
+          render();
+          if (retryable) scheduleRetry(error?.retryAfterMs);
+          return finish({ status: "error", retryable });
+        }
+      }
+
       async function fetchPushConfig(force = false) {
         if (pushConfig && !force) return pushConfig;
         try {
@@ -9337,12 +9459,17 @@
           body: JSON.stringify(body)
         });
         const payload = await response.json().catch(() => ({}));
+        const retryAfterValue = String(response.headers?.get?.("Retry-After") || "").trim();
+        let retryAfterMs = 0;
+        if (/^\d+(?:\.\d+)?$/.test(retryAfterValue)) retryAfterMs = Math.ceil(Number(retryAfterValue) * 1000);
+        else if (retryAfterValue) retryAfterMs = Math.max(0, Date.parse(retryAfterValue) - Date.now());
         if (!response.ok) {
           const error = new Error(payload.error || "Notification service request failed.");
           error.status = response.status;
+          error.retryAfterMs = retryAfterMs;
           throw error;
         }
-        return payload;
+        return retryAfterMs ? { ...payload, retryAfterMs } : payload;
       }
 
       async function registerPushSubscription(subscription, retryWithNewId = true) {
@@ -9455,17 +9582,19 @@
 
       async function cancelRestPush(timerSnapshot, reason = "canceled") {
         if (!timerSnapshot?.id) return false;
-        navigator.serviceWorker?.controller?.postMessage({ type: "CANCEL_REST_TIMER", timerId: timerSnapshot.serverNotificationId || timerSnapshot.id });
+        const timerVersion = Number(timerSnapshot.version || timerSnapshot.timerVersion || 1);
+        navigator.serviceWorker?.controller?.postMessage({ type: "CANCEL_REST_TIMER", timerId: timerSnapshot.serverNotificationId || timerSnapshot.id, timerVersion });
         const operation = {
           installationId: pushIdentity?.installationId,
           workoutId: timerSnapshot.workoutId || activeWorkoutId,
           notificationId: timerSnapshot.serverNotificationId || timerSnapshot.id,
+          timerVersion,
           reason
         };
         if (!pushIdentity?.token || !navigator.onLine) {
           let pending = [];
           try { pending = await readIndexedValue("push-operations") || []; } catch { return false; }
-          pending = pending.filter((item) => item.notificationId !== operation.notificationId);
+          pending = pending.filter((item) => item.notificationId !== operation.notificationId || Number(item.timerVersion || 1) !== operation.timerVersion);
           pending.push(operation);
           await writeIndexedValue("push-operations", pending).catch(() => undefined);
           return false;
@@ -9473,9 +9602,12 @@
         try {
           await pushApi("/api/push/cancel", operation);
           return true;
-        } catch {
+        } catch (error) {
+          const statusCode = Number(error?.status || 0);
+          if (statusCode && statusCode !== 429 && statusCode < 500) return false;
           let pending = [];
           try { pending = await readIndexedValue("push-operations") || []; } catch { return false; }
+          pending = pending.filter((item) => item.notificationId !== operation.notificationId || Number(item.timerVersion || 1) !== operation.timerVersion);
           pending.push(operation);
           await writeIndexedValue("push-operations", pending).catch(() => undefined);
           return false;
@@ -9489,7 +9621,10 @@
         const remaining = [];
         for (const operation of pending) {
           try { await pushApi("/api/push/cancel", operation); }
-          catch { remaining.push(operation); }
+          catch (error) {
+            const statusCode = Number(error?.status || 0);
+            if (!statusCode || statusCode === 429 || statusCode >= 500) remaining.push(operation);
+          }
         }
         await writeIndexedValue("push-operations", remaining).catch(() => undefined);
       }
@@ -9512,6 +9647,7 @@
       }
 
       async function queueActiveWorkoutSync() {
+        if (data.settings.cloudWorkoutSyncConsent !== true) return;
         const session = activeWorkoutSession() || (completedSummarySessionId ? data.sessions.find((item) => item.id === completedSummarySessionId) : null);
         if (!session) return;
         const index = dataEntityIndex();
@@ -9531,6 +9667,7 @@
       }
 
       async function flushWorkoutSyncQueue() {
+        if (data.settings.cloudWorkoutSyncConsent !== true) return;
         if (!navigator.onLine || !pushIdentity?.token) return;
         let queue = [];
         try { queue = await readIndexedValue("sync-queue") || []; } catch { return; }
@@ -11116,52 +11253,392 @@
         render();
       }
 
-      function importDataFile(file) {
+      function validateBackupJsonShape(value, options = {}) {
+        // The next gate, validateImportedAppData, applies VALID_ID_PATTERN checks,
+        // MAX_SESSIONS / MAX_EXERCISES / MAX_SETS / MAX_TEMPLATES bounds,
+        // seenIds duplicate rejection, and sessionIds/exerciseIds orphan reference checks.
+        const maxDepth = Number(options.maxDepth ?? options.maxJsonDepth ?? BACKUP_IMPORT_LIMITS.maxJsonDepth);
+        const maxObjectKeys = Number(options.maxObjectKeys ?? BACKUP_IMPORT_LIMITS.maxObjectKeys);
+        const forbiddenEventKey = /^on/i;
+        if (!Number.isInteger(maxDepth) || maxDepth < 1 || !Number.isInteger(maxObjectKeys) || maxObjectKeys < 1) throw new Error("Invalid JSON shape limits.");
+        const stack = [{ value, depth: value && typeof value === "object" ? 1 : 0 }];
+        while (stack.length) {
+          const current = stack.pop();
+          if (!current.value || typeof current.value !== "object") continue;
+          if (current.depth > maxDepth) throw new Error(`JSON shape exceeds the maximum depth limit of ${maxDepth}.`);
+          const keys = Object.keys(current.value);
+          if (!Array.isArray(current.value) && keys.length > maxObjectKeys) throw new Error(`JSON object width exceeds the ${maxObjectKeys}-key limit.`);
+          for (const key of keys) {
+            if (key === "__proto__" || key === "prototype" || key === "constructor" || forbiddenEventKey.test(key)) throw new Error(`JSON contains a forbidden executable or prototype key: ${key}.`);
+            const child = current.value[key];
+            if (child && typeof child === "object") stack.push({ value: child, depth: current.depth + 1 });
+          }
+        }
+        return true;
+      }
+
+      function validateImportedAppData(imported, limits = BACKUP_IMPORT_LIMITS) {
+        validateBackupJsonShape(imported, { maxDepth: limits.maxJsonDepth, maxObjectKeys: limits.maxObjectKeys });
+        if (!imported || typeof imported !== "object" || Array.isArray(imported)) throw new Error("Backup root must be a JSON object.");
+        const allowedTopLevelFields = new Set(["appDataVersion", "domainMigrationVersion", "sessions", "exercises", "sets", "templates", "mesocycles", "activeMesocycleId", "recommendationHistory", "manualOverrides", "personalEvidencePackage", "rawImports", "migrationAudit", "dataRevision", "settings"]);
+        const allowedSessionFields = new Set(["id", "externalId", "source", "date", "title", "isTravel", "notes", "submitted", "workoutStarted", "workoutState", "completedAt", "submittedAt", "startedAt", "createdAt", "updatedAt", "templateId", "recovery", "prs", "workoutAnalysis", "workoutPrescription", "adjustmentSummary", "deletedAt", "trashed", "canceledAt"]);
+        const allowedExerciseFields = new Set(["id", "externalId", "source", "sessionId", "name", "notes", "order", "primaryMuscle", "secondaryMuscle", "restSeconds", "resistanceType", "isBodyweight", "isDeload", "recommendationSnapshot", "basePrescription", "finalPrescription", "coachRecommendation", "executionBlocked", "safetyRestriction", "manualOverrides", "adjusted", "adjustmentReason", "triggerLabels", "canonicalExerciseId", "researchExerciseId", "originalPrescription", "prescription", "recommendationVersion", "personalDataVersion", "researchDatabaseVersion", "programTargetContext", "appliedTargetContext", "overrideLocked"]);
+        const allowedSetFields = new Set(["id", "exerciseId", "setNumber", "sequenceIndex", "sequence", "setTypeIndex", "setType", "reps", "weight", "weightUnit", "resistanceType", "rpe", "completed", "skipped", "edited", "isWarmup", "countsTowardScore", "countsTowardVolume", "countsTowardProgression", "addedLoad", "assistanceLoad", "durationSeconds", "distance", "distanceUnit", "targetReps", "targetRepMin", "targetRepMax", "targetWeight", "targetRpe", "targetRpeMin", "targetRpeMax", "targetRpeTolerance", "targetRestSeconds", "setPrescription", "previousComparableSet", "prescriptionReason", "prescriptionMode", "prescriptionConfidence", "validationWarning", "classificationSource", "classificationConfidence", "classifierVersion", "manualOverride", "reviewRequired", "classifiedAt", "sourceSetOrder", "originalImportedValue"]);
+        const allowedTemplateFields = new Set(["id", "name", "notes", "createdAt", "updatedAt", "exercises", "mesocycleId", "mesocycleRevision", "trainingDayId", "source"]);
+        const allowedTemplateExerciseFields = new Set(["id", "name", "notes", "sets", "reps", "targetRpe", "increment", "restSeconds", "resistanceType", "isBodyweight", "primaryMuscle", "secondaryMuscle", "warmups", "setTypes", "canonicalExerciseId", "researchExerciseId", "mesocycleSlotId", "assignmentId"]);
+        const allowedSettingsFields = new Set(["weightUnit", "trainingGoal", "trainingGoalSource", "trainingGoalDisclosure", "nutritionPhase", "experienceLevel", "returningAfterGap", "trainingDaysPerWeek", "availableEquipment", "excludedExerciseIds", "theme", "timerSound", "workoutCompletionSound", "timerVibration", "interactionVibration", "timerNotifications", "inAppRestAlerts", "restCompleteSound", "restCompleteSoundVolume", "restCompleteAutoDismissMs", "restCompleteLockScreenNotifications", "restCompleteAutoReturnToWorkout", "defaultRestSeconds", "notificationMessageDetail", "autoStartRestTimer", "autoHighlightNextSet", "autoScrollNextSet", "installGuideDismissed", "setupSoundConfirmed", "cloudWorkoutSyncConsent", "readinessBaseline", "goal", "trainingStatus"]);
+        const allowedMesocycleFields = new Set(["id", "schemaVersion", "builderMode", "rulesVersion", "type", "name", "status", "createdAt", "updatedAt", "durationWeeks", "durationBasis", "specializationMuscleGroups", "trainingDays", "split", "availableEquipment", "constraints", "exclusionResolution", "programmingContext", "planningStep", "availableMuscleGroupIds", "includedMuscleGroupIds", "equipmentUnavailableMuscleGroupIds", "omittedMuscleGroups", "scopeConfirmed", "currentProgramExerciseIds", "recentExerciseWindowDays", "pools", "activeExercises", "selectedPortfolio", "programSlots", "sessions", "programReview", "preservedProductiveExerciseIds", "versions", "lifecycle", "startedAt", "completedAt", "outcome", "reviewedAt", "review", "musclePriorities", "planningProgress", "guidedDays", "acceptedExceptions", "viabilityResult", "viabilityStale", "linkedTemplateIds", "creationResult", "revision"]);
+        const allowedRecommendationFields = new Set(["recommendationId", "schemaVersion", "recommendationVersion", "engineVersion", "personalDataVersion", "researchDatabaseVersion", "mesocycleId", "exerciseId", "muscleGroupId", "exerciseScore", "muscleSpecificScore", "personalEvidenceWeight", "researchEvidenceWeight", "readinessAdjustment", "basePrescription", "finalPrescription", "explanation", "evidenceSummary", "confidence", "createdAt", "manualOverrides", "overrideLocked", "checksum", "request", "scores", "versions"]);
+        const allowedOverrideFields = new Set(["overrideId", "recommendationId", "sessionId", "workoutId", "exerciseRuntimeId", "exerciseId", "setId", "field", "from", "to", "createdAt", "actor", "reason", "lockedForWorkout", "changes", "previousFinalPrescription", "outcome", "outcomeEvaluation", "action"]);
+        const allowedRawImportFields = new Set(["id", "source", "importedAt", "originalText", "sessionExternalIds"]);
+        const allowedMigrationFields = new Set(["version", "startedAt", "completedAt", "inspected", "changed", "explicitRetained", "manualOverridesPreserved", "warmups", "topSets", "backoffSets", "dropSets", "ambiguous", "templatesReseeded", "changes"]);
+        const VALID_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+        const MAX_SESSIONS = limits.maxSessions;
+        const MAX_EXERCISES = limits.maxExercises;
+        const MAX_SETS = limits.maxSets;
+        const MAX_TEMPLATES = limits.maxTemplates;
+        const assertAllowed = (record, allowedFields, label) => {
+          if (!record || typeof record !== "object" || Array.isArray(record)) throw new Error(`${label} must be an object.`);
+          const unknown = Object.keys(record).find((key) => !allowedFields.has(key));
+          if (unknown) throw new Error(`${label} contains an unknown field: ${unknown}.`);
+        };
+        const assertId = (value, label) => {
+          if (typeof value !== "string" || !VALID_ID_PATTERN.test(value)) throw new Error(`${label} has an invalid id; identifiers must be 1-128 safe characters.`);
+          return value;
+        };
+        const assertName = (value, label) => {
+          if (value != null && (typeof value !== "string" || value.length > 256)) throw new Error(`${label} name exceeds the 256-character limit.`);
+        };
+        const assertText = (value, label) => {
+          if (value != null && (typeof value !== "string" || value.length > 4096)) throw new Error(`${label} text exceeds the 4096-character limit.`);
+        };
+        const cloneJsonValue = (value) => {
+          if (Array.isArray(value)) return value.map(cloneJsonValue);
+          if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, cloneJsonValue(child)]));
+          return value;
+        };
+        const copyAllowed = (record, allowedFields) => Object.fromEntries(Object.entries(record).filter(([key]) => allowedFields.has(key)).map(([key, value]) => [key, cloneJsonValue(value)]));
+
+        const unknownTopLevel = Object.keys(imported).find((key) => !allowedTopLevelFields.has(key));
+        if (unknownTopLevel) throw new Error(`Backup contains an unknown top-level field: ${unknownTopLevel}.`);
+        const appDataVersion = imported.appDataVersion;
+        if (!Number.isInteger(appDataVersion) || ![1, 2].includes(appDataVersion)) throw new Error("Unsupported or malformed appDataVersion; only version 1 legacy migration and version 2 are supported.");
+        for (const collection of ["sessions", "exercises", "sets", "templates"]) if (!Array.isArray(imported[collection])) throw new Error(`Import must include a ${collection} array.`);
+        if (imported.sessions.length > MAX_SESSIONS) throw new Error(`Session count exceeds the ${MAX_SESSIONS} limit.`);
+        if (imported.exercises.length > MAX_EXERCISES) throw new Error(`Exercise count exceeds the ${MAX_EXERCISES} limit.`);
+        if (imported.sets.length > MAX_SETS) throw new Error(`Set count exceeds the ${MAX_SETS} limit.`);
+        if (imported.templates.length > MAX_TEMPLATES) throw new Error(`Template count exceeds the ${MAX_TEMPLATES} limit.`);
+        const seenIds = (records, label) => {
+          const ids = new Set();
+          records.forEach((record, index) => {
+            const recordId = assertId(record.id, `${label} ${index + 1}`);
+            if (ids.has(recordId)) throw new Error(`Duplicate ${label} id: ${recordId}.`);
+            ids.add(recordId);
+          });
+          return ids;
+        };
+
+        const sessions = imported.sessions.map((record, index) => {
+          assertAllowed(record, allowedSessionFields, `Session ${index + 1}`);
+          assertName(record.title, `Session ${index + 1}`);
+          assertText(record.notes, `Session ${index + 1} notes`);
+          for (const field of ["submitted", "workoutStarted", "isTravel", "trashed"]) if (record[field] != null && typeof record[field] !== "boolean") throw new Error(`Session ${index + 1} ${field} must be boolean.`);
+          return copyAllowed(record, allowedSessionFields);
+        });
+        const exercises = imported.exercises.map((record, index) => {
+          assertAllowed(record, allowedExerciseFields, `Exercise ${index + 1}`);
+          assertName(record.name, `Exercise ${index + 1}`);
+          assertText(record.notes, `Exercise ${index + 1} notes`);
+          assertId(record.sessionId, `Exercise ${index + 1} session reference`);
+          if (record.order != null && (!Number.isInteger(Number(record.order)) || Number(record.order) < 0)) throw new Error(`Exercise ${index + 1} order must be a non-negative integer.`);
+          if (record.restSeconds != null && (!Number.isFinite(Number(record.restSeconds)) || Number(record.restSeconds) < 0 || Number(record.restSeconds) > 3600)) throw new Error(`Exercise ${index + 1} restSeconds is invalid.`);
+          for (const field of ["isBodyweight", "isDeload", "executionBlocked", "adjusted", "overrideLocked"]) if (record[field] != null && typeof record[field] !== "boolean") throw new Error(`Exercise ${index + 1} ${field} must be boolean.`);
+          return copyAllowed(record, allowedExerciseFields);
+        });
+        const sets = imported.sets.map((record, index) => {
+          assertAllowed(record, allowedSetFields, `Set ${index + 1}`);
+          assertId(record.exerciseId, `Set ${index + 1} exercise reference`);
+          for (const field of ["setNumber", "sequenceIndex", "sequence", "setTypeIndex", "reps", "weight", "rpe", "addedLoad", "assistanceLoad", "durationSeconds", "distance", "targetReps", "targetRepMin", "targetRepMax", "targetWeight", "targetRpe", "targetRpeMin", "targetRpeMax", "targetRpeTolerance", "targetRestSeconds", "classificationConfidence", "classifierVersion"]) if (record[field] != null && record[field] !== "" && !Number.isFinite(Number(record[field]))) throw new Error(`Set ${index + 1} ${field} must be numeric.`);
+          for (const field of ["completed", "skipped", "edited", "isWarmup", "countsTowardScore", "countsTowardVolume", "countsTowardProgression", "manualOverride", "reviewRequired"]) if (record[field] != null && typeof record[field] !== "boolean") throw new Error(`Set ${index + 1} ${field} must be boolean.`);
+          return copyAllowed(record, allowedSetFields);
+        });
+        const templateExerciseIds = new Set();
+        const templates = imported.templates.map((record, index) => {
+          assertAllowed(record, allowedTemplateFields, `Template ${index + 1}`);
+          assertName(record.name, `Template ${index + 1}`);
+          assertText(record.notes, `Template ${index + 1} notes`);
+          if (!Array.isArray(record.exercises)) throw new Error(`Template ${index + 1} must contain an exercises array.`);
+          const template = copyAllowed(record, allowedTemplateFields);
+          template.exercises = record.exercises.map((exercise, exerciseIndex) => {
+            assertAllowed(exercise, allowedTemplateExerciseFields, `Template ${index + 1} exercise ${exerciseIndex + 1}`);
+            const exerciseId = assertId(exercise.id, `Template ${index + 1} exercise ${exerciseIndex + 1}`);
+            if (templateExerciseIds.has(exerciseId)) throw new Error(`Duplicate template exercise id: ${exerciseId}.`);
+            templateExerciseIds.add(exerciseId);
+            assertName(exercise.name, `Template ${index + 1} exercise ${exerciseIndex + 1}`);
+            assertText(exercise.notes, `Template ${index + 1} exercise ${exerciseIndex + 1} notes`);
+            for (const field of ["sets", "reps", "targetRpe", "increment", "restSeconds"]) if (exercise[field] != null && exercise[field] !== "" && !Number.isFinite(Number(exercise[field]))) throw new Error(`Template ${index + 1} exercise ${exerciseIndex + 1} ${field} must be numeric.`);
+            return copyAllowed(exercise, allowedTemplateExerciseFields);
+          });
+          return template;
+        });
+        const sessionIds = seenIds(sessions, "session");
+        const exerciseIds = seenIds(exercises, "exercise");
+        seenIds(sets, "set");
+        const templateIds = seenIds(templates, "template");
+        exercises.forEach((exercise) => { if (!sessionIds.has(exercise.sessionId)) throw new Error(`Orphan exercise reference: ${exercise.id} -> ${exercise.sessionId}.`); });
+        sets.forEach((set) => { if (!exerciseIds.has(set.exerciseId)) throw new Error(`Orphan set reference: ${set.id} -> ${set.exerciseId}.`); });
+        sessions.forEach((session) => { if (session.templateId && !templateIds.has(session.templateId)) throw new Error(`Orphan template reference: ${session.templateId}.`); });
+        if (imported.mesocycles != null && !Array.isArray(imported.mesocycles)) throw new Error("Mesocycles must be an array.");
+        const mesocycles = (imported.mesocycles || []).map((record, index) => {
+          assertAllowed(record, allowedMesocycleFields, `Mesocycle ${index + 1}`);
+          assertName(record.name, `Mesocycle ${index + 1}`);
+          return copyAllowed(record, allowedMesocycleFields);
+        });
+        if (mesocycles.length > MAX_TEMPLATES) throw new Error(`Mesocycle count exceeds the ${MAX_TEMPLATES} limit.`);
+        const mesocycleIds = seenIds(mesocycles, "mesocycle");
+        const activeMesocycleId = imported.activeMesocycleId || "";
+        if (activeMesocycleId) {
+          assertId(activeMesocycleId, "Active mesocycle reference");
+          if (!mesocycleIds.has(activeMesocycleId)) throw new Error(`Orphan active mesocycle reference: ${activeMesocycleId}.`);
+        }
+        const settings = imported.settings == null ? {} : imported.settings;
+        assertAllowed(settings, allowedSettingsFields, "Settings");
+        if (settings.weightUnit != null && !["lb", "kg"].includes(settings.weightUnit)) throw new Error("Settings weightUnit must be lb or kg.");
+        if (settings.trainingGoal != null && !["", "strength", "hypertrophy", "muscular_endurance", "general_fitness"].includes(settings.trainingGoal)) throw new Error("Settings trainingGoal is invalid.");
+        if (settings.nutritionPhase != null && !["", "deficit", "maintenance", "surplus", "recomposition"].includes(settings.nutritionPhase)) throw new Error("Settings nutritionPhase is invalid.");
+        if (settings.experienceLevel != null && !["", "novice", "intermediate", "advanced"].includes(settings.experienceLevel)) throw new Error("Settings experienceLevel is invalid.");
+        if (settings.theme != null && !["light", "dark"].includes(settings.theme)) throw new Error("Settings theme is invalid.");
+        if (settings.trainingDaysPerWeek != null && (!Number.isInteger(Number(settings.trainingDaysPerWeek)) || Number(settings.trainingDaysPerWeek) < 1 || Number(settings.trainingDaysPerWeek) > 7)) throw new Error("Settings trainingDaysPerWeek must be between 1 and 7.");
+        if (settings.availableEquipment != null && (!Array.isArray(settings.availableEquipment) || settings.availableEquipment.length > 128 || settings.availableEquipment.some((value) => typeof value !== "string" || !value || value.length > 128))) throw new Error("Settings availableEquipment is invalid or exceeds its limit.");
+        if (settings.excludedExerciseIds != null && (!Array.isArray(settings.excludedExerciseIds) || settings.excludedExerciseIds.length > MAX_EXERCISES)) throw new Error("Settings excludedExerciseIds is invalid or exceeds its limit.");
+        if (Array.isArray(settings.excludedExerciseIds)) settings.excludedExerciseIds.forEach((value, index) => assertId(value, `Excluded exercise ${index + 1}`));
+        const booleanSettingFields = ["timerSound", "workoutCompletionSound", "timerVibration", "interactionVibration", "timerNotifications", "inAppRestAlerts", "restCompleteLockScreenNotifications", "restCompleteAutoReturnToWorkout", "autoStartRestTimer", "autoHighlightNextSet", "autoScrollNextSet", "installGuideDismissed", "setupSoundConfirmed", "cloudWorkoutSyncConsent"];
+        booleanSettingFields.forEach((field) => { if (settings[field] != null && typeof settings[field] !== "boolean") throw new Error(`Settings ${field} must be boolean.`); });
+        if (settings.returningAfterGap != null && typeof settings.returningAfterGap !== "boolean") throw new Error("Settings returningAfterGap must be boolean or null.");
+        if (settings.restCompleteSoundVolume != null && (!Number.isFinite(Number(settings.restCompleteSoundVolume)) || Number(settings.restCompleteSoundVolume) < 0 || Number(settings.restCompleteSoundVolume) > 1)) throw new Error("Settings restCompleteSoundVolume must be between 0 and 1.");
+        if (settings.restCompleteAutoDismissMs != null && (!Number.isFinite(Number(settings.restCompleteAutoDismissMs)) || Number(settings.restCompleteAutoDismissMs) < 1000 || Number(settings.restCompleteAutoDismissMs) > 60000)) throw new Error("Settings restCompleteAutoDismissMs must be between 1000 and 60000.");
+        if (settings.defaultRestSeconds != null && (!Number.isFinite(Number(settings.defaultRestSeconds)) || Number(settings.defaultRestSeconds) < 15 || Number(settings.defaultRestSeconds) > 900)) throw new Error("Settings defaultRestSeconds must be between 15 and 900.");
+        if (settings.readinessBaseline != null) {
+          const allowedBaselineFields = new Set(["sleepHours", "sleepQuality", "hrv", "restingHr", "soreness", "band"]);
+          assertAllowed(settings.readinessBaseline, allowedBaselineFields, "Settings readinessBaseline");
+          Object.entries(settings.readinessBaseline).forEach(([field, value]) => { if (value !== "" && value != null && !Number.isFinite(Number(value))) throw new Error(`Settings readinessBaseline ${field} must be numeric or empty.`); });
+        }
+        const boundedRecords = (value, label, maximum, allowedFields) => {
+          if (value == null) return [];
+          if (!Array.isArray(value) || value.length > maximum) throw new Error(`${label} collection exceeds the ${maximum}-record limit.`);
+          return value.map((record, index) => {
+            assertAllowed(record, allowedFields, `${label} ${index + 1}`);
+            return copyAllowed(record, allowedFields);
+          });
+        };
+        const recommendationHistory = boundedRecords(imported.recommendationHistory, "Recommendation history", MAX_SETS, allowedRecommendationFields);
+        recommendationHistory.forEach((record, index) => assertId(record.recommendationId, `Recommendation history ${index + 1}`));
+        const manualOverrides = boundedRecords(imported.manualOverrides, "Manual override", MAX_SETS, allowedOverrideFields);
+        manualOverrides.forEach((record, index) => assertId(record.overrideId, `Manual override ${index + 1}`));
+        const rawImports = boundedRecords(imported.rawImports, "Raw import", 128, allowedRawImportFields);
+        rawImports.forEach((record, index) => {
+          assertId(record.id, `Raw import ${index + 1}`);
+          if (typeof record.source !== "string" || !record.source || record.source.length > 128) throw new Error(`Raw import ${index + 1} source is invalid.`);
+          if (typeof record.originalText !== "string" || new TextEncoder().encode(record.originalText).byteLength > limits.maxFileBytes) throw new Error(`Raw import ${index + 1} source text exceeds the file limit.`);
+          if (!Array.isArray(record.sessionExternalIds) || record.sessionExternalIds.length > MAX_SESSIONS || record.sessionExternalIds.some((value) => typeof value !== "string" || value.length > 128)) throw new Error(`Raw import ${index + 1} session references are invalid.`);
+        });
+        const migrationAudit = boundedRecords(imported.migrationAudit, "Migration audit", 128, allowedMigrationFields);
+        const result = {
+          appDataVersion,
+          sessions,
+          exercises,
+          sets,
+          templates,
+          mesocycles,
+          activeMesocycleId,
+          recommendationHistory,
+          manualOverrides,
+          personalEvidencePackage: imported.personalEvidencePackage == null ? null : cloneJsonValue(imported.personalEvidencePackage),
+          rawImports,
+          migrationAudit,
+          dataRevision: Number.isFinite(Number(imported.dataRevision)) ? Number(imported.dataRevision) : 0,
+          settings: copyAllowed(settings, allowedSettingsFields)
+        };
+        if (Number.isInteger(imported.domainMigrationVersion)) result.domainMigrationVersion = imported.domainMigrationVersion;
+        return result;
+      }
+
+      function validatePersonalEvidenceJsonShape(value, options = {}) {
+        return validateBackupJsonShape(value, {
+          maxDepth: options.maxDepth ?? options.maxJsonDepth ?? PERSONAL_EVIDENCE_IMPORT_LIMITS.maxJsonDepth,
+          maxObjectKeys: options.maxObjectKeys ?? PERSONAL_EVIDENCE_IMPORT_LIMITS.maxObjectKeys
+        });
+      }
+
+      function validatePersonalEvidencePackage(parsed) {
+        validatePersonalEvidenceJsonShape(parsed);
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("Personal evidence package must be a JSON object.");
+        const allowedPackageFields = new Set(["schemaVersion", "createdAt", "personalDataVersion", "researchDatabaseVersion", "privacy", "personalData", "personal_data", "importedAt"]);
+        const unknownPackageField = Object.keys(parsed).find((key) => !allowedPackageFields.has(key));
+        if (unknownPackageField) throw new Error(`Personal evidence package contains an unknown field: ${unknownPackageField}.`);
+        if (parsed.schemaVersion !== "personal-evidence-package/1.0.0") throw new Error(`Unsupported personal evidence package schema version: ${parsed.schemaVersion || "missing"}.`);
+        if (parsed.privacy !== "private_local_only_do_not_deploy") throw new Error("Personal evidence package privacy classification is missing or invalid.");
+        const personalData = parsed.personalData || parsed.personal_data;
+        if (!personalData || typeof personalData !== "object" || Array.isArray(personalData)) throw new Error("Personal evidence package is missing personalData.");
+        const allowedPersonalFields = new Set(["exercisePrescriptions", "exerciseScores", "exerciseMuscleScores", "exerciseSessionMetrics", "weeklyMuscleVolumeResponse", "recoveryRules", "muscleGroupSweetSpots", "metadata", "exercise_prescriptions", "exercise_scores", "exercise_muscle_scores", "exercise_session_metrics", "weekly_muscle_volume_response", "recovery_rules", "muscle_group_sweet_spots"]);
+        const unknownPersonalField = Object.keys(personalData).find((key) => !allowedPersonalFields.has(key));
+        if (unknownPersonalField) throw new Error(`Personal evidence data contains an unknown collection or field: ${unknownPersonalField}.`);
+        const canonical = {
+          exercisePrescriptions: personalData.exercisePrescriptions || personalData.exercise_prescriptions,
+          exerciseScores: personalData.exerciseScores || personalData.exercise_scores,
+          exerciseMuscleScores: personalData.exerciseMuscleScores || personalData.exercise_muscle_scores,
+          exerciseSessionMetrics: personalData.exerciseSessionMetrics || personalData.exercise_session_metrics || [],
+          weeklyMuscleVolumeResponse: personalData.weeklyMuscleVolumeResponse || personalData.weekly_muscle_volume_response || [],
+          recoveryRules: personalData.recoveryRules || personalData.recovery_rules || [],
+          muscleGroupSweetSpots: personalData.muscleGroupSweetSpots || personalData.muscle_group_sweet_spots || [],
+          metadata: personalData.metadata || {}
+        };
+        for (const collection of ["exercisePrescriptions", "exerciseScores", "exerciseMuscleScores"]) {
+          if (!Array.isArray(canonical[collection])) throw new Error(`Personal evidence package is missing the required ${collection} collection.`);
+          if (!canonical[collection].length) throw new Error(`Personal evidence ${collection} collection must contain at least one record.`);
+          if (canonical[collection].length > PERSONAL_EVIDENCE_IMPORT_LIMITS.maxCoreCollectionItems) throw new Error(`Personal evidence ${collection} collection exceeds the 1024-record limit.`);
+        }
+        for (const collection of ["exerciseSessionMetrics", "weeklyMuscleVolumeResponse", "recoveryRules", "muscleGroupSweetSpots"]) {
+          if (!Array.isArray(canonical[collection])) throw new Error(`Personal evidence ${collection} must be an array.`);
+          if (canonical[collection].length > PERSONAL_EVIDENCE_IMPORT_LIMITS.maxCoreCollectionItems) throw new Error(`Personal evidence ${collection} collection exceeds the 1024-record limit.`);
+        }
+        const numericFields = new Set(["sample_size", "session_count", "comparable_session_count", "overall_personal_exercise_score", "progression_score", "recovery_efficiency_score", "contribution_weight", "muscle_specific_effectiveness_score", "comparable_sessions", "source_row"]);
+        const stack = [{ value: canonical, key: "personalData" }];
+        while (stack.length) {
+          const current = stack.pop();
+          if (!current.value || typeof current.value !== "object") continue;
+          for (const [key, value] of Object.entries(current.value)) {
+            if (numericFields.has(key) && (typeof value !== "number" || !Number.isFinite(value))) throw new Error(`Personal evidence ${key} must be a finite number.`);
+            if (typeof value === "string") {
+              if (/(?:^|_)(?:id|ids)$|Id$/.test(key)) {
+                if (!value || value.length > PERSONAL_EVIDENCE_IMPORT_LIMITS.maxStableIdChars || !/^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(value)) throw new Error(`Personal evidence identifier ${key} exceeds the 128-character safe ID limit.`);
+              } else if (/name/i.test(key)) {
+                if (value.length > PERSONAL_EVIDENCE_IMPORT_LIMITS.maxNameChars) throw new Error(`Personal evidence name ${key} exceeds the 256-character limit.`);
+              } else if (value.length > PERSONAL_EVIDENCE_IMPORT_LIMITS.maxTextChars) {
+                throw new Error(`Personal evidence text ${key} exceeds the 4096-character limit.`);
+              }
+            } else if (value && typeof value === "object") stack.push({ value, key });
+          }
+        }
+        const canonicalPackage = {
+          schemaVersion: parsed.schemaVersion,
+          createdAt: parsed.createdAt,
+          personalDataVersion: parsed.personalDataVersion,
+          researchDatabaseVersion: parsed.researchDatabaseVersion,
+          privacy: parsed.privacy,
+          personalData: canonical
+        };
+        if (typeof canonicalPackage.createdAt !== "string" || !canonicalPackage.createdAt) throw new Error("Personal evidence package createdAt is required.");
+        if (typeof canonicalPackage.personalDataVersion !== "string" || !canonicalPackage.personalDataVersion || canonicalPackage.personalDataVersion.length > 128) throw new Error("Personal evidence personalDataVersion is missing or invalid.");
+        if (typeof canonicalPackage.researchDatabaseVersion !== "string" || !canonicalPackage.researchDatabaseVersion || canonicalPackage.researchDatabaseVersion.length > 128) throw new Error("Personal evidence researchDatabaseVersion is missing or invalid.");
+        return canonicalPackage;
+      }
+
+      function personalEvidenceBundleForImport(personalData) {
+        if (!prescriptionApi || !prescriptionEngine?.evidence?.research) throw new Error("The research engine is unavailable; personal evidence was not imported.");
+        const bundle = prescriptionApi.normalizeEvidenceBundle({ personalData, research: prescriptionEngine.evidence.research });
+        const invalidIdentities = [...(bundle.personal.reconciledIdentityByExerciseId || new Map()).entries()].filter(([, identity]) => identity?.invalid);
+        if (invalidIdentities.length) throw new Error(`Personal evidence identity reconciliation conflict for ${invalidIdentities.map(([exerciseId]) => exerciseId).join(", ")}.`);
+        const expectedCounts = [personalData.exercisePrescriptions.length, personalData.exerciseScores.length, personalData.exerciseMuscleScores.length];
+        const normalizedCounts = [bundle.personal.exercisePrescriptions.length, bundle.personal.exerciseScores.length, bundle.personal.exerciseMuscleScores.length];
+        if (expectedCounts.some((count, index) => count !== normalizedCounts[index])) throw new Error("Personal evidence engine validation rejected one or more aggregate rows.");
+        const engine = prescriptionApi.createPrescriptionEngine(bundle);
+        if (!(engine?.evidence?.personal?.reconciledIdentityByExerciseId instanceof Map)) throw new Error("Personal evidence engine construction did not preserve canonical identity reconciliation.");
+        return { bundle, engine };
+      }
+
+      function researchOnlyBundleForImport() {
+        if (!prescriptionApi || !prescriptionEngine?.evidence?.research) throw new Error("The research engine is unavailable; the backup was not imported.");
+        const bundle = prescriptionApi.normalizeEvidenceBundle({ personalData: {}, research: prescriptionEngine.evidence.research });
+        return { bundle, engine: prescriptionApi.createPrescriptionEngine(bundle) };
+      }
+
+      function installPreparedEvidence(prepared, sourceLabel) {
+        prescriptionEngine = prepared.engine;
+        const personalRecords = prepared.bundle.personal.exercisePrescriptions.length + prepared.bundle.personal.exerciseScores.length + prepared.bundle.personal.exerciseMuscleScores.length;
+        prescriptionEvidenceStatus = {
+          state: prepared.bundle.research.exerciseDatabase.length ? "ready" : "research_unavailable",
+          source: sourceLabel,
+          personalRecords,
+          researchExercises: prepared.bundle.research.exerciseDatabase.length,
+          personalVersion: prepared.bundle.versions.personal,
+          researchVersion: prepared.bundle.versions.research,
+          message: personalRecords
+            ? `Unified engine loaded ${personalRecords} personal prescription/score records and ${prepared.bundle.research.exerciseDatabase.length} research exercises from ${sourceLabel}.`
+            : `Unified engine loaded ${prepared.bundle.research.exerciseDatabase.length} research exercises. Import the private personal evidence package to add local aggregates.`
+        };
+        return personalRecords;
+      }
+
+      async function importDataFile(file) {
         if (importInProgress) return;
         importInProgress = true;
-        settingsMessage = "Importing " + file.name + "...";
+        importAttempt += 1;
+        importStatus = { state: "importing", message: `Importing ${file.name}...` };
+        settingsMessage = importStatus.message;
         render();
-        file.text().then((text) => {
-          window.setTimeout(() => {
-          try {
-            if (file.name.toLowerCase().endsWith(".csv") || text.startsWith("Date,Workout Name,Duration,Exercise Name")) {
-              importStrongCsv(text);
-              return;
-            }
-            const imported = JSON.parse(text);
-            if (!Array.isArray(imported.sessions) || !Array.isArray(imported.exercises) || !Array.isArray(imported.sets)) throw new Error("Import must include sessions, exercises, and sets arrays.");
-            data = normalizeLoadedData({ ...emptyData(), ...imported, settings: { ...defaultSettings, ...imported.settings } });
-            activeSessionId = data.sessions[0]?.id || "";
-            settingsMessage = "Import complete.";
-            saveData();
-            render();
-          } catch (error) {
-            settingsMessage = error instanceof Error ? error.message : "Import failed.";
-            render();
-          } finally {
-            importInProgress = false;
-            render();
+        try {
+          if (Number(file.size || 0) > BACKUP_IMPORT_LIMITS.maxFileBytes) throw new Error("Backup file is too large; the maximum size is 8 MiB.");
+          const text = await file.text();
+          if (new TextEncoder().encode(text).byteLength > BACKUP_IMPORT_LIMITS.maxFileBytes) throw new Error("Backup file is too large; the maximum size is 8 MiB.");
+          if (file.name.toLowerCase().endsWith(".csv") || text.startsWith("Date,Workout Name,Duration,Exercise Name")) {
+            importStrongCsv(text);
+            importStatus = { state: "accepted", message: settingsMessage || "Strong import complete." };
+            return;
           }
-          }, 20);
-        }).catch(() => {
+          let imported;
+          try { imported = JSON.parse(text); }
+          catch { throw new Error("Backup is not valid JSON."); }
+          const validated = validateImportedAppData(imported, BACKUP_IMPORT_LIMITS);
+          let preparedEvidence;
+          if (validated.personalEvidencePackage) {
+            const importedPackage = validated.personalEvidencePackage;
+            validated.personalEvidencePackage = { ...validatePersonalEvidencePackage(importedPackage), importedAt: importedPackage.importedAt || isoNow() };
+            preparedEvidence = personalEvidenceBundleForImport(validated.personalEvidencePackage.personalData);
+          } else {
+            preparedEvidence = researchOnlyBundleForImport();
+          }
+          const candidate = normalizeLoadedData(validated);
+          await writeIndexedValue("app-data", candidate);
+          data = candidate;
+          installPreparedEvidence(preparedEvidence, candidate.personalEvidencePackage ? "imported backup evidence" : "research defaults");
+          entityStructureRevision += 1;
+          entityIndexCache = null;
+          invalidateCompletedAnalysis();
+          activeSessionId = data.sessions[0]?.id || "";
+          activeWorkoutId = data.sessions.find((session) => sessionHasStarted(session) && !isSessionSubmitted(session))?.id || "";
+          settingsMessage = "Import complete.";
+          importStatus = { state: "accepted", message: settingsMessage };
+          saveRuntime();
+        } catch (error) {
+          settingsMessage = error instanceof Error ? error.message : "Import failed.";
+          importStatus = { state: "rejected", message: settingsMessage };
+        } finally {
           importInProgress = false;
-          settingsMessage = "The selected file could not be read. Try exporting it from Strong again, then import the fresh CSV.";
           render();
-        });
+        }
       }
 
       async function importPersonalEvidenceFile(file) {
         try {
-          const parsed = JSON.parse(await file.text());
-          const personalData = parsed.personalData || parsed.personal_data || parsed;
-          const hasCoreData = Array.isArray(personalData.exercisePrescriptions || personalData.exercise_prescriptions)
-            && Array.isArray(personalData.exerciseScores || personalData.exercise_scores)
-            && Array.isArray(personalData.exerciseMuscleScores || personalData.exercise_muscle_scores);
-          if (!hasCoreData) throw new Error("Personal evidence package must contain exercise prescriptions, exercise scores, and exercise-muscle scores.");
-          data = { ...data, personalEvidencePackage: { schemaVersion: parsed.schemaVersion || "personal-evidence-package/1.0.0", importedAt: isoNow(), personalData } };
-          await initializePrescriptionEvidence();
-          settingsMessage = `Private evidence imported: ${prescriptionEvidenceStatus.personalRecords} aggregate records, personal version ${prescriptionEvidenceStatus.personalVersion}.`;
-          saveData();
+          window.clearTimeout(saveTimer);
+          if (idleSaveHandle && "cancelIdleCallback" in window) window.cancelIdleCallback(idleSaveHandle);
+          idleSaveHandle = 0;
+          if (Number(file?.size || 0) > PERSONAL_EVIDENCE_IMPORT_LIMITS.maxFileBytes) throw new Error("Personal evidence file is too large; the maximum size is 8 MiB.");
+          let parsed;
+          const text = await file.text();
+          if (new TextEncoder().encode(text).byteLength > PERSONAL_EVIDENCE_IMPORT_LIMITS.maxFileBytes) throw new Error("Personal evidence file is too large; the maximum size is 8 MiB.");
+          try { parsed = JSON.parse(text); }
+          catch { throw new Error("Personal evidence file is not valid JSON."); }
+          const validated = validatePersonalEvidencePackage(parsed);
+          const prepared = personalEvidenceBundleForImport(validated.personalData);
+          const canonicalPackage = { ...validated, importedAt: isoNow() };
+          const candidateData = { ...data, personalEvidencePackage: canonicalPackage, dataRevision: Number(data.dataRevision || 0) + 1 };
+          await writeIndexedValue("app-data", candidateData);
+          data = candidateData;
+          const personalRecords = installPreparedEvidence(prepared, "imported local evidence");
+          invalidateCompletedAnalysis();
+          settingsMessage = `Private evidence imported: ${personalRecords} aggregate records, personal version ${prescriptionEvidenceStatus.personalVersion}.`;
           render();
         } catch (error) {
           settingsMessage = error?.message || "The personal evidence package could not be imported.";
@@ -11538,6 +12015,7 @@
           setActiveTab("lift");
         }
         if (action === "export-data") exportData();
+        if (action === "delete-remote-installation") deleteRemoteInstallationData();
         if (action === "clear-data") requestClearLocalData();
         if (action === "cancel-clear-data") closeClearDataFlow();
         if (action === "sync-before-clear") { await flushWorkoutSyncQueue(); clearDataFlow = { ...clearDataFlow, unsynced: await inspectUnsynchronizedData() }; render(); }
@@ -11621,6 +12099,17 @@
         if (action === "nutrition-phase") commit({ ...data, settings: { ...data.settings, nutritionPhase: target.value } });
         if (action === "experience-level") commit({ ...data, settings: { ...data.settings, experienceLevel: target.value } });
         if (action === "returning-after-gap") commit({ ...data, settings: { ...data.settings, returningAfterGap: target.value === "" ? null : target.value === "true" } });
+        if (action === "cloud-workout-sync-consent") {
+          const consent = target.checked === true;
+          commit({ ...data, settings: { ...data.settings, cloudWorkoutSyncConsent: consent } });
+          if (!consent) {
+            window.clearTimeout(syncFlushTimer);
+            syncFlushTimer = 0;
+            writeIndexedValue("sync-queue", []).catch(() => undefined);
+          } else {
+            queueActiveWorkoutSync();
+          }
+        }
         if (action === "mesocycle-type") { mesocycleDraftType = target.value; render(); }
         if (action === "mesocycle-specialization") { mesocycleSpecializationMuscle = target.value; render(); }
         if (action === "guided-exercise-muscle") { guidedExerciseMuscleFilter = target.value; guidedPendingAssignment = null; render(); }
@@ -11991,6 +12480,7 @@
         fetchPushConfig();
         flushWorkoutSyncQueue();
         flushPendingPushOperations();
+        if (pushIdentity?.token && (pushIdentity.status === "deleting" || pushIdentity.deletion?.retryable === true) && navigator.onLine) deleteRemoteInstallationData({ automatic: true });
       }
 
       boot();
@@ -12028,6 +12518,7 @@
       window.addEventListener("online", () => {
         flushWorkoutSyncQueue();
         flushPendingPushOperations();
+        if (pushIdentity?.token && (pushIdentity.status === "deleting" || pushIdentity.deletion?.retryable === true)) deleteRemoteInstallationData({ automatic: true });
         if (timer?.isActive && !timer.isPaused && timer.endsAt > Date.now() && timer.notificationStatus !== "scheduled") scheduleRestPush({ ...timer });
       });
     </script>

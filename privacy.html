@@ -10,13 +10,14 @@
     <header class="secondary-page-header"><h1>Privacy Policy</h1><button class="secondary-page-close" type="button" aria-label="Close Privacy Policy" title="Return to Settings" onclick="window.location.assign('./index.html?view=settings#support-guidance')">&times;</button></header>
     <p>Comprehensive Fitness is a local-first workout tracker. The app stores workout sessions, exercise names, sets, reps, weights, RPE, notes, and settings on your device.</p>
     <h2>Data Collection</h2>
-    <p>The app does not require an account. Workout data is stored locally in IndexedDB. When the optional notification service is enabled, the app sends installation-scoped active-workout synchronization records and push subscription details to the configured backend so rest notifications can be scheduled and local changes can retry after reconnecting.</p>
+    <p>The app does not require an account. Workout data is stored locally in IndexedDB. If you enable lock-screen rest notifications, the app sends installation-scoped push subscription and timer details to the configured backend. Workout-mutation upload is a separate control that defaults off; workout records are sent only after you explicitly enable that control.</p>
+    <p>Private personal-evidence packages and backups are selected by you and validated locally before they replace local data. A hosted app does not probe private file paths. Automatic private-evidence discovery is limited to same-origin loopback development or the packaged native runtime, and private responses are not cached.</p>
     <h2>Third Parties</h2>
-    <p>The app does not include advertising or analytics trackers. Optional notifications use Vercel Functions, Upstash QStash, Upstash Redis, and the browser push service. Push endpoints and encryption keys are used only to deliver requested alerts.</p>
+    <p>The app does not include advertising or analytics trackers. Optional notifications and consented workout upload use Vercel Functions and Upstash Redis; notifications also use Upstash QStash and the browser push service. Push endpoints and encryption keys are used only to deliver requested alerts. The workout endpoint is write-only and is not an account, cloud-history, or restore service.</p>
     <h2>Your Control</h2>
-    <p>You can export your data, import a backup, or clear local data from the Settings screen.</p>
+    <p>You can export your data, import a validated backup, revoke workout-upload consent, clear local data, or request deletion of this installation's remote records from Settings. Remote deletion preserves local workouts and may continue through a visible retry state until the server confirms deletion. Exported app backups remain the recovery method.</p>
     <h2>Training Guidance</h2>
-    <p>Progression recommendations are informational fitness guidance and are not medical advice. Use your own judgment and consult a qualified professional before making health or training decisions.</p>
+    <p>Progression recommendations are informational fitness guidance. The app does not diagnose medical conditions or provide medical treatment. Stop for severe, unexplained, or worsening pain and consult a qualified professional before making health or training decisions.</p>
     <h2>Contact</h2>
     <p>For support, use the support contact listed on the <a href="./support.html">Support</a> page.</p>
   </body>

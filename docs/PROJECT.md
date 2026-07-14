@@ -3,7 +3,7 @@
 ## Metadata
 
 - **Purpose:** Product vision, verified scope, and boundary between current and intended behavior
-- **Last verified:** 2026-07-13
+- **Last verified:** 2026-07-14
 - **Repository:** integrated foundation `ce13f1e` plus accepted taxonomy-source repairs `5d95f40` and `90cb27a`
 - **Verification status:** VERIFIED from application code, tests, schemas, configuration, and existing docs; open conflicts are labeled
 - **Related:** [Architecture](ARCHITECTURE.md), [Decision engine](DECISION_ENGINE.md), [UI/UX](UI_UX.md), [Roadmap](ROADMAP.md), [documentation inventory](DOCUMENTATION_INVENTORY.md)
@@ -53,10 +53,10 @@ Product principles evidenced in the repository:
 | Recovery readiness | **IMPLEMENTED** | User-entered sleep, HRV, resting heart rate, soreness, illness, nutrition/protein status, personal baseline, readiness band, and conservative adjustment guidance. |
 | Prescription and mesocycle engine | **IMPLEMENTED** | User-defined muscle scope with explicit omission confirmation, versioned rules, traceable candidate pools, evidence-derived weekly set/frequency slots, portfolio-first full-program construction, split-aware session allocation, blocking validation, four mesocycle types, progression/hold/deload/rotation decisions, confidence, snapshots, and audited overrides in `prescription-engine.js`. |
 | Exercise-science database | **IMPLEMENTED** | Version 3.0.0 publishes source-provenance identifiers, rule-to-conclusion traceability, explicit evidence/product-policy/safety authority, advisory versus allowlisted hard-blocker enforcement, deterministic CSV/JSON/XLSX/SQL/schema outputs, bibliography, build, and validation under `research_database/`. |
-| Private personal evidence pipeline | **IMPLEMENTED** | Local normalization/analysis of workout, Fitbit/Google Health, nutrition, and body-composition sources; aggregates can be packaged/imported without public deployment (`scripts/personal-fitness/`, `scripts/build-app-personal-evidence.js`). |
+| Private personal evidence pipeline | **IMPLEMENTED** | Local normalization/analysis of workout, Fitbit/Google Health, nutrition, and body-composition sources; aggregates can be packaged/imported without public deployment. Import is size/shape/schema bounded, builds a reconciled engine before one atomic replacement, and leaves prior state unchanged on rejection (`scripts/personal-fitness/`, `scripts/build-app-personal-evidence.js`, `index.html`). |
 | Nutrition tracking | **PARTIALLY IMPLEMENTED** | Research strategies, historical analysis pipeline, and daily adequacy inputs influence context. There is no verified in-app meal/food/macronutrient logger. |
 | Fitbit integration | **PARTIALLY IMPLEMENTED** | Exported Fitbit/Google Health data is normalized by the private pipeline. No OAuth, live sync, or direct wearable connection is implemented. |
-| Optional push and workout backup | **PARTIALLY IMPLEMENTED** | The Vercel/Upstash backend implements installation-scoped authorization, scoped timer identities and versions, delivery claims, revocation tombstones, bounded resumable deletion, allowed Web Push origins, retention limits, and write-only workout mutation sync. **PLANNED / NEEDS REVIEW:** the frontend does not yet prove the complete cancel/unsubscribe/delete lifecycle, and there is no cross-device restore UI or account-backed cloud history. |
+| Optional push and workout backup | **PARTIALLY IMPLEMENTED** | The Vercel/Upstash backend implements installation-scoped authorization, scoped timer identities and versions, delivery claims, revocation tombstones, bounded resumable deletion, allowed Web Push origins, retention limits, and write-only workout mutation sync. The frontend now uses exact-version timer cancellation, requires separate default-off workout-upload consent, and exposes resumable remote installation deletion. **NEEDS REVIEW:** automatic unsubscribe/delete orchestration across every disable/reset/clear path is not complete, and there is no cross-device restore UI or account-backed cloud history. |
 | Native packaging | **PARTIALLY IMPLEMENTED** | Capacitor iOS/Android projects exist; store signing/submission and physical-device behavior remain operational tasks. |
 | Account authentication/profile service | **PLANNED / NEEDS REVIEW** | No user account login exists. Local settings provide a lightweight training profile; backend authorization is installation-secret based. Product intent for accounts is not established. |
 
@@ -69,6 +69,7 @@ Product principles evidenced in the repository:
 5. Reopen submitted sessions through Dashboard/History; inspect interactive charts and weekly volume/fatigue detail.
 6. Optionally import Strong CSV history and a locally built private evidence package.
 7. Optionally install the PWA and enable backend-assisted rest notifications.
+8. Separately opt in to installation-authorized workout-mutation upload; notifications alone do not enable it. Remote installation records can be revoked and deleted from the Settings Danger Zone without clearing local workouts.
 
 ## Terminology
 
@@ -85,9 +86,9 @@ Product principles evidenced in the repository:
 
 ## Data sources and privacy
 
-Public/runtime sources include submitted app workouts and the research JSON exports cached by `sw.js`. Private local sources can include Strong exports, Fitbit/Google Health exports, nutrition exports, body-composition records, and generated aggregates. Raw and generated personal data are excluded from public deployment by `.gitignore`/`.vercelignore`; the app imports only a user-provided aggregate evidence package into local IndexedDB.
+Public/runtime sources include submitted app workouts and the research JSON exports cached by `sw.js`. Private local sources can include Strong exports, Fitbit/Google Health exports, nutrition exports, body-composition records, and generated aggregates. Raw and generated personal data are excluded from public deployment by `.gitignore`/`.vercelignore`; the app imports only a user-provided aggregate evidence package into local IndexedDB. Hosted pages never probe private-evidence paths; automatic discovery is restricted to exact loopback origins or a native Capacitor runtime and rejects cross-origin candidates.
 
-Do not treat the optional Redis backend as the personal evidence database. It stores installation/push/timer records and serialized workout mutations (`api/`, `docs/push-backend.md`). Record hashes use documented rolling TTLs; the global installation registry persists until completed deletion. Deletion immediately revokes the installation and continues in bounded indexed batches; a retained tombstone prevents credential reuse. An already-dispatched Web Push network request cannot be recalled. No raw personal values or credentials belong in public documentation.
+Do not treat the optional Redis backend as the personal evidence database. It stores installation/push/timer records and, only after separate explicit consent, serialized workout mutations (`api/`, `docs/push-backend.md`). Record hashes use documented rolling TTLs; the global installation registry persists until completed deletion. Deletion immediately revokes the installation and continues in bounded indexed batches; the client retains authorization only to resume cleanup, and a retained tombstone prevents credential reuse. An already-dispatched Web Push network request cannot be recalled. No raw personal values or credentials belong in public documentation.
 
 ## Non-goals and boundaries
 

@@ -3,7 +3,7 @@
 ## Metadata
 
 - **Purpose:** Verified user experience, interaction contracts, and intended UX gaps
-- **Last verified:** 2026-07-11
+- **Last verified:** 2026-07-14
 - **Repository:** `main` @ `7c52a2b`
 - **Verification status:** VERIFIED from `index.html` and UI/domain tests; physical-device accessibility remains partly unverified
 - **Related:** [Project](PROJECT.md), [architecture](ARCHITECTURE.md), [decision engine](DECISION_ENGINE.md), [roadmap](ROADMAP.md)
@@ -50,7 +50,7 @@ The persistent bottom navigation has five tabs (`primaryTabIds`, `render`):
 | Dashboard | Weekly muscle volume, fatigue flags, recent history, nested warning/session detail. |
 | Templates | Full template list, template cards, mesocycle planner/candidate pools, readiness start sheet. |
 | Charts | Exercise selector, progress charts, session-level point detail, hypertrophy score/detail, history/recommendations. |
-| Settings | Units, goals/profile, readiness baseline, timers/notifications, PWA setup, evidence/CSV import, export, and clear-data flow. |
+| Settings | Units, goals/profile, readiness baseline, timers/notifications, PWA setup, separate workout-upload consent, bounded evidence/backup import, export, remote installation deletion, and clear-local-data flow. |
 
 The header exposes the current context, an atomic lb/kg switch, and a theme switch. Full template access is available from Templates; quick-start cards are a subset. Unit changes convert app-owned load values together while private source evidence remains unchanged and is converted only at the display/prescription boundary.
 
@@ -67,6 +67,13 @@ The header exposes the current context, an atomic lb/kg switch, and a theme swit
 7. View post-workout grade, completed exercise results, PRs, highlights, and improvements.
 
 Only one active workout is allowed. Other starts are disabled with one canonical resume notice (`scripts/test-performance.js`). Template edits during a workout remain session-specific unless the user explicitly updates the template.
+
+### Settings privacy and data controls
+
+- Lock-screen notifications and cloud workout upload are separate controls. Upload defaults off and is enabled only by its own checkbox; turning it off clears the pending mutation queue without treating notification permission as consent.
+- Backup and personal-evidence import announce an attempt-specific pending, success, or error state in a polite live region. Invalid, oversized, overly deep/wide, executable-key, duplicate, or orphaned data is rejected without replacing current data.
+- **Delete Remote Installation Data** is a separate Danger Zone action from **Clear All Local App Data**. Remote deletion preserves local workouts, displays deleting/retry/error/deleted status, and resumes bounded server cleanup; local clearing does not claim to delete server records.
+- Exported app JSON remains the only implemented user-managed recovery source. Cloud workout upload is write-only and must never be labeled restore, cloud history, or an account.
 
 ### History and progress
 
@@ -127,9 +134,9 @@ Readiness capture includes sleep, quality, HRV, resting HR, soreness, illness, a
 ## States and feedback
 
 - **Empty:** Controlled “not enough data,” no-template/history/chart messages explain qualifying data needed; analytics do not substitute unrelated scores.
-- **Loading:** Initial persistence/evidence loading occurs before primary use; imports expose progress/error feedback. **NEEDS REVIEW:** there is no unified skeleton/loading design.
-- **Error:** Toasts, import validation, API status, persistence fallback, and setup errors are surfaced without exposing secrets.
-- **Success:** Live-region toast, completed controls, timer-complete notice, notification tests, submission summary, PR/grade feedback.
+- **Loading:** Initial persistence/evidence loading occurs before primary use; imports expose attempt-scoped progress/error feedback and remote deletion exposes its continuation state. **NEEDS REVIEW:** there is no unified skeleton/loading design.
+- **Error:** Toasts, accessible import validation, retryable/non-retryable remote-deletion status, API status, persistence fallback, and setup errors are surfaced without exposing secrets.
+- **Success:** Live-region toast and import status, completed controls, timer-complete notice, notification tests, remote-deletion confirmation, submission summary, PR/grade feedback.
 - **Confirmation:** Submit, cancel workout, save/cancel history edits, template deletion, and clear-data flows require explicit action.
 
 ## Accessibility and responsive behavior

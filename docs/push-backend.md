@@ -2,9 +2,9 @@
 
 ## Status and boundary
 
-- **Last code review:** 2026-07-13, accepted foundation changes through `ce13f1e`
+- **Last code review:** 2026-07-14, including frontend privacy/lifecycle integration
 - **Backend contract:** **IMPLEMENTED** in `api/`
-- **Frontend lifecycle:** **PLANNED / NEEDS REVIEW** for complete disable/unsubscribe/delete orchestration
+- **Frontend lifecycle:** **PARTIALLY IMPLEMENTED** for exact-version cancellation, separate workout-upload consent, and explicit resumable installation deletion; automatic unsubscribe/delete across every disable/reset/clear path remains **NEEDS REVIEW**
 - **Production/device status:** **NEEDS REVIEW**; repository state cannot prove current Vercel, Upstash, QStash, or physical iPhone behavior
 
 Comprehensive Fitness can use standards-based Web Push for background rest alerts and an installation-authorized, write-only workout mutation endpoint. Foreground timers and the local IndexedDB workout log continue to work when the backend is absent. The browser never receives VAPID private keys, QStash signing keys, or Redis credentials.
@@ -56,6 +56,8 @@ Registration returns the bearer secret once. Supported installation updates refr
 
 Timer IDs are derived from the installation ID plus the caller's requested ID, so two installations cannot address the same timer key. Every schedule includes a `timerVersion`. Active-pointer, cancellation, delivery, and completion writes check both ownership and version; a stale request receives a conflict instead of changing the replacement timer.
 
+The frontend sends the exact `timerVersion` in immediate and queued cancellation requests. Its pending-cancel queue deduplicates only the same notification/version pair; transient network, HTTP 429, and 5xx failures retry, while terminal 4xx stale/revoked/not-found responses are discarded. Service-worker cache version 30 records cancellation by the same composite key, so canceling version 1 cannot suppress a later version 2 notification with the same requested ID.
+
 ## Scheduling, cancellation, and delivery
 
 1. `POST /api/push/register` validates an allowed push endpoint and creates or refreshes an active installation.
@@ -74,11 +76,15 @@ Only allowlisted HTTPS push origins may be registered or delivered. Timer state,
 
 If work remains, the endpoint returns HTTP 202 with `status: "deleting"`, `cleanupTruncated: true`, and `retryable: true`. The caller must repeat the authorized request until HTTP 200 returns `status: "deleted"`. Continuation is idempotent and is not blocked by the initial deletion rate limit. The final 180-day tombstone keeps the installation ID unusable and blanks the subscription endpoint/key material while retaining the secret hash for authorized idempotent status checks. Scheduler cancellation failures are reported separately; Redis revocation remains authoritative.
 
-**PLANNED / NEEDS REVIEW:** accepted frontend code does not yet prove that disabling notifications, clearing local app data, or resetting the app always cancels active timers, unsubscribes the browser, and continues this endpoint to terminal deletion. Do not describe the user-facing deletion lifecycle as complete until those paths and retry/reload behavior are integrated and tested.
+The Settings Danger Zone now starts this endpoint explicitly and renders its state. The client keeps the exact installation ID, device ID, and bearer token during `deleting`, follows HTTP 202, honors numeric or HTTP-date `Retry-After`, prevents overlapping continuations, and resumes after reload or an `online` event. Only terminal `deleted` clears the local token and workout-sync queue. Network, HTTP 429, and 5xx failures remain retryable; HTTP 401/403 remains visible for manual retry instead of erasing the credential prematurely.
+
+**PARTIALLY IMPLEMENTED / NEEDS REVIEW:** explicit remote deletion and retry/reload behavior are integrated and tested locally. Disabling notifications, clearing local app data, or resetting the app does not yet prove automatic timer cancellation, browser push unsubscription, and terminal remote deletion in every path. The irreducible already-dispatched Web Push boundary still applies.
 
 ## Workout mutation sync
 
 `POST /api/sync/workout` is installation-authorized and write-only. It enforces a 256 KiB request limit, at most 100 exercises and 1,000 sets, referential consistency, and bounded identifiers. Mutation IDs provide idempotency. A repeated revision with different content returns a conflict, a stale revision cannot overwrite newer data, and a deleting/deleted installation is rejected. Payloads and mutation receipts expire after 90 days.
+
+The frontend requires a separate persisted `cloudWorkoutSyncConsent` value that defaults to `false`. Notification enrollment never sets it. Without exact `true` consent, the client returns before creating, reading, inspecting, scheduling, or flushing the workout mutation queue. Revocation cancels a pending flush and clears the local queue.
 
 This is not cloud history, backup recovery, or multi-device continuity. There is no read/restore endpoint, account ownership model, or verified restore UI. Exported local app backups remain the only implemented user-managed restore source.
 

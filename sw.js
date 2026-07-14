@@ -1,4 +1,4 @@
-const CACHE_NAME = "comprehensive-fitness-pwa-v29";
+const CACHE_NAME = "comprehensive-fitness-pwa-v30";
 const CACHE_PREFIX = "comprehensive-fitness-pwa-";
 const APP_SHELL = Object.freeze([
   "/",
@@ -68,16 +68,22 @@ function noStoreRequest(request) {
   return new Request(request, { cache: "no-store" });
 }
 
-function rememberCanceledTimer(timerId, now = Date.now()) {
+function canceledTimerKey(timerId, timerVersion = 1) {
   const id = String(timerId || "").slice(0, 160);
+  const version = Math.max(1, Math.floor(Number(timerVersion || 1)));
+  return id ? `${id}::v${version}` : "";
+}
+
+function rememberCanceledTimer(timerId, now = Date.now(), timerVersion = 1) {
+  const id = canceledTimerKey(timerId, timerVersion);
   if (!id) return;
   for (const [storedId, expiresAt] of canceledRestTimers) if (expiresAt <= now) canceledRestTimers.delete(storedId);
   canceledRestTimers.set(id, now + CANCELED_TIMER_TTL_MS);
   while (canceledRestTimers.size > MAX_CANCELED_TIMERS) canceledRestTimers.delete(canceledRestTimers.keys().next().value);
 }
 
-function timerWasCanceled(timerId, now = Date.now()) {
-  const id = String(timerId || "");
+function timerWasCanceled(timerId, now = Date.now(), timerVersion = 1) {
+  const id = canceledTimerKey(timerId, timerVersion);
   const expiresAt = canceledRestTimers.get(id) || 0;
   if (expiresAt <= now) {
     canceledRestTimers.delete(id);
@@ -112,7 +118,7 @@ if (typeof self !== "undefined" && self.addEventListener) {
 
   self.addEventListener("message", (event) => {
     if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
-    if (event.data?.type === "CANCEL_REST_TIMER") rememberCanceledTimer(event.data.timerId);
+    if (event.data?.type === "CANCEL_REST_TIMER") rememberCanceledTimer(event.data.timerId, Date.now(), event.data.timerVersion || 1);
   });
 
   self.addEventListener("fetch", (event) => {
@@ -156,7 +162,7 @@ if (typeof self !== "undefined" && self.addEventListener) {
     let payload = {};
     try { payload = event.data?.json() || {}; } catch { payload = {}; }
     event.waitUntil(Promise.resolve().then(async () => {
-      if (timerWasCanceled(payload.notificationId || payload.timerId)) return;
+      if (timerWasCanceled(payload.notificationId || payload.timerId, Date.now(), payload.timerVersion || 1)) return;
       const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
       const visible = windows.find((client) => client.visibilityState === "visible");
       if (visible) {
@@ -198,6 +204,7 @@ if (typeof module !== "undefined") {
   module.exports = {
     APP_SHELL,
     PUBLIC_CACHE_PATHS,
+    canceledTimerKey,
     isPublicCacheUrl,
     isSensitivePath,
     normalizedPathname,
