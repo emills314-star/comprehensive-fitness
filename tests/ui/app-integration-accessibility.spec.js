@@ -1055,6 +1055,129 @@ async function importBackup(page, group, value, name = "synthetic-backup.json") 
   return lifecycle;
 }
 
+async function armBackupImportAtomicityObserver(page) {
+  return page.evaluate(async () => {
+    window.clearTimeout(saveTimer);
+    if (idleSaveHandle && "cancelIdleCallback" in window) window.cancelIdleCallback(idleSaveHandle);
+    idleSaveHandle = 0;
+    const key = `backup-atomicity-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const productionImport = importDataFile;
+    const productionWrite = writeIndexedValue;
+    const muscleCacheKey = `${key}-muscle`;
+    const prescriptionCacheKey = `${key}-prescription`;
+    const muscleSentinel = Object.freeze({ kind: "muscle", key });
+    const prescriptionSentinel = Object.freeze({ kind: "prescription", key });
+    muscleAssignmentCache.set(muscleCacheKey, muscleSentinel);
+    prescriptionSnapshotCache.set(prescriptionCacheKey, prescriptionSentinel);
+    const persisted = await readIndexedValue("app-data");
+    const state = {
+      productionImport,
+      productionWrite,
+      beforeData: data,
+      beforePackage: data.personalEvidencePackage,
+      beforeEngine: prescriptionEngine,
+      beforeStatus: prescriptionEvidenceStatus,
+      beforeDataJson: JSON.stringify(data),
+      beforePackageJson: JSON.stringify(data.personalEvidencePackage || null),
+      beforeStatusJson: JSON.stringify(prescriptionEvidenceStatus || null),
+      beforePersistedJson: JSON.stringify(persisted),
+      beforeDataRevision: Number(data.dataRevision || 0),
+      beforeAnalysisRevision: analysisRevision,
+      beforeEnginePersonalVersion: String(prescriptionEngine?.evidence?.versions?.personal || prescriptionEngine?.evidence?.personal?.version || "unknown"),
+      beforeEnginePersonalIds: [...(prescriptionEngine?.evidence?.personal?.reconciledIdentityByExerciseId?.keys?.() || [])].sort(),
+      muscleCacheKey,
+      prescriptionCacheKey,
+      muscleSentinel,
+      prescriptionSentinel,
+      importCalls: 0,
+      importCompleted: false,
+      observedName: "",
+      observedSize: 0,
+      appDataWrites: 0,
+      appDataWritesSettled: 0
+    };
+    globalThis.__APP_TEST_BACKUP_ATOMICITY__ ||= {};
+    globalThis.__APP_TEST_BACKUP_ATOMICITY__[key] = state;
+    writeIndexedValue = async function observedBackupImportWrite(storageKey, value) {
+      if (storageKey === "app-data") state.appDataWrites += 1;
+      try {
+        return await productionWrite(storageKey, value);
+      } finally {
+        if (storageKey === "app-data") state.appDataWritesSettled += 1;
+      }
+    };
+    importDataFile = async function observedBackupImport(file) {
+      state.importCalls += 1;
+      state.observedName = String(file?.name || "");
+      state.observedSize = Number(file?.size || 0);
+      try {
+        return await productionImport(file);
+      } finally {
+        state.importCompleted = true;
+      }
+    };
+    return key;
+  });
+}
+
+async function collectBackupImportAtomicityAudit(page, key, options = {}) {
+  return page.evaluate(async ({ auditKey, restore }) => {
+    const state = globalThis.__APP_TEST_BACKUP_ATOMICITY__?.[auditKey];
+    if (!state) throw new Error(`Missing backup atomicity audit ${auditKey}`);
+    const persisted = await readIndexedValue("app-data");
+    const result = {
+      importCalls: state.importCalls,
+      importCompleted: state.importCompleted,
+      observedName: state.observedName,
+      observedSize: state.observedSize,
+      appDataWrites: state.appDataWrites,
+      appDataWritesSettled: state.appDataWritesSettled,
+      dataReferenceUnchanged: data === state.beforeData,
+      dataJsonUnchanged: JSON.stringify(data) === state.beforeDataJson,
+      packageReferenceUnchanged: data.personalEvidencePackage === state.beforePackage,
+      packageJsonUnchanged: JSON.stringify(data.personalEvidencePackage || null) === state.beforePackageJson,
+      engineReferenceUnchanged: prescriptionEngine === state.beforeEngine,
+      statusReferenceUnchanged: prescriptionEvidenceStatus === state.beforeStatus,
+      statusJsonUnchanged: JSON.stringify(prescriptionEvidenceStatus || null) === state.beforeStatusJson,
+      dataRevisionUnchanged: Number(data.dataRevision || 0) === state.beforeDataRevision,
+      analysisRevisionUnchanged: analysisRevision === state.beforeAnalysisRevision,
+      muscleCacheSentinelRetained: muscleAssignmentCache.get(state.muscleCacheKey) === state.muscleSentinel,
+      prescriptionCacheSentinelRetained: prescriptionSnapshotCache.get(state.prescriptionCacheKey) === state.prescriptionSentinel,
+      persistedJsonUnchanged: JSON.stringify(persisted) === state.beforePersistedJson,
+      beforeDataJson: state.beforeDataJson,
+      beforePackageJson: state.beforePackageJson,
+      beforePersistedJson: state.beforePersistedJson,
+      beforeDataRevision: state.beforeDataRevision,
+      beforeAnalysisRevision: state.beforeAnalysisRevision,
+      beforeEnginePersonalVersion: state.beforeEnginePersonalVersion,
+      beforeEnginePersonalIds: state.beforeEnginePersonalIds,
+      beforeStatusJson: state.beforeStatusJson
+    };
+    if (restore) {
+      writeIndexedValue = state.productionWrite;
+      importDataFile = state.productionImport;
+      delete globalThis.__APP_TEST_BACKUP_ATOMICITY__[auditKey];
+    }
+    return result;
+  }, { auditKey: key, restore: options.restore === true });
+}
+
+async function backupRuntimePersistenceFingerprint(page) {
+  return page.evaluate(async () => {
+    const persisted = await readIndexedValue("app-data");
+    return {
+      dataJson: JSON.stringify(data),
+      packageJson: JSON.stringify(data.personalEvidencePackage || null),
+      persistedJson: JSON.stringify(persisted),
+      dataRevision: Number(data.dataRevision || 0),
+      analysisRevision,
+      enginePersonalVersion: String(prescriptionEngine?.evidence?.versions?.personal || prescriptionEngine?.evidence?.personal?.version || "unknown"),
+      enginePersonalIds: [...(prescriptionEngine?.evidence?.personal?.reconciledIdentityByExerciseId?.keys?.() || [])].sort(),
+      statusJson: JSON.stringify(prescriptionEvidenceStatus || null)
+    };
+  });
+}
+
 async function importBackupWithClaimedSize(page, group, value, claimedBytes, name) {
   const raw = typeof value === "string" ? value : JSON.stringify(value);
   const input = group.locator('[data-action="import-data"]');
@@ -1285,6 +1408,71 @@ test("a complete synthetic backup round-trips relationships and canonical settin
     experienceLevel: "intermediate",
     cloudWorkoutSyncConsent: false
   });
+});
+
+test("a full backup with an invalid muscle-only evidence identity rejects atomically and preserves reload state", async ({ page }) => {
+  test.setTimeout(90_000);
+  let group = await openBackupSettings(page);
+  const baseline = validFullState();
+  baseline.personalEvidencePackage = syntheticPersonalEvidencePackage({
+    version: "1.0.8",
+    exerciseId: "custom_synthetic_backup_baseline_press",
+    exerciseName: "Synthetic Backup Baseline Press"
+  });
+  const accepted = await importBackup(page, group, baseline, "synthetic-valid-evidence-backup.json");
+  expect.soft(accepted.terminalState).toBe("accepted");
+
+  await page.reload();
+  await page.waitForLoadState("load");
+  await waitForEvidenceTerminal(page);
+  group = await openBackupSettings(page);
+  const before = await backupRuntimePersistenceFingerprint(page);
+  const auditKey = await armBackupImportAtomicityObserver(page);
+  const rejectedBackup = validFullState();
+  rejectedBackup.personalEvidencePackage = invalidMuscleScoreOnlyPersonalEvidencePackage({ version: "1.0.9" });
+  const rejectedRaw = JSON.stringify(rejectedBackup);
+  const rejected = await importBackup(page, group, rejectedRaw, "synthetic-invalid-muscle-source-backup.json");
+  expect.soft(rejected.terminalState, "The production backup importer must expose an explicit rejected state").toBe("rejected");
+  expect.soft(rejected.terminalText, "The rejection must identify the embedded evidence identity conflict").toMatch(/identity|conflict|reconcil|unknown research/i);
+
+  await page.evaluate(() => new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => window.setTimeout(resolve, 100)));
+  }));
+  const audit = await collectBackupImportAtomicityAudit(page, auditKey, { restore: true });
+  expect.soft(audit.importCalls, "The file input must call the production importDataFile boundary exactly once").toBe(1);
+  expect.soft(audit.importCompleted).toBe(true);
+  expect.soft(audit.observedName).toBe("synthetic-invalid-muscle-source-backup.json");
+  expect.soft(audit.observedSize).toBe(Buffer.byteLength(rejectedRaw, "utf8"));
+  expect.soft(audit.appDataWrites, "Rejected embedded evidence must cause zero app-data writes, including rollback writes").toBe(0);
+  expect.soft(audit.appDataWritesSettled, "No rejected or late app-data write may settle").toBe(0);
+  expect.soft(audit, "Runtime state, evidence, revisions, and dependent cache sentinels must remain untouched").toMatchObject({
+    dataReferenceUnchanged: true,
+    dataJsonUnchanged: true,
+    packageReferenceUnchanged: true,
+    packageJsonUnchanged: true,
+    engineReferenceUnchanged: true,
+    statusReferenceUnchanged: true,
+    statusJsonUnchanged: true,
+    dataRevisionUnchanged: true,
+    analysisRevisionUnchanged: true,
+    muscleCacheSentinelRetained: true,
+    prescriptionCacheSentinelRetained: true,
+    persistedJsonUnchanged: true
+  });
+  expect.soft(audit.beforeDataJson).toBe(before.dataJson);
+  expect.soft(audit.beforePackageJson).toBe(before.packageJson);
+  expect.soft(audit.beforePersistedJson).toBe(before.persistedJson);
+  expect.soft(audit.beforeDataRevision).toBe(before.dataRevision);
+  expect.soft(audit.beforeAnalysisRevision).toBe(before.analysisRevision);
+  expect.soft(audit.beforeEnginePersonalVersion).toBe(before.enginePersonalVersion);
+  expect.soft(audit.beforeEnginePersonalIds).toEqual(before.enginePersonalIds);
+  expect.soft(audit.beforeStatusJson).toBe(before.statusJson);
+
+  await page.reload();
+  await page.waitForLoadState("load");
+  await waitForEvidenceTerminal(page);
+  const reloaded = await backupRuntimePersistenceFingerprint(page);
+  expect.soft(reloaded, "Reload must recover the exact accepted runtime and persisted evidence, never the rejected backup").toEqual(before);
 });
 
 test("backup import publishes an attempt-scoped accessible terminal status", async ({ page }) => {
