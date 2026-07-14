@@ -110,31 +110,241 @@ async function activeFocusState(page) {
   });
 }
 
-async function documentOverflow(page) {
+async function readFocusAppearance(locator) {
+  return locator.evaluate((element) => {
+    const style = getComputedStyle(element);
+    const transparent = (value) => {
+      if (value === "transparent") return true;
+      const color = String(value || "").match(/rgba?\(([^)]+)\)/i)?.[1] || "";
+      const parts = color.match(/[\d.]+/g)?.map(Number) || [];
+      return parts.length >= 4 && parts[3] === 0;
+    };
+    const systemCanvas = () => {
+      const probe = document.createElement("span");
+      probe.setAttribute("aria-hidden", "true");
+      probe.style.cssText = "background-color:Canvas;position:fixed;inset:auto;visibility:hidden";
+      document.documentElement.append(probe);
+      const value = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return value;
+    };
+    const effectiveBackground = (start) => {
+      for (let current = start; current; current = current.parentElement) {
+        const value = getComputedStyle(current).backgroundColor;
+        if (!transparent(value)) return value;
+      }
+      return systemCanvas();
+    };
+    const border = (side) => ({
+      color: style[`border${side}Color`],
+      style: style[`border${side}Style`],
+      width: Number.parseFloat(style[`border${side}Width`]) || 0
+    });
+    return {
+      adjacentBackgroundColor: effectiveBackground(element.parentElement),
+      backgroundColor: style.backgroundColor,
+      borderBottom: border("Bottom"),
+      borderLeft: border("Left"),
+      borderRight: border("Right"),
+      borderTop: border("Top"),
+      boxShadow: style.boxShadow,
+      color: style.color,
+      effectiveBackgroundColor: effectiveBackground(element),
+      filter: style.filter,
+      focusVisible: element.matches(":focus-visible"),
+      outlineColor: style.outlineColor,
+      outlineOffset: style.outlineOffset,
+      outlineStyle: style.outlineStyle,
+      outlineWidth: Number.parseFloat(style.outlineWidth) || 0,
+      textDecorationColor: style.textDecorationColor,
+      textDecorationLine: style.textDecorationLine,
+      textDecorationStyle: style.textDecorationStyle
+    };
+  });
+}
+
+function parseCssColor(value) {
+  const color = String(value || "").match(/rgba?\(([^)]+)\)/i)?.[1] || "";
+  const parts = color.match(/[\d.]+/g)?.map(Number) || [];
+  if (parts.length < 3) return null;
+  const alpha = parts.length >= 4 ? parts[3] : 1;
+  if (alpha <= 0) return null;
+  return { alpha, blue: parts[2], green: parts[1], red: parts[0] };
+}
+
+function contrastRatio(first, second) {
+  const a = parseCssColor(first);
+  const b = parseCssColor(second);
+  if (!a || !b) return 0;
+  const composite = (foreground, background) => ({
+    alpha: 1,
+    blue: (foreground.blue * foreground.alpha) + (background.blue * (1 - foreground.alpha)),
+    green: (foreground.green * foreground.alpha) + (background.green * (1 - foreground.alpha)),
+    red: (foreground.red * foreground.alpha) + (background.red * (1 - foreground.alpha))
+  });
+  const backdrop = b.alpha < 1 ? composite(b, { alpha: 1, blue: 255, green: 255, red: 255 }) : b;
+  const foreground = a.alpha < 1 ? composite(a, backdrop) : a;
+  const luminance = ({ red, green, blue }) => {
+    const channel = (value) => {
+      const normalized = value / 255;
+      return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+    };
+    return (0.2126 * channel(red)) + (0.7152 * channel(green)) + (0.0722 * channel(blue));
+  };
+  const bright = Math.max(luminance(foreground), luminance(backdrop));
+  const dark = Math.min(luminance(foreground), luminance(backdrop));
+  return Math.round(((bright + 0.05) / (dark + 0.05)) * 100) / 100;
+}
+
+function focusIndicatorEvidence(base, focused, { forcedColors = false } = {}) {
+  const changed = (...values) => values.some(([before, after]) => before !== after);
+  const candidates = [];
+  const outlineContrast = contrastRatio(focused.outlineColor, focused.adjacentBackgroundColor);
+  if (
+    focused.outlineStyle !== "none"
+    && focused.outlineWidth >= 1
+    && outlineContrast >= 3
+    && changed(
+      [base.outlineStyle, focused.outlineStyle],
+      [base.outlineWidth, focused.outlineWidth],
+      [base.outlineColor, focused.outlineColor],
+      [base.outlineOffset, focused.outlineOffset]
+    )
+  ) {
+    candidates.push({ contrast: outlineContrast, type: "outline" });
+  }
+
+  for (const side of ["Top", "Right", "Bottom", "Left"]) {
+    const before = base[`border${side}`];
+    const after = focused[`border${side}`];
+    const borderContrast = contrastRatio(after.color, focused.adjacentBackgroundColor);
+    if (
+      after.style !== "none"
+      && after.width >= 1
+      && borderContrast >= 3
+      && changed([before.style, after.style], [before.width, after.width], [before.color, after.color])
+    ) {
+      candidates.push({ contrast: borderContrast, side: side.toLowerCase(), type: "border" });
+      break;
+    }
+  }
+
+  if (!forcedColors) {
+    const backgroundContrast = contrastRatio(focused.effectiveBackgroundColor, base.effectiveBackgroundColor);
+    if (base.backgroundColor !== focused.backgroundColor && backgroundContrast >= 3) {
+      candidates.push({ contrast: backgroundContrast, type: "background" });
+    }
+
+    const textDecorationContrast = contrastRatio(focused.textDecorationColor, focused.effectiveBackgroundColor);
+    if (
+      focused.textDecorationLine !== "none"
+      && textDecorationContrast >= 3
+      && changed(
+        [base.textDecorationLine, focused.textDecorationLine],
+        [base.textDecorationStyle, focused.textDecorationStyle],
+        [base.textDecorationColor, focused.textDecorationColor]
+      )
+    ) {
+      candidates.push({ contrast: textDecorationContrast, type: "text-decoration" });
+    }
+
+  }
+
+  return { candidates, valid: candidates.length > 0 };
+}
+
+async function representativeTextMetrics(page, viewSelector) {
+  return page.evaluate((selector) => {
+    const view = document.querySelector(selector);
+    const visible = (element) => {
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+    };
+    const element = [...(view?.querySelectorAll("h1, h2, h3, p, label, legend") || [])]
+      .find((candidate) => visible(candidate) && candidate.textContent.trim().length > 1);
+    if (!element) return null;
+    const style = getComputedStyle(element);
+    return {
+      fontSize: Number.parseFloat(style.fontSize) || 0,
+      lineHeight: Number.parseFloat(style.lineHeight) || 0,
+      tag: element.tagName.toLowerCase(),
+      text: element.textContent.trim().replace(/\s+/g, " ").slice(0, 100)
+    };
+  }, viewSelector);
+}
+
+async function reflowAudit(page) {
   return page.evaluate(() => {
     const visible = (element) => {
       const style = getComputedStyle(element);
       const rect = element.getBoundingClientRect();
       return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
     };
-    const offenders = [...document.body.querySelectorAll("*")]
-      .filter(visible)
+    const describe = (element) => {
+      const rect = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      return {
+        action: element.getAttribute("data-action") || "",
+        className: String(element.className || ""),
+        clientWidth: element.clientWidth,
+        label: element.getAttribute("aria-label") || element.textContent.trim().slice(0, 60),
+        left: Math.round(rect.left * 100) / 100,
+        overflowX: style.overflowX,
+        right: Math.round(rect.right * 100) / 100,
+        scrollWidth: element.scrollWidth,
+        tag: element.tagName.toLowerCase()
+      };
+    };
+    const allowedScrollContainers = [
+      {
+        reason: "The Plan quick-template row is an explicit keyboard-operable horizontal carousel with overflow-x:auto and scroll snapping.",
+        selector: ".quick-template-list"
+      }
+    ];
+    const allowedScrollContainer = (element, entry) => {
+      if (!element.matches(entry.selector)) return false;
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return ["auto", "scroll"].includes(style.overflowX) && rect.left >= -1 && rect.right <= innerWidth + 1;
+    };
+    const allowedAncestor = (element) => allowedScrollContainers.find((entry) => {
+      const container = element.closest(entry.selector);
+      return container && container !== element && allowedScrollContainer(container, entry);
+    });
+    const intentionallyVisuallyHidden = (element) => {
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return rect.width <= 2 && rect.height <= 2 && (style.clip !== "auto" || style.clipPath !== "none");
+    };
+    const elements = [...document.body.querySelectorAll("*")].filter(visible);
+    const offscreen = elements
       .filter((element) => {
         const rect = element.getBoundingClientRect();
         return rect.left < -1 || rect.right > innerWidth + 1;
       })
-      .slice(0, 12)
-      .map((element) => ({
-        action: element.getAttribute("data-action") || "",
-        className: String(element.className || ""),
-        label: element.getAttribute("aria-label") || element.textContent.trim().slice(0, 60),
-        tag: element.tagName.toLowerCase()
-      }));
+      .filter((element) => !allowedAncestor(element) && !intentionallyVisuallyHidden(element))
+      .slice(0, 20)
+      .map(describe);
+    const nestedOverflow = elements
+      .filter((element) => element !== document.documentElement && element !== document.body)
+      .filter((element) => element.clientWidth > 0 && element.scrollWidth > element.clientWidth + 1)
+      .filter((element) => ["auto", "scroll", "hidden", "clip"].includes(getComputedStyle(element).overflowX))
+      .filter((element) => !allowedScrollContainers.some((entry) => allowedScrollContainer(element, entry)))
+      .slice(0, 20)
+      .map(describe);
+    const excludedScrollContainers = allowedScrollContainers.flatMap((entry) => [...document.querySelectorAll(entry.selector)]
+      .filter(visible)
+      .filter((element) => allowedScrollContainer(element, entry))
+      .filter((element) => element.scrollWidth > element.clientWidth + 1)
+      .map((element) => ({ ...describe(element), reason: entry.reason, selector: entry.selector })));
     return {
       bodyWidth: document.body.scrollWidth,
       documentWidth: document.documentElement.scrollWidth,
+      excludedScrollContainers,
       innerWidth,
-      offenders
+      nestedOverflow,
+      offscreen
     };
   });
 }
@@ -146,24 +356,23 @@ test("keyboard-visible skip link activates and focuses the canonical main-conten
   await expect(skipLink, "A skip link must be present before the application header controls").toHaveCount(1);
   await expect(skipLink).toHaveAttribute("href", "#main-content");
   await expect(main, "The skip link destination must be the unique canonical main landmark").toHaveCount(1);
+  const baseAppearance = await readFocusAppearance(skipLink);
 
   await page.keyboard.press("Tab");
   await expect(skipLink, "The first keyboard stop must be the skip link").toBeFocused();
   await expect(skipLink, "The skip link must become visible when keyboard focused").toBeVisible();
-  const focusAppearance = await skipLink.evaluate((element) => {
+  const visibility = await skipLink.evaluate((element) => {
     const rect = element.getBoundingClientRect();
-    const style = getComputedStyle(element);
     return {
       focusVisible: element.matches(":focus-visible"),
-      inViewport: rect.bottom > 0 && rect.right > 0 && rect.top < innerHeight && rect.left < innerWidth,
-      outlineStyle: style.outlineStyle,
-      outlineWidth: Number.parseFloat(style.outlineWidth) || 0
+      inViewport: rect.bottom > 0 && rect.right > 0 && rect.top < innerHeight && rect.left < innerWidth
     };
   });
-  expect(focusAppearance.focusVisible).toBe(true);
-  expect(focusAppearance.inViewport).toBe(true);
-  expect(focusAppearance.outlineStyle).not.toBe("none");
-  expect(focusAppearance.outlineWidth).toBeGreaterThanOrEqual(2);
+  const focusedAppearance = await readFocusAppearance(skipLink);
+  const indicator = focusIndicatorEvidence(baseAppearance, focusedAppearance);
+  expect(visibility.focusVisible).toBe(true);
+  expect(visibility.inViewport).toBe(true);
+  expect(indicator.valid, `Focus must create a contrast-backed visual change without prescribing one CSS technique: ${JSON.stringify({ baseAppearance, focusedAppearance, indicator })}`).toBe(true);
 
   await page.keyboard.press("Enter");
   await expect(main, "Activating the skip link must move focus, not only update the URL fragment").toBeFocused();
@@ -305,30 +514,41 @@ test("repeated Lift move, delete, add-set, warm-up, and duplicate controls inclu
     ["public-synthetic-active-exercise-3", LONG_EXERCISE_NAMES.quads]
   ];
   const actions = [
-    ['[data-action="move-exercise"][data-direction="-1"]', "move up"],
-    ['[data-action="move-exercise"][data-direction="1"]', "move down"],
-    ['[data-action="delete-exercise"]', "delete"],
-    ['[data-action="add-set"]', "add set"],
-    ['[data-action="add-warmup-set"]', "add warm-up"],
-    ['[data-action="duplicate-set"]', "duplicate"]
+    ['[data-action="move-exercise"][data-direction="-1"]', "move up", /\bmove(?: exercise)? up\b/i],
+    ['[data-action="move-exercise"][data-direction="1"]', "move down", /\bmove(?: exercise)? down\b/i],
+    ['[data-action="delete-exercise"]', "delete", /\bdelete(?: exercise)?\b/i],
+    ['[data-action="add-set"]', "add set", /(?:\badd(?: a| one)? (?:working )?set\b|[+＋]\s*(?:working\s*)?set\b)/i],
+    ['[data-action="add-warmup-set"]', "add warm-up", /(?:\badd(?: a| one)? warm[- ]?up(?: set)?\b|[+＋]\s*warm[- ]?up(?: set)?\b)/i],
+    ['[data-action="duplicate-set"]', "duplicate", /\bduplicate(?: set)?\b/i]
   ];
 
-  const audit = await page.evaluate(({ expectedCases, expectedActions }) => expectedCases.flatMap(([exerciseId, exerciseName]) => {
-    const exerciseField = document.querySelector(`[data-action="exercise-name"][data-exercise-id="${CSS.escape(exerciseId)}"]`);
-    const card = exerciseField?.closest(".exercise-card");
-    return expectedActions.map(([selector, actionLabel]) => {
-      const matches = card ? [...card.querySelectorAll(selector)] : [];
-      return {
-        actionLabel,
-        count: matches.length,
-        exerciseId,
-        exerciseName,
-        names: matches.map((control) => control.getAttribute("aria-label") || "")
-      };
-    });
-  }), { expectedCases: cases, expectedActions: actions });
-  const missing = audit.filter((entry) => entry.count !== 1 || entry.names.some((name) => !name.toLocaleLowerCase().includes(entry.exerciseName.toLocaleLowerCase())));
-  expect.soft(missing, "Every repeated Lift mutation control must have one explicit accessible name containing its exercise name").toEqual([]);
+  let auditedControls = 0;
+  for (const [exerciseId, exerciseName] of cases) {
+    const exerciseField = page.locator(`[data-action="exercise-name"][data-exercise-id="${exerciseId}"]`);
+    await expect(exerciseField).toHaveCount(1);
+    const card = exerciseField.locator("xpath=ancestor::article[contains(concat(' ', normalize-space(@class), ' '), ' exercise-card ')][1]");
+    await expect(card).toHaveCount(1);
+    const expectedContext = new RegExp(exerciseName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+    for (const [selector, actionLabel, expectedAction] of actions) {
+      const controls = card.locator(selector);
+      const count = await controls.count();
+      for (let index = 0; index < count; index += 1) {
+        const control = controls.nth(index);
+        const accessibilityTree = await control.ariaSnapshot();
+        const computedRoleAndName = accessibilityTree.split(/\r?\n/, 1)[0];
+        auditedControls += 1;
+        expect.soft(
+          computedRoleAndName,
+          `${actionLabel} for ${exerciseName} must expose the exercise context in its computed accessible name; snapshot: ${accessibilityTree}`
+        ).toMatch(expectedContext);
+        expect.soft(
+          computedRoleAndName,
+          `${actionLabel} for ${exerciseName} must retain the action meaning in its computed accessible name; snapshot: ${accessibilityTree}`
+        ).toMatch(expectedAction);
+      }
+    }
+  }
+  expect(auditedControls, "The live Lift fixture must expose repeated mutation controls to audit").toBeGreaterThan(0);
 });
 
 test("reduced motion converts the reachable next-set programmatic scroll to auto", async ({ page }) => {
@@ -361,6 +581,9 @@ test("reduced motion converts the reachable next-set programmatic scroll to auto
   }));
   expect(result.mediaMatches).toBe(true);
   expect(result.cssScrollBehavior).toBe("auto");
+  const expectedTargetId = "set-public-synthetic-active-exercise-1-set-3";
+  expect(result.calls.some((call) => call.id === expectedTargetId), `The completed second set must target the intended next set ${expectedTargetId}: ${JSON.stringify(result.calls)}`).toBe(true);
+  expect(result.calls.filter((call) => call.id !== expectedTargetId), `No unrelated element may be treated as the next set: ${JSON.stringify(result.calls)}`).toEqual([]);
   expect(result.calls.every((call) => call.behavior === "auto"), `Reduced motion must never request smooth programmatic scrolling: ${JSON.stringify(result.calls)}`).toBe(true);
 });
 
@@ -376,20 +599,15 @@ test("forced-colors mode retains a visible non-shadow focus indicator on navigat
   await page.keyboard.press("Tab");
   for (const target of targets) {
     await expect(target).toHaveCount(1);
+    const baseAppearance = await readFocusAppearance(target);
     await target.focus();
-    const indicator = await target.evaluate((element) => {
-      const style = getComputedStyle(element);
-      return {
-        focusVisible: element.matches(":focus-visible"),
-        forcedColorAdjust: style.forcedColorAdjust,
-        outlineStyle: style.outlineStyle,
-        outlineWidth: Number.parseFloat(style.outlineWidth) || 0
-      };
-    });
-    expect.soft(indicator.focusVisible, "The focused control must match :focus-visible in keyboard modality").toBe(true);
-    expect.soft(indicator.forcedColorAdjust, "The control must not suppress the user's forced-color palette").not.toBe("none");
-    expect.soft(indicator.outlineStyle, "Forced colors must retain a visible outline instead of relying on removed shadows").not.toBe("none");
-    expect.soft(indicator.outlineWidth, "Forced-colors focus outline must remain at least 2 CSS pixels").toBeGreaterThanOrEqual(2);
+    const focusedAppearance = await readFocusAppearance(target);
+    const indicator = focusIndicatorEvidence(baseAppearance, focusedAppearance, { forcedColors: true });
+    expect.soft(focusedAppearance.focusVisible, "The focused control must match :focus-visible in keyboard modality").toBe(true);
+    expect.soft(
+      indicator.valid,
+      `Forced colors must create a changed, >=3:1 outline or border indicator; shadows alone are intentionally insufficient: ${JSON.stringify({ baseAppearance, focusedAppearance, indicator })}`
+    ).toBe(true);
   }
 });
 
@@ -397,16 +615,45 @@ test("all primary views reflow at 320 CSS pixels with 200 percent text and no do
   test.setTimeout(90_000);
   test.skip(testInfo.project.name !== "desktop", "One deterministic Chromium project owns the exact 320 CSS-pixel increased-text matrix.");
   await installScenario(page, { includeHistory: false, viewport: { width: 320, height: 720 } });
+  const rootBaseline = await page.evaluate(() => Number.parseFloat(getComputedStyle(document.documentElement).fontSize));
+  const textBaselines = new Map();
 
-  for (const textScale of [100, 200]) {
-    if (textScale === 200) await page.addStyleTag({ content: "html { font-size: 200% !important; }" });
-    for (const entry of PRIMARY_TABS) {
-      await openPrimaryTab(page, entry.id);
-      await expect(page.locator(entry.view)).toBeVisible();
-      const overflow = await documentOverflow(page);
-      expect.soft(overflow.innerWidth, "The reflow contract must run at exactly 320 CSS pixels").toBe(320);
-      expect.soft(overflow.documentWidth, `${entry.id} at ${textScale}% text must not widen the document; offenders: ${JSON.stringify(overflow.offenders)}`).toBeLessThanOrEqual(321);
-      expect.soft(overflow.bodyWidth, `${entry.id} at ${textScale}% text must not widen the body; offenders: ${JSON.stringify(overflow.offenders)}`).toBeLessThanOrEqual(321);
+  for (const entry of PRIMARY_TABS) {
+    await openPrimaryTab(page, entry.id);
+    await expect(page.locator(entry.view)).toBeVisible();
+    const metrics = await representativeTextMetrics(page, entry.view);
+    expect(metrics, `${entry.id} must expose representative visible text for scaling verification`).not.toBeNull();
+    textBaselines.set(entry.id, metrics);
+    const overflow = await reflowAudit(page);
+    const evidence = JSON.stringify({ excluded: overflow.excludedScrollContainers, nested: overflow.nestedOverflow, offscreen: overflow.offscreen });
+    expect.soft(overflow.innerWidth, "The reflow contract must run at exactly 320 CSS pixels").toBe(320);
+    expect.soft(overflow.documentWidth, `${entry.id} at 100% text must not widen the root; ${evidence}`).toBeLessThanOrEqual(321);
+    expect.soft(overflow.bodyWidth, `${entry.id} at 100% text must not widen the body; ${evidence}`).toBeLessThanOrEqual(321);
+    expect.soft(overflow.offscreen, `${entry.id} at 100% text must not render unclipped content outside the viewport; ${evidence}`).toEqual([]);
+    expect.soft(overflow.nestedOverflow, `${entry.id} at 100% text must not contain clipped or nested horizontal overflow beyond the documented carousel exclusion; ${evidence}`).toEqual([]);
+  }
+
+  await page.addStyleTag({ content: "html { font-size: 200% !important; }" });
+  const scaledRoot = await page.evaluate(() => Number.parseFloat(getComputedStyle(document.documentElement).fontSize));
+  expect(scaledRoot, "The test harness must prove that its large-text mode doubles the root computed font size").toBeGreaterThanOrEqual(rootBaseline * 1.9);
+
+  for (const entry of PRIMARY_TABS) {
+    await openPrimaryTab(page, entry.id);
+    await expect(page.locator(entry.view)).toBeVisible();
+    const baseline = textBaselines.get(entry.id);
+    const scaled = await representativeTextMetrics(page, entry.view);
+    expect(scaled, `${entry.id} must retain representative visible text at 200%`).not.toBeNull();
+    expect.soft({ tag: scaled.tag, text: scaled.text }, `${entry.id} must compare the same representative text before and after scaling`).toEqual({ tag: baseline.tag, text: baseline.text });
+    expect.soft(scaled.fontSize, `${entry.id} representative text must scale to an equivalent 200% computed size: ${JSON.stringify({ baseline, scaled })}`).toBeGreaterThanOrEqual(baseline.fontSize * 1.9);
+    if (baseline.lineHeight > 0 && scaled.lineHeight > 0) {
+      expect.soft(scaled.lineHeight, `${entry.id} representative line height must scale with its 200% text: ${JSON.stringify({ baseline, scaled })}`).toBeGreaterThanOrEqual(baseline.lineHeight * 1.9);
     }
+    const overflow = await reflowAudit(page);
+    const evidence = JSON.stringify({ excluded: overflow.excludedScrollContainers, nested: overflow.nestedOverflow, offscreen: overflow.offscreen });
+    expect.soft(overflow.innerWidth, "The reflow contract must remain exactly 320 CSS pixels").toBe(320);
+    expect.soft(overflow.documentWidth, `${entry.id} at 200% text must not widen the root; ${evidence}`).toBeLessThanOrEqual(321);
+    expect.soft(overflow.bodyWidth, `${entry.id} at 200% text must not widen the body; ${evidence}`).toBeLessThanOrEqual(321);
+    expect.soft(overflow.offscreen, `${entry.id} at 200% text must not render unclipped content outside the viewport; ${evidence}`).toEqual([]);
+    expect.soft(overflow.nestedOverflow, `${entry.id} at 200% text must not contain clipped or nested horizontal overflow beyond the documented carousel exclusion; ${evidence}`).toEqual([]);
   }
 });
