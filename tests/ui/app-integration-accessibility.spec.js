@@ -11,14 +11,23 @@ const {
   validFullState
 } = require("../fixtures/synthetic-app-backups");
 const {
+  PERSONAL_EVIDENCE_BOUNDARIES,
   clone: clonePersonalEvidence,
   conflictingIdentityPersonalEvidencePackage,
+  jsonDepth: personalEvidenceJsonDepth,
+  jsonObjectAtWidth,
+  jsonValueAtDepth,
+  maximumObjectWidth: personalEvidenceObjectWidth,
   partialPersonalEvidencePackage,
+  personalEvidenceAtNameLength,
+  personalEvidenceAtScalarBoundaries,
+  personalEvidenceAtStableIdLength,
+  personalEvidenceAtTextLength,
+  personalEvidenceWithMatchedCoreCount,
   syntheticPersonalEvidencePackage
 } = require("../fixtures/synthetic-personal-evidence");
 
 const PRIVATE_EVIDENCE_PATH = /^\/(?:private-personal-data|personal_fitness_data)\//;
-const CLEARLY_OVERSIZED_PERSONAL_EVIDENCE_BYTES = 1024 * 1024 * 1024;
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -119,70 +128,15 @@ async function installPersonalEvidenceBuildFault(page) {
 }
 
 async function personalEvidenceRuntimeState(page) {
-  return page.evaluate(() => ({
-    package: data.personalEvidencePackage ? JSON.parse(JSON.stringify(data.personalEvidencePackage)) : null,
-    packageJson: JSON.stringify(data.personalEvidencePackage || null),
-    enginePersonalVersion: String(prescriptionEngine?.evidence?.versions?.personal || prescriptionEngine?.evidence?.personal?.version || "unknown"),
-    enginePersonalIds: prescriptionEngine?.evidence?.personal?.reconciledIdentityByExerciseId
-      ? [...prescriptionEngine.evidence.personal.reconciledIdentityByExerciseId.keys()].sort()
-      : (prescriptionEngine?.evidence?.personal?.exerciseScores || []).map((item) => item.exercise_id || item.exerciseId).filter(Boolean).sort(),
-    status: {
-      state: prescriptionEvidenceStatus?.state,
-      source: prescriptionEvidenceStatus?.source,
-      personalRecords: prescriptionEvidenceStatus?.personalRecords,
-      personalVersion: prescriptionEvidenceStatus?.personalVersion,
-      researchVersion: prescriptionEvidenceStatus?.researchVersion
-    }
-  }));
-}
-
-async function seedPersonalEvidencePackage(page, packageValue) {
-  const result = await page.evaluate(async (value) => {
-    globalThis.__FAIL_PERSONAL_EVIDENCE_BUILD_VERSION__ = "";
-    data = { ...data, personalEvidencePackage: value };
-    const initialized = await initializePrescriptionEvidence();
-    render();
-    return { initialized, state: prescriptionEvidenceStatus?.state };
-  }, packageValue);
-  expect(result.initialized, "The synthetic prior package must initialize through the real evidence engine").toBe(true);
-  expect(result.state).toBe("ready");
-  return personalEvidenceRuntimeState(page);
-}
-
-async function importPersonalEvidenceInPage(page, input) {
-  return page.evaluate(async ({ raw, name, claimedBytes, failBuildVersion }) => {
-    globalThis.__FAIL_PERSONAL_EVIDENCE_BUILD_VERSION__ = failBuildVersion || "";
-    const file = new File([raw], name, { type: "application/json" });
-    const nativeText = file.text.bind(file);
-    let textReads = 0;
-    Object.defineProperty(file, "text", {
-      configurable: true,
-      value: () => {
-        textReads += 1;
-        return nativeText();
-      }
-    });
-    if (claimedBytes !== null && claimedBytes !== undefined) {
-      Object.defineProperty(file, "size", { configurable: true, value: claimedBytes });
-    }
-    settingsMessage = "";
-    let thrown = "";
-    try {
-      await importPersonalEvidenceFile(file);
-    } catch (error) {
-      thrown = String(error?.message || error);
-    }
-    globalThis.__FAIL_PERSONAL_EVIDENCE_BUILD_VERSION__ = "";
+  return page.evaluate(() => {
+    const identityMap = prescriptionEngine?.evidence?.personal?.reconciledIdentityByExerciseId;
+    const hasReconciledIdentityMap = identityMap instanceof Map;
     return {
-      textReads,
-      thrown,
-      settingsMessage: String(settingsMessage || ""),
       package: data.personalEvidencePackage ? JSON.parse(JSON.stringify(data.personalEvidencePackage)) : null,
       packageJson: JSON.stringify(data.personalEvidencePackage || null),
+      engineHasReconciledIdentityMap: hasReconciledIdentityMap,
       enginePersonalVersion: String(prescriptionEngine?.evidence?.versions?.personal || prescriptionEngine?.evidence?.personal?.version || "unknown"),
-      enginePersonalIds: prescriptionEngine?.evidence?.personal?.reconciledIdentityByExerciseId
-        ? [...prescriptionEngine.evidence.personal.reconciledIdentityByExerciseId.keys()].sort()
-        : (prescriptionEngine?.evidence?.personal?.exerciseScores || []).map((item) => item.exercise_id || item.exerciseId).filter(Boolean).sort(),
+      enginePersonalIds: hasReconciledIdentityMap ? [...identityMap.keys()].sort() : [],
       status: {
         state: prescriptionEvidenceStatus?.state,
         source: prescriptionEvidenceStatus?.source,
@@ -191,7 +145,403 @@ async function importPersonalEvidenceInPage(page, input) {
         researchVersion: prescriptionEvidenceStatus?.researchVersion
       }
     };
-  }, input);
+  });
+}
+
+async function persistedPersonalEvidenceState(page) {
+  return page.evaluate(async () => {
+    try {
+      const stored = await readIndexedValue("app-data");
+      const packageValue = stored?.personalEvidencePackage || null;
+      return {
+        error: "",
+        package: packageValue ? JSON.parse(JSON.stringify(packageValue)) : null,
+        packageJson: JSON.stringify(packageValue)
+      };
+    } catch (error) {
+      return { error: String(error?.message || error), package: null, packageJson: "null" };
+    }
+  });
+}
+
+function packageContainsExerciseId(packageValue, exerciseId) {
+  return ["exercisePrescriptions", "exerciseScores", "exerciseMuscleScores"].some((collection) => (
+    (packageValue?.personalData?.[collection] || []).some((row) => (row.exercise_id || row.exerciseId) === exerciseId)
+  ));
+}
+
+function primaryPackageExerciseId(packageValue) {
+  return packageValue?.personalData?.exerciseScores?.[0]?.exercise_id
+    || packageValue?.personalData?.exercisePrescriptions?.[0]?.exercise_id
+    || packageValue?.personalData?.exerciseMuscleScores?.[0]?.exercise_id
+    || "";
+}
+
+function jsonBufferAtExactBytes(packageValue, bytes) {
+  const json = Buffer.from(JSON.stringify(packageValue), "utf8");
+  if (json.length > bytes) throw new Error(`Synthetic package requires ${json.length} bytes, above requested ${bytes}`);
+  return Buffer.concat([json, Buffer.alloc(bytes - json.length, 0x20)]);
+}
+
+async function executePersonalEvidenceShapeValidator(page, value) {
+  return page.evaluate(({ candidate, limits }) => {
+    if (typeof validatePersonalEvidenceJsonShape !== "function") {
+      return { available: false, rejected: true, error: "validatePersonalEvidenceJsonShape is unavailable" };
+    }
+    try {
+      const result = validatePersonalEvidenceJsonShape(candidate, {
+        maxDepth: limits.jsonDepth,
+        maxObjectKeys: limits.objectKeys
+      });
+      return {
+        available: true,
+        rejected: result === false || result?.valid === false,
+        error: ""
+      };
+    } catch (error) {
+      return { available: true, rejected: true, error: String(error?.message || error) };
+    }
+  }, { candidate: value, limits: PERSONAL_EVIDENCE_BOUNDARIES });
+}
+
+async function waitForEvidenceTerminal(page) {
+  await expect.poll(() => page.evaluate(() => String(prescriptionEvidenceStatus?.state || "missing")), {
+    message: "Personal evidence startup must reach a terminal state",
+    timeout: 30_000
+  }).not.toBe("loading");
+}
+
+async function personalEvidenceInput(page) {
+  const navigation = page.getByRole("navigation", { name: "Main navigation" });
+  await navigation.getByRole("button", { name: /Settings$/ }).click();
+  const group = page.locator("details.settings-group").filter({ has: page.locator("summary", { hasText: "Data and backup" }) });
+  if (!(await group.evaluate((element) => element.open))) await group.locator("summary").click();
+  return group.locator('[data-action="import-personal-evidence"]');
+}
+
+async function armPersonalEvidenceImportObserver(page, name, failBuildVersion = "", expectedShapeJson = "") {
+  return page.evaluate(({ fileName, failureVersion, expectedJson }) => {
+    globalThis.__PERSONAL_EVIDENCE_IMPORT_AUDIT__ ||= {};
+    if (!globalThis.__PERSONAL_EVIDENCE_IMPORT_OBSERVER_INSTALLED__) {
+      const productionImport = importPersonalEvidenceFile;
+      const productionWriteIndexedValue = writeIndexedValue;
+      const productionShapeValidator = typeof validatePersonalEvidenceJsonShape === "function"
+        ? validatePersonalEvidenceJsonShape
+        : null;
+      if (productionShapeValidator) {
+        validatePersonalEvidenceJsonShape = function observedPersonalEvidenceShapeValidation(...args) {
+          const attemptKey = globalThis.__ACTIVE_PERSONAL_EVIDENCE_IMPORT_KEY__;
+          const audit = attemptKey ? globalThis.__PERSONAL_EVIDENCE_IMPORT_AUDIT__?.[attemptKey] : null;
+          if (audit) {
+            audit.shapeValidationCalls += 1;
+            try {
+              if (audit.expectedShapeJson && JSON.stringify(args[0]) === audit.expectedShapeJson) {
+                audit.shapeValidatedImportedPayload = true;
+              }
+            } catch {
+              // The production validator still decides how to reject non-serializable values.
+            }
+          }
+          return productionShapeValidator(...args);
+        };
+      }
+      writeIndexedValue = async function observedPersonalEvidenceWrite(key, value) {
+        const attemptKey = globalThis.__ACTIVE_PERSONAL_EVIDENCE_IMPORT_KEY__;
+        const audit = attemptKey ? globalThis.__PERSONAL_EVIDENCE_IMPORT_AUDIT__?.[attemptKey] : null;
+        if (audit && key === "app-data") {
+          audit.persistenceWrites += 1;
+          const packageValue = value?.personalEvidencePackage || null;
+          const coreCollections = ["exercisePrescriptions", "exerciseScores", "exerciseMuscleScores"];
+          audit.persistenceWritePackages.push({
+            topLevelKeys: Object.keys(packageValue || {}).sort(),
+            schemaVersion: packageValue?.schemaVersion || "",
+            createdAt: packageValue?.createdAt || "",
+            personalDataVersion: packageValue?.personalDataVersion || "",
+            researchDatabaseVersion: packageValue?.researchDatabaseVersion || "",
+            privacy: packageValue?.privacy || "",
+            importedAt: packageValue?.importedAt || "",
+            coreCounts: Object.fromEntries(coreCollections.map((collection) => [
+              collection,
+              Array.isArray(packageValue?.personalData?.[collection]) ? packageValue.personalData[collection].length : -1
+            ])),
+            firstIds: Object.fromEntries(coreCollections.map((collection) => [
+              collection,
+              packageValue?.personalData?.[collection]?.[0]?.exercise_id || ""
+            ])),
+            lastIds: Object.fromEntries(coreCollections.map((collection) => [
+              collection,
+              packageValue?.personalData?.[collection]?.at(-1)?.exercise_id || ""
+            ]))
+          });
+        }
+        try {
+          return await productionWriteIndexedValue(key, value);
+        } finally {
+          if (audit && key === "app-data") audit.persistenceWritesSettled += 1;
+        }
+      };
+      importPersonalEvidenceFile = async function observedPersonalEvidenceImport(file) {
+        const attemptKey = globalThis.__PENDING_PERSONAL_EVIDENCE_IMPORT_KEY__;
+        const audit = globalThis.__PERSONAL_EVIDENCE_IMPORT_AUDIT__?.[attemptKey];
+        if (!audit) return productionImport(file);
+        globalThis.__ACTIVE_PERSONAL_EVIDENCE_IMPORT_KEY__ = attemptKey;
+        audit.started = true;
+        audit.observedName = file.name;
+        audit.observedSize = file.size;
+        const observedBlobs = new WeakSet([file]);
+        const restorations = [];
+        const replaceMethod = (prototype, method, replacement) => {
+          if (!prototype) return;
+          const descriptor = Object.getOwnPropertyDescriptor(prototype, method);
+          if (!descriptor || typeof descriptor.value !== "function" || !descriptor.configurable) return;
+          Object.defineProperty(prototype, method, { ...descriptor, value: replacement(descriptor.value) });
+          restorations.push(() => Object.defineProperty(prototype, method, descriptor));
+        };
+        replaceMethod(Blob.prototype, "slice", (nativeSlice) => function observedSlice(...args) {
+          const result = nativeSlice.apply(this, args);
+          if (observedBlobs.has(this)) observedBlobs.add(result);
+          return result;
+        });
+        for (const [method, field] of [
+          ["text", "textReads"],
+          ["arrayBuffer", "arrayBufferReads"],
+          ["stream", "streamReads"],
+          ["bytes", "bytesReads"]
+        ]) {
+          replaceMethod(Blob.prototype, method, (nativeRead) => function observedBlobRead(...args) {
+            if (observedBlobs.has(this)) audit[field] += 1;
+            return nativeRead.apply(this, args);
+          });
+        }
+        for (const method of ["readAsText", "readAsArrayBuffer", "readAsBinaryString", "readAsDataURL"]) {
+          replaceMethod(globalThis.FileReader?.prototype, method, (nativeRead) => function observedFileReaderRead(blob, ...args) {
+            if (observedBlobs.has(blob)) audit.fileReaderReads += 1;
+            return nativeRead.call(this, blob, ...args);
+          });
+        }
+        try {
+          return await productionImport(file);
+        } catch (error) {
+          audit.thrown = String(error?.message || error);
+          throw error;
+        } finally {
+          while (restorations.length) restorations.pop()();
+          audit.completed = true;
+          audit.settingsMessage = String(settingsMessage || "");
+          globalThis.__FAIL_PERSONAL_EVIDENCE_BUILD_VERSION__ = "";
+          globalThis.__PENDING_PERSONAL_EVIDENCE_IMPORT_KEY__ = "";
+        }
+      };
+      globalThis.__PERSONAL_EVIDENCE_IMPORT_OBSERVER_INSTALLED__ = true;
+    }
+    const key = `personal-evidence-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    globalThis.__PERSONAL_EVIDENCE_IMPORT_AUDIT__[key] = {
+      expectedName: fileName,
+      observedName: "",
+      observedSize: 0,
+      textReads: 0,
+      arrayBufferReads: 0,
+      streamReads: 0,
+      bytesReads: 0,
+      fileReaderReads: 0,
+      persistenceWrites: 0,
+      persistenceWritesSettled: 0,
+      persistenceWritePackages: [],
+      shapeValidationCalls: 0,
+      shapeValidatedImportedPayload: false,
+      started: false,
+      completed: false,
+      thrown: "",
+      settingsMessageBefore: String(settingsMessage || ""),
+      settingsMessage: "",
+      expectedShapeJson: expectedJson
+    };
+    globalThis.__FAIL_PERSONAL_EVIDENCE_BUILD_VERSION__ = failureVersion;
+    globalThis.__PENDING_PERSONAL_EVIDENCE_IMPORT_KEY__ = key;
+    return key;
+  }, { fileName: name, failureVersion: failBuildVersion, expectedJson: expectedShapeJson });
+}
+
+async function importPersonalEvidenceThroughUi(page, packageOrRaw, name, options = {}) {
+  const input = await personalEvidenceInput(page);
+  const buffer = Buffer.isBuffer(packageOrRaw)
+    ? packageOrRaw
+    : Buffer.from(typeof packageOrRaw === "string" ? packageOrRaw : JSON.stringify(packageOrRaw), "utf8");
+  let expectedShapeJson = "";
+  try {
+    expectedShapeJson = JSON.stringify(JSON.parse(buffer.toString("utf8")));
+  } catch {
+    // Malformed JSON is intentionally exercised by rejection cases.
+  }
+  const auditKey = await armPersonalEvidenceImportObserver(page, name, options.failBuildVersion || "", expectedShapeJson);
+  await input.setInputFiles({ name, mimeType: "application/json", buffer });
+  const auditField = (field) => page.evaluate(({ key, property }) => (
+    globalThis.__PERSONAL_EVIDENCE_IMPORT_AUDIT__?.[key]?.[property]
+  ), { key: auditKey, property: field });
+  await expect.poll(() => auditField("started"), { message: `${name} must traverse the production file-input handler` }).toBe(true);
+  await expect.poll(() => auditField("completed"), {
+    message: `${name} must complete the production personal-evidence import path`,
+    timeout: 120_000
+  }).toBe(true);
+  await expect.poll(async () => Number(await auditField("persistenceWritesSettled")) === Number(await auditField("persistenceWrites")), {
+    message: `${name} must settle every IndexedDB write started by the import`,
+    timeout: 30_000
+  }).toBe(true);
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  const audit = await personalEvidenceImportAudit(page, auditKey);
+  expect.soft(audit.observedName).toBe(name);
+  expect.soft(audit.observedSize).toBe(buffer.length);
+  return { auditKey, ...audit };
+}
+
+async function personalEvidenceImportAudit(page, auditKey) {
+  return page.evaluate((key) => {
+    const { expectedShapeJson: _expectedShapeJson, ...audit } = globalThis.__PERSONAL_EVIDENCE_IMPORT_AUDIT__[key];
+    return audit;
+  }, auditKey);
+}
+
+function personalEvidenceReadOperations(audit) {
+  return ["textReads", "arrayBufferReads", "streamReads", "bytesReads", "fileReaderReads"]
+    .reduce((total, field) => total + Number(audit[field] || 0), 0);
+}
+
+async function waitForPersistedPersonalEvidence(page, expectedExerciseId) {
+  await expect.poll(async () => {
+    const persisted = await persistedPersonalEvidenceState(page);
+    return !persisted.error && packageContainsExerciseId(persisted.package, expectedExerciseId);
+  }, {
+    message: `IndexedDB app-data must persist personal evidence for ${expectedExerciseId}`,
+    timeout: 60_000
+  }).toBe(true);
+}
+
+async function reloadPersonalEvidenceState(page) {
+  await page.reload();
+  await page.waitForLoadState("load");
+  await waitForEvidenceTerminal(page);
+  return {
+    runtime: await personalEvidenceRuntimeState(page),
+    persisted: await persistedPersonalEvidenceState(page)
+  };
+}
+
+async function seedPersistedPersonalEvidencePackage(page, packageValue, name = "synthetic-prior-personal-evidence.json") {
+  const expectedExerciseId = primaryPackageExerciseId(packageValue);
+  const audit = await importPersonalEvidenceThroughUi(page, packageValue, name);
+  expect.soft(personalEvidenceReadOperations(audit), `${name} must be consumed through a production File or Blob read API`).toBeGreaterThan(0);
+  await waitForPersistedPersonalEvidence(page, expectedExerciseId);
+  const reloaded = await reloadPersonalEvidenceState(page);
+  expect.soft(reloaded.persisted.error).toBe("");
+  expect.soft(packageContainsExerciseId(reloaded.runtime.package, expectedExerciseId), `${name} must survive reload in application state`).toBe(true);
+  expect.soft(packageContainsExerciseId(reloaded.persisted.package, expectedExerciseId), `${name} must survive reload in IndexedDB`).toBe(true);
+  expect.soft(reloaded.runtime.status.state).toBe("ready");
+  return { ...reloaded.runtime, persistedPackageJson: reloaded.persisted.packageJson };
+}
+
+function expectCanonicalPersonalEvidencePackage(actual, expected, label) {
+  const expectedKeys = ["createdAt", "importedAt", "personalData", "personalDataVersion", "privacy", "researchDatabaseVersion", "schemaVersion"];
+  expect.soft(Object.keys(actual || {}).sort(), `${label} must use the canonical persisted package shape`).toEqual(expectedKeys);
+  expect.soft(actual?.schemaVersion, `${label} must retain the package schema version`).toBe(expected.schemaVersion);
+  expect.soft(actual?.createdAt, `${label} must retain package creation provenance`).toBe(expected.createdAt);
+  expect.soft(actual?.personalDataVersion, `${label} must retain the declared personal-data version`).toBe(expected.personalDataVersion);
+  expect.soft(actual?.researchDatabaseVersion, `${label} must retain the declared research version`).toBe(expected.researchDatabaseVersion);
+  expect.soft(actual?.privacy, `${label} must retain the private-local-only classification`).toBe(expected.privacy);
+  expect.soft(actual?.importedAt, `${label} must record a valid import timestamp`).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  expect.soft(actual?.personalData, `${label} must persist the canonical validated aggregate payload`).toEqual(expected.personalData);
+}
+
+function expectCanonicalPersonalEvidenceWriteSnapshot(actual, expected, expectedExerciseId, label) {
+  const expectedKeys = ["createdAt", "importedAt", "personalData", "personalDataVersion", "privacy", "researchDatabaseVersion", "schemaVersion"];
+  expect.soft(actual?.topLevelKeys, `${label} canonical top-level keys`).toEqual(expectedKeys);
+  expect.soft(actual?.schemaVersion, `${label} schema version`).toBe(expected.schemaVersion);
+  expect.soft(actual?.createdAt, `${label} creation provenance`).toBe(expected.createdAt);
+  expect.soft(actual?.personalDataVersion, `${label} personal-data version`).toBe(expected.personalDataVersion);
+  expect.soft(actual?.researchDatabaseVersion, `${label} research version`).toBe(expected.researchDatabaseVersion);
+  expect.soft(actual?.privacy, `${label} privacy classification`).toBe(expected.privacy);
+  expect.soft(actual?.importedAt, `${label} import timestamp`).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  for (const collection of ["exercisePrescriptions", "exerciseScores", "exerciseMuscleScores"]) {
+    expect.soft(actual?.coreCounts?.[collection], `${label} ${collection} count`).toBe(expected.personalData[collection].length);
+    expect.soft(actual?.firstIds?.[collection], `${label} ${collection} first identity`).toBe(expected.personalData[collection][0].exercise_id);
+  }
+  expect.soft(Object.values(actual?.lastIds || {}), `${label} must include the expected reconciled identity`).toContain(expectedExerciseId);
+}
+
+function expectReconciledPersonalIdentity(state, expectedExerciseId, label, excludedExerciseId = "") {
+  expect.soft(state.engineHasReconciledIdentityMap, `${label} must expose the real reconciled identity Map`).toBe(true);
+  expect.soft(state.enginePersonalIds, `${label} must contain the canonical imported identity`).toContain(expectedExerciseId);
+  if (excludedExerciseId) expect.soft(state.enginePersonalIds, `${label} must replace, not merge, the prior identity`).not.toContain(excludedExerciseId);
+}
+
+async function expectAcceptedPersonalEvidenceImport(page, packageValue, raw, name, options = {}) {
+  const expectedExerciseId = options.expectedExerciseId || primaryPackageExerciseId(packageValue);
+  const audit = await importPersonalEvidenceThroughUi(page, raw ?? packageValue, name);
+  expect.soft(personalEvidenceReadOperations(audit), `${name} must be consumed through a production File or Blob read API`).toBeGreaterThan(0);
+  expect.soft(audit.shapeValidationCalls, `${name} must execute the dedicated production JSON-shape validator`).toBeGreaterThan(0);
+  expect.soft(audit.shapeValidatedImportedPayload, `${name} must pass the actual parsed import payload to the JSON-shape validator`).toBe(true);
+  expect.soft(audit.persistenceWrites, `${name} must traverse production IndexedDB persistence`).toBeGreaterThan(0);
+  await waitForPersistedPersonalEvidence(page, expectedExerciseId);
+  const immediate = await personalEvidenceRuntimeState(page);
+  const persisted = await persistedPersonalEvidenceState(page);
+  expectCanonicalPersonalEvidencePackage(immediate.package, packageValue, `${name} in-memory state`);
+  expectCanonicalPersonalEvidencePackage(persisted.package, packageValue, `${name} IndexedDB state`);
+  expectCanonicalPersonalEvidenceWriteSnapshot(
+    audit.persistenceWritePackages.at(-1),
+    packageValue,
+    expectedExerciseId,
+    `${name} captured production persistence write`
+  );
+  expectReconciledPersonalIdentity(immediate, expectedExerciseId, `${name} immediate engine`, options.excludedExerciseId || "");
+
+  const reloaded = await reloadPersonalEvidenceState(page);
+  expectCanonicalPersonalEvidencePackage(reloaded.runtime.package, packageValue, `${name} reloaded state`);
+  expectCanonicalPersonalEvidencePackage(reloaded.persisted.package, packageValue, `${name} reloaded IndexedDB state`);
+  expectReconciledPersonalIdentity(reloaded.runtime, expectedExerciseId, `${name} reloaded engine`, options.excludedExerciseId || "");
+  expect.soft(reloaded.runtime.status.state).toBe("ready");
+  expect.soft(reloaded.runtime.status.personalVersion).toBe(packageValue.personalDataVersion);
+  return reloaded;
+}
+
+function expectPreservedPersonalEvidenceState(actual, before, label) {
+  expect.soft(actual.packageJson === before.packageJson, `${label} must preserve the prior canonical package byte-for-byte`).toBe(true);
+  expect.soft(actual.engineHasReconciledIdentityMap, `${label} must retain the reconciled identity Map`).toBe(true);
+  expect.soft(actual.enginePersonalVersion, `${label} must preserve the prior real-engine version`).toBe(before.enginePersonalVersion);
+  expect.soft(JSON.stringify(actual.enginePersonalIds) === JSON.stringify(before.enginePersonalIds), `${label} must preserve the prior reconciled identities`).toBe(true);
+  expect.soft(actual.status, `${label} must preserve the prior evidence status`).toEqual(before.status);
+}
+
+async function expectRejectedPersonalEvidenceImport(page, priorPackage, raw, name, options = {}) {
+  const before = await seedPersistedPersonalEvidencePackage(page, priorPackage, `prior-${name}`);
+  expect.soft(before.engineHasReconciledIdentityMap, `${name} setup must use the real reconciled identity Map`).toBe(true);
+  const audit = await importPersonalEvidenceThroughUi(page, raw, name, { failBuildVersion: options.failBuildVersion || "" });
+  const readOperations = personalEvidenceReadOperations(audit);
+  if (options.expectUnread) {
+    expect.soft(readOperations, `${name} must be rejected before any File, Blob, stream, or FileReader consumption`).toBe(0);
+  } else {
+    expect.soft(readOperations, `${name} must traverse a production File or Blob read path`).toBeGreaterThan(0);
+  }
+  const changedVisibleMessage = audit.settingsMessage && audit.settingsMessage !== audit.settingsMessageBefore
+    ? audit.settingsMessage
+    : "";
+  const rejectionSignal = String(audit.thrown || changedVisibleMessage).slice(0, 2_000);
+  expect.soft(rejectionSignal, `${name} must produce an explicit thrown or user-visible rejection signal`).not.toBe("");
+  expect.soft(rejectionSignal, `${name} rejection must identify the invalid condition`).toMatch(options.expectedRejection);
+  expect.soft(audit.persistenceWrites, `${name} must not write rejected app data before restoring prior state`).toBe(0);
+  expect.soft(audit.persistenceWritePackages, `${name} must produce no rejected or rollback IndexedDB writes`).toEqual([]);
+
+  const immediate = await personalEvidenceRuntimeState(page);
+  const persisted = await persistedPersonalEvidenceState(page);
+  expectPreservedPersonalEvidenceState(immediate, before, `${name} immediate state`);
+  expect.soft(persisted.error, `${name} must leave IndexedDB readable`).toBe("");
+  expect.soft(persisted.packageJson === before.persistedPackageJson, `${name} must not write rejected input to IndexedDB`).toBe(true);
+  const settledAudit = await personalEvidenceImportAudit(page, audit.auditKey);
+  expect.soft(settledAudit.persistenceWrites, `${name} must remain write-free after the browser event loop settles`).toBe(0);
+  expect.soft(settledAudit.persistenceWritePackages, `${name} must not enqueue a late rejected or rollback write`).toEqual([]);
+
+  const reloaded = await reloadPersonalEvidenceState(page);
+  expectPreservedPersonalEvidenceState(reloaded.runtime, before, `${name} post-reload state`);
+  expect.soft(reloaded.persisted.error, `${name} reloaded IndexedDB must remain readable`).toBe("");
+  expect.soft(reloaded.persisted.packageJson === before.persistedPackageJson, `${name} must not resurrect rejected input after reload`).toBe(true);
 }
 
 test("optional private evidence discovery is local-only, same-origin, and never cacheable", async ({ page }) => {
@@ -220,8 +570,9 @@ test("optional private evidence discovery is local-only, same-origin, and never 
   }
 });
 
-test("personal evidence import validates and builds before atomically replacing the active package", async ({ page }) => {
-  test.setTimeout(120_000);
+test("personal evidence import canonically persists valid replacement and atomically preserves prior state on failure", async ({ page }) => {
+  test.skip(test.info().project.name === "mobile", "IndexedDB transaction semantics are viewport-independent and run once in desktop Chromium.");
+  test.setTimeout(420_000);
   await installPersonalEvidenceBuildFault(page);
   const priorPackage = syntheticPersonalEvidencePackage({
     exerciseId: "custom_synthetic_prior_press",
@@ -235,105 +586,194 @@ test("personal evidence import validates and builds before atomically replacing 
     researchExerciseId: "ex_dumbbell_bench_press",
     version: "1.0.1"
   });
-  const validResult = await importPersonalEvidenceInPage(page, {
-    raw: JSON.stringify(candidatePackage),
-    name: "synthetic-valid-personal-evidence.json",
-    claimedBytes: null,
-    failBuildVersion: ""
-  });
-  expect(validResult.textReads).toBe(1);
-  expect(validResult.enginePersonalVersion, "A valid package must become the active real-engine version").toBe("1.0.1");
-  expect(validResult.enginePersonalIds, "A valid package must reach the real identity reconciler").toContain("custom_synthetic_candidate_press");
-  expect(validResult.status.state).toBe("ready");
+
+  await seedPersistedPersonalEvidencePackage(page, priorPackage);
+  await expectAcceptedPersonalEvidenceImport(
+    page,
+    candidatePackage,
+    candidatePackage,
+    "synthetic-valid-replacement-personal-evidence.json",
+    { excludedExerciseId: "custom_synthetic_prior_press" }
+  );
 
   const unsupportedVersion = clonePersonalEvidence(candidatePackage);
   unsupportedVersion.schemaVersion = "personal-evidence-package/99.0.0";
-  const unexpectedTopLevel = clonePersonalEvidence(candidatePackage);
-  unexpectedTopLevel.unexpectedExecutableConfiguration = { enabled: true };
   const invalidRowType = clonePersonalEvidence(candidatePackage);
   invalidRowType.personalData.exerciseScores[0].session_count = "six";
+  const unexpectedTopLevel = clonePersonalEvidence(candidatePackage);
+  unexpectedTopLevel.unexpectedExecutableConfiguration = { enabled: true };
   const buildFailurePackage = syntheticPersonalEvidencePackage({
     exerciseId: "custom_synthetic_build_failure_press",
     exerciseName: "Synthetic Build Failure Press",
     researchExerciseId: "ex_machine_chest_press",
     version: "1.0.3"
   });
-  const oversizedPackage = syntheticPersonalEvidencePackage({
-    exerciseId: "custom_synthetic_oversized_press",
-    exerciseName: "Synthetic Oversized Press",
-    researchExerciseId: "ex_dumbbell_bench_press",
-    version: "1.0.6"
-  });
   const scenarios = [
     {
-      name: "parse failure",
+      name: "synthetic-malformed-personal-evidence.json",
       raw: '{"schemaVersion":',
-      fileName: "synthetic-malformed-personal-evidence.json"
+      expectedRejection: /json|parse|unexpected|malformed|valid/i
     },
     ...["exercisePrescriptions", "exerciseScores", "exerciseMuscleScores"].map((collection) => ({
-      name: `partial package missing ${collection}`,
+      name: `synthetic-partial-missing-${collection}.json`,
       raw: JSON.stringify(partialPersonalEvidencePackage(collection)),
-      fileName: `synthetic-partial-${collection}.json`
+      expectedRejection: /prescription|score|muscle|collection|required|missing/i
     })),
     ...["exercisePrescriptions", "exerciseScores", "exerciseMuscleScores"].map((collection) => {
-      const partial = clonePersonalEvidence(candidatePackage);
-      partial.personalData[collection] = [];
+      const value = clonePersonalEvidence(candidatePackage);
+      value.personalData[collection] = [];
       return {
-        name: `partial package with empty ${collection}`,
-        raw: JSON.stringify(partial),
-        fileName: `synthetic-empty-${collection}.json`
+        name: `synthetic-partial-empty-${collection}.json`,
+        raw: JSON.stringify(value),
+        expectedRejection: /empty|at least|required|collection|record/i
       };
     }),
     {
-      name: "unsupported schema version",
+      name: "synthetic-unsupported-personal-evidence.json",
       raw: JSON.stringify(unsupportedVersion),
-      fileName: "synthetic-unsupported-personal-evidence.json"
+      expectedRejection: /schema|version|unsupported/i
     },
     {
-      name: "unknown top-level field",
-      raw: JSON.stringify(unexpectedTopLevel),
-      fileName: "synthetic-extra-field-personal-evidence.json"
-    },
-    {
-      name: "invalid aggregate row schema",
+      name: "synthetic-invalid-row-personal-evidence.json",
       raw: JSON.stringify(invalidRowType),
-      fileName: "synthetic-invalid-row-personal-evidence.json"
+      expectedRejection: /session|score|row|number|type|invalid/i
     },
     {
-      name: "conflicting reconciled identity",
+      name: "synthetic-unknown-field-personal-evidence.json",
+      raw: JSON.stringify(unexpectedTopLevel),
+      expectedRejection: /field|property|unknown|unexpected/i
+    },
+    {
+      name: "synthetic-conflicting-personal-evidence.json",
       raw: JSON.stringify(conflictingIdentityPersonalEvidencePackage()),
-      fileName: "synthetic-conflicting-personal-evidence.json"
+      expectedRejection: /identity|conflict|reconcil/i
     },
     {
-      name: "temporary engine construction failure",
+      name: "synthetic-build-failure-personal-evidence.json",
       raw: JSON.stringify(buildFailurePackage),
-      fileName: "synthetic-build-failure-personal-evidence.json",
-      failBuildVersion: "1.0.3"
-    },
-    {
-      name: "oversized package",
-      raw: JSON.stringify(oversizedPackage),
-      fileName: "synthetic-oversized-personal-evidence.json",
-      claimedBytes: CLEARLY_OVERSIZED_PERSONAL_EVIDENCE_BYTES,
-      expectUnread: true
+      failBuildVersion: "1.0.3",
+      expectedRejection: /engine|construction|build|synthetic/i
     }
   ];
 
   for (const scenario of scenarios) {
-    const before = await seedPersonalEvidencePackage(page, priorPackage);
-    const result = await importPersonalEvidenceInPage(page, {
-      raw: scenario.raw,
-      name: scenario.fileName,
-      claimedBytes: scenario.claimedBytes ?? null,
-      failBuildVersion: scenario.failBuildVersion || ""
+    await test.step(scenario.name, async () => {
+      await expectRejectedPersonalEvidenceImport(page, priorPackage, scenario.raw, scenario.name, {
+        failBuildVersion: scenario.failBuildVersion || "",
+        expectedRejection: scenario.expectedRejection
+      });
     });
-    expect.soft(result.packageJson === before.packageJson, `${scenario.name} must preserve the prior active package byte-for-byte`).toBe(true);
-    expect.soft(result.enginePersonalVersion, `${scenario.name} must preserve the prior active engine version`).toBe(before.enginePersonalVersion);
-    expect.soft(result.enginePersonalIds, `${scenario.name} must preserve the prior real-engine identity index`).toEqual(before.enginePersonalIds);
-    expect.soft(result.status, `${scenario.name} must preserve the prior active evidence status`).toEqual(before.status);
-    if (scenario.expectUnread) {
-      expect.soft(result.textReads, "An oversized personal evidence file must be rejected before its contents are read").toBe(0);
+  }
+});
+
+test("personal evidence import enforces exact reachable file, collection, shape, ID, and text boundaries", async ({ page }) => {
+  test.skip(test.info().project.name === "mobile", "Import resource boundaries are viewport-independent and run once in desktop Chromium.");
+  test.setTimeout(600_000);
+  const priorPackage = syntheticPersonalEvidencePackage({
+    exerciseId: "custom_synthetic_boundary_prior_press",
+    exerciseName: "Synthetic Boundary Prior Press",
+    researchExerciseId: "ex_barbell_bench_press",
+    version: "1.1.0"
+  });
+
+  const depthAtLimit = jsonValueAtDepth(PERSONAL_EVIDENCE_BOUNDARIES.jsonDepth);
+  const depthOverLimit = jsonValueAtDepth(PERSONAL_EVIDENCE_BOUNDARIES.jsonDepth + 1);
+  const widthAtLimit = jsonObjectAtWidth(PERSONAL_EVIDENCE_BOUNDARIES.objectKeys);
+  const widthOverLimit = jsonObjectAtWidth(PERSONAL_EVIDENCE_BOUNDARIES.objectKeys + 1);
+  expect(personalEvidenceJsonDepth(depthAtLimit)).toBe(PERSONAL_EVIDENCE_BOUNDARIES.jsonDepth);
+  expect(personalEvidenceJsonDepth(depthOverLimit)).toBe(PERSONAL_EVIDENCE_BOUNDARIES.jsonDepth + 1);
+  expect(personalEvidenceObjectWidth(widthAtLimit)).toBe(PERSONAL_EVIDENCE_BOUNDARIES.objectKeys);
+  expect(personalEvidenceObjectWidth(widthOverLimit)).toBe(PERSONAL_EVIDENCE_BOUNDARIES.objectKeys + 1);
+  for (const shapeCase of [
+    { name: "depth-at-limit", value: depthAtLimit, rejected: false },
+    { name: "depth-limit-plus-one", value: depthOverLimit, rejected: true },
+    { name: "width-at-limit", value: widthAtLimit, rejected: false },
+    { name: "width-limit-plus-one", value: widthOverLimit, rejected: true }
+  ]) {
+    await test.step(`production shape validator: ${shapeCase.name}`, async () => {
+      const result = await executePersonalEvidenceShapeValidator(page, shapeCase.value);
+      expect.soft(result.available, "A dedicated validatePersonalEvidenceJsonShape production helper is required").toBe(true);
+      expect.soft(result.rejected, `${shapeCase.name} structural result`).toBe(shapeCase.rejected);
+      if (shapeCase.rejected && result.error) expect.soft(result.error).toMatch(/depth|key|width|shape|limit/i);
+    });
+  }
+
+  const scalarBoundary = personalEvidenceAtScalarBoundaries();
+  const scalarBoundaryId = primaryPackageExerciseId(scalarBoundary);
+  expect(scalarBoundaryId.length).toBe(PERSONAL_EVIDENCE_BOUNDARIES.stableIdChars);
+  expect(scalarBoundary.personalData.exerciseScores[0].exercise_name.length).toBe(PERSONAL_EVIDENCE_BOUNDARIES.nameChars);
+  expect(scalarBoundary.personalData.exercisePrescriptions[0].evidence_summary.length).toBe(PERSONAL_EVIDENCE_BOUNDARIES.textChars);
+  const exactFileBoundary = jsonBufferAtExactBytes(scalarBoundary, PERSONAL_EVIDENCE_BOUNDARIES.fileBytes);
+  expect(exactFileBoundary.length).toBe(PERSONAL_EVIDENCE_BOUNDARIES.fileBytes);
+  await expectAcceptedPersonalEvidenceImport(
+    page,
+    scalarBoundary,
+    exactFileBoundary,
+    "synthetic-personal-evidence-file-and-scalar-limits.json",
+    { expectedExerciseId: scalarBoundaryId }
+  );
+
+  const coreCollections = ["exercisePrescriptions", "exerciseScores", "exerciseMuscleScores"];
+  const collectionBoundary = personalEvidenceWithMatchedCoreCount(PERSONAL_EVIDENCE_BOUNDARIES.coreCollectionItems, "1.2.6");
+  const lastBoundaryId = `custom_synthetic_boundary_${String(PERSONAL_EVIDENCE_BOUNDARIES.coreCollectionItems - 1).padStart(4, "0")}`;
+  const identitySequence = (collection) => collectionBoundary.personalData[collection].map((row) => row.exercise_id);
+  for (const collection of coreCollections) {
+    expect(collectionBoundary.personalData[collection]).toHaveLength(PERSONAL_EVIDENCE_BOUNDARIES.coreCollectionItems);
+    expect(identitySequence(collection), `${collection} must use the same reconciled identity sequence at the limit`).toEqual(identitySequence(coreCollections[0]));
+  }
+  await expectAcceptedPersonalEvidenceImport(
+    page,
+    collectionBoundary,
+    collectionBoundary,
+    "synthetic-personal-evidence-all-collection-limits.json",
+    { expectedExerciseId: lastBoundaryId }
+  );
+
+  const boundaryRejections = [
+    {
+      name: "synthetic-personal-evidence-file-limit-plus-one.json",
+      expectUnread: true,
+      expectedRejection: /file|size|large|byte|limit|8\s*(?:mib|mb)/i,
+      build: () => jsonBufferAtExactBytes(scalarBoundary, PERSONAL_EVIDENCE_BOUNDARIES.fileBytes + 1)
+    },
+    {
+      name: "synthetic-personal-evidence-name-limit-plus-one.json",
+      expectedRejection: /name|length|character|limit|256/i,
+      build: () => JSON.stringify(personalEvidenceAtNameLength(PERSONAL_EVIDENCE_BOUNDARIES.nameChars + 1))
+    },
+    {
+      name: "synthetic-personal-evidence-text-limit-plus-one.json",
+      expectedRejection: /text|summary|length|character|limit|4096/i,
+      build: () => JSON.stringify(personalEvidenceAtTextLength(PERSONAL_EVIDENCE_BOUNDARIES.textChars + 1))
+    },
+    {
+      name: "synthetic-personal-evidence-id-limit-plus-one.json",
+      expectedRejection: /id|identifier|length|character|limit|128/i,
+      build: () => JSON.stringify(personalEvidenceAtStableIdLength(PERSONAL_EVIDENCE_BOUNDARIES.stableIdChars + 1))
+    },
+    {
+      name: "synthetic-personal-evidence-matched-core-collection-limit-plus-one.json",
+      expectedRejection: /collection|record|item|row|exercise|limit|1024|too many|maximum/i,
+      build: () => {
+        const overLimit = personalEvidenceWithMatchedCoreCount(PERSONAL_EVIDENCE_BOUNDARIES.coreCollectionItems + 1, "1.2.7");
+        const expectedIdentities = overLimit.personalData.exercisePrescriptions.map((row) => row.exercise_id);
+        for (const collection of coreCollections) {
+          expect(overLimit.personalData[collection]).toHaveLength(PERSONAL_EVIDENCE_BOUNDARIES.coreCollectionItems + 1);
+          expect(overLimit.personalData[collection].map((row) => row.exercise_id), `${collection} +1 fixture identity relation`).toEqual(expectedIdentities);
+        }
+        return JSON.stringify(overLimit);
+      }
     }
+  ];
+
+  for (const scenario of boundaryRejections) {
+    await test.step(scenario.name, async () => {
+      const raw = scenario.build();
+      await expectRejectedPersonalEvidenceImport(page, priorPackage, raw, scenario.name, {
+        expectUnread: scenario.expectUnread || false,
+        expectedRejection: scenario.expectedRejection
+      });
+    });
   }
 });
 

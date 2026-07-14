@@ -1,5 +1,15 @@
 "use strict";
 
+const PERSONAL_EVIDENCE_BOUNDARIES = Object.freeze({
+  fileBytes: 8 * 1024 * 1024,
+  jsonDepth: 32,
+  objectKeys: 128,
+  coreCollectionItems: 1024,
+  stableIdChars: 128,
+  nameChars: 256,
+  textChars: 4096
+});
+
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
@@ -41,7 +51,7 @@ function syntheticPersonalEvidencePackage(options = {}) {
     personalData: {
       exercisePrescriptions: [{
         ...shared,
-        prescription_id: `prescription_${exerciseId}`,
+        prescription_id: options.prescriptionId || `prescription_${exerciseId}`,
         muscle_group_id: "chest",
         research_muscle_group_id: "chest",
         role: "primary_progression_lift",
@@ -81,6 +91,95 @@ function syntheticPersonalEvidencePackage(options = {}) {
   };
 }
 
+function boundedExerciseId(index) {
+  return `custom_synthetic_boundary_${String(index).padStart(4, "0")}`;
+}
+
+function rowWithIdentity(row, index, collection) {
+  const value = clone(row);
+  const exerciseId = boundedExerciseId(index);
+  value.exercise_id = exerciseId;
+  value.exercise_name = `Synthetic Boundary Exercise ${index}`;
+  value.source_references = (value.source_references || []).map((reference) => ({
+    ...reference,
+    source_record_id: exerciseId
+  }));
+  if (collection === "exercisePrescriptions") value.prescription_id = `prescription_boundary_${String(index).padStart(4, "0")}`;
+  return value;
+}
+
+function personalEvidenceWithMatchedCoreCount(count, version = "1.2.0") {
+  if (!Number.isInteger(count) || count < 1) throw new Error(`Invalid matched core fixture count: ${count}`);
+  const value = syntheticPersonalEvidencePackage({ version });
+  for (const collection of ["exercisePrescriptions", "exerciseScores", "exerciseMuscleScores"]) {
+    const row = value.personalData[collection][0];
+    value.personalData[collection] = Array.from({ length: count }, (_, index) => rowWithIdentity(row, index, collection));
+  }
+  return value;
+}
+
+function jsonValueAtDepth(depth) {
+  if (!Number.isInteger(depth) || depth < 1) throw new Error(`Invalid synthetic JSON depth: ${depth}`);
+  let value = "synthetic-depth-leaf";
+  for (let level = 0; level < depth; level += 1) value = { nested: value };
+  return value;
+}
+
+function jsonDepth(value) {
+  if (value === null || typeof value !== "object") return 0;
+  const children = Array.isArray(value) ? value : Object.values(value);
+  return 1 + (children.length ? Math.max(...children.map(jsonDepth)) : 0);
+}
+
+function maximumObjectWidth(value) {
+  if (value === null || typeof value !== "object") return 0;
+  const children = Array.isArray(value) ? value : Object.values(value);
+  const ownWidth = Array.isArray(value) ? 0 : Object.keys(value).length;
+  return Math.max(ownWidth, ...children.map(maximumObjectWidth), 0);
+}
+
+function jsonObjectAtWidth(width) {
+  return Object.fromEntries(Array.from(
+    { length: width },
+    (_, index) => [`synthetic_key_${String(index).padStart(3, "0")}`, index]
+  ));
+}
+
+function personalEvidenceAtTextLength(length) {
+  const value = syntheticPersonalEvidencePackage({ version: "1.2.4" });
+  value.personalData.exercisePrescriptions[0].evidence_summary = "s".repeat(length);
+  return value;
+}
+
+function personalEvidenceAtNameLength(length) {
+  const value = syntheticPersonalEvidencePackage({ version: "1.2.4" });
+  const exerciseName = "N".repeat(length);
+  for (const collection of ["exercisePrescriptions", "exerciseScores", "exerciseMuscleScores"]) {
+    value.personalData[collection][0].exercise_name = exerciseName;
+  }
+  return value;
+}
+
+function personalEvidenceAtStableIdLength(length) {
+  const exerciseId = `a${"a".repeat(Math.max(0, length - 1))}`;
+  const value = syntheticPersonalEvidencePackage({
+    exerciseId,
+    exerciseName: "Synthetic Stable ID Boundary Exercise",
+    prescriptionId: "prescription_stable_id_boundary",
+    version: "1.2.5"
+  });
+  return value;
+}
+
+function personalEvidenceAtScalarBoundaries() {
+  const value = personalEvidenceAtStableIdLength(PERSONAL_EVIDENCE_BOUNDARIES.stableIdChars);
+  for (const collection of ["exercisePrescriptions", "exerciseScores", "exerciseMuscleScores"]) {
+    value.personalData[collection][0].exercise_name = "N".repeat(PERSONAL_EVIDENCE_BOUNDARIES.nameChars);
+  }
+  value.personalData.exercisePrescriptions[0].evidence_summary = "s".repeat(PERSONAL_EVIDENCE_BOUNDARIES.textChars);
+  return value;
+}
+
 function conflictingIdentityPersonalEvidencePackage() {
   const value = syntheticPersonalEvidencePackage({
     exerciseId: "custom_synthetic_conflicting_press",
@@ -103,8 +202,18 @@ function partialPersonalEvidencePackage(missingCollection) {
 }
 
 module.exports = {
+  PERSONAL_EVIDENCE_BOUNDARIES,
   clone,
   conflictingIdentityPersonalEvidencePackage,
+  jsonDepth,
+  jsonObjectAtWidth,
+  jsonValueAtDepth,
+  maximumObjectWidth,
   partialPersonalEvidencePackage,
+  personalEvidenceAtNameLength,
+  personalEvidenceAtScalarBoundaries,
+  personalEvidenceAtStableIdLength,
+  personalEvidenceAtTextLength,
+  personalEvidenceWithMatchedCoreCount,
   syntheticPersonalEvidencePackage
 };
