@@ -57,21 +57,21 @@ The full feature, screen, route, persistence, integration, and risk inventory is
 
 The runtime supports root plus three child threads, so independent specialties run in successive waves. Write-enabled work is isolated by branch/worktree and overlapping files are serialized.
 
-### Wave A Ã¢â‚¬â€ pure/core release blockers
+### Wave A — pure/core release blockers
 
-1. **Recommendation engine** Ã¢â‚¬â€ `artifacts/worktrees/recommendation-engine`, branch `codex/recommendation-engine-20260712`.
+1. **Recommendation engine** — `artifacts/worktrees/recommendation-engine`, branch `codex/recommendation-engine-20260712`.
    - Own `prescription-engine.js` and recommendation regression tests only.
    - Fix readiness safety, progression evidence, assisted resistance, reduced/stale history, override validation/locks, identity generation, and replacement compatibility.
-2. **Security/platform core** Ã¢â‚¬â€ `artifacts/worktrees/security-core`, branch `codex/security-core-20260712`.
+2. **Security/platform core** — `artifacts/worktrees/security-core`, branch `codex/security-core-20260712`.
    - Own API helpers/routes, service worker, web-sync/native privacy configuration, and new isolated security tests.
    - Do not edit `index.html` during this wave.
-3. **Taxonomy/data core** Ã¢â‚¬â€ `artifacts/worktrees/taxonomy-core`, branch `codex/taxonomy-core-20260712`.
+3. **Taxonomy/data core** — `artifacts/worktrees/taxonomy-core`, branch `codex/taxonomy-core-20260712`.
    - Own research taxonomy/source/build/validators, private-pipeline configuration adapters, `guided-mesocycle.js`, and new taxonomy tests.
    - Do not edit `index.html` or `prescription-engine.js` during this wave.
 
 Each workstream must start from a failing reproduction, run its existing dependent suite, receive independent review, and commit only privacy-safe source/test changes.
 
-### Wave B Ã¢â‚¬â€ application integration and contracts
+### Wave B — application integration and contracts
 
 - Serialize all `index.html` work in one structural integration worktree.
 - Wire illness/pain, performance evidence, planned sets, resistance type, time/equipment/exclusion/scope constraints, and canonical identity through the UI boundary.
@@ -81,7 +81,7 @@ Each workstream must start from a failing reproduction, run its existing depende
 - Replace false source-only assertions with behavior-level integration tests.
 - Advance the service-worker cache when cross-file runtime contracts change.
 
-### Wave C Ã¢â‚¬â€ design, accessibility, and performance
+### Wave C — design, accessibility, and performance
 
 - Add deterministic rich Lift/Dashboard screenshots and behavior fixtures before shared-style changes.
 - Restore quick-template semantics, route/dialog focus, contextual Lift accessible names, skip links, group labels, live announcements, and critical mobile hit regions.
@@ -89,13 +89,13 @@ Each workstream must start from a failing reproduction, run its existing depende
 - Remove duplicate public-evidence loading, index loaded sets once, prewarm/defer cold analyses, and progressively disclose expensive Charts detail.
 - Enforce the documented large-fixture performance budgets.
 
-### Wave D Ã¢â‚¬â€ reliability, evidence, and documentation
+### Wave D — reliability, evidence, and documentation
 
 - Split public and optional-private test gates; create pull-request CI, clean-install/release/privacy commands, complete PWA parity/hashes, API/security tests, hostile-import tests, migration recovery tests, and feature/browser matrices.
 - Refresh the primary-source evidence ledger and mark heuristic product policy explicitly.
 - Update Project, Architecture, Decision Engine, UI/UX, Roadmap, privacy/support, data/migration, testing, and release documentation only after behavior is verified.
 
-### Wave E Ã¢â‚¬â€ independent quality loops
+### Wave E — independent quality loops
 
 - Fresh feature/recommendation/migration/security/accessibility/visual/performance reviews.
 - A blind first scoring run in an isolated context that is not told the requested target.

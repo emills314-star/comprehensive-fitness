@@ -11,7 +11,7 @@ The collaboration runtime exposes root plus three child threads and retains comp
 | 1 | Five-tab shell, header, hash/deep-link navigation, theme, units, safe areas | IMPLEMENTED | Thread 002; `primaryTabIds`, `render`, `setActiveTab` | Feature/browser, visual, accessibility, unit persistence, independent review |
 | 2 | Lift program overview and quick start | IMPLEMENTED / protected | Thread 002; `renderLiftHome` | Critical feature, visual regression, accessibility, performance, independent review |
 | 3 | Template create/edit/delete/start/save-current-workout | PARTIALLY IMPLEMENTED | Thread 002; `renderTemplates`, delegated actions | CRUD/validation/error/long-label/mobile tests, visual/a11y, independent review |
-| 4 | Guided mesocycle Guide/Setup/Build/Check/Create | IMPLEMENTED WITH DEFECTS | Threads 002Ã¢â‚¬â€œ005; guided renderer/domain module | Recommendation/taxonomy invariants, browser lifecycle, migration/persistence, visual/a11y, science, independent review |
+| 4 | Guided mesocycle Guide/Setup/Build/Check/Create | IMPLEMENTED WITH DEFECTS | Threads 002–005; guided renderer/domain module | Recommendation/taxonomy invariants, browser lifecycle, migration/persistence, visual/a11y, science, independent review |
 | 5 | Legacy automatic mesocycle compatibility | INTERNAL / unreachable UI | Threads 002/006; unconditional return in `renderMesocyclePlanner` | Reachability classification, remove false tests/claims, historical preservation, independent review |
 | 6 | Available Equipment multi-entry selector | IMPLEMENTED reference surface | Threads 002/007; guided setup | State/persistence/hard-constraint/substitution tests, visual/a11y, independent review |
 | 7 | Muscle Group Scope multi-entry selector | IMPLEMENTED WITH TAXONOMY DEFECTS | Threads 002/003/007 | All canonical/family values, empty/all/conflict/persistence/recommendation tests, visual/a11y, migration review |
@@ -31,13 +31,13 @@ The collaboration runtime exposes root plus three child threads and retains comp
 | 21 | Exercise search, filters, option lists | PARTIALLY IMPLEMENTED | Thread 002 | Exact/partial/case/alias/legacy/no-results/large/stable-sort/keyboard/performance tests, review |
 | 22 | Backup JSON export/import | IMPLEMENTED WITH WEAK VALIDATION | Threads 002/003/008 | Full schema, malformed/legacy/duplicate/partial/idempotency/sensitive-data tests, security/migration/review |
 | 23 | Strong CSV import/migration | IMPLEMENTED | Threads 002/003 | Valid/invalid/duplicates/units/legacy/taxonomy/record-count/rollback tests, privacy/migration/review |
-| 24 | Private aggregate evidence import/pipeline | IMPLEMENTED LOCALLY | Threads 002Ã¢â‚¬â€œ005/008 | Clean public fixture boundary, staleness/version/crosswalk/privacy/validation tests, migration/review |
+| 24 | Private aggregate evidence import/pipeline | IMPLEMENTED LOCALLY | Threads 002–005/008 | Clean public fixture boundary, staleness/version/crosswalk/privacy/validation tests, migration/review |
 | 25 | Clear all local data | IMPLEMENTED | Threads 002/008 | Unsynced warning/export/typed confirm/cancel/partial cleanup/cache/subscription tests, a11y/security/review |
 | 26 | Offline shell, install, update deferral, service worker | IMPLEMENTED | Threads 002/006 | Cache manifest/hash parity, offline/update/deep-link/browser/PWA tests, security/performance/review |
 | 27 | Workout mutation sync | PARTIALLY IMPLEMENTED | Threads 002/006/008 | Auth/idempotency/conflict/retention/error/privacy tests; restore/delete promise review; independent review |
 | 28 | Privacy and Support static pages | IMPLEMENTED | Thread 002 | Hosted/local navigation, responsive/a11y/content-security/docs accuracy, independent review |
 | 29 | Public research database build/validation | IMPLEMENTED WITH VALIDATION/EVIDENCE GAPS | Threads 003/005 | Reference/vocabulary/credit/alias/pool/version/export/hash/rollback checks, science/review |
-| 30 | Private normalization/analysis pipeline | IMPLEMENTED LOCALLY | Threads 002Ã¢â‚¬â€œ005/008 | Synthetic public testability, dedupe/crosswalk/data-integrity/privacy/performance/migration/review |
+| 30 | Private normalization/analysis pipeline | IMPLEMENTED LOCALLY | Threads 002–005/008 | Synthetic public testability, dedupe/crosswalk/data-integrity/privacy/performance/migration/review |
 | 31 | Capacitor iOS/Android packaging | PARTIALLY IMPLEMENTED | Threads 002/006 | Web sync/privacy guard, native build/tests/device limits, accessibility/security/release review |
 
 ## Baseline risk register
@@ -56,7 +56,7 @@ The collaboration runtime exposes root plus three child threads and retains comp
 | R-010 | High | Native sync can silently copy locally present private aggregates into packaged apps. | Thread 006 interim | Public-by-default sync, explicit local-private opt-in, release privacy guard |
 | R-011 | High | Backup import and app persistence lack complete runtime schema/migration validation. | Threads 002/003 | Schema/validator, preservation counts, rollback/recovery tests |
 | R-012 | Medium | Scientific operating heuristics become hard blockers or falsely precise scores. | Threads 004/005 | Goal-specific advisory/blocking severity and evidence/product-policy labels |
-| R-013 | Medium | Documentation/version/count/performance/reachability claims are stale. | Threads 002Ã¢â‚¬â€œ006 | Mandatory documentation reconciliation after verified implementation |
+| R-013 | Medium | Documentation/version/count/performance/reachability claims are stale. | Threads 002–006 | Mandatory documentation reconciliation after verified implementation |
 | R-014 | Medium | Browser coverage protects only selected default states, not complete feature lifecycles. | Threads 002/007 | Critical-flow/fixture/empty-error-large/a11y/responsive expansion |
 | R-015 | Medium | Monolithic frontend and duplicated root/`www` outputs amplify cross-cutting regression risk. | Threads 002/006 | Targeted shared contracts, generated-parity release gates, no broad rewrite |
 | R-016 | Critical | A tampered backup can retain hostile IDs/fields that are interpolated into `innerHTML`, creating a stored DOM-XSS path with access to local workout data and installation credentials. | Thread 008; import/normalization/render paths | Strict versioned backup validation, safe attribute construction/escaping, hostile-import regression, independent security review |

@@ -57,7 +57,7 @@
 
 The numerical baseline was fixed after the required read-only baseline waves completed and before any application-behavior implementation. Final and independent scores are appended without altering this rubric.
 
-### Codebase baseline Ã¢â‚¬â€ 25/50
+### Codebase baseline — 25/50
 
 | # | Category | Score | Baseline evidence |
 | ---: | --- | ---: | --- |
@@ -71,13 +71,13 @@ The numerical baseline was fixed after the required read-only baseline waves com
 | 8 | Accessibility and responsive behavior | 3 | Default-state axe/layout checks pass, but quick-template semantics, SPA/dialog focus, Lift control naming, skip navigation, group labeling, zoom/dark coverage, and critical target sizes are material gaps. |
 | 9 | Documentation and developer experience | 2 | Core docs are substantial but claim several unimplemented guarantees, clean setup/tests are not reproducible from public files, release/build guidance conflicts, and version/count claims are stale. |
 | 10 | Security, observability, and release readiness | 2 | Stored DOM-XSS, implicit persistent workout sync, no server deletion/retention lifecycle, resource-exhaustion exposure, private native packaging, broad caching, and weak release gates are unresolved. |
-|  | **Total** | **25/50** | Below acceptance; categories 1, 3Ã¢â‚¬â€œ5, 9, and 10 require structural remediation. |
+|  | **Total** | **25/50** | Below acceptance; categories 1, 3–5, 9, and 10 require structural remediation. |
 
-### Workout-recommendation baseline Ã¢â‚¬â€ 22/50
+### Workout-recommendation baseline — 22/50
 
 | # | Category | Score | Baseline evidence |
 | ---: | --- | ---: | --- |
-| 1 | Scientific evidence quality and fidelity | 3 | The versioned evidence base supports broad principles, but current 2022Ã¢â‚¬â€œ2026 evidence is missing and practical caps/readiness/deload thresholds are sometimes presented too strongly. |
+| 1 | Scientific evidence quality and fidelity | 3 | The versioned evidence base supports broad principles, but current 2022–2026 evidence is missing and practical caps/readiness/deload thresholds are sometimes presented too strongly. |
 | 2 | Goal alignment and program coherence | 2 | Planned sets can be discarded at workout start, specialization lacks a reachable target selector, automatic compatibility planning restricts cross-day repetition, and family rollups distort program dose. |
 | 3 | Correct use of personal and historical data | 2 | Pain/illness and several profile fields are ignored or misrouted, stale/reduced exposures are mishandled, fabricated context copy exists, and some loaded evidence is unused. |
 | 4 | Individualization and constraint satisfaction | 2 | Equipment-incompatible substitutes leak, hard constraints are not propagated to exercise prescriptions, and overrides can bypass safeguards or accept invalid exercises/bounds. |

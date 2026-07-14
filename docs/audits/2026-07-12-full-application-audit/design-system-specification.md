@@ -37,9 +37,9 @@ Spacing roles: 4, 6, 8, 10, 12, 14, 16, 18, and 24 px.
 Radius roles:
 
 - row: 0;
-- compact: 7Ã¢â‚¬â€œ8 px;
+- compact: 7–8 px;
 - control: 10 px;
-- panel: 12Ã¢â‚¬â€œ14 px;
+- panel: 12–14 px;
 - overlay: 18 px;
 - pill: 999 px.
 
@@ -72,7 +72,7 @@ Primitives remain small CSS classes and render helpers:
 
 ## Multi-entry controls
 
-### ChoiceChip Ã¢â‚¬â€ Equipment reference
+### ChoiceChip — Equipment reference
 
 - Wrapping pill buttons.
 - Neutral unselected state.
@@ -82,7 +82,7 @@ Primitives remain small CSS classes and render helpers:
 - Minimum critical mobile hit region 44 px without visually bloating the chip.
 - Empty ambiguous state is impossible when the domain requires a default.
 
-### ChoiceTile Ã¢â‚¬â€ Muscle Scope reference
+### ChoiceTile — Muscle Scope reference
 
 - Neutral unchecked tile; subtle accent checked tile.
 - Visible native checkbox and complete label hit area.
@@ -115,7 +115,7 @@ Route changes move focus to the new screen heading and announce it. Same-screen 
 - Equipment: wrapping chips.
 - Planner/day cards: two columns to one where appropriate.
 - Test 200% zoom/large text, light/dark, reduced motion, and forced colors where supported.
-- Critical touch targets are 44Ãƒâ€”44 CSS px or provide an equivalent enlarged hit region.
+- Critical touch targets are 44×44 CSS px or provide an equivalent enlarged hit region.
 - Dynamic route/current-set state uses one restrained polite live region; do not announce every keystroke.
 - Charts retain keyboard-addressable labelled data points and an equivalent textual summary.
 

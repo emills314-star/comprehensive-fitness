@@ -26,7 +26,7 @@ Historical workout facts remain unchanged. The active taxonomy version recalcula
 
 ## Inventory and decision matrix
 
-Relationship counts below are database 2.1.0 after the non-destructive corrections. Ã¢â‚¬Å“Fatigue-onlyÃ¢â‚¬Â includes isometric/incidental rows that remain visible for recovery but receive zero hypertrophy-set credit.
+Relationship counts below are database 2.1.0 after the non-destructive corrections. “Fatigue-only” includes isometric/incidental rows that remain visible for recovery but receive zero hypertrophy-set credit.
 
 | Canonical ID | User group / subdivision | Programming family | Direct | Fractional | Fatigue-only | Representative direct exercises | Decision and rationale |
 | --- | --- | --- | ---: | ---: | ---: | --- | --- |
@@ -109,11 +109,11 @@ Rollback does not delete data. Restore the prior public taxonomy export/version 
 
 ## Validation evidence
 
-- `node scripts/test-taxonomy-family-projection.js` Ã¢â‚¬â€ PASS: 23 canonical IDs, 20 families, 62 exercises, 151 relationships.
-- `node scripts/test-taxonomy-personal-crosswalk.js` Ã¢â‚¬â€ PASS on public synthetic rows; family dedupe and traps compatibility verified.
-- `npm.cmd run research:build` Ã¢â‚¬â€ PASS; public exports/schemas/workbook rebuilt.
-- `npm.cmd run research:validate` Ã¢â‚¬â€ PASS: 0 errors and 31 intentional missing male-sample-count warnings.
-- Schema, domain-integrity, and performance tests Ã¢â‚¬â€ PASS.
+- `node scripts/test-taxonomy-family-projection.js` — PASS: 23 canonical IDs, 20 families, 62 exercises, 151 relationships.
+- `node scripts/test-taxonomy-personal-crosswalk.js` — PASS on public synthetic rows; family dedupe and traps compatibility verified.
+- `npm.cmd run research:build` — PASS; public exports/schemas/workbook rebuilt.
+- `npm.cmd run research:validate` — PASS: 0 errors and 31 intentional missing male-sample-count warnings.
+- Schema, domain-integrity, and performance tests — PASS.
 - Manifest validation now checks SHA-256 for generated CSV/JSON/schema outputs and canonical/alias/referential contracts.
 
 **NEEDS REVIEW:** application integration must adopt the canonical resolver and taxonomy 2.1.0 expectation; the isolated taxonomy branch intentionally did not edit `index.html` or `prescription-engine.js`. Private local aggregates must be rebuilt only locally after integration; no personal values were inspected or migrated during this change.
