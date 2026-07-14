@@ -92,6 +92,21 @@ test("1 exclusions canonicalize custom IDs, research IDs, and research aliases a
   });
   assert.ok(!plan.selectedPortfolio.some((candidate) => candidate.researchExerciseId === "ex_barbell_bench_press"));
   assert.ok(plan.exclusionResolution.excludedResearchExerciseIds.includes("ex_barbell_bench_press"));
+
+  const deduplicated = customEngine.rankExercisePool("chest", {
+    excludedExerciseIds: [" custom_press ", "custom_press", "bench press", "ex_barbell_bench_press"],
+    availableEquipment: ["all"],
+    generatedAt: CREATED_AT,
+    maxCandidates: 5
+  }).exclusionResolution;
+  assert.deepEqual(deduplicated.requestedValues, ["custom_press", "bench press", "ex_barbell_bench_press"], "exact trimmed duplicates were not removed in first-occurrence order");
+  assert.deepEqual(deduplicated.resolutions.map((row) => row.resolutionType), ["trusted_custom_id", "research_alias", "canonical_research_id"], "distinct identities resolving to one canonical exercise lost provenance");
+  assert.deepEqual(deduplicated.excludedResearchExerciseIds, ["ex_barbell_bench_press"]);
+  assert.throws(
+    () => customEngine.rankExercisePool("chest", { excludedExerciseIds: ["bench press", "bench press", null], generatedAt: CREATED_AT }),
+    /non-empty string identities/i,
+    "a duplicate valid identity hid a later malformed exclusion"
+  );
 });
 
 test("2 explicit session target and maximum are validated and enforced as hard construction caps", () => {

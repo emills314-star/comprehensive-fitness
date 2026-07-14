@@ -13,7 +13,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function prescriptionEngineFactory() {
   "use strict";
 
-  const ENGINE_VERSION = "3.3.3";
+  const ENGINE_VERSION = "3.3.4";
   const PRESCRIPTION_SCHEMA_VERSION = "2.3.0";
   const SNAPSHOT_SCHEMA_VERSION = "1.3.0";
   const TRAINING_PROFILE_VERSION = "training-profile/1.1.0";
@@ -1598,10 +1598,10 @@
       resolutions: []
     };
     if (!Array.isArray(rawExclusions)) throw new Error("excludedExerciseIds must be an array of canonical IDs, custom IDs, or exact research aliases.");
-    const requestedValues = rawExclusions.map((value) => {
+    const requestedValues = [...new Set(rawExclusions.map((value) => {
       if (typeof value !== "string" || !value.trim()) throw new Error("excludedExerciseIds must contain only non-empty string identities.");
       return value.trim();
-    });
+    }))];
     const excludedExerciseIds = new Set();
     const excludedResearchExerciseIds = new Set();
     const resolutions = [];
