@@ -1954,10 +1954,13 @@
       const defaultReadinessBaseline = { sleepHours: 7.5, sleepQuality: 4, hrv: "", restingHr: "", soreness: 2, band: 8 };
       const defaultSettings = {
         weightUnit: "lb",
-        goal: "hypertrophy",
-        trainingStatus: "intermediate",
+        trainingGoal: "",
+        nutritionPhase: "",
+        experienceLevel: "",
+        returningAfterGap: null,
         trainingDaysPerWeek: 4,
         availableEquipment: [],
+        excludedExerciseIds: [],
         theme: "light",
         timerSound: true,
         workoutCompletionSound: true,
@@ -2565,6 +2568,8 @@
       }
 
       function cleanRecovery(source = {}) {
+        const hasExplicitPain = typeof source.pain === "boolean";
+        const legacyAffectedInjury = !hasExplicitPain && Boolean(source.illness) && Boolean(String(source.affectedMuscle || "").trim());
         return {
           sleepHours: source.sleepHours ?? "",
           sleepQuality: source.sleepQuality ?? "",
@@ -2574,19 +2579,40 @@
           nutritionStatus: source.nutritionStatus ?? "",
           proteinStatus: source.proteinStatus ?? "",
           outsideBandNote: source.outsideBandNote ?? "",
-          illness: Boolean(source.illness),
+          illness: Boolean(source.illness) && !legacyAffectedInjury,
+          pain: hasExplicitPain ? Boolean(source.pain) : legacyAffectedInjury,
           affectedMuscle: source.affectedMuscle ?? ""
         };
       }
 
       function normalizeLoadedData(model) {
         const storedSettings = model.settings || {};
+        const legacyGoal = String(storedSettings.goal || "").trim().toLowerCase();
+        const legacyTrainingStatus = String(storedSettings.trainingStatus || "").trim().toLowerCase();
+        const validTrainingGoals = new Set(["strength", "hypertrophy", "muscular_endurance", "general_fitness"]);
+        const validNutritionPhases = new Set(["deficit", "maintenance", "surplus", "recomposition"]);
+        const validExperienceLevels = new Set(["novice", "intermediate", "advanced"]);
+        const legacyTrainingGoal = ({
+          strength: "strength", hypertrophy: "hypertrophy", endurance: "muscular_endurance",
+          muscular_endurance: "muscular_endurance", general: "general_fitness", general_fitness: "general_fitness",
+          cut: "general_fitness", recomposition: "general_fitness", maintain: "general_fitness", maintenance: "general_fitness", bulk: "general_fitness"
+        })[legacyGoal] || "";
+        const legacyNutritionPhase = ({ cut: "deficit", deficit: "deficit", recomposition: "recomposition", maintain: "maintenance", maintenance: "maintenance", bulk: "surplus", surplus: "surplus" })[legacyGoal] || "";
+        const trainingGoal = validTrainingGoals.has(storedSettings.trainingGoal) ? storedSettings.trainingGoal : legacyTrainingGoal;
+        const nutritionPhase = validNutritionPhases.has(storedSettings.nutritionPhase) ? storedSettings.nutritionPhase : legacyNutritionPhase;
+        const experienceLevel = validExperienceLevels.has(storedSettings.experienceLevel)
+          ? storedSettings.experienceLevel
+          : validExperienceLevels.has(legacyTrainingStatus) ? legacyTrainingStatus : "";
+        const returningAfterGap = typeof storedSettings.returningAfterGap === "boolean" ? storedSettings.returningAfterGap : null;
         const safeSettings = {
           weightUnit: storedSettings.weightUnit,
-          goal: storedSettings.goal,
-          trainingStatus: storedSettings.trainingStatus,
+          trainingGoal,
+          nutritionPhase,
+          experienceLevel,
+          returningAfterGap,
           trainingDaysPerWeek: storedSettings.trainingDaysPerWeek,
           availableEquipment: storedSettings.availableEquipment,
+          excludedExerciseIds: storedSettings.excludedExerciseIds,
           theme: storedSettings.theme,
           timerSound: storedSettings.timerSound,
           workoutCompletionSound: storedSettings.workoutCompletionSound,
@@ -2608,6 +2634,8 @@
           setupSoundConfirmed: storedSettings.setupSoundConfirmed
         };
         model.settings = { ...defaultSettings, ...Object.fromEntries(Object.entries(safeSettings).filter(([, value]) => value != null)), readinessBaseline: cleanReadinessBaseline(storedSettings.readinessBaseline || {}) };
+        delete model.settings.goal;
+        delete model.settings.trainingStatus;
         model.sessions = (Array.isArray(model.sessions) ? model.sessions : []).map((session) => ({
           ...session,
           submitted: session.source === "strong" && session.submitted == null ? true : session.submitted,
@@ -2618,8 +2646,13 @@
         model.exercises = Array.isArray(model.exercises) ? model.exercises : [];
         model.sets = Array.isArray(model.sets) ? model.sets : [];
         model.sets = model.sets.map((set) => ({ ...set, skipped: Boolean(set.skipped), edited: Boolean(set.edited) }));
+        const setsByExercise = new Map();
+        model.sets.forEach((set) => {
+          if (!setsByExercise.has(set.exerciseId)) setsByExercise.set(set.exerciseId, []);
+          setsByExercise.get(set.exerciseId).push(set);
+        });
         model.exercises = model.exercises.map((exercise) => {
-          const exerciseSets = model.sets.filter((set) => set.exerciseId === exercise.id);
+          const exerciseSets = setsByExercise.get(exercise.id) || [];
           const legacyBodyweight = exerciseSets.length > 0 && exerciseSets.every((set) => Boolean(set.isBodyweight)) && isBodyweightExerciseName(exercise.name);
           const resistanceType = inferResistanceType(exercise.name, { ...exercise, isBodyweight: exercise.isBodyweight ?? legacyBodyweight }, exerciseSets);
           return { ...exercise, resistanceType, isBodyweight: isBodyweightResistance(resistanceType) };
@@ -2720,32 +2753,48 @@
         let bundle = null;
         let sourceLabel = persistedPersonalData ? "imported local evidence" : "research defaults";
         try {
+          const researchBundle = await prescriptionApi.loadEvidenceFromUrls({ researchBaseUrl, personalData: {} });
           if (persistedPersonalData) {
-            bundle = await prescriptionApi.loadEvidenceFromUrls({ researchBaseUrl, personalData: persistedPersonalData });
+            bundle = prescriptionApi.normalizeEvidenceBundle({ personalData: persistedPersonalData, research: researchBundle.research });
           } else {
             const personalSources = [
               { base: "./private-personal-data", metadata: "./private-personal-data/analysis_metadata.json", label: "private native evidence" },
               { base: "./personal_fitness_data/derived", metadata: "./personal_fitness_data/reports/analysis_metadata.json", label: "local protected evidence" }
             ];
+            const fetchOptional = async (url, kind) => {
+              try {
+                const response = await fetch(url, { credentials: "same-origin" });
+                if (!response.ok) return kind === "csv" ? [] : kind === "metadata" ? {} : [];
+                return kind === "csv" ? prescriptionApi.parseCsv(await response.text()) : response.json();
+              } catch {
+                return kind === "csv" ? [] : kind === "metadata" ? {} : [];
+              }
+            };
             for (const source of personalSources) {
-              const candidate = await prescriptionApi.loadEvidenceFromUrls({ researchBaseUrl, personalBaseUrl: source.base });
+              const [exercisePrescriptions, exerciseScores, exerciseMuscleScores, exerciseSessionMetrics, weeklyMuscleVolumeResponse, recoveryRules, muscleGroupSweetSpots, embeddedMetadata] = await Promise.all([
+                fetchOptional(`${source.base}/exercise_prescriptions.json`, "json"),
+                fetchOptional(`${source.base}/exercise_scores.csv`, "csv"),
+                fetchOptional(`${source.base}/exercise_muscle_scores.csv`, "csv"),
+                fetchOptional(`${source.base}/exercise_session_metrics.csv`, "csv"),
+                fetchOptional(`${source.base}/weekly_muscle_volume_response.csv`, "csv"),
+                fetchOptional(`${source.base}/recovery_rules.json`, "json"),
+                fetchOptional(`${source.base}/muscle_group_sweet_spots.json`, "json"),
+                fetchOptional(`${source.base}/analysis_metadata.json`, "metadata")
+              ]);
+              let metadata = embeddedMetadata || {};
+              if (!metadata.methodology_version && !metadata.pipeline_version) metadata = await fetchOptional(source.metadata, "metadata");
+              const personalData = { exercisePrescriptions, exerciseScores, exerciseMuscleScores, exerciseSessionMetrics, weeklyMuscleVolumeResponse, recoveryRules, muscleGroupSweetSpots, metadata };
+              const candidate = prescriptionApi.normalizeEvidenceBundle({ personalData, research: researchBundle.research });
               if (!candidate.personal.exercisePrescriptions.length && !candidate.personal.exerciseScores.length) {
                 if (!bundle) bundle = candidate;
                 continue;
               }
-              let metadata = candidate.personal.metadata || {};
-              if (!metadata.methodology_version && !metadata.pipeline_version) {
-                try {
-                  const response = await fetch(source.metadata, { credentials: "same-origin" });
-                  if (response.ok) metadata = await response.json();
-                } catch { /* The aggregate evidence remains usable with an unknown personal version. */ }
-              }
-              bundle = prescriptionApi.normalizeEvidenceBundle({ personalData: { ...candidate.personal.raw, metadata }, research: candidate.research });
+              bundle = candidate;
               sourceLabel = source.label;
               break;
             }
           }
-          if (!bundle) bundle = await prescriptionApi.loadEvidenceFromUrls({ researchBaseUrl, personalData: persistedPersonalData || {} });
+          if (!bundle) bundle = researchBundle;
           prescriptionEngine = prescriptionApi.createPrescriptionEngine(bundle);
           prescriptionSnapshotCache.clear();
           const personalRecords = bundle.personal.exercisePrescriptions.length + bundle.personal.exerciseScores.length + bundle.personal.exerciseMuscleScores.length;
@@ -2775,13 +2824,17 @@
       function prescriptionExerciseIdentity(exerciseName) {
         if (!prescriptionEngine) return null;
         const requested = normalizePrescriptionIdentity(exerciseName);
-        const personal = prescriptionEngine.evidence.personal;
+        const evidence = prescriptionEngine.evidence;
+        const researchId = evidence.research.exerciseIdByAlias.get(requested)
+          || evidence.research.exerciseDatabase.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === requested)?.exercise_id;
+        if (researchId) return researchId;
+        const personal = evidence.personal;
         const personalRecord = personal.exerciseScores.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === requested)
           || personal.exercisePrescriptions.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === requested);
-        if (personalRecord) return personalRecord.exercise_id || personalRecord.exerciseId;
-        const researchId = prescriptionEngine.evidence.research.exerciseIdByAlias.get(requested)
-          || prescriptionEngine.evidence.research.exerciseDatabase.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === requested)?.exercise_id;
-        return researchId || null;
+        const personalId = personalRecord?.exercise_id || personalRecord?.exerciseId || "";
+        const reconciled = personal.reconciledIdentityByExerciseId?.get(personalId);
+        if (reconciled && !reconciled.invalid && reconciled.researchExerciseId) return reconciled.researchExerciseId;
+        return /^(?:custom|user)(?::|_)/.test(personalId) ? personalId : null;
       }
 
       function prescriptionMuscleGroup(exerciseOrName) {
@@ -2844,14 +2897,15 @@
           restingHeartRate: recovery.restingHr === "" ? undefined : Number(recovery.restingHr),
           baselineRestingHeartRate: Number(baseline.restingHr || 0) || undefined,
           soreness: recovery.soreness === "" ? undefined : Number(recovery.soreness) * 2,
-          fatigue: recovery.outsideBandNote ? 7 : undefined,
+          illness: Boolean(recovery.illness),
+          pain: Boolean(recovery.pain),
+          affectedMuscle: recovery.affectedMuscle,
           previousExposureRegressed: /regress|declin/.test(recentStatus),
           consecutiveRegressions: history.slice(-2).filter((item) => /regress|declin/.test(String(item.progression_status || item.progressionStatus || "").toLowerCase())).length,
-          consecutiveLowReadinessDays: recovery.outsideBandNote ? 2 : 0,
           readinessScore: recovery.sleepQuality === "" ? undefined : Number(recovery.sleepQuality) * 2,
           nutritionAdequate: recovery.nutritionStatus === "" ? undefined : recovery.nutritionStatus === "on_plan",
           proteinAdequate: recovery.proteinStatus === "" ? undefined : recovery.proteinStatus === "adequate",
-          energyAvailabilityLow: recovery.nutritionStatus === "low_energy" || (data.settings.goal === "cut" && Boolean(recovery.outsideBandNote))
+          energyAvailabilityLow: recovery.nutritionStatus === "low_energy"
         };
       }
 
@@ -2883,29 +2937,55 @@
         if (!exerciseId || !muscleGroupId) return null;
         const throughDate = options.throughDate || todayIso();
         const history = options.history || prescriptionHistoryForExercise(exercise.name, exerciseId, options);
-        const readiness = options.readiness || prescriptionReadiness(options.recovery || {}, history);
         const mesocycle = options.mesocycle === undefined ? currentMesocycle() : options.mesocycle;
+        const appSettings = typeof data === "object" && data?.settings ? data.settings : {};
+        const recoveryInput = options.recovery || {};
+        const affectedMuscle = String(recoveryInput.affectedMuscle || "").trim();
+        const painApplies = !recoveryInput.pain || !affectedMuscle || musclesForExercise(exercise).some((item) => normalizePrescriptionIdentity(item.muscle) === normalizePrescriptionIdentity(affectedMuscle));
+        const scopedRecovery = painApplies ? recoveryInput : { ...recoveryInput, pain: false, affectedMuscle: "" };
+        const readiness = options.readiness || prescriptionReadiness(scopedRecovery, history);
         const scope = prescriptionScopeHistories(options.template, muscleGroupId, options);
         const appMuscle = musclesForExercise(exercise)[0]?.muscle || appMuscleFromPrescriptionGroup(muscleGroupId);
         const currentWeeklySets = appMuscle ? Number(weeklyMuscleVolume(startOfWeekIso(throughDate)).find((item) => item.muscle === appMuscle)?.sets || 0) : undefined;
         const equipmentIncrement = Number(options.equipmentIncrement || exercise.increment || 0);
-        const cacheKey = [analysisRevision, exerciseId, muscleGroupId, throughDate, mesocycle?.id || "", equipmentIncrement, JSON.stringify(readiness), options.historical ? "history" : "current"].join("|");
+        const sessionDurationMinutes = options.sessionDurationMinutes ?? options.timeConstraintMinutes ?? options.maxSessionMinutes ?? options.template?.sessionDurationMinutes ?? mesocycle?.sessionDurationTargetMinutes ?? mesocycle?.constraints?.sessionDurationTargetMinutes;
+        const availableEquipment = Object.prototype.hasOwnProperty.call(options, "availableEquipment")
+          ? options.availableEquipment
+          : mesocycle?.availableEquipment ?? (Array.isArray(appSettings.availableEquipment) && appSettings.availableEquipment.length ? appSettings.availableEquipment : ["all"]);
+        const request = {
+          exerciseId,
+          muscleGroupId,
+          history,
+          histories: options.histories,
+          readiness,
+          mesocycle,
+          role: options.role,
+          muscleExerciseHistories: scope.muscleExerciseHistories,
+          programMuscleHistories: scope.programMuscleHistories,
+          currentWeeklySets,
+          equipmentIncrement,
+          plannedWorkingSets: options.plannedWorkingSets ?? options.plannedSets ?? exercise.plannedSets ?? exercise.sets,
+          resistanceType: options.resistanceType ?? exercise.resistanceType,
+          sessionDurationMinutes,
+          sessionDurationTargetMinutes: sessionDurationMinutes,
+          sessionDurationMaximumMinutes: options.sessionDurationMaximumMinutes ?? sessionDurationMinutes,
+          availableEquipment,
+          excludedExerciseIds: options.excludedExerciseIds ?? options.exerciseExclusions ?? options.template?.excludedExerciseIds ?? mesocycle?.constraints?.excludedExerciseIds ?? appSettings.excludedExerciseIds,
+          includedMuscleGroupIds: options.includedMuscleGroupIds ?? options.muscleScope ?? mesocycle?.includedMuscleGroupIds,
+          trainingDays: options.trainingDays ?? mesocycle?.trainingDays ?? appSettings.trainingDaysPerWeek,
+          trainingGoal: options.trainingGoal ?? appSettings.trainingGoal,
+          nutritionPhase: options.nutritionPhase ?? appSettings.nutritionPhase,
+          experienceLevel: options.experienceLevel ?? appSettings.experienceLevel,
+          returningAfterGap: options.returningAfterGap ?? appSettings.returningAfterGap,
+          createdAt: options.createdAt || `${throughDate}T12:00:00.000Z`
+        };
+        ["plannedWorkingSets", "resistanceType", "sessionDurationMinutes", "sessionDurationTargetMinutes", "sessionDurationMaximumMinutes", "availableEquipment", "excludedExerciseIds", "includedMuscleGroupIds", "trainingDays", "trainingGoal", "nutritionPhase", "experienceLevel", "returningAfterGap"].forEach((field) => {
+          if (request[field] === undefined || request[field] === null || request[field] === "") delete request[field];
+        });
+        const cacheKey = [analysisRevision, exerciseId, muscleGroupId, throughDate, mesocycle?.id || "", equipmentIncrement, JSON.stringify(readiness), JSON.stringify({ plannedWorkingSets: request.plannedWorkingSets, resistanceType: request.resistanceType, sessionDurationMinutes: request.sessionDurationMinutes, availableEquipment: request.availableEquipment, excludedExerciseIds: request.excludedExerciseIds, includedMuscleGroupIds: request.includedMuscleGroupIds, trainingDays: request.trainingDays, trainingGoal: request.trainingGoal, nutritionPhase: request.nutritionPhase, experienceLevel: request.experienceLevel, returningAfterGap: request.returningAfterGap }), options.historical ? "history" : "current"].join("|");
         if (!options.fresh && prescriptionSnapshotCache.has(cacheKey)) return prescriptionSnapshotCache.get(cacheKey);
         try {
-          const snapshot = prescriptionEngine.prescribeExercise({
-            exerciseId,
-            muscleGroupId,
-            history,
-            histories: options.histories,
-            readiness,
-            mesocycle,
-            role: options.role,
-            muscleExerciseHistories: scope.muscleExerciseHistories,
-            programMuscleHistories: scope.programMuscleHistories,
-            currentWeeklySets,
-            equipmentIncrement,
-            createdAt: options.createdAt || `${throughDate}T12:00:00.000Z`
-          });
+          const snapshot = prescriptionEngine.prescribeExercise(request);
           if (!options.fresh) prescriptionSnapshotCache.set(cacheKey, snapshot);
           return snapshot;
         } catch (error) {
@@ -2993,6 +3073,45 @@
         const prescription = options.useBase ? snapshot.basePrescription : snapshot.finalPrescription;
         const type = prescription.recommendationType;
         const resistanceType = templateExercise.resistanceType || inferResistanceType(templateExercise.name || prescription.exerciseId, templateExercise);
+        if (prescription.executionBlocked === true) {
+          const reason = prescription.userExplanation || prescription.readinessAdjustment?.explanation || "A hard safety restriction blocks this exercise until its resume criteria are met.";
+          const blockedTarget = {
+            decision: type,
+            mode: "stop-modify",
+            interventionType: "stop_modify",
+            executionBlocked: true,
+            safetyAdjustment: true,
+            safetyRestriction: prescription.safetyRestriction || null,
+            sets: 0,
+            reps: 0,
+            repLow: 0,
+            repHigh: 0,
+            weight: 0,
+            rpe: 0,
+            weightUnit: data.settings.weightUnit,
+            resistanceType,
+            addedLoad: 0,
+            assistanceLoad: 0,
+            isBodyweight: isBodyweightResistance(resistanceType),
+            isDeload: false,
+            restSeconds: 0,
+            warmups: [],
+            executableActions: [],
+            reason,
+            preferredReplacementExerciseId: prescription.preferredReplacementExerciseId || null,
+            substitutionRule: prescription.substitutionRule || "Stop the affected work unless a distinct, catalog-backed, pain-free alternative is explicitly confirmed.",
+            confidence: prescription.confidence,
+            recommendationSnapshot: snapshot,
+            basePrescription: snapshot.basePrescription,
+            finalPrescription: snapshot.finalPrescription,
+            coachRecommendation: legacyRecommendationFromSnapshot(snapshot, templateExercise.name || prescription.exerciseId),
+            adjusted: true,
+            adjustmentReason: reason,
+            triggerLabels: prescription.readinessAdjustment?.signals?.map((signal) => signal.explanation) || []
+          };
+          blockedTarget.text = targetText(blockedTarget, reason);
+          return blockedTarget;
+        }
         const rpe = prescription.targetRpe ? Number(((prescription.targetRpe.min + prescription.targetRpe.max) / 2).toFixed(1)) : 8;
         const sourceWeightUnit = prescription.prescribedLoad?.unit || templateExercise.weightUnit || data.settings.weightUnit;
         const weight = Number(convertWeightValue(prescription.prescribedLoad?.target || 0, sourceWeightUnit, data.settings.weightUnit));
@@ -3040,6 +3159,23 @@
       function unifiedTargetContext(target, template, templateExercise) {
         const prescription = target?.finalPrescription || target?.recommendationSnapshot?.finalPrescription;
         if (!prescription) return null;
+        if (target.executionBlocked === true || prescription.executionBlocked === true) {
+          return {
+            id: target.recommendationSnapshot?.recommendationId || "",
+            exerciseId: prescription.exerciseId,
+            exerciseName: templateExercise?.name || prescription.exerciseId,
+            templateId: template?.id || "",
+            templateName: template?.name || "Unified prescription",
+            sessionType: "stop-modify",
+            source: "Unified prescription engine hard-safety restriction",
+            effectiveStartDate: todayIso(),
+            setTypes: [],
+            confidence: prescription.confidence,
+            executionBlocked: true,
+            safetyRestriction: prescription.safetyRestriction || null,
+            recommendationSnapshot: target.recommendationSnapshot
+          };
+        }
         const setTypes = [];
         if (prescription.setStructure === "top_set_backoff") {
           setTypes.push({ type: "top", label: "Top set", setCount: Number(prescription.topSet?.count || 1), repMin: prescription.topSet?.repRange?.min || prescription.repRange.min, repMax: prescription.topSet?.repRange?.max || prescription.repRange.max, rpeMin: Math.max(5, Number(prescription.topSet?.targetRpe || prescription.targetRpe.min) - 1), rpeMax: Number(prescription.topSet?.targetRpe || prescription.targetRpe.max), rirMin: prescription.topSet?.targetRir, rirMax: prescription.topSet?.targetRir, restSeconds: prescription.restSeconds.target, countsTowardScore: true, countsTowardVolume: true });
@@ -3569,20 +3705,19 @@
       }
 
       function canonicalExerciseId(name) {
-        const normalized = String(name || "")
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, " ")
-          .replace(/\bdb\b/g, "dumbbell")
-          .replace(/\bbb\b/g, "barbell")
-          .replace(/\bpull down\b/g, "pulldown")
-          .replace(/\bpress down\b/g, "pushdown")
-          .replace(/\b(dumbbells|cables|machines|raises|curls|extensions|presses|rows)\b/g, (word) => ({ dumbbells: "dumbbell", cables: "cable", machines: "machine", raises: "raise", curls: "curl", extensions: "extension", presses: "press", rows: "row" })[word])
-          .replace(/\b(flyes|flies)\b/g, "fly")
-          .replace(/\s+/g, " ")
-          .trim();
-        const researchId = prescriptionEngine?.evidence?.research?.exerciseIdByAlias?.get(normalizePrescriptionIdentity(name))
-          || prescriptionEngine?.evidence?.research?.exerciseIdByAlias?.get(normalizePrescriptionIdentity(normalized));
-        return researchId || normalized;
+        const normalized = normalizePrescriptionIdentity(name);
+        if (!normalized) return "";
+        const evidence = prescriptionEngine?.evidence;
+        const researchId = evidence?.research?.exerciseIdByAlias?.get(normalized)
+          || evidence?.research?.exerciseDatabase?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === normalized)?.exercise_id;
+        if (researchId) return researchId;
+        const personalRecord = evidence?.personal?.exerciseScores?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === normalized)
+          || evidence?.personal?.exercisePrescriptions?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === normalized);
+        const personalId = personalRecord?.exercise_id || personalRecord?.exerciseId || "";
+        const reconciled = evidence?.personal?.reconciledIdentityByExerciseId?.get(personalId);
+        if (reconciled && !reconciled.invalid && reconciled.researchExerciseId) return reconciled.researchExerciseId;
+        if (/^(?:custom|user)(?::|_)/.test(personalId)) return personalId;
+        return `custom_${normalized.replace(/\s+/g, "_")}`;
       }
 
       function exerciseCatalog() {
@@ -4162,16 +4297,18 @@
 
       function researchVolumeTarget() {
         const records = prescriptionEngine?.evidence?.research?.muscleGroupRecommendations || [];
-        const matched = records.filter((item) => !item.training_status || item.training_status === data.settings.trainingStatus || item.training_status === "all" || item.training_status === "mixed");
+        const experienceLevel = data.settings.experienceLevel || "all";
+        const matched = records.filter((item) => !item.training_status || item.training_status === experienceLevel || item.training_status === "all" || item.training_status === "mixed");
         return matched.length
           ? `${matched.length} muscle/subdivision-specific weekly ranges from research database ${prescriptionEvidenceStatus.researchVersion}`
           : "the exercise-specific research fallback stored in each prescription";
       }
 
       function goalContext() {
-        const phase = ({ cut: "deficit", recomposition: "recomposition", maintain: "maintenance", bulk: "surplus" })[data.settings.goal] || "all";
+        const phase = data.settings.nutritionPhase || "all";
+        const experienceLevel = data.settings.experienceLevel || "all";
         const records = prescriptionEngine?.evidence?.research?.nutritionStrategies || [];
-        const strategy = records.find((item) => item.nutrition_phase === phase && item.training_status === data.settings.trainingStatus)
+        const strategy = records.find((item) => item.nutrition_phase === phase && item.training_status === experienceLevel)
           || records.find((item) => item.nutrition_phase === phase && ["all", "mixed"].includes(item.training_status))
           || records.find((item) => item.nutrition_phase === phase)
           || records.find((item) => item.nutrition_phase === "all");
@@ -5171,8 +5308,9 @@
               <label>Soreness<select data-action="recovery-soreness"><option value="">-</option>${[1,2,3,4,5].map((value) => '<option value="' + value + '" ' + (String(recovery.soreness) === String(value) ? "selected" : "") + '>' + value + '/5</option>').join("")}</select></label>
               <label>Nutrition today<select data-action="recovery-nutrition"><option value="" ${recovery.nutritionStatus === '' ? 'selected' : ''}>Not entered</option><option value="on_plan" ${recovery.nutritionStatus === 'on_plan' ? 'selected' : ''}>On plan</option><option value="below_plan" ${recovery.nutritionStatus === 'below_plan' ? 'selected' : ''}>Below planned intake</option><option value="low_energy" ${recovery.nutritionStatus === 'low_energy' ? 'selected' : ''}>Possible low energy availability</option></select></label>
               <label>Protein target<select data-action="recovery-protein"><option value="" ${recovery.proteinStatus === '' ? 'selected' : ''}>Not entered</option><option value="adequate" ${recovery.proteinStatus === 'adequate' ? 'selected' : ''}>Met</option><option value="below_target" ${recovery.proteinStatus === 'below_target' ? 'selected' : ''}>Below target</option></select></label>
-              <label class="toggle-line"><input type="checkbox" data-action="recovery-illness" ${recovery.illness ? "checked" : ""} />Illness or injury</label>
-              <label>Soreness / pain area<select data-action="recovery-affected-muscle"><option value="">Whole body / systemic</option>${muscleGroups.map((muscle) => '<option value="' + muscle + '" ' + (recovery.affectedMuscle === muscle ? 'selected' : '') + '>' + muscle + '</option>').join('')}</select></label>
+              <label class="toggle-line"><input type="checkbox" data-action="recovery-illness" ${recovery.illness ? "checked" : ""} />Current illness</label>
+              <label class="toggle-line"><input type="checkbox" data-action="recovery-pain" ${recovery.pain ? "checked" : ""} />Pain or injury affecting training</label>
+              <label>Soreness / pain area<select data-action="recovery-affected-muscle"><option value="">Not specified</option>${muscleGroups.map((muscle) => '<option value="' + muscle + '" ' + (recovery.affectedMuscle === muscle ? 'selected' : '') + '>' + muscle + '</option>').join('')}</select></label>
             </div>
             <textarea data-action="recovery-outside-note" placeholder="Outside-band note, if today is meaningfully different" aria-label="Outside readiness band note">${escapeHtml(recovery.outsideBandNote)}</textarea>
           </section>
@@ -5293,7 +5431,7 @@
                 ${unchanged.length ? '<details class="compact-disclosure"><summary>Exercises unchanged <span>' + unchanged.length + '</span></summary><div class="disclosure-body readiness-unchanged-list">' + unchanged.map((item) => '<div><strong>' + escapeHtml(item.name) + '</strong><span>' + escapeHtml(prescriptionLine(item.original)) + '</span></div>').join('') + '</div></details>' : ''}
                 <div class="sheet-actions stacked">
                   <button class="primary-action" type="button" data-action="start-adjusted-workout" autofocus>Start Adjusted Workout</button>
-                  ${changed.length && !recovery.illness ? '<button type="button" data-action="start-original-workout">Use Original Targets</button>' : ''}
+                  ${changed.length && !recovery.illness && !recovery.pain ? '<button type="button" data-action="start-original-workout">Use Original Targets</button>' : ''}
                   <button class="mini-button" type="button" data-action="edit-readiness-metrics">Review Changes</button>
                   <button class="mini-button" type="button" data-action="cancel-template-start">Cancel</button>
                 </div>
@@ -5314,8 +5452,9 @@
                   <label>Soreness<select data-action="template-readiness-soreness"><option value="">-</option>${[1,2,3,4,5].map((value) => '<option value="' + value + '" ' + (String(recovery.soreness) === String(value) ? "selected" : "") + '>' + value + '/5</option>').join("")}</select></label>
                   <label>Nutrition today<select data-action="template-readiness-nutrition"><option value="" ${recovery.nutritionStatus === '' ? 'selected' : ''}>Not entered</option><option value="on_plan" ${recovery.nutritionStatus === 'on_plan' ? 'selected' : ''}>On plan</option><option value="below_plan" ${recovery.nutritionStatus === 'below_plan' ? 'selected' : ''}>Below planned intake</option><option value="low_energy" ${recovery.nutritionStatus === 'low_energy' ? 'selected' : ''}>Possible low energy availability</option></select></label>
                   <label>Protein target<select data-action="template-readiness-protein"><option value="" ${recovery.proteinStatus === '' ? 'selected' : ''}>Not entered</option><option value="adequate" ${recovery.proteinStatus === 'adequate' ? 'selected' : ''}>Met</option><option value="below_target" ${recovery.proteinStatus === 'below_target' ? 'selected' : ''}>Below target</option></select></label>
-                  <label class="toggle-line"><input type="checkbox" data-action="template-readiness-illness" ${recovery.illness ? "checked" : ""} />Illness or injury</label>
-                  <label>Affected area<select data-action="template-readiness-affected-muscle"><option value="">Whole body / systemic</option>${muscleGroups.map((muscle) => '<option value="' + muscle + '" ' + (recovery.affectedMuscle === muscle ? 'selected' : '') + '>' + muscle + '</option>').join('')}</select></label>
+                  <label class="toggle-line"><input type="checkbox" data-action="template-readiness-illness" ${recovery.illness ? "checked" : ""} />Current illness</label>
+                  <label class="toggle-line"><input type="checkbox" data-action="template-readiness-pain" ${recovery.pain ? "checked" : ""} />Pain or injury affecting training</label>
+                  <label>Affected area<select data-action="template-readiness-affected-muscle"><option value="">Not specified</option>${muscleGroups.map((muscle) => '<option value="' + muscle + '" ' + (recovery.affectedMuscle === muscle ? 'selected' : '') + '>' + muscle + '</option>').join('')}</select></label>
                 </div>
                 <textarea data-action="template-readiness-note" placeholder="Optional note if something is outside your normal band" aria-label="Optional outside-normal-band note">${escapeHtml(recovery.outsideBandNote)}</textarea>
               </div>
@@ -6709,6 +6848,7 @@
       }
 
       function resolvedSetTypesForPrescription(context, target) {
+        if (target?.executionBlocked === true || target?.finalPrescription?.executionBlocked === true || context?.executionBlocked === true) return [];
         const scored = (context?.setTypes || []).filter((type) => type.countsTowardScore && !type.isWarmup);
         const targetCount = Math.max(1, Number(target.sets || scored.reduce((sum, type) => sum + Number(type.setCount || 0), 0) || 1));
         if (["deload", "light", "technique"].includes(target.mode)) {
@@ -7895,20 +8035,38 @@
             <details class="settings-group"><summary>Training defaults <span>Goal</span></summary><div class="disclosure-body settings-panel">
               <label>Training goal
                 <select data-action="training-goal">
-                  <option value="hypertrophy" ${data.settings.goal === "hypertrophy" ? "selected" : ""}>Hypertrophy</option>
-                  <option value="recomposition" ${data.settings.goal === "recomposition" ? "selected" : ""}>Body recomposition</option>
-                  <option value="cut" ${data.settings.goal === "cut" ? "selected" : ""}>Cut / preserve muscle</option>
-                  <option value="maintain" ${data.settings.goal === "maintain" ? "selected" : ""}>Maintain</option>
+                  <option value="" ${!data.settings.trainingGoal ? "selected" : ""}>Not specified (balanced default)</option>
+                  <option value="strength" ${data.settings.trainingGoal === "strength" ? "selected" : ""}>Strength</option>
+                  <option value="hypertrophy" ${data.settings.trainingGoal === "hypertrophy" ? "selected" : ""}>Hypertrophy</option>
+                  <option value="muscular_endurance" ${data.settings.trainingGoal === "muscular_endurance" ? "selected" : ""}>Muscular endurance</option>
+                  <option value="general_fitness" ${data.settings.trainingGoal === "general_fitness" ? "selected" : ""}>General fitness</option>
                 </select>
               </label>
-              <label>Training status
-                <select data-action="training-status">
-                  <option value="novice" ${data.settings.trainingStatus === "novice" ? "selected" : ""}>Novice / returning</option>
-                  <option value="intermediate" ${data.settings.trainingStatus === "intermediate" ? "selected" : ""}>Intermediate</option>
-                  <option value="advanced" ${data.settings.trainingStatus === "advanced" ? "selected" : ""}>Advanced</option>
+              <label>Nutrition phase
+                <select data-action="nutrition-phase">
+                  <option value="" ${!data.settings.nutritionPhase ? "selected" : ""}>Not specified</option>
+                  <option value="deficit" ${data.settings.nutritionPhase === "deficit" ? "selected" : ""}>Energy deficit</option>
+                  <option value="maintenance" ${data.settings.nutritionPhase === "maintenance" ? "selected" : ""}>Maintenance</option>
+                  <option value="surplus" ${data.settings.nutritionPhase === "surplus" ? "selected" : ""}>Energy surplus</option>
+                  <option value="recomposition" ${data.settings.nutritionPhase === "recomposition" ? "selected" : ""}>Body recomposition</option>
                 </select>
               </label>
-              <p class="settings-note">Rest is recommended per exercise from movement type, rep range, effort, and recent performance.</p>
+              <label>Training experience
+                <select data-action="experience-level">
+                  <option value="" ${!data.settings.experienceLevel ? "selected" : ""}>Not specified</option>
+                  <option value="novice" ${data.settings.experienceLevel === "novice" ? "selected" : ""}>Novice</option>
+                  <option value="intermediate" ${data.settings.experienceLevel === "intermediate" ? "selected" : ""}>Intermediate</option>
+                  <option value="advanced" ${data.settings.experienceLevel === "advanced" ? "selected" : ""}>Advanced</option>
+                </select>
+              </label>
+              <label>Returning after a training gap
+                <select data-action="returning-after-gap">
+                  <option value="" ${data.settings.returningAfterGap == null ? "selected" : ""}>Not specified</option>
+                  <option value="true" ${data.settings.returningAfterGap === true ? "selected" : ""}>Yes</option>
+                  <option value="false" ${data.settings.returningAfterGap === false ? "selected" : ""}>No</option>
+                </select>
+              </label>
+              <p class="settings-note">Missing profile values stay disclosed as defaults. Nutrition phase is context only and never fabricates a training goal or changes dose without qualifying recovery or performance evidence.</p>
             </div></details>
             <details class="settings-group"><summary>Rest timer and alerts <span class="status-pill ${pushStatus.className}">${pushStatus.label}</span></summary><div class="disclosure-body settings-panel">
               <div class="alert-settings-list">
@@ -8550,7 +8708,10 @@
           const templateResistanceType = templateExercise.resistanceType || inferResistanceType(templateExercise.name, templateExercise);
           const historyTarget = { ...coachTargetForTemplateExercise(templateExercise, { excludeSessionId: session.id, template }), resistanceType: templateResistanceType, isBodyweight: isBodyweightResistance(templateResistanceType) };
           historyTarget.restSeconds = Number(historyTarget.restSeconds || templateExercise.restSeconds || recommendedRestSeconds(templateExercise.name, { reps: historyTarget.reps, rpe: historyTarget.rpe, excludeSessionId: session.id }));
-          const target = options.useOriginal ? { ...historyTarget, adjusted: false, adjustmentReason: "", triggerLabels: [] } : adjustTargetForRecovery(historyTarget, recoveryAdvice, { recovery, exerciseName: templateExercise.name, template });
+          const safetyRestricted = Boolean(recovery.illness || recovery.pain);
+          const adjustedTarget = options.useOriginal && !safetyRestricted ? { ...historyTarget, adjusted: false, adjustmentReason: "", triggerLabels: [] } : adjustTargetForRecovery(historyTarget, recoveryAdvice, { recovery, exerciseName: templateExercise.name, template });
+          const target = { ...adjustedTarget, resistanceType: adjustedTarget.resistanceType || templateResistanceType, isBodyweight: isBodyweightResistance(adjustedTarget.resistanceType || templateResistanceType) };
+          const resolvedResistanceType = target.resistanceType || templateResistanceType;
           if (target.adjusted) adjustedLiftCount += 1;
           const restSeconds = Number(target.restSeconds || historyTarget.restSeconds);
           const programTargetContext = unifiedTargetContext(historyTarget, template, templateExercise) || exerciseTargetContext(template, templateExercise, { source: "Current workout template", effectiveStartDate: session.date });
@@ -8565,13 +8726,13 @@
             restSeconds: Number(target.restSeconds || type.restSeconds || restSeconds)
           }));
           appliedTargetContext = { ...appliedTargetContext, setTypes: [...(appliedTargetContext?.setTypes || []).filter((type) => type.isWarmup), ...resolvedTypes] };
-          const exercise = { id: id(), sessionId: session.id, name: templateExercise.name, primaryMuscle: templateExercise.primaryMuscle || "", secondaryMuscle: templateExercise.secondaryMuscle || "", notes: "", originalPrescription: historyTarget, prescription: target, recommendationSnapshot: target.recommendationSnapshot || historyTarget.recommendationSnapshot || null, basePrescription: target.basePrescription || historyTarget.basePrescription || null, finalPrescription: target.finalPrescription || target.recommendationSnapshot?.finalPrescription || null, recommendationVersion: target.recommendationSnapshot?.recommendationVersion || null, personalDataVersion: target.recommendationSnapshot?.personalDataVersion || null, researchDatabaseVersion: target.recommendationSnapshot?.researchDatabaseVersion || null, programTargetContext, appliedTargetContext, adjustmentReason: target.adjustmentReason || "", manualOverrides: [], order: index, restSeconds, resistanceType: target.resistanceType, isBodyweight: isBodyweightResistance(target.resistanceType), isDeload: Boolean(target.isDeload) };
+          const exercise = { id: id(), sessionId: session.id, name: templateExercise.name, primaryMuscle: templateExercise.primaryMuscle || "", secondaryMuscle: templateExercise.secondaryMuscle || "", notes: "", originalPrescription: historyTarget, prescription: target, recommendationSnapshot: target.recommendationSnapshot || historyTarget.recommendationSnapshot || null, basePrescription: target.basePrescription || historyTarget.basePrescription || null, finalPrescription: target.finalPrescription || target.recommendationSnapshot?.finalPrescription || null, recommendationVersion: target.recommendationSnapshot?.recommendationVersion || null, personalDataVersion: target.recommendationSnapshot?.personalDataVersion || null, researchDatabaseVersion: target.recommendationSnapshot?.researchDatabaseVersion || null, programTargetContext, appliedTargetContext, adjustmentReason: target.adjustmentReason || "", manualOverrides: [], order: index, restSeconds, resistanceType: target.resistanceType || templateResistanceType, isBodyweight: isBodyweightResistance(resolvedResistanceType), isDeload: Boolean(target.isDeload), executionBlocked: Boolean(target.executionBlocked), safetyRestriction: target.safetyRestriction || null };
           exercises.push(exercise);
           if (exercise.recommendationSnapshot) recommendationSnapshots.push(exercise.recommendationSnapshot);
           readinessAdjustments.push({ exerciseId: exercise.id, name: exercise.name, original: historyTarget, adjusted: target, changed: Boolean(target.adjusted), reason: target.adjustmentReason || "No readiness change was required.", triggers: target.triggerLabels || [] });
-          const configuredWarmups = templateExercise.warmups || [];
+          const configuredWarmups = target.executionBlocked ? [] : (templateExercise.warmups || []);
           configuredWarmups.forEach((warmup, warmupIndex) => {
-            sets.push(createSet(exercise.id, warmupIndex + 1, { ...warmup, sequenceIndex: warmupIndex, sequence: warmupIndex, setTypeIndex: warmupIndex, sourceTemplateSetId: warmup.id || templateExercise.id + "-warmup-" + warmupIndex, resistanceType: warmup.resistanceType || target.resistanceType, completed: false, isWarmup: true, setType: "warmup", countsTowardScore: false, countsTowardVolume: false, countsTowardProgression: false }));
+            sets.push(createSet(exercise.id, warmupIndex + 1, { ...warmup, sequenceIndex: warmupIndex, sequence: warmupIndex, setTypeIndex: warmupIndex, sourceTemplateSetId: warmup.id || templateExercise.id + "-warmup-" + warmupIndex, resistanceType: target.resistanceType || templateResistanceType, completed: false, isWarmup: true, setType: "warmup", countsTowardScore: false, countsTowardVolume: false, countsTowardProgression: false }));
           });
           const previousRoleSets = getMostRecentWorkoutSets(templateExercise.name, { excludeSessionId: session.id });
           let setNumber = 0;
@@ -8582,7 +8743,7 @@
               rolePrescriptions.push(setPrescriptionForRole({ templateExercise, target, setType, setTypeIndex: typeSetIndex, sequenceIndex: configuredWarmups.length + setNumber - 1, previousSets: previousRoleSets }));
             }
           });
-          rolePrescriptions = validateGeneratedSetPrescriptions(rolePrescriptions, target.resistanceType);
+          rolePrescriptions = validateGeneratedSetPrescriptions(rolePrescriptions, resolvedResistanceType);
           const generatedRoleTypes = Array.from(new Set(rolePrescriptions.map((prescription) => prescription.setType))).map((role) => {
             const sourceType = resolvedTypes.find((type) => normalizeSetTypeCode(type.type) === role)
               || (role === "straight" ? resolvedTypes.find((type) => normalizeSetTypeCode(type.type) === "backoff") : null)
@@ -8596,7 +8757,7 @@
             const setType = resolvedTypes.find((type) => normalizeSetTypeCode(type.type) === prescription.setType) || resolvedTypes.find((type) => normalizeSetTypeCode(type.type) === "backoff" && prescription.setType === "straight") || {};
             const setWeight = prescription.targetLoad;
             const setRpe = prescription.rpeMax;
-            sets.push(createSet(exercise.id, setNumber, { sequenceIndex: prescription.sequenceIndex, sequence: prescription.sequenceIndex, setTypeIndex: prescription.setTypeIndex, sourceTemplateSetId: setType.id || templateExercise.id + "-" + prescription.setType + "-" + prescription.setTypeIndex, reps: prescription.targetReps, weight: setWeight, weightUnit: target.weightUnit, resistanceType: target.resistanceType, isBodyweight: target.isBodyweight, addedLoad: target.resistanceType === "bodyweight_plus_load" ? setWeight : target.addedLoad, assistanceLoad: target.resistanceType === "assisted_bodyweight" ? setWeight : target.assistanceLoad, rpe: setRpe, completed: false, isWarmup: false, setType: prescription.setType, countsTowardScore: setType.countsTowardScore !== false, countsTowardVolume: setType.countsTowardVolume !== false, targetReps: prescription.targetReps, targetRepMin: prescription.repMin, targetRepMax: prescription.repMax, targetWeight: setWeight, targetRpe: setRpe, targetRpeMin: prescription.rpeMin, targetRpeMax: prescription.rpeMax, targetRpeTolerance: setType.rpeTolerance, targetRestSeconds: prescription.restSeconds, originalTargetReps: historyTarget.reps, originalTargetWeight: historyTarget.weight, originalTargetRpe: historyTarget.rpe, setPrescription: prescription, previousComparableSet: prescription.previousComparableSet, prescriptionReason: prescription.reason + " " + (target.adjustmentReason || target.reason || ""), prescriptionMode: target.mode, prescriptionConfidence: target.confidence, validationWarning: prescription.validationWarning || "" }));
+            sets.push(createSet(exercise.id, setNumber, { sequenceIndex: prescription.sequenceIndex, sequence: prescription.sequenceIndex, setTypeIndex: prescription.setTypeIndex, sourceTemplateSetId: setType.id || templateExercise.id + "-" + prescription.setType + "-" + prescription.setTypeIndex, reps: prescription.targetReps, weight: setWeight, weightUnit: target.weightUnit, resistanceType: target.resistanceType || templateResistanceType, isBodyweight: isBodyweightResistance(resolvedResistanceType), addedLoad: target.resistanceType === "bodyweight_plus_load" ? setWeight : target.addedLoad, assistanceLoad: target.resistanceType === "assisted_bodyweight" ? setWeight : target.assistanceLoad, rpe: setRpe, completed: false, isWarmup: false, setType: prescription.setType, countsTowardScore: setType.countsTowardScore !== false, countsTowardVolume: setType.countsTowardVolume !== false, targetReps: prescription.targetReps, targetRepMin: prescription.repMin, targetRepMax: prescription.repMax, targetWeight: setWeight, targetRpe: setRpe, targetRpeMin: prescription.rpeMin, targetRpeMax: prescription.rpeMax, targetRpeTolerance: setType.rpeTolerance, targetRestSeconds: prescription.restSeconds, originalTargetReps: historyTarget.reps, originalTargetWeight: historyTarget.weight, originalTargetRpe: historyTarget.rpe, setPrescription: prescription, previousComparableSet: prescription.previousComparableSet, prescriptionReason: prescription.reason + " " + (target.adjustmentReason || target.reason || ""), prescriptionMode: target.mode, prescriptionConfidence: target.confidence, validationWarning: prescription.validationWarning || "" }));
           });
         });
         session.adjustmentSummary = adjustedLiftCount ? adjustedLiftCount + " lift" + (adjustedLiftCount === 1 ? "" : "s") + " adjusted for recovery." : "No recovery adjustments — normal plan and history-based progression.";
@@ -9838,7 +9999,7 @@
           const defaults = prescriptionApi.aggregateMuscleResearchDefaults(prescriptionEngine.evidence.research, engineGroup);
           if (defaults.recommendations?.length) return { low: Math.max(1, Math.round(defaults.weeklySets.min)), high: Math.max(Math.round(defaults.weeklySets.min), Math.round(defaults.weeklySets.max)) };
         }
-        const base = muscleTargets[data.settings.trainingStatus] || muscleTargets.intermediate;
+        const base = muscleTargets[data.settings.experienceLevel] || muscleTargets.intermediate;
         if (muscle === "Neck") return { low: Math.max(2, Math.round(base.low * 0.35)), high: Math.max(6, Math.round(base.high * 0.45)) };
         if (muscle === "Adductors") return { low: Math.max(4, Math.round(base.low * 0.45)), high: Math.max(8, Math.round(base.high * 0.6)) };
         if (muscle === "Forearms" || muscle === "Calves") return { low: Math.max(4, Math.round(base.low * 0.55)), high: Math.max(10, Math.round(base.high * 0.7)) };
@@ -9906,14 +10067,19 @@
         const cacheKey = [exercise.name || "", exercise.primaryMuscle || "", exercise.secondaryMuscle || "", options.ignoreManual ? "automatic" : "resolved"].join("|");
         if (muscleAssignmentCache.has(cacheKey)) return muscleAssignmentCache.get(cacheKey);
         let result;
+        const canonicalId = canonicalExerciseId(exercise.name);
+        const customOrUnmappedExercise = !canonicalId || /^(?:custom|user)(?::|_)/.test(canonicalId);
         const taxonomy = taxonomyMusclesForExercise(exercise);
         if (taxonomy.length) {
           result = taxonomy;
+        } else if (!customOrUnmappedExercise) {
+          result = [];
         } else if (!options.ignoreManual && exercise.primaryMuscle) {
           const manual = [[exercise.primaryMuscle, 1]];
           if (exercise.secondaryMuscle && exercise.secondaryMuscle !== exercise.primaryMuscle) manual.push([exercise.secondaryMuscle, 0.5]);
           result = normalizeMuscleMatches(manual);
         } else {
+          // Regex inference is deliberately limited to explicit custom or otherwise unmapped exercises.
           const automatic = automaticMusclesForName(exercise.name);
           result = !options.ignoreManual && exercise.secondaryMuscle && !automatic.some((item) => item.muscle === exercise.secondaryMuscle)
             ? normalizeMuscleMatches([...automatic.map((item) => [item.muscle, item.weight]), [exercise.secondaryMuscle, 0.5]])
@@ -10077,8 +10243,11 @@
       function recoveryRecommendationForSession(session) {
         const recovery = sessionRecovery(session);
         if (recovery.illness) {
-          const evidence = [recovery.affectedMuscle ? `Pain or injury was recorded for ${recovery.affectedMuscle}.` : "Illness or a whole-body injury warning was recorded."];
-          return { decision: "rest", label: recovery.affectedMuscle ? "Stop or modify affected work" : "Rest recommended", action: "Avoid hard loading. Use pain-free technique work only if appropriate, and seek qualified care for persistent or concerning symptoms.", score: 0, evidence, evaluation: null };
+          return { decision: "rest", label: "Rest recommended", action: "Current illness blocks the whole workout. Resume only after the acute restriction resolves; seek qualified guidance for severe, unexplained, or persistent symptoms.", score: 0, evidence: ["Current illness was explicitly reported."], evaluation: null };
+        }
+        if (recovery.pain) {
+          const affected = recovery.affectedMuscle ? ` affecting ${recovery.affectedMuscle}` : " without a specified affected area";
+          return { decision: "rest", label: "Stop affected work", action: "Do not test a painful movement at a lower load. Use only a distinct, explicitly confirmed pain-free alternative, or stop the affected work and seek qualified evaluation when pain is severe, unexplained, or persistent.", score: 0, evidence: [`Pain or injury was explicitly reported${affected}.`], evaluation: null };
         }
         if (prescriptionEngine) {
           const evaluation = prescriptionEngine.evaluateReadiness(prescriptionReadiness(recovery, []));
@@ -10102,14 +10271,14 @@
         if (recovery.hrv !== "" && Number(baseline.hrv) > 0 && Number(recovery.hrv) < Number(baseline.hrv) * 0.85) triggers.push({ key: "hrv", label: "HRV " + recovery.hrv + " vs " + baseline.hrv + " baseline", systemic: true });
         if (recovery.restingHr !== "" && Number(baseline.restingHr) > 0 && Number(recovery.restingHr) >= Number(baseline.restingHr) + 5) triggers.push({ key: "resting-hr", label: "Resting HR " + recovery.restingHr + " vs " + baseline.restingHr + " baseline", systemic: true });
         if (recovery.soreness !== "" && Number(recovery.soreness) >= 4) triggers.push({ key: "soreness", label: "Soreness " + recovery.soreness + "/5" + (recovery.affectedMuscle ? " in " + recovery.affectedMuscle : " across the body"), systemic: !recovery.affectedMuscle, muscle: recovery.affectedMuscle });
-        if (recovery.illness) triggers.push({ key: recovery.affectedMuscle ? "injury" : "illness", label: recovery.affectedMuscle ? "Pain or injury affecting " + recovery.affectedMuscle : "Illness or whole-body injury warning", systemic: !recovery.affectedMuscle, muscle: recovery.affectedMuscle });
-        if (String(recovery.outsideBandNote || "").trim()) triggers.push({ key: "note", label: "Outside-band note: " + String(recovery.outsideBandNote).trim(), systemic: true });
+        if (recovery.illness) triggers.push({ key: "illness", label: "Current illness", systemic: true });
+        if (recovery.pain) triggers.push({ key: "pain", label: recovery.affectedMuscle ? "Pain or injury affecting " + recovery.affectedMuscle : "Pain or injury with no affected area specified", systemic: !recovery.affectedMuscle, muscle: recovery.affectedMuscle });
         return triggers;
       }
 
       function triggerAppliesToExercise(trigger, exerciseName) {
         if (trigger.systemic || !trigger.muscle) return true;
-        return musclesForExercise(exerciseName).some((item) => item.muscle === trigger.muscle);
+        return musclesForExercise(exerciseName).some((item) => normalizePrescriptionIdentity(item.muscle) === normalizePrescriptionIdentity(trigger.muscle));
       }
 
       function targetWasAdjusted(original, adjusted) {
@@ -10129,8 +10298,8 @@
 
       function explainReadinessAdjustmentChoice(original, adjusted, triggers) {
         const explanations = [];
-        const systemic = triggers.some((trigger) => trigger.systemic && ["sleep", "sleep-quality", "hrv", "resting-hr", "illness", "note"].includes(trigger.key));
-        const local = triggers.some((trigger) => !trigger.systemic && ["soreness", "injury"].includes(trigger.key));
+        const systemic = triggers.some((trigger) => trigger.systemic && ["sleep", "sleep-quality", "hrv", "resting-hr", "illness", "pain"].includes(trigger.key));
+        const local = triggers.some((trigger) => !trigger.systemic && ["soreness", "pain"].includes(trigger.key));
         if (Number(adjusted.weight || 0) < Number(original.weight || 0)) {
           explanations.push("Load was reduced before changing the rep target so the exercise can stay in its programmed hypertrophy range with less risk of overshooting effort or missing later reps.");
         } else if (!(original.weight > 0) && Number(adjusted.sets || 0) < Number(original.sets || 0)) {
@@ -10145,7 +10314,7 @@
         if (Number(adjusted.rpe || 0) < Number(original.rpe || 0)) explanations.push("Target RPE was lowered to leave more repetitions in reserve, matching the reduced recovery capacity indicated by today's markers.");
         if (Number(adjusted.restSeconds || 0) > Number(original.restSeconds || 0)) explanations.push("Rest was increased to protect performance quality between the remaining sets.");
         if (local) explanations.push("The soreness or pain marker is local, so this adjustment applies only to exercises that train the affected muscle group.");
-        else if (systemic) explanations.push("Sleep, HRV, resting heart rate, illness, and whole-body notes are systemic markers, so the rule can adjust all applicable exercises rather than one muscle group.");
+        else if (systemic) explanations.push("Sleep, HRV, resting heart rate, illness, and pain without a specified area are systemic markers, so the rule can adjust all applicable exercises rather than one muscle group.");
         return explanations.join(" ");
       }
 
@@ -10165,8 +10334,8 @@
           if (adjustedSnapshot) return legacyTargetFromSnapshot(adjustedSnapshot, { name: context.exerciseName || sourceSnapshot.exerciseId, resistanceType: target.resistanceType, increment: target.increment });
         }
         const applicableTriggers = enteredReadinessTriggers(recovery).filter((trigger) => triggerAppliesToExercise(trigger, context.exerciseName || ""));
-        const targetedConcern = applicableTriggers.some((trigger) => ["soreness", "injury"].includes(trigger.key));
-        const severeConcern = applicableTriggers.some((trigger) => ["illness", "injury"].includes(trigger.key));
+        const targetedConcern = applicableTriggers.some((trigger) => ["soreness", "pain"].includes(trigger.key));
+        const severeConcern = applicableTriggers.some((trigger) => ["illness", "pain"].includes(trigger.key));
         const reducedWeight = (multiplier) => {
           if (!(target.weight > 0)) return 0;
           const increment = Number(target.increment || (data.settings.weightUnit === "kg" ? 2.5 : 5));
@@ -10181,7 +10350,41 @@
           return { ...target, adjusted: false, adjustmentReason: "", triggerLabels: [], text: target.text || targetText(target, "Inside your normal band: use the normal plan and planned progression.") };
         }
         const triggerText = applicableTriggers.map((trigger) => trigger.label).join("; ");
-        if (recoveryAdvice.decision === "rest" || severeConcern) {
+        if (severeConcern) {
+          const illness = applicableTriggers.some((trigger) => trigger.key === "illness");
+          const reason = (context.exerciseName ? context.exerciseName + " is blocked because " : "Blocked because ") + triggerText + ". " + (illness ? "This restriction applies to the whole workout." : "Do not test the affected movement at a lower load; use only a distinct, explicitly confirmed pain-free alternative or stop that work.");
+          const blocked = {
+            ...target,
+            decision: illness ? "hold" : "substitute",
+            mode: "stop-modify",
+            interventionType: "stop_modify",
+            executionBlocked: true,
+            safetyAdjustment: true,
+            sets: 0,
+            reps: 0,
+            repLow: 0,
+            repHigh: 0,
+            weight: 0,
+            addedLoad: 0,
+            assistanceLoad: 0,
+            rpe: 0,
+            restSeconds: 0,
+            warmups: [],
+            executableActions: [],
+            safetyRestriction: {
+              schemaVersion: "hard-safety/1.0.0",
+              status: "blocked",
+              scope: illness ? "workout" : "exercise",
+              reason: illness ? "illness" : "pain",
+              resumeCriteria: illness ? "Resume only after the acute illness restriction resolves." : "Resume the affected movement only when it is pain-free."
+            },
+            adjusted: true,
+            adjustmentReason: reason,
+            triggerLabels: applicableTriggers.map((trigger) => trigger.label)
+          };
+          return { ...blocked, reason, text: targetText(blocked, reason) };
+        }
+        if (recoveryAdvice.decision === "rest") {
           const weight = reducedWeight(0.85);
           const adjusted = { ...target, mode: "stop-modify", interventionType: "stop_modify", safetyAdjustment: true, baseInterventionType: target.coachRecommendation?.interventionType || target.mode || "normal", sets: Math.max(1, Math.ceil(target.sets * 0.5)), weight, addedLoad: target.resistanceType === "bodyweight_plus_load" ? weight : 0, assistanceLoad: target.resistanceType === "assisted_bodyweight" ? weight : 0, rpe: 6, restSeconds: Math.max(Number(target.restSeconds || 0), Number(target.restSeconds || 0) + 15), isDeload: Boolean(target.isDeload) };
           const reason = (context.exerciseName ? context.exerciseName + " was adjusted because " : "Adjusted because ") + triggerText + ". " + describeReadinessTargetChanges(target, adjusted) + ". Why these levers: " + explainReadinessAdjustmentChoice(target, adjusted, applicableTriggers);
@@ -10499,7 +10702,7 @@
           "session-title", "session-date", "session-travel", "session-notes",
           "exercise-name", "exercise-notes", "exercise-primary-muscle", "exercise-secondary-muscle", "exercise-deload", "exercise-resistance-type", "exercise-bodyweight", "exercise-rest-seconds",
           "set-reps", "set-weight", "set-rpe", "set-duration", "set-distance", "set-warmup",
-          "recovery-sleep-hours", "recovery-sleep-quality", "recovery-hrv", "recovery-resting-hr", "recovery-soreness", "recovery-nutrition", "recovery-protein", "recovery-illness", "recovery-affected-muscle", "recovery-outside-note"
+          "recovery-sleep-hours", "recovery-sleep-quality", "recovery-hrv", "recovery-resting-hr", "recovery-soreness", "recovery-nutrition", "recovery-protein", "recovery-illness", "recovery-pain", "recovery-affected-muscle", "recovery-outside-note"
         ].includes(action);
       }
 
@@ -10927,8 +11130,10 @@
         }
         if (action === "weight-unit") commit(convertAppWeightUnit(data, target.value));
         if (action === "theme-mode") commit({ ...data, settings: { ...data.settings, theme: target.value } });
-        if (action === "training-goal") commit({ ...data, settings: { ...data.settings, goal: target.value } });
-        if (action === "training-status") commit({ ...data, settings: { ...data.settings, trainingStatus: target.value } });
+        if (action === "training-goal") commit({ ...data, settings: { ...data.settings, trainingGoal: target.value } });
+        if (action === "nutrition-phase") commit({ ...data, settings: { ...data.settings, nutritionPhase: target.value } });
+        if (action === "experience-level") commit({ ...data, settings: { ...data.settings, experienceLevel: target.value } });
+        if (action === "returning-after-gap") commit({ ...data, settings: { ...data.settings, returningAfterGap: target.value === "" ? null : target.value === "true" } });
         if (action === "mesocycle-type") { mesocycleDraftType = target.value; render(); }
         if (action === "mesocycle-specialization") { mesocycleSpecializationMuscle = target.value; render(); }
         if (action === "guided-exercise-muscle") { guidedExerciseMuscleFilter = target.value; guidedPendingAssignment = null; render(); }
@@ -10965,6 +11170,7 @@
         if (action === "recovery-nutrition") patchRecovery({ nutritionStatus: target.value });
         if (action === "recovery-protein") patchRecovery({ proteinStatus: target.value });
         if (action === "recovery-illness") patchRecovery({ illness: target.checked });
+        if (action === "recovery-pain") patchRecovery({ pain: target.checked });
         if (action === "recovery-affected-muscle") patchRecovery({ affectedMuscle: target.value });
         if (action === "recovery-outside-note") patchRecovery({ outsideBandNote: target.value });
         if (action === "recovery-sleep-hours") patchRecovery({ sleepHours: target.value });
@@ -10981,6 +11187,7 @@
         if (action === "template-readiness-nutrition") patchTemplateStartDraft({ nutritionStatus: target.value }, false);
         if (action === "template-readiness-protein") patchTemplateStartDraft({ proteinStatus: target.value }, false);
         if (action === "template-readiness-illness") patchTemplateStartDraft({ illness: target.checked }, false);
+        if (action === "template-readiness-pain") patchTemplateStartDraft({ pain: target.checked }, false);
         if (action === "template-readiness-affected-muscle") patchTemplateStartDraft({ affectedMuscle: target.value }, false);
         if (action === "template-readiness-sleep-hours") patchTemplateStartDraft({ sleepHours: target.value }, false);
         if (action === "template-readiness-hrv") patchTemplateStartDraft({ hrv: target.value }, false);
