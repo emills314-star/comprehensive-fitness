@@ -28,18 +28,6 @@ function functionSource(name) {
   return html.slice(start, end);
 }
 
-function functionSourceContaining(pattern, message) {
-  const declarations = [];
-  const declarationPattern = /(?:async\s+)?function\s+([A-Za-z_$][\w$]*)\s*\(/g;
-  let match;
-  while ((match = declarationPattern.exec(html))) declarations.push({ name: match[1], index: match.index });
-  for (let index = 0; index < declarations.length; index += 1) {
-    const source = html.slice(declarations[index].index, declarations[index + 1]?.index || html.length);
-    if (pattern.test(source)) return source;
-  }
-  assert.fail(message);
-}
-
 function evaluateFunction(name, context = {}) {
   return vm.runInNewContext(`(${functionSource(name).trim()})`, context, { filename: `index.html#${name}` });
 }
@@ -155,17 +143,88 @@ test("safety adapters distinguish workout illness from affected-exercise pain an
 
 test("unified prescriptions preserve template intent and all hard workout constraints", () => {
   const unified = functionSource("unifiedPrescriptionSnapshot");
-  const start = functionSource("startTemplate");
-  const resistanceFallbacks = start.match(/resistanceType\s*:\s*target\.resistanceType\s*\|\|\s*templateResistanceType/g) || [];
   collectAssertions([
     ["planned working sets", () => assertContains(unified, /\b(?:plannedWorkingSets|plannedSets)\s*:/, "The engine call must receive the guided/template planned set count")],
     ["resistance type", () => assertContains(unified, /\bresistanceType\s*:/, "The engine call must receive the explicit resistance type")],
     ["time constraint", () => assertContains(unified, /\b(?:sessionDurationMinutes|timeConstraintMinutes|maxSessionMinutes)\s*:/, "The engine call must receive the session time constraint")],
     ["equipment constraint", () => assertContains(unified, /\bavailableEquipment\s*:/, "The engine call must receive available equipment")],
     ["exercise exclusions", () => assertContains(unified, /\b(?:excludedExerciseIds|exerciseExclusions)\s*:/, "The engine call must receive exercise exclusions")],
-    ["muscle scope", () => assertContains(unified, /\b(?:includedMuscleGroupIds|muscleScope)\s*:/, "The engine call must receive the selected muscle scope")],
-    ["exercise/set resistance fallback", () => assert.ok(resistanceFallbacks.length >= 2, `Started exercises and generated sets must retain template resistance when an engine target omits it; found ${resistanceFallbacks.length} guarded assignment(s)`)]
+    ["muscle scope", () => assertContains(unified, /\b(?:includedMuscleGroupIds|muscleScope)\s*:/, "The engine call must receive the selected muscle scope")]
   ]);
+});
+
+test("template start resolves one resistance type for the exercise, warm-ups, and every working set", () => {
+  let committed = null;
+  let nextId = 0;
+  const context = {
+    data: {
+      templates: [{
+        id: "template-1",
+        name: "Synthetic template",
+        exercises: [{
+          id: "template-exercise-1", name: "Synthetic press", resistanceType: "cable",
+          primaryMuscle: "Chest", secondaryMuscle: "Triceps", restSeconds: 90,
+          warmups: [{ id: "warmup-1", reps: 10, weight: 10 }]
+        }]
+      }],
+      sessions: [], exercises: [], sets: [], recommendationHistory: [], mesocycles: [], settings: { weightUnit: "lb" }
+    },
+    defaultRecovery: () => ({}),
+    hasActiveWorkout: () => false,
+    activeSession: () => null,
+    todayIso: () => "2026-07-14",
+    isSessionSubmitted: () => false,
+    cleanRecovery: (value) => value,
+    createSession: () => ({ id: "session-1", date: "2026-07-14", title: "Synthetic template" }),
+    recoveryRecommendationForSession: () => ({ decision: "normal" }),
+    inferResistanceType: () => "cable",
+    coachTargetForTemplateExercise: () => ({
+      sets: 2, reps: 8, repLow: 6, repHigh: 10, weight: 40, weightUnit: "lb", rpe: 8,
+      restSeconds: 90, mode: "maintenance", confidence: "medium", reason: "Synthetic target",
+      adjusted: false, triggerLabels: [], recommendationSnapshot: null
+    }),
+    isBodyweightResistance: () => false,
+    recommendedRestSeconds: () => 90,
+    adjustTargetForRecovery: (target) => ({ ...target, resistanceType: undefined }),
+    unifiedTargetContext: () => null,
+    exerciseTargetContext: () => ({ setTypes: [] }),
+    resolvedSetTypesForPrescription: () => [{
+      id: "straight-1", type: "straight", setCount: 2, repMin: 6, repMax: 10,
+      rpeMin: 7, rpeMax: 8, restSeconds: 90, countsTowardScore: true, countsTowardVolume: true
+    }],
+    id: () => `generated-${++nextId}`,
+    getMostRecentWorkoutSets: () => [],
+    setPrescriptionForRole: ({ setType, setTypeIndex, sequenceIndex }) => ({
+      setType: "straight", setTypeIndex, sequenceIndex, targetReps: 8, targetLoad: 40,
+      repMin: 6, repMax: 10, rpeMin: 7, rpeMax: 8, restSeconds: setType.restSeconds,
+      reason: "Synthetic role", previousComparableSet: null
+    }),
+    validateGeneratedSetPrescriptions: (items) => items,
+    normalizeSetTypeCode: (value) => value || "straight",
+    setTypeLabels: { straight: "Working set" },
+    createSet: (exerciseId, setNumber, source) => ({ id: `set-${setNumber}-${nextId}`, exerciseId, setNumber, ...source }),
+    currentMesocycle: () => null,
+    prescriptionApi: { PRESCRIPTION_SCHEMA_VERSION: "exercise-prescription/2.0.0" },
+    prescriptionEvidenceStatus: { personalVersion: "synthetic", researchVersion: "synthetic" },
+    isoNow: () => "2026-07-14T12:00:00.000Z",
+    setActiveTab: () => {},
+    canonicalSetSequence: (set) => Number(set.sequenceIndex || 0),
+    commit: (model) => { committed = plain(model); },
+    activeSessionId: "",
+    activeWorkoutId: "",
+    viewingHistorySessionId: "",
+    templateStartFlow: null,
+    activeSetId: "",
+    activeSetAcknowledged: false,
+    activeSetNotice: ""
+  };
+  const startTemplate = evaluateFunction("startTemplate", context);
+  startTemplate("template-1", {}, "usual");
+  const exercise = committed?.exercises?.find((item) => item.sessionId === "session-1");
+  const generatedSets = committed?.sets?.filter((item) => item.exerciseId === exercise?.id) || [];
+  assert.equal(exercise?.resistanceType, "cable", "The started exercise must fall back to the resolved template resistance type");
+  assert.equal(generatedSets.length, 3, "The synthetic template should generate one warm-up and two working sets");
+  generatedSets.forEach((set) => assert.equal(set.resistanceType, "cable", `Generated set ${set.id} lost the resolved resistance type`));
 });
 
 test("unified prescription invocation forwards canonical profile fields and hard constraints unchanged", () => {
@@ -311,40 +370,117 @@ test("backup import is bounded, allowlisted, and hostile-field safe", () => {
   ]);
 });
 
-test("cloud workout sync has separate explicit default-off consent and fails closed", () => {
-  const defaultsStart = html.indexOf("const defaultSettings");
-  assert.notEqual(defaultsStart, -1, "Missing defaultSettings");
-  const defaults = html.slice(defaultsStart, defaultsStart + 3500);
-  const normalize = functionSource("normalizeLoadedData");
-  const queue = functionSource("queueActiveWorkoutSync");
-  const flush = functionSource("flushWorkoutSyncQueue");
-  const notifications = functionSource("enablePushNotifications");
-  const notificationActionWindows = [...html.matchAll(/action\s*===\s*["'](?:request-notifications|toggle-rest-notifications|timer-notifications)["']/g)]
-    .map((match) => html.slice(match.index, match.index + 900));
-  collectAssertions([
-    ["default off", () => assertContains(defaults, /cloudWorkoutSyncConsent\s*:\s*false/, "Cloud workout sync consent must default to false")],
-    ["persisted independently", () => assertContains(normalize, /cloudWorkoutSyncConsent\s*:\s*storedSettings\.cloudWorkoutSyncConsent/, "Cloud workout sync consent must have its own persisted setting")],
-    ["explicit UI control", () => assertContains(html, /data-action=["']cloud-workout-sync-consent["']/, "Settings must expose a distinct cloud workout sync consent control")],
-    ["queue fails closed", () => assertContains(queue, /cloudWorkoutSyncConsent\s*!==\s*true|cloudWorkoutSyncConsent\s*===\s*true/, "Queueing must require explicit true consent")],
-    ["flush fails closed", () => assertContains(flush, /cloudWorkoutSyncConsent\s*!==\s*true|cloudWorkoutSyncConsent\s*===\s*true/, "Flushing must require explicit true consent")],
-    ["notification setup remains separate", () => assert.doesNotMatch(notifications, /cloudWorkoutSyncConsent/, "Enabling notifications must not enable workout upload")],
-    ["notification toggles remain separate", () => assert.ok(notificationActionWindows.every((source) => !/cloudWorkoutSyncConsent\s*:\s*true/.test(source)), "A notification preference handler must never grant workout-upload consent")]
-  ]);
+test("cloud workout sync performs no queue or flush work without explicit true consent", async () => {
+  async function run(consent) {
+    const settings = {};
+    if (consent !== undefined) settings.cloudWorkoutSyncConsent = consent;
+    const session = { id: "session-1" };
+    const model = { settings, exercises: [{ id: "exercise-1", sessionId: session.id }], sets: [{ id: "set-1", exerciseId: "exercise-1" }] };
+    const queueEvents = { reads: [], writes: [], timers: 0 };
+    const queueContext = {
+      data: model,
+      activeWorkoutSession: () => session,
+      completedSummarySessionId: "",
+      dataEntityIndex: () => ({
+        exerciseIndicesBySession: new Map([[session.id, [0]]]),
+        setIndicesByExercise: new Map([["exercise-1", [0]]])
+      }),
+      readIndexedValue: async (key) => { queueEvents.reads.push(key); return []; },
+      writeIndexedValue: async (key, value) => { queueEvents.writes.push({ key, value: plain(value) }); },
+      id: () => "mutation-1",
+      isoNow: () => "2026-07-14T12:00:00.000Z",
+      window: {
+        clearTimeout: () => {},
+        setTimeout: () => { queueEvents.timers += 1; return 1; }
+      },
+      syncFlushTimer: 0,
+      flushWorkoutSyncQueue: () => {}
+    };
+    await evaluateFunction("queueActiveWorkoutSync", queueContext)();
+
+    const flushEvents = { reads: [], writes: [], requests: [] };
+    const mutation = { mutationId: "mutation-1", sessionId: session.id, revision: "2026-07-14T12:00:00.000Z", payload: {} };
+    const flushContext = {
+      data: model,
+      navigator: { onLine: true },
+      pushIdentity: { installationId: "installation-1", token: "synthetic-token" },
+      readIndexedValue: async (key) => { flushEvents.reads.push(key); return [mutation]; },
+      writeIndexedValue: async (key, value) => { flushEvents.writes.push({ key, value: plain(value) }); },
+      pushApi: async (url, body) => { flushEvents.requests.push({ url, body: plain(body) }); return { status: "synced" }; }
+    };
+    await evaluateFunction("flushWorkoutSyncQueue", flushContext)();
+    return { queueEvents, flushEvents };
+  }
+
+  for (const consent of [undefined, false]) {
+    const result = await run(consent);
+    assert.deepEqual(result.queueEvents, { reads: [], writes: [], timers: 0 }, `${String(consent)} consent queued workout data`);
+    assert.deepEqual(result.flushEvents, { reads: [], writes: [], requests: [] }, `${String(consent)} consent flushed workout data`);
+  }
+  const allowed = await run(true);
+  assert.equal(allowed.queueEvents.writes.length, 1, "Explicit consent must permit queueing");
+  assert.equal(allowed.flushEvents.requests.length, 1, "Explicit consent must permit flushing");
 });
 
-test("remote deletion retries deleting responses, retains authorization on failure, and timer cancellation is versioned", () => {
-  const cancel = functionSource("cancelRestPush");
-  const deletion = functionSourceContaining(/\/api\/install\/delete/, "Missing frontend flow for authenticated remote installation deletion");
-  collectAssertions([
-    ["cancel carries timer version", () => assertContains(cancel, /timerVersion\s*:\s*Number\s*\(\s*timerSnapshot\.(?:version|timerVersion)/, "Queued and immediate timer cancellation must carry timerVersion")],
-    ["deleting is retryable", () => assertContains(deletion, /status\s*===?\s*["']deleting["']|status\s*!==?\s*["']deleted["']/, "HTTP 202 deleting responses must remain retryable")],
-    ["deleted is terminal", () => assertContains(deletion, /status\s*===?\s*["']deleted["']/, "Authorization may be discarded only after the server confirms deleted")],
-    ["bearer retained until terminal", () => {
-      const clearIndex = deletion.search(/pushIdentity\s*=\s*null|token\s*:\s*["']["']/);
-      const deletedIndex = deletion.search(/status\s*===?\s*["']deleted["']/);
-      assert.ok(clearIndex === -1 || (deletedIndex >= 0 && clearIndex > deletedIndex), "A failed or 202 deletion must retain the bearer needed to retry");
-    }]
-  ]);
+test("remote deletion retains authorization for 202 and failures, then clears only after terminal deleted", async () => {
+  const context = {
+    pushIdentity: { installationId: "installation-1", deviceId: "device-1", token: "synthetic-bearer", status: "enabled" },
+    settingsMessage: "",
+    render: () => {},
+    persistPushIdentity: async () => true,
+    writeIndexedValue: async () => true,
+    isoNow: () => "2026-07-14T12:00:00.000Z",
+    window: { setTimeout: () => 1, clearTimeout: () => {} },
+    pushApi: async () => ({ status: "deleting", retryable: true, phase: "discover" })
+  };
+  const remove = evaluateFunction("deleteRemoteInstallationData", context);
+
+  const deleting = plain(await remove());
+  assert.equal(deleting.status, "deleting");
+  assert.equal(deleting.retryable, true);
+  assert.equal(context.pushIdentity.token, "synthetic-bearer", "A 202/deleting response must retain the bearer for retry");
+
+  context.pushApi = async () => { const error = new Error("Synthetic network failure"); error.status = 503; throw error; };
+  let failure = null;
+  try { failure = plain(await remove()); }
+  catch (error) { failure = { status: "error", retryable: error.retryable === true }; }
+  assert.equal(failure?.retryable, true, "A failed delete must expose retryable state");
+  assert.equal(context.pushIdentity.token, "synthetic-bearer", "A failed delete must retain the bearer for retry");
+
+  context.pushApi = async () => ({ status: "deleted", retryable: false });
+  const deleted = plain(await remove());
+  assert.equal(deleted.status, "deleted");
+  assert.equal(Boolean(context.pushIdentity?.token), false, "Only terminal deleted may clear the bearer");
+});
+
+test("timer cancellation sends timerVersion and deduplicates only the same notification version", async () => {
+  const immediateRequests = [];
+  const immediateContext = {
+    navigator: { onLine: true, serviceWorker: { controller: { postMessage: () => {} } } },
+    pushIdentity: { installationId: "installation-1", token: "synthetic-bearer" },
+    activeWorkoutId: "workout-1",
+    pushApi: async (url, body) => { immediateRequests.push({ url, body: plain(body) }); return { status: "canceled" }; },
+    readIndexedValue: async () => [],
+    writeIndexedValue: async () => true
+  };
+  await evaluateFunction("cancelRestPush", immediateContext)({ id: "timer-1", workoutId: "workout-1", version: 7 }, "adjusted");
+  assert.equal(immediateRequests[0]?.body?.timerVersion, 7, "Immediate cancellation must carry the exact timer version");
+
+  let pending = [];
+  const offlineContext = {
+    navigator: { onLine: false, serviceWorker: { controller: { postMessage: () => {} } } },
+    pushIdentity: { installationId: "installation-1", token: "synthetic-bearer" },
+    activeWorkoutId: "workout-1",
+    pushApi: async () => { throw new Error("Offline requests must not run"); },
+    readIndexedValue: async () => plain(pending),
+    writeIndexedValue: async (_key, value) => { pending = plain(value); return true; }
+  };
+  const cancelOffline = evaluateFunction("cancelRestPush", offlineContext);
+  await cancelOffline({ id: "timer-1", workoutId: "workout-1", version: 7 }, "adjusted");
+  await cancelOffline({ id: "timer-1", workoutId: "workout-1", version: 7 }, "duplicate");
+  await cancelOffline({ id: "timer-1", workoutId: "workout-1", version: 8 }, "adjusted-again");
+  assert.equal(pending.length, 2, "Queue deduplication must retain one operation for each distinct timer version");
+  assert.deepEqual(pending.map((item) => item.timerVersion).sort((a, b) => a - b), [7, 8]);
 });
 
 test("quick-start cards retain native button semantics", () => {

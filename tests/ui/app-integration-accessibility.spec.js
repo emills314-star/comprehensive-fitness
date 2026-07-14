@@ -1,7 +1,7 @@
 "use strict";
 
 const { test, expect } = require("@playwright/test");
-const { IDS, hostileCases, legacyState, validFullState } = require("../fixtures/synthetic-app-backups");
+const { IDS, entityScopedUniquenessState, hostileCases, legacyState, validFullState } = require("../fixtures/synthetic-app-backups");
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -21,14 +21,25 @@ async function openBackupSettings(page) {
   return group;
 }
 
-async function importBackup(page, group, value, name = "synthetic-backup.json") {
+async function importBackup(page, group, value, name = "synthetic-backup.json", expectedState = "accepted") {
   const raw = typeof value === "string" ? value : JSON.stringify(value);
-  await group.locator('[data-action="import-data"]').setInputFiles({
+  const input = group.locator('[data-action="import-data"]');
+  const status = group.locator('[data-import-status]');
+  const importAttempt = () => status.evaluateAll((nodes) => Number(nodes[0]?.getAttribute("data-import-attempt") || 0));
+  const previousAttempt = await importAttempt();
+  await input.setInputFiles({
     name,
     mimeType: "application/json",
     buffer: Buffer.from(raw, "utf8")
   });
-  await page.waitForTimeout(100);
+  await expect.poll(importAttempt, {
+    message: `${name} must publish a new import attempt`,
+    timeout: 15_000
+  }).toBeGreaterThan(previousAttempt);
+  await expect(status).toHaveAttribute("role", "status");
+  await expect(status).toHaveAttribute("data-import-state", expectedState);
+  await expect(input).toBeEnabled();
+  return status;
 }
 
 async function exportedBackup(group) {
@@ -81,10 +92,23 @@ test("Dashboard detail Back restores focus to the originating summary control", 
   await expect(origin).toBeFocused();
 });
 
+test("cloud workout sync consent defaults off and persists independently when explicitly enabled", async ({ page }) => {
+  const navigation = page.getByRole("navigation", { name: "Main navigation" });
+  await navigation.getByRole("button", { name: /Settings$/ }).click();
+  const consent = page.locator('[data-action="cloud-workout-sync-consent"]');
+  await expect(consent).toBeVisible();
+  await expect(consent).not.toBeChecked();
+  await consent.check();
+  await expect(consent).toBeChecked();
+
+  await page.reload();
+  await navigation.getByRole("button", { name: /Settings$/ }).click();
+  await expect(page.locator('[data-action="cloud-workout-sync-consent"]')).toBeChecked();
+});
+
 test("a complete synthetic backup round-trips relationships and canonical settings", async ({ page }) => {
   const group = await openBackupSettings(page);
   await importBackup(page, group, validFullState());
-  await expect(group.getByText("Import complete.", { exact: true })).toBeVisible();
   const exported = await exportedBackup(group);
 
   expect(exported.sessions.map((item) => item.id)).toContain(IDS.session);
@@ -102,19 +126,30 @@ test("a complete synthetic backup round-trips relationships and canonical settin
 test("a supported legacy backup migrates overloaded settings without changing relationships", async ({ page }) => {
   const group = await openBackupSettings(page);
   await importBackup(page, group, legacyState(), "synthetic-legacy-backup.json");
-  await expect(group.getByText("Import complete.", { exact: true })).toBeVisible();
   const exported = await exportedBackup(group);
 
   expect(exported.exercises.find((item) => item.id === IDS.exercise)?.sessionId).toBe(IDS.session);
   expect(exported.sets.find((item) => item.id === IDS.set)?.exerciseId).toBe(IDS.exercise);
-  expect(exported.settings.trainingGoal).toBe("hypertrophy");
+  expect(exported.settings.trainingGoal).toBe("general_fitness");
   expect(exported.settings.nutritionPhase).toBe("deficit");
   expect(exported.settings.experienceLevel).toBe("novice");
+  const trainingGoalSource = exported.settings.trainingGoalSource || exported.settings.trainingGoalResolution?.source || "";
+  const trainingGoalDisclosure = exported.settings.trainingGoalDisclosure || exported.settings.trainingGoalResolution?.disclosure || "";
+  expect(trainingGoalSource).toMatch(/missing|default/i);
+  expect(trainingGoalDisclosure).toMatch(/general[ _-]?fitness|default/i);
   expect(exported.settings.goal, "The overloaded legacy goal must not remain authoritative").toBeUndefined();
   expect(exported.settings.trainingStatus, "The legacy experience field must not remain authoritative").toBeUndefined();
 });
 
-test("bounded backup validation rejects duplicates, orphans, executable keys, prototype keys, and oversized input", async ({ page }) => {
+test("backup uniqueness is entity-scoped rather than globally conflating typed IDs", async ({ page }) => {
+  const group = await openBackupSettings(page);
+  await importBackup(page, group, entityScopedUniquenessState(), "synthetic-entity-scoped-ids.json");
+  const exported = await exportedBackup(group);
+  expect(exported.exercises.some((item) => item.id === IDS.exercise)).toBe(true);
+  expect(exported.templates[0].exercises.some((item) => item.id === IDS.exercise)).toBe(true);
+});
+
+test("bounded backup validation rejects duplicate IDs, malformed versions, orphans, executable keys, prototype keys, and oversized input", async ({ page }) => {
   const group = await openBackupSettings(page);
   const baseline = validFullState();
 
@@ -122,7 +157,7 @@ test("bounded backup validation rejects duplicates, orphans, executable keys, pr
     await test.step(hostile.name, async () => {
       await importBackup(page, group, baseline, `baseline-${hostile.name}.json`);
       const payload = hostile.raw || JSON.stringify(hostile.value);
-      await importBackup(page, group, payload, `${hostile.name}.json`);
+      await importBackup(page, group, payload, `${hostile.name}.json`, "rejected");
       const exported = await exportedBackup(group);
       expect.soft(
         exported.sessions.some((item) => item.id === IDS.session && item.title === "Synthetic Round Trip"),
@@ -135,9 +170,8 @@ test("bounded backup validation rejects duplicates, orphans, executable keys, pr
 });
 
 test("hostile backup IDs and executable-looking fields are rejected before DOM rendering", async ({ page }) => {
-  const navigation = page.getByRole("navigation", { name: "Main navigation" });
-  await navigation.getByRole("button", { name: /Settings$/ }).click();
-  await page.locator("details.settings-group > summary").filter({ hasText: "Data and backup" }).click();
+  const group = await openBackupSettings(page);
+  await importBackup(page, group, validFullState(), "baseline-hostile-id.json");
 
   const safeSessionId = "11111111-1111-4111-8111-111111111111";
   const hostileExerciseId = 'evil" autofocus onfocus="window.__HOSTILE_BACKUP_EXECUTED__=1';
@@ -173,14 +207,11 @@ test("hostile backup IDs and executable-looking fields are rejected before DOM r
     settings: {}
   };
 
-  await page.locator('[data-action="import-data"]').setInputFiles({
-    name: "synthetic-hostile-backup.json",
-    mimeType: "application/json",
-    buffer: Buffer.from(JSON.stringify(backup), "utf8")
-  });
-  await page.waitForTimeout(150);
+  await importBackup(page, group, backup, "synthetic-hostile-backup.json", "rejected");
+  const exported = await exportedBackup(group);
 
-  expect(await page.getByText("Hostile Backup", { exact: true }).count(), "The invalid backup must not replace local state").toBe(0);
+  expect(exported.sessions.some((item) => item.id === IDS.session && item.title === "Synthetic Round Trip"), "The invalid backup must not replace local state").toBe(true);
+  expect(exported.sessions.some((item) => item.title === "Hostile Backup"), "The hostile backup must not enter persisted state").toBe(false);
   expect(await page.locator("[onerror], [onload], [onclick], [onfocus], [onpointerenter]").count(), "Imported data must never create executable DOM attributes").toBe(0);
   expect(await page.evaluate(() => window.__HOSTILE_BACKUP_EXECUTED__), "No imported field may execute").toBe(0);
 });
