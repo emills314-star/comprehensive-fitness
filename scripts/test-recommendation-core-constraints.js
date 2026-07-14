@@ -114,6 +114,17 @@ test("2 explicit session target and maximum are validated and enforced as hard c
   assert.equal(plan.constraints.sessionDurationTargetMinutes, 4);
   assert.equal(plan.constraints.sessionDurationMaximumMinutes, 5);
   assert.ok(plan.programReview.warnings.some((warning) => warning.type === "schedule_capacity" && /duration/i.test(warning.why)), "impossible work was not reported as a duration capacity result");
+  const shortened = engine.createMesocycle({
+    trainingDays: 1,
+    includedMuscleGroupIds: ["chest", "upper_back", "quads"],
+    availableEquipment: ["all"],
+    sessionDurationTargetMinutes: 15,
+    sessionDurationMaximumMinutes: 20,
+    createdAt: CREATED_AT
+  });
+  assert.ok(shortened.sessions[0].exercises.length > 0, "coherent shortening discarded every exercise");
+  assert.equal(shortened.sessions[0].exercises[0].intendedRole, "primary_progression_lift", "coherent shortening discarded priority work before lower-priority work");
+  assert.ok(shortened.sessions[0].estimatedDurationMinutes <= 20);
 });
 
 test("3 omitted scope defaults while explicit empty, blank, and malformed scope fail closed", () => {
@@ -220,32 +231,88 @@ test("10 caller timestamp propagates to every persisted nested candidate pool", 
 });
 
 test("11 goal is validated, persisted, explained, and directionally changes programming", () => {
-  const strength = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", goal: "strength", createdAt: CREATED_AT });
-  const endurance = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", goal: "endurance", createdAt: CREATED_AT });
+  const strength = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", trainingGoal: "strength", createdAt: CREATED_AT });
+  const endurance = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", trainingGoal: "muscular_endurance", createdAt: CREATED_AT });
   assert.equal(strength.basePrescription.programmingContext.goal.value, "strength");
+  assert.equal(strength.basePrescription.programmingContext.profileVersion, "training-profile/1.0.0");
   assert.equal(strength.basePrescription.programmingContext.goal.authority, "product_policy");
   assert.match(strength.finalPrescription.userExplanation, /strength/i);
   assert.match(strength.finalPrescription.userExplanation, /product policy|directional/i);
   assert.ok(strength.finalPrescription.repRange.target < endurance.finalPrescription.repRange.target, "goal did not directionally change repetition targets");
   assert.ok(strength.finalPrescription.restSeconds.target > endurance.finalPrescription.restSeconds.target, "goal did not directionally change recovery time");
+  const legacyAlias = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", goal: "endurance", legacyGoalSemantics: "training_goal", createdAt: CREATED_AT });
+  assert.equal(legacyAlias.basePrescription.programmingContext.goal.requestedValue, "endurance");
+  assert.equal(legacyAlias.basePrescription.programmingContext.goal.resolvedValue, "muscular_endurance");
+  const nutritionOnly = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", nutritionPhase: "deficit", createdAt: CREATED_AT });
+  assert.equal(nutritionOnly.basePrescription.programmingContext.goal.resolvedValue, "general_fitness", "nutrition phase masqueraded as a training goal");
+  assert.ok(nutritionOnly.basePrescription.programmingContext.missingInputs.includes("trainingGoal"));
+  const strengthAccessory = engine.prescribeExercise({ exerciseId: "ex_cable_curl", muscleGroupId: "biceps", trainingGoal: "strength", createdAt: CREATED_AT });
+  const hypertrophyAccessory = engine.prescribeExercise({ exerciseId: "ex_cable_curl", muscleGroupId: "biceps", trainingGoal: "hypertrophy", createdAt: CREATED_AT });
+  assert.ok(strengthAccessory.finalPrescription.repRange.min >= hypertrophyAccessory.finalPrescription.repRange.min, "strength policy incorrectly forced primary-lift lower reps onto a non-primary accessory");
+  assert.ok(strengthAccessory.finalPrescription.repRange.target > 8, "strength accessory was incorrectly forced into the primary 3-8 policy range");
   for (const unsupported of ["powerlifting", "weight_loss", "", 7]) {
-    assert.throws(() => engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", goal: unsupported, createdAt: CREATED_AT }), /goal/i);
+    assert.throws(() => engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", trainingGoal: unsupported, createdAt: CREATED_AT }), /goal/i);
   }
+  assert.throws(() => engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", goal: "strength", createdAt: CREATED_AT }), /legacy.*goal|trainingGoal/i, "overloaded legacy goal lacked provenance validation");
+  assert.throws(() => engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", trainingGoal: "strength", goal: "endurance", legacyGoalSemantics: "training_goal", createdAt: CREATED_AT }), /conflicting.*goal/i);
+  const matchingAlias = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", trainingGoal: "strength", goal: "strength", legacyGoalSemantics: "training_goal", createdAt: CREATED_AT });
+  assert.equal(matchingAlias.basePrescription.programmingContext.goal.source, "canonical_with_matching_legacy_alias");
+  assert.throws(() => engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", goal: "cut", legacyGoalSemantics: "training_goal", nutritionPhase: "deficit", createdAt: CREATED_AT }), /goal/i, "nutrition phase was accepted as a training goal");
 });
 
 test("12 experience is validated, persisted, explained, and changes complexity conservatively", () => {
-  const novice = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", goal: "hypertrophy", experience: "novice", createdAt: CREATED_AT });
-  const advanced = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", goal: "hypertrophy", experience: "advanced", createdAt: CREATED_AT });
+  const novice = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", trainingGoal: "hypertrophy", experienceLevel: "novice", createdAt: CREATED_AT });
+  const advanced = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", trainingGoal: "hypertrophy", experienceLevel: "advanced", createdAt: CREATED_AT });
   assert.equal(novice.basePrescription.programmingContext.experience.value, "novice");
   assert.equal(novice.basePrescription.programmingContext.experience.authority, "product_policy");
   assert.match(novice.finalPrescription.userExplanation, /novice/i);
   assert.equal(novice.finalPrescription.setStructure, "straight_sets", "novice default should favor a simpler stable structure");
-  assert.notEqual(advanced.finalPrescription.setStructure, novice.finalPrescription.setStructure, "advanced profile did not permit suitable complexity");
+  assert.equal(advanced.finalPrescription.setStructure, novice.finalPrescription.setStructure, "advanced status alone changed structure without preference or productive history");
   assert.equal(advanced.finalPrescription.workingSets.target, novice.finalPrescription.workingSets.target, "advanced status must not automatically add dose");
+  assert.deepEqual(advanced.finalPrescription.repRange, novice.finalPrescription.repRange, "advanced status alone changed repetitions");
+  assert.deepEqual(advanced.finalPrescription.restSeconds, novice.finalPrescription.restSeconds, "advanced status alone changed rest");
   assert.ok(novice.basePrescription.programmingContext.experience.progressionConfirmationExposures >= 2);
+  const preferredComplexity = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", trainingGoal: "hypertrophy", experienceLevel: "advanced", setStructurePreference: "advanced_if_supported", createdAt: CREATED_AT });
+  assert.equal(preferredComplexity.basePrescription.programmingContext.experience.complexitySupportedBy, "explicit_preference");
+  assert.equal(preferredComplexity.basePrescription.programmingContext.experience.complexStructureAllowed, true);
+  assert.notEqual(preferredComplexity.finalPrescription.setStructure, advanced.finalPrescription.setStructure, "explicit complexity preference did not permit a supported advanced structure");
+  const productiveHistory = [0, 1, 2, 3].map((index) => ({
+    exercise_id: "custom_press",
+    workout_date: `2026-06-${String(1 + index * 7).padStart(2, "0")}`,
+    progression_status: index ? "improved" : "baseline",
+    progression_pct_vs_prior: index ? 2 : 0,
+    comparison_performance_value: 100 + index * 3,
+    best_epley_e1rm: 100 + index * 3,
+    average_rpe: 8,
+    recovery_strain_score: 30,
+    max_set_rep_loss_pct: 10,
+    max_set_load_reduction_pct: 12,
+    plateau_duration_exposures: 0,
+    regression_duration_exposures: 0,
+    pain: false,
+    set_repetitions: "[8,8,8]",
+    set_loads: "[100,100,100]",
+    top_set_count: 1,
+    back_off_set_count: 2,
+    straight_working_set_count: 0,
+    backoff_performance_value: 90 + index * 3
+  }));
+  const productive = engineWithCustomBenchAlias().prescribeExercise({ exerciseId: "custom_press", muscleGroupId: "chest", trainingGoal: "hypertrophy", experienceLevel: "advanced", history: productiveHistory, createdAt: CREATED_AT });
+  assert.equal(productive.basePrescription.staleness.classification, "productive");
+  assert.equal(productive.basePrescription.programmingContext.experience.complexitySupportedBy, "productive_history");
+  assert.equal(productive.basePrescription.programmingContext.experience.complexStructureAllowed, true);
+  const missing = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", trainingGoal: "hypertrophy", createdAt: CREATED_AT });
+  assert.equal(missing.basePrescription.programmingContext.experience.resolvedValue, "novice_safe_default");
+  assert.equal(missing.basePrescription.programmingContext.experience.requestedValue, null);
+  assert.ok(missing.basePrescription.programmingContext.missingInputs.includes("experienceLevel"));
+  assert.doesNotMatch(missing.finalPrescription.userExplanation, /you are (a )?novice/i, "missing experience was presented as a known user fact");
   for (const unsupported of ["expert", "elite", "", 4]) {
-    assert.throws(() => engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", experience: unsupported, createdAt: CREATED_AT }), /experience/i);
+    assert.throws(() => engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", experienceLevel: unsupported, createdAt: CREATED_AT }), /experience/i);
   }
+  assert.throws(() => engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", experience: "advanced", createdAt: CREATED_AT }), /legacy.*experience|experienceLevel/i);
+  assert.throws(() => engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", experienceLevel: "novice", experience: "advanced", legacyExperienceSemantics: "training_experience", createdAt: CREATED_AT }), /conflicting.*experience/i);
+  const legacy = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", experience: "advanced", legacyExperienceSemantics: "training_experience", createdAt: CREATED_AT });
+  assert.equal(legacy.basePrescription.programmingContext.experience.inputField, "experience");
 });
 
 (async function run() {

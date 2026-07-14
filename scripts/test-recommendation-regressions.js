@@ -483,6 +483,8 @@ test("ordinary multi-override history remains valid while incomplete and duplica
     exerciseId: "ex_barbell_bench_press",
     muscleGroupId: "chest",
     history: progressionHistory(),
+    experienceLevel: "advanced",
+    setStructurePreference: "advanced_if_supported",
     createdAt
   });
   const first = engine.applyManualOverride(snapshot, {
@@ -527,6 +529,8 @@ function fiveSetPrescriptionWithLaterRepOverride() {
     exerciseId: "ex_barbell_bench_press",
     muscleGroupId: "chest",
     history: progressionHistory(),
+    experienceLevel: "advanced",
+    setStructurePreference: "advanced_if_supported",
     createdAt
   });
   assert.equal(snapshot.finalPrescription.workingSets.target, 4, "fixture must begin with four working sets");

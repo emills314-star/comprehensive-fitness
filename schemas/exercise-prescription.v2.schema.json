@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://comprehensive-fitness.local/schemas/exercise-prescription.v2.schema.json",
-  "title": "ExercisePrescription v2.1",
+  "title": "ExercisePrescription v2.2",
   "description": "The canonical, explainable exercise-level decision returned by the unified prescription engine. Ranges are inclusive. Evidence weights must sum to 1 within normal floating-point tolerance.",
   "type": "object",
   "additionalProperties": false,
@@ -38,11 +38,13 @@
     "staleness",
     "deloadStatus",
     "mesocycleId",
-    "executionBlocked"
+    "executionBlocked",
+    "programmingContext",
+    "historyResolution"
   ],
   "properties": {
     "schemaVersion": {
-      "const": "2.1.0"
+      "const": "2.2.0"
     },
     "exerciseId": {
       "$ref": "#/$defs/id"
@@ -108,6 +110,12 @@
     "executionBlocked": {
       "type": "boolean",
       "description": "When true, no working set may be created or executed from this prescription. Consumers must stop before converting legacy targets."
+    },
+    "programmingContext": {
+      "$ref": "#/$defs/programmingContext"
+    },
+    "historyResolution": {
+      "$ref": "#/$defs/historyResolution"
     },
     "safetyRestriction": {
       "$ref": "#/$defs/hardSafetyRestriction"
@@ -1336,6 +1344,74 @@
         "explanation": {
           "$ref": "#/$defs/nonEmptyString"
         }
+      }
+    },
+    "programmingContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profileVersion", "missingInputs", "policyDisclosures", "goal", "experience", "personalization"],
+      "properties": {
+        "profileVersion": { "const": "training-profile/1.0.0" },
+        "missingInputs": { "type": "array", "uniqueItems": true, "items": { "enum": ["trainingGoal", "experienceLevel"] } },
+        "policyDisclosures": { "type": "array", "minItems": 3, "items": { "$ref": "#/$defs/nonEmptyString" } },
+        "goal": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value", "requestedValue", "resolvedValue", "source", "inputField", "authority", "disclosure", "selectionEmphasis"],
+          "properties": {
+            "value": { "enum": ["strength", "hypertrophy", "muscular_endurance", "general_fitness"] },
+            "requestedValue": { "type": ["string", "null"] },
+            "resolvedValue": { "enum": ["strength", "hypertrophy", "muscular_endurance", "general_fitness"] },
+            "source": { "enum": ["canonical_user_input", "legacy_alias", "canonical_with_matching_legacy_alias", "population_default"] },
+            "inputField": { "enum": ["trainingGoal", "goal", "trainingGoal+goal", "default"] },
+            "authority": { "const": "product_policy" },
+            "disclosure": { "$ref": "#/$defs/nonEmptyString" },
+            "selectionEmphasis": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        },
+        "experience": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value", "requestedValue", "resolvedValue", "source", "inputField", "authority", "progressionConfirmationExposures", "complexStructureAllowed", "complexitySupportedBy", "complexityPolicy", "disclosure"],
+          "properties": {
+            "value": { "enum": ["novice_safe_default", "novice", "intermediate", "advanced"] },
+            "requestedValue": { "type": ["string", "null"] },
+            "resolvedValue": { "enum": ["novice_safe_default", "novice", "intermediate", "advanced"] },
+            "source": { "enum": ["novice_safe_default", "canonical_user_input", "legacy_alias", "canonical_with_matching_legacy_alias"] },
+            "inputField": { "enum": ["experienceLevel", "experience", "experienceLevel+experience", "default"] },
+            "authority": { "const": "product_policy" },
+            "progressionConfirmationExposures": { "type": "integer", "minimum": 1, "maximum": 10 },
+            "complexStructureAllowed": { "type": "boolean" },
+            "complexitySupportedBy": { "enum": ["none", "explicit_preference", "productive_history"] },
+            "complexityPolicy": { "$ref": "#/$defs/nonEmptyString" },
+            "disclosure": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        },
+        "personalization": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["personalEvidenceAvailable", "comparableExposureCount", "source", "missingData", "disclosure"],
+          "properties": {
+            "personalEvidenceAvailable": { "type": "boolean" },
+            "comparableExposureCount": { "type": "integer", "minimum": 0 },
+            "source": { "enum": ["personal_and_research", "research_population_default"] },
+            "missingData": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/id" } },
+            "disclosure": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        }
+      }
+    },
+    "historyResolution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "suppliedRowCount", "matchedRowCount", "ignoredUnrelatedRowCount", "selectedExerciseId", "selectedResearchExerciseId"],
+      "properties": {
+        "mode": { "enum": ["identity_filtered", "legacy_caller_scoped"] },
+        "suppliedRowCount": { "type": "integer", "minimum": 0 },
+        "matchedRowCount": { "type": "integer", "minimum": 0 },
+        "ignoredUnrelatedRowCount": { "type": "integer", "minimum": 0 },
+        "selectedExerciseId": { "$ref": "#/$defs/id" },
+        "selectedResearchExerciseId": { "$ref": "#/$defs/nullableId" }
       }
     },
     "explanationDetails": {

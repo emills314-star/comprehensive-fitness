@@ -19,6 +19,8 @@
     "split",
     "availableEquipment",
     "constraints",
+    "exclusionResolution",
+    "programmingContext",
     "planningStep",
     "pools",
     "programSlots",
@@ -35,7 +37,7 @@
       "$ref": "exercise-prescription.v2.schema.json#/$defs/id"
     },
     "schemaVersion": {
-      "enum": ["mesocycle/1.0.0", "mesocycle/2.0.0", "mesocycle/2.1.0", "mesocycle/2.2.0", "mesocycle/2.3.0", "mesocycle/2.4.0"]
+      "enum": ["mesocycle/1.0.0", "mesocycle/2.0.0", "mesocycle/2.1.0", "mesocycle/2.2.0", "mesocycle/2.3.0", "mesocycle/2.4.0", "mesocycle/2.5.0"]
     },
     "type": {
       "$ref": "#/$defs/mesocycleType"
@@ -87,6 +89,8 @@
       }
     },
     "constraints": { "type": "object", "additionalProperties": true },
+    "exclusionResolution": { "$ref": "#/$defs/exclusionResolution" },
+    "programmingContext": { "$ref": "exercise-prescription.v2.schema.json#/$defs/programmingContext" },
     "planningStep": { "type": "integer", "minimum": 1, "maximum": 10 },
     "availableMuscleGroupIds": { "$ref": "#/$defs/idList" },
     "includedMuscleGroupIds": { "$ref": "#/$defs/idList" },
@@ -160,6 +164,31 @@
       "format": "date-time",
       "pattern": "^\\d{4}-\\d{2}-\\d{2}T"
     },
+    "exclusionResolution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provided", "requestedValues", "excludedExerciseIds", "excludedResearchExerciseIds", "resolutions"],
+      "properties": {
+        "provided": { "type": "boolean" },
+        "requestedValues": { "type": "array", "uniqueItems": true, "items": { "$ref": "exercise-prescription.v2.schema.json#/$defs/nonEmptyString" } },
+        "excludedExerciseIds": { "$ref": "#/$defs/idList" },
+        "excludedResearchExerciseIds": { "$ref": "#/$defs/idList" },
+        "resolutions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["requestedValue", "resolutionType", "exerciseId", "researchExerciseId"],
+            "properties": {
+              "requestedValue": { "$ref": "exercise-prescription.v2.schema.json#/$defs/nonEmptyString" },
+              "resolutionType": { "enum": ["canonical_research_id", "trusted_custom_id", "research_alias"] },
+              "exerciseId": { "$ref": "exercise-prescription.v2.schema.json#/$defs/id" },
+              "researchExerciseId": { "$ref": "exercise-prescription.v2.schema.json#/$defs/nullableId" }
+            }
+          }
+        }
+      }
+    },
     "mesocycleType": {
       "type": "string",
       "enum": [
@@ -193,6 +222,7 @@
         "candidateCount",
         "availableViableExerciseCount",
         "candidates",
+        "exclusionResolution",
         "diversificationApplied",
         "explanation"
       ],
@@ -232,6 +262,7 @@
           "type": "array",
           "items": { "type": "object", "additionalProperties": true }
         },
+        "exclusionResolution": { "$ref": "#/$defs/exclusionResolution" },
         "sourceMuscleGroupIds": { "$ref": "#/$defs/idList" }
       }
     },

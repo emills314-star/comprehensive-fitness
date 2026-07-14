@@ -219,7 +219,8 @@ const mesocycle = load(SCHEMA_FILES[1]).schema;
 const snapshot = load(SCHEMA_FILES[2]).schema;
 const engineSource = fs.readFileSync(path.resolve(ROOT, "prescription-engine.js"), "utf8");
 
-assert.equal(exercise.properties.schemaVersion.const, "2.1.0");
+assert.equal(exercise.properties.schemaVersion.const, "2.2.0");
+assertIncludesAll(exercise.required, ["programmingContext", "historyResolution"], "ExercisePrescription.required");
 assert.equal(exercise.additionalProperties, false);
 assertIncludesAll(exercise.required, [
   "exerciseId", "muscleGroupId", "recommendationType", "role", "setStructure",
@@ -247,6 +248,7 @@ assert.match(conditionalText, /backoffSets/);
 assert.match(conditionalText, /multiple_top_sets/);
 
 assert(mesocycle.properties.schemaVersion.enum.includes("mesocycle/2.0.0"));
+assert(mesocycle.properties.schemaVersion.enum.includes("mesocycle/2.5.0"));
 assert.equal(mesocycle.additionalProperties, false);
 assertExactEnum(mesocycle.$defs.mesocycleType.enum, extractFrozenObjectValues(engineSource, "MESOCYCLE_TYPES"), "mesocycleType");
 assertIncludesAll(mesocycle.$defs.mesocycleStatus.enum, ["draft", "planned", "active", "completed", "abandoned", "archived"]);
@@ -264,7 +266,7 @@ assertIncludesAll(mesocycle.$defs.candidateCore.required, [
 assert.equal(mesocycle.$defs.candidate.unevaluatedProperties, false);
 assert.equal(mesocycle.$defs.activeExercise.unevaluatedProperties, false);
 
-assert.equal(snapshot.properties.schemaVersion.const, "1.1.0");
+assert.equal(snapshot.properties.schemaVersion.const, "1.2.0");
 assert.equal(snapshot.additionalProperties, false);
 assertIncludesAll(snapshot.required, [
   "recommendationId", "recommendationVersion", "engineVersion", "personalDataVersion",
