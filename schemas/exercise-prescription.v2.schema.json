@@ -3,6 +3,11 @@
   "$id": "https://comprehensive-fitness.local/schemas/exercise-prescription.v2.schema.json",
   "title": "ExercisePrescription v2.3",
   "description": "The canonical, explainable exercise-level decision returned by the unified prescription engine. Ranges are inclusive. Evidence weights must sum to 1 within normal floating-point tolerance.",
+  "x-runtimeReadCompatibility": {
+    "mode": "preserve_legacy_without_fabricating_current_fields",
+    "currentEmission": "2.3.0",
+    "supportedVersions": ["2.0.0", "2.1.0", "2.2.0", "2.3.0"]
+  },
   "type": "object",
   "additionalProperties": false,
   "required": [

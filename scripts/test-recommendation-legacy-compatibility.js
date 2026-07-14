@@ -9,7 +9,8 @@ const {
   deserializeRecommendationSnapshot,
   recommendationHistory,
   reconcileRecommendation,
-  refreshRecommendationChecksum
+  refreshRecommendationChecksum,
+  serializeRecommendationSnapshot
 } = require("../prescription-engine");
 
 const ROOT = path.resolve(__dirname, "..");
@@ -98,6 +99,7 @@ test("checksum-less v1.0/2.0 reads unchanged without fabricated current facts", 
   assert.equal(legacyRead.basePrescription.programmingContext, undefined, "legacy unknown context must not be fabricated");
   assert.equal(legacyRead.basePrescription.progressionConfirmation, undefined, "legacy confirmation must remain unknown");
   assert.equal(legacyRead.basePrescription.scientificProvenance, undefined, "legacy provenance must remain unknown");
+  assert.deepEqual(JSON.parse(serializeRecommendationSnapshot(legacyRead)), legacyWithoutChecksum, "serializing preserved legacy data must not synthesize a checksum or current fields");
 });
 
 test("all four repository-known version pairs read while generation remains latest-only", () => {
@@ -107,6 +109,7 @@ test("all four repository-known version pairs read while generation remains late
   }
   assert.equal(current.schemaVersion, "1.3.0", "current generation must remain latest-only");
   assert.equal(current.basePrescription.schemaVersion, "2.3.0", "current prescriptions must remain latest-only");
+  assert.equal(current.engineVersion, "3.3.1", "the technique-confirmation fix requires a traceable patch engine version");
 });
 
 test("a present legacy checksum is verified before compatibility handling", () => {
@@ -142,6 +145,8 @@ test("reconciliation does not silently replace an existing historical identity",
   recomputedWithDifferentIdentity.recommendationId = "rec_recomputed_different_identity";
   const reconciled = reconcileRecommendation(legacyWithoutChecksum, recomputedWithDifferentIdentity);
   assert.equal(reconciled.recommendationId, legacyWithoutChecksum.recommendationId, "reconciliation must not silently replace an existing historical identity");
+  const explicit = reconcileRecommendation(legacyWithoutChecksum, recomputedWithDifferentIdentity, { allowExplicitReplace: true });
+  assert.equal(explicit.recommendationId, recomputedWithDifferentIdentity.recommendationId, "an explicitly authorized replacement must remain possible");
 });
 
 function exposure(day, options = {}) {

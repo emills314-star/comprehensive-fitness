@@ -197,15 +197,15 @@ test("illness and pain have hard readiness precedence", () => {
   assertHardSafetyBlocked(pain, "pain", "exercise");
 });
 
-test("runtime snapshot validation rejects missing and unknown schema versions", () => {
+test("runtime snapshot validation rejects missing, mismatched, and unknown schema versions", () => {
   const snapshot = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", createdAt });
   const missing = structuredClone(snapshot);
   delete missing.schemaVersion;
   assert.throws(() => validateSnapshot(missing), /schemaVersion/i);
-  ["1.0.0", "999.0.0"].forEach((schemaVersion) => {
-    const unsupported = { ...structuredClone(snapshot), schemaVersion };
-    assert.throws(() => validateSnapshot(unsupported), /unsupported.*schemaVersion|schemaVersion.*unsupported/i, `${schemaVersion} must fail closed`);
-  });
+  const mismatched = { ...structuredClone(snapshot), schemaVersion: "1.0.0" };
+  assert.throws(() => validateSnapshot(mismatched), /version pair|requires/i, "a legacy snapshot label cannot be attached to a current prescription");
+  const unsupported = { ...structuredClone(snapshot), schemaVersion: "999.0.0" };
+  assert.throws(() => validateSnapshot(unsupported), /unsupported.*schemaVersion|schemaVersion.*unsupported/i, "an unknown schema must fail closed");
 });
 
 test("current illness or pain supersedes every deload scope", () => {

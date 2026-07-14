@@ -13,7 +13,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function prescriptionEngineFactory() {
   "use strict";
 
-  const ENGINE_VERSION = "3.3.0";
+  const ENGINE_VERSION = "3.3.1";
   const PRESCRIPTION_SCHEMA_VERSION = "2.3.0";
   const SNAPSHOT_SCHEMA_VERSION = "1.3.0";
   const TRAINING_PROFILE_VERSION = "training-profile/1.1.0";
@@ -21,8 +21,18 @@
   const SCIENTIFIC_PROVENANCE_SCHEMA_VERSION = "recommendation-provenance/1.0.0";
   const PROGRESSION_CONFIRMATION_SCHEMA_VERSION = "progression-confirmation/1.0.0";
   const GOAL_POLICY_CONFLICT_SCHEMA_VERSION = "goal-policy-conflict/1.0.0";
-  const SUPPORTED_PRESCRIPTION_SCHEMA_VERSIONS = Object.freeze(new Set(["2.2.0", PRESCRIPTION_SCHEMA_VERSION]));
-  const SUPPORTED_SNAPSHOT_SCHEMA_VERSIONS = Object.freeze(new Set(["1.2.0", SNAPSHOT_SCHEMA_VERSION]));
+  const SUPPORTED_PRESCRIPTION_SCHEMA_VERSIONS = Object.freeze(new Set(["2.0.0", "2.1.0", "2.2.0", PRESCRIPTION_SCHEMA_VERSION]));
+  const SUPPORTED_SNAPSHOT_SCHEMA_VERSIONS = Object.freeze(new Set(["1.0.0", "1.1.0", "1.2.0", SNAPSHOT_SCHEMA_VERSION]));
+  const SNAPSHOT_PRESCRIPTION_SCHEMA_PAIRS = Object.freeze({
+    "1.0.0": "2.0.0",
+    "1.1.0": "2.1.0",
+    "1.2.0": "2.2.0",
+    "1.3.0": "2.3.0"
+  });
+  // Historical snapshots are validated and returned unchanged. The reader
+  // intentionally does not synthesize current personalization, provenance, or
+  // confirmation fields because their values were unknown when those records
+  // were created; only newly generated recommendations use the current pair.
   const HARD_SAFETY_SCHEMA_VERSION = "hard-safety/1.0.0";
   const SNAPSHOT_CHECKSUM_PATTERN = /^[0-9a-f]{8}$/;
   const HISTORY_STORAGE_KEY = "comprehensiveFitness.recommendationHistory.v1";
@@ -2518,7 +2528,8 @@
     const evaluated = history.map((item) => {
       const complete = (item.adherence !== null && item.adherence >= 0.999)
         || (item.completedSetCount !== null && item.prescribedSetCount !== null && item.completedSetCount >= item.prescribedSetCount);
-      const techniqueValid = item.techniqueValid === true || /valid|good|stable|repeatable|controlled/.test(item.techniqueQuality);
+      const techniqueQuality = String(item.techniqueQuality || "").trim().toLowerCase();
+      const techniqueValid = item.techniqueValid === true || /^(valid|good|stable|repeatable|controlled)(?:\b|_)/.test(techniqueQuality);
       const effortValues = item.rpes.length ? item.rpes : item.averageRpe !== null ? [item.averageRpe] : [];
       const effortValid = effortValues.length > 0 && effortValues.every((value) => value >= number(targetRpe.min, 5) && value <= number(targetRpe.max, 10));
       const comparablePerformance = item.reps.length > 0 && (item.loads.length > 0 || item.performance !== null);
@@ -2546,7 +2557,9 @@
       satisfied,
       exceptionApplied: stableLowFatigueIsolation ? "stable_low_fatigue_isolation" : null,
       criteria: ["complete_prescribed_work", "valid_technique", "target_effort", "pain_free", "comparable_performance"],
-      qualifyingExposureDates: evaluated.filter((item) => item.qualifies).slice(-observedQualifyingExposures || evaluated.length).map((item) => item.date).filter(Boolean),
+      qualifyingExposureDates: observedQualifyingExposures === 0
+        ? []
+        : evaluated.slice(-observedQualifyingExposures).map((item) => item.date).filter(Boolean),
       explanation: satisfied
         ? `${observedQualifyingExposures} consecutive qualifying comparable exposure${observedQualifyingExposures === 1 ? "" : "s"} satisfy the ${requiredExposures}-exposure confirmation policy.`
         : `${observedQualifyingExposures} consecutive qualifying comparable exposure${observedQualifyingExposures === 1 ? " was" : "s were"} observed; ${requiredExposures} are required before progression. Missing or invalid evidence is not treated as confirmation.`
@@ -4576,16 +4589,50 @@
     return true;
   }
 
+  function validateLegacyManualOverrideLineage(snapshot, prescriptionSchemaVersion) {
+    if (!Array.isArray(snapshot.manualOverrides)) throw new Error("Invalid legacy manual override lineage; manualOverrides must be an array.");
+    if (!snapshot.manualOverrides.length) {
+      if (snapshot.overrideLocked !== false || snapshot.finalPrescription?.manualOverride) throw new Error("Invalid legacy manual override lineage; an empty history cannot retain an override lock or final override marker.");
+      return true;
+    }
+    if (snapshot.overrideLocked !== true) throw new Error("Invalid legacy manual override lineage; a non-empty override history must remain locked for the workout.");
+    const overrideIds = new Set();
+    snapshot.manualOverrides.forEach((entry, index) => {
+      if (!entry || typeof entry !== "object" || Array.isArray(entry)) throw new Error(`Invalid legacy manual override lineage; entry ${index} must be an object.`);
+      const required = ["overrideId", "createdAt", "actor", "reason", "changes", "previousFinalPrescription"];
+      const missing = required.filter((field) => !hasOwn(entry, field) || entry[field] === undefined);
+      if (missing.length) throw new Error(`Invalid legacy manual override lineage; entry ${index} is missing ${missing.join(", ")}.`);
+      if ([entry.overrideId, entry.createdAt, entry.actor, entry.reason].some((value) => typeof value !== "string" || !value.trim())) throw new Error(`Invalid legacy manual override lineage; entry ${index} has incomplete audit provenance.`);
+      if (overrideIds.has(entry.overrideId)) throw new Error(`Invalid legacy manual override lineage; duplicate overrideId ${entry.overrideId}.`);
+      overrideIds.add(entry.overrideId);
+      if (!entry.changes || typeof entry.changes !== "object" || Array.isArray(entry.changes) || !Object.keys(entry.changes).length) throw new Error(`Invalid legacy manual override lineage; entry ${index} has no recorded changes.`);
+      if (!entry.previousFinalPrescription || entry.previousFinalPrescription.schemaVersion !== prescriptionSchemaVersion) throw new Error(`Invalid legacy manual override lineage; entry ${index} does not preserve its ${prescriptionSchemaVersion} prior prescription.`);
+    });
+    const finalOverrideId = snapshot.finalPrescription?.manualOverride?.overrideId;
+    if (finalOverrideId && finalOverrideId !== snapshot.manualOverrides.at(-1).overrideId) throw new Error("Invalid legacy manual override lineage; final override identity does not match the append-only audit tail.");
+    return true;
+  }
+
   function validateSnapshot(snapshot) {
-    const required = ["recommendationId", "schemaVersion", "recommendationVersion", "engineVersion", "personalDataVersion", "researchDatabaseVersion", "basePrescription", "finalPrescription", "createdAt", "manualOverrides", "overrideLocked", "checksum"];
+    const required = ["recommendationId", "schemaVersion", "recommendationVersion", "engineVersion", "personalDataVersion", "researchDatabaseVersion", "basePrescription", "finalPrescription", "createdAt", "manualOverrides", "overrideLocked"];
     const missing = required.filter((field) => snapshot?.[field] === undefined || snapshot?.[field] === null);
     if (missing.length) throw new Error(`Invalid recommendation snapshot; missing ${missing.join(", ")}.`);
-    if (typeof snapshot.checksum !== "string" || !SNAPSHOT_CHECKSUM_PATTERN.test(snapshot.checksum)) throw new Error("Invalid recommendation snapshot checksum; expected the current lowercase 8-hex checksum format.");
     if (!SUPPORTED_SNAPSHOT_SCHEMA_VERSIONS.has(snapshot.schemaVersion)) throw new Error(`Unsupported recommendation snapshot schemaVersion ${snapshot.schemaVersion}; supported versions are ${[...SUPPORTED_SNAPSHOT_SCHEMA_VERSIONS].join(", ")}.`);
+    const expectedPrescriptionSchemaVersion = SNAPSHOT_PRESCRIPTION_SCHEMA_PAIRS[snapshot.schemaVersion];
+    if (snapshot.recommendationVersion !== expectedPrescriptionSchemaVersion) throw new Error(`Invalid recommendation snapshot version pair; ${snapshot.schemaVersion} requires recommendationVersion ${expectedPrescriptionSchemaVersion}.`);
+    if (snapshot.checksum === undefined || snapshot.checksum === null) {
+      if (snapshot.schemaVersion !== "1.0.0") throw new Error("Invalid recommendation snapshot; missing checksum.");
+    } else {
+      const checksumPattern = snapshot.schemaVersion === "1.0.0" ? /^[0-9a-f]{8,128}$/ : SNAPSHOT_CHECKSUM_PATTERN;
+      if (typeof snapshot.checksum !== "string" || !checksumPattern.test(snapshot.checksum)) throw new Error("Invalid recommendation snapshot checksum; expected a lowercase hexadecimal checksum in the historical format for this schema.");
+    }
     ["basePrescription", "finalPrescription"].forEach((field) => {
       const prescription = snapshot[field];
       if (!SUPPORTED_PRESCRIPTION_SCHEMA_VERSIONS.has(prescription?.schemaVersion)) throw new Error(`Unsupported ${field} schemaVersion ${prescription?.schemaVersion}; supported versions are ${[...SUPPORTED_PRESCRIPTION_SCHEMA_VERSIONS].join(", ")}.`);
-      if (typeof prescription.executionBlocked !== "boolean") throw new Error(`Invalid ${field}; executionBlocked must be boolean.`);
+      if (prescription.schemaVersion !== expectedPrescriptionSchemaVersion) throw new Error(`Invalid recommendation snapshot version pair; ${field} must use ${expectedPrescriptionSchemaVersion}.`);
+      if (prescription.schemaVersion === "2.0.0") {
+        if (prescription.executionBlocked !== undefined && typeof prescription.executionBlocked !== "boolean") throw new Error(`Invalid ${field}; legacy executionBlocked must be boolean when present.`);
+      } else if (typeof prescription.executionBlocked !== "boolean") throw new Error(`Invalid ${field}; executionBlocked must be boolean.`);
       if (prescription.schemaVersion === PRESCRIPTION_SCHEMA_VERSION) {
         const currentRequired = ["programmingContext", "historyResolution", "progressionConfirmation", "scientificProvenance"];
         const missingCurrent = currentRequired.filter((requiredField) => !prescription[requiredField]);
@@ -4625,8 +4672,10 @@
       if (originalExerciseIds.has(restriction.substituteExerciseId) || originalResearchExerciseIds.has(restriction.substituteResearchExerciseId)) throw new Error("Invalid resolved safety prescription; a pain-free substitute must be different from the painful original exercise and research identity.");
       if (final.prescribedLoad) throw new Error("Invalid resolved safety prescription; a substitute load must not be inferred.");
     }
-    validateManualOverrideLineage(snapshot);
-    validateSafetyIdentityBinding(snapshot);
+    if (snapshot.schemaVersion === SNAPSHOT_SCHEMA_VERSION) {
+      validateManualOverrideLineage(snapshot);
+      validateSafetyIdentityBinding(snapshot);
+    } else validateLegacyManualOverrideLineage(snapshot, expectedPrescriptionSchemaVersion);
     return true;
   }
 
@@ -4641,6 +4690,7 @@
     // internally incoherent rewrites. It is not authentication: a writer who
     // can coherently replace the whole snapshot and recompute the checksum is
     // outside this local integrity contract.
+    if (snapshot.checksum === undefined || snapshot.checksum === null) return true;
     const expected = stableHash({ ...snapshot, checksum: undefined });
     if (expected !== snapshot.checksum) throw new Error("Recommendation snapshot checksum does not match; historical evidence may have been altered.");
     return true;
@@ -5424,8 +5474,13 @@
     return snapshot;
   }
 
-  function reconcileRecommendation(snapshot, _newEngineRecommendation) {
+  function reconcileRecommendation(snapshot, _newEngineRecommendation, options = {}) {
     if (snapshot?.overrideLocked) return deepClone(snapshot);
+    const identityChanged = snapshot?.recommendationId && _newEngineRecommendation?.recommendationId
+      && snapshot.recommendationId !== _newEngineRecommendation.recommendationId;
+    const schemaChanged = snapshot?.schemaVersion && _newEngineRecommendation?.schemaVersion
+      && snapshot.schemaVersion !== _newEngineRecommendation.schemaVersion;
+    if ((identityChanged || schemaChanged) && !options.allowExplicitReplace) return deepClone(snapshot);
     return deepClone(_newEngineRecommendation || snapshot);
   }
 
@@ -5505,7 +5560,7 @@
         exerciseCatalog: asArray(options.exerciseCatalog)
       });
     }
-    reconcileRecommendation(snapshot, newEngineRecommendation) { return reconcileRecommendation(snapshot, newEngineRecommendation); }
+    reconcileRecommendation(snapshot, newEngineRecommendation, options) { return reconcileRecommendation(snapshot, newEngineRecommendation, options); }
     evaluateOverride(snapshot, outcome, options) { return evaluateManualOverrideOutcome(snapshot, outcome, options); }
   }
 

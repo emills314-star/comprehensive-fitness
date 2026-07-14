@@ -382,8 +382,8 @@ test("material recommendation fields carry structured, referentially valid scien
   assert.equal(endurance.basePrescription.scientificProvenance.repRange.evidenceStrength, "low");
 });
 
-test("material contract versions are coherent, deterministic, and support only the immediate prior runtime pair", () => {
-  assert.equal(ENGINE_VERSION, "3.3.0");
+test("material contract versions are coherent, deterministic, and retain repository-known read compatibility", () => {
+  assert.equal(ENGINE_VERSION, "3.3.1");
   const options = { trainingGoal: "strength", experienceLevel: "advanced", nutritionPhase: "maintenance" };
   const first = prescribeBench(options);
   const second = prescribeBench(options);
@@ -407,7 +407,11 @@ test("material contract versions are coherent, deterministic, and support only t
   obsolete.recommendationVersion = "2.1.0";
   obsolete.basePrescription.schemaVersion = "2.1.0";
   obsolete.finalPrescription.schemaVersion = "2.1.0";
-  assert.throws(() => deserializeRecommendationSnapshot(refreshRecommendationChecksum(obsolete)), /unsupported.*version/i);
+  assert.doesNotThrow(() => deserializeRecommendationSnapshot(refreshRecommendationChecksum(obsolete)));
+
+  const mismatched = JSON.parse(JSON.stringify(first));
+  mismatched.schemaVersion = "1.0.0";
+  assert.throws(() => deserializeRecommendationSnapshot(refreshRecommendationChecksum(mismatched)), /version pair|requires/i);
 
   const planA = engine.createMesocycle({ trainingGoal: "strength", trainingDays: 2, includedMuscleGroupIds: ["chest"], createdAt: CREATED_AT });
   const planB = engine.createMesocycle({ trainingGoal: "strength", trainingDays: 2, includedMuscleGroupIds: ["chest"], createdAt: CREATED_AT });

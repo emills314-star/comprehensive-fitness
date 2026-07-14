@@ -3,6 +3,16 @@
   "$id": "https://comprehensive-fitness.local/schemas/recommendation-snapshot.v1.schema.json",
   "title": "Immutable recommendation snapshot and manual override audit log v1.3",
   "description": "Append-only workout recommendation evidence. Historical workouts render basePrescription and finalPrescription from this snapshot rather than recomputing them with a newer engine. Adding an override produces a new checksummed snapshot value and preserves the prior final prescription in the override entry.",
+  "x-runtimeReadCompatibility": {
+    "mode": "preserve_legacy_without_fabricating_current_fields",
+    "currentEmission": "1.3.0",
+    "prescriptionPairBySnapshot": {
+      "1.0.0": "2.0.0",
+      "1.1.0": "2.1.0",
+      "1.2.0": "2.2.0",
+      "1.3.0": "2.3.0"
+    }
+  },
   "type": "object",
   "additionalProperties": false,
   "required": [
