@@ -69,17 +69,25 @@ test("duplicate rows with one stable exposure identity count once", () => {
   assert.deepEqual(result.qualifyingExposureDates, ["2026-07-12"]);
 });
 
-test("one invalid duplicate makes the whole trailing exposure nonqualifying", () => {
-  const history = [
-    exposure(10, { identity: { exposure_id: "bench-10" } }),
-    exposure(11, { identity: { exposure_id: "bench-11" } }),
-    exposure(12, { identity: { exposure_id: "bench-12" }, techniqueValid: false, techniqueQuality: "invalid" }),
-    exposure(12, { identity: { exposure_id: "bench-12" } })
+test("any invalid duplicate makes the whole trailing exposure nonqualifying", () => {
+  const disqualifiers = [
+    { label: "invalid technique", options: { techniqueValid: false, techniqueQuality: "invalid" } },
+    { label: "incomplete work", options: { completedSetRatio: 2 / 3, completedSetCount: 2, prescribedSetCount: 3 } },
+    { label: "effort above target", options: { rpe: 10 } },
+    { label: "pain", options: { pain: true } }
   ];
-  const result = confirmation(history);
-  assert.equal(result.observedQualifyingExposures, 0);
-  assert.equal(result.satisfied, false);
-  assert.deepEqual(result.qualifyingExposureDates, []);
+  disqualifiers.forEach(({ label, options }) => {
+    const history = [
+      exposure(10, { identity: { exposure_id: "bench-10" } }),
+      exposure(11, { identity: { exposure_id: "bench-11" } }),
+      exposure(12, { ...options, identity: { exposure_id: "bench-12" } }),
+      exposure(12, { identity: { exposure_id: "bench-12" } })
+    ];
+    const result = confirmation(history);
+    assert.equal(result.observedQualifyingExposures, 0, `${label} was ignored in favor of the valid duplicate`);
+    assert.equal(result.satisfied, false, `${label} incorrectly satisfied confirmation`);
+    assert.deepEqual(result.qualifyingExposureDates, [], `${label} leaked an older non-trailing date`);
+  });
 });
 
 test("distinct stable identities on one date remain distinct but dates remain unique", () => {

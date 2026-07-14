@@ -109,7 +109,7 @@ test("all four repository-known version pairs read while generation remains late
   }
   assert.equal(current.schemaVersion, "1.3.0", "current generation must remain latest-only");
   assert.equal(current.basePrescription.schemaVersion, "2.3.0", "current prescriptions must remain latest-only");
-  assert.equal(current.engineVersion, "3.3.1", "the technique-confirmation fix requires a traceable patch engine version");
+  assert.equal(current.engineVersion, "3.3.2", "the duplicate-exposure confirmation fix requires a traceable patch engine version");
 });
 
 test("a present legacy checksum is verified before compatibility handling", () => {

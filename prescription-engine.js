@@ -13,7 +13,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function prescriptionEngineFactory() {
   "use strict";
 
-  const ENGINE_VERSION = "3.3.1";
+  const ENGINE_VERSION = "3.3.2";
   const PRESCRIPTION_SCHEMA_VERSION = "2.3.0";
   const SNAPSHOT_SCHEMA_VERSION = "1.3.0";
   const TRAINING_PROFILE_VERSION = "training-profile/1.1.0";
@@ -2516,6 +2516,38 @@
     };
   }
 
+  function progressionExposureIdentity(item) {
+    const raw = item.raw || {};
+    const candidates = [
+      ["exposure", firstPresent(raw.exposure_id, raw.exposureId, raw.exercise_exposure_id, raw.exerciseExposureId)],
+      ["workout_exercise", firstPresent(raw.workout_exercise_id, raw.workoutExerciseId)],
+      ["session_exercise", firstPresent(raw.session_exercise_id, raw.sessionExerciseId)],
+      ["workout", firstPresent(raw.workout_id, raw.workoutId)],
+      ["session", firstPresent(raw.session_id, raw.sessionId, raw.workout_session_id, raw.workoutSessionId)]
+    ];
+    for (const [type, rawValue] of candidates) {
+      const value = typeof rawValue === "string" ? rawValue.trim() : rawValue;
+      if ((typeof value === "string" && value) || (typeof value === "number" && Number.isFinite(value))) return `${type}:${value}`;
+    }
+    // Histories reach this point only after candidate identity filtering, so a
+    // date is a bounded fallback for rows of the same resolved exercise. Rows
+    // without either a stable identity or date are conservatively one group.
+    return item.date ? `date:${item.date}` : "unknown_exposure";
+  }
+
+  function groupProgressionExposures(history) {
+    const groups = new Map();
+    history.forEach((item, order) => {
+      const identity = progressionExposureIdentity(item);
+      if (!groups.has(identity)) groups.set(identity, { identity, rows: [], firstOrder: order });
+      groups.get(identity).rows.push(item);
+    });
+    return [...groups.values()].map((group) => ({
+      ...group,
+      date: unique(group.rows.map((item) => item.date)).at(-1) || null
+    })).sort((left, right) => (left.date || "9999").localeCompare(right.date || "9999") || left.firstOrder - right.firstOrder);
+  }
+
   function progressionConfirmationFor(options = {}) {
     const history = normalizeHistory(options.history).filter((item) => !item.prescribedReduction);
     const researchExercise = options.researchExercise || {};
@@ -2525,7 +2557,7 @@
       && fatigueCostScore(researchExercise) <= 60;
     const requiredExposures = stableLowFatigueIsolation ? 1 : Math.max(1, number(context.experience?.progressionConfirmationExposures, 3));
     const targetRpe = options.targetRpe || { min: 6, max: 9 };
-    const evaluated = history.map((item) => {
+    const evaluatedRows = history.map((item) => {
       const complete = (item.adherence !== null && item.adherence >= 0.999)
         || (item.completedSetCount !== null && item.prescribedSetCount !== null && item.completedSetCount >= item.prescribedSetCount);
       const techniqueQuality = String(item.techniqueQuality || "").trim().toLowerCase();
@@ -2544,6 +2576,19 @@
         comparablePerformance
       };
     });
+    const rowEvaluationByIndex = new Map(evaluatedRows.map((item, index) => [history[index].index, item]));
+    const evaluated = groupProgressionExposures(history).map((group) => {
+      const rows = group.rows.map((item) => rowEvaluationByIndex.get(item.index));
+      return {
+        date: group.date,
+        qualifies: rows.length > 0 && rows.every((item) => item.qualifies),
+        complete: rows.length > 0 && rows.every((item) => item.complete),
+        techniqueValid: rows.length > 0 && rows.every((item) => item.techniqueValid),
+        effortValid: rows.length > 0 && rows.every((item) => item.effortValid),
+        painFree: rows.length > 0 && rows.every((item) => item.painFree),
+        comparablePerformance: rows.length > 0 && rows.every((item) => item.comparablePerformance)
+      };
+    });
     let observedQualifyingExposures = 0;
     for (let index = evaluated.length - 1; index >= 0; index -= 1) {
       if (!evaluated[index].qualifies) break;
@@ -2559,7 +2604,7 @@
       criteria: ["complete_prescribed_work", "valid_technique", "target_effort", "pain_free", "comparable_performance"],
       qualifyingExposureDates: observedQualifyingExposures === 0
         ? []
-        : evaluated.slice(-observedQualifyingExposures).map((item) => item.date).filter(Boolean),
+        : unique(evaluated.slice(-observedQualifyingExposures).map((item) => item.date)),
       explanation: satisfied
         ? `${observedQualifyingExposures} consecutive qualifying comparable exposure${observedQualifyingExposures === 1 ? "" : "s"} satisfy the ${requiredExposures}-exposure confirmation policy.`
         : `${observedQualifyingExposures} consecutive qualifying comparable exposure${observedQualifyingExposures === 1 ? " was" : "s were"} observed; ${requiredExposures} are required before progression. Missing or invalid evidence is not treated as confirmation.`
