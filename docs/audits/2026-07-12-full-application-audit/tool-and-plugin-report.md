@@ -1,0 +1,23 @@
+# Tool and plugin report
+
+## Safety boundary
+
+No paid service was created, no production credential or external production state was accessed, and no personal record values were sent to a new service. Browser and performance work used repository-owned synthetic fixtures on loopback. Scientific lookup used publication metadata and public papers only.
+
+| Tool/capability | Source/version | Purpose | Permission/data access | Retained | Risk/disposition |
+| --- | --- | --- | --- | --- | --- |
+| Codex CLI and project agents | OpenAI `codex-cli 0.142.5`; project `.codex/config.toml` and 22 project profiles | Parse/verify multi-agent configuration and preserve requested role/model/effort boundaries | Repository read/write under the existing sandbox; no secrets requested | Yes | Current collaboration API exposes only four total live slots and not runtime model telemetry; requested models are not claimed as verified. |
+| OpenAI Developer Docs MCP | Official `https://developers.openai.com/mcp` endpoint | Verify current project configuration and agent-profile syntax | Read-only public documentation; no repository or personal data | Yes, registered in the local Codex MCP list | Current session could not lazy-load the newly registered server, so official OpenAI web documentation was used as fallback. |
+| OpenAI bundled Browser/Chrome control | Existing `browser` plugin `26.707.31123`; `browser:control-in-app-browser` skill selected and its instructions read before baseline browser work | Baseline semantic, keyboard, visual, responsive, dark-mode, and performance inspection | Existing local browser state; audit navigated only to `127.0.0.1` synthetic fixtures and static app pages | Pre-existing | In-app webview attachment failed; Chrome fallback worked for most baseline checks. Screenshot/debug attachment timed out once. This is partial baseline evidence; no final release browser execution is claimed yet. |
+| Playwright | Existing `@playwright/test 1.61.1` | Automated Chromium routes, snapshots, layout, console, guided-flow, and large-fixture checks | Local repository/server and generated artifacts only | Yes | Existing projects cover light mobile/desktop; richer dark/zoom/tablet/native states must be added. |
+| axe-core | Existing `axe-core 4.12.1` | WCAG A/AA automated checks inside Playwright | Rendered local DOM only | Yes | Automated rules do not replace keyboard/screen-reader/manual tests. |
+| Capacitor | Existing `@capacitor/core 7.6.7` resolved from lockfile | Inspect native packaging and privacy boundaries | Local iOS/Android project files only; no signed/device build | Yes | Native backup/provider/private-payload release controls require remediation and later device review. |
+| Upstash QStash client | Existing `@upstash/qstash 2.11.1` | Static audit of push scheduling/delivery contracts | Source inspection only; no live credentials or service calls | Yes | Live quotas, retention, and production state remain **NEEDS REVIEW**. |
+| web-push | Existing `web-push 3.6.7` | Static audit of Web Push/VAPID paths | Source inspection only | Yes | No notification was sent to a real installation. |
+| npm audit | npm CLI with current lockfile; registry result on 2026-07-12 | Dependency vulnerability baseline | Sent dependency metadata to the npm registry; no application/personal content | Existing CLI | Reported zero known vulnerabilities across 212 installed dependencies; this is point-in-time evidence only. |
+| Node.js, PowerShell, Git | Existing local toolchain | Tests, validation, static metrics, worktree isolation, and publication workflow | Local repository/worktrees | Yes | Destructive Git/filesystem operations are prohibited; all write workers use bounded worktrees. |
+| Sandbox approval review service | Platform-managed; version/implementation not observable | Review escalations required for the accepted visual-test cherry-pick | Requested only the bounded Git cherry-pick of `5b8f4ca`; no external or personal data | No project artifact | Two requests timed out. A third request on 2026-07-14 was auto-rejected because the approval-service usage limit is exhausted until 2026-07-19. No Git state changed, no workaround was attempted, and explicit user approval remains required. |
+
+## Recommended plugins not installed
+
+The available Drive, Calendar, email, collaboration, file-storage, design, and knowledge-base plugins do not materially improve this repository-local audit enough to justify broader external-data access. Figma was not required because the target design system is derived from the implemented Lift, Dashboard, Equipment, and Scope surfaces. No recommended plugin installation was requested.
