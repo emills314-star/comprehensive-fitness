@@ -9374,16 +9374,89 @@
         return /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
       }
 
-      async function restorePushIdentity() {
-        try {
-          pushIdentity = await readIndexedValue("push-identity");
-        } catch {
-          try { pushIdentity = JSON.parse(localStorage.getItem(IDENTITY_KEY) || "null"); } catch { pushIdentity = null; }
+      function validPushIdentityCandidate(candidate) {
+        return Boolean(candidate && typeof candidate === "object" && !Array.isArray(candidate) && typeof candidate.installationId === "string" && candidate.installationId.trim());
+      }
+
+      function pushIdentityMetadataTime(candidate) {
+        if (!validPushIdentityCandidate(candidate)) return 0;
+        const values = [candidate.updatedAt, candidate.registeredAt, candidate.testedAt, candidate.deletion?.updatedAt, candidate.deletion?.completedAt];
+        return values.reduce((newest, value) => {
+          const parsed = typeof value === "string" ? Date.parse(value) : NaN;
+          return Number.isFinite(parsed) ? Math.max(newest, parsed) : newest;
+        }, 0);
+      }
+
+      function pushIdentityDeletionIsPending(candidate) {
+        if (!validPushIdentityCandidate(candidate) || typeof candidate.token !== "string" || !candidate.token) return false;
+        const deletionStatus = candidate.deletion?.status || "";
+        return candidate.status === "deleting" || deletionStatus === "deleting" || deletionStatus === "error" || candidate.deletion?.retryable === true;
+      }
+
+      function pushIdentityHasActiveCredential(candidate) {
+        if (!validPushIdentityCandidate(candidate) || typeof candidate.token !== "string" || !candidate.token) return false;
+        return candidate.status !== "deleted" && candidate.deletion?.status !== "deleted";
+      }
+
+      function pushIdentityDeletionIsTerminal(candidate) {
+        return validPushIdentityCandidate(candidate) && (candidate.status === "deleted" || candidate.deletion?.status === "deleted");
+      }
+
+      function selectRestoredPushIdentity(indexedCandidate, fallbackCandidate) {
+        const indexed = validPushIdentityCandidate(indexedCandidate) ? indexedCandidate : null;
+        const fallback = validPushIdentityCandidate(fallbackCandidate) ? fallbackCandidate : null;
+        if (!indexed) return fallback;
+        if (!fallback) return indexed;
+
+        const indexedTime = pushIdentityMetadataTime(indexed);
+        const fallbackTime = pushIdentityMetadataTime(fallback);
+        if (indexed.installationId === fallback.installationId) {
+          const indexedTerminal = pushIdentityDeletionIsTerminal(indexed);
+          const fallbackTerminal = pushIdentityDeletionIsTerminal(fallback);
+          if (indexedTerminal !== fallbackTerminal) {
+            const terminal = indexedTerminal ? indexed : fallback;
+            const terminalTime = indexedTerminal ? indexedTime : fallbackTime;
+            const competingTime = indexedTerminal ? fallbackTime : indexedTime;
+            if (terminalTime > competingTime) return terminal;
+          }
         }
+
+        const indexedPending = pushIdentityDeletionIsPending(indexed);
+        const fallbackPending = pushIdentityDeletionIsPending(fallback);
+        if (indexedPending !== fallbackPending) return indexedPending ? indexed : fallback;
+
+        const indexedCredential = pushIdentityHasActiveCredential(indexed);
+        const fallbackCredential = pushIdentityHasActiveCredential(fallback);
+        if (indexedCredential !== fallbackCredential) return indexedCredential ? indexed : fallback;
+
+        if (indexedTime !== fallbackTime) return indexedTime > fallbackTime ? indexed : fallback;
+
+        // IndexedDB is authoritative only after equivalent lifecycle strength and
+        // metadata freshness have been established. A failed-write journal with a
+        // pending bearer already wins above and can never be replaced by a new ID.
+        return indexed;
+      }
+
+      async function restorePushIdentity() {
+        let indexedIdentity = null;
+        let fallbackIdentity = null;
+        let fallbackPresent = false;
+        try { indexedIdentity = await readIndexedValue("push-identity"); } catch { indexedIdentity = null; }
+        try {
+          const fallbackText = localStorage.getItem(IDENTITY_KEY);
+          fallbackPresent = fallbackText != null;
+          fallbackIdentity = fallbackText ? JSON.parse(fallbackText) : null;
+        } catch { fallbackIdentity = null; }
+        pushIdentity = selectRestoredPushIdentity(indexedIdentity, fallbackIdentity);
         if (!pushIdentity?.installationId) {
           pushIdentity = { installationId: id(), deviceId: id(), token: "", status: "disabled" };
           await persistPushIdentity();
+        } else if (fallbackPresent) {
+          // Reconcile the selected state into IndexedDB before the recovery journal
+          // may be removed. persistPushIdentity retains it if the write still fails.
+          await persistPushIdentity();
         }
+        return pushIdentity;
       }
 
       async function persistPushIdentity() {

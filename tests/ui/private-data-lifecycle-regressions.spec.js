@@ -5,8 +5,11 @@ const { IDS, validFullState } = require("../fixtures/synthetic-app-backups");
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
-    localStorage.clear();
-    sessionStorage.clear();
+    if (sessionStorage.getItem("__cf_lifecycle_test_initialized__") !== "1") {
+      localStorage.clear();
+      sessionStorage.clear();
+      sessionStorage.setItem("__cf_lifecycle_test_initialized__", "1");
+    }
     globalThis.__MIGRATION_XSS_EXECUTED__ = 0;
   });
   await page.goto("/");
@@ -270,6 +273,222 @@ test("pending remote deletion resumes after offline reload and the online event"
     const stored = await readIndexedValue("push-identity");
     return { status: stored?.status || "", token: stored?.token || "" };
   }), { timeout: 15_000 }).toEqual({ status: "deleted", token: "" });
+});
+
+test("failed identity persistence survives a null IndexedDB recovery and resumes deletion online", async ({ page }) => {
+  const pending = {
+    installationId: "installation-fallback-null",
+    deviceId: "device-fallback-null",
+    token: "fallback-null-secret",
+    status: "deleting",
+    registeredAt: "2026-07-14T10:00:00.000Z",
+    deletion: {
+      status: "deleting",
+      retryable: true,
+      phase: "timers",
+      updatedAt: "2026-07-14T12:00:00.000Z",
+      message: "Synthetic fallback cleanup"
+    }
+  };
+  const setup = await page.evaluate(async ({ identity, identityKey }) => {
+    const originalWrite = writeIndexedValue;
+    pushIdentity = structuredClone(identity);
+    writeIndexedValue = async (key, value) => {
+      if (key === "push-identity") throw new Error("Synthetic IndexedDB write failure");
+      return originalWrite(key, value);
+    };
+    const persisted = await persistPushIdentity();
+    const fallbackAfterFailure = JSON.parse(localStorage.getItem(identityKey) || "null");
+    writeIndexedValue = originalWrite;
+    await originalWrite("push-identity", null);
+    return { persisted, fallbackAfterFailure };
+  }, { identity: pending, identityKey: "comprehensive-fitness-installation-v1" });
+  expect(setup.persisted).toBe(true);
+  expect(setup.fallbackAfterFailure).toEqual(pending);
+
+  await page.addInitScript(() => {
+    globalThis.__CF_IDENTITY_TEST_ONLINE__ = false;
+    Object.defineProperty(navigator, "onLine", { configurable: true, get: () => globalThis.__CF_IDENTITY_TEST_ONLINE__ });
+  });
+  const requests = [];
+  await page.route("**/api/install/delete", async (route) => {
+    requests.push({
+      authorization: route.request().headers().authorization || "",
+      body: route.request().postDataJSON()
+    });
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: "deleted" }) });
+  });
+  await page.reload();
+  await page.waitForLoadState("load");
+
+  const recovered = await page.evaluate(async (identityKey) => ({
+    runtime: structuredClone(pushIdentity),
+    indexed: await readIndexedValue("push-identity"),
+    fallback: localStorage.getItem(identityKey)
+  }), "comprehensive-fitness-installation-v1");
+  expect(recovered.runtime).toEqual(pending);
+  expect(recovered.indexed).toEqual(pending);
+  expect(recovered.fallback).toBeNull();
+  expect(requests).toHaveLength(0);
+
+  await page.evaluate(() => {
+    globalThis.__CF_IDENTITY_TEST_ONLINE__ = true;
+    window.dispatchEvent(new Event("online"));
+  });
+  await expect.poll(() => requests.length, { timeout: 15_000 }).toBe(1);
+  expect(requests[0]).toEqual({
+    authorization: "Bearer fallback-null-secret",
+    body: { installationId: "installation-fallback-null" }
+  });
+  await expect.poll(() => page.evaluate(async () => {
+    const stored = await readIndexedValue("push-identity");
+    return { installationId: stored?.installationId || "", status: stored?.status || "", token: stored?.token || "" };
+  }), { timeout: 15_000 }).toEqual({ installationId: "installation-fallback-null", status: "deleted", token: "" });
+});
+
+test("newer pending fallback defeats an older IndexedDB identity and boot resumes with the retained bearer", async ({ page }) => {
+  const pending = {
+    installationId: "installation-fallback-older",
+    deviceId: "device-fallback-older",
+    token: "fallback-older-secret",
+    status: "deleting",
+    deletion: {
+      status: "error",
+      retryable: true,
+      phase: "workouts",
+      updatedAt: "2026-07-14T13:00:00.000Z",
+      message: "Synthetic interrupted cleanup"
+    }
+  };
+  const olderIndexed = {
+    installationId: "installation-generated-too-early",
+    deviceId: "device-generated-too-early",
+    token: "",
+    status: "disabled",
+    updatedAt: "2026-07-14T09:00:00.000Z"
+  };
+  await page.evaluate(async ({ fallback, indexed, identityKey }) => {
+    const originalWrite = writeIndexedValue;
+    pushIdentity = structuredClone(fallback);
+    writeIndexedValue = async (key, value) => {
+      if (key === "push-identity") throw new Error("Synthetic IndexedDB write failure");
+      return originalWrite(key, value);
+    };
+    await persistPushIdentity();
+    writeIndexedValue = originalWrite;
+    await originalWrite("push-identity", indexed);
+    if (!localStorage.getItem(identityKey)) throw new Error("Fallback journal was not retained.");
+  }, { fallback: pending, indexed: olderIndexed, identityKey: "comprehensive-fitness-installation-v1" });
+
+  let releaseDeletion;
+  let markDeletionStarted;
+  const deletionStarted = new Promise((resolve) => { markDeletionStarted = resolve; });
+  const requests = [];
+  await page.route("**/api/install/delete", async (route) => {
+    requests.push({
+      authorization: route.request().headers().authorization || "",
+      body: route.request().postDataJSON()
+    });
+    markDeletionStarted();
+    await new Promise((resolve) => { releaseDeletion = resolve; });
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: "deleted" }) });
+  });
+  await page.reload();
+  await page.waitForLoadState("load");
+  await deletionStarted;
+
+  const duringResume = await page.evaluate(async (identityKey) => ({
+    runtime: structuredClone(pushIdentity),
+    indexed: await readIndexedValue("push-identity"),
+    fallback: localStorage.getItem(identityKey)
+  }), "comprehensive-fitness-installation-v1");
+  expect(duringResume.runtime).toEqual(pending);
+  expect(duringResume.indexed).toEqual(pending);
+  expect(duringResume.fallback).toBeNull();
+  expect(requests).toEqual([{ authorization: "Bearer fallback-older-secret", body: { installationId: "installation-fallback-older" } }]);
+  releaseDeletion();
+  await expect.poll(() => page.evaluate(() => pushIdentity?.status || ""), { timeout: 15_000 }).toBe("deleted");
+});
+
+test("newer terminal deletion for the same installation defeats a stale pending fallback", async ({ page }) => {
+  const terminal = {
+    installationId: "installation-same-terminal",
+    deviceId: "device-same-terminal",
+    token: "",
+    status: "deleted",
+    deletion: {
+      status: "deleted",
+      retryable: false,
+      completedAt: "2026-07-14T16:00:00.000Z",
+      message: "Synthetic confirmed deletion"
+    }
+  };
+  const stalePending = {
+    installationId: "installation-same-terminal",
+    deviceId: "device-same-terminal",
+    token: "stale-pending-secret",
+    status: "deleting",
+    deletion: {
+      status: "deleting",
+      retryable: true,
+      updatedAt: "2026-07-14T15:00:00.000Z",
+      message: "Synthetic stale pending deletion"
+    }
+  };
+  let deleteRequests = 0;
+  await page.route("**/api/install/delete", async (route) => {
+    deleteRequests += 1;
+    await route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "Terminal state must not resume." }) });
+  });
+  await page.evaluate(async ({ current, stale, identityKey }) => {
+    await writeIndexedValue("push-identity", current);
+    localStorage.setItem(identityKey, JSON.stringify(stale));
+  }, { current: terminal, stale: stalePending, identityKey: "comprehensive-fitness-installation-v1" });
+  await page.reload();
+  await page.waitForLoadState("load");
+
+  const selected = await page.evaluate(async (identityKey) => ({
+    runtime: structuredClone(pushIdentity),
+    indexed: await readIndexedValue("push-identity"),
+    fallback: localStorage.getItem(identityKey)
+  }), "comprehensive-fitness-installation-v1");
+  expect(selected.runtime).toEqual(terminal);
+  expect(selected.indexed).toEqual(terminal);
+  expect(selected.fallback).toBeNull();
+  await page.waitForTimeout(250);
+  expect(deleteRequests).toBe(0);
+});
+
+test("ordinary active identity deterministically wins a weaker stale fallback", async ({ page }) => {
+  const indexed = {
+    installationId: "installation-ordinary-active",
+    deviceId: "device-ordinary-active",
+    token: "ordinary-active-secret",
+    status: "enabled",
+    registeredAt: "2026-07-14T14:00:00.000Z"
+  };
+  const staleFallback = {
+    installationId: "installation-ordinary-stale",
+    deviceId: "device-ordinary-stale",
+    token: "",
+    status: "disabled",
+    updatedAt: "2026-07-13T14:00:00.000Z"
+  };
+  await page.evaluate(async ({ current, stale, identityKey }) => {
+    await writeIndexedValue("push-identity", current);
+    localStorage.setItem(identityKey, JSON.stringify(stale));
+  }, { current: indexed, stale: staleFallback, identityKey: "comprehensive-fitness-installation-v1" });
+  await page.reload();
+  await page.waitForLoadState("load");
+
+  const selected = await page.evaluate(async (identityKey) => ({
+    runtime: structuredClone(pushIdentity),
+    indexed: await readIndexedValue("push-identity"),
+    fallback: localStorage.getItem(identityKey)
+  }), "comprehensive-fitness-installation-v1");
+  expect(selected.runtime).toEqual(indexed);
+  expect(selected.indexed).toEqual(indexed);
+  expect(selected.fallback).toBeNull();
 });
 
 test("cancel-before-schedule reconciles authoritative IDs, persists ambiguous cancellation, and suppresses either push ID by version", async ({ page }) => {
