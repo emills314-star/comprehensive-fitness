@@ -168,6 +168,7 @@ async function readFocusAppearance(locator) {
       filter: style.filter,
       filteredBackgroundColor: filteredPixel(interiorBackground, style.filter),
       filteredTextColor: filteredPixel(style.color, style.filter),
+      focused: document.activeElement === element,
       focusVisible: element.matches(":focus-visible"),
       outlineColor: style.outlineColor,
       outlineOffset: Number.parseFloat(style.outlineOffset) || 0,
@@ -233,25 +234,45 @@ function splitCssLayers(value) {
   return layers;
 }
 
-function cssFunctionArguments(value, functionName) {
+function parseCssFunctions(value) {
   const source = String(value || "");
-  const lower = source.toLowerCase();
-  const needle = `${functionName.toLowerCase()}(`;
   const results = [];
   let searchFrom = 0;
   while (searchFrom < source.length) {
-    const start = lower.indexOf(needle, searchFrom);
-    if (start < 0) break;
+    const match = source.slice(searchFrom).match(/([a-z-]+)\s*\(/i);
+    if (!match) break;
+    const name = match[1].toLowerCase();
+    const start = searchFrom + match.index;
+    const argumentsStart = start + match[0].length;
     let depth = 1;
-    let cursor = start + needle.length;
+    let cursor = argumentsStart;
     for (; cursor < source.length && depth > 0; cursor += 1) {
       if (source[cursor] === "(") depth += 1;
       if (source[cursor] === ")") depth -= 1;
     }
-    if (depth === 0) results.push(source.slice(start + needle.length, cursor - 1));
-    searchFrom = Math.max(cursor, start + needle.length);
+    if (depth === 0) {
+      const args = source.slice(argumentsStart, cursor - 1).trim();
+      const normalizedArgs = args.toLowerCase().replace(/\s+/g, " ").replace(/\s*,\s*/g, ",");
+      results.push({ args, name, signature: `${name}(${normalizedArgs})` });
+    }
+    searchFrom = Math.max(cursor, argumentsStart);
   }
   return results;
+}
+
+function multisetDifference(focusedItems, baseItems, signature = (item) => item.signature) {
+  const remaining = new Map();
+  for (const item of baseItems) {
+    const key = signature(item);
+    remaining.set(key, (remaining.get(key) || 0) + 1);
+  }
+  return focusedItems.filter((item) => {
+    const key = signature(item);
+    const count = remaining.get(key) || 0;
+    if (!count) return true;
+    remaining.set(key, count - 1);
+    return false;
+  });
 }
 
 function parseShadowLayer(value) {
@@ -261,7 +282,7 @@ function parseShadowLayer(value) {
     .match(/-?(?:\d+|\d*\.\d+)px/gi)
     ?.map((item) => Number.parseFloat(item)) || [];
   if (!color || lengths.length < 2) return null;
-  return {
+  const layer = {
     blur: Math.max(0, lengths[2] || 0),
     color,
     inset: /\binset\b/i.test(value),
@@ -269,20 +290,31 @@ function parseShadowLayer(value) {
     offsetY: lengths[1],
     spread: lengths[3] || 0
   };
+  const normalizedColor = color.toLowerCase().replace(/\s+/g, "");
+  return {
+    ...layer,
+    signature: [layer.inset ? "inset" : "outer", normalizedColor, layer.offsetX, layer.offsetY, layer.blur, layer.spread].join("|")
+  };
 }
 
-function shadowIndicatorCandidates(value, { exteriorColor, interiorColor, rect, type }) {
-  return splitCssLayers(value).flatMap((layerValue) => {
-    const layer = parseShadowLayer(layerValue);
-    if (!layer) return [];
+function shadowLayerExtent(layer, rect) {
+  const rawExtent = Math.max(
+    0,
+    Math.abs(layer.offsetX) + layer.blur + layer.spread,
+    Math.abs(layer.offsetY) + layer.blur + layer.spread
+  );
+  return layer.inset ? Math.min(rawExtent, Math.min(rect.width, rect.height) / 2) : rawExtent;
+}
+
+function parseShadowLayers(value) {
+  return splitCssLayers(value).map(parseShadowLayer).filter(Boolean);
+}
+
+function shadowIndicatorCandidates(layers, { exteriorColor, interiorColor, rect, type }) {
+  return layers.flatMap((layer) => {
     const comparisonColor = layer.inset ? interiorColor : exteriorColor;
     const contrast = contrastRatio(layer.color, comparisonColor);
-    const rawExtent = Math.max(
-      0,
-      Math.abs(layer.offsetX) + layer.blur + layer.spread,
-      Math.abs(layer.offsetY) + layer.blur + layer.spread
-    );
-    const visibleExtent = layer.inset ? Math.min(rawExtent, Math.min(rect.width, rect.height) / 2) : rawExtent;
+    const visibleExtent = shadowLayerExtent(layer, rect);
     return contrast >= 3 && visibleExtent >= 1 && rect.width > 0 && rect.height > 0
       ? [{ contrast, inset: layer.inset, type, visibleExtent }]
       : [];
@@ -292,6 +324,12 @@ function shadowIndicatorCandidates(value, { exteriorColor, interiorColor, rect, 
 function focusIndicatorEvidence(base, focused, { forcedColors = false } = {}) {
   const changed = (...values) => values.some(([before, after]) => before !== after);
   const candidates = [];
+  const baseShadowLayers = parseShadowLayers(base.boxShadow);
+  const focusedShadowLayers = parseShadowLayers(focused.boxShadow);
+  const shadowDelta = multisetDifference(focusedShadowLayers, baseShadowLayers);
+  const baseFilterFunctions = parseCssFunctions(base.filter);
+  const focusedFilterFunctions = parseCssFunctions(focused.filter);
+  const filterDelta = multisetDifference(focusedFilterFunctions, baseFilterFunctions);
   const outlineInset = focused.outlineOffset < 0;
   const outlineComparison = outlineInset ? base.effectiveBackgroundColor : base.adjacentBackgroundColor;
   const outlineContrast = contrastRatio(focused.outlineColor, outlineComparison);
@@ -329,8 +367,8 @@ function focusIndicatorEvidence(base, focused, { forcedColors = false } = {}) {
   }
 
   if (!forcedColors) {
-    if (base.boxShadow !== focused.boxShadow && focused.boxShadow !== "none") {
-      candidates.push(...shadowIndicatorCandidates(focused.boxShadow, {
+    if (shadowDelta.length) {
+      candidates.push(...shadowIndicatorCandidates(shadowDelta, {
         exteriorColor: base.adjacentBackgroundColor,
         interiorColor: base.effectiveBackgroundColor,
         rect: focused.rect,
@@ -338,14 +376,16 @@ function focusIndicatorEvidence(base, focused, { forcedColors = false } = {}) {
       }));
     }
 
-    if (base.filter !== focused.filter && focused.filter !== "none") {
+    if (filterDelta.length) {
       const backgroundContrast = contrastRatio(focused.filteredBackgroundColor, base.filteredBackgroundColor);
       const textContrast = contrastRatio(focused.filteredTextColor, base.filteredTextColor);
       if (Math.max(backgroundContrast, textContrast) >= 3) {
         candidates.push({ contrast: Math.max(backgroundContrast, textContrast), type: "filter" });
       }
-      for (const dropShadow of cssFunctionArguments(focused.filter, "drop-shadow")) {
-        candidates.push(...shadowIndicatorCandidates(dropShadow, {
+      for (const filterFunction of filterDelta.filter((item) => item.name === "drop-shadow")) {
+        const dropShadow = parseShadowLayer(filterFunction.args);
+        if (!dropShadow) continue;
+        candidates.push(...shadowIndicatorCandidates([dropShadow], {
           exteriorColor: base.adjacentBackgroundColor,
           interiorColor: base.effectiveBackgroundColor,
           rect: focused.rect,
@@ -380,7 +420,14 @@ function focusIndicatorEvidence(base, focused, { forcedColors = false } = {}) {
     }
   }
 
-  return { candidates, valid: candidates.length > 0 };
+  return {
+    candidates,
+    deltas: {
+      boxShadow: shadowDelta.map((item) => item.signature),
+      filter: filterDelta.map((item) => item.signature)
+    },
+    valid: candidates.length > 0
+  };
 }
 
 async function representativeTextMetrics(page, viewSelector) {
@@ -501,16 +548,25 @@ test("focus-indicator evidence distinguishes exterior, inset, filtered, and forc
       #invisible-inset:focus { box-shadow: inset 0 0 0 3px rgb(20, 20, 20); }
       #visible-inset:focus { box-shadow: inset 0 0 0 3px rgb(255, 255, 255); }
       #valid-filter:focus { filter: invert(1); }
+      #baseline-shadow-mutation { box-shadow: 0 0 0 3px rgb(0, 70, 180); }
+      #baseline-shadow-mutation:focus { box-shadow: 0 0 0 3px rgb(0, 70, 180), inset 0 0 0 3px rgb(255, 255, 255); }
+      #baseline-filter-mutation { filter: drop-shadow(0 0 3px rgb(0, 70, 180)); }
+      #baseline-filter-mutation:focus { filter: drop-shadow(0 0 3px rgb(0, 70, 180)) brightness(.99); }
       @media (forced-colors: active) {
         #forced-border { border: 1px solid CanvasText; }
         #forced-border:focus { border: 3px solid Highlight; outline: none; }
+        #forced-shadow-only { appearance: none; background: rgb(255, 255, 255); border: 2px solid rgb(118, 118, 118); color: rgb(20, 20, 20); forced-color-adjust: none; }
+        #forced-shadow-only:focus { border: 2px solid rgb(118, 118, 118); box-shadow: 0 0 0 3px rgb(0, 70, 180); outline: none; }
       }
     </style>
     <button id="valid-shadow">Valid exterior shadow</button>
     <button id="invisible-inset">Invisible inset shadow</button>
     <button id="visible-inset">Visible inset shadow</button>
     <button id="valid-filter">Valid filtered change</button>
+    <button id="baseline-shadow-mutation">Unchanged valid shadow plus invisible focus layer</button>
+    <button id="baseline-filter-mutation">Unchanged drop shadow plus irrelevant filter</button>
     <button id="forced-border">Valid forced-color border</button>
+    <button id="forced-shadow-only">Forced-color shadow only</button>
   `);
 
   const exteriorShadow = await focusFixtureEvidence(page, "#valid-shadow");
@@ -518,6 +574,14 @@ test("focus-indicator evidence distinguishes exterior, inset, filtered, and forc
   expect(exteriorShadow.evidence.candidates.some((candidate) => candidate.type === "box-shadow" && candidate.inset === false)).toBe(true);
 
   const invisibleInset = await focusFixtureEvidence(page, "#invisible-inset");
+  expect(invisibleInset.focused.focused, "The negative fixture must actually receive DOM focus").toBe(true);
+  expect(invisibleInset.focused.boxShadow, "Focus must change the computed shadow before its visibility is evaluated").not.toBe(invisibleInset.base.boxShadow);
+  const invisibleInsetDelta = multisetDifference(parseShadowLayers(invisibleInset.focused.boxShadow), parseShadowLayers(invisibleInset.base.boxShadow));
+  expect(invisibleInsetDelta).toHaveLength(1);
+  expect(invisibleInsetDelta[0].inset, "The changed layer must exercise inset geometry").toBe(true);
+  expect(shadowLayerExtent(invisibleInsetDelta[0], invisibleInset.focused.rect), "The changed inset layer must have nonzero geometry").toBeGreaterThanOrEqual(1);
+  expect(contrastRatio(invisibleInsetDelta[0].color, invisibleInset.base.effectiveBackgroundColor), "The inset layer intentionally matches the unfocused interior pixel").toBeLessThan(3);
+  expect(contrastRatio(invisibleInsetDelta[0].color, invisibleInset.base.adjacentBackgroundColor), "The same layer deliberately contrasts with the exterior, proving exterior comparison would be wrong").toBeGreaterThanOrEqual(3);
   expect(invisibleInset.evidence.valid, `An inset shadow matching the interior pixel must not count: ${JSON.stringify(invisibleInset)}`).toBe(false);
 
   const visibleInset = await focusFixtureEvidence(page, "#visible-inset");
@@ -528,11 +592,42 @@ test("focus-indicator evidence distinguishes exterior, inset, filtered, and forc
   expect(filtered.evidence.valid, JSON.stringify(filtered)).toBe(true);
   expect(filtered.evidence.candidates.some((candidate) => candidate.type === "filter")).toBe(true);
 
+  const shadowMutation = await focusFixtureEvidence(page, "#baseline-shadow-mutation");
+  const shadowMutationDelta = multisetDifference(parseShadowLayers(shadowMutation.focused.boxShadow), parseShadowLayers(shadowMutation.base.boxShadow));
+  expect(shadowMutation.focused.focused).toBe(true);
+  expect(shadowMutationDelta).toHaveLength(1);
+  expect(shadowMutationDelta[0].inset).toBe(true);
+  expect(contrastRatio(shadowMutationDelta[0].color, shadowMutation.base.effectiveBackgroundColor)).toBeLessThan(3);
+  expect(shadowMutation.evidence.deltas.boxShadow).toEqual(shadowMutationDelta.map((item) => item.signature));
+  expect(shadowMutation.evidence.valid, "An unchanged valid outer ring cannot credit a newly added invisible inset layer").toBe(false);
+
+  const filterMutation = await focusFixtureEvidence(page, "#baseline-filter-mutation");
+  const filterMutationDelta = multisetDifference(parseCssFunctions(filterMutation.focused.filter), parseCssFunctions(filterMutation.base.filter));
+  expect(filterMutation.focused.focused).toBe(true);
+  expect(filterMutation.focused.filter).not.toBe(filterMutation.base.filter);
+  expect(filterMutationDelta.map((item) => item.name)).toEqual(["brightness"]);
+  expect(filterMutation.evidence.deltas.filter).toEqual(filterMutationDelta.map((item) => item.signature));
+  expect(filterMutation.evidence.candidates.some((candidate) => candidate.type === "filter-drop-shadow")).toBe(false);
+  expect(filterMutation.evidence.valid, "An unchanged valid drop-shadow cannot credit an insignificant filter mutation").toBe(false);
+
   await page.emulateMedia({ colorScheme: "light", forcedColors: "active", reducedMotion: "reduce" });
   const forcedBorder = await focusFixtureEvidence(page, "#forced-border", { forcedColors: true });
   expect(forcedBorder.evidence.valid, JSON.stringify(forcedBorder)).toBe(true);
   expect(forcedBorder.evidence.candidates.some((candidate) => candidate.type === "border")).toBe(true);
   expect(forcedBorder.evidence.candidates.every((candidate) => ["border", "outline"].includes(candidate.type))).toBe(true);
+
+  const forcedShadowOnly = await focusFixtureEvidence(page, "#forced-shadow-only", { forcedColors: true });
+  const forcedShadowDelta = multisetDifference(parseShadowLayers(forcedShadowOnly.focused.boxShadow), parseShadowLayers(forcedShadowOnly.base.boxShadow));
+  expect(forcedShadowOnly.focused.focused).toBe(true);
+  expect(forcedShadowOnly.focused.boxShadow, "The forced-colors negative fixture must retain a changed author shadow").not.toBe(forcedShadowOnly.base.boxShadow);
+  expect(forcedShadowDelta.length).toBeGreaterThan(0);
+  expect(forcedShadowOnly.focused.outlineStyle).toBe("none");
+  for (const side of ["Top", "Right", "Bottom", "Left"]) {
+    expect(forcedShadowOnly.focused[`border${side}`], `The ${side.toLowerCase()} border must remain unchanged in the shadow-only fixture`).toEqual(forcedShadowOnly.base[`border${side}`]);
+  }
+  expect(forcedShadowOnly.evidence.deltas.boxShadow).toEqual(forcedShadowDelta.map((item) => item.signature));
+  expect(forcedShadowOnly.evidence.candidates.some((candidate) => /shadow|filter/.test(candidate.type))).toBe(false);
+  expect(forcedShadowOnly.evidence.valid, "Forced colors must reject a shadow-only focus delta").toBe(false);
 });
 
 test("keyboard-visible skip link activates and focuses the canonical main-content target", async ({ page }) => {
