@@ -13,7 +13,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function prescriptionEngineFactory() {
   "use strict";
 
-  const ENGINE_VERSION = "3.1.10";
+  const ENGINE_VERSION = "3.1.11";
   const PRESCRIPTION_SCHEMA_VERSION = "2.1.0";
   const SNAPSHOT_SCHEMA_VERSION = "1.1.0";
   const HARD_SAFETY_SCHEMA_VERSION = "hard-safety/1.0.0";
@@ -1234,10 +1234,11 @@
       if (researchExerciseId && personal.selectedPersonalIdByResearchId?.get(researchExerciseId) !== exerciseId) return;
       const researchExercise = research.exerciseById.get(researchExerciseId) || null;
       const mappings = researchExerciseId ? research.muscleMapsByExercise.get(researchExerciseId) || [] : [];
+      const canonicalIdentity = researchExerciseId === exerciseId && selectedIdentity?.researchIdentitySource === "canonical_id";
       candidates.set(exerciseId, {
         exerciseId,
         researchExerciseId: researchExerciseId || null,
-        exerciseName: firstPresent(score.exercise_name, muscleScore.exercise_name, prescription.exercise_name, researchExercise?.exercise_name, exerciseId),
+        exerciseName: firstPresent(canonicalIdentity ? researchExercise?.exercise_name : null, score.exercise_name, muscleScore.exercise_name, prescription.exercise_name, researchExercise?.exercise_name, exerciseId),
         personalScore: score,
         personalPrescription: prescription,
         muscleScore,
@@ -1720,7 +1721,11 @@
       return {
         invalid: false,
         invalidReason: null,
-        origin: selectedIdentity && hasDeclaredEquipmentMetadata(selectedIdentity.source || {}) ? "personal" : candidate.researchExercise ? "research" : "unmapped_personal",
+        origin: selectedIdentity?.researchIdentitySource === "canonical_id"
+          ? "research"
+          : selectedIdentity && hasDeclaredEquipmentMetadata(selectedIdentity.source || {})
+            ? "personal"
+            : candidate.researchExercise ? "research" : "unmapped_personal",
         source,
         requirements
       };
@@ -3036,10 +3041,11 @@
     const researchExerciseId = selectedIdentity?.invalid ? null : researchExercise?.exercise_id || selectedResearchExerciseId || null;
     const mappings = evidence.research.muscleMapsByExercise.get(researchExerciseId) || [];
     const relevantMapping = mappings.find((mapping) => researchMuscleMatch(evidence.research, muscleGroupId, mapping.muscle_group_id)) || {};
+    const canonicalIdentity = researchExerciseId === exerciseId && selectedIdentity?.researchIdentitySource === "canonical_id";
     return {
       exerciseId,
       researchExerciseId,
-      exerciseName: firstPresent(score.exercise_name, prescription.exercise_name, researchExercise?.exercise_name, exerciseId),
+      exerciseName: firstPresent(canonicalIdentity ? researchExercise?.exercise_name : null, score.exercise_name, prescription.exercise_name, researchExercise?.exercise_name, exerciseId),
       personalScore: score,
       personalPrescription: prescription,
       muscleScore: evidence.personal.muscleScoresFor(exerciseId, muscleGroupId)[0] || {
@@ -4075,6 +4081,20 @@
         : batch.some((identity) => identity.researchIdentitySpecified)
           ? "blank_or_null"
           : "absent";
+      const canonicalIdentity = researchIdentities.get(exerciseId);
+      if (canonicalIdentity) {
+        // Public research IDs are the authoritative namespace. Personal rows may
+        // still contribute performance evidence, but their name, mapping, and
+        // equipment metadata cannot replace or invalidate the canonical record.
+        identities.set(exerciseId, {
+          ...canonicalIdentity,
+          researchIdentityFieldPresence: fieldPresence,
+          researchIdentitySource: "canonical_id",
+          canonicalMetadataQuarantined: true,
+          canonicalMetadataRecordCount: records.length
+        });
+        return;
+      }
       let researchIdentitySource = explicitResearchIds.length ? "explicit_crosswalk" : "unresolved";
       if (!explicitResearchIds.length) {
         // Pipeline crosswalks are nullable because most rows have no confident
@@ -4203,12 +4223,9 @@
         throw new Error("Trusted reconciled custom identity profiles require structured catalog identities with stable IDs and metadata.");
       }
       const canonical = researchIdentities.get(profile.exerciseId);
-      if (!profile.invalid && canonical) {
-        if (profile.researchIdentityConflict || (profile.researchExerciseId !== null && profile.researchExerciseId !== canonical.researchExerciseId)) {
-          throw new Error(`Conflicting trusted catalog mapping for canonical exercise ${profile.exerciseId}.`);
-        }
-        return;
-      }
+      // Canonical research identities always win. Reconciled personal profiles,
+      // including invalid ones, are quarantined and never enter the custom map.
+      if (canonical) return;
       if (!profile.invalid && profile.researchExerciseId && !researchIdentities.has(profile.researchExerciseId)) {
         throw new Error(`Trusted reconciled custom exercise ${profile.exerciseId} maps to unknown research exercise ${profile.researchExerciseId}.`);
       }

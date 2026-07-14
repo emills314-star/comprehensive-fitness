@@ -1944,6 +1944,164 @@ test("reconciled invalid custom identities cannot re-enter overrides as genuinel
   assert.doesNotThrow(() => deserializeRecommendationSnapshot(unmapped));
 });
 
+test("public canonical IDs quarantine same-ID personal identity and equipment metadata", () => {
+  const canonicalId = "ex_dumbbell_shrug";
+  const canonicalScores = [{
+    exercise_id: canonicalId,
+    exercise_name: "Dumbbell Bench Press",
+    equipment: "cable",
+    comparable_session_count: 12,
+    observation_span_days: 180,
+    data_confidence_score: 0.95
+  }, {
+    exercise_id: canonicalId,
+    exercise_name: "Machine Chest Press",
+    equipment: "machine",
+    comparable_session_count: 12,
+    observation_span_days: 180,
+    data_confidence_score: 0.95
+  }];
+  const canonicalMuscleScores = [{
+    exercise_id: canonicalId,
+    exercise_name: "Dumbbell Bench Press",
+    muscle_group: "traps",
+    muscle_role: "primary",
+    contribution_weight: 1,
+    research_muscle_group_id: "mg_traps_upper"
+  }];
+  const canonicalEngine = (reverse = false) => createPrescriptionEngine({
+    personalData: {
+      exerciseScores: reverse ? [...canonicalScores].reverse() : canonicalScores,
+      exerciseMuscleScores: reverse ? [...canonicalMuscleScores].reverse() : canonicalMuscleScores,
+      metadata: { methodology_version: "canonical-precedence-quarantine-test/1.0.0" }
+    },
+    researchData: publicResearchData()
+  });
+  const forward = canonicalEngine();
+  const reverse = canonicalEngine(true);
+  for (const candidateEngine of [forward, reverse]) {
+    const identity = candidateEngine.evidence.personal.reconciledIdentityByExerciseId.get(canonicalId);
+    assert.equal(identity.invalid, undefined, "a public canonical ID cannot be invalidated by same-ID personal aliases");
+    assert.equal(identity.researchExerciseId, canonicalId);
+    assert.equal(identity.researchIdentitySource, "canonical_id");
+    assert.equal(identity.canonicalMetadataQuarantined, true);
+    assert.equal(identity.source.exercise_name, "Dumbbell Shrug");
+    assert.equal(identity.source.equipment, "dumbbell");
+
+    const ranked = candidateEngine.rankExercisePool("traps", { availableEquipment: ["dumbbell"], maxCandidates: 10 });
+    const canonicalCandidate = ranked.candidates.find((candidate) => candidate.exerciseId === canonicalId);
+    assert.ok(canonicalCandidate, "canonical dumbbell shrug remains rankable with its public equipment");
+    assert.equal(canonicalCandidate.exerciseName, "Dumbbell Shrug");
+    assert.deepEqual(canonicalCandidate.equipmentRequirements, [["dumbbell"]]);
+    assert.equal(candidateEngine.scoreExercise(canonicalId, "traps").researchExerciseId, canonicalId);
+    const cableOnly = candidateEngine.rankExercisePool("traps", { availableEquipment: ["cable"], maxCandidates: 10 });
+    assert.ok(cableOnly.excludedCandidates.some((candidate) => candidate.exerciseId === canonicalId), "personal cable metadata cannot make a canonical dumbbell exercise cable-compatible");
+  }
+  assert.deepEqual(
+    forward.evidence.personal.reconciledIdentityByExerciseId.get(canonicalId).source,
+    reverse.evidence.personal.reconciledIdentityByExerciseId.get(canonicalId).source,
+    "canonical quarantine must be invariant to personal record order"
+  );
+
+  const ordinary = forward.prescribeExercise({ exerciseId: "ex_barbell_shrug", muscleGroupId: "traps", history: progressionHistory(), createdAt });
+  const callerDuplicate = [{
+    personalExerciseId: canonicalId,
+    researchExerciseId: canonicalId,
+    exerciseName: "Caller cable shrug",
+    equipment: "cable"
+  }];
+  const ordinaryReplacement = forward.applyManualOverride(ordinary, { exerciseId: canonicalId }, {
+    allowedExerciseIds: [canonicalId],
+    availableEquipment: ["dumbbell"],
+    exerciseCatalog: callerDuplicate,
+    createdAt: "2026-07-12T12:22:40.000Z"
+  });
+  assert.equal(ordinaryReplacement.finalPrescription.exerciseId, canonicalId);
+  assert.equal(ordinaryReplacement.finalPrescription.researchExerciseId, canonicalId);
+  assert.throws(
+    () => forward.applyManualOverride(ordinary, { exerciseId: canonicalId }, {
+      allowedExerciseIds: [canonicalId],
+      availableEquipment: ["cable"],
+      exerciseCatalog: callerDuplicate
+    }),
+    /equipment|dumbbell|compatible/i,
+    "caller or personal duplicates cannot replace canonical equipment"
+  );
+
+  const painful = forward.prescribeExercise({
+    exerciseId: "ex_barbell_shrug",
+    muscleGroupId: "traps",
+    history: progressionHistory(),
+    readiness: { pain: true, affectedMuscle: "traps" },
+    createdAt
+  });
+  const safetyReplacement = forward.applyManualOverride(painful, {
+    exerciseId: canonicalId,
+    researchExerciseId: canonicalId,
+    painFreeConfirmed: true
+  }, {
+    allowedSafetySubstituteIds: [canonicalId],
+    availableEquipment: ["dumbbell"],
+    exerciseCatalog: callerDuplicate,
+    createdAt: "2026-07-12T12:22:50.000Z"
+  });
+  assert.equal(safetyReplacement.finalPrescription.safetyRestriction.status, "resolved_by_confirmed_substitute");
+
+  const validCanonicalEngine = createPrescriptionEngine({
+    personalData: {
+      exerciseScores: [{ exercise_id: canonicalId, exercise_name: "Dumbbell Shrug", equipment: "cable" }],
+      exerciseMuscleScores: canonicalMuscleScores,
+      metadata: { methodology_version: "valid-canonical-augmentation-test/1.0.0" }
+    },
+    researchData: publicResearchData()
+  });
+  const validCanonicalIdentity = validCanonicalEngine.evidence.personal.reconciledIdentityByExerciseId.get(canonicalId);
+  assert.equal(validCanonicalIdentity.source.equipment, "dumbbell", "even non-conflicting same-ID personal metadata cannot override canonical equipment");
+
+  const invalidCustomId = "custom_conflicting_shrug_aliases";
+  const validCustomId = "custom_cable_shrug";
+  const distinctCustomEngine = createPrescriptionEngine({
+    personalData: {
+      exerciseScores: [{ exercise_id: invalidCustomId, exercise_name: "Dumbbell Bench Press", equipment: "cable" }, {
+        exercise_id: validCustomId,
+        exercise_name: "My Cable Shrug",
+        research_exercise_id: canonicalId,
+        equipment: "cable"
+      }],
+      exerciseMuscleScores: [{
+        exercise_id: invalidCustomId,
+        exercise_name: "Machine Chest Press",
+        muscle_group: "traps",
+        muscle_role: "primary",
+        contribution_weight: 1,
+        research_muscle_group_id: "mg_traps_upper"
+      }, {
+        exercise_id: validCustomId,
+        exercise_name: "My Cable Shrug",
+        muscle_group: "traps",
+        muscle_role: "primary",
+        contribution_weight: 1,
+        research_muscle_group_id: "mg_traps_upper"
+      }],
+      metadata: { methodology_version: "canonical-precedence-distinct-custom-control/1.0.0" }
+    },
+    researchData: publicResearchData()
+  });
+  const distinctOrdinary = distinctCustomEngine.prescribeExercise({ exerciseId: "ex_barbell_shrug", muscleGroupId: "traps", history: progressionHistory(), createdAt });
+  assert.throws(
+    () => distinctCustomEngine.applyManualOverride(distinctOrdinary, { exerciseId: invalidCustomId }, { allowedExerciseIds: [invalidCustomId], availableEquipment: ["cable"] }),
+    /conflicting trusted custom research identities/i,
+    "canonical precedence must not make a distinct invalid custom ID valid"
+  );
+  const validCustomReplacement = distinctCustomEngine.applyManualOverride(distinctOrdinary, { exerciseId: validCustomId }, {
+    allowedExerciseIds: [validCustomId],
+    availableEquipment: ["cable"],
+    createdAt: "2026-07-12T12:23:00.000Z"
+  });
+  assert.equal(validCustomReplacement.finalPrescription.exerciseId, validCustomId, "distinct valid customs retain custom-first equipment semantics");
+  assert.equal(validCustomReplacement.finalPrescription.researchExerciseId, canonicalId);
+});
+
 test("recommendation ranking has no canonical-first equipment expressions outside its resolver", () => {
   const source = fs.readFileSync(path.join(ROOT, "prescription-engine.js"), "utf8");
   assert.doesNotMatch(source, /equipmentCompatible\(\s*candidate\.researchExercise\s*\|\|/);
@@ -1963,6 +2121,9 @@ test("recommendation ranking has no canonical-first equipment expressions outsid
   assert.equal((prescriptionEngineClass.match(/trustedCustomIdentityProfiles:/g) || []).length, 1, "every class catalog rebuild must carry reconciled profiles directly");
   assert.doesNotMatch(prescriptionEngineClass, /const personalCatalog/);
   assert.doesNotMatch(prescriptionEngineClass, /reconciledIdentity\?\.invalid\s*\?\s*null/);
+  const profileHandoff = source.match(/const addReconciledCustomIdentityProfile[\s\S]*?asArray\(options\.trustedCustomIdentityProfiles\)/)?.[0] || "";
+  assert.match(profileHandoff, /if \(canonical\)/);
+  assert.doesNotMatch(profileHandoff, /if \(!profile\.invalid && canonical\)/);
 });
 
 test("restricted candidate pools and substitutes are deterministic and equipment-safe", () => {
