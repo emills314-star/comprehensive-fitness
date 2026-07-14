@@ -10,20 +10,6 @@ const {
   safetyWorkoutState,
   validFullState
 } = require("../fixtures/synthetic-app-backups");
-const prescriptionApi = require("../../prescription-engine");
-
-function publicResearchData() {
-  const read = (name) => require(`../../research_database/exports/json/${name}.json`);
-  return {
-    exerciseDatabase: read("exercise_database"),
-    exerciseMuscleMap: read("exercise_muscle_map"),
-    exerciseSubstitutionMap: read("exercise_substitution_map"),
-    muscleGroupRecommendations: read("muscle_group_recommendations"),
-    progressionRules: read("progression_rules"),
-    nutritionStrategies: read("nutrition_strategies"),
-    manifest: read("manifest")
-  };
-}
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -63,12 +49,120 @@ async function seedApplicationState(page, state) {
   await expect(page.getByRole("heading", { name: "Synthetic Safety Workout" })).toBeVisible();
 }
 
+async function seedBlockedSafetyRecommendation(page, fixture, request) {
+  await seedApplicationState(page, fixture.state);
+  await expect.poll(() => page.evaluate(() => Boolean(prescriptionEngine)), {
+    message: "The page prescription engine must initialize before seeding a safety recommendation"
+  }).toBe(true);
+  return page.evaluate(({ exerciseRuntimeId, engineRequest }) => {
+    const blocked = prescriptionEngine.prescribeExercise(engineRequest);
+    const originalExerciseId = blocked.finalPrescription?.safetyRestriction?.originalExerciseId
+      || blocked.finalPrescription?.exerciseId
+      || blocked.exerciseId;
+    const originalResearchExerciseId = blocked.finalPrescription?.safetyRestriction?.auditBaseTargets?.researchExerciseId
+      || blocked.finalPrescription?.researchExerciseId
+      || blocked.basePrescription?.researchExerciseId
+      || prescriptionEngine.evidence.personal?.crosswalkByPersonalId?.get(originalExerciseId)
+      || originalExerciseId;
+    const substitutionRows = prescriptionEngine.evidence.research.substitutionsByExercise.get(originalResearchExerciseId) || [];
+    const mappedIds = new Set(substitutionRows.map((item) => item.substitute_exercise_id || item.substituteExerciseId).filter(Boolean));
+    if (!mappedIds.size) throw new Error(`Public substitution evidence has no alternatives for ${originalExerciseId}`);
+    const availableEquipment = engineRequest.availableEquipment || [];
+    const ranked = prescriptionEngine.rankExercisePool(engineRequest.muscleGroupId, { availableEquipment });
+    const rankedById = new Map(ranked.candidates.map((candidate) => [candidate.exerciseId, candidate]));
+    const preferred = blocked.finalPrescription?.preferredReplacementExerciseId || null;
+    if (preferred && !mappedIds.has(preferred)) throw new Error(`Engine preferred replacement ${preferred} is absent from its public substitution evidence`);
+    const eligibleIds = [...mappedIds].filter((exerciseId) => (
+      prescriptionEngine.evidence.research.exerciseById.has(exerciseId)
+        && (availableEquipment.includes("all") || rankedById.has(exerciseId))
+    ));
+    if (!eligibleIds.length) throw new Error(`No engine-confirmed, catalog-backed substitute satisfies the supplied equipment constraint for ${originalExerciseId}`);
+    const candidateId = preferred && eligibleIds.includes(preferred)
+      ? preferred
+      : eligibleIds.find((exerciseId) => rankedById.has(exerciseId));
+    if (!candidateId) throw new Error(`Engine supplied neither a usable preferred replacement nor a ranked public substitute for ${originalExerciseId}`);
+    const catalogRecord = prescriptionEngine.evidence.research.exerciseById.get(candidateId);
+    if (!catalogRecord) throw new Error("Engine-confirmed safety substitute does not retain a public catalog record");
+    const candidate = rankedById.get(candidateId) || {
+      exerciseId: candidateId,
+      researchExerciseId: candidateId,
+      exerciseName: catalogRecord.exercise_name
+    };
+    const exercise = data.exercises.find((item) => item.id === exerciseRuntimeId);
+    if (!exercise) throw new Error(`Synthetic runtime exercise ${exerciseRuntimeId} is unavailable`);
+    Object.assign(exercise, {
+      recommendationSnapshot: blocked,
+      basePrescription: blocked.basePrescription,
+      finalPrescription: blocked.finalPrescription,
+      executionBlocked: Boolean(blocked.finalPrescription?.executionBlocked),
+      safetyRestriction: blocked.finalPrescription?.safetyRestriction || null
+    });
+    data.recommendationHistory = [blocked];
+    render();
+    return {
+      recommendationId: blocked.recommendationId,
+      originalExerciseId,
+      originalResearchExerciseId,
+      preferredReplacementExerciseId: preferred,
+      candidate: {
+        exerciseId: candidate.exerciseId,
+        researchExerciseId: candidate.researchExerciseId || candidate.exerciseId,
+        exerciseName: candidate.exerciseName || catalogRecord.exercise_name
+      },
+      allowedSafetySubstituteIds: eligibleIds
+    };
+  }, { exerciseRuntimeId: fixture.exerciseIds.bench, engineRequest: request });
+}
+
 async function runtimeWorkoutState(page) {
-  return page.evaluate(() => ({
-    exercises: data.exercises.map((item) => ({ id: item.id, name: item.name, executionBlocked: item.executionBlocked, finalPrescription: item.finalPrescription })),
-    sets: data.sets.map((item) => ({ id: item.id, exerciseId: item.exerciseId, completed: item.completed, skipped: item.skipped, isWarmup: item.isWarmup })),
-    timer: timer ? { exerciseId: timer.exerciseId, setId: timer.setId, isActive: timer.isActive } : null
-  }));
+  return page.evaluate(() => {
+    const safetyRestriction = (value) => value ? {
+      status: value.status,
+      reason: value.reason,
+      scope: value.scope,
+      originalExerciseId: value.originalExerciseId,
+      painFreeConfirmed: value.painFreeConfirmed,
+      substituteExerciseId: value.substituteExerciseId,
+      substituteResearchExerciseId: value.substituteResearchExerciseId
+    } : null;
+    const prescription = (value) => value ? {
+      exerciseId: value.exerciseId,
+      researchExerciseId: value.researchExerciseId,
+      executionBlocked: value.executionBlocked,
+      executable: value.executable,
+      safetyRestriction: safetyRestriction(value.safetyRestriction)
+    } : null;
+    const manualOverride = (value) => ({
+      overrideId: value?.overrideId,
+      recommendationId: value?.recommendationId,
+      exerciseRuntimeId: value?.exerciseRuntimeId,
+      changes: value?.changes,
+      previousFinalPrescription: prescription(value?.previousFinalPrescription)
+    });
+    const recommendationSnapshot = (value) => value ? {
+      recommendationId: value.recommendationId,
+      exerciseId: value.exerciseId,
+      basePrescription: prescription(value.basePrescription),
+      finalPrescription: prescription(value.finalPrescription),
+      manualOverrides: (value.manualOverrides || []).map(manualOverride)
+    } : null;
+    return {
+      exercises: data.exercises.map((item) => ({
+        id: item.id,
+        name: item.name,
+        executionBlocked: item.executionBlocked,
+        safetyRestriction: safetyRestriction(item.safetyRestriction),
+        basePrescription: prescription(item.basePrescription),
+        finalPrescription: prescription(item.finalPrescription),
+        recommendationSnapshot: recommendationSnapshot(item.recommendationSnapshot),
+        manualOverrides: (item.manualOverrides || []).map(manualOverride)
+      })),
+      recommendationHistory: (data.recommendationHistory || []).map(recommendationSnapshot),
+      manualOverrides: (data.manualOverrides || []).map(manualOverride),
+      sets: data.sets.map((item) => ({ id: item.id, exerciseId: item.exerciseId, completed: item.completed, skipped: item.skipped, isWarmup: item.isWarmup })),
+      timer: timer ? { exerciseId: timer.exerciseId, setId: timer.setId, isActive: timer.isActive } : null
+    };
+  });
 }
 
 async function dispatchForgedWorkoutAction(page, action, identifiers = {}) {
@@ -286,28 +380,40 @@ test("hard-safety UI and delegated handlers refuse illness, unsited pain, matchi
 });
 
 test("confirmed pain-free substitution uses an explicit catalog-backed UI flow and preserves the original block", async ({ page }) => {
-  const research = publicResearchData();
-  const engine = prescriptionApi.createPrescriptionEngine({ researchData: research });
   const originalId = "ex_barbell_bench_press";
-  const substituteId = "ex_incline_dumbbell_press";
-  const blocked = engine.prescribeExercise({
+  const availableEquipment = ["all"];
+  const request = {
     exerciseId: originalId,
     muscleGroupId: "chest",
     readiness: { pain: true, affectedMuscle: "chest" },
-    availableEquipment: ["all"],
+    availableEquipment,
     trainingGoal: "hypertrophy",
     experienceLevel: "intermediate",
     nutritionPhase: "maintenance",
     createdAt: "2026-07-14T12:00:00.000Z"
-  });
-  const fixture = safetyWorkoutState({ illness: false, pain: true, affectedMuscle: "Chest" }, { recommendationSnapshot: blocked });
-  await seedApplicationState(page, fixture.state);
+  };
+  const fixture = safetyWorkoutState({ illness: false, pain: true, affectedMuscle: "Chest" });
+  const seeded = await seedBlockedSafetyRecommendation(page, fixture, request);
+  const blockedOriginalId = seeded.originalExerciseId;
+  const substituteId = seeded.candidate.exerciseId;
+  const substituteName = seeded.candidate.exerciseName;
+  expect(seeded.allowedSafetySubstituteIds).toContain(substituteId);
+  if (seeded.preferredReplacementExerciseId) expect(substituteId).toBe(seeded.preferredReplacementExerciseId);
+  const before = await runtimeWorkoutState(page);
+  const sourceExercise = before.exercises.find((item) => item.id === fixture.exerciseIds.bench);
+  const sourceHistory = before.recommendationHistory.find((item) => item.recommendationId === seeded.recommendationId);
+  expect.soft(sourceExercise?.executionBlocked, "The browser exercise state must begin non-executable").toBe(true);
+  expect.soft(sourceExercise?.safetyRestriction?.status, "The browser exercise state must retain the source block").toBe("blocked");
+  expect.soft(sourceExercise?.safetyRestriction?.originalExerciseId).toBe(blockedOriginalId);
+  expect.soft(sourceExercise?.recommendationSnapshot?.finalPrescription?.executionBlocked, "The browser source snapshot must begin blocked").toBe(true);
+  expect.soft(sourceHistory?.finalPrescription?.executionBlocked, "The browser recommendation history must contain the blocked source snapshot").toBe(true);
+  expect.soft(sourceHistory?.finalPrescription?.safetyRestriction?.originalExerciseId).toBe(blockedOriginalId);
 
   const card = page.locator(`.exercise-card:has([data-exercise-id="${fixture.exerciseIds.bench}"])`).first();
   await card.locator("details.exercise-options > summary").click();
   const override = card.locator("details.prescription-override");
   await override.locator("summary").click();
-  await override.locator('[data-override-field="exercise"]').fill("Incline Dumbbell Press");
+  await override.locator('[data-override-field="exercise"]').fill(substituteName);
   const confirmation = override.locator('[data-override-field="pain-free-confirmed"]');
   await expect.soft(confirmation, "Safety substitution requires an explicit pain-free confirmation control").toHaveCount(1);
   if (await confirmation.count()) await confirmation.check();
@@ -315,12 +421,31 @@ test("confirmed pain-free substitution uses an explicit catalog-backed UI flow a
 
   const runtime = await runtimeWorkoutState(page);
   const substituted = runtime.exercises.find((item) => item.id === fixture.exerciseIds.bench);
-  expect.soft(substituted?.name).toBe("Incline Dumbbell Press");
+  const historySnapshot = runtime.recommendationHistory.find((item) => item.recommendationId === seeded.recommendationId);
+  const exerciseOverride = substituted?.manualOverrides?.at(-1);
+  const snapshotOverride = substituted?.recommendationSnapshot?.manualOverrides?.at(-1);
+  const historyOverride = historySnapshot?.manualOverrides?.at(-1);
+  const globalOverride = runtime.manualOverrides.at(-1);
+  expect.soft(substituted?.name).toBe(substituteName);
+  expect.soft(substituted?.executionBlocked, "Resolved browser exercise state must be executable").toBe(false);
+  expect.soft(substituted?.safetyRestriction?.status, "Resolved browser exercise safety metadata must mirror the final prescription").toBe("resolved_by_confirmed_substitute");
   expect.soft(substituted?.finalPrescription?.exerciseId).toBe(substituteId);
   expect.soft(substituted?.finalPrescription?.executionBlocked).toBe(false);
   expect.soft(substituted?.finalPrescription?.safetyRestriction?.painFreeConfirmed).toBe(true);
-  expect.soft(substituted?.finalPrescription?.safetyRestriction?.originalExerciseId, "The painful original must remain bound in the safety audit").toBe(originalId);
-  expect.soft(blocked.finalPrescription.executionBlocked, "The source recommendation snapshot must remain blocked").toBe(true);
+  expect.soft(substituted?.finalPrescription?.safetyRestriction?.substituteExerciseId).toBe(substituteId);
+  expect.soft(substituted?.finalPrescription?.safetyRestriction?.originalExerciseId, "The painful original must remain bound in the safety audit").toBe(blockedOriginalId);
+  expect.soft(historySnapshot?.finalPrescription?.executionBlocked, "Recommendation history must expose the resolved current snapshot").toBe(false);
+  for (const [label, entry] of [
+    ["exercise audit", exerciseOverride],
+    ["exercise source-snapshot audit", snapshotOverride],
+    ["recommendation-history audit", historyOverride],
+    ["global override audit", globalOverride]
+  ]) {
+    expect.soft(entry?.previousFinalPrescription?.executionBlocked, `${label} must retain the original non-executable prescription`).toBe(true);
+    expect.soft(entry?.previousFinalPrescription?.exerciseId, `${label} must retain the original painful exercise identity`).toBe(blockedOriginalId);
+    expect.soft(entry?.previousFinalPrescription?.safetyRestriction?.status, `${label} must retain the original blocked safety status`).toBe("blocked");
+    expect.soft(entry?.previousFinalPrescription?.safetyRestriction?.originalExerciseId, `${label} must retain the bound original exercise`).toBe(blockedOriginalId);
+  }
 });
 
 test("primary navigation exposes a skip target and moves focus into the selected view", async ({ page }) => {
