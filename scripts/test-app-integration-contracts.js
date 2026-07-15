@@ -1034,6 +1034,48 @@ test("navigation, dialogs, and Lift controls expose complete focus and naming co
   ]);
 });
 
+test("history editing seals stable persistence and defers external controller reloads", () => {
+  const beginHistoryEdit = functionSource("beginHistoryEdit");
+  const registerPwaServiceWorker = functionSource("registerPwaServiceWorker");
+  const applyPwaUpdate = functionSource("applyPwaUpdate");
+  collectAssertions([
+    ["pre-edit snapshot flush", () => assertContains(beginHistoryEdit, /await\s+persistStableAppDataSnapshot\s*\([\s\S]*?\)[\s\S]*?historyEditFlow\s*=/, "History editing must durably flush a cloned pre-edit snapshot before opening the temporary transaction")],
+    ["edit-start lock cleanup", () => assertContains(beginHistoryEdit, /try\s*\{[\s\S]*?await\s+persistStableAppDataSnapshot[\s\S]*?finally\s*\{[\s\S]*?historyEditStartPending\s*=\s*false/, "History editing must retain and finally clear its start lock across initial persistence and reconciliation")],
+    ["edit-start identity capture", () => assertContains(beginHistoryEdit, /dataRevision[\s\S]*?activeTab[\s\S]*?activeSessionId[\s\S]*?viewingHistorySessionId/, "History editing must capture the revision and complete navigation identity before awaiting persistence")],
+    ["edit-start awaited reconciliation", () => assertContains(beginHistoryEdit, /editContextChanged[\s\S]*?cloneAppData\s*\(\s*data\s*\)[\s\S]*?await\s+persistStableAppDataSnapshot[\s\S]*?not durable[\s\S]*?export[\s\S]*?retry/i, "A concurrent mutation or navigation must await current-state persistence and disclose dual-store failure without claiming durability")],
+    ["controllerchange transaction guard", () => assertContains(registerPwaServiceWorker, /controllerchange[\s\S]*?historyEditFlow[\s\S]*?pendingControllerReload/, "An externally activated service worker must defer reload while submitted-history editing is active")],
+    ["explicit update persistence gate", () => assertContains(applyPwaUpdate, /persisted\s*=\s*await\s+persistStableAppDataSnapshot[\s\S]*?if\s*\(\s*!persisted\s*\)[\s\S]*?return\s+false[\s\S]*?pendingControllerReload/, "An explicit deferred update must refuse to reload when neither persistence layer can save the stable snapshot")],
+    ["explicit deferred reload", () => assertContains(applyPwaUpdate, /pendingControllerReload[\s\S]*?location\.reload\s*\(/, "A deferred controller reload must remain behind the explicit Update action after editing ends")]
+  ]);
+});
+
+test("startup resolves IndexedDB and local fallback by valid data revision", () => {
+  const loadData = functionSource("loadData");
+  const candidate = functionSource("storedAppDataCandidate");
+  const readIndexedValue = functionSource("readIndexedValue");
+  const persistStable = functionSource("persistStableAppDataSnapshot");
+  const saveData = functionSource("saveData");
+  const permanentlyClearLocalData = functionSource("permanentlyClearLocalData");
+  const resolve = evaluateFunction("resolveStoredAppDataCandidates");
+  const indexed = { source: "indexeddb", revision: 4, canonicalContent: "indexed", timestamp: 100 };
+  const local = { source: "localstorage", revision: 4, canonicalContent: "local", timestamp: 200 };
+  collectAssertions([
+    ["candidate shape guard", () => assertContains(candidate, /typeof\s+value\s*!==\s*["']object["'][\s\S]*?Array\.isArray[\s\S]*?dataRevision/, "Persistence recovery must reject corrupt non-object sources and validate their revision")],
+    ["indexed metadata reader", () => assertContains(readIndexedValue, /await\s+readIndexedRecord/, "Existing IndexedDB value callers must delegate through the metadata-preserving record reader")],
+    ["newer timestamp wins equal revision", () => assert.equal(resolve(indexed, local).selected.source, "localstorage")],
+    ["unorderable divergence conflicts", () => assert.equal(resolve(indexed, { ...local, timestamp: 100 }).conflict, true)],
+    ["missing timestamp divergence conflicts", () => assert.equal(resolve(indexed, { ...local, timestamp: null }).conflict, true)],
+    ["identical content dedupes", () => assert.equal(resolve(indexed, { ...local, canonicalContent: "indexed", timestamp: null }).identical, true)],
+    ["always inspect local fallback", () => assert.doesNotMatch(loadData, /if\s*\(\s*!stored\s*\)[\s\S]{0,180}localStorage\.getItem/, "A readable IndexedDB value must not prevent inspection of the local fallback")],
+    ["higher revision selection", () => assertContains(loadData, /localCandidate\.revision\s*>\s*indexedCandidate\.revision/, "The newer valid local fallback must outrank stale readable IndexedDB")],
+    ["conflict skips promotion", () => assertContains(loadData, /appDataPersistenceConflict[\s\S]*?if\s*\(\s*!appDataPersistenceConflict[\s\S]*?await\s+writeIndexedValue/, "Unorderable valid copies must remain outside destructive promotion and cleanup")],
+    ["stable save preserves alternate", () => assertContains(persistStable, /appDataPersistenceConflict[\s\S]*?localStorage\.removeItem|localStorage\.removeItem[\s\S]*?appDataPersistenceConflict/, "Stable snapshots must not remove a conflict-preserved local alternate")],
+    ["ordinary save preserves alternate", () => assertContains(saveData, /appDataPersistenceConflict[\s\S]*?localStorage\.removeItem|localStorage\.removeItem[\s\S]*?appDataPersistenceConflict/, "Ordinary saves must not remove a conflict-preserved local alternate")],
+    ["promotion precedes cleanup", () => assertContains(loadData, /await\s+writeIndexedValue\s*\(\s*["']app-data["'][\s\S]*?localStorage\.removeItem\s*\(\s*STORAGE_KEY\s*\)/, "Local fallback cleanup must occur only after successful awaited IndexedDB promotion")],
+    ["confirmed clear releases preservation", () => assertContains(permanentlyClearLocalData, /localStorage\.removeItem\s*\(\s*STORAGE_KEY[\s\S]*?appDataPersistenceConflict\s*=\s*null/, "Explicitly confirmed Clear All must release the in-memory conflict-preservation guard after deleting both stores")]
+  ]);
+});
+
 test("loaded-data normalization uses an indexed set lookup", () => {
   const source = functionSource("normalizeLoadedData");
   collectAssertions([
