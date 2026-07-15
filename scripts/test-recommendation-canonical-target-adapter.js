@@ -59,6 +59,49 @@ function aliasesFor(exercise) {
     .filter(Boolean);
 }
 
+function engineEquivalentIdentityKey(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function identitySpellingsForExercise(exercise) {
+  return [
+    { kind: "canonical_name", value: exercise.exercise_name },
+    ...aliasesFor(exercise).map((value) => ({ kind: "exported_alias", value }))
+  ];
+}
+
+function engineEquivalentVariantCases(spelling) {
+  const source = String(spelling.value);
+  const trimmed = source.trim();
+  const variants = [
+    { kind: "original", value: source },
+    { kind: "case", value: trimmed.toUpperCase() },
+    { kind: "surrounding_whitespace", value: ` \t${trimmed}\n ` }
+  ];
+  if (/[\s_-]/.test(trimmed)) {
+    [
+      ["separator_space", " "],
+      ["separator_hyphen", "-"],
+      ["separator_underscore", "_"]
+    ].forEach(([kind, separator]) => {
+      variants.push({ kind, value: trimmed.replace(/[\s_-]+/g, separator) });
+    });
+  }
+  const expectedKey = engineEquivalentIdentityKey(source);
+  variants.forEach((variant) => {
+    assert.equal(
+      engineEquivalentIdentityKey(variant.value),
+      expectedKey,
+      `${JSON.stringify(variant.value)} must be an engine-equivalent ${variant.kind} variant of ${JSON.stringify(source)}`
+    );
+  });
+  return variants;
+}
+
 function positiveDynamicDirectRelationships(rows) {
   return rows.filter((row) => row.relationship_type === "direct_load"
     && ["dynamic", "mixed"].includes(row.loading_role)
@@ -120,6 +163,17 @@ const exportedAliases = publicExerciseDatabase.flatMap((exercise) => aliasesFor(
   exerciseId: exercise.exercise_id,
   canonicalName: exercise.exercise_name
 })));
+const publicIdentitySpellings = publicExerciseDatabase.flatMap((exercise) => identitySpellingsForExercise(exercise).map((spelling) => ({
+  ...spelling,
+  exerciseId: exercise.exercise_id
+})));
+const publicIdentityVariantCases = publicIdentitySpellings.flatMap((spelling) => engineEquivalentVariantCases(spelling).map((variant) => ({
+  ...variant,
+  sourceKind: spelling.kind,
+  sourceValue: spelling.value,
+  exerciseId: spelling.exerciseId
+})));
+const separatorApplicableSpellingCount = publicIdentitySpellings.filter(({ value }) => /[\s_-]/.test(value.trim())).length;
 const expectedDirectTargets = new Map();
 publicExerciseDatabase.forEach((exercise) => {
   const direct = positiveDynamicDirectRelationships(relationshipsByExercise.get(exercise.exercise_id) || []);
@@ -140,7 +194,20 @@ group("fixture inventory and direct-target classification are exact and non-vacu
   assert.equal(publicExerciseMuscleMap.length, EXPECTED_RELATIONSHIP_COUNT, "research exercise-muscle relationship inventory drifted");
   assert.equal(exercisesById.size, EXPECTED_EXERCISE_COUNT, "canonical exercise IDs must be unique");
   assert.equal(exportedAliases.length, EXPECTED_ALIAS_COUNT, "exported exercise alias count drifted");
-  assert.equal(new Set(exportedAliases.map(({ alias }) => alias.toLowerCase())).size, EXPECTED_ALIAS_COUNT, "normalized aliases must remain unique");
+  assert.equal(new Set(exportedAliases.map(({ alias }) => engineEquivalentIdentityKey(alias))).size, EXPECTED_ALIAS_COUNT, "aliases must remain unique under the engine's case, whitespace, and separator normalization");
+  assert.equal(publicIdentitySpellings.length, EXPECTED_EXERCISE_COUNT + EXPECTED_ALIAS_COUNT, "every canonical name and exported alias must enter normalized-variant coverage");
+  assert.equal(new Set(publicIdentitySpellings.map(({ value }) => engineEquivalentIdentityKey(value))).size, publicIdentitySpellings.length, "canonical names and aliases must not collide under engine-equivalent normalization");
+  assert.ok(separatorApplicableSpellingCount > 0, "separator-equivalence coverage must have applicable canonical names or aliases");
+  const variantKindCounts = Object.fromEntries([...new Set(publicIdentityVariantCases.map(({ kind }) => kind))].map((kind) => [kind, publicIdentityVariantCases.filter((variant) => variant.kind === kind).length]));
+  assert.equal(variantKindCounts.original, publicIdentitySpellings.length, "every canonical name and alias must retain its original spelling case");
+  assert.equal(variantKindCounts.case, publicIdentitySpellings.length, "every canonical name and alias must receive a case variant");
+  assert.equal(variantKindCounts.surrounding_whitespace, publicIdentitySpellings.length, "every canonical name and alias must receive a surrounding-whitespace variant");
+  ["separator_space", "separator_hyphen", "separator_underscore"].forEach((kind) => {
+    assert.equal(variantKindCounts[kind], separatorApplicableSpellingCount, `every separator-bearing name and alias must receive a ${kind} variant`);
+    assert.ok(publicIdentityVariantCases.some((variant) => variant.kind === kind && variant.value !== variant.sourceValue), `${kind} coverage must include a materially different spelling`);
+  });
+  assert.ok(publicIdentityVariantCases.some((variant) => variant.kind === "case" && variant.value !== variant.sourceValue), "case coverage must include a materially different spelling");
+  assert.ok(publicIdentityVariantCases.some((variant) => variant.kind === "surrounding_whitespace" && variant.value !== variant.sourceValue), "whitespace coverage must include a materially different spelling");
   assert.equal(expectedDirectTargets.size, EXPECTED_DIRECT_TARGET_COUNT, "exactly 59 catalog exercises must expose one positive dynamic-capable direct target");
 
   const nonSingleDirect = [];
@@ -181,16 +248,18 @@ group("PrescriptionEngine exposes the canonical identity and default-target adap
   );
 });
 
-group("all canonical IDs, names, and 66 exported aliases resolve to one catalog identity", () => {
+group("all canonical names and 66 aliases resolve across engine-equivalent case, whitespace, and separator variants", () => {
   publicExerciseDatabase.forEach((exercise) => {
     assertResolvedIdentity(baseEngine.resolveExerciseIdentity(exercise.exercise_id), exercise.exercise_id, exercise.exercise_id);
-    assertResolvedIdentity(baseEngine.resolveExerciseIdentity(exercise.exercise_name), exercise.exercise_id, exercise.exercise_name);
-  });
-  exportedAliases.forEach(({ alias, exerciseId, canonicalName }) => {
-    const byCanonicalName = baseEngine.resolveExerciseIdentity(canonicalName);
-    const byAlias = baseEngine.resolveExerciseIdentity(alias);
-    assertResolvedIdentity(byAlias, exerciseId, alias);
-    assert.equal(byAlias.exerciseId, byCanonicalName.exerciseId, `${alias} must resolve identically to ${canonicalName}`);
+    identitySpellingsForExercise(exercise).forEach((spelling) => {
+      engineEquivalentVariantCases(spelling).forEach((variant) => {
+        assertResolvedIdentity(
+          baseEngine.resolveExerciseIdentity(variant.value),
+          exercise.exercise_id,
+          `${exercise.exercise_id} ${spelling.kind} ${JSON.stringify(spelling.value)} ${variant.kind}`
+        );
+      });
+    });
   });
 }, { requiresAdapter: true });
 
@@ -203,16 +272,37 @@ group("59 dynamic-capable exercises resolve exact versioned mg_* defaults and th
       taxonomyVersion: relationship.taxonomy_version
     };
     assertResolvedTarget(baseEngine.resolveDefaultPrescriptionTarget(exerciseId), expected, exerciseId);
-    assertResolvedTarget(baseEngine.resolveDefaultPrescriptionTarget(exercise.exercise_name), expected, exercise.exercise_name);
-    aliasesFor(exercise).forEach((alias) => {
-      assertResolvedTarget(baseEngine.resolveDefaultPrescriptionTarget(alias), expected, alias);
+    identitySpellingsForExercise(exercise).forEach((spelling) => {
+      engineEquivalentVariantCases(spelling).forEach((variant) => {
+        assertResolvedTarget(
+          baseEngine.resolveDefaultPrescriptionTarget(variant.value),
+          expected,
+          `${exerciseId} ${spelling.kind} ${JSON.stringify(spelling.value)} ${variant.kind}`
+        );
+      });
     });
   });
   ZERO_DIRECT_EXCEPTIONS.forEach((exerciseName, exerciseId) => {
-    const result = baseEngine.resolveDefaultPrescriptionTarget(exerciseId);
-    assert.equal(result?.status, "ineligible", `${exerciseName} must not receive a fabricated default target`);
-    assert.equal(result.exerciseId, exerciseId, `${exerciseName} must retain its resolved canonical identity in the ineligible result`);
-    assert.equal(result.reason, "no_dynamic_direct_target", `${exerciseName} must disclose why it has no default prescription target`);
+    const exercise = exercisesById.get(exerciseId);
+    const aliases = aliasesFor(exercise);
+    assert.ok(aliases.length > 0, `${exerciseName} must retain at least one exported alias for the alias fail-closed contract`);
+    const exactInputCases = [
+      { kind: "canonical_id", value: exerciseId },
+      { kind: "canonical_name", value: exercise.exercise_name },
+      ...aliases.map((value) => ({ kind: "exported_alias", value }))
+    ];
+    const normalizedVariantCases = identitySpellingsForExercise(exercise).flatMap((spelling) => engineEquivalentVariantCases(spelling)
+      .filter((variant) => variant.kind !== "original")
+      .map((variant) => ({
+        kind: `${spelling.kind}_${variant.kind}`,
+        value: variant.value
+      })));
+    [...exactInputCases, ...normalizedVariantCases].forEach((input) => {
+      const result = baseEngine.resolveDefaultPrescriptionTarget(input.value);
+      assert.equal(result?.status, "ineligible", `${exerciseName} via ${input.kind} must not receive a fabricated default target`);
+      assert.equal(result.exerciseId, exerciseId, `${exerciseName} via ${input.kind} must retain its resolved canonical identity in the ineligible result`);
+      assert.equal(result.reason, "no_dynamic_direct_target", `${exerciseName} via ${input.kind} must disclose why it has no default prescription target`);
+    });
   });
 }, { requiresAdapter: true });
 
@@ -310,12 +400,22 @@ group("explicit fractional targets remain valid while unrelated explicit targets
   const benchTriceps = (relationshipsByExercise.get("ex_barbell_bench_press") || []).find((row) => row.muscle_group_id === "mg_triceps");
   assert.equal(benchTriceps?.relationship_type, "meaningful_fractional_load", "fractional-target fixture drifted");
   assert.ok(Number(benchTriceps.fractional_set_credit) > 0, "fractional-target fixture must retain positive credit");
-  assert.doesNotThrow(() => baseEngine.prescribeExercise({
+  const fractionalSnapshot = baseEngine.prescribeExercise({
     exerciseId: "ex_barbell_bench_press",
     muscleGroupId: "mg_triceps",
     availableEquipment: ["all"],
     createdAt: CREATED_AT
-  }), "an explicit exact canonical fractional target must remain a supported caller choice");
+  });
+  [
+    ["snapshot", fractionalSnapshot],
+    ["basePrescription", fractionalSnapshot.basePrescription],
+    ["finalPrescription", fractionalSnapshot.finalPrescription]
+  ].forEach(([layer, prescription]) => {
+    assert.equal(prescription?.muscleGroupId, "mg_triceps", `${layer} must preserve the caller's exact positive fractional target`);
+    assert.equal(prescription?.exerciseId, "ex_barbell_bench_press", `${layer} must preserve the selected canonical exercise identity`);
+  });
+  assert.equal(fractionalSnapshot.basePrescription.researchExerciseId, "ex_barbell_bench_press", "basePrescription must retain the canonical research identity");
+  assert.equal(fractionalSnapshot.finalPrescription.researchExerciseId, "ex_barbell_bench_press", "finalPrescription must retain the canonical research identity");
   assert.throws(() => baseEngine.prescribeExercise({
     exerciseId: "ex_barbell_bench_press",
     muscleGroupId: "mg_calves_gastroc",
@@ -325,9 +425,9 @@ group("explicit fractional targets remain valid while unrelated explicit targets
 });
 
 group("broad body-region labels do not become exercise aliases or default targets", () => {
-  const normalizedExportedAliases = new Set(exportedAliases.map(({ alias }) => alias.toLowerCase()));
+  const normalizedExportedAliases = new Set(exportedAliases.map(({ alias }) => engineEquivalentIdentityKey(alias)));
   BROAD_NON_EXERCISE_ALIASES.forEach((value) => {
-    assert.ok(!normalizedExportedAliases.has(value.toLowerCase()), `${value} unexpectedly became an exported exercise alias fixture`);
+    assert.ok(!normalizedExportedAliases.has(engineEquivalentIdentityKey(value)), `${value} unexpectedly became an exported exercise alias fixture`);
     assertUnknownIdentity(baseEngine.resolveExerciseIdentity(value), value);
     const target = baseEngine.resolveDefaultPrescriptionTarget(value);
     assert.equal(target?.status, "ineligible", `${value} must not become a default prescription target`);
@@ -426,7 +526,10 @@ console.log(JSON.stringify({
   relationship_count: publicExerciseMuscleMap.length,
   exported_alias_count: exportedAliases.length,
   dynamic_direct_target_count: expectedDirectTargets.size,
-  zero_direct_exception_count: ZERO_DIRECT_EXCEPTIONS.size
+  zero_direct_exception_count: ZERO_DIRECT_EXCEPTIONS.size,
+  identity_spelling_count: publicIdentitySpellings.length,
+  normalized_variant_case_count: publicIdentityVariantCases.length,
+  separator_applicable_spelling_count: separatorApplicableSpellingCount
 }, null, 2));
 
 if (failures.length || blocked.length) {
