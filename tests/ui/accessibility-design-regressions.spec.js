@@ -73,7 +73,7 @@ async function installScenario(page, options = {}) {
   return fixture;
 }
 
-async function readPersistedAppData(page) {
+async function readPersistedAppRecord(page) {
   return page.evaluate(() => new Promise((resolve, reject) => {
     const request = indexedDB.open("comprehensive-fitness", 1);
     request.onerror = () => reject(request.error || new Error("IndexedDB could not be opened by the regression fixture."));
@@ -82,10 +82,42 @@ async function readPersistedAppData(page) {
       const transaction = db.transaction("state", "readonly");
       const record = transaction.objectStore("state").get("app-data");
       record.onerror = () => reject(record.error || new Error("Persisted app data could not be read by the regression fixture."));
-      record.onsuccess = () => resolve(record.result?.value || null);
+      record.onsuccess = () => resolve(record.result || null);
       transaction.oncomplete = () => db.close();
     };
   }));
+}
+
+async function readPersistedAppData(page) {
+  return (await readPersistedAppRecord(page))?.value || null;
+}
+
+async function writePersistedAppRecord(page, value, updatedAt) {
+  await page.evaluate(({ storedValue, storedUpdatedAt }) => new Promise((resolve, reject) => {
+    const request = indexedDB.open("comprehensive-fitness", 1);
+    request.onerror = () => reject(request.error || new Error("IndexedDB could not be opened by the conflict fixture."));
+    request.onsuccess = () => {
+      const db = request.result;
+      const transaction = db.transaction("state", "readwrite");
+      transaction.objectStore("state").put({ key: "app-data", value: storedValue, updatedAt: storedUpdatedAt });
+      transaction.onerror = () => reject(transaction.error || new Error("Conflict fixture could not seed IndexedDB."));
+      transaction.oncomplete = () => { db.close(); resolve(); };
+    };
+  }), { storedValue: value, storedUpdatedAt: updatedAt });
+}
+
+async function quiesceAppDataPersistenceForRecoveryFixture(page) {
+  await page.evaluate(() => {
+    globalThis.cancelPendingDataSave?.();
+    if (globalThis.persistBeforeSuspend) {
+      window.removeEventListener("pagehide", globalThis.persistBeforeSuspend);
+      window.removeEventListener("beforeunload", globalThis.persistBeforeSuspend);
+    }
+  });
+}
+
+function localFallbackData(stored) {
+  return stored?.format === "comprehensive-fitness-local-fallback" ? stored.data : stored;
 }
 
 async function installServiceWorkerControllerFixture(page) {
@@ -105,6 +137,37 @@ async function installServiceWorkerControllerFixture(page) {
     Object.defineProperty(navigator, "serviceWorker", { configurable: true, value: serviceWorker });
     globalThis.__CF_TRIGGER_CONTROLLER_CHANGE__ = () => serviceWorker.dispatchEvent(new Event("controllerchange"));
   });
+}
+
+async function installIndexedWriteBlocker(page) {
+  await page.evaluate(() => new Promise((resolve, reject) => {
+    const request = indexedDB.open("comprehensive-fitness", 1);
+    request.onerror = () => reject(request.error || new Error("Could not install the delayed-persistence fixture."));
+    request.onsuccess = () => {
+      const db = request.result;
+      const blocker = db.transaction("state", "readwrite");
+      const store = blocker.objectStore("state");
+      let released = false;
+      const nativeTransaction = IDBDatabase.prototype.transaction;
+      globalThis.__CF_HISTORY_WRITE_QUEUED__ = false;
+      globalThis.__CF_RELEASE_HISTORY_WRITE__ = () => {
+        released = true;
+        IDBDatabase.prototype.transaction = nativeTransaction;
+      };
+      IDBDatabase.prototype.transaction = function observedTransaction(storeNames, mode, ...args) {
+        if (mode === "readwrite") globalThis.__CF_HISTORY_WRITE_QUEUED__ = true;
+        return nativeTransaction.call(this, storeNames, mode, ...args);
+      };
+      const keepAlive = () => {
+        const pending = store.get("__cf_history_edit_blocker__");
+        pending.onerror = () => reject(pending.error || new Error("Delayed-persistence fixture failed."));
+        pending.onsuccess = () => { if (!released) keepAlive(); };
+      };
+      blocker.oncomplete = () => db.close();
+      keepAlive();
+      resolve();
+    };
+  }));
 }
 
 function primaryTab(page, tabId) {
@@ -958,7 +1021,8 @@ test("newer local fallback outranks stale readable IndexedDB after a failed pre-
   await expect(page.locator(".history-edit-bar")).toBeVisible();
   await page.evaluate(() => { IDBFactory.prototype.open = globalThis.__CF_NATIVE_IDB_OPEN_FOR_FALLBACK__; });
 
-  const localFallback = await page.evaluate((storageKey) => JSON.parse(localStorage.getItem(storageKey) || "null"), STORAGE_KEY);
+  const localFallbackRecord = await page.evaluate((storageKey) => JSON.parse(localStorage.getItem(storageKey) || "null"), STORAGE_KEY);
+  const localFallback = localFallbackData(localFallbackRecord);
   expect(localFallback.dataRevision).toBeGreaterThan(staleIndexed.dataRevision);
   expect(localFallback.templates.find((template) => template.id === templateId)?.name).toBe(newerTemplateName);
   await page.locator("summary").filter({ hasText: "Workout details" }).click();
@@ -976,59 +1040,134 @@ test("newer local fallback outranks stale readable IndexedDB after a failed pre-
 
 test("concurrent navigation and mutation abort delayed history-edit startup without rollback", async ({ page }) => {
   test.setTimeout(90_000);
+  await page.addInitScript(() => {
+    const nativeSetTimeout = window.setTimeout.bind(window);
+    window.setTimeout = (callback, delay, ...args) => nativeSetTimeout(callback, Number(delay) === 1800 ? 60_000 : delay, ...args);
+  });
   await installScenario(page, { activeWorkout: false });
   await openPrimaryTab(page, "dashboard");
   await page.locator('[data-action="open-session"][data-session-id="public-synthetic-history-session-00"]').first().click();
-  const originalUnit = await page.locator('[data-action="toggle-unit"]').textContent();
-
-  await page.evaluate(() => new Promise((resolve, reject) => {
-    const request = indexedDB.open("comprehensive-fitness", 1);
-    request.onerror = () => reject(request.error || new Error("Could not install the delayed-persistence fixture."));
-    request.onsuccess = () => {
-      const db = request.result;
-      const blocker = db.transaction("state", "readwrite");
-      const store = blocker.objectStore("state");
-      let released = false;
-      const nativeTransaction = IDBDatabase.prototype.transaction;
-      globalThis.__CF_HISTORY_WRITE_QUEUED__ = false;
-      globalThis.__CF_RELEASE_HISTORY_WRITE__ = () => {
-        released = true;
-        IDBDatabase.prototype.transaction = nativeTransaction;
-      };
-      IDBDatabase.prototype.transaction = function observedTransaction(storeNames, mode, ...args) {
-        if (mode === "readwrite") globalThis.__CF_HISTORY_WRITE_QUEUED__ = true;
-        return nativeTransaction.call(this, storeNames, mode, ...args);
-      };
-      const keepAlive = () => {
-        const pending = store.get("__cf_history_edit_blocker__");
-        pending.onerror = () => reject(pending.error || new Error("Delayed-persistence fixture failed."));
-        pending.onsuccess = () => { if (!released) keepAlive(); };
-      };
-      blocker.oncomplete = () => db.close();
-      keepAlive();
-      resolve();
-    };
-  }));
+  const templateId = "public-synthetic-template-upper";
+  const changedTemplateName = "Concurrent mutation durably reconciled";
+  await installIndexedWriteBlocker(page);
 
   await page.getByRole("button", { name: "Edit History", exact: true }).click();
   await expect.poll(() => page.evaluate(() => Boolean(globalThis.__CF_HISTORY_WRITE_QUEUED__)), {
     message: "The edit-start stable snapshot must be waiting behind the deterministic IndexedDB blocker"
   }).toBe(true);
-  await openPrimaryTab(page, "data");
-  await page.locator('[data-action="toggle-unit"]').click();
-  const changedUnit = await page.locator('[data-action="toggle-unit"]').textContent();
-  expect(changedUnit).not.toBe(originalUnit);
+  await openPrimaryTab(page, "plan");
+  await page.locator(`[data-action="template-name"][data-template-id="${templateId}"]`).fill(changedTemplateName);
   await page.evaluate(() => globalThis.__CF_RELEASE_HISTORY_WRITE__());
 
-  await expect(page.locator(".app-toast"), "The stale edit startup must abort and ask the user to retry").toContainText(/changed while history editing was opening.*try again/i);
+  await expect(page.locator(".app-toast"), "The stale edit startup must await and confirm the current-state resave").toContainText(/current changes were saved.*try again/i);
   await expect(page.locator(".history-edit-bar")).toHaveCount(0);
-  await expect.poll(async () => (await readPersistedAppData(page)).settings.weightUnit, {
+  await expect.poll(async () => (await readPersistedAppData(page)).templates.find((template) => template.id === templateId)?.name, {
     message: "The concurrent mutation must remain eligible for persistence after the stale edit startup aborts"
-  }).toBe(String(changedUnit).toLowerCase());
+  }).toBe(changedTemplateName);
   await page.reload();
   await expect(page.locator("main.app-main")).toBeVisible({ timeout: 45_000 });
-  await expect(page.locator('[data-action="toggle-unit"]')).toHaveText(changedUnit);
+  await openPrimaryTab(page, "plan");
+  await expect(page.locator(`[data-action="template-name"][data-template-id="${templateId}"]`)).toHaveValue(changedTemplateName);
   await expect(page.locator(".history-edit-bar")).toHaveCount(0);
+});
+
+test("failed current-state reconciliation reports non-durability and keeps in-memory changes", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.addInitScript(() => {
+    const nativeSetTimeout = window.setTimeout.bind(window);
+    window.setTimeout = (callback, delay, ...args) => nativeSetTimeout(callback, Number(delay) === 1800 ? 60_000 : delay, ...args);
+  });
+  await installScenario(page, { activeWorkout: false });
+  await openPrimaryTab(page, "dashboard");
+  await page.locator('[data-action="open-session"][data-session-id="public-synthetic-history-session-00"]').first().click();
+  const templateId = "public-synthetic-template-upper";
+  const changedTemplateName = "Concurrent mutation currently in memory only";
+  await installIndexedWriteBlocker(page);
+  await page.getByRole("button", { name: "Edit History", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => Boolean(globalThis.__CF_HISTORY_WRITE_QUEUED__))).toBe(true);
+  await openPrimaryTab(page, "plan");
+  await page.locator(`[data-action="template-name"][data-template-id="${templateId}"]`).fill(changedTemplateName);
+  await page.evaluate(() => {
+    globalThis.__CF_NATIVE_IDB_OPEN_FOR_RECONCILIATION__ = IDBFactory.prototype.open;
+    globalThis.__CF_NATIVE_STORAGE_SET_FOR_RECONCILIATION__ = Storage.prototype.setItem;
+    IDBFactory.prototype.open = function blockedReconciliationOpen() { throw new Error("Synthetic reconciliation IndexedDB failure"); };
+    Storage.prototype.setItem = function blockedReconciliationFallback(key, value) {
+      if (key === "comprehensive-fitness-data-v1") throw new Error("Synthetic reconciliation fallback failure");
+      return globalThis.__CF_NATIVE_STORAGE_SET_FOR_RECONCILIATION__.call(this, key, value);
+    };
+    globalThis.__CF_RELEASE_HISTORY_WRITE__();
+  });
+
+  await expect(page.locator(".app-toast"), "Dual-store failure must not claim the concurrent mutation is durable").toContainText(/not durable.*export.*retry.*before reloading/i);
+  await expect(page.locator(`[data-action="template-name"][data-template-id="${templateId}"]`), "The failed resave must not roll back the in-memory mutation").toHaveValue(changedTemplateName);
+  await expect(page.locator(".history-edit-bar")).toHaveCount(0);
+  await page.evaluate(() => {
+    IDBFactory.prototype.open = globalThis.__CF_NATIVE_IDB_OPEN_FOR_RECONCILIATION__;
+    Storage.prototype.setItem = globalThis.__CF_NATIVE_STORAGE_SET_FOR_RECONCILIATION__;
+  });
+  expect((await readPersistedAppData(page)).templates.find((template) => template.id === templateId)?.name).not.toBe(changedTemplateName);
+});
+
+test("equal-revision divergent copies preserve the alternate through later normal saves", async ({ page }) => {
+  test.setTimeout(90_000);
+  await installScenario(page, { activeWorkout: false, preserveStorageOnReload: true });
+  const base = await readPersistedAppData(page);
+  const indexedName = "Indexed equal-revision copy";
+  const localName = "Local equal-revision alternate";
+  const templateId = "public-synthetic-template-upper";
+  const indexedCopy = { ...base, templates: base.templates.map((template) => template.id === templateId ? { ...template, name: indexedName } : template) };
+  const localCopy = { ...base, templates: base.templates.map((template) => template.id === templateId ? { ...template, name: localName } : template) };
+  const equalTimestamp = "2026-07-14T15:00:00.000Z";
+  await quiesceAppDataPersistenceForRecoveryFixture(page);
+  await writePersistedAppRecord(page, indexedCopy, equalTimestamp);
+  await page.evaluate(({ storageKey, alternate, updatedAt }) => localStorage.setItem(storageKey, JSON.stringify({
+    format: "comprehensive-fitness-local-fallback", version: 1, source: "two-tab-local", updatedAt, conflictPreserved: false, data: alternate
+  })), { storageKey: STORAGE_KEY, alternate: localCopy, updatedAt: equalTimestamp });
+  expect((await readPersistedAppRecord(page)).updatedAt).toBe(equalTimestamp);
+
+  await page.reload();
+  await expect(page.locator("main.app-main")).toBeVisible({ timeout: 45_000 });
+  await openPrimaryTab(page, "data");
+  const preservedBeforeSave = await page.evaluate((storageKey) => JSON.parse(localStorage.getItem(storageKey) || "null"), STORAGE_KEY);
+  expect(preservedBeforeSave.conflictPreserved).toBe(true);
+  expect(localFallbackData(preservedBeforeSave).templates.find((template) => template.id === templateId)?.name).toBe(localName);
+  await expect(page.locator(".persistence-conflict-note")).toContainText(/conflicting saved app-data copies.*preserved.*export.*clear all/i);
+
+  await page.locator('[data-action="toggle-theme"]').click();
+  await expect.poll(async () => (await readPersistedAppData(page)).dataRevision).toBeGreaterThan(base.dataRevision);
+  const preservedAfterSave = await page.evaluate((storageKey) => JSON.parse(localStorage.getItem(storageKey) || "null"), STORAGE_KEY);
+  expect(localFallbackData(preservedAfterSave).templates.find((template) => template.id === templateId)?.name).toBe(localName);
+  await page.reload();
+  await openPrimaryTab(page, "data");
+  await expect(page.locator(".persistence-conflict-note")).toBeVisible();
+  expect(await page.evaluate((storageKey) => localStorage.getItem(storageKey) !== null, STORAGE_KEY)).toBe(true);
+});
+
+test("revisionless legacy divergence is wrapped and preserved without destructive promotion", async ({ page }) => {
+  test.setTimeout(90_000);
+  await installScenario(page, { activeWorkout: false, preserveStorageOnReload: true });
+  const base = await readPersistedAppData(page);
+  const templateId = "public-synthetic-template-upper";
+  const withoutRevision = (name) => {
+    const copy = { ...base, templates: base.templates.map((template) => template.id === templateId ? { ...template, name } : template) };
+    delete copy.dataRevision;
+    return copy;
+  };
+  const indexedCopy = withoutRevision("Revisionless IndexedDB copy");
+  const legacyLocalCopy = withoutRevision("Revisionless legacy local alternate");
+  await quiesceAppDataPersistenceForRecoveryFixture(page);
+  await writePersistedAppRecord(page, indexedCopy, "2026-07-14T15:05:00.000Z");
+  await page.evaluate(({ storageKey, alternate }) => localStorage.setItem(storageKey, JSON.stringify(alternate)), { storageKey: STORAGE_KEY, alternate: legacyLocalCopy });
+
+  await page.reload();
+  await expect(page.locator("main.app-main")).toBeVisible({ timeout: 45_000 });
+  await openPrimaryTab(page, "data");
+  await expect(page.locator(".persistence-conflict-note")).toContainText(/ordering.*unavailable|conflicting saved/i);
+  const wrapped = await page.evaluate((storageKey) => JSON.parse(localStorage.getItem(storageKey) || "null"), STORAGE_KEY);
+  expect(wrapped.format).toBe("comprehensive-fitness-local-fallback");
+  expect(wrapped.conflictPreserved).toBe(true);
+  expect(localFallbackData(wrapped).templates.find((template) => template.id === templateId)?.name).toBe("Revisionless legacy local alternate");
+  expect((await readPersistedAppData(page)).templates.find((template) => template.id === templateId)?.name).toBe("Revisionless IndexedDB copy");
 });
 
 test("Dashboard detail receives initial focus and Back restores the durable originating summary control", async ({ page }) => {
