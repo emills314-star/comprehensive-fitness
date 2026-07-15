@@ -124,13 +124,17 @@ async function installSubmissionProbe(page) {
     const realSubmitWorkout = window.submitWorkout;
     const realCalculateWorkoutAnalysis = window.calculateWorkoutAnalysis;
     const realWriteIndexedValue = window.writeIndexedValue;
-    if (typeof realSubmitWorkout !== "function" || typeof realCalculateWorkoutAnalysis !== "function" || typeof realWriteIndexedValue !== "function") {
-      throw new Error("The lifecycle probe could not access the real submission, analysis, and persistence functions.");
+    const realPlayWorkoutCompletionSound = window.playWorkoutCompletionSound;
+    const realPerformInteractionFeedback = window.performInteractionFeedback;
+    if (typeof realSubmitWorkout !== "function" || typeof realCalculateWorkoutAnalysis !== "function" || typeof realWriteIndexedValue !== "function" || typeof realPlayWorkoutCompletionSound !== "function" || typeof realPerformInteractionFeedback !== "function") {
+      throw new Error("The lifecycle probe could not access the real submission, analysis, persistence, sound, and feedback functions.");
     }
     const probe = window.__lifecycleSubmissionProbe = {
       attempts: [],
       returnedTypes: [],
       analysisCalls: [],
+      completionSoundCalls: [],
+      successFeedbackCalls: [],
       writesStarted: 0,
       writesCompleted: 0,
       writesFailed: 0
@@ -144,6 +148,14 @@ async function installSubmissionProbe(page) {
     window.calculateWorkoutAnalysis = function (...args) {
       probe.analysisCalls.push(String(args[0]?.id || ""));
       return Reflect.apply(realCalculateWorkoutAnalysis, this, args);
+    };
+    window.playWorkoutCompletionSound = function (...args) {
+      probe.completionSoundCalls.push(args.map((value) => Boolean(value)));
+      return Reflect.apply(realPlayWorkoutCompletionSound, this, args);
+    };
+    window.performInteractionFeedback = function (...args) {
+      if (args[0] === "success") probe.successFeedbackCalls.push(args.map((value) => String(value)));
+      return Reflect.apply(realPerformInteractionFeedback, this, args);
     };
     window.writeIndexedValue = async function (...args) {
       probe.writesStarted += 1;
@@ -278,6 +290,61 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     expect.soft(afterExercise.targetRpe, "invalid RPE must not replace the last valid persisted value").toBe(beforeExercise.targetRpe);
     expect.soft(afterExercise.increment, "invalid increment must not replace the last valid persisted value").toBe(beforeExercise.increment);
     expect.soft(afterExercise.restSeconds, "invalid rest must not replace the last valid persisted value").toBe(beforeExercise.restSeconds);
+
+    const correctionRevision = await page.evaluate(() => {
+      const realWriteIndexedValue = window.writeIndexedValue;
+      window.__templateCorrectionWriteProbe = { started: 0, completed: 0, failed: 0 };
+      window.writeIndexedValue = async function (...args) {
+        const isAppDataWrite = args[0] === "app-data";
+        if (isAppDataWrite) window.__templateCorrectionWriteProbe.started += 1;
+        try {
+          const result = await Reflect.apply(realWriteIndexedValue, this, args);
+          if (isAppDataWrite) window.__templateCorrectionWriteProbe.completed += 1;
+          return result;
+        } catch (error) {
+          if (isAppDataWrite) window.__templateCorrectionWriteProbe.failed += 1;
+          throw error;
+        }
+      };
+      return Number(data.dataRevision);
+    });
+    const correctedValues = [
+      ["template-exercise-sets", "4"],
+      ["template-exercise-reps", "12"],
+      ["template-exercise-rpe", "8.5"],
+      ["template-exercise-increment", "2.5"],
+      ["template-exercise-rest", "150"]
+    ];
+    await page.evaluate(({ templateId, exerciseId, values }) => {
+      values.forEach(([action, value]) => {
+        const selector = `[data-action="${action}"][data-template-id="${templateId}"][data-template-exercise-id="${exerciseId}"]`;
+        const control = document.querySelector(selector);
+        if (!control) throw new Error(`Missing corrected template control: ${action}`);
+        control.value = value;
+        control.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+    }, { templateId: IDS.controlTemplate, exerciseId: IDS.controlBenchTemplateExercise, values: correctedValues });
+
+    await expect(card.locator('[role="alert"]'), "correcting every invalid field must clear the single accessible validation alert").toHaveCount(0);
+    for (const [control, label] of [[sets, "sets"], [reps, "reps"], [rpe, "RPE"], [increment, "increment"], [rest, "rest"]]) {
+      await expect.soft(control, `correcting ${label} must clear its programmatic invalid state`).not.toHaveAttribute("aria-invalid", "true");
+    }
+    await expect.poll(() => page.evaluate(() => structuredClone(window.__templateCorrectionWriteProbe)), {
+      message: "the corrected template fields must settle through one debounced durable app-data write",
+      timeout: 12_000
+    }).toEqual({ started: 1, completed: 1, failed: 0 });
+
+    const corrected = await persistedData(page);
+    const correctedExercise = corrected.templates.find((item) => item.id === IDS.controlTemplate).exercises.find((item) => item.id === IDS.controlBenchTemplateExercise);
+    expect.soft(corrected.dataRevision, "five valid field corrections must create five coherent logical revisions before one debounced persistence write").toBe(correctionRevision + 5);
+    expect.soft(correctedExercise, "the corrected template values must persist exactly as entered").toMatchObject({
+      sets: 4,
+      reps: 12,
+      targetRpe: 8.5,
+      increment: 2.5,
+      restSeconds: 150
+    });
+    expect.soft(await page.evaluate(() => Number(data.dataRevision)), "the durable revision must equal the current in-memory revision").toBe(corrected.dataRevision);
   });
 
   test("template Continue to usual readiness starts one coherent workout and survives reload", async ({ page }) => {
@@ -347,6 +414,124 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     expect.soft(exercise.programTargetContext?.exerciseId, "the program audit must retain the catalog identity").toBe("ex_seated_cable_row");
     expect.soft(exercise.recommendationSnapshot?.exerciseId, "the recommendation snapshot must retain the catalog identity").toBe("ex_seated_cable_row");
     expect.soft(exercise.recommendationSnapshot?.muscleGroupId, "legacy/UI Back must resolve to the catalog's direct canonical target").toBe("mg_upper_back");
+  });
+
+  const frontendHardRejectionCases = [
+    { reason: "no_dynamic_direct_target", stage: "target" },
+    { reason: "ambiguous_dynamic_direct_target", stage: "target" },
+    { reason: "invalid_reconciled_identity", stage: "identity" },
+    { reason: "unknown_exercise_identity", stage: "identity" }
+  ];
+
+  for (const scenario of frontendHardRejectionCases) {
+    test(`frontend preserves ${scenario.reason} as a zero-execution hard rejection without prescribing`, async ({ page }) => {
+      await installFixture(page, buildTemplateLifecycleFixture());
+      const observed = await page.evaluate(({ reason, stage }) => {
+        const calls = { identity: [], target: [], prescribe: [] };
+        prescriptionEngine.resolveExerciseIdentity = function (...args) {
+          calls.identity.push(args.map((value) => typeof value === "string" ? value : JSON.stringify(value)));
+          if (stage === "identity") return { status: "unresolved", reason };
+          return { status: "resolved", exerciseId: "ex_barbell_bench_press", source: "public-synthetic-resolver-probe" };
+        };
+        prescriptionEngine.resolveDefaultPrescriptionTarget = function (...args) {
+          calls.target.push(args.map((value) => typeof value === "string" ? value : JSON.stringify(value)));
+          return { status: "ineligible", exerciseId: "ex_barbell_bench_press", reason };
+        };
+        prescriptionEngine.prescribeExercise = function (...args) {
+          calls.prescribe.push(args.map((value) => JSON.stringify(value)));
+          return {
+            recommendationId: "public-synthetic-unexpected-prescription",
+            executable: true,
+            finalPrescription: { executable: true, executionBlocked: false, sets: 3, reps: 8 }
+          };
+        };
+        const result = unifiedPrescriptionSnapshot({
+          name: "Barbell Bench Press",
+          primaryMuscle: "Chest",
+          secondaryMuscle: "Triceps",
+          sets: 3,
+          reps: 8,
+          targetRpe: 8,
+          restSeconds: 120
+        }, {
+          history: [],
+          availableEquipment: ["all"],
+          includedMuscleGroupIds: ["mg_pectoralis_major"],
+          sessionDurationMinutes: 45
+        });
+        return { calls, result };
+      }, scenario);
+
+      expect.soft(observed.calls.identity.length, "the frontend must consult the engine's canonical identity resolver").toBeGreaterThan(0);
+      expect.soft(observed.calls.target.length, "only a resolved identity may proceed to the engine's default-target resolver").toBe(scenario.stage === "target" ? 1 : 0);
+      expect.soft(observed.calls.prescribe, "an ineligible or unresolved adapter result must never reach prescribeExercise").toEqual([]);
+      expect.soft(observed.result, "the adapter failure must retain the ordinary hard-rejection contract").toMatchObject({
+        type: "hard_constraint_rejection",
+        kind: "hard_constraint_rejection",
+        hardConstraint: true,
+        executionBlocked: true,
+        executable: false,
+        status: "blocked",
+        reason: scenario.reason,
+        decision: "hold",
+        mode: "stop-modify",
+        interventionType: "stop_modify",
+        sets: 0,
+        reps: 0,
+        repLow: 0,
+        repHigh: 0,
+        weight: 0,
+        addedLoad: 0,
+        assistanceLoad: 0,
+        rpe: 0,
+        restSeconds: 0,
+        warmups: [],
+        executableActions: [],
+        safetyRestriction: { status: "blocked", reason: scenario.reason }
+      });
+    });
+  }
+
+  test("an existing stored recommendation snapshot bypasses identity and default-target resolution byte-equivalently", async ({ page }) => {
+    const fixture = buildHistoryLifecycleFixture();
+    const storedSnapshot = {
+      schemaVersion: "prescription-snapshot/public-synthetic",
+      recommendationId: "public-synthetic-existing-recommendation",
+      exerciseId: "ex_barbell_bench_press",
+      muscleGroupId: "mg_pectoralis_major",
+      explanation: { summary: "Public synthetic immutable recommendation snapshot." },
+      finalPrescription: {
+        executable: true,
+        executionBlocked: false,
+        sets: 2,
+        repRange: { min: 8, max: 10, target: 9 },
+        targetRpe: { min: 7, max: 8, target: 8 },
+        restSeconds: { min: 90, max: 150, target: 120 }
+      }
+    };
+    fixture.exercises.find((item) => item.id === IDS.historyBenchExercise).recommendationSnapshot = storedSnapshot;
+    fixture.recommendationHistory = [structuredClone(storedSnapshot)];
+    await installFixture(page, fixture);
+
+    const observed = await page.evaluate((exerciseId) => {
+      const exercise = data.exercises.find((item) => item.id === exerciseId);
+      const calls = { identity: 0, target: 0, prescribe: 0 };
+      prescriptionEngine.resolveExerciseIdentity = function () { calls.identity += 1; throw new Error("Stored snapshots must bypass identity resolution."); };
+      prescriptionEngine.resolveDefaultPrescriptionTarget = function () { calls.target += 1; throw new Error("Stored snapshots must bypass default-target resolution."); };
+      prescriptionEngine.prescribeExercise = function () { calls.prescribe += 1; throw new Error("Stored snapshots must bypass fresh prescription."); };
+      const beforeBytes = JSON.stringify(exercise.recommendationSnapshot);
+      const result = unifiedPrescriptionSnapshot(exercise);
+      return {
+        calls,
+        sameReference: result === exercise.recommendationSnapshot,
+        beforeBytes,
+        afterBytes: JSON.stringify(result)
+      };
+    }, IDS.historyBenchExercise);
+
+    expect(observed.calls).toEqual({ identity: 0, target: 0, prescribe: 0 });
+    expect(observed.sameReference).toBe(true);
+    expect(observed.afterBytes).toBe(observed.beforeBytes);
   });
 
   test("active workout rename, reorder, add/remove exercises and sets, save-as-template, and reload remain coherent", async ({ page }) => {
@@ -468,6 +653,9 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
       analysisCalls: [IDS.activeSession],
       writesFailed: 0
     });
+    const firstEffectProbe = await submissionProbe(page);
+    expect.soft(firstEffectProbe.completionSoundCalls, "the first accepted submission must route workout-completion sound exactly once").toHaveLength(1);
+    expect.soft(firstEffectProbe.successFeedbackCalls, "the accepted UI confirmation and completed workout must each route their deliberate success-feedback signal").toHaveLength(2);
     expect(afterFirst.dataRevision, "the first routed submission must create exactly one data revision").toBe(Number(beforeSubmit.dataRevision) + 1);
 
     const secondRoute = await page.evaluate((sessionId) => {
@@ -491,6 +679,8 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     expect.soft(finalProbe.attempts, "both independent application-level attempts must reach the real submit function").toEqual([[IDS.activeSession], [IDS.activeSession]]);
     expect.soft(finalProbe.returnedTypes, "both real submit calls must return to their callers").toEqual(["undefined", "undefined"]);
     expect.soft(finalProbe.analysisCalls, "two submission attempts must calculate the durable analysis only once").toEqual([IDS.activeSession]);
+    expect.soft(finalProbe.completionSoundCalls, "the retry must not replay workout-completion sound").toEqual(firstEffectProbe.completionSoundCalls);
+    expect.soft(finalProbe.successFeedbackCalls, "the direct retry must not add a third success-feedback signal after the UI confirmation and first completion effect").toEqual(firstEffectProbe.successFeedbackCalls);
 
     const after = await persistedData(page);
     const firstSession = afterFirst.sessions.find((item) => item.id === IDS.activeSession);
@@ -599,14 +789,39 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
   });
 
   test("the first Save Edits click after a numeric history field blur is not swallowed by rerender", async ({ page }) => {
-    test.setTimeout(90_000);
+    test.setTimeout(120_000);
     await installFixture(page, buildHistoryLifecycleFixture());
     await openSubmittedHistorySession(page);
     await page.locator('[data-action="begin-history-edit"]').click();
     const editedReps = page.locator(`[data-action="set-reps"][data-set-id="${IDS.historyBenchSet1}"]`);
     await editedReps.fill("12");
     await page.locator('[data-action="request-save-history-edits"]').click();
-    await expect(page.getByRole("dialog", { name: "Save these history edits?" }), "the blur-triggered render must not detach and swallow the user's first confirmation click").toBeVisible({ timeout: 1_500 });
+    const dialog = page.getByRole("dialog", { name: "Save these history edits?" });
+    await expect(dialog, "the blur-triggered render must not detach and swallow the user's first confirmation click").toBeVisible({ timeout: 1_500 });
+    await dialog.locator('[data-action="confirm-save-history-edits"]').click();
+
+    const saved = await waitForPersisted(page, (stored) => {
+      const set = stored.sets.find((item) => item.id === IDS.historyBenchSet1);
+      const analysis = stored.sessions.find((item) => item.id === IDS.historySession)?.workoutAnalysis;
+      const result = analysis?.exerciseResults?.find((item) => item.exerciseId === IDS.historyBenchExercise);
+      return set?.reps === 12 && result?.bestSet?.id === IDS.historyBenchSet1 && result.bestSet.reps === 12;
+    }, "the first Save Edits confirmation must persist the numeric edit and its recalculated analysis", 30_000);
+    const savedResult = saved.sessions.find((item) => item.id === IDS.historySession).workoutAnalysis.exerciseResults.find((item) => item.exerciseId === IDS.historyBenchExercise);
+    expect.soft(saved.sets.find((item) => item.id === IDS.historyBenchSet1).reps).toBe(12);
+    expect.soft(savedResult.bestSet).toMatchObject({ id: IDS.historyBenchSet1, reps: 12, load: 145 });
+
+    await reloadAndWait(page);
+    const card = page.locator(`[data-action="open-session"][data-session-id="${IDS.historySession}"]`);
+    await expect(card).toHaveCount(1);
+    await card.click();
+    const result = page.locator(".workout-exercise-result").filter({ hasText: NAMES.bench });
+    await result.locator("summary").click();
+    await expect(result).toContainText("12 reps");
+    await expect(result).toContainText("145 lb");
+    const reloaded = await persistedData(page);
+    const reloadedResult = reloaded.sessions.find((item) => item.id === IDS.historySession).workoutAnalysis.exerciseResults.find((item) => item.exerciseId === IDS.historyBenchExercise);
+    expect.soft(reloaded.sets.find((item) => item.id === IDS.historyBenchSet1).reps).toBe(12);
+    expect.soft(reloadedResult.bestSet).toEqual(savedResult.bestSet);
   });
 
   test("browser Back cannot bypass unsaved-history confirmation or persist temporary edits on unload", async ({ page }) => {

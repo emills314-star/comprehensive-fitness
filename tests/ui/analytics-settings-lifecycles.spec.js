@@ -94,13 +94,30 @@ test("chart search is case-insensitive and retains the selected lift on no resul
   await waitForCharts(page);
   await expect(page.getByRole("heading", { name: "Dumbbell Bench Press", exact: true })).toBeVisible();
 
+  const beforeUnknownQuery = await page.evaluate(() => ({
+    selectedExerciseId,
+    recentChartExerciseIds: [...recentChartExerciseIds],
+    catalogIds: exerciseCatalog().map((exercise) => exercise.id)
+  }));
+
   input = page.getByRole("combobox", { name: "Search or select exercise" });
-  await input.fill("unlogged synthetic movement");
+  const unknownQuery = "unlogged synthetic movement";
+  await input.fill(unknownQuery);
   await expect(page.locator(".exercise-search-empty")).toContainText("No matching logged exercise");
   await input.press("Enter");
   await expect(input).toHaveValue("Dumbbell Bench Press");
   await expect(page.locator(".exercise-search-error")).toHaveText("No logged exercise matched. The previous lift remains selected.");
   await expect(page.getByRole("heading", { name: "Dumbbell Bench Press", exact: true })).toBeVisible();
+  const afterUnknownQuery = await page.evaluate((query) => ({
+    selectedExerciseId,
+    recentChartExerciseIds: [...recentChartExerciseIds],
+    catalogIds: exerciseCatalog().map((exercise) => exercise.id),
+    matchingQueryIds: matchingChartExercises(query).map((exercise) => exercise.id)
+  }), unknownQuery);
+  expect.soft(afterUnknownQuery.selectedExerciseId, "an unknown query must preserve the prior canonical selection").toBe(beforeUnknownQuery.selectedExerciseId);
+  expect.soft(afterUnknownQuery.recentChartExerciseIds, "an unknown query must not add a fabricated custom identifier to the recent-selection history").toEqual(beforeUnknownQuery.recentChartExerciseIds);
+  expect.soft(afterUnknownQuery.catalogIds, "an unknown query must not add a fabricated custom exercise to the logged catalog").toEqual(beforeUnknownQuery.catalogIds);
+  expect.soft(afterUnknownQuery.matchingQueryIds, "free-text chart matching must return no result instead of treating a reporting-only custom fallback as a logged exercise").toEqual([]);
 });
 
 test("partial chart search ranks all matches and promotes the most recently selected lift", async ({ page }) => {
