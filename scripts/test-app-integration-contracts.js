@@ -1034,6 +1034,19 @@ test("navigation, dialogs, and Lift controls expose complete focus and naming co
   ]);
 });
 
+test("history editing seals stable persistence and defers external controller reloads", () => {
+  const beginHistoryEdit = functionSource("beginHistoryEdit");
+  const registerPwaServiceWorker = functionSource("registerPwaServiceWorker");
+  const applyPwaUpdate = functionSource("applyPwaUpdate");
+  collectAssertions([
+    ["pre-edit snapshot flush", () => assertContains(beginHistoryEdit, /await\s+persistStableAppDataSnapshot\s*\([\s\S]*?\)[\s\S]*?historyEditFlow\s*=/, "History editing must durably flush a cloned pre-edit snapshot before opening the temporary transaction")],
+    ["edit-start lock cleanup", () => assertContains(beginHistoryEdit, /finally\s*\{[\s\S]*?historyEditStartPending\s*=\s*false/, "History editing must clear its start lock even when snapshot persistence throws")],
+    ["controllerchange transaction guard", () => assertContains(registerPwaServiceWorker, /controllerchange[\s\S]*?historyEditFlow[\s\S]*?pendingControllerReload/, "An externally activated service worker must defer reload while submitted-history editing is active")],
+    ["explicit update persistence gate", () => assertContains(applyPwaUpdate, /persisted\s*=\s*await\s+persistStableAppDataSnapshot[\s\S]*?if\s*\(\s*!persisted\s*\)[\s\S]*?return\s+false[\s\S]*?pendingControllerReload/, "An explicit deferred update must refuse to reload when neither persistence layer can save the stable snapshot")],
+    ["explicit deferred reload", () => assertContains(applyPwaUpdate, /pendingControllerReload[\s\S]*?location\.reload\s*\(/, "A deferred controller reload must remain behind the explicit Update action after editing ends")]
+  ]);
+});
+
 test("loaded-data normalization uses an indexed set lookup", () => {
   const source = functionSource("normalizeLoadedData");
   collectAssertions([

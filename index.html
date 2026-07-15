@@ -2144,6 +2144,7 @@
       let installPromptEvent = null;
       let updateRegistration = null;
       let updateAvailable = false;
+      let pendingControllerReload = false;
       let persistenceReady = false;
       let syncFlushTimer = 0;
       let syncConsentEpoch = 0;
@@ -2166,6 +2167,7 @@
       let clearDataFlow = null;
       let cancelWorkoutFlow = null;
       let historyEditFlow = null;
+      let historyEditStartPending = false;
       let historyEditConfirm = "";
       let viewingHistorySessionId = "";
       let appToast = "";
@@ -3605,6 +3607,30 @@
         saveTimer = 0;
         if (idleSaveHandle && "cancelIdleCallback" in window) window.cancelIdleCallback(idleSaveHandle);
         idleSaveHandle = 0;
+      }
+
+      async function persistStableAppDataSnapshot(snapshot) {
+        if (performanceFixtureEnabled) return true;
+        const saveStartedAt = performanceNow();
+        try {
+          await writeIndexedValue("app-data", snapshot);
+          persistenceReady = true;
+          try { localStorage.removeItem(STORAGE_KEY); } catch { /* IndexedDB remains primary. */ }
+          queueActiveWorkoutSync();
+          recordPerformance("persistence:stableSnapshot", saveStartedAt, { sessions: snapshot.sessions.length, exercises: snapshot.exercises.length, sets: snapshot.sets.length });
+          saveRuntime();
+          return true;
+        } catch {
+          persistenceReady = false;
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+            saveRuntime();
+            return true;
+          } catch {
+            settingsMessage = "Storage is full on this device. Export a backup, clear old data, or import a smaller file.";
+            return false;
+          }
+        }
       }
 
       function saveData() {
@@ -5516,9 +5542,15 @@
       }
 
       function renderUpdateBanner() {
-        if (!updateAvailable) return "";
+        if (!updateAvailable && !pendingControllerReload) return "";
+        const historyEditing = Boolean(historyEditFlow || historyEditStartPending);
         const workoutActive = hasActiveWorkout();
-        return '<div class="update-banner" role="status"><span>' + (workoutActive ? 'Update available. It will wait until this workout is logged.' : 'A new app version is ready.') + '</span>' + (workoutActive ? '' : '<button type="button" data-action="apply-update">Update now</button>') + '</div>';
+        const message = historyEditing
+          ? 'A new app version is ready. Save or discard history edits before updating.'
+          : workoutActive
+            ? 'Update available. It will wait until this workout is logged.'
+            : 'A new app version is ready.';
+        return '<div class="update-banner" role="status"><span>' + message + '</span>' + (historyEditing || workoutActive ? '' : '<button type="button" data-action="apply-update">Update now</button>') + '</div>';
       }
 
       function navButton(tab, label, iconKey) {
@@ -6145,13 +6177,32 @@
         render();
       }
 
-      function beginHistoryEdit() {
+      async function beginHistoryEdit() {
+        if (historyEditStartPending || historyEditFlow) return false;
         const session = activeSession();
-        if (!isSessionSubmitted(session)) return;
-        cancelPendingDataSave();
-        historyEditFlow = { sessionId: session.id, originalData: cloneAppData(data), dirty: false };
+        if (!isSessionSubmitted(session)) return false;
+        historyEditStartPending = true;
+        let stableData;
+        let persisted = false;
+        try {
+          cancelPendingDataSave();
+          stableData = cloneAppData(data);
+          persisted = await persistStableAppDataSnapshot(stableData);
+        } catch {
+          persisted = false;
+        } finally {
+          historyEditStartPending = false;
+        }
+        if (!persisted) {
+          showAppToast("History editing could not start because the current app state could not be saved.");
+          render();
+          return false;
+        }
+        if (activeSession()?.id !== session.id || !isSessionSubmitted(activeSession())) return false;
+        historyEditFlow = { sessionId: session.id, originalData: stableData, dirty: false };
         historyEditConfirm = "";
         render();
+        return true;
       }
 
       function requestHistoryEditConfirmation(type, options = {}) {
@@ -12664,7 +12715,7 @@
         if (action === "cancel-submit-workout") { pendingSubmitSessionId = ""; render(); }
         if (action === "confirm-submit-workout") submitWorkout(activeSessionId);
         if (action === "close-completed-summary") returnToLiftHome("Workout saved.");
-        if (action === "begin-history-edit") beginHistoryEdit();
+        if (action === "begin-history-edit") await beginHistoryEdit();
         if (action === "request-save-history-edits") requestHistoryEditConfirmation("save");
         if (action === "request-cancel-history-edits") requestHistoryEditConfirmation("cancel");
         if (action === "keep-history-editing") closeHistoryEditConfirmation();
@@ -13146,6 +13197,12 @@
           let refreshing = false;
           navigator.serviceWorker.addEventListener("controllerchange", () => {
             if (refreshing) return;
+            if (historyEditFlow || historyEditStartPending) {
+              pendingControllerReload = true;
+              updateAvailable = true;
+              render();
+              return;
+            }
             refreshing = true;
             window.location.reload();
           });
@@ -13155,12 +13212,30 @@
       }
 
       async function applyPwaUpdate() {
-        if (historyEditFlow) {
-          requestHistoryEditConfirmation("cancel");
+        if (historyEditFlow || historyEditStartPending) {
+          if (historyEditFlow) requestHistoryEditConfirmation("cancel");
+          updateAvailable = true;
           return false;
         }
-        await writeIndexedValue("app-data", data).catch(() => undefined);
+        const stableData = cloneAppData(data);
+        const persisted = await persistStableAppDataSnapshot(stableData);
+        if (!persisted) {
+          updateAvailable = true;
+          showAppToast("The update was not applied because the current app state could not be saved.");
+          render();
+          return false;
+        }
         saveRuntime();
+        if (historyEditFlow || historyEditStartPending) {
+          updateAvailable = true;
+          return false;
+        }
+        if (pendingControllerReload) {
+          pendingControllerReload = false;
+          updateAvailable = false;
+          window.location.reload();
+          return true;
+        }
         const registration = updateRegistration || await navigator.serviceWorker?.getRegistration?.();
         registration?.waiting?.postMessage({ type: "SKIP_WAITING" });
         return true;

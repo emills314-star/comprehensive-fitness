@@ -84,6 +84,25 @@ async function readPersistedAppData(page) {
   }));
 }
 
+async function installServiceWorkerControllerFixture(page) {
+  await page.addInitScript(() => {
+    const registration = new EventTarget();
+    registration.installing = null;
+    registration.waiting = null;
+    const serviceWorker = new EventTarget();
+    const nativeAddEventListener = serviceWorker.addEventListener.bind(serviceWorker);
+    serviceWorker.controller = { postMessage() {} };
+    serviceWorker.getRegistration = async () => registration;
+    serviceWorker.register = async () => registration;
+    serviceWorker.addEventListener = (type, listener, options) => {
+      if (type === "controllerchange") globalThis.__CF_CONTROLLER_LISTENER_READY__ = true;
+      return nativeAddEventListener(type, listener, options);
+    };
+    Object.defineProperty(navigator, "serviceWorker", { configurable: true, value: serviceWorker });
+    globalThis.__CF_TRIGGER_CONTROLLER_CHANGE__ = () => serviceWorker.dispatchEvent(new Event("controllerchange"));
+  });
+}
+
 function primaryTab(page, tabId) {
   return page.locator(`[data-action="set-tab"][data-tab="${tabId}"]`);
 }
@@ -829,6 +848,86 @@ test("browser Back guards dirty history edits and reload cannot persist the temp
   await openPrimaryTab(page, "dashboard");
   await page.locator(`[data-action="open-session"][data-session-id="${originalSession.id}"]`).first().click();
   await expect(page.locator('[data-action="session-title"]'), "Reopening history after reload must show the last explicitly saved value, not the temporary edit").toHaveValue(originalSession.title);
+});
+
+test("external service-worker activation defers reload until history editing ends and Update is explicit", async ({ page }) => {
+  test.setTimeout(90_000);
+  await installServiceWorkerControllerFixture(page);
+  const fixture = await installScenario(page, { activeWorkout: false });
+  const originalSession = fixture.sessions.find((session) => session.id === "public-synthetic-history-session-00");
+  await expect.poll(() => page.evaluate(() => Boolean(globalThis.__CF_CONTROLLER_LISTENER_READY__)), {
+    message: "The deterministic service-worker fixture must observe the production controllerchange listener",
+    timeout: 5_000
+  }).toBe(true);
+
+  await openPrimaryTab(page, "dashboard");
+  await page.locator(`[data-action="open-session"][data-session-id="${originalSession.id}"]`).first().click();
+  await page.getByRole("button", { name: "Edit History", exact: true }).click();
+  await page.locator("summary").filter({ hasText: "Workout details" }).click();
+  const temporaryTitle = "Temporary history edit protected from controller activation";
+  await page.locator('[data-action="session-title"]').fill(temporaryTitle);
+
+  await page.evaluate(() => globalThis.__CF_TRIGGER_CONTROLLER_CHANGE__());
+  await expect(page.locator(".history-edit-bar"), "External controller activation must not tear down the edit transaction").toBeVisible();
+  await expect(page.locator('[data-action="session-title"]')).toHaveValue(temporaryTitle);
+  await expect(page.locator(".update-banner"), "A deferred controller reload must remain visible to the user").toContainText(/save or discard history edits/i);
+
+  await page.getByRole("button", { name: "Cancel Edits", exact: true }).click();
+  await page.getByRole("dialog", { name: "Cancel these edits?", exact: true }).getByRole("button", { name: "Discard Edits", exact: true }).click();
+  const update = page.getByRole("button", { name: "Update now", exact: true });
+  await expect(update, "Resolving the edit must expose an explicit action for the deferred reload").toBeVisible();
+
+  await page.evaluate(() => {
+    globalThis.__CF_NATIVE_IDB_OPEN__ = IDBFactory.prototype.open;
+    globalThis.__CF_NATIVE_STORAGE_SET_ITEM__ = Storage.prototype.setItem;
+    IDBFactory.prototype.open = function blockedOpen() { throw new Error("Synthetic IndexedDB write failure"); };
+    Storage.prototype.setItem = function blockedAppDataWrite(key, value) {
+      if (key === "comprehensive-fitness-data-v1") throw new Error("Synthetic local storage write failure");
+      return globalThis.__CF_NATIVE_STORAGE_SET_ITEM__.call(this, key, value);
+    };
+  });
+  await update.click();
+  await expect(page.locator(".app-toast"), "Update must stay in place when neither persistence layer can save current state").toContainText(/update was not applied.*could not be saved/i);
+  await expect(update, "A failed persistence gate must leave the explicit Update action available for retry").toBeVisible();
+  await page.evaluate(() => {
+    IDBFactory.prototype.open = globalThis.__CF_NATIVE_IDB_OPEN__;
+    Storage.prototype.setItem = globalThis.__CF_NATIVE_STORAGE_SET_ITEM__;
+  });
+
+  const reloaded = page.waitForEvent("framenavigated", (frame) => frame === page.mainFrame());
+  await update.click();
+  await reloaded;
+  await expect(page.locator("main.app-main")).toBeVisible({ timeout: 45_000 });
+  const persisted = await readPersistedAppData(page);
+  expect(persisted.sessions.find((session) => session.id === originalSession.id)?.title).toBe(originalSession.title);
+});
+
+test("entering history edit flushes an unrelated debounced template change before isolating temporary edits", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.addInitScript(() => {
+    const nativeSetTimeout = window.setTimeout.bind(window);
+    window.setTimeout = (callback, delay, ...args) => nativeSetTimeout(callback, Number(delay) === 1800 ? 60_000 : delay, ...args);
+  });
+  const fixture = await installScenario(page);
+  const originalSession = fixture.sessions.find((session) => session.id === "public-synthetic-history-session-00");
+  const templateId = "public-synthetic-template-upper";
+  const persistedTemplateName = "Unrelated debounced template change";
+
+  await openPrimaryTab(page, "plan");
+  await page.locator(`[data-action="template-name"][data-template-id="${templateId}"]`).fill(persistedTemplateName);
+  await openPrimaryTab(page, "dashboard");
+  await page.locator(`[data-action="open-session"][data-session-id="${originalSession.id}"]`).first().click();
+  await page.getByRole("button", { name: "Edit History", exact: true }).click();
+  await expect(page.locator(".history-edit-bar"), "Edit mode must begin only after its stable pre-edit snapshot is flushed").toBeVisible();
+  await page.locator("summary").filter({ hasText: "Workout details" }).click();
+  await page.locator('[data-action="session-title"]').fill("Temporary history value that must remain isolated");
+
+  await page.reload();
+  await expect(page.locator("main.app-main")).toBeVisible({ timeout: 45_000 });
+  const persisted = await readPersistedAppData(page);
+  expect(persisted.templates.find((template) => template.id === templateId)?.name).toBe(persistedTemplateName);
+  expect(persisted.sessions.find((session) => session.id === originalSession.id)?.title).toBe(originalSession.title);
+  await expect(page.locator(".history-edit-bar")).toHaveCount(0);
 });
 
 test("Dashboard detail receives initial focus and Back restores the durable originating summary control", async ({ page }) => {
