@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const {
+  ENGINE_VERSION,
   appendRecommendationHistory,
   createPrescriptionEngine,
   deserializeRecommendationSnapshot,
@@ -43,6 +44,19 @@ const current = engine.prescribeExercise({
   experienceLevel: "advanced",
   createdAt: CREATED_AT
 });
+const currentDefaultTarget = engine.resolveDefaultPrescriptionTarget("ex_barbell_bench_press");
+assert.equal(currentDefaultTarget.status, "resolved", "the compatibility fixture requires a canonical default target");
+const currentExact = engine.prescribeExercise({
+  exerciseId: currentDefaultTarget.exerciseId,
+  muscleGroupId: currentDefaultTarget.muscleGroupId,
+  trainingGoal: "strength",
+  experienceLevel: "advanced",
+  createdAt: CREATED_AT
+});
+const broad334 = structuredClone(current);
+broad334.recommendationId = "rec_engine_3_3_4_broad_target";
+broad334.engineVersion = "3.3.4";
+broad334.checksum = refreshRecommendationChecksum(broad334).checksum;
 
 const PAIRS = [
   { snapshot: "1.0.0", prescription: "2.0.0", engine: "2.0.0" },
@@ -109,7 +123,36 @@ test("all four repository-known version pairs read while generation remains late
   }
   assert.equal(current.schemaVersion, "1.3.0", "current generation must remain latest-only");
   assert.equal(current.basePrescription.schemaVersion, "2.3.0", "current prescriptions must remain latest-only");
-  assert.equal(current.engineVersion, "3.3.4", "the current serialized recommendation behavior requires a traceable patch engine version");
+  assert.equal(ENGINE_VERSION, "3.3.5", "the resolver-only engine patch must remain traceable");
+  assert.equal(current.engineVersion, "3.3.5", "the current serialized recommendation behavior requires a traceable patch engine version");
+});
+
+test("engine 3.3.4 broad-target snapshots retain checksum, lineage, and byte-meaning compatibility", () => {
+  const before = structuredClone(broad334);
+  const read = deserializeRecommendationSnapshot(broad334);
+  assert.deepEqual(read, before, "reading an engine 3.3.4 snapshot must not rewrite its broad historical target");
+  assert.equal(read.checksum, before.checksum, "the historical checksum must remain unchanged");
+  assert.equal(read.exerciseId, before.exerciseId, "top-level exercise lineage must remain unchanged");
+  assert.equal(read.muscleGroupId, "chest", "the historical broad target must remain historical evidence");
+  assert.equal(read.basePrescription.exerciseId, before.basePrescription.exerciseId);
+  assert.equal(read.finalPrescription.exerciseId, before.finalPrescription.exerciseId);
+  assert.equal(read.basePrescription.muscleGroupId, "chest");
+  assert.equal(read.finalPrescription.muscleGroupId, "chest");
+  assert.deepEqual(JSON.parse(serializeRecommendationSnapshot(read)), before, "round-trip serialization must preserve the 3.3.4 record exactly");
+});
+
+test("engine 3.3.5 can generate an exact canonical target without changing the persisted schema", () => {
+  assert.equal(currentDefaultTarget.muscleGroupId, "mg_chest_sternal");
+  assert.equal(currentDefaultTarget.taxonomyVersion, "2.1.0", "the transient resolver result must expose taxonomy provenance");
+  assert.equal(currentExact.engineVersion, "3.3.5");
+  assert.equal(currentExact.schemaVersion, current.schemaVersion, "the resolver patch must not advance snapshot schema");
+  assert.equal(currentExact.recommendationVersion, current.recommendationVersion, "the resolver patch must not advance prescription schema");
+  [currentExact, currentExact.basePrescription, currentExact.finalPrescription].forEach((layer) => {
+    assert.equal(layer.muscleGroupId, "mg_chest_sternal", "new exact-target generation must preserve its canonical mg_* ID");
+    assert.equal(Object.prototype.hasOwnProperty.call(layer, "taxonomyVersion"), false, "taxonomyVersion is transient resolver provenance, not a persisted snapshot field");
+  });
+  assert.doesNotMatch(serializeRecommendationSnapshot(currentExact), /"taxonomyVersion"\s*:/, "the unchanged schema must not persist resolver-only taxonomyVersion");
+  assert.deepEqual(deserializeRecommendationSnapshot(currentExact), currentExact, "the unchanged reader must accept the new exact-target snapshot");
 });
 
 test("a present legacy checksum is verified before compatibility handling", () => {
@@ -123,17 +166,18 @@ test("a present legacy checksum is verified before compatibility handling", () =
 test("mixed history loads and appends without rewriting legacy records or IDs", () => {
   const legacyWithoutChecksum = legacySnapshot(PAIRS[0], { checksum: false });
   const historyKey = "compatibility.history";
-  const storage = memoryStorage({ [historyKey]: JSON.stringify([legacyWithoutChecksum, current]) });
+  const storage = memoryStorage({ [historyKey]: JSON.stringify([legacyWithoutChecksum, broad334, currentExact]) });
   const loaded = recommendationHistory(storage, { key: historyKey });
-  assert.deepEqual(loaded.map((item) => item.recommendationId), [legacyWithoutChecksum.recommendationId, current.recommendationId]);
+  assert.deepEqual(loaded.map((item) => item.recommendationId), [legacyWithoutChecksum.recommendationId, broad334.recommendationId, currentExact.recommendationId]);
   assert.deepEqual(loaded[0], legacyWithoutChecksum, "one legacy record must not be rewritten while loading mixed history");
-  assert.deepEqual(loaded[1], current, "one legacy record must not prevent the current record from loading");
+  assert.deepEqual(loaded[1], broad334, "an engine 3.3.4 broad-target record must remain unchanged in mixed history");
+  assert.deepEqual(loaded[2], currentExact, "legacy records must not prevent the engine 3.3.5 exact-target record from loading");
 
   const appendedLegacy = legacySnapshot(PAIRS[1]);
   appendRecommendationHistory(storage, appendedLegacy, { key: historyKey });
   const afterAppend = JSON.parse(storage.value(historyKey));
-  assert.deepEqual(afterAppend.slice(0, 2), [legacyWithoutChecksum, current], "append must not rewrite existing history entries");
-  assert.equal(afterAppend[2].recommendationId, appendedLegacy.recommendationId);
+  assert.deepEqual(afterAppend.slice(0, 3), [legacyWithoutChecksum, broad334, currentExact], "append must not rewrite existing mixed history entries");
+  assert.equal(afterAppend[3].recommendationId, appendedLegacy.recommendationId);
   const conflictingExisting = structuredClone(legacyWithoutChecksum);
   conflictingExisting.explanation = "Silently rewritten historical explanation";
   assert.throws(() => appendRecommendationHistory(storage, conflictingExisting, { key: historyKey }), /refusing|rewrite|exists/i);

@@ -6,6 +6,8 @@ The existing visual direction is retained. Lift and Dashboard are protected surf
 
 The target is incremental consolidation of the existing HTML-string/CSS system, not a framework migration or broad redesign.
 
+**IMPLEMENTED 2026-07-14:** semantic token aliases, `ChoiceChip`, `ChoiceTile`, and `DialogSheet` compatibility classes, named Equipment/Scope groups, durable route/dialog/Dashboard focus, contextual Lift action names, reduced-motion scrolling, forced-colors focus protection, and content-driven 320 px/200% reflow. The protected Lift/Dashboard visual matrix remains unchanged.
+
 ## Foundations
 
 ### Page shell
@@ -17,7 +19,7 @@ The target is incremental consolidation of the existing HTML-string/CSS system, 
 
 ### Semantic token roles
 
-Introduce aliases before changing computed appearance:
+The following aliases are implemented over the established palette without changing computed appearance:
 
 | Role | Purpose |
 | --- | --- |
@@ -105,7 +107,7 @@ Every interactive primitive defines:
 - validation/error and explanatory association;
 - loading/busy where applicable.
 
-Route changes move focus to the new screen heading and announce it. Same-screen edits retain local focus. Dialog close restores the invoking control. Active Lift provides skip links to main content and primary navigation. Repeated controls include exercise/set context in their accessible names.
+Explicit route changes move focus to the canonical `#main-content` entry; initial load does not claim focus. Same-screen edits retain local focus through an allowlisted data descriptor that survives HTML-string rerenders. Dialog open verifies that its preferred action is visible, enabled, focusable, and actually focused, otherwise falls back to the first eligible dialog control. That shared filtered set traps Tab in both directions; Escape/backdrop dismissal remains available where allowed and closing restores the invoking control. A hidden-until-focused skip link targets main content. Repeated controls include exercise/set context in their accessible names.
 
 ## Responsive and accessibility rules
 
@@ -115,6 +117,7 @@ Route changes move focus to the new screen heading and announce it. Same-screen 
 - Equipment: wrapping chips.
 - Planner/day cards: two columns to one where appropriate.
 - Test 200% zoom/large text, light/dark, reduced motion, and forced colors where supported.
+- At 320 CSS px, normal protected composition stays stable; when the computed root text is at least 24 px at a viewport no wider than 380 px, editable titles become multiline and content reflows without document/nested horizontal overflow. At ordinary narrow text sizes, a title changes control only when its rendered value overflows. The keyboard-operable quick-template carousel is the documented overflow exception; every card remains a native button without conflicting list/listitem roles.
 - Critical touch targets are 44×44 CSS px or provide an equivalent enlarged hit region.
 - Dynamic route/current-set state uses one restrained polite live region; do not announce every keystroke.
 - Charts retain keyboard-addressable labelled data points and an equivalent textual summary.
@@ -150,10 +153,11 @@ Shared changes to `button`, `.status-pill`, `.exercise-card`, `.set-row`, `.dash
 
 ## Known baseline debt
 
-- 1,918 CSS lines, 1,094 rule blocks, and a late override layer.
+- 1,992 CSS lines, 1,134 rule blocks, and a late override layer.
 - Key selectors appear three to seven times.
 - Source ceilings are exhausted at 74 hex colors, 40 RGB colors, 3 inline styles, and 14 `!important` rules.
 - `deload`, `rest`, and notification/install status classes lack a complete semantic visual mapping.
 - Approved goldens primarily represent fresh-storage light mode.
+- The two ordinary Settings goldens predate the existing cloud-upload consent label/explanation and require an intentional isolated baseline review; protected Lift/Dashboard goldens are current.
 
 New work must first consolidate or reuse; it may not raise those style ceilings.

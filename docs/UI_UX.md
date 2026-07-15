@@ -3,7 +3,7 @@
 ## Metadata
 
 - **Purpose:** Verified user experience, interaction contracts, and intended UX gaps
-- **Last verified:** 2026-07-11
+- **Last verified:** 2026-07-14
 - **Repository:** `main` @ `7c52a2b`
 - **Verification status:** VERIFIED from `index.html` and UI/domain tests; physical-device accessibility remains partly unverified
 - **Related:** [Project](PROJECT.md), [architecture](ARCHITECTURE.md), [decision engine](DECISION_ENGINE.md), [roadmap](ROADMAP.md)
@@ -34,11 +34,11 @@ Interaction principles evidenced in code: one canonical active workout; explicit
 
 ## Design system
 
-`index.html` is the authoritative implemented design-system source. Theme-level color variables in `:root` and `[data-theme="light"]` define background, panel, line, text, current, success, rest, warning, and destructive roles. New components must use those semantic roles rather than add one-off colors. The weekly source audit records the existing legacy color and specificity counts as non-regression ceilings; lowering those ceilings is preferred when legacy styling is consolidated.
+`index.html` is the authoritative implemented design-system source. Theme-level color variables in `:root` and `[data-theme="light"]` define background, panel, line, text, current, success, rest, warning, and destructive roles. Truthful `--color-*` aliases now map those established roles without changing computed appearance. `ChoiceChip`, `ChoiceTile`, and `DialogSheet` are compatibility classes over the existing Equipment, Muscle Scope, and bottom-sheet reference patterns; they are not a second visual language. New components must use those semantic roles and shared patterns rather than add one-off colors. The weekly source audit records the existing legacy color and specificity counts as non-regression ceilings; lowering those ceilings is preferred when legacy styling is consolidated.
 
 The interface uses one compact system font stack, sentence-case labels, uppercase eyebrow labels, 6–18 px corner radii according to component scale, and dense 4–18 px spacing. Cards use a surface, one semantic border, and at most one status accent. Equivalent actions must reuse the existing primary, secondary, mini, text, destructive, selected, disabled, hover, pressed, and focus-visible patterns. Fixed navigation and transient notices must account for bottom safe-area insets and must not cover the final scrollable content.
 
-Controls should provide a 44 px touch target where layout permits. Existing compact controls below 44 px are **NEEDS REVIEW** and must not be copied into new patterns. Text must wrap by default; truncation is allowed only when the complete value remains available through an accessible label or adjacent detail. Motion must honor `prefers-reduced-motion`.
+Controls should provide a 44 px touch target where layout permits. Equipment `ChoiceChip` controls and Muscle Scope `ChoiceTile` labels meet that contract and expose programmatically named groups. Existing compact controls below 44 px are **NEEDS REVIEW** and must not be copied into new patterns. Text must wrap by default; a redundant narrow-header context may be visibly abbreviated only while its complete value remains in an accessible label and the full screen heading. Motion and programmatic scrolling must honor `prefers-reduced-motion`.
 
 ## Navigation and screen inventory
 
@@ -50,9 +50,11 @@ The persistent bottom navigation has five tabs (`primaryTabIds`, `render`):
 | Dashboard | Weekly muscle volume, fatigue flags, recent history, nested warning/session detail. |
 | Templates | Full template list, template cards, mesocycle planner/candidate pools, readiness start sheet. |
 | Charts | Exercise selector, progress charts, session-level point detail, hypertrophy score/detail, history/recommendations. |
-| Settings | Units, goals/profile, readiness baseline, timers/notifications, PWA setup, evidence/CSV import, export, and clear-data flow. |
+| Settings | Units, goals/profile, readiness baseline, timers/notifications, PWA setup, separate workout-upload consent, bounded evidence/backup import, export, remote installation deletion, and clear-local-data flow. |
 
 The header exposes the current context, an atomic lb/kg switch, and a theme switch. Full template access is available from Templates; quick-start cards are a subset. Unit changes convert app-owned load values together while private source evidence remains unchanged and is converted only at the display/prescription boundary.
+
+The first keyboard stop is a hidden-until-focused **Skip to main content** link. `#main-content` is a programmatically focusable route-entry target. Initial load leaves focus alone; an explicit selection of any of the five primary tabs moves focus into the newly rendered main view. Focus restoration across HTML-string rerenders uses an allowlisted, data-only `data-action` descriptor rather than storing detached nodes or accepting arbitrary selectors. Quick-template carousel cards remain native buttons in the computed accessibility tree; the visual carousel does not override them with conflicting list/listitem roles.
 
 ## Primary workflows
 
@@ -68,9 +70,18 @@ The header exposes the current context, an atomic lb/kg switch, and a theme swit
 
 Only one active workout is allowed. Other starts are disabled with one canonical resume notice (`scripts/test-performance.js`). Template edits during a workout remain session-specific unless the user explicitly updates the template.
 
+### Settings privacy and data controls
+
+- Lock-screen notifications and cloud workout upload are separate controls. Upload defaults off and is enabled only by its own checkbox; turning it off immediately invalidates old upload work, aborts an in-flight request, and clears the pending mutation queue without treating notification permission as consent.
+- Backup and personal-evidence import announce an attempt-specific pending, success, or error state in a polite live region. Invalid, oversized, overly deep/wide, executable-key, duplicate, or orphaned data is rejected without replacing current data.
+- **Delete Remote Installation Data** is a separate Danger Zone action from **Clear All Local App Data**. Remote deletion preserves local workouts, displays deleting/retry/error/deleted status, and resumes bounded server cleanup. Local clearing shows a status and pauses while that cleanup still needs its bearer or while an active rest notification cannot yet be canceled. With no such pending work, explicit local clearing remains available and does not claim to delete server records.
+- Exported app JSON remains the only implemented user-managed recovery source. Cloud workout upload is write-only and must never be labeled restore, cloud history, or an account.
+
 ### History and progress
 
-Submitted sessions alone appear in history and analytics. History cards show full wrapping title, separate date, and grade with accessible combined labeling. A submitted workout opens read-only; editing requires an explicit mode and Save Edits confirmation, then PR/grade recalculation.
+Submitted sessions alone appear in history and analytics. History cards show full wrapping title, separate date, and grade with accessible combined labeling. A submitted workout opens read-only; editing requires an explicit mode and Save Edits confirmation, then PR/grade recalculation. History changes remain an in-memory transaction until that explicit Save. Primary-tab navigation and browser Back both open the same cancel-edit confirmation while keeping the edited Lift view and `#lift` URL in place. Reload, page hide, and unload do not persist the temporary transaction.
+
+Dashboard drill-down is a focus-aware stack. Opening a root or nested volume, fatigue, history, or session detail focuses its Back control; Back restores the prior detail level, scroll position, and durable control that opened it. Leaving Dashboard clears the stack.
 
 Charts are exercise-specific and interactive. Selecting a point opens session-level details and surrounding context (`renderChart`, `renderChartPointDetail`). Long names wrap in history/templates and suggestion controls; **NEEDS REVIEW:** physical testing should cover every chart axis/selector and very narrow devices.
 
@@ -127,18 +138,22 @@ Readiness capture includes sleep, quality, HRV, resting HR, soreness, illness, a
 ## States and feedback
 
 - **Empty:** Controlled “not enough data,” no-template/history/chart messages explain qualifying data needed; analytics do not substitute unrelated scores.
-- **Loading:** Initial persistence/evidence loading occurs before primary use; imports expose progress/error feedback. **NEEDS REVIEW:** there is no unified skeleton/loading design.
-- **Error:** Toasts, import validation, API status, persistence fallback, and setup errors are surfaced without exposing secrets.
-- **Success:** Live-region toast, completed controls, timer-complete notice, notification tests, submission summary, PR/grade feedback.
+- **Loading:** Initial persistence/evidence loading occurs before primary use; imports expose attempt-scoped progress/error feedback and remote deletion exposes its continuation state. **NEEDS REVIEW:** there is no unified skeleton/loading design.
+- **Error:** Toasts, accessible import validation, retryable/non-retryable remote-deletion status, API status, persistence fallback, and setup errors are surfaced without exposing secrets.
+- **Success:** Live-region toast and import status, completed controls, timer-complete notice, notification tests, remote-deletion confirmation, submission summary, PR/grade feedback.
 - **Confirmation:** Submit, cancel workout, save/cancel history edits, template deletion, and clear-data flows require explicit action.
 
 ## Accessibility and responsive behavior
 
-Implemented foundations include semantic `main`/`nav`, button labels, `aria-current`, `aria-live`, accessible card labels, form labels, keyboard-native controls, inert/hidden background during modal sheets, focusable details, safe-area insets, responsive breakpoints at 720/380/350 px, and wrapping long text.
+Implemented foundations include semantic `main`/`nav`, a keyboard-visible skip link, button labels, `aria-current`, `aria-live`, accessible card labels, form labels, keyboard-native controls, inert/hidden background during modal sheets, focusable details, safe-area insets, responsive breakpoints at 720/380/350 px, and wrapping long text.
 
-**IMPLEMENTED:** the repository-owned Playwright audit runs axe WCAG A/AA checks, contrast checks, viewport overflow checks, active-navigation assertions, console-error checks, and visual snapshots at a 375 px-class mobile viewport and 1280 px desktop viewport.
+**IMPLEMENTED:** template-start, cancel-workout, history-edit, and clear-data sheets are labelled modal dialogs. A newly opened dialog verifies that its preferred target is visible, enabled, focusable, and actually received focus; otherwise it falls back to the first visible enabled dialog control. The same filtered control set traps forward and reverse Tab. Dialogs close on Escape or their backdrop where dismissal is allowed and restore a durable invoking control after rerender. Same-dialog rerenders preserve the focused step control instead of returning to the first action. Repeated Lift controls include exercise context in their accessible names.
 
-**NEEDS REVIEW:** screen-reader walkthroughs, complete keyboard-only workflow coverage, dynamic text-size/native accessibility acceptance, physical safe-area/keyboard overlap, haptics, and system permission UI remain device-level work. Timer sound/vibration are configurable; visual status must remain sufficient without them.
+**IMPLEMENTED:** all five primary views pass the exact 320 CSS-pixel reflow matrix at ordinary text and at a computed 200% root text size. Large-text mode preserves the normal 320 px protected Lift composition until text is genuinely enlarged, then permits content-driven one-column/wrapping layouts and multiline title editing. Form text keeps a 16 px anti-zoom floor while still scaling with an enlarged root. The Plan quick-template row remains the one documented keyboard-operable horizontal carousel. Reduced-motion mode converts reachable programmatic scrolling to `auto`, and forced-colors checks require a visible non-shadow focus indicator.
+
+**IMPLEMENTED:** the repository-owned Playwright audit runs axe WCAG A/AA checks, contrast checks, viewport overflow checks, active-navigation assertions, native quick-template roles, dialog/focus restoration and hidden-target fallback, guarded browser Back plus unconfirmed-history reload recovery, 320 px/200% reflow, reduced-motion and forced-colors checks, contextual-name and target-size assertions, console-error checks, and visual snapshots at a 375 px-class mobile viewport and 1280 px desktop viewport. Dedicated protected Lift/Dashboard goldens additionally cover 320, 390, 640 zoom-equivalent, 768, and 1280 px reference states.
+
+**NEEDS REVIEW:** physical screen-reader walkthroughs, native dynamic-text acceptance beyond the browser reflow contract, physical safe-area/keyboard overlap, haptics, and system permission UI remain device-level work. Timer sound/vibration are configurable; visual status must remain sufficient without them.
 
 ## Weekly UI/UX audit and visual regression
 
@@ -147,6 +162,8 @@ Implemented foundations include semantic `main`/`nav`, button labels, `aria-curr
 `.github/workflows/weekly-ui-audit.yml` runs every Monday at 13:17 UTC and supports manual dispatch. It uploads the full artifact directory for 30 days and fails visibly after report upload when any build, route, visual, accessibility, layout, console, source-style, or documentation check fails. The automation does not auto-approve baselines or modify application code. New routes and reusable visual states must be added to this suite in the same change that introduces them.
 
 Current automated coverage does not yet synthesize every workout lifecycle, modal, data-heavy chart, import failure, offline/service-worker transition, or native-only state. Those gaps are **NEEDS REVIEW** and are listed in each weekly report rather than silently passed.
+
+**NEEDS REVIEW:** the two ordinary Settings goldens predate the already-implemented default-off cloud workout-upload consent and explanatory copy. Their behavior, axe, console, and layout assertions pass, but the stored images require a separate intentional baseline review; the control must not be hidden merely to match stale images. Protected Lift/Dashboard goldens remain unchanged.
 
 ## Terminology and copy conventions
 

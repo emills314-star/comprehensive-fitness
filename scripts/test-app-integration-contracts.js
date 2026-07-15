@@ -5,17 +5,20 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 
-const ROOT = path.resolve(__dirname, "..");
-const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
-const publicExercises = require(path.join(ROOT, "research_database", "exports", "json", "exercise_database.json"));
-const prescriptionApi = require(path.join(ROOT, "prescription-engine.js"));
+const TEST_ROOT = path.resolve(__dirname, "..");
+const APP_ROOT = process.env.APP_CONTRACT_ROOT
+  ? path.resolve(process.env.APP_CONTRACT_ROOT)
+  : TEST_ROOT;
+const html = fs.readFileSync(path.join(APP_ROOT, "index.html"), "utf8");
+const publicExercises = require(path.join(APP_ROOT, "research_database", "exports", "json", "exercise_database.json"));
+const prescriptionApi = require(path.join(APP_ROOT, "prescription-engine.js"));
 const {
   BACKUP_BOUNDARIES,
   buildEntityCollectionCase,
   entityCollectionCases,
   jsonShapeCases,
   legacyState
-} = require(path.join(ROOT, "tests", "fixtures", "synthetic-app-backups.js"));
+} = require(path.join(TEST_ROOT, "tests", "fixtures", "synthetic-app-backups.js"));
 
 const tests = [];
 
@@ -37,6 +40,12 @@ function functionSource(name) {
 
 function evaluateFunction(name, context = {}) {
   return vm.runInNewContext(`(${functionSource(name).trim()})`, context, { filename: `index.html#${name}` });
+}
+
+function firstFunctionName(candidates) {
+  const name = candidates.find((candidate) => new RegExp(`(?:async\\s+)?function\\s+${candidate}\\s*\\(`).test(html));
+  assert.ok(name, `Missing required production function; expected one of ${candidates.join(", ")}`);
+  return name;
 }
 
 function plain(value) {
@@ -68,7 +77,7 @@ function normalizeIdentity(value) {
 }
 
 function publicResearchData() {
-  const read = (name) => require(path.join(ROOT, "research_database", "exports", "json", `${name}.json`));
+  const read = (name) => require(path.join(APP_ROOT, "research_database", "exports", "json", `${name}.json`));
   return {
     exerciseDatabase: publicExercises,
     exerciseMuscleMap: read("exercise_muscle_map"),
@@ -77,6 +86,43 @@ function publicResearchData() {
     progressionRules: read("progression_rules"),
     nutritionStrategies: read("nutrition_strategies"),
     manifest: read("manifest")
+  };
+}
+
+function deriveEngineSafetySubstitute(engine, blockedSnapshot, muscleGroupId, availableEquipment) {
+  const originalExerciseId = blockedSnapshot.finalPrescription?.safetyRestriction?.originalExerciseId
+    || blockedSnapshot.finalPrescription?.exerciseId
+    || blockedSnapshot.exerciseId;
+  const substitutionRows = engine.evidence.research.substitutionsByExercise.get(originalExerciseId) || [];
+  const mappedIds = new Set(substitutionRows.map((item) => item.substitute_exercise_id || item.substituteExerciseId).filter(Boolean));
+  assert.ok(mappedIds.size, `Public substitution evidence has no alternatives for ${originalExerciseId}`);
+  const ranked = engine.rankExercisePool(muscleGroupId, { availableEquipment });
+  const rankedById = new Map(ranked.candidates.map((candidate) => [candidate.exerciseId, candidate]));
+  const preferred = blockedSnapshot.finalPrescription?.preferredReplacementExerciseId || null;
+  if (preferred) assert.ok(mappedIds.has(preferred), `Engine preferred replacement ${preferred} is absent from its public substitution evidence`);
+  const eligibleIds = [...mappedIds].filter((exerciseId) => (
+    engine.evidence.research.exerciseById.has(exerciseId)
+      && (availableEquipment.includes("all") || rankedById.has(exerciseId))
+  ));
+  assert.ok(eligibleIds.length, `No engine-confirmed, catalog-backed substitute satisfies the supplied equipment constraint for ${originalExerciseId}`);
+  const candidateId = preferred && eligibleIds.includes(preferred)
+    ? preferred
+    : eligibleIds.find((exerciseId) => rankedById.has(exerciseId));
+  assert.ok(candidateId, `Engine supplied neither a usable preferred replacement nor a ranked public substitute for ${originalExerciseId}`);
+  const catalogRecord = engine.evidence.research.exerciseById.get(candidateId);
+  const candidate = rankedById.get(candidateId) || {
+    exerciseId: candidateId,
+    researchExerciseId: candidateId,
+    exerciseName: catalogRecord.exercise_name
+  };
+  assert.ok(mappedIds.has(candidate.exerciseId), "Selected safety substitute must come from the public substitution map");
+  assert.ok(preferred === candidate.exerciseId || rankedById.has(candidate.exerciseId), "Selected safety substitute must be confirmed by the blocked engine output or its ranked pool");
+  assert.ok(catalogRecord, "Engine-confirmed safety substitute must retain a public catalog record");
+  return {
+    originalExerciseId,
+    candidate,
+    catalogRecord,
+    allowedSafetySubstituteIds: eligibleIds
   };
 }
 
@@ -146,6 +192,316 @@ test("safety adapters distinguish workout illness from affected-exercise pain an
     assert.deepEqual(target.warmups || [], [], `Blocked ${reason} target leaked warm-ups`);
     assert.deepEqual(target.executableActions || [], [], `Blocked ${reason} target leaked executable actions`);
   }
+});
+
+test("hard-safety mutation policy blocks illness, unsited pain, matching pain, and unresolved taxonomy", () => {
+  const policyName = firstFunctionName([
+    "workoutMutationSafetyDecision",
+    "workoutSafetyMutationDecision",
+    "workoutMutationSafetyPolicy"
+  ]);
+  const decide = evaluateFunction(policyName);
+  const executableActions = [
+    "add-exercise", "add-set", "add-warmup-set", "duplicate-set",
+    "toggle-set", "toggle-skip-set", "start-timer"
+  ];
+  const decision = (action, recovery, exercise = null, exerciseMuscles = [], taxonomyResolved = true) => plain(decide(action, {
+    recovery,
+    exercise,
+    exerciseMuscles,
+    taxonomyResolved
+  }));
+  const expectBlocked = (result, scope, reason, label) => {
+    assert.equal(result?.allowed, false, `${label} must refuse the mutation`);
+    assert.equal(result?.scope, scope, `${label} must expose ${scope} scope`);
+    assert.equal(result?.reason, reason, `${label} must expose the ${reason} restriction`);
+  };
+
+  for (const action of executableActions) {
+    expectBlocked(
+      decision(action, { illness: true, pain: false, affectedMuscle: "" }),
+      "workout",
+      "illness",
+      `illness ${action}`
+    );
+    expectBlocked(
+      decision(action, { illness: false, pain: true, affectedMuscle: "" }),
+      "workout",
+      "pain",
+      `pain without an affected area ${action}`
+    );
+  }
+
+  const chestPain = { illness: false, pain: true, affectedMuscle: "Chest" };
+  expectBlocked(
+    decision("add-set", chestPain, { id: "bench", name: "Barbell Bench Press" }, ["Chest", "Triceps"], true),
+    "exercise",
+    "pain",
+    "localized matching exercise"
+  );
+  assert.equal(
+    decision("add-set", chestPain, { id: "leg-press", name: "Leg Press" }, ["Quadriceps", "Glutes"], true)?.allowed,
+    true,
+    "A catalog-resolved exercise outside the affected area must remain usable"
+  );
+  expectBlocked(
+    decision("add-set", chestPain, { id: "unknown", name: "Unmapped Synthetic Movement" }, [], false),
+    "exercise",
+    "pain",
+    "unresolved exercise taxonomy"
+  );
+});
+
+test("Lift render and mutation dispatch paths both enforce the hard-safety policy", () => {
+  const guardPattern = /workoutMutationSafetyDecision|workoutSafetyMutationDecision|workoutMutationSafetyPolicy|assertWorkoutMutationAllowed|guardWorkoutMutation/;
+  const renderSources = [functionSource("renderWorkout"), functionSource("renderExercise"), functionSource("renderSet")].join("\n");
+  const namedMutators = ["addExercise", "addSet", "toggleSetCompletion", "toggleSetSkipped", "startTimer"];
+  const clickStart = html.indexOf('root.addEventListener("click"');
+  assert.notEqual(clickStart, -1, "Missing delegated Lift click handler");
+  const clickEnd = html.indexOf('root.addEventListener("change"', clickStart);
+  const clickHandler = html.slice(clickStart, clickEnd > clickStart ? clickEnd : clickStart + 40000);
+  collectAssertions([
+    ["blocked controls", () => assertContains(renderSources, guardPattern, "Blocked Lift controls must be omitted or disabled from the same executable policy used by mutations")],
+    ["delegated event guard", () => assertContains(clickHandler, guardPattern, "Forged click events must be refused before reaching Add Exercise/Set/Warm-up/Duplicate/toggle/timer handlers")],
+    ...namedMutators.map((name) => [name, () => assertContains(functionSource(name), guardPattern, `${name} must independently refuse blocked data mutations`)]),
+    ["all mutation actions remain covered", () => executableMutationActions().forEach((action) => assertContains(clickHandler, new RegExp(`(?:action\\s*===\\s*["']${action}["']|["']${action}["'])`), `Missing ${action} mutation path`))]
+  ]);
+});
+
+function executableMutationActions() {
+  return ["add-exercise", "add-set", "add-warmup-set", "duplicate-set", "toggle-set", "toggle-skip-set", "start-timer"];
+}
+
+test("confirmed pain-free substitute stays distinct, catalog-backed, equipment-compatible, and auditable", () => {
+  const engine = prescriptionApi.createPrescriptionEngine({ researchData: publicResearchData() });
+  const originalId = "ex_barbell_bench_press";
+  const availableEquipment = ["all"];
+  const blocked = engine.prescribeExercise({
+    exerciseId: originalId,
+    muscleGroupId: "chest",
+    readiness: { pain: true, affectedMuscle: "chest" },
+    availableEquipment,
+    trainingGoal: "hypertrophy",
+    experienceLevel: "intermediate",
+    nutritionPhase: "maintenance",
+    createdAt: "2026-07-14T12:00:00.000Z"
+  });
+  assert.equal(blocked.finalPrescription?.executionBlocked, true, "The real engine fixture must begin with a non-executable pain restriction");
+  assert.equal(blocked.finalPrescription?.safetyRestriction?.status, "blocked", "The real engine fixture must expose a typed blocked safety restriction");
+  const derived = deriveEngineSafetySubstitute(engine, blocked, "chest", availableEquipment);
+  const substituteId = derived.candidate.exerciseId;
+  const substituteResearchId = derived.candidate.researchExerciseId || substituteId;
+  if (blocked.finalPrescription.preferredReplacementExerciseId) {
+    assert.equal(substituteId, blocked.finalPrescription.preferredReplacementExerciseId, "The test must exercise the engine's preferred safe replacement when one is emitted");
+  }
+  assert.ok(derived.allowedSafetySubstituteIds.includes(substituteId), "The selected substitute must belong to the engine-derived eligible substitution set");
+  const options = {
+    allowedSafetySubstituteIds: derived.allowedSafetySubstituteIds,
+    exerciseCatalog: [derived.catalogRecord],
+    availableEquipment,
+    createdAt: "2026-07-14T12:05:00.000Z"
+  };
+  const substitute = { exerciseId: substituteId, researchExerciseId: substituteResearchId, reason: "Synthetic pain-free alternative" };
+
+  assert.throws(
+    () => engine.applyManualOverride(blocked, substitute, options),
+    /pain-free confirmation|painFreeConfirmed/i,
+    "A substitute without explicit painFreeConfirmed=true must remain blocked"
+  );
+  assert.throws(
+    () => engine.applyManualOverride(blocked, { ...substitute, exerciseId: originalId, researchExerciseId: originalId, painFreeConfirmed: true }, options),
+    /allowed|different exercise|painful original/i,
+    "The painful original cannot be re-labelled as its own safe alternative"
+  );
+  assert.throws(
+    () => engine.applyManualOverride(blocked, { ...substitute, painFreeConfirmed: true }, { ...options, availableEquipment: ["bodyweight"] }),
+    /equipment/i,
+    "An equipment-incompatible alternative must remain blocked"
+  );
+
+  const resolved = engine.applyManualOverride(blocked, { ...substitute, painFreeConfirmed: true }, options);
+  assert.equal(blocked.finalPrescription.executionBlocked, true, "Resolving an alternative must not mutate the original blocked snapshot");
+  assert.equal(blocked.finalPrescription.exerciseId, originalId, "The original blocked identity must remain unchanged");
+  assert.equal(resolved.finalPrescription.executionBlocked, false, "Only the validated substitute may become executable");
+  assert.equal(resolved.finalPrescription.exerciseId, substituteId);
+  assert.equal(resolved.finalPrescription.safetyRestriction.originalExerciseId, originalId);
+  assert.equal(resolved.finalPrescription.safetyRestriction.painFreeConfirmed, true);
+  assert.equal(resolved.manualOverrides.at(-1)?.previousFinalPrescription?.executionBlocked, true, "Override lineage must retain the prior non-executable prescription");
+  assert.equal(resolved.manualOverrides.at(-1)?.previousFinalPrescription?.exerciseId, originalId, "Override lineage must retain the painful original identity");
+
+  const frontendOverride = functionSource("applyPrescriptionOverride");
+  collectAssertions([
+    ["explicit confirmation", () => assertContains(frontendOverride, /painFreeConfirmed/, "The UI adapter must forward explicit pain-free confirmation")],
+    ["engine candidate allowlist", () => assertContains(frontendOverride, /allowedSafetySubstituteIds/, "The UI adapter must pass an engine-validated safety-substitute allowlist")],
+    ["equipment restrictions", () => assertContains(frontendOverride, /availableEquipment/, "The UI adapter must preserve current equipment restrictions")],
+    ["catalog identity", () => assertContains(frontendOverride, /researchExerciseId|exerciseCatalog|trustedExerciseCatalog/, "The UI adapter must pass a coherent catalog/research identity")]
+  ]);
+});
+
+test("engine hard-constraint rejections stay typed and never enter legacy target fallback", () => {
+  const engine = prescriptionApi.createPrescriptionEngine({ researchData: publicResearchData() });
+  const baseRequest = {
+    exerciseId: "ex_barbell_bench_press",
+    muscleGroupId: "chest",
+    availableEquipment: ["all"],
+    trainingGoal: "hypertrophy",
+    experienceLevel: "intermediate",
+    nutritionPhase: "maintenance",
+    createdAt: "2026-07-14T12:00:00.000Z"
+  };
+  const isTypedRejection = (value) => {
+    const detail = value?.error || value;
+    const code = String(detail?.code || value?.code || "");
+    const typed = detail?.hardConstraint === true || detail?.type === "hard_constraint_rejection" || detail?.kind === "hard_constraint_rejection" || /^HARD_CONSTRAINT_/i.test(code);
+    const blocked = detail?.executionBlocked === true || detail?.executable === false || detail?.status === "blocked" || value?.executionBlocked === true || value?.executable === false;
+    return typed && blocked;
+  };
+  const capture = (fn) => {
+    try { return { value: fn(), error: null }; }
+    catch (error) { return { value: null, error }; }
+  };
+  const adapterContext = (adapterEngine) => ({
+    prescriptionEngine: adapterEngine,
+    prescriptionEvidenceStatus: { state: "ready" },
+    prescriptionExerciseIdentity: () => baseRequest.exerciseId,
+    normalizePrescriptionIdentity: (value) => String(value || "").trim().toLowerCase(),
+    prescriptionMuscleGroup: () => baseRequest.muscleGroupId,
+    todayIso: () => "2026-07-14",
+    prescriptionHistoryForExercise: () => [],
+    prescriptionReadiness: () => ({}),
+    currentMesocycle: () => null,
+    prescriptionScopeHistories: () => ({ muscleExerciseHistories: [], programMuscleHistories: [] }),
+    musclesForExercise: () => [{ muscle: "Chest" }],
+    appMuscleFromPrescriptionGroup: () => "Chest",
+    weeklyMuscleVolume: () => [],
+    startOfWeekIso: (value) => value,
+    prescriptionSnapshotCache: new Map(),
+    analysisRevision: 1,
+    data: { settings: { trainingGoal: "hypertrophy", experienceLevel: "intermediate", nutritionPhase: "maintenance" } },
+    JSON
+  });
+  const adapterProbe = (adapterEngine, options) => capture(() => evaluateFunction("unifiedPrescriptionSnapshot", adapterContext(adapterEngine))(
+    { name: "Barbell Bench Press" },
+    { fresh: true, ...options }
+  ));
+  const coachProbe = (outcome) => {
+    let legacyCalls = 0;
+    const coach = evaluateFunction("coachTargetForTemplateExercise", {
+      unifiedPrescriptionSnapshot: () => {
+        if (outcome.error) throw outcome.error;
+        return outcome.value;
+      },
+      legacyTargetFromSnapshot: () => { legacyCalls += 1; return { sets: 3, executable: true }; },
+      progressionProfileForExercise: () => { legacyCalls += 1; throw new Error("LEGACY_FALLBACK_REACHED"); },
+      todayIso: () => "2026-07-14"
+    });
+    const result = capture(() => coach({ name: "Barbell Bench Press" }, {}));
+    return { legacyCalls, result };
+  };
+
+  const realEngineScenarios = [
+    {
+      reason: "excluded_exercise",
+      options: { excludedExerciseIds: [baseRequest.exerciseId], availableEquipment: ["all"], includedMuscleGroupIds: ["chest"], sessionDurationMinutes: 45 },
+      engineProbe: capture(() => engine.prescribeExercise({ ...baseRequest, excludedExerciseIds: [baseRequest.exerciseId] })),
+      engineMessage: /excluded/i
+    },
+    {
+      reason: "unavailable_equipment",
+      options: { excludedExerciseIds: [], availableEquipment: ["bodyweight"], includedMuscleGroupIds: ["chest"], sessionDurationMinutes: 45 },
+      engineProbe: capture(() => engine.prescribeExercise({ ...baseRequest, availableEquipment: ["bodyweight"] })),
+      engineMessage: /equipment|compatible/i
+    }
+  ];
+  const failures = [];
+  for (const scenario of realEngineScenarios) {
+    const outcome = adapterProbe(engine, scenario.options);
+    const coach = coachProbe(outcome);
+    for (const [label, assertion] of [
+      [`${scenario.reason} real engine rejection`, () => {
+        assert.ok(scenario.engineProbe.error, `Real engine unexpectedly accepted ${scenario.reason}`);
+        assert.match(String(scenario.engineProbe.error.message || scenario.engineProbe.error), scenario.engineMessage);
+      }],
+      [`${scenario.reason} typed adapter`, () => assert.equal(isTypedRejection(outcome.error || outcome.value), true, `${scenario.reason} was swallowed into null or an untyped error`)],
+      [`${scenario.reason} no legacy fallback`, () => assert.equal(coach.legacyCalls, 0, `${scenario.reason} entered legacy workout target construction`)],
+      [`${scenario.reason} coach remains typed`, () => assert.equal(isTypedRejection(coach.result.error || coach.result.value), true, `${scenario.reason} lost its typed blocked state at coach resolution`)]
+    ]) {
+      try { assertion(); } catch (error) { failures.push(`${label}: ${error.message}`); }
+    }
+  }
+
+  const frontendOnlyScenarios = [
+    {
+      reason: "empty_muscle_scope",
+      options: { excludedExerciseIds: [], availableEquipment: ["all"], includedMuscleGroupIds: [], sessionDurationMinutes: 45 },
+      directProbe: capture(() => engine.prescribeExercise({ ...baseRequest, includedMuscleGroupIds: [] }))
+    },
+    {
+      reason: "invalid_time_constraint",
+      options: { excludedExerciseIds: [], availableEquipment: ["all"], includedMuscleGroupIds: ["chest"], sessionDurationMinutes: 0 },
+      directProbe: capture(() => engine.prescribeExercise({ ...baseRequest, sessionDurationMinutes: 0 }))
+    }
+  ];
+  for (const scenario of frontendOnlyScenarios) {
+    const directEngineDiagnostic = scenario.directProbe.error
+      ? `direct engine rejected (${scenario.directProbe.error.message || scenario.directProbe.error})`
+      : "direct engine accepted";
+    let engineCalls = 0;
+    const countingEngine = {
+      prescribeExercise: (request) => {
+        engineCalls += 1;
+        return engine.prescribeExercise(request);
+      }
+    };
+    const outcome = adapterProbe(countingEngine, scenario.options);
+    const coach = coachProbe(outcome);
+    for (const [label, assertion] of [
+      [`${scenario.reason} prevalidation`, () => assert.equal(engineCalls, 0, `${scenario.reason} must be blocked before calling prescribeExercise; diagnostic: ${directEngineDiagnostic}`)],
+      [`${scenario.reason} typed adapter`, () => assert.equal(isTypedRejection(outcome.error || outcome.value), true, `${scenario.reason} did not produce a typed non-executable frontend result`)],
+      [`${scenario.reason} no legacy fallback`, () => assert.equal(coach.legacyCalls, 0, `${scenario.reason} entered legacy workout target construction`)],
+      [`${scenario.reason} coach remains typed`, () => assert.equal(isTypedRejection(coach.result.error || coach.result.value), true, `${scenario.reason} lost its typed blocked state at coach resolution`)]
+    ]) {
+      try { assertion(); } catch (error) { failures.push(`${label}: ${error.message}`); }
+    }
+  }
+  if (failures.length) throw new Error(failures.join("\n"));
+});
+
+test("invalid reconciled custom exercise identity resolves to null instead of an ordinary custom ID", () => {
+  const invalidId = "custom_conflicting_press";
+  const evidence = prescriptionApi.normalizeEvidenceBundle({
+    researchData: publicResearchData(),
+    personalData: {
+      exerciseScores: [{
+        exercise_id: invalidId,
+        exercise_name: "Conflicting Garage Press",
+        research_exercise_id: "ex_barbell_bench_press"
+      }],
+      exercisePrescriptions: [{
+        exercise_id: invalidId,
+        exercise_name: "Conflicting Garage Press",
+        research_exercise_id: "ex_incline_dumbbell_press",
+        muscle_group_id: "chest"
+      }],
+      exerciseMuscleScores: [{
+        exercise_id: invalidId,
+        exercise_name: "Conflicting Garage Press",
+        research_exercise_id: "ex_barbell_bench_press",
+        muscle_group: "chest"
+      }]
+    }
+  });
+  const reconciled = evidence.personal.reconciledIdentityByExerciseId?.get(invalidId);
+  assert.equal(reconciled?.invalid, true, "The fixture must be invalidated by the real evidence reconciler");
+  assert.equal(reconciled?.researchExerciseId, null, "A real reconciled conflict must not retain either contradictory research ID");
+  const realEngine = prescriptionApi.createPrescriptionEngine(evidence);
+  const resolver = evaluateFunction("prescriptionExerciseIdentity", {
+    prescriptionEngine: realEngine,
+    normalizePrescriptionIdentity: normalizeIdentity
+  });
+  const resolved = resolver("Conflicting Garage Press");
+  assert.equal(resolved, null, "An invalid reconciled identity must fail closed instead of re-entering the custom exercise path");
+  assert.notEqual(resolved, invalidId, "Invalid reconciliation must never return an ordinary custom ID");
 });
 
 test("unified prescriptions preserve template intent and all hard workout constraints", () => {
@@ -654,6 +1010,8 @@ test("quick-start cards retain native button semantics", () => {
   const source = functionSource("renderQuickStartTemplates");
   assertContains(source, /<button\s+class="quick-template-card[^>]*\stype="button"/, "Every quick-start card must remain a native type=button control");
   assert.doesNotMatch(source, /<(?:div|article|a)[^>]*class="quick-template-card[^>]*role="button"/, "Quick-start must not regress to a simulated button");
+  assert.doesNotMatch(source, /class="quick-template-list"[^>]*\srole="list"/, "The visual quick-template carousel must not impose list semantics on native button children");
+  assert.doesNotMatch(source, /class="quick-template-card[^>]*\srole="listitem"/, "A native quick-template button must retain its computed button role");
 });
 
 test("navigation, dialogs, and Lift controls expose complete focus and naming contracts", () => {

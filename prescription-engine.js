@@ -13,7 +13,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function prescriptionEngineFactory() {
   "use strict";
 
-  const ENGINE_VERSION = "3.3.4";
+  const ENGINE_VERSION = "3.3.5";
   const PRESCRIPTION_SCHEMA_VERSION = "2.3.0";
   const SNAPSHOT_SCHEMA_VERSION = "1.3.0";
   const TRAINING_PROFILE_VERSION = "training-profile/1.1.0";
@@ -895,6 +895,127 @@
         personal: input.personalDataVersion || personal.version,
         research: input.researchDatabaseVersion || research.version
       }
+    };
+  }
+
+  function resolveCanonicalExerciseIdentity(evidenceInput, value) {
+    const evidence = evidenceInput.personal ? evidenceInput : normalizeEvidenceBundle(evidenceInput);
+    const requestedValue = typeof value === "string" ? value.trim() : "";
+    if (!requestedValue) return {
+      status: "unresolved",
+      reason: "unknown_exercise_identity"
+    };
+
+    // A stable personal ID is authoritative when one was supplied. In
+    // particular, an invalid explicit crosswalk must not fall through to a
+    // coincidentally matching public alias and regain executable status.
+    const personalIdentity = evidence.personal.reconciledIdentityByExerciseId?.get(requestedValue) || null;
+    if (personalIdentity?.invalid) return {
+      status: "unresolved",
+      exerciseId: requestedValue,
+      reason: "invalid_reconciled_identity"
+    };
+    if (personalIdentity?.researchExerciseId) return {
+      status: "resolved",
+      exerciseId: personalIdentity.researchExerciseId,
+      source: `personal_${personalIdentity.researchIdentitySource || "reconciled_crosswalk"}`
+    };
+    if (personalIdentity) return {
+      status: "unresolved",
+      exerciseId: requestedValue,
+      reason: "unknown_exercise_identity"
+    };
+
+    if (evidence.research.exerciseById.has(requestedValue)) return {
+      status: "resolved",
+      exerciseId: requestedValue,
+      source: "canonical_research_id"
+    };
+
+    const normalizedValue = normalizeText(requestedValue);
+    if (!normalizedValue) return {
+      status: "unresolved",
+      reason: "unknown_exercise_identity"
+    };
+
+    // Canonical IDs, names, and exported aliases share normalizeText's case,
+    // whitespace, and separator semantics. Canonical IDs retain precedence;
+    // aliases cannot shadow the stable ID namespace.
+    const normalizedCanonicalIds = evidence.research.exerciseDatabase
+      .map((exercise) => firstPresent(exercise.exercise_id, exercise.exerciseId))
+      .filter((exerciseId) => exerciseId && normalizeText(exerciseId) === normalizedValue);
+    if (normalizedCanonicalIds.length === 1) return {
+      status: "resolved",
+      exerciseId: normalizedCanonicalIds[0],
+      source: "normalized_canonical_research_id"
+    };
+    if (normalizedCanonicalIds.length > 1) return {
+      status: "unresolved",
+      reason: "unknown_exercise_identity"
+    };
+
+    const researchExerciseId = evidence.research.exerciseIdByAlias.get(normalizedValue) || null;
+    if (!researchExerciseId || !evidence.research.exerciseById.has(researchExerciseId)) return {
+      status: "unresolved",
+      reason: "unknown_exercise_identity"
+    };
+    const researchExercise = evidence.research.exerciseById.get(researchExerciseId);
+    const canonicalName = firstPresent(researchExercise?.exercise_name, researchExercise?.exerciseName);
+    return {
+      status: "resolved",
+      exerciseId: researchExerciseId,
+      source: normalizeText(canonicalName) === normalizedValue ? "canonical_research_name" : "research_alias"
+    };
+  }
+
+  function resolveCanonicalDefaultPrescriptionTarget(evidenceInput, value) {
+    const evidence = evidenceInput.personal ? evidenceInput : normalizeEvidenceBundle(evidenceInput);
+    const identity = resolveCanonicalExerciseIdentity(evidence, value);
+    if (identity.status !== "resolved") return {
+      status: "ineligible",
+      ...(identity.exerciseId ? { exerciseId: identity.exerciseId } : {}),
+      reason: identity.reason
+    };
+
+    const relationships = asArray(evidence.research.muscleMapsByExercise.get(identity.exerciseId));
+    const dynamicDirectTargets = relationships.filter((relationship) => {
+      const relationshipType = normalizeText(firstPresent(relationship.relationship_type, relationship.relationshipType));
+      const loadingRole = normalizeText(firstPresent(relationship.loading_role, relationship.loadingRole));
+      const fractionalSetCredit = number(firstPresent(relationship.fractional_set_credit, relationship.fractionalSetCredit), 0);
+      return relationshipType === "direct_load"
+        && ["dynamic", "mixed"].includes(loadingRole)
+        && fractionalSetCredit > 0;
+    });
+
+    if (!dynamicDirectTargets.length) return {
+      status: "ineligible",
+      exerciseId: identity.exerciseId,
+      reason: "no_dynamic_direct_target"
+    };
+    if (dynamicDirectTargets.length !== 1) return {
+      status: "ineligible",
+      exerciseId: identity.exerciseId,
+      reason: "ambiguous_dynamic_direct_target"
+    };
+
+    const relationship = dynamicDirectTargets[0];
+    const muscleGroupId = firstPresent(relationship.muscle_group_id, relationship.muscleGroupId);
+    const taxonomyVersion = firstPresent(relationship.taxonomy_version, relationship.taxonomyVersion);
+    if (typeof muscleGroupId !== "string"
+      || !/^mg_[a-z0-9_]+$/.test(muscleGroupId)
+      || typeof taxonomyVersion !== "string"
+      || !taxonomyVersion.trim()) return {
+      status: "ineligible",
+      exerciseId: identity.exerciseId,
+      reason: "ambiguous_dynamic_direct_target"
+    };
+
+    return {
+      status: "resolved",
+      exerciseId: identity.exerciseId,
+      muscleGroupId,
+      relationshipType: "direct_load",
+      taxonomyVersion: taxonomyVersion.trim()
     };
   }
 
@@ -5647,6 +5768,8 @@
     updateMesocycleSelection(mesocycle, programSlotId, exerciseIds, options = {}) { return updateMesocycleSelection(this.evidence, mesocycle, programSlotId, exerciseIds, { ...options, policy: this.policy }); }
     refreshMesocycle(mesocycle, options = {}) { return refreshMesocycleProgram(mesocycle, this.evidence, { ...options, policy: this.policy }); }
     canDeleteMesocycle(mesocycle) { return canDeleteMesocycle(mesocycle); }
+    resolveExerciseIdentity(value) { return resolveCanonicalExerciseIdentity(this.evidence, value); }
+    resolveDefaultPrescriptionTarget(value) { return resolveCanonicalDefaultPrescriptionTarget(this.evidence, value); }
     prescribeExercise(options = {}) { return createExercisePrescriptionSnapshot(this.evidence, { ...options, policy: this.policy }); }
     prescribeWorkout(options = {}) { return createWorkoutPrescription(this.evidence, { ...options, policy: this.policy }); }
     forSurface(snapshot, surface) { return recommendationForSurface(snapshot, surface); }

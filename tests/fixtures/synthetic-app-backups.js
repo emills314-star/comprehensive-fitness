@@ -124,6 +124,75 @@ function entityScopedUniquenessState() {
   return state;
 }
 
+function safetyWorkoutState(recovery = {}, options = {}) {
+  const state = validFullState();
+  const exerciseIds = {
+    bench: IDS.exercise,
+    legPress: "66666666-6666-4666-8666-666666666666",
+    unknown: "77777777-7777-4777-8777-777777777777"
+  };
+  state.sessions = [{
+    ...state.sessions[0],
+    title: "Synthetic Safety Workout",
+    submitted: false,
+    workoutStarted: true,
+    workoutState: "active",
+    completedAt: "",
+    startedAt: "2026-07-14T12:00:00.000Z",
+    recovery: { illness: false, pain: false, affectedMuscle: "", ...recovery }
+  }];
+  state.exercises = [
+    {
+      ...state.exercises[0],
+      id: exerciseIds.bench,
+      name: "Barbell Bench Press",
+      primaryMuscle: "Chest",
+      secondaryMuscle: "Triceps",
+      order: 0,
+      ...(options.recommendationSnapshot ? {
+        recommendationSnapshot: options.recommendationSnapshot,
+        basePrescription: options.recommendationSnapshot.basePrescription,
+        finalPrescription: options.recommendationSnapshot.finalPrescription,
+        executionBlocked: Boolean(options.recommendationSnapshot.finalPrescription?.executionBlocked),
+        safetyRestriction: options.recommendationSnapshot.finalPrescription?.safetyRestriction || null
+      } : {})
+    },
+    {
+      ...state.exercises[0],
+      id: exerciseIds.legPress,
+      name: "Leg Press",
+      primaryMuscle: "Quadriceps",
+      secondaryMuscle: "Glutes",
+      order: 1
+    },
+    {
+      ...state.exercises[0],
+      id: exerciseIds.unknown,
+      name: "Unmapped Synthetic Movement",
+      primaryMuscle: "",
+      secondaryMuscle: "",
+      order: 2
+    }
+  ];
+  state.sets = state.exercises.map((exercise, index) => ({
+    ...state.sets[0],
+    id: [IDS.set, "88888888-8888-4888-8888-888888888888", "99999999-9999-4999-8999-999999999999"][index],
+    exerciseId: exercise.id,
+    completed: false,
+    skipped: false
+  }));
+  state.templates = [];
+  state.recommendationHistory = options.recommendationSnapshot ? [options.recommendationSnapshot] : [];
+  state.settings = {
+    ...state.settings,
+    availableEquipment: ["all"],
+    autoStartRestTimer: false,
+    timerNotifications: false,
+    interactionVibration: false
+  };
+  return { state, exerciseIds };
+}
+
 function entityCollectionCases() {
   return ["sessions", "exercises", "sets", "templates"].flatMap((collection) => ([
     {
@@ -302,5 +371,6 @@ module.exports = {
   hostileCases,
   jsonShapeCases,
   legacyState,
+  safetyWorkoutState,
   validFullState
 };
