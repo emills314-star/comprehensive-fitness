@@ -323,7 +323,7 @@ group("default target resolution is invariant to exercise-muscle relationship or
   });
 }, { requiresAdapter: true });
 
-group("synthetic zero-direct and multi-direct catalogs fail closed with distinct reasons", () => {
+group("synthetic invalid direct eligibility, zero-direct, and multi-direct catalogs fail closed", () => {
   const syntheticExercises = [
     {
       exercise_id: "ex_synthetic_zero_direct",
@@ -336,6 +336,18 @@ group("synthetic zero-direct and multi-direct catalogs fail closed with distinct
       exercise_name: "Synthetic Ambiguous Direct",
       exercise_aliases: "synthetic multi direct",
       primary_muscles: "mg_biceps|mg_triceps"
+    },
+    {
+      exercise_id: "ex_synthetic_direct_zero_credit",
+      exercise_name: "Synthetic Direct Zero Credit",
+      exercise_aliases: "zero credit direct fixture",
+      primary_muscles: "mg_triceps"
+    },
+    {
+      exercise_id: "ex_synthetic_direct_isometric",
+      exercise_name: "Synthetic Isometric Direct",
+      exercise_aliases: "isometric direct fixture",
+      primary_muscles: "mg_obliques"
     }
   ];
   const relationshipBase = {
@@ -378,6 +390,29 @@ group("synthetic zero-direct and multi-direct catalogs fail closed with distinct
       relationship_type: "direct_load",
       fractional_set_credit: 1,
       local_fatigue_weight: 1
+    },
+    {
+      ...relationshipBase,
+      exercise_muscle_map_id: "emm_synthetic_direct_zero_credit_1",
+      exercise_id: "ex_synthetic_direct_zero_credit",
+      muscle_group_id: "mg_triceps",
+      programming_family_id: "triceps",
+      relationship_type: "direct_load",
+      loading_role: "dynamic",
+      fractional_set_credit: 0,
+      local_fatigue_weight: 0.25
+    },
+    {
+      ...relationshipBase,
+      exercise_muscle_map_id: "emm_synthetic_direct_isometric_1",
+      exercise_id: "ex_synthetic_direct_isometric",
+      muscle_group_id: "mg_obliques",
+      programming_family_id: "obliques",
+      relationship_type: "direct_load",
+      loading_role: "isometric",
+      range_of_motion_role: "none_isometric",
+      fractional_set_credit: 1,
+      local_fatigue_weight: 1
     }
   ];
   const syntheticEngine = createPublicEngine({
@@ -387,13 +422,45 @@ group("synthetic zero-direct and multi-direct catalogs fail closed with distinct
 
   assertResolvedIdentity(syntheticEngine.resolveExerciseIdentity("synthetic zero direct"), "ex_synthetic_zero_direct", "synthetic zero-direct alias");
   assertResolvedIdentity(syntheticEngine.resolveExerciseIdentity("synthetic multi direct"), "ex_synthetic_multi_direct", "synthetic multi-direct alias");
+  assertResolvedIdentity(syntheticEngine.resolveExerciseIdentity("ex_synthetic_direct_zero_credit"), "ex_synthetic_direct_zero_credit", "synthetic zero-credit direct canonical ID");
+  assertResolvedIdentity(syntheticEngine.resolveExerciseIdentity("zero credit direct fixture"), "ex_synthetic_direct_zero_credit", "synthetic zero-credit direct alias");
+  assertResolvedIdentity(syntheticEngine.resolveExerciseIdentity("ex_synthetic_direct_isometric"), "ex_synthetic_direct_isometric", "synthetic isometric direct canonical ID");
+  assertResolvedIdentity(syntheticEngine.resolveExerciseIdentity("isometric direct fixture"), "ex_synthetic_direct_isometric", "synthetic isometric direct alias");
+  const zeroCreditDirectRow = syntheticRelationships.find((row) => row.exercise_id === "ex_synthetic_direct_zero_credit");
+  const isometricDirectRow = syntheticRelationships.find((row) => row.exercise_id === "ex_synthetic_direct_isometric");
+  assert.deepEqual({
+    relationshipType: zeroCreditDirectRow?.relationship_type,
+    loadingRole: zeroCreditDirectRow?.loading_role,
+    setCredit: zeroCreditDirectRow?.fractional_set_credit
+  }, {
+    relationshipType: "direct_load",
+    loadingRole: "dynamic",
+    setCredit: 0
+  }, "zero-credit fixture must isolate the positive-credit eligibility requirement");
+  assert.deepEqual({
+    relationshipType: isometricDirectRow?.relationship_type,
+    loadingRole: isometricDirectRow?.loading_role,
+    setCredit: isometricDirectRow?.fractional_set_credit
+  }, {
+    relationshipType: "direct_load",
+    loadingRole: "isometric",
+    setCredit: 1
+  }, "isometric fixture must isolate the dynamic-loading eligibility requirement");
   const zero = syntheticEngine.resolveDefaultPrescriptionTarget("ex_synthetic_zero_direct");
   const multi = syntheticEngine.resolveDefaultPrescriptionTarget("ex_synthetic_multi_direct");
+  const zeroCreditDirect = syntheticEngine.resolveDefaultPrescriptionTarget("ex_synthetic_direct_zero_credit");
+  const isometricDirect = syntheticEngine.resolveDefaultPrescriptionTarget("ex_synthetic_direct_isometric");
   assert.equal(zero?.status, "ineligible");
   assert.equal(zero.reason, "no_dynamic_direct_target");
   assert.equal(multi?.status, "ineligible");
   assert.equal(multi.reason, "ambiguous_dynamic_direct_target");
   assert.notEqual(zero.reason, multi.reason, "zero-direct and multi-direct ambiguity must remain distinguishable");
+  assert.equal(zeroCreditDirect?.status, "ineligible", "a zero-credit dynamic direct row must not become a default target");
+  assert.equal(zeroCreditDirect.exerciseId, "ex_synthetic_direct_zero_credit");
+  assert.equal(zeroCreditDirect.reason, "no_dynamic_direct_target");
+  assert.equal(isometricDirect?.status, "ineligible", "a positive-credit isometric direct row must not become a default target");
+  assert.equal(isometricDirect.exerciseId, "ex_synthetic_direct_isometric");
+  assert.equal(isometricDirect.reason, "no_dynamic_direct_target");
 }, { requiresAdapter: true });
 
 group("explicit fractional targets remain valid while unrelated explicit targets are rejected", () => {
