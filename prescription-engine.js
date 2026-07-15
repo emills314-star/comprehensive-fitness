@@ -13,7 +13,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function prescriptionEngineFactory() {
   "use strict";
 
-  const ENGINE_VERSION = "3.3.5";
+  const ENGINE_VERSION = "3.3.6";
   const PRESCRIPTION_SCHEMA_VERSION = "2.3.0";
   const SNAPSHOT_SCHEMA_VERSION = "1.3.0";
   const TRAINING_PROFILE_VERSION = "training-profile/1.1.0";
@@ -821,13 +821,40 @@
     const muscleMapsByMuscle = groupBy(exerciseMuscleMap, (item) => item.muscle_group_id || item.muscleGroupId);
     const substitutionsByExercise = groupBy(exerciseSubstitutionMap, (item) => item.exercise_id || item.exerciseId);
     const muscleRecommendationById = mapBy(muscleGroupRecommendations, (item) => item.muscle_group_id || item.muscleGroupId);
-    const exerciseIdByAlias = new Map();
+    const publicIdentityOwnership = new Map();
+    const addPublicIdentity = (exerciseId, value, surface) => {
+      const key = normalizeText(value);
+      if (!exerciseId || !key) return;
+      if (!publicIdentityOwnership.has(key)) publicIdentityOwnership.set(key, new Map());
+      const owners = publicIdentityOwnership.get(key);
+      if (!owners.has(exerciseId)) owners.set(exerciseId, new Set());
+      owners.get(exerciseId).add(surface);
+    };
     exerciseDatabase.forEach((exercise) => {
       const exerciseId = exercise.exercise_id || exercise.exerciseId;
-      [exercise.exercise_name, exercise.exerciseName, ...splitMulti(exercise.exercise_aliases || exercise.exerciseAliases)].forEach((name) => {
-        const alias = normalizeText(name);
-        if (alias && !exerciseIdByAlias.has(alias)) exerciseIdByAlias.set(alias, exerciseId);
-      });
+      addPublicIdentity(exerciseId, exerciseId, "canonical_id");
+      [exercise.exercise_name, exercise.exerciseName].forEach((name) => addPublicIdentity(exerciseId, name, "canonical_name"));
+      splitMulti(exercise.exercise_aliases || exercise.exerciseAliases).forEach((alias) => addPublicIdentity(exerciseId, alias, "alias"));
+    });
+    const publicExerciseIdsByIdentity = new Map();
+    const publicIdentitySurfacesByExercise = new Map();
+    [...publicIdentityOwnership.keys()].sort().forEach((key) => {
+      const owners = publicIdentityOwnership.get(key);
+      const exerciseIds = [...owners.keys()].sort();
+      publicExerciseIdsByIdentity.set(key, Object.freeze(exerciseIds));
+      publicIdentitySurfacesByExercise.set(key, new Map(exerciseIds.map((exerciseId) => [
+        exerciseId,
+        Object.freeze([...owners.get(exerciseId)].sort())
+      ])));
+    });
+    // Compatibility consumers need a single ID, never an order-dependent first
+    // match. Keys shared by distinct public exercises are intentionally absent.
+    const exerciseIdByAlias = new Map();
+    publicExerciseIdsByIdentity.forEach((exerciseIds, key) => {
+      if (exerciseIds.length !== 1) return;
+      const exerciseId = exerciseIds[0];
+      const surfaces = publicIdentitySurfacesByExercise.get(key)?.get(exerciseId) || [];
+      if (surfaces.includes("canonical_name") || surfaces.includes("alias")) exerciseIdByAlias.set(key, exerciseId);
     });
 
     function muscleRecommendationsFor(muscleGroupId) {
@@ -867,6 +894,8 @@
       substitutionsByExercise,
       muscleRecommendationById,
       exerciseIdByAlias,
+      publicExerciseIdsByIdentity,
+      publicIdentitySurfacesByExercise,
       muscleRecommendationsFor,
       exerciseTargetsMuscle
     };
@@ -906,10 +935,28 @@
       reason: "unknown_exercise_identity"
     };
 
-    // A stable personal ID is authoritative when one was supplied. In
-    // particular, an invalid explicit crosswalk must not fall through to a
-    // coincidentally matching public alias and regain executable status.
+    const normalizedValue = normalizeText(requestedValue);
+    if (!normalizedValue) return {
+      status: "unresolved",
+      reason: "unknown_exercise_identity"
+    };
+
+    const publicExerciseIds = evidence.research.publicExerciseIdsByIdentity.get(normalizedValue) || [];
+
+    // An exact stable personal ID is reserved before its crosswalk is trusted.
+    // A custom ID overlapping any normalized public ID/name/alias is therefore
+    // quarantined, while the public spelling and its other normalized variants
+    // continue through the independently owned public namespace below.
     const personalIdentity = evidence.personal.reconciledIdentityByExerciseId?.get(requestedValue) || null;
+    if (personalIdentity?.publicIdentityCollision) return {
+      status: "unresolved",
+      exerciseId: requestedValue,
+      reason: "personal_public_identity_collision"
+    };
+    if (publicExerciseIds.length > 1) return {
+      status: "unresolved",
+      reason: "ambiguous_public_exercise_identity"
+    };
     if (personalIdentity?.invalid) return {
       status: "unresolved",
       exerciseId: requestedValue,
@@ -926,45 +973,28 @@
       reason: "unknown_exercise_identity"
     };
 
-    if (evidence.research.exerciseById.has(requestedValue)) return {
-      status: "resolved",
-      exerciseId: requestedValue,
-      source: "canonical_research_id"
-    };
-
-    const normalizedValue = normalizeText(requestedValue);
-    if (!normalizedValue) return {
+    if (publicExerciseIds.length !== 1) return {
       status: "unresolved",
       reason: "unknown_exercise_identity"
     };
 
-    // Canonical IDs, names, and exported aliases share normalizeText's case,
-    // whitespace, and separator semantics. Canonical IDs retain precedence;
-    // aliases cannot shadow the stable ID namespace.
-    const normalizedCanonicalIds = evidence.research.exerciseDatabase
-      .map((exercise) => firstPresent(exercise.exercise_id, exercise.exerciseId))
-      .filter((exerciseId) => exerciseId && normalizeText(exerciseId) === normalizedValue);
-    if (normalizedCanonicalIds.length === 1) return {
-      status: "resolved",
-      exerciseId: normalizedCanonicalIds[0],
-      source: "normalized_canonical_research_id"
-    };
-    if (normalizedCanonicalIds.length > 1) return {
+    const researchExerciseId = publicExerciseIds[0];
+    if (!evidence.research.exerciseById.has(researchExerciseId)) return {
       status: "unresolved",
       reason: "unknown_exercise_identity"
     };
-
-    const researchExerciseId = evidence.research.exerciseIdByAlias.get(normalizedValue) || null;
-    if (!researchExerciseId || !evidence.research.exerciseById.has(researchExerciseId)) return {
-      status: "unresolved",
-      reason: "unknown_exercise_identity"
-    };
-    const researchExercise = evidence.research.exerciseById.get(researchExerciseId);
-    const canonicalName = firstPresent(researchExercise?.exercise_name, researchExercise?.exerciseName);
+    const surfaces = evidence.research.publicIdentitySurfacesByExercise.get(normalizedValue)?.get(researchExerciseId) || [];
+    const source = requestedValue === researchExerciseId && surfaces.includes("canonical_id")
+      ? "canonical_research_id"
+      : surfaces.includes("canonical_id")
+        ? "normalized_canonical_research_id"
+        : surfaces.includes("canonical_name")
+          ? "canonical_research_name"
+          : "research_alias";
     return {
       status: "resolved",
       exerciseId: researchExerciseId,
-      source: normalizeText(canonicalName) === normalizedValue ? "canonical_research_name" : "research_alias"
+      source
     };
   }
 
@@ -5310,6 +5340,27 @@
           researchIdentitySource: "canonical_id",
           canonicalMetadataQuarantined: true,
           canonicalMetadataRecordCount: records.length
+        });
+        return;
+      }
+      const publicNamespaceOwners = research.publicExerciseIdsByIdentity.get(normalizeText(exerciseId)) || [];
+      if (publicNamespaceOwners.length) {
+        // Custom IDs may not claim a normalized public ID, name, or alias. Mark
+        // the record invalid before inspecting its crosswalk so both valid and
+        // invalid mappings remain non-executable and order-independent.
+        identities.set(exerciseId, {
+          exerciseId,
+          researchExerciseId: null,
+          researchIdentitySpecified: explicitResearchIds.length > 0,
+          researchIdentityFieldPresence: fieldPresence,
+          researchIdentityConflict: false,
+          researchIdentitySource: "public_namespace_collision",
+          structured: true,
+          catalogRecord: true,
+          invalid: true,
+          publicIdentityCollision: true,
+          invalidReason: `Trusted custom exercise ${exerciseId} overlaps the normalized public exercise identity namespace.`,
+          source: {}
         });
         return;
       }
