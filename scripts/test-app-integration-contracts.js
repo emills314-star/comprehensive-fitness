@@ -853,7 +853,9 @@ test("backup revision metadata is bounded and rebased while template numbers sha
   assert.throws(() => nextFrom(-1), /exhausted|invalid/i);
 
   const clearDrafts = functionSource("clearTemplateNumericDrafts");
+  const renderNumericInput = functionSource("renderTemplateNumericInput");
   collectAssertions([
+    ["native required number semantics", () => assertContains(renderNumericInput, /<input\s+type="number"\s+required\s+min=/, "Every shared template numeric input must expose required alongside min/max/step")],
     ["template deletion clears drafts", () => assertContains(html, /confirm-delete-template[\s\S]*?clearTemplateNumericDrafts\s*\(\s*templateId\s*\)/, "Deleting a template must remove its pending numeric drafts")],
     ["exercise deletion clears drafts", () => assertContains(html, /delete-template-exercise[\s\S]*?clearTemplateNumericDrafts\s*\(\s*target\.dataset\.templateId\s*,\s*target\.dataset\.templateExerciseId\s*\)/, "Deleting a template exercise must remove its pending numeric drafts")],
     ["draft helper deletes matched keys", () => assertContains(clearDrafts, /templateNumericDrafts\.delete\s*\(\s*key\s*\)/, "Draft cleanup must delete every matched key")]
@@ -1041,7 +1043,7 @@ test("conflict-mode and rejected executable imports perform zero writes while ac
   ]);
 });
 
-test("workout submission is idempotent under a reentrant call, not only after the submitted flag lands", () => {
+test("workout submission acceptance is shared by routing feedback and the reentrant idempotency boundary", () => {
   const session = { id: "session-1", date: "2026-07-15", submitted: false, workoutPrescription: null };
   const context = {
     data: { sessions: [session], exercises: [], recommendationHistory: [], manualOverrides: [], dataRevision: 1 },
@@ -1067,6 +1069,13 @@ test("workout submission is idempotent under a reentrant call, not only after th
     draftClears: 0,
     reentrantAttempts: 0
   };
+  const workoutSubmissionIsAccepted = evaluateFunction("workoutSubmissionIsAccepted", context);
+  context.workoutSubmissionIsAccepted = workoutSubmissionIsAccepted;
+  assert.equal(workoutSubmissionIsAccepted("session-1"), true);
+  context.workoutSubmissionsInProgress.add("session-1");
+  assert.equal(workoutSubmissionIsAccepted("session-1"), false, "An in-progress session must not be accepted twice");
+  context.workoutSubmissionsInProgress.delete("session-1");
+  assert.equal(workoutSubmissionIsAccepted("missing-session"), false, "A missing session must not be accepted");
   const submit = evaluateFunction("submitWorkout", context);
   context.submitWorkoutPrs = () => {
     context.reentrantAttempts += 1;
@@ -1080,7 +1089,13 @@ test("workout submission is idempotent under a reentrant call, not only after th
   assert.equal(context.sounds, 1, "Completion effects must run once");
   assert.equal(context.draftClears, 1, "The active draft must clear once");
   assert.equal(context.data.sessions[0].submitted, true);
+  assert.equal(workoutSubmissionIsAccepted("session-1"), false, "A submitted session must not be accepted again");
   assert.equal(context.workoutSubmissionsInProgress.size, 0, "The reentrancy lock must release after completion");
+  collectAssertions([
+    ["submit uses shared predicate", () => assertContains(functionSource("submitWorkout"), /if\s*\(\s*!workoutSubmissionIsAccepted\s*\(\s*sessionId\s*\)\s*\)\s*return/, "submitWorkout must use the shared acceptance predicate")],
+    ["router suppresses rejected feedback", () => assertContains(html, /interactionAccepted\s*=\s*action\s*!==\s*["']confirm-submit-workout["']\s*\|\|\s*workoutSubmissionIsAccepted\s*\(\s*activeSessionId\s*\)[\s\S]{0,160}if\s*\(\s*interactionAccepted\s*\)\s*performInteractionFeedback/, "The router must gate generic submit feedback through the same predicate")],
+    ["router still calls submit", () => assertContains(html, /if\s*\(\s*action\s*===\s*["']confirm-submit-workout["']\s*\)\s*submitWorkout\s*\(\s*activeSessionId\s*\)/, "A rejected duplicate route must still invoke submitWorkout for the idempotent entry contract")]
+  ]);
 });
 
 test("dedicated JSON shape validation accepts exact depth and width boundaries and rejects overflow", () => {

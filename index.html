@@ -7809,7 +7809,7 @@
         const invalid = Boolean(draft?.invalid);
         const value = draft ? draft.raw : modelValue;
         const describedBy = invalid ? ` aria-describedby="${templateNumericAlertId(template.id)}"` : "";
-        return `<input type="number" min="${config.min}" max="${config.max}" step="${config.step}" value="${escapeHtml(value)}" data-action="${action}" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" aria-label="${escapeHtml(ariaLabel)}"${invalid ? ' aria-invalid="true"' : ""}${describedBy} />`;
+        return `<input type="number" required min="${config.min}" max="${config.max}" step="${config.step}" value="${escapeHtml(value)}" data-action="${action}" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" aria-label="${escapeHtml(ariaLabel)}"${invalid ? ' aria-invalid="true"' : ""}${describedBy} />`;
       }
 
       function renderTemplateNumericAlert(templateId) {
@@ -11697,9 +11697,14 @@
         return { exercises, recommendationHistory, manualOverrides, evaluatedByRecommendation };
       }
 
-      function submitWorkout(sessionId) {
+      function workoutSubmissionIsAccepted(sessionId) {
         const session = data.sessions.find((item) => item.id === sessionId);
-        if (!session || session.submitted || workoutSubmissionsInProgress.has(sessionId)) return;
+        return Boolean(session && !session.submitted && !workoutSubmissionsInProgress.has(sessionId));
+      }
+
+      function submitWorkout(sessionId) {
+        if (!workoutSubmissionIsAccepted(sessionId)) return;
+        const session = data.sessions.find((item) => item.id === sessionId);
         workoutSubmissionsInProgress.add(sessionId);
         try {
           if (timer) cancelTimer("workout-ended", false);
@@ -13112,7 +13117,8 @@
           render();
           return;
         }
-        performInteractionFeedback(feedbackLevelForAction(action, target));
+        const interactionAccepted = action !== "confirm-submit-workout" || workoutSubmissionIsAccepted(activeSessionId);
+        if (interactionAccepted) performInteractionFeedback(feedbackLevelForAction(action, target));
         if (action === "skip-content") {
           event.preventDefault();
           const mainContent = document.getElementById("main-content");

@@ -253,6 +253,9 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     const rpe = card.locator('[data-action="template-exercise-rpe"]').first();
     const increment = card.locator('[data-action="template-exercise-increment"]').first();
     const rest = card.locator('[data-action="template-exercise-rest"]').first();
+    for (const [control, label] of [[sets, "sets"], [reps, "reps"], [rpe, "RPE"], [increment, "increment"], [rest, "rest"]]) {
+      await expect.soft(control, `${label} must expose native required semantics in addition to custom draft validation`).toHaveAttribute("required", "");
+    }
     await expect(sets).toHaveAttribute("min", "1");
     await expect(reps).toHaveAttribute("min", "1");
     await expect(rpe).toHaveAttribute("min", "5");
@@ -265,6 +268,8 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
 
     const before = await persistedData(page);
     const beforeExercise = before.templates.find((item) => item.id === IDS.controlTemplate).exercises.find((item) => item.id === IDS.controlBenchTemplateExercise);
+    await sets.fill("");
+    expect(await sets.evaluate((element) => ({ valid: element.validity.valid, valueMissing: element.validity.valueMissing })), "an empty required number must fail the browser constraint before custom validation").toEqual({ valid: false, valueMissing: true });
     await sets.fill("0");
     await reps.fill("0");
     await rpe.fill("4.5");
@@ -707,17 +712,22 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     expect.soft(firstEffectProbe.successFeedbackCalls, "the accepted UI confirmation and completed workout must each route their deliberate success-feedback signal").toHaveLength(2);
     expect(afterFirst.dataRevision, "the first routed submission must create exactly one data revision").toBe(Number(beforeSubmit.dataRevision) + 1);
 
-    const secondRoute = await page.evaluate((sessionId) => {
+    const secondRoute = await page.evaluate(() => {
       const beforeAttempts = window.__lifecycleSubmissionProbe.attempts.length;
-      const result = window.submitWorkout(sessionId);
+      const duplicate = document.createElement("button");
+      duplicate.type = "button";
+      duplicate.dataset.action = "confirm-submit-workout";
+      document.getElementById("root").appendChild(duplicate);
+      duplicate.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      duplicate.remove();
       return {
         beforeAttempts,
         afterAttempts: window.__lifecycleSubmissionProbe.attempts.length,
         returnedAttempts: window.__lifecycleSubmissionProbe.returnedTypes.length,
-        returnType: typeof result
+        returnType: window.__lifecycleSubmissionProbe.returnedTypes.at(-1)
       };
-    }, IDS.activeSession);
-    expect(secondRoute, "the second application-level submission function must be invoked and return").toEqual({
+    });
+    expect(secondRoute, "the generic router must still invoke and return from the duplicate application-level submission attempt").toEqual({
       beforeAttempts: 1,
       afterAttempts: 2,
       returnedAttempts: 2,
