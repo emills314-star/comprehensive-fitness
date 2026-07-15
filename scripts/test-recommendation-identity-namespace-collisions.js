@@ -468,6 +468,16 @@ test("synthetic namespace fixtures are schema-shaped, colliding, and non-vacuous
     assert.deepEqual([...publicIdentityTargets.get(identityKey(value))], ["ex_clean_press"], `${value} must remain a noncolliding control.`);
   });
   assert.deepEqual([...publicIdentityTargets.get(identityKey("Same Surface Press"))], ["ex_same_surface_control"], "Repeated surfaces owned by one canonical ID must not be classified as ambiguous.");
+  const canonicalEvidenceCannotDisambiguate = createEngine([{
+    exercise_id: "ex_dual_id_press",
+    exercise_name: "Personal evidence for an ambiguous canonical surface",
+    research_exercise_id: "ex_dual_id_press"
+  }]);
+  assert.deepEqual(
+    actualContract(canonicalEvidenceCannotDisambiguate, "ex_dual_id_press"),
+    ambiguousPublicContract(),
+    "Personal evidence attached to one public owner must not disambiguate a normalized public key owned by multiple canonical exercises."
+  );
 }, "fixture_integrity");
 
 collisionScenarios.forEach((scenario, index) => {
