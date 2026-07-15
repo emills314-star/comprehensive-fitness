@@ -2959,21 +2959,44 @@
         return migrateDomainData(model);
       }
 
+      function storedAppDataCandidate(value, source) {
+        if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+        const revision = value.dataRevision ?? 0;
+        if (!Number.isSafeInteger(revision) || revision < 0) return null;
+        const requiredCollectionKeys = ["sessions", "exercises", "sets", "templates"];
+        if (requiredCollectionKeys.some((key) => !Array.isArray(value[key]))) return null;
+        const collectionKeys = ["sessions", "exercises", "sets", "templates", "mesocycles", "recommendationHistory", "manualOverrides", "rawImports", "migrationAudit"];
+        if (collectionKeys.some((key) => Object.prototype.hasOwnProperty.call(value, key) && !Array.isArray(value[key]))) return null;
+        if (Object.prototype.hasOwnProperty.call(value, "settings") && (!value.settings || typeof value.settings !== "object" || Array.isArray(value.settings))) return null;
+        return { source, value, revision };
+      }
+
       async function loadData() {
-        let stored = null;
+        let indexedStored = null;
+        let indexedReadSucceeded = false;
         try {
-          stored = await readIndexedValue("app-data");
+          indexedStored = await readIndexedValue("app-data");
+          indexedReadSucceeded = true;
           persistenceReady = true;
         } catch {
           persistenceReady = false;
         }
-        if (!stored) {
-          try {
-            stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
-          } catch {
-            stored = null;
-          }
+        let localStored = null;
+        let localStoragePresent = false;
+        try {
+          const localSource = localStorage.getItem(STORAGE_KEY);
+          localStoragePresent = localSource !== null;
+          localStored = localStoragePresent ? JSON.parse(localSource) : null;
+        } catch {
+          localStoragePresent = true;
+          localStored = null;
         }
+        const indexedCandidate = storedAppDataCandidate(indexedStored, "indexeddb");
+        const localCandidate = storedAppDataCandidate(localStored, "localstorage");
+        let selectedCandidate = indexedCandidate || localCandidate;
+        if (indexedCandidate && localCandidate && localCandidate.revision > indexedCandidate.revision) selectedCandidate = localCandidate;
+        const stored = selectedCandidate?.value || null;
+        const invalidStoredSource = Boolean((indexedStored !== null && !indexedCandidate) || (localStoragePresent && !localCandidate));
         data = stored ? { ...emptyData(), ...stored, settings: { ...defaultSettings, ...stored.settings } } : emptyData();
         const needsDomainRecalculation = Number(data.domainMigrationVersion || 0) < DOMAIN_MIGRATION_VERSION;
         data = normalizeLoadedData(data);
@@ -3012,7 +3035,21 @@
         }
         if (activeWorkoutId) activeSessionId = activeWorkoutId;
         await restorePushIdentity();
-        if (persistenceReady && stored) writeIndexedValue("app-data", data).catch(() => undefined);
+        if (invalidStoredSource && !settingsMessage) settingsMessage = "One saved app-data copy was invalid. The newest valid copy was used; export a backup before clearing local data.";
+        if (selectedCandidate) {
+          try {
+            await writeIndexedValue("app-data", data);
+            persistenceReady = true;
+            if (localStoragePresent) {
+              try { localStorage.removeItem(STORAGE_KEY); } catch { /* Confirmed IndexedDB data remains primary. */ }
+            }
+          } catch {
+            persistenceReady = false;
+            // Keep any local fallback until a later promotion is confirmed.
+          }
+        } else if (!indexedReadSucceeded) {
+          persistenceReady = false;
+        }
       }
 
       async function loadPrescriptionEvidence(options = {}) {
@@ -6181,6 +6218,13 @@
         if (historyEditStartPending || historyEditFlow) return false;
         const session = activeSession();
         if (!isSessionSubmitted(session)) return false;
+        const editStartContext = {
+          dataRevision: Number(data.dataRevision || 0),
+          activeTab,
+          activeSessionId,
+          viewingHistorySessionId,
+          sessionId: session.id
+        };
         historyEditStartPending = true;
         let stableData;
         let persisted = false;
@@ -6193,12 +6237,23 @@
         } finally {
           historyEditStartPending = false;
         }
+        const editContextChanged = Number(data.dataRevision || 0) !== editStartContext.dataRevision
+          || activeTab !== editStartContext.activeTab
+          || activeSessionId !== editStartContext.activeSessionId
+          || viewingHistorySessionId !== editStartContext.viewingHistorySessionId
+          || activeSession()?.id !== editStartContext.sessionId;
+        if (editContextChanged) {
+          saveData();
+          showAppToast("The app changed while history editing was opening. Your newer changes were kept; choose Edit History to try again.");
+          render();
+          return false;
+        }
         if (!persisted) {
           showAppToast("History editing could not start because the current app state could not be saved.");
           render();
           return false;
         }
-        if (activeSession()?.id !== session.id || !isSessionSubmitted(activeSession())) return false;
+        if (!isSessionSubmitted(activeSession())) return false;
         historyEditFlow = { sessionId: session.id, originalData: stableData, dirty: false };
         historyEditConfirm = "";
         render();

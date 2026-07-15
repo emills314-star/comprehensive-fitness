@@ -48,9 +48,14 @@ async function installScenario(page, options = {}) {
     forcedColors: options.forcedColors || "none",
     reducedMotion: options.reducedMotion || "reduce"
   });
-  await page.addInitScript(({ fixedNow, storageKey, storedFixture }) => {
-    localStorage.clear();
-    sessionStorage.clear();
+  await page.addInitScript(({ fixedNow, preserveStorageOnReload, storageKey, storedFixture }) => {
+    const fixtureAlreadyInstalled = preserveStorageOnReload && sessionStorage.getItem("__cf_fixture_installed__") === "true";
+    if (!fixtureAlreadyInstalled) {
+      localStorage.clear();
+      sessionStorage.clear();
+      localStorage.setItem(storageKey, JSON.stringify(storedFixture));
+      if (preserveStorageOnReload) sessionStorage.setItem("__cf_fixture_installed__", "true");
+    }
     const NativeDate = Date;
     const fixedEpoch = NativeDate.parse(fixedNow);
     class FixedDate extends NativeDate {
@@ -62,8 +67,7 @@ async function installScenario(page, options = {}) {
       }
     }
     globalThis.Date = FixedDate;
-    localStorage.setItem(storageKey, JSON.stringify(storedFixture));
-  }, { fixedNow: FIXED_NOW, storageKey: STORAGE_KEY, storedFixture: fixture });
+  }, { fixedNow: FIXED_NOW, preserveStorageOnReload: options.preserveStorageOnReload === true, storageKey: STORAGE_KEY, storedFixture: fixture });
   await page.goto("/");
   await expect(page.locator("main.app-main")).toBeVisible({ timeout: 45_000 });
   return fixture;
@@ -927,6 +931,103 @@ test("entering history edit flushes an unrelated debounced template change befor
   const persisted = await readPersistedAppData(page);
   expect(persisted.templates.find((template) => template.id === templateId)?.name).toBe(persistedTemplateName);
   expect(persisted.sessions.find((session) => session.id === originalSession.id)?.title).toBe(originalSession.title);
+  await expect(page.locator(".history-edit-bar")).toHaveCount(0);
+});
+
+test("newer local fallback outranks stale readable IndexedDB after a failed pre-edit put", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.addInitScript(() => {
+    const nativeSetTimeout = window.setTimeout.bind(window);
+    window.setTimeout = (callback, delay, ...args) => nativeSetTimeout(callback, Number(delay) === 1800 ? 60_000 : delay, ...args);
+  });
+  const fixture = await installScenario(page, { activeWorkout: false, preserveStorageOnReload: true });
+  const originalSession = fixture.sessions.find((session) => session.id === "public-synthetic-history-session-00");
+  const templateId = "public-synthetic-template-upper";
+  const newerTemplateName = "Newer fallback template state";
+  const staleIndexed = await readPersistedAppData(page);
+
+  await openPrimaryTab(page, "plan");
+  await page.locator(`[data-action="template-name"][data-template-id="${templateId}"]`).fill(newerTemplateName);
+  await openPrimaryTab(page, "dashboard");
+  await page.locator(`[data-action="open-session"][data-session-id="${originalSession.id}"]`).first().click();
+  await page.evaluate(() => {
+    globalThis.__CF_NATIVE_IDB_OPEN_FOR_FALLBACK__ = IDBFactory.prototype.open;
+    IDBFactory.prototype.open = function blockedStableSnapshotPut() { throw new Error("Synthetic stable snapshot IndexedDB failure"); };
+  });
+  await page.getByRole("button", { name: "Edit History", exact: true }).click();
+  await expect(page.locator(".history-edit-bar")).toBeVisible();
+  await page.evaluate(() => { IDBFactory.prototype.open = globalThis.__CF_NATIVE_IDB_OPEN_FOR_FALLBACK__; });
+
+  const localFallback = await page.evaluate((storageKey) => JSON.parse(localStorage.getItem(storageKey) || "null"), STORAGE_KEY);
+  expect(localFallback.dataRevision).toBeGreaterThan(staleIndexed.dataRevision);
+  expect(localFallback.templates.find((template) => template.id === templateId)?.name).toBe(newerTemplateName);
+  await page.locator("summary").filter({ hasText: "Workout details" }).click();
+  await page.locator('[data-action="session-title"]').fill("Temporary history state excluded from fallback");
+
+  await page.reload();
+  await expect(page.locator("main.app-main")).toBeVisible({ timeout: 45_000 });
+  const promoted = await readPersistedAppData(page);
+  expect(promoted.dataRevision).toBeGreaterThan(staleIndexed.dataRevision);
+  expect(promoted.templates.find((template) => template.id === templateId)?.name).toBe(newerTemplateName);
+  expect(promoted.sessions.find((session) => session.id === originalSession.id)?.title).toBe(originalSession.title);
+  expect(await page.evaluate((storageKey) => localStorage.getItem(storageKey), STORAGE_KEY)).toBeNull();
+  await expect(page.locator(".history-edit-bar")).toHaveCount(0);
+});
+
+test("concurrent navigation and mutation abort delayed history-edit startup without rollback", async ({ page }) => {
+  test.setTimeout(90_000);
+  await installScenario(page, { activeWorkout: false });
+  await openPrimaryTab(page, "dashboard");
+  await page.locator('[data-action="open-session"][data-session-id="public-synthetic-history-session-00"]').first().click();
+  const originalUnit = await page.locator('[data-action="toggle-unit"]').textContent();
+
+  await page.evaluate(() => new Promise((resolve, reject) => {
+    const request = indexedDB.open("comprehensive-fitness", 1);
+    request.onerror = () => reject(request.error || new Error("Could not install the delayed-persistence fixture."));
+    request.onsuccess = () => {
+      const db = request.result;
+      const blocker = db.transaction("state", "readwrite");
+      const store = blocker.objectStore("state");
+      let released = false;
+      const nativeTransaction = IDBDatabase.prototype.transaction;
+      globalThis.__CF_HISTORY_WRITE_QUEUED__ = false;
+      globalThis.__CF_RELEASE_HISTORY_WRITE__ = () => {
+        released = true;
+        IDBDatabase.prototype.transaction = nativeTransaction;
+      };
+      IDBDatabase.prototype.transaction = function observedTransaction(storeNames, mode, ...args) {
+        if (mode === "readwrite") globalThis.__CF_HISTORY_WRITE_QUEUED__ = true;
+        return nativeTransaction.call(this, storeNames, mode, ...args);
+      };
+      const keepAlive = () => {
+        const pending = store.get("__cf_history_edit_blocker__");
+        pending.onerror = () => reject(pending.error || new Error("Delayed-persistence fixture failed."));
+        pending.onsuccess = () => { if (!released) keepAlive(); };
+      };
+      blocker.oncomplete = () => db.close();
+      keepAlive();
+      resolve();
+    };
+  }));
+
+  await page.getByRole("button", { name: "Edit History", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => Boolean(globalThis.__CF_HISTORY_WRITE_QUEUED__)), {
+    message: "The edit-start stable snapshot must be waiting behind the deterministic IndexedDB blocker"
+  }).toBe(true);
+  await openPrimaryTab(page, "data");
+  await page.locator('[data-action="toggle-unit"]').click();
+  const changedUnit = await page.locator('[data-action="toggle-unit"]').textContent();
+  expect(changedUnit).not.toBe(originalUnit);
+  await page.evaluate(() => globalThis.__CF_RELEASE_HISTORY_WRITE__());
+
+  await expect(page.locator(".app-toast"), "The stale edit startup must abort and ask the user to retry").toContainText(/changed while history editing was opening.*try again/i);
+  await expect(page.locator(".history-edit-bar")).toHaveCount(0);
+  await expect.poll(async () => (await readPersistedAppData(page)).settings.weightUnit, {
+    message: "The concurrent mutation must remain eligible for persistence after the stale edit startup aborts"
+  }).toBe(String(changedUnit).toLowerCase());
+  await page.reload();
+  await expect(page.locator("main.app-main")).toBeVisible({ timeout: 45_000 });
+  await expect(page.locator('[data-action="toggle-unit"]')).toHaveText(changedUnit);
   await expect(page.locator(".history-edit-bar")).toHaveCount(0);
 });
 

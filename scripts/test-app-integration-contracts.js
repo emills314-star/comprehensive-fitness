@@ -1041,9 +1041,22 @@ test("history editing seals stable persistence and defers external controller re
   collectAssertions([
     ["pre-edit snapshot flush", () => assertContains(beginHistoryEdit, /await\s+persistStableAppDataSnapshot\s*\([\s\S]*?\)[\s\S]*?historyEditFlow\s*=/, "History editing must durably flush a cloned pre-edit snapshot before opening the temporary transaction")],
     ["edit-start lock cleanup", () => assertContains(beginHistoryEdit, /finally\s*\{[\s\S]*?historyEditStartPending\s*=\s*false/, "History editing must clear its start lock even when snapshot persistence throws")],
+    ["edit-start identity capture", () => assertContains(beginHistoryEdit, /dataRevision[\s\S]*?activeTab[\s\S]*?activeSessionId[\s\S]*?viewingHistorySessionId/, "History editing must capture the revision and complete navigation identity before awaiting persistence")],
+    ["edit-start identity recheck", () => assertContains(beginHistoryEdit, /Number\(data\.dataRevision[\s\S]*?activeTab[\s\S]*?activeSessionId[\s\S]*?viewingHistorySessionId[\s\S]*?saveData\s*\(\)[\s\S]*?try again/i, "A concurrent mutation or navigation must abort the older edit transaction, persist current data, and ask the user to retry")],
     ["controllerchange transaction guard", () => assertContains(registerPwaServiceWorker, /controllerchange[\s\S]*?historyEditFlow[\s\S]*?pendingControllerReload/, "An externally activated service worker must defer reload while submitted-history editing is active")],
     ["explicit update persistence gate", () => assertContains(applyPwaUpdate, /persisted\s*=\s*await\s+persistStableAppDataSnapshot[\s\S]*?if\s*\(\s*!persisted\s*\)[\s\S]*?return\s+false[\s\S]*?pendingControllerReload/, "An explicit deferred update must refuse to reload when neither persistence layer can save the stable snapshot")],
     ["explicit deferred reload", () => assertContains(applyPwaUpdate, /pendingControllerReload[\s\S]*?location\.reload\s*\(/, "A deferred controller reload must remain behind the explicit Update action after editing ends")]
+  ]);
+});
+
+test("startup resolves IndexedDB and local fallback by valid data revision", () => {
+  const loadData = functionSource("loadData");
+  const candidate = functionSource("storedAppDataCandidate");
+  collectAssertions([
+    ["candidate shape guard", () => assertContains(candidate, /typeof\s+value\s*!==\s*["']object["'][\s\S]*?Array\.isArray[\s\S]*?dataRevision/, "Persistence recovery must reject corrupt non-object sources and validate their revision")],
+    ["always inspect local fallback", () => assert.doesNotMatch(loadData, /if\s*\(\s*!stored\s*\)[\s\S]{0,180}localStorage\.getItem/, "A readable IndexedDB value must not prevent inspection of the local fallback")],
+    ["higher revision selection", () => assertContains(loadData, /localCandidate\.revision\s*>\s*indexedCandidate\.revision/, "The newer valid local fallback must outrank stale readable IndexedDB")],
+    ["promotion precedes cleanup", () => assertContains(loadData, /await\s+writeIndexedValue\s*\(\s*["']app-data["'][\s\S]*?localStorage\.removeItem\s*\(\s*STORAGE_KEY\s*\)/, "Local fallback cleanup must occur only after successful awaited IndexedDB promotion")]
   ]);
 });
 
