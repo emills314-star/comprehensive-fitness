@@ -1,6 +1,6 @@
 {
   "database_name": "male_resistance_training_evidence_database",
-  "database_version": "2.0.0",
+  "database_version": "3.0.0",
   "last_reviewed_date": "2026-07-12",
   "population_scope": "resistance-trained and resistance-training-eligible males",
   "source_of_truth": "research_database/source/database.js",
@@ -8,79 +8,136 @@
   "tables": {
     "executive_summary": {
       "record_count": 14,
-      "primary_id_field": "summary_id"
+      "primary_id_field": "summary_id",
+      "csv_sha256": "407f66abe3f51d9eb5ed820319dcbb68f8476ce26b91010a6746684cd7326e00",
+      "json_sha256": "04e41119f7896cf697fe198085c46d0cd0a68fad6ba5f6461ba2bc0aa95b2e4c",
+      "schema_sha256": "c95168a98030e07a180faeae47b0b92839d4f0ec2c3f22d57e2a8331daff52a5"
     },
     "research_library": {
-      "record_count": 42,
-      "primary_id_field": "study_id"
+      "record_count": 48,
+      "primary_id_field": "study_id",
+      "csv_sha256": "573f80e720b8dbcb8d360c28455db1c7f0fa2cfe766aec966be1d1a714c94b2f",
+      "json_sha256": "04f436348c82602bc6958258d0c39cacbc7a59cfdcdbc09508ef56e1fff109e3",
+      "schema_sha256": "580e408aa52602b7e45ce90f8aca814001ac27728e60fd96bcc834d0e4e4a9f0"
     },
     "evidence_conclusions": {
-      "record_count": 27,
-      "primary_id_field": "conclusion_id"
+      "record_count": 31,
+      "primary_id_field": "conclusion_id",
+      "csv_sha256": "c7a7fab3e904212205cb4f793ad8dc58a4c9a416866f630a01f117f9e8375948",
+      "json_sha256": "060b1ed05ff57d4e6bc1d4c69490d25c3066b7becc80d8dc4e0a233fa26afffd",
+      "schema_sha256": "efadf1f42c5547e71def83f089c5b3395355bbc870e953949b679945dad21282"
     },
     "muscle_group_recommendations": {
       "record_count": 23,
-      "primary_id_field": "muscle_group_id"
+      "primary_id_field": "muscle_group_id",
+      "csv_sha256": "d3a056fe8769078f9bee8a62b08e27ddecbd94de59395edb2914021ab418db76",
+      "json_sha256": "8c87be289f2c3300769b4ac11ef9e86aec0a3ac3cc74c2270180365772b3e7c6",
+      "schema_sha256": "964a17b216f4224b2e28909178898ef2affb9d9441f8e8ed083a9d7008eb4187"
     },
     "exercise_database": {
-      "record_count": 61,
-      "primary_id_field": "exercise_id"
+      "record_count": 62,
+      "primary_id_field": "exercise_id",
+      "csv_sha256": "2b13aa8fc344138f288ade9e53abc2eeff68737f5ec3434ae15a67145b4ae0d2",
+      "json_sha256": "e2d4b1e07829513bb7df4863eb929c797fba7c282b5f6985f3cb4db15595428b",
+      "schema_sha256": "e73a9a1b5ce628956324f466e663d3039a62af9418756bef64998b86eb62960c"
     },
     "progression_rules": {
-      "record_count": 18,
-      "primary_id_field": "rule_id"
+      "record_count": 19,
+      "primary_id_field": "rule_id",
+      "csv_sha256": "9643780a652b6184506c9286f25fa7af1127358dcc46eeb6a184c055ead62b00",
+      "json_sha256": "c83d8965ee2eec90e94bbd5857038996c4453ff97f4facaa717d3a68dcf96fe7",
+      "schema_sha256": "aa0bbdcc74ddfe6c4250814a771328edab26fab33062a07c38343eeb39f2f0e7"
     },
     "nutrition_strategies": {
       "record_count": 13,
-      "primary_id_field": "strategy_id"
+      "primary_id_field": "strategy_id",
+      "csv_sha256": "9878249407207287e2d770e4e626b94cc870efd84bb5befe731d086ab284b8c4",
+      "json_sha256": "1c9d752fb8ca67c5b63c1a0517712e90bd830624796bc26f569ab827738fc41a",
+      "schema_sha256": "1313c58430bbf35d14105c57c562e1fac0b7a3096c73931a39e7e8ff85464357"
     },
     "evidence_gaps": {
       "record_count": 15,
-      "primary_id_field": "evidence_gap_id"
+      "primary_id_field": "evidence_gap_id",
+      "csv_sha256": "3a21b909336b16a914aa6cec6ca14a208c912c2aa5cd1e951bf2857ce16f9c20",
+      "json_sha256": "f3143743e384f55d1357d7f467cbbddcc88ecba5489b816f3d12e15dc17de47d",
+      "schema_sha256": "c9b899b08d3ae3772822d32c9a54d5877c369c5c1653f48a466d6ad002fffdb5"
     },
     "definitions_data_dictionary": {
-      "record_count": 251,
-      "primary_id_field": null
+      "record_count": 258,
+      "primary_id_field": null,
+      "csv_sha256": "9090ca45a968e881db58085f999de72aaeda923023215b81ebd3fdb61bf084ff",
+      "json_sha256": "40ce2e71fa4ff271fec86f42c32dbc882603432f9391355cbcd8a6c6929916a0",
+      "schema_sha256": "949e4423fcf4eefe27789704e9c77783d87642a585e65eae427b78e70ac9a54d"
     },
     "change_log": {
-      "record_count": 3,
-      "primary_id_field": "change_id"
+      "record_count": 5,
+      "primary_id_field": "change_id",
+      "csv_sha256": "9a1045ba0dac9f864adfe6a850bbd99b47a41d62959e65c13497487d486cbe82",
+      "json_sha256": "ea45f75e42bec159aa5473ea46836e8de4de8e0130550abe18dde544b6958aaa",
+      "schema_sha256": "1d9bb0b185c3e6ede078645372396dda477a08deea4299c20f6ee95d5a76c717"
     },
     "exercise_muscle_map": {
-      "record_count": 149,
-      "primary_id_field": "exercise_muscle_map_id"
+      "record_count": 151,
+      "primary_id_field": "exercise_muscle_map_id",
+      "csv_sha256": "3b2bcf58f0152b217d2657f9972cff23609f3051059431eb7871200d098e9e2b",
+      "json_sha256": "db68a8aa6ccf02865353ae96c5955fd3578c51b17328ebaf699a8617a9e96d71",
+      "schema_sha256": "e9ecfa43eb571a74b86ed897c95e5028a58325a189d9b444a26f993582419029"
     },
     "exercise_taxonomy_review_queue": {
-      "record_count": 11,
-      "primary_id_field": "taxonomy_review_id"
+      "record_count": 12,
+      "primary_id_field": "taxonomy_review_id",
+      "csv_sha256": "97633264bddd876501f31e3ca36b4772955b15865cbb846b1892fe4cf542c97e",
+      "json_sha256": "997a2e0b68d8a3dcd562875183bbab3f8eddd7b46530cc0489de34a877c311a7",
+      "schema_sha256": "4a6815b4b936a6c4e2dbee8beb8353e5b9ba1fcbd53762ee99978d5cf098ade2"
     },
     "exercise_substitution_map": {
       "record_count": 93,
-      "primary_id_field": "exercise_substitution_map_id"
+      "primary_id_field": "exercise_substitution_map_id",
+      "csv_sha256": "25a61a3acbc07d517026b55471b812888a31f6cb7d5e7093b182d7cc3f4767fa",
+      "json_sha256": "670681428ee73d348eb878b66f175383401eea47015facc756a87a44a4b7df28",
+      "schema_sha256": "6ab5d32b9c6e25b48fb26fec664359334398ca9f2e03ca0e98f89feda770c0d1"
     },
     "study_conclusion_map": {
-      "record_count": 55,
-      "primary_id_field": "study_conclusion_map_id"
+      "record_count": 60,
+      "primary_id_field": "study_conclusion_map_id",
+      "csv_sha256": "cc3ac3da09b5c939126ab13c5b4863825d047775d02159d0891ae441d0eb6987",
+      "json_sha256": "3763fbfd3b54c5eb4d41923a49f67ff00583b867c6e23ce3f684af024a642843",
+      "schema_sha256": "483ba509adc49cb0a56321b6779af839a46f42c04ca67b0afce8fa649d457778"
     },
     "study_exercise_map": {
-      "record_count": 488,
-      "primary_id_field": "study_exercise_map_id"
+      "record_count": 496,
+      "primary_id_field": "study_exercise_map_id",
+      "csv_sha256": "960d9df94b50547076b9226e7c5486ab5359244c304e08abc588e988c5345a06",
+      "json_sha256": "93e4f2dae8a80b4606615f0b4d2003aab571f0df4002cc3c03337005e3f32667",
+      "schema_sha256": "ca65b00848d396ceaba45dc282c6385e7103214af93d814a84461545f3196e51"
     },
     "study_muscle_group_map": {
       "record_count": 69,
-      "primary_id_field": "study_muscle_group_map_id"
+      "primary_id_field": "study_muscle_group_map_id",
+      "csv_sha256": "e2852d1bb949f0314c35fea6b2fc9e7efab4ba9e37d981f34fef93266e707189",
+      "json_sha256": "0d077a93bef767b90896c3d9508b14e8eda19f729febafa573f1cabd74f37b41",
+      "schema_sha256": "39959b496b28d41f433021a08aee260ee108c5cd2d0473ccd6f3affb1a208189"
     },
     "rule_exercise_map": {
-      "record_count": 753,
-      "primary_id_field": "rule_exercise_map_id"
+      "record_count": 827,
+      "primary_id_field": "rule_exercise_map_id",
+      "csv_sha256": "aa693f57102d3c2ea4b3508e9ca4383c57e919a16f39d55af0cb6e98fc6c6d0a",
+      "json_sha256": "a86bd22ba15ed92b0b68d7f20c3ed9cdf8b47e4a92f3bdc8ce5077ef147b598c",
+      "schema_sha256": "e2b0bb02502451cd6bb1b7643b18b7bd84436397c1eba04c8d9933b99b9d2f87"
     },
     "rule_muscle_group_map": {
       "record_count": 46,
-      "primary_id_field": "rule_muscle_group_map_id"
+      "primary_id_field": "rule_muscle_group_map_id",
+      "csv_sha256": "0d641a1c92a2b8c2c9f137c2b98d228f9015f0f373505598b9ed7100051bdb2f",
+      "json_sha256": "e01735140f0f5369846ed1b87744cf48078af7d141aae927001375ea8cd29450",
+      "schema_sha256": "636de62471baf86b12000707a72fc16895a5cebd19984697af3679d32446583a"
     },
     "exercise_progression_metric_map": {
-      "record_count": 366,
-      "primary_id_field": "exercise_progression_metric_map_id"
+      "record_count": 372,
+      "primary_id_field": "exercise_progression_metric_map_id",
+      "csv_sha256": "24f017be88d6d9dc5969ed6324928e93b224fc9e925aa236cf455684587427f6",
+      "json_sha256": "0f500faa59eb31f79f9224fd0a0e0599ba4c784759ffa3807b1b9cff33bb5f32",
+      "schema_sha256": "fad422078a08aad5775d260900ffbdc8e9a426b3af72cdbd8ba5ee679c6c4bb3"
     }
   },
   "controlled_vocabularies": {
@@ -160,6 +217,15 @@
       "not_formally_assessed",
       "varies_across_included_studies"
     ],
+    "rule_authority": [
+      "evidence",
+      "product_policy",
+      "safety"
+    ],
+    "enforcement_level": [
+      "advisory",
+      "hard_blocker"
+    ],
     "movement_pattern": [
       "horizontal_push",
       "vertical_push",
@@ -179,6 +245,7 @@
       "hip_adduction",
       "plantar_flexion",
       "spinal_flexion",
+      "trunk_rotation",
       "anti_extension",
       "anti_rotation",
       "loaded_carry",

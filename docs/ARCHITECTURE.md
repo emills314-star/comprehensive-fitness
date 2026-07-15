@@ -217,7 +217,7 @@ Mesocycle candidate detail remains progressively rendered: Templates defers the 
 - **Decision:** Local-first static app minimizes infrastructure and account requirements.
 - **Decision:** One prescription snapshot feeds every app surface; tests enforce this.
 - **Decision:** Separate public research, private personal evidence, and operational Redis data.
-- **Risk:** `index.html` is about 790 KB and combines UI, state, domain logic, imports, and client integration; change isolation is weak.
+- **Risk:** `index.html` is 1,111,567 raw bytes at source commit `afe7a6c` and combines UI, state, domain logic, imports, and client integration; change isolation is weak. Compressed measurements and methodology are recorded in `docs/performance.md`.
 - **Risk:** Root/`www` duplication requires disciplined synchronization.
 - **Decision:** The prescription engine is the only readiness-scoring path. If unavailable, the app conservatively holds the base plan; illness/pain still forces rest/modify guidance.
 - **Decision:** A confirmed pain-free substitute remains executable only while its observed name, saved prescription, and safety audit resolve to one current catalog identity that still satisfies equipment, exclusion, scope, and substitution constraints. Drift restores the deterministic block. Only recognized native constraint `Error` objects are translated into named hard-constraint results; unexpected faults remain non-executable engine failures.

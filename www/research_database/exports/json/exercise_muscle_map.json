@@ -13,7 +13,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "chest",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -30,7 +31,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "triceps",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -47,7 +49,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "front_delts",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -64,7 +67,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "chest",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -81,7 +85,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "triceps",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -98,7 +103,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "front_delts",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -115,7 +121,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "chest",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -132,7 +139,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "triceps",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -149,7 +157,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "front_delts",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -166,7 +175,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "chest",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -183,7 +193,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "chest",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -200,7 +211,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "triceps",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -217,7 +229,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "front_delts",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -234,7 +247,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "chest",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -251,7 +265,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "triceps",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -268,7 +283,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "front_delts",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -285,7 +301,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "chest",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -302,7 +319,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "chest",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -319,7 +337,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "triceps",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -336,7 +355,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "front_delts",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -353,7 +373,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "chest",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -370,7 +391,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "chest",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -387,7 +409,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "low",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "front_delts",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -404,7 +427,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "front_delts",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -421,7 +445,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "triceps",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -438,7 +463,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "side_delts",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -455,7 +481,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "traps",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -472,7 +499,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "spinal_erectors",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -489,7 +517,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "front_delts",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -506,7 +535,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "triceps",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -523,7 +553,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "side_delts",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -540,7 +571,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "side_delts",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -557,7 +589,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "side_delts",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -574,7 +607,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "side_delts",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -591,7 +625,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "lats",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -608,7 +643,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "biceps",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -625,7 +661,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "upper_back",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -642,7 +679,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "forearms",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -659,7 +697,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "lats",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -676,7 +715,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "biceps",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -693,7 +733,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "upper_back",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -710,7 +751,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "forearms",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -727,7 +769,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "lats",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -744,7 +787,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "biceps",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -761,7 +805,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "upper_back",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -778,7 +823,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "lats",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -795,7 +841,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "biceps",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -812,7 +859,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "upper_back",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -829,7 +877,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "lats",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -846,7 +895,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "biceps",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -863,7 +913,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "rear_delts",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -880,7 +931,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "upper_back",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -897,7 +949,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "lats",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -914,7 +967,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "biceps",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -931,7 +985,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "rear_delts",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -948,7 +1003,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "lats",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -965,7 +1021,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "upper_back",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -982,7 +1039,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "biceps",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -999,7 +1057,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "rear_delts",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1016,7 +1075,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "spinal_erectors",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1033,7 +1093,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "rear_delts",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1050,7 +1111,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "low",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "upper_back",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1067,7 +1129,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "rear_delts",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1084,7 +1147,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "low",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "upper_back",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1101,7 +1165,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "traps",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1118,7 +1183,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "forearms",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1135,7 +1201,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "traps",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1152,7 +1219,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "forearms",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1169,7 +1237,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "quads",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1186,7 +1255,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "glutes",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1203,7 +1273,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "adductors",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1220,7 +1291,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "spinal_erectors",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1237,7 +1309,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "quads",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1254,7 +1327,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "glutes",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1271,7 +1345,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "spinal_erectors",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1288,7 +1363,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "quads",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1305,7 +1381,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "glutes",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1322,7 +1399,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "adductors",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1339,7 +1417,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "quads",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1356,7 +1435,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "glutes",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1373,7 +1453,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "adductors",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1390,7 +1471,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "quads",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1407,7 +1489,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "glutes",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1424,7 +1507,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "adductors",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1441,7 +1525,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "abductors",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1458,7 +1543,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "quads",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1475,7 +1561,8 @@
     "supporting_study_ids": "stu_0041|stu_0042",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "glutes",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1492,7 +1579,8 @@
     "supporting_study_ids": "stu_0041|stu_0042",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "quads",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1509,7 +1597,8 @@
     "supporting_study_ids": "stu_0041|stu_0042",
     "confidence_rating": "low",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "hamstrings",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1526,7 +1615,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "low",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "adductors",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1543,7 +1633,8 @@
     "supporting_study_ids": "stu_0041",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "spinal_erectors",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1560,7 +1651,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "low",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "traps",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1577,7 +1669,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "low",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "upper_back",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1594,7 +1687,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "forearms",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1611,7 +1705,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "hamstrings",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1628,7 +1723,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "glutes",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1645,7 +1741,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "spinal_erectors",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1662,7 +1759,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "forearms",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1679,7 +1777,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "hamstrings",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1696,7 +1795,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "glutes",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1713,7 +1813,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "spinal_erectors",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1730,7 +1831,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "glutes",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1747,7 +1849,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "hamstrings",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1764,7 +1867,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "spinal_erectors",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1781,7 +1885,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "glutes",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1798,7 +1903,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "hamstrings",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1815,7 +1921,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "hamstrings",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1832,7 +1939,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "hamstrings",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1849,7 +1957,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "hamstrings",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1866,7 +1975,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "calves",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1883,7 +1993,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "adductors",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1900,7 +2011,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "abductors",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1917,7 +2029,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "abductors",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1934,7 +2047,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "calves",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1951,7 +2065,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "low",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "calves",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1968,7 +2083,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "calves",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -1985,7 +2101,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "low",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "calves",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -2002,7 +2119,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "calves",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -2019,7 +2137,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "low",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "calves",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -2036,7 +2155,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "biceps",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -2053,7 +2173,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "low",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "forearms",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -2070,7 +2191,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "biceps",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -2087,7 +2209,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "low",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "forearms",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -2104,7 +2227,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "biceps",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -2121,7 +2245,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "low",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "forearms",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -2138,7 +2263,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "biceps",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -2155,7 +2281,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "low",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "forearms",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -2172,7 +2299,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "triceps",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -2189,7 +2317,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "triceps",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -2206,7 +2335,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "triceps",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -2223,7 +2353,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "chest",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -2240,7 +2371,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "front_delts",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -2257,7 +2389,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "forearms",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -2274,7 +2407,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "forearms",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -2291,7 +2425,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "forearms",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -2308,7 +2443,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "traps",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -2325,7 +2461,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "obliques",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -2342,7 +2479,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "spinal_erectors",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -2359,7 +2497,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "abs",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -2376,7 +2515,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "abs",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -2393,7 +2533,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "forearms",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -2410,7 +2551,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "abs",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -2427,7 +2569,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "lats",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -2444,7 +2587,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "obliques",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -2461,7 +2605,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "abs",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -2478,7 +2623,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "obliques",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -2495,7 +2641,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "abductors",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -2512,7 +2659,8 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "neck",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   },
   {
@@ -2529,7 +2677,44 @@
     "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
     "confidence_rating": "moderate",
     "review_status": "reviewed",
-    "taxonomy_version": "2.0.0",
+    "programming_family_id": "neck",
+    "taxonomy_version": "2.1.0",
+    "last_reviewed_date": "2026-07-12"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0150",
+    "exercise_id": "ex_cable_woodchop",
+    "muscle_group_id": "mg_obliques",
+    "relationship_type": "direct_load",
+    "loading_role": "dynamic",
+    "range_of_motion_role": "meaningful",
+    "fractional_set_credit": 1,
+    "local_fatigue_weight": 1,
+    "evidence_basis": "dynamic_resisted_trunk_rotation_anatomy_and_movement_pattern_inference",
+    "evidence_notes": "Set credit is an interpretable programming model, not a scientifically proven physiological constant.",
+    "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
+    "confidence_rating": "moderate",
+    "review_status": "reviewed",
+    "programming_family_id": "obliques",
+    "taxonomy_version": "2.1.0",
+    "last_reviewed_date": "2026-07-12"
+  },
+  {
+    "exercise_muscle_map_id": "emm_0151",
+    "exercise_id": "ex_cable_woodchop",
+    "muscle_group_id": "mg_abdominals",
+    "relationship_type": "meaningful_fractional_load",
+    "loading_role": "dynamic",
+    "range_of_motion_role": "meaningful",
+    "fractional_set_credit": 0.25,
+    "local_fatigue_weight": 0.5,
+    "evidence_basis": "trunk_flexion_and_bracing_contribution_varies_with_cable_path",
+    "evidence_notes": "Set credit is an interpretable programming model, not a scientifically proven physiological constant.",
+    "supporting_study_ids": "stu_0001|stu_0009|stu_0010|stu_0011",
+    "confidence_rating": "low",
+    "review_status": "reviewed",
+    "programming_family_id": "abs",
+    "taxonomy_version": "2.1.0",
     "last_reviewed_date": "2026-07-12"
   }
 ]

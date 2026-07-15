@@ -7,6 +7,20 @@
 
   const BUILDER_VERSION = "guided-mesocycle/1.1.0";
   const RULES_VERSION = "planning-rules/1.1.0";
+  const LEDGER_VERSION = "volume-ledger/1.1.0";
+  const PROGRAMMING_FAMILY_VERSION = "programming-family/1.0.0";
+  const CANONICAL_TO_PROGRAMMING_FAMILY = Object.freeze({
+    mg_chest_sternal: "chest", mg_chest_clavicular: "chest", mg_upper_back: "upper_back", mg_lats: "lats", mg_traps_upper: "traps",
+    mg_front_delts: "front_delts", mg_side_delts: "side_delts", mg_rear_delts: "rear_delts", mg_biceps: "biceps", mg_triceps: "triceps",
+    mg_forearms: "forearms", mg_spinal_erectors: "spinal_erectors", mg_abdominals: "abs", mg_obliques: "obliques", mg_glutes_max: "glutes",
+    mg_quadriceps: "quads", mg_hamstrings: "hamstrings", mg_adductors: "adductors", mg_abductors: "abductors",
+    mg_calves_gastroc: "calves", mg_calves_soleus: "calves", mg_neck_flexors: "neck", mg_neck_extensors: "neck"
+  });
+  const PROGRAMMING_FAMILY_ALIASES = Object.freeze({
+    abs: "abs", abdominals: "abs", calves_gastroc: "calves", calves_soleus: "calves", chest_clavicular: "chest", chest_sternal: "chest",
+    glutes_max: "glutes", neck_extensors: "neck", neck_flexors: "neck", neck_musculature: "neck", quads: "quads", quadriceps: "quads", traps_upper: "traps"
+  });
+  const PROGRAMMING_FAMILIES = Object.freeze([...new Set(Object.values(CANONICAL_TO_PROGRAMMING_FAMILY))]);
   const STEPS = Object.freeze(["guide", "setup", "build", "check", "create"]);
   const PLANNING_RULES = Object.freeze({
     version: RULES_VERSION,
@@ -31,6 +45,70 @@
   const round = (value) => Math.round(value * 10) / 10;
   const clone = (value) => JSON.parse(JSON.stringify(value));
   const uid = () => `guided-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
+
+  function programmingFamilyId(value) {
+    const normalized = String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+    if (!normalized) return "";
+    const canonical = normalized.startsWith("mg_") ? normalized : `mg_${normalized}`;
+    if (CANONICAL_TO_PROGRAMMING_FAMILY[canonical]) return CANONICAL_TO_PROGRAMMING_FAMILY[canonical];
+    const family = PROGRAMMING_FAMILY_ALIASES[normalized] || normalized.replace(/^mg_/, "");
+    if (PROGRAMMING_FAMILIES.includes(family)) return family;
+    return normalized.startsWith("mg_") ? "" : family;
+  }
+
+  const relationshipPriority = Object.freeze({ direct_load: 4, meaningful_fractional_load: 3, isometric_stabilizing_load: 2, minor_incidental_load: 1, unknown_insufficient_evidence: 0 });
+
+  function normalizedRelationship(relationship) {
+    const canonicalMuscleGroupId = relationship.muscleGroupId || relationship.muscle_group_id || "";
+    const family = programmingFamilyId(relationship.programmingFamilyId || relationship.programming_family_id || canonicalMuscleGroupId);
+    if (!family) return null;
+    const type = relationship.relationshipType || relationship.relationship_type || "unknown_insufficient_evidence";
+    const contribution = type === "direct_load" ? 1 : type === "meaningful_fractional_load" ? Math.max(0, number(relationship.setContribution ?? relationship.set_contribution ?? relationship.fractional_set_credit)) : 0;
+    const defaultFatigue = type === "direct_load" ? 1 : type === "meaningful_fractional_load" ? Math.max(0.5, contribution) : type === "isometric_stabilizing_load" ? 0.5 : 0;
+    const localFatigueWeight = Math.max(0, number(relationship.localFatigueWeight ?? relationship.local_fatigue_weight, defaultFatigue));
+    return { ...relationship, canonicalMuscleGroupId, programmingFamilyId: family, relationshipType: type, setContribution: contribution, localFatigueWeight };
+  }
+
+  function coalesceRelationshipsByProgrammingFamily(relationships) {
+    const families = new Map();
+    (relationships || []).map(normalizedRelationship).filter(Boolean).forEach((relationship) => {
+      const current = families.get(relationship.programmingFamilyId) || { programmingFamilyId: relationship.programmingFamilyId, selected: null, localFatigueWeight: 0, isometricFatigueWeight: 0, canonicalMuscleGroupIds: new Set(), relationships: [] };
+      current.localFatigueWeight += relationship.localFatigueWeight;
+      if (relationship.relationshipType === "isometric_stabilizing_load") current.isometricFatigueWeight += relationship.localFatigueWeight;
+      if (relationship.canonicalMuscleGroupId) current.canonicalMuscleGroupIds.add(relationship.canonicalMuscleGroupId);
+      current.relationships.push(relationship);
+      const selected = current.selected;
+      const candidateDirect = relationship.relationshipType === "direct_load";
+      const selectedDirect = selected?.relationshipType === "direct_load";
+      if (!selected
+        || (candidateDirect && !selectedDirect)
+        || (candidateDirect === selectedDirect && relationship.setContribution > selected.setContribution)
+        || (candidateDirect === selectedDirect && relationship.setContribution === selected.setContribution && (relationshipPriority[relationship.relationshipType] || 0) > (relationshipPriority[selected.relationshipType] || 0))) current.selected = relationship;
+      families.set(relationship.programmingFamilyId, current);
+    });
+    return Array.from(families.values()).map((family) => ({
+      muscleGroupId: family.programmingFamilyId,
+      programmingFamilyId: family.programmingFamilyId,
+      canonicalMuscleGroupIds: Array.from(family.canonicalMuscleGroupIds),
+      relationshipType: family.selected?.relationshipType || "unknown_insufficient_evidence",
+      setContribution: family.selected?.setContribution || 0,
+      localFatigueWeight: family.localFatigueWeight,
+      isometricFatigueWeight: family.isometricFatigueWeight,
+      relationshipCount: family.relationships.length
+    }));
+  }
+
+  function projectedScope(draft) {
+    const projected = new Map();
+    (draft.includedMuscleGroupIds || []).forEach((sourceMuscleGroupId) => {
+      const family = programmingFamilyId(sourceMuscleGroupId);
+      if (!family) return;
+      const current = projected.get(family) || { muscleGroupId: family, sourceMuscleGroupIds: [] };
+      current.sourceMuscleGroupIds.push(sourceMuscleGroupId);
+      projected.set(family, current);
+    });
+    return Array.from(projected.values());
+  }
 
   function createDraft(options = {}) {
     const trainingDays = Math.max(1, Math.min(7, number(options.trainingDays, 4)));
@@ -111,40 +189,44 @@
       day.assignments.forEach((assignment) => {
         const sets = Math.max(0, number(assignment.workingSets));
         workingSets += sets;
-        (relationshipResolver(assignment) || []).forEach((relationship) => {
-          const muscleId = relationship.muscleGroupId || relationship.muscle_group_id;
+        coalesceRelationshipsByProgrammingFamily(relationshipResolver(assignment) || []).forEach((relationship) => {
+          const muscleId = relationship.programmingFamilyId;
           if (!muscleId) return;
-          const type = relationship.relationshipType || relationship.relationship_type || "unknown_insufficient_evidence";
-          const weight = Math.max(0, number(relationship.setContribution ?? relationship.set_contribution));
+          const type = relationship.relationshipType;
+          const weight = Math.max(0, number(relationship.setContribution));
           const direct = type === "direct_load" ? sets : 0;
           const fractional = type === "meaningful_fractional_load" ? sets * weight : 0;
-          const isometric = type === "isometric_stabilizing_load" ? sets : 0;
-          const currentDay = muscles.get(muscleId) || { direct: 0, fractional: 0, isometric: 0, exercises: [] };
-          currentDay.direct += direct; currentDay.fractional += fractional; currentDay.isometric += isometric;
-          currentDay.exercises.push({ exerciseId: assignment.exerciseId, name: assignment.name, sets, weight, type });
+          const isometric = relationship.isometricFatigueWeight > 0 ? sets : 0;
+          const localFatigue = sets * relationship.localFatigueWeight;
+          const currentDay = muscles.get(muscleId) || { direct: 0, fractional: 0, isometric: 0, localFatigue: 0, exercises: [] };
+          currentDay.direct += direct; currentDay.fractional += fractional; currentDay.isometric += isometric; currentDay.localFatigue += localFatigue;
+          currentDay.exercises.push({ exerciseId: assignment.exerciseId, name: assignment.name, sets, weight, type, localFatigueWeight: relationship.localFatigueWeight, canonicalMuscleGroupIds: relationship.canonicalMuscleGroupIds, relationshipCount: relationship.relationshipCount });
           muscles.set(muscleId, currentDay);
-          const total = muscleTotals.get(muscleId) || { muscleGroupId: muscleId, directSets: 0, fractionalSets: 0, isometricExposure: 0, exposureDayIds: new Set(), contributors: [] };
-          total.directSets += direct; total.fractionalSets += fractional; total.isometricExposure += isometric;
+          const total = muscleTotals.get(muscleId) || { muscleGroupId: muscleId, programmingFamilyId: muscleId, directSets: 0, fractionalSets: 0, isometricExposure: 0, localFatigueExposure: 0, exposureDayIds: new Set(), contributors: [] };
+          total.directSets += direct; total.fractionalSets += fractional; total.isometricExposure += isometric; total.localFatigueExposure += localFatigue;
           if (direct + fractional > 0) total.exposureDayIds.add(day.id);
-          total.contributors.push({ dayId: day.id, dayName: day.name, exerciseId: assignment.exerciseId, name: assignment.name, sets, weight, type });
+          total.contributors.push({ dayId: day.id, dayName: day.name, exerciseId: assignment.exerciseId, name: assignment.name, sets, weight, type, localFatigueWeight: relationship.localFatigueWeight, canonicalMuscleGroupIds: relationship.canonicalMuscleGroupIds, relationshipCount: relationship.relationshipCount });
           muscleTotals.set(muscleId, total);
         });
       });
-      return { dayId: day.id, dayName: day.name, workingSets, exerciseCount: day.assignments.length, muscles: Array.from(muscles, ([muscleGroupId, value]) => ({ muscleGroupId, ...value, direct: round(value.direct), fractional: round(value.fractional), isometric: round(value.isometric) })) };
+      return { dayId: day.id, dayName: day.name, workingSets, exerciseCount: day.assignments.length, muscles: Array.from(muscles, ([muscleGroupId, value]) => ({ muscleGroupId, ...value, direct: round(value.direct), fractional: round(value.fractional), isometric: round(value.isometric), localFatigue: round(value.localFatigue) })) };
     });
     return {
+      ledgerVersion: LEDGER_VERSION,
+      programmingFamilyVersion: PROGRAMMING_FAMILY_VERSION,
       dayTotals,
-      muscleTotals: Array.from(muscleTotals.values()).map((item) => ({ ...item, directSets: round(item.directSets), fractionalSets: round(item.fractionalSets), weightedSets: round(item.directSets + item.fractionalSets), isometricExposure: round(item.isometricExposure), exposureDayIds: Array.from(item.exposureDayIds) }))
+      muscleTotals: Array.from(muscleTotals.values()).map((item) => ({ ...item, directSets: round(item.directSets), fractionalSets: round(item.fractionalSets), weightedSets: round(item.directSets + item.fractionalSets), isometricExposure: round(item.isometricExposure), localFatigueExposure: round(item.localFatigueExposure), exposureDayIds: Array.from(item.exposureDayIds) }))
     };
   }
 
   function muscleTargetStatuses(draft, ledger, targetFor) {
     const populatedDays = new Set(draft.guidedDays.filter((day) => day.assignments.length).map((day) => day.id));
     const remainingTrainingDays = Math.max(0, draft.guidedDays.length - populatedDays.size);
-    return (draft.includedMuscleGroupIds || []).map((muscleGroupId) => {
+    return projectedScope(draft).map(({ muscleGroupId, sourceMuscleGroupIds }) => {
       const total = ledger.muscleTotals.find((item) => item.muscleGroupId === muscleGroupId) || { directSets: 0, fractionalSets: 0, weightedSets: 0, exposureDayIds: [] };
       const target = targetFor(muscleGroupId, draft);
-      const priority = draft.musclePriorities?.[muscleGroupId] || "normal";
+      const priorities = sourceMuscleGroupIds.map((source) => draft.musclePriorities?.[source]).filter(Boolean);
+      const priority = ["specialization", "priority", "normal", "maintenance"].find((candidate) => priorities.includes(candidate)) || draft.musclePriorities?.[muscleGroupId] || "normal";
       const frequencyTarget = priority === "maintenance" ? PLANNING_RULES.maintenanceFrequency : priority === "specialization" ? PLANNING_RULES.specializationFrequency : PLANNING_RULES.normalFrequency;
       const volumeStatus = total.weightedSets < target.min ? "below" : total.weightedSets > target.max ? "above" : "within";
       const setsRemaining = Math.max(0, round(target.min - total.weightedSets));
@@ -158,7 +240,7 @@
       const priorityWeight = priority === "specialization" ? 1.35 : priority === "priority" ? 1.2 : priority === "maintenance" ? 0.65 : 1;
       const normalizedDeficit = target.min ? setsRemaining / target.min : 0;
       const recommendationScore = round((total.directSets === 0 ? 50 : 0) + normalizedDeficit * 35 * priorityWeight + frequencyRemaining * 18 + (frequencyRemaining > remainingTrainingDays ? 25 : 0));
-      return { muscleGroupId, ...total, totalEffectiveSets: total.weightedSets, targetRange: target, setsRemaining, headroom: Math.max(0, round(target.max - total.weightedSets)), status: overallStatus, overallStatus, volumeStatus, frequencyStatus, distributionIssue, priority, frequencyTarget, frequencyRemaining, remainingTrainingDays, recommendationScore };
+      return { muscleGroupId, programmingFamilyId: muscleGroupId, sourceMuscleGroupIds, ...total, totalEffectiveSets: total.weightedSets, targetRange: target, setsRemaining, headroom: Math.max(0, round(target.max - total.weightedSets)), status: overallStatus, overallStatus, volumeStatus, frequencyStatus, distributionIssue, priority, frequencyTarget, frequencyRemaining, remainingTrainingDays, recommendationScore };
     }).sort((a, b) => b.recommendationScore - a.recommendationScore || b.setsRemaining - a.setsRemaining || a.muscleGroupId.localeCompare(b.muscleGroupId));
   }
 
@@ -188,10 +270,11 @@
       const fatigue = (candidate) => sum(candidate.assignments.map((assignment) => number(assignment.systemicFatigue) + number(assignment.spinalLoad) + number(assignment.jointStress)));
       if (fatigue(day) >= 300 && fatigue(next) >= 300) findings.push({ id: `recovery-spacing-${day.id}-${next.id}`, severity: "warning", dayId: next.id, title: `${day.name} and ${next.name} are consecutive high-fatigue sessions`, why: "Back-to-back systemic, spinal, or joint demand can impair the later session even when each day is acceptable in isolation.", actions: ["Move a demanding exercise", "Insert recovery spacing", "Accept the schedule tradeoff"] });
     });
-    (draft.includedMuscleGroupIds || []).forEach((muscleGroupId) => {
+    projectedScope(draft).forEach(({ muscleGroupId, sourceMuscleGroupIds }) => {
       const total = ledger.muscleTotals.find((item) => item.muscleGroupId === muscleGroupId) || { directSets: 0, fractionalSets: 0, weightedSets: 0, exposureDayIds: [] };
       const target = targetFor(muscleGroupId, draft) || { min: 4, target: 8, max: 12 };
-      const priority = draft.musclePriorities?.[muscleGroupId] || "normal";
+      const priorities = sourceMuscleGroupIds.map((source) => draft.musclePriorities?.[source]).filter(Boolean);
+      const priority = ["specialization", "priority", "normal", "maintenance"].find((candidate) => priorities.includes(candidate)) || draft.musclePriorities?.[muscleGroupId] || "normal";
       const frequencyTarget = priority === "maintenance" ? PLANNING_RULES.maintenanceFrequency : priority === "specialization" ? PLANNING_RULES.specializationFrequency : PLANNING_RULES.normalFrequency;
       if (total.weightedSets <= 0) findings.push({ id: `missing-${muscleGroupId}`, severity: "blocking", muscleGroupId, title: `${muscleGroupId} receives no meaningful stimulus`, why: "The selected muscle has no direct or credited fractional hypertrophy work, so its templates would be incomplete.", actions: ["Add suggested exercise", "Remove the muscle from scope"] });
       else if (total.weightedSets < number(target.min, 0)) findings.push({ id: `low-${muscleGroupId}`, severity: "warning", muscleGroupId, title: `${muscleGroupId} is below its effective-set target`, why: `${total.weightedSets} total effective sets are planned (${total.directSets} direct + ${total.fractionalSets} fractional); the range begins at ${target.min}.`, actions: ["Add effective sets", "Accept lower volume"] });
@@ -208,5 +291,5 @@
     return result;
   }
 
-  return Object.freeze({ BUILDER_VERSION, RULES_VERSION, STEPS, PLANNING_RULES, createDraft, unlockStep, canonicalExerciseId, canAssignExercise, addExercise, patchAssignment, removeAssignment, moveAssignment, volumeLedger, muscleTargetStatuses, viability });
+  return Object.freeze({ BUILDER_VERSION, RULES_VERSION, LEDGER_VERSION, PROGRAMMING_FAMILY_VERSION, CANONICAL_TO_PROGRAMMING_FAMILY, programmingFamilyId, coalesceRelationshipsByProgrammingFamily, STEPS, PLANNING_RULES, createDraft, unlockStep, canonicalExerciseId, canAssignExercise, addExercise, patchAssignment, removeAssignment, moveAssignment, volumeLedger, muscleTargetStatuses, viability });
 });

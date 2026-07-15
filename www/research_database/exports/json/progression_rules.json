@@ -23,10 +23,14 @@
     "rest_adjustment_seconds": 0,
     "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
     "supporting_study_ids": "stu_0029|stu_0030|stu_0031",
-    "direct_or_inferred_rule": "inferred",
+    "supporting_conclusion_ids": "con_0015",
+    "rule_authority": "product_policy",
+    "enforcement_level": "advisory",
+    "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+    "direct_or_inferred_rule": "inferred_product_policy",
     "evidence_strength": "low",
     "confidence_rating": "moderate",
-    "notes": "Deterministic operational rule; thresholds are conservative defaults, not proven biological cut points."
+    "notes": "Deterministic operational rule; thresholds are conservative defaults, not validated biological cut points."
   },
   {
     "rule_id": "rule_0002",
@@ -52,10 +56,14 @@
     "rest_adjustment_seconds": 0,
     "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
     "supporting_study_ids": "stu_0029|stu_0030|stu_0031",
-    "direct_or_inferred_rule": "inferred",
+    "supporting_conclusion_ids": "con_0015",
+    "rule_authority": "product_policy",
+    "enforcement_level": "advisory",
+    "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+    "direct_or_inferred_rule": "inferred_product_policy",
     "evidence_strength": "low",
     "confidence_rating": "low",
-    "notes": "Deterministic operational rule; thresholds are conservative defaults, not proven biological cut points."
+    "notes": "Deterministic operational rule; thresholds are conservative defaults, not validated biological cut points."
   },
   {
     "rule_id": "rule_0003",
@@ -81,10 +89,14 @@
     "rest_adjustment_seconds": 0,
     "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
     "supporting_study_ids": "stu_0029|stu_0030|stu_0031",
-    "direct_or_inferred_rule": "inferred",
+    "supporting_conclusion_ids": "con_0015",
+    "rule_authority": "product_policy",
+    "enforcement_level": "advisory",
+    "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+    "direct_or_inferred_rule": "inferred_product_policy",
     "evidence_strength": "low",
     "confidence_rating": "moderate",
-    "notes": "Deterministic operational rule; thresholds are conservative defaults, not proven biological cut points."
+    "notes": "Deterministic operational rule; thresholds are conservative defaults, not validated biological cut points."
   },
   {
     "rule_id": "rule_0004",
@@ -110,10 +122,14 @@
     "rest_adjustment_seconds": 0,
     "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
     "supporting_study_ids": "stu_0029|stu_0030|stu_0031",
-    "direct_or_inferred_rule": "inferred",
+    "supporting_conclusion_ids": "con_0015",
+    "rule_authority": "product_policy",
+    "enforcement_level": "advisory",
+    "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+    "direct_or_inferred_rule": "inferred_product_policy",
     "evidence_strength": "low",
     "confidence_rating": "moderate",
-    "notes": "Deterministic operational rule; thresholds are conservative defaults, not proven biological cut points."
+    "notes": "Deterministic operational rule; thresholds are conservative defaults, not validated biological cut points."
   },
   {
     "rule_id": "rule_0005",
@@ -139,10 +155,14 @@
     "rest_adjustment_seconds": 0,
     "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
     "supporting_study_ids": "stu_0029|stu_0030|stu_0031",
-    "direct_or_inferred_rule": "inferred",
+    "supporting_conclusion_ids": "con_0015",
+    "rule_authority": "product_policy",
+    "enforcement_level": "advisory",
+    "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+    "direct_or_inferred_rule": "inferred_product_policy",
     "evidence_strength": "low",
     "confidence_rating": "moderate",
-    "notes": "Deterministic operational rule; thresholds are conservative defaults, not proven biological cut points."
+    "notes": "Deterministic operational rule; thresholds are conservative defaults, not validated biological cut points."
   },
   {
     "rule_id": "rule_0006",
@@ -168,10 +188,14 @@
     "rest_adjustment_seconds": 0,
     "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
     "supporting_study_ids": "stu_0029|stu_0030|stu_0031",
-    "direct_or_inferred_rule": "inferred",
+    "supporting_conclusion_ids": "con_0015",
+    "rule_authority": "product_policy",
+    "enforcement_level": "advisory",
+    "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+    "direct_or_inferred_rule": "inferred_product_policy",
     "evidence_strength": "low",
     "confidence_rating": "moderate",
-    "notes": "Deterministic operational rule; thresholds are conservative defaults, not proven biological cut points."
+    "notes": "Deterministic operational rule; thresholds are conservative defaults, not validated biological cut points."
   },
   {
     "rule_id": "rule_0007",
@@ -197,10 +221,14 @@
     "rest_adjustment_seconds": 0,
     "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
     "supporting_study_ids": "stu_0029|stu_0030",
-    "direct_or_inferred_rule": "inferred",
+    "supporting_conclusion_ids": "con_0015",
+    "rule_authority": "product_policy",
+    "enforcement_level": "advisory",
+    "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+    "direct_or_inferred_rule": "inferred_product_policy",
     "evidence_strength": "very_low",
     "confidence_rating": "low",
-    "notes": "Deterministic operational rule; thresholds are conservative defaults, not proven biological cut points."
+    "notes": "Deterministic operational rule; thresholds are conservative defaults, not validated biological cut points."
   },
   {
     "rule_id": "rule_0008",
@@ -226,10 +254,14 @@
     "rest_adjustment_seconds": 0,
     "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
     "supporting_study_ids": "stu_0029|stu_0030|stu_0031",
-    "direct_or_inferred_rule": "inferred",
+    "supporting_conclusion_ids": "con_0015",
+    "rule_authority": "product_policy",
+    "enforcement_level": "advisory",
+    "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+    "direct_or_inferred_rule": "inferred_product_policy",
     "evidence_strength": "very_low",
     "confidence_rating": "low",
-    "notes": "Deterministic operational rule; thresholds are conservative defaults, not proven biological cut points."
+    "notes": "Deterministic operational rule; thresholds are conservative defaults, not validated biological cut points."
   },
   {
     "rule_id": "rule_0009",
@@ -255,10 +287,14 @@
     "rest_adjustment_seconds": 0,
     "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
     "supporting_study_ids": "stu_0029|stu_0030|stu_0031",
-    "direct_or_inferred_rule": "inferred",
+    "supporting_conclusion_ids": "con_0015",
+    "rule_authority": "product_policy",
+    "enforcement_level": "advisory",
+    "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+    "direct_or_inferred_rule": "inferred_product_policy",
     "evidence_strength": "very_low",
     "confidence_rating": "low",
-    "notes": "Deterministic operational rule; thresholds are conservative defaults, not proven biological cut points."
+    "notes": "Deterministic operational rule; thresholds are conservative defaults, not validated biological cut points."
   },
   {
     "rule_id": "rule_0010",
@@ -284,10 +320,14 @@
     "rest_adjustment_seconds": 0,
     "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
     "supporting_study_ids": "stu_0001|stu_0002|stu_0025",
-    "direct_or_inferred_rule": "inferred",
+    "supporting_conclusion_ids": "con_0004",
+    "rule_authority": "product_policy",
+    "enforcement_level": "advisory",
+    "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+    "direct_or_inferred_rule": "inferred_product_policy",
     "evidence_strength": "low",
     "confidence_rating": "low",
-    "notes": "Deterministic operational rule; thresholds are conservative defaults, not proven biological cut points."
+    "notes": "Deterministic operational rule; thresholds are conservative defaults, not validated biological cut points."
   },
   {
     "rule_id": "rule_0011",
@@ -312,11 +352,15 @@
     "rir_adjustment": 0,
     "rest_adjustment_seconds": 0,
     "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
-    "supporting_study_ids": "stu_0029|stu_0030|stu_0031",
-    "direct_or_inferred_rule": "inferred",
+    "supporting_study_ids": "stu_0001|stu_0002|stu_0025",
+    "supporting_conclusion_ids": "con_0004",
+    "rule_authority": "product_policy",
+    "enforcement_level": "advisory",
+    "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+    "direct_or_inferred_rule": "inferred_product_policy",
     "evidence_strength": "low",
     "confidence_rating": "moderate",
-    "notes": "Deterministic operational rule; thresholds are conservative defaults, not proven biological cut points."
+    "notes": "Deterministic operational rule; thresholds are conservative defaults, not validated biological cut points."
   },
   {
     "rule_id": "rule_0012",
@@ -327,7 +371,7 @@
     "applicable_muscle_groups": "",
     "applicable_training_levels": "intermediate|advanced",
     "applicable_nutrition_phases": "all",
-    "required_inputs": "multi_exercise_regressions|fatigue_flags|pain_flags|adherence_pass",
+    "required_inputs": "multi_exercise_regressions|fatigue_flags|adherence_pass",
     "condition_logic": "{\"and\":[{\"gte\":[\"regressed_exercises\",2]},{\"consecutive_weeks_gte\":2},{\"eq\":[\"adherence_pass\",true]},{\"eq\":[\"simple_recovery_fix_failed\",true]}]}",
     "threshold_value_1": 30,
     "threshold_unit_1": "set_reduction_percent",
@@ -341,11 +385,15 @@
     "rir_adjustment": 0,
     "rest_adjustment_seconds": 0,
     "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
-    "supporting_study_ids": "stu_0029|stu_0030|stu_0031",
-    "direct_or_inferred_rule": "inferred",
+    "supporting_study_ids": "stu_0046",
+    "supporting_conclusion_ids": "con_0030",
+    "rule_authority": "product_policy",
+    "enforcement_level": "advisory",
+    "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+    "direct_or_inferred_rule": "inferred_product_policy",
     "evidence_strength": "very_low",
     "confidence_rating": "low",
-    "notes": "Deterministic operational rule; thresholds are conservative defaults, not proven biological cut points."
+    "notes": "Deterministic operational rule; thresholds are conservative defaults, not validated biological cut points."
   },
   {
     "rule_id": "rule_0013",
@@ -356,13 +404,13 @@
     "applicable_muscle_groups": "",
     "applicable_training_levels": "all",
     "applicable_nutrition_phases": "all",
-    "required_inputs": "pain_sessions|target_muscle_limitation|plateau_status|mesocycle_sessions",
-    "condition_logic": "{\"or\":[{\"pain_sessions_gte\":2},{\"and\":[{\"eq\":[\"target_muscle_is_limiting\",false]},{\"comparable_sessions_gte\":3}]},{\"and\":[{\"eq\":[\"plateau_status\",true]},{\"gte\":[\"mesocycle_sessions\",6]}]}]}",
-    "threshold_value_1": 2,
-    "threshold_unit_1": "pain_sessions",
-    "threshold_value_2": 3,
-    "threshold_unit_2": "limitation_sessions",
-    "minimum_sessions_required": 2,
+    "required_inputs": "target_muscle_limitation|plateau_status|mesocycle_sessions",
+    "condition_logic": "{\"or\":[{\"and\":[{\"eq\":[\"target_muscle_is_limiting\",false]},{\"comparable_sessions_gte\":3}]},{\"and\":[{\"eq\":[\"plateau_status\",true]},{\"gte\":[\"mesocycle_sessions\",6]}]}]}",
+    "threshold_value_1": 3,
+    "threshold_unit_1": "limitation_sessions",
+    "threshold_value_2": 6,
+    "threshold_unit_2": "minimum_mesocycle_sessions",
+    "minimum_sessions_required": 3,
     "recommended_action": "substitute_with_same_primary_muscle_and_lower_limiting_cost",
     "load_adjustment_percent": 0,
     "rep_adjustment": 0,
@@ -371,10 +419,14 @@
     "rest_adjustment_seconds": 0,
     "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
     "supporting_study_ids": "stu_0029|stu_0030|stu_0031",
-    "direct_or_inferred_rule": "inferred",
+    "supporting_conclusion_ids": "con_0015",
+    "rule_authority": "product_policy",
+    "enforcement_level": "advisory",
+    "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+    "direct_or_inferred_rule": "inferred_product_policy",
     "evidence_strength": "very_low",
     "confidence_rating": "low",
-    "notes": "Deterministic operational rule; thresholds are conservative defaults, not proven biological cut points."
+    "notes": "Deterministic operational rule; thresholds are conservative defaults, not validated biological cut points."
   },
   {
     "rule_id": "rule_0014",
@@ -399,11 +451,15 @@
     "rir_adjustment": 0,
     "rest_adjustment_seconds": 0,
     "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
-    "supporting_study_ids": "stu_0029|stu_0030|stu_0031",
-    "direct_or_inferred_rule": "inferred",
+    "supporting_study_ids": "stu_0020",
+    "supporting_conclusion_ids": "con_0026",
+    "rule_authority": "product_policy",
+    "enforcement_level": "advisory",
+    "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+    "direct_or_inferred_rule": "inferred_product_policy",
     "evidence_strength": "low",
     "confidence_rating": "low",
-    "notes": "During a deficit, stable performance can be a successful outcome; do not lower standards for technique or ROM."
+    "notes": "During a deficit, stable performance can be a successful outcome; do not lower standards for technique or ROM. The -3% tolerance is advisory product policy, not a universal biological boundary."
   },
   {
     "rule_id": "rule_0015",
@@ -428,11 +484,15 @@
     "rir_adjustment": 0,
     "rest_adjustment_seconds": 0,
     "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
-    "supporting_study_ids": "stu_0031|stu_0032",
-    "direct_or_inferred_rule": "inferred",
+    "supporting_study_ids": "stu_0031|stu_0032|stu_0048",
+    "supporting_conclusion_ids": "con_0015|con_0031",
+    "rule_authority": "product_policy",
+    "enforcement_level": "advisory",
+    "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+    "direct_or_inferred_rule": "inferred_product_policy",
     "evidence_strength": "low",
     "confidence_rating": "low",
-    "notes": "Deterministic operational rule; thresholds are conservative defaults, not proven biological cut points."
+    "notes": "Deterministic operational rule; thresholds are conservative defaults, not validated biological cut points."
   },
   {
     "rule_id": "rule_0016",
@@ -458,10 +518,14 @@
     "rest_adjustment_seconds": 0,
     "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
     "supporting_study_ids": "stu_0029|stu_0030|stu_0031",
-    "direct_or_inferred_rule": "inferred",
+    "supporting_conclusion_ids": "con_0015",
+    "rule_authority": "product_policy",
+    "enforcement_level": "advisory",
+    "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+    "direct_or_inferred_rule": "inferred_product_policy",
     "evidence_strength": "low",
     "confidence_rating": "low",
-    "notes": "Deterministic operational rule; thresholds are conservative defaults, not proven biological cut points."
+    "notes": "Deterministic operational rule; thresholds are conservative defaults, not validated biological cut points."
   },
   {
     "rule_id": "rule_0017",
@@ -486,11 +550,15 @@
     "rir_adjustment": 0,
     "rest_adjustment_seconds": 0,
     "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
-    "supporting_study_ids": "stu_0032",
-    "direct_or_inferred_rule": "inferred",
+    "supporting_study_ids": "stu_0031|stu_0032",
+    "supporting_conclusion_ids": "con_0015",
+    "rule_authority": "product_policy",
+    "enforcement_level": "advisory",
+    "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+    "direct_or_inferred_rule": "inferred_product_policy",
     "evidence_strength": "low",
     "confidence_rating": "low",
-    "notes": "Device-dependent and not a hypertrophy-optimization rule; threshold should be individualized."
+    "notes": "Device-dependent and not a hypertrophy-optimization rule; the 20% threshold is configurable advisory product policy and should be individualized."
   },
   {
     "rule_id": "rule_0018",
@@ -516,9 +584,46 @@
     "rest_adjustment_seconds": 30,
     "exceptions": "Do not apply when technique or ROM is not standardized, pain is present, or required inputs are missing.",
     "supporting_study_ids": "stu_0007|stu_0026|stu_0038",
-    "direct_or_inferred_rule": "inferred",
+    "supporting_conclusion_ids": "con_0008",
+    "rule_authority": "product_policy",
+    "enforcement_level": "advisory",
+    "policy_disclosure": "Configurable advisory product policy heuristic; not a universal scientific threshold.",
+    "direct_or_inferred_rule": "inferred_product_policy",
     "evidence_strength": "moderate",
     "confidence_rating": "moderate",
-    "notes": "Deterministic operational rule; thresholds are conservative defaults, not proven biological cut points."
+    "notes": "Deterministic operational rule; thresholds are conservative defaults, not validated biological cut points."
+  },
+  {
+    "rule_id": "rule_0019",
+    "rule_name": "immediate_pain_stop",
+    "rule_category": "pain_safety",
+    "applicable_exercise_types": "all",
+    "applicable_exercise_ids": "",
+    "applicable_muscle_groups": "",
+    "applicable_training_levels": "all",
+    "applicable_nutrition_phases": "all",
+    "required_inputs": "pain",
+    "condition_logic": "{\"eq\":[\"pain\",true]}",
+    "threshold_value_1": null,
+    "threshold_unit_1": "",
+    "threshold_value_2": null,
+    "threshold_unit_2": "",
+    "minimum_sessions_required": 1,
+    "recommended_action": "stop_the_painful_movement_and_only_offer_an_explicit_safe_pain-free_substitute_or_end_the_exercise",
+    "load_adjustment_percent": 0,
+    "rep_adjustment": 0,
+    "set_adjustment": 0,
+    "rir_adjustment": 0,
+    "rest_adjustment_seconds": 0,
+    "exceptions": "No preference, progression target, or readiness score may override current pain; severe, unexplained, or persistent pain warrants qualified professional evaluation.",
+    "supporting_study_ids": "stu_0011|stu_0012|stu_0013",
+    "supporting_conclusion_ids": "con_0010",
+    "rule_authority": "safety",
+    "enforcement_level": "hard_blocker",
+    "policy_disclosure": "Deterministic safety policy: pain overrides preferences and progression; this is a conservative product restriction, not a diagnosis.",
+    "direct_or_inferred_rule": "safety_product_policy",
+    "evidence_strength": "moderate",
+    "confidence_rating": "high",
+    "notes": "Immediate pain handling is separate from advisory exercise-rotation heuristics and must not wait for repeated sessions."
   }
 ]
