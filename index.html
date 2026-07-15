@@ -43,6 +43,18 @@
         --input-bg: rgba(5, 13, 18, 0.72);
         --nav-bg: rgba(7, 14, 18, 0.9);
         --shadow: none;
+        --color-accent: var(--current);
+        --color-accent-subtle: var(--current-dark);
+        --color-text: var(--text);
+        --color-muted: var(--muted);
+        --color-background: var(--bg);
+        --color-surface: var(--surface);
+        --color-border: var(--line);
+        --color-border-strong: var(--line-strong);
+        --color-success: var(--success);
+        --color-warning: var(--amber);
+        --color-danger: var(--red);
+        --color-rest: var(--rest-accent);
         color: var(--text);
         background: var(--bg);
         font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -91,6 +103,34 @@
       }
 
       body.modal-open { overflow: hidden; }
+
+      .skip-link {
+        clip: rect(0 0 0 0);
+        clip-path: inset(50%);
+        height: 1px;
+        overflow: visible;
+        position: fixed;
+        white-space: nowrap;
+        width: 1px;
+        z-index: 100;
+      }
+
+      .skip-link:focus {
+        background: var(--color-background);
+        border: 2px solid var(--color-text);
+        border-radius: 8px;
+        clip: auto;
+        clip-path: none;
+        color: var(--color-text);
+        height: auto;
+        left: max(12px, env(safe-area-inset-left));
+        outline: 2px solid var(--color-text);
+        outline-offset: 2px;
+        overflow: visible;
+        padding: 10px 12px;
+        top: max(12px, env(safe-area-inset-top));
+        width: auto;
+      }
 
       button, input, select, textarea { font: inherit; }
 
@@ -224,6 +264,7 @@
       }
 
       .app-main { padding: 16px 14px 0; }
+      .app-main:focus { outline: none; }
       .loading, .empty-state {
         color: var(--muted);
         padding: 24px;
@@ -446,7 +487,9 @@
       .exercise-name:focus { background: var(--input-bg); padding-left: 12px; }
 
       .exercise-header { align-items: start; display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr) auto; }
-      .exercise-name-field { line-height: 1.25; min-height: 38px; overflow: hidden; padding: 7px 4px 7px 0; resize: none; white-space: pre-wrap; width: 100%; }
+      .exercise-name-field, .autosize-title-field { line-height: 1.25; overflow: hidden; resize: none; white-space: pre-wrap; width: 100%; }
+      .exercise-name-field { min-height: 38px; padding: 7px 4px 7px 0; }
+      .autosize-title-field { min-height: 48px; }
       .exercise-header .exercise-actions { align-items: center; display: flex; flex: 0 0 auto; gap: 6px; }
 
       .icon-button {
@@ -720,11 +763,11 @@
       .planner-field input:disabled, .planner-field select:disabled { background: var(--surface); color: var(--muted-2); opacity: .72; }
       .muscle-scope-panel { background: var(--surface-strong); border: 1px solid var(--line); border-radius: 12px; display: grid; gap: 10px; grid-column: 1 / -1; padding: 12px; }
       .muscle-scope-options { display: grid; gap: 8px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-      .muscle-scope-option { align-items: center; background: color-mix(in srgb, var(--surface-strong) 44%, transparent); border: 1px solid var(--line); border-radius: 10px; color: var(--muted); cursor: pointer; display: flex; font-size: .7rem; font-weight: 850; gap: 8px; min-height: 46px; padding: 8px 10px; transition: border-color .15s ease, background .15s ease, color .15s ease; }
-      .muscle-scope-option:hover { border-color: var(--line-strong); color: var(--text); }
-      .muscle-scope-option:focus-within { border-color: var(--current); box-shadow: 0 0 0 3px color-mix(in srgb, var(--current) 20%, transparent); }
-      .muscle-scope-option:has(input:checked) { background: var(--current-dark); border-color: var(--current); color: var(--text); }
-      .muscle-scope-option input { accent-color: var(--current); height: 20px; min-height: 20px; width: 20px; }
+      .muscle-scope-option, .choice-tile { align-items: center; background: color-mix(in srgb, var(--surface-strong) 44%, transparent); border: 1px solid var(--line); border-radius: 10px; color: var(--muted); cursor: pointer; display: flex; font-size: .7rem; font-weight: 850; gap: 8px; min-height: 46px; padding: 8px 10px; transition: border-color .15s ease, background .15s ease, color .15s ease; }
+      .muscle-scope-option:hover, .choice-tile:hover { border-color: var(--line-strong); color: var(--text); }
+      .muscle-scope-option:focus-within, .choice-tile:focus-within { border-color: var(--current); box-shadow: 0 0 0 3px color-mix(in srgb, var(--current) 20%, transparent); }
+      .muscle-scope-option:has(input:checked), .choice-tile:has(input:checked) { background: var(--current-dark); border-color: var(--current); color: var(--text); }
+      .muscle-scope-option input, .choice-tile input { accent-color: var(--current); height: 20px; min-height: 20px; width: 20px; }
       .scope-confirmation { background: color-mix(in srgb, var(--amber) 9%, var(--surface)); border: 1px solid var(--amber); border-radius: 11px; display: grid; gap: 9px; padding: 12px; }
       .scope-confirmation.major { border-left-width: 4px; }
       .mesocycle-type-picker { display: grid; gap: 7px; grid-column: 1 / -1; grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -739,8 +782,8 @@
       .equipment-picker > div:first-child { display: grid; gap: 4px; }
       .equipment-picker > strong { font-size: .72rem; }
       .equipment-chips, .portfolio-badges, .session-tags, .action-group { display: flex; flex-wrap: wrap; gap: 6px; }
-      .equipment-chip { background: var(--surface); border-radius: 999px; font-size: .65rem; min-height: 38px; padding: 5px 11px; }
-      .equipment-chip[aria-pressed="true"] { background: var(--current); border-color: var(--current); color: white; }
+      .equipment-chip, .choice-chip { background: var(--surface); border-radius: 999px; font-size: .65rem; min-height: 44px; min-width: 44px; padding: 5px 11px; }
+      .equipment-chip[aria-pressed="true"], .choice-chip[aria-pressed="true"] { background: var(--current); border-color: var(--current); color: white; }
       .mesocycle-summary-grid { display: grid; gap: 7px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
       .mesocycle-summary-item { background: var(--surface); border: 1px solid var(--line); border-radius: 9px; display: grid; gap: 3px; padding: 9px; }
       .mesocycle-summary-item span { color: var(--muted); font-size: .56rem; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; }
@@ -1479,7 +1522,7 @@
       .adjustment-summary { background: color-mix(in srgb, var(--amber) 11%, var(--surface)); border-left: 3px solid var(--amber); color: var(--text); font-weight: 900; padding: 10px 12px; }
 
       .sheet-backdrop { align-items: end; background: rgba(0, 0, 0, 0.62); display: flex; inset: 0; justify-content: center; overscroll-behavior: contain; padding: 18px 14px max(18px, env(safe-area-inset-bottom)); position: fixed; z-index: 20; }
-      .bottom-sheet { -webkit-overflow-scrolling: touch; background: var(--bg-soft); border: 1px solid var(--line-strong); border-radius: 18px 18px 10px 10px; box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55); display: grid; gap: 14px; max-height: min(86vh, 720px); max-width: 620px; overflow-y: auto; overscroll-behavior: contain; padding: 18px; position: relative; width: 100%; }
+      .bottom-sheet, .dialog-sheet { -webkit-overflow-scrolling: touch; background: var(--bg-soft); border: 1px solid var(--line-strong); border-radius: 18px 18px 10px 10px; box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55); display: grid; gap: 14px; max-height: min(86vh, 720px); max-width: 620px; overflow-y: auto; overscroll-behavior: contain; padding: 18px; position: relative; width: 100%; }
       .bottom-sheet::before { background: var(--line-strong); border-radius: 999px; content: ""; height: 4px; justify-self: center; width: 44px; }
       .bottom-sheet h2, .bottom-sheet p { margin: 0; }
       .bottom-sheet p { color: var(--muted); line-height: 1.45; }
@@ -1748,8 +1791,8 @@
       }
 
       @media (max-width: 719px) {
-        input, select, textarea { font-size: 16px; }
-        .set-row input, .set-row select, .chart-control-field input, .chart-control-field select { font-size: 16px; }
+        input, select, textarea { font-size: max(16px, 1rem); }
+        .set-row input, .set-row select, .chart-control-field input, .chart-control-field select { font-size: max(16px, 1rem); }
         .rationale-facts { grid-template-columns: 1fr; }
         .set-prescription-context, .role-progression-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .role-progression-facts > div:last-child { grid-column: 1 / -1; }
@@ -1928,7 +1971,38 @@
       [data-theme="light"] body .text-button { color: #0759c5; }
       @media (min-width: 720px) { .app-main { max-width: 760px; padding: 18px 18px 0; } .brand-bar { max-width: 760px; margin: 0 auto; } .dashboard-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .quick-template-card { flex-basis: 180px; } }
       @media (max-width: 719px) { .brand-bar { margin: 0; padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); } .brand-bar::before { display: none; } }
-      @media (max-width: 380px) { .brand-title small { max-width: 95px; } .workout-status-strip > span { font-size: .6rem; } .app-main { padding-left: 14px; padding-right: 18px; } .set-row { grid-template-columns: 27px minmax(42px, .85fr) minmax(44px, 1fr) minmax(35px, .7fr) 46px; gap: 3px; padding-left: 6px; padding-right: 7px; } .set-row input, .set-row select { font-size: .69rem; } .set-actions { padding-left: 32px; padding-right: 8px; } .timer-bar { margin-left: 3px; margin-right: 3px; padding-left: 8px; padding-right: 8px; } .next-set-banner { padding-left: 32px; padding-right: 8px; } .dashboard-grid { grid-template-columns: 1fr; } }
+      @media (max-width: 380px) {
+        .brand-title small { max-width: 95px; }
+        .workout-status-strip > span { font-size: .6rem; }
+        .app-main { padding-left: 14px; padding-right: 18px; }
+        .set-row { grid-template-columns: 27px minmax(42px, .85fr) minmax(44px, 1fr) minmax(35px, .7fr) 46px; gap: 3px; padding-left: 6px; padding-right: 7px; }
+        .set-row input, .set-row select { font-size: .69rem; }
+        .set-actions { padding-left: 32px; padding-right: 8px; }
+        .timer-bar { margin-left: 3px; margin-right: 3px; padding-left: 8px; padding-right: 8px; }
+        .next-set-banner { padding-left: 32px; padding-right: 8px; }
+        .dashboard-grid { grid-template-columns: minmax(0, 1fr); }
+        html.large-text-reflow .brand-title small { max-width: none; overflow: visible; overflow-wrap: anywhere; text-overflow: clip; white-space: normal; }
+        html.large-text-reflow .app-shell, html.large-text-reflow .app-main, html.large-text-reflow .view, html.large-text-reflow .view > *, html.large-text-reflow .screen-section, html.large-text-reflow .screen-section > *, html.large-text-reflow .section-heading > *, html.large-text-reflow .screen-heading > *, html.large-text-reflow .workout-heading > *, html.large-text-reflow .dashboard-grid, html.large-text-reflow .dashboard-grid > *, html.large-text-reflow .plan-list, html.large-text-reflow .plan-list > *, html.large-text-reflow .chart-list, html.large-text-reflow .chart-list > *, html.large-text-reflow .settings-panel, html.large-text-reflow .settings-panel > *, html.large-text-reflow .template-card, html.large-text-reflow .template-card > *, html.large-text-reflow .exercise-card, html.large-text-reflow .exercise-card > *, html.large-text-reflow .exercise-header > *, html.large-text-reflow .notification-prompt > *, html.large-text-reflow .quick-template-strip, html.large-text-reflow .quick-template-list { min-width: 0; max-width: 100%; }
+        html.large-text-reflow .view, html.large-text-reflow .dashboard-grid, html.large-text-reflow .plan-list, html.large-text-reflow .chart-list { grid-template-columns: minmax(0, 1fr); }
+        html.large-text-reflow .view :is(h1, h2, h3, p, strong, small, span, label), html.large-text-reflow .brand-title, html.large-text-reflow .bottom-nav { overflow-wrap: anywhere; }
+        html.large-text-reflow .screen-heading, html.large-text-reflow .workout-heading, html.large-text-reflow .section-heading, html.large-text-reflow .volume-card header, html.large-text-reflow .plan-card header, html.large-text-reflow .chart-card header { align-items: flex-start; flex-wrap: wrap; }
+        html.large-text-reflow .status-pill, html.large-text-reflow .section-heading > span { max-width: 100%; text-align: center; white-space: normal; }
+        html.large-text-reflow .notification-prompt { grid-template-columns: minmax(0, 1fr); }
+        html.large-text-reflow .notification-prompt button { justify-content: center; white-space: normal; width: 100%; }
+        html.large-text-reflow .workout-status-strip, html.large-text-reflow .dashboard-summary-row, html.large-text-reflow .chart-metric-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        html.large-text-reflow .workout-status-strip > *, html.large-text-reflow .dashboard-summary-row > *, html.large-text-reflow .chart-metric-row > * { min-width: 0; }
+        html.large-text-reflow .exercise-header { grid-template-columns: minmax(0, 1fr); }
+        html.large-text-reflow .exercise-header .exercise-actions, html.large-text-reflow .rest-control, html.large-text-reflow .row { flex-wrap: wrap; }
+        html.large-text-reflow .exercise-card { overflow: visible; }
+        html.large-text-reflow .rest-control input { flex: 1 0 100%; max-width: 100%; width: 100%; }
+        html.large-text-reflow .grid > *, html.large-text-reflow .row > * { min-width: 0; max-width: 100%; }
+        html.large-text-reflow input, html.large-text-reflow select, html.large-text-reflow textarea { font-size: max(16px, 1rem); min-width: 0; max-width: 100%; }
+        html.large-text-reflow .quick-template-list { max-width: 100%; }
+        html.large-text-reflow .bottom-nav { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+        html.large-text-reflow .nav-button { min-width: 0; padding-left: 0; padding-right: 0; width: 100%; }
+        html.large-text-reflow .set-head, html.large-text-reflow .set-row { grid-template-columns: 24px minmax(46px, .7fr) minmax(88px, 1.1fr) minmax(73px, 1fr) 44px; gap: 1px; padding-left: 0; padding-right: 0; }
+        html.large-text-reflow .workout-footer-actions { grid-template-columns: minmax(0, 1fr); }
+      }
       @media (max-width: 380px) { .dashboard-view > .screen-heading { align-items: stretch; flex-direction: column; } .dashboard-view > .screen-heading h1 { font-size: 1.3rem; } .dashboard-period { align-self: stretch; justify-content: space-between; } }
       @media (max-width: 350px) { .bottom-nav { gap: 2px; padding-left: max(5px, env(safe-area-inset-left)); padding-right: max(5px, env(safe-area-inset-right)); } .nav-button { font-size: .6rem; gap: 2px; padding-left: 2px; padding-right: 2px; } .nav-icon { min-width: 26px; padding: 0 5px; } }
       @media (max-width: 380px) { .timer-primary-controls { gap: 5px; } .timer-primary-controls button { font-size: .68rem; padding: 0 5px; } .template-topline { flex-wrap: wrap; } .template-card-actions { margin-left: auto; } .template-delete-confirm button { padding: 0 6px; } .dashboard-summary-row span { font-size: .58rem; } }
@@ -2005,6 +2079,19 @@
       };
       let data = emptyData();
       const primaryTabIds = ["lift", "dashboard", "plan", "charts", "data"];
+      const focusActionAllowlist = new Set([
+        "set-tab", "start-template", "request-cancel-workout", "request-save-history-edits", "request-cancel-history-edits", "clear-data",
+        "continue-template-start", "return-active-workout", "use-usual-readiness", "review-template-readiness", "start-adjusted-workout",
+        "keep-workout", "keep-history-editing", "cancel-clear-data", "close-dashboard-detail", "dashboard-detail-parent",
+        "open-history", "open-dashboard-detail", "open-dashboard-session", "open-volume-session", "open-fatigue-flag",
+        "cancel-template-start", "log-today-readiness", "edit-readiness-metrics", "start-original-workout",
+        "template-readiness-sleep-hours", "template-readiness-sleep-quality", "template-readiness-hrv", "template-readiness-resting-hr",
+        "template-readiness-soreness", "template-readiness-nutrition", "template-readiness-protein", "template-readiness-illness",
+        "template-readiness-pain", "template-readiness-affected-muscle", "template-readiness-note",
+        "clear-data-ack", "clear-data-phrase", "sync-before-clear", "confirm-clear-data", "confirm-cancel-workout",
+        "confirm-save-history-edits", "confirm-cancel-history-edits"
+      ]);
+      const focusDescriptorDataKeys = ["tab", "templateId", "sessionId", "detail", "flagId"];
       let activeTab = tabFromLocation();
       const tabScrollPositions = new Map();
       let activeSessionId = "";
@@ -2085,6 +2172,7 @@
       let expandedVolumeMuscle = "";
       let dashboardWeekStart = startOfWeekIso(todayIso());
       let dashboardDetail = null;
+      const dashboardFocusStack = [];
       let planVolumeDetailId = "";
       let dashboardReturnScroll = 0;
       let settingsMessage = "";
@@ -2095,6 +2183,9 @@
       let draftSaveTimer = 0;
       let idleSaveHandle = 0;
       let interactionRenderFrame = 0;
+      let pendingFocusDescriptor = null;
+      let renderedDialogKey = "";
+      const dialogFocusOrigins = { template: null, cancel: null, history: null, clear: null };
       const performanceDebugEnabled = ["127.0.0.1", "localhost"].includes(window.location.hostname) && new URLSearchParams(window.location.search).has("perf");
       const performanceFixtureEnabled = performanceDebugEnabled && new URLSearchParams(window.location.search).get("perfFixture") === "large";
       const performanceEvents = [];
@@ -5049,21 +5140,155 @@
         return url.pathname + url.search + url.hash;
       }
 
+      function actionFocusDescriptor(action, dataValues = {}, ordinal = 0) {
+        if (!focusActionAllowlist.has(action)) return null;
+        const data = {};
+        for (const key of focusDescriptorDataKeys) {
+          if (dataValues[key] != null && String(dataValues[key])) data[key] = String(dataValues[key]);
+        }
+        return { kind: "action", action, data, ordinal: Math.max(0, Number.isInteger(ordinal) ? ordinal : 0) };
+      }
+
+      function focusDescriptorForElement(element) {
+        const actionElement = element?.closest?.("[data-action]");
+        if (!actionElement || !focusActionAllowlist.has(actionElement.dataset.action)) return null;
+        const descriptor = actionFocusDescriptor(actionElement.dataset.action, actionElement.dataset);
+        const matching = Array.from(root.querySelectorAll("[data-action]")).filter((candidate) => {
+          if (candidate.dataset.action !== descriptor.action) return false;
+          if (!candidate.matches('button, input, select, textarea, a[href], summary, [tabindex]:not([tabindex="-1"])')) return false;
+          return Object.entries(descriptor.data).every(([key, value]) => candidate.dataset[key] === value);
+        });
+        descriptor.ordinal = Math.max(0, matching.indexOf(actionElement));
+        return descriptor;
+      }
+
+      function queuePostRenderFocus(descriptor) {
+        if (!descriptor || !["action", "main"].includes(descriptor.kind)) return;
+        pendingFocusDescriptor = descriptor.kind === "main"
+          ? { kind: "main" }
+          : actionFocusDescriptor(descriptor.action, descriptor.data, descriptor.ordinal);
+      }
+
+      function resolveFocusDescriptor(descriptor) {
+        if (!descriptor) return null;
+        if (descriptor.kind === "main") return document.getElementById("main-content");
+        if (descriptor.kind !== "action" || !focusActionAllowlist.has(descriptor.action)) return null;
+        const matching = Array.from(root.querySelectorAll("[data-action]")).filter((element) => {
+          if (element.dataset.action !== descriptor.action) return false;
+          if (!element.matches('button, input, select, textarea, a[href], summary, [tabindex]:not([tabindex="-1"])')) return false;
+          return Object.entries(descriptor.data || {}).every(([key, value]) => focusDescriptorDataKeys.includes(key) && element.dataset[key] === value);
+        });
+        return matching[Math.max(0, Number(descriptor.ordinal || 0))] || matching[0] || null;
+      }
+
+      function applyPendingFocus() {
+        const descriptor = pendingFocusDescriptor;
+        pendingFocusDescriptor = null;
+        const target = resolveFocusDescriptor(descriptor);
+        if (!target || target.closest("[inert]") || target.hasAttribute("disabled")) return null;
+        target.focus({ preventScroll: true });
+        return target;
+      }
+
+      function captureDialogFocusOrigin(kind) {
+        dialogFocusOrigins[kind] = focusDescriptorForElement(document.activeElement) || { kind: "main" };
+      }
+
+      function restoreFocusAfterDialog(kind) {
+        queuePostRenderFocus(dialogFocusOrigins[kind] || { kind: "main" });
+        dialogFocusOrigins[kind] = null;
+      }
+
+      function activeDialogKey() {
+        if (templateStartFlow) return `template:${templateStartFlow.templateId}:${templateStartFlow.step}`;
+        if (cancelWorkoutFlow) return `cancel:${cancelWorkoutFlow.sessionId}`;
+        if (historyEditConfirm) return `history:${historyEditConfirm}`;
+        if (clearDataFlow?.open) return "clear";
+        return "";
+      }
+
+      function activeDialogInitialFocusDescriptor() {
+        if (templateStartFlow) {
+          const action = ({
+            "active-conflict": "return-active-workout",
+            confirm: "continue-template-start",
+            readiness: "use-usual-readiness",
+            metrics: "review-template-readiness",
+            review: "start-adjusted-workout"
+          })[templateStartFlow.step] || "continue-template-start";
+          return actionFocusDescriptor(action);
+        }
+        if (cancelWorkoutFlow) return actionFocusDescriptor("keep-workout");
+        if (historyEditConfirm) return actionFocusDescriptor("keep-history-editing");
+        if (clearDataFlow?.open) return actionFocusDescriptor("cancel-clear-data");
+        return null;
+      }
+
+      function preferredScrollBehavior(preferred = "smooth") {
+        return window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : preferred;
+      }
+
+      function usesLargeTextReflow() {
+        const rootFontSize = Number.parseFloat(window.getComputedStyle(document.documentElement).fontSize) || 16;
+        return window.innerWidth <= 380 && rootFontSize >= 24;
+      }
+
+      function openDashboardDetailView(nextDetail, originElement) {
+        const previousDetail = dashboardDetail ? { ...dashboardDetail } : null;
+        const origin = focusDescriptorForElement(originElement) || { kind: "main" };
+        const scrollY = window.scrollY;
+        dashboardFocusStack.push({ origin, previousDetail, scrollY });
+        dashboardReturnScroll = scrollY;
+        dashboardDetail = nextDetail;
+        const rootDetail = ["history", "sessions", "muscles", "fatigue"].includes(nextDetail?.type);
+        queuePostRenderFocus(actionFocusDescriptor(rootDetail ? "close-dashboard-detail" : "dashboard-detail-parent"));
+        render();
+        window.scrollTo({ top: 0, behavior: preferredScrollBehavior() });
+      }
+
+      function closeDashboardDetailView() {
+        const returnState = dashboardFocusStack.pop();
+        if (returnState) {
+          dashboardDetail = returnState.previousDetail;
+          queuePostRenderFocus(returnState.origin);
+          render();
+          window.setTimeout(() => window.scrollTo({ top: returnState.scrollY, behavior: "auto" }), 0);
+          return;
+        }
+        if (dashboardDetail?.type === "session") dashboardDetail = { type: dashboardDetail.parent === "fatigue-flag" ? "fatigue" : "sessions" };
+        else if (dashboardDetail?.type === "fatigue-flag") dashboardDetail = { type: "fatigue" };
+        else dashboardDetail = null;
+        queuePostRenderFocus({ kind: "main" });
+        render();
+      }
+
       function setActiveTab(nextTab, options = {}) {
         const next = primaryTabIds.includes(nextTab) ? nextTab : "lift";
         if (historyEditFlow && next !== "lift" && !options.allowHistoryExit) {
+          if (!dialogFocusOrigins.history) captureDialogFocusOrigin("history");
           historyEditConfirm = "cancel";
           render();
           return;
         }
         const previous = activeTab;
         if (previous === next && !options.force) {
-          if (next === "dashboard" && dashboardDetail) { dashboardDetail = null; render(); }
-          if (next === "plan" && planVolumeDetailId) { planVolumeDetailId = ""; render(); }
+          if (next === "dashboard" && dashboardDetail) {
+            dashboardDetail = null;
+            dashboardFocusStack.length = 0;
+            queuePostRenderFocus({ kind: "main" });
+            render();
+          }
+          if (next === "plan" && planVolumeDetailId) {
+            planVolumeDetailId = "";
+            queuePostRenderFocus({ kind: "main" });
+            render();
+          }
           return;
         }
         tabScrollPositions.set(previous, window.scrollY);
         activeTab = next;
+        if (previous === "dashboard" && next !== "dashboard") dashboardFocusStack.length = 0;
+        if (options.focus !== false && options.renderNow === false) queuePostRenderFocus({ kind: "main" });
         if (options.updateUrl !== false) {
           const state = { ...(window.history.state || {}), tab: next };
           if (options.replace) window.history.replaceState(state, "", tabUrl(next));
@@ -5071,12 +5296,15 @@
         }
         if (options.renderNow !== false) {
           render();
+          const mainContent = document.getElementById("main-content");
+          if (options.focus !== false && mainContent && document.activeElement !== mainContent) mainContent.focus({ preventScroll: true });
           window.setTimeout(() => window.scrollTo({ top: tabScrollPositions.get(next) || 0, behavior: "auto" }), 0);
         }
       }
 
       function render() {
         const renderStartedAt = performanceNow();
+        document.documentElement.classList.toggle("large-text-reflow", usesLargeTextReflow());
         const session = activeSession();
         if (!session) {
           root.innerHTML = '<div class="loading">Loading your training log...</div>';
@@ -5086,12 +5314,15 @@
         if (cancelWorkoutFlow && !sessionCanBeDiscarded(data.sessions.find((item) => item.id === cancelWorkoutFlow.sessionId))) cancelWorkoutFlow = null;
         if (historyEditConfirm && !isEditingHistorySession()) historyEditConfirm = "";
         const modalOpen = Boolean(templateStartFlow || cancelWorkoutFlow || historyEditConfirm || clearDataFlow?.open);
+        const dialogKey = activeDialogKey();
+        const sameDialogFocus = dialogKey && dialogKey === renderedDialogKey ? focusDescriptorForElement(document.activeElement) : null;
         document.body.classList.toggle("modal-open", modalOpen);
         const viewHtml = measurePerformance("renderView:" + activeTab, renderView, { tab: activeTab, sessions: data.sessions.length, exercises: data.exercises.length, sets: data.sets.length });
         const domStartedAt = performanceNow();
         root.innerHTML = `
           <div class="app-shell">
-            <header class="brand-bar">
+            <a class="skip-link" href="#main-content" data-action="skip-content" ${modalOpen ? 'tabindex="-1" aria-hidden="true"' : ""}>Skip to main content</a>
+            <header class="brand-bar" ${modalOpen ? 'inert aria-hidden="true"' : ""}>
               <div class="brand-mark" aria-label="Comprehensive Fitness">CF</div>
               <div class="brand-title">Comprehensive <span>Fitness</span><small>${escapeHtml(liftHomeIsVisible() ? "Program overview" : activeSession()?.title || "Training")}</small></div>
               <button class="brand-action" type="button" data-action="toggle-unit" title="Switch pounds and kilograms">${data.settings.weightUnit.toUpperCase()}</button>
@@ -5099,7 +5330,7 @@
             </header>
             ${renderUpdateBanner()}
             ${appToast ? '<div class="app-toast" role="status" aria-live="polite">' + escapeHtml(appToast) + '</div>' : ''}
-            <main class="app-main" ${modalOpen ? 'inert aria-hidden="true"' : ""}>${viewHtml}</main>
+            <main class="app-main" id="main-content" tabindex="-1" ${modalOpen ? 'inert aria-hidden="true"' : ""}>${viewHtml}</main>
             <nav class="bottom-nav" aria-label="Main navigation" ${modalOpen ? 'inert aria-hidden="true"' : ""}>
               ${navButton("lift", "Workout", "workout")}
               ${navButton("dashboard", "Dashboard", "dashboard")}
@@ -5121,17 +5352,55 @@
         root.querySelectorAll(".readiness-comparison > .today > span").forEach((label) => { label.textContent = "Today's readiness"; });
         const chartLiftLabel = root.querySelector('label[for="chart-exercise-search"]');
         if (chartLiftLabel) chartLiftLabel.textContent = "Change lift";
+        adaptOverflowingTitleFields();
+        fitBrandSubtitle();
         resizeExerciseNameFields();
-        if (modalOpen) window.setTimeout(() => root.querySelector(".bottom-sheet [autofocus]")?.focus(), 0);
+        if (dialogKey && dialogKey !== renderedDialogKey && !pendingFocusDescriptor) queuePostRenderFocus(activeDialogInitialFocusDescriptor());
+        else if (sameDialogFocus && !pendingFocusDescriptor) queuePostRenderFocus(sameDialogFocus);
+        renderedDialogKey = dialogKey;
+        applyPendingFocus();
         recordPerformance("renderDom:" + activeTab, domStartedAt, { tab: activeTab });
         recordPerformance("renderTotal:" + activeTab, renderStartedAt, { tab: activeTab });
       }
 
       function resizeExerciseNameFields() {
-        root.querySelectorAll(".exercise-name-field").forEach((field) => {
+        root.querySelectorAll(".exercise-name-field, .autosize-title-field").forEach((field) => {
           field.style.height = "auto";
           field.style.height = Math.max(38, field.scrollHeight + 2) + "px";
         });
+      }
+
+      function adaptOverflowingTitleFields() {
+        if (window.innerWidth > 380) return;
+        root.querySelectorAll('input[data-action="session-title"], input[data-action="template-name"]').forEach((input) => {
+          if (input.clientWidth <= 0 || input.scrollWidth <= input.clientWidth + 1) return;
+          const textarea = document.createElement("textarea");
+          for (const attribute of input.attributes) {
+            if (attribute.name !== "value") textarea.setAttribute(attribute.name, attribute.value);
+          }
+          textarea.classList.add("autosize-title-field");
+          textarea.rows = 1;
+          textarea.value = input.value;
+          input.replaceWith(textarea);
+        });
+      }
+
+      function fitBrandSubtitle() {
+        if (usesLargeTextReflow() || window.innerWidth > 380) return;
+        const subtitle = root.querySelector(".brand-title small");
+        if (!subtitle || subtitle.clientWidth <= 0 || subtitle.scrollWidth <= subtitle.clientWidth + 1) return;
+        const fullLabel = subtitle.textContent || "";
+        subtitle.setAttribute("aria-label", fullLabel);
+        subtitle.title = fullLabel;
+        let low = 0;
+        let high = fullLabel.length;
+        while (low < high) {
+          const midpoint = Math.ceil((low + high) / 2);
+          subtitle.textContent = fullLabel.slice(0, midpoint).trimEnd() + "…";
+          if (subtitle.scrollWidth <= subtitle.clientWidth + 1) low = midpoint;
+          else high = midpoint - 1;
+        }
+        subtitle.textContent = fullLabel.slice(0, low).trimEnd() + "…";
       }
 
       function renderAfterInteractionFrame() {
@@ -5289,7 +5558,9 @@
                 </select>
               </div>
               <div class="grid two">
-                <input value="${escapeHtml(session.title)}" data-action="session-title" aria-label="Workout title" />
+                ${usesLargeTextReflow()
+                  ? '<textarea class="autosize-title-field" rows="1" data-action="session-title" aria-label="Workout title">' + escapeHtml(session.title) + '</textarea>'
+                  : '<input value="' + escapeHtml(session.title) + '" data-action="session-title" aria-label="Workout title" />'}
                 <input type="date" value="${session.date}" data-action="session-date" aria-label="Workout date" />
               </div>
               <label class="toggle-line"><input type="checkbox" data-action="session-travel" ${session.isTravel ? "checked" : ""} />Travel session</label>
@@ -5668,6 +5939,7 @@
 
       function openTemplateStart(templateId) {
         if (!data.templates.some((template) => template.id === templateId)) return;
+        captureDialogFocusOrigin("template");
         if (hasActiveWorkout()) {
           templateStartFlow = { templateId, step: "active-conflict", draft: defaultRecovery() };
           render();
@@ -5679,6 +5951,7 @@
 
       function closeTemplateStart() {
         templateStartFlow = null;
+        restoreFocusAfterDialog("template");
         render();
       }
 
@@ -5696,11 +5969,11 @@
           const active = activeWorkoutSession();
           return `
             <div class="sheet-backdrop" data-action="cancel-template-start" role="presentation">
-              <section class="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="active-workout-title" data-sheet-content>
+              <section class="bottom-sheet dialog-sheet" role="dialog" aria-modal="true" aria-labelledby="active-workout-title" data-sheet-content>
                 <button class="sheet-close" type="button" data-action="cancel-template-start" aria-label="Close workout dialog">&times;</button>
                 <div><div class="section-kicker">Workout in progress</div><h2 id="active-workout-title">You already have an active workout.</h2><p>${escapeHtml(active?.title || "Your current workout")} must be submitted or explicitly canceled before another template can begin.</p></div>
                 <div class="sheet-actions stacked">
-                  <button class="primary-action" type="button" data-action="return-active-workout" autofocus>Return to Active Workout</button>
+                  <button class="primary-action" type="button" data-action="return-active-workout">Return to Active Workout</button>
                   <button class="danger-button" type="button" data-action="request-cancel-workout-from-template">Cancel Current Workout</button>
                   <button class="mini-button" type="button" data-action="cancel-template-start">Keep browsing templates</button>
                 </div>
@@ -5710,13 +5983,13 @@
         if (templateStartFlow.step === "confirm") {
           return `
             <div class="sheet-backdrop" data-action="cancel-template-start" role="presentation">
-              <section class="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="template-start-title" data-sheet-content>
+              <section class="bottom-sheet dialog-sheet" role="dialog" aria-modal="true" aria-labelledby="template-start-title" data-sheet-content>
                 <button class="sheet-close" type="button" data-action="cancel-template-start" aria-label="Close template setup">&times;</button>
                 <h2 id="template-start-title">Start ${escapeHtml(template.name)}?</h2>
                 <p>This will prepare today’s targets from your workout history. Your current workout will not change until you continue through readiness.</p>
                 <div class="sheet-actions">
                   <button type="button" data-action="cancel-template-start">Cancel</button>
-                  <button class="primary-action" type="button" data-action="continue-template-start" autofocus>Continue</button>
+                  <button class="primary-action" type="button" data-action="continue-template-start">Continue</button>
                 </div>
               </section>
             </div>
@@ -5725,12 +5998,12 @@
         if (templateStartFlow.step === "readiness") {
           return `
             <div class="sheet-backdrop" data-action="cancel-template-start" role="presentation">
-              <section class="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="readiness-choice-title" data-sheet-content>
+              <section class="bottom-sheet dialog-sheet" role="dialog" aria-modal="true" aria-labelledby="readiness-choice-title" data-sheet-content>
                 <button class="sheet-close" type="button" data-action="cancel-template-start" aria-label="Close readiness setup">&times;</button>
                 <h2 id="readiness-choice-title">Use your usual readiness?</h2>
                 <p>Your saved baseline will be used unless you enter today’s objective or observable metrics.</p>
                 <div class="sheet-actions stacked">
-                  <button class="primary-action" type="button" data-action="use-usual-readiness" autofocus>Use usual readiness</button>
+                  <button class="primary-action" type="button" data-action="use-usual-readiness">Use usual readiness</button>
                   <button type="button" data-action="log-today-readiness">Log today’s metrics</button>
                   <button class="mini-button" type="button" data-action="cancel-template-start">Cancel</button>
                 </div>
@@ -5746,13 +6019,13 @@
           const unchanged = changes.filter((item) => !item.changed);
           return `
             <div class="sheet-backdrop" data-action="cancel-template-start" role="presentation">
-              <section class="bottom-sheet readiness-review-sheet" role="dialog" aria-modal="true" aria-labelledby="readiness-review-title" data-sheet-content>
+              <section class="bottom-sheet dialog-sheet readiness-review-sheet" role="dialog" aria-modal="true" aria-labelledby="readiness-review-title" data-sheet-content>
                 <button class="sheet-close" type="button" data-action="cancel-template-start" aria-label="Close readiness review">&times;</button>
                 <div><div class="section-kicker">Before training</div><h2 id="readiness-review-title">Todayâ€™s Readiness Adjustments</h2><p>${escapeHtml(preview.label)}. Every change below is tied only to a marker you entered.</p></div>
                 <div class="readiness-change-list">${changed.length ? changed.map(renderReadableReadinessChange).join("") : '<div class="readiness-unchanged"><strong>No target changes</strong><span>Your entered markers remain within the normal band for this plan.</span></div>'}</div>
                 ${unchanged.length ? '<details class="compact-disclosure"><summary>Exercises unchanged <span>' + unchanged.length + '</span></summary><div class="disclosure-body readiness-unchanged-list">' + unchanged.map((item) => '<div><strong>' + escapeHtml(item.name) + '</strong><span>' + escapeHtml(prescriptionLine(item.original)) + '</span></div>').join('') + '</div></details>' : ''}
                 <div class="sheet-actions stacked">
-                  <button class="primary-action" type="button" data-action="start-adjusted-workout" autofocus>Start Adjusted Workout</button>
+                  <button class="primary-action" type="button" data-action="start-adjusted-workout">Start Adjusted Workout</button>
                   ${changed.length && !recovery.illness && !recovery.pain ? '<button type="button" data-action="start-original-workout">Use Original Targets</button>' : ''}
                   <button class="mini-button" type="button" data-action="edit-readiness-metrics">Review Changes</button>
                   <button class="mini-button" type="button" data-action="cancel-template-start">Cancel</button>
@@ -5762,7 +6035,7 @@
         }
         return `
           <div class="sheet-backdrop" data-action="cancel-template-start" role="presentation">
-            <section class="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="daily-readiness-title" data-sheet-content>
+            <section class="bottom-sheet dialog-sheet" role="dialog" aria-modal="true" aria-labelledby="daily-readiness-title" data-sheet-content>
               <button class="sheet-close" type="button" data-action="cancel-template-start" aria-label="Close daily readiness">&times;</button>
               <div><h2 id="daily-readiness-title">Today’s readiness</h2><p>${formatDate(todayIso())} · ${escapeHtml(preview.label)}. ${escapeHtml(preview.action)}</p></div>
               <div class="readiness-draft">
@@ -5809,6 +6082,10 @@
             ? activeWorkoutSession()
             : sessionCanBeDiscarded(activeSession()) ? activeSession() : activeWorkoutSession();
         if (!sessionCanBeDiscarded(session)) return;
+        dialogFocusOrigins.cancel = source === "template"
+          ? dialogFocusOrigins.template || focusDescriptorForElement(document.activeElement) || { kind: "main" }
+          : focusDescriptorForElement(document.activeElement) || { kind: "main" };
+        if (source === "template") dialogFocusOrigins.template = null;
         cancelWorkoutFlow = { sessionId: session.id, source };
         templateStartFlow = null;
         render();
@@ -5819,8 +6096,8 @@
         const session = data.sessions.find((item) => item.id === cancelWorkoutFlow.sessionId);
         if (!session || isSessionSubmitted(session)) return "";
         return `
-          <div class="sheet-backdrop" role="presentation">
-            <section class="bottom-sheet destructive-sheet" role="dialog" aria-modal="true" aria-labelledby="cancel-workout-title" data-sheet-content>
+          <div class="sheet-backdrop" data-action="keep-workout" role="presentation">
+            <section class="bottom-sheet dialog-sheet destructive-sheet" role="dialog" aria-modal="true" aria-labelledby="cancel-workout-title" data-sheet-content>
               <div class="cancel-hero"><span class="cancel-visual" aria-hidden="true">!</span><div><div class="section-kicker">Active session</div><h2 id="cancel-workout-title">Cancel this workout?</h2><p>Your unsaved sets, notes, timer state, and session progress will be discarded. This workout will not be added to your completed history.</p></div></div>
               <div class="cancel-impact"><div><b aria-hidden="true">-</b><div><strong>Only this draft is removed</strong><span>The workout timer, rest timer, scheduled alert, notes, and unsaved set entries will be cleared.</span></div></div><div><b aria-hidden="true">&#10003;</b><div><strong>Your history remains intact</strong><span>Submitted workouts, templates, personal records, charts, and settings stay unchanged.</span></div></div></div>
               <div class="sheet-actions cancel-sheet-actions">
@@ -5829,6 +6106,12 @@
               </div>
             </section>
           </div>`;
+      }
+
+      function closeCancelWorkout() {
+        cancelWorkoutFlow = null;
+        restoreFocusAfterDialog("cancel");
+        render();
       }
 
       function beginHistoryEdit() {
@@ -5842,6 +6125,7 @@
 
       function requestHistoryEditConfirmation(type) {
         if (!isEditingHistorySession()) return;
+        captureDialogFocusOrigin("history");
         historyEditConfirm = type === "save" ? "save" : "cancel";
         render();
       }
@@ -5850,16 +6134,22 @@
         if (!historyEditConfirm || !isEditingHistorySession()) return "";
         const saving = historyEditConfirm === "save";
         return `
-          <div class="sheet-backdrop" role="presentation">
-            <section class="bottom-sheet ${saving ? "" : "destructive-sheet"}" role="dialog" aria-modal="true" aria-labelledby="history-edit-confirm-title" data-sheet-content>
+          <div class="sheet-backdrop" data-action="keep-history-editing" role="presentation">
+            <section class="bottom-sheet dialog-sheet ${saving ? "" : "destructive-sheet"}" role="dialog" aria-modal="true" aria-labelledby="history-edit-confirm-title" data-sheet-content>
               <button class="sheet-close" type="button" data-action="keep-history-editing" aria-label="Close edit confirmation">&times;</button>
               <div class="cancel-hero ${saving ? "save" : ""}"><span class="cancel-visual" aria-hidden="true">${saving ? "&#10003;" : "!"}</span><div><div class="section-kicker">Logged workout</div><h2 id="history-edit-confirm-title">${saving ? "Save these history edits?" : "Cancel these edits?"}</h2><p>${saving ? "The revised workout will replace the saved version and recalculate charts, volume, fatigue, and coaching history." : "The original logged workout will be restored. None of the temporary changes will be saved."}</p></div></div>
               <div class="sheet-actions stacked">
-                <button class="primary-action" type="button" data-action="keep-history-editing" autofocus>Keep Editing</button>
+                <button class="primary-action" type="button" data-action="keep-history-editing">Keep Editing</button>
                 <button class="${saving ? "secondary-action" : "danger-button"}" type="button" data-action="${saving ? "confirm-save-history-edits" : "confirm-cancel-history-edits"}">${saving ? "Save Edits" : "Discard Edits"}</button>
               </div>
             </section>
           </div>`;
+      }
+
+      function closeHistoryEditConfirmation() {
+        historyEditConfirm = "";
+        restoreFocusAfterDialog("history");
+        render();
       }
 
       function liftHomeSession() {
@@ -6187,11 +6477,11 @@
         return `
           <article class="exercise-card">
             <div class="exercise-header">
-              <textarea class="exercise-name exercise-name-field" rows="1" data-action="exercise-name" data-exercise-id="${exercise.id}" aria-label="Exercise name" title="${escapeHtml(exercise.name)}">${escapeHtml(exercise.name)}</textarea>
+              <textarea class="exercise-name exercise-name-field" rows="1" data-action="exercise-name" data-exercise-id="${exercise.id}" aria-label="Exercise name: ${escapeHtml(exercise.name)}" title="${escapeHtml(exercise.name)}">${escapeHtml(exercise.name)}</textarea>
               <div class="exercise-actions">
-                <button class="icon-button exercise-order" type="button" data-action="move-exercise" data-direction="-1" data-exercise-id="${exercise.id}" title="Move exercise up">Up</button>
-                <button class="icon-button exercise-order" type="button" data-action="move-exercise" data-direction="1" data-exercise-id="${exercise.id}" title="Move exercise down">Dn</button>
-                <button class="icon-button danger" type="button" data-action="delete-exercise" data-exercise-id="${exercise.id}" title="Delete exercise">${icon.delete}</button>
+                <button class="icon-button exercise-order" type="button" data-action="move-exercise" data-direction="-1" data-exercise-id="${exercise.id}" title="Move exercise up" aria-label="Move ${escapeHtml(exercise.name)} up">Up</button>
+                <button class="icon-button exercise-order" type="button" data-action="move-exercise" data-direction="1" data-exercise-id="${exercise.id}" title="Move exercise down" aria-label="Move ${escapeHtml(exercise.name)} down">Dn</button>
+                <button class="icon-button danger" type="button" data-action="delete-exercise" data-exercise-id="${exercise.id}" title="Delete exercise" aria-label="Delete exercise ${escapeHtml(exercise.name)}">${icon.delete}</button>
               </div>
             </div>
             <div class="exercise-level-controls">
@@ -6202,9 +6492,9 @@
             ${substituteRecoveryHtml}
             ${setHtml}
             <div class="row wrap">
-              <button type="button" data-action="add-set" data-exercise-id="${exercise.id}"${workoutSafetyDisabledAttributes(addSetSafety)}>${icon.add} Set</button>
-              <button type="button" data-action="add-warmup-set" data-exercise-id="${exercise.id}"${workoutSafetyDisabledAttributes(addWarmupSafety)}>+ Warm-up</button>
-              <button type="button" data-action="duplicate-set" data-exercise-id="${exercise.id}"${workoutSafetyDisabledAttributes(duplicateSetSafety)}>${icon.duplicate} Duplicate</button>
+              <button type="button" data-action="add-set" data-exercise-id="${exercise.id}" aria-label="Add working set to ${escapeHtml(exercise.name)}"${workoutSafetyDisabledAttributes(addSetSafety)}>${icon.add} Set</button>
+              <button type="button" data-action="add-warmup-set" data-exercise-id="${exercise.id}" aria-label="Add warm-up set to ${escapeHtml(exercise.name)}"${workoutSafetyDisabledAttributes(addWarmupSafety)}>+ Warm-up</button>
+              <button type="button" data-action="duplicate-set" data-exercise-id="${exercise.id}" aria-label="Duplicate set for ${escapeHtml(exercise.name)}"${workoutSafetyDisabledAttributes(duplicateSetSafety)}>${icon.duplicate} Duplicate</button>
             </div>
             <details class="exercise-options">
               <summary>Exercise options <span>${restSeconds}s rest</span></summary>
@@ -6622,7 +6912,7 @@
         window.requestAnimationFrame(() => {
           const target = document.querySelector('[data-guided-configuration]');
           if (!target) return;
-          target.scrollIntoView({ block: "center", behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? "auto" : "smooth" });
+          target.scrollIntoView({ block: "center", behavior: preferredScrollBehavior() });
           target.focus({ preventScroll: true });
         });
       }
@@ -6638,7 +6928,7 @@
         updateGuidedDraft(updated);
         window.requestAnimationFrame(() => {
           const picker = document.querySelector('[data-guided-exercise-picker]');
-          picker?.scrollIntoView({ block: "start", behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? "auto" : "smooth" });
+          picker?.scrollIntoView({ block: "start", behavior: preferredScrollBehavior() });
           picker?.focus({ preventScroll: true });
           guidedReturnFocusToPicker = false;
         });
@@ -7009,7 +7299,7 @@
         if (guidedMesocycleView === 'setup') {
           const muscles = guidedAvailableMuscles();
           if (!mesocycleScopeDraft) mesocycleScopeDraft = new Set(muscles);
-          return '<section class="guided-builder">' + header(1, 'guided-back-guidelines') + '<div class="section-heading"><div><div class="section-kicker">Setup</div><h2>Objective, Schedule, and Constraints</h2><p>These choices create empty training days and evidence-adjusted targets—not an automatic program.</p></div></div><div class="guided-setup-grid"><label>Objective<select data-action="mesocycle-type"><option value="primary_progression">Primary Progression</option><option value="alternative_exercise">Alternative Exercises</option><option value="lower_fatigue_resensitization">Lower Fatigue</option><option value="specialization">Specialization</option></select></label><label>Duration (weeks)<input type="number" min="2" max="12" value="' + escapeHtml(mesocycleDurationDraft || 6) + '" data-action="mesocycle-duration"></label><label>Training Days per Week<input type="number" min="1" max="7" value="' + Number(data.settings.trainingDaysPerWeek || 4) + '" data-action="mesocycle-training-days"></label></div><section class="equipment-picker"><strong>Available Equipment</strong><div class="equipment-chips">' + mesocycleEquipmentTaxonomy.map(([value,label]) => '<button class="equipment-chip" type="button" data-action="toggle-mesocycle-equipment" data-value="' + value + '" aria-pressed="' + mesocycleEquipmentSelection().includes(value) + '">' + label + '</button>').join('') + '</div></section><section class="muscle-scope-panel"><strong>Muscle Groups and Scope</strong><div class="muscle-scope-options">' + muscles.map((muscle) => '<label class="muscle-scope-option"><input type="checkbox" data-action="mesocycle-muscle-scope" value="' + muscle + '" ' + (mesocycleScopeDraft.has(muscle) ? 'checked' : '') + '><span>' + escapeHtml(presentationLabel(muscle)) + '</span></label>').join('') + '</div></section><button class="primary-action" type="button" data-action="create-guided-draft">Create Empty Training Days</button></section>';
+          return '<section class="guided-builder">' + header(1, 'guided-back-guidelines') + '<div class="section-heading"><div><div class="section-kicker">Setup</div><h2>Objective, Schedule, and Constraints</h2><p>These choices create empty training days and evidence-adjusted targets—not an automatic program.</p></div></div><div class="guided-setup-grid"><label>Objective<select data-action="mesocycle-type"><option value="primary_progression">Primary Progression</option><option value="alternative_exercise">Alternative Exercises</option><option value="lower_fatigue_resensitization">Lower Fatigue</option><option value="specialization">Specialization</option></select></label><label>Duration (weeks)<input type="number" min="2" max="12" value="' + escapeHtml(mesocycleDurationDraft || 6) + '" data-action="mesocycle-duration"></label><label>Training Days per Week<input type="number" min="1" max="7" value="' + Number(data.settings.trainingDaysPerWeek || 4) + '" data-action="mesocycle-training-days"></label></div><section class="equipment-picker" role="group" aria-label="Available Equipment"><strong>Available Equipment</strong><div class="equipment-chips">' + mesocycleEquipmentTaxonomy.map(([value,label]) => '<button class="equipment-chip choice-chip" type="button" data-action="toggle-mesocycle-equipment" data-value="' + value + '" aria-pressed="' + mesocycleEquipmentSelection().includes(value) + '">' + label + '</button>').join('') + '</div></section><section class="muscle-scope-panel" role="group" aria-label="Muscle Group Scope"><strong>Muscle Groups and Scope</strong><div class="muscle-scope-options">' + muscles.map((muscle) => '<label class="muscle-scope-option choice-tile"><input type="checkbox" data-action="mesocycle-muscle-scope" value="' + muscle + '" ' + (mesocycleScopeDraft.has(muscle) ? 'checked' : '') + '><span>' + escapeHtml(presentationLabel(muscle)) + '</span></label>').join('') + '</div></section><button class="primary-action" type="button" data-action="create-guided-draft">Create Empty Training Days</button></section>';
         }
         if (!draft) return '';
         if (guidedExerciseBrowserDayId) return renderGuidedExerciseWorkspace(draft, header(2, 'close-guided-exercise-browser'));
@@ -7038,8 +7328,8 @@
               <div class="planner-section-heading"><div class="section-kicker">Step 1</div><h3>Objective, Schedule, and Constraints</h3><p>Define what this block should accomplish and how much weekly training time is available.</p></div>
               <div class="mesocycle-type-picker" role="group" aria-label="Mesocycle type">${[['primary_progression','Primary Progression','Build measurable load or rep progress.'],['alternative_exercise','Exercise Rotation','Change stale patterns without needless churn.'],['lower_fatigue_resensitization','Fatigue Management','Reduce fatigue while retaining practice.'],['specialization','Specialization','Prioritize one muscle group.']].map(([value,label,description]) => '<button class="mesocycle-type-option" type="button" data-action="mesocycle-type-option" data-value="' + value + '" aria-pressed="' + (mesocycleDraftType === value) + '"><span>' + label + '</span><small>' + description + '</small></button>').join('')}</div>
               <div class="planner-compact-fields"><label class="planner-compact-field">Duration in Weeks<input type="number" inputmode="numeric" min="2" max="12" step="1" value="${escapeHtml(mesocycleDurationDraft)}" data-action="mesocycle-duration" placeholder="Auto" /></label><label class="planner-compact-field">Training Days per Week<input type="number" inputmode="numeric" min="1" max="7" step="1" value="${Number(data.settings.trainingDaysPerWeek || 4)}" data-action="mesocycle-training-days" /></label></div>
-              <section class="equipment-picker"><div><div class="section-kicker">Step 2</div><strong>Available Equipment</strong><span class="settings-note">All Equipment includes the complete library. Choose individual items to limit every recommendation, alternate, and comparison to equipment you can actually use.</span></div><div class="equipment-chips">${mesocycleEquipmentTaxonomy.map(([value,label]) => '<button class="equipment-chip" type="button" data-action="toggle-mesocycle-equipment" data-value="' + value + '" aria-pressed="' + equipmentSelection.includes(value) + '">' + label + '</button>').join('')}</div></section>
-              <section class="muscle-scope-panel"><div><strong>Muscle Groups in Scope</strong><p class="settings-note">Choose every muscle group this mesocycle should train. You may intentionally leave any group out; confirmation explains the tradeoff.</p></div><div class="muscle-scope-options">${availableMuscles.map((muscle) => '<label class="muscle-scope-option"><input type="checkbox" data-action="mesocycle-muscle-scope" value="' + escapeHtml(muscle) + '" ' + (selectedScope.has(muscle) ? 'checked' : '') + ' /><span>' + escapeHtml(presentationLabel(muscle)) + '</span></label>').join('')}</div></section>
+              <section class="equipment-picker" role="group" aria-label="Available Equipment"><div><div class="section-kicker">Step 2</div><strong>Available Equipment</strong><span class="settings-note">All Equipment includes the complete library. Choose individual items to limit every recommendation, alternate, and comparison to equipment you can actually use.</span></div><div class="equipment-chips">${mesocycleEquipmentTaxonomy.map(([value,label]) => '<button class="equipment-chip choice-chip" type="button" data-action="toggle-mesocycle-equipment" data-value="' + value + '" aria-pressed="' + equipmentSelection.includes(value) + '">' + label + '</button>').join('')}</div></section>
+              <section class="muscle-scope-panel" role="group" aria-label="Muscle Group Scope"><div><strong>Muscle Groups in Scope</strong><p class="settings-note">Choose every muscle group this mesocycle should train. You may intentionally leave any group out; confirmation explains the tradeoff.</p></div><div class="muscle-scope-options">${availableMuscles.map((muscle) => '<label class="muscle-scope-option choice-tile"><input type="checkbox" data-action="mesocycle-muscle-scope" value="' + escapeHtml(muscle) + '" ' + (selectedScope.has(muscle) ? 'checked' : '') + ' /><span>' + escapeHtml(presentationLabel(muscle)) + '</span></label>').join('')}</div></section>
               ${mesocycleDraftType === 'specialization' ? '<label class="planner-field">Specialization Muscle<select data-action="mesocycle-specialization"><option value="">Choose a muscle group</option>' + availableMuscles.map((muscle) => '<option value="' + escapeHtml(muscle) + '" ' + (mesocycleSpecializationMuscle === muscle ? 'selected' : '') + '>' + escapeHtml(presentationLabel(muscle)) + '</option>').join('') + '</select></label>' : ''}
               <button class="primary-action" type="button" data-action="preview-mesocycle">Build full-program draft</button>
             </div>
@@ -7103,7 +7393,9 @@
         return `
           <article class="template-card compact-template ${isActiveTemplate ? "active-template" : locked ? "locked-template" : ""}">
             <div class="template-topline">
-              <div class="template-title"><input class="exercise-name" value="${escapeHtml(template.name)}" data-action="template-name" data-template-id="${template.id}" aria-label="Template name" /><small>${template.exercises.length} lifts · ${prescribedSets} prescribed sets · ~${duration} min</small></div>
+              <div class="template-title">${usesLargeTextReflow()
+                ? '<textarea class="exercise-name autosize-title-field" rows="1" data-action="template-name" data-template-id="' + template.id + '" aria-label="Template name">' + escapeHtml(template.name) + '</textarea>'
+                : '<input class="exercise-name" value="' + escapeHtml(template.name) + '" data-action="template-name" data-template-id="' + template.id + '" aria-label="Template name" />'}<small>${template.exercises.length} lifts · ${prescribedSets} prescribed sets · ~${duration} min</small></div>
               <div class="template-card-actions">${isActiveTemplate ? '<button class="primary-action template-start" type="button" data-action="return-active-workout">Resume Workout</button>' : '<button class="primary-action template-start" type="button" data-action="start-template" data-template-id="' + template.id + '" ' + (locked ? 'disabled aria-describedby="active-workout-template-notice" title="Finish or cancel your active workout first"' : '') + '>Start</button>'}${isActiveTemplate
                 ? '<button class="template-delete-button danger" type="button" disabled title="Finish or cancel the active workout before deleting this template" aria-label="Delete unavailable during active workout">' + icon.delete + '</button>'
                 : confirmingDelete
@@ -8638,6 +8930,7 @@
       }
 
       async function requestClearLocalData() {
+        const focusOrigin = focusDescriptorForElement(document.activeElement) || { kind: "main" };
         const remoteBlock = localClearBlockReason();
         if (remoteBlock) {
           settingsMessage = remoteBlock;
@@ -8645,6 +8938,7 @@
           return false;
         }
         const unsynced = await inspectUnsynchronizedData();
+        dialogFocusOrigins.clear = focusOrigin;
         clearDataFlow = { open: true, acknowledged: false, phrase: "", unsynced };
         render();
         return true;
@@ -8652,6 +8946,7 @@
 
       function closeClearDataFlow() {
         clearDataFlow = null;
+        restoreFocusAfterDialog("clear");
         render();
       }
 
@@ -8663,8 +8958,8 @@
         const unlocked = clearDataFlow.acknowledged && clearDataFlow.phrase === "CLEAR" && !blockedMessage;
         const risk = unsynced.workoutCount || unsynced.setChanges || unsynced.queueCount;
         return `
-          <div class="sheet-backdrop" role="presentation">
-            <section class="bottom-sheet destructive-sheet clear-data-sheet" role="dialog" aria-modal="true" aria-labelledby="clear-data-title" data-sheet-content>
+          <div class="sheet-backdrop" data-action="cancel-clear-data" role="presentation">
+            <section class="bottom-sheet dialog-sheet destructive-sheet clear-data-sheet" role="dialog" aria-modal="true" aria-labelledby="clear-data-title" data-sheet-content>
               <div><div class="section-kicker">Danger Zone</div><h2 id="clear-data-title">Clear All Local App Data?</h2><p>This removes the active workout, unsaved sets, offline and cached workout data, cached templates and history, local preferences, app notification settings, IndexedDB records, local storage, service-worker caches, and pending sync operations from this device.</p></div>
               ${blockedMessage ? '<div class="destructive-warning" role="status"><strong>Local clearing is paused</strong><span>' + escapeHtml(blockedMessage) + '</span></div>' : ''}
               ${risk ? '<div class="destructive-warning"><strong>Unsynchronized data detected</strong><span>This device contains ' + unsynced.workoutCount + ' unsynchronized workout' + (unsynced.workoutCount === 1 ? '' : 's') + ' and ' + unsynced.setChanges + ' unsaved set change' + (unsynced.setChanges === 1 ? '' : 's') + '. Clearing now may permanently delete them.</span>' + (unsynced.canSync ? '<button type="button" data-action="sync-before-clear">Sync Now</button>' : '<small>Sync is unavailable or not configured. Export a backup before clearing if this data matters.</small>') + '</div>' : '<div class="inline-panel"><strong>No pending local workout changes were detected.</strong></div>'}
@@ -8672,7 +8967,7 @@
               <label class="toggle-line destructive-ack"><input type="checkbox" data-action="clear-data-ack" ${clearDataFlow.acknowledged ? 'checked' : ''} />I understand that unsynchronized data may be permanently deleted</label>
               <label class="typed-confirmation">Type <strong>CLEAR</strong> to continue<input type="text" value="${escapeHtml(clearDataFlow.phrase)}" data-action="clear-data-phrase" autocomplete="off" autocapitalize="characters" aria-label="Type CLEAR to confirm local data deletion" /></label>
               <div class="sheet-actions stacked">
-                <button class="primary-action" type="button" data-action="cancel-clear-data" autofocus>Keep My Data</button>
+                <button class="primary-action" type="button" data-action="cancel-clear-data">Keep My Data</button>
                 <button class="danger-button" type="button" data-action="confirm-clear-data" ${unlocked ? '' : 'disabled'}>Permanently Clear Local Data</button>
               </div>
             </section>
@@ -10300,7 +10595,7 @@
           const block = document.getElementById("set-" + setId);
           if (!block) return;
           const rect = block.getBoundingClientRect();
-          if (rect.bottom > window.innerHeight - 110 || rect.top < 72) block.scrollIntoView({ behavior: "smooth", block: "center" });
+          if (rect.bottom > window.innerHeight - 110 || rect.top < 72) block.scrollIntoView({ behavior: preferredScrollBehavior(), block: "center" });
         }, 80);
       }
 
@@ -12095,6 +12390,12 @@
           return;
         }
         performInteractionFeedback(feedbackLevelForAction(action, target));
+        if (action === "skip-content") {
+          event.preventDefault();
+          const mainContent = document.getElementById("main-content");
+          if (mainContent) mainContent.focus({ preventScroll: false });
+          return;
+        }
         if (target.classList.contains("sheet-backdrop") && event.target !== target) return;
         if (target.tagName === "INPUT" && isNumericEditAction(action)) {
           target.dataset.replaceOnNextInput = "true";
@@ -12107,9 +12408,12 @@
             return;
           }
           if (target.dataset.tab === "lift" && hasActiveWorkout()) activeSessionId = activeWorkoutId;
+          if (historyEditFlow && target.dataset.tab !== "lift") {
+            dialogFocusOrigins.history = focusDescriptorForElement(target) || { kind: "main" };
+          }
           setActiveTab(target.dataset.tab);
         }
-        if (action === "open-history") { dashboardDetail = { type: "history" }; render(); window.scrollTo({ top: 0, behavior: "smooth" }); }
+        if (action === "open-history") openDashboardDetailView({ type: "history" }, target);
         if (action === "toggle-theme") commit({ ...data, settings: { ...data.settings, theme: data.settings.theme === "light" ? "dark" : "light" } });
         if (action === "toggle-unit") commit(convertAppWeightUnit(data, data.settings.weightUnit === "lb" ? "kg" : "lb"));
         if (action === "request-notifications") enablePushNotifications();
@@ -12238,7 +12542,7 @@
         if (action === "return-active-workout") { templateStartFlow = null; activeSessionId = activeWorkoutId; setActiveTab("lift"); }
         if (action === "request-cancel-workout") requestCancelWorkout("workout", target.dataset.sessionId || "");
         if (action === "request-cancel-workout-from-template") requestCancelWorkout("template", activeWorkoutId);
-        if (action === "keep-workout") { cancelWorkoutFlow = null; render(); }
+        if (action === "keep-workout") closeCancelWorkout();
         if (action === "confirm-cancel-workout") discardActiveWorkout();
         if (action === "cancel-template-start") closeTemplateStart();
         if (action === "continue-template-start" && templateStartFlow) { templateStartFlow = { ...templateStartFlow, step: "readiness" }; render(); }
@@ -12258,40 +12562,26 @@
           date.setDate(date.getDate() + Number(target.dataset.direction || 0) * 7);
           dashboardWeekStart = localDateIso(date) > startOfWeekIso(todayIso()) ? startOfWeekIso(todayIso()) : localDateIso(date);
           dashboardDetail = null;
+          dashboardFocusStack.length = 0;
           expandedVolumeMuscle = "";
           render();
         }
         if (action === "open-dashboard-detail") {
-          dashboardReturnScroll = window.scrollY;
-          dashboardDetail = { type: target.dataset.detail };
-          render();
-          window.scrollTo({ top: 0, behavior: "smooth" });
+          openDashboardDetailView({ type: target.dataset.detail }, target);
         }
-        if (action === "close-dashboard-detail") {
-          dashboardDetail = null;
-          render();
-          window.setTimeout(() => window.scrollTo({ top: dashboardReturnScroll, behavior: "auto" }), 0);
-        }
-        if (action === "open-dashboard-session") { dashboardDetail = { type: "session", id: target.dataset.sessionId }; render(); window.scrollTo({ top: 0, behavior: "smooth" }); }
-        if (action === "open-volume-session") { dashboardReturnScroll = window.scrollY; dashboardDetail = { type: "session", id: target.dataset.sessionId, parent: "volume" }; render(); window.scrollTo({ top: 0, behavior: "smooth" }); }
+        if (action === "close-dashboard-detail") closeDashboardDetailView();
+        if (action === "open-dashboard-session") openDashboardDetailView({ type: "session", id: target.dataset.sessionId }, target);
+        if (action === "open-volume-session") openDashboardDetailView({ type: "session", id: target.dataset.sessionId, parent: "volume" }, target);
         if (action === "open-volume-exercise") {
           const exerciseId = canonicalExerciseId(target.dataset.exerciseName);
           if (exerciseCatalog().some((item) => item.id === exerciseId)) selectChartExercise(exerciseId);
           setActiveTab("charts");
         }
-        if (action === "open-fatigue-flag") { dashboardDetail = { type: "fatigue-flag", id: target.dataset.flagId }; render(); window.scrollTo({ top: 0, behavior: "smooth" }); }
-        if (action === "open-plan-volume-warning") { planVolumeDetailId = target.dataset.flagId; render(); window.scrollTo({ top: 0, behavior: "smooth" }); }
-        if (action === "close-plan-volume-detail") { planVolumeDetailId = ""; render(); window.scrollTo({ top: 0, behavior: "smooth" }); }
+        if (action === "open-fatigue-flag") openDashboardDetailView({ type: "fatigue-flag", id: target.dataset.flagId }, target);
+        if (action === "open-plan-volume-warning") { planVolumeDetailId = target.dataset.flagId; render(); window.scrollTo({ top: 0, behavior: preferredScrollBehavior() }); }
+        if (action === "close-plan-volume-detail") { planVolumeDetailId = ""; render(); window.scrollTo({ top: 0, behavior: preferredScrollBehavior() }); }
         if (action === "dashboard-detail-parent") {
-          if (dashboardDetail?.type === "session" && dashboardDetail.parent === "volume") {
-            dashboardDetail = null;
-            render();
-            window.setTimeout(() => window.scrollTo({ top: dashboardReturnScroll, behavior: "auto" }), 0);
-            return;
-          }
-          dashboardDetail = { type: dashboardDetail?.type === "session" ? (dashboardDetail.parent === "fatigue-flag" ? "fatigue" : "sessions") : "fatigue" };
-          render();
-          window.scrollTo({ top: 0, behavior: "smooth" });
+          closeDashboardDetailView();
         }
         if (action === "request-delete-template") {
           pendingDeleteTemplateId = target.dataset.templateId;
@@ -12346,7 +12636,7 @@
         if (action === "begin-history-edit") beginHistoryEdit();
         if (action === "request-save-history-edits") requestHistoryEditConfirmation("save");
         if (action === "request-cancel-history-edits") requestHistoryEditConfirmation("cancel");
-        if (action === "keep-history-editing") { historyEditConfirm = ""; render(); }
+        if (action === "keep-history-editing") closeHistoryEditConfirmation();
         if (action === "confirm-save-history-edits") saveHistoryEdits();
         if (action === "confirm-cancel-history-edits") cancelHistoryEdits();
         if (action === "return-lift-home") returnToLiftHome();
@@ -12624,16 +12914,21 @@
         if (event.key === "Escape" && (templateStartFlow || cancelWorkoutFlow || historyEditConfirm || clearDataFlow?.open)) {
           event.preventDefault();
           if (templateStartFlow) closeTemplateStart();
-          else if (cancelWorkoutFlow) { cancelWorkoutFlow = null; render(); }
-          else if (historyEditConfirm) { historyEditConfirm = ""; render(); }
+          else if (cancelWorkoutFlow) closeCancelWorkout();
+          else if (historyEditConfirm) closeHistoryEditConfirmation();
           else closeClearDataFlow();
           return;
         }
         if (event.key === "Tab" && (templateStartFlow || cancelWorkoutFlow || historyEditConfirm || clearDataFlow?.open)) {
-          const focusable = Array.from(root.querySelectorAll(".bottom-sheet button:not([disabled]), .bottom-sheet input:not([disabled]), .bottom-sheet select:not([disabled]), .bottom-sheet textarea:not([disabled])"));
+          const activeDialog = root.querySelector('[role="dialog"][aria-modal="true"]');
+          const focusable = Array.from(activeDialog?.querySelectorAll('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], summary, [tabindex]:not([tabindex="-1"])') || []).filter((element) => {
+            const style = window.getComputedStyle(element);
+            return element.tabIndex >= 0 && style.display !== "none" && style.visibility !== "hidden" && element.getClientRects().length > 0;
+          });
           if (focusable.length) {
             const first = focusable[0];
             const last = focusable[focusable.length - 1];
+            if (!activeDialog.contains(document.activeElement)) { event.preventDefault(); first.focus(); return; }
             if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); return; }
             if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); return; }
           }
@@ -12868,6 +13163,7 @@
         if (nextTab === activeTab) return;
         tabScrollPositions.set(activeTab, window.scrollY);
         activeTab = nextTab;
+        queuePostRenderFocus({ kind: "main" });
         render();
         window.setTimeout(() => window.scrollTo({ top: tabScrollPositions.get(activeTab) || 0, behavior: "auto" }), 0);
       });
