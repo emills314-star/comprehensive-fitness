@@ -119,6 +119,57 @@ function assertUniqueEntityIds(data) {
   }
 }
 
+async function installSubmissionProbe(page) {
+  await page.evaluate(() => {
+    const realSubmitWorkout = window.submitWorkout;
+    const realCalculateWorkoutAnalysis = window.calculateWorkoutAnalysis;
+    const realWriteIndexedValue = window.writeIndexedValue;
+    if (typeof realSubmitWorkout !== "function" || typeof realCalculateWorkoutAnalysis !== "function" || typeof realWriteIndexedValue !== "function") {
+      throw new Error("The lifecycle probe could not access the real submission, analysis, and persistence functions.");
+    }
+    const probe = window.__lifecycleSubmissionProbe = {
+      attempts: [],
+      returnedTypes: [],
+      analysisCalls: [],
+      writesStarted: 0,
+      writesCompleted: 0,
+      writesFailed: 0
+    };
+    window.submitWorkout = function (...args) {
+      probe.attempts.push(args.map((value) => String(value)));
+      const result = Reflect.apply(realSubmitWorkout, this, args);
+      probe.returnedTypes.push(typeof result);
+      return result;
+    };
+    window.calculateWorkoutAnalysis = function (...args) {
+      probe.analysisCalls.push(String(args[0]?.id || ""));
+      return Reflect.apply(realCalculateWorkoutAnalysis, this, args);
+    };
+    window.writeIndexedValue = async function (...args) {
+      probe.writesStarted += 1;
+      try {
+        const result = await Reflect.apply(realWriteIndexedValue, this, args);
+        probe.writesCompleted += 1;
+        return result;
+      } catch (error) {
+        probe.writesFailed += 1;
+        throw error;
+      }
+    };
+  });
+}
+
+async function submissionProbe(page) {
+  return page.evaluate(() => structuredClone(window.__lifecycleSubmissionProbe));
+}
+
+async function waitForSubmissionWrites(page) {
+  await expect.poll(() => page.evaluate(() => {
+    const probe = window.__lifecycleSubmissionProbe;
+    return Boolean(probe && probe.writesStarted > 0 && probe.writesCompleted === probe.writesStarted && probe.writesFailed === 0);
+  }), { message: "all application persistence writes routed by the submission attempts must settle", timeout: 12_000 }).toBe(true);
+}
+
 test.describe("template, active-workout, submission, and history lifecycles", () => {
   test("template create, autosave, edit, exercise/warm-up changes, deletion cancellation, confirmation, and reload", async ({ page }) => {
     test.setTimeout(120_000);
@@ -218,12 +269,10 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await expect.soft(increment, "the invalid increment control must be programmatically identified").toHaveAttribute("aria-invalid", "true", { timeout: 750 });
     await expect.soft(rest, "the invalid rest control must be programmatically identified").toHaveAttribute("aria-invalid", "true", { timeout: 750 });
 
-    await expect.poll(async () => Number((await persistedData(page)).dataRevision || 0), {
-      message: "wait for the invalid edit's autosave attempt before checking persistence",
-      timeout: 12_000,
-    }).toBeGreaterThan(Number(before.dataRevision || 0));
+    await page.waitForTimeout(2_200);
     const after = await persistedData(page);
     const afterExercise = after.templates.find((item) => item.id === IDS.controlTemplate).exercises.find((item) => item.id === IDS.controlBenchTemplateExercise);
+    expect.soft(after.dataRevision, "invalid edits must not create a persisted data revision").toBe(before.dataRevision);
     expect.soft(afterExercise.sets, "invalid sets must not replace the last valid persisted value").toBe(beforeExercise.sets);
     expect.soft(afterExercise.reps, "invalid reps must not replace the last valid persisted value").toBe(beforeExercise.reps);
     expect.soft(afterExercise.targetRpe, "invalid RPE must not replace the last valid persisted value").toBe(beforeExercise.targetRpe);
@@ -369,10 +418,25 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     expect(browserErrors, "cancel-workout lifecycle browser errors").toEqual([]);
   });
 
-  test("set log/undo/skip, partial submission cancellation, rapid double confirmation, summary, and reload are exactly once", async ({ page }) => {
+  test("set log/undo/skip, partial cancellation, and two routed submission attempts produce one durable effect", async ({ page }) => {
     test.setTimeout(150_000);
     const browserErrors = collectBrowserErrors(page);
-    await installFixture(page, buildActiveWorkoutLifecycleFixture());
+    const fixture = buildActiveWorkoutLifecycleFixture();
+    const controlRecommendation = {
+      recommendationId: "public-synthetic-control-recommendation",
+      sessionId: IDS.historySession,
+      source: "public-synthetic-idempotency-control"
+    };
+    const controlOverride = {
+      overrideId: "public-synthetic-control-override",
+      recommendationId: controlRecommendation.recommendationId,
+      sessionId: IDS.historySession,
+      exerciseRuntimeId: IDS.historyBenchExercise,
+      outcomeEvaluation: { result: "inconclusive", evaluatedAt: FIXED_NOW }
+    };
+    fixture.recommendationHistory = [controlRecommendation];
+    fixture.manualOverrides = [controlOverride];
+    await installFixture(page, fixture);
 
     const first = page.locator(`[data-action="toggle-set"][data-set-id="${IDS.activeBenchSet1}"]`);
     await first.click();
@@ -386,26 +450,74 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await expect(page.getByText("Log this workout as completed?", { exact: true })).toBeVisible();
     await page.locator('[data-action="cancel-submit-workout"]').click();
     await expect(page.getByText("Log this workout as completed?", { exact: true })).toHaveCount(0);
+    const beforeSubmit = await waitForPersisted(page, (data) => {
+      return data.sets.find((item) => item.id === IDS.activeBenchSet1)?.completed === true
+        && data.sets.find((item) => item.id === IDS.activeRowSet2)?.skipped === true;
+    }, "the logged and skipped set state must persist before submission effects are measured");
+    await installSubmissionProbe(page);
     await page.locator('[data-action="request-submit-workout"]').click();
-    await page.locator('[data-action="confirm-submit-workout"]').evaluate((button) => {
-      button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-      button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
+    await page.locator('[data-action="confirm-submit-workout"]').click();
 
     await expect(page.locator('[aria-label="Post-workout grade and analysis"]')).toBeVisible({ timeout: 45_000 });
     await expect(page.getByText("Workout logged", { exact: true }).first()).toBeVisible();
-    const after = await waitForPersisted(page, (data) => data.sessions.filter((item) => item.id === IDS.activeSession && item.submitted).length === 1, "rapid confirmation must persist one submitted session");
-    expect(after.sessions.filter((item) => item.id === IDS.activeSession)).toHaveLength(1);
-    expect(after.exercises.filter((item) => item.sessionId === IDS.activeSession)).toHaveLength(2);
-    expect(after.sets.filter((item) => item.exerciseId === IDS.activeBenchExercise)).toHaveLength(2);
-    expect(after.sets.find((item) => item.id === IDS.activeBenchSet1).completed).toBe(true);
-    expect(after.sets.find((item) => item.id === IDS.activeRowSet2).skipped).toBe(true);
-    expect(after.sessions.find((item) => item.id === IDS.activeSession).workoutAnalysis.metrics.completedSets).toBe(1);
+    const afterFirst = await waitForPersisted(page, (data) => data.sessions.filter((item) => item.id === IDS.activeSession && item.submitted).length === 1, "the UI confirmation must persist one submitted session");
+    await waitForSubmissionWrites(page);
+    expect(await submissionProbe(page)).toMatchObject({
+      attempts: [[IDS.activeSession]],
+      returnedTypes: ["undefined"],
+      analysisCalls: [IDS.activeSession],
+      writesFailed: 0
+    });
+    expect(afterFirst.dataRevision, "the first routed submission must create exactly one data revision").toBe(Number(beforeSubmit.dataRevision) + 1);
+
+    const secondRoute = await page.evaluate((sessionId) => {
+      const beforeAttempts = window.__lifecycleSubmissionProbe.attempts.length;
+      const result = window.submitWorkout(sessionId);
+      return {
+        beforeAttempts,
+        afterAttempts: window.__lifecycleSubmissionProbe.attempts.length,
+        returnedAttempts: window.__lifecycleSubmissionProbe.returnedTypes.length,
+        returnType: typeof result
+      };
+    }, IDS.activeSession);
+    expect(secondRoute, "the second application-level submission function must be invoked and return").toEqual({
+      beforeAttempts: 1,
+      afterAttempts: 2,
+      returnedAttempts: 2,
+      returnType: "undefined"
+    });
+    await waitForSubmissionWrites(page);
+    const finalProbe = await submissionProbe(page);
+    expect.soft(finalProbe.attempts, "both independent application-level attempts must reach the real submit function").toEqual([[IDS.activeSession], [IDS.activeSession]]);
+    expect.soft(finalProbe.returnedTypes, "both real submit calls must return to their callers").toEqual(["undefined", "undefined"]);
+    expect.soft(finalProbe.analysisCalls, "two submission attempts must calculate the durable analysis only once").toEqual([IDS.activeSession]);
+
+    const after = await persistedData(page);
+    const firstSession = afterFirst.sessions.find((item) => item.id === IDS.activeSession);
+    const finalSession = after.sessions.find((item) => item.id === IDS.activeSession);
+    expect.soft(after.dataRevision, "two routed attempts must produce exactly one persisted submission revision").toBe(Number(beforeSubmit.dataRevision) + 1);
+    expect.soft(after.sessions.filter((item) => item.id === IDS.activeSession), "submission retries must not duplicate the session").toHaveLength(1);
+    expect.soft(after.exercises.filter((item) => item.sessionId === IDS.activeSession)).toHaveLength(2);
+    expect.soft(after.sets.filter((item) => item.exerciseId === IDS.activeBenchExercise)).toHaveLength(2);
+    expect.soft(after.sets.find((item) => item.id === IDS.activeBenchSet1).completed).toBe(true);
+    expect.soft(after.sets.find((item) => item.id === IDS.activeRowSet2).skipped).toBe(true);
+    expect.soft(finalSession.workoutAnalysis, "the one stored analysis must remain identical after the retry").toEqual(firstSession.workoutAnalysis);
+    expect.soft(finalSession.workoutAnalysis.metrics.completedSets).toBe(1);
+    expect.soft(after.recommendationHistory, "the existing recommendation record must remain singular and unchanged").toEqual([controlRecommendation]);
+    expect.soft(after.manualOverrides, "the existing manual-override record must remain singular and unchanged").toEqual([controlOverride]);
+    expect.soft(new Set(after.recommendationHistory.map((item) => item.recommendationId)).size).toBe(after.recommendationHistory.length);
+    expect.soft(new Set(after.manualOverrides.map((item) => item.overrideId)).size).toBe(after.manualOverrides.length);
     assertUniqueEntityIds(after);
 
     await reloadAndWait(page);
     await page.locator('[data-action="set-tab"][data-tab="dashboard"]').click();
     await expect(page.locator(`[data-action="open-session"][data-session-id="${IDS.activeSession}"]`)).toHaveCount(1);
+    const reloaded = await persistedData(page);
+    expect.soft(reloaded.dataRevision, "reload must preserve the single submission effect").toBe(Number(beforeSubmit.dataRevision) + 1);
+    expect.soft(reloaded.sessions.filter((item) => item.id === IDS.activeSession)).toHaveLength(1);
+    expect.soft(reloaded.sessions.find((item) => item.id === IDS.activeSession).workoutAnalysis).toEqual(firstSession.workoutAnalysis);
+    expect.soft(reloaded.recommendationHistory).toEqual([controlRecommendation]);
+    expect.soft(reloaded.manualOverrides).toEqual([controlOverride]);
     expect(browserErrors, "submit lifecycle browser errors").toEqual([]);
   });
 
@@ -436,7 +548,7 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     expect(browserErrors, "history-discard lifecycle browser errors").toEqual([]);
   });
 
-  test("history edit save recalculates analysis once, creates no duplicates, and survives reload", async ({ page }) => {
+  test("history edit save persists nested set changes, recalculates derived analysis, creates no duplicates, and survives reload", async ({ page }) => {
     test.setTimeout(150_000);
     const browserErrors = collectBrowserErrors(page);
     await installFixture(page, buildHistoryLifecycleFixture());
@@ -456,7 +568,11 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     expect(after.exercises.filter((item) => item.sessionId === IDS.historySession)).toHaveLength(2);
     expect(after.sets.filter((item) => item.exerciseId === IDS.historyBenchExercise)).toHaveLength(2);
     expect(after.sets.find((item) => item.id === IDS.historyBenchSet1).reps).toBe(11);
-    expect(after.sessions.find((item) => item.id === IDS.historySession).workoutAnalysis.metrics.completedSets).toBe(4);
+    const savedAnalysis = after.sessions.find((item) => item.id === IDS.historySession).workoutAnalysis;
+    const savedBenchResult = savedAnalysis.exerciseResults.find((item) => item.exerciseId === IDS.historyBenchExercise);
+    expect(savedAnalysis.metrics.completedSets).toBe(4);
+    expect(savedBenchResult.bestSet).toMatchObject({ id: IDS.historyBenchSet1, reps: 11, load: 145 });
+    expect(savedBenchResult.bestSet.text).toContain("11 reps");
     assertUniqueEntityIds(after);
 
     await reloadAndWait(page);
@@ -464,6 +580,21 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     const card = page.locator(`[data-action="open-session"][data-session-id="${IDS.historySession}"]`);
     await expect(card).toHaveCount(1);
     await expect(card).toContainText(EDITED_HISTORY_TITLE);
+    await card.click();
+    await expect(page.getByRole("heading", { name: EDITED_HISTORY_TITLE, exact: true })).toBeVisible();
+    const result = page.locator(".workout-exercise-result").filter({ hasText: NAMES.bench });
+    await result.locator("summary").click();
+    await expect(result).toContainText("11 reps");
+    await expect(result).toContainText("145 lb");
+    const reloaded = await persistedData(page);
+    const reloadedSession = reloaded.sessions.find((item) => item.id === IDS.historySession);
+    const reloadedBenchResult = reloadedSession.workoutAnalysis.exerciseResults.find((item) => item.exerciseId === IDS.historyBenchExercise);
+    expect(reloaded.sets.find((item) => item.id === IDS.historyBenchSet1).reps).toBe(11);
+    expect(reloadedBenchResult.bestSet).toEqual(savedBenchResult.bestSet);
+    expect(reloaded.sessions.filter((item) => item.id === IDS.historySession)).toHaveLength(1);
+    await page.locator('[data-action="begin-history-edit"]').click();
+    await page.locator("summary").filter({ hasText: "Workout details" }).click();
+    await expect(page.locator(`[data-action="set-reps"][data-set-id="${IDS.historyBenchSet1}"]`)).toHaveValue("11");
     expect(browserErrors, "history-save lifecycle browser errors").toEqual([]);
   });
 
