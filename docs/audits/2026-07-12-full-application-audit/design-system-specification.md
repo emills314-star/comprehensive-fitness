@@ -107,7 +107,7 @@ Every interactive primitive defines:
 - validation/error and explanatory association;
 - loading/busy where applicable.
 
-Explicit route changes move focus to the canonical `#main-content` entry; initial load does not claim focus. Same-screen edits retain local focus through an allowlisted data descriptor that survives HTML-string rerenders. Dialog open chooses a safe initial action, traps Tab in both directions across rendered enabled controls, supports Escape/backdrop dismissal where allowed, and restores the invoking control. A hidden-until-focused skip link targets main content. Repeated controls include exercise/set context in their accessible names.
+Explicit route changes move focus to the canonical `#main-content` entry; initial load does not claim focus. Same-screen edits retain local focus through an allowlisted data descriptor that survives HTML-string rerenders. Dialog open verifies that its preferred action is visible, enabled, focusable, and actually focused, otherwise falls back to the first eligible dialog control. That shared filtered set traps Tab in both directions; Escape/backdrop dismissal remains available where allowed and closing restores the invoking control. A hidden-until-focused skip link targets main content. Repeated controls include exercise/set context in their accessible names.
 
 ## Responsive and accessibility rules
 
@@ -117,7 +117,7 @@ Explicit route changes move focus to the canonical `#main-content` entry; initia
 - Equipment: wrapping chips.
 - Planner/day cards: two columns to one where appropriate.
 - Test 200% zoom/large text, light/dark, reduced motion, and forced colors where supported.
-- At 320 CSS px, normal protected composition stays stable; when the computed root text is at least 24 px at a viewport no wider than 380 px, editable titles become multiline and content reflows without document/nested horizontal overflow. At ordinary narrow text sizes, a title changes control only when its rendered value overflows. The keyboard-operable quick-template carousel is the documented exception.
+- At 320 CSS px, normal protected composition stays stable; when the computed root text is at least 24 px at a viewport no wider than 380 px, editable titles become multiline and content reflows without document/nested horizontal overflow. At ordinary narrow text sizes, a title changes control only when its rendered value overflows. The keyboard-operable quick-template carousel is the documented overflow exception; every card remains a native button without conflicting list/listitem roles.
 - Critical touch targets are 44×44 CSS px or provide an equivalent enlarged hit region.
 - Dynamic route/current-set state uses one restrained polite live region; do not announce every keystroke.
 - Charts retain keyboard-addressable labelled data points and an equivalent textual summary.

@@ -69,6 +69,21 @@ async function installScenario(page, options = {}) {
   return fixture;
 }
 
+async function readPersistedAppData(page) {
+  return page.evaluate(() => new Promise((resolve, reject) => {
+    const request = indexedDB.open("comprehensive-fitness", 1);
+    request.onerror = () => reject(request.error || new Error("IndexedDB could not be opened by the regression fixture."));
+    request.onsuccess = () => {
+      const db = request.result;
+      const transaction = db.transaction("state", "readonly");
+      const record = transaction.objectStore("state").get("app-data");
+      record.onerror = () => reject(record.error || new Error("Persisted app data could not be read by the regression fixture."));
+      record.onsuccess = () => resolve(record.result?.value || null);
+      transaction.oncomplete = () => db.close();
+    };
+  }));
+}
+
 function primaryTab(page, tabId) {
   return page.locator(`[data-action="set-tab"][data-tab="${tabId}"]`);
 }
@@ -673,6 +688,16 @@ test("explicit navigation across all five primary tabs moves focus into the new 
   }
 });
 
+test("quick-template cards retain their native computed button role", async ({ page }) => {
+  await installScenario(page, { activeWorkout: false, includeHistory: false });
+  const card = page.getByRole("button", { name: /Public Synthetic Upper Strength/i });
+  await expect(card, "The quick-template card must be discoverable by its native computed button role").toHaveCount(1);
+  await expect(card).toHaveClass(/quick-template-card/);
+  await expect(page.locator(".quick-template-list"), "The visual carousel must not override its native button children with list semantics").not.toHaveAttribute("role");
+  await expect(card, "The native button must not be overwritten with listitem semantics").not.toHaveAttribute("role");
+  expect(await card.ariaSnapshot()).toMatch(/^- ['"]?button\b/);
+});
+
 test("template-start dialog owns initial focus, traps both directions, and restores its durable trigger after every dismissal path", async ({ page }) => {
   await installScenario(page, { activeWorkout: false, includeHistory: false });
   const trigger = page.locator('[data-action="start-template"][data-template-id="public-synthetic-template-upper"]');
@@ -699,6 +724,24 @@ test("template-start dialog owns initial focus, traps both directions, and resto
   await backdrop.click({ position: { x: 6, y: 6 } });
   await expect(dialog).toHaveCount(0);
   await expect.soft(trigger, "Backdrop dismissal must restore focus to the newly rendered template trigger").toBeFocused({ timeout: 1_500 });
+});
+
+test("dialog initial focus falls back to the first visible enabled control when the preferred action is hidden", async ({ page }) => {
+  await installScenario(page, { activeWorkout: false, includeHistory: false });
+  await page.addStyleTag({ content: '[data-action="continue-template-start"] { display: none !important; }' });
+  const trigger = page.locator('[data-action="start-template"][data-template-id="public-synthetic-template-upper"]');
+  await trigger.click();
+
+  const dialog = page.getByRole("dialog", { name: /Start .*Public Synthetic Upper Strength/i });
+  const preferred = dialog.locator('[data-action="continue-template-start"]');
+  const fallback = dialog.getByRole("button", { name: "Close template setup", exact: true });
+  const finalVisibleControl = dialog.getByRole("button", { name: "Cancel", exact: true });
+  await expect(dialog).toBeVisible();
+  await expect(preferred, "The nominal initial action must remain present but be genuinely hidden for this fixture").toBeHidden();
+  await expect(fallback, "Focus must fall back to the first visible enabled dialog control").toBeFocused({ timeout: 1_500 });
+
+  await page.keyboard.press("Shift+Tab");
+  await expect(finalVisibleControl, "The Tab trap must use the same visible/enabled filtering and skip the hidden nominal action").toBeFocused();
 });
 
 test("cancel-workout dialog owns safe focus, traps both directions, and restores its trigger after Escape, close, and backdrop", async ({ page }) => {
@@ -735,6 +778,57 @@ test("cancel-workout dialog owns safe focus, traps both directions, and restores
     await dialog.getByRole("button", { name: "Keep Workout", exact: true }).click();
     await expect(dialog).toHaveCount(0);
   }
+});
+
+test("browser Back guards dirty history edits and reload cannot persist the temporary draft", async ({ page }) => {
+  test.setTimeout(90_000);
+  const fixture = await installScenario(page);
+  const originalSession = fixture.sessions.find((session) => session.id === "public-synthetic-history-session-00");
+  expect(originalSession, "The regression fixture must include a submitted history session").toBeTruthy();
+  await expect.poll(async () => {
+    const persisted = await readPersistedAppData(page);
+    return persisted?.sessions?.find((session) => session.id === originalSession.id)?.title || "";
+  }, {
+    message: "The original submitted workout must be durably stored before temporary editing begins",
+    timeout: 8_000
+  }).toBe(originalSession.title);
+
+  await openPrimaryTab(page, "dashboard");
+  const historyEntry = page.locator(`[data-action="open-session"][data-session-id="${originalSession.id}"]`).first();
+  await expect(historyEntry, "Dashboard history must provide the deterministic entry used to create a browser history record").toBeVisible();
+  await historyEntry.click();
+  await expect(page).toHaveURL(/#lift$/);
+  await page.getByRole("button", { name: "Edit History", exact: true }).click();
+  await page.locator("summary").filter({ hasText: "Workout details" }).click();
+
+  const temporaryTitle = "Temporary title that must never persist";
+  const title = page.locator('[data-action="session-title"]');
+  await title.fill(temporaryTitle);
+  await expect(title).toHaveValue(temporaryTitle);
+  await page.goBack();
+
+  const dialog = page.getByRole("dialog", { name: "Cancel these edits?", exact: true });
+  await expect(dialog, "Browser Back must invoke the same cancel-edit confirmation as explicit navigation").toBeVisible();
+  await expect(page, "A blocked browser Back must restore the canonical Lift URL").toHaveURL(/#lift$/);
+  await expect(page.locator('[data-action="session-title"]'), "The guarded edit must remain visible and temporary beneath the dialog").toHaveValue(temporaryTitle);
+  await dialog.getByRole("button", { name: "Keep Editing", exact: true }).click();
+  await expect(page.locator('[data-action="session-title"]')).toHaveValue(temporaryTitle);
+  await primaryTab(page, "dashboard").click();
+  await expect(dialog, "Explicit tab navigation must retain the same established cancel-edit guard").toBeVisible();
+  await expect(page).toHaveURL(/#lift$/);
+  await expect(page.locator('[data-action="session-title"]')).toHaveValue(temporaryTitle);
+  await dialog.getByRole("button", { name: "Keep Editing", exact: true }).click();
+  const persistedDuringEdit = await readPersistedAppData(page);
+  expect(persistedDuringEdit.sessions.find((session) => session.id === originalSession.id)?.title).toBe(originalSession.title);
+
+  await page.reload();
+  await expect(page.locator("main.app-main")).toBeVisible({ timeout: 45_000 });
+  await expect(page.locator(".history-edit-bar"), "Reload must not resurrect an unconfirmed edit transaction").toHaveCount(0);
+  const persistedAfterReload = await readPersistedAppData(page);
+  expect(persistedAfterReload.sessions.find((session) => session.id === originalSession.id)?.title).toBe(originalSession.title);
+  await openPrimaryTab(page, "dashboard");
+  await page.locator(`[data-action="open-session"][data-session-id="${originalSession.id}"]`).first().click();
+  await expect(page.locator('[data-action="session-title"]'), "Reopening history after reload must show the last explicitly saved value, not the temporary edit").toHaveValue(originalSession.title);
 });
 
 test("Dashboard detail receives initial focus and Back restores the durable originating summary control", async ({ page }) => {

@@ -1010,6 +1010,8 @@ test("quick-start cards retain native button semantics", () => {
   const source = functionSource("renderQuickStartTemplates");
   assertContains(source, /<button\s+class="quick-template-card[^>]*\stype="button"/, "Every quick-start card must remain a native type=button control");
   assert.doesNotMatch(source, /<(?:div|article|a)[^>]*class="quick-template-card[^>]*role="button"/, "Quick-start must not regress to a simulated button");
+  assert.doesNotMatch(source, /class="quick-template-list"[^>]*\srole="list"/, "The visual quick-template carousel must not impose list semantics on native button children");
+  assert.doesNotMatch(source, /class="quick-template-card[^>]*\srole="listitem"/, "A native quick-template button must retain its computed button role");
 });
 
 test("navigation, dialogs, and Lift controls expose complete focus and naming contracts", () => {
