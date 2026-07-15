@@ -106,6 +106,7 @@ async function armImportAudit(page) {
     const persisted = await readIndexedValue("app-data");
     const realWrite = writeIndexedValue;
     const realImport = importDataFile;
+    const realScheduleSave = scheduleSave;
     const muscleCacheKey = `runtime-trust-muscle-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const prescriptionCacheKey = `runtime-trust-prescription-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const muscleSentinel = Object.freeze({ kind: "muscle", key: muscleCacheKey });
@@ -131,6 +132,7 @@ async function armImportAudit(page) {
       importsSettled: 0,
       fileTextReads: 0
     };
+    state.savesScheduled = 0;
     writeIndexedValue = async function observedRuntimeTrustWrite(key, value) {
       if (key === "app-data") state.writesStarted += 1;
       try { return await Reflect.apply(realWrite, this, [key, value]); }
@@ -140,6 +142,10 @@ async function armImportAudit(page) {
       state.importsStarted += 1;
       try { return await Reflect.apply(realImport, this, [file]); }
       finally { state.importsSettled += 1; }
+    };
+    scheduleSave = function observedRuntimeTrustScheduleSave(...args) {
+      state.savesScheduled += 1;
+      return Reflect.apply(realScheduleSave, this, args);
     };
   });
 }
@@ -155,6 +161,7 @@ async function collectImportAudit(page) {
       writesSettled: state.writesSettled,
       importsStarted: state.importsStarted,
       importsSettled: state.importsSettled,
+      savesScheduled: state.savesScheduled,
       fileTextReads: state.fileTextReads,
       dataReferenceUnchanged: data === state.beforeData,
       dataJsonUnchanged: JSON.stringify(data) === state.beforeDataJson,
@@ -320,6 +327,7 @@ test("equal-revision conflict blocks import, tells the truth about export recove
       const conflict = await seedEqualRevisionConflict(page);
       const group = await openBackupGroup(page);
       await armImportAudit(page);
+      const beforeStatus = await readImportStatus(group);
       const input = group.locator('[data-action="import-data"]');
       await input.evaluate((node, fileInit) => {
         const file = new File([fileInit.raw], fileInit.name, { type: "application/json" });
@@ -336,10 +344,27 @@ test("equal-revision conflict blocks import, tells the truth about export recove
         node.files = transfer.files;
         node.dispatchEvent(new Event("change", { bubbles: true }));
       }, { name: "public-synthetic-conflict-blocked-import.json", raw: JSON.stringify(validFullState()) });
-      await page.waitForTimeout(750);
+      await expect.poll(async () => {
+        const [audit, status] = await Promise.all([collectImportAudit(page), readImportStatus(group)]);
+        return {
+          importsStarted: audit.importsStarted,
+          importsSettled: audit.importsSettled,
+          attemptDelta: status.attempt - beforeStatus.attempt,
+          terminal: /^(?:accepted|rejected)$/.test(status.state)
+        };
+      }, {
+        message: "the conflict-guarded import route must attempt and settle exactly once with a terminal UI status",
+        timeout: 20_000
+      }).toEqual({ importsStarted: 1, importsSettled: 1, attemptDelta: 1, terminal: true });
       const audit = await collectImportAudit(page);
+      const terminalStatus = await readImportStatus(group);
       const local = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) || "null"), STORAGE_KEY);
       const persisted = await readPersistedData(page);
+      expect.soft(audit.importsStarted, "conflict mode must route exactly one guarded import attempt").toBe(1);
+      expect.soft(audit.importsSettled, "the conflict-guarded import attempt must settle exactly once").toBe(1);
+      expect.soft(terminalStatus.attempt, "the conflict import must publish exactly one new attempt").toBe(beforeStatus.attempt + 1);
+      expect.soft(terminalStatus.state, "the conflict import must publish a rejected terminal state").toBe("rejected");
+      expect.soft(terminalStatus.text, "the terminal status must identify the unresolved persistence conflict").toMatch(/conflict/i);
       expect.soft(audit.fileTextReads, "conflict mode must block before consuming file bytes").toBe(0);
       expect.soft(audit.writesStarted, "conflict-blocked import must write nothing").toBe(0);
       expect.soft(audit.dataJsonUnchanged, "conflict-blocked import must preserve active runtime bytes").toBe(true);
@@ -452,6 +477,10 @@ async function generateRealSnapshotFixtures(page) {
 
     const unknownSchema = structuredClone(valid);
     unknownSchema.schemaVersion = "99.0.0";
+    const checksumValidUnknownSchema = api.refreshRecommendationChecksum(unknownSchema);
+    if (api.refreshRecommendationChecksum(checksumValidUnknownSchema).checksum !== checksumValidUnknownSchema.checksum) {
+      throw new Error("The unsupported-schema fixture does not carry a stable real checksum.");
+    }
 
     const targetMismatch = structuredClone(valid);
     targetMismatch.muscleGroupId = "mg_lats";
@@ -463,7 +492,7 @@ async function generateRealSnapshotFixtures(page) {
     return {
       valid,
       staleChecksum,
-      unknownSchema,
+      checksumValidUnknownSchema,
       checksumValidTargetMismatch,
       identity,
       target,
@@ -545,7 +574,7 @@ test("stored snapshots preserve immutable history but validate every executable 
   const cases = [
     { name: "real-valid-checksum", snapshot: snapshots.valid, expected: "accepted" },
     { name: "stale-checksum", snapshot: snapshots.staleChecksum, expected: "rejected" },
-    { name: "unknown-schema", snapshot: snapshots.unknownSchema, expected: "rejected" },
+    { name: "unknown-schema", snapshot: snapshots.checksumValidUnknownSchema, expected: "rejected" },
     {
       name: "host-exercise-mismatch",
       snapshot: snapshots.valid,
@@ -694,58 +723,84 @@ test("template numeric values share one fail-closed draft, model, import, and de
     });
   }
 
-  await test.step("direct model boundary", async () => {
-    const { context, page } = await createFixturePage(browser, baseURL, buildTemplateLifecycleFixture());
-    try {
-      const modelResults = await page.evaluate(({ templateId, exerciseId }) => {
-        const cases = [
-          { name: "empty", field: "sets", token: "empty" },
-          { name: "zero", field: "reps", token: "zero" },
-          { name: "negative", field: "reps", token: "negative" },
-          { name: "fractional-integer", field: "sets", token: "fractional" },
-          { name: "nan", field: "targetRpe", token: "nan" },
-          { name: "infinity", field: "increment", token: "infinity" },
-          { name: "huge", field: "restSeconds", token: "huge" }
-        ];
-        const valueFor = (token) => ({
-          empty: "",
-          zero: 0,
-          negative: -1,
-          fractional: 1.5,
-          nan: Number.NaN,
-          infinity: Number.POSITIVE_INFINITY,
-          huge: Number.MAX_SAFE_INTEGER
-        })[token];
-        return cases.map((scenario) => {
-          globalThis.cancelPendingDataSave?.();
-          const beforeData = structuredClone(data);
-          const beforeRevision = data.dataRevision;
-          const beforeAnalysis = analysisRevision;
-          const beforeValue = data.templates.find((item) => item.id === templateId).exercises.find((item) => item.id === exerciseId)[scenario.field];
-          let threw = false;
-          try { patchTemplateExercise(templateId, exerciseId, { [scenario.field]: valueFor(scenario.token) }, false); }
-          catch { threw = true; }
-          const afterExercise = data.templates.find((item) => item.id === templateId).exercises.find((item) => item.id === exerciseId);
-          const result = {
-            name: scenario.name,
-            threw,
-            revisionUnchanged: data.dataRevision === beforeRevision,
-            valueUnchanged: Object.is(afterExercise[scenario.field], beforeValue)
+  const modelCases = [
+    { name: "empty", field: "sets", token: "empty" },
+    { name: "zero", field: "reps", token: "zero" },
+    { name: "negative", field: "reps", token: "negative" },
+    { name: "fractional-integer", field: "sets", token: "fractional" },
+    { name: "nan", field: "targetRpe", token: "nan" },
+    { name: "infinity", field: "increment", token: "infinity" },
+    { name: "huge", field: "restSeconds", token: "huge" }
+  ];
+  for (const scenario of modelCases) {
+    await test.step(`direct model ${scenario.name}`, async () => {
+      const { context, page } = await createFixturePage(browser, baseURL, buildTemplateLifecycleFixture());
+      try {
+        await armImportAudit(page);
+        const before = await page.evaluate(({ templateId, exerciseId, field }) => {
+          const exercise = data.templates.find((item) => item.id === templateId).exercises.find((item) => item.id === exerciseId);
+          return { revision: data.dataRevision, value: exercise[field] };
+        }, { templateId: IDS.controlTemplate, exerciseId: IDS.controlBenchTemplateExercise, field: scenario.field });
+        const mutation = await page.evaluate(({ templateId, exerciseId, field, token }) => {
+          const valueFor = {
+            empty: "",
+            zero: 0,
+            negative: -1,
+            fractional: 1.5,
+            nan: Number.NaN,
+            infinity: Number.POSITIVE_INFINITY,
+            huge: Number.MAX_SAFE_INTEGER
           };
-          globalThis.cancelPendingDataSave?.();
-          data = beforeData;
-          analysisRevision = beforeAnalysis;
-          return result;
+          let threw = false;
+          let errorMessage = "";
+          try { patchTemplateExercise(templateId, exerciseId, { [field]: valueFor[token] }, false); }
+          catch (error) {
+            threw = true;
+            errorMessage = error instanceof Error ? error.message : String(error);
+          }
+          return { threw, errorMessage };
+        }, {
+          templateId: IDS.controlTemplate,
+          exerciseId: IDS.controlBenchTemplateExercise,
+          field: scenario.field,
+          token: scenario.token
         });
-      }, { templateId: IDS.controlTemplate, exerciseId: IDS.controlBenchTemplateExercise });
-      for (const result of modelResults) {
-        expect.soft(result.revisionUnchanged, `${result.name} direct model input must not create a revision`).toBe(true);
-        expect.soft(result.valueUnchanged, `${result.name} direct model input must preserve the prior value`).toBe(true);
+
+        // scheduleSave waits 1.8 s and its idle callback has a 1.5 s deadline. Leave
+        // an invalid mutation's full persistence path intact so it cannot be canceled away.
+        await page.waitForTimeout(3_500);
+        const audit = await collectImportAudit(page);
+        const persisted = await readPersistedData(page);
+        const after = await page.evaluate(({ templateId, exerciseId, field }) => {
+          const exercise = data.templates.find((item) => item.id === templateId).exercises.find((item) => item.id === exerciseId);
+          return { revision: data.dataRevision, value: exercise[field] };
+        }, { templateId: IDS.controlTemplate, exerciseId: IDS.controlBenchTemplateExercise, field: scenario.field });
+        const persistedExercise = persisted.templates.find((item) => item.id === IDS.controlTemplate).exercises.find((item) => item.id === IDS.controlBenchTemplateExercise);
+
+        expect.soft(mutation.threw, `${scenario.name} direct model input must throw and fail closed`).toBe(true);
+        expect.soft(audit.savesScheduled, `${scenario.name} direct model input must schedule zero saves`).toBe(0);
+        expect.soft(audit.writesStarted, `${scenario.name} direct model input must enqueue zero durable writes`).toBe(0);
+        expect.soft(audit.writesSettled, `${scenario.name} direct model input must settle zero durable writes`).toBe(0);
+        expect.soft(audit.dataReferenceUnchanged, `${scenario.name} direct model input must preserve runtime identity`).toBe(true);
+        expect.soft(audit.dataJsonUnchanged, `${scenario.name} direct model input must preserve runtime bytes`).toBe(true);
+        expect.soft(audit.persistedJsonUnchanged, `${scenario.name} direct model input must preserve durable bytes`).toBe(true);
+        expect.soft(after.revision, `${scenario.name} direct model input must preserve the revision`).toBe(before.revision);
+        expect.soft(after.value, `${scenario.name} direct model input must preserve the prior value`).toBe(before.value);
+        expect.soft(persisted.dataRevision, `${scenario.name} direct model input must preserve the durable revision`).toBe(before.revision);
+        expect.soft(persistedExercise[scenario.field], `${scenario.name} direct model input must preserve the durable value`).toBe(before.value);
+
+        await page.reload();
+        await expect(page.locator("main.app-main")).toBeVisible({ timeout: 45_000 });
+        const reloaded = await page.evaluate(({ templateId, exerciseId, field }) => {
+          const exercise = data.templates.find((item) => item.id === templateId).exercises.find((item) => item.id === exerciseId);
+          return { revision: data.dataRevision, value: exercise[field] };
+        }, { templateId: IDS.controlTemplate, exerciseId: IDS.controlBenchTemplateExercise, field: scenario.field });
+        expect.soft(reloaded, `${scenario.name} direct model rejection must remain unchanged after reload`).toEqual(before);
+      } finally {
+        await context.close();
       }
-    } finally {
-      await context.close();
-    }
-  });
+    });
+  }
 
   const importCases = [
     { name: "explicit-empty", field: "sets", value: "" },
