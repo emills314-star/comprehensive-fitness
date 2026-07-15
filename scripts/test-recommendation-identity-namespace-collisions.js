@@ -26,6 +26,24 @@ function aliasesFor(row) {
     .filter(Boolean);
 }
 
+function normalizedVariants(value) {
+  const trimmed = String(value).trim();
+  const variants = [
+    trimmed,
+    trimmed.toUpperCase(),
+    trimmed.toLowerCase(),
+    ` \t${trimmed}\n `,
+    trimmed.replace(/[\s_-]+/g, " "),
+    trimmed.replace(/[\s_-]+/g, "-"),
+    trimmed.replace(/[\s_-]+/g, "_")
+  ];
+  const uniqueVariants = [...new Set(variants)];
+  uniqueVariants.forEach((variant) => {
+    assert.equal(identityKey(variant), identityKey(value), `${JSON.stringify(variant)} must remain normalization-equivalent to ${JSON.stringify(value)}.`);
+  });
+  return uniqueVariants;
+}
+
 function exercise(exerciseId, exerciseName, exerciseAliases = "") {
   return {
     exercise_id: exerciseId,
@@ -72,6 +90,7 @@ function relationship(exerciseId, index) {
 
 const exerciseDatabase = [
   exercise("ex_clean_press", "Clean Canonical Press", "Clean Exported Alias"),
+  exercise("ex_same_surface_control", "Same Surface Press", "same-surface-press|SAME_SURFACE_PRESS|Unique Safe Surface Alias"),
 
   exercise("ex_dual_id_press", "Dual ID First", "Dual ID First Alias"),
   exercise("ex_dual__id__press", "Dual ID Second", "Dual ID Second Alias"),
@@ -119,13 +138,20 @@ function researchData() {
   };
 }
 
-function createEngine(personalRows = []) {
+function createEngine(personalRows = [], options = {}) {
+  const resolvedResearchData = researchData();
+  const resolvedPersonalRows = clone(personalRows);
+  if (options.reversePublicCatalog) {
+    resolvedResearchData.exerciseDatabase.reverse();
+    resolvedResearchData.exerciseMuscleMap.reverse();
+  }
+  if (options.reversePersonalRows) resolvedPersonalRows.reverse();
   return createPrescriptionEngine({
     personalData: {
-      exerciseScores: clone(personalRows),
+      exerciseScores: resolvedPersonalRows,
       metadata: { methodology_version: TAXONOMY_VERSION }
     },
-    researchData: researchData()
+    researchData: resolvedResearchData
   });
 }
 
@@ -220,6 +246,7 @@ function test(name, fn, category) {
 }
 
 const baseEngine = createEngine();
+const reversedPublicEngine = createEngine([], { reversePublicCatalog: true });
 
 [
   ["exact canonical ID", "ex_clean_press", "canonical_research_id"],
@@ -233,6 +260,27 @@ const baseEngine = createEngine();
     assert.deepEqual(actualContract(baseEngine, input), resolvedContract("ex_clean_press", source));
   }, "noncolliding_public_resolution");
 });
+
+test("duplicate normalized name and alias surfaces owned by one canonical exercise remain resolvable", () => {
+  const inputs = [
+    "ex_same_surface_control",
+    "Same Surface Press",
+    "same-surface-press",
+    "SAME_SURFACE_PRESS",
+    "same_surface_press",
+    "Unique Safe Surface Alias"
+  ];
+  const expected = inputs.map((input) => resolvedContract(
+    "ex_same_surface_control",
+    input === "ex_same_surface_control"
+      ? "canonical_research_id"
+      : identityKey(input) === identityKey("Same Surface Press")
+        ? "canonical_research_name"
+        : "research_alias"
+  ));
+  assert.deepEqual(inputs.map((input) => actualContract(baseEngine, input)), expected);
+  assert.deepEqual(inputs.map((input) => actualContract(reversedPublicEngine, input)), expected);
+}, "same_exercise_duplicate_surface_control");
 
 const ambiguousPublicCases = [
   ["ID/ID exact underscore spelling", "ex_dual_id_press"],
@@ -262,57 +310,87 @@ const ambiguousPublicCases = [
 
 ambiguousPublicCases.forEach(([label, input]) => {
   test(`ambiguous public ${label} fails closed in identity and target resolvers`, () => {
-    assert.deepEqual(actualContract(baseEngine, input), ambiguousPublicContract());
+    const expected = ambiguousPublicContract();
+    assert.deepEqual({
+      forwardPublicCatalog: actualContract(baseEngine, input),
+      reversedPublicCatalog: actualContract(reversedPublicEngine, input)
+    }, {
+      forwardPublicCatalog: expected,
+      reversedPublicCatalog: expected
+    });
   }, "ambiguous_public_namespace");
 });
 
-const collisionRows = [
+const collisionScenarios = [
   {
-    exercise_id: "EX-PUBLIC-ID-SURFACE",
-    exercise_name: "Personal Valid Public-ID Collision",
-    research_exercise_id: "ex_clean_press",
+    personalRow: {
+      exercise_id: "EX-PUBLIC-ID-SURFACE",
+      exercise_name: "Personal Valid Public-ID Collision",
+      research_exercise_id: "ex_clean_press"
+    },
     collision_surface: "public_id",
-    crosswalk_validity: "valid"
+    crosswalk_validity: "valid",
+    publicExerciseId: "ex_public_id_surface",
+    publicIdentityValue: "ex_public_id_surface"
   },
   {
-    exercise_id: "ex public id surface",
-    exercise_name: "Personal Invalid Public-ID Collision",
-    research_exercise_id: "ex_missing_research_exercise",
+    personalRow: {
+      exercise_id: "ex public id surface",
+      exercise_name: "Personal Invalid Public-ID Collision",
+      research_exercise_id: "ex_missing_research_exercise"
+    },
     collision_surface: "public_id",
-    crosswalk_validity: "invalid"
+    crosswalk_validity: "invalid",
+    publicExerciseId: "ex_public_id_surface",
+    publicIdentityValue: "ex_public_id_surface"
   },
   {
-    exercise_id: "public_name_surface",
-    exercise_name: "Personal Valid Public-Name Collision",
-    research_exercise_id: "ex_clean_press",
+    personalRow: {
+      exercise_id: "public_name_surface",
+      exercise_name: "Personal Valid Public-Name Collision",
+      research_exercise_id: "ex_clean_press"
+    },
     collision_surface: "public_name",
-    crosswalk_validity: "valid"
+    crosswalk_validity: "valid",
+    publicExerciseId: "ex_public_name_owner",
+    publicIdentityValue: "Public Name Surface"
   },
   {
-    exercise_id: "PUBLIC-NAME-SURFACE",
-    exercise_name: "Personal Invalid Public-Name Collision",
-    research_exercise_id: "ex_missing_research_exercise",
+    personalRow: {
+      exercise_id: "PUBLIC-NAME-SURFACE",
+      exercise_name: "Personal Invalid Public-Name Collision",
+      research_exercise_id: "ex_missing_research_exercise"
+    },
     collision_surface: "public_name",
-    crosswalk_validity: "invalid"
+    crosswalk_validity: "invalid",
+    publicExerciseId: "ex_public_name_owner",
+    publicIdentityValue: "Public Name Surface"
   },
   {
-    exercise_id: "public_alias_surface",
-    exercise_name: "Personal Valid Public-Alias Collision",
-    research_exercise_id: "ex_clean_press",
+    personalRow: {
+      exercise_id: "public_alias_surface",
+      exercise_name: "Personal Valid Public-Alias Collision",
+      research_exercise_id: "ex_clean_press"
+    },
     collision_surface: "public_alias",
-    crosswalk_validity: "valid"
+    crosswalk_validity: "valid",
+    publicExerciseId: "ex_public_alias_owner",
+    publicIdentityValue: "Public Alias Surface"
   },
   {
-    exercise_id: "PUBLIC-ALIAS-SURFACE",
-    exercise_name: "Personal Invalid Public-Alias Collision",
-    research_exercise_id: "ex_missing_research_exercise",
+    personalRow: {
+      exercise_id: "PUBLIC-ALIAS-SURFACE",
+      exercise_name: "Personal Invalid Public-Alias Collision",
+      research_exercise_id: "ex_missing_research_exercise"
+    },
     collision_surface: "public_alias",
-    crosswalk_validity: "invalid"
+    crosswalk_validity: "invalid",
+    publicExerciseId: "ex_public_alias_owner",
+    publicIdentityValue: "Public Alias Surface"
   }
 ];
 
-const personalRows = [
-  ...collisionRows,
+const compatibilityPersonalRows = [
   {
     exercise_id: "custom_noncolliding_press",
     exercise_name: "My Legitimate Noncolliding Press",
@@ -324,7 +402,49 @@ const personalRows = [
     research_exercise_id: "ex_missing_research_exercise"
   }
 ];
-const personalEngine = createEngine(personalRows);
+const compatibilityPersonalEngine = createEngine(compatibilityPersonalRows);
+
+function authoritativePublicSpellings(exerciseId) {
+  const row = exerciseDatabase.find((candidate) => candidate.exercise_id === exerciseId);
+  assert.ok(row, `Missing public collision fixture ${exerciseId}.`);
+  return [
+    { value: row.exercise_id, source: "canonical_research_id" },
+    { value: row.exercise_name, source: "canonical_research_name" },
+    ...aliasesFor(row).map((value) => ({
+      value,
+      source: identityKey(value) === identityKey(row.exercise_name) ? "canonical_research_name" : "research_alias"
+    }))
+  ];
+}
+
+function publicSourceForInput(exerciseId, value) {
+  const row = exerciseDatabase.find((candidate) => candidate.exercise_id === exerciseId);
+  const trimmed = String(value).trim();
+  if (trimmed === row.exercise_id) return "canonical_research_id";
+  if (identityKey(trimmed) === identityKey(row.exercise_id)) return "normalized_canonical_research_id";
+  if (identityKey(trimmed) === identityKey(row.exercise_name)) return "canonical_research_name";
+  return "research_alias";
+}
+
+function scenarioEngines(scenario, index) {
+  const controlRow = {
+    exercise_id: `custom_safe_control_${index + 1}`,
+    exercise_name: `Personal Safe Control ${index + 1}`,
+    research_exercise_id: "ex_clean_press"
+  };
+  const rows = [scenario.personalRow, controlRow];
+  return {
+    controlRow,
+    engines: [
+      { label: "forward_public_forward_personal", engine: createEngine(rows) },
+      { label: "reversed_public_forward_personal", engine: createEngine(rows, { reversePublicCatalog: true }) },
+      { label: "forward_public_reversed_personal", engine: createEngine(rows, { reversePersonalRows: true }) },
+      { label: "reversed_public_reversed_personal", engine: createEngine(rows, { reversePublicCatalog: true, reversePersonalRows: true }) }
+    ]
+  };
+}
+
+const isolatedCollisionFixtures = collisionScenarios.map(scenarioEngines);
 
 test("synthetic namespace fixtures are schema-shaped, colliding, and non-vacuous", () => {
   assert.equal(new Set(exerciseDatabase.map((row) => row.exercise_id)).size, exerciseDatabase.length, "Exact public IDs must remain unique.");
@@ -335,33 +455,85 @@ test("synthetic namespace fixtures are schema-shaped, colliding, and non-vacuous
   ambiguousPublicCases.forEach(([label, input]) => {
     assert.ok((publicIdentityTargets.get(identityKey(input))?.size || 0) > 1, `${label} must map to multiple public exercise IDs.`);
   });
-  collisionRows.forEach((row) => {
-    assert.ok(publicIdentityTargets.has(identityKey(row.exercise_id)), `${row.exercise_id} must overlap the public namespace.`);
+  collisionScenarios.forEach((scenario, index) => {
+    const personalId = scenario.personalRow.exercise_id;
+    const publicTargets = publicIdentityTargets.get(identityKey(personalId));
+    assert.deepEqual([...publicTargets], [scenario.publicExerciseId], `${personalId} must overlap exactly one public exercise, not another personal ID.`);
+    assert.equal(identityKey(personalId), identityKey(scenario.publicIdentityValue), `${personalId} must overlap its intended public ${scenario.collision_surface}.`);
+    assert.notEqual(personalId, scenario.publicIdentityValue, `${personalId} must remain distinguishable from the authoritative public spelling.`);
+    assert.notEqual(identityKey(isolatedCollisionFixtures[index].controlRow.exercise_id), identityKey(personalId), "The isolated personal control must not collide with the reserved personal ID.");
+    assert.ok(!publicIdentityTargets.has(identityKey(isolatedCollisionFixtures[index].controlRow.exercise_id)), "The isolated personal control must not collide with the public namespace.");
   });
   ["ex_clean_press", "Clean Canonical Press", "Clean Exported Alias"].forEach((value) => {
     assert.deepEqual([...publicIdentityTargets.get(identityKey(value))], ["ex_clean_press"], `${value} must remain a noncolliding control.`);
   });
+  assert.deepEqual([...publicIdentityTargets.get(identityKey("Same Surface Press"))], ["ex_same_surface_control"], "Repeated surfaces owned by one canonical ID must not be classified as ambiguous.");
 }, "fixture_integrity");
 
-collisionRows.forEach((row) => {
-  test(`${row.crosswalk_validity} personal ID colliding with ${row.collision_surface} is quarantined`, () => {
+collisionScenarios.forEach((scenario, index) => {
+  const personalId = scenario.personalRow.exercise_id;
+  const fixture = isolatedCollisionFixtures[index];
+  test(`${scenario.crosswalk_validity} personal ID colliding with ${scenario.collision_surface} is quarantined deterministically`, () => {
+    const expected = personalCollisionContract(personalId);
     assert.deepEqual(
-      actualContract(personalEngine, row.exercise_id),
-      personalCollisionContract(row.exercise_id),
-      "A public-namespace collision must take precedence over valid or invalid personal crosswalk metadata."
+      Object.fromEntries(fixture.engines.map(({ label, engine }) => [label, actualContract(engine, personalId)])),
+      Object.fromEntries(fixture.engines.map(({ label }) => [label, expected])),
+      "Only the exact reserved personal identity must fail with the collision reason, independent of public and personal row order."
     );
-  }, `personal_public_collision_${row.crosswalk_validity}`);
+  }, `personal_public_collision_${scenario.crosswalk_validity}`);
+
+  test(`${scenario.collision_surface} authoritative public spellings remain resolvable after the ${scenario.crosswalk_validity} personal collision`, () => {
+    const spellings = authoritativePublicSpellings(scenario.publicExerciseId);
+    const expected = spellings.map(({ source }) => resolvedContract(scenario.publicExerciseId, source));
+    fixture.engines.forEach(({ label, engine }) => {
+      assert.deepEqual(spellings.map(({ value }) => actualContract(engine, value)), expected, `${label} over-broadly quarantined the authoritative public exercise.`);
+    });
+  }, "collision_scope_public_control");
+
+  test(`only the exact ${scenario.crosswalk_validity} personal ID representation is reserved for the ${scenario.collision_surface} collision`, () => {
+    const publicVariants = normalizedVariants(scenario.publicIdentityValue)
+      .filter((value) => value.trim() !== personalId);
+    assert.ok(publicVariants.length >= 3, "The normalized public-side control requires multiple non-reserved case and separator variants.");
+    const expected = publicVariants.map((value) => resolvedContract(scenario.publicExerciseId, publicSourceForInput(scenario.publicExerciseId, value)));
+    fixture.engines.forEach(({ label, engine }) => {
+      assert.deepEqual(
+        publicVariants.map((value) => actualContract(engine, value)),
+        expected,
+        `${label} treated a non-exact normalized public spelling as the reserved stable personal ID.`
+      );
+    });
+  }, "collision_scope_normalized_public_control");
+
+  test(`unrelated public and personal identities remain resolvable after the ${scenario.crosswalk_validity} ${scenario.collision_surface} collision`, () => {
+    const unrelatedPublicSpellings = [
+      { value: "ex_clean_press", source: "canonical_research_id" },
+      { value: "Clean Canonical Press", source: "canonical_research_name" },
+      { value: "Clean Exported Alias", source: "research_alias" }
+    ];
+    fixture.engines.forEach(({ label, engine }) => {
+      assert.deepEqual(
+        unrelatedPublicSpellings.map(({ value }) => actualContract(engine, value)),
+        unrelatedPublicSpellings.map(({ source }) => resolvedContract("ex_clean_press", source)),
+        `${label} over-broadly quarantined unrelated public identities.`
+      );
+      assert.deepEqual(
+        actualContract(engine, fixture.controlRow.exercise_id),
+        resolvedContract("ex_clean_press", "personal_explicit_crosswalk"),
+        `${label} over-broadly quarantined an unrelated trusted personal identity.`
+      );
+    });
+  }, "collision_scope_unrelated_controls");
 });
 
 test("legitimate noncolliding personal ID with a valid crosswalk still resolves", () => {
   assert.deepEqual(
-    actualContract(personalEngine, "custom_noncolliding_press"),
+    actualContract(compatibilityPersonalEngine, "custom_noncolliding_press"),
     resolvedContract("ex_clean_press", "personal_explicit_crosswalk")
   );
 }, "noncolliding_personal_resolution");
 
 test("unknown identity retains the established unknown reason", () => {
-  assert.deepEqual(actualContract(personalEngine, "completely_unknown_identity"), {
+  assert.deepEqual(actualContract(compatibilityPersonalEngine, "completely_unknown_identity"), {
     identity: {
       status: "unresolved",
       exerciseId: undefined,
@@ -380,7 +552,7 @@ test("unknown identity retains the established unknown reason", () => {
 }, "established_reason_compatibility");
 
 test("invalid noncolliding crosswalk retains the established reconciliation reason", () => {
-  assert.deepEqual(actualContract(personalEngine, "custom_invalid_noncollision"), {
+  assert.deepEqual(actualContract(compatibilityPersonalEngine, "custom_invalid_noncollision"), {
     identity: {
       status: "unresolved",
       exerciseId: "custom_invalid_noncollision",
@@ -422,7 +594,8 @@ console.log(JSON.stringify({
   failed_cases: failures.length,
   total_cases: tests.length,
   ambiguous_public_case_count: ambiguousPublicCases.length,
-  personal_public_collision_case_count: collisionRows.length,
+  personal_public_collision_case_count: collisionScenarios.length,
+  collision_order_permutation_count: 4,
   passed_by_category: Object.fromEntries([...passedByCategory.entries()].sort()),
   failed_by_category: Object.fromEntries([...failedByCategory.entries()].sort()),
   expected_reason_contract: {
