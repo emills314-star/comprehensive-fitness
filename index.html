@@ -1701,6 +1701,19 @@
         margin: 0;
       }
 
+      .template-validation-alert {
+        color: var(--red);
+        font-size: 0.86rem;
+        font-weight: 800;
+        line-height: 1.4;
+        margin: 0;
+      }
+
+      input[aria-invalid="true"] {
+        border-color: var(--red);
+        box-shadow: 0 0 0 1px var(--red);
+      }
+
       .settings-links {
         display: flex;
         flex-wrap: wrap;
@@ -2162,6 +2175,9 @@
       let chartExerciseSearchError = "";
       let chartExerciseHighlight = 0;
       let recentChartExerciseIds = [];
+      const chartPointActivations = new Map();
+      let chartPointActivationEpoch = 0;
+      let chartPointActivationSequence = 0;
       let addExerciseDraft = "";
       let addExercisePrimaryMuscle = "";
       let addExerciseSecondaryMuscle = "";
@@ -2256,6 +2272,7 @@
         measurePerformance("fixture:serializeFullData", () => JSON.stringify(data), { sessions: data.sessions.length, exercises: data.exercises.length, sets: data.sets.length });
       }
       let pendingSubmitSessionId = "";
+      const workoutSubmissionsInProgress = new Set();
       let completedSummarySessionId = "";
       let chartDetailPoint = null;
       let hypertrophyScoreExpanded = false;
@@ -2283,6 +2300,17 @@
       const exerciseProgressCache = new Map();
       const previousPerformanceCache = new Map();
       const muscleAssignmentCache = new Map();
+      const prescriptionIdentityResolutionCache = new Map();
+      let prescriptionIdentityCacheEngine = null;
+      let prescriptionIdentityCacheResolver = null;
+      const templateNumericDrafts = new Map();
+      const templateNumericFields = Object.freeze({
+        "template-exercise-sets": Object.freeze({ field: "sets", label: "sets", min: 1, max: 100, step: 1, integer: true }),
+        "template-exercise-reps": Object.freeze({ field: "reps", label: "repetitions", min: 1, max: 1000, step: 1, integer: true }),
+        "template-exercise-rpe": Object.freeze({ field: "targetRpe", label: "target RPE", min: 5, max: 10, step: 0.5, integer: false }),
+        "template-exercise-increment": Object.freeze({ field: "increment", label: "load increment", min: 0.5, max: 10000, step: 0.5, integer: false }),
+        "template-exercise-rest": Object.freeze({ field: "restSeconds", label: "rest seconds", min: 15, max: 3600, step: 15, integer: true })
+      });
       const recentHistoryDataIssueIds = new Set();
       let templateStartFlow = null;
       const prescriptionApi = window.ComprehensiveFitnessPrescriptionEngine || null;
@@ -3268,23 +3296,64 @@
         return null;
       }
 
+      function resolvePrescriptionExerciseIdentity(exerciseOrName) {
+        if (!prescriptionEngine || typeof prescriptionEngine.resolveExerciseIdentity !== "function") {
+          return { status: "unresolved", reason: "unknown_exercise_identity" };
+        }
+        const exercise = typeof exerciseOrName === "string" ? { name: exerciseOrName } : (exerciseOrName || {});
+        const explicitIdentity = exercise.researchExerciseId || exercise.research_exercise_id || exercise.exerciseId || exercise.exercise_id || "";
+        const requestedValue = String(explicitIdentity || exercise.name || "").trim();
+        if (!requestedValue) return { status: "unresolved", reason: "unknown_exercise_identity" };
+        const resolver = prescriptionEngine.resolveExerciseIdentity;
+        if (prescriptionIdentityCacheEngine !== prescriptionEngine || prescriptionIdentityCacheResolver !== resolver) {
+          prescriptionIdentityResolutionCache.clear();
+          prescriptionIdentityCacheEngine = prescriptionEngine;
+          prescriptionIdentityCacheResolver = resolver;
+        }
+        let resolved = prescriptionIdentityResolutionCache.get(requestedValue);
+        if (!resolved) {
+          resolved = resolver.call(prescriptionEngine, requestedValue) || { status: "unresolved", reason: "unknown_exercise_identity" };
+          prescriptionIdentityResolutionCache.set(requestedValue, resolved);
+        }
+        if (resolved.status === "resolved" && resolved.exerciseId) return resolved;
+        if (resolved.reason && resolved.reason !== "unknown_exercise_identity") return resolved;
+
+        // The engine deliberately leaves unmapped personal records unresolved.
+        // Only a namespaced stable ID that is present in the reconciled personal
+        // evidence index may remain executable as a trusted custom identity.
+        const evidence = prescriptionEngine.evidence;
+        const personalRecord = personalExerciseRecordForName(requestedValue, evidence)
+          || (!explicitIdentity && exercise.name ? personalExerciseRecordForName(exercise.name, evidence) : null);
+        const personalId = resolved.exerciseId || personalRecord?.exercise_id || personalRecord?.exerciseId || "";
+        const reconciled = personalId ? evidence?.personal?.reconciledIdentityByExerciseId?.get(personalId) : null;
+        if (/^(?:custom|user)(?::|_)/.test(personalId) && reconciled && !reconciled.invalid && !reconciled.researchExerciseId) {
+          return { status: "resolved", exerciseId: personalId, source: "trusted_custom_personal_evidence", custom: true };
+        }
+        return { status: "unresolved", ...(resolved.exerciseId ? { exerciseId: resolved.exerciseId } : {}), reason: resolved.reason || "unknown_exercise_identity" };
+      }
+
       function prescriptionExerciseIdentity(exerciseName) {
+        if (typeof resolvePrescriptionExerciseIdentity === "function") {
+          const resolved = resolvePrescriptionExerciseIdentity(exerciseName);
+          return resolved.status === "resolved" ? resolved.exerciseId : null;
+        }
         if (!prescriptionEngine) return null;
+        if (typeof prescriptionEngine.resolveExerciseIdentity === "function") {
+          const resolved = prescriptionEngine.resolveExerciseIdentity(exerciseName);
+          if (resolved?.status === "resolved") return resolved.exerciseId;
+          if (resolved?.reason && resolved.reason !== "unknown_exercise_identity") return null;
+        }
         const requested = normalizePrescriptionIdentity(exerciseName);
         const evidence = prescriptionEngine.evidence;
-        const researchId = evidence.research.exerciseIdByAlias.get(requested)
-          || evidence.research.exerciseDatabase.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === requested)?.exercise_id;
+        const researchId = evidence?.research?.exerciseIdByAlias?.get(requested)
+          || evidence?.research?.exerciseDatabase?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === requested)?.exercise_id;
         if (researchId) return researchId;
-        const personal = evidence.personal;
-        const personalRecord = typeof personalExerciseRecordForName === "function"
-          ? personalExerciseRecordForName(exerciseName, evidence)
-          : personal.exerciseScores?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === requested)
-            || personal.exercisePrescriptions?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === requested)
-            || personal.exerciseMuscleScores?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === requested);
+        const records = [evidence?.personal?.exerciseScores, evidence?.personal?.exercisePrescriptions, evidence?.personal?.exerciseMuscleScores];
+        const personalRecord = records.flatMap((items) => Array.isArray(items) ? items : []).find((item) => normalizePrescriptionIdentity(item?.exercise_name || item?.exerciseName || item?.exercise_id || item?.exerciseId) === requested);
         const personalId = personalRecord?.exercise_id || personalRecord?.exerciseId || "";
-        const reconciled = personal.reconciledIdentityByExerciseId?.get(personalId);
+        const reconciled = evidence?.personal?.reconciledIdentityByExerciseId?.get(personalId);
         if (reconciled?.invalid) return null;
-        if (reconciled && !reconciled.invalid && reconciled.researchExerciseId) return reconciled.researchExerciseId;
+        if (reconciled?.researchExerciseId) return reconciled.researchExerciseId;
         return /^(?:custom|user)(?::|_)/.test(personalId) ? personalId : null;
       }
 
@@ -3379,6 +3448,15 @@
         return { muscleExerciseHistories, programMuscleHistories: Array.from(byMuscle.values()) };
       }
 
+      function trustedCustomPrescriptionMuscleGroup(exercise, exerciseId) {
+        const manualMuscle = String(exercise?.primaryMuscle || "").trim();
+        if (manualMuscle) return normalizePrescriptionIdentity(manualMuscle);
+        const personal = prescriptionEngine?.evidence?.personal;
+        const explicitPersonalRecord = personal?.prescriptionsFor?.(exerciseId)?.find((record) => record?.muscle_group_id || record?.muscleGroupId)
+          || personal?.muscleScoresFor?.(exerciseId)?.find((record) => record?.muscle_group_id || record?.muscleGroupId);
+        return String(explicitPersonalRecord?.muscle_group_id || explicitPersonalRecord?.muscleGroupId || "").trim();
+      }
+
       function unifiedPrescriptionSnapshot(exerciseOrName, options = {}) {
         if (!prescriptionEngine || prescriptionEvidenceStatus.state === "error") return null;
         const hardConstraintRejection = (reason, message) => {
@@ -3443,10 +3521,56 @@
           executableActions: []
         });
         const exercise = typeof exerciseOrName === "string" ? { name: exerciseOrName } : (exerciseOrName || {});
-        if (exercise.recommendationSnapshot) return exercise.recommendationSnapshot;
-        const exerciseId = options.exerciseId || prescriptionExerciseIdentity(exercise.name);
-        const muscleGroupId = normalizePrescriptionIdentity(options.muscleGroupId || prescriptionMuscleGroup(exercise));
-        if (!exerciseId) return hardConstraintRejection("invalid_exercise_identity", "The exercise does not have a valid reconciled public or trusted custom identity.");
+        if (exercise.recommendationSnapshot) {
+          const owningSession = exercise.sessionId
+            ? data.sessions.find((session) => session.id === exercise.sessionId)
+            : null;
+          // Submitted history is an immutable audit record. It must remain
+          // byte/reference exact even when a later engine no longer accepts the
+          // historical schema. Active and template snapshots are executable
+          // state, so they must pass the current integrity and identity boundary
+          // before reuse.
+          if (owningSession && isSessionSubmitted(owningSession)) return exercise.recommendationSnapshot;
+          try {
+            validateExecutableRecommendationSnapshot(exercise.recommendationSnapshot, prescriptionEngine, exercise, "Stored executable recommendationSnapshot");
+            return exercise.recommendationSnapshot;
+          } catch {
+            return hardConstraintRejection(
+              "invalid_stored_recommendation_snapshot",
+              "The stored recommendation snapshot failed integrity, identity, or taxonomy validation and cannot be executed."
+            );
+          }
+        }
+        const identityInput = Object.prototype.hasOwnProperty.call(options, "exerciseId")
+          ? { ...exercise, exerciseId: options.exerciseId }
+          : exercise;
+        const identity = typeof resolvePrescriptionExerciseIdentity === "function"
+          ? resolvePrescriptionExerciseIdentity(identityInput)
+          : (() => {
+              const fallbackId = options.exerciseId || prescriptionExerciseIdentity(exercise.name);
+              return fallbackId ? { status: "resolved", exerciseId: fallbackId, source: "compatibility_adapter" } : { status: "unresolved", reason: "unknown_exercise_identity" };
+            })();
+        if (identity.status !== "resolved" || !identity.exerciseId) {
+          const reason = identity.reason || "unknown_exercise_identity";
+          return hardConstraintRejection(reason, `The exercise identity could not be resolved safely (${reason}).`);
+        }
+        const exerciseId = identity.exerciseId;
+        const hasExplicitMuscleGroup = Object.prototype.hasOwnProperty.call(options, "muscleGroupId");
+        let muscleGroupId = hasExplicitMuscleGroup ? String(options.muscleGroupId || "").trim() : "";
+        if (!hasExplicitMuscleGroup && identity.custom) {
+          muscleGroupId = typeof trustedCustomPrescriptionMuscleGroup === "function" ? trustedCustomPrescriptionMuscleGroup(exercise, exerciseId) : normalizePrescriptionIdentity(exercise.primaryMuscle || "");
+        } else if (!hasExplicitMuscleGroup) {
+          if (typeof prescriptionEngine.resolveDefaultPrescriptionTarget === "function") {
+            const target = prescriptionEngine.resolveDefaultPrescriptionTarget(exerciseId);
+            if (!target || target.status !== "resolved") {
+              const reason = target?.reason || "unknown_exercise_identity";
+              return hardConstraintRejection(reason, `The exercise has no safe canonical default prescription target (${reason}).`);
+            }
+            muscleGroupId = target.muscleGroupId;
+          } else {
+            muscleGroupId = normalizePrescriptionIdentity(prescriptionMuscleGroup(exercise));
+          }
+        }
         if (!muscleGroupId || muscleGroupId === "general") return hardConstraintRejection("invalid_muscle_identity", "The exercise does not have a resolved canonical muscle-group identity.");
         const explicitScope = Object.prototype.hasOwnProperty.call(options, "includedMuscleGroupIds")
           ? options.includedMuscleGroupIds
@@ -3796,6 +3920,7 @@
             settingsMessage = appDataPersistenceConflict
               ? "Current changes are not durable. A conflicting alternate is preserved; export a backup and retry before reloading."
               : "Storage is full on this device. Export a backup, clear old data, or import a smaller file.";
+            render();
           }
         });
         saveRuntime();
@@ -4290,9 +4415,15 @@
         const normalized = normalizePrescriptionIdentity(name);
         if (!normalized) return "";
         const evidence = prescriptionEngine?.evidence;
-        const researchId = evidence?.research?.exerciseIdByAlias?.get(normalized)
-          || evidence?.research?.exerciseDatabase?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === normalized)?.exercise_id;
-        if (researchId) return researchId;
+        if (typeof resolvePrescriptionExerciseIdentity === "function") {
+          const structured = resolvePrescriptionExerciseIdentity(name);
+          if (structured.status === "resolved") return structured.exerciseId;
+          if (structured.reason && structured.reason !== "unknown_exercise_identity") return null;
+        } else {
+          const researchId = evidence?.research?.exerciseIdByAlias?.get(normalized)
+            || evidence?.research?.exerciseDatabase?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === normalized)?.exercise_id;
+          if (researchId) return researchId;
+        }
         const personalRecord = typeof personalExerciseRecordForName === "function"
           ? personalExerciseRecordForName(name, evidence)
           : evidence?.personal?.exerciseScores?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === normalized)
@@ -4303,6 +4434,8 @@
         if (reconciled?.invalid) return null;
         if (reconciled && !reconciled.invalid && reconciled.researchExerciseId) return reconciled.researchExerciseId;
         if (/^(?:custom|user)(?::|_)/.test(personalId)) return personalId;
+        // This fallback is reporting-only. Prescription generation always uses
+        // resolvePrescriptionExerciseIdentity and can never execute this ID.
         return `custom_${normalized.replace(/\s+/g, "_")}`;
       }
 
@@ -4336,19 +4469,33 @@
         return selectedExerciseRecord()?.name || "";
       }
 
+      function normalizeChartSearch(value) {
+        return String(value || "").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+      }
+
+      function exactStructuredChartExerciseId(query) {
+        const raw = String(query || "").trim();
+        if (!raw) return "";
+        const resolution = resolvePrescriptionExerciseIdentity(raw);
+        return resolution.status === "resolved" ? resolution.exerciseId : "";
+      }
+
       function matchingChartExercises(query = chartExerciseDraft) {
-        const normalized = canonicalExerciseId(query);
+        const lexicalQuery = normalizeChartSearch(query);
+        const exactStructuredId = exactStructuredChartExerciseId(query);
         const recentRank = new Map(recentChartExerciseIds.map((id, index) => [id, index]));
         return exerciseCatalog()
-          .filter((exercise) => !normalized || exercise.id.includes(normalized) || canonicalExerciseId(exercise.name)?.includes(normalized))
+          .map((exercise) => ({ ...exercise, lexicalName: normalizeChartSearch(exercise.name), lexicalId: normalizeChartSearch(exercise.id) }))
+          .filter((exercise) => !lexicalQuery || exercise.lexicalName.includes(lexicalQuery) || exercise.lexicalId.includes(lexicalQuery) || exercise.id === exactStructuredId)
           .sort((a, b) => {
-            const aExact = a.id === normalized ? 0 : a.id.startsWith(normalized) ? 1 : 2;
-            const bExact = b.id === normalized ? 0 : b.id.startsWith(normalized) ? 1 : 2;
+            const aExact = a.id === exactStructuredId || a.lexicalName === lexicalQuery ? 0 : a.lexicalName.startsWith(lexicalQuery) || a.lexicalId.startsWith(lexicalQuery) ? 1 : 2;
+            const bExact = b.id === exactStructuredId || b.lexicalName === lexicalQuery ? 0 : b.lexicalName.startsWith(lexicalQuery) || b.lexicalId.startsWith(lexicalQuery) ? 1 : 2;
             if (aExact !== bExact) return aExact - bExact;
             const aRecent = recentRank.has(a.id) ? recentRank.get(a.id) : 999;
             const bRecent = recentRank.has(b.id) ? recentRank.get(b.id) : 999;
             return aRecent - bRecent || b.lastDate.localeCompare(a.lastDate) || a.name.localeCompare(b.name);
           })
+          .map(({ lexicalName, lexicalId, ...exercise }) => exercise)
           .slice(0, 8);
       }
 
@@ -4387,8 +4534,9 @@
 
       function confirmChartExerciseDraft() {
         const matches = matchingChartExercises(chartExerciseDraft);
-        const normalized = canonicalExerciseId(chartExerciseDraft);
-        const exact = matches.find((exercise) => exercise.id === normalized);
+        const exactStructuredId = exactStructuredChartExerciseId(chartExerciseDraft);
+        const lexicalQuery = normalizeChartSearch(chartExerciseDraft);
+        const exact = matches.find((exercise) => exercise.id === exactStructuredId || normalizeChartSearch(exercise.name) === lexicalQuery);
         return selectChartExercise((exact || matches[chartExerciseHighlight] || matches[0])?.id || "");
       }
 
@@ -7642,6 +7790,99 @@
         `;
       }
 
+      function templateNumericDraftKey(templateId, exerciseId, action) {
+        return JSON.stringify([String(templateId || ""), String(exerciseId || ""), String(action || "")]);
+      }
+
+      function templateNumericAlertId(templateId) {
+        return `template-validation-${String(templateId || "").replace(/[^A-Za-z0-9_-]/g, "-")}`;
+      }
+
+      function templateHasInvalidNumericDraft(templateId) {
+        for (const draft of templateNumericDrafts.values()) if (draft.templateId === templateId && draft.invalid) return true;
+        return false;
+      }
+
+      function renderTemplateNumericInput(template, exercise, action, modelValue, ariaLabel) {
+        const config = templateNumericFields[action];
+        const draft = templateNumericDrafts.get(templateNumericDraftKey(template.id, exercise.id, action));
+        const invalid = Boolean(draft?.invalid);
+        const value = draft ? draft.raw : modelValue;
+        const describedBy = invalid ? ` aria-describedby="${templateNumericAlertId(template.id)}"` : "";
+        return `<input type="number" min="${config.min}" max="${config.max}" step="${config.step}" value="${escapeHtml(value)}" data-action="${action}" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" aria-label="${escapeHtml(ariaLabel)}"${invalid ? ' aria-invalid="true"' : ""}${describedBy} />`;
+      }
+
+      function renderTemplateNumericAlert(templateId) {
+        return templateHasInvalidNumericDraft(templateId)
+          ? `<p id="${templateNumericAlertId(templateId)}" class="template-validation-alert" role="alert">Invalid template values were not saved. Correct the highlighted fields to continue.</p>`
+          : "";
+      }
+
+      function clearTemplateNumericDrafts(templateId, exerciseId = "") {
+        for (const [key, draft] of templateNumericDrafts.entries()) {
+          if (draft.templateId === templateId && (!exerciseId || draft.exerciseId === exerciseId)) templateNumericDrafts.delete(key);
+        }
+      }
+
+      function syncTemplateNumericValidationDom(target) {
+        const templateId = target.dataset.templateId || "";
+        const key = templateNumericDraftKey(templateId, target.dataset.templateExerciseId, target.dataset.action);
+        const draft = templateNumericDrafts.get(key);
+        const alertId = templateNumericAlertId(templateId);
+        if (draft?.invalid) {
+          target.setAttribute("aria-invalid", "true");
+          target.setAttribute("aria-describedby", alertId);
+        } else {
+          target.removeAttribute("aria-invalid");
+          target.removeAttribute("aria-describedby");
+        }
+        const card = target.closest(".template-card");
+        if (!card) return;
+        let alert = card.querySelector(`#${CSS.escape(alertId)}`);
+        if (templateHasInvalidNumericDraft(templateId)) {
+          if (!alert) {
+            alert = document.createElement("p");
+            alert.id = alertId;
+            alert.className = "template-validation-alert";
+            alert.setAttribute("role", "alert");
+            alert.textContent = "Invalid template values were not saved. Correct the highlighted fields to continue.";
+            card.querySelector(".template-editor .disclosure-body")?.prepend(alert);
+          }
+        } else alert?.remove();
+      }
+
+      function templateNumericValueIsValid(rawValue, config, control) {
+        if (rawValue === "") return false;
+        const numeric = Number(rawValue);
+        if (!Number.isFinite(numeric) || numeric < config.min || numeric > config.max) return false;
+        if (config.integer && !Number.isInteger(numeric)) return false;
+        const steps = (numeric - config.min) / config.step;
+        if (Math.abs(steps - Math.round(steps)) > 1e-9) return false;
+        return !control?.validity || control.validity.valid;
+      }
+
+      function handleTemplateNumericEdit(target) {
+        const action = target?.dataset?.action || "";
+        const config = templateNumericFields[action];
+        if (!config) return false;
+        const templateId = target.dataset.templateId || "";
+        const exerciseId = target.dataset.templateExerciseId || "";
+        const key = templateNumericDraftKey(templateId, exerciseId, action);
+        const raw = target.value;
+        if (!templateNumericValueIsValid(raw, config, target)) {
+          templateNumericDrafts.set(key, { templateId, exerciseId, action, raw, invalid: true });
+          syncTemplateNumericValidationDom(target);
+          return true;
+        }
+        templateNumericDrafts.delete(key);
+        syncTemplateNumericValidationDom(target);
+        const numeric = Number(raw);
+        const current = data.templates.find((template) => template.id === templateId)?.exercises.find((exercise) => exercise.id === exerciseId)?.[config.field];
+        if (Number(current) === numeric) return true;
+        patchTemplateExercise(templateId, exerciseId, { [config.field]: numeric }, false);
+        return true;
+      }
+
       function renderTemplateCard(template, running = activeWorkoutSession()) {
         const isActiveTemplate = running?.templateId === template.id;
         const locked = Boolean(running && !isActiveTemplate);
@@ -7668,20 +7909,21 @@
             <details class="compact-disclosure template-editor" ${editorExpanded ? 'open' : ''}>
               <summary data-action="toggle-template-editor" data-template-id="${template.id}">Edit template <span>${template.exercises.length} lifts</span></summary>
               ${editorExpanded ? `<div class="disclosure-body">
+                ${renderTemplateNumericAlert(template.id)}
                 <ul class="template-list">
                   ${template.exercises.map((exercise) => `
                     <li>
                       <input value="${escapeHtml(exercise.name)}" data-action="template-exercise-name" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" aria-label="Template exercise name" />
                       <div class="grid two">
-                        <label class="template-meta">Sets<input type="number" min="1" value="${exercise.sets}" data-action="template-exercise-sets" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" /></label>
-                        <label class="template-meta">Reps<input type="number" min="1" value="${exercise.reps}" data-action="template-exercise-reps" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" /></label>
+                        <label class="template-meta">Sets${renderTemplateNumericInput(template, exercise, "template-exercise-sets", exercise.sets, "Template exercise sets")}</label>
+                        <label class="template-meta">Reps${renderTemplateNumericInput(template, exercise, "template-exercise-reps", exercise.reps, "Template exercise repetitions")}</label>
                       </div>
                       <div class="grid two">
-                        <label class="template-meta">Target RPE<input type="number" min="5" max="10" step="0.5" value="${exercise.targetRpe || 8}" data-action="template-exercise-rpe" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" /></label>
-                        <label class="template-meta">Load increment<input type="number" min="0.5" step="0.5" value="${exercise.increment || progressionProfileForExercise(exercise.name).increment}" data-action="template-exercise-increment" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" /></label>
+                        <label class="template-meta">Target RPE${renderTemplateNumericInput(template, exercise, "template-exercise-rpe", exercise.targetRpe || 8, "Template exercise target RPE")}</label>
+                        <label class="template-meta">Load increment${renderTemplateNumericInput(template, exercise, "template-exercise-increment", exercise.increment || progressionProfileForExercise(exercise.name).increment, "Template exercise load increment")}</label>
                       </div>
                       <label class="template-meta">Resistance type<select data-action="template-exercise-resistance" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}">${resistanceTypeOptions(exercise.resistanceType || inferResistanceType(exercise.name, exercise))}</select></label>
-                      <label class="template-meta">Rest seconds<input type="number" min="15" step="15" value="${exercise.restSeconds || recommendedRestSeconds(exercise.name, { reps: exercise.reps })}" data-action="template-exercise-rest" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" /></label>
+                      <label class="template-meta">Rest seconds${renderTemplateNumericInput(template, exercise, "template-exercise-rest", exercise.restSeconds || recommendedRestSeconds(exercise.name, { reps: exercise.reps }), "Template exercise rest seconds")}</label>
                       <div class="template-warmups"><strong>Warm-ups</strong>${(exercise.warmups || []).map((set, warmupIndex) => '<span>' + escapeHtml(set.reps + ' reps × ' + formatResistance(set, exercise)) + '</span><button class="mini-button" type="button" data-action="remove-template-warmup" data-template-id="' + template.id + '" data-template-exercise-id="' + exercise.id + '" data-warmup-index="' + warmupIndex + '">Remove</button>').join("") || '<span>None yet</span>'}<button class="mini-button" type="button" data-action="add-template-warmup" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}">+ Warm-up</button></div>
                       <button class="mini-button danger" type="button" data-action="delete-template-exercise" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}">Remove exercise</button>
                     </li>
@@ -8620,7 +8862,29 @@
         return result;
       }
 
-      function renderChart(chartKey, title, points, emptyText) {
+      function resetChartPointActivations() {
+        chartPointActivations.clear();
+        chartPointActivationEpoch += 1;
+        chartPointActivationSequence = 0;
+      }
+
+      function registerChartPointActivation(chartKey, point, scope = {}) {
+        const safeChartKey = chartKey === "e1rm" ? "e1rm" : "volume";
+        chartPointActivationSequence += 1;
+        const key = `cp_${chartPointActivationEpoch}_${chartPointActivationSequence}`;
+        chartPointActivations.set(key, {
+          chartKey: safeChartKey,
+          exerciseId: scope.exerciseId || "",
+          windowOffset: Number(scope.windowOffset || 0),
+          throughDate: scope.throughDate || "",
+          qualifyingWeekIds: Array.isArray(scope.qualifyingWeekIds) ? [...scope.qualifyingWeekIds] : [],
+          resistanceType: scope.resistanceType || "",
+          point
+        });
+        return key;
+      }
+
+      function renderChart(chartKey, title, points, emptyText, scope = {}) {
         const validPoints = points.filter((point) => point.value > 0);
         const values = validPoints.map((point) => point.value);
         if (!values.length) return '<div class="chart-card"><header><strong>' + escapeHtml(title) + '</strong></header><small>' + escapeHtml(emptyText) + '</small></div>';
@@ -8642,7 +8906,10 @@
           y: plot.top + (1 - (point.value - domainMin) / domainSpread) * plotHeight
         }));
         const polyline = chartPoints.map((point) => point.x.toFixed(1) + "," + point.y.toFixed(1)).join(" ");
-        const selected = chartDetailPoint?.chartKey === chartKey ? chartDetailPoint : null;
+        const selected = chartDetailPoint?.chartKey === chartKey
+          && chartDetailPoint?.exerciseId === (scope.exerciseId || "")
+          && Number(chartDetailPoint?.windowOffset || 0) === Number(scope.windowOffset || 0)
+          ? chartDetailPoint : null;
         const selectedIndex = selected ? chartPoints.findIndex((point) => point.date === selected.date && point.value === selected.value) : -1;
         const selectedPoint = selectedIndex >= 0 ? chartPoints[selectedIndex] : null;
         const grid = [0, 0.5, 1].map((ratio) => {
@@ -8662,7 +8929,7 @@
                 ${grid}
                 <polyline class="chart-line" points="${polyline}" clip-path="url(#chart-clip-${chartKey})"></polyline>
                 ${selectedPoint ? '<line class="chart-selected-guide" x1="' + selectedPoint.x.toFixed(1) + '" y1="' + selectedPoint.y.toFixed(1) + '" x2="' + selectedPoint.x.toFixed(1) + '" y2="' + (plot.top + plotHeight).toFixed(1) + '"></line>' : ""}
-                ${chartPoints.map((point, index) => { const isSelected = index === selectedIndex; return '<g class="chart-point ' + (isSelected ? 'selected' : '') + '" role="button" tabindex="0" aria-pressed="' + (isSelected ? 'true' : 'false') + '" aria-label="' + escapeHtml(title + ': ' + point.value + ' on ' + formatDate(point.date)) + '" data-action="show-chart-point" data-chart-key="' + chartKey + '" data-chart-point="' + index + '"><circle class="hit-area" cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="17"></circle><circle class="selected-ring" cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="9"></circle><circle class="visible-point" cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="4.5"></circle></g>'; }).join("")}
+                ${chartPoints.map((point, index) => { const isSelected = index === selectedIndex; const activationKey = registerChartPointActivation(chartKey, point, scope); return '<g class="chart-point ' + (isSelected ? 'selected' : '') + '" role="button" tabindex="0" aria-pressed="' + (isSelected ? 'true' : 'false') + '" aria-label="' + escapeHtml(title + ': ' + point.value + ' on ' + formatDate(point.date)) + '" data-action="show-chart-point" data-chart-point-key="' + activationKey + '"><circle class="hit-area" cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="17"></circle><circle class="selected-ring" cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="9"></circle><circle class="visible-point" cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="4.5"></circle></g>'; }).join("")}
                 ${dateLabels}
               </svg>
             </div>
@@ -8872,6 +9139,7 @@
       }
 
       function renderReview() {
+        resetChartPointActivations();
         const catalog = exerciseCatalog();
         if ((!selectedExerciseId || !catalog.some((item) => item.id === selectedExerciseId)) && catalog[0]) {
           selectedExerciseId = catalog[0].id;
@@ -8896,6 +9164,13 @@
         }
         const latestOneRm = progress.e1rm.filter((point) => point.value > 0).at(-1);
         const latestVolume = progress.volume.filter((point) => point.value > 0).at(-1);
+        const chartPointScope = {
+          exerciseId: selectedExerciseId,
+          windowOffset: hypertrophyWindowOffset,
+          throughDate: analysisOptions.throughDate,
+          qualifyingWeekIds: analysis.qualifyingWeekIds,
+          resistanceType: exercise?.resistanceType || progress.resistanceType
+        };
         return `
           <section class="view charts-view">
             <div class="screen-heading"><div><div class="section-kicker">${hypertrophyWindowOffset > 0 ? 'Historical snapshot through ' + formatDate(analysis.windowEnd) : 'Selected lift'}</div><h1>${escapeHtml(selectedName)}</h1></div><span class="status-pill inside">${analysis.included.length} qualifying week${analysis.included.length === 1 ? '' : 's'} · ${analysis.dataPointCount} sets</span></div>
@@ -8914,8 +9189,8 @@
             <section class="screen-section">
               <div class="section-heading"><div><h2>Progress charts</h2><p>Tap a point to see its value, date, and session context.</p></div></div>
               <div class="chart-list">
-                ${renderChart("e1rm", progress.primaryTitle, progress.e1rm, "No comparable completed sets yet.")}
-                ${renderChart("volume", progress.secondaryTitle, progress.volume, "No completed work is available for this metric yet.")}
+                ${renderChart("e1rm", progress.primaryTitle, progress.e1rm, "No comparable completed sets yet.", chartPointScope)}
+                ${renderChart("volume", progress.secondaryTitle, progress.volume, "No completed work is available for this metric yet.", chartPointScope)}
               </div>
             </section>
             <section class="screen-section trend-section"><div class="section-heading"><div><h2>Recent weeks</h2></div></div><div class="trend-table">
@@ -9056,6 +9331,7 @@
           <section class="view settings-view">
             <div class="screen-heading"><div><div class="section-kicker">Settings</div><h1>Training setup</h1></div></div>
             ${appDataPersistenceConflict ? '<p class="settings-note persistence-conflict-note" role="status">' + escapeHtml(appDataPersistenceConflict.message) + '</p>' : ""}
+            ${settingsMessage ? '<p class="settings-note persistence-status-note" role="status">' + escapeHtml(settingsMessage) + '</p>' : ""}
             <details class="settings-group" open><summary>Appearance and units <span>Display</span></summary><div class="disclosure-body settings-panel">
               <label>Weight unit
                 <select data-action="weight-unit">
@@ -9152,7 +9428,6 @@
               <div class="inline-panel"><strong>Unified prescription evidence · ${escapeHtml(prescriptionEvidenceStatus.state)}</strong><p class="settings-note">${escapeHtml(prescriptionEvidenceStatus.message)}</p><p class="settings-note">Engine ${escapeHtml(prescriptionApi?.ENGINE_VERSION || 'unavailable')} · personal ${escapeHtml(prescriptionEvidenceStatus.personalVersion)} · research ${escapeHtml(prescriptionEvidenceStatus.researchVersion)} · ${data.recommendationHistory.length} immutable recommendation snapshot${data.recommendationHistory.length === 1 ? '' : 's'} · ${data.manualOverrides.length} override event${data.manualOverrides.length === 1 ? '' : 's'}.</p></div>
               <label class="import-button">${icon.upload} private personal evidence package<input type="file" accept=".json,application/json" data-action="import-personal-evidence" /></label>
               <p class="settings-note">The evidence package stays in this device's IndexedDB and exports. Protected personal analysis files are never included in the public deployment.</p>
-              ${settingsMessage ? '<p class="settings-note">' + escapeHtml(settingsMessage) + '</p>' : ""}
               ${importAttempt ? '<p role="status" aria-live="polite" data-import-status data-import-state="' + escapeHtml(importStatus.state) + '" data-import-attempt="' + importAttempt + '">' + escapeHtml(importStatus.message) + '</p>' : ''}
               ${importInProgress ? '<p class="settings-note">Importing workout history. This can take a moment on iPhone, but navigation will recover automatically when it finishes.</p>' : ""}
               <button type="button" data-action="export-data">${icon.download} data</button>
@@ -9276,7 +9551,18 @@
           releaseTimerWakeLock();
           timer = null;
         }
-        try { (await navigator.serviceWorker?.ready)?.pushManager && (await (await navigator.serviceWorker.ready).pushManager.getSubscription())?.unsubscribe(); } catch { /* Local cleanup continues. */ }
+        cancelPendingDataSave();
+        window.clearTimeout(draftSaveTimer);
+        draftSaveTimer = 0;
+        // `serviceWorker.ready` can remain pending forever when this tab has no
+        // active registration. A destructive local clear must not be held
+        // hostage by that unrelated lifecycle. Inspect only an already-known
+        // registration and continue when none exists.
+        try {
+          const registration = await navigator.serviceWorker?.getRegistration?.();
+          const subscription = await registration?.pushManager?.getSubscription?.();
+          await subscription?.unsubscribe?.();
+        } catch { /* Local cleanup continues. */ }
         try { for (const key of await caches.keys()) if (key.startsWith("comprehensive-fitness")) await caches.delete(key); } catch { /* Cache API is optional. */ }
         try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(RUNTIME_KEY); localStorage.removeItem(ACTIVE_DRAFT_KEY); localStorage.removeItem(IDENTITY_KEY); } catch { /* IndexedDB cleanup remains primary. */ }
         await deleteFitnessDatabase();
@@ -9294,13 +9580,26 @@
         clearDataFlow = null;
         cancelWorkoutFlow = null;
         templateStartFlow = null;
+        templateNumericDrafts.clear();
         exportText = "";
         settingsMessage = "";
-        showAppToast("Local app data cleared.");
         applyTheme();
-        await writeIndexedValue("app-data", data).catch(() => undefined);
+        try {
+          await writeIndexedValue("app-data", data);
+          persistenceReady = true;
+          // Remove the conflict-preserved alternate again after the fresh
+          // durable write so no concurrent/fallback path can resurrect it.
+          try { localStorage.removeItem(STORAGE_KEY); } catch { /* Fresh IndexedDB defaults remain durable. */ }
+        } catch {
+          persistenceReady = false;
+          settingsMessage = "Local workout data was removed, but fresh defaults could not be saved. Keep this tab open and retry Clear All Local App Data before relying on a reload.";
+          setActiveTab("lift", { replace: true, renderNow: false });
+          render();
+          return false;
+        }
         saveRuntime();
         setActiveTab("lift", { replace: true, renderNow: false });
+        showAppToast("Local app data cleared.");
         render();
         return true;
       }
@@ -9538,10 +9837,18 @@
         }
         const index = dataEntityIndex().setIndexById.get(setId) ?? -1;
         if (index >= 0) {
-          data.sets[index] = { ...data.sets[index], ...patch };
-          updatePlanPreview(data.sets[index].exerciseId);
-          if (isEditingHistorySession()) historyEditFlow.dirty = true;
-          else scheduleSave();
+          const updatedSet = { ...data.sets[index], ...patch };
+          if (isEditingHistorySession()) {
+            const sets = data.sets.slice();
+            sets[index] = updatedSet;
+            data = { ...data, sets, dataRevision: Number(data.dataRevision || 0) + 1 };
+            historyEditFlow.dirty = true;
+            invalidateCompletedAnalysis();
+          } else {
+            data.sets[index] = updatedSet;
+            scheduleSave();
+          }
+          updatePlanPreview(updatedSet.exerciseId);
         }
       }
 
@@ -9599,11 +9906,14 @@
       }
 
       function patchSetValue(setId, field, value, shouldRender = true) {
-        if (!isEditingHistorySession()) acknowledgeActiveSet(setId);
+        const editingHistory = isEditingHistorySession();
+        if (!editingHistory) acknowledgeActiveSet(setId);
         const set = setById(setId);
         const exercise = set ? exerciseById(set.exerciseId) : null;
         const resistanceType = resistanceTypeFor(exercise, set);
         const numeric = Number(value);
+        if (editingHistory && Number(set?.[field]) === numeric) return;
+        if (editingHistory) shouldRender = false;
         if (shouldRender) logWorkoutOverride(exercise, field === "weight" ? "load" : field, set?.[`target${field.charAt(0).toUpperCase() + field.slice(1)}`] ?? set?.[field], numeric, { setId });
         const patch = { [field]: numeric, edited: true };
         if (field === "weight" && resistanceType === "bodyweight_plus_load") patch.addedLoad = numeric;
@@ -9774,7 +10084,24 @@
         commit({ ...data, templates: data.templates.map((template) => template.id === templateId ? { ...template, ...patch, updatedAt: isoNow() } : template) }, shouldRender);
       }
 
+      function assertTemplateExerciseNumericDomain(patch) {
+        Object.values(templateNumericFields).forEach((config) => {
+          if (!Object.prototype.hasOwnProperty.call(patch, config.field)) return;
+          const value = patch[config.field];
+          const numeric = Number(value);
+          const steps = (numeric - config.min) / config.step;
+          if (!Number.isFinite(numeric)
+            || numeric < config.min
+            || numeric > config.max
+            || (config.integer && !Number.isInteger(numeric))
+            || Math.abs(steps - Math.round(steps)) > 1e-9) {
+            throw new RangeError(`Template ${config.label} must be between ${config.min} and ${config.max} in ${config.step} increments.`);
+          }
+        });
+      }
+
       function patchTemplateExercise(templateId, exerciseId, patch, shouldRender = true) {
+        assertTemplateExerciseNumericDomain(patch);
         commit({
           ...data,
           templates: data.templates.map((template) => template.id === templateId
@@ -11372,25 +11699,30 @@
 
       function submitWorkout(sessionId) {
         const session = data.sessions.find((item) => item.id === sessionId);
-        if (!session) return;
-        if (timer) cancelTimer("workout-ended", false);
-        timerCompleteNotice = null;
-        if (restNavigationState?.workoutId === sessionId) restNavigationState = { ...restNavigationState, status: "submitted", updatedAt: isoNow() };
-        const prs = submitWorkoutPrs(session);
-        const submittedAt = isoNow();
-        const completedSession = { ...session, submitted: true, workoutStarted: false, workoutState: "completed", completedAt: session.date, submittedAt, prs, updatedAt: submittedAt };
-        const workoutAnalysis = calculateWorkoutAnalysis(completedSession, { prs });
-        const overrideOutcomes = evaluateWorkoutOverrideOutcomes(completedSession, workoutAnalysis);
-        if (completedSession.workoutPrescription?.recommendations?.length) completedSession.workoutPrescription = { ...completedSession.workoutPrescription, recommendations: completedSession.workoutPrescription.recommendations.map((snapshot) => overrideOutcomes.evaluatedByRecommendation.get(snapshot.recommendationId) || snapshot) };
-        pendingSubmitSessionId = "";
-        completedSummarySessionId = session.id;
-        if (activeWorkoutId === session.id) {
-          activeWorkoutId = "";
-          clearActiveWorkoutDraft();
+        if (!session || session.submitted || workoutSubmissionsInProgress.has(sessionId)) return;
+        workoutSubmissionsInProgress.add(sessionId);
+        try {
+          if (timer) cancelTimer("workout-ended", false);
+          timerCompleteNotice = null;
+          if (restNavigationState?.workoutId === sessionId) restNavigationState = { ...restNavigationState, status: "submitted", updatedAt: isoNow() };
+          const prs = submitWorkoutPrs(session);
+          const submittedAt = isoNow();
+          const completedSession = { ...session, submitted: true, workoutStarted: false, workoutState: "completed", completedAt: session.date, submittedAt, prs, updatedAt: submittedAt };
+          const workoutAnalysis = calculateWorkoutAnalysis(completedSession, { prs });
+          const overrideOutcomes = evaluateWorkoutOverrideOutcomes(completedSession, workoutAnalysis);
+          if (completedSession.workoutPrescription?.recommendations?.length) completedSession.workoutPrescription = { ...completedSession.workoutPrescription, recommendations: completedSession.workoutPrescription.recommendations.map((snapshot) => overrideOutcomes.evaluatedByRecommendation.get(snapshot.recommendationId) || snapshot) };
+          pendingSubmitSessionId = "";
+          completedSummarySessionId = session.id;
+          if (activeWorkoutId === session.id) {
+            activeWorkoutId = "";
+            clearActiveWorkoutDraft();
+          }
+          commit({ ...data, sessions: data.sessions.map((item) => item.id === session.id ? { ...completedSession, workoutAnalysis } : item), exercises: overrideOutcomes.exercises, recommendationHistory: overrideOutcomes.recommendationHistory, manualOverrides: overrideOutcomes.manualOverrides });
+          playWorkoutCompletionSound(prs.length > 0 || ["A+", "A"].includes(workoutAnalysis?.grade));
+          if (["A+", "A", "A-"].includes(workoutAnalysis?.grade) || prs.length > 1) performInteractionFeedback("success");
+        } finally {
+          workoutSubmissionsInProgress.delete(sessionId);
         }
-        commit({ ...data, sessions: data.sessions.map((item) => item.id === session.id ? { ...completedSession, workoutAnalysis } : item), exercises: overrideOutcomes.exercises, recommendationHistory: overrideOutcomes.recommendationHistory, manualOverrides: overrideOutcomes.manualOverrides });
-        playWorkoutCompletionSound(prs.length > 0 || ["A+", "A"].includes(workoutAnalysis?.grade));
-        if (["A+", "A", "A-"].includes(workoutAnalysis?.grade) || prs.length > 1) performInteractionFeedback("success");
       }
 
       function renderSubmitConfirmation(session) {
@@ -11440,6 +11772,9 @@
 
       function exportData() {
         exportText = JSON.stringify(data, null, 2);
+        if (appDataPersistenceConflict) {
+          settingsMessage = "Backup exported from the currently selected app-data copy only. The conflicting alternate local fallback copy remains preserved on this device and is not included in the download.";
+        }
         const blob = new Blob([exportText], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const anchor = document.createElement("a");
@@ -11561,13 +11896,9 @@
 
       function taxonomyMusclesForExercise(exercise) {
         const research = prescriptionEngine?.evidence?.research;
-        if (!research?.exerciseIdByAlias || !research?.muscleMapsByExercise || !research?.exerciseById) return [];
-        const requestedIdentity = exercise.researchExerciseId || exercise.research_exercise_id || exercise.exerciseId || "";
-        const normalizedName = normalizePrescriptionIdentity(exercise.name);
-        const canonicalId = research.exerciseIdByAlias.get(normalizedName)
-          || research.exerciseIdByAlias.get(normalizedName.replace(/\s+/g, "_"))
-          || research.exerciseDatabase?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === normalizedName)?.exercise_id
-          || (research.exerciseById.has(requestedIdentity) ? requestedIdentity : "");
+        if (!research?.muscleMapsByExercise || !research?.exerciseById) return [];
+        const identity = resolvePrescriptionExerciseIdentity(exercise);
+        const canonicalId = identity.status === "resolved" && research.exerciseById.has(identity.exerciseId) ? identity.exerciseId : "";
         if (!canonicalId) return [];
         return normalizeMuscleMatches((research.muscleMapsByExercise.get(canonicalId) || [])
           .filter((mapping) => Number(mapping.fractional_set_credit || 0) > 0)
@@ -12193,12 +12524,23 @@
       function validateImportedAppData(imported, limits = BACKUP_IMPORT_LIMITS) {
         validateBackupJsonShape(imported, { maxDepth: limits.maxJsonDepth, maxObjectKeys: limits.maxObjectKeys });
         if (!imported || typeof imported !== "object" || Array.isArray(imported)) throw new Error("Backup root must be a JSON object.");
+        const templateNumericDomain = typeof templateNumericFields === "object" ? templateNumericFields : {
+          "template-exercise-sets": { min: 1, max: 100, step: 1, integer: true },
+          "template-exercise-reps": { min: 1, max: 1000, step: 1, integer: true },
+          "template-exercise-rpe": { min: 5, max: 10, step: 0.5, integer: false },
+          "template-exercise-increment": { min: 0.5, max: 10000, step: 0.5, integer: false },
+          "template-exercise-rest": { min: 15, max: 3600, step: 15, integer: true }
+        };
+        if (Object.prototype.hasOwnProperty.call(imported, "dataRevision")
+          && (!Number.isSafeInteger(imported.dataRevision) || imported.dataRevision < 0)) {
+          throw new Error("Backup dataRevision must be omitted or a non-negative safe integer.");
+        }
         const allowedTopLevelFields = new Set(["appDataVersion", "domainMigrationVersion", "sessions", "exercises", "sets", "templates", "mesocycles", "activeMesocycleId", "recommendationHistory", "manualOverrides", "personalEvidencePackage", "rawImports", "migrationAudit", "dataRevision", "settings"]);
         const allowedSessionFields = new Set(["id", "externalId", "source", "date", "title", "isTravel", "notes", "submitted", "workoutStarted", "workoutState", "completedAt", "submittedAt", "startedAt", "createdAt", "updatedAt", "templateId", "recovery", "prs", "workoutAnalysis", "workoutPrescription", "adjustmentSummary", "deletedAt", "trashed", "canceledAt"]);
         const allowedExerciseFields = new Set(["id", "externalId", "source", "sessionId", "name", "notes", "order", "primaryMuscle", "secondaryMuscle", "restSeconds", "resistanceType", "isBodyweight", "isDeload", "recommendationSnapshot", "basePrescription", "finalPrescription", "coachRecommendation", "executionBlocked", "safetyRestriction", "manualOverrides", "adjusted", "adjustmentReason", "triggerLabels", "canonicalExerciseId", "researchExerciseId", "originalPrescription", "prescription", "recommendationVersion", "personalDataVersion", "researchDatabaseVersion", "programTargetContext", "appliedTargetContext", "overrideLocked"]);
         const allowedSetFields = new Set(["id", "exerciseId", "setNumber", "sequenceIndex", "sequence", "setTypeIndex", "setType", "reps", "weight", "weightUnit", "resistanceType", "rpe", "completed", "skipped", "edited", "isWarmup", "countsTowardScore", "countsTowardVolume", "countsTowardProgression", "addedLoad", "assistanceLoad", "durationSeconds", "distance", "distanceUnit", "targetReps", "targetRepMin", "targetRepMax", "targetWeight", "targetRpe", "targetRpeMin", "targetRpeMax", "targetRpeTolerance", "targetRestSeconds", "setPrescription", "previousComparableSet", "prescriptionReason", "prescriptionMode", "prescriptionConfidence", "validationWarning", "classificationSource", "classificationConfidence", "classifierVersion", "manualOverride", "reviewRequired", "classifiedAt", "sourceSetOrder", "originalImportedValue"]);
         const allowedTemplateFields = new Set(["id", "name", "notes", "createdAt", "updatedAt", "exercises", "mesocycleId", "mesocycleRevision", "trainingDayId", "source"]);
-        const allowedTemplateExerciseFields = new Set(["id", "name", "notes", "sets", "reps", "targetRpe", "increment", "restSeconds", "resistanceType", "isBodyweight", "primaryMuscle", "secondaryMuscle", "warmups", "setTypes", "canonicalExerciseId", "researchExerciseId", "mesocycleSlotId", "assignmentId"]);
+        const allowedTemplateExerciseFields = new Set(["id", "name", "notes", "sets", "reps", "targetRpe", "increment", "restSeconds", "resistanceType", "isBodyweight", "primaryMuscle", "secondaryMuscle", "warmups", "setTypes", "canonicalExerciseId", "researchExerciseId", "mesocycleSlotId", "assignmentId", "recommendationSnapshot"]);
         const allowedSettingsFields = new Set(["weightUnit", "trainingGoal", "trainingGoalSource", "trainingGoalDisclosure", "nutritionPhase", "experienceLevel", "returningAfterGap", "trainingDaysPerWeek", "availableEquipment", "excludedExerciseIds", "theme", "timerSound", "workoutCompletionSound", "timerVibration", "interactionVibration", "timerNotifications", "inAppRestAlerts", "restCompleteSound", "restCompleteSoundVolume", "restCompleteAutoDismissMs", "restCompleteLockScreenNotifications", "restCompleteAutoReturnToWorkout", "defaultRestSeconds", "notificationMessageDetail", "autoStartRestTimer", "autoHighlightNextSet", "autoScrollNextSet", "installGuideDismissed", "setupSoundConfirmed", "cloudWorkoutSyncConsent", "readinessBaseline", "goal", "trainingStatus"]);
         const allowedMesocycleFields = new Set(["id", "schemaVersion", "builderMode", "rulesVersion", "type", "name", "status", "createdAt", "updatedAt", "durationWeeks", "durationBasis", "specializationMuscleGroups", "trainingDays", "split", "availableEquipment", "constraints", "exclusionResolution", "programmingContext", "planningStep", "availableMuscleGroupIds", "includedMuscleGroupIds", "equipmentUnavailableMuscleGroupIds", "omittedMuscleGroups", "scopeConfirmed", "currentProgramExerciseIds", "recentExerciseWindowDays", "pools", "activeExercises", "selectedPortfolio", "programSlots", "sessions", "programReview", "preservedProductiveExerciseIds", "versions", "lifecycle", "startedAt", "completedAt", "outcome", "reviewedAt", "review", "musclePriorities", "planningProgress", "guidedDays", "acceptedExceptions", "viabilityResult", "viabilityStale", "linkedTemplateIds", "creationResult", "revision"]);
         const allowedRecommendationFields = new Set(["recommendationId", "schemaVersion", "recommendationVersion", "engineVersion", "personalDataVersion", "researchDatabaseVersion", "mesocycleId", "exerciseId", "muscleGroupId", "exerciseScore", "muscleSpecificScore", "personalEvidenceWeight", "researchEvidenceWeight", "readinessAdjustment", "basePrescription", "finalPrescription", "explanation", "evidenceSummary", "confidence", "createdAt", "manualOverrides", "overrideLocked", "checksum", "request", "scores", "versions"]);
@@ -12232,6 +12574,19 @@
           return value;
         };
         const copyAllowed = (record, allowedFields) => Object.fromEntries(Object.entries(record).filter(([key]) => allowedFields.has(key)).map(([key, value]) => [key, cloneJsonValue(value)]));
+        const assertTemplateNumericValue = (value, action, label) => {
+          const config = templateNumericDomain[action];
+          const numeric = Number(value);
+          const steps = (numeric - config.min) / config.step;
+          if (!Number.isFinite(numeric)
+            || numeric < config.min
+            || numeric > config.max
+            || (config.integer && !Number.isInteger(numeric))
+            || Math.abs(steps - Math.round(steps)) > 1e-9) {
+            throw new Error(`${label} must be between ${config.min} and ${config.max} in ${config.step} increments.`);
+          }
+          return numeric;
+        };
 
         const unknownTopLevel = Object.keys(imported).find((key) => !allowedTopLevelFields.has(key));
         if (unknownTopLevel) throw new Error(`Backup contains an unknown top-level field: ${unknownTopLevel}.`);
@@ -12290,8 +12645,19 @@
             templateExerciseIds.add(exerciseId);
             assertName(exercise.name, `Template ${index + 1} exercise ${exerciseIndex + 1}`);
             assertText(exercise.notes, `Template ${index + 1} exercise ${exerciseIndex + 1} notes`);
-            for (const field of ["sets", "reps", "targetRpe", "increment", "restSeconds"]) if (exercise[field] != null && exercise[field] !== "" && !Number.isFinite(Number(exercise[field]))) throw new Error(`Template ${index + 1} exercise ${exerciseIndex + 1} ${field} must be numeric.`);
-            return copyAllowed(exercise, allowedTemplateExerciseFields);
+            const copiedExercise = copyAllowed(exercise, allowedTemplateExerciseFields);
+            const numericActions = {
+              sets: "template-exercise-sets",
+              reps: "template-exercise-reps",
+              targetRpe: "template-exercise-rpe",
+              increment: "template-exercise-increment",
+              restSeconds: "template-exercise-rest"
+            };
+            Object.entries(numericActions).forEach(([field, action]) => {
+              if (exercise[field] == null) return;
+              copiedExercise[field] = assertTemplateNumericValue(exercise[field], action, `Template ${index + 1} exercise ${exerciseIndex + 1} ${field}`);
+            });
+            return copiedExercise;
           });
           return template;
         });
@@ -12392,7 +12758,9 @@
           personalEvidencePackage: imported.personalEvidencePackage == null ? null : cloneJsonValue(imported.personalEvidencePackage),
           rawImports,
           migrationAudit,
-          dataRevision: Number.isFinite(Number(imported.dataRevision)) ? Number(imported.dataRevision) : 0,
+          // Imported ordering metadata is validated above for auditability but
+          // never becomes the local dual-store ordering authority.
+          dataRevision: 0,
           settings: copyAllowed(settings, allowedSettingsFields)
         };
         if (Number.isInteger(imported.domainMigrationVersion)) result.domainMigrationVersion = imported.domainMigrationVersion;
@@ -12506,6 +12874,91 @@
         return personalRecords;
       }
 
+      function validateExecutableRecommendationSnapshot(snapshot, engine, hostExercise, label) {
+        if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) throw new Error(`${label} must be a recommendation snapshot object.`);
+        if (!prescriptionApi?.serializeRecommendationSnapshot) throw new Error("Recommendation snapshot validation is unavailable; the backup was not imported.");
+        prescriptionApi.serializeRecommendationSnapshot(snapshot);
+        const identity = engine.resolveExerciseIdentity(snapshot.exerciseId);
+        const reconciledCustom = engine.evidence?.personal?.reconciledIdentityByExerciseId?.get(snapshot.exerciseId);
+        const trustedCustom = /^(?:custom|user)(?::|_)/.test(snapshot.exerciseId || "")
+          && reconciledCustom && !reconciledCustom.invalid && !reconciledCustom.researchExerciseId;
+        if (identity?.status !== "resolved" && !trustedCustom) throw new Error(identity?.reason || "unknown_exercise_identity");
+        const canonicalExerciseId = identity?.status === "resolved" ? identity.exerciseId : snapshot.exerciseId;
+        if (canonicalExerciseId !== snapshot.exerciseId) throw new Error("Snapshot exercise identity is not the canonical reconciled identity.");
+
+        const snapshotMuscleGroupId = String(snapshot.muscleGroupId || "").trim();
+        if (!snapshotMuscleGroupId) throw new Error("Snapshot muscle-group target is missing.");
+        for (const prescription of [snapshot.basePrescription, snapshot.finalPrescription]) {
+          if (prescription?.muscleGroupId && prescription.muscleGroupId !== snapshotMuscleGroupId) {
+            throw new Error("Snapshot prescription target does not match its top-level muscle-group target.");
+          }
+        }
+        if (identity?.status === "resolved") {
+          const target = engine.resolveDefaultPrescriptionTarget(canonicalExerciseId);
+          if (target?.status !== "resolved" || target.exerciseId !== canonicalExerciseId || target.muscleGroupId !== snapshotMuscleGroupId) {
+            throw new Error(target?.reason || "Snapshot exercise and canonical direct target do not match.");
+          }
+        } else {
+          const personalRows = [
+            ...(engine.evidence?.personal?.prescriptionsFor?.(canonicalExerciseId) || []),
+            ...(engine.evidence?.personal?.muscleScoresFor?.(canonicalExerciseId) || [])
+          ];
+          const trustedMuscleGroups = new Set(personalRows.map((record) => String(record?.muscle_group_id || record?.muscleGroupId || "").trim()).filter(Boolean));
+          if (!trustedMuscleGroups.has(snapshotMuscleGroupId)) throw new Error("Trusted custom snapshot target is not supported by reconciled personal evidence.");
+        }
+
+        if (hostExercise && typeof hostExercise === "object") {
+          const hostIdentityInput = hostExercise.canonicalExerciseId || hostExercise.researchExerciseId || hostExercise.name || "";
+          const hostIdentity = hostIdentityInput ? engine.resolveExerciseIdentity(hostIdentityInput) : null;
+          if (hostIdentity?.status === "resolved" && hostIdentity.exerciseId !== canonicalExerciseId) {
+            throw new Error("Host exercise identity does not match its executable recommendation snapshot.");
+          }
+          if (hostIdentity?.status !== "resolved") {
+            const explicitHostId = String(hostExercise.canonicalExerciseId || hostExercise.researchExerciseId || "").trim();
+            if (explicitHostId && explicitHostId !== canonicalExerciseId) throw new Error("Host exercise identity does not match its executable recommendation snapshot.");
+            if (!trustedCustom) throw new Error(hostIdentity?.reason || "Host exercise identity could not be reconciled.");
+          }
+        }
+        return true;
+      }
+
+      function validateImportedExecutableRecommendationSnapshot(snapshot, engine, label, hostExercise = null) {
+        try {
+          return validateExecutableRecommendationSnapshot(snapshot, engine, hostExercise, label);
+        } catch (error) {
+          throw new Error(`${label} failed schema, checksum, identity, or taxonomy validation: ${error?.message || error}.`);
+        }
+      }
+
+      function validateImportedExecutableRecommendationSnapshots(candidate, engine) {
+        const sessionById = new Map(candidate.sessions.map((session) => [session.id, session]));
+        candidate.exercises.forEach((exercise, index) => {
+          if (!exercise.recommendationSnapshot) return;
+          const session = sessionById.get(exercise.sessionId);
+          const historical = session?.submitted === true || session?.workoutState === "completed";
+          if (!historical) validateImportedExecutableRecommendationSnapshot(exercise.recommendationSnapshot, engine, `Active exercise ${index + 1} recommendationSnapshot`, exercise);
+        });
+        candidate.sessions.forEach((session, sessionIndex) => {
+          if (session.submitted === true || session.workoutState === "completed") return;
+          const recommendations = session.workoutPrescription?.recommendations;
+          if (recommendations == null) return;
+          if (!Array.isArray(recommendations)) throw new Error(`Active session ${sessionIndex + 1} workoutPrescription recommendations must be an array.`);
+          recommendations.forEach((snapshot, snapshotIndex) => validateImportedExecutableRecommendationSnapshot(snapshot, engine, `Active session ${sessionIndex + 1} workout recommendation ${snapshotIndex + 1}`));
+        });
+        candidate.templates.forEach((template, templateIndex) => {
+          template.exercises.forEach((exercise, exerciseIndex) => {
+            if (exercise.recommendationSnapshot) validateImportedExecutableRecommendationSnapshot(exercise.recommendationSnapshot, engine, `Template ${templateIndex + 1} exercise ${exerciseIndex + 1} recommendationSnapshot`, exercise);
+          });
+        });
+        return true;
+      }
+
+      function nextMonotonicImportRevision() {
+        const current = Number(data?.dataRevision || 0);
+        if (!Number.isSafeInteger(current) || current < 0 || current >= Number.MAX_SAFE_INTEGER) throw new Error("Local data revision is exhausted or invalid; export the selected copy and clear local data before importing.");
+        return current + 1;
+      }
+
       async function importDataFile(file) {
         if (importInProgress) return;
         importInProgress = true;
@@ -12514,6 +12967,9 @@
         settingsMessage = importStatus.message;
         render();
         try {
+          if (appDataPersistenceConflict) {
+            throw new Error("Import is blocked because two valid saved app-data copies disagree and neither may be discarded automatically. Export downloads only the currently selected copy; the preserved alternate is excluded. Review the export, then use confirmed Clear All Local App Data before importing a replacement.");
+          }
           if (Number(file.size || 0) > BACKUP_IMPORT_LIMITS.maxFileBytes) throw new Error("Backup file is too large; the maximum size is 8 MiB.");
           const text = await file.text();
           if (new TextEncoder().encode(text).byteLength > BACKUP_IMPORT_LIMITS.maxFileBytes) throw new Error("Backup file is too large; the maximum size is 8 MiB.");
@@ -12535,8 +12991,12 @@
             preparedEvidence = researchOnlyBundleForImport();
           }
           const candidate = normalizeLoadedData(validated);
+          candidate.dataRevision = nextMonotonicImportRevision();
+          validateImportedExecutableRecommendationSnapshots(candidate, preparedEvidence.engine);
           await writeIndexedValue("app-data", candidate);
+          try { localStorage.removeItem(STORAGE_KEY); } catch { /* The imported IndexedDB copy has the higher monotonic revision. */ }
           data = candidate;
+          templateNumericDrafts.clear();
           installPreparedEvidence(preparedEvidence, candidate.personalEvidencePackage ? "imported backup evidence" : "research defaults");
           entityStructureRevision += 1;
           entityIndexCache = null;
@@ -12711,11 +13171,21 @@
           updateExerciseSuggestionList();
         }
         if (action === "show-chart-point") {
-          const progress = exerciseProgressSeries(selectedExerciseName(), { canonicalExerciseId: selectedExerciseId });
-          const chartKey = target.dataset.chartKey;
-          const points = chartKey === "e1rm" ? progress.e1rm : progress.volume;
-          const point = points.filter((item) => item.value > 0)[Number(target.dataset.chartPoint)];
-          chartDetailPoint = point ? { ...point, chartKey, date: point.date || point.label } : null;
+          const activationKey = String(target.dataset.chartPointKey || "");
+          const activation = /^cp_\d+_\d+$/.test(activationKey) ? chartPointActivations.get(activationKey) : null;
+          const stillCurrent = activation
+            && activation.exerciseId === selectedExerciseId
+            && Number(activation.windowOffset || 0) === Number(hypertrophyWindowOffset || 0);
+          chartDetailPoint = stillCurrent ? {
+            ...activation.point,
+            chartKey: activation.chartKey,
+            exerciseId: activation.exerciseId,
+            windowOffset: activation.windowOffset,
+            throughDate: activation.throughDate,
+            qualifyingWeekIds: activation.qualifyingWeekIds,
+            resistanceType: activation.resistanceType,
+            date: activation.point.date || activation.point.label
+          } : null;
           render();
         }
         if (action === "close-chart-point") { chartDetailPoint = null; render(); }
@@ -12857,9 +13327,11 @@
         if (action === "confirm-delete-template") {
           const templateId = target.dataset.templateId;
           pendingDeleteTemplateId = "";
+          clearTemplateNumericDrafts(templateId);
           commit({ ...data, templates: data.templates.filter((template) => template.id !== templateId) });
         }
         if (action === "delete-template-exercise") {
+          clearTemplateNumericDrafts(target.dataset.templateId, target.dataset.templateExerciseId);
           commit({
             ...data,
             templates: data.templates.map((template) => template.id === target.dataset.templateId
@@ -12958,6 +13430,10 @@
         if (!target) return;
         const action = target.dataset.action;
         if (historyMutationIsLocked(action)) return;
+        if (templateNumericFields[action]) {
+          handleTemplateNumericEdit(target);
+          return;
+        }
         if (action === "change-session") {
           const requestedSession = data.sessions.find((session) => session.id === target.value);
           if (!requestedSession || (!isSessionSubmitted(requestedSession) && requestedSession.id !== activeWorkoutId)) {
@@ -13012,10 +13488,7 @@
         if (action === "set-duration") patchSetValue(target.dataset.setId, "durationSeconds", target.value);
         if (action === "set-distance") patchSetValue(target.dataset.setId, "distance", target.value);
         if (action === "exercise-rest-seconds") patchExercise(target.dataset.exerciseId, { restSeconds: Number(target.value) });
-        if (action === "template-exercise-rest") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { restSeconds: Number(target.value) });
         if (action === "template-exercise-resistance") { const resistanceType = resistanceTypeValues.includes(target.value) ? target.value : "external"; patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { resistanceType, isBodyweight: isBodyweightResistance(resistanceType) }); }
-        if (action === "template-exercise-rpe") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { targetRpe: Number(target.value) });
-        if (action === "template-exercise-increment") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { increment: Number(target.value) });
         if (action === "hypertrophy-window") {
           hypertrophyWindowOffset = Math.max(0, Number(target.value || 0));
           hypertrophyScoreExpanded = false;
@@ -13132,6 +13605,10 @@
           return;
         }
         if (!target || target.tagName !== "INPUT" || !isNumericEditAction(target.dataset.action)) return;
+        if (templateNumericFields[target.dataset.action]) {
+          handleTemplateNumericEdit(target);
+          return;
+        }
         const nextTarget = event.relatedTarget?.closest?.("[data-action]");
         if (nextTarget && isNumericEditAction(nextTarget.dataset.action)) return;
         const action = target.dataset.action;
@@ -13252,6 +13729,10 @@
           target.value = replacement;
           target.dataset.replaceOnNextInput = "false";
         }
+        if (templateNumericFields[action]) {
+          handleTemplateNumericEdit(target);
+          return;
+        }
         if (action === "add-exercise-draft") {
           addExerciseDraft = target.value;
           const addButton = root.querySelector('[data-action="add-exercise"]');
@@ -13283,13 +13764,8 @@
         if (action === "set-duration") patchSetValue(target.dataset.setId, "durationSeconds", target.value, false);
         if (action === "set-distance") patchSetValue(target.dataset.setId, "distance", target.value, false);
         if (action === "exercise-rest-seconds") patchExercise(target.dataset.exerciseId, { restSeconds: Number(target.value) }, false);
-        if (action === "template-exercise-rest") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { restSeconds: Number(target.value) }, false);
         if (action === "template-name") patchTemplate(target.dataset.templateId, { name: target.value }, false);
         if (action === "template-exercise-name") patchTemplateExerciseName(target.dataset.templateId, target.dataset.templateExerciseId, target.value, false);
-        if (action === "template-exercise-sets") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { sets: Number(target.value) }, false);
-        if (action === "template-exercise-reps") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { reps: Number(target.value) }, false);
-        if (action === "template-exercise-rpe") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { targetRpe: Number(target.value) }, false);
-        if (action === "template-exercise-increment") patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { increment: Number(target.value) }, false);
         if (action === "recovery-sleep-hours") patchRecovery({ sleepHours: target.value }, false);
         if (action === "recovery-hrv") patchRecovery({ hrv: target.value }, false);
         if (action === "recovery-resting-hr") patchRecovery({ restingHr: target.value }, false);

@@ -1143,6 +1143,53 @@ test("equal-revision divergent copies preserve the alternate through later norma
   expect(await page.evaluate((storageKey) => localStorage.getItem(storageKey) !== null, STORAGE_KEY)).toBe(true);
 });
 
+test("confirmed Clear resolves an equal-revision conflict across IndexedDB, fallback, and reload", async ({ page }) => {
+  test.setTimeout(90_000);
+  await installScenario(page, { activeWorkout: false, preserveStorageOnReload: true });
+  const base = await readPersistedAppData(page);
+  const templateId = "public-synthetic-template-upper";
+  const indexedName = "Conflict clear IndexedDB sentinel";
+  const alternateName = "Conflict clear fallback sentinel";
+  const indexedCopy = { ...base, templates: base.templates.map((template) => template.id === templateId ? { ...template, name: indexedName } : template) };
+  const localCopy = { ...base, templates: base.templates.map((template) => template.id === templateId ? { ...template, name: alternateName } : template) };
+  const equalTimestamp = "2026-07-14T15:02:00.000Z";
+  await quiesceAppDataPersistenceForRecoveryFixture(page);
+  await writePersistedAppRecord(page, indexedCopy, equalTimestamp);
+  await page.evaluate(({ storageKey, alternate, updatedAt }) => localStorage.setItem(storageKey, JSON.stringify({
+    format: "comprehensive-fitness-local-fallback", version: 1, source: "conflict-clear-fixture", updatedAt, conflictPreserved: false, data: alternate
+  })), { storageKey: STORAGE_KEY, alternate: localCopy, updatedAt: equalTimestamp });
+
+  await page.reload();
+  await expect(page.locator("main.app-main")).toBeVisible({ timeout: 45_000 });
+  await openPrimaryTab(page, "data");
+  await expect(page.locator(".persistence-conflict-note")).toContainText(/conflicting saved app-data copies.*preserved.*clear all/i);
+  const dangerSummary = page.locator("details.settings-group > summary").filter({ hasText: "Danger Zone" });
+  if (!await dangerSummary.evaluate((element) => element.parentElement.open)) await dangerSummary.click();
+  await page.getByRole("button", { name: /Clear All Local App Data$/ }).click();
+  const dialog = page.getByRole("dialog", { name: "Clear All Local App Data?" });
+  await dialog.getByRole("checkbox", { name: /I understand/ }).check();
+  await dialog.getByRole("textbox", { name: "Type CLEAR to confirm local data deletion" }).fill("CLEAR");
+  await dialog.getByRole("button", { name: "Permanently Clear Local Data" }).click();
+
+  await expect(page.getByText("Local app data cleared.", { exact: true }), "Confirmed conflict clearing must announce completion").toBeVisible({ timeout: 15_000 });
+  expect(await page.evaluate((storageKey) => localStorage.getItem(storageKey), STORAGE_KEY), "The conflict-preserved fallback must be removed").toBeNull();
+  const cleared = await readPersistedAppData(page);
+  expect.soft(cleared.sessions).toHaveLength(1);
+  expect.soft(cleared.exercises).toHaveLength(0);
+  expect.soft(cleared.sets).toHaveLength(0);
+  expect.soft(cleared.templates).toHaveLength(0);
+  expect.soft(cleared.templates.some((template) => [indexedName, alternateName].includes(template.name))).toBe(false);
+
+  await page.reload();
+  await expect(page.locator("main.app-main")).toBeVisible({ timeout: 45_000 });
+  await openPrimaryTab(page, "data");
+  await expect(page.locator(".persistence-conflict-note"), "The cleared alternate must not return after reload").toHaveCount(0);
+  expect(await page.evaluate((storageKey) => localStorage.getItem(storageKey), STORAGE_KEY)).toBeNull();
+  const reloaded = await readPersistedAppData(page);
+  expect.soft(reloaded.sessions).toHaveLength(1);
+  expect.soft(reloaded.templates).toHaveLength(0);
+});
+
 test("revisionless legacy divergence is wrapped and preserved without destructive promotion", async ({ page }) => {
   test.setTimeout(90_000);
   await installScenario(page, { activeWorkout: false, preserveStorageOnReload: true });

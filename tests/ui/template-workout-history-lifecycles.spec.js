@@ -420,6 +420,8 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     { reason: "no_dynamic_direct_target", stage: "target" },
     { reason: "ambiguous_dynamic_direct_target", stage: "target" },
     { reason: "invalid_reconciled_identity", stage: "identity" },
+    { reason: "ambiguous_public_exercise_identity", stage: "identity" },
+    { reason: "personal_public_identity_collision", stage: "identity" },
     { reason: "unknown_exercise_identity", stage: "identity" }
   ];
 
@@ -532,6 +534,53 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     expect(observed.calls).toEqual({ identity: 0, target: 0, prescribe: 0 });
     expect(observed.sameReference).toBe(true);
     expect(observed.afterBytes).toBe(observed.beforeBytes);
+  });
+
+  test("a corrupt active executable snapshot fails closed without prescribing or entering the recommendation cache", async ({ page }) => {
+    await installFixture(page, buildActiveWorkoutLifecycleFixture());
+    const observed = await page.evaluate((exerciseId) => {
+      const exercise = data.exercises.find((item) => item.id === exerciseId);
+      exercise.recommendationSnapshot = {
+        recommendationId: "public-synthetic-corrupt-active-snapshot",
+        exerciseId: "ex_barbell_bench_press",
+        muscleGroupId: "mg_chest_sternal",
+        executable: true,
+        finalPrescription: { executable: true, executionBlocked: false, sets: 5, reps: 5 }
+      };
+      const calls = { prescribe: 0 };
+      const originalPrescribe = prescriptionEngine.prescribeExercise;
+      prescriptionEngine.prescribeExercise = function (...args) {
+        calls.prescribe += 1;
+        return originalPrescribe.apply(this, args);
+      };
+      const cacheSizeBefore = prescriptionSnapshotCache.size;
+      const result = unifiedPrescriptionSnapshot(exercise);
+      return { calls, cacheSizeBefore, cacheSizeAfter: prescriptionSnapshotCache.size, result };
+    }, IDS.activeBenchExercise);
+
+    expect(observed.calls.prescribe, "a corrupt stored executable snapshot must never reach fresh prescription").toBe(0);
+    expect(observed.cacheSizeAfter, "a rejected stored snapshot must not enter the recommendation cache").toBe(observed.cacheSizeBefore);
+    expect(observed.result).toMatchObject({
+      type: "hard_constraint_rejection",
+      kind: "hard_constraint_rejection",
+      hardConstraint: true,
+      executionBlocked: true,
+      executable: false,
+      status: "blocked",
+      reason: "invalid_stored_recommendation_snapshot",
+      sets: 0,
+      reps: 0,
+      repLow: 0,
+      repHigh: 0,
+      weight: 0,
+      addedLoad: 0,
+      assistanceLoad: 0,
+      rpe: 0,
+      restSeconds: 0,
+      warmups: [],
+      executableActions: [],
+      safetyRestriction: { status: "blocked", reason: "invalid_stored_recommendation_snapshot" }
+    });
   });
 
   test("active workout rename, reorder, add/remove exercises and sets, save-as-template, and reload remain coherent", async ({ page }) => {
@@ -793,6 +842,23 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await installFixture(page, buildHistoryLifecycleFixture());
     await openSubmittedHistorySession(page);
     await page.locator('[data-action="begin-history-edit"]').click();
+    const revisionBeforeEdit = await page.evaluate(() => {
+      const realWriteIndexedValue = window.writeIndexedValue;
+      window.__historyFirstClickWriteProbe = { started: 0, completed: 0, failed: 0 };
+      window.writeIndexedValue = async function (...args) {
+        const isAppDataWrite = args[0] === "app-data";
+        if (isAppDataWrite) window.__historyFirstClickWriteProbe.started += 1;
+        try {
+          const result = await Reflect.apply(realWriteIndexedValue, this, args);
+          if (isAppDataWrite) window.__historyFirstClickWriteProbe.completed += 1;
+          return result;
+        } catch (error) {
+          if (isAppDataWrite) window.__historyFirstClickWriteProbe.failed += 1;
+          throw error;
+        }
+      };
+      return Number(data.dataRevision);
+    });
     const editedReps = page.locator(`[data-action="set-reps"][data-set-id="${IDS.historyBenchSet1}"]`);
     await editedReps.fill("12");
     await page.locator('[data-action="request-save-history-edits"]').click();
@@ -809,8 +875,14 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     const savedResult = saved.sessions.find((item) => item.id === IDS.historySession).workoutAnalysis.exerciseResults.find((item) => item.exerciseId === IDS.historyBenchExercise);
     expect.soft(saved.sets.find((item) => item.id === IDS.historyBenchSet1).reps).toBe(12);
     expect.soft(savedResult.bestSet).toMatchObject({ id: IDS.historyBenchSet1, reps: 12, load: 145 });
+    expect.soft(saved.dataRevision, "one real numeric edit must create exactly one logical revision despite input/change/focusout delivery").toBe(revisionBeforeEdit + 1);
+    await expect.poll(() => page.evaluate(() => structuredClone(window.__historyFirstClickWriteProbe)), {
+      message: "the explicit Save Edits confirmation must route exactly one durable app-data write",
+      timeout: 12_000
+    }).toEqual({ started: 1, completed: 1, failed: 0 });
 
     await reloadAndWait(page);
+    await page.locator('[data-action="set-tab"][data-tab="dashboard"]').click();
     const card = page.locator(`[data-action="open-session"][data-session-id="${IDS.historySession}"]`);
     await expect(card).toHaveCount(1);
     await card.click();

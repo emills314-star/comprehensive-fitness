@@ -768,6 +768,321 @@ test("backup import is bounded, allowlisted, and hostile-field safe", () => {
   ]);
 });
 
+test("backup revision metadata is bounded and rebased while template numbers share one finite domain", () => {
+  const limits = {
+    maxJsonDepth: BACKUP_BOUNDARIES.jsonDepth,
+    maxObjectKeys: BACKUP_BOUNDARIES.objectKeys,
+    maxSessions: BACKUP_BOUNDARIES.sessions,
+    maxExercises: BACKUP_BOUNDARIES.exercises,
+    maxSets: BACKUP_BOUNDARIES.sets,
+    maxTemplates: BACKUP_BOUNDARIES.templates,
+    maxFileBytes: BACKUP_BOUNDARIES.fileBytes
+  };
+  const validate = evaluateFunction("validateImportedAppData", {
+    BACKUP_IMPORT_LIMITS: limits,
+    validateBackupJsonShape: () => true
+  });
+  const backup = (overrides = {}) => ({
+    appDataVersion: 2,
+    sessions: [],
+    exercises: [],
+    sets: [],
+    templates: [],
+    settings: {},
+    ...overrides
+  });
+
+  for (const revision of [undefined, 0, Number.MAX_SAFE_INTEGER]) {
+    const candidate = backup(revision === undefined ? {} : { dataRevision: revision });
+    assert.equal(validate(candidate, limits).dataRevision, 0, "Imported ordering metadata must never become local ordering authority");
+  }
+  for (const revision of [-1, 1.5, Number.MAX_SAFE_INTEGER + 1, "7"]) {
+    assert.throws(() => validate(backup({ dataRevision: revision }), limits), /dataRevision|safe integer/i);
+  }
+
+  const templateExercise = {
+    id: "template-exercise-1",
+    name: "Barbell Bench Press",
+    sets: 3,
+    reps: 8,
+    targetRpe: 8,
+    increment: 2.5,
+    restSeconds: 120
+  };
+  const withTemplateValue = (field, value) => backup({
+    templates: [{ id: "template-1", name: "Upper", exercises: [{ ...templateExercise, [field]: value }] }]
+  });
+  const invalidTemplateValues = [
+    ["sets", ""],
+    ["sets", -1],
+    ["sets", 1.5],
+    ["reps", "NaN"],
+    ["targetRpe", "Infinity"],
+    ["increment", Number.MAX_VALUE],
+    ["restSeconds", 16]
+  ];
+  invalidTemplateValues.forEach(([field, value]) => {
+    assert.throws(() => validate(withTemplateValue(field, value), limits), /Template .* between|increment/i, `${field}=${String(value)} must be rejected at import`);
+  });
+  const canonical = validate(withTemplateValue("sets", "4"), limits);
+  assert.equal(canonical.templates[0].exercises[0].sets, 4, "A valid numeric backup value must be canonicalized to a number");
+
+  const numericFields = {
+    "template-exercise-sets": { field: "sets", min: 1, max: 100, step: 1, integer: true, label: "sets" },
+    "template-exercise-reps": { field: "reps", min: 1, max: 1000, step: 1, integer: true, label: "reps" },
+    "template-exercise-rpe": { field: "targetRpe", min: 5, max: 10, step: 0.5, integer: false, label: "RPE" },
+    "template-exercise-increment": { field: "increment", min: 0.5, max: 10000, step: 0.5, integer: false, label: "increment" },
+    "template-exercise-rest": { field: "restSeconds", min: 15, max: 3600, step: 15, integer: true, label: "rest" }
+  };
+  const valueIsValid = evaluateFunction("templateNumericValueIsValid");
+  assert.equal(valueIsValid("", numericFields["template-exercise-sets"]), false);
+  assert.equal(valueIsValid("-1", numericFields["template-exercise-sets"]), false);
+  assert.equal(valueIsValid("1.5", numericFields["template-exercise-sets"]), false);
+  assert.equal(valueIsValid("NaN", numericFields["template-exercise-reps"]), false);
+  assert.equal(valueIsValid("Infinity", numericFields["template-exercise-rpe"]), false);
+  assert.equal(valueIsValid(String(Number.MAX_VALUE), numericFields["template-exercise-increment"]), false);
+  const assertNumericDomain = evaluateFunction("assertTemplateExerciseNumericDomain", { templateNumericFields: numericFields });
+  assert.throws(() => assertNumericDomain({ sets: 1.5 }), /Template sets/);
+  assert.throws(() => assertNumericDomain({ restSeconds: 16 }), /Template rest/);
+  assert.doesNotThrow(() => assertNumericDomain({ sets: 4, reps: 12, targetRpe: 8.5, increment: 2.5, restSeconds: 150 }));
+
+  const nextFrom = (dataRevision) => evaluateFunction("nextMonotonicImportRevision", { data: { dataRevision } })();
+  assert.equal(nextFrom(0), 1);
+  assert.equal(nextFrom(41), 42);
+  assert.throws(() => nextFrom(Number.MAX_SAFE_INTEGER), /exhausted|invalid/i);
+  assert.throws(() => nextFrom(-1), /exhausted|invalid/i);
+
+  const clearDrafts = functionSource("clearTemplateNumericDrafts");
+  collectAssertions([
+    ["template deletion clears drafts", () => assertContains(html, /confirm-delete-template[\s\S]*?clearTemplateNumericDrafts\s*\(\s*templateId\s*\)/, "Deleting a template must remove its pending numeric drafts")],
+    ["exercise deletion clears drafts", () => assertContains(html, /delete-template-exercise[\s\S]*?clearTemplateNumericDrafts\s*\(\s*target\.dataset\.templateId\s*,\s*target\.dataset\.templateExerciseId\s*\)/, "Deleting a template exercise must remove its pending numeric drafts")],
+    ["draft helper deletes matched keys", () => assertContains(clearDrafts, /templateNumericDrafts\.delete\s*\(\s*key\s*\)/, "Draft cleanup must delete every matched key")]
+  ]);
+});
+
+test("active and template recommendation snapshots require schema, checksum, identity, and direct-target validity", () => {
+  const engine = prescriptionApi.createPrescriptionEngine({ researchData: publicResearchData() });
+  const validateExecutableRecommendationSnapshot = evaluateFunction("validateExecutableRecommendationSnapshot", { prescriptionApi });
+  const validateSnapshot = evaluateFunction("validateImportedExecutableRecommendationSnapshot", {
+    validateExecutableRecommendationSnapshot
+  });
+  const valid = engine.prescribeExercise({
+    exerciseId: "ex_barbell_bench_press",
+    muscleGroupId: "mg_chest_sternal",
+    availableEquipment: ["all"],
+    history: [],
+    createdAt: "2026-07-15T00:00:00.000Z"
+  });
+  assert.doesNotThrow(() => validateSnapshot(valid, engine, "Valid active recommendation"));
+
+  const staleChecksum = structuredClone(valid);
+  staleChecksum.confidence = staleChecksum.confidence === "high" ? "moderate" : "high";
+  assert.throws(() => validateSnapshot(staleChecksum, engine, "Stale checksum"), /checksum/i);
+
+  const unknownSchema = prescriptionApi.refreshRecommendationChecksum({ ...structuredClone(valid), schemaVersion: "snapshot/99.0.0" });
+  assert.throws(() => validateSnapshot(unknownSchema, engine, "Unknown schema"), /schema/i);
+
+  const unknownIdentity = structuredClone(valid);
+  unknownIdentity.exerciseId = "ex_unknown_imported_identity";
+  if (unknownIdentity.basePrescription) unknownIdentity.basePrescription.exerciseId = unknownIdentity.exerciseId;
+  if (unknownIdentity.finalPrescription) unknownIdentity.finalPrescription.exerciseId = unknownIdentity.exerciseId;
+  assert.throws(
+    () => validateSnapshot(prescriptionApi.refreshRecommendationChecksum(unknownIdentity), engine, "Unknown identity"),
+    /identity|unknown/i
+  );
+
+  const mismatchedTarget = prescriptionApi.refreshRecommendationChecksum({
+    ...structuredClone(valid),
+    muscleGroupId: "mg_quadriceps_rectus_femoris"
+  });
+  assert.throws(() => validateSnapshot(mismatchedTarget, engine, "Identity-target mismatch"), /taxonomy|target|direct|muscle/i);
+
+  assert.throws(
+    () => validateSnapshot(valid, engine, "Host mismatch", { name: "Seated Cable Row", canonicalExerciseId: "ex_seated_cable_row" }),
+    /host exercise identity/i
+  );
+
+  let prescribeCalls = 0;
+  const originalPrescribe = engine.prescribeExercise.bind(engine);
+  engine.prescribeExercise = (...args) => { prescribeCalls += 1; return originalPrescribe(...args); };
+  assert.doesNotThrow(() => validateSnapshot(valid, engine, "No fresh prescription"));
+  assert.equal(prescribeCalls, 0, "Snapshot integrity/identity validation must not invoke fresh prescription logic");
+
+  const blocked = engine.prescribeExercise({
+    exerciseId: "ex_barbell_bench_press",
+    muscleGroupId: "mg_chest_sternal",
+    readiness: { pain: true, affectedMuscle: "chest" },
+    availableEquipment: ["all"],
+    history: [],
+    createdAt: "2026-07-15T00:00:00.000Z"
+  });
+  assert.equal(blocked.finalPrescription.executionBlocked, true, "The hard-rejection fixture must be non-executable");
+  assert.doesNotThrow(() => validateSnapshot(blocked, engine, "Valid hard rejection"), "A valid non-executable safety snapshot remains safe to import");
+
+  const calls = [];
+  const validateCollection = evaluateFunction("validateImportedExecutableRecommendationSnapshots", {
+    validateImportedExecutableRecommendationSnapshot: (snapshot, _engine, label, hostExercise) => calls.push({ snapshot, label, hostExercise })
+  });
+  const historicalSnapshot = { exact: "historical bytes" };
+  const historicalBefore = JSON.stringify(historicalSnapshot);
+  validateCollection({
+    sessions: [
+      { id: "active", submitted: false, workoutPrescription: { recommendations: [{ kind: "active-workout" }] } },
+      { id: "historical", submitted: true, workoutPrescription: { recommendations: [{ kind: "historical-workout" }] } }
+    ],
+    exercises: [
+      { id: "active-exercise", sessionId: "active", recommendationSnapshot: { kind: "active-exercise" } },
+      { id: "historical-exercise", sessionId: "historical", recommendationSnapshot: historicalSnapshot }
+    ],
+    templates: [{ id: "template", exercises: [{ id: "template-exercise", recommendationSnapshot: { kind: "template" } }] }]
+  }, engine);
+  assert.deepEqual(calls.map((item) => item.snapshot.kind), ["active-exercise", "active-workout", "template"]);
+  assert.deepEqual(calls.filter((item) => item.hostExercise).map((item) => item.hostExercise.id), ["active-exercise", "template-exercise"], "Active/template exercise snapshots must remain bound to their host exercise");
+  assert.equal(JSON.stringify(historicalSnapshot), historicalBefore, "Submitted historical snapshot bytes must remain untouched and unvalidated");
+});
+
+test("conflict-mode and rejected executable imports perform zero writes while accepted imports rebase once", async () => {
+  const makeContext = ({ conflict = false, snapshotError = null } = {}) => {
+    const events = { writes: [], removals: [], renders: 0, snapshotChecks: 0, evidenceInstalls: 0, invalidations: 0, runtimeSaves: 0 };
+    const engineSentinel = { id: "engine-sentinel" };
+    const cacheSentinel = { id: "cache-sentinel" };
+    const context = {
+      importInProgress: false,
+      importAttempt: 0,
+      importStatus: { state: "idle", message: "" },
+      settingsMessage: "",
+      render: () => { events.renders += 1; },
+      appDataPersistenceConflict: conflict ? { message: "Synthetic divergent copies" } : null,
+      BACKUP_IMPORT_LIMITS: { maxFileBytes: BACKUP_BOUNDARIES.fileBytes },
+      Error,
+      TextEncoder,
+      validateImportedAppData: () => ({ appDataVersion: 2, sessions: [], exercises: [], sets: [], templates: [], settings: {}, personalEvidencePackage: null, dataRevision: 0 }),
+      researchOnlyBundleForImport: () => ({ bundle: { personal: {} }, engine: { id: "prepared-engine" } }),
+      normalizeLoadedData: (value) => structuredClone(value),
+      nextMonotonicImportRevision: () => 42,
+      validateImportedExecutableRecommendationSnapshots: () => {
+        events.snapshotChecks += 1;
+        if (snapshotError) throw new Error(snapshotError);
+      },
+      writeIndexedValue: async (key, value) => { events.writes.push({ key, value: structuredClone(value) }); },
+      localStorage: { removeItem: (key) => events.removals.push(key) },
+      STORAGE_KEY: "comprehensive-fitness-data",
+      data: { dataRevision: 41, sessions: [{ id: "runtime-session-sentinel" }], evidenceSentinel: "unchanged" },
+      templateNumericDrafts: new Map(),
+      prescriptionEngine: engineSentinel,
+      prescriptionEvidenceStatus: { state: "ready", personalVersion: "evidence-sentinel" },
+      prescriptionSnapshotCache: new Map([["sentinel", cacheSentinel]]),
+      installPreparedEvidence: () => { events.evidenceInstalls += 1; context.prescriptionEngine = { id: "installed-engine" }; return 0; },
+      entityStructureRevision: 7,
+      entityIndexCache: { id: "entity-cache-sentinel" },
+      invalidateCompletedAnalysis: () => { events.invalidations += 1; },
+      activeSessionId: "runtime-session-sentinel",
+      activeWorkoutId: "runtime-workout-sentinel",
+      sessionHasStarted: () => false,
+      isSessionSubmitted: () => false,
+      saveRuntime: () => { events.runtimeSaves += 1; },
+      importStrongCsv: () => { throw new Error("CSV path was not expected"); },
+      isoNow: () => "2026-07-15T00:00:00.000Z"
+    };
+    return { context, events, run: evaluateFunction("importDataFile", context) };
+  };
+  const file = { name: "backup.json", size: 2, text: async () => "{}" };
+
+  const conflict = makeContext({ conflict: true });
+  await conflict.run(file);
+  assert.equal(conflict.events.writes.length, 0, "Conflict-mode import must not write either store");
+  assert.match(conflict.context.settingsMessage, /selected copy|alternate is excluded|Clear All/i);
+
+  const invalid = makeContext({ snapshotError: "Synthetic invalid executable snapshot" });
+  const invalidBefore = {
+    data: invalid.context.data,
+    bytes: JSON.stringify(invalid.context.data),
+    engine: invalid.context.prescriptionEngine,
+    evidenceStatus: invalid.context.prescriptionEvidenceStatus,
+    cacheValue: invalid.context.prescriptionSnapshotCache.get("sentinel"),
+    entityStructureRevision: invalid.context.entityStructureRevision,
+    entityIndexCache: invalid.context.entityIndexCache,
+    activeSessionId: invalid.context.activeSessionId,
+    activeWorkoutId: invalid.context.activeWorkoutId
+  };
+  await invalid.run(file);
+  assert.equal(invalid.events.snapshotChecks, 1);
+  assert.equal(invalid.events.writes.length, 0, "An invalid active/template snapshot must reject atomically before IndexedDB write");
+  assert.equal(invalid.events.removals.length, 0, "Rejected snapshot import must leave the durable fallback untouched");
+  assert.equal(invalid.events.evidenceInstalls, 0, "Rejected snapshot import must not replace the active evidence engine");
+  assert.equal(invalid.events.invalidations, 0, "Rejected snapshot import must not invalidate accepted-state caches");
+  assert.equal(invalid.events.runtimeSaves, 0, "Rejected snapshot import must not persist altered runtime state");
+  assert.strictEqual(invalid.context.data, invalidBefore.data);
+  assert.equal(JSON.stringify(invalid.context.data), invalidBefore.bytes);
+  assert.strictEqual(invalid.context.prescriptionEngine, invalidBefore.engine);
+  assert.strictEqual(invalid.context.prescriptionEvidenceStatus, invalidBefore.evidenceStatus);
+  assert.strictEqual(invalid.context.prescriptionSnapshotCache.get("sentinel"), invalidBefore.cacheValue);
+  assert.equal(invalid.context.entityStructureRevision, invalidBefore.entityStructureRevision);
+  assert.strictEqual(invalid.context.entityIndexCache, invalidBefore.entityIndexCache);
+  assert.equal(invalid.context.activeSessionId, invalidBefore.activeSessionId);
+  assert.equal(invalid.context.activeWorkoutId, invalidBefore.activeWorkoutId);
+  assert.match(invalid.context.settingsMessage, /invalid executable snapshot/i);
+
+  const accepted = makeContext();
+  await accepted.run(file);
+  assert.equal(accepted.events.snapshotChecks, 1);
+  assert.equal(accepted.events.writes.length, 1, "A validated backup must perform one IndexedDB app-data write");
+  assert.equal(accepted.events.writes[0].value.dataRevision, 42, "Imported revision metadata must be replaced by the next local monotonic revision");
+  assert.equal(accepted.context.data.dataRevision, 42);
+  assert.deepEqual(accepted.events.removals, ["comprehensive-fitness-data"], "The shadowing fallback must be removed only after the accepted IndexedDB write");
+
+  const importSource = functionSource("importDataFile");
+  const exportSource = functionSource("exportData");
+  collectAssertions([
+    ["conflict gate precedes file read", () => assert.ok(importSource.indexOf("appDataPersistenceConflict") < importSource.indexOf("file.text()"), "Conflict import must fail before consuming untrusted bytes")],
+    ["snapshot validation precedes write", () => assert.ok(importSource.indexOf("validateImportedExecutableRecommendationSnapshots") < importSource.indexOf('writeIndexedValue("app-data"'), "Executable snapshots must validate before persistence")],
+    ["fallback cleanup follows write", () => assert.ok(importSource.indexOf('writeIndexedValue("app-data"') < importSource.indexOf("localStorage.removeItem"), "Fallback cleanup must follow the successful IndexedDB write")],
+    ["export identifies selected copy", () => assertContains(exportSource, /selected app-data copy only[\s\S]*?alternate[\s\S]*?not included/i, "Conflict export must disclose both selected scope and excluded alternate")]
+  ]);
+});
+
+test("workout submission is idempotent under a reentrant call, not only after the submitted flag lands", () => {
+  const session = { id: "session-1", date: "2026-07-15", submitted: false, workoutPrescription: null };
+  const context = {
+    data: { sessions: [session], exercises: [], recommendationHistory: [], manualOverrides: [], dataRevision: 1 },
+    workoutSubmissionsInProgress: new Set(),
+    timer: null,
+    timerCompleteNotice: null,
+    restNavigationState: null,
+    isoNow: () => "2026-07-15T00:00:00.000Z",
+    submitWorkoutPrs: null,
+    calculateWorkoutAnalysis: () => ({ grade: "B" }),
+    evaluateWorkoutOverrideOutcomes: () => ({ exercises: [], recommendationHistory: [], manualOverrides: [], evaluatedByRecommendation: new Map() }),
+    pendingSubmitSessionId: "session-1",
+    completedSummarySessionId: "",
+    activeWorkoutId: "session-1",
+    clearActiveWorkoutDraft: () => { context.draftClears += 1; },
+    commit: (nextData) => { context.commits += 1; context.data = { ...nextData, dataRevision: context.data.dataRevision + 1 }; },
+    playWorkoutCompletionSound: () => { context.sounds += 1; },
+    performInteractionFeedback: () => { context.feedback += 1; },
+    cancelTimer: () => {},
+    commits: 0,
+    sounds: 0,
+    feedback: 0,
+    draftClears: 0,
+    reentrantAttempts: 0
+  };
+  const submit = evaluateFunction("submitWorkout", context);
+  context.submitWorkoutPrs = () => {
+    context.reentrantAttempts += 1;
+    submit("session-1");
+    return [];
+  };
+  submit("session-1");
+  submit("session-1");
+  assert.equal(context.reentrantAttempts, 1, "The calculation path must run once");
+  assert.equal(context.commits, 1, "Reentrant and repeated submissions must create one logical completion");
+  assert.equal(context.sounds, 1, "Completion effects must run once");
+  assert.equal(context.draftClears, 1, "The active draft must clear once");
+  assert.equal(context.data.sessions[0].submitted, true);
+  assert.equal(context.workoutSubmissionsInProgress.size, 0, "The reentrancy lock must release after completion");
+});
+
 test("dedicated JSON shape validation accepts exact depth and width boundaries and rejects overflow", () => {
   assert.match(
     html,

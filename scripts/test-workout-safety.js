@@ -10,6 +10,20 @@ assert.match(html, /Readiness engine unavailable; no automatic adjustment was ap
 const inlineScripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((match) => match[1]);
 inlineScripts.forEach((script) => new Function(script));
 
+function extractBraceBlock(source, marker) {
+  const markerIndex = source.indexOf(marker);
+  assert.notEqual(markerIndex, -1, `Missing source block marker: ${marker}`);
+  const blockStart = source.indexOf("{", markerIndex + marker.length);
+  assert.notEqual(blockStart, -1, `Missing opening brace after source block marker: ${marker}`);
+  let depth = 0;
+  for (let index = blockStart; index < source.length; index += 1) {
+    if (source[index] === "{") depth += 1;
+    if (source[index] === "}") depth -= 1;
+    if (depth === 0) return source.slice(blockStart + 1, index);
+  }
+  assert.fail(`Missing closing brace for source block marker: ${marker}`);
+}
+
 assert.match(html, /let activeWorkoutId = "";/, "A canonical active workout ID is required");
 assert.match(html, /const runtime = \{ activeSessionId, activeWorkoutId, timer/, "The active workout ID must persist with timer state");
 assert.match(html, /workoutId: activeWorkoutId \|\| exercise\?\.sessionId/, "Rest timers must be keyed to the active workout");
@@ -27,15 +41,22 @@ assert.match(html, /data\.sessions\.filter\(\(item\) => item\.id !== session\.id
 assert.match(html, /removeWorkoutFromSyncQueue\(session\.id\)/, "Canceled drafts must be removed from pending synchronization");
 assert.match(html, /template-readiness-sleep-quality"\) patchTemplateStartDraft\(\{ sleepQuality: target\.value \}, false\)/, "Readiness selectors must not rebuild and refocus the sheet while entering metrics");
 assert.match(html, /if \(templateStartFlow && !data\.templates\.some/, "Invalid modal state must not leave the application inert");
-assert.match(html, /@media \(max-width: 719px\)[\s\S]{0,180}input, select, textarea \{ font-size: 16px; \}/, "Mobile form controls must prevent iOS focus zoom");
+const mobileFormControlCss = extractBraceBlock(html, "@media (max-width: 719px)");
+assert.match(mobileFormControlCss, /input, select, textarea \{ font-size: max\(16px,\s*1rem\); \}/, "Mobile form controls must prevent iOS focus zoom without overriding larger user text");
 assert.match(html, /function renderPrescriptionDetails\(exercise\)/, "Recommendation rationale must use the structured readable renderer");
 assert.match(html, /class="role-progression-facts"/, "Recommendation rationale must separate role-specific confidence, range, and increment");
 assert.match(html, /class="cancel-impact"/, "Workout cancellation must explain removed and preserved data visually");
-assert.match(html, /function beginHistoryEdit\(\)/, "Logged workouts must enter an explicit edit transaction");
-assert.match(html, /originalData: cloneAppData\(data\)/, "Canceling history edits must be able to restore the original workout");
+assert.match(html, /async function beginHistoryEdit\(\)/, "Logged workouts must enter an explicit asynchronous edit transaction");
+const beginHistoryEditStart = html.indexOf("async function beginHistoryEdit()");
+const beginHistoryEditEnd = html.indexOf("function requestHistoryEditConfirmation", beginHistoryEditStart);
+const beginHistoryEditSource = html.slice(beginHistoryEditStart, beginHistoryEditEnd);
+const cloneStableIndex = beginHistoryEditSource.indexOf("const stableData = cloneAppData(data)");
+const persistStableIndex = beginHistoryEditSource.indexOf("await persistStableAppDataSnapshot(stableData)");
+const retainStableIndex = beginHistoryEditSource.indexOf("originalData: stableData");
+assert.ok(cloneStableIndex >= 0 && cloneStableIndex < persistStableIndex && persistStableIndex < retainStableIndex, "History editing must clone, durably persist, and then retain the same stable snapshot for cancellation");
 assert.match(html, /Save Edits/, "History editing must expose a save action");
 assert.match(html, /Cancel Edits/, "History editing must expose a cancel action");
-assert.match(html, /if \(!isEditingHistorySession\(\)\) acknowledgeActiveSet/, "Historical set edits must not start live-workout behavior");
+assert.match(html, /const editingHistory = isEditingHistorySession\(\);[\s\S]*?if \(!editingHistory\) acknowledgeActiveSet/, "Historical set edits must not start live-workout behavior");
 assert.match(html, /if \(action === "close-completed-summary"\) returnToLiftHome/, "Closing a completed workout must return to the Lift home");
 assert.match(html, /readinessReviewTitle\.textContent = "Today's Readiness Adjustments"/, "Readiness headings must render with encoding-safe apostrophes");
 assert.match(html, /function explainReadinessAdjustmentChoice\(original, adjusted, triggers\)/, "Readiness rationale must explain why load, reps, sets, RPE, and rest were selected");
