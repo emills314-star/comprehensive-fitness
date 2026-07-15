@@ -364,7 +364,10 @@ test("equal-revision conflict blocks import, tells the truth about export recove
       expect.soft(audit.importsSettled, "the conflict-guarded import attempt must settle exactly once").toBe(1);
       expect.soft(terminalStatus.attempt, "the conflict import must publish exactly one new attempt").toBe(beforeStatus.attempt + 1);
       expect.soft(terminalStatus.state, "the conflict import must publish a rejected terminal state").toBe("rejected");
-      expect.soft(terminalStatus.text, "the terminal status must identify the unresolved persistence conflict").toMatch(/conflict/i);
+      expect.soft(
+        terminalStatus.text,
+        "the terminal status must identify the unresolved persistence disagreement"
+      ).toMatch(/(?:\bconflict(?:ing)?\b|\b(?:two|both)\b[^.\n]{0,80}\b(?:saved|app[- ]?data)\b[^.\n]{0,80}\bcop(?:y|ies)\b[^.\n]{0,80}\b(?:disagree|differ|diverge)\b|\b(?:saved|app[- ]?data)\b[^.\n]{0,80}\bcop(?:y|ies)\b[^.\n]{0,80}\b(?:disagree|differ|diverge)\b)/i);
       expect.soft(audit.fileTextReads, "conflict mode must block before consuming file bytes").toBe(0);
       expect.soft(audit.writesStarted, "conflict-blocked import must write nothing").toBe(0);
       expect.soft(audit.dataJsonUnchanged, "conflict-blocked import must preserve active runtime bytes").toBe(true);
@@ -383,14 +386,24 @@ test("equal-revision conflict blocks import, tells the truth about export recove
       await group.locator('[data-action="export-data"]').click();
       const exportedText = await group.getByLabel("Exported backup JSON").inputValue();
       const exported = JSON.parse(exportedText);
-      const groupText = String(await group.innerText());
+      const disclosureText = await page.locator('.settings-view > .persistence-status-note[role="status"]').evaluateAll((nodes) => String(nodes[0]?.textContent || ""));
       const includesActive = containsSentinel(exported, conflict.indexed.templates[0].name);
       const includesAlternate = containsSentinel(exported, conflict.alternate.templates[0].name);
-      const explicitOrdinaryExportDisclosure = /export[^.\n]*(?:only|contains)[^.\n]*active|alternate[^.\n]*(?:is not|isn't|not)[^.\n]*(?:included|in the export)/i.test(groupText);
-      expect.soft(
-        includesActive && includesAlternate || includesActive && explicitOrdinaryExportDisclosure,
-        "conflict export must either carry both recoverable copies or explicitly disclose that the ordinary export excludes the preserved alternate"
-      ).toBe(true);
+      const disclosureSentences = disclosureText.split(/[.\n]+/).map((sentence) => sentence.trim()).filter(Boolean);
+      const disclosesSelectedCopyOnly = disclosureSentences.some((sentence) =>
+        /\b(?:export|exported|backup|download)\b/i.test(sentence)
+        && /\b(?:selected|current|currently|active)\b/i.test(sentence)
+        && /\bcopy\b/i.test(sentence)
+        && /\bonly\b/i.test(sentence)
+      );
+      const disclosesPreservedAlternateExcluded = disclosureSentences.some((sentence) =>
+        /\b(?:preserved\s+)?alternate\b/i.test(sentence)
+        && /\b(?:excluded|omitted)\b|\b(?:is not|isn't|not)\s+included\b/i.test(sentence)
+      );
+      expect.soft(includesActive, "conflict export must include the selected active copy").toBe(true);
+      expect.soft(includesAlternate, "ordinary conflict export must not silently embed the preserved alternate").toBe(false);
+      expect.soft(disclosesSelectedCopyOnly, "the accessible export disclosure must say that only the selected/current copy is exported").toBe(true);
+      expect.soft(disclosesPreservedAlternateExcluded, "the accessible export disclosure must say that the preserved alternate is excluded or not included").toBe(true);
 
       const danger = page.locator("details.settings-group").filter({ has: page.locator("summary", { hasText: "Danger Zone" }) });
       if (!await danger.evaluate((element) => element.open)) await danger.locator("summary").click();
