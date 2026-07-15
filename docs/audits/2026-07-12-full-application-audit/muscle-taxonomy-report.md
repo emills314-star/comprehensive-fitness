@@ -15,9 +15,11 @@ exercise -> one or more typed muscle relationships
 
 Historical workout facts remain unchanged. The active taxonomy version recalculates derived volume/reporting views; aliases preserve legacy and user-facing values.
 
+Prescription engine 3.3.5 now separates those broad display/reporting projections from exact future-generation defaults. Canonical exercise IDs, names, and 66 exported aliases resolve to one exercise identity. A default target is eligible only when exactly one positive-credit `direct_load` relationship has a dynamic or mixed loading role; the adapter returns that exact `mg_*` ID plus transient taxonomy provenance. Broad regions never become exercise aliases or automatic exact targets.
+
 ## Snapshot and worktree scope
 
-This report records evidence produced in the isolated taxonomy worktrees and accepted in integration commit `b98022d`. The documentation worktree containing this report is based on the historical `main` snapshot and intentionally does not contain those application/data commits; running taxonomy code from this docs-only checkout will therefore show the older catalog. That checkout mismatch is not evidence against the accepted integration result of 23 canonical IDs, 20 programming families, 62 exercises, and 151 relationships. Final frontend/PWA adoption remains a separate integration task.
+This report records evidence produced in the isolated taxonomy worktrees and accepted in integration commit `b98022d`. The current engine implementation worktree contains the accepted public taxonomy and the 3.3.5 canonical resolver boundary: 23 canonical IDs, 20 programming families, 62 exercises, and 151 relationships. Final frontend/PWA adoption remains a separate integration task.
 
 ## Baseline defects
 
@@ -106,18 +108,22 @@ Migration is additive and derived:
 3. Recalculate derived family volume/status using per-exercise family coalescing; direct or the highest fractional relationship wins for hypertrophy credit.
 4. Sum `local_fatigue_weight` separately, including isometric/incidental rows.
 5. Deduplicate personal crosswalk expansion by `(personal exercise ID, taxonomy relationship)` and map legacy traps aliases.
-6. Record the active taxonomy version on future derived outputs/snapshots; do not rewrite historical snapshot versions.
+6. Return the active relationship taxonomy version with future-generation resolver output. Persist it only in a future explicitly versioned schema; engine 3.3.5 does not add it to snapshot 1.3.0 or prescription 2.3.0 and does not rewrite historical records.
 7. Report/reject every unmapped/dangling canonical reference during validation.
 
 Rollback does not delete data. Restore the prior public taxonomy export/version and recompute derived views. Because logged facts and historical snapshots are immutable, no record-count reversal is required. The old derived family totals may differ, which is the intended audited effect of rollback.
+
+The engine 3.3.5 resolver patch is likewise migration-free. Engine 3.3.4 broad-target snapshots retain their original checksum and lineage; new exact-target prescriptions use the same persisted schema and contain no `taxonomyVersion` field. A direct verification loaded a 3.3.5 exact-target snapshot through the unchanged 3.3.4 reader and preserved it byte-for-byte, so code rollback does not require data rollback or a backfill.
 
 ## Validation evidence
 
 - `node scripts/test-taxonomy-family-projection.js` — PASS: 23 canonical IDs, 20 families, 62 exercises, 151 relationships.
 - `node scripts/test-taxonomy-personal-crosswalk.js` — PASS on public synthetic rows; family dedupe and traps compatibility verified.
 - `npm.cmd run research:build` — PASS; public exports/schemas/workbook rebuilt.
-- `npm.cmd run research:validate` — PASS: 0 errors and 31 intentional missing male-sample-count warnings.
+- `npm.cmd run research:validate` — PASS: 0 errors and 34 intentional missing male-sample-count warnings.
 - Schema, domain-integrity, and performance tests — PASS.
 - Manifest validation now checks SHA-256 for generated CSV/JSON/schema outputs and canonical/alias/referential contracts.
+- `node scripts/test-recommendation-canonical-target-adapter.js` — PASS: 10/10 groups; 62 exercises, 66 aliases, 59 exact dynamic defaults, three intentional isometric exceptions, order invariance, invalid crosswalks, and broad-label rejection.
+- `node scripts/test-recommendation-legacy-compatibility.js` — PASS: engine 3.3.4 broad snapshots and mixed history remain unchanged; engine 3.3.5 exact targets retain the existing persisted schema and omit `taxonomyVersion`.
 
-**Snapshot note:** when this report was authored, application integration still needed to adopt the canonical resolver and taxonomy 2.1.0 expectation. Accepted integration `b98022d` now contains the audited public taxonomy/source/test changes. Frontend consumption and any private aggregate rebuild remain separate local-only work; no personal values were inspected or migrated here.
+**Snapshot note:** accepted integration `b98022d` contains the audited public taxonomy/source/test changes, and prescription engine 3.3.5 now supplies the canonical resolver/default-target boundary. Frontend consumption remains a separate integration task; no private aggregate rebuild or personal-data migration is required, and no personal values were inspected or migrated here.
