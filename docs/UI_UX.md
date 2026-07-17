@@ -50,7 +50,7 @@ The persistent bottom navigation has five tabs (`primaryTabIds`, `render`):
 | Dashboard | Weekly muscle volume, fatigue flags, recent history, nested warning/session detail. |
 | Templates | Full template list, template cards, mesocycle planner/candidate pools, readiness start sheet. |
 | Charts | Exercise selector, progress charts, session-level point detail, hypertrophy score/detail, history/recommendations. |
-| Settings | Units, goals/profile, readiness baseline, timers/notifications, PWA setup, evidence/CSV import, export, and clear-data flow. |
+| Settings | Units, goals/profile, readiness baseline, timers/notifications, separately consented workout cloud copy, PWA setup, evidence/CSV import, export, and clear-data flow. |
 
 The header exposes the current context, an atomic lb/kg switch, and a theme switch. Full template access is available from Templates; quick-start cards are a subset. Unit changes convert app-owned load values together while private source evidence remains unchanged and is converted only at the display/prescription boundary.
 
@@ -130,6 +130,7 @@ Readiness capture includes sleep, quality, HRV, resting HR, soreness, illness, a
 - **Loading:** Initial persistence/evidence loading occurs before primary use; imports expose progress/error feedback. **NEEDS REVIEW:** there is no unified skeleton/loading design.
 - **Error:** Toasts, import validation, API status, persistence fallback, and setup errors are surfaced without exposing secrets.
 - **Backup import:** App JSON backups are versioned and validated before replacing local state. Unsupported versions, unsafe identifiers, broken relationships, oversized payloads, and hostile object keys produce a specific validation error while the existing workout data remains unchanged. Strong CSV and private evidence imports remain separate labeled paths.
+- **Workout cloud copy:** The Data and backup section exposes a default-off checkbox separate from notification setup. Its copy states the 90-day maximum retention and that it is neither restore nor multi-device sync. Turning it off stops/clears pending uploads and confirms server deletion; disabling notifications revokes push independently. Local clearing pauses while offline if server authorization would otherwise be orphaned.
 - **Success:** Live-region toast, completed controls, timer-complete notice, notification tests, submission summary, PR/grade feedback.
 - **Confirmation:** Submit, cancel workout, save/cancel history edits, template deletion, and clear-data flows require explicit action.
 

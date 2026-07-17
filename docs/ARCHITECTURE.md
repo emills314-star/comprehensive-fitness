@@ -95,7 +95,7 @@ stateDiagram-v2
   EditDraft --> Submitted: save edits and recalculate
 ```
 
-Only `submitted`/completed sessions participate in canonical history and analytics (`activeCompletedWorkoutHistory`, `activeHistorySessions`). Starting a workout saves a workout prescription; exercises retain recommendation snapshots. Submission calculates PRs and workout analysis, timestamps completion, invalidates analysis caches, persists, and queues a sync mutation. Historical snapshots are not silently recomputed after engine changes.
+Only `submitted`/completed sessions participate in canonical history and analytics (`activeCompletedWorkoutHistory`, `activeHistorySessions`). Starting a workout saves a workout prescription; exercises retain recommendation snapshots. Submission calculates PRs and workout analysis, timestamps completion, invalidates analysis caches, and persists. A cloud mutation is queued only when the separate versioned workout-cloud-copy consent is enabled. Historical snapshots are not silently recomputed after engine changes.
 
 ## Models and relationships
 
@@ -149,7 +149,7 @@ The header/settings controls use one `convertAppWeightUnit` boundary. It convert
 
 ## Authentication, backend, and external integration
 
-There is no account authentication. `api/push/register.js` creates or refreshes an installation record and returns a secret; later requests use a bearer token whose hash is compared in constant time (`api/_lib/security.js`). Workout sync is installation-authorized and idempotent by mutation ID. It writes serialized payloads to Redis but exposes no read endpoint.
+There is no account authentication. Push registration and rate-limited `api/sync/authorize.js` can create an installation-scoped secret; later requests use a bearer token whose hash is compared in constant time (`api/_lib/security.js`). Push and workout-cloud-copy consent are independent. Workout writes require both installation authorization and server-side `syncConsent=1`, reject payloads over 256 KB, are idempotent by mutation ID, and expire after 90 days. `api/sync/consent.js` disables future writes and scans/deletes indexed plus legacy workout/mutation keys. Push revocation cancels active timers and clears subscription material; full installation revocation also deletes the credential and retained workout data. No read/restore endpoint exists.
 
 Rest completion can be entirely foreground/local. Optional background delivery schedules QStash, records ownership/status in Redis, delivers Web Push, and lets `sw.js` show or route a notification. Web platform constraints mean custom sound/haptic/lock-screen timing cannot be guaranteed.
 
@@ -160,6 +160,8 @@ Required server environment names are documented without values in `.env.example
 Persistence falls back from IndexedDB to localStorage. Personal evidence URL loading tolerates protected/unavailable private sources and continues research-led. APIs return structured JSON errors and fail authorization. Service-worker navigation falls back to cached `index.html`.
 
 Private raw/normalized/derived/reports data must not enter public web assets. `.vercelignore` blocks private payload paths; `sync:web` only creates an ignored private native payload when locally available. Exported app backups and Redis workout payloads may contain personal workout data and should be treated as sensitive.
+
+Workout cloud copy defaults off for new and legacy local settings. Notification registration cannot queue or flush workout mutations. Startup/online reconciliation deletes legacy implicitly uploaded data when the local installation credential remains available. Disabling consent immediately stops and clears local pending uploads, then confirms server deletion; offline revocation is retained and retried. Local-data clearing fails closed while authorization/deletion cannot be confirmed, preventing the credential needed for deletion from being discarded first. `scripts/test-sync-consent.js` covers these client/server invariants and Redis pattern deletion.
 
 Tampered app backups fail closed before replacing current state. Validation errors are shown in Settings, and a rejected import does not call persistence. `scripts/test-backup-contract.js` covers version mismatch, hostile structural identifiers, broken references, resource limits, prototype-pollution keys, and the application import/export wiring.
 
@@ -190,6 +192,6 @@ Mesocycle candidate detail remains progressively rendered: Templates defers the 
 - **Risk:** `index.html` is about 790 KB and combines UI, state, domain logic, imports, and client integration; change isolation is weak.
 - **Risk:** Root/`www` duplication requires disciplined synchronization.
 - **Decision:** The prescription engine is the only readiness-scoring path. If unavailable, the app conservatively holds the base plan; illness/pain still forces rest/modify guidance.
-- **Risk:** Redis sync is write-only and may create an expectation of recoverability not supported by UI/API.
+- **Risk:** Optional Redis workout cloud copy is write-only and is explicitly labeled as non-restorable; adding restore would require a new product/data-conflict contract.
 - **Risk:** Static regex/Node tests verify many contracts but there is no browser E2E, accessibility automation, or native-device CI.
 - **NEEDS REVIEW:** External production, Upstash region/status, and physical iPhone acceptance claims in operational docs require human re-verification.

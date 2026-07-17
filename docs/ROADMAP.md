@@ -34,6 +34,7 @@ All user-facing work now has a mandatory hosted-site browser-verification gate. 
 | Rest-completion lifecycle | **COMPLETED** / High | Exact five-second default notice, deduplicated effects, foreground/background reconciliation tests pass. | `rest-completion-controller.js`, `sw.js`, rest tests; update UI/Architecture/push docs. |
 | Research/private evidence contracts | **COMPLETED** / High | Versioned schemas, build/validation, adapters, and private/public boundary. | `research_database/`, `personal_fitness_data/`, data tests; update Architecture/Decision Engine/training map. |
 | Strict app-backup trust boundary | **COMPLETED** / Critical | Versioned export, allowlisted/prototype-free import, bounded payloads, safe structural IDs, referential integrity, hostile-import regression, and PWA parity pass. | `backup-contract.js`, Settings import/export, backup-contract tests; Project/Architecture/UI. |
+| Separate workout-cloud-copy consent and deletion | **COMPLETED** / Critical | Default-off/versioned client consent, independent installation authorization, server-enforced writes, 90-day expiry, legacy-key deletion, push/credential revocation, offline retry, and fail-closed local clearing pass. | `index.html`, `api/sync/`, revocation APIs, sync-consent tests; Project/Architecture/UI/privacy/backend docs. |
 | Safe lb/kg conversion | **COMPLETED** / High | Atomic app-data conversion, source-unit prescription adaptation, immutable private/raw packages, stable round trip, and refreshed snapshot integrity tests. | `index.html`, `prescription-engine.js`, resistance/prescription tests; Architecture/UI. |
 | Guided creation and coaching consistency remediation | **COMPLETED** / High | Total effective sets drive shared muscle status; frequency cannot appear successful when unresolved; review days are inspectable; creation is idempotent and ends in a persistent completion state; prescribed light/reduced work is excluded from decline flags; straight-set progression and recommendation labels require a real delta; pounds use stable 0.5-lb boundaries. | Guided planner, prescription engine, workout/analytics UI, schemas, integration/resistance/set tests; Decision Engine/Architecture/UI. |
 | Readiness hierarchy and canonical evaluator | **COMPLETED** / High | Readiness renders above Today’s Plan; duplicate fallback scorer removed; engine-unavailable behavior holds conservatively; illness guardrail preserved. | `index.html`, workout-safety and prescription tests; Decision Engine/UI. |
@@ -70,12 +71,13 @@ No repository artifact identifies an actively assigned implementation item. **NE
 - **References:** `prescription-engine.js:evaluateReadiness`, `index.html:readinessScore`, `readinessBandStatus`, `recoveryRecommendationForSession`.
 - **Docs:** Decision Engine, Architecture, UI/UX.
 
-### Define sync/restore product contract
+### Define sync/restore product contract — privacy contract completed
 
-- **Status:** NEEDS REVIEW
+- **Status:** PARTIALLY IMPLEMENTED
 - **Priority:** High (data expectations/privacy)
 - **Area/dependencies:** API, local persistence, privacy; decide backup-only versus cross-device restore/account model.
-- **Acceptance criteria:** product decision recorded; retention/encryption/deletion and conflict behavior specified; UI labels match capability; restore endpoint/UI implemented and tested if promised.
+- **Current implementation:** **IMPLEMENTED:** optional workout cloud copy is separate from notifications, defaults off, requires client and server consent, expires within 90 days, deletes on revocation, and is labeled as non-restorable. Exported local backup remains the recovery path. **PLANNED / NEEDS REVIEW:** no restore endpoint/UI is promised; any future cross-device restore requires an account, encryption, conflict, and recovery contract first.
+- **Acceptance criteria:** retain consent/deletion/retention tests and truthful UI labels; implement restore only after the future product contract is approved.
 - **References:** `api/sync/workout.js`, `index.html` sync queue, `docs/push-backend.md`.
 - **Docs:** Project, Architecture, UI/UX, privacy/support, roadmap.
 

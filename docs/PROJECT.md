@@ -57,7 +57,7 @@ Product principles evidenced in the repository:
 | Private personal evidence pipeline | **IMPLEMENTED** | Local normalization/analysis of workout, Fitbit/Google Health, nutrition, and body-composition sources; aggregates can be packaged/imported without public deployment (`scripts/personal-fitness/`, `scripts/build-app-personal-evidence.js`). |
 | Nutrition tracking | **PARTIALLY IMPLEMENTED** | Research strategies, historical analysis pipeline, and daily adequacy inputs influence context. There is no verified in-app meal/food/macronutrient logger. |
 | Fitbit integration | **PARTIALLY IMPLEMENTED** | Exported Fitbit/Google Health data is normalized by the private pipeline. No OAuth, live sync, or direct wearable connection is implemented. |
-| Optional push and workout backup | **PARTIALLY IMPLEMENTED** | Installation-scoped Web Push/rest scheduling and write-only workout mutation sync use Vercel Functions/Upstash. There is no verified cross-device restore UI or account-backed cloud history. |
+| Optional push and workout cloud copy | **PARTIALLY IMPLEMENTED** | Web Push and workout upload are independent, explicit controls. Cloud copy defaults off, is server-enforced, expires within 90 days, and supports authenticated revocation/deletion. Exported local backups remain the only restore path; there is no cross-device restore UI or account-backed cloud history. |
 | Native packaging | **PARTIALLY IMPLEMENTED** | Capacitor iOS/Android projects exist; store signing/submission and physical-device behavior remain operational tasks. |
 | Account authentication/profile service | **PLANNED / NEEDS REVIEW** | No user account login exists. Local settings provide a lightweight training profile; backend authorization is installation-secret based. Product intent for accounts is not established. |
 
@@ -70,6 +70,7 @@ Product principles evidenced in the repository:
 5. Reopen submitted sessions through Dashboard/History; inspect interactive charts and weekly volume/fatigue detail.
 6. Optionally import Strong CSV history and a locally built private evidence package.
 7. Optionally install the PWA and enable backend-assisted rest notifications.
+8. Separately and explicitly enable a rolling workout cloud copy if desired; this is not required for notifications and is not a restore service.
 
 ## Terminology
 
@@ -87,7 +88,7 @@ Product principles evidenced in the repository:
 
 Public/runtime sources include submitted app workouts and the research JSON exports cached by `sw.js`. Private local sources can include Strong exports, Fitbit/Google Health exports, nutrition exports, body-composition records, and generated aggregates. Raw and generated personal data are excluded from public deployment by `.gitignore`/`.vercelignore`; the app imports only a user-provided aggregate evidence package into local IndexedDB.
 
-Do not treat the optional Redis backend as the personal evidence database. It stores installation/push/timer records and serialized workout mutations (`api/`, `docs/push-backend.md`). No raw personal values or credentials belong in public documentation.
+Do not treat the optional Redis backend as the personal evidence database. It stores installation/push/timer records and, only with explicit consent, expiring serialized workout copies (`api/`, `docs/push-backend.md`). No raw personal values or credentials belong in public documentation.
 
 ## Non-goals and boundaries
 

@@ -4,9 +4,9 @@ Comprehensive Fitness uses standards-based Web Push for locked-screen rest alert
 
 ## Services
 
-- Vercel Functions host `/api/push/*` and `/api/sync/workout`.
+- Vercel Functions host `/api/push/*`, `/api/sync/*`, and installation revocation.
 - Upstash QStash schedules one delayed delivery per active rest timer.
-- Upstash Redis stores installation-scoped push subscriptions, scheduled timers, idempotency records, and workout sync payloads.
+- Upstash Redis stores installation-scoped push subscriptions, scheduled timers, idempotency records, and explicitly consented expiring workout copies.
 - `web-push` encrypts each payload for the browser subscription using VAPID.
 
 All three services have free tiers suitable for personal use. The foreground timer and IndexedDB workout log continue to work when the notification backend is not configured.
@@ -17,14 +17,14 @@ Production was configured and verified on 2026-07-11. No paid plan or payment me
 
 | Component | Live resource | Free-plan details used by this app |
 | --- | --- | --- |
-| Vercel | Hobby project `comprehensive-fitness`, production domain `https://comprehensive-fitness.vercel.app`, functions in `iad1` | Hosts the PWA and seven Node.js API functions |
+| Vercel | Hobby project `comprehensive-fitness`, production domain `https://comprehensive-fitness.vercel.app`, functions in `iad1` | Hosts the PWA and Node.js API functions |
 | Upstash Redis | Database `comprehensive-fitness`, AWS `us-east-2`, Free Tier | 500,000 commands/month, 256 MB storage, 50 GB monthly bandwidth |
 | Upstash QStash | `US Region`, AWS `us-east-1`, Free | 1,000 messages/day, 50 GB monthly bandwidth, three retries, 1 MB messages |
 | Web Push | One production VAPID key pair generated 2026-07-11 | Private key exists only in Vercel Production environment variables |
 
 The nine variables below are present only in Vercel Production. The latest deployment is `READY`, and `GET /api/push/config` returns `configured: true` with scheduler `qstash`. A temporary `cf:smoke:*` Redis key was written, read, and deleted successfully during setup, so no smoke-test record remains.
 
-Before an iPhone enables notifications, Redis is expected to contain no persistent app records. The first installed-PWA registration creates the installation hash and registry membership documented below; timers and workout sync keys appear only as those features are used.
+Before an installation enables any backend feature, Redis is expected to contain no persistent app records. Push setup and workout cloud copy can independently authorize the installation. Timer keys appear only for requested background alerts; workout keys appear only after separate explicit cloud-copy consent.
 
 ## Environment Variables
 
@@ -56,7 +56,7 @@ Keep the private key server-side. Redeploy after setting all variables.
 
 Key: `cf:install:{installationId}` (hash)
 
-Fields: `installationId`, `userId`, `endpoint`, `p256dh`, `auth`, `createdAt`, `updatedAt`, `lastSuccessfulDeliveryAt`, `deviceId`, `active`, `invalidAt`, `secretHash`.
+Fields include `installationId`, push subscription material/status, timestamps, `deviceId`, the hashed installation secret, and `syncConsent` plus consent/revocation timestamps. Workout consent is never inferred from push status.
 
 Key: `cf:installations` (set) contains registered installation IDs for operational auditing.
 
@@ -76,7 +76,18 @@ Key: `cf:workout:{installationId}:{sessionId}` (hash)
 
 Fields: `installationId`, `sessionId`, `revision`, `payload`, `updatedAt`.
 
-Key: `cf:mutation:{installationId}:{mutationId}` is an expiring idempotency record. Duplicate mutations return success without creating duplicate workout or set records.
+Workout hashes, the per-installation workout-key index, and mutation idempotency records expire within 90 days. Duplicate mutations return success without creating duplicate workout or set records. Disabling cloud copy scans and deletes both indexed and legacy workout/mutation keys before recording revoked consent.
+
+### Consent and revocation flow
+
+1. Workout cloud copy defaults off and is controlled separately from notifications in Settings.
+2. `/api/sync/authorize` creates installation authorization without requiring a push subscription.
+3. `/api/sync/consent` records explicit consent or disables it and deletes retained workout data.
+4. `/api/sync/workout` rejects authorized installations whose server consent is not active.
+5. `/api/push/revoke` cancels active timers and removes push subscription material without disabling independently consented workout copy.
+6. `/api/installation/revoke` cancels push, deletes retained workouts/mutations, and deletes the installation credential. Local clearing waits for this confirmation rather than orphaning server data.
+
+Public sync authorization is limited to ten attempts per source-address hash per hour. Authorized workout mutations larger than 256 KB are rejected before Redis idempotency or workout keys are written.
 
 ## Free-Tier Operations
 
