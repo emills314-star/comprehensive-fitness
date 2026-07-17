@@ -66,21 +66,49 @@ check("strict application-wide browser security headers are configured", () => {
 });
 
 function directives(csp) {
-  return new Map(csp.split(";").map((part) => part.trim()).filter(Boolean).map((part) => {
+  const parsed = new Map();
+  for (const part of csp.split(";").map((value) => value.trim()).filter(Boolean)) {
     const [name, ...values] = part.split(/\s+/);
-    return [name.toLowerCase(), values];
-  }));
+    const normalized = name.toLowerCase();
+    assert(!parsed.has(normalized), `duplicate CSP directive ${normalized} is unsafe because browsers honor the first occurrence`);
+    parsed.set(normalized, values);
+  }
+  return parsed;
+}
+
+check("control: CSP parsing rejects duplicate directives instead of merging or overwriting them", () => {
+  assert.throws(() => directives("default-src 'self'; script-src 'self'; script-src https://evil.example"), /duplicate CSP directive script-src/);
+  controls += 1;
+});
+
+function publicSourceText() {
+  const files = ["index.html", "privacy.html", "support.html", "app.js", "app.css", "styles.css"];
+  const resources = path.join(targetRoot, "resources");
+  if (fs.existsSync(resources)) {
+    for (const entry of fs.readdirSync(resources, { withFileTypes: true })) {
+      if (entry.isFile() && /\.(?:css|js)$/i.test(entry.name)) files.push(path.join("resources", entry.name));
+    }
+  }
+  return files.filter((file) => fs.existsSync(path.join(targetRoot, file))).map(read).join("\n");
 }
 
 check("CSP denies injection and bounds every outbound or navigational surface", () => {
   const html = read("index.html");
+  const publicSources = publicSourceText();
   const hasOwnedInlineStyles = /<style\b[^>]*>[\s\S]*?<\/style>/i.test(html) || /\sstyle\s*=/i.test(html);
   for (const rule of catchAllRules()) {
     const d = directives(headerMap(rule).get("content-security-policy") || "");
-    const has = (name, value) => (d.get(name) || []).includes(value);
-    assert(has("default-src", "'self'") || has("default-src", "'none'"), `${rule.source}: default-src must be self/none`);
+    const permittedDirectiveNames = new Set([
+      "default-src", "script-src", "script-src-attr", "style-src", "connect-src", "img-src", "font-src",
+      "media-src", "worker-src", "manifest-src", "frame-src", "child-src", "object-src", "base-uri",
+      "form-action", "frame-ancestors", "upgrade-insecure-requests", "block-all-mixed-content"
+    ]);
+    for (const name of d.keys()) assert(permittedDirectiveNames.has(name), `${rule.source}: unrecognized or unconstrained CSP directive ${name}`);
+    const defaults = d.get("default-src");
+    assert(defaults && (defaults.length === 1 && ["'self'", "'none'"].includes(defaults[0])), `${rule.source}: default-src must be exactly self or none`);
     assert.deepEqual(d.get("object-src"), ["'none'"]);
     assert.deepEqual(d.get("frame-src"), ["'none'"]);
+    assert.deepEqual(d.get("child-src"), ["'none'"]);
     assert.deepEqual(d.get("frame-ancestors"), ["'none'"]);
     assert.deepEqual(d.get("base-uri"), ["'self'"]);
     assert.deepEqual(d.get("form-action"), ["'self'"]);
@@ -94,6 +122,18 @@ check("CSP denies injection and bounds every outbound or navigational surface", 
     assert(styles.every((value) => value === "'self'" || value === "'unsafe-inline'"), "style-src may contain only self and the temporary inline-style exception");
     if (styles.includes("'unsafe-inline'")) assert(hasOwnedInlineStyles, "unsafe-inline style exception lacks a current inline-style justification");
     if (hasOwnedInlineStyles) assert(styles.includes("'unsafe-inline'"), "current owned inline styles need an explicit transitional exception");
+    const exactSources = {
+      "font-src": ["'self'"],
+      "manifest-src": ["'self'"],
+      "media-src": ["'self'"]
+    };
+    for (const [name, allowed] of Object.entries(exactSources)) assert.deepEqual(d.get(name), allowed, `${name} must be self only`);
+    const imgAllowed = ["'self'"];
+    if (/data:image\//i.test(publicSources)) imgAllowed.push("data:");
+    assert.deepEqual(d.get("img-src"), imgAllowed, "img-src may use data only while an owned data image requires it");
+    const workerAllowed = ["'self'"];
+    if (/new\s+(?:Shared)?Worker\s*\(\s*URL\.createObjectURL|new\s+(?:Shared)?Worker\s*\(\s*[^)]*blob:/i.test(publicSources)) workerAllowed.push("blob:");
+    assert.deepEqual(d.get("worker-src"), workerAllowed, "worker-src may use blob only while an owned blob worker requires it");
   }
 });
 
@@ -117,8 +157,8 @@ check("privacy and support pages do not depend on inline event handlers", () => 
   }
 });
 
-if (controls !== 2) failures.push("control accounting did not execute");
+if (controls !== 3) failures.push("control accounting did not execute");
 if (failures.length) {
   console.error(`Deployment contract failed (${failures.length} unmet contract(s); ${controls} controls passed).`);
   process.exitCode = 1;
-} else console.log(`Deployment contract passed (6 contracts; ${controls} controls).`);
+} else console.log(`Deployment contract passed (7 contracts; ${controls} controls).`);
