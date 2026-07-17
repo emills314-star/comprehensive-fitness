@@ -28,10 +28,10 @@ function mockResponse() {
   };
 }
 
-async function exercise({ throws = false } = {}) {
+async function exercise({ throws = false, method = "post", url = "/api/push/register?token=query-secret&userId=person-42" } = {}) {
   const req = {
-    method: "post",
-    url: "/api/push/register?token=query-secret&userId=person-42",
+    method,
+    url,
     headers: {
       authorization: "Bearer header-secret",
       cookie: "session=cookie-secret",
@@ -89,6 +89,7 @@ function onlyTerminalEvent(sample) {
 
   const success = await exercise();
   const failure = await exercise({ throws: true });
+  const unknownRoute = await exercise({ method: null, url: "/api/install/person-42?token=query-secret" });
 
   check("shared wrapper generates an opaque server request ID and returns it on every response", () => {
     for (const sample of [success, failure]) {
@@ -124,6 +125,16 @@ function onlyTerminalEvent(sample) {
     }
   });
 
+  check("missing method and unrecognized route metadata fail closed without logging identifiers", () => {
+    const event = onlyTerminalEvent(unknownRoute);
+    assert.equal(event.method, "UNKNOWN");
+    assert.equal(event.route, "unknown");
+    assert.equal(event.statusClass, "2xx");
+    const serialized = JSON.stringify(unknownRoute.records.map((record) => record.args.map((argument) => inspectable(argument))));
+    assert(!serialized.includes("person-42"));
+    assert(!serialized.includes("query-secret"));
+  });
+
   check("unexpected failures remain opaque to clients", () => {
     assert.equal(failure.res.statusCode, 500);
     assert.deepEqual(failure.res.body, { error: "The service could not complete this request." });
@@ -135,7 +146,7 @@ function onlyTerminalEvent(sample) {
     console.error(`API observability contract failed (${failures.length} unmet contract(s); ${controls} controls passed).`);
     process.exitCode = 1;
   } else {
-    console.log(`API observability contract passed (5 contracts; ${controls} controls).`);
+    console.log(`API observability contract passed (6 contracts; ${controls} controls).`);
   }
 })().catch((error) => {
   console.error(error.stack || error.message);

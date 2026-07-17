@@ -1,3 +1,5 @@
+const { beginRequest, emitTerminal } = require("./observability");
+
 function json(res, status, body) {
   res.setHeader("Cache-Control", "no-store");
   res.setHeader("Pragma", "no-cache");
@@ -13,6 +15,15 @@ function methodNotAllowed(res, allowed) {
 
 function apiHandler(handler) {
   return async function protectedHandler(req, res) {
+    beginRequest(req, res);
+    const sendJson = res.json.bind(res);
+    res.json = function observedJson(body) {
+      try {
+        return sendJson(body);
+      } finally {
+        emitTerminal(res);
+      }
+    };
     try {
       return await handler(req, res);
     } catch {
