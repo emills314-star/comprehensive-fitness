@@ -63,12 +63,21 @@ async function exercise({ throws = false } = {}) {
   return { req, res, records };
 }
 
-function structuredEvents(records) {
-  return records.flatMap(({ args }) => args).map((value) => {
-    if (value && typeof value === "object" && !Array.isArray(value)) return value;
-    if (typeof value !== "string") return null;
-    try { return JSON.parse(value); } catch { return null; }
-  }).filter(Boolean);
+function inspectable(value, seen = new Set()) {
+  if (value instanceof Error) return { name: value.name, message: value.message, stack: value.stack };
+  if (!value || typeof value !== "object") return value;
+  if (seen.has(value)) return "[Circular]";
+  seen.add(value);
+  if (Array.isArray(value)) return value.map((entry) => inspectable(entry, seen));
+  return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, inspectable(entry, seen)]));
+}
+
+function onlyTerminalEvent(sample) {
+  assert.equal(sample.records.length, 1, "a response must produce exactly one console emission");
+  assert.equal(sample.records[0].args.length, 1, "the terminal emission must contain one argument");
+  const event = sample.records[0].args[0];
+  assert(event && typeof event === "object" && !Array.isArray(event) && !(event instanceof Error), "the terminal emission must be one structured object");
+  return event;
 }
 
 (async () => {
@@ -91,26 +100,26 @@ function structuredEvents(records) {
   });
 
   check("each JSON response emits exactly one structured terminal event", () => {
-    assert.equal(structuredEvents(success.records).length, 1);
-    assert.equal(structuredEvents(failure.records).length, 1);
+    onlyTerminalEvent(success);
+    onlyTerminalEvent(failure);
   });
 
   check("terminal events use only the privacy-safe bounded allowlist", () => {
     const allowed = ["durationMs", "event", "method", "requestId", "route", "statusClass", "timestamp"].sort();
-    for (const sample of [success, failure]) {
-      const [event] = structuredEvents(sample.records);
-      assert(event, "missing structured terminal event");
+    for (const [sample, expectedStatusClass] of [[success, "2xx"], [failure, "5xx"]]) {
+      const event = onlyTerminalEvent(sample);
       assert.deepEqual(Object.keys(event).sort(), allowed);
       assert.equal(event.event, "api_request_complete");
       assert.equal(event.method, "POST");
       assert.equal(event.route, "/api/push/register");
-      assert.match(event.statusClass, /^[1-5]xx$/);
+      assert.equal(event.statusClass, expectedStatusClass);
+      assert.equal(event.statusClass, `${Math.floor(sample.res.statusCode / 100)}xx`, "statusClass must describe the actual response status");
       assert(Number.isFinite(event.durationMs) && event.durationMs >= 0 && event.durationMs <= 600000);
       assert.equal(new Date(event.timestamp).toISOString(), event.timestamp);
       assert.equal(event.requestId, sample.res.headers["x-request-id"]);
-      const serialized = JSON.stringify(event);
+      const serialized = JSON.stringify(sample.records.map((record) => ({ method: record.method, args: record.args.map((argument) => inspectable(argument)) }))).toLowerCase();
       for (const forbidden of ["query-secret", "person-42", "header-secret", "cookie-secret", "203.0.113.44", "body-secret", "private-note", "STACK_SECRET", "authorization", "cookie", "headers", "body", "query", "stack", "message", "userId"]) {
-        assert(!serialized.includes(forbidden), `event leaked forbidden value/key ${forbidden}`);
+        assert(!serialized.includes(forbidden.toLowerCase()), `console emission leaked forbidden value/key ${forbidden}`);
       }
     }
   });

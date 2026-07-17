@@ -27,31 +27,42 @@ check("deployment configuration exists and parses", () => {
   config = JSON.parse(fs.readFileSync(file, "utf8"));
 });
 
-function headerMap() {
+function catchAllRules() {
   assert(config && Array.isArray(config.headers), "vercel.json headers array missing");
-  const applicable = config.headers.filter((entry) => entry && typeof entry.source === "string" && /\(\.\*\)|:\w+\*|\/\*/.test(entry.source));
-  assert(applicable.length, "no application-wide header rule found");
+  const recognized = new Set(["/(.*)", "/:path*"]);
+  const applicable = config.headers.filter((entry) => entry && recognized.has(entry.source));
+  assert(applicable.length, "no recognized exact application catch-all header rule found");
+  return applicable;
+}
+
+function headerMap(entry) {
   const map = new Map();
-  for (const entry of applicable) for (const header of entry.headers || []) map.set(String(header.key).toLowerCase(), String(header.value));
+  for (const header of entry.headers || []) {
+    const key = String(header.key).toLowerCase();
+    assert(!map.has(key), `${entry.source} repeats header ${key}`);
+    map.set(key, String(header.value));
+  }
   return map;
 }
 
 check("strict application-wide browser security headers are configured", () => {
-  const headers = headerMap();
-  const expected = {
-    "content-security-policy": /./,
-    "permissions-policy": /./,
-    "referrer-policy": /^(no-referrer|strict-origin|strict-origin-when-cross-origin)$/,
-    "x-content-type-options": /^nosniff$/i,
-    "x-frame-options": /^(DENY|SAMEORIGIN)$/,
-    "cross-origin-opener-policy": /^same-origin$/,
-    "cross-origin-resource-policy": /^(same-origin|same-site)$/,
-    "strict-transport-security": /max-age=(?:31536000|[4-9]\d{7,})/i
-  };
-  for (const [key, pattern] of Object.entries(expected)) assert.match(headers.get(key) || "", pattern, `${key} missing or weak`);
-  assert.match(headers.get("permissions-policy") || "", /camera=\(\)/);
-  assert.match(headers.get("permissions-policy") || "", /microphone=\(\)/);
-  assert.match(headers.get("permissions-policy") || "", /geolocation=\(\)/);
+  for (const rule of catchAllRules()) {
+    const headers = headerMap(rule);
+    const expected = {
+      "content-security-policy": /./,
+      "permissions-policy": /./,
+      "referrer-policy": /^(no-referrer|strict-origin|strict-origin-when-cross-origin)$/,
+      "x-content-type-options": /^nosniff$/i,
+      "x-frame-options": /^(DENY|SAMEORIGIN)$/,
+      "cross-origin-opener-policy": /^same-origin$/,
+      "cross-origin-resource-policy": /^(same-origin|same-site)$/,
+      "strict-transport-security": /max-age=(?:31536000|[4-9]\d{7,})/i
+    };
+    for (const [key, pattern] of Object.entries(expected)) assert.match(headers.get(key) || "", pattern, `${rule.source}: ${key} missing or weak`);
+    assert.match(headers.get("permissions-policy") || "", /camera=\(\)/);
+    assert.match(headers.get("permissions-policy") || "", /microphone=\(\)/);
+    assert.match(headers.get("permissions-policy") || "", /geolocation=\(\)/);
+  }
 });
 
 function directives(csp) {
@@ -62,36 +73,40 @@ function directives(csp) {
 }
 
 check("CSP denies injection and bounds every outbound or navigational surface", () => {
-  const csp = headerMap().get("content-security-policy") || "";
-  const d = directives(csp);
-  const has = (name, value) => (d.get(name) || []).includes(value);
-  assert(has("default-src", "'self'") || has("default-src", "'none'"), "default-src must be self/none");
-  assert(has("object-src", "'none'"), "object-src must be none");
-  assert(has("frame-src", "'none'"), "frame-src must be none");
-  assert(has("frame-ancestors", "'none'"), "frame-ancestors must be none");
-  assert(has("base-uri", "'self'"), "base-uri must be self");
-  assert(has("form-action", "'self'"), "form-action must be self");
-  assert(has("script-src-attr", "'none'"), "script-src-attr must be none");
-  assert(!(d.get("script-src") || []).includes("'unsafe-inline'"), "script-src cannot allow unsafe-inline");
-  for (const name of ["connect-src", "form-action", "frame-src", "script-src", "style-src"]) {
-    for (const value of d.get(name) || []) {
-      assert(!value.includes("*"), `${name} cannot contain a wildcard`);
-      assert(!/^http:/.test(value), `${name} cannot permit insecure HTTP`);
-    }
+  const html = read("index.html");
+  const hasOwnedInlineStyles = /<style\b[^>]*>[\s\S]*?<\/style>/i.test(html) || /\sstyle\s*=/i.test(html);
+  for (const rule of catchAllRules()) {
+    const d = directives(headerMap(rule).get("content-security-policy") || "");
+    const has = (name, value) => (d.get(name) || []).includes(value);
+    assert(has("default-src", "'self'") || has("default-src", "'none'"), `${rule.source}: default-src must be self/none`);
+    assert.deepEqual(d.get("object-src"), ["'none'"]);
+    assert.deepEqual(d.get("frame-src"), ["'none'"]);
+    assert.deepEqual(d.get("frame-ancestors"), ["'none'"]);
+    assert.deepEqual(d.get("base-uri"), ["'self'"]);
+    assert.deepEqual(d.get("form-action"), ["'self'"]);
+    assert.deepEqual(d.get("script-src-attr"), ["'none'"]);
+    const scripts = d.get("script-src") || [];
+    assert(scripts.includes("'self'"), "script-src must allow owned external scripts");
+    assert(scripts.every((value) => value === "'self'" || /^'sha256-[A-Za-z0-9+/]+={0,2}'$/.test(value)), "script-src may contain only self and exact SHA-256 hashes");
+    assert.deepEqual(d.get("connect-src"), ["'self'"], "connect-src must be self only");
+    const styles = d.get("style-src") || [];
+    assert(styles.includes("'self'"), "style-src must allow owned external styles");
+    assert(styles.every((value) => value === "'self'" || value === "'unsafe-inline'"), "style-src may contain only self and the temporary inline-style exception");
+    if (styles.includes("'unsafe-inline'")) assert(hasOwnedInlineStyles, "unsafe-inline style exception lacks a current inline-style justification");
+    if (hasOwnedInlineStyles) assert(styles.includes("'unsafe-inline'"), "current owned inline styles need an explicit transitional exception");
   }
-  const style = d.get("style-src") || [];
-  assert(style.includes("'self'"), "style-src must allow owned styles");
-  for (const [name, values] of d) if (values.includes("'unsafe-inline'")) assert.equal(name, "style-src", "unsafe-inline is justified only for current owned inline styles");
 });
 
 check("executable inline scripts are absent or exactly hash-bound by CSP", () => {
   const html = read("index.html");
   const inline = [...html.matchAll(/<script\b(?![^>]*\bsrc\s*=)[^>]*>([\s\S]*?)<\/script>/gi)].map((match) => match[1]).filter((body) => body.trim());
-  const sources = directives(headerMap().get("content-security-policy") || "").get("script-src") || [];
-  assert(sources.includes("'self'"), "owned external scripts must be allowed");
-  for (const body of inline) {
-    const hash = `'sha256-${crypto.createHash("sha256").update(body, "utf8").digest("base64")}'`;
-    assert(sources.includes(hash), `inline script hash missing or stale: ${hash}`);
+  for (const rule of catchAllRules()) {
+    const sources = directives(headerMap(rule).get("content-security-policy") || "").get("script-src") || [];
+    assert(sources.includes("'self'"), "owned external scripts must be allowed");
+    for (const body of inline) {
+      const hash = `'sha256-${crypto.createHash("sha256").update(body, "utf8").digest("base64")}'`;
+      assert(sources.includes(hash), `${rule.source}: inline script hash missing or stale: ${hash}`);
+    }
   }
 });
 
