@@ -1939,6 +1939,7 @@
     <script src="./prescription-engine.js"></script>
     <script src="./guided-mesocycle.js"></script>
     <script src="./rest-completion-controller.js"></script>
+    <script src="./backup-contract.js"></script>
     <script>
       const STORAGE_KEY = "comprehensive-fitness-data-v1";
       const RUNTIME_KEY = "comprehensive-fitness-runtime-v1";
@@ -9770,7 +9771,8 @@
       }
 
       function exportData() {
-        exportText = JSON.stringify(data, null, 2);
+        const backup = window.FitnessBackupContract.createBackupExport(data);
+        exportText = JSON.stringify(backup, null, 2);
         const blob = new Blob([exportText], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const anchor = document.createElement("a");
@@ -10430,8 +10432,7 @@
               importStrongCsv(text);
               return;
             }
-            const imported = JSON.parse(text);
-            if (!Array.isArray(imported.sessions) || !Array.isArray(imported.exercises) || !Array.isArray(imported.sets)) throw new Error("Import must include sessions, exercises, and sets arrays.");
+            const imported = window.FitnessBackupContract.validateAndSanitizeBackup(JSON.parse(text), { byteLength: new Blob([text]).size });
             data = normalizeLoadedData({ ...emptyData(), ...imported, settings: { ...defaultSettings, ...imported.settings } });
             activeSessionId = data.sessions[0]?.id || "";
             settingsMessage = "Import complete.";

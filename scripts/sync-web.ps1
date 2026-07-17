@@ -17,6 +17,7 @@ Copy-Item -LiteralPath (Join-Path $root "manifest.webmanifest") -Destination (Jo
 Copy-Item -LiteralPath (Join-Path $root "prescription-engine.js") -Destination (Join-Path $www "prescription-engine.js") -Force
 Copy-Item -LiteralPath (Join-Path $root "guided-mesocycle.js") -Destination (Join-Path $www "guided-mesocycle.js") -Force
 Copy-Item -LiteralPath (Join-Path $root "rest-completion-controller.js") -Destination (Join-Path $www "rest-completion-controller.js") -Force
+Copy-Item -LiteralPath (Join-Path $root "backup-contract.js") -Destination (Join-Path $www "backup-contract.js") -Force
 Copy-Item -LiteralPath (Join-Path $root "sw.js") -Destination (Join-Path $www "sw.js") -Force
 Copy-Item -LiteralPath (Join-Path $root "resources\icon-180.png") -Destination (Join-Path $wwwResources "icon-180.png") -Force
 Copy-Item -LiteralPath (Join-Path $root "resources\icon-192.png") -Destination (Join-Path $wwwResources "icon-192.png") -Force

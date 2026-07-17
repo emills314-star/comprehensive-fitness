@@ -70,6 +70,8 @@ flowchart LR
 
 The normalized app object (`emptyData`, `normalizeLoadedData`) contains sessions, exercises, sets, templates, mesocycles, recommendation history, manual overrides, an optional personal evidence package, raw-import metadata, migration audit, revision, and settings. IDs are UUIDs when supported. The domain migration and set classifier preserve semantics across legacy data.
 
+App JSON export/import crosses the isolated `backup-contract.js` boundary before normalization or persistence. New exports declare `comprehensive-fitness-backup/2.0.0`; legacy app-data version 2 exports remain accepted. The boundary allowlists top-level capabilities, clones into prototype-free objects, bounds size/depth/collection counts, rejects unsupported versions and dangerous property names, validates structural IDs and uniqueness, and enforces session/exercise/set and active-mesocycle references. User-authored text remains data and must still pass through the existing escaped rendering boundary. Strong CSV and private aggregate evidence retain their separate import contracts.
+
 IndexedDB database `comprehensive-fitness`, store `state`, key `app-data` is primary. `comprehensive-fitness-data-v1` supports legacy/fallback state; runtime and a compact active draft use separate localStorage keys. Draft writes are debounced and the compact synchronous fallback protects immediate-close recovery. Completed-history calculations use revisioned caches (`scripts/test-performance.js`).
 
 The Templates navigation path uses progressive rendering. Its first frame renders template summaries, the mesocycle controls/current-plan summary, and compact historical summaries only. Exercise editors and the full current mesocycle candidate/session review are generated after an explicit disclosure action. Template-list rendering does not run completed-history fatigue analysis or construct per-template readiness prescriptions; those decisions remain on Dashboard and in the workout-start flow. Historical records are never passed through the full editable planner renderer. This boundary is covered by `scripts/test-performance.js` and prevents hidden controls and candidate trees from dominating tab latency.
@@ -158,6 +160,8 @@ Required server environment names are documented without values in `.env.example
 Persistence falls back from IndexedDB to localStorage. Personal evidence URL loading tolerates protected/unavailable private sources and continues research-led. APIs return structured JSON errors and fail authorization. Service-worker navigation falls back to cached `index.html`.
 
 Private raw/normalized/derived/reports data must not enter public web assets. `.vercelignore` blocks private payload paths; `sync:web` only creates an ignored private native payload when locally available. Exported app backups and Redis workout payloads may contain personal workout data and should be treated as sensitive.
+
+Tampered app backups fail closed before replacing current state. Validation errors are shown in Settings, and a rejected import does not call persistence. `scripts/test-backup-contract.js` covers version mismatch, hostile structural identifiers, broken references, resource limits, prototype-pollution keys, and the application import/export wiring.
 
 ## Testing, build, and deployment
 

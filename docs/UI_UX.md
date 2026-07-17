@@ -129,6 +129,7 @@ Readiness capture includes sleep, quality, HRV, resting HR, soreness, illness, a
 - **Empty:** Controlled “not enough data,” no-template/history/chart messages explain qualifying data needed; analytics do not substitute unrelated scores.
 - **Loading:** Initial persistence/evidence loading occurs before primary use; imports expose progress/error feedback. **NEEDS REVIEW:** there is no unified skeleton/loading design.
 - **Error:** Toasts, import validation, API status, persistence fallback, and setup errors are surfaced without exposing secrets.
+- **Backup import:** App JSON backups are versioned and validated before replacing local state. Unsupported versions, unsafe identifiers, broken relationships, oversized payloads, and hostile object keys produce a specific validation error while the existing workout data remains unchanged. Strong CSV and private evidence imports remain separate labeled paths.
 - **Success:** Live-region toast, completed controls, timer-complete notice, notification tests, submission summary, PR/grade feedback.
 - **Confirmation:** Submit, cancel workout, save/cancel history edits, template deletion, and clear-data flows require explicit action.
 

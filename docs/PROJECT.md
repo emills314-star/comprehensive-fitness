@@ -35,6 +35,7 @@ The application addresses fragmented workout records, inconsistent progression d
 Product principles evidenced in the repository:
 
 - Local-first ownership and user-managed export/import.
+- Versioned, fail-closed app-backup import that validates structure and relationships before local state replacement.
 - Explicit submission: drafts do not become history accidentally.
 - Transparent recommendations with evidence, confidence, and manual overrides.
 - Conservative failure under sparse, conflicting, pain-related, or low-quality data.
