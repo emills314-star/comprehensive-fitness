@@ -2,6 +2,7 @@ const crypto = require("node:crypto");
 
 const REQUEST_CONTEXT = Symbol("apiRequestContext");
 const MAX_DURATION_MS = 600000;
+const KNOWN_METHODS = new Set(["DELETE", "GET", "POST"]);
 const KNOWN_ROUTES = new Set([
   "/api/install/delete",
   "/api/push/cancel",
@@ -19,7 +20,7 @@ function createRequestId() {
 
 function normalizeMethod(method) {
   const normalized = String(method || "UNKNOWN").toUpperCase();
-  return /^[A-Z]{1,16}$/.test(normalized) ? normalized : "UNKNOWN";
+  return KNOWN_METHODS.has(normalized) ? normalized : "UNKNOWN";
 }
 
 function normalizeRoute(url) {

@@ -90,6 +90,7 @@ function onlyTerminalEvent(sample) {
   const success = await exercise();
   const failure = await exercise({ throws: true });
   const unknownRoute = await exercise({ method: null, url: "/api/install/person-42?token=query-secret" });
+  const hostileMethod = await exercise({ method: "PRIVATESECRET", url: "/api/push/register" });
 
   check("shared wrapper generates an opaque server request ID and returns it on every response", () => {
     for (const sample of [success, failure]) {
@@ -126,13 +127,19 @@ function onlyTerminalEvent(sample) {
   });
 
   check("missing method and unrecognized route metadata fail closed without logging identifiers", () => {
-    const event = onlyTerminalEvent(unknownRoute);
-    assert.equal(event.method, "UNKNOWN");
-    assert.equal(event.route, "unknown");
-    assert.equal(event.statusClass, "2xx");
-    const serialized = JSON.stringify(unknownRoute.records.map((record) => record.args.map((argument) => inspectable(argument))));
+    const unknownRouteEvent = onlyTerminalEvent(unknownRoute);
+    assert.equal(unknownRouteEvent.method, "UNKNOWN");
+    assert.equal(unknownRouteEvent.route, "unknown");
+    assert.equal(unknownRouteEvent.statusClass, "2xx");
+    const hostileMethodEvent = onlyTerminalEvent(hostileMethod);
+    assert.equal(hostileMethodEvent.method, "UNKNOWN");
+    assert.equal(hostileMethodEvent.route, "/api/push/register");
+    const serialized = JSON.stringify([unknownRoute, hostileMethod].flatMap((sample) =>
+      sample.records.map((record) => record.args.map((argument) => inspectable(argument)))
+    ));
     assert(!serialized.includes("person-42"));
     assert(!serialized.includes("query-secret"));
+    assert(!serialized.includes("PRIVATESECRET"));
   });
 
   check("unexpected failures remain opaque to clients", () => {
