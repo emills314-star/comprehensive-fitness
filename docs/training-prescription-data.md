@@ -31,7 +31,7 @@ Current personal analysis identity: `analysis_9a245e42ebd6605a3ef6`; 81,313 sour
 
 Personal files under `raw/`, `normalized/`, `derived/`, and `reports/` are private health data. They are excluded from Git and public deployment. The app may load their aggregate outputs locally or import a local evidence package, but they must not be copied into a public web artifact.
 
-For delivery, local development reads the protected outputs directly. `npm run sync:web` copies only the required aggregate tables into ignored `www/private-personal-data/` for the local Capacitor payload, while `.vercelignore` blocks that directory. A hosted installation can import the private package created by `npm run build:app-evidence`; it is stored in that installation's IndexedDB. None of these paths publish personal evidence with the public PWA.
+For delivery, `npm run sync:web` creates a public-only PWA/Capacitor payload from an explicit allowlist and prunes stale private-data, backup, and export directories from all web/native public roots. It never packages the protected analysis outputs. Any installation can instead import the private aggregate package created by `npm run build:app-evidence`; the user selects that file and the app stores it in that installation's IndexedDB. `.vercelignore`, native backup exclusions, payload verification, and the publication privacy review provide additional boundaries.
 
 The current analysis covers source data from 2019-03-02 through 2026-07-11 and contains 81,313 normalized/input records across workout, Fitbit, nutrition, and body-composition sources. The most important prescription inputs are:
 

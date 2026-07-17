@@ -17,3 +17,27 @@ personal_fitness_data/derived/
 personal_fitness_data/reports/
 personal_fitness_data/config/personal_context.json
 www/private-personal-data/
+android/app/src/main/assets/public/private-personal-data/
+android/app/src/main/assets/public/personal_fitness_data/
+ios/App/App/public/private-personal-data/
+ios/App/App/public/personal_fitness_data/
+
+# Local exports, backups, and databases must never enter public/native packages.
+www/backups/
+www/exports/
+android/app/src/main/assets/public/backups/
+android/app/src/main/assets/public/exports/
+ios/App/App/public/backups/
+ios/App/App/public/exports/
+www/**/*.db
+www/**/*.sqlite*
+www/**/*.bak
+www/**/*.backup
+android/app/src/main/assets/public/**/*.db
+android/app/src/main/assets/public/**/*.sqlite*
+android/app/src/main/assets/public/**/*.bak
+android/app/src/main/assets/public/**/*.backup
+ios/App/App/public/**/*.db
+ios/App/App/public/**/*.sqlite*
+ios/App/App/public/**/*.bak
+ios/App/App/public/**/*.backup
