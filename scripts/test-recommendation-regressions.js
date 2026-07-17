@@ -359,14 +359,15 @@ test("manual overrides reject unknown exercises and invalid numeric bounds", () 
   )]));
 });
 
-test("manual overrides cannot disable hard deload or rotation safety", () => {
+test("manual overrides cannot disable historical-pain or rotation safety while ordinary deload remains an audited choice", () => {
   const snapshot = engine.prescribeExercise({
     exerciseId: "ex_barbell_bench_press",
     muscleGroupId: "chest",
     history: regressionHistory(),
     createdAt
   });
-  assert.equal(snapshot.finalPrescription.recommendationType, "exercise_deload", "fixture must start safety-restricted");
+  assert.equal(snapshot.finalPrescription.recommendationType, "substitute", "repeated historical pain must start hard-safety restricted rather than executable as a deload");
+  assert.equal(snapshot.finalPrescription.executionBlocked, true, "historical pain must block the affected original before override checks");
   collectFailures([
     ["deload lock", () => {
       assert.throws(() => applyManualOverride(snapshot, { deloadRecommendation: false }, { createdAt: "2026-07-12T12:02:00.000Z" }));

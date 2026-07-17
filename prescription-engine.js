@@ -13,7 +13,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function prescriptionEngineFactory() {
   "use strict";
 
-  const ENGINE_VERSION = "3.3.6";
+  const ENGINE_VERSION = "3.3.7";
   const PRESCRIPTION_SCHEMA_VERSION = "2.3.0";
   const SNAPSHOT_SCHEMA_VERSION = "1.3.0";
   const TRAINING_PROFILE_VERSION = "training-profile/1.1.0";
@@ -1436,7 +1436,9 @@
     const illness = anyExplicitTrue(readiness.illness, readiness.isIll, readiness.illnessReported);
     const pain = anyExplicitTrue(readiness.pain, readiness.discomfort, readiness.injury, readiness.painReported);
     if (illness) add("illness", 3, "Illness is a hard readiness restriction; do not progress training stress today.");
-    if (pain) add("pain", 3, `Pain${readiness.affectedMuscle ? ` affecting ${readiness.affectedMuscle}` : ""} requires a pain-free modification or stopping the affected work.`);
+    if (pain) add("pain", 3, readiness.painEvidenceSource === "repeated_history"
+      ? `Pain${readiness.affectedMuscle ? ` affecting ${readiness.affectedMuscle}` : ""} was recorded repeatedly and requires a pain-free modification or stopping the affected work.`
+      : `Pain${readiness.affectedMuscle ? ` affecting ${readiness.affectedMuscle}` : ""} requires a pain-free modification or stopping the affected work.`);
     const autonomicReasons = [];
     if (hrvRatio !== null && hrvRatio < 0.9) autonomicReasons.push(`HRV is ${Math.round((1 - hrvRatio) * 100)}% below baseline.`);
     if (rhrRatio !== null && rhrRatio > 1.07) autonomicReasons.push(`Resting heart rate is ${Math.round((rhrRatio - 1) * 100)}% above baseline.`);
@@ -2851,6 +2853,11 @@
     };
   }
 
+  function hasHistoricalPainBlock(history, staleness) {
+    const latestComparable = normalizeHistory(history).filter((item) => !item.prescribedReduction).at(-1);
+    return latestComparable?.pain === true || staleness?.metrics?.painFlag === true;
+  }
+
   function determineProgressionDecision(options = {}) {
     const history = normalizeHistory(options.history).filter((item) => !item.prescribedReduction);
     const recent = history.slice(-4);
@@ -2893,6 +2900,16 @@
     const effortRecorded = last.averageRpe !== null || last.rpes.length > 0;
     const effortAcceptable = effortRecorded && (last.averageRpe === null || last.averageRpe <= number(rpeRange.max, 9)) && last.rpes.every((rpe) => rpe <= number(rpeRange.max, 9));
     const topReached = lastReps[0] >= number(repRange.max) && effortAcceptable;
+    if (hasHistoricalPainBlock(history, staleness)) {
+      return {
+        action: "hold_for_pain_free_modification",
+        recommendationType: "hold",
+        progressionMethod: method,
+        instruction: "Do not progress or deload the affected movement because pain or discomfort was recorded repeatedly. Use only a pain-free substitute or stop the affected work.",
+        holdRule: "Hold load, repetitions, and volume until the movement is pain-free or a pain-free substitute is confirmed.",
+        regressionRule: "Use a pain-free substitute or seek qualified evaluation when pain is severe, unexplained, or persistent."
+      };
+    }
     if (staleness.deloadCandidate && regressions >= 2) {
       return {
         action: "exercise_deload",
@@ -4121,6 +4138,15 @@
       mesocycleType: options.mesocycle?.type || options.mesocycleType,
       specializationMuscleGroups: options.mesocycle?.specializationMuscleGroups || options.specializationMuscleGroups
     });
+    const historicalPainBlock = hasHistoricalPainBlock(candidate.history, score.staleness);
+    const effectiveReadiness = historicalPainBlock
+      ? {
+          ...(options.readiness || {}),
+          pain: true,
+          painEvidenceSource: score.staleness.metrics?.painFlag === true ? "repeated_history" : "latest_history",
+          affectedMuscle: firstPresent(options.readiness?.affectedMuscle, muscleGroupId)
+        }
+      : (options.readiness || {});
     const context = programmingContext(options, score);
     const muscleDefaults = aggregateMuscleResearchDefaults(evidence.research, muscleGroupId);
     const researchDefaults = researchExerciseDefaults(candidate.researchExercise, muscleDefaults);
@@ -4184,7 +4210,7 @@
       exerciseHistory: candidate.history,
       muscleExerciseHistories: options.muscleExerciseHistories,
       programMuscleHistories: options.programMuscleHistories,
-      readiness: options.readiness,
+      readiness: effectiveReadiness,
       plannedLightSession: mesocycleType === MESOCYCLE_TYPES.LOWER_FATIGUE || options.plannedLightSession
     });
     const pool = rankExercisePool(evidence, muscleGroupId, {
@@ -4319,13 +4345,13 @@
     const load = prescribedLoadFromHistory(candidate, policyProgression, deloadStatus, options);
     if (load) basePrescription.prescribedLoad = load;
     basePrescription = applyDeloadState(basePrescription, deloadStatus);
-    const readinessChange = readinessAdjustmentFor(basePrescription, options.readiness || {});
+    const readinessChange = readinessAdjustmentFor(basePrescription, effectiveReadiness);
     const hardSafetyReadiness = readinessChange.signals.some((signal) => signal.domain === "illness" || signal.domain === "pain");
     const finalPrescription = hardSafetyReadiness
-      ? applyReadinessAdjustment(basePrescription, options.readiness || {})
+      ? applyReadinessAdjustment(basePrescription, effectiveReadiness)
       : ["exercise_deload", "muscle_group_deload", "full_program_deload"].includes(deloadStatus.state)
         ? { ...deepClone(basePrescription), readinessAdjustment: { ...readinessChange, changed: false, explanation: `${deloadStatus.explanation} The deload already supersedes a smaller readiness adjustment.` } }
-        : applyReadinessAdjustment(basePrescription, options.readiness || {});
+        : applyReadinessAdjustment(basePrescription, effectiveReadiness);
     const recommendationId = options.recommendationId || `rx_${normalizeText(candidate.exerciseId)}_${dateOnly(createdAt).replace(/-/g, "")}_${stableHash({
       candidate: candidate.exerciseId,
       muscleGroupId,
