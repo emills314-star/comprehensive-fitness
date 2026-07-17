@@ -1356,7 +1356,7 @@
     const e1rmSlope = linearSlope(recent.map((item) => item.estimated1Rm));
     const rpeSlope = linearSlope(recent.map((item) => item.averageRpe));
     const backoffSlope = linearSlope(recent.map((item) => item.backoffPerformance));
-    const repeatedPain = recent.filter((item) => item.pain).length >= 2 || (recent.at(-1)?.pain && options.painRequiresImmediateRotation);
+    const repeatedPain = recent.filter((item) => item.pain).length >= 2 || Boolean(recent.at(-1)?.pain && options.painRequiresImmediateRotation);
     const adherenceValues = recent.map((item) => item.adherence).filter((value) => value !== null);
     const lowAdherence = adherenceValues.length >= 2 && average(adherenceValues) < 0.75;
     const highRecoveryCost = recent.filter((item) => number(item.recoveryCost) >= 60).length >= 2;
@@ -1438,7 +1438,9 @@
     if (illness) add("illness", 3, "Illness is a hard readiness restriction; do not progress training stress today.");
     if (pain) add("pain", 3, readiness.painEvidenceSource === "repeated_history"
       ? `Pain${readiness.affectedMuscle ? ` affecting ${readiness.affectedMuscle}` : ""} was recorded repeatedly and requires a pain-free modification or stopping the affected work.`
-      : `Pain${readiness.affectedMuscle ? ` affecting ${readiness.affectedMuscle}` : ""} requires a pain-free modification or stopping the affected work.`);
+      : readiness.painEvidenceSource === "latest_history"
+        ? `Pain${readiness.affectedMuscle ? ` affecting ${readiness.affectedMuscle}` : ""} was recorded on the latest comparable exposure and requires a pain-free modification or stopping the affected work.`
+        : `Pain${readiness.affectedMuscle ? ` affecting ${readiness.affectedMuscle}` : ""} requires a pain-free modification or stopping the affected work.`);
     const autonomicReasons = [];
     if (hrvRatio !== null && hrvRatio < 0.9) autonomicReasons.push(`HRV is ${Math.round((1 - hrvRatio) * 100)}% below baseline.`);
     if (rhrRatio !== null && rhrRatio > 1.07) autonomicReasons.push(`Resting heart rate is ${Math.round((rhrRatio - 1) * 100)}% above baseline.`);
@@ -2853,9 +2855,10 @@
     };
   }
 
-  function hasHistoricalPainBlock(history, staleness) {
+  function historicalPainEvidenceFor(history, staleness) {
     const latestComparable = normalizeHistory(history).filter((item) => !item.prescribedReduction).at(-1);
-    return latestComparable?.pain === true || staleness?.metrics?.painFlag === true;
+    if (staleness?.metrics?.painFlag === true) return "repeated_history";
+    return latestComparable?.pain === true ? "latest_history" : null;
   }
 
   function determineProgressionDecision(options = {}) {
@@ -2900,12 +2903,15 @@
     const effortRecorded = last.averageRpe !== null || last.rpes.length > 0;
     const effortAcceptable = effortRecorded && (last.averageRpe === null || last.averageRpe <= number(rpeRange.max, 9)) && last.rpes.every((rpe) => rpe <= number(rpeRange.max, 9));
     const topReached = lastReps[0] >= number(repRange.max) && effortAcceptable;
-    if (hasHistoricalPainBlock(history, staleness)) {
+    const historicalPainEvidence = historicalPainEvidenceFor(history, staleness);
+    if (historicalPainEvidence) {
       return {
         action: "hold_for_pain_free_modification",
         recommendationType: "hold",
         progressionMethod: method,
-        instruction: "Do not progress or deload the affected movement because pain or discomfort was recorded repeatedly. Use only a pain-free substitute or stop the affected work.",
+        instruction: historicalPainEvidence === "repeated_history"
+          ? "Do not progress or deload the affected movement because pain or discomfort was recorded repeatedly. Use only a pain-free substitute or stop the affected work."
+          : "Do not progress or deload the affected movement because pain or discomfort was recorded on the latest comparable exposure. Use only a pain-free substitute or stop the affected work.",
         holdRule: "Hold load, repetitions, and volume until the movement is pain-free or a pain-free substitute is confirmed.",
         regressionRule: "Use a pain-free substitute or seek qualified evaluation when pain is severe, unexplained, or persistent."
       };
@@ -4138,12 +4144,12 @@
       mesocycleType: options.mesocycle?.type || options.mesocycleType,
       specializationMuscleGroups: options.mesocycle?.specializationMuscleGroups || options.specializationMuscleGroups
     });
-    const historicalPainBlock = hasHistoricalPainBlock(candidate.history, score.staleness);
-    const effectiveReadiness = historicalPainBlock
+    const historicalPainEvidence = historicalPainEvidenceFor(candidate.history, score.staleness);
+    const effectiveReadiness = historicalPainEvidence
       ? {
           ...(options.readiness || {}),
           pain: true,
-          painEvidenceSource: score.staleness.metrics?.painFlag === true ? "repeated_history" : "latest_history",
+          painEvidenceSource: historicalPainEvidence,
           affectedMuscle: firstPresent(options.readiness?.affectedMuscle, muscleGroupId)
         }
       : (options.readiness || {});

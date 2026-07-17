@@ -44,6 +44,22 @@ function regressionHistory({ pain = true, reverseInput = false } = {}) {
   return reverseInput ? history.reverse() : history;
 }
 
+function productiveHistoryWithOlderPain() {
+  return [0, 1, 2, 3].map((index) => ({
+    workout_date: `2026-07-${String(1 + index * 2).padStart(2, "0")}`,
+    progression_status: "improved",
+    progression_pct_vs_prior: index ? 2 : 0,
+    comparison_performance_value: 100 + index * 3,
+    best_epley_e1rm: 100 + index * 3,
+    average_rpe: 8,
+    recovery_strain_score: 40,
+    max_set_rep_loss_pct: 10,
+    pain: index === 0,
+    set_repetitions: "[8,8,8]",
+    set_loads: "[100,100,100]"
+  }));
+}
+
 function prescribe(history, readiness) {
   return engine.prescribeExercise({
     exerciseId: "ex_barbell_bench_press",
@@ -97,7 +113,31 @@ for (const [label, history] of [
   assertBlockedPainfulOriginal(prescribe(history), label);
 }
 
+const latestOnlyHistory = regressionHistory({ pain: false });
+latestOnlyHistory.at(-1).pain = true;
+const latestOnlyStaleness = assessExerciseStaleness(latestOnlyHistory);
+assert.equal(latestOnlyStaleness.metrics.painFlag, false, "latest-only fixture must not masquerade as repeated pain");
+const latestOnlyDecision = determineProgressionDecision({ history: latestOnlyHistory, staleness: latestOnlyStaleness });
+assert.equal(latestOnlyDecision.action, "hold_for_pain_free_modification", "pain on the latest comparable exposure must block before deload");
+assert.match(latestOnlyDecision.instruction, /latest comparable exposure/i, "latest-only pain must identify the actual evidence source");
+assert.doesNotMatch(latestOnlyDecision.instruction, /recorded repeatedly/i, "latest-only pain must not be described as repeated");
+const latestOnlyPrescription = prescribe(latestOnlyHistory);
+assertBlockedPainfulOriginal(latestOnlyPrescription, "latest-only painful history");
+assert.match(latestOnlyPrescription.finalPrescription.userExplanation, /latest comparable exposure/i, "snapshot explanation must retain latest-only provenance");
+assert.doesNotMatch(latestOnlyPrescription.finalPrescription.userExplanation, /recorded repeatedly/i, "snapshot explanation must not fabricate repeated pain");
+
+const olderPainHistory = productiveHistoryWithOlderPain();
+const olderPainStaleness = assessExerciseStaleness(olderPainHistory);
+assert.equal(olderPainStaleness.metrics.painFlag, false, "one older painful exposure must not become a repeated-pain signal");
+const olderPainDecision = determineProgressionDecision({ history: olderPainHistory, staleness: olderPainStaleness });
+assert.notEqual(olderPainDecision.action, "hold_for_pain_free_modification", "resolved older pain with a pain-free latest exposure must not hard-block current work");
+assert.notEqual(olderPainDecision.recommendationType, "exercise_deload", "an isolated older pain record must not fabricate a deload");
+const olderPainPrescription = prescribe(olderPainHistory);
+assert.notEqual(olderPainPrescription.finalPrescription.executionBlocked, true, "resolved older pain must not block the current prescription");
+assert.notEqual(olderPainPrescription.finalPrescription.recommendationType, "substitute", "resolved older pain must not require a current substitute");
+assert.notEqual(olderPainPrescription.finalPrescription.recommendationType, "exercise_deload", "resolved older pain must not fabricate a current deload");
+
 const readinessPain = prescribe(painFreeHistory, { pain: true, affectedMuscle: "Chest" });
 assertBlockedPainfulOriginal(readinessPain, "explicit readiness pain");
 
-console.log("Pain-over-deload precedence contract passed: 3 control paths and 2 historical-pain orderings.");
+console.log("Pain-over-deload precedence contract passed: pain-free deload, repeated/reversed, latest-only, resolved-older, and explicit-readiness controls.");
