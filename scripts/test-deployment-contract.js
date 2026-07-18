@@ -11,6 +11,7 @@ function check(name, fn) {
   catch (error) { failures.push(`${name}: ${error.message}`); console.error(`FAIL ${name}: ${error.message}`); }
 }
 function read(relative) { return fs.readFileSync(path.join(targetRoot, relative), "utf8"); }
+function deployText(relative) { return read(relative).replace(/\r\n/g, "\n"); }
 
 let config;
 check("control: public entry points and policy pages exist", () => {
@@ -19,6 +20,7 @@ check("control: public entry points and policy pages exist", () => {
 });
 check("control: inline-script hashes are computed from exact UTF-8 bytes", () => {
   assert.equal(crypto.createHash("sha256").update("abc", "utf8").digest("base64"), "ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa0=");
+  assert.equal(deployText("index.html").includes("\r"), false, "deploy-equivalent HTML must use LF bytes before CSP hashing");
   controls += 1;
 });
 check("deployment configuration exists and parses", () => {
@@ -138,7 +140,7 @@ check("CSP denies injection and bounds every outbound or navigational surface", 
 });
 
 check("executable inline scripts are absent or exactly hash-bound by CSP", () => {
-  const html = read("index.html");
+  const html = deployText("index.html");
   const inline = [...html.matchAll(/<script\b(?![^>]*\bsrc\s*=)[^>]*>([\s\S]*?)<\/script>/gi)].map((match) => match[1]).filter((body) => body.trim());
   for (const rule of catchAllRules()) {
     const sources = directives(headerMap(rule).get("content-security-policy") || "").get("script-src") || [];

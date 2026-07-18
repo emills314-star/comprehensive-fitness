@@ -1,6 +1,7 @@
 # Research hashes are byte contracts. Keep every hashed/generated text surface LF
 # in archives and working trees, independent of the caller's core.autocrlf value.
 .gitattributes text eol=lf
+*.html text eol=lf
 research_database/exports/csv/*.csv text eol=lf
 research_database/exports/json/*.json text eol=lf
 research_database/schema/*.json text eol=lf
