@@ -104,3 +104,19 @@ The material codebase deduction was the 973,839-byte / 12,176-line `app.js` reta
 | Independent score | 5 | 4 | 4 | 4 | 4 | 3 | 5 | 4 | 4 | 4 | **41/50** |
 
 The material recommendation deduction was the explicitly planned programming-family recommendation/history integration and its incomplete provenance/rollback contract. Other deductions were bounded private/device/external evidence or documented refinement gaps. This checkpoint is evidence for the next remediation; it is not a score for a later revision.
+
+### Independent first milestone — `ecb32c5e321a652442dcbf9334df6abc56b0cb2a`
+
+A separate score-neutral reviewer audited the exact clean revision above after it was pushed to `origin/main`. The assignment contained the frozen rubric but no desired score. The reviewer reproduced the complete public gate and a complete release wrapper: 42/42 public scripts passed; recommendation fuzz passed 1,024 cases / 10,240 assertions; Playwright passed 204 executed cases with 18 intentionally skipped; and no terminal defect was reproduced in the tested scope. The installed Node/npm versions differed from repository pins, one private-only harness was unavailable, and external provider/device evidence was not claimed.
+
+| Codebase category | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | Total |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Independent score | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | **40/50** |
+
+Architecture improved from 3 to 4 because the former 973 KB concentration is now eight ordered responsibility segments with exact load-order, per-file parse, concatenated parse, packaging, cache, and 300 KiB concentration contracts. Shared classic-script lexical state remains the direct deduction preventing a 5.
+
+| Recommendation category | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | Total |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Independent score | 5 | 4 | 4 | 4 | 4 | 3 | 5 | 4 | 4 | 4 | **41/50** |
+
+The first dual-40 milestone is independently achieved on this pushed revision. The frozen final acceptance gates still fail: codebase is below 45, recommendation is not 48–50, and recommendation dose category 6 remains below 4 because programming-family history/recommendation projection, version provenance, and rollback semantics are still **PLANNED / NEEDS REVIEW**. The full report is `2026-07-18-first-milestone-independent-score.md`.

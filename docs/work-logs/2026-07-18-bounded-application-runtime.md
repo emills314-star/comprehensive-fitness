@@ -28,3 +28,5 @@ The split retains the current browser-global lexical contract so behavior does n
 - Focused app-integration browser suite: 32 passed and 2 intentionally skipped across mobile/desktop.
 - `test-runtime-boundary`, deployment, service-worker cache, app-integration, workout-grade, and sync-consent contracts passed.
 - The static contract adapter was corrected after a focused grading test showed that synthetic per-segment wrapper tags could interrupt a marker-spanning extraction. It now concatenates the exact ordered runtime into one test-only contract body while the real document continues to load separate external scripts.
+- Production verification after push found all eight runtime segments, exact 236,903-byte `app-foundation.js`, and service-worker v35 at `https://comprehensive-fitness.vercel.app`; the hosted safety-integrity suite passed 12/12 across mobile and desktop.
+- A fresh independent frozen-rubric audit of the exact pushed revision scored Codebase **40/50** and Workout recommendation **41/50**, with no terminal defect reproduced in tested scope. The first dual-40 milestone is achieved; final gates remain open.
