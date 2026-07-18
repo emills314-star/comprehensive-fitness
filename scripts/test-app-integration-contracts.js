@@ -1208,6 +1208,7 @@ test("cloud workout sync performs no queue or flush work without explicit true c
   const normalize = functionSource("normalizeLoadedData");
   const queue = functionSource("queueActiveWorkoutSync");
   const flush = functionSource("flushWorkoutSyncQueue");
+  const consentTransition = functionSource("setCloudWorkoutSyncConsent");
   const notifications = functionSource("enablePushNotifications");
   const notificationActionWindows = [...html.matchAll(/action\s*===\s*["'](?:request-notifications|toggle-rest-notifications|timer-notifications)["']/g)]
     .map((match) => html.slice(match.index, match.index + 900));
@@ -1267,6 +1268,8 @@ test("cloud workout sync performs no queue or flush work without explicit true c
     ["explicit UI control", () => assertContains(html, /renderAlertSetting\(["']cloud-workout-sync-consent["']/, "Settings must expose a distinct cloud workout sync consent control")],
     ["queue fails closed", () => assertContains(queue, /cloudWorkoutSyncConsent\s*!==\s*true|cloudWorkoutSyncConsent\s*===\s*true/, "Queueing must require explicit true consent")],
     ["flush fails closed", () => assertContains(flush, /cloudWorkoutSyncConsent\s*!==\s*true|cloudWorkoutSyncConsent\s*===\s*true/, "Flushing must require explicit true consent")],
+    ["enable renders only after durable write", () => assertContains(consentTransition, /commitConsent\(true, false\)[\s\S]*await writeIndexedValue\("app-data", data\)[\s\S]*render\(\)/, "The enabled UI must not appear before consent is durably written")],
+    ["pending control stays canonical", () => assertContains(html, /requestedConsent = target\.checked === true;[\s\S]*target\.checked = data\.settings\.cloudWorkoutSyncConsent === true;[\s\S]*await setCloudWorkoutSyncConsent\(requestedConsent\)/, "The checkbox must not expose unconfirmed consent while authorization is pending")],
     ["notification setup remains separate", () => assert.doesNotMatch(notifications, /cloudWorkoutSyncConsent/, "Enabling notifications must not enable workout upload")],
     ["notification toggles remain separate", () => assert.ok(notificationActionWindows.every((source) => !/cloudWorkoutSyncConsent\s*:\s*true/.test(source)), "A notification preference handler must never grant workout-upload consent")]
   ]);

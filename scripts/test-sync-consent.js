@@ -18,6 +18,7 @@ assert.match(html, /function queueActiveWorkoutSync[\s\S]*?cloudWorkoutSyncConse
 assert.match(html, /function flushWorkoutSyncQueue[\s\S]*?cloudWorkoutSyncConsent === true/, "Queued mutations must not flush without canonical consent");
 assert.doesNotMatch(html.match(/async function registerPushSubscription[\s\S]*?\n      \}/)?.[0] || "", /flushWorkoutSyncQueue/, "Push registration must not activate workout upload");
 assert.match(html, /function setCloudWorkoutSyncConsent[\s\S]*?clearWorkoutSyncQueue[\s\S]*?api\/sync\/consent/, "Disabling consent must stop pending uploads and revoke server consent");
+assert.match(html, /commitConsent\(true, false\)[\s\S]*await writeIndexedValue\("app-data", data\)[\s\S]*render\(\)/, "Enabling consent must stay visually pending until the durable app-data write succeeds");
 assert.match(html, /reconcileWorkoutSyncConsent\(\)/, "Legacy implicit uploads must be revoked on startup/online reconciliation");
 assert.match(html, /permanentlyClearLocalData[\s\S]*?deleteRemoteInstallationData/, "Local clearing must delete remote installation data before discarding authorization");
 

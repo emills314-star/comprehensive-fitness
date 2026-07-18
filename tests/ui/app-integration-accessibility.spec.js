@@ -1397,8 +1397,12 @@ test("cloud workout sync consent defaults off and persists independently when ex
   const consent = page.locator('[data-action="cloud-workout-sync-consent"]');
   await expect(consent).toBeVisible();
   await expect(consent).not.toBeChecked();
-  await consent.check();
-  await expect(consent).toBeChecked();
+  await consent.click();
+  await expect(consent).toBeChecked({ timeout: 15_000 });
+  await expect.poll(() => page.evaluate(async () => {
+    const stored = await readIndexedValue("app-data");
+    return stored?.settings?.cloudWorkoutSyncConsent === true;
+  }), { message: "Enabled cloud-copy consent must be durable before reload", timeout: 15_000 }).toBe(true);
 
   await page.reload();
   await navigation.getByRole("button", { name: /Settings$/ }).click();

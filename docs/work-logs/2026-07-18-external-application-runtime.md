@@ -14,6 +14,7 @@ The inline 973 KB runtime coupled document edits, CSP digests, browser execution
 - Provide one test-only contract-source adapter so static behavior contracts inspect both owned files without duplicating runtime source.
 - Cache, package, parity-check, lint, and privacy-scan `app.js` as a first-class public asset; advance the service worker to cache version 34.
 - Reduce Vercel `script-src` to exactly `'self'`; reject executable inline bodies and obsolete CSP hashes.
+- Keep cloud-copy consent visually canonical while authorization is pending and render enabled state only after the durable IndexedDB write; the full release matrix exposed the immediate-reload race.
 
 ## Verification required
 

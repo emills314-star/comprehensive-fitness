@@ -9023,7 +9023,7 @@
         window.clearTimeout(syncFlushTimer);
         syncFlushTimer = 0;
         activeWorkoutSyncAbortControllers.forEach((controller) => controller.abort());
-        const commitConsent = (enabled) => commit({
+        const commitConsent = (enabled, shouldRender = options.renderNow !== false) => commit({
           ...data,
           settings: {
             ...data.settings,
@@ -9031,7 +9031,7 @@
             workoutCloudSync: enabled,
             workoutCloudSyncConsentVersion: enabled ? 1 : 0
           }
-        }, options.renderNow !== false);
+        }, shouldRender);
         if (!requestedConsent) commitConsent(false);
         const priorOperations = [...activeWorkoutSyncOperations];
         const transition = syncConsentTransition.catch(() => undefined).then(async () => {
@@ -9091,7 +9091,7 @@
           if (Number(epoch) !== Number(syncConsentEpoch)) return false;
           pushIdentity = { ...pushIdentity, syncRevokedAt: "", syncRevocationPending: false };
           await persistPushIdentity();
-          commitConsent(true);
+          commitConsent(true, false);
           try { await writeIndexedValue("app-data", data); }
           catch {
             commitConsent(false);
@@ -9099,6 +9099,7 @@
             if (options.renderNow !== false) render();
             return false;
           }
+          if (options.renderNow !== false) render();
           const queued = await queueActiveWorkoutSync(epoch);
           if (!workoutSyncConsentIsCurrent(epoch)) return false;
           settingsMessage = "Workout cloud copy is on. Active workout changes may now be uploaded.";
@@ -11702,7 +11703,11 @@
         if (action === "experience-level") commit({ ...data, settings: { ...data.settings, experienceLevel: target.value } });
         if (action === "returning-after-gap") commit({ ...data, settings: { ...data.settings, returningAfterGap: target.value === "" ? null : target.value === "true" } });
         if (action === "cloud-workout-sync-consent") {
-          await setCloudWorkoutSyncConsent(target.checked === true);
+          const requestedConsent = target.checked === true;
+          target.checked = data.settings.cloudWorkoutSyncConsent === true;
+          target.disabled = true;
+          target.setAttribute("aria-busy", "true");
+          await setCloudWorkoutSyncConsent(requestedConsent);
         }
         if (action === "mesocycle-type") { mesocycleDraftType = target.value; render(); }
         if (action === "mesocycle-specialization") { mesocycleSpecializationMuscle = target.value; render(); }
