@@ -288,6 +288,7 @@
       const recentHistoryDataIssueIds = new Set();
       let templateStartFlow = null;
       const prescriptionApi = window.ComprehensiveFitnessPrescriptionEngine || null;
+      const programmingFamilyApi = window.ComprehensiveFitnessProgrammingFamilyLedger || null;
       let prescriptionEngine = prescriptionApi?.createPrescriptionEngine({}) || null;
       let prescriptionEvidenceStatus = { state: "loading", personalRecords: 0, researchExercises: 0, personalVersion: "unknown", researchVersion: "unknown", message: "Loading training evidence." };
       const prescriptionSnapshotCache = new Map();

@@ -120,8 +120,8 @@
       }
 
       function displayMuscleForTaxonomyId(muscleId) {
-        const family = prescriptionApi?.muscleFamily ? prescriptionApi.muscleFamily(muscleId) : normalizePrescriptionIdentity(muscleId);
-        return ({ chest: "Chest", upper_back: "Back", lats: "Back", traps: "Back", spinal_erectors: "Back", quadriceps: "Quads", hamstrings: "Hamstrings", glutes: "Glutes", adductors: "Adductors", abductors: "Glutes", front_delts: "Shoulders", side_delts: "Shoulders", rear_delts: "Shoulders", biceps: "Biceps", triceps: "Triceps", forearms: "Forearms", calves: "Calves", abdominals: "Core", obliques: "Core", neck: "Neck" })[family] || null;
+        const family = programmingFamilyApi?.programmingFamilyId ? programmingFamilyApi.programmingFamilyId(muscleId) : prescriptionApi?.muscleFamily ? prescriptionApi.muscleFamily(muscleId) : normalizePrescriptionIdentity(muscleId);
+        return ({ chest: "Chest", upper_back: "Back", lats: "Back", traps: "Back", spinal_erectors: "Back", quads: "Quads", quadriceps: "Quads", hamstrings: "Hamstrings", glutes: "Glutes", adductors: "Adductors", abductors: "Glutes", front_delts: "Shoulders", side_delts: "Shoulders", rear_delts: "Shoulders", biceps: "Biceps", triceps: "Triceps", forearms: "Forearms", calves: "Calves", abs: "Core", abdominals: "Core", obliques: "Core", neck: "Neck" })[family] || null;
       }
 
       function taxonomyMusclesForExercise(exercise) {
@@ -130,10 +130,27 @@
         const identity = resolvePrescriptionExerciseIdentity(exercise);
         const canonicalId = identity.status === "resolved" && research.exerciseById.has(identity.exerciseId) ? identity.exerciseId : "";
         if (!canonicalId) return [];
-        return normalizeMuscleMatches((research.muscleMapsByExercise.get(canonicalId) || [])
-          .filter((mapping) => Number(mapping.fractional_set_credit || 0) > 0)
-          .map((mapping) => [displayMuscleForTaxonomyId(mapping.programming_family_id || mapping.muscle_group_id), Number(mapping.fractional_set_credit || 0)]))
-          .map((item) => ({ ...item, canonicalExerciseId: canonicalId, taxonomyVersion: research.version }));
+        const relationships = research.muscleMapsByExercise.get(canonicalId) || [];
+        const versions = new Set(relationships.map((mapping) => String(mapping.taxonomy_version || mapping.taxonomyVersion || "").trim()).filter(Boolean));
+        if (!relationships.length || versions.size !== 1 || relationships.some((mapping) => !String(mapping.taxonomy_version || mapping.taxonomyVersion || "").trim())) return [];
+        const coalesced = programmingFamilyApi?.coalesceRelationshipsByProgrammingFamily
+          ? programmingFamilyApi.coalesceRelationshipsByProgrammingFamily(relationships)
+          : relationships.map((mapping) => ({ programmingFamilyId: mapping.programming_family_id || mapping.muscle_group_id, relationshipType: mapping.relationship_type, setContribution: Number(mapping.fractional_set_credit || 0) }));
+        const displayed = new Map();
+        coalesced.filter((mapping) => Number(mapping.setContribution || 0) > 0).forEach((mapping) => {
+          const muscle = displayMuscleForTaxonomyId(mapping.programmingFamilyId);
+          if (!muscle) return;
+          const current = displayed.get(muscle);
+          if (!current || mapping.setContribution > current.weight) displayed.set(muscle, {
+            muscle,
+            weight: Number(mapping.setContribution),
+            programmingFamilyId: mapping.programmingFamilyId,
+            relationshipType: mapping.relationshipType,
+            canonicalExerciseId: canonicalId,
+            taxonomyVersion: [...versions][0]
+          });
+        });
+        return [...displayed.values()];
       }
 
       function musclesForExercise(exerciseOrName, options = {}) {
@@ -191,19 +208,24 @@
       }
 
       function weeklyMuscleVolume(weekStart = startOfWeekIso(todayIso())) {
-        const taxonomyVersion = prescriptionEngine?.evidence?.research?.version || "legacy_fallback";
-        const cacheKey = analysisRevision + "|" + taxonomyVersion + "|" + weekStart;
+        const familyVersion = programmingFamilyApi?.PROGRAMMING_FAMILY_VERSION || "family_ledger_unavailable";
+        const cacheKey = analysisRevision + "|" + familyVersion + "|" + weekStart;
         if (weeklyVolumeCache.has(cacheKey)) return weeklyVolumeCache.get(cacheKey);
         const activeSessionIds = activeHistorySessionIds();
         const buckets = new Map(muscleGroups.map((muscle) => [muscle, { muscle, sets: 0, directSets: 0, indirectSets: 0, highRpeSets: 0, failedSets: 0, exercises: new Set(), exerciseDetails: new Map(), sessionDetails: new Map(), submittedSessions: new Map(), excludedDeloadSessions: new Map() }]));
         const end = new Date(weekStart + "T00:00:00");
         end.setDate(end.getDate() + 7);
         const endIso = localDateIso(end);
+        const familyProjectionRecords = [];
         completedWorkoutEntries().forEach((entry) => {
-          if (entry.session.date < weekStart || entry.session.date >= endIso) return;
+          if (!activeSessionIds.has(entry.session.id) || entry.session.date < weekStart || entry.session.date >= endIso) return;
           if (entry.exercise.isDeload) {
             musclesForExercise(entry.exercise).forEach(({ muscle }) => buckets.get(muscle)?.excludedDeloadSessions.set(entry.session.id, { id: entry.session.id, title: entry.session.title || "Workout", date: entry.session.date }));
             return;
+          }
+          const projectionIdentity = resolvePrescriptionExerciseIdentity(entry.exercise);
+          if (projectionIdentity.status === "resolved" && prescriptionEngine?.evidence?.research?.exerciseById?.has(projectionIdentity.exerciseId)) {
+            familyProjectionRecords.push({ exerciseId: entry.exercise.id, researchExerciseId: projectionIdentity.exerciseId, exerciseName: entry.exercise.name, workingSets: 1 });
           }
           musclesForExercise(entry.exercise).forEach(({ muscle, weight }) => {
             const bucket = buckets.get(muscle);
@@ -243,6 +265,9 @@
             if (bucket) bucket.failedSets += weight;
           });
         });
+        const familyProjection = prescriptionApi?.recalculateHistoricalMuscleVolume && prescriptionEngine?.evidence
+          ? prescriptionApi.recalculateHistoricalMuscleVolume(prescriptionEngine.evidence, familyProjectionRecords)
+          : { taxonomyVersion: "unknown", familyProjectionStatus: "blocked_unverifiable_taxonomy", ledgerVersion: null, programmingFamilyVersion: familyVersion, familyTotals: [], rollbackContract: null };
         const result = Array.from(buckets.values()).map((bucket) => {
           const target = targetRangeForMuscle(bucket.muscle);
           const status = bucket.sets < target.low ? "low" : bucket.sets > target.high ? "over" : "good";
@@ -255,7 +280,7 @@
             sessions: Array.from(detail.sessions.values()).sort((a, b) => a.date.localeCompare(b.date))
           })).sort((a, b) => b.sets - a.sets || a.name.localeCompare(b.name));
           const sessionGroups = Array.from(bucket.sessionDetails.values()).map((session) => ({ ...session, exercises: Array.from(session.exercises.values()).sort((a, b) => b.sets - a.sets || a.name.localeCompare(b.name)) })).sort((a, b) => a.date.localeCompare(b.date));
-          return { ...bucket, taxonomyVersion, details, sessionGroups, sessions: Array.from(bucket.submittedSessions.values()).sort((a, b) => a.date.localeCompare(b.date)), excludedDeloadSessions: Array.from(bucket.excludedDeloadSessions.values()).sort((a, b) => a.date.localeCompare(b.date)), exerciseCount: bucket.exercises.size, targetLow: target.low, targetHigh: target.high, status };
+          return { ...bucket, taxonomyVersion: familyProjection.taxonomyVersion, familyProjectionStatus: familyProjection.familyProjectionStatus, ledgerVersion: familyProjection.ledgerVersion, programmingFamilyVersion: familyProjection.programmingFamilyVersion, familyTotals: familyProjection.familyTotals, rollbackContract: familyProjection.rollbackContract, details, sessionGroups, sessions: Array.from(bucket.submittedSessions.values()).sort((a, b) => a.date.localeCompare(b.date)), excludedDeloadSessions: Array.from(bucket.excludedDeloadSessions.values()).sort((a, b) => a.date.localeCompare(b.date)), exerciseCount: bucket.exercises.size, targetLow: target.low, targetHigh: target.high, status };
         });
         weeklyVolumeCache.set(cacheKey, result);
         return result;

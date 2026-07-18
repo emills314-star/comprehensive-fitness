@@ -51,3 +51,11 @@ PLAYWRIGHT_BASE_URL=<hosted-origin> npx playwright test tests/ui/safety-integrit
 ```
 
 Record command versions, full revision SHA, skips, retries, environment limitations, and any mismatch between repository, packaged `www`, GitHub `main`, and hosted production.
+
+## 2026-07-18 family-ledger remediation evidence (score neutral)
+
+The candidate revision adds `programming-family-ledger.js` as the single family-projection authority used by both the guided builder and prescription engine. Historical recommendation output now carries `historical-family-volume/1.0.0`, `programming-family/1.0.0`, relationship-taxonomy provenance, fail-closed projection status, exact family totals, and an executable recalculation rollback contract. Canonical ownership defeats a conflicting supplied family; direct credit wins within an exercise/family; fatigue remains additive and separate; source records are cloned; and aggregation retains full precision until final exposed totals.
+
+The app loads this domain module before both consumers, coalesces canonical weekly relationships by family before broad display projection, restricts completed dose to active submitted history, and carries the family projection into the weekly recommendation input. Missing or mixed relationship provenance produces no family dose. The service worker advances to v36 and root, web, Android, and iOS public payloads verify 32 explicit assets in parity.
+
+Focused invariants cover same-family subdivisions, traps/calves, isometric separation, canonical-family tampering, a `0.335 × 3` final-only rounding counterexample, missing/mixed provenance, immutable input, alternate-taxonomy recalculation, and exact rollback reproduction. The complete public gate passed 42/42 selected scripts with 10,240/10,240 recommendation-fuzz assertions. The first 222-case Playwright run passed 203 with 18 intentional skips and exposed one test-readiness race: a helper observed the early empty engine before asynchronous public research finished. The helper now polls the required canonical catalog row; the exact failed mobile/desktop case then passed 2/2. A fresh clean committed `release:verify` remains the required reviewer reproduction boundary.

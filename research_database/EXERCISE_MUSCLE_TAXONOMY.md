@@ -71,7 +71,7 @@ Change history is also append-only. The stable-ID contract retains the exact ord
 
 ## Historical recalculation
 
-Logged dates, loads, repetitions, RPE, completion, and exercise identity remain immutable in the current application. The accepted taxonomy source repair does not itself change the separate prescription engine's canonical historical calculation, establish an explicit historical taxonomy-version field, or prove atomic rollback. **PLANNED / NEEDS REVIEW:** recommendation integration must define version provenance, migration/recalculation boundaries, failure behavior, rollback, and family-level rounding before those semantics can be claimed for historical analytics.
+Logged dates, loads, repetitions, RPE, completion, and exercise identity remain immutable. The shared historical family ledger derives versioned family totals without persistence: canonical muscle ownership controls family assignment, one exercise contributes at most once per family, direct credit wins over fractional credit, fatigue remains additive and separate, and only final totals are rounded. Every used relationship must carry one common taxonomy version; missing or mixed provenance returns `blocked_unverifiable_taxonomy` and no family dose. A taxonomy change or rollback recalculates from immutable source records, requires no application-data migration, and is regression-tested by switching to alternate relationship evidence and back to the original projection.
 
 ## Review queue
 

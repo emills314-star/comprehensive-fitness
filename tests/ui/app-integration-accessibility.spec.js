@@ -813,8 +813,8 @@ async function seedApplicationState(page, state) {
 
 async function seedBlockedSafetyRecommendation(page, fixture, request) {
   await seedApplicationState(page, fixture.state);
-  await expect.poll(() => page.evaluate(() => Boolean(prescriptionEngine)), {
-    message: "The page prescription engine must initialize before seeding a safety recommendation"
+  await expect.poll(() => page.evaluate(() => Boolean(prescriptionEngine?.evidence?.research?.exerciseById?.has("ex_barbell_bench_press"))), {
+    message: "The page prescription engine must finish loading public research before seeding a safety recommendation"
   }).toBe(true);
   return page.evaluate(({ exerciseRuntimeId, engineRequest }) => {
     const blocked = prescriptionEngine.prescribeExercise(engineRequest);

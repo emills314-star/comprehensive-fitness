@@ -1655,10 +1655,18 @@ test("historical volume reports relationship taxonomy provenance and fails close
 
   const integrated = recalculateHistoricalMuscleVolume(evidenceWithDeadliftVersions(() => "2.1.0"), logged);
   assert.equal(integrated.taxonomyVersion, "2.1.0", "research database 3.0.0 must not overwrite relationship taxonomy 2.1.0 provenance");
+  assert.equal(integrated.familyProjectionStatus, "ready");
+  assert.equal(integrated.programmingFamilyVersion, "programming-family/1.0.0");
+  assert.equal(integrated.ledgerVersion, "historical-family-volume/1.0.0");
+  assert.ok(integrated.familyTotals.some((row) => row.programmingFamilyId === "glutes" && row.directSets === 4), "recommendation history must expose family-level dose");
+  assert.deepEqual(integrated.rollbackContract, { strategy: "recalculate_from_immutable_records", persistentMigrationRequired: false, sourceRecordsMutated: false });
   const mixed = recalculateHistoricalMuscleVolume(evidenceWithDeadliftVersions((index) => index % 2 ? "2.2.0" : "2.1.0"), logged);
   assert.equal(mixed.taxonomyVersion, "mixed", "multiple relationship taxonomy versions must be reported explicitly");
+  assert.equal(mixed.familyProjectionStatus, "blocked_unverifiable_taxonomy");
+  assert.deepEqual(mixed.familyTotals, [], "mixed provenance cannot emit family dose");
   const missing = recalculateHistoricalMuscleVolume(evidenceWithDeadliftVersions(() => null), logged);
   assert.equal(missing.taxonomyVersion, "unknown", "entirely missing relationship taxonomy provenance must fail closed");
+  assert.deepEqual(missing.familyTotals, [], "missing provenance cannot emit family dose");
   const partiallyMissing = recalculateHistoricalMuscleVolume(evidenceWithDeadliftVersions((index) => index === 0 ? "2.1.0" : null), logged);
   assert.equal(partiallyMissing.taxonomyVersion, "mixed", "partial relationship taxonomy provenance must fail closed as mixed");
   assert.equal(recalculateHistoricalMuscleVolume(evidence, []).taxonomyVersion, "unknown", "an empty recalculation has no relationship taxonomy provenance");

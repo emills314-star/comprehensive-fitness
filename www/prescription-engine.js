@@ -7,13 +7,16 @@
  * the static browser app and to Node-based validation scripts.
  */
 (function prescriptionEngineUmd(root, factory) {
-  const api = factory();
+  const familyLedger = typeof module === "object" && module.exports ? require("./programming-family-ledger") : root.ComprehensiveFitnessProgrammingFamilyLedger;
+  const api = factory(familyLedger);
   if (typeof module === "object" && module.exports) module.exports = api;
   if (root) root.ComprehensiveFitnessPrescriptionEngine = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function prescriptionEngineFactory() {
+})(typeof globalThis !== "undefined" ? globalThis : this, function prescriptionEngineFactory(familyLedger) {
   "use strict";
 
-  const ENGINE_VERSION = "3.3.7";
+  if (!familyLedger) throw new Error("Programming family ledger is required.");
+
+  const ENGINE_VERSION = "3.3.8";
   const PRESCRIPTION_SCHEMA_VERSION = "2.3.0";
   const SNAPSHOT_SCHEMA_VERSION = "1.3.0";
   const TRAINING_PROFILE_VERSION = "training-profile/1.1.0";
@@ -1617,10 +1620,10 @@
         muscleGroupId: mapping.muscle_group_id || mapping.muscleGroupId,
         relationshipType: mapping.relationship_type,
         loadingRole: mapping.loading_role || "unknown",
-        directSets: mapping.relationship_type === "direct_load" ? round(workingSets * setCredit, 2) : 0,
-        fractionalSets: mapping.relationship_type === "meaningful_fractional_load" ? round(workingSets * setCredit, 2) : 0,
-        weightedHypertrophySets: round(workingSets * setCredit, 2),
-        isometricExposure: mapping.relationship_type === "isometric_stabilizing_load" ? round(workingSets * number(mapping.local_fatigue_weight, 0), 2) : 0,
+        directSets: mapping.relationship_type === "direct_load" ? workingSets * setCredit : 0,
+        fractionalSets: mapping.relationship_type === "meaningful_fractional_load" ? workingSets * setCredit : 0,
+        weightedHypertrophySets: workingSets * setCredit,
+        isometricExposure: mapping.relationship_type === "isometric_stabilizing_load" ? workingSets * number(mapping.local_fatigue_weight, 0) : 0,
         taxonomyVersion: String(firstPresent(mapping.taxonomy_version, mapping.taxonomyVersion) || "").trim() || null,
         confidence: mapping.confidence_rating,
         evidenceNotes: mapping.evidence_notes
@@ -1655,7 +1658,20 @@
       : missingTaxonomyProvenance || taxonomyVersions.size > 1
         ? "mixed"
         : [...taxonomyVersions][0];
-    return { taxonomyVersion, sourceRecords: snapshot, muscleTotals: [...totals.values()].map((item) => ({ ...item, directSets: round(item.directSets, 2), fractionalSets: round(item.fractionalSets, 2), weightedHypertrophySets: round(item.weightedHypertrophySets, 2), isometricExposure: round(item.isometricExposure, 2) })) };
+    const familyProjection = familyLedger.projectHistoricalVolume(snapshot, (record) => {
+      const canonicalId = firstPresent(record.researchExerciseId, evidence.research.exerciseIdByAlias.get(normalizeText(record.exerciseName)), record.exerciseId);
+      return taxonomyRelationshipsFor(evidence.research, canonicalId);
+    });
+    return {
+      taxonomyVersion,
+      ledgerVersion: familyProjection.ledgerVersion,
+      programmingFamilyVersion: familyProjection.programmingFamilyVersion,
+      familyProjectionStatus: familyProjection.projectionStatus,
+      rollbackContract: familyProjection.rollbackContract,
+      sourceRecords: snapshot,
+      muscleTotals: [...totals.values()].map((item) => ({ ...item, directSets: round(item.directSets, 2), fractionalSets: round(item.fractionalSets, 2), weightedHypertrophySets: round(item.weightedHypertrophySets, 2), isometricExposure: round(item.isometricExposure, 2) })),
+      familyTotals: familyProjection.familyTotals
+    };
   }
 
   function aggregateMuscleResearchDefaults(research, muscleGroupId) {

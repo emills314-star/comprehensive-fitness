@@ -123,8 +123,8 @@ test("all four repository-known version pairs read while generation remains late
   }
   assert.equal(current.schemaVersion, "1.3.0", "current generation must remain latest-only");
   assert.equal(current.basePrescription.schemaVersion, "2.3.0", "current prescriptions must remain latest-only");
-  assert.equal(ENGINE_VERSION, "3.3.7", "the historical-pain safety-precedence patch must remain traceable");
-  assert.equal(current.engineVersion, "3.3.7", "the current serialized recommendation behavior requires a traceable patch engine version");
+  assert.equal(ENGINE_VERSION, "3.3.8", "the family-ledger integration patch must remain traceable");
+  assert.equal(current.engineVersion, "3.3.8", "the current serialized recommendation behavior requires a traceable patch engine version");
 });
 
 test("engine 3.3.4 broad-target snapshots retain checksum, lineage, and byte-meaning compatibility", () => {
@@ -141,10 +141,10 @@ test("engine 3.3.4 broad-target snapshots retain checksum, lineage, and byte-mea
   assert.deepEqual(JSON.parse(serializeRecommendationSnapshot(read)), before, "round-trip serialization must preserve the 3.3.4 record exactly");
 });
 
-test("engine 3.3.7 can generate an exact canonical target without changing the persisted schema", () => {
+test("engine 3.3.8 can generate an exact canonical target without changing the persisted schema", () => {
   assert.equal(currentDefaultTarget.muscleGroupId, "mg_chest_sternal");
   assert.equal(currentDefaultTarget.taxonomyVersion, "2.1.0", "the transient resolver result must expose taxonomy provenance");
-  assert.equal(currentExact.engineVersion, "3.3.7");
+  assert.equal(currentExact.engineVersion, "3.3.8");
   assert.equal(currentExact.schemaVersion, current.schemaVersion, "the resolver patch must not advance snapshot schema");
   assert.equal(currentExact.recommendationVersion, current.recommendationVersion, "the resolver patch must not advance prescription schema");
   [currentExact, currentExact.basePrescription, currentExact.finalPrescription].forEach((layer) => {
@@ -171,7 +171,7 @@ test("mixed history loads and appends without rewriting legacy records or IDs", 
   assert.deepEqual(loaded.map((item) => item.recommendationId), [legacyWithoutChecksum.recommendationId, broad334.recommendationId, currentExact.recommendationId]);
   assert.deepEqual(loaded[0], legacyWithoutChecksum, "one legacy record must not be rewritten while loading mixed history");
   assert.deepEqual(loaded[1], broad334, "an engine 3.3.4 broad-target record must remain unchanged in mixed history");
-  assert.deepEqual(loaded[2], currentExact, "legacy records must not prevent the engine 3.3.7 exact-target record from loading");
+  assert.deepEqual(loaded[2], currentExact, "legacy records must not prevent the engine 3.3.8 exact-target record from loading");
 
   const appendedLegacy = legacySnapshot(PAIRS[1]);
   appendRecommendationHistory(storage, appendedLegacy, { key: historyKey });

@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const taxonomy = require("../research_database/source/exercise-muscle-taxonomy");
 const database = require("../research_database/source/database");
 const guided = require("../guided-mesocycle");
+const familyLedger = require("../programming-family-ledger");
 
 const canonicalIds = Object.keys(taxonomy.CANONICAL_TO_PROGRAMMING_FAMILY).sort();
 const databaseIds = database.data.muscle_group_recommendations.map((row) => row.muscle_group_id).sort();
@@ -94,6 +95,31 @@ assert.deepEqual(statuses[0].sourceMuscleGroupIds, ["mg_calves_gastroc", "mg_cal
 assert.equal(statuses[0].priority, "specialization");
 assert.equal(statuses[0].frequencyStatus, "satisfied");
 assert.equal(statuses[0].overallStatus, "within");
+
+const immutableHistory = [
+  { exerciseId: "fractional-chest", workingSets: 1, note: "immutable source fact" },
+  { exerciseId: "fractional-chest", workingSets: 1, note: "immutable source fact" },
+  { exerciseId: "fractional-chest", workingSets: 1, note: "immutable source fact" }
+];
+const immutableBefore = JSON.stringify(immutableHistory);
+const fractionalRows = [{ muscle_group_id: "mg_chest_clavicular", programming_family_id: "calves", relationship_type: "meaningful_fractional_load", fractional_set_credit: 0.335, local_fatigue_weight: 0.335, taxonomy_version: "2.1.0" }];
+const historical = familyLedger.projectHistoricalVolume(immutableHistory, () => fractionalRows);
+assert.equal(JSON.stringify(immutableHistory), immutableBefore, "Historical projection must not mutate source records");
+assert.equal(historical.projectionStatus, "ready");
+assert.equal(historical.taxonomyVersion, "2.1.0");
+assert.equal(historical.familyTotals[0].programmingFamilyId, "chest", "Canonical muscle ownership must defeat a conflicting supplied family");
+assert.equal(historical.familyTotals[0].weightedHypertrophySets, 1.01, "Only the final aggregate may be rounded; 0.335 must not be rounded per record");
+assert.deepEqual(historical.rollbackContract, { strategy: "recalculate_from_immutable_records", persistentMigrationRequired: false, sourceRecordsMutated: false });
+
+const alternate = familyLedger.projectHistoricalVolume(immutableHistory, () => [{ ...fractionalRows[0], fractional_set_credit: 0.25, taxonomy_version: "2.2.0" }]);
+assert.equal(alternate.familyTotals[0].weightedHypertrophySets, 0.75, "A replacement taxonomy must produce a fresh projection without migration");
+assert.deepEqual(familyLedger.projectHistoricalVolume(immutableHistory, () => fractionalRows), historical, "Rollback to the original taxonomy must reproduce the original projection exactly");
+const mixedProjection = familyLedger.projectHistoricalVolume(immutableHistory, (_record, index) => [{ ...fractionalRows[0], taxonomy_version: index === 1 ? "2.2.0" : "2.1.0" }]);
+assert.equal(mixedProjection.projectionStatus, "blocked_unverifiable_taxonomy");
+assert.deepEqual(mixedProjection.familyTotals, [], "Mixed provenance must fail closed instead of emitting a dose");
+const missingProjection = familyLedger.projectHistoricalVolume(immutableHistory, () => [{ ...fractionalRows[0], taxonomy_version: null }]);
+assert.equal(missingProjection.projectionStatus, "blocked_unverifiable_taxonomy");
+assert.deepEqual(missingProjection.familyTotals, [], "Missing provenance must fail closed instead of emitting a dose");
 
 console.log(JSON.stringify({
   passed: true,

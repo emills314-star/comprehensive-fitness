@@ -44,6 +44,7 @@ $publicFiles = @(
   @{ Source = "privacy.html"; Destination = "privacy.html" },
   @{ Source = "support.html"; Destination = "support.html" },
   @{ Source = "manifest.webmanifest"; Destination = "manifest.webmanifest" },
+  @{ Source = "programming-family-ledger.js"; Destination = "programming-family-ledger.js" },
   @{ Source = "prescription-engine.js"; Destination = "prescription-engine.js" },
   @{ Source = "guided-mesocycle.js"; Destination = "guided-mesocycle.js" },
   @{ Source = "rest-completion-controller.js"; Destination = "rest-completion-controller.js" },

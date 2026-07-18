@@ -289,7 +289,7 @@ function testPackagingAndNativeGuards() {
   assert.match(sync, /StartsWith\(\$resolvedPublicRoot[\s\S]+Remove-Item -LiteralPath \$resolvedCandidate -Recurse -Force/);
   assert.ok(sync.indexOf("Remove-Item") < sync.indexOf("Copy-Item"), "private payload pruning must precede public copying");
   assert.doesNotMatch(sync, /personal_fitness_data\\derived|Included private aggregate/);
-  for (const required of ["guided-mesocycle.js", "secondary-page.css", "nutrition_strategies.json", "icon-1024.png"]) {
+  for (const required of ["programming-family-ledger.js", "guided-mesocycle.js", "secondary-page.css", "nutrition_strategies.json", "icon-1024.png"]) {
     assert.ok(sync.includes(required), `sync list must include ${required}`);
     assert.ok(verify.includes(required), `parity list must include ${required}`);
   }

@@ -17,7 +17,10 @@ const secondaryPageCss = fs.readFileSync(path.join(root, "resources", "secondary
 // Compile the application contract view before checking integration contracts.
 [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].forEach((match) => new Function(match[1]));
 
-assert.match(html, /<script src="\.\/prescription-engine\.js"><\/script>/, "The browser must load the unified engine before the app");
+assert.match(html, /<script src="\.\/programming-family-ledger\.js"><\/script>[\s\S]*<script src="\.\/prescription-engine\.js"><\/script>[\s\S]*<script src="\.\/guided-mesocycle\.js"><\/script>/, "The browser must load the shared family ledger before both consumers and the app");
+assert.match(html, /familyProjectionStatus: familyProjection\.familyProjectionStatus/, "Weekly analytics must expose fail-closed family projection status");
+assert.match(html, /familyTotals: familyProjection\.familyTotals/, "Weekly analytics must expose recommendation-family dose");
+assert.match(html, /activeSessionIds\.has\(entry\.session\.id\)/, "Historical family projection must use submitted active history only");
 assert.match(html, /async function initializePrescriptionEvidence\(\)/, "App startup must load personal and research evidence");
 assert.match(html, /await initializePrescriptionEvidence\(\)/, "Boot must wait for the evidence layer before rendering");
 assert.match(html, /function unifiedPrescriptionSnapshot\(/, "All surfaces need one snapshot factory");
