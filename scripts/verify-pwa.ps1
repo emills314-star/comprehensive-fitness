@@ -84,4 +84,10 @@ foreach ($domain in @("root", "file", "database", "sharedpref", "external")) {
   if ($dataRules -notlike "*exclude domain=`"$domain`" path=`".`"*") { throw "Android data extraction rules do not exclude $domain." }
 }
 
+$serviceWorker = Get-Content -LiteralPath (Join-Path $root "sw.js") -Raw
+foreach ($needle in @("PUBLIC_CACHE_PATHS", "isSensitivePath", 'cache: "no-store"', "isPublicCacheUrl", "responseCanBeCached", "safeNotificationUrl")) {
+  if ($serviceWorker -notlike "*$needle*") { throw "Service worker is missing public-cache privacy control: $needle" }
+}
+if ($serviceWorker -like '*if (response.ok) caches.open*') { throw "Service worker still contains generic successful-response caching." }
+
 Write-Host "PWA/native public-only packaging verification passed for $($publicFiles.Count) assets."

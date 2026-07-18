@@ -41,7 +41,7 @@ This is a dependency-light static PWA with Capacitor wrappers, not a bundled com
 
 `npm run sync:web` is the canonical copy step from root web assets into `www/`. Root files are the editable source; duplicated `www/` files are packaging outputs.
 
-Any cross-file runtime contract change (for example, `index.html` consuming a new `guided-mesocycle.js` field) must advance `CACHE_NAME` in `sw.js`. This retires the previous app shell and module assets together; otherwise an installed PWA can pair a new UI with an older cached engine.
+Any cross-file runtime contract change (for example, `index.html` consuming a new `guided-mesocycle.js` field) must advance `CACHE_NAME` in `sw.js`. This retires the previous app shell and module assets together; otherwise an installed PWA can pair a new UI with an older cached engine. Cache Storage accepts only the immutable same-origin public-shell allowlist without query strings; API, personal-data, backup/export, database, cross-origin, unlisted, private, and no-store responses bypass it. Navigation fetches use `cache: "no-store"` before the allowlisted offline fallback.
 
 ## High-level system
 
@@ -157,7 +157,7 @@ Required server environment names are documented without values in `.env.example
 
 ## Error handling and privacy boundaries
 
-Persistence falls back from IndexedDB to localStorage. Personal evidence URL loading tolerates protected/unavailable private sources and continues research-led. APIs return structured JSON errors and fail authorization. Service-worker navigation falls back to cached `index.html`.
+Persistence falls back from IndexedDB to localStorage. Personal evidence URL loading tolerates protected/unavailable private sources and continues research-led. APIs return structured JSON errors and fail authorization. Service-worker navigation falls back only for the four public navigation paths, and notification targets are restricted to non-sensitive same-origin URLs.
 
 Private raw/normalized/derived/reports data must not enter public web or native assets. `sync:web` copies an explicit public allowlist and removes stale sensitive directories from `www/` and the Capacitor public directories before packaging; `verify:pwa` checks source parity, scans all three payload roots, and verifies native privacy controls. Personal evidence reaches an installation only through the user-controlled aggregate-package import and stays in local IndexedDB. `.vercelignore` remains deployment defense in depth. Exported app backups and Redis workout payloads may contain personal workout data and should be treated as sensitive.
 
