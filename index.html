@@ -2026,6 +2026,7 @@
     <script src="./prescription-engine.js"></script>
     <script src="./guided-mesocycle.js"></script>
     <script src="./rest-completion-controller.js"></script>
+    <script src="./backup-contract.js"></script>
     <script>
       const STORAGE_KEY = "comprehensive-fitness-data-v1";
       const LOCAL_FALLBACK_FORMAT = "comprehensive-fitness-local-fallback";
@@ -2090,6 +2091,8 @@
         installGuideDismissed: false,
         setupSoundConfirmed: false,
         cloudWorkoutSyncConsent: false,
+        workoutCloudSync: false,
+        workoutCloudSyncConsentVersion: 0,
         readinessBaseline: { ...defaultReadinessBaseline }
       };
       let data = emptyData();
@@ -2154,6 +2157,7 @@
       let activeSetAcknowledged = false;
       let activeSetNotice = "";
       let notificationMessage = "";
+      let syncMessage = "";
       let pushIdentity = null;
       let pushConfig = null;
       let installPromptEvent = null;
@@ -2939,9 +2943,13 @@
           autoScrollNextSet: storedSettings.autoScrollNextSet,
           installGuideDismissed: storedSettings.installGuideDismissed,
           setupSoundConfirmed: storedSettings.setupSoundConfirmed,
-          cloudWorkoutSyncConsent: storedSettings.cloudWorkoutSyncConsent === true
+          cloudWorkoutSyncConsent: storedSettings.cloudWorkoutSyncConsent === true || (storedSettings.workoutCloudSync === true && Number(storedSettings.workoutCloudSyncConsentVersion || 0) >= 1),
+          workoutCloudSync: storedSettings.workoutCloudSync,
+          workoutCloudSyncConsentVersion: storedSettings.workoutCloudSyncConsentVersion
         };
         model.settings = { ...defaultSettings, ...Object.fromEntries(Object.entries(safeSettings).filter(([, value]) => value != null)), readinessBaseline: cleanReadinessBaseline(storedSettings.readinessBaseline || {}) };
+        model.settings.workoutCloudSync = model.settings.cloudWorkoutSyncConsent === true;
+        model.settings.workoutCloudSyncConsentVersion = model.settings.cloudWorkoutSyncConsent === true ? 1 : 0;
         delete model.settings.goal;
         delete model.settings.trainingStatus;
         model.sessions = (Array.isArray(model.sessions) ? model.sessions : []).map((session) => ({
@@ -6938,8 +6946,11 @@
         const targetLoadText = formatResistance({ ...set, weight: targetLoad, addedLoad: resistanceType === "bodyweight_plus_load" ? targetLoad : set.addedLoad, assistanceLoad: resistanceType === "assisted_bodyweight" ? targetLoad : set.assistanceLoad, resistanceType });
         const targetRepText = targetRangeText(set.targetRepMin, set.targetRepMax || set.targetReps, " reps");
         const targetRpeText = targetRangeText(set.targetRpeMin, set.targetRpeMax || set.targetRpe, " RPE");
+        const progressionReady = set.setPrescription?.progressionReady !== false;
         const nextIncrementText = set.setPrescription?.nextLoad != null
-          ? formatResistance({ ...set, weight: set.setPrescription.nextLoad, addedLoad: resistanceType === "bodyweight_plus_load" ? set.setPrescription.nextLoad : set.addedLoad, assistanceLoad: resistanceType === "assisted_bodyweight" ? set.setPrescription.nextLoad : set.assistanceLoad, resistanceType })
+          ? progressionReady
+            ? formatResistance({ ...set, weight: set.setPrescription.nextLoad, addedLoad: resistanceType === "bodyweight_plus_load" ? set.setPrescription.nextLoad : set.addedLoad, assistanceLoad: resistanceType === "assisted_bodyweight" ? set.setPrescription.nextLoad : set.assistanceLoad, resistanceType })
+            : "Hold current " + targetLoadText
           : "Not configured";
         const progressionRule = set.setPrescription?.progressionRule || "Progress after reaching the top of the programmed range within the RPE target.";
         const performanceField = resistanceType === "duration"
@@ -8175,9 +8186,21 @@
         const targetReps = Math.max(repMin, Math.min(repMax, rawTargetReps));
         const rpeMin = Number(setType.rpeMin || Math.max(1, Number(setType.rpeMax || target.rpe || 0) - 1));
         const rpeMax = Number(setType.rpeMax || target.rpe || rpeMin);
-        const nextLoad = resistanceType === "assisted_bodyweight"
+        const candidateNextLoad = resistanceType === "assisted_bodyweight"
           ? roundEquipmentLoad(Math.max(0, targetLoad - increment), increment)
           : roundEquipmentLoad(targetLoad + increment, increment);
+        const expectedRoleCount = Math.max(1, Number(setType.setCount || 1));
+        const qualifyingComparableSets = comparableRoleSets.length >= expectedRoleCount && comparableRoleSets.every((set) => {
+          const reps = Number(set.reps || 0);
+          const rpe = Number(set.rpe || 0);
+          return reps >= repMax && rpe > 0 && rpe <= rpeMax;
+        });
+        const progressionReady = role === "backoff"
+          ? qualifyingComparableSets
+          : role === "top"
+            ? previousComparableSet ? Number(previousComparableSet.reps || 0) >= repMax && Number(previousComparableSet.rpe || 0) > 0 && Number(previousComparableSet.rpe || 0) <= rpeMax : false
+            : qualifyingComparableSets;
+        const nextLoad = progressionReady ? candidateNextLoad : targetLoad;
         const progressionRule = setType.progressionRule || ("Progress after reaching " + repMax + " reps within RPE " + targetRangeText(rpeMin, rpeMax) + " on " + (role === "backoff" ? "the comparable back-off work" : role === "top" ? "the top set" : "the programmed sets") + ".");
         const roleName = setTypeLabels[role] || "Working set";
         const reason = role === "backoff"
@@ -8187,7 +8210,7 @@
             : role === "top"
               ? "This is the primary high-demand set. Its load, rep range, and RPE target are resolved from the active program and prior top-set performance."
               : "This is a straight working set. The programmed range allows normal rep decline across later sets without treating it as failure.";
-        return { setType: role, sequenceIndex, setTypeIndex, targetLoad, targetReps, repMin, repMax, exactReps: repRange.exactReps, rangeSource: repRange.rangeSource, rpeMin, rpeMax, restSeconds: Number(setType.restSeconds || target.restSeconds || 0), increment, nextLoad, loadRule: setType.loadRule || "", progressionRule, reductionPercent: reduction, previousComparableSet, progressionDelta: previousComparableSet ? { load: Number((targetLoad - resistanceLoad(previousComparableSet, resistanceType)).toFixed(4)), reps: targetReps - previousReps } : null, confidence: target.confidence || "low", reason: roleName + ": " + reason };
+        return { setType: role, sequenceIndex, setTypeIndex, targetLoad, targetReps, repMin, repMax, exactReps: repRange.exactReps, rangeSource: repRange.rangeSource, rpeMin, rpeMax, restSeconds: Number(setType.restSeconds || target.restSeconds || 0), increment, nextLoad, candidateNextLoad, progressionReady, loadRule: setType.loadRule || "", progressionRule, reductionPercent: reduction, previousComparableSet, progressionDelta: previousComparableSet ? { load: Number((targetLoad - resistanceLoad(previousComparableSet, resistanceType)).toFixed(4)), reps: targetReps - previousReps } : null, confidence: progressionReady ? target.confidence || "low" : "conditional", evidenceConfidence: target.confidence || "low", reason: roleName + ": " + reason };
       }
 
       function validateGeneratedSetPrescriptions(prescriptions, resistanceType) {
@@ -9349,8 +9372,6 @@
             <details class="settings-group" open><summary>iPhone app setup <span class="status-pill ${pushStatus.className}">${pushStatus.label}</span></summary><div class="disclosure-body settings-panel">
               ${renderPwaSetup()}
               ${notificationMessage ? '<p class="settings-note">' + escapeHtml(notificationMessage) + '</p>' : ""}
-              <label class="toggle-line"><input type="checkbox" data-action="cloud-workout-sync-consent" ${data.settings.cloudWorkoutSyncConsent === true ? "checked" : ""} />Upload installation-authorized workout mutations to the optional cloud backend</label>
-              <p class="settings-note">Cloud workout upload is separate from notifications and defaults off. Turning it off clears this device's pending upload queue; exported app backups remain the recovery source.</p>
             </div></details>
             <details class="settings-group"><summary>Training defaults <span>Goal</span></summary><div class="disclosure-body settings-panel">
               <label>Training goal
@@ -9424,6 +9445,9 @@
               </div>
             </div></details>
             <details class="settings-group"><summary>Data and backup <span>Import / export</span></summary><div class="disclosure-body settings-panel">
+              ${renderAlertSetting("cloud-workout-sync-consent", "Optional workout cloud copy", "Default off. Stores submitted workout copies for up to 90 days; this is not restore or multi-device sync.", data.settings.cloudWorkoutSyncConsent === true, { stateLabel: data.settings.cloudWorkoutSyncConsent === true ? "Enabled" : "Local only" })}
+              <div class="inline-panel"><strong>Explicitly optional and separate from notifications</strong><p class="settings-note">Enabling rest notifications never uploads workouts. Turning cloud copy off stops new uploads, clears pending uploads, and requests deletion of retained server workout copies. Keep your exported backup as the recovery source.</p></div>
+              ${syncMessage ? '<p class="settings-note">' + escapeHtml(syncMessage) + '</p>' : ''}
               <p class="settings-note">Research basis: database ${escapeHtml(prescriptionEvidenceStatus.researchVersion)} with ${prescriptionEngine?.evidence?.research?.exerciseDatabase?.length || 0} exercises, ${prescriptionEngine?.evidence?.research?.muscleGroupRecommendations?.length || 0} muscle/subdivision prescriptions, ${prescriptionEngine?.evidence?.research?.progressionRules?.length || 0} progression rules, and ${prescriptionEngine?.evidence?.research?.nutritionStrategies?.length || 0} nutrition strategies. Exact ranges are selected per exercise and muscle rather than copied from one global rule.</p>
               <div class="inline-panel"><strong>Unified prescription evidence · ${escapeHtml(prescriptionEvidenceStatus.state)}</strong><p class="settings-note">${escapeHtml(prescriptionEvidenceStatus.message)}</p><p class="settings-note">Engine ${escapeHtml(prescriptionApi?.ENGINE_VERSION || 'unavailable')} · personal ${escapeHtml(prescriptionEvidenceStatus.personalVersion)} · research ${escapeHtml(prescriptionEvidenceStatus.researchVersion)} · ${data.recommendationHistory.length} immutable recommendation snapshot${data.recommendationHistory.length === 1 ? '' : 's'} · ${data.manualOverrides.length} override event${data.manualOverrides.length === 1 ? '' : 's'}.</p></div>
               <label class="import-button">${icon.upload} private personal evidence package<input type="file" accept=".json,application/json" data-action="import-personal-evidence" /></label>
@@ -9438,7 +9462,7 @@
               ${reviewSets.length ? '<div class="inline-panel"><strong>Manual review queue · ' + reviewSets.length + '</strong><p class="settings-note">These imported sets could not be classified confidently. Open the submitted workout from History, choose Edit, then select the set type.</p></div>' : ''}
             </div></details>
             <details class="settings-group danger-zone"><summary>Danger Zone <span>High-risk actions</span></summary><div class="disclosure-body settings-panel">
-              <div><strong>Clear All Local App Data</strong><p class="settings-note">Removes app data stored on this device. It does not submit, cancel, or delete cloud account data.</p></div>
+              <div><strong>Clear All Local App Data</strong><p class="settings-note">Removes app data stored on this device. If optional workout cloud copy is enabled, the app first disables it and confirms deletion of retained server copies; active remote cleanup or an offline deletion must finish before local credentials can be cleared.</p></div>
               <button class="danger-button" type="button" data-action="clear-data" ${localClearBlock ? "disabled" : ""}>${icon.delete} Clear All Local App Data</button>
               ${localClearBlock ? '<p class="settings-note" role="status">' + escapeHtml(localClearBlock) + '</p>' : ''}
               <div><strong>Delete Remote Installation Data</strong><p class="settings-note">Revokes this installation and resumes bounded server cleanup until deletion is confirmed. Local workout data remains on this device.</p></div>
@@ -9500,7 +9524,7 @@
               <div><div class="section-kicker">Danger Zone</div><h2 id="clear-data-title">Clear All Local App Data?</h2><p>This removes the active workout, unsaved sets, offline and cached workout data, cached templates and history, local preferences, app notification settings, IndexedDB records, local storage, service-worker caches, and pending sync operations from this device.</p></div>
               ${blockedMessage ? '<div class="destructive-warning" role="status"><strong>Local clearing is paused</strong><span>' + escapeHtml(blockedMessage) + '</span></div>' : ''}
               ${risk ? '<div class="destructive-warning"><strong>Unsynchronized data detected</strong><span>This device contains ' + unsynced.workoutCount + ' unsynchronized workout' + (unsynced.workoutCount === 1 ? '' : 's') + ' and ' + unsynced.setChanges + ' unsaved set change' + (unsynced.setChanges === 1 ? '' : 's') + '. Clearing now may permanently delete them.</span>' + (unsynced.canSync ? '<button type="button" data-action="sync-before-clear">Sync Now</button>' : '<small>Sync is unavailable or not configured. Export a backup before clearing if this data matters.</small>') + '</div>' : '<div class="inline-panel"><strong>No pending local workout changes were detected.</strong></div>'}
-              <div class="clear-data-scope"><strong>What remains</strong><span>This action does not delete any server-side account data. Any data that exists only on this device will be lost.</span></div>
+              <div class="clear-data-scope"><strong>Cloud deletion boundary</strong><span>Retained workout copies are deleted before local authorization is removed. The app stops here while offline rather than orphaning server data. Any data that exists only on this device will still be lost.</span></div>
               <label class="toggle-line destructive-ack"><input type="checkbox" data-action="clear-data-ack" ${clearDataFlow.acknowledged ? 'checked' : ''} />I understand that unsynchronized data may be permanently deleted</label>
               <label class="typed-confirmation">Type <strong>CLEAR</strong> to continue<input type="text" value="${escapeHtml(clearDataFlow.phrase)}" data-action="clear-data-phrase" autocomplete="off" autocapitalize="characters" aria-label="Type CLEAR to confirm local data deletion" /></label>
               <div class="sheet-actions stacked">
@@ -9535,6 +9559,33 @@
           settingsMessage = remoteBlock;
           render();
           return false;
+        }
+        if (data.settings.cloudWorkoutSyncConsent === true || pushIdentity?.syncRevocationPending) {
+          const revoked = await setCloudWorkoutSyncConsent(false, { renderNow: false });
+          if (!revoked) {
+            const blockedMessage = "Server workout deletion is not confirmed yet. Reconnect and retry local clearing so cleanup authorization is preserved.";
+            clearDataFlow = { ...clearDataFlow, blockedMessage };
+            settingsMessage = blockedMessage;
+            render();
+            return false;
+          }
+        }
+        if (pushIdentity?.token) {
+          if (!navigator.onLine) {
+            const blockedMessage = "Connect to the internet before clearing local data so retained server installation data can be deleted first.";
+            clearDataFlow = { ...clearDataFlow, blockedMessage };
+            settingsMessage = blockedMessage;
+            render();
+            return false;
+          }
+          const remoteDeletion = await deleteRemoteInstallationData({ scheduleRetry: false, automatic: true });
+          if (remoteDeletion?.status !== "deleted") {
+            const blockedMessage = "Remote installation deletion is not confirmed yet. Keep the app open and retry before clearing local authorization.";
+            clearDataFlow = { ...clearDataFlow, blockedMessage };
+            settingsMessage = blockedMessage;
+            render();
+            return false;
+          }
         }
         if (timer) {
           const previous = { ...timer };
@@ -10527,7 +10578,6 @@
           const result = await pushApi("/api/push/register", body);
           pushIdentity = { ...pushIdentity, token: result.token || pushIdentity.token, status: "enabled", registeredAt: isoNow() };
           await persistPushIdentity();
-          flushWorkoutSyncQueue();
           return true;
         } catch (error) {
           if (retryWithNewId && error.status === 401 && !pushIdentity.token) {
@@ -10591,6 +10641,93 @@
         const idValue = String(timerId || "").slice(0, 160);
         const versionValue = Math.max(1, Math.floor(Number(timerVersion || 1)));
         return idValue ? `${idValue}::v${versionValue}` : "";
+      }
+
+      async function disablePushNotifications(options = {}) {
+        const renderNow = options.renderNow !== false;
+        data = { ...data, settings: { ...data.settings, timerNotifications: false, restCompleteLockScreenNotifications: false } };
+        try {
+          const registration = await navigator.serviceWorker?.ready;
+          const subscription = await registration?.pushManager?.getSubscription?.();
+          if (subscription) await subscription.unsubscribe();
+        } catch { /* Server revocation remains authoritative when available. */ }
+        if (!pushIdentity?.token) {
+          notificationMessage = "Lock-screen rest notifications are disabled.";
+          saveData();
+          if (renderNow) render();
+          return true;
+        }
+        if (!navigator.onLine) {
+          pushIdentity = { ...pushIdentity, pushRevocationPending: true };
+          await persistPushIdentity();
+          notificationMessage = "Notifications are disabled locally. Reconnect to finish revoking the server subscription.";
+          saveData();
+          if (renderNow) render();
+          return false;
+        }
+        try {
+          const revokeAll = data.settings.workoutCloudSync !== true;
+          await pushApi(revokeAll ? "/api/installation/revoke" : "/api/push/revoke", { installationId: pushIdentity.installationId });
+          pushIdentity = revokeAll
+            ? { installationId: pushIdentity.installationId, deviceId: pushIdentity.deviceId, token: "", status: "disabled", pushRevocationPending: false, syncRevokedAt: isoNow() }
+            : { ...pushIdentity, status: "disabled", pushRevocationPending: false, pushRevokedAt: isoNow() };
+          await persistPushIdentity();
+          notificationMessage = revokeAll
+            ? "Notifications are disabled and the installation credential plus retained cloud data were revoked."
+            : "Notifications are disabled and the push subscription was revoked. Optional workout cloud copy remains independently enabled.";
+          saveData();
+          if (renderNow) render();
+          return true;
+        } catch (error) {
+          pushIdentity = { ...pushIdentity, pushRevocationPending: true };
+          await persistPushIdentity();
+          notificationMessage = String(error?.message || "Server notification revocation could not be confirmed. Reconnect and try again.");
+          saveData();
+          if (renderNow) render();
+          return false;
+        }
+      }
+
+      async function reconcilePushRevocation() {
+        if (!pushIdentity?.pushRevocationPending || data.settings.timerNotifications === true) return true;
+        return disablePushNotifications({ renderNow: false });
+      }
+
+      async function scheduleRestPush(timerSnapshot) {
+        if (!data.settings.timerNotifications || !pushIdentity?.token || Notification.permission !== "granted" || !navigator.onLine) return false;
+        const session = sessionById(timerSnapshot.workoutId) || activeWorkoutSession();
+        const exercise = exerciseById(timerSnapshot.exerciseId);
+        const upcoming = setById(timerSnapshot.pendingNextSetId);
+        try {
+          const result = await pushApi("/api/push/schedule", {
+            installationId: pushIdentity.installationId,
+            notificationId: timerSnapshot.id,
+            workoutId: timerSnapshot.workoutId || session?.id,
+            exerciseId: upcoming?.exerciseId || timerSnapshot.exerciseId,
+            setId: timerSnapshot.setId,
+            upcomingSetId: upcoming?.id || "",
+            upcomingSetNumber: upcoming?.isWarmup ? "WU" : upcoming?.setNumber || "",
+            upcomingSetLabel: upcoming ? setExecutionLabel(upcoming) : "",
+            timerVersion: Number(timerSnapshot.version || 1),
+            exerciseName: exerciseById(upcoming?.exerciseId)?.name || exercise?.name || "Workout",
+            messageDetail: data.settings.notificationMessageDetail,
+            restEndTime: timerSnapshot.endsAt
+          });
+          if (timer?.id === timerSnapshot.id) {
+            timer.notificationStatus = result.status;
+            timer.serverNotificationId = result.notificationId;
+            saveRuntime();
+            syncTimerDom();
+          }
+          return true;
+        } catch (error) {
+          if (timer?.id === timerSnapshot.id) {
+            timer.notificationStatus = navigator.onLine ? "error" : "pending";
+            saveRuntime();
+            syncTimerDom();
+          }
+          return false;
+        }
       }
 
       function rememberCanceledRestSchedule(timerId, timerVersion = 1, now = Date.now()) {
@@ -10799,6 +10936,30 @@
         render();
       }
 
+      async function clearWorkoutSyncQueue() {
+        await writeIndexedValue("sync-queue", []).catch(() => undefined);
+        window.clearTimeout(syncFlushTimer);
+        syncFlushTimer = 0;
+      }
+
+      async function ensureInstallationAuthorization() {
+        if (pushIdentity?.token) return true;
+        const result = await pushApi("/api/sync/authorize", {
+          installationId: pushIdentity.installationId,
+          deviceId: pushIdentity.deviceId
+        });
+        pushIdentity = { ...pushIdentity, token: result.token || "" };
+        await persistPushIdentity();
+        return Boolean(pushIdentity.token);
+      }
+
+      async function reconcileWorkoutSyncConsent() {
+        if (data.settings.cloudWorkoutSyncConsent === true) return true;
+        if (["deleting", "deleted"].includes(String(pushIdentity?.status || "")) || ["deleting", "deleted"].includes(String(pushIdentity?.deletion?.status || ""))) return true;
+        if (!pushIdentity?.token || (pushIdentity.syncRevokedAt && !pushIdentity.syncRevocationPending)) return true;
+        return setCloudWorkoutSyncConsent(false, { renderNow: false, reconcile: true });
+      }
+
       function workoutSyncConsentIsCurrent(epoch = syncConsentEpoch) {
         return data.settings.cloudWorkoutSyncConsent === true && Number(epoch) === Number(syncConsentEpoch);
       }
@@ -10885,34 +11046,93 @@
         return typeof trackWorkoutSyncOperation === "function" ? trackWorkoutSyncOperation(operation) : operation;
       }
 
-      function setCloudWorkoutSyncConsent(consent) {
+      function setCloudWorkoutSyncConsent(consent, options = {}) {
         const requestedConsent = consent === true;
         syncConsentEpoch += 1;
         const epoch = syncConsentEpoch;
         window.clearTimeout(syncFlushTimer);
         syncFlushTimer = 0;
         activeWorkoutSyncAbortControllers.forEach((controller) => controller.abort());
-        commit({ ...data, settings: { ...data.settings, cloudWorkoutSyncConsent: requestedConsent } });
+        const commitConsent = (enabled) => commit({
+          ...data,
+          settings: {
+            ...data.settings,
+            cloudWorkoutSyncConsent: enabled,
+            workoutCloudSync: enabled,
+            workoutCloudSyncConsentVersion: enabled ? 1 : 0
+          }
+        }, options.renderNow !== false);
+        if (!requestedConsent) commitConsent(false);
         const priorOperations = [...activeWorkoutSyncOperations];
         const transition = syncConsentTransition.catch(() => undefined).then(async () => {
           if (priorOperations.length) await Promise.allSettled(priorOperations);
           if (!requestedConsent) {
-            // Revocation cleanup is serialized ahead of any later re-enable, so this
-            // clear must finish even when a newer consent epoch is already waiting.
-            try { await writeIndexedValue("sync-queue", []); }
+            try { await writeIndexedValue("app-data", data); }
             catch {
-              if (Number(epoch) === Number(syncConsentEpoch) && data.settings.cloudWorkoutSyncConsent !== true) {
-                settingsMessage = "Workout upload is off, but the pending upload queue could not be cleared. Keep the app open and try again before clearing local data.";
-                render();
-              }
+              settingsMessage = "Workout cloud copy is off in memory, but that choice could not be saved durably. Export a backup and retry before reloading.";
+              if (options.renderNow !== false) render();
+              return false;
+            }
+            try { await clearWorkoutSyncQueue(); }
+            catch {
+              settingsMessage = "Workout upload is off, but the pending upload queue could not be cleared. Keep the app open and try again before clearing local data.";
+              if (options.renderNow !== false) render();
+              return false;
+            }
+            if (!pushIdentity?.token) return true;
+            if (!navigator.onLine) {
+              pushIdentity = { ...pushIdentity, syncRevocationPending: true };
+              await persistPushIdentity();
+              settingsMessage = "Workout cloud copy is off on this device. Reconnect to finish deleting any retained server copy.";
+              if (options.renderNow !== false) render();
+              return false;
+            }
+            try {
+              await pushApi("/api/sync/consent", { installationId: pushIdentity.installationId, enabled: false });
+              pushIdentity = { ...pushIdentity, syncRevokedAt: isoNow(), syncRevocationPending: false };
+              await persistPushIdentity();
+              if (!options.reconcile) settingsMessage = "Workout cloud copy is off and retained workout copies were deleted.";
+              if (options.renderNow !== false) render();
+            } catch {
+              pushIdentity = { ...pushIdentity, syncRevocationPending: true };
+              await persistPushIdentity();
+              settingsMessage = "Workout cloud copy is off locally, but server deletion is still pending. Reconnect and retry before clearing local data.";
+              if (options.renderNow !== false) render();
               return false;
             }
             return true;
           }
           if (Number(epoch) !== Number(syncConsentEpoch)) return false;
-          if (!workoutSyncConsentIsCurrent(epoch)) return false;
+          if (!navigator.onLine) {
+            settingsMessage = "Connect to the internet to enable workout cloud copy.";
+            if (options.renderNow !== false) render();
+            return false;
+          }
+          try {
+            await ensureInstallationAuthorization();
+            if (Number(epoch) !== Number(syncConsentEpoch)) return false;
+            await pushApi("/api/sync/consent", { installationId: pushIdentity.installationId, enabled: true });
+          } catch (error) {
+            commitConsent(false);
+            settingsMessage = String(error?.message || "Workout cloud copy could not be enabled.");
+            if (options.renderNow !== false) render();
+            return false;
+          }
+          if (Number(epoch) !== Number(syncConsentEpoch)) return false;
+          pushIdentity = { ...pushIdentity, syncRevokedAt: "", syncRevocationPending: false };
+          await persistPushIdentity();
+          commitConsent(true);
+          try { await writeIndexedValue("app-data", data); }
+          catch {
+            commitConsent(false);
+            settingsMessage = "Workout cloud copy consent could not be saved durably, so uploads remain off.";
+            if (options.renderNow !== false) render();
+            return false;
+          }
           const queued = await queueActiveWorkoutSync(epoch);
           if (!workoutSyncConsentIsCurrent(epoch)) return false;
+          settingsMessage = "Workout cloud copy is on. Active workout changes may now be uploaded.";
+          if (options.renderNow !== false) render();
           return queued;
         });
         syncConsentTransition = transition.catch(() => false);
@@ -11776,7 +11996,8 @@
       }
 
       function exportData() {
-        exportText = JSON.stringify(data, null, 2);
+        const backup = window.FitnessBackupContract.createBackupExport(data);
+        exportText = JSON.stringify(backup, null, 2);
         if (appDataPersistenceConflict) {
           settingsMessage = "Backup exported from the currently selected app-data copy only. The conflicting alternate local fallback copy remains preserved on this device and is not included in the download.";
         }
@@ -12546,7 +12767,7 @@
         const allowedSetFields = new Set(["id", "exerciseId", "setNumber", "sequenceIndex", "sequence", "setTypeIndex", "setType", "reps", "weight", "weightUnit", "resistanceType", "rpe", "completed", "skipped", "edited", "isWarmup", "countsTowardScore", "countsTowardVolume", "countsTowardProgression", "addedLoad", "assistanceLoad", "durationSeconds", "distance", "distanceUnit", "targetReps", "targetRepMin", "targetRepMax", "targetWeight", "targetRpe", "targetRpeMin", "targetRpeMax", "targetRpeTolerance", "targetRestSeconds", "setPrescription", "previousComparableSet", "prescriptionReason", "prescriptionMode", "prescriptionConfidence", "validationWarning", "classificationSource", "classificationConfidence", "classifierVersion", "manualOverride", "reviewRequired", "classifiedAt", "sourceSetOrder", "originalImportedValue"]);
         const allowedTemplateFields = new Set(["id", "name", "notes", "createdAt", "updatedAt", "exercises", "mesocycleId", "mesocycleRevision", "trainingDayId", "source"]);
         const allowedTemplateExerciseFields = new Set(["id", "name", "notes", "sets", "reps", "targetRpe", "increment", "restSeconds", "resistanceType", "isBodyweight", "primaryMuscle", "secondaryMuscle", "warmups", "setTypes", "canonicalExerciseId", "researchExerciseId", "mesocycleSlotId", "assignmentId", "recommendationSnapshot"]);
-        const allowedSettingsFields = new Set(["weightUnit", "trainingGoal", "trainingGoalSource", "trainingGoalDisclosure", "nutritionPhase", "experienceLevel", "returningAfterGap", "trainingDaysPerWeek", "availableEquipment", "excludedExerciseIds", "theme", "timerSound", "workoutCompletionSound", "timerVibration", "interactionVibration", "timerNotifications", "inAppRestAlerts", "restCompleteSound", "restCompleteSoundVolume", "restCompleteAutoDismissMs", "restCompleteLockScreenNotifications", "restCompleteAutoReturnToWorkout", "defaultRestSeconds", "notificationMessageDetail", "autoStartRestTimer", "autoHighlightNextSet", "autoScrollNextSet", "installGuideDismissed", "setupSoundConfirmed", "cloudWorkoutSyncConsent", "readinessBaseline", "goal", "trainingStatus"]);
+        const allowedSettingsFields = new Set(["weightUnit", "trainingGoal", "trainingGoalSource", "trainingGoalDisclosure", "nutritionPhase", "experienceLevel", "returningAfterGap", "trainingDaysPerWeek", "availableEquipment", "excludedExerciseIds", "theme", "timerSound", "workoutCompletionSound", "timerVibration", "interactionVibration", "timerNotifications", "inAppRestAlerts", "restCompleteSound", "restCompleteSoundVolume", "restCompleteAutoDismissMs", "restCompleteLockScreenNotifications", "restCompleteAutoReturnToWorkout", "defaultRestSeconds", "notificationMessageDetail", "autoStartRestTimer", "autoHighlightNextSet", "autoScrollNextSet", "installGuideDismissed", "setupSoundConfirmed", "cloudWorkoutSyncConsent", "workoutCloudSync", "workoutCloudSyncConsentVersion", "readinessBaseline", "goal", "trainingStatus"]);
         const allowedMesocycleFields = new Set(["id", "schemaVersion", "builderMode", "rulesVersion", "type", "name", "status", "createdAt", "updatedAt", "durationWeeks", "durationBasis", "specializationMuscleGroups", "trainingDays", "split", "availableEquipment", "constraints", "exclusionResolution", "programmingContext", "planningStep", "availableMuscleGroupIds", "includedMuscleGroupIds", "equipmentUnavailableMuscleGroupIds", "omittedMuscleGroups", "scopeConfirmed", "currentProgramExerciseIds", "recentExerciseWindowDays", "pools", "activeExercises", "selectedPortfolio", "programSlots", "sessions", "programReview", "preservedProductiveExerciseIds", "versions", "lifecycle", "startedAt", "completedAt", "outcome", "reviewedAt", "review", "musclePriorities", "planningProgress", "guidedDays", "acceptedExceptions", "viabilityResult", "viabilityStale", "linkedTemplateIds", "creationResult", "revision"]);
         const allowedRecommendationFields = new Set(["recommendationId", "schemaVersion", "recommendationVersion", "engineVersion", "personalDataVersion", "researchDatabaseVersion", "mesocycleId", "exerciseId", "muscleGroupId", "exerciseScore", "muscleSpecificScore", "personalEvidenceWeight", "researchEvidenceWeight", "readinessAdjustment", "basePrescription", "finalPrescription", "explanation", "evidenceSummary", "confidence", "createdAt", "manualOverrides", "overrideLocked", "checksum", "request", "scores", "versions"]);
         const allowedOverrideFields = new Set(["overrideId", "recommendationId", "sessionId", "workoutId", "exerciseRuntimeId", "exerciseId", "setId", "field", "from", "to", "createdAt", "actor", "reason", "lockedForWorkout", "changes", "previousFinalPrescription", "outcome", "outcomeEvaluation", "action"]);
@@ -12983,9 +13204,11 @@
             importStatus = { state: "accepted", message: settingsMessage || "Strong import complete." };
             return;
           }
-          let imported;
-          try { imported = JSON.parse(text); }
+          let parsed;
+          try { parsed = JSON.parse(text); }
           catch { throw new Error("Backup is not valid JSON."); }
+          const envelope = window.FitnessBackupContract.validateAndSanitizeBackup(parsed, { byteLength: new TextEncoder().encode(text).byteLength });
+          const { backupSchemaVersion: _validatedBackupSchemaVersion, ...imported } = envelope;
           const validated = validateImportedAppData(imported, BACKUP_IMPORT_LIMITS);
           let preparedEvidence;
           if (validated.personalEvidencePackage) {
@@ -13149,8 +13372,7 @@
         if (action === "toggle-rest-notifications") {
           const alerts = restAlertState();
           if (alerts.lockScreenReady) {
-            notificationMessage = "Lock-screen rest notifications are disabled. Foreground alert settings are unchanged.";
-            commit({ ...data, settings: { ...data.settings, timerNotifications: false, restCompleteLockScreenNotifications: false } });
+            await disablePushNotifications();
           } else {
             commit({ ...data, settings: { ...data.settings, timerNotifications: true, restCompleteLockScreenNotifications: true } }, false);
             await enablePushNotifications();
@@ -13534,8 +13756,12 @@
         if (action === "timer-vibration") commit({ ...data, settings: { ...data.settings, timerVibration: target.checked } });
         if (action === "interaction-vibration") commit({ ...data, settings: { ...data.settings, interactionVibration: target.checked } });
         if (action === "timer-notifications") {
-          commit({ ...data, settings: { ...data.settings, timerNotifications: target.checked, restCompleteLockScreenNotifications: target.checked } }, !target.checked);
-          if (target.checked) enablePushNotifications();
+          if (target.checked) {
+            commit({ ...data, settings: { ...data.settings, timerNotifications: true, restCompleteLockScreenNotifications: true } }, false);
+            enablePushNotifications();
+          } else {
+            await disablePushNotifications();
+          }
         }
         if (action === "in-app-rest-alerts") commit({ ...data, settings: { ...data.settings, inAppRestAlerts: target.checked } });
         if (action === "default-rest-seconds") commit({ ...data, settings: { ...data.settings, defaultRestSeconds: Math.max(15, Number(target.value || 90)) } });
@@ -13914,6 +14140,8 @@
         scheduleSave();
         registerPwaServiceWorker();
         fetchPushConfig();
+        reconcileWorkoutSyncConsent();
+        reconcilePushRevocation();
         flushWorkoutSyncQueue();
         flushPendingPushOperations();
         if (pushIdentity?.token && (pushIdentity.status === "deleting" || pushIdentity.deletion?.retryable === true) && navigator.onLine) deleteRemoteInstallationData({ automatic: true });
@@ -13964,6 +14192,8 @@
       });
       window.addEventListener("beforeinstallprompt", (event) => { event.preventDefault(); installPromptEvent = event; });
       window.addEventListener("online", () => {
+        reconcileWorkoutSyncConsent();
+        reconcilePushRevocation();
         flushWorkoutSyncQueue();
         flushPendingPushOperations();
         if (pushIdentity?.token && (pushIdentity.status === "deleting" || pushIdentity.deletion?.retryable === true)) deleteRemoteInstallationData({ automatic: true });

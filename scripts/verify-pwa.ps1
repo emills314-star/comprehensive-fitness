@@ -9,6 +9,7 @@ $publicFiles = @(
   "prescription-engine.js",
   "guided-mesocycle.js",
   "rest-completion-controller.js",
+  "backup-contract.js",
   "sw.js",
   "resources\secondary-page.css",
   "resources\icon-180.png",
@@ -26,22 +27,18 @@ $publicFiles = @(
   "research_database\exports\json\manifest.json"
 )
 
-$missing = @()
-$mismatched = @()
 foreach ($relative in $publicFiles) {
   $source = Join-Path $root $relative
-  $packaged = Join-Path $root (Join-Path "www" $relative)
-  if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { $missing += $relative; continue }
-  if (-not (Test-Path -LiteralPath $packaged -PathType Leaf)) { $missing += "www\$relative"; continue }
+  $packaged = Join-Path (Join-Path $root "www") $relative
+  if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { throw "Missing public source file: $relative" }
+  if (-not (Test-Path -LiteralPath $packaged -PathType Leaf)) { throw "Missing packaged public file: www\$relative" }
   if ((Get-FileHash -Algorithm SHA256 -LiteralPath $source).Hash -ne (Get-FileHash -Algorithm SHA256 -LiteralPath $packaged).Hash) {
-    $mismatched += $relative
+    throw "Packaged public file differs from its source: $relative"
   }
 }
-if ($missing.Count -gt 0) { throw "Missing PWA files: $($missing -join ', ')" }
-if ($mismatched.Count -gt 0) { throw "Root/www parity failed: $($mismatched -join ', ')" }
 
 $index = Get-Content -LiteralPath (Join-Path $root "index.html") -Raw
-foreach ($needle in @("manifest.webmanifest", "apple-mobile-web-app-capable", "apple-touch-icon", "apple-touch-startup-image", "prescription-engine.js", "guided-mesocycle.js", "rest-completion-controller.js", "serviceWorker")) {
+foreach ($needle in @("manifest.webmanifest", "apple-mobile-web-app-capable", "apple-touch-icon", "apple-touch-startup-image", "prescription-engine.js", "guided-mesocycle.js", "rest-completion-controller.js", "backup-contract.js", "serviceWorker")) {
   if ($index -notlike "*$needle*") { throw "index.html is missing required PWA marker: $needle" }
 }
 
@@ -50,36 +47,47 @@ if ($manifest.name -ne "Comprehensive Fitness") { throw "Manifest name is not Co
 if ($manifest.display -ne "standalone") { throw "Manifest display must be standalone." }
 if (-not ($manifest.icons | Where-Object { $_.purpose -eq "maskable" })) { throw "Manifest must include a maskable icon." }
 
-$serviceWorker = Get-Content -LiteralPath (Join-Path $root "sw.js") -Raw
-foreach ($needle in @("PUBLIC_CACHE_PATHS", "isSensitivePath", 'cache: "no-store"', "/private-personal-data/", "/api/")) {
-  if ($serviceWorker -notlike "*$needle*") { throw "Service worker is missing privacy guard: $needle" }
-}
-
-$sensitivePattern = '(?i)(^|[\\/])(private-personal-data|personal_fitness_data|personal-fitness-data|raw|normalized|derived|reports|backups|exports)([\\/]|$)|\.(env|db|sqlite|sqlite3|bak|backup)$'
-$packageRoots = @(
+$publicRoots = @(
   (Join-Path $root "www"),
   (Join-Path $root "android\app\src\main\assets\public"),
   (Join-Path $root "ios\App\App\public")
 )
-$sensitiveFiles = @()
-foreach ($packageRoot in $packageRoots) {
-  if (-not (Test-Path -LiteralPath $packageRoot)) { continue }
-  $sensitiveFiles += Get-ChildItem -LiteralPath $packageRoot -File -Recurse | Where-Object {
-    $relative = $_.FullName.Substring($packageRoot.Length).TrimStart([char[]]"\/")
-    $relative -match $sensitivePattern -and $relative -notmatch '(?i)^research_database[\\/]exports[\\/]json[\\/]'
-  } | Select-Object -ExpandProperty FullName
+$sensitiveDirectoryNames = @("private-personal-data", "private_personal_data", "personal_fitness_data", "personal-fitness-data", "raw", "normalized", "derived", "reports", "backups")
+$sensitiveExtensions = @(".env", ".db", ".sqlite", ".sqlite3", ".bak", ".backup")
+foreach ($publicRoot in $publicRoots) {
+  if (-not (Test-Path -LiteralPath $publicRoot -PathType Container)) { continue }
+  $sensitiveFiles = Get-ChildItem -LiteralPath $publicRoot -Recurse -File | Where-Object {
+    $relative = $_.FullName.Substring($publicRoot.Length).TrimStart('\', '/')
+    $segments = $relative -split '[\\/]'
+    (($segments | Where-Object { $sensitiveDirectoryNames -contains $_ }).Count -gt 0) -or
+      ($sensitiveExtensions -contains $_.Extension.ToLowerInvariant()) -or
+      (($segments -contains "exports") -and -not ($relative -like "research_database\exports\json\*"))
+  }
+  if ($sensitiveFiles) { throw "Sensitive files found in public/native payload $publicRoot`: $($sensitiveFiles.FullName -join ', ')" }
 }
-if ($sensitiveFiles.Count -gt 0) { throw "Sensitive files found in public/native payload: $($sensitiveFiles -join ', ')" }
 
 $vercelIgnore = Get-Content -LiteralPath (Join-Path $root ".vercelignore") -Raw
-foreach ($needle in @("personal_fitness_data/**", "www/private-personal-data/**", "private-personal-data/**")) {
-  if ($vercelIgnore -notlike "*$needle*") { throw ".vercelignore is missing required privacy exclusion: $needle" }
+foreach ($needle in @("personal_fitness_data", "private-personal-data")) {
+  if ($vercelIgnore -notlike "*$needle*") { throw ".vercelignore is missing private payload exclusion: $needle" }
 }
 
 $androidManifest = Get-Content -LiteralPath (Join-Path $root "android\app\src\main\AndroidManifest.xml") -Raw
-if ($androidManifest -notmatch 'android:allowBackup="false"') { throw "Android backup must be disabled." }
-if ($androidManifest -notmatch 'android:usesCleartextTraffic="false"') { throw "Android cleartext traffic must be disabled." }
-$filePaths = Get-Content -LiteralPath (Join-Path $root "android\app\src\main\res\xml\file_paths.xml") -Raw
-if ($filePaths -match '<external-path|path="\."') { throw "Android FileProvider exposes an unsafe broad path." }
+foreach ($needle in @('android:allowBackup="false"', 'android:fullBackupContent="false"', 'android:dataExtractionRules="@xml/data_extraction_rules"', 'android:usesCleartextTraffic="false"')) {
+  if ($androidManifest -notlike "*$needle*") { throw "Android manifest is missing privacy control: $needle" }
+}
 
-Write-Host "PWA verification passed for $($publicFiles.Count) parity-checked public assets with native/privacy guards."
+$filePaths = Get-Content -LiteralPath (Join-Path $root "android\app\src\main\res\xml\file_paths.xml") -Raw
+if ($filePaths -like '*<external-path*' -or $filePaths -like '*path="."*') { throw "Android FileProvider exposes an overly broad path." }
+
+$dataRules = Get-Content -LiteralPath (Join-Path $root "android\app\src\main\res\xml\data_extraction_rules.xml") -Raw
+foreach ($domain in @("root", "file", "database", "sharedpref", "external")) {
+  if ($dataRules -notlike "*exclude domain=`"$domain`" path=`".`"*") { throw "Android data extraction rules do not exclude $domain." }
+}
+
+$serviceWorker = Get-Content -LiteralPath (Join-Path $root "sw.js") -Raw
+foreach ($needle in @("PUBLIC_CACHE_PATHS", "isSensitivePath", 'cache: "no-store"', "isPublicCacheUrl", "responseCanBeCached", "safeNotificationUrl", "pushPayloadWasCanceled")) {
+  if ($serviceWorker -notlike "*$needle*") { throw "Service worker is missing public-cache privacy control: $needle" }
+}
+if ($serviceWorker -like '*if (response.ok) caches.open*') { throw "Service worker still contains generic successful-response caching." }
+
+Write-Host "PWA/native public-only packaging verification passed for $($publicFiles.Count) assets."

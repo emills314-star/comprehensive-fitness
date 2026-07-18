@@ -216,7 +216,7 @@ async function testDurableDeletionTombstone() {
 }
 
 async function testWorkoutRevisionAndRevocationAtomicity() {
-  const securityMock = { authorizeInstallation: async () => ({ active: "1", status: "active" }), checkRateLimit: async () => ({ allowed: true }), rateLimitResponse: () => undefined };
+  const securityMock = { authorizeInstallation: async () => ({ active: "1", status: "active", syncConsent: "1" }), checkRateLimit: async () => ({ allowed: true }), rateLimitResponse: () => undefined };
   const redisMock = { redis: async () => "conflict" };
   const workout = loadFresh("../api/sync/workout", { "../_lib/security": securityMock, "../_lib/redis": redisMock });
   const body = {

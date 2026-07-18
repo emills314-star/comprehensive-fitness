@@ -88,7 +88,7 @@ function validWorkoutBody(overrides = {}) {
 
 function authorizationRedis(command, commitResult = "synced") {
   if (command[0] === "HGETALL" && command[1] === `cf:install:${INSTALLATION_ID}`) {
-    return redisResponse(["installationId", INSTALLATION_ID, "secretHash", hashSecret(TOKEN), "active", "1"]);
+    return redisResponse(["installationId", INSTALLATION_ID, "secretHash", hashSecret(TOKEN), "active", "1", "status", "active", "syncConsent", "1"]);
   }
   if (command[0] === "EXPIRE") return redisResponse(1);
   if (command[0] === "EVAL" && String(command[1]).includes("INCR")) return redisResponse([1, 3600]);

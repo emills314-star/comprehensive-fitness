@@ -13,10 +13,12 @@ const { isPlainObject, safeJsonValue, validEntityId, validInstallationId, valida
 
 const MAX_WORKOUT_BYTES = 256 * 1024;
 const WORKOUT_COMMIT_SCRIPT = [
-  "-- workout_commit_v2",
+  "-- workout_commit_v3",
   "local installationStatus=redis.call('HGET',KEYS[5],'status')",
   "local installationActive=redis.call('HGET',KEYS[5],'active')",
+  "local syncConsent=redis.call('HGET',KEYS[5],'syncConsent')",
   "if (installationStatus and installationStatus ~= 'active') or installationActive ~= '1' then return 'revoked' end",
+  "if syncConsent ~= '1' then return 'consent_required' end",
   "if redis.call('EXISTS', KEYS[1]) == 1 then local mutationStatus=redis.call('GET',KEYS[1]); if mutationStatus == 'synced' then return 'duplicate' end; return mutationStatus or 'duplicate' end",
   "local current=redis.call('HGET',KEYS[2],'revision')",
   "local currentPayload=redis.call('HGET',KEYS[2],'payload')",
@@ -72,9 +74,9 @@ module.exports = apiHandler(async function handler(req, res) {
   const parsed = validateJsonRequest(req, MAX_WORKOUT_BYTES);
   if (!parsed.ok) return json(res, parsed.status, { error: parsed.error });
   const body = parsed.body;
-  if (!validInstallationId(body.installationId) || !await authorizeInstallation(req, body.installationId)) {
-    return json(res, 401, { error: "Installation authorization failed." });
-  }
+  const installation = validInstallationId(body.installationId) ? await authorizeInstallation(req, body.installationId) : null;
+  if (!installation) return json(res, 401, { error: "Installation authorization failed." });
+  if (installation.syncConsent !== "1") return json(res, 403, { error: "Workout cloud copy is not enabled for this installation." });
   const limit = await checkRateLimit("workout-sync", body.installationId, 240, 60 * 60);
   if (!limit.allowed) return rateLimitResponse(res, limit);
   const validationError = validateWorkoutMutation(body);
@@ -102,6 +104,7 @@ module.exports = apiHandler(async function handler(req, res) {
   const normalizedStatus = String(status || "synced");
   if (normalizedStatus === "conflict") return json(res, 409, { status: "conflict", mutationId: body.mutationId, error: "A different mutation already uses this workout revision." });
   if (normalizedStatus === "revoked") return json(res, 410, { status: "revoked", mutationId: body.mutationId, error: "This installation is deleting or deleted." });
+  if (normalizedStatus === "consent_required") return json(res, 403, { status: "consent_required", mutationId: body.mutationId, error: "Workout cloud copy is not enabled for this installation." });
   return json(res, 200, { status: normalizedStatus, mutationId: body.mutationId });
 });
 

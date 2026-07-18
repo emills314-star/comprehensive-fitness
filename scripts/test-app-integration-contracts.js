@@ -958,6 +958,7 @@ test("conflict-mode and rejected executable imports perform zero writes while ac
       BACKUP_IMPORT_LIMITS: { maxFileBytes: BACKUP_BOUNDARIES.fileBytes },
       Error,
       TextEncoder,
+      window: { FitnessBackupContract: { validateAndSanitizeBackup: (value) => value } },
       validateImportedAppData: () => ({ appDataVersion: 2, sessions: [], exercises: [], sets: [], templates: [], settings: {}, personalEvidencePackage: null, dataRevision: 0 }),
       researchOnlyBundleForImport: () => ({ bundle: { personal: {} }, engine: { id: "prepared-engine" } }),
       normalizeLoadedData: (value) => structuredClone(value),
@@ -1262,7 +1263,7 @@ test("cloud workout sync performs no queue or flush work without explicit true c
   collectAssertions([
     ["default off", () => assertContains(defaults, /cloudWorkoutSyncConsent\s*:\s*false/, "Cloud workout sync consent must default to false")],
     ["persisted independently", () => assertContains(normalize, /cloudWorkoutSyncConsent\s*:\s*storedSettings\.cloudWorkoutSyncConsent/, "Cloud workout sync consent must have its own persisted setting")],
-    ["explicit UI control", () => assertContains(html, /data-action=["']cloud-workout-sync-consent["']/, "Settings must expose a distinct cloud workout sync consent control")],
+    ["explicit UI control", () => assertContains(html, /renderAlertSetting\(["']cloud-workout-sync-consent["']/, "Settings must expose a distinct cloud workout sync consent control")],
     ["queue fails closed", () => assertContains(queue, /cloudWorkoutSyncConsent\s*!==\s*true|cloudWorkoutSyncConsent\s*===\s*true/, "Queueing must require explicit true consent")],
     ["flush fails closed", () => assertContains(flush, /cloudWorkoutSyncConsent\s*!==\s*true|cloudWorkoutSyncConsent\s*===\s*true/, "Flushing must require explicit true consent")],
     ["notification setup remains separate", () => assert.doesNotMatch(notifications, /cloudWorkoutSyncConsent/, "Enabling notifications must not enable workout upload")],

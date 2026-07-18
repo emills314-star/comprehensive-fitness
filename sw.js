@@ -1,4 +1,4 @@
-const CACHE_NAME = "comprehensive-fitness-pwa-v32";
+const CACHE_NAME = "comprehensive-fitness-pwa-v33";
 const CACHE_PREFIX = "comprehensive-fitness-pwa-";
 const APP_SHELL = Object.freeze([
   "/",
@@ -9,6 +9,7 @@ const APP_SHELL = Object.freeze([
   "/prescription-engine.js",
   "/guided-mesocycle.js",
   "/rest-completion-controller.js",
+  "/backup-contract.js",
   "/research_database/exports/json/exercise_database.json",
   "/research_database/exports/json/exercise_muscle_map.json",
   "/research_database/exports/json/exercise_substitution_map.json",
@@ -27,8 +28,11 @@ const PUBLIC_NAVIGATION_PATHS = new Set(["/", "/index.html", "/privacy.html", "/
 const SENSITIVE_PREFIXES = Object.freeze([
   "/api/",
   "/private-personal-data/",
-  "/personal_fitness_data/",
   "/private_personal_data/",
+  "/personal_fitness_data/",
+  "/personal-fitness-data/",
+  "/backups/",
+  "/exports/",
   "/.env"
 ]);
 const CANCELED_TIMER_TTL_MS = 26 * 60 * 60 * 1000;
@@ -37,7 +41,13 @@ const canceledRestTimers = new Map();
 
 function normalizedPathname(value) {
   let pathname = String(value || "/");
-  try { pathname = decodeURIComponent(pathname); } catch { return "/__invalid_path__"; }
+  try {
+    for (let depth = 0; depth < 3; depth += 1) {
+      const decoded = decodeURIComponent(pathname);
+      if (decoded === pathname) break;
+      pathname = decoded;
+    }
+  } catch { return "/__invalid_path__"; }
   pathname = pathname.replace(/\\/g, "/").toLowerCase();
   return pathname.startsWith("/") ? pathname : `/${pathname}`;
 }
@@ -96,7 +106,6 @@ function pushPayloadWasCanceled(payload = {}, now = Date.now()) {
   const timerVersion = payload.timerVersion || 1;
   return timerWasCanceled(payload.notificationId, now, timerVersion) || timerWasCanceled(payload.timerId, now, timerVersion);
 }
-
 function safeNotificationUrl(value, origin) {
   try {
     if (String(value || "").length > 2048) return `${origin}/`;

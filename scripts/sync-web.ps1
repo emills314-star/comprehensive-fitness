@@ -15,15 +15,17 @@ $sensitiveRelativeRoots = @(
   "exports"
 )
 
-# Native and PWA packaging is public-only. Remove stale private payloads before copying
-# so a previous local build cannot leak data into a later public/release package.
+New-Item -ItemType Directory -Force -Path $www | Out-Null
+
+# Packaging is public-only. Prune stale private copies first so a previous local
+# build cannot leak data into a later PWA, Android, or iOS release payload.
 foreach ($publicRoot in $nativePublicRoots) {
   $resolvedPublicRoot = [IO.Path]::GetFullPath($publicRoot).TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
   foreach ($relative in $sensitiveRelativeRoots) {
     $candidate = Join-Path $publicRoot $relative
     $resolvedCandidate = [IO.Path]::GetFullPath($candidate)
     if (-not $resolvedCandidate.StartsWith($resolvedPublicRoot, [StringComparison]::OrdinalIgnoreCase)) {
-      throw "Refusing to prune a path outside the intended native public root: $resolvedCandidate"
+      throw "Refusing to prune a path outside the intended public payload root: $resolvedCandidate"
     }
     if (Test-Path -LiteralPath $resolvedCandidate) { Remove-Item -LiteralPath $resolvedCandidate -Recurse -Force }
   }
@@ -37,6 +39,7 @@ $publicFiles = @(
   @{ Source = "prescription-engine.js"; Destination = "prescription-engine.js" },
   @{ Source = "guided-mesocycle.js"; Destination = "guided-mesocycle.js" },
   @{ Source = "rest-completion-controller.js"; Destination = "rest-completion-controller.js" },
+  @{ Source = "backup-contract.js"; Destination = "backup-contract.js" },
   @{ Source = "sw.js"; Destination = "sw.js" },
   @{ Source = "resources\secondary-page.css"; Destination = "resources\secondary-page.css" },
   @{ Source = "resources\icon-180.png"; Destination = "resources\icon-180.png" },
@@ -62,4 +65,4 @@ foreach ($file in $publicFiles) {
   Copy-Item -LiteralPath $source -Destination $destination -Force
 }
 
-Write-Host "Synced $($publicFiles.Count) public-only web/PWA assets into www and pruned stale private native payloads."
+Write-Host "Synced $($publicFiles.Count) public-only web/PWA assets and pruned stale private native payloads."

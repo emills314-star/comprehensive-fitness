@@ -1380,8 +1380,20 @@ test("Dashboard detail Back restores focus to the originating summary control", 
 });
 
 test("cloud workout sync consent defaults off and persists independently when explicitly enabled", async ({ page }) => {
+  await page.route("**/api/sync/authorize", async (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ status: "authorized", token: "synthetic-sync-token" })
+  }));
+  await page.route("**/api/sync/consent", async (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ status: "enabled" })
+  }));
   const navigation = page.getByRole("navigation", { name: "Main navigation" });
   await navigation.getByRole("button", { name: /Settings$/ }).click();
+  const dataGroup = page.locator("details.settings-group").filter({ has: page.locator("summary", { hasText: "Data and backup" }) });
+  await dataGroup.locator("summary").click();
   const consent = page.locator('[data-action="cloud-workout-sync-consent"]');
   await expect(consent).toBeVisible();
   await expect(consent).not.toBeChecked();
@@ -1390,6 +1402,7 @@ test("cloud workout sync consent defaults off and persists independently when ex
 
   await page.reload();
   await navigation.getByRole("button", { name: /Settings$/ }).click();
+  await page.locator("details.settings-group").filter({ has: page.locator("summary", { hasText: "Data and backup" }) }).locator("summary").click();
   await expect(page.locator('[data-action="cloud-workout-sync-consent"]')).toBeChecked();
 });
 

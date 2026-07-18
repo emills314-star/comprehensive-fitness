@@ -114,6 +114,7 @@ test("consent epochs discard stale reads, abort in-flight upload, clear durably,
       if (key === "sync-queue") writes.push({ phase: "stale-read", value: structuredClone(value), consent: data.settings.cloudWorkoutSyncConsent, epoch: syncConsentEpoch });
       return true;
     };
+    pushApi = async () => ({ status: "ok" });
     const staleQueue = queueActiveWorkoutSync(syncConsentEpoch);
     await readStarted;
     const revoke = setCloudWorkoutSyncConsent(false);
@@ -178,7 +179,7 @@ test("consent epochs discard stale reads, abort in-flight upload, clear durably,
   expect(result.afterUploadRevoke.writes).toEqual([{ phase: "upload", value: [], consent: false, epoch: 43 }]);
 });
 
-test("local clearing preserves pending deletion and awaits timer cancellation while ordinary authorization remains local-only", async ({ page }) => {
+test("local clearing preserves pending deletion, deletes ordinary remote authorization, and awaits timer cancellation", async ({ page }) => {
   const state = validFullState();
   const result = await page.evaluate(async (model) => {
     data = structuredClone(model);
@@ -194,6 +195,7 @@ test("local clearing preserves pending deletion and awaits timer cancellation wh
     const pendingDeletion = { blockedResult, databaseDeletes, token: pushIdentity?.token, status: pushIdentity?.status, blockedMessage: clearDataFlow?.blockedMessage || "" };
 
     pushIdentity = { installationId: "ordinary-installation", deviceId: "ordinary-device", token: "ordinary-secret", status: "enabled" };
+    pushApi = async (path) => path === "/api/install/delete" ? { status: "deleted" } : { status: "ok" };
     timer = null;
     clearDataFlow = { open: true, acknowledged: true, phrase: "CLEAR", unsynced: {} };
     databaseDeletes = 0;
@@ -478,6 +480,7 @@ test("ordinary active identity deterministically wins a weaker stale fallback", 
     await writeIndexedValue("push-identity", current);
     localStorage.setItem(identityKey, JSON.stringify(stale));
   }, { current: indexed, stale: staleFallback, identityKey: "comprehensive-fitness-installation-v1" });
+  await page.route("**/api/sync/consent", async (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status: "disabled" }) }));
   await page.reload();
   await page.waitForLoadState("load");
 
