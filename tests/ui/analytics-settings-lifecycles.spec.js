@@ -477,17 +477,26 @@ test("the registered service worker serves the public app shell while the isolat
     }, { fixedNow: FIXED_NOW, storageKey: STORAGE_KEY, storedFixture: fixture });
     await page.goto("/");
     await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible({ timeout: 45_000 });
-    await expect.poll(() => page.evaluate(async () => {
-      if (!("serviceWorker" in navigator)) return { supported: false, active: false, controlled: false, cache: false };
-      const registration = await navigator.serviceWorker.ready;
-      const keys = await caches.keys();
-      return {
-        supported: true,
-        active: registration.active?.state === "activated",
-        controlled: Boolean(navigator.serviceWorker.controller),
-        cache: keys.some((key) => key.startsWith("comprehensive-fitness-pwa-"))
-      };
-    }), { timeout: 45_000 }).toEqual({ supported: true, active: true, controlled: true, cache: true });
+    await expect.poll(async () => {
+      try {
+        return await page.evaluate(async () => {
+          if (!("serviceWorker" in navigator)) return { supported: false, active: false, controlled: false, cache: false };
+          const registration = await navigator.serviceWorker.ready;
+          const keys = await caches.keys();
+          return {
+            supported: true,
+            active: registration.active?.state === "activated",
+            controlled: Boolean(navigator.serviceWorker.controller),
+            cache: keys.some((key) => key.startsWith("comprehensive-fitness-pwa-"))
+          };
+        });
+      } catch (error) {
+        if (/execution context was destroyed|navigation/i.test(String(error?.message || error))) {
+          return { supported: true, active: false, controlled: false, cache: false };
+        }
+        throw error;
+      }
+    }, { timeout: 45_000 }).toEqual({ supported: true, active: true, controlled: true, cache: true });
 
     await context.setOffline(true);
     offlineEnabled = true;
