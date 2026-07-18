@@ -1,8 +1,9 @@
 const fs = require("node:fs");
+const { readApplicationContractSource } = require("./read-application-contract-source");
 
 const sourcePath = process.argv[2];
 if (!sourcePath) throw new Error("Usage: node scripts/preview-strong-migration.js <strong.csv>");
-const html = fs.readFileSync("index.html", "utf8");
+const html = readApplicationContractSource();
 const engineSource = html.match(/\/\/ DOMAIN_INTEGRITY_ENGINE_START([\s\S]*?)\/\/ DOMAIN_INTEGRITY_ENGINE_END/)?.[1];
 if (!engineSource) throw new Error("Domain integrity engine not found.");
 

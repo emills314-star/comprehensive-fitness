@@ -3,6 +3,7 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const { readApplicationContractSource } = require("./read-application-contract-source");
 const {
   STALENESS,
   applyManualOverride,
@@ -1700,7 +1701,7 @@ test("unavailable-muscle fallback plans expose complete zeroed volume fields", (
 });
 
 test("legacy target conversion is contractually required to honor executionBlocked", () => {
-  const source = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+  const source = readApplicationContractSource(ROOT);
   const converter = source.match(/function legacyTargetFromSnapshot\([\s\S]*?\n\s*function unifiedTargetContext\(/)?.[0];
   assert.ok(converter, "legacyTargetFromSnapshot must remain discoverable for the app contract");
   assert.match(converter, /executionBlocked/, "index integration required: legacyTargetFromSnapshot must return a non-executable target whenever finalPrescription.executionBlocked is true");

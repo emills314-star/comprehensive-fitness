@@ -1,7 +1,8 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const { readApplicationContractSource } = require("./read-application-contract-source");
 
-const html = fs.readFileSync("index.html", "utf8");
+const html = readApplicationContractSource();
 const match = html.match(/\/\/ HYPERTROPHY_SCORE_ENGINE_START([\s\S]*?)\/\/ HYPERTROPHY_SCORE_ENGINE_END/);
 assert.ok(match, "Hypertrophy score engine markers were not found in index.html");
 const engine = new Function(match[1] + "; return { selectHypertrophyWeeks, calculateHypertrophyScore }; ")();

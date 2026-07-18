@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const contract = require("../backup-contract.js");
+const { readApplicationContractSource } = require("./read-application-contract-source");
 
 function validBackup() {
   return {
@@ -31,7 +32,7 @@ const polluted = JSON.parse('{"appDataVersion":2,"sessions":[],"exercises":[],"s
 assert.throws(() => contract.validateAndSanitizeBackup(polluted), /forbidden property name/);
 assert.equal({}.polluted, undefined);
 
-const html = fs.readFileSync("index.html", "utf8");
+const html = readApplicationContractSource();
 assert.match(html, /FitnessBackupContract\.validateAndSanitizeBackup\(parsed,[\s\S]*?backupSchemaVersion:[\s\S]*?validateImportedAppData\(imported,/, "JSON imports must validate and remove envelope-only metadata before the strict app-data boundary");
 assert.match(html, /FitnessBackupContract\.createBackupExport\(data\)/, "Exports must carry the current validated backup contract");
 

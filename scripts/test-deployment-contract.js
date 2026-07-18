@@ -18,9 +18,10 @@ check("control: public entry points and policy pages exist", () => {
   for (const file of ["index.html", "privacy.html", "support.html"]) assert(fs.existsSync(path.join(targetRoot, file)), `${file} missing`);
   controls += 1;
 });
-check("control: inline-script hashes are computed from exact UTF-8 bytes", () => {
+check("control: deploy-text normalization is deterministic", () => {
   assert.equal(crypto.createHash("sha256").update("abc", "utf8").digest("base64"), "ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa0=");
-  assert.equal(deployText("index.html").includes("\r"), false, "deploy-equivalent HTML must use LF bytes before CSP hashing");
+  assert.equal("a\r\nb".replace(/\r\n/g, "\n"), "a\nb");
+  assert.equal(deployText("index.html").includes("\r"), false, "deploy-equivalent HTML must use LF bytes for deterministic policy checks");
   controls += 1;
 });
 check("deployment configuration exists and parses", () => {
@@ -142,9 +143,11 @@ check("CSP denies injection and bounds every outbound or navigational surface", 
 check("executable inline scripts are absent or exactly hash-bound by CSP", () => {
   const html = deployText("index.html");
   const inline = [...html.matchAll(/<script\b(?![^>]*\bsrc\s*=)[^>]*>([\s\S]*?)<\/script>/gi)].map((match) => match[1]).filter((body) => body.trim());
+  assert.match(html, /<script src="\.\/app\.js"><\/script>/, "the application runtime must load from the owned external app.js boundary");
   for (const rule of catchAllRules()) {
     const sources = directives(headerMap(rule).get("content-security-policy") || "").get("script-src") || [];
     assert(sources.includes("'self'"), "owned external scripts must be allowed");
+    if (inline.length === 0) assert.deepEqual(sources, ["'self'"], "script-src must not retain obsolete inline-script hashes");
     for (const body of inline) {
       const hash = `'sha256-${crypto.createHash("sha256").update(body, "utf8").digest("base64")}'`;
       assert(sources.includes(hash), `${rule.source}: inline script hash missing or stale: ${hash}`);

@@ -1,8 +1,9 @@
-const CACHE_NAME = "comprehensive-fitness-pwa-v33";
+const CACHE_NAME = "comprehensive-fitness-pwa-v34";
 const CACHE_PREFIX = "comprehensive-fitness-pwa-";
 const APP_SHELL = Object.freeze([
   "/",
   "/index.html",
+  "/app.js",
   "/privacy.html",
   "/support.html",
   "/manifest.webmanifest",

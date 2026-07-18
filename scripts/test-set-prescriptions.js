@@ -1,7 +1,8 @@
 const fs = require("fs");
 const assert = require("assert");
+const { readApplicationContractSource } = require("./read-application-contract-source");
 
-const html = fs.readFileSync("index.html", "utf8");
+const html = readApplicationContractSource();
 
 function extractFunction(name) {
   const marker = "function " + name + "(";

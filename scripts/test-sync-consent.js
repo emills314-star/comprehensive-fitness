@@ -1,8 +1,9 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const { deleteWorkoutData, scanKeys } = require("../api/_lib/installation-data");
+const { readApplicationContractSource } = require("./read-application-contract-source");
 
-const html = fs.readFileSync("index.html", "utf8");
+const html = readApplicationContractSource();
 const workoutApi = fs.readFileSync("api/sync/workout.js", "utf8");
 const consentApi = fs.readFileSync("api/sync/consent.js", "utf8");
 const authorizeApi = fs.readFileSync("api/sync/authorize.js", "utf8");

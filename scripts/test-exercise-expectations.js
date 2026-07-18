@@ -1,7 +1,8 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const { readApplicationContractSource } = require("./read-application-contract-source");
 
-const html = fs.readFileSync("index.html", "utf8");
+const html = readApplicationContractSource();
 const match = html.match(/\/\/ EXERCISE_TARGET_ENGINE_START([\s\S]*?)\/\/ EXERCISE_TARGET_ENGINE_END/);
 assert.ok(match, "Exercise target engine markers were not found");
 

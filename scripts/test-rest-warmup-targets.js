@@ -1,12 +1,13 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const { readApplicationContractSource } = require("./read-application-contract-source");
 
-const html = fs.readFileSync("index.html", "utf8");
+const html = readApplicationContractSource();
 const sw = fs.readFileSync("sw.js", "utf8");
 const schedule = fs.readFileSync("api/push/schedule.js", "utf8");
 const deliver = fs.readFileSync("api/push/deliver.js", "utf8");
 
-// Keep the single-file app syntactically valid before checking its integration contracts.
+// Keep the combined document/runtime contract syntactically valid before checking integration.
 [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].forEach((match) => new Function(match[1]));
 
 assert.match(html, /async function navigateToRestCompletion\(payload = \{\}, options = \{\}\)/, "All rest entry points need one shared navigation handler");

@@ -4,12 +4,13 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
+const { readApplicationContractSource } = require("./read-application-contract-source");
 
 const TEST_ROOT = path.resolve(__dirname, "..");
 const APP_ROOT = process.env.APP_CONTRACT_ROOT
   ? path.resolve(process.env.APP_CONTRACT_ROOT)
   : TEST_ROOT;
-const html = fs.readFileSync(path.join(APP_ROOT, "index.html"), "utf8");
+const html = readApplicationContractSource(APP_ROOT);
 const publicExercises = require(path.join(APP_ROOT, "research_database", "exports", "json", "exercise_database.json"));
 const prescriptionApi = require(path.join(APP_ROOT, "prescription-engine.js"));
 const {

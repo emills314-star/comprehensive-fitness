@@ -5,15 +5,16 @@ const fs = require("node:fs");
 const path = require("node:path");
 const engineApi = require("../prescription-engine");
 const guidedApi = require("../guided-mesocycle");
+const { readApplicationContractSource } = require("./read-application-contract-source");
 
 const root = path.resolve(__dirname, "..");
 const publicCheckout = process.env.CF_PUBLIC_CHECKOUT === "1";
-const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
+const html = readApplicationContractSource(root);
 const privacy = fs.readFileSync(path.join(root, "privacy.html"), "utf8");
 const support = fs.readFileSync(path.join(root, "support.html"), "utf8");
 const secondaryPageCss = fs.readFileSync(path.join(root, "resources", "secondary-page.css"), "utf8");
 
-// Compile the single-file application before checking integration contracts.
+// Compile the application contract view before checking integration contracts.
 [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].forEach((match) => new Function(match[1]));
 
 assert.match(html, /<script src="\.\/prescription-engine\.js"><\/script>/, "The browser must load the unified engine before the app");

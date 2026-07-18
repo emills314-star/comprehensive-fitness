@@ -1,7 +1,8 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const { readApplicationContractSource } = require("./read-application-contract-source");
 
-const html = fs.readFileSync("index.html", "utf8");
+const html = readApplicationContractSource();
 
 assert.match(html, /renderRecoveryPanel\(session\) \+ renderTodayPlan\(\)/, "Today's readiness must render before Today's Plan");
 assert.doesNotMatch(html, /function readinessScore\(|function readinessBandStatus\(/, "The app must not retain a second readiness scoring algorithm beside the prescription engine");

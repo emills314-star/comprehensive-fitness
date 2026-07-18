@@ -2,9 +2,10 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
+const { readApplicationContractSource } = require("./read-application-contract-source");
 
 const root = path.resolve(__dirname, "..");
-const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
+const html = readApplicationContractSource(root);
 const engineMatch = html.match(/\/\/ WORKOUT_GRADING_ENGINE_START([\s\S]*?)\/\/ WORKOUT_GRADING_ENGINE_END/);
 assert.ok(engineMatch, "Workout grading engine markers must remain available for focused tests");
 

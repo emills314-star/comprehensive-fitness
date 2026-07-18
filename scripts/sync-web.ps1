@@ -33,6 +33,7 @@ foreach ($publicRoot in $nativePublicRoots) {
 
 $publicFiles = @(
   @{ Source = "index.html"; Destination = "index.html" },
+  @{ Source = "app.js"; Destination = "app.js" },
   @{ Source = "privacy.html"; Destination = "privacy.html" },
   @{ Source = "support.html"; Destination = "support.html" },
   @{ Source = "manifest.webmanifest"; Destination = "manifest.webmanifest" },
