@@ -2,7 +2,7 @@
 
 ## Status
 
-**IMPLEMENTED locally.** PR publication, CI, and hosted mobile/desktop verification remain **NEEDS REVIEW** for the publishing agent.
+**IMPLEMENTED in draft PR #4.** Local and public-CI validation is complete for the product, domain, privacy, PWA, and focused interaction contracts. The latest cross-platform UI-audit refinements are awaiting the final PR check run.
 
 ## Scope
 
@@ -31,6 +31,7 @@
 - The first Chromium PR run also exposed stale UI-test contracts: six history regressions still targeted the former `Edit History` label, the template performance check used a now-ambiguous nested `summary`, guided muscle-scope setup used rerender-sensitive positional clicks, and seven visual baselines predated the intentional UI additions. Those contracts and approved mobile/desktop baselines were updated; the complete `npm run audit:ui` rerun passed 206 tests with 18 intentional skips in 12.3 minutes.
 - Linux CI then isolated cross-platform browser differences: fixed mobile chrome could intercept Playwright's auto-scrolled planner controls, native form-control internals reported a few clipped pixels without widening the document, and Linux screenshot geometry differed from Windows. Guided state-transition tests now activate already-verified visible controls without pointer-coordinate dependence, the reflow audit still enforces root/offscreen safety while excluding viewport-contained replaced form controls, and public CI retains failed screenshot/diff/trace evidence for platform-specific baseline review.
 - The retained public-CI artifact was downloaded outside the repository, retry pairs were hash-checked, and representative mobile, desktop, light, dark, large-text, and empty-state captures were visually reviewed. Only existing tracked baselines were replaced with the first Linux capture; all content uses the public synthetic fixture and contains no personal fitness data.
+- A later Linux run reduced the remaining UI failures to three deterministic audit issues. The final guided-day disclosure now uses the same DOM-native state transition as the other already-visible planner controls; the overflow diagnostic now distinguishes actual page/viewport overflow from harmless internal font-metric rounding while retaining clipped-control checks; and the final empty Dashboard baseline uses the reviewed Linux capture from retained public-CI evidence.
 
 ## Documentation review
 

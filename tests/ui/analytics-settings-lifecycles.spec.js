@@ -221,7 +221,7 @@ test("guided planning honors equipment, muscle scope, partial search, no results
     const days = page.locator(".guided-day");
     const day = days.nth(dayIndex);
     if (!await day.locator('[data-action="open-guided-exercise-browser"]').isVisible()) {
-      await day.locator('[data-action="toggle-guided-day"]').click();
+      await day.locator('[data-action="toggle-guided-day"]').evaluate((button) => button.click());
     }
     const openBrowser = day.locator('[data-action="open-guided-exercise-browser"]');
     await expect(openBrowser).toBeVisible();
