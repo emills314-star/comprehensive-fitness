@@ -1662,7 +1662,7 @@ test("historical volume reports relationship taxonomy provenance and fails close
   assert.deepEqual(integrated.rollbackContract, { strategy: "recalculate_from_immutable_records", persistentMigrationRequired: false, sourceRecordsMutated: false });
   const mixed = recalculateHistoricalMuscleVolume(evidenceWithDeadliftVersions((index) => index % 2 ? "2.2.0" : "2.1.0"), logged);
   assert.equal(mixed.taxonomyVersion, "mixed", "multiple relationship taxonomy versions must be reported explicitly");
-  assert.equal(mixed.familyProjectionStatus, "blocked_unverifiable_taxonomy");
+  assert.equal(mixed.familyProjectionStatus, "blocked_unverifiable_provenance");
   assert.deepEqual(mixed.familyTotals, [], "mixed provenance cannot emit family dose");
   const missing = recalculateHistoricalMuscleVolume(evidenceWithDeadliftVersions(() => null), logged);
   assert.equal(missing.taxonomyVersion, "unknown", "entirely missing relationship taxonomy provenance must fail closed");
@@ -1670,6 +1670,14 @@ test("historical volume reports relationship taxonomy provenance and fails close
   const partiallyMissing = recalculateHistoricalMuscleVolume(evidenceWithDeadliftVersions((index) => index === 0 ? "2.1.0" : null), logged);
   assert.equal(partiallyMissing.taxonomyVersion, "mixed", "partial relationship taxonomy provenance must fail closed as mixed");
   assert.equal(recalculateHistoricalMuscleVolume(evidence, []).taxonomyVersion, "unknown", "an empty recalculation has no relationship taxonomy provenance");
+  const mappedCustom = recalculateHistoricalMuscleVolume(evidence, [{ exerciseId: "custom_arc_press", workingSets: 3, muscleRelationships: [{ muscle_group_id: "Chest", programming_family_id: "chest", relationship_type: "direct_load", fractional_set_credit: 1, relationship_source: "personal_mapping", mapping_version: "personal-muscle-mapping/1.0.0" }] }]);
+  assert.equal(mappedCustom.familyProjectionStatus, "ready", "engine history must accept explicit versioned custom-muscle evidence");
+  assert.equal(mappedCustom.taxonomyVersion, "not_applicable", "personal mapping must not impersonate a research taxonomy version");
+  assert.equal(mappedCustom.personalMappingVersion, "personal-muscle-mapping/1.0.0");
+  assert.equal(mappedCustom.familyTotals[0].weightedHypertrophySets, 3);
+  const unresolvedCustom = recalculateHistoricalMuscleVolume(evidence, [{ exerciseId: "custom_unmapped", workingSets: 3, muscleRelationships: [] }]);
+  assert.equal(unresolvedCustom.familyProjectionStatus, "blocked_unverifiable_provenance");
+  assert.deepEqual(unresolvedCustom.familyTotals, [], "engine history must not infer custom dose from an unresolved name");
 });
 
 test("stale history is wired through scoring and snapshots by default", () => {

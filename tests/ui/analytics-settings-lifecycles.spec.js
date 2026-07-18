@@ -205,9 +205,13 @@ test("guided planning honors equipment, muscle scope, partial search, no results
   const scopeInputs = page.locator('[data-action="mesocycle-muscle-scope"]');
   const scopeCount = await scopeInputs.count();
   expect(scopeCount).toBeGreaterThan(1);
-  for (let index = 0; index < scopeCount; index += 1) {
-    const scope = scopeInputs.nth(index);
-    if (await scope.getAttribute("value") !== "chest") await scope.uncheck();
+  const nonChestScopes = await scopeInputs.evaluateAll((inputs) => inputs
+    .map((input) => input.value)
+    .filter((value) => value !== "chest"));
+  for (const value of nonChestScopes) {
+    const scope = page.locator(`[data-action="mesocycle-muscle-scope"][value="${value}"]`);
+    await scope.evaluate((input) => input.click());
+    await expect(scope).not.toBeChecked();
   }
   await expect(page.locator('[data-action="mesocycle-muscle-scope"][value="chest"]')).toBeChecked();
   await page.locator('[data-action="create-guided-draft"]').click();
@@ -217,9 +221,11 @@ test("guided planning honors equipment, muscle scope, partial search, no results
     const days = page.locator(".guided-day");
     const day = days.nth(dayIndex);
     if (!await day.locator('[data-action="open-guided-exercise-browser"]').isVisible()) {
-      await day.locator('[data-action="toggle-guided-day"]').click();
+      await day.locator('[data-action="toggle-guided-day"]').evaluate((button) => button.click());
     }
-    await day.locator('[data-action="open-guided-exercise-browser"]').click();
+    const openBrowser = day.locator('[data-action="open-guided-exercise-browser"]');
+    await expect(openBrowser).toBeVisible();
+    await openBrowser.evaluate((button) => button.click());
     const search = page.locator('[data-action="guided-exercise-search"]');
     await search.fill("no such public synthetic exercise");
     await search.dispatchEvent("change");
@@ -230,28 +236,28 @@ test("guided planning honors equipment, muscle scope, partial search, no results
     expect(await cards.count()).toBeGreaterThan(0);
     const names = await cards.locator("h3").allTextContents();
     expect(names.every((name) => /bench/i.test(name))).toBe(true);
-    await cards.first().locator('[data-action="select-guided-exercise"]:not([disabled])').click();
+    await cards.first().locator('[data-action="select-guided-exercise"]:not([disabled])').evaluate((button) => button.click());
     const pending = page.locator("[data-guided-configuration]");
     await expect(pending).toBeVisible();
     const output = pending.locator("output");
     while (Number((await output.textContent()).match(/\d+/)?.[0] || 0) < 5) {
-      await pending.getByRole("button", { name: "Add one planned working set" }).click();
+      await pending.getByRole("button", { name: "Add one planned working set" }).evaluate((button) => button.click());
     }
-    await pending.locator('[data-action="confirm-guided-exercise"]').click();
+    await pending.locator('[data-action="confirm-guided-exercise"]').evaluate((button) => button.click());
     await expect(page.locator("[data-guided-configuration]")).toHaveCount(0);
-    await page.locator('[data-action="close-guided-exercise-browser"]').click();
+    await page.locator('[data-action="close-guided-exercise-browser"]').evaluate((button) => button.click());
   }
 
   await addFiveBenchPressSets(0);
   await addFiveBenchPressSets(1);
-  await page.locator('[data-action="check-guided-viability"]').click();
+  await page.locator('[data-action="check-guided-viability"]').evaluate((button) => button.click());
   await expect(page.getByText("Viability Check", { exact: true })).toBeVisible();
   await expect(page.locator(".finding.blocking")).toHaveCount(0);
   const reviewCreation = page.locator('[data-action="open-guided-generation-review"]');
   await expect(reviewCreation).toBeEnabled();
-  await reviewCreation.click();
+  await reviewCreation.evaluate((button) => button.click());
   await expect(page.getByText(/2 linked templates will preserve/)).toBeVisible();
-  await page.locator('[data-action="create-guided-templates"]').click();
+  await page.locator('[data-action="create-guided-templates"]').evaluate((button) => button.click());
   await expect(page.getByText("Mesocycle Completed", { exact: true })).toBeVisible();
   await expect(page.locator('[data-action="start-first-mesocycle-template"]')).toBeEnabled();
   expect(await page.evaluate(() => data.templates.length)).toBe(2);

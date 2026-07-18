@@ -1410,6 +1410,81 @@ test("cloud workout sync consent defaults off and persists independently when ex
   await expect(page.locator('[data-action="cloud-workout-sync-consent"]')).toBeChecked();
 });
 
+test("rendered weekly dose is family-authoritative for canonical and explicitly mapped custom history, then blocks an unmapped custom exercise", async ({ page }) => {
+  await expect.poll(() => page.evaluate(() => Boolean(prescriptionEngine?.evidence?.research?.exerciseById?.has("ex_barbell_bench_press"))), {
+    message: "Public taxonomy must finish loading before family-dose integration is exercised"
+  }).toBe(true);
+  const initial = await page.evaluate(() => {
+    const date = todayIso();
+    const session = { id: "family-session", date, title: "Synthetic Family Dose", submitted: true, workoutStarted: false, workoutState: "completed", completedAt: date, submittedAt: `${date}T12:00:00.000Z`, createdAt: `${date}T11:00:00.000Z`, updatedAt: `${date}T12:00:00.000Z`, prs: [] };
+    const exercises = [
+      { id: "family-canonical", sessionId: session.id, name: "Barbell Bench Press", primaryMuscle: "", secondaryMuscle: "", order: 0, resistanceType: "external", restSeconds: 120 },
+      { id: "family-custom", sessionId: session.id, name: "Custom Arc Press", primaryMuscle: "Chest", secondaryMuscle: "Triceps", order: 1, resistanceType: "external", restSeconds: 90 }
+    ];
+    const sets = [
+      ...Array.from({ length: 3 }, (_, index) => ({ id: `canonical-set-${index}`, exerciseId: exercises[0].id, completed: true, skipped: false, isWarmup: false, setType: "straight", reps: 8, weight: 100, rpe: 8, resistanceType: "external" })),
+      ...Array.from({ length: 2 }, (_, index) => ({ id: `custom-set-${index}`, exerciseId: exercises[1].id, completed: true, skipped: false, isWarmup: false, setType: "straight", reps: 10, weight: 50, rpe: 8, resistanceType: "external" }))
+    ];
+    data = { ...data, sessions: [session], exercises, sets, templates: [], dataRevision: Number(data.dataRevision || 0) + 1 };
+    entityStructureRevision += 1;
+    entityIndexCache = null;
+    invalidateCompletedAnalysis();
+    const volume = weeklyMuscleVolume(startOfWeekIso(date));
+    const chest = volume.find((bucket) => bucket.muscle === "Chest");
+    let capturedRequest = null;
+    const prescribeExercise = prescriptionEngine.prescribeExercise;
+    prescriptionEngine.prescribeExercise = function captureFamilyDose(request) { capturedRequest = request; return prescribeExercise.call(this, request); };
+    try { unifiedPrescriptionSnapshot({ name: "Barbell Bench Press" }, { throughDate: date, fresh: true }); }
+    finally { prescriptionEngine.prescribeExercise = prescribeExercise; }
+    setActiveTab("dashboard", { replace: true, renderNow: false });
+    dashboardWeekStart = startOfWeekIso(date);
+    render();
+    return {
+      status: chest.familyProjectionStatus,
+      taxonomyVersion: chest.taxonomyVersion,
+      personalMappingVersion: chest.personalMappingVersion,
+      doseAuthority: chest.doseAuthority,
+      recommendationWeeklySets: capturedRequest?.currentWeeklySets,
+      chest: chest.familyRows.find((row) => row.programmingFamilyId === "chest"),
+      triceps: volume.find((bucket) => bucket.muscle === "Triceps").familyRows.find((row) => row.programmingFamilyId === "triceps")
+    };
+  });
+  expect(initial).toMatchObject({
+    status: "ready",
+    taxonomyVersion: "2.1.0",
+    personalMappingVersion: "personal-muscle-mapping/1.0.0",
+    doseAuthority: "programming_family",
+    recommendationWeeklySets: 5,
+    chest: { sets: 5, directSets: 5 },
+    triceps: { sets: 2.5, fractionalSets: 2.5 }
+  });
+  const chestCard = page.locator('.volume-card:has([data-muscle="Chest"])');
+  await expect(chestCard).toContainText("Chest 5/");
+  await chestCard.locator('[data-action="toggle-volume-muscle"]').click();
+  await expect(chestCard.locator('[data-family-dose="chest"]')).toContainText("Chest · 5 sets");
+  await expect(chestCard).toContainText("personal mapping personal-muscle-mapping/1.0.0");
+
+  const blocked = await page.evaluate(() => {
+    const exercise = { id: "family-unmapped", sessionId: "family-session", name: "Unmapped Mystery Movement", primaryMuscle: "", secondaryMuscle: "", order: 2, resistanceType: "external", restSeconds: 90 };
+    data = { ...data, exercises: [...data.exercises, exercise], sets: [...data.sets, { id: "unmapped-set", exerciseId: exercise.id, completed: true, skipped: false, isWarmup: false, setType: "straight", reps: 10, weight: 20, rpe: 8, resistanceType: "external" }] };
+    entityStructureRevision += 1;
+    entityIndexCache = null;
+    invalidateCompletedAnalysis();
+    const volume = weeklyMuscleVolume(dashboardWeekStart);
+    let capturedRequest = null;
+    const prescribeExercise = prescriptionEngine.prescribeExercise;
+    prescriptionEngine.prescribeExercise = function captureBlockedFamilyDose(request) { capturedRequest = request; return prescribeExercise.call(this, request); };
+    try { unifiedPrescriptionSnapshot({ name: "Barbell Bench Press" }, { throughDate: todayIso(), fresh: true }); }
+    finally { prescriptionEngine.prescribeExercise = prescribeExercise; }
+    render();
+    return { status: volume[0].familyProjectionStatus, emittedFamilyRows: volume.reduce((count, bucket) => count + bucket.familyRows.length, 0), recommendationWeeklySets: capturedRequest?.currentWeeklySets === undefined ? "undefined" : capturedRequest.currentWeeklySets, flags: fatigueFlags(dashboardWeekStart).map((flag) => flag.id) };
+  });
+  expect(blocked).toEqual({ status: "blocked_unverifiable_provenance", emittedFamilyRows: 0, recommendationWeeklySets: "undefined", flags: ["weekly-family-dose-unverified"] });
+  await expect(page.getByText("Weekly dose is held until each custom exercise has an explicit muscle mapping.").first()).toBeVisible();
+  await expect(page.locator('[data-family-dose="chest"]')).toHaveCount(0);
+  await expect(page.getByText("At least one custom exercise lacks an explicit muscle mapping.")).toBeVisible();
+});
+
 test("a complete synthetic backup round-trips relationships and canonical settings", async ({ page }) => {
   const group = await openBackupSettings(page);
   await importBackup(page, group, validFullState());

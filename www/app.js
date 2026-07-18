@@ -157,6 +157,10 @@
         }
         if (action === "new-session") addSession();
         if (action === "new-template") addTemplate();
+        if (action === "save-custom-exercise") saveCustomExercise(target.closest("[data-custom-exercise-form]"));
+        if (action === "edit-custom-exercise") { customExerciseEditorId = target.dataset.customExerciseId; customExerciseFormError = ""; render(); window.requestAnimationFrame(() => root.querySelector('[data-custom-exercise-form] [name="name"]')?.focus()); }
+        if (action === "cancel-custom-exercise-edit") { customExerciseEditorId = ""; customExerciseFormError = ""; render(); }
+        if (action === "archive-custom-exercise") archiveCustomExercise(target.dataset.customExerciseId);
         if (action === "begin-guided-mesocycle") beginGuidedMesocycle();
         if (action === "guided-step") setGuidedStep(target.dataset.step);
         if (action === "close-guided-mesocycle") { guidedMesocycleView = "closed"; guidedExerciseBrowserDayId = ""; guidedWeeklySummaryOpen = false; render(); }
@@ -446,6 +450,10 @@
         if (action === "set-distance") patchSetValue(target.dataset.setId, "distance", target.value);
         if (action === "exercise-rest-seconds") patchExercise(target.dataset.exerciseId, { restSeconds: Number(target.value) });
         if (action === "template-exercise-resistance") { const resistanceType = resistanceTypeValues.includes(target.value) ? target.value : "external"; patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { resistanceType, isBodyweight: isBodyweightResistance(resistanceType) }); }
+        if (action === "template-exercise-catalog" && target.value) selectTemplateExerciseCatalog(target.dataset.templateId, target.dataset.templateExerciseId, target.value);
+        if (action === "template-set-rep-min") updateTemplateSetRepTarget(target.dataset.templateId, target.dataset.templateExerciseId, target.dataset.setIndex, { repMin: target.value });
+        if (action === "template-set-rep-max") updateTemplateSetRepTarget(target.dataset.templateId, target.dataset.templateExerciseId, target.dataset.setIndex, { repMax: target.value });
+        if (action === "template-set-rep-exact") updateTemplateSetRepTarget(target.dataset.templateId, target.dataset.templateExerciseId, target.dataset.setIndex, { exact: target.checked });
         if (action === "hypertrophy-window") {
           hypertrophyWindowOffset = Math.max(0, Number(target.value || 0));
           hypertrophyScoreExpanded = false;

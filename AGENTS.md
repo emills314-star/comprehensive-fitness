@@ -38,6 +38,8 @@ This preference does not grant permissions, disable sandboxing, or override plat
 
 ## Publishing policy
 
+The repository owner granted standing, repository-scoped authorization on 2026-07-18 for coding agents to commit completed in-scope source changes, push them to this repository, and open or update the associated GitHub pull request without requesting optional confirmation again. This authorization remains in effect until the owner revokes it. It does not authorize publishing personal fitness or health data, secrets, credentials, unrelated changes, or content outside this repository, and it does not override sandbox, GitHub, branch-protection, or approval controls.
+
 After an in-scope change is implemented, tested, documented, and cross-checked, commit the completed change and push it to the repository's GitHub `main` branch unless the owner explicitly requests a different branch, a local-only result, or no publication. Do not describe work as complete before the push succeeds. Report the pushed commit identifier in the final response.
 
 Publishing source changes must never publish personal fitness or health data. Before staging, inspect the complete Git status and exclude all raw, normalized, derived, report, packaged, backup, or locally imported personal-data artifacts, including content under `personal_fitness_data/raw/`, `personal_fitness_data/normalized/`, `personal_fitness_data/derived/`, `personal_fitness_data/reports/`, `private-personal-data/`, and `www/private-personal-data/`. Also exclude credentials, tokens, environment files, deployment secrets, app-data exports, local databases, and generated audit artifacts that may contain user data.

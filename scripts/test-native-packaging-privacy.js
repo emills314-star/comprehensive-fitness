@@ -16,6 +16,10 @@ for (const name of ["private-personal-data", "personal_fitness_data", "personal-
 }
 assert.match(verify, /Get-FileHash/, "Verification must enforce source/package parity");
 assert.match(verify, /Sensitive files found in public(?:\/native)? payload/, "Verification must scan public and native payloads for private artifacts");
+assert.match(verify, /\$normalizedRelative\s*=\s*\$relative\s*-replace\s*'\\\\',\s*'\/'/,
+  "Verification must normalize payload paths before applying the public research export allowlist");
+assert.match(verify, /research_database\/exports\/json\/\*/,
+  "Verification must allow only the documented public research JSON export subtree across operating systems");
 
 assert.match(manifest, /android:allowBackup="false"/);
 assert.match(manifest, /android:fullBackupContent="false"/);

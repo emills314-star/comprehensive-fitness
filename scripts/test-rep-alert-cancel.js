@@ -77,7 +77,8 @@ assert.match(top.progressionRule, /top of the programmed range|10 reps/i);
 const backoff = prescriptionRuntime.setPrescriptionForRole({ templateExercise: { name: "Lying Leg Curl", increment: 5 }, target, setType: { ...curlBackoff, type: "backoff", increment: 2.5, loadReductionMin: 10, loadReductionMax: 20 }, previousSets: [{ setType: "backoff", setTypeIndex: 0, reps: 9, weight: 90, rpe: 8 }] });
 assert.strictEqual(backoff.increment, 2.5, "Back-off increments are role-specific");
 assert.strictEqual(backoff.nextLoad % 2.5, 0, "Role increments respect equipment steps");
-assert(backoff.repMax > backoff.repMin);
+assert(backoff.programmedRepMax > backoff.programmedRepMin, "The programmed back-off range remains auditable while execution is capped by the progression gate");
+assert.deepStrictEqual([backoff.repMin, backoff.repMax], [9, 9], "An unqualified back-off repeats no more than prior reps");
 
 const alertsRuntime = new Function(`
   let data = { settings: {} };

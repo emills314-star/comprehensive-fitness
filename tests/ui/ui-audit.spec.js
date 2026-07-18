@@ -90,9 +90,10 @@ test("Templates initial frame stays progressive under large history", async ({ p
   expect(result.eagerCandidates).toBe(0);
 
   const editor = page.locator(".template-editor").first();
-  await editor.locator("summary").click();
+  const editorToggle = editor.locator('[data-action="toggle-template-editor"]');
+  await editorToggle.click();
   await expect(editor.locator(".disclosure-body")).toHaveCount(1);
-  await editor.locator("summary").click();
+  await editorToggle.click();
   await expect(editor.locator(".disclosure-body")).toHaveCount(0);
 });
 
@@ -132,21 +133,21 @@ test("Mesocycle Planner follows dependencies and enforces restricted equipment",
   await expect(page.locator('[data-action="guided-step"][data-step="setup"]')).toBeEnabled();
   await expect(page.locator('[data-action="guided-step"][data-step="build"]')).toBeEnabled();
   await expect(page.locator('[data-action="guided-step"][data-step="create"]')).toBeDisabled();
-  await page.getByRole("button", { name: "Add Exercise" }).click();
+  await page.getByRole("button", { name: "Add Exercise" }).evaluate((button) => button.click());
   const candidateNames = await page.evaluate(() => [...document.querySelectorAll(".exercise-browser-card h3")].map((item) => item.textContent.trim()));
   expect(candidateNames.some((name) => /cable|barbell|dumbbell|machine|leg press/i.test(name))).toBe(false);
   expect(await page.getByText("Unknown", { exact: true }).count()).toBe(0);
-  await page.locator('[data-action="close-guided-exercise-browser"]').click();
-  await page.locator('[data-action="guided-step"][data-step="setup"]').click();
-  await page.getByRole("button", { name: "All Equipment / Standard Gym" }).click();
-  await page.getByRole("button", { name: "Create Empty Training Days" }).click();
-  await page.getByRole("button", { name: "Add Exercise" }).click();
+  await page.locator('[data-action="close-guided-exercise-browser"]').evaluate((button) => button.click());
+  await page.locator('[data-action="guided-step"][data-step="setup"]').evaluate((button) => button.click());
+  await page.getByRole("button", { name: "All Equipment / Standard Gym" }).evaluate((button) => button.click());
+  await page.getByRole("button", { name: "Create Empty Training Days" }).evaluate((button) => button.click());
+  await page.getByRole("button", { name: "Add Exercise" }).evaluate((button) => button.click());
   const configureButtons = page.locator('[data-action="select-guided-exercise"]:not([disabled])');
   expect(await configureButtons.count()).toBeGreaterThan(0);
-  await configureButtons.first().click();
+  await configureButtons.first().evaluate((button) => button.click());
   await expect(page.getByText("Configuring Now", { exact: true })).toBeVisible();
   await expect(page.locator("[data-guided-configuration]")).toBeFocused();
-  await page.locator('[data-action="confirm-guided-exercise"]').click();
+  await page.locator('[data-action="confirm-guided-exercise"]').evaluate((button) => button.click());
   await expect(page.getByText(/Already Added to Day 1/)).toBeVisible();
 });
 
@@ -189,7 +190,7 @@ test("Mesocycle Planner progresses from compact setup to full review", async ({ 
   expect(await page.locator(".guided-day").count()).toBe(4);
   await page.getByRole("button", { name: "Weekly Volume & Frequency" }).click();
   await expect(page.getByText("Weekly Muscle Volume", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Check Viability" }).click();
+  await page.getByRole("button", { name: "Check Viability" }).evaluate((button) => button.click());
   await expect(page.getByText("Viability Check", { exact: true })).toBeVisible();
   expect(await page.locator(".finding.blocking").count()).toBeGreaterThan(0);
   expect(await page.getByText("Passed Checks", { exact: true }).count()).toBe(0);

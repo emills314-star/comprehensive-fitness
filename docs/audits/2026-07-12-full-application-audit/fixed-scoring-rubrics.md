@@ -120,3 +120,17 @@ Architecture improved from 3 to 4 because the former 973 KB concentration is now
 | Independent score | 5 | 4 | 4 | 4 | 4 | 3 | 5 | 4 | 4 | 4 | **41/50** |
 
 The first dual-40 milestone is independently achieved on this pushed revision. The frozen final acceptance gates still fail: codebase is below 45, recommendation is not 48–50, and recommendation dose category 6 remains below 4 because programming-family history/recommendation projection, version provenance, and rollback semantics are still **PLANNED / NEEDS REVIEW**. The full report is `2026-07-18-first-milestone-independent-score.md`.
+
+### Independent family-ledger checkpoint — `d539950254692e3fe73d9f7911b91667a669d31e`
+
+Two score-neutral reviewers independently audited the exact clean pushed revision above without receiving a desired score. Both returned the same vectors and reproduced the complete public gate or proportionate focused browser safety checks. The implementing release gate passed 42/42 public scripts, 1,024 fuzz cases / 10,240 assertions, and 204 Playwright cases with 18 intentional skips. Neither reviewer reproduced a terminal safety, privacy, data-loss, hard-constraint, unsupported-science, or fabricated-personalization defect.
+
+| Codebase category | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | Total |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Independent score | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | **40/50** |
+
+| Recommendation category | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | Total |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Independent score | 5 | 4 | 4 | 4 | 4 | 4 | 5 | 4 | 4 | 4 | **42/50** |
+
+Recommendation category 6 increased from 3 to 4 because shared family projection, final-only rounding, relationship provenance, immutable recalculation, and rollback are implemented. Both reviewers independently identified the same remaining deduction: weekly recommendation/status consumption still used broad display buckets, app-level family consumption lacked adversarial rendered browser evidence, and unresolved custom history had no verified family projection. This checkpoint does not score any later revision; both final numerical gates remain unmet.

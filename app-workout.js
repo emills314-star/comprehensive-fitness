@@ -376,8 +376,10 @@
       function patchExerciseName(exerciseId, name, shouldRender = true) {
         const exercise = exerciseById(exerciseId);
         if (!exercise) return;
+        const custom = customExerciseById(exercise.customExerciseId);
+        const identityPatch = custom && normalizePrescriptionIdentity(name) !== normalizePrescriptionIdentity(custom.name) ? { customExerciseId: "", recommendationProvenance: "manual_unlinked" } : {};
         if (!shouldRender) {
-          patchExercise(exerciseId, { name }, false);
+          patchExercise(exerciseId, { name, ...identityPatch }, false);
           return;
         }
         const firstSet = setsForExercise(exerciseId).find((set) => isWorkingSet(set, "score"));
@@ -385,22 +387,117 @@
         const restSeconds = !exercise.restSeconds || Number(exercise.restSeconds) === previousAutoRest
           ? recommendedRestSeconds(name, { reps: firstSet?.reps, rpe: firstSet?.rpe, excludeSessionId: exercise.sessionId })
           : exercise.restSeconds;
-        patchExercise(exerciseId, { name, restSeconds }, shouldRender);
+        patchExercise(exerciseId, { name, restSeconds, ...identityPatch }, shouldRender);
       }
 
       function patchTemplateExerciseName(templateId, exerciseId, name, shouldRender = true) {
         const template = data.templates.find((item) => item.id === templateId);
         const exercise = template?.exercises.find((item) => item.id === exerciseId);
         if (!exercise) return;
+        const custom = customExerciseById(exercise.customExerciseId);
+        const identityPatch = custom && normalizePrescriptionIdentity(name) !== normalizePrescriptionIdentity(custom.name) ? { customExerciseId: "", recommendationProvenance: "manual_unlinked", recommendationSnapshot: null } : {};
         if (!shouldRender) {
-          patchTemplateExercise(templateId, exerciseId, { name }, false);
+          patchTemplateExercise(templateId, exerciseId, { name, ...identityPatch }, false);
           return;
         }
         const previousAutoRest = recommendedRestSeconds(exercise.name, { reps: exercise.reps });
         const restSeconds = !exercise.restSeconds || Number(exercise.restSeconds) === previousAutoRest
           ? recommendedRestSeconds(name, { reps: exercise.reps })
           : exercise.restSeconds;
-        patchTemplateExercise(templateId, exerciseId, { name, restSeconds }, shouldRender);
+        patchTemplateExercise(templateId, exerciseId, { name, restSeconds, ...identityPatch }, shouldRender);
+      }
+
+      function saveCustomExercise(form) {
+        if (!(form instanceof HTMLFormElement)) return;
+        const fields = new FormData(form);
+        const editingId = String(fields.get("customExerciseId") || "");
+        const name = String(fields.get("name") || "").trim().replace(/\s+/g, " ");
+        const primaryMuscle = String(fields.get("primaryMuscle") || "");
+        const secondaryMuscle = String(fields.get("secondaryMuscle") || "");
+        const resistanceType = resistanceTypeValues.includes(String(fields.get("resistanceType") || "")) ? String(fields.get("resistanceType")) : "external";
+        const equipment = Array.from(new Set(fields.getAll("equipment").map((item) => String(item).trim()).filter(Boolean))).slice(0, 16);
+        customExerciseFormError = customExerciseNameCollision(name, editingId);
+        if (!customExerciseFormError && !primaryMuscle) customExerciseFormError = "Choose the primary muscle so volume and recommendations can use this exercise safely.";
+        if (!customExerciseFormError && secondaryMuscle && secondaryMuscle === primaryMuscle) customExerciseFormError = "Secondary muscle must be different from the primary muscle.";
+        if (customExerciseFormError) {
+          render();
+          window.requestAnimationFrame(() => root.querySelector('[data-custom-exercise-form] [name="name"]')?.focus());
+          return;
+        }
+        const existing = editingId ? customExerciseById(editingId) : null;
+        const timestamp = isoNow();
+        const record = {
+          id: existing?.id || `user:${id()}`,
+          name,
+          primaryMuscle,
+          secondaryMuscle,
+          resistanceType,
+          equipment,
+          archivedAt: "",
+          createdAt: existing?.createdAt || timestamp,
+          updatedAt: timestamp,
+          provenance: "user_defined"
+        };
+        const customExercises = existing
+          ? data.customExercises.map((item) => item.id === existing.id ? record : item)
+          : [...data.customExercises, record];
+        const templates = data.templates.map((template) => ({
+          ...template,
+          exercises: template.exercises.map((exercise) => exercise.customExerciseId === record.id ? { ...exercise, name, primaryMuscle, secondaryMuscle, resistanceType, isBodyweight: isBodyweightResistance(resistanceType), equipment } : exercise)
+        }));
+        const exercises = data.exercises.map((exercise) => {
+          const session = data.sessions.find((item) => item.id === exercise.sessionId);
+          return exercise.customExerciseId === record.id && !isSessionSubmitted(session)
+            ? { ...exercise, name, primaryMuscle, secondaryMuscle, resistanceType, isBodyweight: isBodyweightResistance(resistanceType), equipment }
+            : exercise;
+        });
+        customExerciseEditorId = "";
+        customExerciseFormError = "";
+        commit({ ...data, customExercises, templates, exercises });
+        showAppToast(existing ? "Custom exercise updated." : "Custom exercise created and ready to use.");
+      }
+
+      function archiveCustomExercise(identifier) {
+        const record = customExerciseById(identifier);
+        if (!record) return;
+        const archivedAt = record.archivedAt ? "" : isoNow();
+        customExerciseEditorId = "";
+        customExerciseFormError = "";
+        commit({ ...data, customExercises: data.customExercises.map((item) => item.id === identifier ? { ...item, archivedAt, updatedAt: isoNow() } : item) });
+        showAppToast(archivedAt ? "Custom exercise archived. Existing workouts and templates still retain it." : "Custom exercise restored.");
+      }
+
+      function selectTemplateExerciseCatalog(templateId, exerciseId, catalogId) {
+        const custom = customExerciseById(catalogId);
+        if (custom) {
+          patchTemplateExercise(templateId, exerciseId, {
+            customExerciseId: custom.id,
+            canonicalExerciseId: "",
+            researchExerciseId: "",
+            name: custom.name,
+            primaryMuscle: custom.primaryMuscle,
+            secondaryMuscle: custom.secondaryMuscle,
+            resistanceType: custom.resistanceType,
+            isBodyweight: isBodyweightResistance(custom.resistanceType),
+            equipment: custom.equipment,
+            recommendationSnapshot: null
+          });
+          return;
+        }
+        const researchRecord = prescriptionEngine?.evidence?.research?.exerciseById?.get(catalogId);
+        if (!researchRecord) return;
+        const name = researchRecord.exercise_name || researchRecord.exerciseName || presentationLabel(catalogId);
+        const target = prescriptionEngine.resolveDefaultPrescriptionTarget?.(catalogId);
+        patchTemplateExercise(templateId, exerciseId, {
+          customExerciseId: "",
+          canonicalExerciseId: catalogId,
+          researchExerciseId: catalogId,
+          name,
+          primaryMuscle: target?.status === "resolved" ? appMuscleFromPrescriptionGroup(target.muscleGroupId) : "",
+          secondaryMuscle: "",
+          resistanceType: inferResistanceType(name, researchRecord),
+          recommendationSnapshot: null
+        });
       }
 
       function patchSet(setId, patch, shouldRender = true) {
@@ -636,8 +733,9 @@
           render();
           return;
         }
-        const resistanceType = inferResistanceType(name.trim());
-        const exercise = { id: id(), sessionId: session.id, name: name.trim(), primaryMuscle: addExercisePrimaryMuscle, secondaryMuscle: addExerciseSecondaryMuscle, notes: "", order: data.exercises.filter((item) => item.sessionId === session.id).length, restSeconds: recommendedRestSeconds(name.trim()), resistanceType, isBodyweight: isBodyweightResistance(resistanceType), isDeload: false };
+        const savedCustom = customExerciseForName(name.trim());
+        const resistanceType = savedCustom?.resistanceType || inferResistanceType(name.trim());
+        const exercise = { id: id(), sessionId: session.id, customExerciseId: savedCustom?.id || "", name: savedCustom?.name || name.trim(), primaryMuscle: savedCustom?.primaryMuscle || addExercisePrimaryMuscle, secondaryMuscle: savedCustom?.secondaryMuscle || addExerciseSecondaryMuscle, equipment: savedCustom?.equipment || [], notes: "", order: data.exercises.filter((item) => item.sessionId === session.id).length, restSeconds: recommendedRestSeconds(name.trim()), resistanceType, isBodyweight: isBodyweightResistance(resistanceType), isDeload: false };
         addExerciseDraft = "";
         addExercisePrimaryMuscle = "";
         addExerciseSecondaryMuscle = "";
@@ -674,6 +772,30 @@
             throw new RangeError(`Template ${config.label} must be between ${config.min} and ${config.max} in ${config.step} increments.`);
           }
         });
+      }
+
+      function editableTemplateSetTypes(exercise) {
+        const source = (Array.isArray(exercise.setTypes) ? exercise.setTypes : []).filter((item) => item.countsTowardScore !== false && !item.isWarmup);
+        const normalized = source.length ? source : [{ type: "straight", setCount: Number(exercise.sets || 1), repMin: Number(exercise.repMin || exercise.reps || 8), repMax: Number(exercise.repMax || exercise.reps || 8), rpeMin: Math.max(1, Number(exercise.targetRpe || 8) - 1), rpeMax: Number(exercise.targetRpe || 8), restSeconds: Number(exercise.restSeconds || 90), countsTowardScore: true, countsTowardVolume: true }];
+        return normalized.flatMap((type) => Array.from({ length: Math.max(1, Number(type.setCount || 1)) }, (_, index) => ({ ...type, id: type.id || `${exercise.id}-${type.type || "straight"}-${index}`, setCount: 1, setTypeIndex: index })));
+      }
+
+      function updateTemplateSetRepTarget(templateId, exerciseId, setIndex, patch) {
+        const template = data.templates.find((item) => item.id === templateId);
+        const exercise = template?.exercises.find((item) => item.id === exerciseId);
+        if (!exercise) return;
+        const setTypes = editableTemplateSetTypes(exercise);
+        const index = Number(setIndex);
+        if (!Number.isInteger(index) || index < 0 || index >= setTypes.length) return;
+        const current = setTypes[index];
+        let repMin = Number(Object.prototype.hasOwnProperty.call(patch, "repMin") ? patch.repMin : current.repMin || exercise.reps || 1);
+        let repMax = Number(Object.prototype.hasOwnProperty.call(patch, "repMax") ? patch.repMax : current.repMax || repMin);
+        if (patch.exact === true) repMin = repMax = Math.max(1, Math.min(1000, Number(current.repMax || current.repMin || exercise.reps || 1)));
+        if (patch.exact === false && repMin === repMax) repMax = Math.min(1000, repMin + 2);
+        repMin = Math.max(1, Math.min(1000, Math.round(repMin)));
+        repMax = Math.max(repMin, Math.min(1000, Math.round(repMax)));
+        setTypes[index] = { ...current, repMin, repMax, exactReps: repMin === repMax, userAuthoredTarget: true, rangeSource: "user_template_set_target" };
+        patchTemplateExercise(templateId, exerciseId, { setTypes, sets: setTypes.length, reps: repMax });
       }
 
       function patchTemplateExercise(templateId, exerciseId, patch, shouldRender = true) {
@@ -752,7 +874,7 @@
             restSeconds: Number(target.restSeconds || type.restSeconds || restSeconds)
           }));
           appliedTargetContext = { ...appliedTargetContext, setTypes: [...(appliedTargetContext?.setTypes || []).filter((type) => type.isWarmup), ...resolvedTypes] };
-          const exercise = { id: id(), sessionId: session.id, name: templateExercise.name, primaryMuscle: templateExercise.primaryMuscle || "", secondaryMuscle: templateExercise.secondaryMuscle || "", notes: "", originalPrescription: historyTarget, prescription: target, recommendationSnapshot: target.recommendationSnapshot || historyTarget.recommendationSnapshot || null, basePrescription: target.basePrescription || historyTarget.basePrescription || null, finalPrescription: target.finalPrescription || target.recommendationSnapshot?.finalPrescription || null, recommendationVersion: target.recommendationSnapshot?.recommendationVersion || null, personalDataVersion: target.recommendationSnapshot?.personalDataVersion || null, researchDatabaseVersion: target.recommendationSnapshot?.researchDatabaseVersion || null, programTargetContext, appliedTargetContext, adjustmentReason: target.adjustmentReason || "", manualOverrides: [], order: index, restSeconds, resistanceType: target.resistanceType || templateResistanceType, isBodyweight: isBodyweightResistance(resolvedResistanceType), isDeload: Boolean(target.isDeload), executionBlocked: Boolean(target.executionBlocked), safetyRestriction: target.safetyRestriction || null };
+          const exercise = { id: id(), sessionId: session.id, customExerciseId: templateExercise.customExerciseId || "", name: templateExercise.name, primaryMuscle: templateExercise.primaryMuscle || "", secondaryMuscle: templateExercise.secondaryMuscle || "", equipment: templateExercise.equipment || [], notes: "", originalPrescription: historyTarget, prescription: target, recommendationSnapshot: target.recommendationSnapshot || historyTarget.recommendationSnapshot || null, basePrescription: target.basePrescription || historyTarget.basePrescription || null, finalPrescription: target.finalPrescription || target.recommendationSnapshot?.finalPrescription || null, recommendationVersion: target.recommendationSnapshot?.recommendationVersion || null, personalDataVersion: target.recommendationSnapshot?.personalDataVersion || null, researchDatabaseVersion: target.recommendationSnapshot?.researchDatabaseVersion || null, recommendationProvenance: templateExercise.customExerciseId ? "user_defined_limited_confidence" : "canonical_or_personal_evidence", programTargetContext, appliedTargetContext, adjustmentReason: target.adjustmentReason || "", manualOverrides: [], order: index, restSeconds, resistanceType: target.resistanceType || templateResistanceType, isBodyweight: isBodyweightResistance(resolvedResistanceType), isDeload: Boolean(target.isDeload), executionBlocked: Boolean(target.executionBlocked), safetyRestriction: target.safetyRestriction || null };
           exercises.push(exercise);
           if (exercise.recommendationSnapshot) recommendationSnapshots.push(exercise.recommendationSnapshot);
           readinessAdjustments.push({ exerciseId: exercise.id, name: exercise.name, original: historyTarget, adjusted: target, changed: Boolean(target.adjusted), reason: target.adjustmentReason || "No readiness change was required.", triggers: target.triggerLabels || [] });

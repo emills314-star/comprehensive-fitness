@@ -81,6 +81,11 @@ assert.strictEqual(backoffPrescription.previousComparableSet.id, "backoff");
 assert(backoffPrescription.reason.includes("productive volume"));
 assert.strictEqual(backoffPrescription.progressionReady, false, "A back-off below its rep gate must not authorize the next load");
 assert.strictEqual(backoffPrescription.nextLoad, backoffPrescription.targetLoad, "An unqualified back-off must hold its current load");
+const lowBackoffPrescription = runtime.setPrescriptionForRole({ templateExercise: { name: "Leg Extension", increment: 5 }, target: baseTarget, setType: { ...extensionBackoff, type: "backoff" }, setTypeIndex: 0, previousSets: [{ id: "backoff-low", setType: "backoff", setTypeIndex: 0, reps: 9, weight: 90, rpe: 8 }] });
+assert.strictEqual(lowBackoffPrescription.previousComparableSet.id, "backoff-low");
+assert.strictEqual(lowBackoffPrescription.targetLoad, 90, "An unqualified back-off must repeat the prior comparable load");
+assert.strictEqual(lowBackoffPrescription.targetReps, 9, "An unqualified back-off must not ask for more reps than prior performance");
+assert.strictEqual(lowBackoffPrescription.programmedRepMax, 20, "The programmed range must remain auditable while the execution target is gated");
 const qualifiedBackoff = runtime.setPrescriptionForRole({
   templateExercise: { name: "Leg Extension", increment: 5 },
   target: baseTarget,

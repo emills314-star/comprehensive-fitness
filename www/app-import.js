@@ -124,6 +124,39 @@
         return ({ chest: "Chest", upper_back: "Back", lats: "Back", traps: "Back", spinal_erectors: "Back", quads: "Quads", quadriceps: "Quads", hamstrings: "Hamstrings", glutes: "Glutes", adductors: "Adductors", abductors: "Glutes", front_delts: "Shoulders", side_delts: "Shoulders", rear_delts: "Shoulders", biceps: "Biceps", triceps: "Triceps", forearms: "Forearms", calves: "Calves", abs: "Core", abdominals: "Core", obliques: "Core", neck: "Neck" })[family] || null;
       }
 
+      function personalMuscleRelationshipsForExercise(exercise) {
+        const savedRelationships = typeof userExerciseRelationshipRecords === "function" ? userExerciseRelationshipRecords(exercise) : [];
+        if (savedRelationships.length) return savedRelationships;
+        if (!programmingFamilyApi?.programmingFamilyId || !exercise?.primaryMuscle) return [];
+        const relationships = [{
+          muscle_group_id: exercise.primaryMuscle,
+          programming_family_id: programmingFamilyApi.programmingFamilyId(exercise.primaryMuscle),
+          relationship_type: "direct_load",
+          fractional_set_credit: 1,
+          local_fatigue_weight: 1,
+          relationship_source: "personal_mapping",
+          mapping_version: programmingFamilyApi.PERSONAL_MAPPING_VERSION
+        }];
+        if (exercise.secondaryMuscle && exercise.secondaryMuscle !== exercise.primaryMuscle) relationships.push({
+          muscle_group_id: exercise.secondaryMuscle,
+          programming_family_id: programmingFamilyApi.programmingFamilyId(exercise.secondaryMuscle),
+          relationship_type: "meaningful_fractional_load",
+          fractional_set_credit: 0.5,
+          local_fatigue_weight: 0.5,
+          relationship_source: "personal_mapping",
+          mapping_version: programmingFamilyApi.PERSONAL_MAPPING_VERSION
+        });
+        return relationships.filter((relationship) => relationship.programming_family_id);
+      }
+
+      function targetRangeForFamily(programmingFamilyId) {
+        if (prescriptionEngine?.evidence?.research && prescriptionApi?.aggregateMuscleResearchDefaults) {
+          const defaults = prescriptionApi.aggregateMuscleResearchDefaults(prescriptionEngine.evidence.research, programmingFamilyId);
+          if (defaults.recommendations?.length) return { low: Math.max(1, Math.round(defaults.weeklySets.min)), high: Math.max(Math.round(defaults.weeklySets.min), Math.round(defaults.weeklySets.max)) };
+        }
+        return targetRangeForMuscle(displayMuscleForTaxonomyId(programmingFamilyId) || "Chest");
+      }
+
       function taxonomyMusclesForExercise(exercise) {
         const research = prescriptionEngine?.evidence?.research;
         if (!research?.muscleMapsByExercise || !research?.exerciseById) return [];
@@ -155,7 +188,8 @@
 
       function musclesForExercise(exerciseOrName, options = {}) {
         const exercise = typeof exerciseOrName === "string" ? { name: exerciseOrName } : (exerciseOrName || {});
-        const cacheKey = [exercise.name || "", exercise.primaryMuscle || "", exercise.secondaryMuscle || "", options.ignoreManual ? "automatic" : "resolved"].join("|");
+        const savedCustom = typeof customExerciseById === "function" ? customExerciseById(exercise.customExerciseId) || customExerciseForName(exercise.name) : null;
+        const cacheKey = [exercise.name || "", exercise.customExerciseId || "", savedCustom?.updatedAt || "", exercise.primaryMuscle || "", exercise.secondaryMuscle || "", options.ignoreManual ? "automatic" : "resolved"].join("|");
         if (muscleAssignmentCache.has(cacheKey)) return muscleAssignmentCache.get(cacheKey);
         let result;
         const canonicalId = canonicalExerciseId(exercise.name);
@@ -172,7 +206,11 @@
         const invalidReconciledIdentity = Boolean(personalId && evidence?.personal?.reconciledIdentityByExerciseId?.get(personalId)?.invalid);
         const customOrUnmappedExercise = !canonicalId || /^(?:custom|user)(?::|_)/.test(canonicalId);
         const taxonomy = taxonomyMusclesForExercise(exercise);
-        if (invalidReconciledIdentity) {
+        if (savedCustom && !options.ignoreManual) {
+          const manual = [[savedCustom.primaryMuscle, 1]];
+          if (savedCustom.secondaryMuscle) manual.push([savedCustom.secondaryMuscle, 0.5]);
+          result = normalizeMuscleMatches(manual);
+        } else if (invalidReconciledIdentity) {
           result = [];
         } else if (taxonomy.length) {
           result = taxonomy;
@@ -226,7 +264,7 @@
           const projectionIdentity = resolvePrescriptionExerciseIdentity(entry.exercise);
           if (projectionIdentity.status === "resolved" && prescriptionEngine?.evidence?.research?.exerciseById?.has(projectionIdentity.exerciseId)) {
             familyProjectionRecords.push({ exerciseId: entry.exercise.id, researchExerciseId: projectionIdentity.exerciseId, exerciseName: entry.exercise.name, workingSets: 1 });
-          }
+          } else familyProjectionRecords.push({ exerciseId: entry.exercise.id, exerciseName: entry.exercise.name, workingSets: 1, muscleRelationships: personalMuscleRelationshipsForExercise(entry.exercise) });
           musclesForExercise(entry.exercise).forEach(({ muscle, weight }) => {
             const bucket = buckets.get(muscle);
             if (!bucket) return;
@@ -267,10 +305,18 @@
         });
         const familyProjection = prescriptionApi?.recalculateHistoricalMuscleVolume && prescriptionEngine?.evidence
           ? prescriptionApi.recalculateHistoricalMuscleVolume(prescriptionEngine.evidence, familyProjectionRecords)
-          : { taxonomyVersion: "unknown", familyProjectionStatus: "blocked_unverifiable_taxonomy", ledgerVersion: null, programmingFamilyVersion: familyVersion, familyTotals: [], rollbackContract: null };
+          : { taxonomyVersion: "unknown", familyProjectionStatus: "blocked_unverifiable_provenance", ledgerVersion: null, programmingFamilyVersion: familyVersion, personalMappingVersion: "not_used", familyTotals: [], rollbackContract: null };
+        const familyRows = familyProjection.familyProjectionStatus === "ready" ? familyProjection.familyTotals.map((family) => {
+          const target = targetRangeForFamily(family.programmingFamilyId);
+          const sets = Number(family.weightedHypertrophySets || 0);
+          return { ...family, muscle: displayMuscleForTaxonomyId(family.programmingFamilyId), sets, targetLow: target.low, targetHigh: target.high, status: sets < target.low ? "low" : sets > target.high ? "over" : "good" };
+        }) : [];
         const result = Array.from(buckets.values()).map((bucket) => {
           const target = targetRangeForMuscle(bucket.muscle);
-          const status = bucket.sets < target.low ? "low" : bucket.sets > target.high ? "over" : "good";
+          const bucketFamilyRows = familyRows.filter((family) => family.muscle === bucket.muscle);
+          const status = familyProjection.familyProjectionStatus === "blocked_unverifiable_provenance" ? "unverified"
+            : bucketFamilyRows.some((family) => family.status === "over") ? "over"
+              : bucketFamilyRows.length && bucketFamilyRows.every((family) => family.status === "good") ? "good" : "low";
           const details = Array.from(bucket.exerciseDetails.values()).map((detail) => ({
             name: detail.name,
             sets: detail.sets,
@@ -280,7 +326,7 @@
             sessions: Array.from(detail.sessions.values()).sort((a, b) => a.date.localeCompare(b.date))
           })).sort((a, b) => b.sets - a.sets || a.name.localeCompare(b.name));
           const sessionGroups = Array.from(bucket.sessionDetails.values()).map((session) => ({ ...session, exercises: Array.from(session.exercises.values()).sort((a, b) => b.sets - a.sets || a.name.localeCompare(b.name)) })).sort((a, b) => a.date.localeCompare(b.date));
-          return { ...bucket, taxonomyVersion: familyProjection.taxonomyVersion, familyProjectionStatus: familyProjection.familyProjectionStatus, ledgerVersion: familyProjection.ledgerVersion, programmingFamilyVersion: familyProjection.programmingFamilyVersion, familyTotals: familyProjection.familyTotals, rollbackContract: familyProjection.rollbackContract, details, sessionGroups, sessions: Array.from(bucket.submittedSessions.values()).sort((a, b) => a.date.localeCompare(b.date)), excludedDeloadSessions: Array.from(bucket.excludedDeloadSessions.values()).sort((a, b) => a.date.localeCompare(b.date)), exerciseCount: bucket.exercises.size, targetLow: target.low, targetHigh: target.high, status };
+          return { ...bucket, taxonomyVersion: familyProjection.taxonomyVersion, familyProjectionStatus: familyProjection.familyProjectionStatus, ledgerVersion: familyProjection.ledgerVersion, programmingFamilyVersion: familyProjection.programmingFamilyVersion, personalMappingVersion: familyProjection.personalMappingVersion, familyTotals: familyProjection.familyTotals, familyRows: bucketFamilyRows, doseAuthority: "programming_family", rollbackContract: familyProjection.rollbackContract, details, sessionGroups, sessions: Array.from(bucket.submittedSessions.values()).sort((a, b) => a.date.localeCompare(b.date)), excludedDeloadSessions: Array.from(bucket.excludedDeloadSessions.values()).sort((a, b) => a.date.localeCompare(b.date)), exerciseCount: bucket.exercises.size, targetLow: target.low, targetHigh: target.high, status };
         });
         weeklyVolumeCache.set(cacheKey, result);
         return result;
@@ -324,9 +370,14 @@
             flags.push({ id: "lift-" + exerciseKey(name) + "-performance", scope: "Lift", name, level: "caution", concern: "moderate", triggeredAt: current.weekStart, reason: "Estimated performance declined versus the prior comparable week.", evidence: ["Estimated 1RM change " + change + "%", "Current " + current.bestEstimatedOneRepMax.toFixed(1) + " vs prior " + previous.bestEstimatedOneRepMax.toFixed(1) + " " + data.settings.weightUnit, "Deload weeks are excluded from the comparison"], rule: "The lift flag activates after a greater than 7% estimated 1RM decline versus the prior non-deload week.", recommendation: "Hold the prior successful load, check technique and recovery, and use a smaller progression only after reps stabilize.", resolution: "Return within 7% of the prior comparable estimated performance without high-RPE or missed-set warnings." });
           }
         });
-        weeklyMuscleVolume(weekStart).forEach((bucket) => {
-          if (bucket.sets > bucket.targetHigh) flags.push({ id: "muscle-" + bucket.muscle.toLowerCase() + "-volume", scope: "Muscle", name: bucket.muscle, level: "over", concern: bucket.sets > bucket.targetHigh * 1.2 ? "high" : "moderate", triggeredAt: weekStart, reason: "Weekly volume exceeded the planned range.", evidence: [bucket.sets.toFixed(bucket.sets % 1 ? 1 : 0) + " weighted sets logged", "Target range " + bucket.targetLow + "-" + bucket.targetHigh + " sets", bucket.directSets.toFixed(bucket.directSets % 1 ? 1 : 0) + " direct and " + bucket.indirectSets.toFixed(bucket.indirectSets % 1 ? 1 : 0) + " indirect sets"], rule: "The flag uses the Monday-Sunday calendar week and activates when completed weighted sets exceed the configured upper target. Direct sets count as 1; mapped secondary work counts fractionally. Only submitted workouts are included, and explicitly marked deload exercises are excluded.", recommendation: "Do not add more volume this week. Keep remaining work easy or move it to the next training week.", resolution: "Return weekly volume to the target range and avoid a simultaneous decline in reps or recovery.", detailType: "weekly-volume", volumeDetail: { muscle: bucket.muscle, weekStart, targetLow: bucket.targetLow, targetHigh: bucket.targetHigh, actual: bucket.sets, exceededBy: bucket.sets - bucket.targetHigh, directSets: bucket.directSets, indirectSets: bucket.indirectSets, contributions: bucket.details, sessionGroups: bucket.sessionGroups, sessions: bucket.sessions, excludedDeloadSessions: bucket.excludedDeloadSessions } });
-          else if (bucket.highRpeSets >= 4) flags.push({ id: "muscle-" + bucket.muscle.toLowerCase() + "-rpe", scope: "Muscle", name: bucket.muscle, level: "caution", concern: "moderate", triggeredAt: weekStart, reason: "Several sets for this muscle were performed at RPE 9 or higher.", evidence: [bucket.highRpeSets.toFixed(bucket.highRpeSets % 1 ? 1 : 0) + " high-RPE weighted sets", bucket.sets.toFixed(bucket.sets % 1 ? 1 : 0) + " total weighted sets", "Caution threshold: 4 high-RPE sets"], rule: "The muscle flag activates at 4 or more weighted sets logged at RPE 9+ in one week.", recommendation: "Keep the next exposure 1-2 reps in reserve and avoid increasing both load and volume.", resolution: "Complete the next week with fewer than 4 high-RPE sets and stable performance." });
+        const weeklyVolumes = weeklyMuscleVolume(weekStart);
+        if (weeklyVolumes[0]?.familyProjectionStatus === "blocked_unverifiable_provenance") flags.push({ id: "weekly-family-dose-unverified", scope: "Volume mapping", name: "Weekly dose", level: "caution", concern: "moderate", triggeredAt: weekStart, reason: "At least one custom exercise lacks an explicit muscle mapping.", evidence: ["No family-level dose was inferred from an unresolved name", "Choose a Primary muscle while editing the custom exercise"], rule: "Recommendation dose is available only when canonical taxonomy or an explicit versioned personal muscle mapping covers every submitted exercise.", recommendation: "Map each custom exercise before using this week for volume progression.", resolution: "Every submitted exercise resolves to canonical taxonomy or a saved Primary muscle mapping." });
+        weeklyVolumes.forEach((bucket) => {
+          bucket.familyRows.filter((family) => family.status === "over").forEach((family) => {
+            const familyLabel = presentationLabel(family.programmingFamilyId);
+            flags.push({ id: "family-" + family.programmingFamilyId + "-volume", scope: "Muscle", name: bucket.muscle, level: "over", concern: family.sets > family.targetHigh * 1.2 ? "high" : "moderate", triggeredAt: weekStart, reason: familyLabel + " weekly volume exceeded its family-level range.", evidence: [family.sets.toFixed(family.sets % 1 ? 1 : 0) + " verified family sets logged", "Family target range " + family.targetLow + "-" + family.targetHigh + " sets", family.directSets.toFixed(family.directSets % 1 ? 1 : 0) + " direct and " + family.fractionalSets.toFixed(family.fractionalSets % 1 ? 1 : 0) + " fractional sets"], rule: "The flag uses the versioned programming-family ledger for Monday-Sunday submitted history. Direct work wins within an exercise/family, mapped secondary work counts fractionally, and unverifiable mappings produce no dose.", recommendation: "Do not add more " + familyLabel + " volume this week. Keep remaining work easy or move it to the next training week.", resolution: "Return " + familyLabel + " volume to its target range and avoid a simultaneous decline in reps or recovery.", detailType: "weekly-volume", volumeDetail: { muscle: familyLabel, weekStart, targetLow: family.targetLow, targetHigh: family.targetHigh, actual: family.sets, exceededBy: family.sets - family.targetHigh, directSets: family.directSets, indirectSets: family.fractionalSets, contributions: bucket.details, sessionGroups: bucket.sessionGroups, sessions: bucket.sessions, excludedDeloadSessions: bucket.excludedDeloadSessions } });
+          });
+          if (bucket.highRpeSets >= 4) flags.push({ id: "muscle-" + bucket.muscle.toLowerCase() + "-rpe", scope: "Muscle", name: bucket.muscle, level: "caution", concern: "moderate", triggeredAt: weekStart, reason: "Several sets for this muscle were performed at RPE 9 or higher.", evidence: [bucket.highRpeSets.toFixed(bucket.highRpeSets % 1 ? 1 : 0) + " high-RPE weighted sets", bucket.sets.toFixed(bucket.sets % 1 ? 1 : 0) + " total weighted sets", "Caution threshold: 4 high-RPE sets"], rule: "The muscle flag activates at 4 or more weighted sets logged at RPE 9+ in one week.", recommendation: "Keep the next exposure 1-2 reps in reserve and avoid increasing both load and volume.", resolution: "Complete the next week with fewer than 4 high-RPE sets and stable performance." });
           else if (bucket.failedSets >= 2) flags.push({ id: "muscle-" + bucket.muscle.toLowerCase() + "-misses", scope: "Muscle", name: bucket.muscle, level: "caution", concern: "moderate", triggeredAt: weekStart, reason: "Multiple planned sets for this muscle were not completed.", evidence: [bucket.failedSets.toFixed(bucket.failedSets % 1 ? 1 : 0) + " weighted missed sets", bucket.sets.toFixed(bucket.sets % 1 ? 1 : 0) + " completed weighted sets", "Caution threshold: 2 missed sets"], rule: "The muscle flag activates at 2 or more weighted missed sets in the selected week.", recommendation: "Hold or reduce volume for this muscle and repeat the last successful loading pattern.", resolution: "Complete the next exposure with fewer than 2 misses and no further rep decline." });
         });
         const recoveryAlerts = dashboardSessionsForWeek(weekStart).map((session) => ({ session, advice: recoveryRecommendationForSession(session) })).filter((item) => ["rest", "deload", "light_session"].includes(item.advice.decision));
@@ -790,12 +841,13 @@
           && (!Number.isSafeInteger(imported.dataRevision) || imported.dataRevision < 0)) {
           throw new Error("Backup dataRevision must be omitted or a non-negative safe integer.");
         }
-        const allowedTopLevelFields = new Set(["appDataVersion", "domainMigrationVersion", "sessions", "exercises", "sets", "templates", "mesocycles", "activeMesocycleId", "recommendationHistory", "manualOverrides", "personalEvidencePackage", "rawImports", "migrationAudit", "dataRevision", "settings"]);
+        const allowedTopLevelFields = new Set(["appDataVersion", "domainMigrationVersion", "sessions", "exercises", "sets", "templates", "customExercises", "mesocycles", "activeMesocycleId", "recommendationHistory", "manualOverrides", "personalEvidencePackage", "rawImports", "migrationAudit", "dataRevision", "settings"]);
         const allowedSessionFields = new Set(["id", "externalId", "source", "date", "title", "isTravel", "notes", "submitted", "workoutStarted", "workoutState", "completedAt", "submittedAt", "startedAt", "createdAt", "updatedAt", "templateId", "recovery", "prs", "workoutAnalysis", "workoutPrescription", "adjustmentSummary", "deletedAt", "trashed", "canceledAt"]);
-        const allowedExerciseFields = new Set(["id", "externalId", "source", "sessionId", "name", "notes", "order", "primaryMuscle", "secondaryMuscle", "restSeconds", "resistanceType", "isBodyweight", "isDeload", "recommendationSnapshot", "basePrescription", "finalPrescription", "coachRecommendation", "executionBlocked", "safetyRestriction", "manualOverrides", "adjusted", "adjustmentReason", "triggerLabels", "canonicalExerciseId", "researchExerciseId", "originalPrescription", "prescription", "recommendationVersion", "personalDataVersion", "researchDatabaseVersion", "programTargetContext", "appliedTargetContext", "overrideLocked"]);
+        const allowedExerciseFields = new Set(["id", "externalId", "source", "sessionId", "customExerciseId", "name", "notes", "order", "primaryMuscle", "secondaryMuscle", "equipment", "restSeconds", "resistanceType", "isBodyweight", "isDeload", "recommendationSnapshot", "basePrescription", "finalPrescription", "coachRecommendation", "executionBlocked", "safetyRestriction", "manualOverrides", "adjusted", "adjustmentReason", "triggerLabels", "canonicalExerciseId", "researchExerciseId", "recommendationProvenance", "originalPrescription", "prescription", "recommendationVersion", "personalDataVersion", "researchDatabaseVersion", "programTargetContext", "appliedTargetContext", "overrideLocked"]);
         const allowedSetFields = new Set(["id", "exerciseId", "setNumber", "sequenceIndex", "sequence", "setTypeIndex", "setType", "reps", "weight", "weightUnit", "resistanceType", "rpe", "completed", "skipped", "edited", "isWarmup", "countsTowardScore", "countsTowardVolume", "countsTowardProgression", "addedLoad", "assistanceLoad", "durationSeconds", "distance", "distanceUnit", "targetReps", "targetRepMin", "targetRepMax", "targetWeight", "targetRpe", "targetRpeMin", "targetRpeMax", "targetRpeTolerance", "targetRestSeconds", "setPrescription", "previousComparableSet", "prescriptionReason", "prescriptionMode", "prescriptionConfidence", "validationWarning", "classificationSource", "classificationConfidence", "classifierVersion", "manualOverride", "reviewRequired", "classifiedAt", "sourceSetOrder", "originalImportedValue"]);
         const allowedTemplateFields = new Set(["id", "name", "notes", "createdAt", "updatedAt", "exercises", "mesocycleId", "mesocycleRevision", "trainingDayId", "source"]);
-        const allowedTemplateExerciseFields = new Set(["id", "name", "notes", "sets", "reps", "targetRpe", "increment", "restSeconds", "resistanceType", "isBodyweight", "primaryMuscle", "secondaryMuscle", "warmups", "setTypes", "canonicalExerciseId", "researchExerciseId", "mesocycleSlotId", "assignmentId", "recommendationSnapshot"]);
+        const allowedTemplateExerciseFields = new Set(["id", "customExerciseId", "name", "notes", "sets", "reps", "repMin", "repMax", "targetRpe", "increment", "restSeconds", "resistanceType", "isBodyweight", "primaryMuscle", "secondaryMuscle", "equipment", "warmups", "setTypes", "canonicalExerciseId", "researchExerciseId", "recommendationProvenance", "mesocycleSlotId", "assignmentId", "recommendationSnapshot"]);
+        const allowedCustomExerciseFields = new Set(["id", "name", "primaryMuscle", "secondaryMuscle", "resistanceType", "equipment", "archivedAt", "createdAt", "updatedAt", "provenance"]);
         const allowedSettingsFields = new Set(["weightUnit", "trainingGoal", "trainingGoalSource", "trainingGoalDisclosure", "nutritionPhase", "experienceLevel", "returningAfterGap", "trainingDaysPerWeek", "availableEquipment", "excludedExerciseIds", "theme", "timerSound", "workoutCompletionSound", "timerVibration", "interactionVibration", "timerNotifications", "inAppRestAlerts", "restCompleteSound", "restCompleteSoundVolume", "restCompleteAutoDismissMs", "restCompleteLockScreenNotifications", "restCompleteAutoReturnToWorkout", "defaultRestSeconds", "notificationMessageDetail", "autoStartRestTimer", "autoHighlightNextSet", "autoScrollNextSet", "installGuideDismissed", "setupSoundConfirmed", "cloudWorkoutSyncConsent", "workoutCloudSync", "workoutCloudSyncConsentVersion", "readinessBaseline", "goal", "trainingStatus"]);
         const allowedMesocycleFields = new Set(["id", "schemaVersion", "builderMode", "rulesVersion", "type", "name", "status", "createdAt", "updatedAt", "durationWeeks", "durationBasis", "specializationMuscleGroups", "trainingDays", "split", "availableEquipment", "constraints", "exclusionResolution", "programmingContext", "planningStep", "availableMuscleGroupIds", "includedMuscleGroupIds", "equipmentUnavailableMuscleGroupIds", "omittedMuscleGroups", "scopeConfirmed", "currentProgramExerciseIds", "recentExerciseWindowDays", "pools", "activeExercises", "selectedPortfolio", "programSlots", "sessions", "programReview", "preservedProductiveExerciseIds", "versions", "lifecycle", "startedAt", "completedAt", "outcome", "reviewedAt", "review", "musclePriorities", "planningProgress", "guidedDays", "acceptedExceptions", "viabilityResult", "viabilityStale", "linkedTemplateIds", "creationResult", "revision"]);
         const allowedRecommendationFields = new Set(["recommendationId", "schemaVersion", "recommendationVersion", "engineVersion", "personalDataVersion", "researchDatabaseVersion", "mesocycleId", "exerciseId", "muscleGroupId", "exerciseScore", "muscleSpecificScore", "personalEvidenceWeight", "researchEvidenceWeight", "readinessAdjustment", "basePrescription", "finalPrescription", "explanation", "evidenceSummary", "confidence", "createdAt", "manualOverrides", "overrideLocked", "checksum", "request", "scores", "versions"]);
@@ -852,6 +904,8 @@
         if (imported.exercises.length > MAX_EXERCISES) throw new Error(`Exercise count exceeds the ${MAX_EXERCISES} limit.`);
         if (imported.sets.length > MAX_SETS) throw new Error(`Set count exceeds the ${MAX_SETS} limit.`);
         if (imported.templates.length > MAX_TEMPLATES) throw new Error(`Template count exceeds the ${MAX_TEMPLATES} limit.`);
+        const maxCustomExercises = Number(limits.maxCustomExercises || 1024);
+        if (imported.customExercises != null && (!Array.isArray(imported.customExercises) || imported.customExercises.length > maxCustomExercises)) throw new Error(`Custom exercise count exceeds the ${maxCustomExercises} limit.`);
         const seenIds = (records, label) => {
           const ids = new Set();
           records.forEach((record, index) => {
@@ -920,6 +974,32 @@
         const exerciseIds = seenIds(exercises, "exercise");
         seenIds(sets, "set");
         const templateIds = seenIds(templates, "template");
+        const customExercises = (imported.customExercises || []).map((record, index) => {
+          assertAllowed(record, allowedCustomExerciseFields, `Custom exercise ${index + 1}`);
+          const customId = assertId(record.id, `Custom exercise ${index + 1}`);
+          if (!customId.startsWith("user:")) throw new Error(`Custom exercise ${index + 1} must use a user: namespaced id.`);
+          assertName(record.name, `Custom exercise ${index + 1}`);
+          if (!muscleGroups.includes(record.primaryMuscle)) throw new Error(`Custom exercise ${index + 1} requires a valid primary muscle.`);
+          if (record.secondaryMuscle && (!muscleGroups.includes(record.secondaryMuscle) || record.secondaryMuscle === record.primaryMuscle)) throw new Error(`Custom exercise ${index + 1} secondary muscle is invalid.`);
+          if (!resistanceTypeValues.includes(record.resistanceType)) throw new Error(`Custom exercise ${index + 1} resistance type is invalid.`);
+          if (record.equipment != null && (!Array.isArray(record.equipment) || record.equipment.length > 16 || record.equipment.some((item) => typeof item !== "string" || !item || item.length > 64))) throw new Error(`Custom exercise ${index + 1} equipment is invalid.`);
+          return copyAllowed(record, allowedCustomExerciseFields);
+        });
+        const customExerciseIds = seenIds(customExercises, "custom exercise");
+        const customNameKeys = new Set();
+        customExercises.forEach((record, index) => {
+          const key = normalizePrescriptionIdentity(record.name);
+          if (!key || customNameKeys.has(key)) throw new Error(`Custom exercise ${index + 1} has an empty or duplicate normalized name.`);
+          customNameKeys.add(key);
+          const resolution = resolvePrescriptionExerciseIdentity({ name: record.name });
+          if (resolution.status === "resolved" && !resolution.custom) throw new Error(`Custom exercise ${index + 1} collides with the built-in exercise taxonomy.`);
+        });
+        templates.forEach((template) => template.exercises.forEach((exercise) => {
+          if (exercise.customExerciseId && !customExerciseIds.has(exercise.customExerciseId)) throw new Error(`Template exercise ${exercise.id} references an unknown custom exercise.`);
+        }));
+        exercises.forEach((exercise) => {
+          if (exercise.customExerciseId && !customExerciseIds.has(exercise.customExerciseId)) throw new Error(`Workout exercise ${exercise.id} references an unknown custom exercise.`);
+        });
         exercises.forEach((exercise) => { if (!sessionIds.has(exercise.sessionId)) throw new Error(`Orphan exercise reference: ${exercise.id} -> ${exercise.sessionId}.`); });
         sets.forEach((set) => { if (!exerciseIds.has(set.exerciseId)) throw new Error(`Orphan set reference: ${set.id} -> ${set.exerciseId}.`); });
         sessions.forEach((session) => { if (session.templateId && !templateIds.has(session.templateId)) throw new Error(`Orphan template reference: ${session.templateId}.`); });
@@ -1006,6 +1086,7 @@
           exercises,
           sets,
           templates,
+          customExercises,
           mesocycles,
           activeMesocycleId,
           recommendationHistory,

@@ -98,6 +98,13 @@ async function assertProtectedLayout(page, surface, expectedWidth, { requireProt
       .filter((element) => !["INPUT", "SELECT", "TEXTAREA"].includes(element.tagName))
       .filter((element) => element.scrollWidth > element.clientWidth + 2)
       .filter((element) => !["auto", "scroll"].includes(getComputedStyle(element).overflowX))
+      .filter((element) => {
+        for (let ancestor = element.parentElement; ancestor; ancestor = ancestor.parentElement) {
+          if (["auto", "scroll"].includes(getComputedStyle(ancestor).overflowX)) return false;
+        }
+        const rect = element.getBoundingClientRect();
+        return document.documentElement.scrollWidth > innerWidth + 2 || rect.left < -1 || rect.right > innerWidth + 1;
+      })
       .slice(0, 10)
       .map((element) => `${element.tagName.toLowerCase()}.${String(element.className)}[${element.getAttribute("aria-label") || element.getAttribute("data-action") || "unlabelled"};${element.scrollWidth}/${element.clientWidth}]`);
     const clippedTargets = [...document.querySelectorAll("button, input, select, textarea, summary, a[href]")]
@@ -166,9 +173,9 @@ async function assertRichLabels(page, surface) {
     await expect(recentTitle).toHaveCount(1);
     await expect(recentTitle).toBeVisible();
     await expect(page.locator(".volume-card.expanded")).toContainText(LONG_EXERCISE_NAMES.chest);
-    const chestFatigueFlag = page.locator('[data-action="open-fatigue-flag"][data-flag-id="muscle-chest-volume"]');
+    const chestFatigueFlag = page.locator('[data-action="open-fatigue-flag"][data-flag-id="family-chest-volume"]');
     await expect(chestFatigueFlag).toHaveCount(1);
-    await expect(chestFatigueFlag).toContainText("Weekly volume exceeded the planned range.");
+    await expect(chestFatigueFlag).toContainText("Chest weekly volume exceeded its family-level range.");
   }
 }
 

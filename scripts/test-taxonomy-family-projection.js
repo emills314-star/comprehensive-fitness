@@ -115,11 +115,27 @@ const alternate = familyLedger.projectHistoricalVolume(immutableHistory, () => [
 assert.equal(alternate.familyTotals[0].weightedHypertrophySets, 0.75, "A replacement taxonomy must produce a fresh projection without migration");
 assert.deepEqual(familyLedger.projectHistoricalVolume(immutableHistory, () => fractionalRows), historical, "Rollback to the original taxonomy must reproduce the original projection exactly");
 const mixedProjection = familyLedger.projectHistoricalVolume(immutableHistory, (_record, index) => [{ ...fractionalRows[0], taxonomy_version: index === 1 ? "2.2.0" : "2.1.0" }]);
-assert.equal(mixedProjection.projectionStatus, "blocked_unverifiable_taxonomy");
+assert.equal(mixedProjection.projectionStatus, "blocked_unverifiable_provenance");
 assert.deepEqual(mixedProjection.familyTotals, [], "Mixed provenance must fail closed instead of emitting a dose");
 const missingProjection = familyLedger.projectHistoricalVolume(immutableHistory, () => [{ ...fractionalRows[0], taxonomy_version: null }]);
-assert.equal(missingProjection.projectionStatus, "blocked_unverifiable_taxonomy");
+assert.equal(missingProjection.projectionStatus, "blocked_unverifiable_provenance");
 assert.deepEqual(missingProjection.familyTotals, [], "Missing provenance must fail closed instead of emitting a dose");
+const personalProjection = familyLedger.projectHistoricalVolume([{ exerciseId: "custom_press", workingSets: 3, muscleRelationships: [{ muscle_group_id: "Chest", programming_family_id: "chest", relationship_type: "direct_load", fractional_set_credit: 1, local_fatigue_weight: 1, relationship_source: "personal_mapping", mapping_version: familyLedger.PERSONAL_MAPPING_VERSION }] }]);
+assert.equal(personalProjection.projectionStatus, "ready", "An explicit versioned personal mapping must provide verified custom-exercise dose");
+assert.equal(personalProjection.taxonomyVersion, "not_applicable");
+assert.equal(personalProjection.personalMappingVersion, familyLedger.PERSONAL_MAPPING_VERSION);
+assert.equal(personalProjection.familyTotals[0].weightedHypertrophySets, 3);
+const mixedSourceProjection = familyLedger.projectHistoricalVolume([
+  { exerciseId: "canonical", workingSets: 2 },
+  { exerciseId: "custom", workingSets: 3 }
+], (record) => record.exerciseId === "canonical" ? fractionalRows : [{ muscle_group_id: "Triceps", programming_family_id: "triceps", relationship_type: "direct_load", fractional_set_credit: 1, relationship_source: "personal_mapping", mapping_version: familyLedger.PERSONAL_MAPPING_VERSION }]);
+assert.equal(mixedSourceProjection.projectionStatus, "ready", "One taxonomy version and one personal-mapping version may coexist without false mixed-taxonomy provenance");
+assert.equal(mixedSourceProjection.taxonomyVersion, "2.1.0");
+assert.equal(mixedSourceProjection.familyTotals.find((row) => row.programmingFamilyId === "triceps")?.directSets, 3);
+const unmappedPersonal = familyLedger.projectHistoricalVolume([{ exerciseId: "custom", workingSets: 3, muscleRelationships: [] }]);
+assert.equal(unmappedPersonal.projectionStatus, "blocked_unverifiable_provenance", "An unmapped custom exercise must block recommendation dose instead of using its name");
+assert.deepEqual(unmappedPersonal.familyTotals, []);
+assert.equal(familyLedger.projectHistoricalVolume([]).projectionStatus, "empty", "An empty submitted week is a known zero-dose state, not a provenance failure");
 
 console.log(JSON.stringify({
   passed: true,

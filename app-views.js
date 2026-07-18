@@ -277,7 +277,7 @@
             </div>
             ${editingHistory ? '<section class="history-edit-bar"><div><strong>Editing logged workout</strong><span>Changes remain temporary until you confirm Save Edits. The workout grade will be recalculated from the revised sets.</span></div><div class="history-edit-actions"><button class="primary-action" type="button" data-action="request-save-history-edits">Save Edits</button><button class="secondary-action" type="button" data-action="request-cancel-history-edits">Cancel Edits</button></div></section>' : ''}
             ${historyReadOnly && completedSummarySessionId !== session.id ? renderCompletedWorkoutSummary(session, { history: true }) : ''}
-            ${historyReadOnly ? '<div class="history-view-actions"><button class="primary-action" type="button" data-action="begin-history-edit">Edit History</button><button class="secondary-action" type="button" data-action="return-lift-home">Return to Lift Home</button></div>' : ''}
+            ${historyReadOnly ? '<div class="history-view-actions"><button class="primary-action" type="button" data-action="begin-history-edit">Edit Logged Workout</button><small>Update sets, notes, or exercise details; Save Edits recalculates this workout.</small><button class="secondary-action" type="button" data-action="return-lift-home">Return to Lift Home</button></div>' : ''}
             ${sessionCanBeDiscarded(session) ? '<div class="session-controls"><button class="text-danger-action" type="button" data-action="request-cancel-workout" data-session-id="' + session.id + '">Cancel Workout</button><span>Discards only this open session.</span></div>' : ''}
             ${pendingSubmitSessionId === session.id ? renderSubmitConfirmation(session) : ""}
             ${completedSummarySessionId === session.id ? renderCompletedWorkoutSummary(session) : ""}
@@ -392,16 +392,21 @@
         const moderateConcernCount = flags.filter((flag) => flag.concern === "moderate").length;
         const currentWeek = startOfWeekIso(todayIso());
         const renderBucket = (bucket, quiet = false) => {
-          const max = Math.max(bucket.targetHigh, bucket.sets, 1);
-          const meter = Math.min(100, Math.round((bucket.sets / max) * 100));
-          const label = bucket.status === "low" ? "below target" : bucket.status === "over" ? "above target" : "in range";
+          const familyPeakRatio = bucket.familyRows?.length ? Math.max(...bucket.familyRows.map((family) => family.sets / Math.max(family.targetHigh, family.sets, 1))) : 0;
+          const meter = Math.min(100, Math.round(familyPeakRatio * 100));
+          const label = bucket.status === "unverified" ? "mapping needed" : bucket.status === "low" ? "family below target" : bucket.status === "over" ? "family above target" : "families in range";
+          const familySummary = bucket.status === "unverified"
+            ? "Weekly dose is held until each custom exercise has an explicit muscle mapping."
+            : bucket.familyRows?.length
+              ? bucket.familyRows.map((family) => presentationLabel(family.programmingFamilyId) + " " + Number(family.sets || 0).toFixed(Number(family.sets || 0) % 1 ? 1 : 0) + "/" + family.targetLow + "-" + family.targetHigh).join(" · ")
+              : "No verified family dose this week.";
           const expanded = expandedVolumeMuscle === bucket.muscle;
           return `
             <article class="volume-card ${quiet ? "quiet-volume" : ""} ${expanded ? "expanded" : ""}">
               <button class="volume-card-toggle" type="button" data-action="toggle-volume-muscle" data-muscle="${escapeHtml(bucket.muscle)}" aria-expanded="${expanded ? "true" : "false"}">
                 <header><strong>${bucket.muscle}</strong><span class="status-pill ${bucket.status}">${label}</span></header>
                 <div class="meter" style="--meter:${meter}%"><span></span></div>
-                <small>${bucket.sets.toFixed(bucket.sets % 1 ? 1 : 0)} sets. Target ${bucket.targetLow}-${bucket.targetHigh}. ${bucket.exerciseCount || 0} lifts.</small>
+                <small>${escapeHtml(familySummary)} ${bucket.exerciseCount || 0} lifts.</small>
               </button>
               ${expanded ? renderVolumeDetails(bucket) : ""}
             </article>
@@ -528,11 +533,11 @@
       function renderVolumeDetails(bucket) {
         if (!bucket.details.length) return '<div class="volume-detail empty">No completed sets mapped to this muscle this week.</div>';
         const formatSets = (value) => Number(value || 0).toFixed(Number(value || 0) % 1 ? 1 : 0);
-        const statusText = bucket.status === "over" ? formatSets(bucket.sets - bucket.targetHigh) + " sets above target" : bucket.status === "low" ? formatSets(bucket.targetLow - bucket.sets) + " sets below target" : "Inside target range";
+        const familyLedger = bucket.familyRows?.length ? '<div class="detail-facts family-dose-facts">' + bucket.familyRows.map((family) => '<div class="detail-fact" data-family-dose="' + escapeHtml(family.programmingFamilyId) + '"><strong>' + escapeHtml(presentationLabel(family.programmingFamilyId)) + ' · ' + formatSets(family.sets) + ' sets</strong><span>Target ' + family.targetLow + '-' + family.targetHigh + ' · ' + escapeHtml(family.status === 'over' ? 'Above target' : family.status === 'good' ? 'Inside target' : 'Below target') + '</span><span>' + formatSets(family.directSets) + ' direct · ' + formatSets(family.fractionalSets) + ' fractional</span></div>').join('') + '</div>' : '';
         return `
           <div class="volume-detail">
-            <div class="volume-detail-hero ${bucket.status}"><div><span>${escapeHtml(bucket.muscle)}</span><strong>${formatSets(bucket.sets)} hard sets</strong></div><div><span>Weekly target</span><strong>${bucket.targetLow}-${bucket.targetHigh}</strong></div><div><span>Status</span><strong>${statusText}</strong></div></div>
-            <p class="volume-period-note">Monday-Sunday calendar week beginning ${formatDate(dashboardWeekStart)}. Submitted workouts only; explicitly marked deload work is excluded.</p>
+            ${bucket.status === "unverified" ? '<div class="inline-warning" role="status"><strong>Weekly family dose needs a mapping</strong><p>Choose a Primary muscle for every custom exercise in this week. No unresolved or name-inferred exercise is used as verified recommendation dose.</p></div>' : familyLedger}
+            <p class="volume-period-note">Programming-family ledger ${escapeHtml(bucket.ledgerVersion || "unavailable")} · taxonomy ${escapeHtml(bucket.taxonomyVersion)} · personal mapping ${escapeHtml(bucket.personalMappingVersion)}. Monday-Sunday submitted workouts only; explicitly marked deload work is excluded.</p>
             <div class="volume-session-groups">${bucket.sessionGroups.map((session) => `
               <section class="volume-session-group">
                 <button class="volume-session-heading" type="button" data-action="open-volume-session" data-session-id="${session.id}"><span><strong>${escapeHtml(session.title)}</strong><small>${formatDate(session.date)}</small></span><span>${formatSets(session.sets)} sets &rsaquo;</span></button>
@@ -596,6 +601,10 @@
               <span>${escapeHtml(advice.action)}</span>
               <span>${escapeHtml(advice.evidence[0])}</span>
             </div>
+            <details class="compact-disclosure recommendation-explanation">
+              <summary>Why This Recommendation</summary>
+              <div class="disclosure-body"><p>${escapeHtml(advice.reason || advice.action)}</p>${advice.evidence?.length ? `<ul>${advice.evidence.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}</div>
+            </details>
             <div class="recovery-inputs">
               <label>Sleep hours<input type="number" min="0" max="14" step="0.25" value="${escapeHtml(recovery.sleepHours)}" data-action="recovery-sleep-hours" /></label>
               <label>Sleep quality<select data-action="recovery-sleep-quality"><option value="">-</option>${[1,2,3,4,5].map((value) => '<option value="' + value + '" ' + (String(recovery.sleepQuality) === String(value) ? "selected" : "") + '>' + value + '/5</option>').join("")}</select></label>
@@ -628,11 +637,14 @@
                 const locked = Boolean(running && !isActiveTemplate);
                 const advice = running ? null : cachedTemplateAdvice(template, recoveryAdvice, { recovery: sessionRecovery(readinessContext) });
                 return `
+                  <div class="quick-template-option">
                   <button class="quick-template-card ${isActiveTemplate ? "active-template" : locked ? "locked-template" : ""}" type="button" data-action="${isActiveTemplate ? "return-active-workout" : "start-template"}" data-template-id="${template.id}" ${locked ? 'disabled title="Finish or cancel your active workout first"' : ''}>
                     <strong>${escapeHtml(template.name)}</strong>
                     <small>${template.exercises.length} lifts · ${advice?.totalSets ?? templateExerciseCount(template)} prescribed sets</small>
                     <span>${isActiveTemplate ? "Resume workout" : locked ? "Start unavailable" : escapeHtml(advice.label)}</span>
                   </button>
+                  ${advice ? `<details class="compact-disclosure recommendation-explanation"><summary>Why This Recommendation</summary><div class="disclosure-body"><p>${escapeHtml(advice.reason || advice.action || advice.label)}</p>${advice.evidence?.length ? `<ul>${advice.evidence.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}</div></details>` : ""}
+                  </div>
                 `;
               }).join("")}
             </div>
@@ -1220,7 +1232,7 @@
           : "";
         const firstWorkSet = exerciseSets.find((set) => isWorkingSet(set, "score")) || exerciseSets[0];
         const restSeconds = Number(exercise.restSeconds || data.settings.defaultRestSeconds || 90);
-        const previousSets = exerciseSets.some((set) => isWorkingSet(set, "progression")) ? measurePerformance("lift:previousPerformance", () => getMostRecentWorkoutSets(exercise.name, { excludeSessionId: exercise.sessionId }), { exerciseId: exercise.id }) : [];
+        const previousSets = exerciseSets.some((set) => isWorkingSet(set, "progression")) ? measurePerformance("lift:previousPerformance", () => getMostRecentWorkoutSets(exercise.name, { exercise, customExerciseId: exercise.customExerciseId, excludeSessionId: exercise.sessionId }), { exerciseId: exercise.id }) : [];
         const warmupIds = exerciseSets.filter((set) => setTypeSemantics(set).isWarmup).map((set) => set.id);
         const renderContext = { restSeconds, previousSets, warmupIds, substituteValidation };
         const setHtml = measurePerformance("lift:setRows", () => exerciseSets.map((set) => renderSet(set, exercise, renderContext)).join(""), { exerciseId: exercise.id, count: exerciseSets.length });
@@ -1240,6 +1252,7 @@
               <label class="resistance-type-control"><span>Resistance</span><select data-action="exercise-resistance-type" data-exercise-id="${exercise.id}" aria-label="Resistance type for ${escapeHtml(exercise.name)}">${resistanceTypeOptions(resistanceTypeFor(exercise))}</select></label>
             </div>
             ${renderPrescriptionDetails(exercise)}
+            ${exercise.customExerciseId ? '<details class="compact-disclosure custom-provenance"><summary>Why This Recommendation</summary><div class="disclosure-body"><p>' + escapeHtml(userDefinedRecommendationDisclosure(customExerciseById(exercise.customExerciseId))) + '</p></div></details>' : ''}
             ${substituteRecoveryHtml}
             ${setHtml}
             <div class="row wrap">
@@ -1487,8 +1500,8 @@
         return `
           <article class="workout-advice">
             <h2>${escapeHtml(advice.label)}</h2>
-            <p class="advice-detail">${escapeHtml(advice.detail)}</p>
-            ${advice.items.length ? '<ul class="advice-list">' + advice.items.map((item) => '<li><strong>' + escapeHtml(item.name) + '</strong><span>' + escapeHtml(item.text) + '</span></li>').join("") + '</ul>' : ""}
+            <details class="compact-disclosure"><summary>Why This Recommendation <span>${advice.items.length}</span></summary><div class="disclosure-body"><p class="advice-detail">${escapeHtml(advice.detail)}</p>
+            ${advice.items.length ? '<ul class="advice-list">' + advice.items.map((item) => '<li><strong>' + escapeHtml(item.name) + '</strong><span>' + escapeHtml(item.text) + '</span></li>').join("") + '</ul>' : ""}</div></details>
           </article>
         `;
       }
@@ -1640,7 +1653,33 @@
 
       function guidedCandidatePool(muscleGroupId) {
         if (!prescriptionEngine || !muscleGroupId) return [];
-        try { return prescriptionEngine.rankExercisePool(muscleGroupId, { maxCandidates: 20, availableEquipment: mesocycleEquipmentSelection(), mesocycleType: guidedDraft()?.type }).candidates || []; }
+        try {
+          const canonical = prescriptionEngine.rankExercisePool(muscleGroupId, { maxCandidates: 20, availableEquipment: mesocycleEquipmentSelection(), mesocycleType: guidedDraft()?.type }).candidates || [];
+          const targetFamily = programmingFamilyApi?.programmingFamilyId(muscleGroupId);
+          const available = mesocycleEquipmentSelection();
+          const custom = activeCustomExercises().filter((record) => programmingFamilyApi?.programmingFamilyId(record.primaryMuscle) === targetFamily)
+            .filter((record) => available.includes("all") || !record.equipment.length || record.equipment.every((item) => available.includes(item)))
+            .map((record) => ({
+              exerciseId: record.id,
+              researchExerciseId: null,
+              customExerciseId: record.id,
+              exerciseName: record.name,
+              userDefined: true,
+              intendedRole: "user_selected_hypertrophy_lift",
+              primaryMuscles: [muscleGroupId],
+              secondaryMuscles: record.secondaryMuscle ? [programmingFamilyApi.programmingFamilyId(record.secondaryMuscle)] : [],
+              muscleRelationships: userExerciseRelationshipRecords(record),
+              equipmentRequirements: record.equipment.length ? [record.equipment] : [],
+              recommendedSetRange: { min: 2, target: 3, max: 4 },
+              recommendedRepRange: { min: 8, target: 10, max: 12 },
+              recommendedRpe: { min: 7, max: 8 },
+              recommendedSetStructure: "straight_sets",
+              personalDataConfidence: "user_defined_limited",
+              reasonForMesocycle: userDefinedRecommendationDisclosure(record),
+              scores: { targetMuscleEffectiveness: 0, confidence: "user_defined_limited", fatigueCost: 0, recoveryEfficiency: 0 }
+            }));
+          return [...custom, ...canonical];
+        }
         catch { return []; }
       }
 
@@ -1651,14 +1690,14 @@
         const recommendation = candidate.recommendedSetRange ? null : unifiedPrescriptionSnapshot({ name: candidate.exerciseName }, { exerciseId: candidate.exerciseId, muscleGroupId, mesocycle: draft, fresh: true });
         const prescription = recommendation?.basePrescription;
         const assignment = {
-          exerciseId: candidate.exerciseId, researchExerciseId: candidate.researchExerciseId, name: candidate.exerciseName, muscleGroupId,
+          exerciseId: candidate.exerciseId, researchExerciseId: candidate.researchExerciseId, customExerciseId: candidate.customExerciseId || "", name: candidate.exerciseName, muscleGroupId,
           canonicalExerciseId: candidate.researchExerciseId || candidate.exerciseId, targetMuscleEffectiveness: Number(candidate.scores?.targetMuscleEffectiveness ?? candidate.scores?.muscleSpecificity ?? 0), confidence: candidate.personalDataConfidence || candidate.scores?.confidence || "research_default",
           primaryMuscles: candidate.primaryMuscles || [muscleGroupId], secondaryMuscles: candidate.secondaryMuscles || [], muscleRelationships: candidate.muscleRelationships || [],
           role: candidate.intendedRole || "secondary_hypertrophy_lift", movementPattern: candidate.movementPattern || candidate.jointActions?.join(" + ") || "",
           jointActions: candidate.jointActions || [], systemicFatigue: Number(candidate.scores?.systemicFatigue || candidate.scores?.fatigueCost || 0), localFatigue: Number(candidate.scores?.localFatigue || candidate.scores?.fatigueCost || 0), spinalLoad: Number(candidate.scores?.spinalLoad || 0), gripDemand: Number(candidate.scores?.gripDemand || 0), jointStress: Number(candidate.scores?.jointStress || 0), stabilityDemand: candidate.diversitySignature?.stability || "", stimulusToFatigue: Number(candidate.scores?.recoveryEfficiency || 0),
           equipmentRequirements: candidate.equipmentRequirements || [], workingSets: Number(candidate.recommendedSetRange?.target || prescription?.workingSets?.target || 3),
           repRange: candidate.recommendedRepRange || prescription?.repRange || { min: 8, target: 10, max: 12 }, targetRpe: candidate.recommendedRpe || prescription?.targetRpe || { min: 7, max: 8 }, targetRir: candidate.recommendedRir || prescription?.targetRir,
-          setStructure: candidate.recommendedSetStructure || prescription?.setStructure || "straight_sets", restSeconds: Number(prescription?.restSeconds?.target || 120),
+          setStructure: candidate.recommendedSetStructure || prescription?.setStructure || "straight_sets", restSeconds: Number(prescription?.restSeconds?.target || 120), recommendationProvenance: candidate.userDefined ? "user_defined_limited_confidence" : "canonical_or_personal_evidence",
           progressionRule: candidate.progressionInstruction || prescription?.progressionRule || "Use double progression within the recommended rep range.", recommendationSnapshot: recommendation
         };
         guidedPendingAssignment = assignment;
@@ -1705,7 +1744,7 @@
       function guidedTemplatesForMesocycle(mesocycle) {
         return (mesocycle.guidedDays || []).filter((day) => day.assignments.length).map((day) => ({
           id: `guided-template-${mesocycle.id}-${day.id}`, planSessionId: day.id, name: `${mesocycle.name} · ${day.name}`, baseSessionIntent: "Mesocycle training day", notes: `Linked to guided mesocycle ${mesocycle.id}, revision ${mesocycle.revision}. Readiness may adjust today's prescription without changing the planned structure.`, createdAt: isoNow(), updatedAt: isoNow(), mesocycleId: mesocycle.id, mesocycleRevision: mesocycle.revision, linkedToMesocycle: true,
-          exercises: day.assignments.map((assignment) => ({ id: id(), name: assignment.name, primaryMuscle: appMuscleFromPrescriptionGroup(assignment.muscleGroupId), secondaryMuscle: "", resistanceType: inferResistanceType(assignment.name, {}), isBodyweight: isBodyweightExerciseName(assignment.name), sets: assignment.workingSets, reps: Number(assignment.repRange?.target || assignment.repRange?.min || 10), repMin: Number(assignment.repRange?.min || 8), repMax: Number(assignment.repRange?.max || 12), targetRpe: Number(assignment.targetRpe?.max || 8), increment: progressionProfileForExercise(assignment.name).increment, restSeconds: Number(assignment.restSeconds || 120), role: assignment.role, setStructure: assignment.setStructure, setTypes: [], warmups: [], recommendationSnapshot: assignment.recommendationSnapshot || null, mesocycleAssignmentId: assignment.id }))
+          exercises: day.assignments.map((assignment) => { const custom = customExerciseById(assignment.customExerciseId); return ({ id: id(), customExerciseId: custom?.id || "", name: assignment.name, primaryMuscle: custom?.primaryMuscle || appMuscleFromPrescriptionGroup(assignment.muscleGroupId), secondaryMuscle: custom?.secondaryMuscle || "", equipment: custom?.equipment || [], resistanceType: custom?.resistanceType || inferResistanceType(assignment.name, {}), isBodyweight: isBodyweightResistance(custom?.resistanceType || inferResistanceType(assignment.name, {})), sets: assignment.workingSets, reps: Number(assignment.repRange?.target || assignment.repRange?.min || 10), repMin: Number(assignment.repRange?.min || 8), repMax: Number(assignment.repRange?.max || 12), targetRpe: Number(assignment.targetRpe?.max || 8), increment: progressionProfileForExercise(assignment.name).increment, restSeconds: Number(assignment.restSeconds || 120), role: assignment.role, setStructure: assignment.setStructure, setTypes: [], warmups: [], recommendationSnapshot: assignment.recommendationSnapshot || null, recommendationProvenance: assignment.recommendationProvenance || "canonical_or_personal_evidence", mesocycleAssignmentId: assignment.id }); })
         }));
       }
 
@@ -2032,7 +2071,7 @@
         return '<section class="guided-builder">' + headerHtml + '<div data-guided-exercise-picker tabindex="-1">' + renderGuidedMusclePrioritySummary(draft, true) + '<div class="section-heading"><div><div class="section-kicker">Exercise Selection</div><h2>Add Exercise to ' + escapeHtml(day?.name || 'Training Day') + '</h2><p>Choose a muscle, then review the target-specific prescription before adding it.</p></div></div><label>Search<input type="search" data-action="guided-exercise-search" value="' + escapeHtml(guidedExerciseSearch) + '"></label><label>Target Muscle<select data-action="guided-exercise-muscle">' + statuses.map((item) => '<option value="' + item.muscleGroupId + '" ' + (item.muscleGroupId === guidedExerciseMuscleFilter ? 'selected' : '') + '>' + escapeHtml(presentationLabel(item.muscleGroupId)) + ' · ' + item.setsRemaining + ' sets remaining</option>').join('') + '</select></label></div>' + pendingCard + '<div class="exercise-browser-results">' + pool.map((candidate) => {
           const validation = guidedMesocycleApi.canAssignExercise(draft, guidedExerciseBrowserDayId, candidate);
           const score = Math.round(candidate.scores?.targetMuscleEffectiveness ?? candidate.scores?.muscleSpecificity ?? 0);
-          return '<article class="exercise-browser-card"><div class="section-kicker">' + escapeHtml(presentationLabel(candidate.intendedRole)) + '</div><h3>' + escapeHtml(candidate.exerciseName) + '</h3><strong>' + escapeHtml(presentationLabel(guidedExerciseMuscleFilter)) + ' Effectiveness: ' + score + ' / 100</strong><span>Confidence: ' + escapeHtml(presentationLabel(candidate.personalDataConfidence || candidate.scores?.confidence || 'research_default')) + '</span><span>' + (candidate.recommendedSetRange?.target || 3) + ' sets · ' + (candidate.recommendedRepRange?.min || 8) + '–' + (candidate.recommendedRepRange?.max || 12) + ' reps</span><details><summary>Why for ' + escapeHtml(presentationLabel(guidedExerciseMuscleFilter)) + '?</summary><p>' + escapeHtml(candidate.reasonForMesocycle || 'Canonical target relationship, objective fit, evidence, fatigue, and available equipment inform this estimate.') + '</p></details><button type="button" class="primary-action" data-action="select-guided-exercise" data-day-id="' + guidedExerciseBrowserDayId + '" data-exercise-id="' + escapeHtml(candidate.exerciseId) + '" data-muscle-group-id="' + guidedExerciseMuscleFilter + '" ' + (!validation.allowed ? 'disabled' : '') + '>' + (validation.allowed ? 'Configure Exercise' : 'Already Added to ' + escapeHtml(day?.name || 'This Day')) + '</button></article>';
+          return '<article class="exercise-browser-card"><div class="section-kicker">' + escapeHtml(presentationLabel(candidate.intendedRole)) + '</div><h3>' + escapeHtml(candidate.exerciseName) + '</h3>' + (candidate.userDefined ? '<strong>User-defined muscle mapping</strong>' : '<strong>' + escapeHtml(presentationLabel(guidedExerciseMuscleFilter)) + ' Effectiveness: ' + score + ' / 100</strong>') + '<span>Confidence: ' + escapeHtml(presentationLabel(candidate.personalDataConfidence || candidate.scores?.confidence || 'research_default')) + '</span><span>' + (candidate.recommendedSetRange?.target || 3) + ' sets · ' + (candidate.recommendedRepRange?.min || 8) + '–' + (candidate.recommendedRepRange?.max || 12) + ' reps</span><details><summary>Why This Recommendation</summary><p>' + escapeHtml(candidate.reasonForMesocycle || 'Canonical target relationship, objective fit, evidence, fatigue, and available equipment inform this estimate.') + '</p></details><button type="button" class="primary-action" data-action="select-guided-exercise" data-day-id="' + guidedExerciseBrowserDayId + '" data-exercise-id="' + escapeHtml(candidate.exerciseId) + '" data-muscle-group-id="' + guidedExerciseMuscleFilter + '" ' + (!validation.allowed ? 'disabled' : '') + '>' + (validation.allowed ? 'Configure Exercise' : 'Already Added to ' + escapeHtml(day?.name || 'This Day')) + '</button></article>';
         }).join('') + '</div><div class="sr-only" aria-live="polite">' + (pending ? 'Configuring ' + escapeHtml(pending.name) : guidedReturnFocusToPicker ? 'Exercise added. Choose the next muscle or exercise.' : '') + '</div></section>';
       }
 

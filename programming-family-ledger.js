@@ -7,6 +7,7 @@
 
   const PROGRAMMING_FAMILY_VERSION = "programming-family/1.0.0";
   const HISTORICAL_LEDGER_VERSION = "historical-family-volume/1.0.0";
+  const PERSONAL_MAPPING_VERSION = "personal-muscle-mapping/1.0.0";
   const CANONICAL_TO_PROGRAMMING_FAMILY = Object.freeze({
     mg_chest_sternal: "chest", mg_chest_clavicular: "chest", mg_upper_back: "upper_back", mg_lats: "lats", mg_traps_upper: "traps",
     mg_front_delts: "front_delts", mg_side_delts: "side_delts", mg_rear_delts: "rear_delts", mg_biceps: "biceps", mg_triceps: "triceps",
@@ -46,7 +47,9 @@
     const defaultFatigue = relationshipType === "direct_load" ? 1 : relationshipType === "meaningful_fractional_load" ? Math.max(0.5, setContribution) : relationshipType === "isometric_stabilizing_load" ? 0.5 : 0;
     const localFatigueWeight = Math.max(0, number(relationship.localFatigueWeight ?? relationship.local_fatigue_weight, defaultFatigue));
     const taxonomyVersion = String(relationship.taxonomyVersion ?? relationship.taxonomy_version ?? "").trim() || null;
-    return { ...relationship, canonicalMuscleGroupId, programmingFamilyId: family, relationshipType, setContribution, localFatigueWeight, taxonomyVersion };
+    const relationshipSource = taxonomyVersion ? "taxonomy" : String(relationship.relationshipSource ?? relationship.relationship_source ?? "").trim() || "unknown";
+    const mappingVersion = String(relationship.mappingVersion ?? relationship.mapping_version ?? "").trim() || null;
+    return { ...relationship, canonicalMuscleGroupId, programmingFamilyId: family, relationshipType, setContribution, localFatigueWeight, taxonomyVersion, relationshipSource, mappingVersion };
   }
 
   function coalesceRelationshipsByProgrammingFamily(relationships) {
@@ -74,21 +77,25 @@
       localFatigueWeight: family.localFatigueWeight,
       isometricFatigueWeight: family.isometricFatigueWeight,
       taxonomyVersion: family.selected?.taxonomyVersion || null,
+      relationshipSource: family.selected?.relationshipSource || "unknown",
+      mappingVersion: family.selected?.mappingVersion || null,
       relationshipCount: family.relationships.length
     }));
   }
 
-  function projectHistoricalVolume(records = [], relationshipResolver = () => []) {
+  function projectHistoricalVolume(records = [], relationshipResolver = (record) => record?.muscleRelationships || []) {
     const sourceRecords = clone(records || []);
     const taxonomyVersions = new Set();
+    const mappingVersions = new Set();
     const totals = new Map();
-    let missingTaxonomyProvenance = sourceRecords.length === 0;
+    let missingRelationshipProvenance = sourceRecords.length === 0;
     sourceRecords.forEach((record, index) => {
       const relationships = (relationshipResolver(record, index) || []).map(normalizeRelationship).filter(Boolean);
-      if (!relationships.length) missingTaxonomyProvenance = true;
+      if (!relationships.length) missingRelationshipProvenance = true;
       relationships.forEach((relationship) => {
-        if (relationship.taxonomyVersion) taxonomyVersions.add(relationship.taxonomyVersion);
-        else missingTaxonomyProvenance = true;
+        if (relationship.relationshipSource === "taxonomy" && relationship.taxonomyVersion) taxonomyVersions.add(relationship.taxonomyVersion);
+        else if (relationship.relationshipSource === "personal_mapping" && relationship.mappingVersion === PERSONAL_MAPPING_VERSION) mappingVersions.add(relationship.mappingVersion);
+        else missingRelationshipProvenance = true;
       });
       const workingSets = Math.max(0, number(record.workingSets, number(record.sets, 0)));
       coalesceRelationshipsByProgrammingFamily(relationships).forEach((relationship) => {
@@ -100,12 +107,12 @@
         current.isometricExposure += workingSets * relationship.isometricFatigueWeight;
         current.localFatigueExposure += workingSets * relationship.localFatigueWeight;
         relationship.canonicalMuscleGroupIds.forEach((id) => current.canonicalMuscleGroupIds.add(id));
-        current.contributions.push({ recordIndex: index, workingSets, relationshipType: relationship.relationshipType, setContribution: relationship.setContribution, effectiveSets, localFatigueExposure: workingSets * relationship.localFatigueWeight, canonicalMuscleGroupIds: relationship.canonicalMuscleGroupIds });
+        current.contributions.push({ recordIndex: index, workingSets, relationshipType: relationship.relationshipType, relationshipSource: relationship.relationshipSource, taxonomyVersion: relationship.taxonomyVersion, mappingVersion: relationship.mappingVersion, setContribution: relationship.setContribution, effectiveSets, localFatigueExposure: workingSets * relationship.localFatigueWeight, canonicalMuscleGroupIds: relationship.canonicalMuscleGroupIds });
         totals.set(relationship.programmingFamilyId, current);
       });
     });
-    const taxonomyVersion = taxonomyVersions.size === 0 ? "unknown" : missingTaxonomyProvenance || taxonomyVersions.size > 1 ? "mixed" : [...taxonomyVersions][0];
-    const projectionStatus = taxonomyVersions.size === 1 && !missingTaxonomyProvenance ? "ready" : "blocked_unverifiable_taxonomy";
+    const taxonomyVersion = taxonomyVersions.size === 0 ? (mappingVersions.size ? "not_applicable" : "unknown") : missingRelationshipProvenance || taxonomyVersions.size > 1 ? "mixed" : [...taxonomyVersions][0];
+    const projectionStatus = sourceRecords.length === 0 ? "empty" : !missingRelationshipProvenance && taxonomyVersions.size <= 1 && mappingVersions.size <= 1 ? "ready" : "blocked_unverifiable_provenance";
     const familyTotals = projectionStatus === "ready" ? [...totals.values()].sort((a, b) => a.programmingFamilyId.localeCompare(b.programmingFamilyId)).map((item) => ({
       ...item,
       canonicalMuscleGroupIds: [...item.canonicalMuscleGroupIds].sort(),
@@ -116,6 +123,7 @@
     return {
       ledgerVersion: HISTORICAL_LEDGER_VERSION,
       programmingFamilyVersion: PROGRAMMING_FAMILY_VERSION,
+      personalMappingVersion: mappingVersions.size === 1 ? [...mappingVersions][0] : mappingVersions.size > 1 ? "mixed" : "not_used",
       taxonomyVersion,
       projectionStatus,
       sourceRecords,
@@ -124,5 +132,5 @@
     };
   }
 
-  return Object.freeze({ PROGRAMMING_FAMILY_VERSION, HISTORICAL_LEDGER_VERSION, CANONICAL_TO_PROGRAMMING_FAMILY, programmingFamilyId, normalizeRelationship, coalesceRelationshipsByProgrammingFamily, projectHistoricalVolume });
+  return Object.freeze({ PROGRAMMING_FAMILY_VERSION, HISTORICAL_LEDGER_VERSION, PERSONAL_MAPPING_VERSION, CANONICAL_TO_PROGRAMMING_FAMILY, programmingFamilyId, normalizeRelationship, coalesceRelationshipsByProgrammingFamily, projectHistoricalVolume });
 });
