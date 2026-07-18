@@ -78,6 +78,20 @@ assert(backoffPrescription.targetLoad < topPrescription.targetLoad, "A true back
 assert.strictEqual(backoffPrescription.targetLoad % 5, 0, "Back-off load must respect equipment increments");
 assert.strictEqual(backoffPrescription.previousComparableSet.id, "backoff");
 assert(backoffPrescription.reason.includes("productive volume"));
+assert.strictEqual(backoffPrescription.progressionReady, false, "A back-off below its rep gate must not authorize the next load");
+assert.strictEqual(backoffPrescription.nextLoad, backoffPrescription.targetLoad, "An unqualified back-off must hold its current load");
+const qualifiedBackoff = runtime.setPrescriptionForRole({
+  templateExercise: { name: "Leg Extension", increment: 5 },
+  target: baseTarget,
+  setType: { ...extensionBackoff, type: "backoff", setCount: 2 },
+  setTypeIndex: 0,
+  previousSets: [
+    { id: "backoff-1", setType: "backoff", setTypeIndex: 0, reps: 20, weight: 90, rpe: 8 },
+    { id: "backoff-2", setType: "backoff", setTypeIndex: 1, reps: 20, weight: 90, rpe: 8 }
+  ]
+});
+assert.strictEqual(qualifiedBackoff.progressionReady, true, "Every programmed back-off must qualify before load increases");
+assert.strictEqual(qualifiedBackoff.nextLoad, qualifiedBackoff.candidateNextLoad);
 
 const duplicate = runtime.validateGeneratedSetPrescriptions([
   { setType: "top", targetLoad: 100, repMin: 10, repMax: 15, rpeMin: 8, rpeMax: 9 },

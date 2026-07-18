@@ -5619,8 +5619,11 @@
         const targetLoadText = formatResistance({ ...set, weight: targetLoad, addedLoad: resistanceType === "bodyweight_plus_load" ? targetLoad : set.addedLoad, assistanceLoad: resistanceType === "assisted_bodyweight" ? targetLoad : set.assistanceLoad, resistanceType });
         const targetRepText = targetRangeText(set.targetRepMin, set.targetRepMax || set.targetReps, " reps");
         const targetRpeText = targetRangeText(set.targetRpeMin, set.targetRpeMax || set.targetRpe, " RPE");
+        const progressionReady = set.setPrescription?.progressionReady !== false;
         const nextIncrementText = set.setPrescription?.nextLoad != null
-          ? formatResistance({ ...set, weight: set.setPrescription.nextLoad, addedLoad: resistanceType === "bodyweight_plus_load" ? set.setPrescription.nextLoad : set.addedLoad, assistanceLoad: resistanceType === "assisted_bodyweight" ? set.setPrescription.nextLoad : set.assistanceLoad, resistanceType })
+          ? progressionReady
+            ? formatResistance({ ...set, weight: set.setPrescription.nextLoad, addedLoad: resistanceType === "bodyweight_plus_load" ? set.setPrescription.nextLoad : set.addedLoad, assistanceLoad: resistanceType === "assisted_bodyweight" ? set.setPrescription.nextLoad : set.assistanceLoad, resistanceType })
+            : "Hold current " + targetLoadText
           : "Not configured";
         const progressionRule = set.setPrescription?.progressionRule || "Progress after reaching the top of the programmed range within the RPE target.";
         const performanceField = resistanceType === "duration"
@@ -6759,9 +6762,21 @@
         const targetReps = Math.max(repMin, Math.min(repMax, rawTargetReps));
         const rpeMin = Number(setType.rpeMin || Math.max(1, Number(setType.rpeMax || target.rpe || 0) - 1));
         const rpeMax = Number(setType.rpeMax || target.rpe || rpeMin);
-        const nextLoad = resistanceType === "assisted_bodyweight"
+        const candidateNextLoad = resistanceType === "assisted_bodyweight"
           ? roundEquipmentLoad(Math.max(0, targetLoad - increment), increment)
           : roundEquipmentLoad(targetLoad + increment, increment);
+        const expectedRoleCount = Math.max(1, Number(setType.setCount || 1));
+        const qualifyingComparableSets = comparableRoleSets.length >= expectedRoleCount && comparableRoleSets.every((set) => {
+          const reps = Number(set.reps || 0);
+          const rpe = Number(set.rpe || 0);
+          return reps >= repMax && rpe > 0 && rpe <= rpeMax;
+        });
+        const progressionReady = role === "backoff"
+          ? qualifyingComparableSets
+          : role === "top"
+            ? previousComparableSet ? Number(previousComparableSet.reps || 0) >= repMax && Number(previousComparableSet.rpe || 0) > 0 && Number(previousComparableSet.rpe || 0) <= rpeMax : false
+            : qualifyingComparableSets;
+        const nextLoad = progressionReady ? candidateNextLoad : targetLoad;
         const progressionRule = setType.progressionRule || ("Progress after reaching " + repMax + " reps within RPE " + targetRangeText(rpeMin, rpeMax) + " on " + (role === "backoff" ? "the comparable back-off work" : role === "top" ? "the top set" : "the programmed sets") + ".");
         const roleName = setTypeLabels[role] || "Working set";
         const reason = role === "backoff"
@@ -6771,7 +6786,7 @@
             : role === "top"
               ? "This is the primary high-demand set. Its load, rep range, and RPE target are resolved from the active program and prior top-set performance."
               : "This is a straight working set. The programmed range allows normal rep decline across later sets without treating it as failure.";
-        return { setType: role, sequenceIndex, setTypeIndex, targetLoad, targetReps, repMin, repMax, exactReps: repRange.exactReps, rangeSource: repRange.rangeSource, rpeMin, rpeMax, restSeconds: Number(setType.restSeconds || target.restSeconds || 0), increment, nextLoad, loadRule: setType.loadRule || "", progressionRule, reductionPercent: reduction, previousComparableSet, progressionDelta: previousComparableSet ? { load: Number((targetLoad - resistanceLoad(previousComparableSet, resistanceType)).toFixed(4)), reps: targetReps - previousReps } : null, confidence: target.confidence || "low", reason: roleName + ": " + reason };
+        return { setType: role, sequenceIndex, setTypeIndex, targetLoad, targetReps, repMin, repMax, exactReps: repRange.exactReps, rangeSource: repRange.rangeSource, rpeMin, rpeMax, restSeconds: Number(setType.restSeconds || target.restSeconds || 0), increment, nextLoad, candidateNextLoad, progressionReady, loadRule: setType.loadRule || "", progressionRule, reductionPercent: reduction, previousComparableSet, progressionDelta: previousComparableSet ? { load: Number((targetLoad - resistanceLoad(previousComparableSet, resistanceType)).toFixed(4)), reps: targetReps - previousReps } : null, confidence: progressionReady ? target.confidence || "low" : "conditional", evidenceConfidence: target.confidence || "low", reason: roleName + ": " + reason };
       }
 
       function validateGeneratedSetPrescriptions(prescriptions, resistanceType) {
