@@ -28,6 +28,7 @@
 - After installing declared development dependencies, `npm test` passed 41 of 43 public harnesses. `test-research-workbook-determinism.js` passed when rerun with Git metadata access. `test-research-archive-integrity.js` remained environment-blocked because the unusually deep isolated-worktree path exceeds Windows checkout filename limits; it did not report a research-data or feature assertion mismatch.
 - `npm run sync:web` and `npm run verify:pwa` passed for all 32 public assets.
 - PR CI exposed an operating-system-specific verifier defect: Linux payload paths used `/`, while the public research-export allowlist matched only Windows `\\` separators. The verifier now normalizes relative paths before applying the narrow `research_database/exports/json/*` allowlist, and the native packaging privacy contract asserts that cross-platform boundary.
+- The first Chromium PR run also exposed stale UI-test contracts: six history regressions still targeted the former `Edit History` label, the template performance check used a now-ambiguous nested `summary`, guided muscle-scope setup used rerender-sensitive positional clicks, and seven visual baselines predated the intentional UI additions. Those contracts and approved mobile/desktop baselines were updated; the complete `npm run audit:ui` rerun passed 206 tests with 18 intentional skips in 12.3 minutes.
 
 ## Documentation review
 

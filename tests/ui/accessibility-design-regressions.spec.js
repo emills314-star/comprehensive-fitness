@@ -884,7 +884,7 @@ test("browser Back guards dirty history edits and reload cannot persist the temp
   await expect(historyEntry, "Dashboard history must provide the deterministic entry used to create a browser history record").toBeVisible();
   await historyEntry.click();
   await expect(page).toHaveURL(/#lift$/);
-  await page.getByRole("button", { name: "Edit History", exact: true }).click();
+  await page.getByRole("button", { name: "Edit Logged Workout", exact: true }).click();
   await page.locator("summary").filter({ hasText: "Workout details" }).click();
 
   const temporaryTitle = "Temporary title that must never persist";
@@ -929,7 +929,7 @@ test("external service-worker activation defers reload until history editing end
 
   await openPrimaryTab(page, "dashboard");
   await page.locator(`[data-action="open-session"][data-session-id="${originalSession.id}"]`).first().click();
-  await page.getByRole("button", { name: "Edit History", exact: true }).click();
+  await page.getByRole("button", { name: "Edit Logged Workout", exact: true }).click();
   await page.locator("summary").filter({ hasText: "Workout details" }).click();
   const temporaryTitle = "Temporary history edit protected from controller activation";
   await page.locator('[data-action="session-title"]').fill(temporaryTitle);
@@ -984,7 +984,7 @@ test("entering history edit flushes an unrelated debounced template change befor
   await page.locator(`[data-action="template-name"][data-template-id="${templateId}"]`).fill(persistedTemplateName);
   await openPrimaryTab(page, "dashboard");
   await page.locator(`[data-action="open-session"][data-session-id="${originalSession.id}"]`).first().click();
-  await page.getByRole("button", { name: "Edit History", exact: true }).click();
+  await page.getByRole("button", { name: "Edit Logged Workout", exact: true }).click();
   await expect(page.locator(".history-edit-bar"), "Edit mode must begin only after its stable pre-edit snapshot is flushed").toBeVisible();
   await page.locator("summary").filter({ hasText: "Workout details" }).click();
   await page.locator('[data-action="session-title"]').fill("Temporary history value that must remain isolated");
@@ -1017,7 +1017,7 @@ test("newer local fallback outranks stale readable IndexedDB after a failed pre-
     globalThis.__CF_NATIVE_IDB_OPEN_FOR_FALLBACK__ = IDBFactory.prototype.open;
     IDBFactory.prototype.open = function blockedStableSnapshotPut() { throw new Error("Synthetic stable snapshot IndexedDB failure"); };
   });
-  await page.getByRole("button", { name: "Edit History", exact: true }).click();
+  await page.getByRole("button", { name: "Edit Logged Workout", exact: true }).click();
   await expect(page.locator(".history-edit-bar")).toBeVisible();
   await page.evaluate(() => { IDBFactory.prototype.open = globalThis.__CF_NATIVE_IDB_OPEN_FOR_FALLBACK__; });
 
@@ -1051,7 +1051,7 @@ test("concurrent navigation and mutation abort delayed history-edit startup with
   const changedTemplateName = "Concurrent mutation durably reconciled";
   await installIndexedWriteBlocker(page);
 
-  await page.getByRole("button", { name: "Edit History", exact: true }).click();
+  await page.getByRole("button", { name: "Edit Logged Workout", exact: true }).click();
   await expect.poll(() => page.evaluate(() => Boolean(globalThis.__CF_HISTORY_WRITE_QUEUED__)), {
     message: "The edit-start stable snapshot must be waiting behind the deterministic IndexedDB blocker"
   }).toBe(true);
@@ -1083,7 +1083,7 @@ test("failed current-state reconciliation reports non-durability and keeps in-me
   const templateId = "public-synthetic-template-upper";
   const changedTemplateName = "Concurrent mutation currently in memory only";
   await installIndexedWriteBlocker(page);
-  await page.getByRole("button", { name: "Edit History", exact: true }).click();
+  await page.getByRole("button", { name: "Edit Logged Workout", exact: true }).click();
   await expect.poll(() => page.evaluate(() => Boolean(globalThis.__CF_HISTORY_WRITE_QUEUED__))).toBe(true);
   await openPrimaryTab(page, "plan");
   await page.locator(`[data-action="template-name"][data-template-id="${templateId}"]`).fill(changedTemplateName);

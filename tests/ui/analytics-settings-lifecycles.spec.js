@@ -205,9 +205,13 @@ test("guided planning honors equipment, muscle scope, partial search, no results
   const scopeInputs = page.locator('[data-action="mesocycle-muscle-scope"]');
   const scopeCount = await scopeInputs.count();
   expect(scopeCount).toBeGreaterThan(1);
-  for (let index = 0; index < scopeCount; index += 1) {
-    const scope = scopeInputs.nth(index);
-    if (await scope.getAttribute("value") !== "chest") await scope.uncheck();
+  const nonChestScopes = await scopeInputs.evaluateAll((inputs) => inputs
+    .map((input) => input.value)
+    .filter((value) => value !== "chest"));
+  for (const value of nonChestScopes) {
+    const scope = page.locator(`[data-action="mesocycle-muscle-scope"][value="${value}"]`);
+    await scope.evaluate((input) => input.click());
+    await expect(scope).not.toBeChecked();
   }
   await expect(page.locator('[data-action="mesocycle-muscle-scope"][value="chest"]')).toBeChecked();
   await page.locator('[data-action="create-guided-draft"]').click();

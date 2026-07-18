@@ -90,9 +90,10 @@ test("Templates initial frame stays progressive under large history", async ({ p
   expect(result.eagerCandidates).toBe(0);
 
   const editor = page.locator(".template-editor").first();
-  await editor.locator("summary").click();
+  const editorToggle = editor.locator('[data-action="toggle-template-editor"]');
+  await editorToggle.click();
   await expect(editor.locator(".disclosure-body")).toHaveCount(1);
-  await editor.locator("summary").click();
+  await editorToggle.click();
   await expect(editor.locator(".disclosure-body")).toHaveCount(0);
 });
 
