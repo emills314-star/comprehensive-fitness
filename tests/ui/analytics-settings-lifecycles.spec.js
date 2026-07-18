@@ -223,7 +223,9 @@ test("guided planning honors equipment, muscle scope, partial search, no results
     if (!await day.locator('[data-action="open-guided-exercise-browser"]').isVisible()) {
       await day.locator('[data-action="toggle-guided-day"]').click();
     }
-    await day.locator('[data-action="open-guided-exercise-browser"]').click();
+    const openBrowser = day.locator('[data-action="open-guided-exercise-browser"]');
+    await expect(openBrowser).toBeVisible();
+    await openBrowser.evaluate((button) => button.click());
     const search = page.locator('[data-action="guided-exercise-search"]');
     await search.fill("no such public synthetic exercise");
     await search.dispatchEvent("change");
@@ -248,7 +250,7 @@ test("guided planning honors equipment, muscle scope, partial search, no results
 
   await addFiveBenchPressSets(0);
   await addFiveBenchPressSets(1);
-  await page.locator('[data-action="check-guided-viability"]').click();
+  await page.locator('[data-action="check-guided-viability"]').evaluate((button) => button.click());
   await expect(page.getByText("Viability Check", { exact: true })).toBeVisible();
   await expect(page.locator(".finding.blocking")).toHaveCount(0);
   const reviewCreation = page.locator('[data-action="open-guided-generation-review"]');

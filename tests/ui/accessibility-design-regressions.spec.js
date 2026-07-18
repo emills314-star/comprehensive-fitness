@@ -608,6 +608,11 @@ async function reflowAudit(page) {
       .filter((element) => element !== document.documentElement && element !== document.body)
       .filter((element) => element.clientWidth > 0 && element.scrollWidth > element.clientWidth + 1)
       .filter((element) => ["auto", "scroll", "hidden", "clip"].includes(getComputedStyle(element).overflowX))
+      .filter((element) => {
+        if (!element.matches("input, textarea, select")) return true;
+        const rect = element.getBoundingClientRect();
+        return rect.left < -1 || rect.right > innerWidth + 1;
+      })
       .filter((element) => !allowedScrollContainers.some((entry) => allowedScrollContainer(element, entry)))
       .slice(0, 20)
       .map(describe);

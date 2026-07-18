@@ -65,3 +65,12 @@ jobs:
       - run: npm run check:privacy
       - run: npx playwright install --with-deps chromium
       - run: npm run audit:ui
+      - name: Upload UI failure evidence
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: public-ci-ui-failure-${{ github.run_number }}
+          path: artifacts/ui-audit/test-results
+          if-no-files-found: error
+          retention-days: 7
+          include-hidden-files: false
