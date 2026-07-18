@@ -134,7 +134,7 @@ Keep this list synchronized with the code so future iterations do not create a s
 | Runtime concern | Canonical implementation |
 | --- | --- |
 | Evidence adapters, weighting, scoring, diversified pools, staleness, volume, progression, deload scope, readiness, mesocycles, snapshots, and overrides | `prescription-engine.js` |
-| App ingestion, IndexedDB persistence, recommendation cards, chart/template/coach/start/live/history adapters, mesocycle UI, and override UI | `index.html` (copied to `www/index.html` by `npm run sync:web`) |
+| App ingestion, IndexedDB persistence, recommendation cards, chart/template/coach/start/live/history adapters, mesocycle UI, and override UI | Ordered `app-foundation.js` through `app.js` runtime segments (copied with `index.html` to `www/` by `npm run sync:web`) |
 | Rest-complete lifecycle, absolute five-second dismissal deadline, one-shot sound/haptic/notification receipts, preview, and background reconciliation | `rest-completion-controller.js` |
 | Exercise, mesocycle, and immutable snapshot contracts | `schemas/exercise-prescription.v2.schema.json`, `schemas/mesocycle-plan.v1.schema.json`, and `schemas/recommendation-snapshot.v1.schema.json` |
 | Private aggregate package builder | `scripts/build-app-personal-evidence.js` |

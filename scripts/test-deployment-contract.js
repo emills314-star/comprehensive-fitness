@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
+const { APPLICATION_RUNTIME_FILES } = require("./read-application-contract-source");
 
 const targetRoot = path.resolve(process.argv[2] || process.env.CONTRACT_TARGET_ROOT || path.join(__dirname, ".."));
 const failures = [];
@@ -85,7 +86,7 @@ check("control: CSP parsing rejects duplicate directives instead of merging or o
 });
 
 function publicSourceText() {
-  const files = ["index.html", "privacy.html", "support.html", "app.js", "app.css", "styles.css"];
+  const files = ["index.html", "privacy.html", "support.html", ...APPLICATION_RUNTIME_FILES, "app.css", "styles.css"];
   const resources = path.join(targetRoot, "resources");
   if (fs.existsSync(resources)) {
     for (const entry of fs.readdirSync(resources, { withFileTypes: true })) {
@@ -143,7 +144,12 @@ check("CSP denies injection and bounds every outbound or navigational surface", 
 check("executable inline scripts are absent or exactly hash-bound by CSP", () => {
   const html = deployText("index.html");
   const inline = [...html.matchAll(/<script\b(?![^>]*\bsrc\s*=)[^>]*>([\s\S]*?)<\/script>/gi)].map((match) => match[1]).filter((body) => body.trim());
-  assert.match(html, /<script src="\.\/app\.js"><\/script>/, "the application runtime must load from the owned external app.js boundary");
+  const externalScripts = [...html.matchAll(/<script\s+src="\.\/([^"]+)"><\/script>/g)].map((match) => match[1]);
+  assert.deepEqual(
+    externalScripts.slice(-APPLICATION_RUNTIME_FILES.length),
+    APPLICATION_RUNTIME_FILES,
+    "the application runtime segments must load once in their owned dependency order"
+  );
   for (const rule of catchAllRules()) {
     const sources = directives(headerMap(rule).get("content-security-policy") || "").get("script-src") || [];
     assert(sources.includes("'self'"), "owned external scripts must be allowed");

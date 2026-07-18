@@ -3,6 +3,13 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 $publicFiles = @(
   "index.html",
+  "app-foundation.js",
+  "app-views.js",
+  "app-analysis.js",
+  "app-workout.js",
+  "app-sync.js",
+  "app-history.js",
+  "app-import.js",
   "app.js",
   "privacy.html",
   "support.html",
@@ -40,7 +47,7 @@ foreach ($relative in $publicFiles) {
 
 $index = Get-Content -LiteralPath (Join-Path $root "index.html") -Raw
 $app = Get-Content -LiteralPath (Join-Path $root "app.js") -Raw
-foreach ($needle in @("manifest.webmanifest", "apple-mobile-web-app-capable", "apple-touch-icon", "apple-touch-startup-image", "prescription-engine.js", "guided-mesocycle.js", "rest-completion-controller.js", "backup-contract.js", "app.js")) {
+foreach ($needle in @("manifest.webmanifest", "apple-mobile-web-app-capable", "apple-touch-icon", "apple-touch-startup-image", "prescription-engine.js", "guided-mesocycle.js", "rest-completion-controller.js", "backup-contract.js", "app-foundation.js", "app-views.js", "app-analysis.js", "app-workout.js", "app-sync.js", "app-history.js", "app-import.js", "app.js")) {
   if ($index -notlike "*$needle*") { throw "index.html is missing required PWA marker: $needle" }
 }
 if ($app -notlike "*serviceWorker*") { throw "app.js is missing the service-worker registration boundary." }

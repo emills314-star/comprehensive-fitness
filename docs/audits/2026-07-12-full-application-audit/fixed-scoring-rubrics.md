@@ -88,3 +88,19 @@ The numerical baseline was fixed after the required read-only baseline waves com
 | 9 | Explainability, transparency, and user control | 3 | Snapshots and disclosures are rich, but some explanations fabricate causes, evidence versus policy is blurred, missing data is not transparent enough, and sync/control consequences are incomplete. |
 | 10 | Robustness, testing, monitoring, and maintainability | 2 | The original suite missed twelve accepted red-phase regressions plus taxonomy and full-program counterfactuals; recommendation outcome monitoring and acceptance/rejection learning are absent. |
 |  | **Total** | **22/50** | Below acceptance; every category requires evidence-backed improvement and independent rescoring. |
+
+### Independent checkpoint — `a942204a1244deb31914ccbeb74dfcd53e104b02`
+
+An independent score-neutral review completed on 2026-07-18 against the exact clean revision above. It reproduced research validation, 1,024 recommendation fuzz cases / 10,240 assertions, and 12 focused mobile/desktop safety-integrity browser cases. The full release wrapper completed the public gate and entered Playwright but timed out during its second project, so the reviewer did not claim a complete fresh release pass. No terminal defect was reproduced in the tested scope.
+
+| Codebase category | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | Total |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Independent score | 3 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | **39/50** |
+
+The material codebase deduction was the 973,839-byte / 12,176-line `app.js` retaining rendering, state, persistence, imports, lifecycle, analytics, and integration ownership. Documentation also contained a stale inline-runtime architecture row.
+
+| Recommendation category | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | Total |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Independent score | 5 | 4 | 4 | 4 | 4 | 3 | 5 | 4 | 4 | 4 | **41/50** |
+
+The material recommendation deduction was the explicitly planned programming-family recommendation/history integration and its incomplete provenance/rollback contract. Other deductions were bounded private/device/external evidence or documented refinement gaps. This checkpoint is evidence for the next remediation; it is not a score for a later revision.

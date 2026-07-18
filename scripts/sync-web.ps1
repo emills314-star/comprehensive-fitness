@@ -33,6 +33,13 @@ foreach ($publicRoot in $nativePublicRoots) {
 
 $publicFiles = @(
   @{ Source = "index.html"; Destination = "index.html" },
+  @{ Source = "app-foundation.js"; Destination = "app-foundation.js" },
+  @{ Source = "app-views.js"; Destination = "app-views.js" },
+  @{ Source = "app-analysis.js"; Destination = "app-analysis.js" },
+  @{ Source = "app-workout.js"; Destination = "app-workout.js" },
+  @{ Source = "app-sync.js"; Destination = "app-sync.js" },
+  @{ Source = "app-history.js"; Destination = "app-history.js" },
+  @{ Source = "app-import.js"; Destination = "app-import.js" },
   @{ Source = "app.js"; Destination = "app.js" },
   @{ Source = "privacy.html"; Destination = "privacy.html" },
   @{ Source = "support.html"; Destination = "support.html" },

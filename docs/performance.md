@@ -39,7 +39,7 @@ These values are deterministic development benchmarks, not network round-trip ti
 
 ## Bundle
 
-At source commit `afe7a6c` on 2026-07-15, the dependency-free single HTML application is **1,111,567 bytes raw**, **229,358 bytes with gzip**, and **174,546 bytes with Brotli**. The compressed sizes were measured from the root `index.html` with the repository's current static-asset content; they are not network transfer traces and can differ with server compression settings. Chart logic is parsed with the application but is not executed on the workout path. A future module split could reduce initial parse work, but the current measured Lift bottleneck was analysis execution, not a chart-library download.
+The 2026-07-15 baseline at source commit `afe7a6c` was a **1,111,567-byte raw single-HTML application** (**229,358 gzip**, **174,546 Brotli**). That historical measurement remains useful for comparison but no longer describes current asset ownership. On 2026-07-18 the shell is 137,875 bytes and the byte-preserved application runtime is distributed across eight ordered external scripts; the largest is 236,903 bytes. This segmentation improves change/cache isolation but does not claim lower aggregate parse cost because the scripts still load eagerly and preserve behavior. Current transfer compression depends on server settings and should be remeasured as network evidence before claiming a bundle-size improvement. Chart logic is parsed with the application but is not executed on the workout path.
 
 ## Remaining watch item
 

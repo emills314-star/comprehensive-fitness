@@ -2,6 +2,8 @@
 
 ## Coverage rule
 
+This register is the read-only baseline inventory captured at `main` @ `5edcd4b`; its status column intentionally records conditions at the freeze point and is not a current implementation ledger. Current verified status is maintained in `docs/ROADMAP.md` and `current-rubric-evidence-ledger.md`.
+
 The collaboration runtime exposes root plus three child threads and retains completed children. The audit therefore runs specialties in successive turns on those children. Each feature below has explicit mapping, test, and independent-review ownership; user-facing features additionally receive visual/accessibility coverage, persistent-data features receive migration/integrity coverage, recommendation-affecting features receive logic/science coverage, and personal/external features receive security/privacy coverage.
 
 ## Actual feature inventory
