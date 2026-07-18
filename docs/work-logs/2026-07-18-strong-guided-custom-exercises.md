@@ -27,6 +27,7 @@
 - A focused rerun with `CF_PUBLIC_CHECKOUT=1` passed and confirmed 20 public muscle pools; line 152 is intentionally the private-fixture assertion, not a product-path failure.
 - After installing declared development dependencies, `npm test` passed 41 of 43 public harnesses. `test-research-workbook-determinism.js` passed when rerun with Git metadata access. `test-research-archive-integrity.js` remained environment-blocked because the unusually deep isolated-worktree path exceeds Windows checkout filename limits; it did not report a research-data or feature assertion mismatch.
 - `npm run sync:web` and `npm run verify:pwa` passed for all 32 public assets.
+- PR CI exposed an operating-system-specific verifier defect: Linux payload paths used `/`, while the public research-export allowlist matched only Windows `\\` separators. The verifier now normalizes relative paths before applying the narrow `research_database/exports/json/*` allowlist, and the native packaging privacy contract asserts that cross-platform boundary.
 
 ## Documentation review
 
