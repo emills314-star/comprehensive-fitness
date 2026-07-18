@@ -166,9 +166,9 @@ async function assertRichLabels(page, surface) {
     await expect(recentTitle).toHaveCount(1);
     await expect(recentTitle).toBeVisible();
     await expect(page.locator(".volume-card.expanded")).toContainText(LONG_EXERCISE_NAMES.chest);
-    const chestFatigueFlag = page.locator('[data-action="open-fatigue-flag"][data-flag-id="muscle-chest-volume"]');
+    const chestFatigueFlag = page.locator('[data-action="open-fatigue-flag"][data-flag-id="family-chest-volume"]');
     await expect(chestFatigueFlag).toHaveCount(1);
-    await expect(chestFatigueFlag).toContainText("Weekly volume exceeded the planned range.");
+    await expect(chestFatigueFlag).toContainText("Chest weekly volume exceeded its family-level range.");
   }
 }
 

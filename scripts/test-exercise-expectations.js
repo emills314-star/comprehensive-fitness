@@ -3,6 +3,8 @@ const fs = require("node:fs");
 const { readApplicationContractSource } = require("./read-application-contract-source");
 
 const html = readApplicationContractSource();
+const identityMatch = html.match(/function analysisExerciseId\(exercise\)\s*\{[\s\S]*?\n\s*\}/);
+assert.ok(identityMatch, "Stable analysis exercise identity helper was not found");
 const match = html.match(/\/\/ EXERCISE_TARGET_ENGINE_START([\s\S]*?)\/\/ EXERCISE_TARGET_ENGINE_END/);
 assert.ok(match, "Exercise target engine markers were not found");
 
@@ -13,6 +15,7 @@ const factory = new Function("data", `
   const sessionTypeForTemplate = (template) => /deload/i.test(template?.name || "") ? "deload" : /light/i.test(template?.name || "") ? "light" : /heavy/i.test(template?.name || "") ? "heavy" : "normal";
   const recommendedRestSeconds = () => 180;
   const canonicalExerciseId = (name) => String(name || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  ${identityMatch[0]}
   const inferResistanceType = (name, exercise = {}) => exercise.resistanceType || (/pull-up/i.test(name) ? "bodyweight_plus_load" : "external");
   const isSessionSubmitted = (session) => session && session.submitted !== false;
   const activeHistorySessions = () => data.sessions.filter(isSessionSubmitted);

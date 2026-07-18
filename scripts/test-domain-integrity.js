@@ -3,6 +3,8 @@ const fs = require("node:fs");
 const { readApplicationContractSource } = require("./read-application-contract-source");
 
 const html = readApplicationContractSource();
+const identityMatch = html.match(/function analysisExerciseId\(exercise\)\s*\{[\s\S]*?\n\s*\}/);
+assert.ok(identityMatch, "Stable analysis exercise identity helper was not found");
 const domainMatch = html.match(/\/\/ DOMAIN_INTEGRITY_ENGINE_START([\s\S]*?)\/\/ DOMAIN_INTEGRITY_ENGINE_END/);
 assert.ok(domainMatch, "Domain integrity engine markers were not found");
 
@@ -81,6 +83,7 @@ const coachFactory = new Function("weeks", "base", `
   const summarizeExerciseByWeek = () => weeks;
   const recommendForExerciseWeek = () => base;
   const canonicalExerciseId = (name) => name.toLowerCase();
+  ${identityMatch[0]}
   const getExerciseSets = (name) => ({ exercises: [{ name, resistanceType: "external" }] });
   const resistanceTypeFor = (exercise) => exercise.resistanceType;
   const progressionProfileForExercise = () => ({ lowerRep: 6, upperRep: 12, increment: 5 });

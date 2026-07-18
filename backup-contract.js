@@ -14,7 +14,7 @@
   const FORBIDDEN_KEYS = new Set(["__proto__", "prototype", "constructor"]);
   const TOP_LEVEL_KEYS = new Set([
     "backupSchemaVersion", "appDataVersion", "domainMigrationVersion", "sessions", "exercises", "sets",
-    "templates", "mesocycles", "activeMesocycleId", "recommendationHistory", "manualOverrides",
+    "templates", "customExercises", "mesocycles", "activeMesocycleId", "recommendationHistory", "manualOverrides",
     "personalEvidencePackage", "rawImports", "migrationAudit", "dataRevision", "settings"
   ]);
   const SAFE_ID = /^[^\s<>"'&`=]{1,160}$/;
@@ -80,6 +80,7 @@
     const exerciseIds = uniqueIdSet(backup.exercises, "exercises");
     uniqueIdSet(backup.sets, "sets");
     uniqueIdSet(backup.templates, "templates");
+    if (backup.customExercises.length) uniqueIdSet(backup.customExercises, "customExercises");
     if (backup.mesocycles.length) uniqueIdSet(backup.mesocycles, "mesocycles");
 
     backup.exercises.forEach((exercise, index) => {
@@ -125,7 +126,7 @@
     });
     const backup = cloneSafe(selected);
     ["sessions", "exercises", "sets", "templates"].forEach((key) => requireEntityArray(backup, key));
-    ["mesocycles", "recommendationHistory", "manualOverrides", "rawImports", "migrationAudit"].forEach((key) => {
+    ["customExercises", "mesocycles", "recommendationHistory", "manualOverrides", "rawImports", "migrationAudit"].forEach((key) => {
       if (backup[key] == null) backup[key] = [];
       requireEntityArray(backup, key);
     });

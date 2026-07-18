@@ -46,7 +46,8 @@ Product principles evidenced in the repository:
 
 | Capability | Status | Verified scope |
 | --- | --- | --- |
-| Workout templates and quick start | **IMPLEMENTED** | Create/use templates, template-specific set roles, rest targets, readiness preview, and active-workout locking in `index.html` (`renderTemplates`, `openTemplateStart`, `startTemplate`). |
+| Workout templates and quick start | **IMPLEMENTED** | Create/use templates, select built-in or persistent user-defined exercises, configure optional exact/min-max targets per set, preserve set roles/rest targets, preview readiness, and lock concurrent active workouts (`renderTemplates`, `openTemplateStart`, `startTemplate`). |
+| User-defined exercise catalog | **IMPLEMENTED** | Create, select, edit, archive, restore, export, and import `user:`-namespaced exercises with a required primary muscle, optional secondary muscle, resistance type, and equipment. Explicit user mappings participate in templates, workouts, guided planning, analytics, and programming-family dose without being presented as canonical research evidence. |
 | Active workout logging | **IMPLEMENTED** | Exercises, warm-ups/working sets, load/reps/RPE, completion/skipping, timers, notes, travel state, draft restoration, and cancel flow. |
 | Submission, history, summaries, and editing | **IMPLEMENTED** | Confirmed submission, PR calculation, grade/summary, submitted-only history, and explicit history-edit save/cancel (`submitWorkout`, `renderSubmitConfirmation`, `renderCompletedWorkoutSummary`). |
 | Progress and volume analytics | **IMPLEMENTED** | Interactive exercise charts, session detail, weekly weighted muscle volume, fatigue flags, hypertrophy scoring, and recent/all history. |

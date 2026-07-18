@@ -21,6 +21,10 @@ assert.match(html, /<script src="\.\/programming-family-ledger\.js"><\/script>[\
 assert.match(html, /familyProjectionStatus: familyProjection\.familyProjectionStatus/, "Weekly analytics must expose fail-closed family projection status");
 assert.match(html, /familyTotals: familyProjection\.familyTotals/, "Weekly analytics must expose recommendation-family dose");
 assert.match(html, /activeSessionIds\.has\(entry\.session\.id\)/, "Historical family projection must use submitted active history only");
+assert.match(html, /familyDose\?\.weightedHypertrophySets/, "Recommendation dose must consume the exact programming-family total instead of a legacy broad display bucket");
+assert.match(html, /PERSONAL_MAPPING_VERSION/, "Explicit custom-exercise muscle mappings must carry a versioned provenance contract");
+assert.match(html, /Weekly family dose needs a mapping/, "The rendered Dashboard must disclose unresolved custom dose instead of silently inferring it");
+assert.match(html, /data-family-dose=/, "The rendered Dashboard must expose family-level dose at the decision point");
 assert.match(html, /async function initializePrescriptionEvidence\(\)/, "App startup must load personal and research evidence");
 assert.match(html, /await initializePrescriptionEvidence\(\)/, "Boot must wait for the evidence layer before rendering");
 assert.match(html, /function unifiedPrescriptionSnapshot\(/, "All surfaces need one snapshot factory");

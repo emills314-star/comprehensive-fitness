@@ -16,7 +16,7 @@
 
   if (!familyLedger) throw new Error("Programming family ledger is required.");
 
-  const ENGINE_VERSION = "3.3.8";
+  const ENGINE_VERSION = "3.3.9";
   const PRESCRIPTION_SCHEMA_VERSION = "2.3.0";
   const SNAPSHOT_SCHEMA_VERSION = "1.3.0";
   const TRAINING_PROFILE_VERSION = "training-profile/1.1.0";
@@ -1659,13 +1659,16 @@
         ? "mixed"
         : [...taxonomyVersions][0];
     const familyProjection = familyLedger.projectHistoricalVolume(snapshot, (record) => {
+      if (asArray(record.muscleRelationships).length) return record.muscleRelationships;
       const canonicalId = firstPresent(record.researchExerciseId, evidence.research.exerciseIdByAlias.get(normalizeText(record.exerciseName)), record.exerciseId);
       return taxonomyRelationshipsFor(evidence.research, canonicalId);
     });
     return {
-      taxonomyVersion,
+      taxonomyVersion: familyProjection.taxonomyVersion,
+      legacyCanonicalTaxonomyVersion: taxonomyVersion,
       ledgerVersion: familyProjection.ledgerVersion,
       programmingFamilyVersion: familyProjection.programmingFamilyVersion,
+      personalMappingVersion: familyProjection.personalMappingVersion,
       familyProjectionStatus: familyProjection.projectionStatus,
       rollbackContract: familyProjection.rollbackContract,
       sourceRecords: snapshot,

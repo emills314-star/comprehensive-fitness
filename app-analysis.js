@@ -18,6 +18,7 @@
               <button class="icon-button" type="button" data-action="new-template" title="New template">${icon.add}</button>
             </div>
             <p class="screen-intro">Start a familiar workout in one tap. Open a row only when you want to edit its plan.</p>
+            ${renderCustomExerciseLibrary()}
             ${renderMesocyclePlanner()}
             ${running ? '<section class="active-workout-notice" id="active-workout-template-notice" role="status"><div><div class="section-kicker">Workout in progress</div><strong>' + escapeHtml(running.title || 'Active workout') + '</strong><span>Finish or cancel your current workout before starting another template.</span></div><div><button class="primary-action" type="button" data-action="return-active-workout">Return to Active Workout</button><button class="text-danger-action" type="button" data-action="request-cancel-workout-from-template">Manage Active Workout</button></div></section>' : ''}
             ${volumeFlags.length ? '<section class="plan-volume-alerts"><div class="section-heading"><div><h2>Weekly volume checks</h2><p>Review these before adding more work.</p></div></div><div class="drilldown-list">' + volumeFlags.map((flag) => '<button class="drilldown-item fatigue-' + flag.concern + '" type="button" data-action="open-plan-volume-warning" data-flag-id="' + escapeHtml(flag.id) + '"><strong>' + escapeHtml(flag.name + ': ' + flag.reason) + '</strong><span class="fatigue-severity ' + flag.concern + '">' + escapeHtml(flag.concern.charAt(0).toUpperCase() + flag.concern.slice(1)) + ' concern</span><small>' + escapeHtml(flag.evidence[0]) + ' · Tap for exact contributors</small><span class="drilldown-chevron" aria-hidden="true">›</span></button>').join('') + '</div></section>' : ''}
@@ -121,6 +122,36 @@
         return true;
       }
 
+      function renderCustomExerciseLibrary() {
+        const records = (data.customExercises || []).slice().sort((a, b) => Number(Boolean(a.archivedAt)) - Number(Boolean(b.archivedAt)) || a.name.localeCompare(b.name));
+        const editing = customExerciseEditorId ? customExerciseById(customExerciseEditorId) : null;
+        const equipmentChoices = [["bodyweight", "Bodyweight"], ["band", "Bands"], ["dumbbell", "Dumbbells"], ["barbell", "Barbell"], ["rack", "Rack"], ["bench", "Bench"], ["cable", "Cable"], ["machine", "Machine"]];
+        const form = customExerciseEditorId !== "closed" ? `<form class="custom-exercise-form" data-custom-exercise-form novalidate>
+          <input type="hidden" name="customExerciseId" value="${escapeHtml(editing?.id || "")}">
+          <label>Exercise name<input name="name" maxlength="80" required value="${escapeHtml(editing?.name || "")}" autocomplete="off" aria-describedby="custom-exercise-validation"></label>
+          <div class="grid two"><label>Primary muscle<select name="primaryMuscle" required><option value="">Choose muscle</option>${muscleGroups.map((muscle) => `<option value="${escapeHtml(muscle)}" ${editing?.primaryMuscle === muscle ? "selected" : ""}>${escapeHtml(muscle)}</option>`).join("")}</select></label><label>Secondary muscle (optional)<select name="secondaryMuscle"><option value="">None</option>${muscleGroups.map((muscle) => `<option value="${escapeHtml(muscle)}" ${editing?.secondaryMuscle === muscle ? "selected" : ""}>${escapeHtml(muscle)}</option>`).join("")}</select></label></div>
+          <label>Resistance type<select name="resistanceType">${resistanceTypeValues.map((value) => `<option value="${value}" ${editing?.resistanceType === value ? "selected" : ""}>${escapeHtml(presentationLabel(value))}</option>`).join("")}</select></label>
+          <fieldset class="custom-equipment"><legend>Equipment used</legend>${equipmentChoices.map(([value, label]) => `<label><input type="checkbox" name="equipment" value="${value}" ${(editing?.equipment || []).includes(value) ? "checked" : ""}>${label}</label>`).join("")}</fieldset>
+          <p id="custom-exercise-validation" class="template-validation-alert" role="alert" ${customExerciseFormError ? "" : "hidden"}>${escapeHtml(customExerciseFormError)}</p>
+          <p class="settings-note">Your primary and secondary mappings drive volume accounting. Research effectiveness, citations, and pain-safe substitutions are never invented for a user-defined exercise.</p>
+          <div class="row wrap"><button class="primary-action" type="button" data-action="save-custom-exercise">${editing ? "Save exercise" : "Create exercise"}</button>${editing ? '<button type="button" data-action="cancel-custom-exercise-edit">Cancel edit</button>' : ""}</div>
+        </form>` : "";
+        return `<details class="compact-disclosure custom-exercise-library" ${editing || customExerciseFormError ? "open" : ""}><summary>Custom exercise library <span>${records.filter((item) => !item.archivedAt).length} active</span></summary><div class="disclosure-body"><p>Create movements missing from the built-in taxonomy, then select them in any template.</p>${records.length ? `<div class="custom-exercise-list">${records.map((record) => `<article class="custom-exercise-row ${record.archivedAt ? "archived" : ""}"><div><strong>${escapeHtml(record.name)}</strong><small>${escapeHtml(record.primaryMuscle)}${record.secondaryMuscle ? ` + ${escapeHtml(record.secondaryMuscle)} (secondary)` : ""} · ${escapeHtml(presentationLabel(record.resistanceType))} · User-defined</small></div><div class="row wrap"><button type="button" data-action="edit-custom-exercise" data-custom-exercise-id="${escapeHtml(record.id)}">Edit</button><button type="button" data-action="archive-custom-exercise" data-custom-exercise-id="${escapeHtml(record.id)}">${record.archivedAt ? "Restore" : "Archive"}</button></div></article>`).join("")}</div>` : '<div class="empty-state">No custom exercises yet.</div>'}${form}</div></details>`;
+      }
+
+      function renderTemplateExerciseCatalogSelect(exercise, template) {
+        const canonical = prescriptionEngine?.evidence?.research?.exerciseById ? Array.from(prescriptionEngine.evidence.research.exerciseById.entries()).map(([id, record]) => ({ id, name: record.exercise_name || record.exerciseName || presentationLabel(id) })).sort((a, b) => a.name.localeCompare(b.name)) : [];
+        const custom = (data.customExercises || []).filter((record) => !record.archivedAt || record.id === exercise.customExerciseId).map((record) => ({ id: record.id, name: record.name + " · Custom" }));
+        const currentId = exercise.customExerciseId || exercise.researchExerciseId || exercise.canonicalExerciseId || "";
+        const known = [...canonical, ...custom].some((item) => item.id === currentId);
+        return `<label class="template-meta">Exercise<select data-action="template-exercise-catalog" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}"><option value="">Choose from catalog</option>${!known && exercise.name ? `<option value="" selected>${escapeHtml(exercise.name)} · Unlinked</option>` : ""}<optgroup label="Your exercises">${custom.map((item) => `<option value="${escapeHtml(item.id)}" ${item.id === currentId ? "selected" : ""}>${escapeHtml(item.name)}</option>`).join("")}</optgroup><optgroup label="Built-in exercises">${canonical.map((item) => `<option value="${escapeHtml(item.id)}" ${item.id === currentId ? "selected" : ""}>${escapeHtml(item.name)}</option>`).join("")}</optgroup></select></label>`;
+      }
+
+      function renderTemplateSetRepTargets(exercise, template) {
+        const sets = editableTemplateSetTypes(exercise);
+        return `<details class="template-set-targets"><summary>Rep targets for each set <span>${sets.length}</span></summary><div class="template-set-target-grid">${sets.map((set, index) => `<div class="template-set-target-row"><strong>Set ${index + 1}</strong><span>${escapeHtml(setTypeLabels[normalizeSetTypeCode(set.type)] || "Working set")}</span><label>Min reps<input type="number" min="1" max="1000" step="1" value="${Number(set.repMin || exercise.reps || 1)}" data-action="template-set-rep-min" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" data-set-index="${index}"></label><label>Max reps<input type="number" min="1" max="1000" step="1" value="${Number(set.repMax || set.repMin || exercise.reps || 1)}" data-action="template-set-rep-max" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" data-set-index="${index}"></label><label class="toggle-line"><input type="checkbox" data-action="template-set-rep-exact" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" data-set-index="${index}" ${Number(set.repMin) === Number(set.repMax) ? "checked" : ""}>Exact target</label></div>`).join("")}</div><p class="settings-note">Exact targets keep the same minimum and maximum. Ranges flow to each active workout set and its progression gate.</p></details>`;
+      }
+
       function renderTemplateCard(template, running = activeWorkoutSession()) {
         const isActiveTemplate = running?.templateId === template.id;
         const locked = Boolean(running && !isActiveTemplate);
@@ -151,7 +182,8 @@
                 <ul class="template-list">
                   ${template.exercises.map((exercise) => `
                     <li>
-                      <input value="${escapeHtml(exercise.name)}" data-action="template-exercise-name" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" aria-label="Template exercise name" />
+                      ${renderTemplateExerciseCatalogSelect(exercise, template)}
+                      <input value="${escapeHtml(exercise.name)}" data-action="template-exercise-name" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" aria-label="Template exercise name" ${exercise.customExerciseId || exercise.researchExerciseId ? 'readonly title="Choose another catalog exercise to change it"' : ''} />
                       <div class="grid two">
                         <label class="template-meta">Sets${renderTemplateNumericInput(template, exercise, "template-exercise-sets", exercise.sets, "Template exercise sets")}</label>
                         <label class="template-meta">Reps${renderTemplateNumericInput(template, exercise, "template-exercise-reps", exercise.reps, "Template exercise repetitions")}</label>
@@ -162,6 +194,8 @@
                       </div>
                       <label class="template-meta">Resistance type<select data-action="template-exercise-resistance" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}">${resistanceTypeOptions(exercise.resistanceType || inferResistanceType(exercise.name, exercise))}</select></label>
                       <label class="template-meta">Rest seconds${renderTemplateNumericInput(template, exercise, "template-exercise-rest", exercise.restSeconds || recommendedRestSeconds(exercise.name, { reps: exercise.reps }), "Template exercise rest seconds")}</label>
+                      ${renderTemplateSetRepTargets(exercise, template)}
+                      ${exercise.customExerciseId ? '<details class="compact-disclosure"><summary>Why This Recommendation</summary><div class="disclosure-body"><p>' + escapeHtml(userDefinedRecommendationDisclosure(customExerciseById(exercise.customExerciseId))) + '</p></div></details>' : ''}
                       <div class="template-warmups"><strong>Warm-ups</strong>${(exercise.warmups || []).map((set, warmupIndex) => '<span>' + escapeHtml(set.reps + ' reps × ' + formatResistance(set, exercise)) + '</span><button class="mini-button" type="button" data-action="remove-template-warmup" data-template-id="' + template.id + '" data-template-exercise-id="' + exercise.id + '" data-warmup-index="' + warmupIndex + '">Remove</button>').join("") || '<span>None yet</span>'}<button class="mini-button" type="button" data-action="add-template-warmup" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}">+ Warm-up</button></div>
                       <button class="mini-button danger" type="button" data-action="delete-template-exercise" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}">Remove exercise</button>
                     </li>
@@ -398,7 +432,7 @@
         const reduction = (reductionMin + reductionMax) / 2;
         const assisted = resistanceType === "assisted_bodyweight";
         const multiplier = reduction > 0 ? (assisted ? 1 + reduction / 100 : 1 - reduction / 100) : 1;
-        const targetLoad = roundEquipmentLoad(Number(target.weight || 0) * multiplier, increment);
+        const plannedTargetLoad = roundEquipmentLoad(Number(target.weight || 0) * multiplier, increment);
         const roleDefaults = setRoleDefaultsForExercise(templateExercise, role, progressionProfileForExercise(templateExercise.name), target.mode || "normal", target.rpe, setType.restSeconds || target.restSeconds);
         const repRange = resolveProgrammedRepRange(setType, roleDefaults);
         const repMin = Number(repRange.repMin || target.repLow || 0);
@@ -410,12 +444,9 @@
         const repProgression = target.mode === 'rep-progression' || target.finalPrescription?.progressionAction === 'add_one_rep';
         const progressesThisSet = repProgression && previousReps > 0 && previousReps === lowestPreviousReps && setTypeIndex === comparableRoleSets.findIndex((set) => Number(set.reps || 0) === lowestPreviousReps);
         const rawTargetReps = target.mode === 'load-progression' ? Number(target.reps || repMin) : progressesThisSet ? previousReps + 1 : previousReps || Number(target.reps || repMax || repMin);
-        const targetReps = Math.max(repMin, Math.min(repMax, rawTargetReps));
+        const programmedTargetReps = Math.max(repMin, Math.min(repMax, rawTargetReps));
         const rpeMin = Number(setType.rpeMin || Math.max(1, Number(setType.rpeMax || target.rpe || 0) - 1));
         const rpeMax = Number(setType.rpeMax || target.rpe || rpeMin);
-        const candidateNextLoad = resistanceType === "assisted_bodyweight"
-          ? roundEquipmentLoad(Math.max(0, targetLoad - increment), increment)
-          : roundEquipmentLoad(targetLoad + increment, increment);
         const expectedRoleCount = Math.max(1, Number(setType.setCount || 1));
         const qualifyingComparableSets = comparableRoleSets.length >= expectedRoleCount && comparableRoleSets.every((set) => {
           const reps = Number(set.reps || 0);
@@ -427,6 +458,15 @@
           : role === "top"
             ? previousComparableSet ? Number(previousComparableSet.reps || 0) >= repMax && Number(previousComparableSet.rpe || 0) > 0 && Number(previousComparableSet.rpe || 0) <= rpeMax : false
             : qualifyingComparableSets;
+        const previousLoad = previousComparableSet ? resistanceLoad(previousComparableSet, resistanceType) : 0;
+        const holdPriorLoad = !progressionReady && previousLoad > 0;
+        const targetLoad = holdPriorLoad ? previousLoad : plannedTargetLoad;
+        const targetRepMin = holdPriorLoad && previousReps > 0 ? Math.min(repMin, previousReps) : repMin;
+        const targetRepMax = holdPriorLoad && previousReps > 0 ? Math.min(repMax, previousReps) : repMax;
+        const targetReps = Math.max(targetRepMin, Math.min(targetRepMax, programmedTargetReps));
+        const candidateNextLoad = resistanceType === "assisted_bodyweight"
+          ? roundEquipmentLoad(Math.max(0, targetLoad - increment), increment)
+          : roundEquipmentLoad(targetLoad + increment, increment);
         const nextLoad = progressionReady ? candidateNextLoad : targetLoad;
         const progressionRule = setType.progressionRule || ("Progress after reaching " + repMax + " reps within RPE " + targetRangeText(rpeMin, rpeMax) + " on " + (role === "backoff" ? "the comparable back-off work" : role === "top" ? "the top set" : "the programmed sets") + ".");
         const roleName = setTypeLabels[role] || "Working set";
@@ -437,7 +477,8 @@
             : role === "top"
               ? "This is the primary high-demand set. Its load, rep range, and RPE target are resolved from the active program and prior top-set performance."
               : "This is a straight working set. The programmed range allows normal rep decline across later sets without treating it as failure.";
-        return { setType: role, sequenceIndex, setTypeIndex, targetLoad, targetReps, repMin, repMax, exactReps: repRange.exactReps, rangeSource: repRange.rangeSource, rpeMin, rpeMax, restSeconds: Number(setType.restSeconds || target.restSeconds || 0), increment, nextLoad, candidateNextLoad, progressionReady, loadRule: setType.loadRule || "", progressionRule, reductionPercent: reduction, previousComparableSet, progressionDelta: previousComparableSet ? { load: Number((targetLoad - resistanceLoad(previousComparableSet, resistanceType)).toFixed(4)), reps: targetReps - previousReps } : null, confidence: progressionReady ? target.confidence || "low" : "conditional", evidenceConfidence: target.confidence || "low", reason: roleName + ": " + reason };
+        const holdReason = holdPriorLoad ? " Hold the prior comparable load and repeat no more than the prior " + previousReps + " reps until the complete progression gate is met." : "";
+        return { setType: role, sequenceIndex, setTypeIndex, targetLoad, targetReps, repMin: targetRepMin, repMax: targetRepMax, programmedRepMin: repMin, programmedRepMax: repMax, exactReps: repRange.exactReps, rangeSource: repRange.rangeSource, rpeMin, rpeMax, restSeconds: Number(setType.restSeconds || target.restSeconds || 0), increment, nextLoad, candidateNextLoad, progressionReady, loadRule: setType.loadRule || "", progressionRule, reductionPercent: reduction, previousComparableSet, progressionDelta: previousComparableSet ? { load: Number((targetLoad - resistanceLoad(previousComparableSet, resistanceType)).toFixed(4)), reps: targetReps - previousReps } : null, confidence: progressionReady ? target.confidence || "low" : "conditional", evidenceConfidence: target.confidence || "low", reason: roleName + ": " + reason + holdReason };
       }
 
       function validateGeneratedSetPrescriptions(prescriptions, resistanceType) {
@@ -532,8 +573,8 @@
         }
         return {
           version: 1,
-          id: (template?.id || "saved") + "|" + canonicalExerciseId(templateExercise.name),
-          exerciseId: canonicalExerciseId(templateExercise.name),
+          id: (template?.id || "saved") + "|" + analysisExerciseId(templateExercise),
+          exerciseId: analysisExerciseId(templateExercise),
           exerciseName: templateExercise.name,
           templateId: template?.id || "",
           templateName: template?.name || "Saved workout prescription",
@@ -551,7 +592,7 @@
 
       function currentExerciseTargetContexts(exerciseId) {
         return data.templates.flatMap((template) => (template.exercises || [])
-          .filter((exercise) => canonicalExerciseId(exercise.name) === exerciseId)
+          .filter((exercise) => analysisExerciseId(exercise) === exerciseId)
           .map((exercise) => exerciseTargetContext(template, exercise)))
           .filter(Boolean)
           .sort((a, b) => String(b.effectiveStartDate || "").localeCompare(String(a.effectiveStartDate || "")) || a.templateName.localeCompare(b.templateName));
@@ -572,11 +613,11 @@
             roleMap.set(type, role);
           });
           if (!roleMap.size) return null;
-          return { id: "saved-set-targets-" + exercise.id, exerciseId: canonicalExerciseId(exercise.name), exerciseName: exercise.name, templateId: session.templateId || "", templateName: session.title || "Saved workout", sessionType: session.sessionType || "normal", source: "Saved set targets", effectiveStartDate: session.date, effectiveEndDate: session.date, setTypes: Array.from(roleMap.values()), progressionRule: "Saved with the submitted workout.", confidence: "high" };
+          return { id: "saved-set-targets-" + exercise.id, exerciseId: analysisExerciseId(exercise), exerciseName: exercise.name, templateId: session.templateId || "", templateName: session.title || "Saved workout", sessionType: session.sessionType || "normal", source: "Saved set targets", effectiveStartDate: session.date, effectiveEndDate: session.date, setTypes: Array.from(roleMap.values()), progressionRule: "Saved with the submitted workout.", confidence: "high" };
         }
         const template = { id: session.templateId || "", name: session.title || "Saved workout prescription", createdAt: session.date, updatedAt: session.date };
         const sourceExercise = {
-          id: canonicalExerciseId(exercise.name),
+          id: analysisExerciseId(exercise),
           name: exercise.name,
           sets: Number(prescription.sets || data.sets.filter((set) => set.exerciseId === exercise.id && isWorkingSet(set, "score")).length || 0),
           reps: Number(prescription.reps || prescription.repHigh || 0),
@@ -604,7 +645,7 @@
           if (cacheAvailable) targetContextCache.set(cacheKey, null);
           return null;
         }
-        const canonicalId = canonicalExerciseId(exercise.name);
+        const canonicalId = analysisExerciseId(exercise);
         const contexts = currentExerciseTargetContexts(canonicalId);
         const preferred = contexts.find((context) => context.templateId === session.templateId) || contexts[0] || null;
         const resolved = preferred ? { ...preferred, resolutionSource: "current-fallback", confidence: "low" } : null;
@@ -657,7 +698,7 @@
         const includedWeeks = new Set((analysis.included || []).map((week) => week.weekStart));
         const sessionById = new Map(activeHistorySessions({ throughDate: analysis.windowEnd || todayIso() }).map((session) => [session.id, session]));
         const analysisIndex = typeof completedAnalysisIndex === "function" ? completedAnalysisIndex() : {
-          exercisesByCanonical: new Map([[exerciseId, data.exercises.filter((exercise) => canonicalExerciseId(exercise.name) === exerciseId)]]),
+          exercisesByCanonical: new Map([[exerciseId, data.exercises.filter((exercise) => analysisExerciseId(exercise) === exerciseId)]]),
           setsByExercise: new Map(data.exercises.map((exercise) => [exercise.id, data.sets.filter((set) => set.exerciseId === exercise.id)]))
         };
         const groups = new Map();
@@ -1069,9 +1110,10 @@
       }
 
       function exerciseProgressSeries(exerciseName, options = {}) {
-        const cacheKey = [analysisRevision, options.canonicalExerciseId || canonicalExerciseId(exerciseName), options.throughDate || todayIso(), (options.qualifyingWeekIds || []).join(","), options.resistanceType || ""].join("|");
+        const canonicalId = options.customExerciseId || options.exercise?.customExerciseId || options.canonicalExerciseId || canonicalExerciseId(exerciseName);
+        const cacheKey = [analysisRevision, canonicalId, options.throughDate || todayIso(), (options.qualifyingWeekIds || []).join(","), options.resistanceType || ""].join("|");
         if (exerciseProgressCache.has(cacheKey)) return exerciseProgressCache.get(cacheKey);
-        const scoped = getExerciseSets(exerciseName, { canonicalExerciseId: options.canonicalExerciseId });
+        const scoped = getExerciseSets(exerciseName, { canonicalExerciseId: canonicalId });
         const exerciseById = new Map(scoped.exercises.map((exercise) => [exercise.id, exercise]));
         const allowedWeeks = options.qualifyingWeekIds ? new Set(options.qualifyingWeekIds) : null;
         const sessionById = new Map(activeHistorySessions({ asOfDate: options.retentionAsOfDate || todayIso(), throughDate: options.throughDate || todayIso() }).map((session) => [session.id, session]));
@@ -1500,12 +1542,12 @@
             <span>${escapeHtml(intervention.replace('_', ' '))} · ${recommendation.confidence} confidence</span>
             <h2>${escapeHtml(interventionLabels[intervention] || recommendation.label)}</h2>
             <p><strong>${escapeHtml(recommendation.affectedExerciseName || '')}</strong></p>
-            <p>${escapeHtml(recommendation.reason)}</p>
             <strong>${escapeHtml(recommendation.action)}</strong>
-            ${execution.length ? '<div class="recommendation-execution"><b>Execution changes</b>' + execution.map((item) => '<span>' + escapeHtml(item) + '</span>').join('') + '</div>' : ''}
-            ${recommendation.durationInSessions ? '<p><b>Duration:</b> ' + recommendation.durationInSessions + ' session' + (recommendation.durationInSessions === 1 ? '' : 's') + '.</p>' : ''}
-            ${recommendation.returnToNormalCriteria ? '<p><b>Return to normal:</b> ' + escapeHtml(recommendation.returnToNormalCriteria) + '</p>' : ''}
-            <ul>${recommendation.evidence.map((item) => "<li>" + escapeHtml(item) + "</li>").join("")}</ul>
+            <details class="compact-disclosure"><summary>Why This Recommendation <span>${recommendation.evidence.length}</span></summary><div class="disclosure-body"><p>${escapeHtml(recommendation.reason)}</p>
+              ${execution.length ? '<div class="recommendation-execution"><b>Execution changes</b>' + execution.map((item) => '<span>' + escapeHtml(item) + '</span>').join('') + '</div>' : ''}
+              ${recommendation.durationInSessions ? '<p><b>Duration:</b> ' + recommendation.durationInSessions + ' session' + (recommendation.durationInSessions === 1 ? '' : 's') + '.</p>' : ''}
+              ${recommendation.returnToNormalCriteria ? '<p><b>Return to normal:</b> ' + escapeHtml(recommendation.returnToNormalCriteria) + '</p>' : ''}
+              <ul>${recommendation.evidence.map((item) => "<li>" + escapeHtml(item) + "</li>").join("")}</ul></div></details>
           </article>
         `;
       }
