@@ -19,4 +19,7 @@
 
 ## Hosted verification
 
-Pending deployment of this task's pushed commit. Record the production URL, mobile/desktop result, refresh persistence, and console state here before completion.
+- URL: `https://comprehensive-fitness.vercel.app/?verify=2068335`
+- In-app browser: production exposed `data-color-package="signal-garden"`, the ten-option selector under More, distinct Heritage Atlas semantic colors, persistence after refresh, and no console errors; the test setting was returned to Signal Garden.
+- Repository-owned production run: the color-package selection/distinct-token test and the full settings persistence test passed in both the iPhone 13 Mini mobile project and the 1280×900 desktop project (4/4).
+- Expected/actual: all ten options were present; selecting a package immediately changed the semantic canvas/action/success/destructive values; refresh retained the choice; actual matched expected.
