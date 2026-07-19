@@ -575,6 +575,7 @@
             return {
               id: id(),
               name: exercise.name,
+              ...(typeof exerciseIdentityFields === "function" ? exerciseIdentityFields(exercise) : {}),
               primaryMuscle: exercise.primaryMuscle || "",
               secondaryMuscle: exercise.secondaryMuscle || "",
               resistanceType,
@@ -591,6 +592,18 @@
           if (!templateExercises.length) return null;
           return { id: id(), name, notes: "Imported from Strong workout name.", exercises: templateExercises, createdAt: isoNow(), updatedAt: isoNow() };
         }).filter(Boolean);
+      }
+
+      function auditImportedTemplateHistory(templates) {
+        const exercises = (templates || []).flatMap((template) => template.exercises || []);
+        const withHistory = exercises.filter((exercise) => getMostRecentWorkoutPerformance(exercise.name, {
+          canonicalExerciseId: exercise.canonicalExerciseId || canonicalExerciseId(exercise.name),
+          resistanceType: exercise.resistanceType || inferResistanceType(exercise.name, exercise)
+        })?.sets.length).length;
+        const withUsableStructure = exercises.filter((exercise) => Number(exercise.sets || 0) >= 1
+          && Number(exercise.reps || 0) >= 1
+          && ((exercise.setTypes || []).length > 0 || Number(exercise.sets || 0) > 0)).length;
+        return { total: exercises.length, withHistory, withUsableStructure };
       }
 
       function parseStrongDate(rawDate) {
@@ -707,7 +720,8 @@
           );
           const backupAlreadyStored = (data.rawImports || []).some((item) => item.source === "strong" && item.originalText === text);
           commit({ ...data, templates: [...templates, ...data.templates], rawImports: backupAlreadyStored ? data.rawImports : [...(data.rawImports || []), { id: "strong-backup-" + importStamp, source: "strong", importedAt: isoNow(), originalText: text, sessionExternalIds: [] }] }, false);
-          settingsMessage = "Strong CSV already imported." + (templates.length ? " Added " + templates.length + " templates from active workout names." : "") + (backupAlreadyStored ? "" : " Raw source backup retained.");
+          const audit = auditImportedTemplateHistory(templates);
+          settingsMessage = "Strong CSV already imported." + (templates.length ? " Added " + templates.length + " templates from active workout names." : "") + (audit.total ? " Verified prior workout history for " + audit.withHistory + " of " + audit.total + " template exercises and usable prescriptions for " + audit.withUsableStructure + "." : "") + (backupAlreadyStored ? "" : " Raw source backup retained.");
           render();
           return;
         }
@@ -749,7 +763,8 @@
           rawImports: [...(data.rawImports || []), { id: "strong-" + importStamp, source: "strong", importedAt: isoNow(), originalText: text, sessionExternalIds: sessions.map((session) => session.externalId) }]
         }, false);
         activeSessionId = sessions.sort((a, b) => b.date.localeCompare(a.date))[0]?.id || activeSessionId;
-        settingsMessage = "Imported " + sessions.length + " Strong workouts, " + exercises.length + " exercises, " + sets.length + " sets, and " + templates.length + " templates.";
+        const audit = auditImportedTemplateHistory(templates);
+        settingsMessage = "Imported " + sessions.length + " Strong workouts, " + exercises.length + " exercises, " + sets.length + " sets, and " + templates.length + " templates. Verified prior workout history for " + audit.withHistory + " of " + audit.total + " template exercises and usable prescriptions for " + audit.withUsableStructure + ".";
         render();
       }
 

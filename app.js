@@ -98,7 +98,11 @@
         if (action === "open-progress") setProgressView(target.dataset.progressView || "overview");
         if (action === "set-progress-view") setProgressView(target.dataset.progressView || "overview");
         if (action === "retry-view-render") { viewRenderError = null; render(); }
-        if (action === "focus-workout-exercise") { workoutFocusExerciseId = target.dataset.exerciseId || ""; render(); }
+        if (action === "focus-workout-exercise") {
+          workoutFocusExerciseId = target.dataset.exerciseId || "";
+          render();
+          window.requestAnimationFrame(() => document.getElementById("exercise-" + workoutFocusExerciseId)?.scrollIntoView({ block: "start", behavior: preferredScrollBehavior() }));
+        }
         if (action === "open-history") setProgressView("history");
         if (action === "toggle-theme") commit({ ...data, settings: { ...data.settings, theme: data.settings.theme === "light" ? "dark" : "light" } });
         if (action === "toggle-unit") commit(convertAppWeightUnit(data, data.settings.weightUnit === "lb" ? "kg" : "lb"));

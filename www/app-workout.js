@@ -528,7 +528,6 @@
         setActiveSet(next?.id || "", next ? "Set " + (next.isWarmup ? "WU" : next.setNumber) + " is current" : "Workout sets complete", false);
         renderAfterInteractionFrame();
         recordPerformance("interaction:completeSet", interactionStartedAt, { setId, timerStarted: false });
-        if (next && data.settings.autoScrollNextSet !== false) scheduleActiveSetScroll(next.id);
       }
 
       function toggleSetSkipped(setId) {
@@ -732,7 +731,13 @@
         let adjustedLiftCount = 0;
         template.exercises.forEach((templateExercise, index) => {
           const templateResistanceType = templateExercise.resistanceType || inferResistanceType(templateExercise.name, templateExercise);
-          const historyTarget = { ...coachTargetForTemplateExercise(templateExercise, { excludeSessionId: session.id, template }), resistanceType: templateResistanceType, isBodyweight: isBodyweightResistance(templateResistanceType) };
+          const historyTarget = { ...coachTargetForTemplateExercise(templateExercise, { excludeSessionId: session.id, template, resistanceType: templateResistanceType }), resistanceType: templateResistanceType, isBodyweight: isBodyweightResistance(templateResistanceType) };
+          if (!historyTarget.executionBlocked) {
+            historyTarget.sets = Math.max(1, Number(historyTarget.sets || templateExercise.sets || 1));
+            historyTarget.reps = Math.max(1, Number(historyTarget.reps || templateExercise.reps || 1));
+            historyTarget.repLow = Math.max(1, Number(historyTarget.repLow || historyTarget.reps));
+            historyTarget.repHigh = Math.max(historyTarget.repLow, Number(historyTarget.repHigh || historyTarget.reps));
+          }
           historyTarget.restSeconds = Number(historyTarget.restSeconds || templateExercise.restSeconds || recommendedRestSeconds(templateExercise.name, { reps: historyTarget.reps, rpe: historyTarget.rpe, excludeSessionId: session.id }));
           const safetyRestricted = Boolean(recovery.illness || recovery.pain);
           const adjustedTarget = options.useOriginal && !safetyRestricted ? { ...historyTarget, adjusted: false, adjustmentReason: "", triggerLabels: [] } : adjustTargetForRecovery(historyTarget, recoveryAdvice, { recovery, exerciseName: templateExercise.name, template });
@@ -745,7 +750,7 @@
           const baseTargetContext = appliedTargetContext || programTargetContext;
           const rpeShift = Number(target.rpe || 0) && Number(historyTarget.rpe || 0) ? Number(target.rpe) - Number(historyTarget.rpe) : 0;
           const effectiveRpeShift = ["deload", "light", "technique"].includes(target.mode) ? 0 : rpeShift;
-          const resolvedTypes = resolvedSetTypesForPrescription(baseTargetContext, target).map((type) => ({
+          const resolvedTypes = resolvedSetTypesForPrescription(baseTargetContext, target, templateExercise).map((type) => ({
             ...type,
             rpeMin: type.rpeMin ? Math.max(1, type.rpeMin + effectiveRpeShift) : Math.max(1, Number(target.rpe || 0) - 1),
             rpeMax: type.rpeMax ? Math.max(1, type.rpeMax + effectiveRpeShift) : Number(target.rpe || 0),
@@ -760,13 +765,13 @@
           configuredWarmups.forEach((warmup, warmupIndex) => {
             sets.push(createSet(exercise.id, warmupIndex + 1, { ...warmup, sequenceIndex: warmupIndex, sequence: warmupIndex, setTypeIndex: warmupIndex, sourceTemplateSetId: warmup.id || templateExercise.id + "-warmup-" + warmupIndex, resistanceType: target.resistanceType || templateResistanceType, completed: false, isWarmup: true, setType: "warmup", countsTowardScore: false, countsTowardVolume: false, countsTowardProgression: false }));
           });
-          const previousRoleSets = getMostRecentWorkoutSets(templateExercise.name, { excludeSessionId: session.id });
+          const previousRoleSets = getMostRecentWorkoutSets(templateExercise.name, { excludeSessionId: session.id, resistanceType: resolvedResistanceType });
           let setNumber = 0;
           let rolePrescriptions = [];
           resolvedTypes.forEach((setType) => {
             for (let typeSetIndex = 0; typeSetIndex < setType.setCount; typeSetIndex += 1) {
               setNumber += 1;
-              rolePrescriptions.push(setPrescriptionForRole({ templateExercise, target, setType, setTypeIndex: typeSetIndex, sequenceIndex: configuredWarmups.length + setNumber - 1, previousSets: previousRoleSets }));
+              rolePrescriptions.push(setPrescriptionForRole({ templateExercise, target, setType, setTypeIndex: typeSetIndex, sequenceIndex: configuredWarmups.length + setNumber - 1, workingSetIndex: setNumber - 1, previousSets: previousRoleSets }));
             }
           });
           rolePrescriptions = validateGeneratedSetPrescriptions(rolePrescriptions, resolvedResistanceType);

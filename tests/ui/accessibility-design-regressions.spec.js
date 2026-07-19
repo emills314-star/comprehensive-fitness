@@ -1323,7 +1323,7 @@ test("repeated Lift move, delete, add-set, warm-up, and duplicate controls inclu
   expect(auditedControls, "The live Lift fixture must expose repeated mutation controls to audit").toBeGreaterThan(0);
 });
 
-test("reduced motion converts the reachable next-set programmatic scroll to auto", async ({ page }) => {
+test("set transitions preserve manual scroll while explicit exercise jumps honor reduced motion", async ({ page }) => {
   await page.addInitScript(() => {
     const nativeScrollIntoView = Element.prototype.scrollIntoView;
     globalThis.__SCROLL_INTO_VIEW_AUDIT__ = [];
@@ -1336,16 +1336,15 @@ test("reduced motion converts the reachable next-set programmatic scroll to auto
     };
   });
   await installScenario(page, { reducedMotion: "reduce", viewport: { width: 320, height: 360 } });
-  await page.addStyleTag({ content: '#set-public-synthetic-active-exercise-1-set-3 { margin-top: 420px !important; }' });
   const setTwo = page.locator('[data-action="toggle-set"][data-set-id="public-synthetic-active-exercise-1-set-2"]');
   await expect(setTwo).toHaveAttribute("aria-pressed", "false");
   await page.evaluate(() => { globalThis.__SCROLL_INTO_VIEW_AUDIT__ = []; });
   await setTwo.click();
+  await page.waitForTimeout(250);
+  expect(await page.evaluate(() => globalThis.__SCROLL_INTO_VIEW_AUDIT__), "Completing a set must not move the workout viewport").toEqual([]);
 
-  await expect.poll(() => page.evaluate(() => globalThis.__SCROLL_INTO_VIEW_AUDIT__.length), {
-    message: "Completing the reachable set must exercise the next-set auto-scroll branch",
-    timeout: 5_000
-  }).toBeGreaterThan(0);
+  await page.locator('[data-action="focus-workout-exercise"][data-exercise-id="public-synthetic-active-exercise-2"]').click();
+  await expect.poll(() => page.evaluate(() => globalThis.__SCROLL_INTO_VIEW_AUDIT__.length), { timeout: 5_000 }).toBeGreaterThan(0);
   const result = await page.evaluate(() => ({
     mediaMatches: matchMedia("(prefers-reduced-motion: reduce)").matches,
     calls: globalThis.__SCROLL_INTO_VIEW_AUDIT__.map((entry) => ({ ...entry })),
@@ -1353,9 +1352,9 @@ test("reduced motion converts the reachable next-set programmatic scroll to auto
   }));
   expect(result.mediaMatches).toBe(true);
   expect(result.cssScrollBehavior).toBe("auto");
-  const expectedTargetId = "set-public-synthetic-active-exercise-1-set-3";
-  expect(result.calls.some((call) => call.id === expectedTargetId), `The completed second set must target the intended next set ${expectedTargetId}: ${JSON.stringify(result.calls)}`).toBe(true);
-  expect(result.calls.filter((call) => call.id !== expectedTargetId), `No unrelated element may be treated as the next set: ${JSON.stringify(result.calls)}`).toEqual([]);
+  const expectedTargetId = "exercise-public-synthetic-active-exercise-2";
+  expect(result.calls.some((call) => call.id === expectedTargetId), `The explicit workout-board jump must target ${expectedTargetId}: ${JSON.stringify(result.calls)}`).toBe(true);
+  expect(result.calls.filter((call) => call.id !== expectedTargetId), `No unrelated element may be scrolled by the explicit jump: ${JSON.stringify(result.calls)}`).toEqual([]);
   expect(result.calls.every((call) => call.behavior === "auto"), `Reduced motion must never request smooth programmatic scrolling: ${JSON.stringify(result.calls)}`).toBe(true);
 });
 

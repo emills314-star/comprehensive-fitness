@@ -867,7 +867,6 @@
         setActiveTab("today", { replace: true, renderNow: false });
         saveRuntime();
         render();
-        if (next && data.settings.autoScrollNextSet !== false) scheduleActiveSetScroll(next.id);
         if (!options.silent) showAppToast(next ? setExecutionLabel(next) + " is ready." : "All sets are complete.");
         return true;
       }
@@ -1007,7 +1006,6 @@
         pendingNextSetId = "";
         if (advance && next && data.settings.autoHighlightNextSet !== false) {
           setActiveSet(next.id, reason === "skipped" ? "Rest skipped - " + setExecutionLabel(next) + " is ready" : setExecutionLabel(next) + " is ready", false);
-          if (data.settings.autoScrollNextSet !== false) scheduleActiveSetScroll(next.id);
         } else {
           ensureActiveSet();
         }
@@ -1051,7 +1049,6 @@
         if (completedTimer.notificationStatus === "scheduled") cancelRestPush(completedTimer, "foreground-completed");
         saveRuntime();
         render();
-        if (!options.suppressScroll && next && data.settings.autoScrollNextSet !== false) scheduleActiveSetScroll(next.id);
       }
 
       function scheduleActiveSetScroll(setId) {
@@ -1060,8 +1057,7 @@
           if (activeElement && /INPUT|TEXTAREA|SELECT/.test(activeElement.tagName)) return;
           const block = document.getElementById("set-" + setId);
           if (!block) return;
-          const rect = block.getBoundingClientRect();
-          if (rect.bottom > window.innerHeight - 110 || rect.top < 72) block.scrollIntoView({ behavior: preferredScrollBehavior(), block: "center" });
+          block.scrollIntoView({ behavior: preferredScrollBehavior(), block: "center" });
         }, 80);
       }
 

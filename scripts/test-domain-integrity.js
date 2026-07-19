@@ -108,5 +108,9 @@ assert.match(html, /coachRecommendationForExercise\(templateExercise\.name/, "Te
 assert.match(html, /coachRecommendationForExercise\(selectedName/, "Charts must use the shared recommendation source");
 assert.match(html, /Historical snapshot through/, "Historical recommendations must be visibly separated from current guidance");
 assert.match(html, /data-action="set-type-override"/, "History editing must expose manual set-type correction");
+assert.match(html, /function getMostRecentWorkoutPerformance\(exerciseName, options = \{\}\)/, "All prior workout consumers must use one canonical resolver");
+assert.match(html, /requestedResistanceType[\s\S]*resistanceTypeFor\(entry\.exercise, entry\.set\) === requestedResistanceType/, "Prior workout resolution must preserve resistance-type identity");
+assert.match(html, /function createTemplatesFromStrongSessions[\s\S]*exerciseIdentityFields\(exercise\)/, "Strong-derived templates must preserve imported exercise identity fields");
+assert.match(html, /function auditImportedTemplateHistory\(templates\)/, "Strong imports must audit history coverage across every generated template exercise");
 
 console.log("Domain integrity tests passed (retention, classification, migration, snapshots, and coaching source).");

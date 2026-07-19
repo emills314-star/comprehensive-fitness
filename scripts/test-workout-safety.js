@@ -85,5 +85,9 @@ assert.match(html, /enteredReadinessTriggers/, "Readiness adjustments must use e
 assert.match(html, /triggerAppliesToExercise/, "Targeted readiness concerns must be filtered by exercise");
 assert.match(html, /originalPrescription: historyTarget/, "Original prescriptions must remain inspectable");
 assert.match(html, /sessionGroups/, "Weekly volume details must retain session-level structure");
+assert.doesNotMatch(html, /data-action="auto-scroll-next"/, "Workout settings must not offer automatic next-set viewport movement");
+assert.equal((html.match(/scheduleActiveSetScroll\(/g) || []).length, 2, "Set scrolling must exist only as the helper plus explicit exercise navigation");
+assert.doesNotMatch(html, /autoScrollNextSet !== false/, "Set completion and rest transitions must never move the viewport automatically");
+assert.match(html, /autoScrollNextSet: false/, "Legacy imported settings must normalize to manual workout scrolling by default");
 
 console.log("Workout safety tests passed (active state, cancellation, readiness, clearing, and volume structure).");

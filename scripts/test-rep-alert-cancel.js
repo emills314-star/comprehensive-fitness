@@ -35,6 +35,7 @@ const prescriptionRuntime = new Function(`
   ${extractFunction("formatLoadNumber")}
   ${extractFunction("roundLoadForUnit")}
   ${extractFunction("normalizeSetTypeCode")}
+  function isWorkingSet(set) { return normalizeSetTypeCode(set?.setType, set?.isWarmup) !== "warmup"; }
   ${extractFunction("targetRangeText")}
   ${extractFunction("progressionProfileForExercise")}
   ${extractFunction("resolveProgrammedRepRange")}

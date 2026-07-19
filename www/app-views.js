@@ -241,7 +241,7 @@
           || workoutExercises.find((exercise) => exercise.id === activeSetExerciseId)
           || workoutExercises[0];
         if (focusedExercise) workoutFocusExerciseId = focusedExercise.id;
-        const exerciseHtml = focusedExercise ? measurePerformance("lift:focusedExercise", () => renderExercise(focusedExercise), { count: 1 }) : "";
+        const exerciseHtml = workoutExercises.length ? measurePerformance("lift:exerciseList", () => workoutExercises.map((exercise) => renderExercise(exercise)).join(""), { count: workoutExercises.length }) : "";
         const sessionBoardHtml = renderWorkoutSessionBoard(workoutExercises, focusedExercise?.id || "");
           const planReadinessHtml = measurePerformance("lift:planReadiness", () => renderRecoveryPanel(session) + renderTodayPlan() + renderActiveWorkoutAdvice());
         return `
@@ -1279,13 +1279,14 @@
           : "";
         const firstWorkSet = exerciseSets.find((set) => isWorkingSet(set, "score")) || exerciseSets[0];
         const restSeconds = Number(exercise.restSeconds || data.settings.defaultRestSeconds || 90);
-        const previousSets = exerciseSets.some((set) => isWorkingSet(set, "progression")) ? measurePerformance("lift:previousPerformance", () => getMostRecentWorkoutSets(exercise.name, { excludeSessionId: exercise.sessionId }), { exerciseId: exercise.id }) : [];
+        const previousSets = exerciseSets.some((set) => isWorkingSet(set, "progression")) ? measurePerformance("lift:previousPerformance", () => getMostRecentWorkoutSets(exercise.name, { excludeSessionId: exercise.sessionId, resistanceType: resistanceTypeFor(exercise) }), { exerciseId: exercise.id }) : [];
         const warmupIds = exerciseSets.filter((set) => setTypeSemantics(set).isWarmup).map((set) => set.id);
-        const renderContext = { restSeconds, previousSets, warmupIds, substituteValidation };
+        const workingSetIds = exerciseSets.filter((set) => isWorkingSet(set, "progression")).map((set) => set.id);
+        const renderContext = { restSeconds, previousSets, warmupIds, workingSetIds, substituteValidation };
         const setHtml = measurePerformance("lift:setRows", () => exerciseSets.map((set) => renderSet(set, exercise, renderContext)).join(""), { exerciseId: exercise.id, count: exerciseSets.length });
         const optionsHtml = measurePerformance("lift:exerciseOptions", () => renderPlateCalculator(exercise, firstWorkSet) + renderMuscleSelectors(exercise) + renderExerciseGuidance(exercise) + renderPrescriptionOverrideControls(exercise, resolvedSafetyContext), { exerciseId: exercise.id });
         return `
-          <article class="exercise-card ${isActiveExercise ? "active-exercise" : ""}">
+          <article id="exercise-${exercise.id}" class="exercise-card ${isActiveExercise ? "active-exercise" : ""}">
             <div class="exercise-header">
               <textarea class="exercise-name exercise-name-field" rows="1" data-action="exercise-name" data-exercise-id="${exercise.id}" aria-label="Exercise name: ${escapeHtml(exercise.name)}" title="${escapeHtml(exercise.name)}">${escapeHtml(exercise.name)}</textarea>
               <div class="exercise-actions">
@@ -1320,6 +1321,12 @@
         `;
       }
 
+      function formatPreviousSetPerformance(set, exercise) {
+        if (!set) return "No prior working set found";
+        const date = set.priorSessionDate ? " · " + formatDate(set.priorSessionDate) : "";
+        return formatSetPerformance(set, exercise) + date;
+      }
+
       function renderSet(set, exercise, context = {}) {
         const restSeconds = Number(context.restSeconds || exercise.restSeconds || data.settings.defaultRestSeconds || 90);
         const completionSafety = guardWorkoutMutation("toggle-set", { exercise, set, substituteValidation: context.substituteValidation }, false);
@@ -1333,8 +1340,9 @@
         const warmupIndex = setTypeSemantics(set).isWarmup ? (context.warmupIds || []).indexOf(set.id) : -1;
         const previousSets = !isWorkingSet(set, "progression") ? [] : (context.previousSets || []);
         const role = normalizeSetTypeCode(set.setType, set.isWarmup);
-        const previous = set.previousComparableSet || previousComparableSetForRole(previousSets, role, set.setTypeIndex);
-        const previousText = previous ? formatSetPerformance(previous, exercise) : "No comparable " + (setTypeLabels[role] || "working set").toLowerCase();
+        const workingSetIndex = Math.max(0, (context.workingSetIds || []).indexOf(set.id));
+        const previous = set.previousComparableSet || previousComparableSetForRole(previousSets, role, set.setTypeIndex, workingSetIndex);
+        const previousText = formatPreviousSetPerformance(previous, exercise);
         const targetLoad = Number(set.targetWeight ?? set.weight ?? 0);
         const targetLoadText = formatResistance({ ...set, weight: targetLoad, addedLoad: resistanceType === "bodyweight_plus_load" ? targetLoad : set.addedLoad, assistanceLoad: resistanceType === "assisted_bodyweight" ? targetLoad : set.assistanceLoad, resistanceType });
         const targetRepText = targetRangeText(set.targetRepMin, set.targetRepMax || set.targetReps, " reps");
@@ -1411,7 +1419,7 @@
           const load = formatResistance({ ...set, weight: Number(set.targetWeight ?? set.weight ?? 0), addedLoad: set.resistanceType === "bodyweight_plus_load" ? Number(set.targetWeight ?? set.addedLoad ?? 0) : set.addedLoad, assistanceLoad: set.resistanceType === "assisted_bodyweight" ? Number(set.targetWeight ?? set.assistanceLoad ?? 0) : set.assistanceLoad });
           const reps = targetRangeText(set.targetRepMin, set.targetRepMax || set.targetReps, " reps");
           const rpe = targetRangeText(set.targetRpeMin, set.targetRpeMax || set.targetRpe, " RPE");
-          const previous = set.previousComparableSet ? formatSetPerformance(set.previousComparableSet, exercise) : "No comparable " + (setTypeLabels[role] || "working set").toLowerCase();
+          const previous = formatPreviousSetPerformance(set.previousComparableSet, exercise);
           const nextIncrement = set.setPrescription?.nextLoad != null
             ? formatResistance({ ...set, weight: set.setPrescription.nextLoad, addedLoad: set.resistanceType === "bodyweight_plus_load" ? set.setPrescription.nextLoad : set.addedLoad, assistanceLoad: set.resistanceType === "assisted_bodyweight" ? set.setPrescription.nextLoad : set.assistanceLoad })
             : "Not configured";

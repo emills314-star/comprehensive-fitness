@@ -364,6 +364,12 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await page.locator('[data-action="use-usual-readiness"]').click();
     await expect(page.getByRole("heading", { name: NAMES.controlTemplate, exact: true })).toBeVisible({ timeout: 45_000 });
     await expect(page.getByText("In progress", { exact: true })).toBeVisible();
+    await expect(page.locator(".exercise-card"), "the active workout must render every exercise in one continuous document").toHaveCount(2);
+    const lastTimeFacts = page.locator(".set-prescription-context > div").filter({ hasText: "Last time" });
+    expect(await lastTimeFacts.count(), "every generated working set must expose prior submitted performance").toBeGreaterThanOrEqual(4);
+    expect((await lastTimeFacts.allTextContents()).every((text) => text.includes("July 16") && !text.includes("No prior working set found")), "role expansion must reuse ordered prior sets instead of losing history").toBe(true);
+    await expect(lastTimeFacts.first()).toContainText("145");
+    await expect(lastTimeFacts.first()).toContainText("July 16");
 
     const stored = await waitForPersisted(page, (data) => {
       const sessions = data.sessions.filter((item) => item.templateId === IDS.controlTemplate && item.workoutStarted && !item.submitted);

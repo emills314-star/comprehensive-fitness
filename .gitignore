@@ -10,6 +10,9 @@ android/app/src/main/assets/public/
 .vercel-data/
 artifacts/
 
+# Local design references derived from screenshots with personal workout data.
+docs/design/strong-ui-mockups/
+
 # Personal health data and generated personal analysis outputs.
 personal_fitness_data/raw/
 personal_fitness_data/normalized/

@@ -31,6 +31,7 @@ const runtime = new Function(`
   const setTypeLabels = { top: "Top set", backoff: "Back-off set", straight: "Working set", drop: "Drop set", deload: "Deload set", technique: "Technique set", warmup: "Warm-up set" };
   function exerciseKey(value) { return String(value || "").toLowerCase(); }
   function normalizeSetTypeCode(value) { return ({ working: "straight", work: "straight", "back-off": "backoff" })[String(value || "straight").toLowerCase()] || String(value || "straight").toLowerCase(); }
+  function isWorkingSet(set) { return normalizeSetTypeCode(set?.setType, set?.isWarmup) !== "warmup"; }
   function defaultProgressionRule() { return "Progress inside the programmed range."; }
   function formatLoadNumber(value) { return String(Number(value)); }
   function roundLoadForUnit(value, unit, increment) { const step = unit === "lb" ? Math.max(0.5, Number(increment || 0.5)) : Math.max(0.001, Number(increment || 0.001)); return Math.round(Number(value || 0) / step) * step; }
@@ -45,7 +46,8 @@ const runtime = new Function(`
   ${extractFunction("resolvedSetTypesForPrescription")}
   ${extractFunction("setPrescriptionForRole")}
   ${extractFunction("validateGeneratedSetPrescriptions")}
-  return { progressionProfileForExercise, resolveProgrammedRepRange, normalizeTargetSetType, setRoleDefaultsForExercise, roundEquipmentLoad, previousComparableSetForRole, resolvedSetTypesForPrescription, setPrescriptionForRole, validateGeneratedSetPrescriptions };
+  ${extractFunction("isUsableWorkoutPrescriptionSnapshot")}
+  return { progressionProfileForExercise, resolveProgrammedRepRange, normalizeTargetSetType, setRoleDefaultsForExercise, roundEquipmentLoad, previousComparableSetForRole, resolvedSetTypesForPrescription, setPrescriptionForRole, validateGeneratedSetPrescriptions, isUsableWorkoutPrescriptionSnapshot };
 `)();
 
 const legPress = runtime.progressionProfileForExercise("Leg Press");
@@ -69,17 +71,20 @@ const previousSets = [
   { id: "backoff", setType: "backoff", setTypeIndex: 0, reps: 15, weight: 90, rpe: 8 }
 ];
 assert.strictEqual(runtime.previousComparableSetForRole(previousSets, "backoff", 0).id, "backoff");
-assert.strictEqual(runtime.previousComparableSetForRole(previousSets, "drop", 0), null, "A missing role must not borrow top-set history");
+assert.strictEqual(runtime.previousComparableSetForRole(previousSets, "drop", 0, 0).id, "top", "A missing imported role must fall back to the same ordered working-set position");
+assert.strictEqual(runtime.previousComparableSetForRole(previousSets, "drop", 0, 1).id, "backoff", "Ordered fallback must preserve the current working-set position");
 
 const baseTarget = { sets: 2, reps: 15, repLow: 10, repHigh: 15, weight: 100, rpe: 8.5, restSeconds: 90, increment: 5, resistanceType: "external" };
 const topPrescription = runtime.setPrescriptionForRole({ templateExercise: { name: "Leg Extension", increment: 5 }, target: baseTarget, setType: { ...extensionTop, type: "top" }, setTypeIndex: 0, previousSets });
-const backoffPrescription = runtime.setPrescriptionForRole({ templateExercise: { name: "Leg Extension", increment: 5 }, target: baseTarget, setType: { ...extensionBackoff, type: "backoff" }, setTypeIndex: 0, previousSets });
+const backoffPrescription = runtime.setPrescriptionForRole({ templateExercise: { name: "Leg Extension", increment: 5 }, target: baseTarget, setType: { ...extensionBackoff, type: "backoff" }, setTypeIndex: 0, previousSets: [{ id: "backoff-low", setType: "backoff", setTypeIndex: 0, reps: 9, weight: 90, rpe: 8 }] });
 assert.strictEqual(topPrescription.targetLoad, 100);
 assert(backoffPrescription.targetLoad < topPrescription.targetLoad, "A true back-off must reduce load");
 assert.strictEqual(backoffPrescription.targetLoad % 5, 0, "Back-off load must respect equipment increments");
-assert.strictEqual(backoffPrescription.previousComparableSet.id, "backoff");
+assert.strictEqual(backoffPrescription.previousComparableSet.id, "backoff-low");
 assert(backoffPrescription.reason.includes("productive volume"));
 assert.strictEqual(backoffPrescription.progressionReady, false, "A back-off below its rep gate must not authorize the next load");
+assert.strictEqual(backoffPrescription.targetLoad, 90, "An unqualified back-off must repeat the prior comparable load");
+assert.strictEqual(backoffPrescription.targetReps, 9, "An unqualified back-off must not ask for more reps than prior performance");
 assert.strictEqual(backoffPrescription.nextLoad, backoffPrescription.targetLoad, "An unqualified back-off must hold its current load");
 const qualifiedBackoff = runtime.setPrescriptionForRole({
   templateExercise: { name: "Leg Extension", increment: 5 },
@@ -113,11 +118,20 @@ const deloadTypes = runtime.resolvedSetTypesForPrescription({ setTypes: [{ type:
 assert.deepStrictEqual(deloadTypes.map((item) => item.type), ["deload"]);
 assert.strictEqual(deloadTypes[0].setCount, 2);
 
+const importedFallbackTypes = runtime.resolvedSetTypesForPrescription({ setTypes: [] }, { mode: "maintenance", sets: 0, rpe: 8 }, { name: "Cable Crossover", sets: 4, setTypes: [{ type: "straight", setCount: 4, repMin: 12, repMax: 20, countsTowardScore: true, countsTowardVolume: true }] });
+assert.strictEqual(importedFallbackTypes.reduce((sum, item) => sum + item.setCount, 0), 4, "An empty engine context must retain the imported template set count");
+const customFallbackTypes = runtime.resolvedSetTypesForPrescription({ setTypes: [] }, { mode: "maintenance", sets: 0, rpe: 8 }, { name: "Tricep Pushdown - Dongles", sets: 2, setTypes: [] });
+assert.deepStrictEqual(customFallbackTypes.map((item) => [item.type, item.setCount]), [["straight", 2]], "A custom exercise without research roles must still create its saved working sets");
+assert.strictEqual(runtime.isUsableWorkoutPrescriptionSnapshot({ finalPrescription: { workingSets: { target: 0 }, repRange: { min: 10, max: 15 } } }), false);
+assert.strictEqual(runtime.isUsableWorkoutPrescriptionSnapshot({ finalPrescription: { workingSets: { target: 3 }, repRange: { min: 10, max: 15 } } }), true);
+
 assert(html.includes('class="set-type-badge type-${escapeHtml(role)}"'));
 assert(html.includes("escapeHtml(executionLabel.toUpperCase())"));
 assert(html.includes("pointer-events: none"), "Informational set badges must not behave like buttons");
 assert(!/set-type-badge[^>]+data-action/.test(html), "Set-type badges must not own edit or navigation actions");
-assert(html.includes("previousComparableSetForRole(previousSets, role, set.setTypeIndex)"));
+assert(html.includes("previousComparableSetForRole(previousSets, role, set.setTypeIndex, workingSetIndex)"));
+assert(html.includes("getMostRecentWorkoutPerformance"), "All prior-set consumers must share one workout-level resolver");
+assert(html.includes("No prior working set found"), "Genuine empty history needs an explicit fallback state");
 assert(html.includes("Broad exercise guidance"));
 assert(html.includes("These values come from the same saved prescription shown above."));
 assert(html.includes("exercise.recommendationSnapshot || unifiedPrescriptionSnapshot(exercise)"), "Broad guidance must reuse the unified prescription instead of hard-coded sets or reps");

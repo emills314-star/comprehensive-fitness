@@ -57,7 +57,7 @@
         notificationMessageDetail: "exercise-set",
         autoStartRestTimer: true,
         autoHighlightNextSet: true,
-        autoScrollNextSet: true,
+        autoScrollNextSet: false,
         installGuideDismissed: false,
         setupSoundConfirmed: false,
         cloudWorkoutSyncConsent: false,
@@ -1857,6 +1857,15 @@
         return target;
       }
 
+      function isUsableWorkoutPrescriptionSnapshot(snapshot) {
+        if (!snapshot || typeof snapshot !== "object") return false;
+        if (snapshot.executionBlocked === true && snapshot.executable === false) return true;
+        const prescription = snapshot.finalPrescription || snapshot.basePrescription || {};
+        const workingSets = Number(prescription.workingSets?.target ?? prescription.sets?.target ?? prescription.sets ?? 0);
+        const repTarget = Number(prescription.repRange?.target ?? prescription.repRange?.max ?? prescription.reps?.target ?? prescription.reps ?? 0);
+        return workingSets >= 1 && repTarget >= 1;
+      }
+
       function unifiedTargetContext(target, template, templateExercise) {
         const prescription = target?.finalPrescription || target?.recommendationSnapshot?.finalPrescription;
         if (!prescription) return null;
@@ -2965,7 +2974,7 @@
             template: options.template,
             mesocycle: options.historical ? null : undefined
           });
-          if (snapshot) {
+          if (isUsableWorkoutPrescriptionSnapshot(snapshot)) {
             const unified = legacyRecommendationFromSnapshot(snapshot, exerciseName);
             unified.sourceWindow = { weekStart: options.weekStart || "", throughDate: options.throughDate || todayIso(), historical: Boolean(options.historical) };
             unified.asOfDate = options.throughDate || todayIso();
@@ -3081,34 +3090,9 @@
         return [strategy.training_volume_adjustment, strategy.training_intensity_adjustment, strategy.recovery_guidance].filter(Boolean).join(" ");
       }
 
-      function getLastCompletedSet(exerciseName, options = {}) {
-        const cacheKey = ["last", analysisRevision, options.canonicalExerciseId || canonicalExerciseId(exerciseName), options.throughDate || options.asOfDate || todayIso(), options.excludeSessionId || "", options.includeDeloads ? 1 : 0].join("|");
-        if (previousPerformanceCache.has(cacheKey)) return previousPerformanceCache.get(cacheKey);
-        const scoped = getExerciseSets(exerciseName, { canonicalExerciseId: options.canonicalExerciseId || canonicalExerciseId(exerciseName) });
-        const exerciseById = new Map(scoped.exercises.map((exercise) => [exercise.id, exercise]));
-        const sessionById = new Map(activeHistorySessions({ asOfDate: options.retentionAsOfDate || todayIso(), throughDate: options.throughDate || options.asOfDate || todayIso() }).map((session) => [session.id, session]));
-        const deloadWeeks = options.includeDeloads ? new Set() : new Set(scoped.exercises.filter((exercise) => {
-          const session = sessionById.get(exercise.sessionId);
-          return exercise.isDeload || session?.isDeload || session?.sessionType === "deload";
-        }).map((exercise) => startOfWeekIso(sessionById.get(exercise.sessionId)?.date || todayIso())));
-        const result = scoped.sets
-          .filter((set) => set.completed)
-          .map((set) => {
-            const exercise = exerciseById.get(set.exerciseId);
-            const session = exercise ? sessionById.get(exercise.sessionId) : null;
-            return session ? { set, session } : null;
-          })
-          .filter(Boolean)
-          .filter((entry) => isWorkingSet(entry.set, "progression"))
-          .filter((entry) => !options.excludeSessionId || entry.session.id !== options.excludeSessionId)
-          .filter((entry) => !deloadWeeks.has(startOfWeekIso(entry.session.date)))
-          .sort((a, b) => b.session.date.localeCompare(a.session.date))[0];
-        previousPerformanceCache.set(cacheKey, result);
-        return result;
-      }
-
-      function getMostRecentWorkoutSets(exerciseName, options = {}) {
-        const cacheKey = ["sets", analysisRevision, options.canonicalExerciseId || canonicalExerciseId(exerciseName), options.throughDate || options.asOfDate || todayIso(), options.excludeSessionId || "", options.includeDeloads ? 1 : 0].join("|");
+      function getMostRecentWorkoutPerformance(exerciseName, options = {}) {
+        const requestedResistanceType = options.resistanceType || "";
+        const cacheKey = ["performance", analysisRevision, options.canonicalExerciseId || canonicalExerciseId(exerciseName), requestedResistanceType, options.throughDate || options.asOfDate || todayIso(), options.excludeSessionId || "", options.includeDeloads ? 1 : 0].join("|");
         if (previousPerformanceCache.has(cacheKey)) return previousPerformanceCache.get(cacheKey);
         const scoped = getExerciseSets(exerciseName, { canonicalExerciseId: options.canonicalExerciseId || canonicalExerciseId(exerciseName) });
         const exerciseById = new Map(scoped.exercises.map((exercise) => [exercise.id, exercise]));
@@ -3118,21 +3102,41 @@
           return exercise.isDeload || session?.isDeload || session?.sessionType === "deload";
         }).map((exercise) => startOfWeekIso(sessionById.get(exercise.sessionId)?.date || todayIso())));
         const completed = scoped.sets
-          .filter((set) => set.completed)
+          .filter((set) => set.completed && !set.skipped)
           .map((set) => {
             const exercise = exerciseById.get(set.exerciseId);
             const session = exercise ? sessionById.get(exercise.sessionId) : null;
-            return session ? { set, session } : null;
+            return session ? { set, session, exercise } : null;
           })
           .filter(Boolean)
           .filter((entry) => isWorkingSet(entry.set, "progression"))
           .filter((entry) => !options.excludeSessionId || entry.session.id !== options.excludeSessionId)
           .filter((entry) => !deloadWeeks.has(startOfWeekIso(entry.session.date)))
-          .sort((a, b) => b.session.date.localeCompare(a.session.date) || Number(a.set.sequence || a.set.setNumber) - Number(b.set.sequence || b.set.setNumber));
-        const latestSessionId = completed[0]?.session.id;
-        const result = latestSessionId ? completed.filter((entry) => entry.session.id === latestSessionId).map((entry) => entry.set).sort((a, b) => Number(a.sequence || a.setNumber) - Number(b.sequence || b.setNumber)) : [];
+          .filter((entry) => !requestedResistanceType || resistanceTypeFor(entry.exercise, entry.set) === requestedResistanceType)
+          .sort((a, b) => b.session.date.localeCompare(a.session.date)
+            || String(b.session.completedAt || b.session.submittedAt || b.session.createdAt || "").localeCompare(String(a.session.completedAt || a.session.submittedAt || a.session.createdAt || ""))
+            || Number(a.set.sequenceIndex ?? a.set.sequence ?? a.set.setNumber) - Number(b.set.sequenceIndex ?? b.set.sequence ?? b.set.setNumber));
+        const latest = completed[0];
+        const result = latest ? {
+          canonicalExerciseId: options.canonicalExerciseId || canonicalExerciseId(exerciseName),
+          resistanceType: resistanceTypeFor(latest.exercise, latest.set),
+          session: latest.session,
+          exercise: latest.exercise,
+          sets: completed
+            .filter((entry) => entry.session.id === latest.session.id && entry.exercise.id === latest.exercise.id)
+            .map((entry) => ({ ...entry.set, priorSessionId: entry.session.id, priorSessionDate: entry.session.date, priorExerciseName: entry.exercise.name, priorResistanceType: resistanceTypeFor(entry.exercise, entry.set) }))
+        } : null;
         previousPerformanceCache.set(cacheKey, result);
         return result;
+      }
+
+      function getLastCompletedSet(exerciseName, options = {}) {
+        const performance = getMostRecentWorkoutPerformance(exerciseName, options);
+        return performance?.sets[0] ? { set: performance.sets[0], session: performance.session, exercise: performance.exercise } : null;
+      }
+
+      function getMostRecentWorkoutSets(exerciseName, options = {}) {
+        return getMostRecentWorkoutPerformance(exerciseName, options)?.sets || [];
       }
 
       function latestSkippedDeloadForExercise(exerciseName, options = {}) {
@@ -3162,7 +3166,7 @@
             throw error;
           }
           if (snapshot?.executionBlocked === true && snapshot?.executable === false && ["hard_constraint_rejection", "engine_failure"].includes(snapshot?.type || snapshot?.kind)) return snapshot;
-          if (snapshot) return legacyTargetFromSnapshot(snapshot, templateExercise, { useBase: true });
+          if (isUsableWorkoutPrescriptionSnapshot(snapshot)) return legacyTargetFromSnapshot(snapshot, templateExercise, { useBase: true });
         }
         const profile = progressionProfileForExercise(templateExercise.name);
         const sessionType = sessionTypeForTemplate(options.template);

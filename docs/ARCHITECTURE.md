@@ -107,6 +107,12 @@ stateDiagram-v2
 
 Only `submitted`/completed sessions participate in canonical history and analytics (`activeCompletedWorkoutHistory`, `activeHistorySessions`). Starting a workout saves a workout prescription; exercises retain recommendation snapshots. Submission uses a per-session in-progress lock before calculations, so a routed duplicate or a reentrant call cannot duplicate analysis, persistence, sound, feedback, or sync effects. It calculates PRs and workout analysis, timestamps completion, invalidates analysis caches, persists, and queues one sync mutation. Historical snapshots are not silently recomputed after engine changes.
 
+`getMostRecentWorkoutPerformance` is the shared live-workout history boundary. It resolves the newest eligible submitted session by canonical exercise ID and resistance type, excludes current/deload-ineligible work, and returns ordered working sets annotated with their source session/date. Set-role matching prefers the same role and role index, then uses the same ordered working-set position so Strong classification differences do not erase real prior performance. Equipment/attachment suffixes remain distinct unless the research alias map explicitly joins them.
+
+Workout construction treats the saved template as the minimum usable structure. A unified research/personal snapshot is accepted only when it has at least one working set and a valid rep range. Otherwise `resolvedSetTypesForPrescription` retains the template's set roles/count or creates the saved number of straight working sets. Strong import audits every generated template exercise for both prior history and nonzero structure after the import commit invalidates the completed-history caches.
+
+The active workout remains one continuous scroll document. Set/rest state transitions update the persisted active-set identity and visual highlight without programmatic viewport movement; only an explicit set deep link may scroll to its requested target.
+
 ## Models and relationships
 
 - A **session** has many exercises and sets, recovery input, lifecycle timestamps/state, optional template/mesocycle context, PRs, and stored analysis.
