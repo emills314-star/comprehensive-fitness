@@ -183,3 +183,5 @@ Current automated coverage does not yet synthesize every workout lifecycle, moda
 Use “Workout,” “Dashboard,” “Templates,” “Charts,” and “Settings” for primary navigation. Use “working set” versus “warm-up set” precisely. “Today’s readiness” is same-day context; “Today’s plan” is the base/adjusted work. “Go as planned” permits planned progression only when warm-ups support it. “Deload” must state scope. “History” means confirmed submitted workouts. Use lb/kg consistently and show the active unit.
 
 Do not call offline Fitbit export analysis “Fitbit sync,” the nutrition adequacy selector “nutrition tracking,” or installation authorization a user login.
+The active rest panel is bounded by its own circular rest icon; the exercise card and set block retain their normal neutral boundaries.
+The rest timer presentation uses a bounded circular icon and does not recolor the full exercise/set boundary.

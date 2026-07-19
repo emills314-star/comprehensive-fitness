@@ -229,3 +229,5 @@ Mesocycle candidate detail remains progressively rendered: Templates defers the 
 - **Risk:** Redis sync is write-only and may create an expectation of recoverability not supported by UI/API.
 - **PARTIALLY IMPLEMENTED:** Public CI includes Playwright, axe, responsive/overflow, console, approved-screenshot checks, and the implemented accessibility/design contract for route focus, modal focus, Dashboard restoration, target sizing, reduced motion, forced colors, and exact 320 px/200% reflow. Dedicated protected Lift/Dashboard behavior and intentionally refreshed Quiet Modular Navy baselines cover mobile, tablet, desktop, dark, and zoom-equivalent reference states. Ordinary five-view mobile/desktop goldens were refreshed in the same reviewed redesign. Physical native-device CI remains absent.
 - **NEEDS REVIEW:** External production, Upstash region/status, and physical iPhone acceptance claims in operational docs require human re-verification.
+
+Rest presentation is scoped to the timer panel and its circular icon. The resting set keeps neutral outer borders so the rest state cannot visually wrap the whole exercise card.

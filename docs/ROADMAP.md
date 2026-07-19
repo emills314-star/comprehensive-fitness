@@ -174,3 +174,4 @@ No repository artifact identifies an actively assigned implementation item. **NE
 7. Population scope beyond male hypertrophy research.
 8. Pipeline metadata’s “schema-ready not blended” phrase versus runtime blending.
 9. Dates, owners, and priority for items not explicitly ranked above.
+- **Rest timer green wrap - FIXED:** the active rest state now uses a bounded circular timer icon and preserves neutral exercise/set boundaries; a static presentation contract and approved phone-width mockup protect the treatment.

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rest timer bounded-icon mockup</title>
+  <style>
+    :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #17263d; background: #f4f2e8; }
+    body { margin: 0; padding: 24px 12px 40px; }
+    main { max-width: 390px; margin: auto; }
+    .eyebrow { color: #63748b; font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    h1 { font-size: 24px; line-height: 1.1; margin: 6px 0 18px; }
+    .exercise { background: #fffdf5; border: 1px solid #b9c2cc; border-radius: 16px; padding: 14px; }
+    .exercise h2 { font-size: 18px; margin: 0 0 12px; }
+    .set { border: 1px solid #d4dbe2; border-radius: 10px; padding: 10px; }
+    .fields { display: grid; grid-template-columns: 36px repeat(3, 1fr); gap: 6px; align-items: end; }
+    .field { background: #f6f7f5; padding: 8px 4px; text-align: center; }
+    .field small { color: #66758b; display: block; font-size: 10px; font-weight: 800; }
+    .field strong { display: block; font-size: 16px; margin-top: 4px; }
+    .timer { background: #fcf7e9; border: 1px solid #d0b54b; border-radius: 12px; display: grid; gap: 10px; margin-top: 10px; padding: 11px; }
+    .timer-head { align-items: center; display: flex; gap: 10px; }
+    .timer-icon { align-items: center; background: #6d8f35; border: 2px solid #a4bd65; border-radius: 50%; color: #fff; display: inline-flex; flex: 0 0 34px; font-size: 20px; font-weight: 900; height: 34px; justify-content: center; width: 34px; }
+    .timer-head span { color: #6d8f35; display: block; font-size: 12px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+    .timer-head strong { display: block; font-size: 24px; line-height: 1; margin-top: 2px; }
+    .progress { background: #f4edc9; border: 1px solid #d0b54b; border-radius: 8px; height: 28px; overflow: hidden; position: relative; }
+    .progress::before { background: #f4d95e; content: ""; inset: 0 58% 0 0; position: absolute; }
+    .progress b { align-items: center; display: flex; height: 100%; justify-content: center; position: relative; font-size: 12px; }
+    .actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+    button { background: #fffdf5; border: 1px solid #cbbf86; border-radius: 9px; color: #53657b; font: inherit; font-size: 12px; font-weight: 800; min-height: 42px; }
+    .context { color: #6e7d8d; font-size: 11px; }
+    .note { color: #63748b; font-size: 12px; line-height: 1.45; margin: 16px 2px 0; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="eyebrow">Mockup · phone width</div>
+    <h1>Rest state stays inside its own timer</h1>
+    <section class="exercise" aria-label="Example exercise card">
+      <h2>Warm-up 1 of 2 · Leg Press</h2>
+      <div class="set">
+        <div class="fields"><div class="field"><small>SET</small><strong>WU1</strong></div><div class="field"><small>REPS</small><strong>5</strong></div><div class="field"><small>LOAD</small><strong>225</strong></div><div class="field"><small>RPE</small><strong>0</strong></div></div>
+        <div class="timer">
+          <div class="timer-head"><span class="timer-icon" aria-hidden="true">◷</span><div><span>Rest</span><strong>2:17</strong></div></div>
+          <div class="progress"><b>2:17 remaining</b></div>
+          <div class="actions"><button>-15 sec</button><button>+15 sec</button><button>Skip</button></div>
+          <div class="context">After Leg Press · Next: Leg Press · Warm-up 2 of 2</div>
+        </div>
+      </div>
+    </section>
+    <p class="note">The green completion/rest signal is bounded to the circular timer icon. The exercise card and set block retain their normal neutral borders.</p>
+  </main>
+</body>
+</html>
