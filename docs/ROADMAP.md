@@ -4,7 +4,7 @@
 
 - **Purpose:** Evidence-based status, priorities, defects, debt, and open product/research questions
 - **Last verified:** 2026-07-18
-- **Repository:** Quiet Coach workspace and exercise-identity repair (pending publication)
+- **Repository:** `main` @ `324f008`
 - **Verification status:** VERIFIED against current branch; dates/owners and unrecorded priorities are intentionally omitted
 - **Related:** [Project](PROJECT.md), [architecture](ARCHITECTURE.md), [decision engine](DECISION_ENGINE.md), [UI/UX](UI_UX.md)
 

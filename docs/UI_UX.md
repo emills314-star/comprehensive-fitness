@@ -4,7 +4,7 @@
 
 - **Purpose:** Verified user experience, interaction contracts, and intended UX gaps
 - **Last verified:** 2026-07-18
-- **Repository:** `navy-modular-redesign` (pending publication)
+- **Repository:** `main` @ `324f008`
 - **Verification status:** VERIFIED from `index.html` and UI/domain tests; physical-device accessibility remains partly unverified
 - **Related:** [Project](PROJECT.md), [architecture](ARCHITECTURE.md), [decision engine](DECISION_ENGINE.md), [roadmap](ROADMAP.md)
 

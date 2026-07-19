@@ -4,7 +4,7 @@
 
 - **Purpose:** Catalog of implemented and intended logic that turns history, research, and readiness into guidance
 - **Last verified:** 2026-07-18
-- **Repository:** exercise-identity/2.0.0 integration (pending publication)
+- **Repository:** `main` @ `324f008`
 - **Verification status:** VERIFIED against `prescription-engine.js`, relevant `index.html` logic, schemas, data pipelines, and tests
 - **Related:** [Project](PROJECT.md), [architecture](ARCHITECTURE.md), [UI/UX](UI_UX.md), [training data map](training-prescription-data.md), [research methodology](../research_database/METHODOLOGY.md)
 

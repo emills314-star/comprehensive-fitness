@@ -2,7 +2,7 @@
 
 ## Status
 
-**IMPLEMENTED LOCALLY; HOSTED VERIFICATION PENDING**
+**COMPLETE** — implementation commit `324f008` is published to `main` and verified on production.
 
 ## Scope
 
@@ -30,4 +30,14 @@ The repair separates `performanceExerciseId` (exact prior loads and variation hi
 - Protected Today/Progress surfaces: 14 passed and 14 expected project skips; intentional mobile/tablet/desktop/light/dark/zoom baselines refreshed.
 - Public prescription integration, backup contract, service-worker cache, performance, and syntax checks passed during implementation.
 
-Final full-suite, privacy, deployment, and hosted mobile/desktop evidence are recorded before this log is marked complete.
+## Publication and hosted verification
+
+- GitHub `main`: `324f008` (`Rebuild UI and repair exercise history identity`).
+- GitHub deployment `5507770536`: Production completed successfully at 2026-07-19T04:12:45Z.
+- Production alias: `https://comprehensive-fitness.vercel.app/?verify=324f008-mobile` at 390 × 844 and `?verify=324f008-desktop` at 1280 × 900.
+- Flow: load → inspect four destination controls → open Progress → open Lifts → verify rendered empty state → reload.
+- Expected/actual: Today, Plan, Progress, and More rendered with Now, Map, Trend, and Menu cues; Progress Lifts rendered “Log an exercise…” instead of a blank view; reload retained `#progress-lifts`; no destination error appeared.
+- Console/runtime evidence: zero `pageerror` or application console-error events in either clean context.
+- Existing in-app-browser state remained untouched: its prior service worker correctly deferred activation because a local workout was open. The final served `app-foundation.js` was independently confirmed to contain the four-destination contract, and clean production contexts verified the rendered result.
+
+The final public suite passed 42/42 selected scripts; PWA verification, static lint, privacy guard, 34/34 application integration contracts, 18/18 analytics/settings lifecycles, the focused accessibility matrix, the executable-snapshot trust check, eight destination goldens, and 14 protected-surface checks all passed. No private fitness artifact, credential, local database, or generated audit artifact was staged or published.

@@ -4,7 +4,7 @@
 
 - **Purpose:** Verified technical architecture, data flows, and operational boundaries
 - **Last verified:** 2026-07-18
-- **Repository:** Quiet Coach workspace and exercise-identity repair (pending publication)
+- **Repository:** `main` @ `324f008`
 - **Verification status:** VERIFIED locally; external deployment/device status is not repository-verifiable
 - **Related:** [Project](PROJECT.md), [decision engine](DECISION_ENGINE.md), [UI/UX](UI_UX.md), [roadmap](ROADMAP.md), [push backend](push-backend.md)
 
