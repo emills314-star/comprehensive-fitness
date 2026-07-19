@@ -109,3 +109,10 @@ Do not treat the optional Redis backend as the personal evidence database. It st
 - **IMPLEMENTED:** lb/kg changes atomically convert load-bearing app data, retain per-record provenance, preserve private source packages, normalize source-unit prescriptions at the UI boundary, and refresh converted snapshot checksums.
 - **NEEDS REVIEW:** Live deployment and physical-device status cannot be proven from repository state alone; dated operational observations must be reverified before release claims.
 - **NEEDS REVIEW:** Research scope is male-specific; desired inclusivity/population expansion is not documented.
+
+## Blank-slate UI reinvention
+
+- **IMPLEMENTED:** A separate synthetic-data React/TypeScript comparison lab defines and renders 15 structurally distinct phone-first design systems without using the production UI as a visual reference (`redesign/`, `docs/design/COMPLETE_REDESIGN_CONCEPTS.md`).
+- **DECISION:** Dual Track is the recommended product direction. It organizes active work as parallel exercise lanes above a persistent logging dock; Bento Studio and Set Stack remain comparison finalists and are not silently blended into the winner.
+- **PLANNED:** Production behavior remains on the current shell until the typed-adapter, parity, offline, privacy, accessibility, hosted-browser, PWA, and Capacitor gates in `docs/design/REDESIGN_MIGRATION_BLUEPRINT.md` pass.
+- **PARTIALLY IMPLEMENTED / NEEDS REVIEW:** The editable Figma file contains foundations but its remaining canvases are blocked by the connected Starter-plan automation limit. The repository lab and dossier are complete design evidence; Figma is not yet a complete joint source of truth.

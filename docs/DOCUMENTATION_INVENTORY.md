@@ -32,6 +32,8 @@ No existing Markdown was deleted during the reconciliation. The core documents a
 | `research_database/SCHEMA_VALIDATION.md` | **RETAIN, specialized** | Unique validation/import semantics plus separately attributed archive/workbook reproducibility commands; Architecture summarizes the release gates. |
 | `research_database/EXERCISE_MUSCLE_TAXONOMY.md` | **RETAIN, authoritative taxonomy contract** | Canonical relationship meanings, 23-to-20 guided-family projection, fail-closed source/mapping ID provenance, historical-integration boundary, and review queue. |
 | `store/app-store-notes.md` | **RETAIN as release checklist** | Unique store metadata/prerequisites; current release remains blocked. |
+| `docs/design/COMPLETE_REDESIGN_CONCEPTS.md` | **RETAIN, authoritative blank-slate concept decision** | Defines the UI-neutral capability contract, 15 structural systems, capability feasibility evidence, ranked finalists, Dual Track winner, and partial Figma-source status. |
+| `docs/design/REDESIGN_MIGRATION_BLUEPRINT.md` | **RETAIN, authoritative redesign migration plan** | Defines the typed UI boundary, phased React cutover, verification gates, safety invariants, and legacy-retirement criteria. |
 
 ## Naming decisions
 

@@ -231,3 +231,9 @@ Mesocycle candidate detail remains progressively rendered: Templates defers the 
 - **NEEDS REVIEW:** External production, Upstash region/status, and physical iPhone acceptance claims in operational docs require human re-verification.
 
 Rest presentation is scoped to the timer panel and its circular icon. The resting set keeps neutral outer borders so the rest state cannot visually wrap the whole exercise card.
+
+## Planned React presentation boundary
+
+**IMPLEMENTED specification / PLANNED production integration:** `redesign/src/contract.ts` establishes a typed seam between the future Dual Track shell and the existing application. UI read models cover next action, readiness, active workout, plan, progress, and system/data status. Discriminated commands cover start/resume, readiness, set/rest mutation, overrides, explicit submission/cancel, template/mesocycle mutation, history editing, settings, backup, consent, and conflicts. Effect ports isolate persistence, caching, notifications, sync, wake lock, audio, and haptics.
+
+The current engines, schemas, IndexedDB layout, backup contract, APIs, service worker, consent rules, and immutable history snapshots remain authoritative. The Vite entry under `redesign/` is synthetic and non-production; it does not access canonical persistence. Production adoption must proceed through a separate entry and pass adapter, parity, offline, privacy, hosted-browser, PWA, and Capacitor gates before the main entry changes. See `docs/design/REDESIGN_MIGRATION_BLUEPRINT.md`.

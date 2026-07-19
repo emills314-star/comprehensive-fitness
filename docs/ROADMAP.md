@@ -175,3 +175,13 @@ No repository artifact identifies an actively assigned implementation item. **NE
 8. Pipeline metadata’s “schema-ready not blended” phrase versus runtime blending.
 9. Dates, owners, and priority for items not explicitly ranked above.
 - **Rest timer green wrap - FIXED:** the active rest state now uses a bounded circular timer icon and preserves neutral exercise/set boundaries; a static presentation contract and approved phone-width mockup protect the treatment.
+10. Complete the remaining components and eight-family canvases in the existing Figma redesign file after the Starter-plan automation limit resets.
+
+## UI reinvention program
+
+- **COMPLETED (concept phase):** UI-neutral 22-capability contract, one synthetic fixture, 15 structurally distinct systems, eight representative screen families, weighted feasibility/experience scorecard, all 105 pairwise uniqueness checks, ranked top three, Dual Track decision, typed React boundary, non-production interaction lab, and migration blueprint.
+- **PARTIALLY IMPLEMENTED:** Editable Figma foundations exist in the linked file; semantic aliases, components, and screen canvases remain incomplete because the connected Figma Starter-plan call limit was reached. Resume the same file rather than generating a replacement.
+- **NEXT / High:** Characterize legacy behavior through adapter contracts, then implement the production adapter without changing domain or persistence semantics.
+- **NEXT / High:** Implement Dual Track Today/readiness/workout/rest/submission/history through the separate entry and prove reload/offline recovery.
+- **NEXT / Medium:** Add planning, analytics, history editing, settings, imports, consent, and conflict recovery; then pass keyboard, axe, reduced-motion, forced-colors, 200% text, responsive, PWA, Capacitor, and hosted-browser gates.
+- **PLANNED cutover:** Switch the main entry only after parity and packaging pass; retire the legacy presentation after a rollback window and do not keep a permanent toggle.

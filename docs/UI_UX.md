@@ -185,3 +185,11 @@ Use “Workout,” “Dashboard,” “Templates,” “Charts,” and “Settin
 Do not call offline Fitbit export analysis “Fitbit sync,” the nutrition adequacy selector “nutrition tracking,” or installation authorization a user login.
 The active rest panel is bounded by its own circular rest icon; the exercise card and set block retain their normal neutral boundaries.
 The rest timer presentation uses a bounded circular icon and does not recolor the full exercise/set boundary.
+
+## Blank-slate redesign source of truth
+
+**IMPLEMENTED concept phase:** `docs/design/COMPLETE_REDESIGN_CONCEPTS.md` and the non-production `redesign/` lab define 15 phone-first systems across the same eight screen families and synthetic fixture. Structural uniqueness is enforced across organizing metaphor, navigation topology, primary content unit, workout execution, planning, progress presentation, and interaction grammar; palette changes do not count.
+
+**DECISION:** Dual Track wins on the weighted experience/feasibility evaluation. Its presentation contract is exercise lanes, role-aware set clips, a visible playhead, and a persistent control dock. Phone use is primary; 320 and 390 px must not require page-level horizontal scrolling. Tablet and desktop widen the temporal track and add adjacent planning/analysis without changing action order.
+
+All concepts must expose empty, loading, offline, failure, destructive-confirmation, conflicting-data, and update states. Spatial or gesture-first concepts require visible, keyboard-operable, and screen-reader-equivalent controls. Reduced motion, forced colors, 200% text, focus order, and 320/390/768/1280 layouts are migration gates. Existing route names and component styling remain authoritative only for the legacy shell until cutover.

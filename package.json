@@ -10,6 +10,11 @@
   },
   "scripts": {
     "dev": "node scripts/serve-local.js",
+    "redesign:dev": "vite --config redesign/vite.config.ts",
+    "redesign:build": "vite build --config redesign/vite.config.ts",
+    "redesign:typecheck": "tsc -p redesign/tsconfig.json",
+    "test:redesign": "node scripts/test-redesign-contracts.js",
+    "audit:redesign": "playwright test --config redesign/playwright.config.ts",
     "sync:web": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/sync-web.ps1",
     "verify:pwa": "node scripts/run-pwa-verification.js",
     "test:hypertrophy": "node scripts/test-hypertrophy-score.js",
@@ -63,6 +68,8 @@
   "dependencies": {
     "@capacitor/core": "^7.4.3",
     "@upstash/qstash": "^2.11.1",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "web-push": "^3.6.7"
   },
   "devDependencies": {
@@ -70,9 +77,14 @@
     "@capacitor/cli": "^7.4.3",
     "@capacitor/ios": "^7.4.3",
     "@playwright/test": "^1.61.1",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
     "axe-core": "^4.12.1",
     "exceljs": "^4.4.0",
     "jszip": "3.10.1",
+    "typescript": "^5.9.3",
+    "vite": "^8.1.5",
     "yaml": "2.9.0"
   }
 }
