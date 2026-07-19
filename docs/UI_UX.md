@@ -111,6 +111,8 @@ Every active working-set card shows **Last time** from the newest eligible submi
 
 The review shows named session purpose, ordered exercises, roles, sets/reps, direct/indirect volume, target versus actual frequency, high-fatigue compounds, spinal/grip/systemic/local fatigue, duration, placement, substitutions, and severity-labelled findings. Blocking volume, frequency, or consecutive-heavy-pattern findings prevent activation. Historical plans show dates and lifecycle at the bottom of the tab. Never-activated drafts/plans may be deleted after confirmation; completed plans are protected and can be archived. Template cards show `Base Session Intent` only when a stable heavy/light/technique/deload/specialization intent exists and state that today’s readiness may modify execution.
 
+An imported Strong exercise without a research-library match remains usable when exact submitted Strong history exists. Its card says that the latest imported Strong performance and saved workout structure are being used and that research-based progression is unavailable until mapped; it does not show `unknown_exercise_identity` as a safety warning. **+ Set**, **+ Warm-up**, **Duplicate**, and each row's **Remove** control remain available during the active workout unless a real illness/pain/safety restriction applies. Set-count edits persist with the active workout and change the template only after **Update template from today**.
+
 ### Recovery and nutrition
 
 ### Legacy automatic mesocycle review
@@ -139,7 +141,7 @@ Readiness capture includes sleep, quality, HRV, resting HR, soreness, illness, a
 | Explicit workout submission | **IMPLEMENTED** | `request-submit-workout` then `submitWorkout`. |
 | Confirmation before final submission | **IMPLEMENTED** | `renderSubmitConfirmation`; cancellation returns to active workout. |
 | Post-workout completed lifts and PRs | **IMPLEMENTED** | `renderCompletedWorkoutSummary` and exercise result details. |
-| History only after confirmed submission | **IMPLEMENTED** | Canonical history filters submitted/completed states; safety/domain tests. Imported Strong workouts are normalized as submitted history, retain exact performance identity in generated templates, and are audited across every generated template exercise for prior history and usable set structure. |
+| History only after confirmed submission | **IMPLEMENTED** | Canonical history filters submitted/completed states; safety/domain tests. Imported Strong workouts are normalized as submitted history, retain exact performance identity and provenance in generated templates, and are audited across every generated template exercise for dated history, usable set structure, and startable targets. Unmapped Strong-only identities use the explicit non-research history fallback. |
 | Interactive progress charts with session detail | **IMPLEMENTED** | Point selection and detail view. |
 | Full visibility for long exercise names | **PARTIALLY IMPLEMENTED** | Wrapping/overflow styles and performance fixture cover long workout names; broad physical-device exercise-name audit is absent. |
 | Functional lb/kg controls | **IMPLEMENTED** | Header and Settings use the same atomic converter; sets, targets, template increments, overrides, and snapshots preserve physical meaning and explicit unit provenance. Private/raw source packages remain immutable. |

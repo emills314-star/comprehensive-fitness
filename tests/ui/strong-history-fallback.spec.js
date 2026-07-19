@@ -1,0 +1,96 @@
+"use strict";
+
+const { test, expect } = require("@playwright/test");
+
+const STRONG_EXERCISE = "Public Synthetic Strong Cable Sweep";
+const STRONG_TEMPLATE = "Public Synthetic Strong Upper";
+
+const STRONG_CSV = [
+  "Date,Workout Name,Duration,Exercise Name,Set Order,Weight,Reps,Distance,Seconds,Notes,Workout Notes,RPE",
+  `2026-07-10 10:00:00,${STRONG_TEMPLATE},45m,${STRONG_EXERCISE},1,20,15,,,,,8`,
+  `2026-07-10 10:00:00,${STRONG_TEMPLATE},45m,${STRONG_EXERCISE},2,20,12,,,,,8.5`,
+  `2026-07-17 10:00:00,${STRONG_TEMPLATE},45m,${STRONG_EXERCISE},1,27.5,14,,,,,`,
+  `2026-07-17 10:00:00,${STRONG_TEMPLATE},45m,${STRONG_EXERCISE},2,25,16,,,,,`
+].join("\n");
+
+async function waitForApp(page) {
+  await page.goto("/");
+  await expect(page.locator("main.app-main")).toBeVisible({ timeout: 45_000 });
+  await expect.poll(() => page.evaluate(() => String(prescriptionEvidenceStatus?.state || "loading")), {
+    timeout: 45_000
+  }).toBe("ready");
+}
+
+test("Strong-only history starts an editable workout without inventing a research identity", async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.addInitScript(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+    localStorage.setItem("comprehensive-fitness-data-v1", JSON.stringify({
+      appDataVersion: 2,
+      sessions: [],
+      exercises: [],
+      sets: [],
+      templates: [],
+      mesocycles: [],
+      activeMesocycleId: "",
+      recommendationHistory: [],
+      manualOverrides: [],
+      personalEvidencePackage: null,
+      rawImports: [],
+      migrationAudit: [],
+      dataRevision: 0,
+      settings: { weightUnit: "lb" }
+    }));
+  });
+  await waitForApp(page);
+
+  const audit = await page.evaluate((csv) => {
+    importStrongCsv(csv);
+    const template = data.templates.find((item) => item.name === "Public Synthetic Strong Upper");
+    const exercise = template?.exercises.find((item) => item.name === "Public Synthetic Strong Cable Sweep");
+    return {
+      templateId: template?.id || "",
+      source: template?.source || "",
+      performanceExerciseId: exercise?.performanceExerciseId || "",
+      researchExerciseId: exercise?.researchExerciseId || "",
+      message: settingsMessage
+    };
+  }, STRONG_CSV);
+  expect(audit.source).toBe("strong");
+  expect(audit.performanceExerciseId).toBe("custom_public_synthetic_strong_cable_sweep");
+  expect(audit.researchExerciseId).toBe("");
+  expect(audit.message).toContain("Verified dated prior workout history and startable set structure for all 1 template exercises");
+
+  await page.locator('[data-action="set-tab"][data-tab="plan"]').click();
+  await page.locator(`[data-action="start-template"][data-template-id="${audit.templateId}"]`).click();
+  await page.locator('[data-action="continue-template-start"]').click();
+  await page.locator('[data-action="use-usual-readiness"]').click();
+
+  await expect(page.getByRole("heading", { name: STRONG_TEMPLATE, exact: true })).toBeVisible({ timeout: 45_000 });
+  const activeExerciseId = await page.evaluate((name) => data.exercises.find((exercise) => exercise.sessionId === activeWorkoutId && exercise.name === name)?.id || "", STRONG_EXERCISE);
+  const card = page.locator(`.exercise-card:has([data-exercise-id="${activeExerciseId}"])`);
+  await expect(card).toHaveCount(1);
+  await expect(card).toContainText("Using your latest imported Strong performance");
+  await expect(card).not.toContainText("unknown_exercise_identity");
+  await expect(card.locator('[data-action="add-set"]')).toBeEnabled();
+
+  const lastTime = card.locator(".set-prescription-context").filter({ hasText: "Last time" });
+  await expect(lastTime).toHaveCount(2);
+  expect((await lastTime.allTextContents()).every((text) => text.includes("July 17") && !text.includes("No prior working set found"))).toBe(true);
+  await expect(lastTime.first()).toContainText("27.5");
+  await expect(lastTime.first()).toContainText("14");
+
+  const beforeCount = await page.evaluate((exerciseId) => data.sets.filter((set) => set.exerciseId === exerciseId && !set.isWarmup).length, activeExerciseId);
+  await card.locator('[data-action="add-set"]').click();
+  await expect.poll(() => page.evaluate((exerciseId) => data.sets.filter((set) => set.exerciseId === exerciseId && !set.isWarmup).length, activeExerciseId)).toBe(beforeCount + 1);
+
+  const newestSetId = await page.evaluate((exerciseId) => data.sets.filter((set) => set.exerciseId === exerciseId).sort((a, b) => Number(b.sequenceIndex) - Number(a.sequenceIndex))[0].id, activeExerciseId);
+  await page.locator(`[data-action="delete-set"][data-set-id="${newestSetId}"]`).click();
+  await expect.poll(() => page.evaluate((exerciseId) => data.sets.filter((set) => set.exerciseId === exerciseId && !set.isWarmup).length, activeExerciseId)).toBe(beforeCount);
+
+  await page.reload();
+  await expect(page.getByRole("heading", { name: STRONG_TEMPLATE, exact: true })).toBeVisible({ timeout: 45_000 });
+  await expect(page.locator(`[data-action="add-set"][data-exercise-id="${activeExerciseId}"]`)).toBeEnabled();
+  await expect.poll(() => page.evaluate((exerciseId) => data.sets.filter((set) => set.exerciseId === exerciseId && !set.isWarmup).length, activeExerciseId)).toBe(beforeCount);
+});

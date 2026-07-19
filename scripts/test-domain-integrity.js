@@ -112,5 +112,7 @@ assert.match(html, /function getMostRecentWorkoutPerformance\(exerciseName, opti
 assert.match(html, /requestedResistanceType[\s\S]*resistanceTypeFor\(entry\.exercise, entry\.set\) === requestedResistanceType/, "Prior workout resolution must preserve resistance-type identity");
 assert.match(html, /function createTemplatesFromStrongSessions[\s\S]*exerciseIdentityFields\(exercise\)/, "Strong-derived templates must preserve imported exercise identity fields");
 assert.match(html, /function auditImportedTemplateHistory\(templates\)/, "Strong imports must audit history coverage across every generated template exercise");
+assert.match(html, /source: "strong"/, "Strong-derived templates must retain import provenance");
+assert.match(html, /function strongHistoryFallbackForTemplateExercise[\s\S]*performance\.session\?\.source !== "strong"[\s\S]*history_fallback/, "Unmapped Strong identities must use exact submitted history without weakening the research identity boundary");
 
 console.log("Domain integrity tests passed (retention, classification, migration, snapshots, and coaching source).");

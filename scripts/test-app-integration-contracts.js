@@ -392,6 +392,7 @@ test("engine hard-constraint rejections stay typed and never enter legacy target
         if (outcome.error) throw outcome.error;
         return outcome.value;
       },
+      strongHistoryFallbackForTemplateExercise: () => null,
       legacyTargetFromSnapshot: () => { legacyCalls += 1; return { sets: 3, executable: true }; },
       progressionProfileForExercise: () => { legacyCalls += 1; throw new Error("LEGACY_FALLBACK_REACHED"); },
       todayIso: () => "2026-07-14"

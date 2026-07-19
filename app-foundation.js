@@ -3145,6 +3145,24 @@
         return getMostRecentWorkoutPerformance(exerciseName, options)?.sets || [];
       }
 
+      function strongHistoryFallbackForTemplateExercise(templateExercise, options = {}, rejection = null) {
+        if (String(rejection?.reason || "") !== "unknown_exercise_identity") return null;
+        const identity = resolveExerciseIdentityProfile(templateExercise);
+        if (identity.status !== "resolved" || !identity.performanceExerciseId || identity.researchExerciseId) return null;
+        const resistanceType = templateExercise.resistanceType || inferResistanceType(templateExercise.name, templateExercise);
+        const performance = getMostRecentWorkoutPerformance(templateExercise.name, {
+          ...options,
+          canonicalExerciseId: identity.performanceExerciseId,
+          resistanceType
+        });
+        if (!performance?.sets?.length || performance.session?.source !== "strong") return null;
+        const validStructure = Number(templateExercise.sets || 0) >= 1
+          && Number(templateExercise.reps || 0) >= 1
+          && ((templateExercise.setTypes || []).length > 0 || Number(templateExercise.sets || 0) > 0);
+        if (!validStructure) return null;
+        return { identity, performance, resistanceType };
+      }
+
       function latestSkippedDeloadForExercise(exerciseName, options = {}) {
         const weeks = summarizeExerciseByWeek(exerciseName, options);
         if (!weeks[0]?.isLikelyDeload) return null;
@@ -3153,6 +3171,7 @@
       }
 
       function coachTargetForTemplateExercise(templateExercise, options = {}) {
+        let historyFallback = null;
         if (typeof unifiedPrescriptionSnapshot === "function") {
           let snapshot;
           try {
@@ -3171,8 +3190,11 @@
             if (detail?.hardConstraint === true || ["hard_constraint_rejection", "engine_failure"].includes(detail?.type || detail?.kind) || /^HARD_CONSTRAINT_/i.test(code)) return detail;
             throw error;
           }
-          if (snapshot?.executionBlocked === true && snapshot?.executable === false && ["hard_constraint_rejection", "engine_failure"].includes(snapshot?.type || snapshot?.kind)) return snapshot;
-          if (isUsableWorkoutPrescriptionSnapshot(snapshot)) return legacyTargetFromSnapshot(snapshot, templateExercise, { useBase: true });
+          if (snapshot?.executionBlocked === true && snapshot?.executable === false && ["hard_constraint_rejection", "engine_failure"].includes(snapshot?.type || snapshot?.kind)) {
+            historyFallback = strongHistoryFallbackForTemplateExercise(templateExercise, options, snapshot);
+            if (!historyFallback) return snapshot;
+          }
+          if (!historyFallback && isUsableWorkoutPrescriptionSnapshot(snapshot)) return legacyTargetFromSnapshot(snapshot, templateExercise, { useBase: true });
         }
         const profile = progressionProfileForExercise(templateExercise.name);
         const sessionType = sessionTypeForTemplate(options.template);
@@ -3185,7 +3207,7 @@
         const targetReps = Number(templateExercise.reps || activeUpperRep || 8);
         const plannedSets = Math.max(1, scoredTypes.reduce((sum, type) => sum + Number(type.setCount || 0), 0) || Number(templateExercise.sets || 1));
         const weeks = summarizeExerciseByWeek(templateExercise.name, options);
-        const recommendation = coachRecommendationForExercise(templateExercise.name, { ...options, weekStart: weeks[0]?.weekStart || "" });
+        const recommendation = historyFallback ? null : coachRecommendationForExercise(templateExercise.name, { ...options, weekStart: weeks[0]?.weekStart || "" });
         const recentSets = getMostRecentWorkoutSets(templateExercise.name, options);
         const last = getLastCompletedSet(templateExercise.name, options);
         const skippedDeload = latestSkippedDeloadForExercise(templateExercise.name, options);
@@ -3205,6 +3227,10 @@
         let rpe = programmedRpeForExercise(templateExercise, profile, sessionType, recentRpe);
         let mode = recentSets.length ? "maintenance" : "baseline";
         let reason = "No prior completed sets found. Use a controlled load near RPE 7-8.";
+
+        if (historyFallback) {
+          reason = "Using your latest imported Strong performance and the saved workout structure. Research-based progression is unavailable until this exercise is mapped to the research library.";
+        }
 
         if (sessionType === "deload") {
           mode = "deload";
@@ -3288,6 +3314,18 @@
           coachRecommendation: recommendation,
           programTargetContext: programContext
         }, recentSets, activeProfile);
+        if (historyFallback) {
+          target = {
+            ...target,
+            executionBlocked: false,
+            executable: true,
+            recommendationStatus: "history_fallback",
+            recommendationUnavailableReason: "research_identity_unavailable",
+            performanceExerciseId: historyFallback.identity.performanceExerciseId,
+            researchExerciseId: null,
+            reason
+          };
+        }
         target.text = targetText(target, target.reason);
         return target;
       }

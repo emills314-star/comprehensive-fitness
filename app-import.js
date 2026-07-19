@@ -590,7 +590,7 @@
             };
           });
           if (!templateExercises.length) return null;
-          return { id: id(), name, notes: "Imported from Strong workout name.", exercises: templateExercises, createdAt: isoNow(), updatedAt: isoNow() };
+          return { id: id(), name, notes: "Imported from Strong workout name.", source: "strong", exercises: templateExercises, createdAt: isoNow(), updatedAt: isoNow() };
         }).filter(Boolean);
       }
 
@@ -603,7 +603,24 @@
         const withUsableStructure = exercises.filter((exercise) => Number(exercise.sets || 0) >= 1
           && Number(exercise.reps || 0) >= 1
           && ((exercise.setTypes || []).length > 0 || Number(exercise.sets || 0) > 0)).length;
-        return { total: exercises.length, withHistory, withUsableStructure };
+        const startable = (templates || []).flatMap((template) => (template.exercises || []).map((exercise) => ({ template, exercise }))).filter(({ template, exercise }) => {
+          const target = coachTargetForTemplateExercise(exercise, {
+            template,
+            resistanceType: exercise.resistanceType || inferResistanceType(exercise.name, exercise)
+          });
+          return target?.executionBlocked !== true && Number(target?.sets || 0) >= 1 && Number(target?.reps || 0) >= 1;
+        }).length;
+        return { total: exercises.length, withHistory, withUsableStructure, startable };
+      }
+
+      function strongImportAuditMessage(audit) {
+        if (!audit.total) return "";
+        const verified = audit.withHistory === audit.total
+          && audit.withUsableStructure === audit.total
+          && audit.startable === audit.total;
+        return verified
+          ? " Verified dated prior workout history and startable set structure for all " + audit.total + " template exercises."
+          : " Needs review: dated history was found for " + audit.withHistory + " of " + audit.total + ", usable structure for " + audit.withUsableStructure + ", and startable workout targets for " + audit.startable + ".";
       }
 
       function parseStrongDate(rawDate) {
@@ -721,7 +738,7 @@
           const backupAlreadyStored = (data.rawImports || []).some((item) => item.source === "strong" && item.originalText === text);
           commit({ ...data, templates: [...templates, ...data.templates], rawImports: backupAlreadyStored ? data.rawImports : [...(data.rawImports || []), { id: "strong-backup-" + importStamp, source: "strong", importedAt: isoNow(), originalText: text, sessionExternalIds: [] }] }, false);
           const audit = auditImportedTemplateHistory(templates);
-          settingsMessage = "Strong CSV already imported." + (templates.length ? " Added " + templates.length + " templates from active workout names." : "") + (audit.total ? " Verified prior workout history for " + audit.withHistory + " of " + audit.total + " template exercises and usable prescriptions for " + audit.withUsableStructure + "." : "") + (backupAlreadyStored ? "" : " Raw source backup retained.");
+          settingsMessage = "Strong CSV already imported." + (templates.length ? " Added " + templates.length + " templates from active workout names." : "") + strongImportAuditMessage(audit) + (backupAlreadyStored ? "" : " Raw source backup retained.");
           render();
           return;
         }
@@ -764,7 +781,7 @@
         }, false);
         activeSessionId = sessions.sort((a, b) => b.date.localeCompare(a.date))[0]?.id || activeSessionId;
         const audit = auditImportedTemplateHistory(templates);
-        settingsMessage = "Imported " + sessions.length + " Strong workouts, " + exercises.length + " exercises, " + sets.length + " sets, and " + templates.length + " templates. Verified prior workout history for " + audit.withHistory + " of " + audit.total + " template exercises and usable prescriptions for " + audit.withUsableStructure + ".";
+        settingsMessage = "Imported " + sessions.length + " Strong workouts, " + exercises.length + " exercises, " + sets.length + " sets, and " + templates.length + " templates." + strongImportAuditMessage(audit);
         render();
       }
 
