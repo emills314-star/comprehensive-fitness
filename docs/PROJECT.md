@@ -3,8 +3,8 @@
 ## Metadata
 
 - **Purpose:** Product vision, verified scope, and boundary between current and intended behavior
-- **Last verified:** 2026-07-14
-- **Repository:** integrated foundation `ce13f1e` plus accepted taxonomy-source repairs `5d95f40` and `90cb27a`
+- **Last verified:** 2026-07-18
+- **Repository:** Quiet Coach workspace and exercise-identity repair (pending publication)
 - **Verification status:** VERIFIED from application code, tests, schemas, configuration, and existing docs; open conflicts are labeled
 - **Related:** [Architecture](ARCHITECTURE.md), [Decision engine](DECISION_ENGINE.md), [UI/UX](UI_UX.md), [Roadmap](ROADMAP.md), [documentation inventory](DOCUMENTATION_INVENTORY.md)
 
@@ -27,6 +27,8 @@ Total effective sets—not direct sets alone—determine whether a target range 
 Comprehensive Fitness is a local-first strength-training application that logs workouts and turns workout history, optional private personal evidence, recovery check-ins, and a versioned exercise-science database into transparent training guidance. It is trying to become a personal fitness decision system without hiding uncertainty or rewriting historical recommendations after engine updates.
 
 The verified target user is a single strength/hypertrophy trainee using a phone during training. The research package is explicitly scoped to male hypertrophy and related strength, recovery, and nutrition questions (`research_database/README.md`, `research_database/METHODOLOGY.md`). Broader population support is not established.
+
+The verified product navigation has four destinations: Today for the next action and focused workout execution, Plan for templates and mesocycle construction, Progress for overview/lift/history analysis, and More for setup and data controls. The active-workout UI intentionally prioritizes one exercise/set on a phone while retaining a full-session board on wider screens.
 
 ## Problems and principles
 
@@ -66,7 +68,7 @@ Product principles evidenced in the repository:
 2. Create or select a template; review readiness and proposed adjustments; explicitly start.
 3. Log warm-up and working sets; complete/skip sets; use exercise rest timers and prescription guidance.
 4. Request submission, review confirmation, submit, then view grade, lifts, PRs, and recommendations.
-5. Reopen submitted sessions through Dashboard/History; inspect interactive charts and weekly volume/fatigue detail.
+5. Reopen submitted sessions through Progress → History; inspect Progress → Lifts charts and Progress → Overview volume/fatigue detail.
 6. Optionally import Strong CSV history and a locally built private evidence package.
 7. Optionally install the PWA and enable backend-assisted rest notifications.
 8. Separately opt in to installation-authorized workout-mutation upload; notifications alone do not enable it. Remote installation records can be revoked and deleted from the Settings Danger Zone without clearing local workouts.
@@ -83,6 +85,8 @@ Product principles evidenced in the repository:
 - **PR:** A submitted-workout performance record under implemented comparison semantics; see `docs/DECISION_ENGINE.md`.
 - **Weighted muscle volume:** Versioned canonical relationships count direct dynamic sets fully, meaningful fractional dynamic work at its configured weight, and incidental/unknown/isometric work at zero hypertrophy credit while retaining fatigue exposure separately.
 - **Programming family:** A derived accounting projection from 23 stable anatomical muscle IDs into 20 practical families. It prevents paired subdivisions from double-counting program volume without rewriting exercise relationships, filters, history, or canonical IDs.
+- **Performance exercise identity:** The exact logged/personal exercise ID used to retrieve prior-session loads and keep equipment or named variations distinct.
+- **Research exercise identity:** An optional reconciled public exercise ID used for taxonomy and science defaults without collapsing the performance history identity.
 
 ## Data sources and privacy
 

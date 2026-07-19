@@ -10,11 +10,10 @@ const {
 } = require("./fixtures/protected-surfaces.fixture");
 
 const PRIMARY_TABS = [
-  { id: "dashboard", view: ".dashboard-view" },
+  { id: "today", view: ".workout-view" },
   { id: "plan", view: ".templates-view" },
-  { id: "charts", view: ".charts-view" },
-  { id: "data", view: ".settings-view" },
-  { id: "lift", view: ".workout-view" }
+  { id: "progress", view: ".dashboard-view" },
+  { id: "more", view: ".settings-view" }
 ];
 
 function focusedFixture({ activeWorkout = true, includeHistory = true } = {}) {
@@ -175,10 +174,16 @@ function primaryTab(page, tabId) {
 }
 
 async function openPrimaryTab(page, tabId) {
-  const target = primaryTab(page, tabId);
+  const destination = ({ lift: "today", dashboard: "progress", charts: "progress", data: "more" })[tabId] || tabId;
+  const target = primaryTab(page, destination);
   await expect(target).toHaveCount(1);
   await target.click();
   await expect(target).toHaveAttribute("aria-current", "page");
+  if (tabId === "charts" || tabId === "dashboard") {
+    const view = page.locator(`[data-action="set-progress-view"][data-progress-view="${tabId === "charts" ? "lifts" : "overview"}"]`);
+    await view.click();
+    await expect(view).toHaveAttribute("aria-current", "page");
+  }
   return target;
 }
 
@@ -578,6 +583,10 @@ async function reflowAudit(page) {
       {
         reason: "The Plan quick-template row is an explicit keyboard-operable horizontal carousel with overflow-x:auto and scroll snapping.",
         selector: ".quick-template-list"
+      },
+      {
+        reason: "The phone workout board is an explicit keyboard-operable horizontal exercise rail with overflow-x:auto and scroll snapping.",
+        selector: ".session-exercise-rail"
       }
     ];
     const allowedScrollContainer = (element, entry) => {
@@ -760,7 +769,7 @@ test("keyboard-visible skip link activates and focuses the canonical main-conten
   await expect(main, "Activating the skip link must move focus, not only update the URL fragment").toBeFocused();
 });
 
-test("explicit navigation across all five primary tabs moves focus into the new view without stealing focus on load", async ({ page }) => {
+test("explicit navigation across all four primary destinations moves focus into the new view without stealing focus on load", async ({ page }) => {
   await installScenario(page, { includeHistory: false });
   const loadFocus = await activeFocusState(page);
   expect(loadFocus.activeTag, "Initial render must not move focus without a user action").toBe("BODY");
@@ -1354,7 +1363,7 @@ test("forced-colors mode retains a visible non-shadow focus indicator on navigat
   test.setTimeout(90_000);
   await installScenario(page, { forcedColors: "active", includeHistory: false });
   const targets = [
-    primaryTab(page, "dashboard"),
+    primaryTab(page, "progress"),
     page.locator(`[data-action="request-cancel-workout"][data-session-id="${ACTIVE_SESSION_ID}"]`)
   ];
   expect(await page.evaluate(() => matchMedia("(forced-colors: active)").matches)).toBe(true);

@@ -169,12 +169,12 @@
         } catch {
           persistenceReady = false;
           settingsMessage = "Local workout data was removed, but fresh defaults could not be saved. Keep this tab open and retry Clear All Local App Data before relying on a reload.";
-          setActiveTab("lift", { replace: true, renderNow: false });
+          setActiveTab("today", { replace: true, renderNow: false });
           render();
           return false;
         }
         saveRuntime();
-        setActiveTab("lift", { replace: true, renderNow: false });
+        setActiveTab("today", { replace: true, renderNow: false });
         showAppToast("Local app data cleared.");
         render();
         return true;
@@ -600,7 +600,7 @@
       function addSession() {
         if (hasActiveWorkout()) {
           activeSessionId = activeWorkoutId;
-          setActiveTab("lift", { replace: true, renderNow: false });
+          setActiveTab("today", { replace: true, renderNow: false });
           showAppToast("You already have an active workout. Resume or cancel it before starting another.");
           render();
           return;
@@ -614,7 +614,7 @@
         activeSetNotice = "";
         window.clearInterval(timerInterval);
         timer = null;
-        setActiveTab("lift", { replace: true, renderNow: false });
+        setActiveTab("today", { replace: true, renderNow: false });
         commit({ ...data, sessions: [session, ...data.sessions] });
       }
 
@@ -631,13 +631,13 @@
         }
         if (!historyCorrection && hasActiveWorkout() && session.id !== activeWorkoutId) {
           activeSessionId = activeWorkoutId;
-          setActiveTab("lift", { replace: true, renderNow: false });
+          setActiveTab("today", { replace: true, renderNow: false });
           showAppToast("You already have an active workout. Resume or cancel it before adding another.");
           render();
           return;
         }
         const resistanceType = inferResistanceType(name.trim());
-        const exercise = { id: id(), sessionId: session.id, name: name.trim(), primaryMuscle: addExercisePrimaryMuscle, secondaryMuscle: addExerciseSecondaryMuscle, notes: "", order: data.exercises.filter((item) => item.sessionId === session.id).length, restSeconds: recommendedRestSeconds(name.trim()), resistanceType, isBodyweight: isBodyweightResistance(resistanceType), isDeload: false };
+        const exercise = { id: id(), sessionId: session.id, name: name.trim(), ...(typeof exerciseIdentityFields === "function" ? exerciseIdentityFields({ name: name.trim() }) : {}), primaryMuscle: addExercisePrimaryMuscle, secondaryMuscle: addExerciseSecondaryMuscle, notes: "", order: data.exercises.filter((item) => item.sessionId === session.id).length, restSeconds: recommendedRestSeconds(name.trim()), resistanceType, isBodyweight: isBodyweightResistance(resistanceType), isDeload: false };
         addExerciseDraft = "";
         addExercisePrimaryMuscle = "";
         addExerciseSecondaryMuscle = "";
@@ -752,7 +752,7 @@
             restSeconds: Number(target.restSeconds || type.restSeconds || restSeconds)
           }));
           appliedTargetContext = { ...appliedTargetContext, setTypes: [...(appliedTargetContext?.setTypes || []).filter((type) => type.isWarmup), ...resolvedTypes] };
-          const exercise = { id: id(), sessionId: session.id, name: templateExercise.name, primaryMuscle: templateExercise.primaryMuscle || "", secondaryMuscle: templateExercise.secondaryMuscle || "", notes: "", originalPrescription: historyTarget, prescription: target, recommendationSnapshot: target.recommendationSnapshot || historyTarget.recommendationSnapshot || null, basePrescription: target.basePrescription || historyTarget.basePrescription || null, finalPrescription: target.finalPrescription || target.recommendationSnapshot?.finalPrescription || null, recommendationVersion: target.recommendationSnapshot?.recommendationVersion || null, personalDataVersion: target.recommendationSnapshot?.personalDataVersion || null, researchDatabaseVersion: target.recommendationSnapshot?.researchDatabaseVersion || null, programTargetContext, appliedTargetContext, adjustmentReason: target.adjustmentReason || "", manualOverrides: [], order: index, restSeconds, resistanceType: target.resistanceType || templateResistanceType, isBodyweight: isBodyweightResistance(resolvedResistanceType), isDeload: Boolean(target.isDeload), executionBlocked: Boolean(target.executionBlocked), safetyRestriction: target.safetyRestriction || null };
+          const exercise = { id: id(), sessionId: session.id, name: templateExercise.name, ...(typeof exerciseIdentityFields === "function" ? exerciseIdentityFields(templateExercise) : {}), primaryMuscle: templateExercise.primaryMuscle || "", secondaryMuscle: templateExercise.secondaryMuscle || "", notes: "", originalPrescription: historyTarget, prescription: target, recommendationSnapshot: target.recommendationSnapshot || historyTarget.recommendationSnapshot || null, basePrescription: target.basePrescription || historyTarget.basePrescription || null, finalPrescription: target.finalPrescription || target.recommendationSnapshot?.finalPrescription || null, recommendationVersion: target.recommendationSnapshot?.recommendationVersion || null, personalDataVersion: target.recommendationSnapshot?.personalDataVersion || null, researchDatabaseVersion: target.recommendationSnapshot?.researchDatabaseVersion || null, programTargetContext, appliedTargetContext, adjustmentReason: target.adjustmentReason || "", manualOverrides: [], order: index, restSeconds, resistanceType: target.resistanceType || templateResistanceType, isBodyweight: isBodyweightResistance(resolvedResistanceType), isDeload: Boolean(target.isDeload), executionBlocked: Boolean(target.executionBlocked), safetyRestriction: target.safetyRestriction || null };
           exercises.push(exercise);
           if (exercise.recommendationSnapshot) recommendationSnapshots.push(exercise.recommendationSnapshot);
           readinessAdjustments.push({ exerciseId: exercise.id, name: exercise.name, original: historyTarget, adjusted: target, changed: Boolean(target.adjusted), reason: target.adjustmentReason || "No readiness change was required.", triggers: target.triggerLabels || [] });
@@ -804,7 +804,7 @@
         activeSessionId = session.id;
         activeWorkoutId = session.id;
         viewingHistorySessionId = "";
-        setActiveTab("lift", { renderNow: false });
+        setActiveTab("today", { renderNow: false });
         templateStartFlow = null;
         activeSetId = [...sets].sort((a, b) => canonicalSetSequence(a) - canonicalSetSequence(b)).find((set) => !set.completed && !set.skipped)?.id || "";
         activeSetAcknowledged = false;

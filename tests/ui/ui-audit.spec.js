@@ -3,7 +3,7 @@ const AxeBuilder = require("axe-core");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const tabs = ["Workout", "Dashboard", "Templates", "Charts", "Settings"];
+const tabs = ["Today", "Plan", "Progress", "More"];
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -72,7 +72,7 @@ for (const tabName of tabs) {
 test("Templates initial frame stays progressive under large history", async ({ page }, testInfo) => {
   await page.goto("/?perf=1&perfFixture=large");
   await page.waitForLoadState("load");
-  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: /Templates$/ }).click();
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: /Plan$/ }).click();
   await expect(page.getByRole("heading", { name: "Templates", exact: true })).toBeVisible();
 
   const result = await page.evaluate(() => {
@@ -175,7 +175,7 @@ test("the authoritative UI documentation remains present", async () => {
 test("Mesocycle Planner progresses from compact setup to full review", async ({ page }, testInfo) => {
   test.setTimeout(120_000);
   const nav = page.getByRole("navigation", { name: "Main navigation" });
-  await nav.getByRole("button", { name: /Templates$/ }).click();
+  await nav.getByRole("button", { name: /Plan$/ }).click();
   await page.getByRole("button", { name: "Plan Your Mesocycle" }).click();
   await page.getByRole("button", { name: "Start Planning" }).click();
   await page.getByLabel("Duration (weeks)").fill("4");

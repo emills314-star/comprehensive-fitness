@@ -95,8 +95,11 @@
           setActiveTab(target.dataset.tab);
         }
         if (action === "open-templates") setActiveTab("plan");
-        if (action === "open-dashboard") setActiveTab("dashboard");
-        if (action === "open-history") openDashboardDetailView({ type: "history" }, target);
+        if (action === "open-progress") setProgressView(target.dataset.progressView || "overview");
+        if (action === "set-progress-view") setProgressView(target.dataset.progressView || "overview");
+        if (action === "retry-view-render") { viewRenderError = null; render(); }
+        if (action === "focus-workout-exercise") { workoutFocusExerciseId = target.dataset.exerciseId || ""; render(); }
+        if (action === "open-history") setProgressView("history");
         if (action === "toggle-theme") commit({ ...data, settings: { ...data.settings, theme: data.settings.theme === "light" ? "dark" : "light" } });
         if (action === "toggle-unit") commit(convertAppWeightUnit(data, data.settings.weightUnit === "lb" ? "kg" : "lb"));
         if (action === "request-notifications") enablePushNotifications();
@@ -267,7 +270,7 @@
         if (action === "open-volume-exercise") {
           const exerciseId = canonicalExerciseId(target.dataset.exerciseName);
           if (exerciseCatalog().some((item) => item.id === exerciseId)) selectChartExercise(exerciseId);
-          setActiveTab("charts");
+          setProgressView("lifts");
         }
         if (action === "open-fatigue-flag") openDashboardDetailView({ type: "fatigue-flag", id: target.dataset.flagId }, target);
         if (action === "open-plan-volume-warning") { planVolumeDetailId = target.dataset.flagId; render(); window.scrollTo({ top: 0, behavior: preferredScrollBehavior() }); }
@@ -760,7 +763,7 @@
       async function applyWorkoutDeepLink() {
         const params = new URLSearchParams(window.location.search);
         if (params.get("view") === "settings") {
-          setActiveTab("data", { replace: true, renderNow: false });
+          setActiveTab("more", { replace: true, renderNow: false });
           return;
         }
         if (params.get("rest") === "complete") {
@@ -774,7 +777,7 @@
             notificationId: params.get("notificationId") || "",
             timerVersion: Number(params.get("timerVersion") || 1)
           }, { silent: true });
-          window.history.replaceState({ ...(window.history.state || {}), tab: "lift" }, "", tabUrl("lift"));
+          window.history.replaceState({ ...(window.history.state || {}), tab: "today" }, "", tabUrl("today"));
           return;
         }
         if (params.get("workout") !== "active") return;
@@ -786,7 +789,7 @@
           if (session && ((!isSessionSubmitted(session) && session.id === activeWorkoutId) || isSessionSubmitted(session))) activeSessionId = exercise.sessionId;
         } else if (activeWorkoutId) activeSessionId = activeWorkoutId;
         if (data.sets.some((set) => set.id === setId)) setActiveSet(setId, "Set is ready", false);
-        setActiveTab("lift", { replace: true, renderNow: false });
+        setActiveTab("today", { replace: true, renderNow: false });
         window.setTimeout(() => scheduleActiveSetScroll(setId), 120);
       }
 
@@ -870,7 +873,7 @@
         await initializePrescriptionEvidence();
         installDevelopmentPerformanceFixture();
         await applyWorkoutDeepLink();
-        if (!primaryTabIds.includes(window.location.hash.replace(/^#/, ""))) window.history.replaceState({ ...(window.history.state || {}), tab: activeTab }, "", tabUrl(activeTab));
+        if (!["today", "plan", "more", "progress-overview", "progress-lifts", "progress-history"].includes(window.location.hash.replace(/^#/, ""))) window.history.replaceState({ ...(window.history.state || {}), tab: activeTab }, "", tabUrl(activeTab));
         render();
         scheduleSave();
         registerPwaServiceWorker();
@@ -899,9 +902,10 @@
       window.addEventListener("beforeunload", persistBeforeSuspend);
       window.addEventListener("popstate", () => {
         const nextTab = tabFromLocation();
-        if (historyEditFlow && nextTab !== "lift") {
-          activeTab = "lift";
-          window.history.pushState({ ...(window.history.state || {}), tab: "lift" }, "", tabUrl("lift"));
+        progressView = progressViewFromLocation();
+        if (historyEditFlow && nextTab !== "today") {
+          activeTab = "today";
+          window.history.pushState({ ...(window.history.state || {}), tab: "today" }, "", tabUrl("today"));
           requestHistoryEditConfirmation("cancel", { preserveOrigin: true });
           return;
         }

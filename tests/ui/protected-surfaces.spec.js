@@ -67,11 +67,12 @@ async function installScenario(page, { fixture, viewport, theme = "light", malfo
 
 async function openSurface(page, surface, { expandDashboard = false, liftHeading = ACTIVE_WORKOUT_TITLE } = {}) {
   const navigation = page.getByRole("navigation", { name: "Main navigation" });
-  const target = navigation.getByRole("button", { name: surface === "dashboard" ? /Dashboard$/ : /Workout$/ });
+  const target = navigation.getByRole("button", { name: surface === "dashboard" ? /Progress$/ : /Today$/ });
   await target.click();
   await expect(target).toHaveAttribute("aria-current", "page");
   if (surface === "dashboard") {
-    await expect(page.getByRole("heading", { name: "Volume and fatigue", exact: true })).toBeVisible();
+    await page.locator('[data-action="set-progress-view"][data-progress-view="overview"]').click();
+    await expect(page.getByRole("heading", { name: "Training signals, in context.", exact: true })).toBeVisible();
     if (expandDashboard) {
       const chest = page.locator('[data-action="toggle-volume-muscle"][data-muscle="Chest"]');
       await expect(chest).toHaveCount(1);
@@ -133,7 +134,7 @@ async function assertProtectedLayout(page, surface, expectedWidth, { requireProt
   expect(layout.hasNavigation, "a named primary navigation landmark must remain present").toBe(true);
   expect(layout.overflow, `${surface} must not introduce horizontal content overflow`).toEqual([]);
   expect(layout.clippedTargets, `${surface} controls must remain inside the viewport`).toEqual([]);
-  expect(layout.navTargets).toHaveLength(5);
+  expect(layout.navTargets).toHaveLength(4);
   expect(layout.navTargets.every((target) => target.height >= 44), "primary navigation targets must remain at least 44 CSS px tall").toBe(true);
   if (requireProtectedTargets) {
     expect(layout.protectedTargets.length).toBeGreaterThan(0);
@@ -153,17 +154,22 @@ async function assertVisibleKeyboardFocus(page, navTarget) {
   await page.evaluate(() => document.activeElement?.blur());
 }
 
-async function assertRichLabels(page, surface) {
+async function assertRichLabels(page, surface, viewportWidth) {
   if (surface === "lift") {
-    await expect(page.locator(".active-workout-hero.app-module")).toBeVisible();
-    await expect(page.locator(".exercise-card.active-exercise.app-module")).toHaveCount(1);
-    await expect(page.getByText("2/9 sets", { exact: true })).toBeVisible();
-    await expect(page.getByText("32m elapsed", { exact: true })).toBeVisible();
+    await expect(page.locator(".active-workout-hero")).toBeVisible();
+    await expect(page.locator(".exercise-card.active-exercise")).toHaveCount(1);
+    if (viewportWidth <= 719) {
+      await expect(page.locator(".active-workout-hero .workout-status-strip")).toBeHidden();
+      await expect(page.getByText(/6 working sets remain/)).toBeVisible();
+    } else {
+      await expect(page.getByText("2/9 sets", { exact: true })).toBeVisible();
+      await expect(page.getByText("32m elapsed", { exact: true })).toBeVisible();
+    }
     await expect(page.getByLabel("Exercise name").filter({ hasText: LONG_EXERCISE_NAMES.chest })).toHaveCount(1);
     await expect(page.getByText("Last time", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("Next increment", { exact: true }).first()).toBeVisible();
   } else {
-    await expect(page.locator(".dashboard-coach.app-module")).toBeVisible();
+    await expect(page.locator(".dashboard-coach.coach-lead")).toBeVisible();
     await expect(page.locator('[data-action="open-dashboard-detail"][data-detail="sessions"]')).toContainText("3");
     const recentTitle = page.locator(".recent-history-title").filter({ hasText: LONG_HISTORY_TITLE });
     await expect(recentTitle).toHaveCount(1);
@@ -187,7 +193,7 @@ test.describe("protected Lift and Dashboard visual baselines", () => {
         theme: scenario.theme
       });
       const navTarget = await openSurface(page, scenario.surface, { expandDashboard: scenario.surface === "dashboard" });
-      await assertRichLabels(page, scenario.surface);
+      await assertRichLabels(page, scenario.surface, scenario.viewport.width);
       await assertProtectedLayout(page, scenario.surface, scenario.viewport.width);
       await assertVisibleKeyboardFocus(page, navTarget);
       if (scenario.zoomEquivalent) {
@@ -235,7 +241,7 @@ test.describe("protected Lift and Dashboard visual baselines", () => {
     await expect(loggedSessionTitle).toBeVisible();
     const back = page.getByRole("button", { name: "Back", exact: true });
     await back.click();
-    await expect(page.getByRole("heading", { name: "Volume and fatigue", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Training signals, in context.", exact: true })).toBeVisible();
     expect(browserErrors, "protected interaction browser errors").toEqual([]);
   });
 
@@ -248,7 +254,7 @@ test.describe("protected Lift and Dashboard visual baselines", () => {
       viewport: { width: 390, height: 844 }
     });
     await openSurface(page, "lift", { liftHeading: "Today" });
-    await expect(page.locator(".quiet-coach-hero.app-module")).toBeVisible();
+    await expect(page.locator(".coach-lead")).toBeVisible();
     await expect(page).toHaveScreenshot("protected-lift-empty-mobile-390.png", { fullPage: true, animations: "disabled", caret: "hide", scale: "css", maxDiffPixelRatio: 0.003 });
     await openSurface(page, "dashboard");
     await expect(page.getByText("Log a working set to start your weekly volume dashboard.", { exact: true })).toBeVisible();

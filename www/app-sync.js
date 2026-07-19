@@ -864,7 +864,7 @@
           activeSetNotice = "Workout sets complete";
           pendingSubmitSessionId = workout.id;
         }
-        setActiveTab("lift", { replace: true, renderNow: false });
+        setActiveTab("today", { replace: true, renderNow: false });
         saveRuntime();
         render();
         if (next && data.settings.autoScrollNextSet !== false) scheduleActiveSetScroll(next.id);

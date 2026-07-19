@@ -66,12 +66,12 @@
         readinessBaseline: { ...defaultReadinessBaseline }
       };
       let data = emptyData();
-      const primaryTabIds = ["lift", "dashboard", "plan", "charts", "data"];
+      const primaryTabIds = ["today", "plan", "progress", "more"];
       const focusActionAllowlist = new Set([
         "set-tab", "start-template", "request-cancel-workout", "request-save-history-edits", "request-cancel-history-edits", "clear-data",
         "continue-template-start", "return-active-workout", "use-usual-readiness", "review-template-readiness", "start-adjusted-workout",
         "keep-workout", "keep-history-editing", "cancel-clear-data", "close-dashboard-detail", "dashboard-detail-parent",
-        "open-history", "open-dashboard-detail", "open-dashboard-session", "open-volume-session", "open-fatigue-flag",
+        "open-history", "open-progress", "set-progress-view", "retry-view-render", "focus-workout-exercise", "open-dashboard-detail", "open-dashboard-session", "open-volume-session", "open-fatigue-flag",
         "cancel-template-start", "log-today-readiness", "edit-readiness-metrics", "start-original-workout",
         "template-readiness-sleep-hours", "template-readiness-sleep-quality", "template-readiness-hrv", "template-readiness-resting-hr",
         "template-readiness-soreness", "template-readiness-nutrition", "template-readiness-protein", "template-readiness-illness",
@@ -79,12 +79,15 @@
         "clear-data-ack", "clear-data-phrase", "sync-before-clear", "confirm-clear-data", "confirm-cancel-workout",
         "confirm-save-history-edits", "confirm-cancel-history-edits"
       ]);
-      const focusDescriptorDataKeys = ["tab", "templateId", "sessionId", "detail", "flagId"];
+      const focusDescriptorDataKeys = ["tab", "templateId", "sessionId", "exerciseId", "progressView", "detail", "flagId"];
       const focusableCandidateSelector = 'button, input, select, textarea, a[href], summary, [tabindex]';
+      let progressView = progressViewFromLocation();
       let activeTab = tabFromLocation();
       const tabScrollPositions = new Map();
       let activeSessionId = "";
       let activeWorkoutId = "";
+      let workoutFocusExerciseId = "";
+      let viewRenderError = null;
       let timer = null;
       let timerInterval = 0;
       let timerCompleteNotice = null;
@@ -316,12 +319,10 @@
       const expandedTemplateEditorIds = new Set();
 
       const icon = {
-        workout: "Lift",
-        dashboard: "Dash",
-        templates: "Plan",
-        history: "Past",
-        review: "Chart",
-        settings: "Data",
+        workout: "Now",
+        templates: "Map",
+        review: "Trend",
+        settings: "Menu",
         add: "+",
         clock: "Rest",
         done: "&#10003;",
@@ -1305,10 +1306,59 @@
           || (!explicitIdentity && exercise.name ? personalExerciseRecordForName(exercise.name, evidence) : null);
         const personalId = resolved.exerciseId || personalRecord?.exercise_id || personalRecord?.exerciseId || "";
         const reconciled = personalId ? evidence?.personal?.reconciledIdentityByExerciseId?.get(personalId) : null;
-        if (/^(?:custom|user)(?::|_)/.test(personalId) && reconciled && !reconciled.invalid && !reconciled.researchExerciseId) {
-          return { status: "resolved", exerciseId: personalId, source: "trusted_custom_personal_evidence", custom: true };
+        if (reconciled && !reconciled.invalid && !reconciled.publicIdentityCollision && reconciled.researchExerciseId) {
+          return { status: "resolved", exerciseId: reconciled.researchExerciseId, performanceExerciseId: personalId, source: "trusted_personal_research_crosswalk" };
+        }
+        if (personalId && reconciled && !reconciled.invalid && !reconciled.publicIdentityCollision) {
+          return { status: "resolved", exerciseId: personalId, performanceExerciseId: personalId, source: "trusted_personal_evidence", custom: true };
         }
         return { status: "unresolved", ...(resolved.exerciseId ? { exerciseId: resolved.exerciseId } : {}), reason: resolved.reason || "unknown_exercise_identity" };
+      }
+
+      function resolveExerciseIdentityProfile(exerciseOrName) {
+        const exercise = typeof exerciseOrName === "string" ? { name: exerciseOrName } : (exerciseOrName || {});
+        const name = String(exercise.name || exercise.exerciseName || "").trim();
+        const evidence = prescriptionEngine?.evidence;
+        const explicitPerformanceId = String(exercise.performanceExerciseId || exercise.performance_exercise_id || exercise.personalExerciseId || exercise.personal_exercise_id || "").trim();
+        const explicitResearchId = String(exercise.researchExerciseId || exercise.research_exercise_id || "").trim();
+        const directPublicIdentity = !explicitPerformanceId && name && typeof prescriptionEngine?.resolveExerciseIdentity === "function"
+          ? prescriptionEngine.resolveExerciseIdentity(name)
+          : null;
+        if (directPublicIdentity?.status === "resolved" && evidence?.research?.exerciseById?.has(directPublicIdentity.exerciseId)) {
+          return { status: "resolved", performanceExerciseId: directPublicIdentity.exerciseId, researchExerciseId: directPublicIdentity.exerciseId, identitySource: "research_identity", identityVersion: "exercise-identity/2.0.0", executable: true };
+        }
+        const personalRecord = personalExerciseRecordForName(name || explicitPerformanceId, evidence);
+        const personalId = explicitPerformanceId || personalRecord?.exercise_id || personalRecord?.exerciseId || "";
+        const reconciled = personalId ? evidence?.personal?.reconciledIdentityByExerciseId?.get(personalId) : null;
+        if (reconciled?.invalid || reconciled?.publicIdentityCollision) {
+          return { status: "unresolved", performanceExerciseId: personalId || null, researchExerciseId: null, reason: reconciled.invalid ? "invalid_reconciled_identity" : "personal_public_identity_collision", identitySource: "reconciled_personal_evidence", identityVersion: "exercise-identity/2.0.0" };
+        }
+        const prescriptionIdentity = resolvePrescriptionExerciseIdentity(exercise);
+        const researchExerciseId = explicitResearchId
+          || reconciled?.researchExerciseId
+          || (prescriptionIdentity.status === "resolved" && !prescriptionIdentity.custom ? prescriptionIdentity.exerciseId : "")
+          || "";
+        const reportingFallback = normalizePrescriptionIdentity(name).replace(/\s+/g, "_");
+        const performanceExerciseId = personalId || researchExerciseId || (reportingFallback ? `custom_${reportingFallback}` : "");
+        if (!performanceExerciseId) return { status: "unresolved", performanceExerciseId: null, researchExerciseId: researchExerciseId || null, reason: prescriptionIdentity.reason || "unknown_exercise_identity", identitySource: "unresolved", identityVersion: "exercise-identity/2.0.0" };
+        return {
+          status: "resolved",
+          performanceExerciseId,
+          researchExerciseId: researchExerciseId || null,
+          identitySource: personalId ? (reconciled?.researchExerciseId ? "personal_research_crosswalk" : "personal_evidence") : researchExerciseId ? "research_identity" : "reporting_fallback",
+          identityVersion: "exercise-identity/2.0.0",
+          executable: prescriptionIdentity.status === "resolved"
+        };
+      }
+
+      function exerciseIdentityFields(exerciseOrName) {
+        const profile = resolveExerciseIdentityProfile(exerciseOrName);
+        return profile.status === "resolved" ? {
+          performanceExerciseId: profile.performanceExerciseId,
+          researchExerciseId: profile.researchExerciseId || "",
+          identitySource: profile.identitySource,
+          identityVersion: profile.identityVersion
+        } : {};
       }
 
       function prescriptionExerciseIdentity(exerciseName) {
@@ -1375,7 +1425,11 @@
 
       function prescriptionHistoryForExercise(exerciseName, exerciseId, options = {}) {
         const throughDate = options.throughDate || todayIso();
-        const personal = (prescriptionEngine?.evidence.personal.historyFor(exerciseId) || []).filter((item) => String(item.workout_date || item.date || "").slice(0, 10) <= throughDate);
+        const identityProfile = typeof resolveExerciseIdentityProfile === "function"
+          ? resolveExerciseIdentityProfile({ name: exerciseName, researchExerciseId: options.researchExerciseId || exerciseId, performanceExerciseId: options.performanceExerciseId || "" })
+          : { performanceExerciseId: options.performanceExerciseId || exerciseId };
+        const performanceExerciseId = identityProfile.performanceExerciseId || exerciseId;
+        const personal = (prescriptionEngine?.evidence.personal.historyFor(performanceExerciseId) || []).filter((item) => String(item.workout_date || item.date || "").slice(0, 10) <= throughDate);
         const appHistory = appPrescriptionHistory(exerciseName, options);
         const latestPersonalDate = personal.reduce((latest, item) => {
           const date = String(item.workout_date || item.date || "").slice(0, 10);
@@ -1564,7 +1618,8 @@
           return hardConstraintRejection("invalid_time_constraint", "Session duration constraints must be finite positive minutes.");
         }
         const throughDate = options.throughDate || todayIso();
-        const history = options.history || prescriptionHistoryForExercise(exercise.name, exerciseId, options);
+        const identityProfile = typeof resolveExerciseIdentityProfile === "function" ? resolveExerciseIdentityProfile(exercise) : { performanceExerciseId: exerciseId, researchExerciseId: exerciseId };
+        const history = options.history || prescriptionHistoryForExercise(exercise.name, exerciseId, { ...options, performanceExerciseId: identityProfile.performanceExerciseId, researchExerciseId: identityProfile.researchExerciseId || exerciseId });
         const mesocycle = options.mesocycle === undefined ? currentMesocycle() : options.mesocycle;
         const appSettings = typeof data === "object" && data?.settings ? data.settings : {};
         const recoveryInput = options.recovery || {};
@@ -2197,7 +2252,7 @@
         const canonicalByExerciseId = new Map();
         data.exercises.forEach((exercise) => {
           if (!sessionById.has(exercise.sessionId)) return;
-          const canonicalId = canonicalExerciseId(exercise.name);
+          const canonicalId = canonicalExerciseId(exercise);
           if (!canonicalId) return;
           exerciseById.set(exercise.id, exercise);
           const sessionExercises = exercisesBySession.get(exercise.sessionId) || [];
@@ -2337,6 +2392,7 @@
         }
         const next = orderedActiveSets().find((set) => !set.completed && !set.skipped) || null;
         activeSetId = next?.id || "";
+        if (next?.exerciseId) workoutFocusExerciseId = next.exerciseId;
         activeSetAcknowledged = false;
         activeSetNotice = next ? setExecutionLabel(next) + " is ready" : "";
       }
@@ -2351,6 +2407,8 @@
 
       function setActiveSet(setId, notice = "", acknowledged = false) {
         activeSetId = setId || "";
+        const focusedSet = data.sets.find((set) => set.id === activeSetId);
+        if (focusedSet?.exerciseId) workoutFocusExerciseId = focusedSet.exerciseId;
         if (activeSetId && pendingNextSetId === activeSetId) pendingNextSetId = "";
         activeSetNotice = notice;
         activeSetAcknowledged = acknowledged;
@@ -2390,31 +2448,25 @@
           .trim();
       }
 
-      function canonicalExerciseId(name) {
+      function canonicalExerciseId(exerciseOrName) {
+        const exercise = typeof exerciseOrName === "string" ? { name: exerciseOrName } : (exerciseOrName || {});
+        const name = exercise.name || exercise.exerciseName || "";
         const normalized = normalizePrescriptionIdentity(name);
         if (!normalized) return "";
-        const evidence = prescriptionEngine?.evidence;
-        if (typeof resolvePrescriptionExerciseIdentity === "function") {
-          const structured = resolvePrescriptionExerciseIdentity(name);
-          if (structured.status === "resolved") return structured.exerciseId;
-          if (structured.reason && structured.reason !== "unknown_exercise_identity") return null;
+        if (typeof resolveExerciseIdentityProfile === "function") {
+          const profile = resolveExerciseIdentityProfile(exercise);
+          if (profile.status === "resolved") return profile.performanceExerciseId;
+          if (profile.reason && profile.reason !== "unknown_exercise_identity") return null;
         } else {
+          const evidence = prescriptionEngine?.evidence;
           const researchId = evidence?.research?.exerciseIdByAlias?.get(normalized)
             || evidence?.research?.exerciseDatabase?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === normalized)?.exercise_id;
           if (researchId) return researchId;
+          const personalRecord = evidence?.personal?.exerciseScores?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === normalized)
+            || evidence?.personal?.exercisePrescriptions?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === normalized);
+          const personalId = personalRecord?.exercise_id || personalRecord?.exerciseId || "";
+          if (/^(?:custom|user)(?::|_)/.test(personalId)) return personalId;
         }
-        const personalRecord = typeof personalExerciseRecordForName === "function"
-          ? personalExerciseRecordForName(name, evidence)
-          : evidence?.personal?.exerciseScores?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === normalized)
-            || evidence?.personal?.exercisePrescriptions?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === normalized)
-            || evidence?.personal?.exerciseMuscleScores?.find((item) => normalizePrescriptionIdentity(item.exercise_name || item.exerciseName || item.exercise_id) === normalized);
-        const personalId = personalRecord?.exercise_id || personalRecord?.exerciseId || "";
-        const reconciled = evidence?.personal?.reconciledIdentityByExerciseId?.get(personalId);
-        if (reconciled?.invalid) return null;
-        if (reconciled && !reconciled.invalid && reconciled.researchExerciseId) return reconciled.researchExerciseId;
-        if (/^(?:custom|user)(?::|_)/.test(personalId)) return personalId;
-        // This fallback is reporting-only. Prescription generation always uses
-        // resolvePrescriptionExerciseIdentity and can never execute this ID.
         return `custom_${normalized.replace(/\s+/g, "_")}`;
       }
 
@@ -2424,7 +2476,7 @@
         const sessions = analysisIndex.sessionById;
         const catalog = new Map();
         analysisIndex.exerciseById.forEach((exercise) => {
-          const id = canonicalExerciseId(exercise.name);
+          const id = canonicalExerciseId(exercise);
           if (!id) return;
           const session = sessions.get(exercise.sessionId);
           const current = catalog.get(id) || { id, name: exercise.name.trim(), resistanceType: resistanceTypeFor(exercise), lastDate: "", submittedUses: 0 };
@@ -3421,6 +3473,7 @@
             return {
               id: id(),
               name: exercise.name || "Exercise",
+              ...(typeof exerciseIdentityFields === "function" ? exerciseIdentityFields(exercise) : {}),
               primaryMuscle: exercise.primaryMuscle || "",
               secondaryMuscle: exercise.secondaryMuscle || "",
               resistanceType: resistanceTypeFor(exercise),
@@ -3439,15 +3492,44 @@
 
       function tabFromLocation() {
         const hash = window.location.hash.replace(/^#/, "").toLowerCase();
+        if (["progress-overview", "progress-lifts", "progress-history", "dashboard", "charts"].includes(hash)) return "progress";
+        if (["lift", "workout"].includes(hash)) return "today";
+        if (["data", "settings"].includes(hash)) return "more";
         if (primaryTabIds?.includes(hash)) return hash;
         const legacyView = new URLSearchParams(window.location.search).get("view");
-        return legacyView === "settings" ? "data" : "lift";
+        return legacyView === "settings" ? "more" : "today";
+      }
+
+      function progressViewFromLocation() {
+        const hash = window.location.hash.replace(/^#/, "").toLowerCase();
+        if (["charts", "progress-lifts"].includes(hash)) return "lifts";
+        if (hash === "progress-history") return "history";
+        return "overview";
       }
 
       function tabUrl(tab) {
         const url = new URL(window.location.href);
-        url.hash = tab;
+        url.hash = tab === "progress" ? `progress-${progressView}` : tab;
         return url.pathname + url.search + url.hash;
+      }
+
+      function normalizedDestination(tab) {
+        if (["lift", "workout", "today"].includes(tab)) return "today";
+        if (["dashboard", "charts", "progress"].includes(tab)) return "progress";
+        if (["data", "settings", "more"].includes(tab)) return "more";
+        return tab === "plan" ? "plan" : "today";
+      }
+
+      function setProgressView(nextView, options = {}) {
+        const next = ["overview", "lifts", "history"].includes(nextView) ? nextView : "overview";
+        progressView = next;
+        dashboardDetail = null;
+        dashboardFocusStack.length = 0;
+        viewRenderError = null;
+        if (activeTab !== "progress") return setActiveTab("progress", options);
+        if (options.updateUrl !== false) window.history.pushState({ ...(window.history.state || {}), tab: "progress", progressView: next }, "", tabUrl("progress"));
+        queuePostRenderFocus({ kind: "main" });
+        render();
       }
 
       function actionFocusDescriptor(action, dataValues = {}, ordinal = 0) {
@@ -3599,14 +3681,16 @@
       }
 
       function setActiveTab(nextTab, options = {}) {
-        const next = primaryTabIds.includes(nextTab) ? nextTab : "lift";
-        if (historyEditFlow && next !== "lift" && !options.allowHistoryExit) {
+        if (nextTab === "charts") progressView = "lifts";
+        else if (nextTab === "dashboard") progressView = "overview";
+        const next = normalizedDestination(nextTab);
+        if (historyEditFlow && next !== "today" && !options.allowHistoryExit) {
           requestHistoryEditConfirmation("cancel", { preserveOrigin: true });
           return;
         }
         const previous = activeTab;
         if (previous === next && !options.force) {
-          if (next === "dashboard" && dashboardDetail) {
+          if (next === "progress" && dashboardDetail) {
             dashboardDetail = null;
             dashboardFocusStack.length = 0;
             queuePostRenderFocus({ kind: "main" });
@@ -3617,11 +3701,16 @@
             queuePostRenderFocus({ kind: "main" });
             render();
           }
+          if (options.focus !== false) {
+            const mainContent = document.getElementById("main-content");
+            if (mainContent && document.activeElement !== mainContent) mainContent.focus({ preventScroll: true });
+          }
           return;
         }
         tabScrollPositions.set(previous, window.scrollY);
         activeTab = next;
-        if (previous === "dashboard" && next !== "dashboard") dashboardFocusStack.length = 0;
+        viewRenderError = null;
+        if (previous === "progress" && next !== "progress") dashboardFocusStack.length = 0;
         if (options.focus !== false && options.renderNow === false) queuePostRenderFocus({ kind: "main" });
         if (options.updateUrl !== false) {
           const state = { ...(window.history.state || {}), tab: next };

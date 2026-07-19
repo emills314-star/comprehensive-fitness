@@ -35,7 +35,7 @@ const report = `# Weekly UI/UX audit report
 - Commit: ${revision.commit}
 - Branch: ${revision.branch}
 - Status: **${status}**
-- Screens/workflows: Workout, Dashboard, Templates, Charts, Settings; light theme; mobile and desktop viewports
+- Screens/workflows: Today, Plan, Progress, More; light theme; mobile and desktop viewports
 - Tests: route rendering, active navigation, horizontal overflow, clipped controls, WCAG A/AA axe checks, console errors, visual snapshots, source-style ceilings, documentation contract
 - Visual regressions: ${failed.filter((item) => item.title.includes("visually stable")).map((item) => item.title).join(", ") || "None detected"}
 - Accessibility issues: ${failed.filter((item) => item.title.includes("accessible")).map((item) => item.title).join(", ") || "None detected"}

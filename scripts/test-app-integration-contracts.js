@@ -750,6 +750,51 @@ test("frontend identity resolution prefers the public alias registry and namespa
   assert.match(canonicalId("Uncatalogued Garage Press"), /^custom(?::|_)/, "An uncatalogued name must not become an unnamespaced pseudo-canonical ID");
 });
 
+test("exact personal variations retain performance history identity while sharing research taxonomy", () => {
+  const personalData = {
+    exerciseScores: [
+      { exercise_id: "double_pulley_lat_pulldown", exercise_name: "Lat Pulldown Double Pulley", research_exercise_id: "ex_lat_pulldown" },
+      { exercise_id: "chest_assisted_row", exercise_name: "Chest Assisted Row" },
+      { exercise_id: "custom_spoofed_bench", exercise_name: "Bench Press" }
+    ],
+    exercisePrescriptions: [
+      { exercise_id: "double_pulley_lat_pulldown", exercise_name: "Lat Pulldown Double Pulley", research_exercise_id: "ex_lat_pulldown", muscle_group_id: "mg_latissimus_dorsi" },
+      { exercise_id: "chest_assisted_row", exercise_name: "Chest Assisted Row", muscle_group_id: "mg_upper_back" },
+      { exercise_id: "custom_spoofed_bench", exercise_name: "Bench Press", muscle_group_id: "mg_pectoralis_major_sternal" }
+    ],
+    exerciseMuscleScores: [
+      { exercise_id: "double_pulley_lat_pulldown", exercise_name: "Lat Pulldown Double Pulley", research_exercise_id: "ex_lat_pulldown", muscle_group_id: "mg_latissimus_dorsi" },
+      { exercise_id: "chest_assisted_row", exercise_name: "Chest Assisted Row", muscle_group_id: "mg_upper_back" },
+      { exercise_id: "custom_spoofed_bench", exercise_name: "Bench Press", muscle_group_id: "mg_pectoralis_major_sternal" }
+    ]
+  };
+  const evidence = prescriptionApi.normalizeEvidenceBundle({ researchData: publicResearchData(), personalData });
+  const context = {
+    prescriptionEngine: prescriptionApi.createPrescriptionEngine(evidence),
+    prescriptionIdentityCacheEngine: null,
+    prescriptionIdentityCacheResolver: null,
+    prescriptionIdentityResolutionCache: new Map()
+  };
+  context.normalizePrescriptionIdentity = evaluateFunction("normalizePrescriptionIdentity", context);
+  context.personalExerciseRecordForName = evaluateFunction("personalExerciseRecordForName", context);
+  context.resolvePrescriptionExerciseIdentity = evaluateFunction("resolvePrescriptionExerciseIdentity", context);
+  context.resolveExerciseIdentityProfile = evaluateFunction("resolveExerciseIdentityProfile", context);
+  const canonicalExerciseId = evaluateFunction("canonicalExerciseId", context);
+
+  const doublePulley = plain(context.resolveExerciseIdentityProfile("Lat Pulldown Double Pulley"));
+  const chestRow = plain(context.resolveExerciseIdentityProfile("Chest Assisted Row"));
+  assert.equal(doublePulley.performanceExerciseId, "double_pulley_lat_pulldown");
+  assert.equal(doublePulley.researchExerciseId, "ex_lat_pulldown");
+  assert.equal(doublePulley.executable, true);
+  assert.equal(chestRow.performanceExerciseId, "chest_assisted_row");
+  assert.equal(chestRow.researchExerciseId, null);
+  assert.equal(chestRow.executable, true, "A reconciled legacy personal ID must not be rejected only because it lacks a custom_ prefix");
+  assert.equal(canonicalExerciseId("Lat Pulldown Double Pulley"), "double_pulley_lat_pulldown");
+  assert.equal(canonicalExerciseId("Lat Pulldown"), "ex_lat_pulldown");
+  assert.equal(canonicalExerciseId("Bench Press"), "ex_barbell_bench_press", "A personal name collision must not shadow an authoritative public alias");
+  assert.notEqual(canonicalExerciseId("Lat Pulldown Double Pulley"), canonicalExerciseId("Lat Pulldown"), "Different machine variations must not share load history");
+});
+
 test("backup import is bounded, allowlisted, and hostile-field safe", () => {
   const importSource = functionSource("importDataFile");
   const validatorMatch = html.match(/(?:function\s+(?:validate|sanitize|parse)(?:Backup|Imported|AppData)\w*\s*\([^)]*\)\s*\{|const\s+(?:validate|sanitize|parse)(?:Backup|Imported|AppData)\w*\s*=)/i);
@@ -1347,6 +1392,17 @@ test("quick-start cards retain native button semantics", () => {
   assert.doesNotMatch(source, /<(?:div|article|a)[^>]*class="quick-template-card[^>]*role="button"/, "Quick-start must not regress to a simulated button");
   assert.doesNotMatch(source, /class="quick-template-list"[^>]*\srole="list"/, "The visual quick-template carousel must not impose list semantics on native button children");
   assert.doesNotMatch(source, /class="quick-template-card[^>]*\srole="listitem"/, "A native quick-template button must retain its computed button role");
+});
+
+test("four-destination architecture contains no superseded five-tab UI contract", () => {
+  collectAssertions([
+    ["four destination IDs", () => assertContains(html, /const primaryTabIds = \["today", "plan", "progress", "more"\]/, "Primary navigation must use the four-destination contract")],
+    ["four navigation buttons", () => assert.equal((functionSource("render").match(/navButton\(/g) || []).length, 4, "The shell must render exactly four primary navigation buttons")],
+    ["progress workspace", () => assertContains(html, /function renderProgress\([\s\S]*progressView === "lifts"[\s\S]*progressView === "history"/, "Dashboard, lift trends, and history must share the Progress workspace")],
+    ["removed top-level renderers", () => assert.doesNotMatch(html, /function renderDashboard\(|function renderReview\(/, "Superseded Dashboard and Charts top-level renderers must be removed")],
+    ["removed reskin selectors", () => assert.doesNotMatch(html, /quiet-coach-hero|app-module/, "The previous reskin component selectors must not remain in source")],
+    ["legacy hashes only", () => assertContains(functionSource("tabFromLocation"), /dashboard[\s\S]*charts[\s\S]*return "progress"/, "Legacy route names may remain only as four-destination redirects")]
+  ]);
 });
 
 test("navigation, dialogs, and Lift controls expose complete focus and naming contracts", () => {

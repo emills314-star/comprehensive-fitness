@@ -85,9 +85,11 @@ async function writePersistedRecord(page, value, updatedAt) {
 }
 
 async function openPrimaryTab(page, tabId) {
-  const tab = page.locator(`[data-action="set-tab"][data-tab="${tabId}"]`);
+  const destination = ({ lift: "today", dashboard: "progress", charts: "progress", data: "more" })[tabId] || tabId;
+  const tab = page.locator(`[data-action="set-tab"][data-tab="${destination}"]`);
   await tab.click();
   await expect(tab).toHaveAttribute("aria-current", "page");
+  if (tabId === "charts" || tabId === "dashboard") await page.locator(`[data-action="set-progress-view"][data-progress-view="${tabId === "charts" ? "lifts" : "overview"}"]`).click();
 }
 
 async function openBackupGroup(page) {

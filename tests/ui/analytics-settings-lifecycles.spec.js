@@ -44,9 +44,15 @@ function primaryTab(page, tabId) {
 }
 
 async function openPrimaryTab(page, tabId) {
-  const target = primaryTab(page, tabId);
+  const destination = ({ lift: "today", dashboard: "progress", charts: "progress", data: "more" })[tabId] || tabId;
+  const target = primaryTab(page, destination);
   await target.click();
   await expect(target).toHaveAttribute("aria-current", "page");
+  if (tabId === "charts" || tabId === "dashboard") {
+    const view = page.locator(`[data-action="set-progress-view"][data-progress-view="${tabId === "charts" ? "lifts" : "overview"}"]`);
+    await view.click();
+    await expect(view).toHaveAttribute("aria-current", "page");
+  }
 }
 
 async function waitForCharts(page) {
@@ -86,13 +92,12 @@ test("chart search is case-insensitive and retains the selected lift on no resul
   await installFixture(page);
   await openPrimaryTab(page, "charts");
   await waitForCharts(page);
-  await expect(page.getByRole("heading", { name: "Barbell Bench Press", exact: true })).toBeVisible();
-
   let input = page.getByRole("combobox", { name: "Search or select exercise" });
+  await expect(input).toHaveValue("Barbell Bench Press");
   await input.fill("dUmBbElL bEnCh PrEsS");
   await input.press("Enter");
   await waitForCharts(page);
-  await expect(page.getByRole("heading", { name: "Dumbbell Bench Press", exact: true })).toBeVisible();
+  await expect(input).toHaveValue("Dumbbell Bench Press");
 
   const beforeUnknownQuery = await page.evaluate(() => ({
     selectedExerciseId,
@@ -107,7 +112,7 @@ test("chart search is case-insensitive and retains the selected lift on no resul
   await input.press("Enter");
   await expect(input).toHaveValue("Dumbbell Bench Press");
   await expect(page.locator(".exercise-search-error")).toHaveText("No logged exercise matched. The previous lift remains selected.");
-  await expect(page.getByRole("heading", { name: "Dumbbell Bench Press", exact: true })).toBeVisible();
+  await expect(input).toHaveValue("Dumbbell Bench Press");
   const afterUnknownQuery = await page.evaluate((query) => ({
     selectedExerciseId,
     recentChartExerciseIds: [...recentChartExerciseIds],

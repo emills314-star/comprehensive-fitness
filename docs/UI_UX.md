@@ -4,7 +4,7 @@
 
 - **Purpose:** Verified user experience, interaction contracts, and intended UX gaps
 - **Last verified:** 2026-07-18
-- **Repository:** `main` @ `7c52a2b`
+- **Repository:** `navy-modular-redesign` (pending publication)
 - **Verification status:** VERIFIED from `index.html` and UI/domain tests; physical-device accessibility remains partly unverified
 - **Related:** [Project](PROJECT.md), [architecture](ARCHITECTURE.md), [decision engine](DECISION_ENGINE.md), [roadmap](ROADMAP.md)
 
@@ -26,9 +26,9 @@ Guide, Setup, Build, Check, and Create are compact step buttons. Active uses str
 
 Build keeps a compact Volume Remaining panel available. It shows direct/fractional sets, evidence-adjusted target range, sets to minimum, frequency need, remaining-day feasibility, and Below/Within/Above status. Candidate selection creates a pending Configuring Now card, focuses it with reduced-motion support, and shows target muscle, target-muscle effectiveness, confidence, sets, reps, RPE/RIR, structure, rest, and live warnings. Add to Day returns focus to the picker, updates needs immediately, and disables the same canonical exercise for that day while leaving it available on other days.
 
-The current UI is mobile-first, light/dark capable, dense enough for training use, and designed to keep recommendations explainable. The implemented **Quiet Modular Navy** visual language combines calm, next-action coaching with fixed task modules. Rich navy owns primary actions, active navigation, focus, and selected state; success, warning, rest, and destructive colors remain semantically separate. The result should feel deliberate and motivating without treating every workout as a maximal-performance test.
+The current UI is mobile-first, light/dark capable, dense enough for training use, and designed to keep recommendations explainable. The implemented **Quiet Coach workspace** is a top-down structural redesign, not a palette layer over the previous five-tab UI. Rich navy owns primary actions, active navigation, focus, and selected state; success, warning, rest, and destructive colors remain semantically separate.
 
-The modular layout is structural rather than user-configurable: users cannot drag, resize, or hide modules. Workout leads with one Quiet Coach module, quick-start choices, and a collapsible Program pulse explanation. An active session leads with its current exercise and next useful set while readiness, history, and workout details stay available as supporting modules. Dashboard, Templates, Charts, and Settings use the same hierarchy without changing their persistence, calculation, or navigation contracts.
+The modular layout is structural rather than user-configurable: users cannot drag, resize, or hide modules. Today leads with one coaching decision and quick starts. During a phone workout, the focused exercise and actionable set precede the horizontally scrollable session board; on wide screens the same focused logger sits beside a sticky full-session board. Readiness, notification state, history, and workout details are supporting disclosures. Plan owns templates and the mesocycle builder. Progress owns Overview, Lifts, and History in one workspace. More owns setup, privacy, data, and application controls.
 
 Build separates unresolved **Needs Attention** items from a collapsed **Completed** summary. Status copy shows total effective sets first, then direct/fractional detail and frequency. Amber “Needs Frequency” cannot use the success treatment even when volume is within range. Create review uses expandable day cards with order, sets, rep/RPE/rest targets, volume contributions, warnings, and an Edit Day route. Successful creation remains on a persistent **Mesocycle Completed** panel with exact created/updated template counts and next actions; it does not return to Build.
 
@@ -36,7 +36,7 @@ Interaction principles evidenced in code: one canonical active workout; explicit
 
 ## Design system
 
-`index.html` is the authoritative implemented design-system source. Theme-level color variables in `:root` and `[data-theme="light"]` define background, panel, line, text, action, current, success, rest, warning, and destructive roles. `--action` is a restrained rich navy in both themes and is intentionally distinct from semantic status colors. Truthful `--color-*` aliases map established roles without changing their meaning. `app-module` and `quiet-coach-hero` provide the shared fixed-module hierarchy; `ChoiceChip`, `ChoiceTile`, and `DialogSheet` remain compatibility classes over the existing Equipment, Muscle Scope, and bottom-sheet reference patterns. New components must use those semantic roles and shared patterns rather than add one-off colors. The weekly source audit records the existing legacy color and specificity counts as non-regression ceilings; lowering those ceilings is preferred when legacy styling is consolidated.
+`index.html` is the authoritative implemented design-system source. Theme-level color variables in `:root` and `[data-theme="light"]` define background, panel, line, text, action, current, success, rest, warning, and destructive roles. `--action` is a restrained rich navy in both themes and is intentionally distinct from semantic status colors. Truthful `--color-*` aliases map established roles without changing their meaning. `coach-lead`, `active-workout-hero`, `session-board-module`, `insight-module`, `support-drawer`, and `progress-workspace-header` provide the shared hierarchy; `ChoiceChip`, `ChoiceTile`, and `DialogSheet` remain compatibility classes over established controls. Superseded `app-module`, `quiet-coach-hero`, and five-tab renderer selectors are removed and guarded by a stale-contract test.
 
 The interface uses one compact system font stack, sentence-case labels, uppercase eyebrow labels, 6–18 px corner radii according to component scale, and dense 4–18 px spacing. Cards use a surface, one semantic border, and at most one status accent. Equivalent actions must reuse the existing primary, secondary, mini, text, destructive, selected, disabled, hover, pressed, and focus-visible patterns. Fixed navigation and transient notices must account for bottom safe-area insets and must not cover the final scrollable content.
 
@@ -44,25 +44,24 @@ Controls should provide a 44 px touch target where layout permits. Equipment `Ch
 
 ## Navigation and screen inventory
 
-The persistent bottom navigation has five tabs (`primaryTabIds`, `render`):
+The persistent bottom navigation has four destinations (`primaryTabIds`, `render`):
 
 | Tab | Purpose and major screens |
 | --- | --- |
-| Workout | Quiet Coach next action, quick templates, Program pulse, active workout, Today’s Plan, readiness, exercise/set logger, timer, submit confirmation, completion summary, read-only/edit history session. |
-| Dashboard | Weekly muscle volume, fatigue flags, recent history, nested warning/session detail. |
-| Templates | Full template list, template cards, mesocycle planner/candidate pools, readiness start sheet. |
-| Charts | Exercise selector, progress charts, session-level point detail, hypertrophy score/detail, history/recommendations. |
-| Settings | Units, goals/profile, readiness baseline, timers/notifications, PWA setup, separate workout-upload consent, bounded evidence/backup import, export, remote installation deletion, and clear-local-data flow. |
+| Today | Quiet Coach next action, quick starts, active focused workout, exercise/set logger, session board, timer, readiness support, submit confirmation, and completion summary. |
+| Plan | Full template list, template cards, mesocycle planner/candidate pools, and readiness start sheet. |
+| Progress | Overview for weekly volume/fatigue, Lifts for charts/recommendations, and History for submitted sessions and editing. |
+| More | Units, goals/profile, readiness baseline, timers/notifications, PWA setup, workout-upload consent, bounded imports/export, remote deletion, and clear-local-data flow. |
 
 The header exposes the current context, an atomic lb/kg switch, and a theme switch. Full template access is available from Templates; quick-start cards are a subset. Unit changes convert app-owned load values together while private source evidence remains unchanged and is converted only at the display/prescription boundary.
 
-The first keyboard stop is a hidden-until-focused **Skip to main content** link. `#main-content` is a programmatically focusable route-entry target. Initial load leaves focus alone; an explicit selection of any of the five primary tabs moves focus into the newly rendered main view. Focus restoration across HTML-string rerenders uses an allowlisted, data-only `data-action` descriptor rather than storing detached nodes or accepting arbitrary selectors. Quick-template carousel cards remain native buttons in the computed accessibility tree; the visual carousel does not override them with conflicting list/listitem roles.
+The first keyboard stop is a hidden-until-focused **Skip to main content** link. `#main-content` is a programmatically focusable route-entry target. Initial load leaves focus alone; an explicit selection of any of the four destinations moves focus into the newly rendered main view. Focus restoration across HTML-string rerenders uses an allowlisted, data-only `data-action` descriptor rather than storing detached nodes or accepting arbitrary selectors. Quick-template cards remain native buttons in the computed accessibility tree.
 
 ## Primary workflows
 
 ### Template and active workout
 
-1. Select a quick template or open the complete Templates tab.
+1. Select a quick start on Today or open the complete Plan destination.
 2. Open the start sheet and enter/confirm readiness data.
 3. Review adjustments and explicitly start.
 4. Log set weight/reps/RPE; mark warm-up/type; complete or skip; add/reorder exercises/sets; view prescription/evidence.
@@ -86,15 +85,17 @@ Template sets, reps, target RPE, load increment, and rest fields expose native `
 
 Submitted sessions alone appear in history and analytics. History cards show full wrapping title, separate date, and grade with accessible combined labeling. A submitted workout opens read-only; editing requires an explicit mode and Save Edits confirmation, then PR/grade recalculation. History changes remain an in-memory transaction until that explicit Save. Numeric field input mutates the temporary model without replacing the DOM, so blur does not swallow the user's first Save Edits click; one real change advances one revision, and duplicate browser events do nothing. Primary-tab navigation and browser Back both open the same cancel-edit confirmation while keeping the edited Lift view and `#lift` URL in place. Reload, page hide, and unload do not persist the temporary transaction.
 
-Dashboard drill-down is a focus-aware stack. Opening a root or nested volume, fatigue, history, or session detail focuses its Back control; Back restores the prior detail level, scroll position, and durable control that opened it. Leaving Dashboard clears the stack.
+Progress Overview drill-down is a focus-aware stack. Opening a root or nested volume, fatigue, history, or session detail focuses its Back control; Back restores the prior detail level, scroll position, and durable control that opened it. Leaving Progress clears the stack.
 
 Charts are exercise-specific and interactive. Partial search is lexical over the cached catalog/history inventory, remains case-insensitive, shows all matches, and promotes the last explicit choice; it does not run progress analysis for each candidate or each keystroke. Selecting a point opens session-level details and surrounding context (`renderChart`, `renderChartPointDetail`) using an opaque key scoped to that render's exact exercise/window/date/resistance payload rather than recomputing an unscoped point from DOM values. Long names wrap in history/templates and suggestion controls; **NEEDS REVIEW:** physical testing should cover every chart axis/selector and very narrow devices.
 
 The Charts scope controls form one rounded panel. It shows the canonical selected exercise, analysis type, qualifying-window label, exact dates, qualifying weeks, skipped deload weeks, and recalculation state. Exercise search and the custom period menu replace browser-default period dropdowns. Changing either clears dependent charts, score, rationale, expectations, actual-versus-expected, recommendations, and point detail until recalculation completes.
 
+Charts now live under **Progress → Lifts**. A destination-level render boundary catches an unexpected view exception, records only a bounded destination/error code, and renders a retry action instead of leaving the application root blank. This boundary does not mutate or clear user data. Legacy `#charts`, `#dashboard`, and `#lift` links are compatibility redirects into Progress or Today; they are not primary destinations.
+
 ### Mesocycle planner
 
-Mesocycles intentionally remain inside Templates instead of becoming a sixth primary tab. The benefit of a dedicated tab would be shorter Template content and faster direct access; the drawbacks are overcrowded mobile navigation and separating plans from the templates they generate. The guided workflow therefore uses five dependency-ordered steps inside Templates: Guide, Setup, Build, Check, and Create. The former eight-stage automatic planner and Program Slot UI are legacy historical-plan behavior, not the new-plan workflow.
+Mesocycles intentionally remain inside Plan with templates instead of becoming another destination. The guided workflow uses five dependency-ordered steps: Guide, Setup, Build, Check, and Create. The former eight-stage automatic planner and Program Slot UI are legacy historical-plan behavior, not the new-plan workflow.
 
 Templates are progressively disclosed for responsiveness. The initial tab shows compact template rows, a compact current-mesocycle summary, and compact history. “Edit template” constructs that template's exercise controls only while open; “Open Planner Review” constructs the candidate, portfolio, session, and validation detail only while requested. Weekly fatigue warnings remain available on Dashboard, and readiness-adjusted coaching is calculated when starting a workout rather than repeated across every template row. Muscle-scope checkboxes update their local draft immediately without rebuilding the full tab after each tap.
 
@@ -155,7 +156,7 @@ Implemented foundations include semantic `main`/`nav`, a keyboard-visible skip l
 
 **IMPLEMENTED:** template-start, cancel-workout, history-edit, and clear-data sheets are labelled modal dialogs. A newly opened dialog verifies that its preferred target is visible, enabled, focusable, and actually received focus; otherwise it falls back to the first visible enabled dialog control. The same filtered control set traps forward and reverse Tab. Dialogs close on Escape or their backdrop where dismissal is allowed and restore a durable invoking control after rerender. Same-dialog rerenders preserve the focused step control instead of returning to the first action. Repeated Lift controls include exercise context in their accessible names.
 
-**IMPLEMENTED:** all five primary views pass the exact 320 CSS-pixel reflow matrix at ordinary text and at a computed 200% root text size. Large-text mode preserves the normal 320 px protected Lift composition until text is genuinely enlarged, then permits content-driven one-column/wrapping layouts and multiline title editing. Form text keeps a 16 px anti-zoom floor while still scaling with an enlarged root. The Plan quick-template row remains the one documented keyboard-operable horizontal carousel. Reduced-motion mode converts reachable programmatic scrolling to `auto`, and forced-colors checks require a visible non-shadow focus indicator.
+**IMPLEMENTED:** all four destinations pass the exact 320 CSS-pixel reflow matrix at ordinary text and at a computed 200% root text size. Large-text mode preserves the normal 320 px Today composition until text is genuinely enlarged, then permits content-driven one-column/wrapping layouts and multiline title editing. Form text keeps a 16 px anti-zoom floor while still scaling with an enlarged root. The Plan quick-template row and the phone workout board are the documented keyboard-operable horizontal rails. Reduced-motion mode converts reachable programmatic scrolling to `auto`, and forced-colors checks require a visible non-shadow focus indicator.
 
 **IMPLEMENTED:** the repository-owned Playwright audit runs axe WCAG A/AA checks, contrast checks, viewport overflow checks, active-navigation assertions, native quick-template roles, dialog/focus restoration and hidden-target fallback, guarded browser Back plus unconfirmed-history reload recovery, revision/timestamp-ranked fallback recovery, equal-revision/revisionless conflict preservation and confirmed conflict clearing across both stores plus reload, concurrent edit-start rejection with successful and failed current-state reconciliation, pre-edit stable-snapshot preservation, active-snapshot fail-closed validation, deferred service-worker activation, failed-update persistence gating, 320 px/200% reflow, reduced-motion and forced-colors checks, contextual-name and target-size assertions, console-error checks, and visual snapshots at a 375 px-class mobile viewport and 1280 px desktop viewport. Dedicated protected Lift/Dashboard goldens additionally cover 320, 390, 640 zoom-equivalent, 768, and 1280 px reference states.
 
@@ -169,7 +170,7 @@ Implemented foundations include semantic `main`/`nav`, a keyboard-visible skip l
 
 Current automated coverage does not yet synthesize every workout lifecycle, modal, data-heavy chart, import failure, offline/service-worker transition, or native-only state. Those gaps are **NEEDS REVIEW** and are listed in each weekly report rather than silently passed.
 
-**IMPLEMENTED:** the mobile and desktop goldens for all five primary views and the dedicated Lift/Dashboard reference matrix were intentionally reviewed and refreshed on 2026-07-18 for the Quiet Modular Navy redesign. The protected suite now asserts the Workout coaching/active-exercise modules and the Dashboard coaching module while continuing to cover interaction, privacy, malformed-storage, dark-theme, narrow, tablet, desktop, and zoom-equivalent states.
+**IMPLEMENTED:** mobile and desktop goldens for all four destinations and the dedicated active-Today/Progress reference matrix were rebuilt from the final source on 2026-07-18 for the Quiet Coach workspace. The protected suite asserts focused workout execution, the session board, and Progress coaching while continuing to cover interaction, privacy, malformed storage, dark theme, narrow, tablet, desktop, and zoom-equivalent states.
 
 ## Terminology and copy conventions
 

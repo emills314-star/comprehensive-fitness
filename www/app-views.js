@@ -14,7 +14,7 @@
         const dialogKey = activeDialogKey();
         const sameDialogFocus = dialogKey && dialogKey === renderedDialogKey ? focusDescriptorForElement(document.activeElement) : null;
         document.body.classList.toggle("modal-open", modalOpen);
-        const viewHtml = measurePerformance("renderView:" + activeTab, renderView, { tab: activeTab, sessions: data.sessions.length, exercises: data.exercises.length, sets: data.sets.length });
+        const viewHtml = measurePerformance("renderView:" + activeTab, renderViewSafely, { tab: activeTab, sessions: data.sessions.length, exercises: data.exercises.length, sets: data.sets.length });
         const domStartedAt = performanceNow();
         root.innerHTML = `
           <div class="app-shell">
@@ -29,11 +29,10 @@
             ${appToast ? '<div class="app-toast" role="status" aria-live="polite">' + escapeHtml(appToast) + '</div>' : ''}
             <main class="app-main" id="main-content" tabindex="-1" ${modalOpen ? 'inert aria-hidden="true"' : ""}>${viewHtml}</main>
             <nav class="bottom-nav" aria-label="Main navigation" ${modalOpen ? 'inert aria-hidden="true"' : ""}>
-              ${navButton("lift", "Workout", "workout")}
-              ${navButton("dashboard", "Dashboard", "dashboard")}
-              ${navButton("plan", "Templates", "templates")}
-              ${navButton("charts", "Charts", "review")}
-              ${navButton("data", "Settings", "settings")}
+              ${navButton("today", "Today", "workout")}
+              ${navButton("plan", "Plan", "templates")}
+              ${navButton("progress", "Progress", "review")}
+              ${navButton("more", "More", "settings")}
             </nav>
             ${renderTemplateStartSheet()}
             ${renderCancelWorkoutSheet()}
@@ -195,19 +194,37 @@
 
       function navButton(tab, label, iconKey) {
         const active = activeTab === tab;
-        return '<button class="nav-button ' + (active ? "active" : "") + '" data-action="set-tab" data-tab="' + tab + '" type="button"' + (active ? ' aria-current="page"' : '') + ' aria-label="' + escapeHtml(icon[iconKey] + ' ' + label) + '"><span class="nav-icon" aria-hidden="true">' + icon[iconKey] + '</span><span>' + label + '</span></button>';
+        return '<button class="nav-button ' + (active ? "active" : "") + '" data-action="set-tab" data-tab="' + tab + '" type="button"' + (active ? ' aria-current="page"' : '') + ' aria-label="' + escapeHtml(label) + '"><span class="nav-icon" aria-hidden="true">' + icon[iconKey] + '</span><span>' + label + '</span></button>';
       }
 
       function renderView() {
-        if (activeTab === "dashboard") return renderDashboard();
+        if (activeTab === "progress") return renderProgress();
         if (activeTab === "plan") return renderTemplates();
-        if (activeTab === "charts") return renderReview();
-        if (activeTab === "data") return renderSettings();
+        if (activeTab === "more") return renderSettings();
         return renderWorkout();
       }
 
+      function renderViewSafely() {
+        try {
+          const html = renderView();
+          viewRenderError = null;
+          return html;
+        } catch (error) {
+          viewRenderError = { destination: activeTab, code: String(error?.name || "RenderError") };
+          console.error("Destination render failed", { destination: activeTab, code: viewRenderError.code });
+          return `<section class="view destination-error" role="alert"><div class="destination-error-mark" aria-hidden="true">!</div><div><div class="section-kicker">${escapeHtml(activeTab)}</div><h1>This area could not be opened.</h1><p>Your workout data has not been changed. Retry the view; if the problem follows one lift, its identity index will be rebuilt after the next evidence refresh.</p><button class="primary-action" type="button" data-action="retry-view-render">Retry</button></div></section>`;
+        }
+      }
+
+      function renderProgress() {
+        const content = progressView === "lifts" ? renderLiftProgress() : progressView === "history" ? renderHistory(false) : renderProgressOverview();
+        return `<section class="progress-workspace"><header class="progress-workspace-header"><div><div class="section-kicker">Progress</div><h1>Training signals, in context.</h1><p>Volume, lift trends, and submitted sessions share one workspace.</p></div><nav class="progress-switcher" aria-label="Progress views">${[
+          ["overview", "Overview"], ["lifts", "Lifts"], ["history", "History"]
+        ].map(([value, label]) => `<button type="button" data-action="set-progress-view" data-progress-view="${value}" ${progressView === value ? 'aria-current="page"' : ""}>${label}</button>`).join("")}</nav></header>${content}</section>`;
+      }
+
       function liftHomeIsVisible() {
-        return activeTab === "lift" && !hasActiveWorkout() && !viewingHistorySessionId && !completedSummarySessionId;
+        return activeTab === "today" && !hasActiveWorkout() && !viewingHistorySessionId && !completedSummarySessionId;
       }
 
       function renderWorkout() {
@@ -218,26 +235,32 @@
         const addExerciseSafety = guardWorkoutMutation("add-exercise", {}, false);
         if (activeWorkoutId === session.id) ensureActiveSet();
         const progress = workoutProgress();
-        const quickStartHtml = measurePerformance("lift:quickTemplates", renderQuickStartTemplates);
-        const exerciseHtml = measurePerformance("lift:exerciseList", () => activeExercises().map(renderExercise).join(""), { count: activeExercises().length });
+        const workoutExercises = activeExercises();
+        const activeSetExerciseId = data.sets.find((set) => set.id === activeSetId)?.exerciseId || "";
+        const focusedExercise = workoutExercises.find((exercise) => exercise.id === workoutFocusExerciseId)
+          || workoutExercises.find((exercise) => exercise.id === activeSetExerciseId)
+          || workoutExercises[0];
+        if (focusedExercise) workoutFocusExerciseId = focusedExercise.id;
+        const exerciseHtml = focusedExercise ? measurePerformance("lift:focusedExercise", () => renderExercise(focusedExercise), { count: 1 }) : "";
+        const sessionBoardHtml = renderWorkoutSessionBoard(workoutExercises, focusedExercise?.id || "");
           const planReadinessHtml = measurePerformance("lift:planReadiness", () => renderRecoveryPanel(session) + renderTodayPlan() + renderActiveWorkoutAdvice());
         return `
           <section class="view workout-view ${historyReadOnly ? "history-readonly" : ""} ${editingHistory ? "history-editing" : ""}">
-            <section class="active-workout-hero app-module">
+            <section class="active-workout-hero">
               <div class="workout-heading">
                 <div><div class="section-kicker">Today</div><h1>${escapeHtml(session.title || "Workout")}</h1></div>
                 <span class="status-pill ${isSessionSubmitted(session) ? "good" : session.id === activeWorkoutId && hasActiveWorkout() ? "inside" : "neutral"}">${isSessionSubmitted(session) ? "Logged" : session.id === activeWorkoutId && hasActiveWorkout() ? "In progress" : "Ready"}</span>
               </div>
-              <div class="quiet-coach-line"><span>Current focus</span><strong>${escapeHtml(progress.current)}</strong><small>${progress.remaining ? progress.remaining + " working set" + (progress.remaining === 1 ? "" : "s") + " remain. Stay with the next useful action." : "Review the session, then submit when it is complete."}</small></div>
+              <div class="coach-focus"><span>Current focus</span><strong>${escapeHtml(progress.current)}</strong><small>${progress.remaining ? progress.remaining + " working set" + (progress.remaining === 1 ? "" : "s") + " remain. Stay with the next useful action." : "Review the session, then submit when it is complete."}</small></div>
               <div class="workout-status-strip">
                 <span>${escapeHtml(progress.current)}</span><span>${progress.completed}/${progress.total} sets</span><span>${progress.elapsed}</span>
                 <button class="icon-button" type="button" data-action="new-session" title="${hasActiveWorkout() ? "Finish or cancel the active workout before starting another" : "New workout"}" aria-label="${hasActiveWorkout() ? "New workout unavailable while a workout is active" : "New workout"}" ${hasActiveWorkout() ? "disabled" : ""}>${icon.add}</button>
               </div>
             </section>
-            ${quickStartHtml}
-            ${renderNotificationPrompt()}
-            ${session.adjustmentSummary ? '<div class="adjustment-summary">' + escapeHtml(session.adjustmentSummary) + '</div>' : ""}
-            ${exerciseHtml}
+            <div class="workout-layout">
+              <div class="workout-focus-column">
+                ${exerciseHtml}
+                ${session.adjustmentSummary ? '<div class="adjustment-summary">' + escapeHtml(session.adjustmentSummary) + '</div>' : ""}
             ${historyReadOnly ? "" : `<details class="compact-disclosure add-exercise-panel">
               <summary>Add exercise <span>${icon.add}</span></summary>
               <div class="disclosure-body">
@@ -251,10 +274,6 @@
                 </div>
               </div>
             </details>`}
-            <details class="compact-disclosure">
-              <summary>Plan and readiness <span>View</span></summary>
-              <div class="disclosure-body">${planReadinessHtml}</div>
-            </details>
             <details class="compact-disclosure">
               <summary>Workout details <span>Edit</span></summary>
               <div class="disclosure-body session-header">
@@ -282,10 +301,27 @@
             ${historyReadOnly && completedSummarySessionId !== session.id ? renderCompletedWorkoutSummary(session, { history: true }) : ''}
             ${historyReadOnly ? '<div class="history-view-actions"><button class="primary-action" type="button" data-action="begin-history-edit">Edit History</button><button class="secondary-action" type="button" data-action="return-lift-home">Return to Lift Home</button></div>' : ''}
             ${sessionCanBeDiscarded(session) ? '<div class="session-controls"><button class="text-danger-action" type="button" data-action="request-cancel-workout" data-session-id="' + session.id + '">Cancel Workout</button><span>Discards only this open session.</span></div>' : ''}
+              </div>
+              <aside class="workout-session-board" aria-label="Workout session board">
+                ${sessionBoardHtml}
+                ${renderNotificationPrompt()}
+                <details class="support-drawer"><summary>Plan and readiness <span>Coach context</span></summary><div class="support-drawer-body">${planReadinessHtml}</div></details>
+              </aside>
+            </div>
             ${pendingSubmitSessionId === session.id ? renderSubmitConfirmation(session) : ""}
             ${completedSummarySessionId === session.id ? renderCompletedWorkoutSummary(session) : ""}
           </section>
         `;
+      }
+
+      function renderWorkoutSessionBoard(exercises, focusedExerciseId) {
+        if (!exercises.length) return '<div class="empty-state">Add the first exercise to begin this session.</div>';
+        return `<section class="session-board-module"><div class="session-board-heading"><div><div class="section-kicker">Session</div><h2>Workout board</h2></div><span>${exercises.length} lifts</span></div><div class="session-exercise-rail">${exercises.map((exercise, index) => {
+          const sets = setsForExercise(exercise.id).filter((set) => isWorkingSet(set, "score"));
+          const completed = sets.filter((set) => set.completed).length;
+          const current = exercise.id === focusedExerciseId;
+          return `<button type="button" data-action="focus-workout-exercise" data-exercise-id="${exercise.id}" ${current ? 'aria-current="true"' : ""}><span class="session-exercise-index">${index + 1}</span><span><strong>${escapeHtml(exercise.name)}</strong><small>${completed}/${sets.length} working sets</small></span><span class="session-exercise-state">${completed === sets.length && sets.length ? "Done" : current ? "Open" : "Next"}</span></button>`;
+        }).join("")}</div></section>`;
       }
 
       function renderLiftHome() {
@@ -297,14 +333,14 @@
         return `
           <section class="view lift-home-view">
             <div class="workout-heading"><div><div class="section-kicker">Workout</div><h1>Today</h1></div><span class="status-pill inside">Ready</span></div>
-            <section class="quiet-coach-hero app-module">
+            <section class="coach-lead">
               <div class="section-kicker">Quiet coach</div>
               <h2>${nextTemplate ? escapeHtml(nextTemplate.name) + " is ready when you are." : "Build the plan before chasing the outcome."}</h2>
               <p>${nextTemplate ? "Review today's readiness, then follow the next prescribed set. Supporting evidence stays available without competing for attention." : "Create a reusable template, then the app can keep today's decision simple and your progression transparent."}</p>
-              <div class="module-action-row">${nextAction}<button class="secondary-action" type="button" data-action="open-dashboard">Review this week</button></div>
+              <div class="module-action-row">${nextAction}<button class="secondary-action" type="button" data-action="open-progress" data-progress-view="overview">Review this week</button></div>
             </section>
             ${renderQuickStartTemplates()}
-            <section class="lift-home-score app-module"><div class="section-heading"><div><h2>Program pulse</h2><p>Overall hypertrophy score &middot; ${escapeHtml(hypertrophyWindowLabel(analysis))}</p></div></div>${renderHypertrophyScore(analysis)}<details class="module-disclosure"><summary>How the score is graded <span>View ranges</span></summary><div class="score-scale" aria-label="Hypertrophy score ranges"><span class="score-excellent">90-100 Excellent</span><span class="score-very-good">80-89 Very good</span><span class="score-good">70-79 Good</span><span class="score-mixed">60-69 Mixed</span><span class="score-limiting">40-59 Limited</span><span class="score-critical">Below 40 Attention</span></div></details></section>
+            <section class="lift-home-score insight-module"><div class="section-heading"><div><h2>Program pulse</h2><p>Overall hypertrophy score &middot; ${escapeHtml(hypertrophyWindowLabel(analysis))}</p></div></div>${renderHypertrophyScore(analysis)}<details class="module-disclosure"><summary>How the score is graded <span>View ranges</span></summary><div class="score-scale" aria-label="Hypertrophy score ranges"><span class="score-excellent">90-100 Excellent</span><span class="score-very-good">80-89 Very good</span><span class="score-good">70-79 Good</span><span class="score-mixed">60-69 Mixed</span><span class="score-limiting">40-59 Limited</span><span class="score-critical">Below 40 Attention</span></div></details></section>
           </section>`;
       }
 
@@ -394,7 +430,7 @@
         `;
       }
 
-      function renderDashboard() {
+      function renderProgressOverview() {
         if (dashboardDetail) return renderDashboardDetail();
         const volumes = measurePerformance("dashboard:weeklyMuscleVolume", () => weeklyMuscleVolume(dashboardWeekStart), { weekStart: dashboardWeekStart });
         const flags = measurePerformance("dashboard:fatigueFlags", () => fatigueFlags(dashboardWeekStart), { weekStart: dashboardWeekStart });
@@ -433,7 +469,7 @@
                 <button type="button" data-action="dashboard-week" data-direction="1" aria-label="Next dashboard week" ${dashboardWeekStart >= currentWeek ? "disabled" : ""}>›</button>
               </div>
             </div>
-            <article class="quiet-coach-hero dashboard-coach app-module ${primaryFlag ? "coach-" + primaryFlag.concern : "coach-neutral"}">
+            <article class="coach-lead dashboard-coach ${primaryFlag ? "coach-" + primaryFlag.concern : "coach-neutral"}">
               <div class="section-kicker">This week's coach</div>
               <h2>${escapeHtml(coachTitle)}</h2>
               <p>${escapeHtml(coachAction)}</p>
@@ -943,7 +979,7 @@
         completedSummarySessionId = "";
         historyEditConfirm = "";
         hypertrophyScoreExpanded = false;
-        setActiveTab("lift", { replace: true, renderNow: false });
+        setActiveTab("today", { replace: true, renderNow: false });
         saveData();
         if (message) showAppToast(message);
         render();
@@ -1031,7 +1067,7 @@
           remainingSessions.unshift(nextSession);
         }
         activeSessionId = nextSession.id;
-        setActiveTab("lift", { replace: true, renderNow: false });
+        setActiveTab("today", { replace: true, renderNow: false });
         showAppToast("Workout canceled.");
         commit({ ...data, sessions: remainingSessions, exercises: data.exercises.filter((exercise) => exercise.sessionId !== session.id), sets: data.sets.filter((set) => !exerciseIds.has(set.exerciseId)) });
       }
@@ -1249,7 +1285,7 @@
         const setHtml = measurePerformance("lift:setRows", () => exerciseSets.map((set) => renderSet(set, exercise, renderContext)).join(""), { exerciseId: exercise.id, count: exerciseSets.length });
         const optionsHtml = measurePerformance("lift:exerciseOptions", () => renderPlateCalculator(exercise, firstWorkSet) + renderMuscleSelectors(exercise) + renderExerciseGuidance(exercise) + renderPrescriptionOverrideControls(exercise, resolvedSafetyContext), { exerciseId: exercise.id });
         return `
-          <article class="exercise-card app-module ${isActiveExercise ? "active-exercise" : ""}">
+          <article class="exercise-card ${isActiveExercise ? "active-exercise" : ""}">
             <div class="exercise-header">
               <textarea class="exercise-name exercise-name-field" rows="1" data-action="exercise-name" data-exercise-id="${exercise.id}" aria-label="Exercise name: ${escapeHtml(exercise.name)}" title="${escapeHtml(exercise.name)}">${escapeHtml(exercise.name)}</textarea>
               <div class="exercise-actions">

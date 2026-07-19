@@ -1749,7 +1749,7 @@
         bottom: 0;
         display: grid;
         gap: 4px;
-        grid-template-columns: repeat(5, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         left: 0;
         padding: 8px max(8px, env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
         position: fixed;
@@ -2016,7 +2016,9 @@
         html.large-text-reflow .grid > *, html.large-text-reflow .row > * { min-width: 0; max-width: 100%; }
         html.large-text-reflow input, html.large-text-reflow select, html.large-text-reflow textarea { font-size: max(16px, 1rem); min-width: 0; max-width: 100%; }
         html.large-text-reflow .quick-template-list { max-width: 100%; }
-        html.large-text-reflow .bottom-nav { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+        html.large-text-reflow .bottom-nav { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        html.large-text-reflow .progress-switcher, html.large-text-reflow .progress-switcher button { min-width: 0; max-width: 100%; }
+        html.large-text-reflow .progress-switcher button { overflow-wrap: anywhere; padding-left: 3px; padding-right: 3px; }
         html.large-text-reflow .nav-button { min-width: 0; padding-left: 0; padding-right: 0; width: 100%; }
         html.large-text-reflow .set-head, html.large-text-reflow .set-row { grid-template-columns: 24px minmax(46px, .7fr) minmax(88px, 1.1fr) minmax(73px, 1fr) 44px; gap: 1px; padding-left: 0; padding-right: 0; }
         html.large-text-reflow .workout-footer-actions { grid-template-columns: minmax(0, 1fr); }
@@ -2025,42 +2027,6 @@
       @media (max-width: 350px) { .bottom-nav { gap: 2px; padding-left: max(5px, env(safe-area-inset-left)); padding-right: max(5px, env(safe-area-inset-right)); } .nav-button { font-size: .6rem; gap: 2px; padding-left: 2px; padding-right: 2px; } .nav-icon { min-width: 26px; padding: 0 5px; } }
       @media (max-width: 380px) { .timer-primary-controls { gap: 5px; } .timer-primary-controls button { font-size: .68rem; padding: 0 5px; } .template-topline { flex-wrap: wrap; } .template-card-actions { margin-left: auto; } .template-delete-confirm button { padding: 0 6px; } .dashboard-summary-row span { font-size: .58rem; } }
 
-      /* Quiet Modular Navy: calm coaching hierarchy over reusable information modules. */
-      body { background: var(--bg); }
-      .app-shell { max-width: 1120px; }
-      .app-main { max-width: 1040px; }
-      .brand-bar { background: var(--panel); border: 1px solid var(--line); border-radius: 0 0 16px 16px; box-shadow: var(--shadow); }
-      .brand-bar::before { background: var(--panel); }
-      .brand-mark { background: var(--action); border-color: var(--action); color: var(--on-action); }
-      .brand-title span, .section-kicker { color: var(--green); }
-      .brand-action, .theme-toggle { background: var(--surface); border-color: var(--line); color: var(--green); }
-      .primary-action { background: var(--action); border-color: var(--action); box-shadow: none; color: var(--on-action); letter-spacing: .01em; text-transform: none; }
-      .primary-action:hover { background: color-mix(in srgb, var(--action) 88%, white); border-color: var(--action); }
-      .secondary-action { background: var(--surface); border-color: var(--line-strong); color: var(--green); }
-      .app-module,
-      .screen-section,
-      .chart-control-panel,
-      .settings-group,
-      .compact-disclosure,
-      .template-card,
-      .chart-card,
-      .volume-card,
-      .recent-history-card,
-      .inline-panel,
-      .recommendation,
-      .coach-recommendation-wrap {
-        background: var(--panel);
-        border: 1px solid var(--line);
-        border-radius: 14px;
-        box-shadow: none;
-      }
-      .app-module, .screen-section, .chart-control-panel, .coach-recommendation-wrap { padding: 16px; }
-      .quiet-coach-hero { display: grid; gap: 10px; overflow: hidden; position: relative; }
-      .quiet-coach-hero::before { background: var(--action); content: ""; height: 4px; left: 0; position: absolute; right: 0; top: 0; }
-      .quiet-coach-hero h2 { font-size: clamp(1.15rem, 4vw, 1.55rem); line-height: 1.2; margin: 0; max-width: 32ch; }
-      .quiet-coach-hero p { color: var(--muted); line-height: 1.5; margin: 0; max-width: 68ch; }
-      .quiet-coach-hero.coach-high::before { background: var(--red); }
-      .quiet-coach-hero.coach-moderate::before { background: var(--amber); }
       .module-action-row { display: grid; gap: 8px; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); margin-top: 4px; }
       .module-action-row > * { min-height: 48px; width: 100%; }
       .module-disclosure { border-top: 1px solid var(--line); margin-top: 2px; padding-top: 4px; }
@@ -2074,10 +2040,6 @@
       .quick-template-card:hover, .quick-template-card:focus-visible { background: var(--green-dark); border-color: var(--line-strong); box-shadow: inset 3px 0 0 var(--action); }
       .lift-home-score { border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
       .active-workout-hero { display: grid; gap: 12px; padding: 16px; }
-      .quiet-coach-line { border-left: 3px solid var(--action); display: grid; gap: 3px; padding: 3px 0 3px 12px; }
-      .quiet-coach-line span { color: var(--muted); font-size: .64rem; font-weight: 900; letter-spacing: .07em; text-transform: uppercase; }
-      .quiet-coach-line strong { font-size: 1rem; overflow-wrap: anywhere; }
-      .quiet-coach-line small { color: var(--muted); line-height: 1.4; }
       .active-workout-hero .workout-status-strip { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
       .notification-prompt { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
       .exercise-card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
@@ -2114,7 +2076,7 @@
       @media (min-width: 720px) {
         .app-main, .brand-bar { max-width: 1040px; }
         .lift-home-view { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .lift-home-view > .workout-heading, .lift-home-view > .quiet-coach-hero { grid-column: 1 / -1; }
+        .lift-home-view > .workout-heading, .lift-home-view > .coach-lead { grid-column: 1 / -1; }
         .quick-template-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .dashboard-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
         .charts-view .chart-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -2123,14 +2085,91 @@
       @media (max-width: 719px) {
         .brand-bar { border-left: 0; border-radius: 0; border-right: 0; }
         .module-action-row { grid-template-columns: minmax(0, 1fr); }
-        .app-module, .screen-section, .chart-control-panel, .coach-recommendation-wrap { padding: 14px; }
+        .screen-section, .chart-control-panel, .coach-recommendation-wrap { padding: 14px; }
         .exercise-card { padding: 12px 10px; }
       }
       @media (max-width: 380px) {
-        .quiet-coach-hero h2 { font-size: 1.08rem; }
-        .app-module, .screen-section, .chart-control-panel, .coach-recommendation-wrap { padding: 12px; }
+        .coach-lead h2 { font-size: 1.08rem; }
+        .screen-section, .chart-control-panel, .coach-recommendation-wrap { padding: 12px; }
         .dashboard-summary-row { grid-template-columns: minmax(0, 1fr); }
         .dashboard-summary-row > button { border-bottom: 1px solid var(--line); border-right: 0; min-height: 56px; }
+      }
+
+      /* Quiet Coach workspace: four destinations, focused execution, contextual modules. */
+      .app-shell { max-width: 1240px; }
+      .app-main, .brand-bar { max-width: 1160px; }
+      .brand-bar { background: color-mix(in srgb, var(--panel) 94%, transparent); border-radius: 0 0 22px 22px; }
+      .brand-mark { background: linear-gradient(145deg, hsl(214 68% 23%), hsl(211 58% 35%)); }
+      .brand-title span, .section-kicker { color: var(--green-2); }
+      .bottom-nav { grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 680px; }
+      .nav-button { min-height: 62px; }
+      .nav-button[aria-current="page"] { background: var(--current-dark); color: var(--green-2); }
+      .nav-button.active .nav-icon { background: var(--action); color: var(--on-action); }
+      .coach-lead, .active-workout-hero, .insight-module, .session-board-module, .support-drawer, .destination-error, .progress-workspace-header {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+      }
+      .coach-lead { display: grid; gap: 12px; overflow: hidden; padding: clamp(18px, 3vw, 28px); position: relative; }
+      .coach-lead::before { background: linear-gradient(90deg, var(--action), var(--green)); content: ""; inset: 0 auto 0 0; position: absolute; width: 5px; }
+      .coach-lead h2 { font-size: clamp(1.25rem, 4vw, 1.9rem); line-height: 1.12; margin: 0; max-width: 28ch; }
+      .coach-lead p { color: var(--muted); line-height: 1.55; margin: 0; max-width: 66ch; }
+      .active-workout-hero { display: grid; gap: 14px; padding: clamp(16px, 3vw, 24px); }
+      .coach-focus { border-left: 4px solid var(--current); display: grid; gap: 4px; padding: 4px 0 4px 14px; }
+      .coach-focus span { color: var(--muted); font-size: .68rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+      .coach-focus strong { font-size: clamp(1.05rem, 3vw, 1.35rem); }
+      .coach-focus small { color: var(--muted); line-height: 1.45; }
+      .workout-layout { align-items: start; display: grid; gap: 16px; }
+      .workout-focus-column, .workout-session-board { display: grid; gap: 12px; min-width: 0; }
+      .workout-session-board { order: -1; }
+      .session-board-module { overflow: hidden; padding: 14px; }
+      .session-board-heading { align-items: center; display: flex; justify-content: space-between; margin-bottom: 10px; }
+      .session-board-heading h2 { font-size: 1.05rem; margin: 2px 0 0; }
+      .session-board-heading > span { color: var(--muted); font-size: .72rem; font-weight: 800; }
+      .session-exercise-rail { display: flex; gap: 8px; overflow-x: auto; padding: 2px 1px 6px; scroll-snap-type: x proximity; }
+      .session-exercise-rail > button { align-items: center; background: var(--surface); display: grid; flex: 0 0 min(78vw, 300px); gap: 9px; grid-template-columns: 30px minmax(0, 1fr) auto; min-height: 66px; padding: 9px; scroll-snap-align: start; text-align: left; }
+      .session-exercise-rail > button[aria-current="true"] { background: var(--current-dark); border-color: var(--current); box-shadow: inset 3px 0 0 var(--current); }
+      .session-exercise-index { align-items: center; background: var(--panel-3); border-radius: 9px; display: inline-flex; font-size: .72rem; font-weight: 900; height: 30px; justify-content: center; width: 30px; }
+      .session-exercise-rail strong, .session-exercise-rail small { display: block; overflow-wrap: anywhere; }
+      .session-exercise-rail small { color: var(--muted); font-size: .68rem; margin-top: 3px; }
+      .session-exercise-state { color: var(--green-2); font-size: .66rem; font-weight: 850; }
+      .support-drawer { overflow: hidden; }
+      .support-drawer > summary { align-items: center; cursor: pointer; display: flex; font-weight: 850; justify-content: space-between; min-height: 52px; padding: 0 14px; }
+      .support-drawer > summary span { color: var(--muted); font-size: .68rem; }
+      .support-drawer-body { border-top: 1px solid var(--line); display: grid; gap: 12px; padding: 14px; }
+      .exercise-card { border-radius: 18px; box-shadow: none; padding: clamp(12px, 2.5vw, 18px); }
+      .exercise-card.active-exercise { border-color: var(--current); box-shadow: inset 0 4px 0 var(--current); }
+      .set-block.next-set { background: var(--current-dark); border-left-color: var(--current); }
+      .progress-workspace { display: grid; gap: 16px; }
+      .progress-workspace-header { display: grid; gap: 16px; padding: clamp(18px, 3vw, 26px); }
+      .progress-workspace-header h1 { font-size: clamp(1.5rem, 5vw, 2.4rem); margin: 4px 0; }
+      .progress-workspace-header p { color: var(--muted); margin: 0; }
+      .progress-switcher { background: var(--surface); border: 1px solid var(--line); border-radius: 13px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 4px; }
+      .progress-switcher button { border: 0; min-height: 42px; }
+      .progress-switcher button[aria-current="page"] { background: var(--action); color: var(--on-action); }
+      .progress-workspace > .dashboard-view > .screen-heading, .progress-workspace > .charts-view > .screen-heading, .progress-workspace > .history-view > .screen-heading { display: none; }
+      .destination-error { align-items: center; display: grid; gap: 18px; grid-template-columns: auto minmax(0, 1fr); padding: clamp(22px, 5vw, 42px); }
+      .destination-error-mark { align-items: center; background: var(--current-dark); border-radius: 50%; color: var(--current); display: flex; font-size: 1.4rem; font-weight: 900; height: 54px; justify-content: center; width: 54px; }
+      .destination-error h1 { margin: 4px 0 8px; }
+      .destination-error p { color: var(--muted); line-height: 1.5; }
+      html.large-text-reflow .bottom-nav { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      @media (min-width: 900px) {
+        .workout-layout { grid-template-columns: minmax(0, 1.65fr) minmax(300px, .75fr); }
+        .workout-session-board { order: 0; position: sticky; top: 92px; }
+        .session-exercise-rail { display: grid; overflow: visible; padding: 0; }
+        .session-exercise-rail > button { flex-basis: auto; width: 100%; }
+        .progress-workspace-header { align-items: end; grid-template-columns: minmax(0, 1fr) minmax(330px, .55fr); }
+      }
+      @media (max-width: 719px) {
+        .brand-bar { border-radius: 0; }
+        .coach-lead, .active-workout-hero, .progress-workspace-header { border-radius: 15px; }
+        .active-workout-hero .workout-status-strip { display: none; }
+        .destination-error { grid-template-columns: minmax(0, 1fr); }
+      }
+      @media (max-width: 899px) {
+        .workout-session-board { display: contents; }
+        .workout-session-board .session-board-module { order: 1; }
+        .workout-session-board .notification-prompt, .workout-session-board .support-drawer { order: 2; }
       }
     </style>
   </head>
