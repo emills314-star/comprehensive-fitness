@@ -652,7 +652,7 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     expect(after.templates.find((item) => item.id === IDS.controlTemplate)).toEqual(before.templates.find((item) => item.id === IDS.controlTemplate));
 
     await reloadAndWait(page);
-    await expect(page.getByRole("heading", { name: "Program overview", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Today", exact: true })).toBeVisible();
     expect((await persistedData(page)).sessions.filter((item) => item.id === IDS.historySession)).toHaveLength(1);
     expect(browserErrors, "cancel-workout lifecycle browser errors").toEqual([]);
   });

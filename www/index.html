@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="Track strength workouts, rest timers, travel sessions, and transparent lift progression guidance." />
-    <meta name="theme-color" content="#f4f8fb" />
+    <meta name="theme-color" content="#f4f6f8" />
     <meta name="color-scheme" content="light dark" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -17,32 +17,34 @@
     <title>Comprehensive Fitness</title>
     <style>
       :root {
-        --bg: #081015;
-        --bg-soft: #101a21;
-        --panel: rgba(13, 22, 29, 0.72);
-        --panel-2: rgba(16, 28, 36, 0.7);
-        --panel-3: rgba(24, 38, 48, 0.78);
-        --line: rgba(132, 162, 184, 0.22);
-        --line-strong: rgba(135, 181, 215, 0.42);
-        --text: #edf7ff;
-        --muted: #9fb4c3;
-        --muted-2: #6f8797;
-        --green: #4aa3ff;
-        --green-2: #a9d7ff;
-        --green-dark: rgba(74, 163, 255, 0.13);
-        --amber: #ffbc4a;
-        --rest-accent: #ffd23f;
-        --rest-text: #ffe47a;
-        --red: #ff7e72;
-        --success: #43d17a;
-        --success-dark: rgba(67, 209, 122, 0.15);
-        --current: #2589ff;
-        --current-dark: rgba(37, 137, 255, 0.17);
-        --surface: rgba(255, 255, 255, 0.035);
-        --surface-strong: rgba(255, 255, 255, 0.07);
-        --input-bg: rgba(5, 13, 18, 0.72);
-        --nav-bg: rgba(7, 14, 18, 0.9);
-        --shadow: none;
+        --bg: hsl(215 63% 7%);
+        --bg-soft: hsl(214 56% 10%);
+        --panel: hsl(213 51% 11%);
+        --panel-2: hsl(213 52% 13%);
+        --panel-3: hsl(214 51% 15%);
+        --line: hsl(212 31% 26%);
+        --line-strong: hsl(211 29% 39%);
+        --text: hsl(214 41% 97%);
+        --muted: hsl(212 18% 71%);
+        --muted-2: hsl(211 17% 57%);
+        --green: hsl(211 36% 59%);
+        --green-2: hsl(210 35% 79%);
+        --green-dark: hsl(212 47% 18%);
+        --amber: hsl(37 69% 60%);
+        --rest-accent: hsl(38 65% 56%);
+        --rest-text: hsl(39 79% 72%);
+        --red: hsl(0 73% 70%);
+        --success: hsl(150 36% 55%);
+        --success-dark: rgba(101, 182, 141, 0.14);
+        --current: hsl(211 36% 59%);
+        --current-dark: hsl(212 47% 18%);
+        --action: hsl(211 56% 29%);
+        --on-action: hsl(0 0% 100%);
+        --surface: hsl(213 52% 13%);
+        --surface-strong: hsl(214 51% 15%);
+        --input-bg: hsl(214 56% 10%);
+        --nav-bg: rgba(7, 17, 31, 0.96);
+        --shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
         --color-accent: var(--current);
         --color-accent-subtle: var(--current-dark);
         --color-text: var(--text);
@@ -61,31 +63,34 @@
       }
 
       [data-theme="light"] {
-        --bg: #f4f8fb;
-        --bg-soft: #e9f1f7;
-        --panel: rgba(255, 255, 255, 0.78);
-        --panel-2: rgba(255, 255, 255, 0.66);
-        --panel-3: rgba(235, 244, 250, 0.92);
-        --line: rgba(54, 92, 118, 0.18);
-        --line-strong: rgba(32, 112, 178, 0.38);
-        --text: #0b1b27;
-        --muted: #526a7b;
-        --muted-2: #7891a1;
-        --green: #086fc7;
-        --green-2: #0d8bff;
-        --green-dark: rgba(8, 111, 199, 0.1);
-        --amber: #a76200;
-        --rest-accent: #e2b300;
-        --rest-text: #9a6700;
-        --red: #c84337;
-        --success: #148a46;
-        --success-dark: rgba(20, 138, 70, 0.11);
-        --current: #005bd8;
-        --current-dark: #e2efff;
-        --surface: rgba(255, 255, 255, 0.66);
-        --surface-strong: rgba(255, 255, 255, 0.9);
-        --input-bg: rgba(255, 255, 255, 0.92);
-        --nav-bg: rgba(246, 251, 255, 0.9);
+        --bg: hsl(210 22% 96%);
+        --bg-soft: hsl(210 31% 95%);
+        --panel: hsl(0 0% 100%);
+        --panel-2: hsl(210 40% 98%);
+        --panel-3: hsl(210 31% 95%);
+        --line: hsl(214 25% 87%);
+        --line-strong: hsl(212 23% 69%);
+        --text: hsl(215 48% 14%);
+        --muted: hsl(213 16% 44%);
+        --muted-2: hsl(212 14% 55%);
+        --green: hsl(212 60% 24%);
+        --green-2: hsl(211 54% 31%);
+        --green-dark: hsl(212 45% 94%);
+        --amber: hsl(37 82% 33%);
+        --rest-accent: hsl(35 81% 36%);
+        --rest-text: hsl(35 89% 24%);
+        --red: hsl(0 46% 50%);
+        --success: hsl(156 55% 31%);
+        --success-dark: rgba(35, 122, 87, 0.1);
+        --current: hsl(212 60% 24%);
+        --current-dark: hsl(212 45% 94%);
+        --action: hsl(212 60% 24%);
+        --on-action: hsl(0 0% 100%);
+        --surface: hsl(210 40% 98%);
+        --surface-strong: hsl(0 0% 100%);
+        --input-bg: hsl(0 0% 100%);
+        --nav-bg: rgba(255, 255, 255, 0.96);
+        --shadow: 0 12px 30px rgba(18, 32, 51, 0.08);
       }
 
       * { box-sizing: border-box; }
@@ -2019,6 +2024,114 @@
       @media (max-width: 380px) { .dashboard-view > .screen-heading { align-items: stretch; flex-direction: column; } .dashboard-view > .screen-heading h1 { font-size: 1.3rem; } .dashboard-period { align-self: stretch; justify-content: space-between; } }
       @media (max-width: 350px) { .bottom-nav { gap: 2px; padding-left: max(5px, env(safe-area-inset-left)); padding-right: max(5px, env(safe-area-inset-right)); } .nav-button { font-size: .6rem; gap: 2px; padding-left: 2px; padding-right: 2px; } .nav-icon { min-width: 26px; padding: 0 5px; } }
       @media (max-width: 380px) { .timer-primary-controls { gap: 5px; } .timer-primary-controls button { font-size: .68rem; padding: 0 5px; } .template-topline { flex-wrap: wrap; } .template-card-actions { margin-left: auto; } .template-delete-confirm button { padding: 0 6px; } .dashboard-summary-row span { font-size: .58rem; } }
+
+      /* Quiet Modular Navy: calm coaching hierarchy over reusable information modules. */
+      body { background: var(--bg); }
+      .app-shell { max-width: 1120px; }
+      .app-main { max-width: 1040px; }
+      .brand-bar { background: var(--panel); border: 1px solid var(--line); border-radius: 0 0 16px 16px; box-shadow: var(--shadow); }
+      .brand-bar::before { background: var(--panel); }
+      .brand-mark { background: var(--action); border-color: var(--action); color: var(--on-action); }
+      .brand-title span, .section-kicker { color: var(--green); }
+      .brand-action, .theme-toggle { background: var(--surface); border-color: var(--line); color: var(--green); }
+      .primary-action { background: var(--action); border-color: var(--action); box-shadow: none; color: var(--on-action); letter-spacing: .01em; text-transform: none; }
+      .primary-action:hover { background: color-mix(in srgb, var(--action) 88%, white); border-color: var(--action); }
+      .secondary-action { background: var(--surface); border-color: var(--line-strong); color: var(--green); }
+      .app-module,
+      .screen-section,
+      .chart-control-panel,
+      .settings-group,
+      .compact-disclosure,
+      .template-card,
+      .chart-card,
+      .volume-card,
+      .recent-history-card,
+      .inline-panel,
+      .recommendation,
+      .coach-recommendation-wrap {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        box-shadow: none;
+      }
+      .app-module, .screen-section, .chart-control-panel, .coach-recommendation-wrap { padding: 16px; }
+      .quiet-coach-hero { display: grid; gap: 10px; overflow: hidden; position: relative; }
+      .quiet-coach-hero::before { background: var(--action); content: ""; height: 4px; left: 0; position: absolute; right: 0; top: 0; }
+      .quiet-coach-hero h2 { font-size: clamp(1.15rem, 4vw, 1.55rem); line-height: 1.2; margin: 0; max-width: 32ch; }
+      .quiet-coach-hero p { color: var(--muted); line-height: 1.5; margin: 0; max-width: 68ch; }
+      .quiet-coach-hero.coach-high::before { background: var(--red); }
+      .quiet-coach-hero.coach-moderate::before { background: var(--amber); }
+      .module-action-row { display: grid; gap: 8px; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); margin-top: 4px; }
+      .module-action-row > * { min-height: 48px; width: 100%; }
+      .module-disclosure { border-top: 1px solid var(--line); margin-top: 2px; padding-top: 4px; }
+      .module-disclosure summary { align-items: center; cursor: pointer; display: flex; font-size: .75rem; font-weight: 850; justify-content: space-between; min-height: 44px; }
+      .module-disclosure summary span { color: var(--muted); font-size: .68rem; }
+      .module-disclosure .score-scale { padding: 8px 0 2px; }
+      .lift-home-view > .workout-heading, .dashboard-view > .screen-heading, .templates-view > .screen-heading, .charts-view > .screen-heading, .settings-view > .screen-heading { padding: 4px 2px; }
+      .quick-template-strip { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; display: grid; gap: 10px; padding: 14px; }
+      .quick-template-list { display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr); overflow: visible; padding: 0; }
+      .quick-template-card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; display: grid; flex: none; min-height: 88px; padding: 12px; width: 100%; }
+      .quick-template-card:hover, .quick-template-card:focus-visible { background: var(--green-dark); border-color: var(--line-strong); box-shadow: inset 3px 0 0 var(--action); }
+      .lift-home-score { border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+      .active-workout-hero { display: grid; gap: 12px; padding: 16px; }
+      .quiet-coach-line { border-left: 3px solid var(--action); display: grid; gap: 3px; padding: 3px 0 3px 12px; }
+      .quiet-coach-line span { color: var(--muted); font-size: .64rem; font-weight: 900; letter-spacing: .07em; text-transform: uppercase; }
+      .quiet-coach-line strong { font-size: 1rem; overflow-wrap: anywhere; }
+      .quiet-coach-line small { color: var(--muted); line-height: 1.4; }
+      .active-workout-hero .workout-status-strip { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+      .notification-prompt { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+      .exercise-card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+      .exercise-card.active-exercise { border-color: var(--line-strong); box-shadow: inset 0 4px 0 var(--action); }
+      .exercise-card.active-exercise .exercise-name { color: var(--green-2); }
+      .set-block.next-set { background: var(--green-dark); border-left-color: var(--action); border-radius: 10px; box-shadow: inset 0 0 0 1px var(--line-strong); }
+      .set-block.next-set .set-row { border-top-color: transparent; }
+      .timer-bar { border: 1px solid color-mix(in srgb, var(--rest-accent) 52%, var(--line)); border-left: 4px solid var(--rest-accent); border-radius: 10px; }
+      .compact-disclosure { overflow: hidden; padding: 0 12px; }
+      .compact-disclosure .disclosure-body { padding-bottom: 12px; }
+      .screen-section { gap: 12px; }
+      .dashboard-summary-row, .chart-metric-row { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
+      .dashboard-grid { gap: 10px; }
+      .volume-card { background: var(--surface); min-height: 112px; }
+      .volume-card:hover, .volume-card:focus-within { border-color: var(--line-strong); }
+      .template-library { gap: 10px; }
+      .template-card { background: var(--panel); padding: 14px; }
+      .chart-control-panel { background: var(--panel); }
+      .chart-card { background: var(--surface); padding: 14px; }
+      .settings-group { overflow: hidden; padding: 0 14px; }
+      .settings-group[open] { border-color: var(--line-strong); }
+      .settings-group .disclosure-body { padding-bottom: 14px; }
+      .settings-group.danger-zone { border-color: color-mix(in srgb, var(--red) 46%, var(--line)); }
+      .alert-setting-card:active, .alert-setting-card.is-pressing { transform: none; }
+      .bottom-nav { background: var(--nav-bg); border: 1px solid var(--line); border-bottom: 0; border-radius: 16px 16px 0 0; box-shadow: 0 -12px 30px color-mix(in srgb, var(--bg) 24%, transparent); }
+      .nav-button { border-radius: 10px; min-height: 58px; }
+      .nav-button[aria-current="page"] { background: var(--green-dark); box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--green); }
+      .nav-button.active .nav-icon { background: var(--action); border-color: var(--action); color: var(--on-action); }
+      [data-theme="light"] body .section-heading p,
+      [data-theme="light"] body .screen-intro,
+      [data-theme="light"] body .template-coach { color: var(--muted); }
+      [data-theme="light"] body .text-button { color: var(--green); }
+
+      @media (min-width: 720px) {
+        .app-main, .brand-bar { max-width: 1040px; }
+        .lift-home-view { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .lift-home-view > .workout-heading, .lift-home-view > .quiet-coach-hero { grid-column: 1 / -1; }
+        .quick-template-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .dashboard-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .charts-view .chart-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .charts-view .chart-list .chart-card { min-width: 0; }
+      }
+      @media (max-width: 719px) {
+        .brand-bar { border-left: 0; border-radius: 0; border-right: 0; }
+        .module-action-row { grid-template-columns: minmax(0, 1fr); }
+        .app-module, .screen-section, .chart-control-panel, .coach-recommendation-wrap { padding: 14px; }
+        .exercise-card { padding: 12px 10px; }
+      }
+      @media (max-width: 380px) {
+        .quiet-coach-hero h2 { font-size: 1.08rem; }
+        .app-module, .screen-section, .chart-control-panel, .coach-recommendation-wrap { padding: 12px; }
+        .dashboard-summary-row { grid-template-columns: minmax(0, 1fr); }
+        .dashboard-summary-row > button { border-bottom: 1px solid var(--line); border-right: 0; min-height: 56px; }
+      }
     </style>
   </head>
   <body>

@@ -3,7 +3,7 @@
 ## Metadata
 
 - **Purpose:** Verified user experience, interaction contracts, and intended UX gaps
-- **Last verified:** 2026-07-15
+- **Last verified:** 2026-07-18
 - **Repository:** `main` @ `7c52a2b`
 - **Verification status:** VERIFIED from `index.html` and UI/domain tests; physical-device accessibility remains partly unverified
 - **Related:** [Project](PROJECT.md), [architecture](ARCHITECTURE.md), [decision engine](DECISION_ENGINE.md), [roadmap](ROADMAP.md)
@@ -26,7 +26,9 @@ Guide, Setup, Build, Check, and Create are compact step buttons. Active uses str
 
 Build keeps a compact Volume Remaining panel available. It shows direct/fractional sets, evidence-adjusted target range, sets to minimum, frequency need, remaining-day feasibility, and Below/Within/Above status. Candidate selection creates a pending Configuring Now card, focuses it with reduced-motion support, and shows target muscle, target-muscle effectiveness, confidence, sets, reps, RPE/RIR, structure, rest, and live warnings. Add to Day returns focus to the picker, updates needs immediately, and disables the same canonical exercise for that day while leaving it available on other days.
 
-The current UI is mobile-first, light/dark capable, dense enough for training use, and designed to keep recommendations explainable. The visual language uses blue/current-state accents, cards, score tones, completion states, compact bottom navigation, and responsive wrapping. It should feel motivating without treating every workout as a maximal-performance test.
+The current UI is mobile-first, light/dark capable, dense enough for training use, and designed to keep recommendations explainable. The implemented **Quiet Modular Navy** visual language combines calm, next-action coaching with fixed task modules. Rich navy owns primary actions, active navigation, focus, and selected state; success, warning, rest, and destructive colors remain semantically separate. The result should feel deliberate and motivating without treating every workout as a maximal-performance test.
+
+The modular layout is structural rather than user-configurable: users cannot drag, resize, or hide modules. Workout leads with one Quiet Coach module, quick-start choices, and a collapsible Program pulse explanation. An active session leads with its current exercise and next useful set while readiness, history, and workout details stay available as supporting modules. Dashboard, Templates, Charts, and Settings use the same hierarchy without changing their persistence, calculation, or navigation contracts.
 
 Build separates unresolved **Needs Attention** items from a collapsed **Completed** summary. Status copy shows total effective sets first, then direct/fractional detail and frequency. Amber “Needs Frequency” cannot use the success treatment even when volume is within range. Create review uses expandable day cards with order, sets, rep/RPE/rest targets, volume contributions, warnings, and an Edit Day route. Successful creation remains on a persistent **Mesocycle Completed** panel with exact created/updated template counts and next actions; it does not return to Build.
 
@@ -34,7 +36,7 @@ Interaction principles evidenced in code: one canonical active workout; explicit
 
 ## Design system
 
-`index.html` is the authoritative implemented design-system source. Theme-level color variables in `:root` and `[data-theme="light"]` define background, panel, line, text, current, success, rest, warning, and destructive roles. Truthful `--color-*` aliases now map those established roles without changing computed appearance. `ChoiceChip`, `ChoiceTile`, and `DialogSheet` are compatibility classes over the existing Equipment, Muscle Scope, and bottom-sheet reference patterns; they are not a second visual language. New components must use those semantic roles and shared patterns rather than add one-off colors. The weekly source audit records the existing legacy color and specificity counts as non-regression ceilings; lowering those ceilings is preferred when legacy styling is consolidated.
+`index.html` is the authoritative implemented design-system source. Theme-level color variables in `:root` and `[data-theme="light"]` define background, panel, line, text, action, current, success, rest, warning, and destructive roles. `--action` is a restrained rich navy in both themes and is intentionally distinct from semantic status colors. Truthful `--color-*` aliases map established roles without changing their meaning. `app-module` and `quiet-coach-hero` provide the shared fixed-module hierarchy; `ChoiceChip`, `ChoiceTile`, and `DialogSheet` remain compatibility classes over the existing Equipment, Muscle Scope, and bottom-sheet reference patterns. New components must use those semantic roles and shared patterns rather than add one-off colors. The weekly source audit records the existing legacy color and specificity counts as non-regression ceilings; lowering those ceilings is preferred when legacy styling is consolidated.
 
 The interface uses one compact system font stack, sentence-case labels, uppercase eyebrow labels, 6–18 px corner radii according to component scale, and dense 4–18 px spacing. Cards use a surface, one semantic border, and at most one status accent. Equivalent actions must reuse the existing primary, secondary, mini, text, destructive, selected, disabled, hover, pressed, and focus-visible patterns. Fixed navigation and transient notices must account for bottom safe-area insets and must not cover the final scrollable content.
 
@@ -46,7 +48,7 @@ The persistent bottom navigation has five tabs (`primaryTabIds`, `render`):
 
 | Tab | Purpose and major screens |
 | --- | --- |
-| Workout | Program overview, quick templates, active workout, Today’s Plan, readiness, exercise/set logger, timer, submit confirmation, completion summary, read-only/edit history session. |
+| Workout | Quiet Coach next action, quick templates, Program pulse, active workout, Today’s Plan, readiness, exercise/set logger, timer, submit confirmation, completion summary, read-only/edit history session. |
 | Dashboard | Weekly muscle volume, fatigue flags, recent history, nested warning/session detail. |
 | Templates | Full template list, template cards, mesocycle planner/candidate pools, readiness start sheet. |
 | Charts | Exercise selector, progress charts, session-level point detail, hypertrophy score/detail, history/recommendations. |
@@ -167,7 +169,7 @@ Implemented foundations include semantic `main`/`nav`, a keyboard-visible skip l
 
 Current automated coverage does not yet synthesize every workout lifecycle, modal, data-heavy chart, import failure, offline/service-worker transition, or native-only state. Those gaps are **NEEDS REVIEW** and are listed in each weekly report rather than silently passed.
 
-**IMPLEMENTED:** the ordinary mobile and desktop Settings goldens were intentionally reviewed and refreshed on 2026-07-17 after removing the duplicate cloud-upload control from notification setup. The separate consent control remains available in **Data and backup**; behavior, axe, console, layout, and refreshed visual assertions pass. Protected Lift/Dashboard goldens remain unchanged.
+**IMPLEMENTED:** the mobile and desktop goldens for all five primary views and the dedicated Lift/Dashboard reference matrix were intentionally reviewed and refreshed on 2026-07-18 for the Quiet Modular Navy redesign. The protected suite now asserts the Workout coaching/active-exercise modules and the Dashboard coaching module while continuing to cover interaction, privacy, malformed-storage, dark-theme, narrow, tablet, desktop, and zoom-equivalent states.
 
 ## Terminology and copy conventions
 

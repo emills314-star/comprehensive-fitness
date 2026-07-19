@@ -155,12 +155,15 @@ async function assertVisibleKeyboardFocus(page, navTarget) {
 
 async function assertRichLabels(page, surface) {
   if (surface === "lift") {
+    await expect(page.locator(".active-workout-hero.app-module")).toBeVisible();
+    await expect(page.locator(".exercise-card.active-exercise.app-module")).toHaveCount(1);
     await expect(page.getByText("2/9 sets", { exact: true })).toBeVisible();
     await expect(page.getByText("32m elapsed", { exact: true })).toBeVisible();
     await expect(page.getByLabel("Exercise name").filter({ hasText: LONG_EXERCISE_NAMES.chest })).toHaveCount(1);
     await expect(page.getByText("Last time", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("Next increment", { exact: true }).first()).toBeVisible();
   } else {
+    await expect(page.locator(".dashboard-coach.app-module")).toBeVisible();
     await expect(page.locator('[data-action="open-dashboard-detail"][data-detail="sessions"]')).toContainText("3");
     const recentTitle = page.locator(".recent-history-title").filter({ hasText: LONG_HISTORY_TITLE });
     await expect(recentTitle).toHaveCount(1);
@@ -244,7 +247,8 @@ test.describe("protected Lift and Dashboard visual baselines", () => {
       fixture: buildEmptyProtectedSurfaceFixture(),
       viewport: { width: 390, height: 844 }
     });
-    await openSurface(page, "lift", { liftHeading: "Program overview" });
+    await openSurface(page, "lift", { liftHeading: "Today" });
+    await expect(page.locator(".quiet-coach-hero.app-module")).toBeVisible();
     await expect(page).toHaveScreenshot("protected-lift-empty-mobile-390.png", { fullPage: true, animations: "disabled", caret: "hide", scale: "css", maxDiffPixelRatio: 0.003 });
     await openSurface(page, "dashboard");
     await expect(page.getByText("Log a working set to start your weekly volume dashboard.", { exact: true })).toBeVisible();

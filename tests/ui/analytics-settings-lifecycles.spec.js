@@ -502,7 +502,7 @@ test("the registered service worker serves the public app shell while the isolat
     offlineEnabled = true;
     await page.reload({ waitUntil: "domcontentloaded", timeout: 30_000 });
     await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByRole("heading", { name: "Program overview", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Today", exact: true })).toBeVisible();
     expect(await page.evaluate(() => ({ online: navigator.onLine, controlled: Boolean(navigator.serviceWorker.controller) }))).toEqual({ online: false, controlled: true });
   } finally {
     if (offlineEnabled) await context.setOffline(false).catch(() => undefined);

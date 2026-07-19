@@ -99,8 +99,8 @@ test("Templates initial frame stays progressive under large history", async ({ p
 test("Mesocycle Planner follows dependencies and enforces restricted equipment", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name === "desktop", "Restricted-equipment interaction is covered at the narrow mobile viewport; desktop runs the complete full-review workflow.");
   test.setTimeout(120_000);
-  await page.locator('[data-tab="plan"]').waitFor({ state: "visible", timeout: 90_000 });
-  await page.locator('[data-tab="plan"]').click();
+  await page.locator('.nav-button[data-tab="plan"]').waitFor({ state: "visible", timeout: 90_000 });
+  await page.locator('.nav-button[data-tab="plan"]').click();
   await expect(page.locator(".mesocycle-planner h2")).toContainText("Plan Your Mesocycle", { timeout: 30_000 });
   await page.getByRole("button", { name: "Plan Your Mesocycle" }).click();
   await expect(page.getByText("Before You Build", { exact: true })).toBeVisible();

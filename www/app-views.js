@@ -223,16 +223,19 @@
           const planReadinessHtml = measurePerformance("lift:planReadiness", () => renderRecoveryPanel(session) + renderTodayPlan() + renderActiveWorkoutAdvice());
         return `
           <section class="view workout-view ${historyReadOnly ? "history-readonly" : ""} ${editingHistory ? "history-editing" : ""}">
-            <div class="workout-heading">
-              <div><div class="section-kicker">Today</div><h1>${escapeHtml(session.title || "Workout")}</h1></div>
-              <span class="status-pill ${isSessionSubmitted(session) ? "good" : session.id === activeWorkoutId && hasActiveWorkout() ? "inside" : "neutral"}">${isSessionSubmitted(session) ? "Logged" : session.id === activeWorkoutId && hasActiveWorkout() ? "In progress" : "Ready"}</span>
-            </div>
+            <section class="active-workout-hero app-module">
+              <div class="workout-heading">
+                <div><div class="section-kicker">Today</div><h1>${escapeHtml(session.title || "Workout")}</h1></div>
+                <span class="status-pill ${isSessionSubmitted(session) ? "good" : session.id === activeWorkoutId && hasActiveWorkout() ? "inside" : "neutral"}">${isSessionSubmitted(session) ? "Logged" : session.id === activeWorkoutId && hasActiveWorkout() ? "In progress" : "Ready"}</span>
+              </div>
+              <div class="quiet-coach-line"><span>Current focus</span><strong>${escapeHtml(progress.current)}</strong><small>${progress.remaining ? progress.remaining + " working set" + (progress.remaining === 1 ? "" : "s") + " remain. Stay with the next useful action." : "Review the session, then submit when it is complete."}</small></div>
+              <div class="workout-status-strip">
+                <span>${escapeHtml(progress.current)}</span><span>${progress.completed}/${progress.total} sets</span><span>${progress.elapsed}</span>
+                <button class="icon-button" type="button" data-action="new-session" title="${hasActiveWorkout() ? "Finish or cancel the active workout before starting another" : "New workout"}" aria-label="${hasActiveWorkout() ? "New workout unavailable while a workout is active" : "New workout"}" ${hasActiveWorkout() ? "disabled" : ""}>${icon.add}</button>
+              </div>
+            </section>
             ${quickStartHtml}
             ${renderNotificationPrompt()}
-            <div class="workout-status-strip">
-              <span>${escapeHtml(progress.current)}</span><span>${progress.completed}/${progress.total} sets</span><span>${progress.elapsed}</span>
-              <button class="icon-button" type="button" data-action="new-session" title="${hasActiveWorkout() ? "Finish or cancel the active workout before starting another" : "New workout"}" aria-label="${hasActiveWorkout() ? "New workout unavailable while a workout is active" : "New workout"}" ${hasActiveWorkout() ? "disabled" : ""}>${icon.add}</button>
-            </div>
             ${session.adjustmentSummary ? '<div class="adjustment-summary">' + escapeHtml(session.adjustmentSummary) + '</div>' : ""}
             ${exerciseHtml}
             ${historyReadOnly ? "" : `<details class="compact-disclosure add-exercise-panel">
@@ -287,11 +290,21 @@
 
       function renderLiftHome() {
         const analysis = hypertrophyAnalysis(0, "overall", "");
+        const nextTemplate = data.templates[0] || null;
+        const nextAction = nextTemplate
+          ? '<button class="primary-action" type="button" data-action="open-templates">Choose today\'s workout</button>'
+          : '<button class="primary-action" type="button" data-action="open-templates">Create a workout template</button>';
         return `
           <section class="view lift-home-view">
-            <div class="workout-heading"><div><div class="section-kicker">Lift</div><h1>Program overview</h1></div><span class="status-pill inside">Ready</span></div>
+            <div class="workout-heading"><div><div class="section-kicker">Workout</div><h1>Today</h1></div><span class="status-pill inside">Ready</span></div>
+            <section class="quiet-coach-hero app-module">
+              <div class="section-kicker">Quiet coach</div>
+              <h2>${nextTemplate ? escapeHtml(nextTemplate.name) + " is ready when you are." : "Build the plan before chasing the outcome."}</h2>
+              <p>${nextTemplate ? "Review today's readiness, then follow the next prescribed set. Supporting evidence stays available without competing for attention." : "Create a reusable template, then the app can keep today's decision simple and your progression transparent."}</p>
+              <div class="module-action-row">${nextAction}<button class="secondary-action" type="button" data-action="open-dashboard">Review this week</button></div>
+            </section>
             ${renderQuickStartTemplates()}
-            <section class="lift-home-score"><div class="section-heading"><div><h2>Overall Program Hypertrophy Score</h2><p>${escapeHtml(hypertrophyWindowLabel(analysis))}</p></div></div>${renderHypertrophyScore(analysis)}<div class="score-scale" aria-label="Hypertrophy score ranges"><span class="score-excellent">90-100 Excellent</span><span class="score-very-good">80-89 Very good</span><span class="score-good">70-79 Good</span><span class="score-mixed">60-69 Mixed</span><span class="score-limiting">40-59 Limited</span><span class="score-critical">Below 40 Attention</span></div></section>
+            <section class="lift-home-score app-module"><div class="section-heading"><div><h2>Program pulse</h2><p>Overall hypertrophy score &middot; ${escapeHtml(hypertrophyWindowLabel(analysis))}</p></div></div>${renderHypertrophyScore(analysis)}<details class="module-disclosure"><summary>How the score is graded <span>View ranges</span></summary><div class="score-scale" aria-label="Hypertrophy score ranges"><span class="score-excellent">90-100 Excellent</span><span class="score-very-good">80-89 Very good</span><span class="score-good">70-79 Good</span><span class="score-mixed">60-69 Mixed</span><span class="score-limiting">40-59 Limited</span><span class="score-critical">Below 40 Attention</span></div></details></section>
           </section>`;
       }
 
@@ -390,6 +403,9 @@
         const completedSessions = dashboardSessionsForWeek(dashboardWeekStart);
         const highConcernCount = flags.filter((flag) => flag.concern === "high").length;
         const moderateConcernCount = flags.filter((flag) => flag.concern === "moderate").length;
+        const primaryFlag = flags.find((flag) => flag.concern === "high") || flags.find((flag) => flag.concern === "moderate") || flags[0] || null;
+        const coachTitle = primaryFlag ? primaryFlag.reason : completedSessions.length ? "Your week is moving without a major fatigue flag." : "Start with one clear training signal.";
+        const coachAction = primaryFlag ? primaryFlag.recommendation : completedSessions.length ? "Use the volume modules below to check balance before adding work." : "Log a submitted working set and this dashboard will build from real training history.";
         const currentWeek = startOfWeekIso(todayIso());
         const renderBucket = (bucket, quiet = false) => {
           const max = Math.max(bucket.targetHigh, bucket.sets, 1);
@@ -417,6 +433,12 @@
                 <button type="button" data-action="dashboard-week" data-direction="1" aria-label="Next dashboard week" ${dashboardWeekStart >= currentWeek ? "disabled" : ""}>›</button>
               </div>
             </div>
+            <article class="quiet-coach-hero dashboard-coach app-module ${primaryFlag ? "coach-" + primaryFlag.concern : "coach-neutral"}">
+              <div class="section-kicker">This week's coach</div>
+              <h2>${escapeHtml(coachTitle)}</h2>
+              <p>${escapeHtml(coachAction)}</p>
+              ${primaryFlag ? '<button class="secondary-action" type="button" data-action="open-dashboard-detail" data-detail="fatigue">Review the evidence</button>' : ''}
+            </article>
             <div class="dashboard-summary-row" aria-label="Weekly overview">
               <button type="button" data-action="open-dashboard-detail" data-detail="sessions" aria-label="Open logged sessions for ${formatWeek(dashboardWeekStart)}"><strong>${completedSessions.length}</strong><span>logged sessions</span></button>
               <button type="button" data-action="open-dashboard-detail" data-detail="muscles" aria-label="Open trained muscles for ${formatWeek(dashboardWeekStart)}"><strong>${trained.length}</strong><span>trained muscles</span></button>
@@ -1207,6 +1229,7 @@
 
       function renderExercise(exercise) {
         const exerciseSets = setsForExercise(exercise.id);
+        const isActiveExercise = exerciseSets.some((set) => set.id === activeSetId || timer?.setId === set.id);
         const restriction = exercise.safetyRestriction || exercise.finalPrescription?.safetyRestriction || exercise.recommendationSnapshot?.finalPrescription?.safetyRestriction || null;
         const resolvedSafetyContext = restriction?.status === "resolved_by_confirmed_substitute" && exercise.recommendationSnapshot
           ? safetySubstituteContext(exercise.recommendationSnapshot, { exercise, session: sessionById(exercise.sessionId) })
@@ -1226,7 +1249,7 @@
         const setHtml = measurePerformance("lift:setRows", () => exerciseSets.map((set) => renderSet(set, exercise, renderContext)).join(""), { exerciseId: exercise.id, count: exerciseSets.length });
         const optionsHtml = measurePerformance("lift:exerciseOptions", () => renderPlateCalculator(exercise, firstWorkSet) + renderMuscleSelectors(exercise) + renderExerciseGuidance(exercise) + renderPrescriptionOverrideControls(exercise, resolvedSafetyContext), { exerciseId: exercise.id });
         return `
-          <article class="exercise-card">
+          <article class="exercise-card app-module ${isActiveExercise ? "active-exercise" : ""}">
             <div class="exercise-header">
               <textarea class="exercise-name exercise-name-field" rows="1" data-action="exercise-name" data-exercise-id="${exercise.id}" aria-label="Exercise name: ${escapeHtml(exercise.name)}" title="${escapeHtml(exercise.name)}">${escapeHtml(exercise.name)}</textarea>
               <div class="exercise-actions">

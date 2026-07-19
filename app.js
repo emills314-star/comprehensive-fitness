@@ -94,6 +94,8 @@
           }
           setActiveTab(target.dataset.tab);
         }
+        if (action === "open-templates") setActiveTab("plan");
+        if (action === "open-dashboard") setActiveTab("dashboard");
         if (action === "open-history") openDashboardDetailView({ type: "history" }, target);
         if (action === "toggle-theme") commit({ ...data, settings: { ...data.settings, theme: data.settings.theme === "light" ? "dark" : "light" } });
         if (action === "toggle-unit") commit(convertAppWeightUnit(data, data.settings.weightUnit === "lb" ? "kg" : "lb"));
