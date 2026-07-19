@@ -110,9 +110,12 @@ assert.match(html, /Historical snapshot through/, "Historical recommendations mu
 assert.match(html, /data-action="set-type-override"/, "History editing must expose manual set-type correction");
 assert.match(html, /function getMostRecentWorkoutPerformance\(exerciseName, options = \{\}\)/, "All prior workout consumers must use one canonical resolver");
 assert.match(html, /requestedResistanceType[\s\S]*resistanceTypeFor\(entry\.exercise, entry\.set\) === requestedResistanceType/, "Prior workout resolution must preserve resistance-type identity");
+assert.match(html, /function submittedPerformanceIndex[\s\S]*isCompletedWorkout[\s\S]*strongExercisesByExactName/, "Last-time lookup must index the full submitted archive and retain an exact-name Strong fallback");
+assert.match(html, /function getMostRecentWorkoutPerformance[\s\S]*submittedPerformanceIndex\(throughDate\)[\s\S]*strongExercisesByExactName\.get\(requestedExactName\)/, "Prior workout resolution must survive performance-ID drift without merging differently named Strong variations");
 assert.match(html, /function createTemplatesFromStrongSessions[\s\S]*exerciseIdentityFields\(exercise\)/, "Strong-derived templates must preserve imported exercise identity fields");
 assert.match(html, /function auditImportedTemplateHistory\(templates\)/, "Strong imports must audit history coverage across every generated template exercise");
 assert.match(html, /source: "strong"/, "Strong-derived templates must retain import provenance");
 assert.match(html, /function strongHistoryFallbackForTemplateExercise[\s\S]*performance\.session\?\.source !== "strong"[\s\S]*history_fallback/, "Unmapped Strong identities must use exact submitted history without weakening the research identity boundary");
+assert.match(html, /fallbackReasons = new Set\(\["unknown_exercise_identity", "invalid_muscle_identity", "no_dynamic_direct_target"\]\)/, "Safe Strong-history fallback must cover every audited non-safety identity/target gap");
 
 console.log("Domain integrity tests passed (retention, classification, migration, snapshots, and coaching source).");

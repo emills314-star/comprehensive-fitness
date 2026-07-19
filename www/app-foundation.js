@@ -277,6 +277,7 @@
       const coachRecommendationCache = new Map();
       const exerciseProgressCache = new Map();
       const previousPerformanceCache = new Map();
+      const submittedPerformanceIndexCache = new Map();
       const muscleAssignmentCache = new Map();
       const prescriptionIdentityResolutionCache = new Map();
       let prescriptionIdentityCacheEngine = null;
@@ -2203,6 +2204,7 @@
         coachRecommendationCache.clear();
         exerciseProgressCache.clear();
         previousPerformanceCache.clear();
+        submittedPerformanceIndexCache.clear();
         muscleAssignmentCache.clear();
         prescriptionSnapshotCache.clear();
       }
@@ -2299,6 +2301,39 @@
         const key = analysisRevision + "|" + (options.asOfDate || todayIso()) + "|" + (options.throughDate || "");
         if (!activeHistoryCache.has(key)) activeHistoryCache.set(key, activeCompletedWorkoutHistory(data, options));
         return activeHistoryCache.get(key);
+      }
+
+      function submittedPerformanceIndex(throughDate = todayIso()) {
+        const date = String(throughDate || todayIso()).slice(0, 10);
+        const cacheKey = analysisRevision + "|" + date;
+        if (submittedPerformanceIndexCache.has(cacheKey)) return submittedPerformanceIndexCache.get(cacheKey);
+        const sessionById = new Map(data.sessions.filter((session) => {
+          const completionDate = sessionCompletionDate(session);
+          return isCompletedWorkout(session) && completionDate && completionDate <= date;
+        }).map((session) => [session.id, session]));
+        const exercisesByCanonical = new Map();
+        const strongExercisesByExactName = new Map();
+        data.exercises.forEach((exercise) => {
+          const session = sessionById.get(exercise.sessionId);
+          if (!session) return;
+          const canonicalId = canonicalExerciseId(exercise);
+          if (canonicalId) {
+            const canonicalExercises = exercisesByCanonical.get(canonicalId) || [];
+            canonicalExercises.push(exercise);
+            exercisesByCanonical.set(canonicalId, canonicalExercises);
+          }
+          if (session.source === "strong") {
+            const exactName = normalizePrescriptionIdentity(exercise.name);
+            if (exactName) {
+              const exactExercises = strongExercisesByExactName.get(exactName) || [];
+              exactExercises.push(exercise);
+              strongExercisesByExactName.set(exactName, exactExercises);
+            }
+          }
+        });
+        const index = { sessionById, exercisesByCanonical, strongExercisesByExactName };
+        submittedPerformanceIndexCache.set(cacheKey, index);
+        return index;
       }
 
       function activeHistorySessionIds(options = {}) {
@@ -3098,16 +3133,24 @@
 
       function getMostRecentWorkoutPerformance(exerciseName, options = {}) {
         const requestedResistanceType = options.resistanceType || "";
-        const cacheKey = ["performance", analysisRevision, options.canonicalExerciseId || canonicalExerciseId(exerciseName), requestedResistanceType, options.throughDate || options.asOfDate || todayIso(), options.excludeSessionId || "", options.includeDeloads ? 1 : 0].join("|");
+        const requestedCanonicalId = options.canonicalExerciseId || canonicalExerciseId(exerciseName);
+        const requestedExactName = normalizePrescriptionIdentity(exerciseName);
+        const cacheKey = ["performance", analysisRevision, requestedCanonicalId, requestedExactName, requestedResistanceType, options.throughDate || options.asOfDate || todayIso(), options.excludeSessionId || "", options.includeDeloads ? 1 : 0].join("|");
         if (previousPerformanceCache.has(cacheKey)) return previousPerformanceCache.get(cacheKey);
-        const scoped = getExerciseSets(exerciseName, { canonicalExerciseId: options.canonicalExerciseId || canonicalExerciseId(exerciseName) });
-        const exerciseById = new Map(scoped.exercises.map((exercise) => [exercise.id, exercise]));
-        const sessionById = new Map(activeHistorySessions({ asOfDate: options.retentionAsOfDate || todayIso(), throughDate: options.throughDate || options.asOfDate || todayIso() }).map((session) => [session.id, session]));
-        const deloadWeeks = options.includeDeloads ? new Set() : new Set(scoped.exercises.filter((exercise) => {
+        const throughDate = String(options.throughDate || options.asOfDate || todayIso()).slice(0, 10);
+        const performanceIndex = submittedPerformanceIndex(throughDate);
+        const sessionById = performanceIndex.sessionById;
+        const scopedExercises = Array.from(new Map([
+          ...(performanceIndex.exercisesByCanonical.get(requestedCanonicalId) || []),
+          ...(performanceIndex.strongExercisesByExactName.get(requestedExactName) || [])
+        ].map((exercise) => [exercise.id, exercise])).values());
+        const exerciseById = new Map(scopedExercises.map((exercise) => [exercise.id, exercise]));
+        const scopedSets = scopedExercises.flatMap((exercise) => (dataEntityIndex().setIndicesByExercise.get(exercise.id) || []).map((index) => data.sets[index]));
+        const deloadWeeks = options.includeDeloads ? new Set() : new Set(scopedExercises.filter((exercise) => {
           const session = sessionById.get(exercise.sessionId);
           return exercise.isDeload || session?.isDeload || session?.sessionType === "deload";
         }).map((exercise) => startOfWeekIso(sessionById.get(exercise.sessionId)?.date || todayIso())));
-        const completed = scoped.sets
+        const completed = scopedSets
           .filter((set) => set.completed && !set.skipped)
           .map((set) => {
             const exercise = exerciseById.get(set.exerciseId);
@@ -3124,7 +3167,7 @@
             || Number(a.set.sequenceIndex ?? a.set.sequence ?? a.set.setNumber) - Number(b.set.sequenceIndex ?? b.set.sequence ?? b.set.setNumber));
         const latest = completed[0];
         const result = latest ? {
-          canonicalExerciseId: options.canonicalExerciseId || canonicalExerciseId(exerciseName),
+          canonicalExerciseId: requestedCanonicalId,
           resistanceType: resistanceTypeFor(latest.exercise, latest.set),
           session: latest.session,
           exercise: latest.exercise,
@@ -3146,9 +3189,10 @@
       }
 
       function strongHistoryFallbackForTemplateExercise(templateExercise, options = {}, rejection = null) {
-        if (String(rejection?.reason || "") !== "unknown_exercise_identity") return null;
+        const fallbackReasons = new Set(["unknown_exercise_identity", "invalid_muscle_identity", "no_dynamic_direct_target"]);
+        if (!fallbackReasons.has(String(rejection?.reason || ""))) return null;
         const identity = resolveExerciseIdentityProfile(templateExercise);
-        if (identity.status !== "resolved" || !identity.performanceExerciseId || identity.researchExerciseId) return null;
+        if (identity.status !== "resolved" || !identity.performanceExerciseId) return null;
         const resistanceType = templateExercise.resistanceType || inferResistanceType(templateExercise.name, templateExercise);
         const performance = getMostRecentWorkoutPerformance(templateExercise.name, {
           ...options,
