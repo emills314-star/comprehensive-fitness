@@ -42,6 +42,7 @@
         availableEquipment: [],
         excludedExerciseIds: [],
         theme: "light",
+        colorPackage: "signal-garden",
         timerSound: true,
         workoutCompletionSound: true,
         timerVibration: true,
@@ -897,6 +898,7 @@
           availableEquipment: storedSettings.availableEquipment,
           excludedExerciseIds: storedSettings.excludedExerciseIds,
           theme: storedSettings.theme,
+          colorPackage: storedSettings.colorPackage,
           timerSound: storedSettings.timerSound,
           workoutCompletionSound: storedSettings.workoutCompletionSound,
           timerVibration: storedSettings.timerVibration,
@@ -2097,8 +2099,12 @@
 
       function applyTheme() {
         const theme = data.settings?.theme === "dark" ? "dark" : "light";
+        const validPackages = new Set(["heritage-atlas", "signal-garden", "alpine-ledger", "training-hall", "harbor-pulse", "prairie-electric", "redwood-circuit", "mediterranean-set", "modern-primary", "night-stadium"]);
+        const colorPackage = validPackages.has(data.settings?.colorPackage) ? data.settings.colorPackage : defaultSettings.colorPackage;
         document.documentElement.dataset.theme = theme;
-        document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "light" ? "#f4f8fb" : "#081015");
+        document.documentElement.dataset.colorPackage = colorPackage;
+        const packageBackgrounds = { "heritage-atlas": "#f5e9c9", "signal-garden": "#fff8e8", "alpine-ledger": "#edf4f1", "training-hall": "#f4ebdd", "harbor-pulse": "#f4e5ce", "prairie-electric": "#f2e2b9", "redwood-circuit": "#f5e9d8", "mediterranean-set": "#f3efd9", "modern-primary": "#f7f5ef", "night-stadium": "#0c1727" };
+        document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "light" ? packageBackgrounds[colorPackage] : "#081015");
       }
 
       function themeLabel() {

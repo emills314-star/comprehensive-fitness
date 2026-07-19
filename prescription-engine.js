@@ -3700,6 +3700,7 @@
     const policy = { ...DEFAULT_POLICY, ...(options.policy || {}) };
     const duration = normalizeSessionDurationConstraints(options, policy);
     const capacityIssues = [];
+    const slotSessionIds = new Map(asArray(options.slots).map((slot) => [slot.id, new Set()]));
     const sessionWorkingSets = (session) => sum(session.exercises.map((item) => number(item.plannedSets, 0)));
     const targetedExerciseCount = (session, exercise) => {
       const targets = new Set(asArray(exercise.targetMuscleGroupIds).map(muscleFamily));
@@ -3733,7 +3734,8 @@
           const densityCost = session.exercises.length >= policy.maximumExercisesPerSession ? 120 : session.exercises.length * 4;
           const projectedDuration = session.estimatedDurationMinutes + addedDurationMinutes;
           const targetDurationCost = projectedDuration > duration.target ? (projectedDuration - duration.target) * 24 : Math.abs(duration.target - projectedDuration) * 0.08;
-          return { session, cost: focusFit(session, exercise) + sessionPlacementCost(session, exercise, index, sessions) + adjacentSameExercise * (exercise.scores.highFatigueCompound ? 500 : 120) + equipmentChanges + densityCost + targetDurationCost };
+          const repeatedTargetExposure = relatedSlots.filter((slot) => slotSessionIds.get(slot.id)?.has(session.id)).length;
+          return { session, cost: focusFit(session, exercise) + sessionPlacementCost(session, exercise, index, sessions) + repeatedTargetExposure * 1000 + adjacentSameExercise * (exercise.scores.highFatigueCompound ? 500 : 120) + equipmentChanges + densityCost + targetDurationCost };
         }).sort((a, b) => a.cost - b.cost);
         if (rankedSessions[0]) chosen.push({ session: rankedSessions[0].session, sets: setsForExposure });
         else capacityIssues.push({ exerciseId: exercise.exerciseId, exerciseName: exercise.exerciseName, muscleGroupIds: exercise.targetMuscleGroupIds, unallocatedSets: setsForExposure, reason: `No session can accept ${setsForExposure} more working sets within the hard ${duration.maximum}-minute duration maximum, ${policy.maximumWorkingSetsPerSession}-set limit, and ${policy.maximumExercisesPerMusclePerSession}-exercise target-muscle limit.` });
@@ -3746,6 +3748,7 @@
         target.spinalLoad += exercise.scores.spinalLoad * sets / 3;
         target.gripDemand += exercise.scores.gripDemand * sets / 3;
         target.jointStress += exercise.scores.jointStress * sets / 3;
+        relatedSlots.forEach((slot) => slotSessionIds.get(slot.id)?.add(target.id));
       });
     });
     sessions.forEach((session) => session.exercises.sort((a, b) => (a.intendedRole === "primary_progression_lift" ? -1 : 1) - (b.intendedRole === "primary_progression_lift" ? -1 : 1) || b.scores.systemicFatigue - a.scores.systemicFatigue));

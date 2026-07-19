@@ -214,7 +214,7 @@ async function waitForEvidenceTerminal(page) {
 
 async function personalEvidenceInput(page) {
   const navigation = page.getByRole("navigation", { name: "Main navigation" });
-  await navigation.getByRole("button", { name: /Settings$/ }).click();
+  await navigation.getByRole("button", { name: /More$/ }).click();
   const group = page.locator("details.settings-group").filter({ has: page.locator("summary", { hasText: "Data and backup" }) });
   if (!(await group.evaluate((element) => element.open))) await group.locator("summary").click();
   return group.locator('[data-action="import-personal-evidence"]');
@@ -962,7 +962,7 @@ async function expectMutationControlsBlocked(scope, message) {
 
 async function openBackupSettings(page) {
   const navigation = page.getByRole("navigation", { name: "Main navigation" });
-  await navigation.getByRole("button", { name: /Settings$/ }).click();
+  await navigation.getByRole("button", { name: /More$/ }).click();
   const group = page.locator("details.settings-group").filter({ has: page.locator("summary", { hasText: "Data and backup" }) });
   await group.locator("summary").click();
   return group;
@@ -1339,10 +1339,10 @@ test("primary navigation exposes a skip target and moves focus into the selected
   await skipLink.focus();
   await expect(skipLink).toBeFocused();
 
-  const dashboard = page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: /Dashboard$/ });
-  await dashboard.click();
+  const progress = page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: /Progress$/ });
+  await progress.click();
   await expect(page.locator(".dashboard-view")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Volume and fatigue", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Training signals, in context.", exact: true })).toBeVisible();
   const focusIsInView = await page.evaluate(() => {
     const active = document.activeElement;
     const main = document.querySelector("#main-content");
@@ -1353,9 +1353,9 @@ test("primary navigation exposes a skip target and moves focus into the selected
 
 test("closing the template-start dialog restores focus to its quick-start button", async ({ page }) => {
   const navigation = page.getByRole("navigation", { name: "Main navigation" });
-  await navigation.getByRole("button", { name: /Templates$/ }).click();
+  await navigation.getByRole("button", { name: /Plan$/ }).click();
   await page.locator('[data-action="new-template"]').click();
-  await navigation.getByRole("button", { name: /Workout$/ }).click();
+  await navigation.getByRole("button", { name: /Today$/ }).click();
 
   const quickStart = page.locator('.quick-template-card[data-action="start-template"]').first();
   await expect(quickStart).toBeVisible();
@@ -1367,9 +1367,9 @@ test("closing the template-start dialog restores focus to its quick-start button
   await expect(quickStart).toBeFocused();
 });
 
-test("Dashboard detail Back restores focus to the originating summary control", async ({ page }) => {
+test("Progress overview detail Back restores focus to the originating summary control", async ({ page }) => {
   const navigation = page.getByRole("navigation", { name: "Main navigation" });
-  await navigation.getByRole("button", { name: /Dashboard$/ }).click();
+  await navigation.getByRole("button", { name: /Progress$/ }).click();
   const origin = page.locator('[data-action="open-dashboard-detail"]').first();
   await origin.focus();
   await origin.click();
@@ -1391,7 +1391,7 @@ test("cloud workout sync consent defaults off and persists independently when ex
     body: JSON.stringify({ status: "enabled" })
   }));
   const navigation = page.getByRole("navigation", { name: "Main navigation" });
-  await navigation.getByRole("button", { name: /Settings$/ }).click();
+  await navigation.getByRole("button", { name: /More$/ }).click();
   const dataGroup = page.locator("details.settings-group").filter({ has: page.locator("summary", { hasText: "Data and backup" }) });
   await dataGroup.locator("summary").click();
   const consent = page.locator('[data-action="cloud-workout-sync-consent"]');
@@ -1405,7 +1405,7 @@ test("cloud workout sync consent defaults off and persists independently when ex
   }), { message: "Enabled cloud-copy consent must be durable before reload", timeout: 15_000 }).toBe(true);
 
   await page.reload();
-  await navigation.getByRole("button", { name: /Settings$/ }).click();
+  await navigation.getByRole("button", { name: /More$/ }).click();
   await page.locator("details.settings-group").filter({ has: page.locator("summary", { hasText: "Data and backup" }) }).locator("summary").click();
   await expect(page.locator('[data-action="cloud-workout-sync-consent"]')).toBeChecked();
 });
@@ -1423,6 +1423,7 @@ test("a complete synthetic backup round-trips relationships and canonical settin
     trainingGoal: "hypertrophy",
     nutritionPhase: "maintenance",
     experienceLevel: "intermediate",
+    colorPackage: "signal-garden",
     cloudWorkoutSyncConsent: false
   });
 });

@@ -28,7 +28,7 @@ Comprehensive Fitness is a local-first strength-training application that logs w
 
 The verified target user is a single strength/hypertrophy trainee using a phone during training. The research package is explicitly scoped to male hypertrophy and related strength, recovery, and nutrition questions (`research_database/README.md`, `research_database/METHODOLOGY.md`). Broader population support is not established.
 
-The verified product navigation has four destinations: Today for the next action and focused workout execution, Plan for templates and mesocycle construction, Progress for overview/lift/history analysis, and More for setup and data controls. The active-workout UI intentionally prioritizes one exercise/set on a phone while retaining a full-session board on wider screens.
+The verified product navigation has four destinations: Today for the next action and continuous workout execution, Plan for templates and mesocycle construction, Progress for overview/lift/history analysis, and More for setup and data controls. The active workout renders every exercise and set in program order as one scrollable document on phone and wider screens; completion updates the current-set highlight without moving the viewport.
 
 ## Problems and principles
 

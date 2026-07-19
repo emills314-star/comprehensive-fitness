@@ -550,7 +550,7 @@ privateTest("file adapters load the real private aggregates locally without embe
   assert(evidence.personal.exerciseScores.length >= 100);
   assert(evidence.personal.exercisePrescriptions.length >= 100);
   assert(evidence.research.exerciseDatabase.length >= 50);
-  assert.strictEqual(evidence.versions.research, "2.0.0");
+  assert.strictEqual(evidence.versions.research, "3.0.0");
 });
 
 test("full-program portfolio scoring and lifecycle protections are explicit", () => {

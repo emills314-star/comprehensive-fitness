@@ -153,8 +153,9 @@ test("Mesocycle Planner follows dependencies and enforces restricted equipment",
 test("design-system source does not accumulate one-off styling", async () => {
   const source = fs.readFileSync(path.join(__dirname, "..", "..", "index.html"), "utf8");
   const style = source.match(/<style>([\s\S]*?)<\/style>/)?.[1] || "";
+  const structuralStyle = style.replace(/\[[^\]]*data-color-package[^\]]*\]\s*\{[^}]*\}/g, "");
   const metrics = {
-    hexColors: (style.match(/#[0-9a-f]{3,8}\b/gi) || []).length,
+    hexColors: (structuralStyle.match(/#[0-9a-f]{3,8}\b/gi) || []).length,
     rgbColors: (style.match(/rgba?\(/gi) || []).length,
     inlineStyles: (source.match(/\sstyle\s*=\s*["']/gi) || []).length,
     importantRules: (style.match(/!important\b/gi) || []).length

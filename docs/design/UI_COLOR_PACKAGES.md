@@ -2,7 +2,7 @@
 
 ## Status and purpose
 
-These are **DESIGN MOCKUPS**, not implemented application themes. They explore livelier semantic color systems that can be applied to Comprehensive Fitness or comparable workout interfaces without changing information architecture. Strong screenshots supplied by the repository owner are used only as private edit targets for the rendered Heritage Atlas and Signal Garden previews.
+These are **IMPLEMENTED application color packages**. All ten are selectable in **More → Appearance and units → Color package**, persist with the local app settings and backup format, and apply through the shared semantic color tokens without changing information architecture. Signal Garden is the default for an installation that has no saved package. Strong screenshots supplied by the repository owner remain private edit targets for the Heritage Atlas and Signal Garden reference previews.
 
 Every package reserves color by meaning: current/action, completed/success, coaching/information, caution, destructive, and neutral structure. Text and icons must still communicate state without color alone, and normal text must meet WCAG AA contrast.
 
@@ -30,9 +30,11 @@ Every package reserves color by meaning: current/action, completed/success, coac
 - Warm-ups use amber/gold labels, working sets use neutral numbered labels, and the current set receives an outline plus text label.
 - Bottom navigation remains visually quiet so workout data and the current action retain priority.
 
-## Fully rendered packages
+## Reference mockups
 
 Heritage Atlas and Signal Garden are rendered against Strong Photos 2–6 as direct style transfers. Each edit preserves the original screen geometry, content, controls, phone chrome, and scroll position while changing color, surface hierarchy, borders, buttons, and status emphasis. The resulting files remain local under the privacy-ignored `docs/design/strong-ui-mockups/` path because their source screenshots contain personal workout details.
+
+The mockup images are references; the corresponding Comprehensive Fitness packages are implemented in `index.html` and selectable in the app. Browser tests verify that all ten choices apply distinct canvas/action/success/destructive token combinations and persist after reload.
 
 ## Selection guidance
 

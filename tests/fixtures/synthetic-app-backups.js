@@ -97,7 +97,8 @@ function validFullState() {
       trainingDaysPerWeek: 4,
       availableEquipment: ["barbell", "bench"],
       cloudWorkoutSyncConsent: false,
-      theme: "light"
+      theme: "light",
+      colorPackage: "signal-garden"
     }
   };
 }

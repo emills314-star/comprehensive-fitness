@@ -1614,6 +1614,21 @@
                   <option value="light" ${data.settings.theme === "light" ? "selected" : ""}>Light training sheet</option>
                 </select>
               </label>
+              <label>Color package
+                <select data-action="color-package">
+                  <option value="heritage-atlas" ${data.settings.colorPackage === "heritage-atlas" ? "selected" : ""}>Heritage Atlas</option>
+                  <option value="signal-garden" ${data.settings.colorPackage === "signal-garden" ? "selected" : ""}>Signal Garden</option>
+                  <option value="alpine-ledger" ${data.settings.colorPackage === "alpine-ledger" ? "selected" : ""}>Alpine Ledger</option>
+                  <option value="training-hall" ${data.settings.colorPackage === "training-hall" ? "selected" : ""}>Training Hall</option>
+                  <option value="harbor-pulse" ${data.settings.colorPackage === "harbor-pulse" ? "selected" : ""}>Harbor Pulse</option>
+                  <option value="prairie-electric" ${data.settings.colorPackage === "prairie-electric" ? "selected" : ""}>Prairie Electric</option>
+                  <option value="redwood-circuit" ${data.settings.colorPackage === "redwood-circuit" ? "selected" : ""}>Redwood Circuit</option>
+                  <option value="mediterranean-set" ${data.settings.colorPackage === "mediterranean-set" ? "selected" : ""}>Mediterranean Set</option>
+                  <option value="modern-primary" ${data.settings.colorPackage === "modern-primary" ? "selected" : ""}>Modern Primary</option>
+                  <option value="night-stadium" ${data.settings.colorPackage === "night-stadium" ? "selected" : ""}>Night Stadium</option>
+                </select>
+                <small>Changes the app canvas, cards, actions, coaching, success, warning, and destructive colors.</small>
+              </label>
             </div></details>
             <details class="settings-group" open><summary>iPhone app setup <span class="status-pill ${pushStatus.className}">${pushStatus.label}</span></summary><div class="disclosure-body settings-panel">
               ${renderPwaSetup()}

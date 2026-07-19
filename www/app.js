@@ -465,6 +465,7 @@
         }
         if (action === "weight-unit") commit(convertAppWeightUnit(data, target.value));
         if (action === "theme-mode") commit({ ...data, settings: { ...data.settings, theme: target.value } });
+        if (action === "color-package") commit({ ...data, settings: { ...data.settings, colorPackage: target.value } });
         if (action === "training-goal") commit({ ...data, settings: { ...data.settings, trainingGoal: target.value } });
         if (action === "nutrition-phase") commit({ ...data, settings: { ...data.settings, nutritionPhase: target.value } });
         if (action === "experience-level") commit({ ...data, settings: { ...data.settings, experienceLevel: target.value } });

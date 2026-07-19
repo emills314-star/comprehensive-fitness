@@ -262,11 +262,12 @@ test("guided planning honors equipment, muscle scope, partial search, no results
   expect(await page.evaluate(() => data.templates.length)).toBe(2);
 });
 
-test("Settings converts real loads and persists profile, timer, readiness, unit, and theme changes across reload", async ({ page }) => {
+test("Settings converts real loads and persists profile, timer, readiness, unit, theme, and color-package changes across reload", async ({ page }) => {
   await installFixture(page);
   await openPrimaryTab(page, "data");
 
   await page.getByLabel("Theme").selectOption("dark");
+  await page.getByLabel("Color package").selectOption("heritage-atlas");
   await page.getByLabel("Weight unit").selectOption("kg");
   await openSettingsGroup(page, "Training defaults");
   await page.locator('[data-action="training-goal"]').selectOption("strength");
@@ -297,6 +298,7 @@ test("Settings converts real loads and persists profile, timer, readiness, unit,
   }));
   expect(inMemory.settings).toMatchObject({
     theme: "dark",
+    colorPackage: "heritage-atlas",
     weightUnit: "kg",
     trainingGoal: "strength",
     nutritionPhase: "surplus",
@@ -313,11 +315,35 @@ test("Settings converts real loads and persists profile, timer, readiness, unit,
   await openPrimaryTab(page, "data");
 
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(page.locator("html")).toHaveAttribute("data-color-package", "heritage-atlas");
   await expect(page.getByLabel("Theme")).toHaveValue("dark");
+  await expect(page.getByLabel("Color package")).toHaveValue("heritage-atlas");
   await expect(page.getByLabel("Weight unit")).toHaveValue("kg");
   const restored = await page.evaluate(() => ({ settings: structuredClone(data.settings), firstSet: structuredClone(data.sets[0]) }));
   expect(restored.settings).toMatchObject(inMemory.settings);
   expect(restored.firstSet).toMatchObject({ weight: 99.79, weightUnit: "kg", targetWeight: 99.79 });
+});
+
+test("all ten color packages are selectable and apply distinct semantic colors", async ({ page }) => {
+  await installFixture(page);
+  await openPrimaryTab(page, "data");
+  await page.getByLabel("Theme").selectOption("light");
+  const selector = page.getByLabel("Color package");
+  const packageIds = await selector.locator("option").evaluateAll((options) => options.map((option) => option.value));
+  expect(packageIds).toEqual([
+    "heritage-atlas", "signal-garden", "alpine-ledger", "training-hall", "harbor-pulse",
+    "prairie-electric", "redwood-circuit", "mediterranean-set", "modern-primary", "night-stadium"
+  ]);
+  const applied = new Set();
+  for (const packageId of packageIds) {
+    await selector.selectOption(packageId);
+    await expect(page.locator("html")).toHaveAttribute("data-color-package", packageId);
+    applied.add(await page.evaluate(() => {
+      const style = getComputedStyle(document.documentElement);
+      return [style.getPropertyValue("--bg"), style.getPropertyValue("--action"), style.getPropertyValue("--success"), style.getPropertyValue("--red")].join("|");
+    }));
+  }
+  expect(applied.size).toBe(10);
 });
 
 test("persistence exhaustion keeps the in-memory setting and immediately surfaces recovery guidance", async ({ page }) => {
