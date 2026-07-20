@@ -17,16 +17,16 @@
     .field { background: #f6f7f5; padding: 8px 4px; text-align: center; }
     .field small { color: #66758b; display: block; font-size: 10px; font-weight: 800; }
     .field strong { display: block; font-size: 16px; margin-top: 4px; }
-    .timer { background: #fcf7e9; border: 1px solid #d0b54b; border-radius: 12px; display: grid; gap: 10px; margin-top: 10px; padding: 11px; }
-    .timer-head { align-items: center; display: flex; gap: 10px; }
-    .timer-icon { align-items: center; background: #6d8f35; border: 2px solid #a4bd65; border-radius: 50%; color: #fff; display: inline-flex; flex: 0 0 34px; font-size: 20px; font-weight: 900; height: 34px; justify-content: center; width: 34px; }
+    .timer { background: #fcf7e9; border: 1px solid #d0b54b; border-radius: 10px; display: grid; gap: 6px; margin-top: 8px; padding: 8px 9px 9px; }
+    .timer-head { align-items: center; display: flex; gap: 8px; }
+    .timer-icon { align-items: center; background: #6d8f35; border: 2px solid #a4bd65; border-radius: 50%; color: #fff; display: inline-flex; flex: 0 0 30px; font-size: 17px; font-weight: 900; height: 30px; justify-content: center; width: 30px; }
     .timer-head span { color: #6d8f35; display: block; font-size: 12px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
     .timer-head strong { display: block; font-size: 24px; line-height: 1; margin-top: 2px; }
-    .progress { background: #f4edc9; border: 1px solid #d0b54b; border-radius: 8px; height: 28px; overflow: hidden; position: relative; }
+    .progress { background: #f4edc9; border: 1px solid #d0b54b; border-radius: 7px; height: 24px; overflow: hidden; position: relative; }
     .progress::before { background: #f4d95e; content: ""; inset: 0 58% 0 0; position: absolute; }
     .progress b { align-items: center; display: flex; height: 100%; justify-content: center; position: relative; font-size: 12px; }
     .actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
-    button { background: #fffdf5; border: 1px solid #cbbf86; border-radius: 9px; color: #53657b; font: inherit; font-size: 12px; font-weight: 800; min-height: 42px; }
+    button { background: #fffdf5; border: 1px solid #cbbf86; border-radius: 8px; color: #53657b; font: inherit; font-size: 12px; font-weight: 800; min-height: 44px; }
     .context { color: #6e7d8d; font-size: 11px; }
     .note { color: #63748b; font-size: 12px; line-height: 1.45; margin: 16px 2px 0; }
   </style>
@@ -47,7 +47,7 @@
         </div>
       </div>
     </section>
-    <p class="note">The green completion/rest signal is bounded to the circular timer icon. The exercise card and set block retain their normal neutral borders.</p>
+    <p class="note">The green completion/rest signal is bounded to the circular timer icon. The shorter panel keeps 44px touch targets while removing excess vertical chrome.</p>
   </main>
 </body>
 </html>
