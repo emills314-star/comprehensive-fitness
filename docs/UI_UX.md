@@ -194,8 +194,10 @@ The rest timer presentation uses a bounded circular icon and does not recolor th
 
 All concepts must expose empty, loading, offline, failure, destructive-confirmation, conflicting-data, and update states. Spatial or gesture-first concepts require visible, keyboard-operable, and screen-reader-equivalent controls. Reduced motion, forced colors, 200% text, focus order, and 320/390/768/1280 layouts are migration gates. Existing route names and component styling remain authoritative only for the legacy shell until cutover.
 
-### Focused six-direction mockups
+### Focused five-direction session mockups
 
-**IMPLEMENTED:** The non-production lab defaults to a six-up screen comparison. A five-tab control changes all six phones together between Inside workout, Change reps & sets, Pick template, Recommendations, and Warning flags. The included directions are Dual Track, Weekline, Mission Control, Editorial Performance, Body Atlas, and Coach Thread.
+**IMPLEMENTED:** The non-production lab defaults to a five-up screen comparison. A five-tab control changes all five phones together between Inside workout, Change reps & sets, Pick template, Recommendations, and Warning flags. The shortlist is Dual Track, Weekline, Mission Control, Editorial Performance, and Coach Thread; Body Atlas is excluded from this decision set.
 
-Dual Track, Mission Control, and Editorial Performance share Bento Studio’s light canvas and blue action palette while preserving lane/sequencer, system-console, and magazine structures respectively. Weekline remains temporal, Body Atlas remains anatomical, and Coach Thread remains conversational. The screens use synthetic data and are presentation-only.
+Every active-session option must keep elapsed time and Finish visible, show previous performance beside editable load and repetitions, distinguish warm-up from working sets, complete a set with one action, attach rest timing to the completed set, and expose add-set/add-exercise/cancel controls. Today-only edits must not imply a saved-template mutation. Recommendation and warning states must preserve the logger in context and clearly show the affected target or safety hold.
+
+The structures remain distinct: Dual Track places exercise lanes above a logging dock; Weekline embeds the active logger on a past/current/next spine; Mission Control treats exercises as stages feeding a telemetry matrix; Editorial Performance frames a dense set ledger with coaching notes; Coach Thread keeps deterministic guidance above an always-available quick log. Dual Track, Mission Control, and Editorial Performance share Bento Studio’s light canvas and blue action palette. All screens use synthetic data and remain presentation-only.

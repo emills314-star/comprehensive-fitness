@@ -184,8 +184,21 @@ Dual Track wins without blending concepts: it retains its sequencer metaphor, pa
 
 The repository lab is the complete inspectable design evidence in this phase. Figma remains a joint source of truth only after its missing production checklist is completed.
 
-## Focused six-direction screen study
+## Focused five-direction session study
 
-**IMPLEMENTED:** The lab now opens on a 30-screen comparison for Dual Track, Weekline, Mission Control, Editorial Performance, Body Atlas, and Coach Thread. One shared tab switch updates all six directions across five tasks: active workout, reps/sets editing, template selection, recommendation exploration, and warning flags.
+**IMPLEMENTED:** The lab now opens on a 25-screen comparison for Dual Track, Weekline, Mission Control, Editorial Performance, and Coach Thread. Body Atlas was removed from the shortlist by product-owner decision; it remains in the original 15-concept record only. One shared tab switch updates all five directions across active workout, reps/sets editing, template selection, recommendation exploration, and warning flags.
 
-Dual Track now uses Bento Studio’s light canvas and blue action color (`#F2F7FB` / `#2B7FFF`). Mission Control and Editorial Performance use that exact palette while retaining their own console and publication structures. Weekline, Body Atlas, and Coach Thread retain their distinct established palettes. This focused study changes mockup presentation only; it does not change the original structural scores, winner decision, domain behavior, or production entry.
+The revised study treats the set logger as a non-negotiable interaction contract rather than a decorative concept detail. Every shortlisted direction now exposes:
+
+- a persistent elapsed-session state and explicit Finish action;
+- exercise prescription and expandable form/safety context;
+- warm-up and working-set identity;
+- previous performance beside directly editable load and repetitions;
+- one-tap set completion with an inline automatic rest state;
+- add-set, add-exercise, duplicate, remove, cancel, and today-only editing actions;
+- deterministic recommendation and safety overrides adjacent to the affected logger; and
+- grouped templates with exercise previews, recency, expected duration, and an explicit start action.
+
+These patterns were derived from the supplied Strong references and corroborated against official product documentation. Strong distinguishes reusable templates from completed workouts and starts its rest timer when a set is completed. Hevy documents previous-performance visibility, set types, notes, per-exercise rest, and completion-triggered timers. Fitbod documents direct set/load/rep editing, warm-up insertion, exercise replacement, and rest adjustments. Boostcamp documents RPE/RIR, warm-ups, drop sets, supersets, exercise alternatives, program-backed sessions, and automatic rest. Sources: [Strong templates](https://help.strongapp.io/article/105-about-templates), [Strong rest timer](https://help.strongapp.io/article/231-rest-timer), [Hevy workout tracking](https://www.hevyapp.com/features/track-workouts/), [Fitbod workout editing](https://fitbod.zendesk.com/hc/en-us/articles/360006335593-Editing-Workouts-in-Fitbod), [Boostcamp workout tracker](https://www.boostcamp.app/workout-tracker).
+
+Dual Track, Mission Control, and Editorial Performance continue to use the shared light-blue palette (`#F2F7FB` / `#2B7FFF`) while retaining lane/dock, stage/telemetry, and narrative/ledger structures. Weekline keeps a time-spine session model; Coach Thread keeps deterministic dialogue above a pinned quick logger. The study changes mockup presentation only; it does not alter scores, domain behavior, recommendation semantics, or the production entry.

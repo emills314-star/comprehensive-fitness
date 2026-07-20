@@ -1,15 +1,16 @@
 import { expect, test } from "@playwright/test";
 
-test("focused mockups cover six directions and five requested screens", async ({ page }) => {
+test("focused mockups cover five shortlisted directions and five requested screens", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: /Compare the same task/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /serious set logger/ })).toBeVisible();
   await expect(page.getByRole("tablist", { name: "Mockup screen" }).getByRole("tab")).toHaveCount(5);
-  await expect(page.locator(".focus-phone")).toHaveCount(6);
+  await expect(page.locator(".focus-phone")).toHaveCount(5);
+  await expect(page.locator(".focus-phone-atlas")).toHaveCount(0);
 
   for (const label of ["Inside workout", "Change reps & sets", "Pick template", "Recommendations", "Warning flags"]) {
     await page.getByRole("tab", { name: label }).click();
     await expect(page.getByRole("tab", { name: label })).toHaveAttribute("aria-selected", "true");
-    await expect(page.locator(".focus-phone")).toHaveCount(6);
+    await expect(page.locator(".focus-phone")).toHaveCount(5);
   }
 
   const sharedThemes = await page.evaluate(() => ["dual", "mission", "editorial"].map((id) => {
@@ -19,6 +20,28 @@ test("focused mockups cover six directions and five requested screens", async ({
   expect(new Set(sharedThemes.map((theme) => theme.join("|"))).size).toBe(1);
   expect(sharedThemes[0]).toEqual(["#F2F7FB", "#2B7FFF"]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+});
+
+test("every shortlisted session exposes the same fast logging contract", async ({ page }) => {
+  await page.goto("/");
+  const phones = page.locator(".focus-phone");
+  await expect(phones).toHaveCount(5);
+  for (let index = 0; index < 5; index += 1) {
+    const phone = phones.nth(index);
+    await expect(phone.getByRole("button", { name: "Finish" })).toBeVisible();
+    await expect(phone.getByRole("table", { name: "Bench Press sets" })).toBeVisible();
+    await expect(phone.getByRole("columnheader", { name: "Previous" })).toBeVisible();
+    await expect(phone.getByRole("button", { name: "Complete set 2" })).toBeVisible();
+    await expect(phone.getByRole("timer")).toContainText("1:54");
+    await expect(phone.getByRole("button", { name: /Add set/ })).toBeVisible();
+  }
+
+  await page.getByRole("tab", { name: "Change reps & sets" }).click();
+  await expect(page.getByText("EDIT SET 2")).toHaveCount(5);
+  await expect(page.getByRole("button", { name: "Duplicate" })).toHaveCount(5);
+
+  await page.getByRole("tab", { name: "Pick template" }).click();
+  await expect(page.getByRole("button", { name: "Start Upper A" })).toHaveCount(5);
 });
 
 test("all concepts and all screen families remain inspectable", async ({ page }) => {
