@@ -123,7 +123,7 @@ assert.match(html, /inAppRestAlerts/, "In-app alerts are persisted in the canoni
 assert.match(html, /timerCompleteNotice = data\.settings\.inAppRestAlerts !== false/, "In-app completion behavior follows the canonical setting");
 assert.match(html, /Foreground completion sound confirmed/, "Sound testing produces a visible confirmed state");
 assert.match(html, /class="role-progression-facts"/, "Role details separate confidence, target reps, and next increment");
-assert.match(html, /class="set-progress-rule"/, "Set rows show a distinct progression rule");
+assert.match(html, /class="set-progress-disclosure"[\s\S]*<summary><span>Progress when<\/span>/, "Set rows keep progression rules in a compact native disclosure");
 assert.match(html, /class="discard-workout-button"[^>]*>Discard Workout</, "Cancellation uses the polished concise destructive action");
 assert.match(html, /Your unsaved sets, notes, timer state, and session progress will be discarded/, "Cancellation warning explains the impact");
 assert.match(html, /data-action="keep-workout"/, "The safe cancellation action remains available");

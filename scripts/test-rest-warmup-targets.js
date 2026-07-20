@@ -20,7 +20,7 @@ assert.match(sw, /clients\.openWindow\(targetUrl\)/, "Cold notification taps mus
 assert.match(deliver, /completedSetId:[\s\S]*nextSetId:[\s\S]*timerVersion:/, "Push payloads must carry stable workout navigation identifiers");
 assert.match(schedule, /timerVersion: Number\(body\.timerVersion \|\| 1\)/, "Scheduled notifications must persist a timer version");
 
-assert.match(html, /\.set-block\.resting-set \{ border-left-color: var\(--rest-accent\) !important; border-right-color: var\(--rest-accent\) !important;/, "Resting rows must use matching gold side borders");
+assert.match(html, /\.set-block\.resting-set \{ border-left-color: var\(--line\) !important; border-right-color: var\(--line\) !important;/, "Resting rows must preserve neutral boundaries instead of wrapping the exercise in rest color");
 assert.doesNotMatch(html, /\.timer-bar\.complete/, "Completed-set green styling must not leak into the active rest timer");
 assert.match(html, /\.timer-skip \{ background:[^}]*#607587/, "Skip must be visually distinct from gold timer adjustments");
 assert.match(html, /data-timer-progress-label/, "The integrated progress track must include readable remaining time");

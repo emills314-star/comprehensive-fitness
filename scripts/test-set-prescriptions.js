@@ -131,7 +131,7 @@ assert(html.includes("pointer-events: none"), "Informational set badges must not
 assert(!/set-type-badge[^>]+data-action/.test(html), "Set-type badges must not own edit or navigation actions");
 assert(html.includes("previousComparableSetForRole(previousSets, role, set.setTypeIndex, workingSetIndex)"));
 assert(html.includes("getMostRecentWorkoutPerformance"), "All prior-set consumers must share one workout-level resolver");
-assert(html.includes("No prior working set found"), "Genuine empty history needs an explicit fallback state");
+assert(html.includes('value || "—"'), "Genuine empty history needs a compact field-aligned fallback state");
 assert(html.includes("Broad exercise guidance"));
 assert(html.includes("These values come from the same saved prescription shown above."));
 assert(html.includes("exercise.recommendationSnapshot || unifiedPrescriptionSnapshot(exercise)"), "Broad guidance must reuse the unified prescription instead of hard-coded sets or reps");

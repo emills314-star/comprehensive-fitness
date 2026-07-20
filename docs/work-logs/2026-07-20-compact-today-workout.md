@@ -20,6 +20,10 @@ The active Today workout was redesigned to reduce page height and visual weight 
 - `node scripts/test-workout-safety.js`
 - `node scripts/test-performance.js`
 - `node scripts/test-rest-timer-presentation.js`
+- `node scripts/test-rep-alert-cancel.js`
+- `node scripts/test-rest-warmup-targets.js`
+- `node scripts/test-set-prescriptions.js`
+- `npm run verify:pwa` (including cross-platform public research-export allowlisting)
 - Interactive browser fixture on the local app: resistance and progression disclosures opened correctly; nine field-aligned prior-value slots rendered across three working sets; no session board or recovery footer was present.
 - The focused Playwright worker could not complete in the managed Windows shell because its child process remained stalled after launch; the run was terminated and the equivalent critical states were checked in the in-app browser. This runner condition is **NEEDS REVIEW** if it reproduces in CI.
 

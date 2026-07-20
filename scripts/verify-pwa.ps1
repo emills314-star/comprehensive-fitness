@@ -69,10 +69,11 @@ foreach ($publicRoot in $publicRoots) {
   if (-not (Test-Path -LiteralPath $publicRoot -PathType Container)) { continue }
   $sensitiveFiles = Get-ChildItem -LiteralPath $publicRoot -Recurse -File | Where-Object {
     $relative = $_.FullName.Substring($publicRoot.Length).TrimStart('\', '/')
-    $segments = $relative -split '[\\/]'
+    $normalizedRelative = $relative -replace '\\', '/'
+    $segments = $normalizedRelative -split '/'
     (($segments | Where-Object { $sensitiveDirectoryNames -contains $_ }).Count -gt 0) -or
       ($sensitiveExtensions -contains $_.Extension.ToLowerInvariant()) -or
-      (($segments -contains "exports") -and -not ($relative -like "research_database\exports\json\*"))
+      (($segments -contains "exports") -and -not ($normalizedRelative -like "research_database/exports/json/*"))
   }
   if ($sensitiveFiles) { throw "Sensitive files found in public/native payload $publicRoot`: $($sensitiveFiles.FullName -join ', ')" }
 }
