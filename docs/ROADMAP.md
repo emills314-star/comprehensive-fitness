@@ -129,6 +129,7 @@ No repository artifact identifies an actively assigned implementation item. **NE
 
 ## Bugs and regressions
 
+- **Today/Progress installed-view render failure — FIXED:** active service workers no longer overwrite individual files inside their current app-shell cache, so an installed page cannot combine runtime modules from different releases. Both destinations rebuild derived indexes once before showing the bounded error surface. If an update is already waiting, an open workout can be durably saved and updated from that surface without canceling or submitting it; the Today missing-session guard remains as defense in depth.
 - **Installed PWA did not surface runtime updates - FIXED:** the rest-timer release now advances the service-worker cache version so installed clients detect the new worker and render the update action.
 - **Rest timer green wrap — FIXED:** the active rest state now uses a bounded circular timer icon and preserves neutral exercise/set boundaries; a static presentation contract and approved phone-width mockup protect the treatment.
 - **Legacy planner frequency concentration — FIXED:** automatic portfolio placement now spreads distinct exercises serving the same muscle slot across compatible sessions before reusing a session. The 3/4/5-day broad-scope test meets every declared frequency target without weakening hard capacity or canonical-exercise rules.

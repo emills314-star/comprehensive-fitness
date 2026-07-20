@@ -11,6 +11,7 @@ const setRenderer = views.slice(views.indexOf("function renderSet(set, exercise"
 
 assert.doesNotMatch(workout, /Workout board|renderWorkoutSessionBoard|sessionBoardHtml/, "Today must not render the removed Workout Board");
 assert.doesNotMatch(workout, /adjustmentSummary|renderRecoveryPanel|renderActiveWorkoutAdvice/, "Today must not append recovery adjustments below the logger");
+assert.match(workout, /const session = activeSession\(\);\s*if \(!session\) return renderLiftHome\(\);\s*if \(liftHomeIsVisible\(\)\)/, "Today must fail safely before reading fields from a missing session");
 assert.match(exercise, /class="resistance-type-disclosure"[\s\S]*<summary>Resistance/, "Resistance type must be an inline disclosure beside deload");
 assert.match(exercise, /class="exercise-set-actions"/, "Exercise set actions must use the compact action rail");
 assert.match(setRenderer, /class="set-field-history"/, "Previous performance must render inside its related set field");

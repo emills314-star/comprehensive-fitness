@@ -184,12 +184,15 @@
         if (!updateAvailable && !pendingControllerReload) return "";
         const historyEditing = Boolean(historyEditFlow || historyEditStartPending);
         const workoutActive = hasActiveWorkout();
+        const renderRecovery = Boolean(viewRenderError && workoutActive && !historyEditing);
         const message = historyEditing
           ? 'A new app version is ready. Save or discard history edits before updating.'
-          : workoutActive
+          : renderRecovery
+            ? 'A new app version is ready. Your open workout will be saved before updating.'
+            : workoutActive
             ? 'Update available. It will wait until this workout is logged.'
             : 'A new app version is ready.';
-        return '<div class="update-banner" role="status"><span>' + message + '</span>' + (historyEditing || workoutActive ? '' : '<button type="button" data-action="apply-update">Update now</button>') + '</div>';
+        return '<div class="update-banner" role="status"><span>' + message + '</span>' + (historyEditing || (workoutActive && !renderRecovery) ? '' : '<button type="button" data-action="apply-update">Update now</button>') + '</div>';
       }
 
       function navButton(tab, label, iconKey) {
@@ -209,10 +212,22 @@
           const html = renderView();
           viewRenderError = null;
           return html;
-        } catch (error) {
-          viewRenderError = { destination: activeTab, code: String(error?.name || "RenderError") };
-          console.error("Destination render failed", { destination: activeTab, code: viewRenderError.code });
-          return `<section class="view destination-error" role="alert"><div class="destination-error-mark" aria-hidden="true">!</div><div><div class="section-kicker">${escapeHtml(activeTab)}</div><h1>This area could not be opened.</h1><p>Your workout data has not been changed. Retry the view; if the problem follows one lift, its identity index will be rebuilt after the next evidence refresh.</p><button class="primary-action" type="button" data-action="retry-view-render">Retry</button></div></section>`;
+        } catch (firstError) {
+          entityIndexCache = null;
+          invalidateCompletedAnalysis();
+          try {
+            const html = renderView();
+            viewRenderError = null;
+            console.warn("Destination render recovered", { destination: activeTab, code: String(firstError?.name || "RenderError") });
+            return html;
+          } catch (error) {
+            viewRenderError = { destination: activeTab, code: String(error?.name || "RenderError") };
+            console.error("Destination render failed", { destination: activeTab, code: viewRenderError.code });
+            const updateAction = updateAvailable && !historyEditFlow && !historyEditStartPending
+              ? '<button class="secondary-action" type="button" data-action="apply-update">Update app</button>'
+              : '';
+            return `<section class="view destination-error" role="alert"><div class="destination-error-mark" aria-hidden="true">!</div><div><div class="section-kicker">${escapeHtml(activeTab)}</div><h1>This area could not be opened.</h1><p>Your workout data has not been changed. Retry rebuilds this view's derived indexes. If an app update is ready, save this workout and apply it here.</p><div class="destination-error-actions"><button class="primary-action" type="button" data-action="retry-view-render">Retry</button>${updateAction}</div></div></section>`;
+          }
         }
       }
 
@@ -229,6 +244,7 @@
 
       function renderWorkout() {
         const session = activeSession();
+        if (!session) return renderLiftHome();
         if (liftHomeIsVisible()) return renderLiftHome();
         const editingHistory = isEditingHistorySession(session.id);
         const historyReadOnly = isSessionSubmitted(session) && !editingHistory;

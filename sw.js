@@ -1,4 +1,4 @@
-const CACHE_NAME = "comprehensive-fitness-pwa-v42";
+const CACHE_NAME = "comprehensive-fitness-pwa-v43";
 const CACHE_PREFIX = "comprehensive-fitness-pwa-";
 const APP_SHELL = Object.freeze([
   "/",
@@ -158,25 +158,25 @@ if (typeof self !== "undefined" && self.addEventListener) {
         return;
       }
       event.respondWith(
-        fetch(noStoreRequest(event.request))
+        caches.match(url.pathname).then((cached) => cached || fetch(noStoreRequest(event.request))
           .then(async (response) => {
             if (responseCanBeCached(response) && isPublicCacheUrl(url.href, self.location.origin)) {
               await caches.open(CACHE_NAME).then((cache) => cache.put(url.pathname, response.clone()));
             }
             return response;
           })
-          .catch(() => caches.match(url.pathname).then((cached) => cached || (url.pathname === "/" ? caches.match("/index.html") : undefined)))
+          .catch(() => url.pathname === "/" ? caches.match("/index.html") : undefined))
       );
       return;
     }
     if (!isPublicCacheUrl(url.href, self.location.origin)) return;
     event.respondWith(
       caches.match(url.pathname).then((cached) => {
-        const network = fetch(event.request).then(async (response) => {
+        if (cached) return cached;
+        return fetch(event.request).then(async (response) => {
           if (responseCanBeCached(response)) await caches.open(CACHE_NAME).then((cache) => cache.put(url.pathname, response.clone()));
           return response;
-        }).catch(() => cached);
-        return cached || network;
+        });
       })
     );
   });

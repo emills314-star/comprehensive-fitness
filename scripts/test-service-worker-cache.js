@@ -62,6 +62,7 @@ assert.doesNotMatch(source, /if \(response\.ok\) caches\.open/, "No generic succ
   const handlers = {};
   const cacheWrites = [];
   const fetches = [];
+  let cachedResponse;
   global.self = {
     location: { origin },
     addEventListener(type, handler) { handlers[type] = handler; },
@@ -72,7 +73,7 @@ assert.doesNotMatch(source, /if \(response\.ok\) caches\.open/, "No generic succ
   global.caches = {
     async keys() { return []; },
     async delete() { return true; },
-    async match() { return undefined; },
+    async match() { return cachedResponse; },
     async open() {
       return {
         async addAll() {},
@@ -103,6 +104,12 @@ assert.doesNotMatch(source, /if \(response\.ok\) caches\.open/, "No generic succ
   assert.equal(dispatchFetch(`${origin}/unlisted.json`), undefined, "Unlisted GETs must bypass service-worker caching");
   await dispatchFetch(`${origin}/manifest.webmanifest`);
   assert.deepEqual(cacheWrites, ["/manifest.webmanifest"], "Only an allowlisted public asset may be written");
+  const fetchCount = fetches.length;
+  cachedResponse = new Response("cached", { status: 200, headers: { "Content-Type": "text/plain" } });
+  const cachedAsset = await dispatchFetch(`${origin}/manifest.webmanifest`);
+  assert.equal(await cachedAsset.text(), "cached", "An installed app-shell asset must come from its versioned cache");
+  assert.equal(fetches.length, fetchCount, "A cached app-shell asset must not be refreshed piecemeal inside the active version");
+  assert.deepEqual(cacheWrites, ["/manifest.webmanifest"], "A cache hit must not overwrite the active version's asset");
 
   delete global.self;
   delete global.caches;
