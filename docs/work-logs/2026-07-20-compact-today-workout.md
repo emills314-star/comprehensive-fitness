@@ -34,3 +34,10 @@ The active Today workout was redesigned to reduce page height and visual weight 
 - `docs/ROADMAP.md` updated with the completed compact logger item.
 - `docs/PROJECT.md` reviewed; its continuous single-document Today scope remains accurate and needed no text change.
 - `docs/DECISION_ENGINE.md` reviewed; no recommendation, readiness, or progression rule changed, so no text change was required.
+
+## Hosted deployment evidence
+
+- Vercel reported a successful Production deployment for commit `a7158912637c7abb9be69fd6f4fb6808f21051de` on 2026-07-20.
+- Cache-bypassing reads from `https://comprehensive-fitness.vercel.app/app-views.js?verify=a715891` and `/sw.js?verify=a715891` confirmed the compact workout renderer, field-aligned history, collapsed progression disclosure, removed Workout Board renderer, and `comprehensive-fitness-pwa-v42`.
+- The production Today page loaded successfully, but that browser installation already had an active workout and was still controlled by the prior worker. Its status correctly said the update would wait until the workout was logged. The workout was not submitted or canceled during verification because doing so would mutate user data.
+- **NEEDS REVIEW:** after that active workout is submitted or intentionally canceled, reopen or refresh the installed app and repeat the active Today flow at phone width. The new worker is online, but the current draft-preservation gate intentionally delays activation for that installation.
