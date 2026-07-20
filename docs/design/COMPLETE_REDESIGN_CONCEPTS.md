@@ -183,3 +183,9 @@ Dual Track wins without blending concepts: it retains its sequencer metaphor, pa
 **PARTIALLY IMPLEMENTED:** [Complete Fitness — 15 UI Reinventions](https://www.figma.com/design/FVvZCYKEFFlOLkLGz2J0Xn) contains the editable foundations created before the connected Figma Starter-plan tool-call limit was reached: four variable collections, 75 concept primitive colors, and semantic aliases for the first 12 directions. The automation limit prevented creation of the remaining aliases, components, and screen canvases. **NEEDS REVIEW:** resume the same file after the plan limit resets; do not recreate or silently substitute flattened screenshots.
 
 The repository lab is the complete inspectable design evidence in this phase. Figma remains a joint source of truth only after its missing production checklist is completed.
+
+## Focused six-direction screen study
+
+**IMPLEMENTED:** The lab now opens on a 30-screen comparison for Dual Track, Weekline, Mission Control, Editorial Performance, Body Atlas, and Coach Thread. One shared tab switch updates all six directions across five tasks: active workout, reps/sets editing, template selection, recommendation exploration, and warning flags.
+
+Dual Track now uses Bento Studio’s light canvas and blue action color (`#F2F7FB` / `#2B7FFF`). Mission Control and Editorial Performance use that exact palette while retaining their own console and publication structures. Weekline, Body Atlas, and Coach Thread retain their distinct established palettes. This focused study changes mockup presentation only; it does not change the original structural scores, winner decision, domain behavior, or production entry.

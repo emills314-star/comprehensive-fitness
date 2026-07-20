@@ -2,12 +2,13 @@ import { useState } from "react";
 import { concepts } from "./concepts";
 import { ConceptGallery, Scorecard, UniquenessAudit } from "./components/ConceptGallery";
 import { DualTrackPrototype } from "./components/DualTrackPrototype";
+import { FocusedMockups } from "./components/FocusedMockups";
 import "./styles.css";
 
-type Section = "scorecard" | "concepts" | "winner" | "boundary";
+type Section = "mockups" | "scorecard" | "concepts" | "winner" | "boundary";
 
 export default function App() {
-  const [section, setSection] = useState<Section>("scorecard");
+  const [section, setSection] = useState<Section>("mockups");
   const winner = concepts[0];
 
   return (
@@ -16,18 +17,19 @@ export default function App() {
       <header className="redesign-header">
         <div><span>COMPREHENSIVE FITNESS</span><strong>UI Reinvention Lab</strong></div>
         <nav aria-label="Redesign sections">
-          {(["scorecard", "concepts", "winner", "boundary"] as Section[]).map((item) => <button type="button" key={item} aria-current={section === item ? "page" : undefined} onClick={() => setSection(item)}>{item}</button>)}
+          {(["mockups", "scorecard", "concepts", "winner", "boundary"] as Section[]).map((item) => <button type="button" key={item} aria-current={section === item ? "page" : undefined} onClick={() => setSection(item)}>{item}</button>)}
         </nav>
       </header>
 
       <main id="redesign-main" tabIndex={-1}>
-        <section className="redesign-hero">
+        {section !== "mockups" && <section className="redesign-hero">
           <span className="kicker">Blank-slate mobile systems · synthetic data only</span>
           <h1>Fifteen different answers to the same training problem.</h1>
           <p>The current product supplies behavior, safety rules, and data contracts—nothing visual. These directions deliberately change the app’s organizing metaphor, navigation, interaction unit, workout execution, planning structure, and progress language.</p>
           <div className="hero-metrics"><div><strong>15</strong><span>design systems</span></div><div><strong>8</strong><span>screen families each</span></div><div><strong>105</strong><span>pairwise uniqueness checks</span></div><div><strong>{winner.name}</strong><span>recommended winner</span></div></div>
-        </section>
+        </section>}
 
+        {section === "mockups" && <FocusedMockups />}
         {section === "scorecard" && <><Scorecard /><UniquenessAudit /></>}
         {section === "concepts" && <ConceptGallery />}
         {section === "winner" && <DualTrackPrototype />}

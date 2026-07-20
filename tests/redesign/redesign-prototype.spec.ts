@@ -1,5 +1,26 @@
 import { expect, test } from "@playwright/test";
 
+test("focused mockups cover six directions and five requested screens", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: /Compare the same task/ })).toBeVisible();
+  await expect(page.getByRole("tablist", { name: "Mockup screen" }).getByRole("tab")).toHaveCount(5);
+  await expect(page.locator(".focus-phone")).toHaveCount(6);
+
+  for (const label of ["Inside workout", "Change reps & sets", "Pick template", "Recommendations", "Warning flags"]) {
+    await page.getByRole("tab", { name: label }).click();
+    await expect(page.getByRole("tab", { name: label })).toHaveAttribute("aria-selected", "true");
+    await expect(page.locator(".focus-phone")).toHaveCount(6);
+  }
+
+  const sharedThemes = await page.evaluate(() => ["dual", "mission", "editorial"].map((id) => {
+    const style = getComputedStyle(document.querySelector(`.focus-phone-${id}`)!);
+    return [style.getPropertyValue("--mock-canvas").trim(), style.getPropertyValue("--mock-accent").trim()];
+  }));
+  expect(new Set(sharedThemes.map((theme) => theme.join("|"))).size).toBe(1);
+  expect(sharedThemes[0]).toEqual(["#F2F7FB", "#2B7FFF"]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+});
+
 test("all concepts and all screen families remain inspectable", async ({ page }) => {
   const errors: string[] = [];
   page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
@@ -52,6 +73,7 @@ test("keyboard and reduced-motion preferences preserve the primary journey", asy
   await expect(page.getByRole("link", { name: "Skip to redesign content" })).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page.locator("#redesign-main")).toBeFocused();
+  await page.getByRole("button", { name: "scorecard", exact: true }).click();
   const motion = await page.evaluate(() => getComputedStyle(document.querySelector(".score-bar i")!).transitionDuration);
   expect(motion).toBe("0s");
 });
