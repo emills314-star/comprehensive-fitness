@@ -236,14 +236,7 @@
         if (activeWorkoutId === session.id) ensureActiveSet();
         const progress = workoutProgress();
         const workoutExercises = activeExercises();
-        const activeSetExerciseId = data.sets.find((set) => set.id === activeSetId)?.exerciseId || "";
-        const focusedExercise = workoutExercises.find((exercise) => exercise.id === workoutFocusExerciseId)
-          || workoutExercises.find((exercise) => exercise.id === activeSetExerciseId)
-          || workoutExercises[0];
-        if (focusedExercise) workoutFocusExerciseId = focusedExercise.id;
         const exerciseHtml = workoutExercises.length ? measurePerformance("lift:exerciseList", () => workoutExercises.map((exercise) => renderExercise(exercise)).join(""), { count: workoutExercises.length }) : "";
-        const sessionBoardHtml = renderWorkoutSessionBoard(workoutExercises, focusedExercise?.id || "");
-          const planReadinessHtml = measurePerformance("lift:planReadiness", () => renderRecoveryPanel(session) + renderTodayPlan() + renderActiveWorkoutAdvice());
         return `
           <section class="view workout-view ${historyReadOnly ? "history-readonly" : ""} ${editingHistory ? "history-editing" : ""}">
             <section class="active-workout-hero">
@@ -257,10 +250,10 @@
                 <button class="icon-button" type="button" data-action="new-session" title="${hasActiveWorkout() ? "Finish or cancel the active workout before starting another" : "New workout"}" aria-label="${hasActiveWorkout() ? "New workout unavailable while a workout is active" : "New workout"}" ${hasActiveWorkout() ? "disabled" : ""}>${icon.add}</button>
               </div>
             </section>
-            <div class="workout-layout">
+            ${renderNotificationPrompt()}
+            <div class="workout-layout compact-workout-layout">
               <div class="workout-focus-column">
                 ${exerciseHtml}
-                ${session.adjustmentSummary ? '<div class="adjustment-summary">' + escapeHtml(session.adjustmentSummary) + '</div>' : ""}
             ${historyReadOnly ? "" : `<details class="compact-disclosure add-exercise-panel">
               <summary>Add exercise <span>${icon.add}</span></summary>
               <div class="disclosure-body">
@@ -292,7 +285,7 @@
               <textarea data-action="session-notes" placeholder="Session notes" aria-label="Session notes">${escapeHtml(session.notes)}</textarea>
               </div>
             </details>
-            <div class="workout-footer-actions"><button class="secondary-action" type="button" data-action="save-template">Save as template</button>
+            <div class="workout-footer-actions"><button class="secondary-action compact-template-action" type="button" data-action="save-template">Save template</button>
             ${isSessionSubmitted(session)
               ? '<div class="session-submitted">Workout logged' + (session.submittedAt ? ' ' + formatDate(session.date) : '') + '</div>'
               : '<button class="primary-action submit-workout" type="button" data-action="request-submit-workout">Submit workout</button>'}
@@ -302,26 +295,11 @@
             ${historyReadOnly ? '<div class="history-view-actions"><button class="primary-action" type="button" data-action="begin-history-edit">Edit History</button><button class="secondary-action" type="button" data-action="return-lift-home">Return to Lift Home</button></div>' : ''}
             ${sessionCanBeDiscarded(session) ? '<div class="session-controls"><button class="text-danger-action" type="button" data-action="request-cancel-workout" data-session-id="' + session.id + '">Cancel Workout</button><span>Discards only this open session.</span></div>' : ''}
               </div>
-              <aside class="workout-session-board" aria-label="Workout session board">
-                ${sessionBoardHtml}
-                ${renderNotificationPrompt()}
-                <details class="support-drawer"><summary>Plan and readiness <span>Coach context</span></summary><div class="support-drawer-body">${planReadinessHtml}</div></details>
-              </aside>
             </div>
             ${pendingSubmitSessionId === session.id ? renderSubmitConfirmation(session) : ""}
             ${completedSummarySessionId === session.id ? renderCompletedWorkoutSummary(session) : ""}
           </section>
         `;
-      }
-
-      function renderWorkoutSessionBoard(exercises, focusedExerciseId) {
-        if (!exercises.length) return '<div class="empty-state">Add the first exercise to begin this session.</div>';
-        return `<section class="session-board-module"><div class="session-board-heading"><div><div class="section-kicker">Session</div><h2>Workout board</h2></div><span>${exercises.length} lifts</span></div><div class="session-exercise-rail">${exercises.map((exercise, index) => {
-          const sets = setsForExercise(exercise.id).filter((set) => isWorkingSet(set, "score"));
-          const completed = sets.filter((set) => set.completed).length;
-          const current = exercise.id === focusedExerciseId;
-          return `<button type="button" data-action="focus-workout-exercise" data-exercise-id="${exercise.id}" ${current ? 'aria-current="true"' : ""}><span class="session-exercise-index">${index + 1}</span><span><strong>${escapeHtml(exercise.name)}</strong><small>${completed}/${sets.length} working sets</small></span><span class="session-exercise-state">${completed === sets.length && sets.length ? "Done" : current ? "Open" : "Next"}</span></button>`;
-        }).join("")}</div></section>`;
       }
 
       function renderLiftHome() {
@@ -1297,15 +1275,18 @@
             </div>
             <div class="exercise-level-controls">
               <label class="deload-toggle ${exercise.isDeload ? "active" : ""}"><input type="checkbox" data-action="exercise-deload" data-exercise-id="${exercise.id}" ${exercise.isDeload ? "checked" : ""} />Deload this exercise <span>${exercise.isDeload ? "Marked" : ""}</span></label>
-              <label class="resistance-type-control"><span>Resistance</span><select data-action="exercise-resistance-type" data-exercise-id="${exercise.id}" aria-label="Resistance type for ${escapeHtml(exercise.name)}">${resistanceTypeOptions(resistanceTypeFor(exercise))}</select></label>
+              <details class="resistance-type-disclosure">
+                <summary>Resistance <span>${escapeHtml(resistanceTypeLabel(resistanceTypeFor(exercise)))}</span></summary>
+                <div class="resistance-type-popover"><label class="resistance-type-control"><span>Resistance type</span><select data-action="exercise-resistance-type" data-exercise-id="${exercise.id}" aria-label="Resistance type for ${escapeHtml(exercise.name)}">${resistanceTypeOptions(resistanceTypeFor(exercise))}</select></label></div>
+              </details>
             </div>
             ${renderPrescriptionDetails(exercise)}
             ${substituteRecoveryHtml}
             ${setHtml}
-            <div class="row wrap">
-              <button type="button" data-action="add-set" data-exercise-id="${exercise.id}" aria-label="Add working set to ${escapeHtml(exercise.name)}"${workoutSafetyDisabledAttributes(addSetSafety)}>${icon.add} Set</button>
-              <button type="button" data-action="add-warmup-set" data-exercise-id="${exercise.id}" aria-label="Add warm-up set to ${escapeHtml(exercise.name)}"${workoutSafetyDisabledAttributes(addWarmupSafety)}>+ Warm-up</button>
-              <button type="button" data-action="duplicate-set" data-exercise-id="${exercise.id}" aria-label="Duplicate set for ${escapeHtml(exercise.name)}"${workoutSafetyDisabledAttributes(duplicateSetSafety)}>${icon.duplicate} Duplicate</button>
+            <div class="exercise-set-actions" aria-label="Set actions for ${escapeHtml(exercise.name)}">
+              <button type="button" data-action="add-set" data-exercise-id="${exercise.id}" aria-label="Add working set to ${escapeHtml(exercise.name)}"${workoutSafetyDisabledAttributes(addSetSafety)}><span aria-hidden="true">+</span> Set</button>
+              <button type="button" data-action="add-warmup-set" data-exercise-id="${exercise.id}" aria-label="Add warm-up set to ${escapeHtml(exercise.name)}"${workoutSafetyDisabledAttributes(addWarmupSafety)}><span aria-hidden="true">+</span> Warm-up</button>
+              <button type="button" data-action="duplicate-set" data-exercise-id="${exercise.id}" aria-label="Copy the last set for ${escapeHtml(exercise.name)}"${workoutSafetyDisabledAttributes(duplicateSetSafety)}><span aria-hidden="true">&#10697;</span> Copy set</button>
             </div>
             <details class="exercise-options">
               <summary>Exercise options <span>${restSeconds}s rest</span></summary>
@@ -1319,12 +1300,6 @@
             </details>
           </article>
         `;
-      }
-
-      function formatPreviousSetPerformance(set, exercise) {
-        if (!set) return "No prior working set found";
-        const date = set.priorSessionDate ? " · " + formatDate(set.priorSessionDate) : "";
-        return formatSetPerformance(set, exercise) + date;
       }
 
       function renderSet(set, exercise, context = {}) {
@@ -1342,7 +1317,17 @@
         const role = normalizeSetTypeCode(set.setType, set.isWarmup);
         const workingSetIndex = Math.max(0, (context.workingSetIds || []).indexOf(set.id));
         const previous = set.previousComparableSet || previousComparableSetForRole(previousSets, role, set.setTypeIndex, workingSetIndex);
-        const previousText = formatPreviousSetPerformance(previous, exercise);
+        const previousDateLabel = previous?.priorSessionDate ? "Last " + formatDate(previous.priorSessionDate) : "Last time";
+        const historyMarkup = (value) => setTypeSemantics(set).isWarmup ? "" : '<small class="set-field-history"><span>' + escapeHtml(previousDateLabel) + '</span><b>' + escapeHtml(value || "—") + '</b></small>';
+        const previousPerformanceText = !previous
+          ? "—"
+          : resistanceType === "duration"
+            ? formatLoadNumber(previous.durationSeconds || previous.reps || 0) + " sec"
+            : resistanceType === "distance"
+              ? formatLoadNumber(previous.distance || previous.reps || 0) + " " + (previous.distanceUnit || "m")
+              : String(Number(previous.reps || 0));
+        const previousLoadText = !previous || resistanceType === "duration" || resistanceType === "distance" ? "—" : formatResistance({ ...previous, resistanceType }, exercise);
+        const previousRpeText = previous && Number(previous.rpe || 0) > 0 ? String(previous.rpe) : "—";
         const targetLoad = Number(set.targetWeight ?? set.weight ?? 0);
         const targetLoadText = formatResistance({ ...set, weight: targetLoad, addedLoad: resistanceType === "bodyweight_plus_load" ? targetLoad : set.addedLoad, assistanceLoad: resistanceType === "assisted_bodyweight" ? targetLoad : set.assistanceLoad, resistanceType });
         const targetRepText = targetRangeText(set.targetRepMin, set.targetRepMax || set.targetReps, " reps");
@@ -1355,15 +1340,15 @@
           : "Not configured";
         const progressionRule = set.setPrescription?.progressionRule || "Progress after reaching the top of the programmed range within the RPE target.";
         const performanceField = resistanceType === "duration"
-          ? '<label class="set-field"><span>Seconds</span><input type="number" min="0" value="' + Number(set.durationSeconds || 0) + '" data-action="set-duration" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' seconds" /></label>'
+          ? '<label class="set-field"><span>Seconds</span><input type="number" min="0" value="' + Number(set.durationSeconds || 0) + '" data-action="set-duration" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' seconds" />' + historyMarkup(previousPerformanceText) + '</label>'
           : resistanceType === "distance"
-            ? '<label class="set-field"><span>Distance</span><input type="number" min="0" step="0.1" value="' + Number(set.distance || 0) + '" data-action="set-distance" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' distance" /></label>'
-            : '<label class="set-field"><span>Reps</span><input type="number" min="0" value="' + set.reps + '" data-action="set-reps" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' reps" /></label>';
+            ? '<label class="set-field"><span>Distance</span><input type="number" min="0" step="0.1" value="' + Number(set.distance || 0) + '" data-action="set-distance" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' distance" />' + historyMarkup(previousPerformanceText) + '</label>'
+            : '<label class="set-field"><span>Reps</span><input type="number" min="0" value="' + set.reps + '" data-action="set-reps" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' reps" />' + historyMarkup(previousPerformanceText) + '</label>';
         const loadField = resistanceType === "bodyweight"
-          ? '<div class="set-field"><span>Load</span><div class="resistance-readout">BW</div></div>'
+          ? '<div class="set-field"><span>Load</span><div class="resistance-readout">BW</div>' + historyMarkup(previousLoadText) + '</div>'
           : resistanceType === "duration" || resistanceType === "distance"
-            ? '<div class="set-field"><span>Load</span><div class="resistance-readout">—</div></div>'
-            : '<label class="set-field"><span>' + (resistanceType === 'bodyweight_plus_load' ? 'Added' : resistanceType === 'assisted_bodyweight' ? 'Assist' : 'Load') + '</span><input type="number" min="0" step="' + (data.settings.weightUnit === 'lb' ? '0.5' : '0.001') + '" value="' + displayLoadNumber(resistanceLoad(set, resistanceType), set.weightUnit || data.settings.weightUnit) + '" data-action="set-weight" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' ' + (resistanceType === 'bodyweight_plus_load' ? 'added load' : resistanceType === 'assisted_bodyweight' ? 'assistance load' : 'load') + '" /></label>';
+            ? '<div class="set-field"><span>Load</span><div class="resistance-readout">—</div>' + historyMarkup(previousLoadText) + '</div>'
+            : '<label class="set-field"><span>' + (resistanceType === 'bodyweight_plus_load' ? 'Added' : resistanceType === 'assisted_bodyweight' ? 'Assist' : 'Load') + '</span><input type="number" min="0" step="' + (data.settings.weightUnit === 'lb' ? '0.5' : '0.001') + '" value="' + displayLoadNumber(resistanceLoad(set, resistanceType), set.weightUnit || data.settings.weightUnit) + '" data-action="set-weight" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' ' + (resistanceType === 'bodyweight_plus_load' ? 'added load' : resistanceType === 'assisted_bodyweight' ? 'assistance load' : 'load') + '" />' + historyMarkup(previousLoadText) + '</label>';
         return `
           <div id="set-${set.id}" data-set-state="${visualState}" class="set-block ${visualState === "completed" ? "completed" : ""} ${isNext ? "next-set" : ""} ${isNext && activeSetAcknowledged ? "acknowledged" : ""} ${visualState === "edited" ? "edited-set" : ""} ${visualState === "skipped" ? "skipped-set" : ""} ${isResting ? "resting-set" : ""}">
             <div class="set-heading">
@@ -1374,10 +1359,10 @@
               <div class="set-field set-index"><span>Set</span><strong>${warmupIndex >= 0 ? "WU" + (warmupIndex + 1) : set.setNumber}</strong></div>
               ${performanceField}
               ${loadField}
-              <label class="set-field"><span>RPE</span><input type="number" min="0" max="10" step="0.5" value="${set.rpe}" data-action="set-rpe" data-set-id="${set.id}" aria-label="Set ${set.setNumber} RPE" /></label>
+              <label class="set-field"><span>RPE</span><input type="number" min="0" max="10" step="0.5" value="${set.rpe}" data-action="set-rpe" data-set-id="${set.id}" aria-label="Set ${set.setNumber} RPE" />${historyMarkup(previousRpeText)}</label>
               <div class="set-field set-status"><span>Status</span><button class="check-button ${set.completed ? "checked" : ""}" type="button" data-action="toggle-set" data-set-id="${set.id}" title="${set.completed ? "Completed" : "Mark set complete"}" aria-label="${set.completed ? "Set completed" : "Mark set complete"}" aria-pressed="${set.completed ? "true" : "false"}"${workoutSafetyDisabledAttributes(completionSafety)}>${icon.done}</button></div>
             </div>
-            ${!setTypeSemantics(set).isWarmup ? '<div class="set-prescription-context"><div><span>Last time</span><strong>' + escapeHtml(previousText) + '</strong></div><div><span>Today</span><strong>' + escapeHtml(targetLoadText) + '</strong><small>' + escapeHtml(targetRepText + ' · ' + targetRpeText) + '</small></div><div><span>Next increment</span><strong>' + escapeHtml(nextIncrementText) + '</strong><small>' + escapeHtml(String(set.setPrescription?.confidence || set.prescriptionConfidence || 'low') + ' confidence') + '</small></div><div class="set-progress-rule"><span>Progress when</span><strong>' + escapeHtml(progressionRule) + '</strong></div></div>' : ""}
+            ${!setTypeSemantics(set).isWarmup ? '<details class="set-progress-disclosure"><summary><span>Progress when</span><b>Next ' + escapeHtml(nextIncrementText) + '</b></summary><div><strong>' + escapeHtml(progressionRule) + '</strong><small>Today: ' + escapeHtml(targetLoadText + ' · ' + targetRepText + ' · ' + targetRpeText) + ' · ' + escapeHtml(String(set.setPrescription?.confidence || set.prescriptionConfidence || 'low') + ' confidence') + '</small></div></details>' : ""}
             ${isNext ? '<div class="next-set-banner"><span aria-hidden="true">&#10148;</span><span>' + escapeHtml(activeSetAcknowledged ? "Current set" : activeSetNotice || "Current set") + '</span></div>' : ""}
             <div class="set-actions">
               <button class="mini-button set-rest-button" type="button" data-action="start-timer" data-exercise-id="${exercise.id}" data-set-id="${set.id}"${workoutSafetyDisabledAttributes(timerSafety)}>${icon.clock} ${formatTimer(restSeconds)}</button>

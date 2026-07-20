@@ -4,7 +4,7 @@ const { readApplicationContractSource } = require("./read-application-contract-s
 
 const html = readApplicationContractSource();
 
-assert.match(html, /renderRecoveryPanel\(session\) \+ renderTodayPlan\(\)/, "Today's readiness must render before Today's Plan");
+assert.doesNotMatch(html, /const planReadinessHtml = measurePerformance\("lift:planReadiness"/, "The active logger must not append the removed recovery-adjustment section");
 assert.doesNotMatch(html, /function readinessScore\(|function readinessBandStatus\(/, "The app must not retain a second readiness scoring algorithm beside the prescription engine");
 assert.doesNotMatch(html, /readinessBandStatus\(/, "Recovery rendering must not call the removed legacy readiness scorer");
 assert.match(html, /Readiness engine unavailable; no automatic adjustment was applied/, "Unavailable readiness logic must fail conservatively without inventing a fallback score");

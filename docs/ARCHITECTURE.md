@@ -43,6 +43,8 @@ This is a dependency-light static PWA with Capacitor wrappers, not a bundled com
 
 Any cross-file runtime contract change (for example, `index.html` consuming a new `guided-mesocycle.js` field) must advance `CACHE_NAME` in `sw.js`. This retires the previous app shell and module assets together; otherwise an installed PWA can pair a new UI with an older cached engine.
 
+The service-worker cache version is also the installed-PWA update signal. Every published runtime change must advance it so `registration.updatefound` can surface the in-app update action; changing only a cached shell asset is insufficient.
+
 ## High-level system
 
 ```mermaid
@@ -71,6 +73,8 @@ flowchart LR
 Because each render replaces the view DOM, focus continuity is represented as an allowlisted data descriptor (`data-action` plus bounded identity fields and ordinal), never as a detached element or caller-provided selector. Initial load does not claim focus; explicit primary navigation targets the focusable `#main-content`. Modal sheets capture their invoking descriptor and verify that the resolved target is visible, enabled, programmatically focusable, and actually focused. A failed resolution or focus attempt falls back to the first visible enabled dialog control; that same filtered set owns forward/reverse Tab trapping. Closing restores the newly rendered durable trigger. The Dashboard uses a separate detail stack containing the previous detail, origin descriptor, and scroll position so nested Back navigation restores both context and focus.
 
 The narrow large-text layout is activated only when the viewport is at most 380 CSS px and the computed root font is at least 24 px. That exact condition renders editable titles as multiline controls and permits one-column reflow and scaled controls while preserving the protected normal-scale 320 px Lift composition. At ordinary narrow text sizes, an input is upgraded only when its rendered value actually overflows. The quick-template list remains an explicit horizontal carousel; other primary-view content must not create document or nested horizontal overflow.
+
+Active Today execution is deliberately one render column. `renderWorkout` owns the compact hero, exercise document, add/details disclosures, and submission controls; it no longer constructs a parallel session-board/support aside or a repeated bottom recovery-adjustment plan. `renderExercise` keeps deload and resistance controls in one row and uses native `details` for the resistance selector and supporting options. `renderSet` projects comparable submitted-history values into the reps/load/RPE fields and keeps progression criteria in a collapsed native disclosure. These are presentation projections only: readiness, prescription snapshots, workout mutation guards, persistence, and submission semantics are unchanged.
 
 The normalized app object (`emptyData`, `normalizeLoadedData`) contains sessions, exercises, sets, templates, mesocycles, recommendation history, manual overrides, an optional personal evidence package, raw-import metadata, migration audit, revision, and settings. Settings include independent `theme` and `colorPackage` values; missing legacy package values normalize to Signal Garden, and backup import accepts only the ten declared package IDs. `applyTheme` projects both values to document data attributes and a package-specific browser theme color. IDs are UUIDs when supported. The domain migration and set classifier preserve semantics across legacy data.
 
@@ -111,7 +115,7 @@ Only `submitted`/completed sessions participate in canonical history and analyti
 
 Workout construction treats the saved template as the minimum usable structure. A unified research/personal snapshot is accepted only when it has at least one working set and a valid rep range. Otherwise `resolvedSetTypesForPrescription` retains the template's set roles/count or creates the saved number of straight working sets. An exercise with exact submitted Strong history, matching resistance, and valid saved structure may use a non-research `history_fallback` for the three audited non-safety gaps: `unknown_exercise_identity`, `invalid_muscle_identity`, or `no_dynamic_direct_target`. It remains loggable and exposes dated prior sets without fabricating a research identity or recommendation snapshot. Collisions, corrupt snapshots, engine failures, illness, and pain restrictions remain typed and non-executable. Strong import tags generated templates with `source: "strong"` and audits dated history, usable structure, and actual workout-start eligibility after the import commit invalidates the completed-history caches.
 
-The active workout remains one continuous scroll document. Set/rest state transitions update the persisted active-set identity and visual highlight without programmatic viewport movement; only an explicit set deep link may scroll to its requested target.
+The active workout remains one continuous scroll document. Set/rest state transitions update the persisted active-set identity and visual highlight without programmatic viewport movement; only an explicit set deep link may scroll to its requested target. Rest presentation is scoped to the timer panel and its circular icon: the resting set keeps neutral outer borders so the rest state cannot visually wrap the whole exercise card.
 
 ## Models and relationships
 
@@ -230,12 +234,8 @@ Mesocycle candidate detail remains progressively rendered: Templates defers the 
 - **PARTIALLY IMPLEMENTED:** Public CI includes Playwright, axe, responsive/overflow, console, approved-screenshot checks, and the implemented accessibility/design contract for route focus, modal focus, Dashboard restoration, target sizing, reduced motion, forced colors, and exact 320 px/200% reflow. Dedicated protected Lift/Dashboard behavior and intentionally refreshed Quiet Modular Navy baselines cover mobile, tablet, desktop, dark, and zoom-equivalent reference states. Ordinary five-view mobile/desktop goldens were refreshed in the same reviewed redesign. Physical native-device CI remains absent.
 - **NEEDS REVIEW:** External production, Upstash region/status, and physical iPhone acceptance claims in operational docs require human re-verification.
 
-Rest presentation is scoped to the timer panel and its circular icon. The resting set keeps neutral outer borders so the rest state cannot visually wrap the whole exercise card.
-
 ## Planned React presentation boundary
 
 **IMPLEMENTED specification / PLANNED production integration:** `redesign/src/contract.ts` establishes a typed seam between the future Dual Track shell and the existing application. UI read models cover next action, readiness, active workout, plan, progress, and system/data status. Discriminated commands cover start/resume, readiness, set/rest mutation, overrides, explicit submission/cancel, template/mesocycle mutation, history editing, settings, backup, consent, and conflicts. Effect ports isolate persistence, caching, notifications, sync, wake lock, audio, and haptics.
 
 The current engines, schemas, IndexedDB layout, backup contract, APIs, service worker, consent rules, and immutable history snapshots remain authoritative. The Vite entry under `redesign/` is synthetic and non-production; it does not access canonical persistence. Production adoption must proceed through a separate entry and pass adapter, parity, offline, privacy, hosted-browser, PWA, and Capacitor gates before the main entry changes. See `docs/design/REDESIGN_MIGRATION_BLUEPRINT.md`.
-
-The service-worker cache version is also the installed-PWA update signal. Every published runtime change must advance it so `registration.updatefound` can surface the in-app update action; changing only a cached shell asset is insufficient.
