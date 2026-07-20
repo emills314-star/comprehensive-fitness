@@ -193,3 +193,9 @@ The rest timer presentation uses a bounded circular icon and does not recolor th
 **DECISION:** Dual Track wins on the weighted experience/feasibility evaluation. Its presentation contract is exercise lanes, role-aware set clips, a visible playhead, and a persistent control dock. Phone use is primary; 320 and 390 px must not require page-level horizontal scrolling. Tablet and desktop widen the temporal track and add adjacent planning/analysis without changing action order.
 
 All concepts must expose empty, loading, offline, failure, destructive-confirmation, conflicting-data, and update states. Spatial or gesture-first concepts require visible, keyboard-operable, and screen-reader-equivalent controls. Reduced motion, forced colors, 200% text, focus order, and 320/390/768/1280 layouts are migration gates. Existing route names and component styling remain authoritative only for the legacy shell until cutover.
+
+### Focused six-direction mockups
+
+**IMPLEMENTED:** The non-production lab defaults to a six-up screen comparison. A five-tab control changes all six phones together between Inside workout, Change reps & sets, Pick template, Recommendations, and Warning flags. The included directions are Dual Track, Weekline, Mission Control, Editorial Performance, Body Atlas, and Coach Thread.
+
+Dual Track, Mission Control, and Editorial Performance share Bento Studio’s light canvas and blue action palette while preserving lane/sequencer, system-console, and magazine structures respectively. Weekline remains temporal, Body Atlas remains anatomical, and Coach Thread remains conversational. The screens use synthetic data and are presentation-only.
