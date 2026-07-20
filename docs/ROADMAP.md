@@ -185,3 +185,4 @@ No repository artifact identifies an actively assigned implementation item. **NE
 - **NEXT / High:** Implement Dual Track Today/readiness/workout/rest/submission/history through the separate entry and prove reload/offline recovery.
 - **NEXT / Medium:** Add planning, analytics, history editing, settings, imports, consent, and conflict recovery; then pass keyboard, axe, reduced-motion, forced-colors, 200% text, responsive, PWA, Capacitor, and hosted-browser gates.
 - **PLANNED cutover:** Switch the main entry only after parity and packaging pass; retire the legacy presentation after a rollback window and do not keep a permanent toggle.
+- **Installed PWA did not surface runtime updates - FIXED:** the rest-timer release now advances the service-worker cache version so installed clients detect the new worker and render the update action.
