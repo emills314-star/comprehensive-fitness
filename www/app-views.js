@@ -1074,7 +1074,8 @@
         const type = ["full_program_deload", "muscle_group_deload", "exercise_deload", "rotate_exercise", "substitute", "light_session", "reduce_volume", "progress", "hold", "normal"].find((candidate) => snapshots.some((snapshot) => snapshot.finalPrescription.recommendationType === candidate)) || "normal";
         const items = activeExercises().map((exercise) => {
           const prescription = exercise.prescription || {};
-          return { name: exercise.name, text: prescription.text || targetText(prescription, prescription.reason || "Use the saved target for this workout.") };
+          const explanation = recommendationExplanationForDisplay(prescription.text || prescription.reason, "Use the saved target for this workout.");
+          return { name: exercise.name, text: prescription.text ? explanation : targetText(prescription, explanation) };
         });
         const detail = [adjusted.length ? `${adjusted.length} readiness adjustment${adjusted.length === 1 ? " is" : "s are"} temporary and do not alter the mesocycle.` : "No temporary readiness change was applied.", "This workout uses the versioned prescriptions saved when the session started; editing a set records an override and does not recalculate the full training history."].join(" ");
         return renderWorkoutAdvice({ label: recommendationLabel(type), detail, items });
@@ -1319,6 +1320,12 @@
         `;
       }
 
+      function formatPreviousSetPerformance(set, exercise) {
+        if (!set) return "No prior working set found";
+        const date = set.priorSessionDate ? " · " + formatDate(set.priorSessionDate) : "";
+        return formatSetPerformance(set, exercise) + date;
+      }
+
       function renderSet(set, exercise, context = {}) {
         const restSeconds = Number(context.restSeconds || exercise.restSeconds || data.settings.defaultRestSeconds || 90);
         const completionSafety = guardWorkoutMutation("toggle-set", { exercise, set, substituteValidation: context.substituteValidation }, false);
@@ -1403,7 +1410,7 @@
         const summary = changed
           ? '<span class="prescription-tier"><span>Recommended</span><strong>' + escapeHtml(prescriptionLine(original)) + '</strong></span><span class="prescription-tier readiness-tier"><span>Today\'s readiness</span><strong>' + escapeHtml(prescriptionLine(target)) + '</strong></span><span class="why-link">Why this changed</span>'
           : '<span class="prescription-tier"><span>' + escapeHtml(label) + '</span><strong>' + escapeHtml(prescriptionLine(target)) + '</strong></span><span class="why-link">Why This Recommendation</span>';
-        return '<details class="prescription-brief ' + (target.isDeload ? 'deload' : '') + ' ' + (changed ? 'readiness-adjusted' : '') + '"><summary data-action="toggle-prescription-rationale" aria-label="' + (changed ? 'Why this changed' : 'Why this recommendation?') + '">' + summary + '</summary><span>' + escapeHtml(target.adjustmentReason || target.reason) + '</span><span>' + escapeHtml((target.confidence || 'low') + ' confidence · Rep range ' + target.repLow + '-' + target.repHigh + ' · Increment ' + target.increment + ' ' + data.settings.weightUnit) + '</span></details>';
+        return '<details class="prescription-brief ' + (target.isDeload ? 'deload' : '') + ' ' + (changed ? 'readiness-adjusted' : '') + '"><summary data-action="toggle-prescription-rationale" aria-label="' + (changed ? 'Why this changed' : 'Why this recommendation?') + '">' + summary + '</summary><span>' + escapeHtml(recommendationExplanationForDisplay(target.adjustmentReason || target.reason)) + '</span><span>' + escapeHtml((target.confidence || 'low') + ' confidence · Rep range ' + target.repLow + '-' + target.repHigh + ' · Increment ' + target.increment + ' ' + data.settings.weightUnit) + '</span></details>';
       }
 
       function readablePrescriptionLine(target) {
@@ -1427,7 +1434,8 @@
             : "Not configured";
           const confidence = String(set.setPrescription?.confidence || set.prescriptionConfidence || "low");
           const progressionRule = set.setPrescription?.progressionRule || "Reach the top of the programmed range without exceeding the RPE target.";
-          return '<div class="role-prescription"><span>' + escapeHtml(setTypeLabels[role] || "Working set") + '</span><div class="role-performance-grid"><div><small>Last time</small><strong>' + escapeHtml(previous) + '</strong></div><div><small>Today</small><strong>' + escapeHtml(load) + '</strong><b>' + escapeHtml(reps + ' · ' + rpe) + '</b></div></div><div class="role-progression-facts"><div><small>Confidence</small><strong>' + escapeHtml(confidence.charAt(0).toUpperCase() + confidence.slice(1)) + '</strong></div><div><small>Target reps</small><strong>' + escapeHtml(reps) + '</strong></div><div><small>Next increment</small><strong>' + escapeHtml(nextIncrement) + '</strong></div></div><div class="role-progress-rule"><small>Progress when</small><strong>' + escapeHtml(progressionRule) + '</strong></div><p>' + escapeHtml(set.setPrescription?.reason || set.prescriptionReason || "This set follows its programmed role and comparable history.") + '</p></div>';
+          const reason = recommendationExplanationForDisplay(set.setPrescription?.reason || set.prescriptionReason, "This set follows its programmed role and comparable history.");
+          return '<div class="role-prescription"><span>' + escapeHtml(setTypeLabels[role] || "Working set") + '</span><div class="role-performance-grid"><div><small>Last time</small><strong>' + escapeHtml(previous) + '</strong></div><div><small>Today</small><strong>' + escapeHtml(load) + '</strong><b>' + escapeHtml(reps + ' · ' + rpe) + '</b></div></div><div class="role-progression-facts"><div><small>Confidence</small><strong>' + escapeHtml(confidence.charAt(0).toUpperCase() + confidence.slice(1)) + '</strong></div><div><small>Target reps</small><strong>' + escapeHtml(reps) + '</strong></div><div><small>Next increment</small><strong>' + escapeHtml(nextIncrement) + '</strong></div></div><div class="role-progress-rule"><small>Progress when</small><strong>' + escapeHtml(progressionRule) + '</strong></div><p>' + escapeHtml(reason) + '</p></div>';
         }).join('') + '</div>';
       }
 
@@ -1485,7 +1493,7 @@
         const target = exercise.prescription;
         if (!target) return "";
         if (target.executionBlocked === true && target.executable === false) {
-          const message = String(target.message || target.reason || "The saved recommendation is not executable.");
+          const message = recommendationExplanationForDisplay(target.message || target.reason, "The saved recommendation is not executable.");
           return '<div class="program-warning blocking" role="alert"><strong>Exercise unavailable</strong><span>This exercise cannot be used with the current workout constraints.</span><small>' + escapeHtml(message) + '</small></div>';
         }
         const label = target.isDeload ? "Deload prescription" : target.mode === "technique" ? "Technique prescription" : "Recommended";
@@ -1494,7 +1502,7 @@
         const summary = changed
           ? '<span class="prescription-tier"><span>Recommended</span><strong>' + escapeHtml(readablePrescriptionLine(original)) + '</strong></span><span class="prescription-tier readiness-tier"><span>Today\'s readiness</span><strong>' + escapeHtml(readablePrescriptionLine(target)) + '</strong></span><span class="why-link">Why this changed</span>'
           : '<span class="prescription-tier"><span>' + escapeHtml(label) + '</span><strong>' + escapeHtml(readablePrescriptionLine(target)) + '</strong></span><span class="why-link">Why This Recommendation</span>';
-        const reason = target.adjustmentReason || target.reason || "This target follows the most comparable submitted performance and the programmed rep range.";
+        const reason = recommendationExplanationForDisplay(target.adjustmentReason || target.reason, "This target follows the most comparable submitted performance and the programmed rep range.");
         const reasonParts = reason.split("Why these levers:");
         const reasonMarkup = reasonParts.length > 1
           ? '<div class="rationale-copy"><div><span>What triggered it</span><p class="rationale-reason">' + escapeHtml(reasonParts[0].trim()) + '</p></div><div><span>Why these changes</span><p class="rationale-reason">' + escapeHtml(reasonParts.slice(1).join("Why these levers:").trim()) + '</p></div></div>'

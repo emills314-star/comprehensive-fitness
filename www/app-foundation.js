@@ -1738,12 +1738,30 @@
         };
       }
 
+      function recommendationExplanationForDisplay(value, fallback = "") {
+        const preferredFields = ["summary", "message", "explanation", "reason", "text", "detail"];
+        const seen = new Set();
+        const read = (candidate, depth = 0) => {
+          if (candidate === null || candidate === undefined) return "";
+          if (["string", "number", "boolean"].includes(typeof candidate)) return String(candidate).trim();
+          if (typeof candidate !== "object" || depth > 2 || seen.has(candidate)) return "";
+          seen.add(candidate);
+          if (Array.isArray(candidate)) return candidate.map((item) => read(item, depth + 1)).filter(Boolean).join(" ");
+          for (const field of preferredFields) {
+            const resolved = read(candidate[field], depth + 1);
+            if (resolved) return resolved;
+          }
+          return "";
+        };
+        return read(value) || read(fallback);
+      }
+
       function recommendationSnapshotForDisplay(snapshot) {
         if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) return null;
         const normalizePrescription = (source, fallback = null) => {
           const candidate = source && typeof source === "object" && !Array.isArray(source) ? source : fallback;
           if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return null;
-          const text = (value, defaultValue = "") => String(value ?? "").trim() || defaultValue;
+          const text = (value, defaultValue = "") => recommendationExplanationForDisplay(value, defaultValue);
           const readiness = candidate.readinessAdjustment && typeof candidate.readinessAdjustment === "object"
             ? {
                 ...candidate.readinessAdjustment,
@@ -1764,7 +1782,7 @@
             restSeconds: recommendationMetricForDisplay(candidate.restSeconds),
             frequencyPerWeek: recommendationMetricForDisplay(candidate.frequencyPerWeek),
             evidenceSummary: Array.isArray(candidate.evidenceSummary) ? candidate.evidenceSummary.map((item) => text(item)).filter(Boolean) : [],
-            userExplanation: text(candidate.userExplanation, text(snapshot.explanation?.summary || snapshot.message)),
+            userExplanation: text(candidate.userExplanation, text(snapshot.explanation || snapshot.message)),
             progressionRule: text(candidate.progressionRule, "No executable progression change is available."),
             substitutionRule: text(candidate.substitutionRule),
             regressionRule: text(candidate.regressionRule),
@@ -1795,7 +1813,7 @@
         const progressionAction = type === "progress"
           ? Number(prescription.prescribedLoad?.adjustmentPercent || 0) > 0 ? "increase_load" : "increase_reps"
           : type === "hold" || type === "normal" ? "repeat" : type;
-        const explanationLead = String(prescription.userExplanation || snapshot.explanation || "").split(/(?<=[.!?])\s+/)[0] || recommendationLabel(type);
+        const explanationLead = recommendationExplanationForDisplay(prescription.userExplanation || snapshot.explanation).split(/(?<=[.!?])\s+/)[0] || recommendationLabel(type);
         return {
           decision: rotation ? "change" : deload ? "deload" : type === "progress" ? "progress" : "hold",
           label: recommendationLabel(type),

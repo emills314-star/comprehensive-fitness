@@ -8,6 +8,6 @@ const packagedServiceWorker = fs.readFileSync("www/sw.js", "utf8");
 const cacheVersion = rootServiceWorker.match(/const CACHE_NAME = "([^"]+)"/u)?.[1] || "";
 const cacheVersionNumber = Number(cacheVersion.match(/-v(\d+)$/u)?.[1] || 0);
 
-assert.ok(cacheVersionNumber >= 44, "Recommendation-rendering releases must advance the service-worker cache to v44 or newer");
+assert.ok(cacheVersionNumber >= 45, "Today legacy-prescription rendering releases must advance the service-worker cache to v45 or newer");
 assert.equal(packagedServiceWorker, rootServiceWorker, "The packaged service worker must match the root update contract");
 console.log(`Service-worker update contract passed (${cacheVersion}).`);

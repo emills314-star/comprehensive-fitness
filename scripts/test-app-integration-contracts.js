@@ -992,7 +992,8 @@ test("active and template recommendation snapshots require schema, checksum, ide
 
 test("recommendation presentation tolerates legacy partial snapshots without mutating audit history", () => {
   const recommendationMetricForDisplay = evaluateFunction("recommendationMetricForDisplay");
-  const recommendationSnapshotForDisplay = evaluateFunction("recommendationSnapshotForDisplay", { recommendationMetricForDisplay });
+  const recommendationExplanationForDisplay = evaluateFunction("recommendationExplanationForDisplay");
+  const recommendationSnapshotForDisplay = evaluateFunction("recommendationSnapshotForDisplay", { recommendationMetricForDisplay, recommendationExplanationForDisplay });
   const historical = {
     schemaVersion: "prescription-snapshot/public-synthetic-legacy",
     recommendationId: "public-synthetic-legacy-partial",
@@ -1015,12 +1016,20 @@ test("recommendation presentation tolerates legacy partial snapshots without mut
   assert.equal(display.basePrescription.repRange.target, 9, "a missing legacy base prescription must use a display-only final-prescription fallback");
   assert.equal(JSON.stringify(historical), before, "presentation normalization must not rewrite immutable historical bytes");
   assert.equal(recommendationSnapshotForDisplay({ executionBlocked: true, executable: false }), null);
+  const structuredLegacyReason = { explanation: { summary: "Public synthetic structured explanation." } };
+  const structuredBefore = JSON.stringify(structuredLegacyReason);
+  assert.equal(recommendationExplanationForDisplay(structuredLegacyReason), "Public synthetic structured explanation.");
+  assert.equal(recommendationExplanationForDisplay(["First reason.", { message: "Second reason." }]), "First reason. Second reason.");
+  assert.equal(recommendationExplanationForDisplay({ unknown: "not presentation text" }, "Saved recommendation details are unavailable."), "Saved recommendation details are unavailable.");
+  assert.equal(JSON.stringify(structuredLegacyReason), structuredBefore, "legacy explanation normalization must not mutate stored prescription data");
 
   const analysis = fs.readFileSync(path.join(APP_ROOT, "app-analysis.js"), "utf8");
   const views = fs.readFileSync(path.join(APP_ROOT, "app-views.js"), "utf8");
   assert.match(analysis, /executionBlocked\s*===\s*true[\s\S]*blocked-recommendation/, "Progress lift recommendations must render hard rejections as bounded cards");
   assert.match(analysis, /Array\.isArray\(recommendation\.evidence\)/, "legacy recommendations must not assume evidence is an array");
   assert.match(views, /recommendationSnapshotForDisplay\(exercise\.recommendationSnapshot\)/, "Today must normalize saved snapshots only at its display boundary");
+  assert.match(views, /recommendationExplanationForDisplay\(target\.adjustmentReason \|\| target\.reason/, "Today must normalize legacy prescription explanations before using string presentation methods");
+  assert.match(views, /function formatPreviousSetPerformance\([\s\S]*formatSetPerformance\(set, exercise\)/, "Today legacy recommendation details must retain the prior-set formatter used by their role rows");
   assert.match(views, /program-warning blocking[\s\S]*cannot be used with the current workout constraints/, "Today must bound non-executable template exercises inside their workout card");
 });
 

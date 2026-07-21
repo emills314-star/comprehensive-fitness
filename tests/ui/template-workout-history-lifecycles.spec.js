@@ -463,6 +463,39 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     expect(browserErrors, "partial active recommendation presentation must not emit browser errors").toEqual([]);
   });
 
+  test("a persisted structured legacy prescription reason remains renderable on Today", async ({ page }) => {
+    const browserErrors = collectBrowserErrors(page);
+    const fixture = buildActiveWorkoutLifecycleFixture();
+    const exercise = fixture.exercises.find((item) => item.id === IDS.activeBenchExercise);
+    exercise.prescription = {
+      sets: 2,
+      reps: 8,
+      repLow: 8,
+      repHigh: 10,
+      weight: 150,
+      rpe: 8,
+      restSeconds: 120,
+      confidence: "moderate",
+      reason: { summary: "Public synthetic structured legacy explanation." }
+    };
+    await installFixture(page, fixture);
+
+    const renderDiagnostic = await page.evaluate((exerciseId) => {
+      try {
+        const candidate = data.exercises.find((item) => item.id === exerciseId);
+        return { error: "", html: renderPrescriptionDetails(candidate) };
+      } catch (error) {
+        return { error: `${error?.name || "Error"}: ${error?.message || "Unknown render error"}`, html: "" };
+      }
+    }, IDS.activeBenchExercise);
+    expect(renderDiagnostic.error, "the legacy prescription renderer must accept structured explanation data").toBe("");
+
+    await expect(page.locator(".destination-error"), "a structured legacy reason must not replace Today with the destination error surface").toHaveCount(0);
+    await expect(page.locator(`#exercise-${IDS.activeBenchExercise}`)).toBeVisible();
+    await expect(page.locator(`#exercise-${IDS.activeBenchExercise} .prescription-brief`)).toContainText("Public synthetic structured legacy explanation");
+    expect(browserErrors, "structured legacy prescription presentation must not emit browser errors").toEqual([]);
+  });
+
   test("legacy Back on a catalog Seated Cable Row resolves to its canonical upper-back target and remains auditable", async ({ page }) => {
     test.setTimeout(120_000);
     const fixture = buildTemplateLifecycleFixture();
