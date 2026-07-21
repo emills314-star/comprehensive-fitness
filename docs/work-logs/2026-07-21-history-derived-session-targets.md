@@ -2,7 +2,7 @@
 
 ## Status
 
-**IMPLEMENTED locally; hosted verification pending.**
+**COMPLETE.** Implemented, published to `main` in `9aa7bc6`, and verified on the production alias.
 
 ## Intent
 
@@ -34,6 +34,13 @@ Remove the split where the Today recommendation could describe a generic load/re
 - Focused desktop Playwright lifecycle: template start, generated row persistence, exact recommendation/load/rep parity, expanded role details, and reload (1/1 passed).
 
 The repository-wide `check:public` wrapper was terminated after remaining silent beyond its bounded run; its focused recommendation, schema, safety, static, packaging, cache, performance, and browser constituents above passed. The full 23-case lifecycle file was also stopped after its detached worker exceeded the wrapper timeout; the directly affected focused case passed independently. These are verification-runner limitations, not observed product failures.
+
+## Hosted verification
+
+- Production URL: `https://comprehensive-fitness.vercel.app/?verify=9aa7bc6`.
+- Production `sw.js` served `comprehensive-fitness-pwa-v52`; hosted `app-views.js` contained the generated-row summary boundary and hosted engine/package deployment was synchronized by the v52 release.
+- The existing installed browser correctly deferred activation because an active workout is preserved. Verification did not submit, cancel, edit, or reload that draft.
+- Isolated production browser profiles ran the affected template-to-workout lifecycle at mobile and desktop sizes: recommendation summary load and exact reps matched the generated editable row, expanded role details reused those targets, persistence succeeded, reload succeeded, and browser errors remained empty (2/2 passed).
 
 ## Documentation
 
