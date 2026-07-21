@@ -1374,18 +1374,6 @@
         </div>`;
       }
 
-      function targetContextExpectationSummary(context) {
-        if (!context) return { sets: "Not configured", reps: "Not configured", rpe: "Not configured", rest: "Not configured" };
-        const scored = context.setTypes.filter((type) => type.countsTowardScore);
-        const unique = (values) => Array.from(new Set(values.filter((value) => value && value !== "Not configured")));
-        return {
-          sets: scored.length ? String(scored.reduce((sum, type) => sum + Number(type.setCount || 0), 0)) + " per session" : "Not configured",
-          reps: unique(scored.map((type) => targetRangeText(type.repMin, type.repMax))).join(" · ") || "Not configured",
-          rpe: unique(scored.map((type) => targetRangeText(type.rpeMin, type.rpeMax))).join(" · ") || "Not configured",
-          rest: unique(scored.map((type) => type.restSeconds ? formatTimer(type.restSeconds) : "")).join(" · ") || "Not configured"
-        };
-      }
-
       function renderExerciseExpectations(exerciseId, analysis) {
         const contexts = hypertrophyWindowOffset > 0 ? [] : currentExerciseTargetContexts(exerciseId);
         const actuals = exerciseExpectationActuals(exerciseId, analysis);

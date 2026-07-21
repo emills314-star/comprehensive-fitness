@@ -3449,48 +3449,6 @@
     return clamp(inferred || defaults[type], 3, 10);
   }
 
-  function selectActiveExercisesFromPools(pools, options = {}) {
-    const trainingDays = normalizeTrainingDays(options, 4);
-    const currentIds = new Set(asArray(options.currentExerciseIds));
-    const readiness = evaluateReadiness(options.readiness || {});
-    const specializationGroups = new Set(asArray(options.specializationMuscleGroups).map(normalizeMuscleId));
-    const poolList = Object.values(pools);
-    const capacity = Math.max(poolList.length, trainingDays * number(options.maxExercisesPerDay, readiness.state === "low" ? 4 : 5));
-    const selected = [];
-    const selectedById = new Map();
-    const add = (pool, candidate, reason) => {
-      const existing = selectedById.get(candidate.exerciseId);
-      if (existing) {
-        existing.targetMuscleGroupIds = unique([...existing.targetMuscleGroupIds, pool.muscleGroupId]);
-        return existing;
-      }
-      if (selected.length >= capacity) return null;
-      const entry = { muscleGroupId: pool.muscleGroupId, targetMuscleGroupIds: [pool.muscleGroupId], selectionReason: reason, ...candidate };
-      selected.push(entry);
-      selectedById.set(candidate.exerciseId, entry);
-      return entry;
-    };
-    // First provide one strong, non-stale option for every represented muscle.
-    poolList.forEach((pool) => {
-      const productiveCurrent = pool.candidates.find((candidate) => currentIds.has(candidate.exerciseId) && candidate.scores.staleness.classification === STALENESS.PRODUCTIVE);
-      const first = productiveCurrent || pool.candidates.find((candidate) => !candidate.scores.staleness.rotationRecommended) || pool.candidates[0];
-      if (first) add(pool, first, productiveCurrent ? "Preserved because it is still progressing and well tolerated." : "Highest viable non-stale candidate after evidence weighting and redundancy checks.");
-    });
-    // Add a second pattern only where specialization or training capacity makes it useful.
-    poolList
-      .filter((pool) => specializationGroups.has(normalizeMuscleId(pool.muscleGroupId)) || (trainingDays >= 5 && readiness.state !== "low"))
-      .forEach((pool) => {
-        if (selected.length >= capacity) return;
-        const firstForMuscle = selected.find((item) => item.targetMuscleGroupIds.includes(pool.muscleGroupId));
-        const alternative = pool.candidates.find((candidate) => {
-          if (selectedById.has(candidate.exerciseId) || candidate.scores.staleness.rotationRecommended) return false;
-          return !firstForMuscle || candidate.diversitySignature.movement !== firstForMuscle.diversitySignature.movement || candidate.diversitySignature.region !== firstForMuscle.diversitySignature.region;
-        });
-        if (alternative) add(pool, alternative, specializationGroups.has(normalizeMuscleId(pool.muscleGroupId)) ? "Additional non-redundant specialization stimulus." : "Additional pattern supported by the available training-day capacity.");
-      });
-    return selected;
-  }
-
   function mechanicalRedundancyScore(candidate, other) {
     const candidatePattern = normalizeText(candidate.diversitySignature?.movement);
     const otherPattern = normalizeText(other.diversitySignature?.movement);
@@ -3512,6 +3470,7 @@
     if (candidate.diversitySignature?.equipment === other.diversitySignature?.equipment) score += 0.05;
     return round(clamp(score, 0, 1), 2);
   }
+
 
   function candidateProgramFit(candidate, portfolio = [], policy = DEFAULT_POLICY) {
     const others = portfolio.filter((item) => item.exerciseId !== candidate.exerciseId);

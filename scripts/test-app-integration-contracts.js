@@ -1449,6 +1449,44 @@ test("four-destination architecture contains no superseded five-tab UI contract"
   ]);
 });
 
+test("guided planning contains no unreachable automatic-planner contract", () => {
+  const removedFunctions = [
+    "renderTodayPlan",
+    "renderRecoveryPanel",
+    "renderReadinessChange",
+    "renderActiveWorkoutAdvice",
+    "renderPrescriptionBrief",
+    "renderWorkoutAdvice",
+    "previewMesocyclePlan",
+    "regenerateMesocycleWithPracticalLimits",
+    "confirmMesocycleScope",
+    "addOmittedMuscleAndRebuild",
+    "selectMesocycleCandidate",
+    "renderMesocycleCandidate",
+    "renderMesocycleCard"
+  ];
+  const removedActions = [
+    "preview-mesocycle",
+    "regenerate-mesocycle",
+    "mesocycle-type-option",
+    "jump-mesocycle-slot",
+    "toggle-mesocycle-alternates",
+    "toggle-mesocycle-planner-review",
+    "confirm-mesocycle-scope",
+    "add-mesocycle-muscle",
+    "select-mesocycle-candidate",
+    "compare-mesocycle-candidate"
+  ];
+  collectAssertions([
+    ...removedFunctions.map((name) => [name, () => assert.doesNotMatch(html, new RegExp(`function\\s+${name}\\s*\\(`), `${name} is a retired, unreachable compatibility renderer/controller`)]),
+    ...removedActions.map((action) => [action, () => assert.doesNotMatch(html, new RegExp(`data-action=["']${action}["']|action\\s*===\\s*["']${action}["']`), `${action} is a retired automatic-planner action`)]),
+    ["unreachable code after planner entry", () => {
+      const planner = functionSource("renderMesocyclePlanner");
+      assert.doesNotMatch(planner, /Full-program design|Build full-program draft|Open Planner Review/, "The guided planner entry must not retain code after its unconditional return");
+    }]
+  ]);
+});
+
 test("navigation, dialogs, and Lift controls expose complete focus and naming contracts", () => {
   const setTab = functionSource("setActiveTab");
   const openDialog = functionSource("openTemplateStart");

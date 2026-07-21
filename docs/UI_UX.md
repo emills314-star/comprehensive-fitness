@@ -121,9 +121,9 @@ An imported Strong exercise with exact submitted history remains usable when res
 
 ### Recovery and nutrition
 
-### Legacy automatic mesocycle review
+### Legacy automatic mesocycle history
 
-Legacy automatically generated plans retain their existing review presentation for historical compatibility. New guided plans do not automatically generate a portfolio or distribute sessions.
+Legacy automatically generated plans remain readable through the compact Historical Mesocycles list and retain lifecycle actions that are valid for their saved status. The unreachable former eight-step automatic-planner review, candidate comparison, regeneration, and scope-confirmation UI has been removed. New guided plans do not automatically generate a portfolio or distribute sessions.
 
 Available Equipment has an explicit `All Equipment / Standard Gym` default. The only other user-facing capability choices are Bodyweight, Bands, Dumbbells, Barbell, Rack, and Cable Station. Selecting an individual capability clears Standard Gym; clearing the final individual capability restores Standard Gym, so an empty ambiguous state is impossible. Restrictions apply to selected candidates, alternates, and comparisons; detailed requirements remain in the engine and are not exposed as a long picker. Omitted muscle groups use collapsed `Why Train This Muscle Group?` education. Portfolio entries prioritize exercise name, target muscle, program role, and primary/secondary designation without repeating generic boilerplate. Primary, secondary, and destructive lifecycle actions are visually separated.
 

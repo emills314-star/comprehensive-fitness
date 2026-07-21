@@ -16,7 +16,7 @@ const section = (start, end) => {
 const inputHandler = section('root.addEventListener("input"', "async function applyWorkoutDeepLink");
 const templateRenderer = section("function renderTemplates()", "function renderHistory(");
 const historyRenderer = section("function renderHistory(", "function renderExerciseHistory(");
-const recentHistoryRenderer = section("function recentHistoryCardModel(", "function renderRecoveryPanel(");
+const recentHistoryRenderer = section("function renderRecentSessions(", "function renderQuickStartTemplates(");
 const recentHistoryModelSource = section("function recentHistoryCardModel(", "if (performanceDebugEnabled) window.__CF_TEST__");
 const setCompletion = section("function toggleSetCompletion(setId)", "function toggleSetSkipped(setId)");
 
@@ -67,7 +67,6 @@ assert.match(html, /function invalidateCompletedAnalysis\(\)[\s\S]*exerciseWeekC
 assert.match(html, /function hypertrophyAnalysis[\s\S]*hypertrophyScoreCache\.has\(key\)[\s\S]*hypertrophyScoreCache\.set\(key, result\)/, "Hypertrophy analyses must be keyed and reusable");
 assert.match(html, /function weeklyMuscleVolume[\s\S]*weeklyVolumeCache\.has\(cacheKey\)/, "Weekly volume must not be recomputed during every dashboard render");
 assert.match(html, /function fatigueFlags[\s\S]*fatigueFlagCache\.has\(cacheKey\)/, "Fatigue flags must not be recomputed during every dashboard render");
-assert.match(html, /function renderActiveWorkoutAdvice\(\)[\s\S]*exercise\.prescription[\s\S]*does not recalculate the full training history/, "Active workout advice must use the prescription saved at workout start");
 
 assert.equal((templateRenderer.match(/id="active-workout-template-notice"/g) || []).length, 1, "Templates should show one active-workout notice");
 assert.match(templateRenderer, /Return to Active Workout/, "The compact notice must resume the canonical workout");
@@ -77,26 +76,23 @@ assert.doesNotMatch(templateRenderer, /fatigueFlags\(/, "Opening Templates must 
 assert.match(templateRenderer, /const advice = null;/, "Template-list rendering must defer readiness coaching to the start flow");
 assert.match(templateRenderer, /const editorExpanded = expandedTemplateEditorIds\.has\(template\.id\)/, "Template editors must be expanded explicitly");
 assert.match(templateRenderer, /\$\{editorExpanded \? `<div class="disclosure-body">/, "Collapsed template editors must not generate their exercise controls");
-assert.match(html, /mesocyclePlannerExpanded \? renderMesocycleCard/, "The full planner review must render only on explicit demand");
-assert.match(html, /if \(!selected && !alternatesExpanded\) return "";/, "Unselected alternates must not render until the slot is expanded");
 const historicalRenderer = section("function renderHistoricalMesocycles()", "function renderTemplates()");
 assert.match(historicalRenderer, /historical\.map\(\(mesocycle\) => '<article class="mesocycle-card mesocycle-history-summary/, "Historical mesocycles must use compact summaries");
 assert.doesNotMatch(historicalRenderer, /renderMesocycleCard\(/, "History must not eagerly render full candidate and program reviews");
 assert.match(html, /if \(action === "mesocycle-muscle-scope"\)[\s\S]*mesocycleScopeDraft\.delete\(target\.value\);\s*\}/, "Muscle-scope toggles must update local draft state without rebuilding the Templates tab");
-assert.match(html, /if \(action === "mesocycle-muscle-scope"\) \{[^}]+mesocycleScopeDraft\.delete\(target\.value\);\s*\}\s*if \(action === "mesocycle-pool-muscle"\)/, "Muscle-scope checkbox changes must not trigger a full render or persistence write");
 
 assert.match(recentHistoryRenderer, /class="recent-history-card"/, "Recent History needs a structured mobile card");
-assert.match(recentHistoryRenderer, /session\?\.workoutAnalysis\?\.version === 1/, "Recent History must reuse stored workout grades");
-assert.doesNotMatch(recentHistoryRenderer, /workoutAnalysisForSession/, "Recent History must not recalculate grades while rendering rows");
+assert.match(recentHistoryModelSource, /session\?\.workoutAnalysis\?\.version === 1/, "Recent History must reuse stored workout grades");
+assert.doesNotMatch(recentHistoryModelSource, /workoutAnalysisForSession/, "Recent History must not recalculate grades while rendering rows");
 assert.doesNotMatch(recentHistoryRenderer, /["']Grade\s/, "Recent History must display only the letter grade");
 assert.doesNotMatch(historyRenderer, /Grade ['"]?\s*\+|Grade \$\{/, "Progress History must not prefix the visible grade with the word Grade");
 assert.match(historyRenderer, /class="history-session-title"/, "Progress History session names must use the blue title treatment");
 assert.match(historyRenderer, /class="history-session-grade grade-tone/, "Progress History grades must use the shared color-coded grade treatment");
-assert.match(recentHistoryRenderer, /workoutName[\s\S]*completedDate[\s\S]*workoutGrade/, "Recent History must model title, date, and grade as separate fields");
+assert.match(recentHistoryModelSource, /workoutName[\s\S]*completedDate[\s\S]*workoutGrade/, "Recent History must model title, date, and grade as separate fields");
 assert.match(recentHistoryRenderer, /class="recent-history-title"[\s\S]*class="recent-history-meta"/, "The full-width title must render before the metadata row");
 assert.match(recentHistoryRenderer, /class="recent-history-date"[\s\S]*dateMarkup \+ '<span class="recent-history-grade/, "Date and grade must render as separate metadata values");
 assert.match(recentHistoryRenderer, /aria-label="' \+ escapeHtml\(accessibleLabel\)/, "The entire card must expose an accessible workout, date, and grade label");
-assert.match(recentHistoryRenderer, /Date unavailable/, "Missing dates need a controlled fallback");
+assert.match(recentHistoryModelSource, /Date unavailable/, "Missing dates need a controlled fallback");
 assert.match(recentHistoryRenderer, /&mdash;/, "Missing grades need a neutral fixed-area placeholder");
 assert.match(html, /\.recent-history-title \{[^}]*overflow-wrap: anywhere;[^}]*white-space: normal;/, "Long workout names must wrap without touching metadata");
 assert.match(html, /\.recent-history-title \{[^}]*color: var\(--current\);/, "Recent workout names must use the blue action color");

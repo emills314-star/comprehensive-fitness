@@ -200,9 +200,6 @@
           if (expandedTemplateEditorIds.has(templateId)) expandedTemplateEditorIds.delete(templateId); else expandedTemplateEditorIds.add(templateId);
           render();
         }
-        if (action === "preview-mesocycle") previewMesocyclePlan();
-        if (action === "regenerate-mesocycle") regenerateMesocycleWithPracticalLimits(target.dataset.mesocycleId);
-        if (action === "mesocycle-type-option") { mesocycleDraftType = target.dataset.value; render(); }
         if (action === "toggle-mesocycle-equipment") {
           const value = target.dataset.value;
           const current = new Set(mesocycleEquipmentSelection());
@@ -216,22 +213,7 @@
           }
           commit({ ...data, settings: { ...data.settings, availableEquipment: Array.from(current) } });
         }
-        if (action === "jump-mesocycle-slot") { selectedPrescriptionPoolMuscle = target.dataset.muscleGroupId; render(); }
-        if (action === "toggle-mesocycle-alternates") {
-          const slotId = target.dataset.slotId;
-          if (expandedMesocycleAlternateSlots.has(slotId)) expandedMesocycleAlternateSlots.delete(slotId); else expandedMesocycleAlternateSlots.add(slotId);
-          render();
-        }
-        if (action === "toggle-mesocycle-planner-review") { mesocyclePlannerExpanded = !mesocyclePlannerExpanded; render(); }
         if (action === "mesocycle-transition") transitionMesocyclePlan(target.dataset.mesocycleId, target.dataset.mesocycleAction);
-        if (action === "confirm-mesocycle-scope") confirmMesocycleScope(target.dataset.mesocycleId);
-        if (action === "add-mesocycle-muscle") addOmittedMuscleAndRebuild(target.dataset.mesocycleId, target.dataset.muscleGroupId);
-        if (action === "select-mesocycle-candidate") selectMesocycleCandidate(target.dataset.mesocycleId, target.dataset.slotId, target.dataset.exerciseId);
-        if (action === "compare-mesocycle-candidate") {
-          const exerciseId = target.dataset.exerciseId;
-          mesocycleComparisonIds = mesocycleComparisonIds.includes(exerciseId) ? mesocycleComparisonIds.filter((id) => id !== exerciseId) : [...mesocycleComparisonIds, exerciseId].slice(-3);
-          render();
-        }
         if (action === "request-delete-mesocycle") { pendingDeleteMesocycleId = target.dataset.mesocycleId; render(); }
         if (action === "cancel-delete-mesocycle") { pendingDeleteMesocycleId = ""; render(); }
         if (action === "confirm-delete-mesocycle") deleteMesocycleDraft(target.dataset.mesocycleId);
@@ -498,7 +480,6 @@
           if (!mesocycleScopeDraft) mesocycleScopeDraft = new Set(available);
           if (target.checked) mesocycleScopeDraft.add(target.value); else mesocycleScopeDraft.delete(target.value);
         }
-        if (action === "mesocycle-pool-muscle") { selectedPrescriptionPoolMuscle = target.value; render(); }
         if (action === "mesocycle-training-days") commit({ ...data, settings: { ...data.settings, trainingDaysPerWeek: Math.max(1, Math.min(7, Number(target.value || 4))) } });
         if (action === "mesocycle-equipment") commit({ ...data, settings: { ...data.settings, availableEquipment: String(target.value || "").split(",").map((item) => item.trim()).filter(Boolean) } });
         if (action === "timer-sound") commit({ ...data, settings: { ...data.settings, timerSound: target.checked, setupSoundConfirmed: target.checked ? data.settings.setupSoundConfirmed : false } });

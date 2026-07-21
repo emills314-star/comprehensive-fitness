@@ -281,33 +281,6 @@
       }
       // WORKOUT_GRADING_ENGINE_END
 
-      async function requestRestNotificationPermission() {
-        if (!("Notification" in window)) {
-          notificationMessage = "Lock-screen notifications are not available in this browser.";
-          render();
-          return;
-        }
-        if (Notification.permission === "denied") {
-          notificationMessage = "Notifications are blocked. On iPhone, open Settings > Notifications > Comprehensive Fitness and enable Allow Notifications, Sounds, and Lock Screen.";
-          render();
-          return;
-        }
-        if (Notification.permission === "granted") {
-          notificationMessage = "Lock-screen rest alerts are enabled.";
-          render();
-          return;
-        }
-        try {
-          const permission = await Notification.requestPermission();
-          notificationMessage = permission === "granted"
-            ? "Lock-screen rest alerts are enabled."
-            : "Notifications were not enabled. The app will not ask again automatically; use iPhone Settings > Notifications > Comprehensive Fitness if you change your mind.";
-        } catch {
-          notificationMessage = "Notification permission could not be requested. Install the app to your iPhone Home Screen, then try again.";
-        }
-        render();
-      }
-
       async function sendRestTimerNotification(notice, setId, exerciseId) {
         if (!data.settings.timerNotifications || !("Notification" in window) || Notification.permission !== "granted" || !("serviceWorker" in navigator)) return;
         try {

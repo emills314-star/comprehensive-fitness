@@ -299,15 +299,11 @@
       let prescriptionEngine = prescriptionApi?.createPrescriptionEngine({}) || null;
       let prescriptionEvidenceStatus = { state: "loading", personalRecords: 0, researchExercises: 0, personalVersion: "unknown", researchVersion: "unknown", message: "Loading training evidence." };
       const prescriptionSnapshotCache = new Map();
-      let selectedPrescriptionPoolMuscle = "chest";
       let mesocycleDraftType = "primary_progression";
       let mesocycleSpecializationMuscle = "";
       let mesocycleDurationDraft = "";
       let mesocycleScopeDraft = null;
-      let mesocycleComparisonIds = [];
-      let expandedMesocycleAlternateSlots = new Set();
       let pendingDeleteMesocycleId = "";
-      let mesocyclePlannerExpanded = false;
       const guidedMesocycleApi = window.ComprehensiveFitnessGuidedMesocycle || null;
       let guidedMesocycleView = "closed";
       let guidedMesocycleDraftId = "";
@@ -2899,15 +2895,6 @@
         const latestWeek = summarizeExerciseByWeek(exerciseName, options)[0];
         if (latestWeek && (latestWeek.failedSets >= 2 || (latestWeek.averageRpe >= 9.2 && latestWeek.completedSets >= 2))) seconds += 30;
         return Math.max(60, Math.min(300, Math.round(seconds / 15) * 15));
-      }
-
-      function restRecommendationReason(exerciseName, options = {}) {
-        const profile = progressionProfileForExercise(exerciseName);
-        const seconds = recommendedRestSeconds(exerciseName, options);
-        const type = profile.kind === "compound" ? "compound lift" : profile.kind === "machine" ? "machine movement" : "isolation lift";
-        const history = summarizeExerciseByWeek(exerciseName, options)[0];
-        const historyNote = history && (history.failedSets >= 2 || history.averageRpe >= 9.2) ? " Recent hard or missed sets added recovery time." : "";
-        return seconds + " seconds for this " + type + " at the planned rep range." + historyNote;
       }
 
       function nextLoadForExercise(name, currentWeight, incrementOverride) {
