@@ -881,6 +881,7 @@ test("template numeric values share one fail-closed draft, model, import, and de
 async function prepareSubmissionFixture(page) {
   const completed = page.locator(`[data-action="toggle-set"][data-set-id="${IDS.activeBenchSet1}"]`);
   await completed.click();
+  await page.locator(`#set-${IDS.activeRowSet2} .set-tools-disclosure > summary`).click();
   await page.locator(`[data-action="toggle-skip-set"][data-set-id="${IDS.activeRowSet2}"]`).click();
   await expect.poll(async () => {
     const persisted = await readPersistedData(page);

@@ -117,6 +117,8 @@
       [data-theme="light"][data-color-package="modern-primary"] { --bg: #f7f5ef; --bg-soft: #ece9df; --panel: #fff; --panel-2: #f1f6ff; --panel-3: #fff1ba; --surface: #f7f9fc; --surface-strong: #fff; --input-bg: #fff; --nav-bg: rgba(255,255,255,.96); --current-dark: #e5f0ff; }
       [data-theme="light"][data-color-package="night-stadium"] { --bg: #0c1727; --bg-soft: #101d30; --panel: #142237; --panel-2: #182941; --panel-3: #20344f; --surface: #182941; --surface-strong: #20344f; --input-bg: #101d30; --nav-bg: rgba(12,23,39,.97); --line: #334c69; --line-strong: #527292; --text: #f4f8ff; --muted: #b3c2d6; --muted-2: #91a5bd; --current-dark: #173a5e; --success-dark: rgba(66,206,121,.14); }
 
+      [data-theme="light"]:not([data-color-package="night-stadium"]) { --bg: #fff; --bg-soft: #fff; }
+
       * { box-sizing: border-box; }
 
       html { background: var(--bg); }
@@ -126,9 +128,7 @@
         min-width: 320px;
         min-height: 100vh;
         overflow-x: clip;
-        background:
-          linear-gradient(180deg, var(--bg-soft), var(--bg) 36%),
-          var(--bg);
+        background: var(--bg);
       }
 
       body.modal-open { overflow: hidden; }
@@ -541,7 +541,7 @@
       }
 
       .set-head, .set-row {
-        grid-template-columns: 36px minmax(56px, 1fr) minmax(76px, 1.35fr) minmax(56px, 1fr) 48px;
+        grid-template-columns: 34px minmax(88px, 1.55fr) minmax(58px, 1fr) minmax(48px, .8fr) minmax(46px, .75fr) 46px;
       }
 
       .set-head, .trend-head {
@@ -563,8 +563,8 @@
 
       .set-row.warmup { border-left: 3px solid var(--amber); padding-left: 8px; }
       .set-row.warmup strong { color: var(--amber); font-size: 0.72rem; }
-      .set-block { border-left: 3px solid transparent; border-right: 3px solid transparent; display: grid; }
-      .set-heading { align-items: center; display: flex; gap: 8px; justify-content: space-between; padding: 7px 10px 2px; }
+      .set-block { border-left: 3px solid transparent; border-right: 3px solid transparent; display: grid; position: relative; }
+      .set-heading { align-items: center; display: flex; gap: 8px; justify-content: space-between; min-height: 28px; padding: 5px 54px 1px 10px; }
       .set-type-badge { background: color-mix(in srgb, var(--muted) 9%, transparent); border: 1px solid color-mix(in srgb, var(--muted) 28%, var(--line)); border-radius: 5px; color: var(--muted); display: inline-flex; font-size: .6rem; font-weight: 950; line-height: 1; padding: 4px 6px; pointer-events: none; text-transform: uppercase; user-select: none; }
       .set-type-badge.type-top { background: color-mix(in srgb, var(--current) 10%, transparent); border-color: color-mix(in srgb, var(--current) 42%, var(--line)); color: var(--current); }
       .set-type-badge.type-backoff { background: color-mix(in srgb, #54708c 10%, transparent); border-color: color-mix(in srgb, #54708c 38%, var(--line)); color: #466781; }
@@ -1479,6 +1479,9 @@
       .set-field { align-content: center; display: grid; gap: 2px; min-width: 0; }
       .set-field > span { color: var(--muted); font-size: .55rem; font-weight: 900; letter-spacing: .04em; line-height: 1; text-transform: uppercase; }
       .set-field input { width: 100%; }
+      .set-previous { align-content: center; gap: 1px; }
+      .set-previous strong { color: var(--text); font-size: .61rem; font-weight: 850; line-height: 1.12; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .set-previous small { color: var(--muted); font-size: .49rem; font-weight: 750; line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .set-index { justify-items: center; }
       .set-index strong { line-height: 1; }
       .set-status { justify-items: center; }
@@ -1677,9 +1680,15 @@
         margin: 0;
       }
 
+      .history-session-heading { align-items: center; display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr) auto; }
+      .history-session-title { color: var(--current); font-size: .86rem; font-weight: 950; line-height: 1.3; min-width: 0; overflow-wrap: anywhere; }
+      .history-session-meta { align-items: center; color: var(--muted); display: inline-flex; font-size: .67rem; font-weight: 750; gap: 8px; justify-content: flex-end; white-space: nowrap; }
+      .history-session-grade { align-items: center; background: color-mix(in srgb, var(--grade-color, var(--muted)) 12%, var(--surface-strong)); border: 1px solid color-mix(in srgb, var(--grade-color, var(--muted)) 52%, var(--line)); border-radius: 7px; color: var(--grade-color, var(--muted)); display: inline-flex; font-size: .88rem; font-weight: 1000; height: 34px; justify-content: center; min-width: 34px; padding: 0 7px; }
+      .history-session-grade.score-unavailable { --grade-color: var(--muted); }
+
       .recent-history-list { display: grid; gap: 9px; }
       .recent-history-card { background: var(--surface-strong); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 7%, transparent); display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); min-width: 0; padding: 12px 13px; text-align: left; width: 100%; }
-      .recent-history-title { display: block; font-size: .9rem; font-weight: 900; line-height: 1.35; min-width: 0; overflow-wrap: anywhere; white-space: normal; }
+      .recent-history-title { color: var(--current); display: block; font-size: .9rem; font-weight: 900; line-height: 1.35; min-width: 0; overflow-wrap: anywhere; white-space: normal; }
       .recent-history-meta { align-items: center; border-top: 1px solid color-mix(in srgb, var(--line) 72%, transparent); display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr) 44px; min-width: 0; padding-top: 8px; }
       .recent-history-date { color: var(--muted); display: block; font-size: .72rem; font-weight: 750; line-height: 1.3; min-width: 0; }
       .recent-history-grade { align-items: center; background: color-mix(in srgb, var(--grade-color, var(--muted)) 12%, var(--surface-strong)); border: 1px solid color-mix(in srgb, var(--grade-color, var(--muted)) 48%, var(--line)); border-radius: 7px; color: var(--grade-color, var(--muted)); display: inline-flex; font-size: .9rem; font-weight: 950; justify-content: center; justify-self: end; letter-spacing: 0; min-height: 34px; min-width: 44px; width: 44px; white-space: nowrap; }
@@ -1905,7 +1914,7 @@
       .exercise-actions { gap: 6px; }
       .exercise-actions button, .mini-button { min-height: 31px; padding: 4px 8px; border-radius: 6px; font-size: .68rem; }
       .set-grid { gap: 4px; }
-      .set-row { min-height: 54px; grid-template-columns: 31px minmax(45px, .9fr) minmax(48px, 1fr) minmax(39px, .8fr) 48px; gap: 5px; padding: 5px 8px; }
+      .set-row { min-height: 54px; grid-template-columns: 31px minmax(92px, 1.35fr) minmax(58px, 1fr) minmax(48px, .8fr) minmax(44px, .72fr) 48px; gap: 5px; padding: 5px 8px; }
       .set-row input, .set-row select { min-width: 0; min-height: 36px; padding: 4px; font-size: .77rem; }
       .set-row .set-number, .set-row .set-complete { font-size: .68rem; }
       .set-status { padding-right: 2px; }
@@ -2027,7 +2036,7 @@
         .brand-title small { max-width: 95px; }
         .workout-status-strip > span { font-size: .6rem; }
         .app-main { padding-left: 14px; padding-right: 18px; }
-        .set-row { grid-template-columns: 27px minmax(42px, .85fr) minmax(44px, 1fr) minmax(35px, .7fr) 46px; gap: 3px; padding-left: 6px; padding-right: 7px; }
+        .set-row { grid-template-columns: 27px minmax(51px, 1.28fr) minmax(39px, .84fr) minmax(35px, .72fr) minmax(31px, .64fr) 44px; gap: 3px; padding-left: 4px; padding-right: 4px; }
         .set-row input, .set-row select { font-size: .69rem; }
         .set-actions { padding-left: 32px; padding-right: 8px; }
         .timer-bar { margin-left: 3px; margin-right: 3px; padding-left: 8px; padding-right: 8px; }
@@ -2218,7 +2227,7 @@
       .workout-view > .notification-prompt { border-radius: 10px; padding: 7px 9px; }
       .compact-workout-layout { gap: 8px; grid-template-columns: minmax(0, 1fr) !important; }
       .compact-workout-layout .workout-focus-column { gap: 8px; }
-      .workout-view .exercise-card { border-radius: 12px; gap: 7px; padding: 10px; }
+      .workout-view .exercise-card { border-radius: 12px; gap: 7px; grid-template-columns: minmax(0, 1fr); padding: 10px; }
       .workout-view .exercise-name-field { min-height: 34px; padding: 5px 2px; }
       .workout-view .exercise-header .exercise-actions { gap: 4px; }
       .workout-view .exercise-header .icon-button { min-height: 44px; min-width: 44px; padding: 5px; width: 44px; }
@@ -2236,13 +2245,17 @@
       .resistance-type-popover { background: var(--panel); border: 1px solid var(--line-strong); border-radius: 10px; box-shadow: var(--shadow); min-width: min(260px, 82vw); padding: 8px; position: absolute; right: 0; top: calc(100% + 4px); z-index: 12; }
       .resistance-type-control { align-items: stretch; display: grid; gap: 5px; }
       .resistance-type-control select { min-height: 44px; width: 100%; }
-      .workout-view .set-block { border-radius: 8px; overflow: visible; }
-      .workout-view .set-heading { padding: 5px 8px 1px; }
-      .workout-view .set-row { gap: 4px; padding: 4px 6px; }
-      .workout-view .set-row input { min-height: 44px; padding: 5px; }
-      .set-field-history { color: var(--muted); display: grid; gap: 1px; line-height: 1.05; margin-top: 2px; min-width: 0; text-align: center; }
-      .set-field-history span { font-size: .5rem; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .set-field-history b { color: var(--muted); font-size: .58rem; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .workout-view .set-block { border-radius: 8px; grid-template-columns: minmax(0, 1fr); overflow: visible; }
+      .workout-view .set-heading { padding: 4px 52px 0 8px; }
+      .workout-view .set-row { gap: 4px; min-height: 58px; padding: 3px 6px 5px; }
+      .workout-view .set-row input { min-height: 40px; padding: 4px; }
+      .set-tools-disclosure { margin: 0; min-height: 0; }
+      .set-tools-disclosure:not([open]) { height: 0; }
+      .set-tools-disclosure > summary { align-items: center; border: 0; border-radius: 999px; color: var(--muted); cursor: pointer; display: flex; font-size: .75rem; font-weight: 950; height: 44px; justify-content: center; list-style: none; min-height: 44px; position: absolute; right: 5px; top: 0; width: 44px; z-index: 2; }
+      .set-tools-disclosure > summary::-webkit-details-marker { display: none; }
+      .set-tools-disclosure > summary:hover, .set-tools-disclosure > summary:focus-visible { background: var(--current-dark); color: var(--current); }
+      .set-tools-disclosure[open] > summary { color: var(--current); }
+      .set-tools-panel { border-top: 1px solid var(--line); display: grid; }
       .set-progress-disclosure { border-top: 1px solid var(--line); margin: 0 8px; }
       .set-progress-disclosure > summary { align-items: center; cursor: pointer; display: flex; gap: 8px; justify-content: space-between; list-style: none; min-height: 44px; }
       .set-progress-disclosure > summary::-webkit-details-marker { display: none; }
@@ -2253,7 +2266,7 @@
       .set-progress-disclosure > div { display: grid; gap: 3px; padding: 0 0 8px; }
       .set-progress-disclosure strong { font-size: .68rem; line-height: 1.35; }
       .set-progress-disclosure small { color: var(--muted); font-size: .61rem; line-height: 1.3; }
-      .workout-view .set-actions { gap: 4px; padding: 0 8px 6px 40px; }
+      .workout-view .set-actions { gap: 4px; padding: 6px 8px 7px 40px; }
       .workout-view .set-actions .mini-button { min-height: 44px; padding: 4px 8px; }
       .exercise-set-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 5px; }
       .exercise-set-actions button { background: transparent; border-color: var(--line); border-radius: 999px; color: var(--muted); font-size: .66rem; font-weight: 850; min-height: 44px; padding: 5px 11px; }
@@ -2265,6 +2278,9 @@
       @media (max-width: 380px) {
         .workout-view .active-workout-hero { padding: 9px 10px; }
         .workout-view .exercise-card { padding: 8px 7px; }
+        .workout-view .exercise-header { display: block; max-width: 100%; min-width: 0; padding-top: 50px; position: relative; width: 100%; }
+        .workout-view .exercise-name-field { max-width: 100%; min-width: 0; width: 100%; }
+        .workout-view .exercise-header .exercise-actions { max-width: 100%; min-width: 0; position: absolute; right: 0; top: 0; }
         .workout-view .exercise-level-controls { grid-template-columns: minmax(0, 1fr); }
         .resistance-type-popover { left: 0; right: auto; }
         .exercise-set-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }

@@ -365,10 +365,11 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await expect(page.getByRole("heading", { name: NAMES.controlTemplate, exact: true })).toBeVisible({ timeout: 45_000 });
     await expect(page.getByText("In progress", { exact: true })).toBeVisible();
     await expect(page.locator(".exercise-card"), "the active workout must render every exercise in one continuous document").toHaveCount(2);
-    const lastTimeFacts = page.locator(".set-row:not(.warmup) .set-field-history");
-    expect(await lastTimeFacts.count(), "every generated working-set field must expose its matching prior value").toBeGreaterThanOrEqual(12);
+    const lastTimeFacts = page.locator(".set-row:not(.warmup) .set-previous");
+    expect(await lastTimeFacts.count(), "every generated working set must expose one combined prior-performance value").toBeGreaterThanOrEqual(4);
     expect((await lastTimeFacts.allTextContents()).every((text) => text.includes("July 16") && !text.includes("No prior working set found")), "role expansion must reuse ordered prior sets instead of losing history").toBe(true);
-    await expect(page.locator('.set-field:has([data-action="set-weight"]) .set-field-history').first()).toContainText("145");
+    await expect(lastTimeFacts.first()).toContainText("145");
+    await expect(lastTimeFacts.first()).toContainText("8");
     await expect(lastTimeFacts.first()).toContainText("July 16");
 
     const stored = await waitForPersisted(page, (data) => {
@@ -494,6 +495,63 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await expect(page.locator(`#exercise-${IDS.activeBenchExercise}`)).toBeVisible();
     await expect(page.locator(`#exercise-${IDS.activeBenchExercise} .prescription-brief`)).toContainText("Public synthetic structured legacy explanation");
     expect(browserErrors, "structured legacy prescription presentation must not emit browser errors").toEqual([]);
+  });
+
+  test("compact set rows and Progress History use the white and blue hierarchy", async ({ page }) => {
+    const browserErrors = collectBrowserErrors(page);
+    const fixture = buildActiveWorkoutLifecycleFixture();
+    fixture.sessions.find((session) => session.id === IDS.historySession).workoutAnalysis = {
+      version: 1,
+      grade: "B",
+      internalScore: 82
+    };
+    await installFixture(page, fixture);
+
+    const rowLayout = await page.locator(`#set-${IDS.activeRowSet2}`).evaluate((block) => {
+      const previous = block.querySelector(".set-previous").getBoundingClientRect();
+      const load = block.querySelector('[data-action="set-weight"]').getBoundingClientRect();
+      const style = getComputedStyle(document.body);
+      return {
+        collapsed: !block.querySelector(".set-tools-disclosure").open,
+        height: block.getBoundingClientRect().height,
+        previousCenter: previous.top + previous.height / 2,
+        loadCenter: load.top + load.height / 2,
+        bodyBackground: style.backgroundColor
+      };
+    });
+    expect(rowLayout.collapsed, "future set controls should start collapsed").toBe(true);
+    expect(rowLayout.height, "a collapsed set should remain near the compact reference height").toBeLessThanOrEqual(96);
+    expect(Math.abs(rowLayout.previousCenter - rowLayout.loadCenter), "Previous must sit beside the current boxes instead of below them").toBeLessThanOrEqual(10);
+    expect(rowLayout.bodyBackground, "the light application canvas must be true white").toBe("rgb(255, 255, 255)");
+
+    await page.locator('[data-action="set-tab"][data-tab="progress"]').click();
+    await page.locator('[data-action="set-progress-view"][data-progress-view="history"]').click();
+    await expect(page.locator(".history-view")).toBeVisible();
+    const card = page.locator(`.session-card[data-session-id="${IDS.historySession}"]`);
+    const title = card.locator(".history-session-title");
+    const grade = card.locator(".history-session-grade");
+    await expect(title).toHaveText(NAMES.historySession);
+    await expect(grade).toHaveText("B");
+    await expect(card).not.toContainText("Grade B");
+    const hierarchy = await card.evaluate((element) => {
+      const title = element.querySelector(".history-session-title");
+      const grade = element.querySelector(".history-session-grade");
+      const probe = document.createElement("span");
+      probe.style.color = "var(--current)";
+      document.body.appendChild(probe);
+      const currentColor = getComputedStyle(probe).color;
+      probe.remove();
+      return {
+        titleColor: getComputedStyle(title).color,
+        currentColor,
+        gradeColor: getComputedStyle(grade).color,
+        gradeBackground: getComputedStyle(grade).backgroundColor
+      };
+    });
+    expect(hierarchy.titleColor, "past-session names should use the blue action color").toBe(hierarchy.currentColor);
+    expect(hierarchy.gradeColor, "the grade should use a distinct score color").not.toBe(hierarchy.titleColor);
+    expect(hierarchy.gradeBackground).not.toBe("rgba(0, 0, 0, 0)");
+    expect(browserErrors, "compact Today and History hierarchy must not emit browser errors").toEqual([]);
   });
 
   test("legacy Back on a catalog Seated Cable Row resolves to its canonical upper-back target and remains auditable", async ({ page }) => {
@@ -727,6 +785,7 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await page.locator(`[data-action="add-set"][data-exercise-id="${IDS.activeBenchExercise}"]`).click();
     stored = await waitForPersisted(page, (data) => data.sets.filter((item) => item.exerciseId === IDS.activeBenchExercise).length === initialBenchSetCount + 1, "added working set must persist");
     const addedSet = stored.sets.filter((item) => item.exerciseId === IDS.activeBenchExercise).sort((a, b) => Number(b.sequenceIndex) - Number(a.sequenceIndex))[0];
+    await page.locator(`#set-${addedSet.id} .set-tools-disclosure > summary`).click();
     await page.locator(`[data-action="delete-set"][data-set-id="${addedSet.id}"]`).click();
     await page.locator('[data-action="save-template"]').click();
     await expect(page.getByRole("heading", { name: "Templates", exact: true })).toBeVisible();
@@ -797,6 +856,7 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await expect(first).toHaveAttribute("aria-pressed", "true");
     await first.click();
     await expect(first).toHaveAttribute("aria-pressed", "false");
+    await page.locator(`#set-${IDS.activeRowSet2} .set-tools-disclosure > summary`).click();
     await page.locator(`[data-action="toggle-skip-set"][data-set-id="${IDS.activeRowSet2}"]`).click();
     await page.locator(`[data-action="toggle-set"][data-set-id="${IDS.activeBenchSet1}"]`).click();
 
@@ -813,7 +873,7 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await page.locator('[data-action="confirm-submit-workout"]').click();
 
     await expect(page.locator('[aria-label="Post-workout grade and analysis"]')).toBeVisible({ timeout: 45_000 });
-    await expect(page.getByText("Workout logged", { exact: true }).first()).toBeVisible();
+    await expect(page.locator('.completed-summary[aria-label="Post-workout grade and analysis"]')).toContainText("Workout logged");
     const afterFirst = await waitForPersisted(page, (data) => data.sessions.filter((item) => item.id === IDS.activeSession && item.submitted).length === 1, "the UI confirmation must persist one submitted session");
     await waitForSubmissionWrites(page);
     expect(await submissionProbe(page)).toMatchObject({
@@ -874,7 +934,7 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     assertUniqueEntityIds(after);
 
     await reloadAndWait(page);
-    await page.locator('[data-action="set-tab"][data-tab="dashboard"]').click();
+    await page.locator('[data-action="set-tab"][data-tab="progress"]').click();
     await expect(page.locator(`[data-action="open-session"][data-session-id="${IDS.activeSession}"]`)).toHaveCount(1);
     const reloaded = await persistedData(page);
     expect.soft(reloaded.dataRevision, "reload must preserve the single submission effect").toBe(Number(beforeSubmit.dataRevision) + 1);

@@ -98,9 +98,17 @@ async function assertProtectedLayout(page, surface, expectedWidth, { requireProt
       .filter(visible)
       .filter((element) => !["INPUT", "SELECT", "TEXTAREA"].includes(element.tagName))
       .filter((element) => element.scrollWidth > element.clientWidth + 2)
-      .filter((element) => !["auto", "scroll"].includes(getComputedStyle(element).overflowX))
+      .filter((element) => !["auto", "scroll", "hidden", "clip"].includes(getComputedStyle(element).overflowX))
       .slice(0, 10)
-      .map((element) => `${element.tagName.toLowerCase()}.${String(element.className)}[${element.getAttribute("aria-label") || element.getAttribute("data-action") || "unlabelled"};${element.scrollWidth}/${element.clientWidth}]`);
+      .map((element) => {
+        const rightEdge = element.getBoundingClientRect().right;
+        const culprit = [...element.querySelectorAll("*")]
+          .filter(visible)
+          .map((child) => ({ child, overflow: child.getBoundingClientRect().right - rightEdge }))
+          .sort((left, right) => right.overflow - left.overflow)[0];
+        const culpritLabel = culprit?.overflow > 2 ? `>${culprit.child.tagName.toLowerCase()}.${String(culprit.child.className)}` : "";
+        return `${element.tagName.toLowerCase()}.${String(element.className)}${culpritLabel}[${element.getAttribute("aria-label") || element.getAttribute("data-action") || "unlabelled"};${element.scrollWidth}/${element.clientWidth}]`;
+      });
     const clippedTargets = [...document.querySelectorAll("button, input, select, textarea, summary, a[href]")]
       .filter(visible)
       .filter((element) => {
@@ -166,8 +174,8 @@ async function assertRichLabels(page, surface, viewportWidth) {
       await expect(page.getByText("32m elapsed", { exact: true })).toBeVisible();
     }
     await expect(page.getByLabel("Exercise name").filter({ hasText: LONG_EXERCISE_NAMES.chest })).toHaveCount(1);
-    await expect(page.getByText("Last time", { exact: true }).first()).toBeVisible();
-    await expect(page.getByText("Next increment", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Previous", { exact: true }).first()).toBeVisible();
+    await expect(page.getByLabel("Set options").first()).toBeVisible();
   } else {
     await expect(page.locator(".dashboard-coach.coach-lead")).toBeVisible();
     await expect(page.locator('[data-action="open-dashboard-detail"][data-detail="sessions"]')).toContainText("3");

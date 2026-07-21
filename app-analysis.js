@@ -190,9 +190,12 @@
               ${sessions.length ? sessions.map((session) => {
               const exercises = (dataEntityIndex().exerciseIndicesBySession.get(session.id) || []).map((index) => data.exercises[index]);
               const analysis = session?.workoutAnalysis?.version === 1 ? session.workoutAnalysis : null;
+              const grade = WORKOUT_GRADE_THRESHOLDS.some((threshold) => threshold.grade === analysis?.grade) ? analysis.grade : "";
+              const gradeScore = Number.isFinite(Number(analysis?.internalScore)) ? Number(analysis.internalScore) : WORKOUT_GRADE_THRESHOLDS.find((threshold) => threshold.grade === grade)?.minimum;
+              const gradeTone = grade && Number.isFinite(gradeScore) ? workoutGradeScoreTone(gradeScore) : "score-unavailable";
               return `
                 <button class="session-card" type="button" data-action="open-session" data-session-id="${session.id}">
-                  <div class="row split"><strong>${escapeHtml(session.title || "Workout")}</strong><span>${analysis ? 'Grade ' + escapeHtml(analysis.grade) + ' - ' : ''}${formatDate(session.date)}</span></div>
+                  <div class="history-session-heading"><strong class="history-session-title">${escapeHtml(session.title || "Workout")}</strong><span class="history-session-meta">${grade ? '<b class="history-session-grade grade-tone ' + gradeTone + '" aria-label="Workout grade ' + escapeHtml(grade) + '">' + escapeHtml(grade) + '</b>' : ''}<time datetime="${escapeHtml(session.date)}">${formatDate(session.date)}</time></span></div>
                   <p>${session.isTravel ? "Travel" : "Home"}${exercises.some((exercise) => exercise.isDeload) ? " · Deload work" : ""}</p>
                   <small>${escapeHtml(exercises.map((exercise) => exercise.name + (exercise.isDeload ? " (Deload)" : "")).join(", ") || "No exercises yet")}</small>
                 </button>
@@ -204,7 +207,7 @@
               <summary>By exercise <span>${getExerciseNames().length} lifts</span></summary>
               <div class="disclosure-body">${renderExerciseHistory()}</div>
             </details>
-            ${archived.length ? '<details class="history-section"><summary>Retention archive <span>' + archived.length + ' recoverable</span></summary><div class="disclosure-body"><p class="settings-note">These completed workouts are older than the rolling six-calendar-month window. They remain in exports but do not affect charts, coaching, PRs, templates, or weekly volume.</p>' + archived.slice(0, 40).map((session) => '<div class="session-card"><div class="row split"><strong>' + escapeHtml(session.title || 'Workout') + '</strong><span>' + formatDate(sessionCompletionDate(session)) + '</span></div></div>').join('') + '</div></details>' : ''}
+            ${archived.length ? '<details class="history-section"><summary>Retention archive <span>' + archived.length + ' recoverable</span></summary><div class="disclosure-body"><p class="settings-note">These completed workouts are older than the rolling six-calendar-month window. They remain in exports but do not affect charts, coaching, PRs, templates, or weekly volume.</p>' + archived.slice(0, 40).map((session) => '<div class="session-card"><div class="history-session-heading"><strong class="history-session-title">' + escapeHtml(session.title || 'Workout') + '</strong><span class="history-session-meta">' + formatDate(sessionCompletionDate(session)) + '</span></div></div>').join('') + '</div></details>' : ''}
           </section>
         `;
       }

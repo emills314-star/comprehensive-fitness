@@ -1341,8 +1341,7 @@
         const role = normalizeSetTypeCode(set.setType, set.isWarmup);
         const workingSetIndex = Math.max(0, (context.workingSetIds || []).indexOf(set.id));
         const previous = set.previousComparableSet || previousComparableSetForRole(previousSets, role, set.setTypeIndex, workingSetIndex);
-        const previousDateLabel = previous?.priorSessionDate ? "Last " + formatDate(previous.priorSessionDate) : "Last time";
-        const historyMarkup = (value) => setTypeSemantics(set).isWarmup ? "" : '<small class="set-field-history"><span>' + escapeHtml(previousDateLabel) + '</span><b>' + escapeHtml(value || "—") + '</b></small>';
+        const previousDateLabel = previous?.priorSessionDate ? formatDate(previous.priorSessionDate) : "No history";
         const previousPerformanceText = !previous
           ? "—"
           : resistanceType === "duration"
@@ -1352,6 +1351,14 @@
               : String(Number(previous.reps || 0));
         const previousLoadText = !previous || resistanceType === "duration" || resistanceType === "distance" ? "—" : formatResistance({ ...previous, resistanceType }, exercise);
         const previousRpeText = previous && Number(previous.rpe || 0) > 0 ? String(previous.rpe) : "—";
+        const previousSummaryText = !previous
+          ? "—"
+          : resistanceType === "duration" || resistanceType === "distance"
+            ? previousPerformanceText + (previousRpeText !== "—" ? " @ " + previousRpeText : "")
+            : previousLoadText + " × " + previousPerformanceText + (previousRpeText !== "—" ? " @ " + previousRpeText : "");
+        const previousField = setTypeSemantics(set).isWarmup
+          ? '<div class="set-field set-previous"><span>Previous</span><strong>—</strong><small>Warm-up</small></div>'
+          : '<div class="set-field set-previous" title="Previous set from ' + escapeHtml(previousDateLabel) + '"><span>Previous</span><strong>' + escapeHtml(previousSummaryText) + '</strong><small>' + escapeHtml(previousDateLabel) + '</small></div>';
         const targetLoad = Number(set.targetWeight ?? set.weight ?? 0);
         const targetLoadText = formatResistance({ ...set, weight: targetLoad, addedLoad: resistanceType === "bodyweight_plus_load" ? targetLoad : set.addedLoad, assistanceLoad: resistanceType === "assisted_bodyweight" ? targetLoad : set.assistanceLoad, resistanceType });
         const targetRepText = targetRangeText(set.targetRepMin, set.targetRepMax || set.targetReps, " reps");
@@ -1364,15 +1371,15 @@
           : "Not configured";
         const progressionRule = set.setPrescription?.progressionRule || "Progress after reaching the top of the programmed range within the RPE target.";
         const performanceField = resistanceType === "duration"
-          ? '<label class="set-field"><span>Seconds</span><input type="number" min="0" value="' + Number(set.durationSeconds || 0) + '" data-action="set-duration" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' seconds" />' + historyMarkup(previousPerformanceText) + '</label>'
+          ? '<label class="set-field"><span>Seconds</span><input type="number" min="0" value="' + Number(set.durationSeconds || 0) + '" data-action="set-duration" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' seconds" /></label>'
           : resistanceType === "distance"
-            ? '<label class="set-field"><span>Distance</span><input type="number" min="0" step="0.1" value="' + Number(set.distance || 0) + '" data-action="set-distance" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' distance" />' + historyMarkup(previousPerformanceText) + '</label>'
-            : '<label class="set-field"><span>Reps</span><input type="number" min="0" value="' + set.reps + '" data-action="set-reps" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' reps" />' + historyMarkup(previousPerformanceText) + '</label>';
+            ? '<label class="set-field"><span>Distance</span><input type="number" min="0" step="0.1" value="' + Number(set.distance || 0) + '" data-action="set-distance" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' distance" /></label>'
+            : '<label class="set-field"><span>Reps</span><input type="number" min="0" value="' + set.reps + '" data-action="set-reps" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' reps" /></label>';
         const loadField = resistanceType === "bodyweight"
-          ? '<div class="set-field"><span>Load</span><div class="resistance-readout">BW</div>' + historyMarkup(previousLoadText) + '</div>'
+          ? '<div class="set-field"><span>Load</span><div class="resistance-readout">BW</div></div>'
           : resistanceType === "duration" || resistanceType === "distance"
-            ? '<div class="set-field"><span>Load</span><div class="resistance-readout">—</div>' + historyMarkup(previousLoadText) + '</div>'
-            : '<label class="set-field"><span>' + (resistanceType === 'bodyweight_plus_load' ? 'Added' : resistanceType === 'assisted_bodyweight' ? 'Assist' : 'Load') + '</span><input type="number" min="0" step="' + (data.settings.weightUnit === 'lb' ? '0.5' : '0.001') + '" value="' + displayLoadNumber(resistanceLoad(set, resistanceType), set.weightUnit || data.settings.weightUnit) + '" data-action="set-weight" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' ' + (resistanceType === 'bodyweight_plus_load' ? 'added load' : resistanceType === 'assisted_bodyweight' ? 'assistance load' : 'load') + '" />' + historyMarkup(previousLoadText) + '</label>';
+            ? '<div class="set-field"><span>Load</span><div class="resistance-readout">—</div></div>'
+            : '<label class="set-field"><span>' + (resistanceType === 'bodyweight_plus_load' ? 'Added' : resistanceType === 'assisted_bodyweight' ? 'Assist' : 'Load') + '</span><input type="number" min="0" step="' + (data.settings.weightUnit === 'lb' ? '0.5' : '0.001') + '" value="' + displayLoadNumber(resistanceLoad(set, resistanceType), set.weightUnit || data.settings.weightUnit) + '" data-action="set-weight" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' ' + (resistanceType === 'bodyweight_plus_load' ? 'added load' : resistanceType === 'assisted_bodyweight' ? 'assistance load' : 'load') + '" /></label>';
         return `
           <div id="set-${set.id}" data-set-state="${visualState}" class="set-block ${visualState === "completed" ? "completed" : ""} ${isNext ? "next-set" : ""} ${isNext && activeSetAcknowledged ? "acknowledged" : ""} ${visualState === "edited" ? "edited-set" : ""} ${visualState === "skipped" ? "skipped-set" : ""} ${isResting ? "resting-set" : ""}">
             <div class="set-heading">
@@ -1381,21 +1388,27 @@
             </div>
             <div class="set-row ${visualState === "completed" ? "completed" : "pending"} ${set.isWarmup ? "warmup" : ""}">
               <div class="set-field set-index"><span>Set</span><strong>${warmupIndex >= 0 ? "WU" + (warmupIndex + 1) : set.setNumber}</strong></div>
-              ${performanceField}
+              ${previousField}
               ${loadField}
-              <label class="set-field"><span>RPE</span><input type="number" min="0" max="10" step="0.5" value="${set.rpe}" data-action="set-rpe" data-set-id="${set.id}" aria-label="Set ${set.setNumber} RPE" />${historyMarkup(previousRpeText)}</label>
+              ${performanceField}
+              <label class="set-field"><span>RPE</span><input type="number" min="0" max="10" step="0.5" value="${set.rpe}" data-action="set-rpe" data-set-id="${set.id}" aria-label="Set ${set.setNumber} RPE" /></label>
               <div class="set-field set-status"><span>Status</span><button class="check-button ${set.completed ? "checked" : ""}" type="button" data-action="toggle-set" data-set-id="${set.id}" title="${set.completed ? "Completed" : "Mark set complete"}" aria-label="${set.completed ? "Set completed" : "Mark set complete"}" aria-pressed="${set.completed ? "true" : "false"}"${workoutSafetyDisabledAttributes(completionSafety)}>${icon.done}</button></div>
             </div>
-            ${!setTypeSemantics(set).isWarmup ? '<details class="set-progress-disclosure"><summary><span>Progress when</span><b>Next ' + escapeHtml(nextIncrementText) + '</b></summary><div><strong>' + escapeHtml(progressionRule) + '</strong><small>Today: ' + escapeHtml(targetLoadText + ' · ' + targetRepText + ' · ' + targetRpeText) + ' · ' + escapeHtml(String(set.setPrescription?.confidence || set.prescriptionConfidence || 'low') + ' confidence') + '</small></div></details>' : ""}
             ${isNext ? '<div class="next-set-banner"><span aria-hidden="true">&#10148;</span><span>' + escapeHtml(activeSetAcknowledged ? "Current set" : activeSetNotice || "Current set") + '</span></div>' : ""}
-            <div class="set-actions">
-              <button class="mini-button set-rest-button" type="button" data-action="start-timer" data-exercise-id="${exercise.id}" data-set-id="${set.id}"${workoutSafetyDisabledAttributes(timerSafety)}>${icon.clock} ${formatTimer(restSeconds)}</button>
-              ${isEditingHistorySession() ? '<label class="set-type-editor"><span>Set type</span><select data-action="set-type-override" data-set-id="' + set.id + '">' + ['warmup','straight','top','backoff','drop'].map((type) => '<option value="' + type + '" ' + (normalizeSetTypeCode(set.setType, set.isWarmup) === type ? 'selected' : '') + '>' + escapeHtml(setTypeLabels[type]) + '</option>').join('') + '</select></label>' : ''}
-              ${set.manualOverride && isEditingHistorySession() && set.classificationUndo ? '<button class="mini-button" type="button" data-action="undo-set-type-override" data-set-id="' + set.id + '">Undo type change</button>' : ''}
-              <button class="mini-button set-skip-button ${set.skipped ? "active" : ""}" type="button" data-action="toggle-skip-set" data-set-id="${set.id}"${workoutSafetyDisabledAttributes(skipSafety)}>${set.skipped ? "Skipped" : "Skip"}</button>
-              <button class="mini-button" type="button" data-action="delete-set" data-set-id="${set.id}">Remove</button>
-              ${visualState === "edited" ? '<span class="edited-indicator">Edited, not completed</span>' : ""}
-            </div>
+            <details class="set-tools-disclosure" ${isResting || visualState === "edited" || isEditingHistorySession() ? "open" : ""}>
+              <summary aria-label="Set options"><span aria-hidden="true">•••</span></summary>
+              <div class="set-tools-panel">
+                ${!setTypeSemantics(set).isWarmup ? '<details class="set-progress-disclosure"><summary><span>Progress when</span><b>Next ' + escapeHtml(nextIncrementText) + '</b></summary><div><strong>' + escapeHtml(progressionRule) + '</strong><small>Today: ' + escapeHtml(targetLoadText + ' · ' + targetRepText + ' · ' + targetRpeText) + ' · ' + escapeHtml(String(set.setPrescription?.confidence || set.prescriptionConfidence || 'low') + ' confidence') + '</small></div></details>' : ""}
+                <div class="set-actions">
+                  <button class="mini-button set-rest-button" type="button" data-action="start-timer" data-exercise-id="${exercise.id}" data-set-id="${set.id}"${workoutSafetyDisabledAttributes(timerSafety)}>${icon.clock} ${formatTimer(restSeconds)}</button>
+                  ${isEditingHistorySession() ? '<label class="set-type-editor"><span>Set type</span><select data-action="set-type-override" data-set-id="' + set.id + '">' + ['warmup','straight','top','backoff','drop'].map((type) => '<option value="' + type + '" ' + (normalizeSetTypeCode(set.setType, set.isWarmup) === type ? 'selected' : '') + '>' + escapeHtml(setTypeLabels[type]) + '</option>').join('') + '</select></label>' : ''}
+                  ${set.manualOverride && isEditingHistorySession() && set.classificationUndo ? '<button class="mini-button" type="button" data-action="undo-set-type-override" data-set-id="' + set.id + '">Undo type change</button>' : ''}
+                  <button class="mini-button set-skip-button ${set.skipped ? "active" : ""}" type="button" data-action="toggle-skip-set" data-set-id="${set.id}"${workoutSafetyDisabledAttributes(skipSafety)}>${set.skipped ? "Skipped" : "Skip"}</button>
+                  <button class="mini-button" type="button" data-action="delete-set" data-set-id="${set.id}">Remove</button>
+                  ${visualState === "edited" ? '<span class="edited-indicator">Edited, not completed</span>' : ""}
+                </div>
+              </div>
+            </details>
             ${renderTimer(set.id)}
           </div>
         `;
