@@ -40,4 +40,6 @@ The active Today workout was redesigned to reduce page height and visual weight 
 
 ## Hosted deployment evidence
 
-Pending publication and cache-bypassing production verification for this revision.
+- Commit `a8316ff2d6b92f4d701adaa56cbcbca0f98bec11` was pushed to GitHub `main`.
+- Cache-bypassing hosted reads confirmed the production `app-views.js` contains the single `set-previous` column and compact `set-tools-disclosure`, no longer contains the old `set-field-history` projection, and `sw.js` serves `comprehensive-fitness-pwa-v46`.
+- The existing in-app browser installation has an active workout and correctly reports that the update will wait until the workout is logged. Verification did not submit, cancel, or alter that workout. Fresh responsive rendering is covered by the 14-scenario protected UI suite; this installation will activate v46 after its draft-preservation gate clears.
