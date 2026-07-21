@@ -463,7 +463,11 @@
             mesocycle: currentMesocycle(),
             createdAt: sourceSnapshot.createdAt
           });
-          if (adjustedSnapshot) return legacyTargetFromSnapshot(adjustedSnapshot, { name: context.exerciseName || sourceSnapshot.exerciseId, resistanceType: target.resistanceType, increment: target.increment });
+          if (adjustedSnapshot) {
+            const templateExercise = context.template?.exercises?.find((item) => exerciseMatches(item.name, context.exerciseName || sourceSnapshot.exerciseId)) || {};
+            const executableSnapshot = prescriptionSnapshotWithTemplateStandard(adjustedSnapshot, templateExercise, { template: context.template, workoutId: context.workoutId });
+            return legacyTargetFromSnapshot(executableSnapshot, { name: context.exerciseName || sourceSnapshot.exerciseId, resistanceType: target.resistanceType, increment: target.increment });
+          }
         }
         const applicableTriggers = enteredReadinessTriggers(recovery).filter((trigger) => triggerAppliesToExercise(trigger, context.exerciseName || ""));
         const targetedConcern = applicableTriggers.some((trigger) => ["soreness", "pain"].includes(trigger.key));
@@ -815,6 +819,8 @@
         const templateNumericDomain = typeof templateNumericFields === "object" ? templateNumericFields : {
           "template-exercise-sets": { min: 1, max: 100, step: 1, integer: true },
           "template-exercise-reps": { min: 1, max: 1000, step: 1, integer: true },
+          "template-exercise-rep-min": { min: 1, max: 100, step: 1, integer: true },
+          "template-exercise-rep-max": { min: 1, max: 100, step: 1, integer: true },
           "template-exercise-rpe": { min: 5, max: 10, step: 0.5, integer: false },
           "template-exercise-increment": { min: 0.5, max: 10000, step: 0.5, integer: false },
           "template-exercise-rest": { min: 15, max: 3600, step: 15, integer: true }
@@ -828,7 +834,7 @@
         const allowedExerciseFields = new Set(["id", "externalId", "source", "sessionId", "name", "notes", "order", "primaryMuscle", "secondaryMuscle", "restSeconds", "resistanceType", "isBodyweight", "isDeload", "recommendationSnapshot", "basePrescription", "finalPrescription", "coachRecommendation", "executionBlocked", "safetyRestriction", "manualOverrides", "adjusted", "adjustmentReason", "triggerLabels", "canonicalExerciseId", "performanceExerciseId", "researchExerciseId", "identitySource", "identityVersion", "originalPrescription", "prescription", "recommendationVersion", "personalDataVersion", "researchDatabaseVersion", "programTargetContext", "appliedTargetContext", "overrideLocked"]);
         const allowedSetFields = new Set(["id", "exerciseId", "setNumber", "sequenceIndex", "sequence", "setTypeIndex", "setType", "reps", "weight", "weightUnit", "resistanceType", "rpe", "completed", "skipped", "edited", "isWarmup", "countsTowardScore", "countsTowardVolume", "countsTowardProgression", "addedLoad", "assistanceLoad", "durationSeconds", "distance", "distanceUnit", "targetReps", "targetRepMin", "targetRepMax", "targetWeight", "targetRpe", "targetRpeMin", "targetRpeMax", "targetRpeTolerance", "targetRestSeconds", "setPrescription", "previousComparableSet", "prescriptionReason", "prescriptionMode", "prescriptionConfidence", "validationWarning", "classificationSource", "classificationConfidence", "classifierVersion", "manualOverride", "reviewRequired", "classifiedAt", "sourceSetOrder", "originalImportedValue"]);
         const allowedTemplateFields = new Set(["id", "name", "notes", "createdAt", "updatedAt", "exercises", "mesocycleId", "mesocycleRevision", "trainingDayId", "source"]);
-        const allowedTemplateExerciseFields = new Set(["id", "name", "notes", "sets", "reps", "targetRpe", "increment", "restSeconds", "resistanceType", "isBodyweight", "primaryMuscle", "secondaryMuscle", "warmups", "setTypes", "canonicalExerciseId", "performanceExerciseId", "researchExerciseId", "identitySource", "identityVersion", "mesocycleSlotId", "assignmentId", "recommendationSnapshot"]);
+        const allowedTemplateExerciseFields = new Set(["id", "name", "notes", "sets", "reps", "repMin", "repMax", "standardWorkloadOverride", "targetRpe", "increment", "restSeconds", "resistanceType", "isBodyweight", "primaryMuscle", "secondaryMuscle", "warmups", "setTypes", "canonicalExerciseId", "performanceExerciseId", "researchExerciseId", "identitySource", "identityVersion", "mesocycleSlotId", "assignmentId", "recommendationSnapshot"]);
         const allowedSettingsFields = new Set(["weightUnit", "trainingGoal", "trainingGoalSource", "trainingGoalDisclosure", "nutritionPhase", "experienceLevel", "returningAfterGap", "trainingDaysPerWeek", "availableEquipment", "excludedExerciseIds", "theme", "colorPackage", "timerSound", "workoutCompletionSound", "timerVibration", "interactionVibration", "timerNotifications", "inAppRestAlerts", "restCompleteSound", "restCompleteSoundVolume", "restCompleteAutoDismissMs", "restCompleteLockScreenNotifications", "restCompleteAutoReturnToWorkout", "defaultRestSeconds", "notificationMessageDetail", "autoStartRestTimer", "autoHighlightNextSet", "autoScrollNextSet", "installGuideDismissed", "setupSoundConfirmed", "cloudWorkoutSyncConsent", "workoutCloudSync", "workoutCloudSyncConsentVersion", "readinessBaseline", "goal", "trainingStatus"]);
         const allowedMesocycleFields = new Set(["id", "schemaVersion", "builderMode", "rulesVersion", "type", "name", "status", "createdAt", "updatedAt", "durationWeeks", "durationBasis", "specializationMuscleGroups", "trainingDays", "split", "availableEquipment", "constraints", "exclusionResolution", "programmingContext", "planningStep", "availableMuscleGroupIds", "includedMuscleGroupIds", "equipmentUnavailableMuscleGroupIds", "omittedMuscleGroups", "scopeConfirmed", "currentProgramExerciseIds", "recentExerciseWindowDays", "pools", "activeExercises", "selectedPortfolio", "programSlots", "sessions", "programReview", "preservedProductiveExerciseIds", "versions", "lifecycle", "startedAt", "completedAt", "outcome", "reviewedAt", "review", "musclePriorities", "planningProgress", "guidedDays", "acceptedExceptions", "viabilityResult", "viabilityStale", "linkedTemplateIds", "creationResult", "revision"]);
         const allowedRecommendationFields = new Set(["recommendationId", "schemaVersion", "recommendationVersion", "engineVersion", "personalDataVersion", "researchDatabaseVersion", "mesocycleId", "exerciseId", "muscleGroupId", "exerciseScore", "muscleSpecificScore", "personalEvidenceWeight", "researchEvidenceWeight", "readinessAdjustment", "basePrescription", "finalPrescription", "explanation", "evidenceSummary", "confidence", "createdAt", "manualOverrides", "overrideLocked", "checksum", "request", "scores", "versions"]);
@@ -937,6 +943,8 @@
             const numericActions = {
               sets: "template-exercise-sets",
               reps: "template-exercise-reps",
+              repMin: "template-exercise-rep-min",
+              repMax: "template-exercise-rep-max",
               targetRpe: "template-exercise-rpe",
               increment: "template-exercise-increment",
               restSeconds: "template-exercise-rest"
@@ -945,6 +953,7 @@
               if (exercise[field] == null) return;
               copiedExercise[field] = assertTemplateNumericValue(exercise[field], action, `Template ${index + 1} exercise ${exerciseIndex + 1} ${field}`);
             });
+            if (exercise.standardWorkloadOverride != null && typeof exercise.standardWorkloadOverride !== "boolean") throw new Error(`Template ${index + 1} exercise ${exerciseIndex + 1} standard workload flag must be boolean.`);
             return copiedExercise;
           });
           return template;

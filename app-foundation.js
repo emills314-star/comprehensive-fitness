@@ -286,6 +286,8 @@
       const templateNumericFields = Object.freeze({
         "template-exercise-sets": Object.freeze({ field: "sets", label: "sets", min: 1, max: 100, step: 1, integer: true }),
         "template-exercise-reps": Object.freeze({ field: "reps", label: "repetitions", min: 1, max: 1000, step: 1, integer: true }),
+        "template-exercise-rep-min": Object.freeze({ field: "repMin", label: "minimum repetitions", min: 1, max: 100, step: 1, integer: true }),
+        "template-exercise-rep-max": Object.freeze({ field: "repMax", label: "maximum repetitions", min: 1, max: 100, step: 1, integer: true }),
         "template-exercise-rpe": Object.freeze({ field: "targetRpe", label: "target RPE", min: 5, max: 10, step: 0.5, integer: false }),
         "template-exercise-increment": Object.freeze({ field: "increment", label: "load increment", min: 0.5, max: 10000, step: 0.5, integer: false }),
         "template-exercise-rest": Object.freeze({ field: "restSeconds", label: "rest seconds", min: 15, max: 3600, step: 15, integer: true })
@@ -1965,14 +1967,16 @@
           };
         }
         const setTypes = [];
+        const savedRepRange = target.recommendationSnapshot?.manualOverrides?.at(-1)?.changes?.repRange?.to || null;
+        const executableRepRange = savedRepRange || prescription.repRange;
         if (prescription.setStructure === "top_set_backoff") {
-          setTypes.push({ type: "top", label: "Top set", setCount: Number(prescription.topSet?.count || 1), repMin: prescription.topSet?.repRange?.min || prescription.repRange.min, repMax: prescription.topSet?.repRange?.max || prescription.repRange.max, rpeMin: Math.max(5, Number(prescription.topSet?.targetRpe || prescription.targetRpe.min) - 1), rpeMax: Number(prescription.topSet?.targetRpe || prescription.targetRpe.max), rirMin: prescription.topSet?.targetRir, rirMax: prescription.topSet?.targetRir, restSeconds: prescription.restSeconds.target, countsTowardScore: true, countsTowardVolume: true });
-          setTypes.push({ type: "backoff", label: "Back-off set", setCount: Number(prescription.backoffSets?.count || Math.max(1, prescription.workingSets.target - 1)), repMin: prescription.backoffSets?.repRange?.min || prescription.repRange.min, repMax: prescription.backoffSets?.repRange?.max || prescription.repRange.max, rpeMin: Math.max(5, Number(prescription.backoffSets?.targetRpe || prescription.targetRpe.min) - 1), rpeMax: Number(prescription.backoffSets?.targetRpe || prescription.targetRpe.max), rirMin: prescription.backoffSets?.targetRir, rirMax: prescription.backoffSets?.targetRir, loadReductionMin: prescription.backoffSets?.loadReductionPercent?.min, loadReductionTarget: prescription.backoffSets?.loadReductionPercent?.target, loadReductionMax: prescription.backoffSets?.loadReductionPercent?.max, restSeconds: prescription.restSeconds.target, countsTowardScore: true, countsTowardVolume: true });
+          setTypes.push({ type: "top", label: "Top set", setCount: Number(prescription.topSet?.count || 1), repMin: savedRepRange ? executableRepRange.min : prescription.topSet?.repRange?.min || executableRepRange.min, repMax: savedRepRange ? executableRepRange.max : prescription.topSet?.repRange?.max || executableRepRange.max, rpeMin: Math.max(5, Number(prescription.topSet?.targetRpe || prescription.targetRpe.min) - 1), rpeMax: Number(prescription.topSet?.targetRpe || prescription.targetRpe.max), rirMin: prescription.topSet?.targetRir, rirMax: prescription.topSet?.targetRir, restSeconds: prescription.restSeconds.target, countsTowardScore: true, countsTowardVolume: true });
+          setTypes.push({ type: "backoff", label: "Back-off set", setCount: Number(prescription.backoffSets?.count || Math.max(1, prescription.workingSets.target - 1)), repMin: savedRepRange ? executableRepRange.min : prescription.backoffSets?.repRange?.min || executableRepRange.min, repMax: savedRepRange ? executableRepRange.max : prescription.backoffSets?.repRange?.max || executableRepRange.max, rpeMin: Math.max(5, Number(prescription.backoffSets?.targetRpe || prescription.targetRpe.min) - 1), rpeMax: Number(prescription.backoffSets?.targetRpe || prescription.targetRpe.max), rirMin: prescription.backoffSets?.targetRir, rirMax: prescription.backoffSets?.targetRir, loadReductionMin: prescription.backoffSets?.loadReductionPercent?.min, loadReductionTarget: prescription.backoffSets?.loadReductionPercent?.target, loadReductionMax: prescription.backoffSets?.loadReductionPercent?.max, restSeconds: prescription.restSeconds.target, countsTowardScore: true, countsTowardVolume: true });
         } else if (prescription.setStructure === "multiple_top_sets") {
-          setTypes.push({ type: "top", label: "Top set", setCount: prescription.workingSets.target, repMin: prescription.repRange.min, repMax: prescription.repRange.max, rpeMin: prescription.targetRpe.min, rpeMax: prescription.targetRpe.max, restSeconds: prescription.restSeconds.target, countsTowardScore: true, countsTowardVolume: true });
+          setTypes.push({ type: "top", label: "Top set", setCount: prescription.workingSets.target, repMin: executableRepRange.min, repMax: executableRepRange.max, rpeMin: prescription.targetRpe.min, rpeMax: prescription.targetRpe.max, restSeconds: prescription.restSeconds.target, countsTowardScore: true, countsTowardVolume: true });
         } else {
           const type = target.isDeload ? "deload" : "straight";
-          setTypes.push({ type, label: setTypeLabels[type] || "Working set", setCount: prescription.workingSets.target, repMin: prescription.repRange.min, repMax: prescription.repRange.max, rpeMin: prescription.targetRpe.min, rpeMax: prescription.targetRpe.max, restSeconds: prescription.restSeconds.target, countsTowardScore: true, countsTowardVolume: true });
+          setTypes.push({ type, label: setTypeLabels[type] || "Working set", setCount: prescription.workingSets.target, repMin: executableRepRange.min, repMax: executableRepRange.max, rpeMin: prescription.targetRpe.min, rpeMax: prescription.targetRpe.max, restSeconds: prescription.restSeconds.target, countsTowardScore: true, countsTowardVolume: true });
         }
         return {
           id: target.recommendationSnapshot.recommendationId,
@@ -3314,7 +3318,10 @@
             historyFallback = strongHistoryFallbackForTemplateExercise(templateExercise, options, snapshot);
             if (!historyFallback) return snapshot;
           }
-          if (!historyFallback && isUsableWorkoutPrescriptionSnapshot(snapshot)) return legacyTargetFromSnapshot(snapshot, templateExercise);
+          if (!historyFallback && isUsableWorkoutPrescriptionSnapshot(snapshot)) {
+            const executableSnapshot = prescriptionSnapshotWithTemplateStandard(snapshot, templateExercise, options);
+            return legacyTargetFromSnapshot(executableSnapshot, templateExercise);
+          }
         }
         const profile = progressionProfileForExercise(templateExercise.name);
         const sessionType = sessionTypeForTemplate(options.template);
@@ -3448,6 +3455,23 @@
         }
         target.text = targetText(target, target.reason);
         return target;
+      }
+
+      function prescriptionSnapshotWithTemplateStandard(snapshot, templateExercise = {}, options = {}) {
+        if (!snapshot?.finalPrescription || templateExercise.standardWorkloadOverride !== true || !prescriptionEngine) return snapshot;
+        const current = snapshot.finalPrescription;
+        const setCount = Number(templateExercise.sets || 0);
+        const repMin = Number(templateExercise.repMin || 0);
+        const repMax = Number(templateExercise.repMax || 0);
+        const override = {};
+        if (Number.isInteger(setCount) && setCount >= 1 && setCount !== Number(current.workingSets?.target || 0)) override.setCount = setCount;
+        if (repMin >= 1 && repMax >= repMin && (repMin !== Number(current.repRange?.min || 0) || repMax !== Number(current.repRange?.max || 0))) override.repRange = { min: repMin, max: repMax };
+        if (!Object.keys(override).length) return snapshot;
+        return prescriptionEngine.applyManualOverride(snapshot, override, {
+          workoutId: options.workoutId || options.template?.id || "saved-standard-workload",
+          reason: "Saved standard workload preference",
+          createdAt: options.createdAt || isoNow()
+        });
       }
 
       function sessionTypeForTemplate(template) {

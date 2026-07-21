@@ -236,9 +236,19 @@
         if (action === "cancel-delete-mesocycle") { pendingDeleteMesocycleId = ""; render(); }
         if (action === "confirm-delete-mesocycle") deleteMesocycleDraft(target.dataset.mesocycleId);
         if (action === "apply-prescription-override") applyPrescriptionOverride(target.dataset.exerciseId, target.closest("[data-override-form]"));
+        if (action === "apply-standard-workload") {
+          const form = target.closest("[data-standard-workload-form]");
+          applyPrescriptionOverride(target.dataset.exerciseId, form, { standardWorkload: true, saveTemplateStandard: form?.querySelector("[data-standard-save-template]")?.checked === true });
+        }
         if (action === "save-template") saveActiveSessionAsTemplate();
         if (action === "start-template") openTemplateStart(target.dataset.templateId);
         if (action === "return-active-workout") { templateStartFlow = null; activeSessionId = activeWorkoutId; setActiveTab("lift"); }
+        if (action === "return-to-active-session") {
+          activeSessionId = activeWorkoutId;
+          viewingHistorySessionId = "";
+          completedSummarySessionId = "";
+          setActiveTab("today", { force: true });
+        }
         if (action === "request-cancel-workout") requestCancelWorkout("workout", target.dataset.sessionId || "");
         if (action === "request-cancel-workout-from-template") requestCancelWorkout("template", activeWorkoutId);
         if (action === "keep-workout") closeCancelWorkout();

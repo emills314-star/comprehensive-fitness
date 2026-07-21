@@ -214,17 +214,21 @@
         return personalRecord?.exercise_name || personalRecord?.exerciseName || research?.exerciseById.get(researchId)?.exercise_name || fallback;
       }
 
-      function expandedOverrideSetTypes(prescription) {
+      function expandedOverrideSetTypes(prescription, requestedRepRange = null, requestedSetCount = null) {
+        const repRange = requestedRepRange || prescription.repRange;
+        const workingSetCount = Number(requestedSetCount || prescription.workingSets.target || 1);
+        const topSetCount = Math.min(workingSetCount, Number(prescription.topSet?.count || 1));
+        const backoffSetCount = Math.max(0, workingSetCount - topSetCount);
         if (prescription.setStructure === "top_set_backoff") return [
-          ...Array.from({ length: Number(prescription.topSet?.count || 1) }, () => ({ type: "top", repRange: prescription.topSet?.repRange || prescription.repRange, rpe: prescription.topSet?.targetRpe || prescription.targetRpe.max, reduction: 0 })),
-          ...Array.from({ length: Number(prescription.backoffSets?.count || Math.max(1, prescription.workingSets.target - 1)) }, () => ({ type: "backoff", repRange: prescription.backoffSets?.repRange || prescription.repRange, rpe: prescription.backoffSets?.targetRpe || prescription.targetRpe.max, reduction: Number(prescription.backoffSets?.loadReductionPercent?.target || 12) }))
+          ...Array.from({ length: topSetCount }, () => ({ type: "top", repRange: requestedRepRange || prescription.topSet?.repRange || repRange, rpe: prescription.topSet?.targetRpe || prescription.targetRpe.max, reduction: 0 })),
+          ...Array.from({ length: backoffSetCount }, () => ({ type: "backoff", repRange: requestedRepRange || prescription.backoffSets?.repRange || repRange, rpe: prescription.backoffSets?.targetRpe || prescription.targetRpe.max, reduction: Number(prescription.backoffSets?.loadReductionPercent?.target || 12) }))
         ];
-        if (prescription.setStructure === "multiple_top_sets") return Array.from({ length: prescription.workingSets.target }, () => ({ type: "top", repRange: prescription.topSet?.repRange || prescription.repRange, rpe: prescription.topSet?.targetRpe || prescription.targetRpe.max, reduction: 0 }));
+        if (prescription.setStructure === "multiple_top_sets") return Array.from({ length: workingSetCount }, () => ({ type: "top", repRange: requestedRepRange || prescription.topSet?.repRange || repRange, rpe: prescription.topSet?.targetRpe || prescription.targetRpe.max, reduction: 0 }));
         const type = prescription.recommendationType.includes("deload") ? "deload" : "straight";
-        return Array.from({ length: prescription.workingSets.target }, () => ({ type, repRange: prescription.repRange, rpe: prescription.targetRpe.max, reduction: 0 }));
+        return Array.from({ length: workingSetCount }, () => ({ type, repRange, rpe: prescription.targetRpe.max, reduction: 0 }));
       }
 
-      function applyPrescriptionOverride(exerciseId, form) {
+      function applyPrescriptionOverride(exerciseId, form, options = {}) {
         const exercise = exerciseById(exerciseId);
         if (!exercise?.recommendationSnapshot || !prescriptionEngine || !form) return;
         const current = exercise.recommendationSnapshot.finalPrescription;
@@ -238,6 +242,13 @@
         const safetyContext = safetyLocked ? currentSafetyContext : null;
         const read = (field) => form.querySelector(`[data-override-field="${field}"]`)?.value ?? "";
         const override = {};
+        if (options.standardWorkload) {
+          const standardSets = Number(read("sets"));
+          const standardRepMin = Number(read("rep-min"));
+          const standardRepMax = Number(read("rep-max"));
+          if (!Number.isInteger(standardSets) || standardSets < 1 || standardSets > 12) return showAppToast("Choose between 1 and 12 working sets.");
+          if (!Number.isInteger(standardRepMin) || !Number.isInteger(standardRepMax) || standardRepMin < 1 || standardRepMax > 50 || standardRepMin > standardRepMax) return showAppToast("Choose a valid rep range from 1 to 50.");
+        }
         const replacementName = String(read("exercise")).trim();
         let replacementId = "";
         if (replacementName) {
@@ -270,13 +281,35 @@
           const mesocycleId = read("mesocycle");
           if (mesocycleId && mesocycleId !== exercise.recommendationSnapshot.mesocycleId) override.mesocycleId = mesocycleId;
         }
-        const reason = String(read("reason")).trim() || "Intentional workout prescription override";
+        const reason = String(read("reason")).trim() || (options.standardWorkload ? "Standard workload preference" : "Intentional workout prescription override");
         if (override.deloadRecommendation && override.deloadRecommendation !== "normal" && !current.recommendationType.includes("deload")) {
           if (override.setCount === undefined) override.setCount = Math.max(1, Math.ceil(current.workingSets.target * 0.5));
           if (override.load === undefined && Number(current.prescribedLoad?.target || 0) > 0) override.load = Number((current.prescribedLoad.target * (override.deloadRecommendation === "full_program_deload" ? 0.85 : 0.9)).toFixed(2));
           override.setStructure = "straight_sets";
         }
-        if (!Object.keys(override).length) return showAppToast("No prescription field changed.");
+        const session = sessionById(exercise.sessionId);
+        const sourceTemplate = options.saveTemplateStandard && session?.templateId ? data.templates.find((item) => item.id === session.templateId) : null;
+        const sourceTemplateExercise = sourceTemplate?.exercises?.find((item) => exerciseMatches(item.name, exercise.name)) || null;
+        const standardTemplateValues = options.saveTemplateStandard && sourceTemplateExercise ? {
+          sets: Number(read("sets")),
+          reps: Math.round((Number(read("rep-min")) + Number(read("rep-max"))) / 2),
+          repMin: Number(read("rep-min")),
+          repMax: Number(read("rep-max")),
+          standardWorkloadOverride: true
+        } : null;
+        const templatesWithStandard = () => standardTemplateValues
+          ? data.templates.map((template) => template.id === sourceTemplate.id ? {
+              ...template,
+              updatedAt: isoNow(),
+              exercises: template.exercises.map((item) => item.id === sourceTemplateExercise.id ? { ...item, ...standardTemplateValues } : item)
+            } : template)
+          : data.templates;
+        if (!Object.keys(override).length) {
+          if (!standardTemplateValues) return showAppToast(options.standardWorkload ? "The evidence-based workload is already active." : "No prescription field changed.");
+          commit({ ...data, templates: templatesWithStandard() }, true, { invalidateAnalysis: false, deferPersistence: true });
+          showAppToast("Standard workload saved for future sessions.");
+          return;
+        }
         let snapshot;
         try {
           snapshot = prescriptionEngine.applyManualOverride(exercise.recommendationSnapshot, override, {
@@ -296,7 +329,7 @@
         const completedWorking = setsForExercise(exerciseId).filter((set) => isWorkingSet(set, "score") && set.completed);
         const incompleteWorking = setsForExercise(exerciseId).filter((set) => isWorkingSet(set, "score") && !set.completed);
         const warmups = setsForExercise(exerciseId).filter((set) => setTypeSemantics(set).isWarmup);
-        const desiredTypes = expandedOverrideSetTypes(prescription);
+        const desiredTypes = expandedOverrideSetTypes(prescription, override.repRange || null, override.setCount || null);
         const desiredIncomplete = desiredTypes.slice(Math.min(completedWorking.length, desiredTypes.length));
         const baseLoad = Number(prescription.prescribedLoad?.target || target.weight || 0);
         const rebuiltIncomplete = desiredIncomplete.map((role, index) => {
@@ -335,7 +368,6 @@
         const nextName = replacementId ? exerciseNameForPrescriptionId(replacementId, replacementName) : exercise.name;
         const overrideEntry = { ...snapshot.manualOverrides.at(-1), recommendationId: snapshot.recommendationId, exerciseRuntimeId: exercise.id, sessionId: exercise.sessionId };
         const nextExercise = { ...exercise, name: nextName, recommendationSnapshot: snapshot, basePrescription: snapshot.basePrescription, finalPrescription: prescription, prescription: target, adjustmentReason: target.adjustmentReason || "", isDeload: prescription.recommendationType.includes("deload"), executionBlocked: Boolean(prescription.executionBlocked), safetyRestriction: prescription.safetyRestriction || null, manualOverrides: [...(exercise.manualOverrides || []), overrideEntry], overrideLocked: true, restSeconds: prescription.restSeconds.target };
-        const session = sessionById(exercise.sessionId);
         const workoutRecommendations = session?.workoutPrescription?.recommendations || [];
         const workoutPrescription = session?.workoutPrescription ? {
           ...session.workoutPrescription,
@@ -352,10 +384,11 @@
           sessions: data.sessions.map((item) => item.id === exercise.sessionId ? { ...item, mesocycleId: snapshot.mesocycleId || item.mesocycleId, workoutPrescription } : item),
           exercises: data.exercises.map((item) => item.id === exercise.id ? nextExercise : item),
           sets: [...data.sets.filter((set) => !replacedSetIds.has(set.id)), ...rebuiltIncomplete],
+          templates: templatesWithStandard(),
           recommendationHistory,
           manualOverrides: [...data.manualOverrides, overrideEntry]
         }, true, { invalidateAnalysis: false, deferPersistence: true });
-        showAppToast("Prescription override saved and locked for this workout.");
+        showAppToast(options.standardWorkload ? (standardTemplateValues ? "Standard workload applied and saved for future sessions." : "Standard workload applied to this session.") : "Prescription override saved and locked for this workout.");
       }
 
       function patchExercise(exerciseId, patch, shouldRender = true) {
@@ -731,7 +764,7 @@
         let adjustedLiftCount = 0;
         template.exercises.forEach((templateExercise, index) => {
           const templateResistanceType = templateExercise.resistanceType || inferResistanceType(templateExercise.name, templateExercise);
-          const historyTarget = { ...coachTargetForTemplateExercise(templateExercise, { excludeSessionId: session.id, template, resistanceType: templateResistanceType }), resistanceType: templateResistanceType, isBodyweight: isBodyweightResistance(templateResistanceType) };
+          const historyTarget = { ...coachTargetForTemplateExercise(templateExercise, { excludeSessionId: session.id, template, resistanceType: templateResistanceType, workoutId: session.id }), resistanceType: templateResistanceType, isBodyweight: isBodyweightResistance(templateResistanceType) };
           if (!historyTarget.executionBlocked) {
             historyTarget.sets = Math.max(1, Number(historyTarget.sets || templateExercise.sets || 1));
             historyTarget.reps = Math.max(1, Number(historyTarget.reps || templateExercise.reps || 1));
@@ -740,7 +773,7 @@
           }
           historyTarget.restSeconds = Number(historyTarget.restSeconds || templateExercise.restSeconds || recommendedRestSeconds(templateExercise.name, { reps: historyTarget.reps, rpe: historyTarget.rpe, excludeSessionId: session.id }));
           const safetyRestricted = Boolean(recovery.illness || recovery.pain);
-          const adjustedTarget = options.useOriginal && !safetyRestricted ? { ...historyTarget, adjusted: false, adjustmentReason: "", triggerLabels: [] } : adjustTargetForRecovery(historyTarget, recoveryAdvice, { recovery, exerciseName: templateExercise.name, template });
+          const adjustedTarget = options.useOriginal && !safetyRestricted ? { ...historyTarget, adjusted: false, adjustmentReason: "", triggerLabels: [] } : adjustTargetForRecovery(historyTarget, recoveryAdvice, { recovery, exerciseName: templateExercise.name, template, workoutId: session.id });
           const target = { ...adjustedTarget, resistanceType: adjustedTarget.resistanceType || templateResistanceType, isBodyweight: isBodyweightResistance(adjustedTarget.resistanceType || templateResistanceType) };
           const resolvedResistanceType = target.resistanceType || templateResistanceType;
           if (target.adjusted) adjustedLiftCount += 1;

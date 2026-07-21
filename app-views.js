@@ -252,6 +252,7 @@
         if (activeWorkoutId === session.id) ensureActiveSet();
         const progress = workoutProgress();
         const workoutExercises = activeExercises();
+        const canReturnToActiveSession = historyReadOnly && hasActiveWorkout() && activeWorkoutId && activeWorkoutId !== session.id;
         const exerciseHtml = workoutExercises.length ? measurePerformance("lift:exerciseList", () => workoutExercises.map((exercise) => renderExercise(exercise)).join(""), { count: workoutExercises.length }) : "";
         return `
           <section class="view workout-view ${historyReadOnly ? "history-readonly" : ""} ${editingHistory ? "history-editing" : ""}">
@@ -314,6 +315,7 @@
             </div>
             ${pendingSubmitSessionId === session.id ? renderSubmitConfirmation(session) : ""}
             ${completedSummarySessionId === session.id ? renderCompletedWorkoutSummary(session) : ""}
+            ${canReturnToActiveSession ? '<button class="return-active-session-fab" type="button" data-action="return-to-active-session"><span aria-hidden="true">↩</span> Return to active session</button>' : ''}
           </section>
         `;
       }
@@ -1259,6 +1261,30 @@
         `;
       }
 
+      function renderStandardWorkloadControls(exercise) {
+        const snapshot = recommendationSnapshotForDisplay(exercise.recommendationSnapshot);
+        if (!snapshot || exercise.sessionId !== activeWorkoutId || isSessionSubmitted(activeSession())) return "";
+        const prescription = snapshot.finalPrescription;
+        const session = sessionById(exercise.sessionId);
+        const template = session?.templateId ? data.templates.find((item) => item.id === session.templateId) : null;
+        const templateExercise = template?.exercises?.find((item) => exerciseMatches(item.name, exercise.name));
+        const savedStandard = templateExercise?.standardWorkloadOverride === true;
+        const confidence = String(prescription.confidence || "evidence-backed").replaceAll("_", " ");
+        return `
+          <section class="standard-workload-card" data-standard-workload-form="${exercise.id}" data-override-form="${exercise.id}">
+            <div class="standard-workload-heading"><div><span>Standard workload</span><strong>${savedStandard ? "Your saved default" : "Evidence-based starting point"}</strong></div><span class="standard-workload-badge">${escapeHtml(confidence)}</span></div>
+            <p>Choose the normal hypertrophy dose for this exercise. These fields start with the same research prescription used by today’s recommendation.</p>
+            <div class="standard-workload-grid">
+              <label>Working sets<input type="number" min="1" max="12" step="1" value="${prescription.workingSets.target}" data-override-field="sets" /></label>
+              <label>Rep range<span class="range-inputs"><input type="number" min="1" max="50" step="1" value="${prescription.repRange.min}" data-override-field="rep-min" aria-label="Minimum standard repetitions" /><span aria-hidden="true">–</span><input type="number" min="1" max="50" step="1" value="${prescription.repRange.max}" data-override-field="rep-max" aria-label="Maximum standard repetitions" /></span></label>
+            </div>
+            <input type="hidden" value="Standard workload preference" data-override-field="reason" />
+            ${templateExercise ? '<label class="standard-workload-save"><input type="checkbox" data-standard-save-template checked /> Use as the default when this template starts again</label>' : '<p class="standard-workload-note">This workout has no source template, so the change applies to today only.</p>'}
+            <button class="secondary-action standard-workload-apply" type="button" data-action="apply-standard-workload" data-exercise-id="${exercise.id}">Apply standard workload</button>
+          </section>
+        `;
+      }
+
       function renderExercise(exercise) {
         const exerciseSets = setsForExercise(exercise.id);
         const isActiveExercise = exerciseSets.some((set) => set.id === activeSetId || timer?.setId === set.id);
@@ -1280,7 +1306,7 @@
         const workingSetIds = exerciseSets.filter((set) => isWorkingSet(set, "progression")).map((set) => set.id);
         const renderContext = { restSeconds, previousSets, warmupIds, workingSetIds, substituteValidation };
         const setHtml = measurePerformance("lift:setRows", () => exerciseSets.map((set) => renderSet(set, exercise, renderContext)).join(""), { exerciseId: exercise.id, count: exerciseSets.length });
-        const optionsHtml = measurePerformance("lift:exerciseOptions", () => renderPlateCalculator(exercise, firstWorkSet) + renderMuscleSelectors(exercise) + renderExerciseGuidance(exercise) + renderPrescriptionOverrideControls(exercise, resolvedSafetyContext), { exerciseId: exercise.id });
+        const optionsHtml = measurePerformance("lift:exerciseOptions", () => renderStandardWorkloadControls(exercise) + renderPlateCalculator(exercise, firstWorkSet) + renderMuscleSelectors(exercise) + renderExerciseGuidance(exercise) + renderPrescriptionOverrideControls(exercise, resolvedSafetyContext), { exerciseId: exercise.id });
         return `
           <article id="exercise-${exercise.id}" class="exercise-card ${isActiveExercise ? "active-exercise" : ""}">
             <div class="exercise-header">
