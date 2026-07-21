@@ -27,3 +27,11 @@ An existing installed-browser fixture reproduced the reported Today error with a
 - `docs/UI_UX.md`, `docs/ARCHITECTURE.md`, and `docs/ROADMAP.md` updated.
 - `docs/PROJECT.md` reviewed; product scope is unchanged.
 - `docs/DECISION_ENGINE.md` reviewed; no readiness, progression, fatigue, or recommendation rule changed.
+
+## Follow-up Today diagnosis
+
+- After the Progress repair, a persisted legacy/new-exercise prescription still reproduced the Today destination error. Its explanation could be a structured object, but the legacy rationale renderer called `.split()` directly on that saved value.
+- The trace then exposed a second Today-only `ReferenceError`: compact logger commit `4ae7e39` moved prior performance into field-aligned rows and removed `formatPreviousSetPerformance`, while the expanded legacy role rationale still called that formatter.
+- Commit `cc52f00` restores the resistance-aware prior-set formatter, adds a bounded `recommendationExplanationForDisplay` projection without rewriting persisted data, advances the installed-app cache to v45, and adds a browser regression for the exact structured legacy prescription path.
+- Ten focused mobile/desktop tests passed across Today legacy/Strong fallback, partial snapshots, template start, and Progress hard rejections. Static lint, integration, compact-density, PWA/native parity, service-worker cache/update, and privacy checks passed. The full 47-test public gate passed collectively after its two read-only Git checks were rerun outside the child-process sandbox.
+- Production reads confirmed service-worker v45 plus both repaired runtime boundaries. `https://comprehensive-fitness.vercel.app/?verify=cc52f00#today` rendered the app shell and Today navigation with zero destination-error elements at 390 x 844 and 1280 x 900.
