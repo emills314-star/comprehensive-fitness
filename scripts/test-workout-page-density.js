@@ -26,8 +26,9 @@ assert.match(html, /\.set-progress-disclosure > summary \{[^}]*min-height: 44px;
 assert.match(html, /\.set-tools-disclosure:not\(\[open\]\) \{[^}]*height: 0;/, "A collapsed set must not reserve vertical space for secondary controls");
 assert.match(html, /\.workout-view \.set-actions \.mini-button \{[^}]*min-height: 44px;/, "Compact set actions must retain a 44 px touch target");
 assert.match(html, /@media \(max-width: 390px\)[\s\S]*grid-template-columns: 28px minmax\(0, 1\.45fr\) minmax\(0, \.88fr\) minmax\(0, \.72fr\) minmax\(0, \.64fr\) 44px;/, "Narrow set rows must retain all six bounded columns");
-assert.match(html, /\.set-previous strong \{[^}]*color: #4b5563 !important;[^}]*font-size: \.56rem;[^}]*margin-top: 0;[^}]*transform: translateY\(-2px\)/, "Previous values must use compact dark-gray text centered with active values");
-assert.match(html, /\.set-previous small \{[^}]*color: #4b5563 !important;[^}]*font-size: \.46rem;[^}]*transform: translateY\(9px\)/, "Previous dates must retain a separate lower spacing band");
+assert.match(html, /\.set-previous \{[^}]*align-self: stretch;[^}]*grid-template-rows: auto minmax\(0, 1fr\) auto;/, "Previous must reserve separate label, active-value, and date rows");
+assert.match(html, /\.set-previous strong \{[^}]*align-self: center;[^}]*color: #4b5563 !important;[^}]*font-size: \.56rem;[^}]*margin: 0;[^}]*transform: translateY\(4px\)/, "Previous values must use compact dark-gray text centered with active values");
+assert.match(html, /\.set-previous small \{[^}]*align-self: end;[^}]*color: #4b5563 !important;[^}]*font-size: \.46rem;[^}]*margin-top: 2px;[^}]*transform: none;/, "Previous dates must retain a separate lower spacing band");
 assert.match(html, /\.resistance-type-disclosure > summary::after \{[^}]*color: var\(--current\)/, "The resistance disclosure arrow must use the app blue");
 assert.match(interactions, /if \(action === "open-session"\)[\s\S]*event\.preventDefault\(\);[\s\S]*setActiveTab\("today", \{ force: true \}\);/, "A Previous link must force-render its exact submitted session even while Today already owns the active destination");
 

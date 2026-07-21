@@ -13,7 +13,7 @@ The active Today logger now keeps set execution compact and makes every visible 
 - Resistance uses a two-row label/value summary with a blue disclosure arrow.
 - A recommendation snapshot's `finalPrescription` is authoritative for set roles/count, load, repetitions, and RPE. Prior performance remains evidence and progression context instead of replacing those targets.
 - Explicit top-set/back-off roles are retained during workout construction and described consistently in the recommendation summary.
-- Previous values now use smaller dark-gray text centered on the active load/reps/RPE baseline while the **Previous** label stays in the header position; the date occupies a distinct lower spacing band.
+- Previous uses a three-row cell: the label stays in the header position, the smaller dark-gray prior values share the active load/reps/RPE centerline, and the date occupies a dedicated bottom row without crowding either line.
 
 ## Verification
 
