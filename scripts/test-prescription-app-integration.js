@@ -26,6 +26,9 @@ assert.match(html, /await initializePrescriptionEvidence\(\)/, "Boot must wait f
 assert.match(html, /function unifiedPrescriptionSnapshot\(/, "All surfaces need one snapshot factory");
 assert.match(html, /coachRecommendationForExercise[\s\S]*unifiedPrescriptionSnapshot/, "Chart/coach recommendations must use the unified snapshot");
 assert.match(html, /coachTargetForTemplateExercise[\s\S]*unifiedPrescriptionSnapshot/, "Template targets must use the unified snapshot");
+const coachTargetSource = html.slice(html.indexOf("function coachTargetForTemplateExercise("), html.indexOf("function sessionTypeForTemplate("));
+assert.match(coachTargetSource, /isUsableWorkoutPrescriptionSnapshot\(snapshot\)[\s\S]*return legacyTargetFromSnapshot\(snapshot, templateExercise\);/, "Workout construction must convert the executable final prescription from the unified snapshot");
+assert.doesNotMatch(coachTargetSource, /legacyTargetFromSnapshot\(snapshot, templateExercise, \{ useBase: true \}\)/, "Workout construction must not prescribe the base dosage while displaying the final dosage");
 assert.match(html, /recommendationSnapshot: target\.recommendationSnapshot/, "Workout exercises must persist the exact generated snapshot");
 assert.match(html, /session\.workoutPrescription = \{/, "Workout start must persist a versioned workout prescription");
 assert.match(html, /recommendationHistory:/, "App data must preserve immutable recommendation history");

@@ -3314,7 +3314,7 @@
             historyFallback = strongHistoryFallbackForTemplateExercise(templateExercise, options, snapshot);
             if (!historyFallback) return snapshot;
           }
-          if (!historyFallback && isUsableWorkoutPrescriptionSnapshot(snapshot)) return legacyTargetFromSnapshot(snapshot, templateExercise, { useBase: true });
+          if (!historyFallback && isUsableWorkoutPrescriptionSnapshot(snapshot)) return legacyTargetFromSnapshot(snapshot, templateExercise);
         }
         const profile = progressionProfileForExercise(templateExercise.name);
         const sessionType = sessionTypeForTemplate(options.template);
