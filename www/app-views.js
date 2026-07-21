@@ -315,7 +315,7 @@
             </div>
             ${pendingSubmitSessionId === session.id ? renderSubmitConfirmation(session) : ""}
             ${completedSummarySessionId === session.id ? renderCompletedWorkoutSummary(session) : ""}
-            ${canReturnToActiveSession ? '<button class="return-active-session-fab" type="button" data-action="return-to-active-session"><span aria-hidden="true">↩</span> Return to active session</button>' : ''}
+            ${canReturnToActiveSession ? '<button class="return-active-session-fab" type="button" data-action="return-to-active-session">Return to active session</button>' : ''}
           </section>
         `;
       }
