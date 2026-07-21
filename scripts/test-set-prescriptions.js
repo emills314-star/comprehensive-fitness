@@ -120,6 +120,14 @@ assert.strictEqual(unifiedTop.targetLoad, 160, "The immutable final prescription
 assert.strictEqual(unifiedTop.targetReps, 6, "The immutable final prescription rep target must beat an older comparable rep count");
 assert.strictEqual(unifiedTop.progressionReady, false, "Using today's prescribed target must not falsely authorize the next increment");
 
+const unifiedRepProgression = runtime.setPrescriptionForRole({ templateExercise: { name: "Bench Press", increment: 5 }, target: { ...unifiedLightTarget, mode: "rep-progression", reps: 10, finalPrescription: { setStructure: "straight_sets", progressionAction: "add_one_rep" } }, setType: { type: "straight", repMin: 6, repMax: 10, rpeMin: 7, rpeMax: 8 }, previousSets: [{ id: "prior-straight", setType: "straight", setTypeIndex: 0, reps: 7, weight: 160, rpe: 8 }] });
+assert.strictEqual(unifiedRepProgression.targetReps, 8, "An authoritative unified prescription must add one rep from comparable history instead of copying a generic range target");
+const unifiedLoadProgression = runtime.setPrescriptionForRole({ templateExercise: { name: "Bench Press", increment: 5 }, target: { ...unifiedLightTarget, mode: "load-progression", reps: 10, weight: 165, finalPrescription: { setStructure: "straight_sets", progressionAction: "increase_load" } }, setType: { type: "straight", repMin: 6, repMax: 10, rpeMin: 7, rpeMax: 8 }, previousSets: [{ id: "prior-straight", setType: "straight", setTypeIndex: 0, reps: 10, weight: 160, rpe: 8 }] });
+assert.strictEqual(unifiedLoadProgression.targetLoad, 165);
+assert.strictEqual(unifiedLoadProgression.targetReps, 6, "A load increase must restart at the bottom of that set role's exact range");
+const unifiedReturn = runtime.setPrescriptionForRole({ templateExercise: { name: "Bench Press", increment: 5 }, target: { ...unifiedLightTarget, mode: "return", reps: 10, weight: 145, finalPrescription: { setStructure: "straight_sets", progressionAction: "establish_baseline" } }, setType: { type: "straight", repMin: 6, repMax: 10, rpeMin: 7, rpeMax: 8 }, previousSets: [{ id: "prior-straight", setType: "straight", setTypeIndex: 0, reps: 10, weight: 160, rpe: 8 }] });
+assert.strictEqual(unifiedReturn.targetReps, 9, "A return baseline should step down one rep from comparable history while preserving the role range");
+
 const unifiedLightTypes = runtime.resolvedSetTypesForPrescription({ setTypes: [{ type: "top", setCount: 1, countsTowardScore: true }, { type: "backoff", setCount: 1, countsTowardScore: true }] }, unifiedLightTarget);
 assert.deepStrictEqual(unifiedLightTypes.map((item) => item.type), ["top", "backoff"], "A unified top/back-off prescription must not be relabeled as straight work during a light session");
 
@@ -145,6 +153,8 @@ assert(html.includes('previousSummaryText'), "The Previous column must combine l
 assert(html.includes('data-session-id="\' + escapeHtml(previous.priorSessionId)'), "The Previous link must preserve the exact source session ID");
 assert(html.includes("Broad exercise guidance"));
 assert(html.includes("These values come from the same saved prescription shown above."));
+assert(html.includes("roleSessionPrescriptionLine(exercise, fallbackFinalLine)"), "The unified recommendation summary must be built from the same generated rows that are prepopulated");
+assert(html.includes("History and high watermark:"), "The expanded recommendation must explain its historical load anchor");
 assert(html.includes("exercise.recommendationSnapshot || unifiedPrescriptionSnapshot(exercise)"), "Broad guidance must reuse the unified prescription instead of hard-coded sets or reps");
 
 console.log("Set prescription tests passed (roles, ranges, history, equipment, labels, and reduced sessions).");

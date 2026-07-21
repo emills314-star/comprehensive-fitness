@@ -4072,12 +4072,48 @@
     };
   }
 
+  function historyTopSet(item, assisted = false) {
+    const sets = item?.loads?.map((load, index) => ({
+      load: number(load),
+      reps: number(item.reps?.[index] ?? item.reps?.[0]),
+      rpe: nullableNumber(item.rpes?.[index] ?? item.averageRpe)
+    })).filter((set) => set.load > 0) || [];
+    if (!sets.length) {
+      const load = number(firstPresent(item?.raw?.max_load, item?.raw?.weight, item?.raw?.load), 0);
+      if (!load) return null;
+      sets.push({ load, reps: number(item?.reps?.[0]), rpe: item?.averageRpe ?? null });
+    }
+    return sets.sort((left, right) => assisted
+      ? left.load - right.load || right.reps - left.reps || number(left.rpe, 99) - number(right.rpe, 99)
+      : right.load - left.load || right.reps - left.reps || number(left.rpe, 99) - number(right.rpe, 99))[0];
+  }
+
+  function historyHighWatermark(history, assisted = false) {
+    const candidates = history.map((item) => {
+      const set = historyTopSet(item, assisted);
+      if (!set) return null;
+      const estimatedPerformance = assisted
+        ? (set.reps * 1000) - set.load
+        : set.load * (1 + Math.max(0, set.reps) / 30);
+      return { ...set, date: item.date || null, performance: number(item.estimated1Rm, estimatedPerformance) || estimatedPerformance };
+    }).filter(Boolean);
+    return candidates.sort((left, right) => assisted
+      ? left.load - right.load || right.reps - left.reps || number(left.rpe, 99) - number(right.rpe, 99)
+      : right.performance - left.performance || right.load - left.load || right.reps - left.reps)[0] || null;
+  }
+
+  function historyReturnTarget(value, increment, assisted) {
+    const unrounded = value * (assisted ? 1.1 : 0.9);
+    if (increment <= 0) return unrounded;
+    return assisted
+      ? Math.ceil(unrounded / increment) * increment
+      : Math.floor(unrounded / increment) * increment;
+  }
+
   function prescribedLoadFromHistory(candidate, progression, deloadState, options = {}) {
-    const history = normalizeHistory(candidate.history).filter((item) => !item.prescribedReduction);
+    const history = normalizeHistory(candidate.history)
+      .filter((item) => !item.prescribedReduction && !item.pain && item.techniqueValid !== false);
     const last = history.at(-1);
-    const loads = last?.loads?.filter((value) => value > 0) || [];
-    const current = loads.length ? Math.max(...loads) : number(firstPresent(last?.raw?.max_load, last?.raw?.weight, last?.raw?.load), 0);
-    if (!current) return undefined;
     const exercise = candidate.researchExercise || {};
     const resistanceType = normalizeText(firstPresent(
       options.resistanceType,
@@ -4087,14 +4123,37 @@
       candidate.personalScore?.resistanceType
     ));
     const assisted = resistanceType === "assisted_bodyweight";
+    const latestTopSet = historyTopSet(last, assisted);
+    const current = latestTopSet?.load || 0;
+    if (!current) return undefined;
+    const highWatermark = historyHighWatermark(history, assisted);
+    const personalIncrement = number(candidate.personalPrescription?.recommended_load_increment?.value, 0);
+    const equipmentIncrement = number(options.equipmentIncrement, 0) || personalIncrement;
+    const asOfDate = dateOnly(firstPresent(options.createdAt, options.asOfDate));
+    const elapsedDays = asOfDate && last?.date
+      ? Math.floor((new Date(`${asOfDate}T00:00:00Z`).getTime() - new Date(`${last.date}T00:00:00Z`).getTime()) / 86400000)
+      : 0;
+    const returnAfterGap = progression.action === "establish_baseline"
+      && Number.isFinite(elapsedDays)
+      && elapsedDays > number(options.maximumReturnGapDays, DEFAULT_POLICY.maximumReturnGapDays);
+    const unit = candidate.personalScore?.weight_unit || candidate.personalScore?.weightUnit || null;
+    const watermarkText = highWatermark
+      ? `${round(highWatermark.load, 2)}${highWatermark.reps ? ` x ${highWatermark.reps}` : ""}${highWatermark.rpe ? ` @ RPE ${highWatermark.rpe}` : ""}${highWatermark.date ? ` on ${highWatermark.date}` : ""}`
+      : "unavailable";
     let target = current;
-    let reason = "Hold the most recent comparable load.";
-    if (progression.action === "increase_load" || progression.action === "increase_top_set_load" || progression.action === "increase_load_first") {
-      const personalIncrement = number(candidate.personalPrescription?.recommended_load_increment?.value, 0);
-      const equipmentIncrement = number(options.equipmentIncrement, 0) || personalIncrement;
+    let reason = `Hold the latest comparable load. The valid historical high watermark is ${watermarkText}; it is context and a return ceiling, not an automatic load jump.`;
+    if (returnAfterGap && highWatermark) {
+      const watermarkReturnTarget = historyReturnTarget(highWatermark.load, equipmentIncrement, assisted);
+      target = assisted ? Math.max(current, watermarkReturnTarget) : Math.min(current, watermarkReturnTarget);
+      reason = `Return after ${elapsedDays} days at the lower-stress of the latest comparable load and approximately 90% of the valid historical high watermark (${watermarkText})${assisted ? " by using about 10% more assistance" : ""}; establish a current baseline before progressing.`;
+    } else if (progression.action === "increase_load" || progression.action === "increase_top_set_load" || progression.action === "increase_load_first") {
       const percent = 2.5;
       target = equipmentIncrement > 0 ? (assisted ? Math.max(0, current - equipmentIncrement) : current + equipmentIncrement) : assisted ? current * (1 - percent / 100) : current * (1 + percent / 100);
-      reason = equipmentIncrement > 0 ? `Use the smallest available equipment increment (${equipmentIncrement} ${candidate.personalPrescription?.recommended_load_increment?.unit || "logged units"}).` : `Use the smallest practical increment (research default approximately ${percent}%).`;
+      const returningTowardWatermark = highWatermark && (assisted ? current > highWatermark.load : current < highWatermark.load);
+      if (returningTowardWatermark) target = assisted ? Math.max(target, highWatermark.load) : Math.min(target, highWatermark.load);
+      reason = equipmentIncrement > 0
+        ? `Use one available equipment increment (${equipmentIncrement} ${candidate.personalPrescription?.recommended_load_increment?.unit || "logged units"}) from the latest comparable load${returningTowardWatermark ? " toward" : " after accounting for"} the valid historical high watermark (${watermarkText}).`
+        : `Use the smallest practical increment (research default approximately ${percent}%) after accounting for the valid historical high watermark (${watermarkText}).`;
     }
     if (["exercise_deload", "muscle_group_deload", "full_program_deload"].includes(deloadState.state)) {
       const reduction = deloadState.state === "full_program_deload" ? 15 : 10;
@@ -4104,7 +4163,7 @@
     return {
       previous: round(current, 2),
       target: round(target, 2),
-      unit: candidate.personalScore?.weight_unit || candidate.personalScore?.weightUnit || null,
+      unit,
       adjustmentPercent: current ? round((target / current - 1) * 100, 1) : 0,
       direction: assisted ? "less_assistance_is_progress" : "more_external_load_is_progress",
       reason,

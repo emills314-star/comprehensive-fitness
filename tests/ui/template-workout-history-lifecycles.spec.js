@@ -371,6 +371,17 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await expect(lastTimeFacts.first()).toContainText("145");
     await expect(lastTimeFacts.first()).toContainText("8");
     await expect(lastTimeFacts.first()).toContainText("July 16");
+    const firstExercise = page.locator(".exercise-card").first();
+    const firstWorkingSet = firstExercise.locator(".set-row:not(.warmup)").first();
+    const generatedTarget = await firstWorkingSet.evaluate((row) => ({
+      load: row.querySelector('[data-action="set-weight"]').value,
+      reps: row.querySelector('[data-action="set-reps"]').value
+    }));
+    const recommendationSummary = firstExercise.locator(".unified-prescription > summary");
+    await expect(recommendationSummary, "the recommendation must show the exact generated load that prepopulates the row").toContainText(generatedTarget.load);
+    await expect(recommendationSummary, "the recommendation must show the exact generated rep target that prepopulates the row").toContainText(`x ${generatedTarget.reps} reps`);
+    await recommendationSummary.click();
+    await expect(firstExercise.locator(".role-prescription-list"), "expanded rationale must reuse the generated role rows").toContainText(`${generatedTarget.reps} reps`);
 
     const stored = await waitForPersisted(page, (data) => {
       const sessions = data.sessions.filter((item) => item.templateId === IDS.controlTemplate && item.workoutStarted && !item.submitted);

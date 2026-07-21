@@ -398,6 +398,36 @@ test("progression decisions produce an exact next action", () => {
   assert.strictEqual(technique.progressionMethod, "technique_quality_progression");
 });
 
+test("return prescriptions use a valid historical high watermark without jumping back to it", () => {
+  const engine = createPrescriptionEngine(fixture());
+  const history = [
+    exposure("improved", 285, 8, { date: "2025-10-01", loads: [225, 205, 205], reps: [8, 10, 9], topCount: 1, backoffCount: 2, straightCount: 0 }),
+    { ...exposure("improved", 400, 10, { date: "2025-10-08", loads: [315], reps: [2], pain: true, topCount: 1, straightCount: 0 }), technique_valid: false },
+    exposure("held", 250, 8, { date: "2025-10-15", loads: [205, 185, 185], reps: [7, 9, 8], topCount: 1, backoffCount: 2, straightCount: 0 })
+  ];
+  const snapshot = engine.prescribeExercise({
+    exerciseId: "personal_press",
+    muscleGroupId: "chest",
+    history,
+    equipmentIncrement: 5,
+    maximumReturnGapDays: 56,
+    createdAt: "2026-07-21T12:00:00.000Z"
+  });
+  assert.strictEqual(snapshot.finalPrescription.progressionAction, "establish_baseline");
+  assert.strictEqual(snapshot.finalPrescription.prescribedLoad.target, 200, "The return target should round down near 90% of the valid 225 high watermark");
+  assert.match(snapshot.finalPrescription.prescribedLoad.reason, /high watermark \(225 x 8 @ RPE 8 on 2025-10-01\)/);
+  assert.doesNotMatch(snapshot.finalPrescription.prescribedLoad.reason, /315/, "Painful or technique-invalid work must not become the high watermark");
+  const lowerLatestSnapshot = engine.prescribeExercise({
+    exerciseId: "personal_press",
+    muscleGroupId: "chest",
+    history: [...history.slice(0, 2), exposure("held", 180, 8, { date: "2025-10-15", loads: [150, 135, 135], reps: [7, 9, 8], topCount: 1, backoffCount: 2, straightCount: 0 })],
+    equipmentIncrement: 5,
+    maximumReturnGapDays: 56,
+    createdAt: "2026-07-21T12:00:00.000Z"
+  });
+  assert.strictEqual(lowerLatestSnapshot.finalPrescription.prescribedLoad.target, 150, "A high watermark must never make a return session jump above the safer latest comparable load");
+});
+
 test("exercise-specific deload stays scoped to one exercise", () => {
   const result = assessDeloadNeed({ exerciseHistory: regressionHistory, readiness: { hrvRatio: 1, sleepHours: 8, baselineSleepHours: 8 } });
   assert.strictEqual(result.state, "exercise_deload");

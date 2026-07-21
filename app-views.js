@@ -1442,6 +1442,7 @@
         return '<div class="role-prescription-list">' + Array.from(byRole.entries()).map(([role, set]) => {
           const load = formatResistance({ ...set, weight: Number(set.targetWeight ?? set.weight ?? 0), addedLoad: set.resistanceType === "bodyweight_plus_load" ? Number(set.targetWeight ?? set.addedLoad ?? 0) : set.addedLoad, assistanceLoad: set.resistanceType === "assisted_bodyweight" ? Number(set.targetWeight ?? set.assistanceLoad ?? 0) : set.assistanceLoad });
           const reps = targetRangeText(set.targetRepMin, set.targetRepMax || set.targetReps, " reps");
+          const targetReps = Number(set.targetReps || set.reps || set.targetRepMin || 0);
           const rpe = targetRangeText(set.targetRpeMin, set.targetRpeMax || set.targetRpe, " RPE");
           const previous = formatPreviousSetPerformance(set.previousComparableSet, exercise);
           const nextIncrement = set.setPrescription?.nextLoad != null
@@ -1450,8 +1451,27 @@
           const confidence = String(set.setPrescription?.confidence || set.prescriptionConfidence || "low");
           const progressionRule = set.setPrescription?.progressionRule || "Reach the top of the programmed range without exceeding the RPE target.";
           const reason = recommendationExplanationForDisplay(set.setPrescription?.reason || set.prescriptionReason, "This set follows its programmed role and comparable history.");
-          return '<div class="role-prescription"><span>' + escapeHtml(setTypeLabels[role] || "Working set") + '</span><div class="role-performance-grid"><div><small>Last time</small><strong>' + escapeHtml(previous) + '</strong></div><div><small>Today</small><strong>' + escapeHtml(load) + '</strong><b>' + escapeHtml(reps + ' · ' + rpe) + '</b></div></div><div class="role-progression-facts"><div><small>Confidence</small><strong>' + escapeHtml(confidence.charAt(0).toUpperCase() + confidence.slice(1)) + '</strong></div><div><small>Target reps</small><strong>' + escapeHtml(reps) + '</strong></div><div><small>Next increment</small><strong>' + escapeHtml(nextIncrement) + '</strong></div></div><div class="role-progress-rule"><small>Progress when</small><strong>' + escapeHtml(progressionRule) + '</strong></div><p>' + escapeHtml(reason) + '</p></div>';
+          return '<div class="role-prescription"><span>' + escapeHtml(setTypeLabels[role] || "Working set") + '</span><div class="role-performance-grid"><div><small>Last time</small><strong>' + escapeHtml(previous) + '</strong></div><div><small>Today</small><strong>' + escapeHtml(load + ' × ' + targetReps + ' reps') + '</strong><b>' + escapeHtml(reps + ' range · ' + rpe) + '</b></div></div><div class="role-progression-facts"><div><small>Confidence</small><strong>' + escapeHtml(confidence.charAt(0).toUpperCase() + confidence.slice(1)) + '</strong></div><div><small>Target reps</small><strong>' + escapeHtml(String(targetReps)) + '</strong></div><div><small>Next increment</small><strong>' + escapeHtml(nextIncrement) + '</strong></div></div><div class="role-progress-rule"><small>Progress when</small><strong>' + escapeHtml(progressionRule) + '</strong></div><p>' + escapeHtml(reason) + '</p></div>';
         }).join('') + '</div>';
+      }
+
+      function roleSessionPrescriptionLine(exercise, fallback = "") {
+        const groups = new Map();
+        setsForExercise(exercise.id).filter((set) => isWorkingSet(set, "score")).forEach((set) => {
+          const role = normalizeSetTypeCode(set.setType, set.isWarmup);
+          const group = groups.get(role) || { set, count: 0 };
+          group.count += 1;
+          groups.set(role, group);
+        });
+        if (!groups.size) return fallback;
+        return Array.from(groups.entries()).map(([role, group]) => {
+          const set = group.set;
+          const load = formatResistance({ ...set, weight: Number(set.targetWeight ?? set.weight ?? 0), addedLoad: set.resistanceType === "bodyweight_plus_load" ? Number(set.targetWeight ?? set.addedLoad ?? 0) : set.addedLoad, assistanceLoad: set.resistanceType === "assisted_bodyweight" ? Number(set.targetWeight ?? set.assistanceLoad ?? 0) : set.assistanceLoad });
+          const reps = targetRangeText(set.targetRepMin, set.targetRepMax || set.targetReps, " reps");
+          const targetReps = Number(set.targetReps || set.reps || set.targetRepMin || 0);
+          const rpe = targetRangeText(set.targetRpeMin, set.targetRpeMax || set.targetRpe, " RPE");
+          return `${group.count}x ${setTypeLabels[role] || "working"}: ${load} x ${targetReps} reps (${reps} range) @ ${rpe}`;
+        }).join(" | ");
       }
 
       function prescriptionMetric(value, suffix = "") {
@@ -1486,7 +1506,7 @@
           ["Deload scope", recommendationLabel(prescription.deloadStatus?.state || "normal")],
           ["Versions", `Rx ${displaySnapshot.recommendationVersion} · personal ${displaySnapshot.personalDataVersion} · research ${displaySnapshot.researchDatabaseVersion}`]
         ];
-        return '<div class="recommendation-rationale"><h4>Why This Recommendation</h4><p class="rationale-reason">' + escapeHtml(prescription.userExplanation) + '</p>' + (changes.length ? '<div class="prescription-change-list"><strong>What changed</strong><span>' + escapeHtml(changes.join(' · ')) + '</span></div>' : '') + '<div class="rationale-facts">' + scores.map(([label, value]) => '<div><span>' + escapeHtml(label) + '</span><strong>' + escapeHtml(value) + '</strong></div>').join('') + '</div><h4>Evidence</h4><ul>' + (prescription.evidenceSummary || []).map((item) => '<li>' + escapeHtml(item) + '</li>').join('') + '</ul><p class="settings-note"><strong>What would change this:</strong> ' + escapeHtml(prescription.substitutionRule || prescription.regressionRule) + '</p></div>';
+        return '<div class="recommendation-rationale"><h4>Why This Recommendation</h4><p class="rationale-reason">' + escapeHtml(prescription.userExplanation) + '</p>' + (prescription.prescribedLoad?.reason ? '<p class="settings-note"><strong>History and high watermark:</strong> ' + escapeHtml(prescription.prescribedLoad.reason) + '</p>' : '') + (changes.length ? '<div class="prescription-change-list"><strong>What changed</strong><span>' + escapeHtml(changes.join(' · ')) + '</span></div>' : '') + '<div class="rationale-facts">' + scores.map(([label, value]) => '<div><span>' + escapeHtml(label) + '</span><strong>' + escapeHtml(value) + '</strong></div>').join('') + '</div><h4>Evidence</h4><ul>' + (prescription.evidenceSummary || []).map((item) => '<li>' + escapeHtml(item) + '</li>').join('') + '</ul><p class="settings-note"><strong>What would change this:</strong> ' + escapeHtml(prescription.substitutionRule || prescription.regressionRule) + '</p></div>';
       }
 
       function renderUnifiedPrescriptionDetails(exercise, snapshot) {
@@ -1500,11 +1520,12 @@
         const loadText = finalLoad > 0 ? displayLoadNumber(finalLoad) + " " + data.settings.weightUnit + " × " : "";
         const structureText = final.setStructure === "top_set_backoff" ? "top + back-off" : final.setStructure.replaceAll('_', ' ');
         const baseLine = `${prescriptionMetric(base.workingSets, " sets")} · ${prescriptionMetric(base.repRange, " reps")} · RPE ${prescriptionMetric(base.targetRpe)}`;
-        const finalLine = `${prescriptionMetric(final.workingSets, " sets")} · ${loadText}${prescriptionMetric(final.repRange, " reps")} · RPE ${prescriptionMetric(final.targetRpe)}`;
+        const fallbackFinalLine = `${prescriptionMetric(final.workingSets, " sets")} · ${loadText}${prescriptionMetric(final.repRange, " reps")} · RPE ${prescriptionMetric(final.targetRpe)}`;
+        const finalLine = roleSessionPrescriptionLine(exercise, fallbackFinalLine);
         const summary = changed
           ? '<span class="prescription-tier"><span>Base prescription</span><strong>' + escapeHtml(baseLine) + '</strong></span><span class="prescription-tier readiness-tier"><span>Today only</span><strong>' + escapeHtml(finalLine) + '</strong></span><span class="why-link">Why this changed</span>'
           : '<span class="prescription-tier"><span>' + escapeHtml(recommendationActionLabel(final)) + '</span><strong>' + escapeHtml(finalLine + ' · ' + structureText) + '</strong></span><span class="why-link">Why This Recommendation</span>';
-        return '<details class="prescription-brief unified-prescription ' + (final.recommendationType.includes('deload') ? 'deload' : '') + ' ' + (changed ? 'readiness-adjusted' : '') + '"><summary data-action="toggle-prescription-rationale" aria-label="Why this recommendation?">' + summary + '</summary><div class="prescription-fact-grid"><div><span>Rest</span><strong>' + escapeHtml(prescriptionMetric(final.restSeconds, ' sec')) + '</strong></div><div><span>Frequency</span><strong>' + escapeHtml(prescriptionMetric(final.frequencyPerWeek, '/week')) + '</strong></div><div><span>Role</span><strong>' + escapeHtml(final.role.replaceAll('_', ' ')) + '</strong></div><div><span>Confidence</span><strong>' + escapeHtml(final.confidence) + '</strong></div></div><p class="prescription-action"><strong>Next action:</strong> ' + escapeHtml(final.progressionRule) + '</p>' + (changed ? '<p class="readiness-temporary"><strong>Temporary:</strong> ' + escapeHtml(final.readinessAdjustment.explanation + ' ' + final.readinessAdjustment.resumeRule) + '</p>' : '') + renderUnifiedEvidence(displaySnapshot) + '</details>';
+        return '<details class="prescription-brief unified-prescription ' + (final.recommendationType.includes('deload') ? 'deload' : '') + ' ' + (changed ? 'readiness-adjusted' : '') + '"><summary data-action="toggle-prescription-rationale" aria-label="Why this recommendation?">' + summary + '</summary><div class="prescription-fact-grid"><div><span>Rest</span><strong>' + escapeHtml(prescriptionMetric(final.restSeconds, ' sec')) + '</strong></div><div><span>Frequency</span><strong>' + escapeHtml(prescriptionMetric(final.frequencyPerWeek, '/week')) + '</strong></div><div><span>Role</span><strong>' + escapeHtml(final.role.replaceAll('_', ' ')) + '</strong></div><div><span>Confidence</span><strong>' + escapeHtml(final.confidence) + '</strong></div></div><p class="prescription-action"><strong>Next action:</strong> ' + escapeHtml(final.progressionRule) + '</p>' + (changed ? '<p class="readiness-temporary"><strong>Temporary:</strong> ' + escapeHtml(final.readinessAdjustment.explanation + ' ' + final.readinessAdjustment.resumeRule) + '</p>' : '') + renderRolePrescriptionDetails(exercise) + renderUnifiedEvidence(displaySnapshot) + '</details>';
       }
 
       function renderPrescriptionDetails(exercise) {

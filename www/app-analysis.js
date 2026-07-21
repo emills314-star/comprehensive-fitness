@@ -423,8 +423,18 @@
         const repProgression = target.mode === 'rep-progression' || target.finalPrescription?.progressionAction === 'add_one_rep';
         const progressesThisSet = repProgression && previousReps > 0 && previousReps === lowestPreviousReps && setTypeIndex === comparableRoleSets.findIndex((set) => Number(set.reps || 0) === lowestPreviousReps);
         const finalPrescriptionIsAuthoritative = Boolean(target.finalPrescription);
-        const rawTargetReps = finalPrescriptionIsAuthoritative
+        const progressionAction = target.finalPrescription?.progressionAction || "";
+        const historyBasedAuthoritativeReps = !previousReps
           ? Number(target.reps || repMax || repMin)
+          : ["increase_load", "increase_top_set_load", "increase_load_first"].includes(progressionAction)
+            ? repMin
+            : progressionAction === "add_one_rep"
+              ? previousReps + 1
+              : progressionAction === "establish_baseline"
+                ? Math.max(repMin, previousReps - 1)
+                : previousReps;
+        const rawTargetReps = finalPrescriptionIsAuthoritative
+          ? historyBasedAuthoritativeReps
           : target.mode === 'load-progression' ? Number(target.reps || repMin) : progressesThisSet ? previousReps + 1 : previousReps || Number(target.reps || repMax || repMin);
         const programmedTargetReps = Math.max(repMin, Math.min(repMax, rawTargetReps));
         const rpeMin = Number(setType.rpeMin || Math.max(1, Number(setType.rpeMax || target.rpe || 0) - 1));
