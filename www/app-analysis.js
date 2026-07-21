@@ -1477,8 +1477,21 @@
       }
 
       function renderRecommendation(recommendation) {
+        if (recommendation?.executionBlocked === true && recommendation?.executable === false) {
+          const reason = String(recommendation.message || recommendation.reason || "The recommendation is unavailable for the current workout constraints.");
+          return `
+            <article class="recommendation change blocked-recommendation" role="alert">
+              <span>Recommendation unavailable</span>
+              <h2>${escapeHtml(recommendation.reason === "unavailable_equipment" ? "Exercise unavailable with current equipment" : "Exercise is not currently executable")}</h2>
+              <p>${escapeHtml(reason)}</p>
+            </article>
+          `;
+        }
         if (recommendation.recommendationSnapshot) {
-          const snapshot = recommendation.recommendationSnapshot;
+          const snapshot = recommendationSnapshotForDisplay(recommendation.recommendationSnapshot);
+          if (!snapshot) {
+            return '<article class="recommendation change blocked-recommendation" role="alert"><span>Recommendation unavailable</span><h2>Saved recommendation needs to be rebuilt</h2><p>The lift history remains available, but this recommendation cannot be displayed safely.</p></article>';
+          }
           const base = snapshot.basePrescription;
           const prescription = snapshot.finalPrescription;
           const changed = Boolean(prescription.readinessAdjustment?.changed);
@@ -1523,7 +1536,7 @@
             ${execution.length ? '<div class="recommendation-execution"><b>Execution changes</b>' + execution.map((item) => '<span>' + escapeHtml(item) + '</span>').join('') + '</div>' : ''}
             ${recommendation.durationInSessions ? '<p><b>Duration:</b> ' + recommendation.durationInSessions + ' session' + (recommendation.durationInSessions === 1 ? '' : 's') + '.</p>' : ''}
             ${recommendation.returnToNormalCriteria ? '<p><b>Return to normal:</b> ' + escapeHtml(recommendation.returnToNormalCriteria) + '</p>' : ''}
-            <ul>${recommendation.evidence.map((item) => "<li>" + escapeHtml(item) + "</li>").join("")}</ul>
+            <ul>${(Array.isArray(recommendation.evidence) ? recommendation.evidence : []).map((item) => "<li>" + escapeHtml(item) + "</li>").join("")}</ul>
           </article>
         `;
       }

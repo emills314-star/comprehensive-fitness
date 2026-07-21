@@ -1727,6 +1727,63 @@
         })[prescription.progressionAction] || "Progress";
       }
 
+      function recommendationMetricForDisplay(value) {
+        const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+        const finite = (candidate) => candidate === null || candidate === undefined || candidate === "" || !Number.isFinite(Number(candidate)) ? null : Number(candidate);
+        const scalarValue = typeof value === "number" || typeof value === "string" ? finite(value) : null;
+        return {
+          min: finite(source.min) ?? scalarValue,
+          target: finite(source.target) ?? scalarValue,
+          max: finite(source.max) ?? scalarValue
+        };
+      }
+
+      function recommendationSnapshotForDisplay(snapshot) {
+        if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) return null;
+        const normalizePrescription = (source, fallback = null) => {
+          const candidate = source && typeof source === "object" && !Array.isArray(source) ? source : fallback;
+          if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return null;
+          const text = (value, defaultValue = "") => String(value ?? "").trim() || defaultValue;
+          const readiness = candidate.readinessAdjustment && typeof candidate.readinessAdjustment === "object"
+            ? {
+                ...candidate.readinessAdjustment,
+                explanation: text(candidate.readinessAdjustment.explanation),
+                resumeRule: text(candidate.readinessAdjustment.resumeRule)
+              }
+            : null;
+          return {
+            ...candidate,
+            recommendationType: text(candidate.recommendationType, "hold"),
+            setStructure: text(candidate.setStructure, "not_specified"),
+            role: text(candidate.role, "not_specified"),
+            confidence: text(candidate.confidence, text(snapshot.confidence, "not_available")),
+            workingSets: recommendationMetricForDisplay(candidate.workingSets ?? candidate.sets),
+            repRange: recommendationMetricForDisplay(candidate.repRange ?? candidate.reps),
+            targetRpe: recommendationMetricForDisplay(candidate.targetRpe ?? candidate.rpe),
+            targetRir: recommendationMetricForDisplay(candidate.targetRir ?? candidate.rir),
+            restSeconds: recommendationMetricForDisplay(candidate.restSeconds),
+            frequencyPerWeek: recommendationMetricForDisplay(candidate.frequencyPerWeek),
+            evidenceSummary: Array.isArray(candidate.evidenceSummary) ? candidate.evidenceSummary.map((item) => text(item)).filter(Boolean) : [],
+            userExplanation: text(candidate.userExplanation, text(snapshot.explanation?.summary || snapshot.message)),
+            progressionRule: text(candidate.progressionRule, "No executable progression change is available."),
+            substitutionRule: text(candidate.substitutionRule),
+            regressionRule: text(candidate.regressionRule),
+            readinessAdjustment: readiness
+          };
+        };
+        const finalPrescription = normalizePrescription(snapshot.finalPrescription);
+        if (!finalPrescription) return null;
+        const basePrescription = normalizePrescription(snapshot.basePrescription, snapshot.finalPrescription);
+        return {
+          ...snapshot,
+          recommendationVersion: String(snapshot.recommendationVersion || "unknown"),
+          personalDataVersion: String(snapshot.personalDataVersion || "unknown"),
+          researchDatabaseVersion: String(snapshot.researchDatabaseVersion || "unknown"),
+          basePrescription,
+          finalPrescription
+        };
+      }
+
       function legacyRecommendationFromSnapshot(snapshot, exerciseName) {
         if (!snapshot) return null;
         if (snapshot.executionBlocked === true && snapshot.executable === false && ["hard_constraint_rejection", "engine_failure"].includes(snapshot.type || snapshot.kind)) return snapshot;
@@ -2527,12 +2584,13 @@
         const catalog = new Map();
         analysisIndex.exerciseById.forEach((exercise) => {
           const id = canonicalExerciseId(exercise);
-          if (!id) return;
+          const name = String(exercise?.name || "").trim();
+          if (!id || !name) return;
           const session = sessions.get(exercise.sessionId);
-          const current = catalog.get(id) || { id, name: exercise.name.trim(), resistanceType: resistanceTypeFor(exercise), lastDate: "", submittedUses: 0 };
+          const current = catalog.get(id) || { id, name, resistanceType: resistanceTypeFor(exercise), lastDate: "", submittedUses: 0 };
           if (session) {
             current.submittedUses += 1;
-            if (!current.lastDate || session.date >= current.lastDate) { current.lastDate = session.date; current.name = exercise.name.trim(); current.resistanceType = resistanceTypeFor(exercise); }
+            if (!current.lastDate || session.date >= current.lastDate) { current.lastDate = session.date; current.name = name; current.resistanceType = resistanceTypeFor(exercise); }
           }
           catalog.set(id, current);
         });
@@ -3461,13 +3519,15 @@
 
       function renderExerciseGuidance(exercise) {
         const guidance = exerciseGuidanceFor(exercise.name);
-        const snapshot = exercise.recommendationSnapshot || unifiedPrescriptionSnapshot(exercise);
+        const snapshot = recommendationSnapshotForDisplay(exercise.recommendationSnapshot || unifiedPrescriptionSnapshot(exercise));
         const prescription = snapshot?.finalPrescription;
-        const setText = prescription ? `${prescription.workingSets.min}-${prescription.workingSets.max} (target ${prescription.workingSets.target})` : "See saved prescription";
-        const repText = prescription ? `${prescription.repRange.min}-${prescription.repRange.max} reps` : "Evidence unavailable";
-        const effortText = prescription?.targetRpe
+        const setText = prescription && prescription.workingSets.min !== null && prescription.workingSets.max !== null
+          ? `${prescription.workingSets.min}-${prescription.workingSets.max}${prescription.workingSets.target !== null ? ` (target ${prescription.workingSets.target})` : ""}`
+          : "See saved prescription";
+        const repText = prescription && prescription.repRange.min !== null && prescription.repRange.max !== null ? `${prescription.repRange.min}-${prescription.repRange.max} reps` : "Evidence unavailable";
+        const effortText = prescription && prescription.targetRpe.min !== null && prescription.targetRpe.max !== null
           ? `RPE ${prescription.targetRpe.min}-${prescription.targetRpe.max}`
-          : prescription?.targetRir ? `RIR ${prescription.targetRir.min}-${prescription.targetRir.max}` : "See saved prescription";
+          : prescription && prescription.targetRir.min !== null && prescription.targetRir.max !== null ? `RIR ${prescription.targetRir.min}-${prescription.targetRir.max}` : "See saved prescription";
         return `
           <div class="exercise-guidance">
             <strong>Broad exercise guidance</strong>

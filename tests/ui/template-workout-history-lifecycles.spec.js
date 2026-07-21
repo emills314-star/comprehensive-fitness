@@ -387,6 +387,82 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     expect(browserErrors, "template-start lifecycle browser errors").toEqual([]);
   });
 
+  test("an equipment-ineligible lift stays bounded in Progress and a newly started template", async ({ page }) => {
+    test.setTimeout(120_000);
+    const browserErrors = collectBrowserErrors(page);
+    const fixture = buildTemplateLifecycleFixture();
+    const unavailableName = "Cable Fly";
+    fixture.settings.availableEquipment = ["barbell", "plates", "bench", "rack"];
+    fixture.exercises = fixture.exercises
+      .filter((exercise) => exercise.id === IDS.historyBenchExercise)
+      .map((exercise) => ({ ...exercise, name: unavailableName, primaryMuscle: "Chest", secondaryMuscle: "" }));
+    fixture.sets = fixture.sets.filter((set) => set.exerciseId === IDS.historyBenchExercise);
+    fixture.templates[0] = {
+      ...fixture.templates[0],
+      name: "Public Synthetic New Cable Exercise",
+      exercises: [{
+        id: "public-synthetic-template-cable-fly",
+        name: unavailableName,
+        primaryMuscle: "Chest",
+        secondaryMuscle: "",
+        resistanceType: "external",
+        isBodyweight: false,
+        sets: 2,
+        reps: 12,
+        targetRpe: 8,
+        increment: 5,
+        restSeconds: 90,
+        warmups: []
+      }]
+    };
+    await installFixture(page, fixture);
+
+    await page.locator('[data-action="set-tab"][data-tab="progress"]').click();
+    await page.locator('[data-action="set-progress-view"][data-progress-view="lifts"]').click();
+    await expect(page.locator(".destination-error"), "an unavailable-equipment recommendation must not crash the selected-lift destination").toHaveCount(0);
+    await expect(page.getByRole("combobox", { name: "Search or select exercise" })).toHaveValue(unavailableName, { timeout: 45_000 });
+    await expect(page.locator(".recommendation.blocked-recommendation")).toContainText("unavailable");
+
+    await openPlan(page);
+    await page.locator(`[data-action="start-template"][data-template-id="${IDS.controlTemplate}"]`).click();
+    await page.locator('[data-action="continue-template-start"]').click();
+    await page.locator('[data-action="use-usual-readiness"]').click();
+    await expect(page.locator(".destination-error"), "a newly started unavailable-equipment exercise must remain inside its workout card").toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Public Synthetic New Cable Exercise", exact: true })).toBeVisible({ timeout: 45_000 });
+    await expect(page.locator(".exercise-card")).toHaveCount(1);
+    await expect(page.locator(".exercise-card .program-warning.blocking")).toContainText("cannot be used");
+    expect(browserErrors, "bounded unavailable-equipment paths must not emit browser errors").toEqual([]);
+  });
+
+  test("a persisted partial active recommendation renders without rewriting its audit snapshot", async ({ page }) => {
+    const browserErrors = collectBrowserErrors(page);
+    const fixture = buildActiveWorkoutLifecycleFixture();
+    const partialSnapshot = {
+      schemaVersion: "prescription-snapshot/public-synthetic-legacy",
+      recommendationId: "public-synthetic-active-partial",
+      exerciseId: "ex_barbell_bench_press",
+      muscleGroupId: "mg_chest_sternal",
+      confidence: "moderate",
+      finalPrescription: {
+        exerciseId: "ex_barbell_bench_press",
+        recommendationType: "hold",
+        sets: 2,
+        repRange: { min: 8, max: 10, target: 9 },
+        targetRpe: { min: 7, max: 8 },
+        restSeconds: { min: 90, max: 150, target: 120 }
+      }
+    };
+    fixture.exercises.find((exercise) => exercise.id === IDS.activeBenchExercise).recommendationSnapshot = structuredClone(partialSnapshot);
+    await installFixture(page, fixture);
+
+    await expect(page.locator(".destination-error"), "a persisted partial recommendation must not replace Today with the destination error surface").toHaveCount(0);
+    await expect(page.locator(`#exercise-${IDS.activeBenchExercise}`)).toBeVisible();
+    await expect(page.locator(`#exercise-${IDS.activeBenchExercise} .unified-prescription`)).toContainText("2 sets");
+    const inMemoryBytes = await page.evaluate((exerciseId) => JSON.stringify(data.exercises.find((exercise) => exercise.id === exerciseId).recommendationSnapshot), IDS.activeBenchExercise);
+    expect(inMemoryBytes, "display normalization must leave the stored active snapshot byte-equivalent").toBe(JSON.stringify(partialSnapshot));
+    expect(browserErrors, "partial active recommendation presentation must not emit browser errors").toEqual([]);
+  });
+
   test("legacy Back on a catalog Seated Cable Row resolves to its canonical upper-back target and remains auditable", async ({ page }) => {
     test.setTimeout(120_000);
     const fixture = buildTemplateLifecycleFixture();

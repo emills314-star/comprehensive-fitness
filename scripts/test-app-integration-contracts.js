@@ -990,6 +990,40 @@ test("active and template recommendation snapshots require schema, checksum, ide
   assert.equal(JSON.stringify(historicalSnapshot), historicalBefore, "Submitted historical snapshot bytes must remain untouched and unvalidated");
 });
 
+test("recommendation presentation tolerates legacy partial snapshots without mutating audit history", () => {
+  const recommendationMetricForDisplay = evaluateFunction("recommendationMetricForDisplay");
+  const recommendationSnapshotForDisplay = evaluateFunction("recommendationSnapshotForDisplay", { recommendationMetricForDisplay });
+  const historical = {
+    schemaVersion: "prescription-snapshot/public-synthetic-legacy",
+    recommendationId: "public-synthetic-legacy-partial",
+    confidence: "moderate",
+    finalPrescription: {
+      exerciseId: "ex_barbell_bench_press",
+      recommendationType: "hold",
+      sets: 2,
+      repRange: { min: 8, max: 10, target: 9 },
+      targetRpe: { min: 7, max: 8 },
+      restSeconds: { min: 90, max: 150, target: 120 }
+    }
+  };
+  const before = JSON.stringify(historical);
+  const display = recommendationSnapshotForDisplay(historical);
+  assert.equal(display.finalPrescription.workingSets.target, 2);
+  assert.equal(display.finalPrescription.setStructure, "not_specified");
+  assert.equal(display.finalPrescription.role, "not_specified");
+  assert.deepEqual(plain(display.finalPrescription.evidenceSummary), []);
+  assert.equal(display.basePrescription.repRange.target, 9, "a missing legacy base prescription must use a display-only final-prescription fallback");
+  assert.equal(JSON.stringify(historical), before, "presentation normalization must not rewrite immutable historical bytes");
+  assert.equal(recommendationSnapshotForDisplay({ executionBlocked: true, executable: false }), null);
+
+  const analysis = fs.readFileSync(path.join(APP_ROOT, "app-analysis.js"), "utf8");
+  const views = fs.readFileSync(path.join(APP_ROOT, "app-views.js"), "utf8");
+  assert.match(analysis, /executionBlocked\s*===\s*true[\s\S]*blocked-recommendation/, "Progress lift recommendations must render hard rejections as bounded cards");
+  assert.match(analysis, /Array\.isArray\(recommendation\.evidence\)/, "legacy recommendations must not assume evidence is an array");
+  assert.match(views, /recommendationSnapshotForDisplay\(exercise\.recommendationSnapshot\)/, "Today must normalize saved snapshots only at its display boundary");
+  assert.match(views, /program-warning blocking[\s\S]*cannot be used with the current workout constraints/, "Today must bound non-executable template exercises inside their workout card");
+});
+
 test("conflict-mode and rejected executable imports perform zero writes while accepted imports rebase once", async () => {
   const makeContext = ({ conflict = false, snapshotError = null } = {}) => {
     const events = { writes: [], removals: [], renders: 0, snapshotChecks: 0, evidenceInstalls: 0, invalidations: 0, runtimeSaves: 0 };

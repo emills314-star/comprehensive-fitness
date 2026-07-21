@@ -384,7 +384,7 @@
       function renderTodayPlan() {
         const session = activeSession();
         const exercises = activeExercises();
-        const savedPrescriptions = exercises.map((exercise) => exercise.recommendationSnapshot?.finalPrescription).filter(Boolean);
+        const savedPrescriptions = exercises.map((exercise) => recommendationSnapshotForDisplay(exercise.recommendationSnapshot)?.finalPrescription).filter(Boolean);
         const adjustedCount = savedPrescriptions.filter((prescription) => prescription.readinessAdjustment?.changed).length;
         const highestPriorityType = ["full_program_deload", "muscle_group_deload", "exercise_deload", "rotate_exercise", "substitute", "light_session", "reduce_volume", "progress", "hold", "normal"].find((type) => savedPrescriptions.some((prescription) => prescription.recommendationType === type));
         const readiness = savedPrescriptions.length
@@ -1069,7 +1069,7 @@
       function renderActiveWorkoutAdvice() {
         const session = activeSession();
         if (!session?.templateId) return "";
-        const snapshots = activeExercises().map((exercise) => exercise.recommendationSnapshot).filter(Boolean);
+        const snapshots = activeExercises().map((exercise) => recommendationSnapshotForDisplay(exercise.recommendationSnapshot)).filter(Boolean);
         const adjusted = snapshots.filter((snapshot) => snapshot.finalPrescription.readinessAdjustment?.changed);
         const type = ["full_program_deload", "muscle_group_deload", "exercise_deload", "rotate_exercise", "substitute", "light_session", "reduce_volume", "progress", "hold", "normal"].find((candidate) => snapshots.some((snapshot) => snapshot.finalPrescription.recommendationType === candidate)) || "normal";
         const items = activeExercises().map((exercise) => {
@@ -1216,13 +1216,14 @@
       }
 
       function renderPrescriptionOverrideControls(exercise, precomputedSafetyContext = null) {
-        const snapshot = exercise.recommendationSnapshot;
+        const rawSnapshot = exercise.recommendationSnapshot;
+        const snapshot = recommendationSnapshotForDisplay(rawSnapshot);
         if (!snapshot || exercise.sessionId !== activeWorkoutId || isSessionSubmitted(activeSession())) return "";
         const prescription = snapshot.finalPrescription;
         const restriction = prescription.safetyRestriction || null;
         const hasSafetyRestriction = restriction?.status === "blocked" || restriction?.status === "resolved_by_confirmed_substitute";
         const currentSafetyContext = hasSafetyRestriction
-          ? precomputedSafetyContext || safetySubstituteContext(snapshot, { exercise, session: sessionById(exercise.sessionId) })
+          ? precomputedSafetyContext || safetySubstituteContext(rawSnapshot, { exercise, session: sessionById(exercise.sessionId) })
           : null;
         const safetyLocked = prescription.executionBlocked === true
           || restriction?.status === "blocked"
@@ -1431,14 +1432,21 @@
       }
 
       function prescriptionMetric(value, suffix = "") {
-        if (!value) return "—";
-        const target = value.target !== undefined ? value.target : value.min === value.max ? value.min : null;
-        return (target !== null ? target + " (" + value.min + "-" + value.max + ")" : value.min + "-" + value.max) + suffix;
+        if (!value || typeof value !== "object") return "—";
+        const finite = (candidate) => candidate === null || candidate === undefined || !Number.isFinite(Number(candidate)) ? null : Number(candidate);
+        const min = finite(value.min);
+        const max = finite(value.max);
+        const target = finite(value.target) ?? (min !== null && min === max ? min : null);
+        if (min === null && max === null && target === null) return "—";
+        const range = min !== null && max !== null && min !== max ? ` (${min}-${max})` : "";
+        return `${target ?? min ?? max}${range}${suffix}`;
       }
 
       function renderUnifiedEvidence(snapshot) {
-        const prescription = snapshot.finalPrescription;
-        const base = snapshot.basePrescription;
+        const displaySnapshot = recommendationSnapshotForDisplay(snapshot);
+        if (!displaySnapshot) return "";
+        const prescription = displaySnapshot.finalPrescription;
+        const base = displaySnapshot.basePrescription;
         const sourceUnit = prescription.prescribedLoad?.unit || data.settings.weightUnit;
         const previousLoad = Number(convertWeightValue(prescription.prescribedLoad?.previous || base.prescribedLoad?.previous || 0, sourceUnit, data.settings.weightUnit));
         const targetLoad = Number(convertWeightValue(prescription.prescribedLoad?.target || 0, sourceUnit, data.settings.weightUnit));
@@ -1448,32 +1456,38 @@
         if (previousLoad && targetLoad && previousLoad !== targetLoad) changes.push('Load ' + displayLoadNumber(previousLoad) + ' → ' + displayLoadNumber(targetLoad) + ' ' + data.settings.weightUnit);
         if (base.targetRpe.min !== prescription.targetRpe.min || base.targetRpe.max !== prescription.targetRpe.max) changes.push('RPE ' + base.targetRpe.min + '–' + base.targetRpe.max + ' → ' + prescription.targetRpe.min + '–' + prescription.targetRpe.max);
         const scores = [
-          ["Personal evidence", Math.round(prescription.personalEvidenceWeight * 100) + "%"],
-          ["Research evidence", Math.round(prescription.researchEvidenceWeight * 100) + "%"],
-          ["Exercise score", Math.round(prescription.exerciseScore) + "/100"],
+          ["Personal evidence", Number.isFinite(Number(prescription.personalEvidenceWeight)) ? Math.round(prescription.personalEvidenceWeight * 100) + "%" : "Unavailable"],
+          ["Research evidence", Number.isFinite(Number(prescription.researchEvidenceWeight)) ? Math.round(prescription.researchEvidenceWeight * 100) + "%" : "Unavailable"],
+          ["Exercise score", Number.isFinite(Number(prescription.exerciseScore)) ? Math.round(prescription.exerciseScore) + "/100" : "Unavailable"],
           ["Staleness", prescription.staleness?.label || "Insufficient evidence"],
           ["Deload scope", recommendationLabel(prescription.deloadStatus?.state || "normal")],
-          ["Versions", `Rx ${snapshot.recommendationVersion} · personal ${snapshot.personalDataVersion} · research ${snapshot.researchDatabaseVersion}`]
+          ["Versions", `Rx ${displaySnapshot.recommendationVersion} · personal ${displaySnapshot.personalDataVersion} · research ${displaySnapshot.researchDatabaseVersion}`]
         ];
         return '<div class="recommendation-rationale"><h4>Why This Recommendation</h4><p class="rationale-reason">' + escapeHtml(prescription.userExplanation) + '</p>' + (changes.length ? '<div class="prescription-change-list"><strong>What changed</strong><span>' + escapeHtml(changes.join(' · ')) + '</span></div>' : '') + '<div class="rationale-facts">' + scores.map(([label, value]) => '<div><span>' + escapeHtml(label) + '</span><strong>' + escapeHtml(value) + '</strong></div>').join('') + '</div><h4>Evidence</h4><ul>' + (prescription.evidenceSummary || []).map((item) => '<li>' + escapeHtml(item) + '</li>').join('') + '</ul><p class="settings-note"><strong>What would change this:</strong> ' + escapeHtml(prescription.substitutionRule || prescription.regressionRule) + '</p></div>';
       }
 
       function renderUnifiedPrescriptionDetails(exercise, snapshot) {
-        const base = snapshot.basePrescription;
-        const final = snapshot.finalPrescription;
+        const displaySnapshot = recommendationSnapshotForDisplay(snapshot);
+        if (!displaySnapshot) return '<div class="program-warning blocking" role="alert"><strong>Recommendation unavailable</strong><span>This exercise cannot be used until its saved recommendation is rebuilt.</span></div>';
+        const base = displaySnapshot.basePrescription;
+        const final = displaySnapshot.finalPrescription;
         const changed = Boolean(final.readinessAdjustment?.changed);
-        const baseLine = `${base.workingSets.target} sets · ${base.repRange.min}-${base.repRange.max} reps · RPE ${base.targetRpe.min}-${base.targetRpe.max}`;
-        const finalLine = `${final.workingSets.target} sets · ${final.repRange.min}-${final.repRange.max} reps · RPE ${final.targetRpe.min}-${final.targetRpe.max}`;
+        const baseLine = `${prescriptionMetric(base.workingSets, " sets")} · ${prescriptionMetric(base.repRange, " reps")} · RPE ${prescriptionMetric(base.targetRpe)}`;
+        const finalLine = `${prescriptionMetric(final.workingSets, " sets")} · ${prescriptionMetric(final.repRange, " reps")} · RPE ${prescriptionMetric(final.targetRpe)}`;
         const summary = changed
           ? '<span class="prescription-tier"><span>Base prescription</span><strong>' + escapeHtml(baseLine) + '</strong></span><span class="prescription-tier readiness-tier"><span>Today only</span><strong>' + escapeHtml(finalLine) + '</strong></span><span class="why-link">Why this changed</span>'
           : '<span class="prescription-tier"><span>' + escapeHtml(recommendationActionLabel(final)) + '</span><strong>' + escapeHtml(finalLine + ' · ' + final.setStructure.replaceAll('_', ' ')) + '</strong></span><span class="why-link">Why This Recommendation</span>';
-        return '<details class="prescription-brief unified-prescription ' + (final.recommendationType.includes('deload') ? 'deload' : '') + ' ' + (changed ? 'readiness-adjusted' : '') + '"><summary data-action="toggle-prescription-rationale" aria-label="Why this recommendation?">' + summary + '</summary><div class="prescription-fact-grid"><div><span>Rest</span><strong>' + escapeHtml(prescriptionMetric(final.restSeconds, ' sec')) + '</strong></div><div><span>Frequency</span><strong>' + escapeHtml(prescriptionMetric(final.frequencyPerWeek, '/week')) + '</strong></div><div><span>Role</span><strong>' + escapeHtml(final.role.replaceAll('_', ' ')) + '</strong></div><div><span>Confidence</span><strong>' + escapeHtml(final.confidence) + '</strong></div></div><p class="prescription-action"><strong>Next action:</strong> ' + escapeHtml(final.progressionRule) + '</p>' + (changed ? '<p class="readiness-temporary"><strong>Temporary:</strong> ' + escapeHtml(final.readinessAdjustment.explanation + ' ' + final.readinessAdjustment.resumeRule) + '</p>' : '') + renderUnifiedEvidence(snapshot) + '</details>';
+        return '<details class="prescription-brief unified-prescription ' + (final.recommendationType.includes('deload') ? 'deload' : '') + ' ' + (changed ? 'readiness-adjusted' : '') + '"><summary data-action="toggle-prescription-rationale" aria-label="Why this recommendation?">' + summary + '</summary><div class="prescription-fact-grid"><div><span>Rest</span><strong>' + escapeHtml(prescriptionMetric(final.restSeconds, ' sec')) + '</strong></div><div><span>Frequency</span><strong>' + escapeHtml(prescriptionMetric(final.frequencyPerWeek, '/week')) + '</strong></div><div><span>Role</span><strong>' + escapeHtml(final.role.replaceAll('_', ' ')) + '</strong></div><div><span>Confidence</span><strong>' + escapeHtml(final.confidence) + '</strong></div></div><p class="prescription-action"><strong>Next action:</strong> ' + escapeHtml(final.progressionRule) + '</p>' + (changed ? '<p class="readiness-temporary"><strong>Temporary:</strong> ' + escapeHtml(final.readinessAdjustment.explanation + ' ' + final.readinessAdjustment.resumeRule) + '</p>' : '') + renderUnifiedEvidence(displaySnapshot) + '</details>';
       }
 
       function renderPrescriptionDetails(exercise) {
         if (exercise.recommendationSnapshot) return renderUnifiedPrescriptionDetails(exercise, exercise.recommendationSnapshot);
         const target = exercise.prescription;
         if (!target) return "";
+        if (target.executionBlocked === true && target.executable === false) {
+          const message = String(target.message || target.reason || "The saved recommendation is not executable.");
+          return '<div class="program-warning blocking" role="alert"><strong>Exercise unavailable</strong><span>This exercise cannot be used with the current workout constraints.</span><small>' + escapeHtml(message) + '</small></div>';
+        }
         const label = target.isDeload ? "Deload prescription" : target.mode === "technique" ? "Technique prescription" : "Recommended";
         const original = exercise.originalPrescription;
         const changed = Boolean(target.adjusted && original);
