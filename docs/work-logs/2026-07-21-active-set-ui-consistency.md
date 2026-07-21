@@ -13,6 +13,7 @@ The active Today logger now keeps set execution compact and makes every visible 
 - Resistance uses a two-row label/value summary with a blue disclosure arrow.
 - A recommendation snapshot's `finalPrescription` is authoritative for set roles/count, load, repetitions, and RPE. Prior performance remains evidence and progression context instead of replacing those targets.
 - Explicit top-set/back-off roles are retained during workout construction and described consistently in the recommendation summary.
+- Previous values now use smaller dark-gray text and shift down within the cell so their numeric line aligns with the active load/reps/RPE values while the **Previous** label stays in the header position.
 
 ## Verification
 
@@ -21,6 +22,7 @@ The active Today logger now keeps set execution compact and makes every visible 
 - `node scripts/test-set-prescriptions.js`
 - `node scripts/test-rest-warmup-targets.js`
 - `node scripts/test-service-worker-cache.js`
+- `node scripts/test-workout-page-density.js` also asserts the Previous color, compact size, and alignment transform.
 - `npm run lint`
 - `npm run verify:pwa`
 - `npm test`
