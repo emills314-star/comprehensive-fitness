@@ -366,6 +366,7 @@
           if (!restCompletionController?.dismiss("manual")) { timerCompleteNotice = null; saveRuntime(); render(); }
         }
         if (action === "open-session") {
+          event.preventDefault();
           const requestedSession = data.sessions.find((session) => session.id === target.dataset.sessionId);
           if (!requestedSession || (!isSessionSubmitted(requestedSession) && requestedSession.id !== activeWorkoutId)) {
             showAppToast("That draft is not the active workout.");
@@ -381,7 +382,7 @@
           activeSessionId = requestedSession.id;
           viewingHistorySessionId = isSessionSubmitted(requestedSession) ? requestedSession.id : "";
           planVolumeDetailId = "";
-          setActiveTab("lift");
+          setActiveTab("today", { force: true });
         }
         if (action === "export-data") exportData();
         if (action === "delete-remote-installation") await deleteRemoteInstallationData();

@@ -381,7 +381,7 @@
         const savedTypes = (templateExercise.setTypes || []).filter((type) => type.countsTowardScore !== false && !type.isWarmup);
         const scored = contextTypes.length ? contextTypes : savedTypes;
         const targetCount = Math.max(1, Number(target.sets || templateExercise.sets || scored.reduce((sum, type) => sum + Number(type.setCount || 0), 0) || 1));
-        if (["deload", "light", "technique"].includes(target.mode)) {
+        if ((!target.finalPrescription || typeof target.finalPrescription !== "object") && ["deload", "light", "technique"].includes(target.mode)) {
           const source = scored.find((type) => type.type === "straight") || scored[0] || {};
           const type = target.mode === "deload" ? "deload" : target.mode === "technique" ? "technique" : "straight";
           return [{ ...source, type, label: setTypeLabels[type], setCount: targetCount, rpeMin: Math.max(1, Number(target.rpe || 6.5) - 1), rpeMax: Number(target.rpe || 6.5), loadReductionMin: 0, loadReductionMax: 0, loadRule: target.mode === "deload" ? "Use the resolved deload load; no top set or intensification technique." : "Use lower-fatigue straight sets for this session." }];
@@ -422,7 +422,10 @@
         const lowestPreviousReps = comparableRoleSets.length ? Math.min(...comparableRoleSets.map((set) => Number(set.reps || 0)).filter((value) => value > 0)) : 0;
         const repProgression = target.mode === 'rep-progression' || target.finalPrescription?.progressionAction === 'add_one_rep';
         const progressesThisSet = repProgression && previousReps > 0 && previousReps === lowestPreviousReps && setTypeIndex === comparableRoleSets.findIndex((set) => Number(set.reps || 0) === lowestPreviousReps);
-        const rawTargetReps = target.mode === 'load-progression' ? Number(target.reps || repMin) : progressesThisSet ? previousReps + 1 : previousReps || Number(target.reps || repMax || repMin);
+        const finalPrescriptionIsAuthoritative = Boolean(target.finalPrescription);
+        const rawTargetReps = finalPrescriptionIsAuthoritative
+          ? Number(target.reps || repMax || repMin)
+          : target.mode === 'load-progression' ? Number(target.reps || repMin) : progressesThisSet ? previousReps + 1 : previousReps || Number(target.reps || repMax || repMin);
         const programmedTargetReps = Math.max(repMin, Math.min(repMax, rawTargetReps));
         const rpeMin = Number(setType.rpeMin || Math.max(1, Number(setType.rpeMax || target.rpe || 0) - 1));
         const rpeMax = Number(setType.rpeMax || target.rpe || rpeMin);
@@ -438,7 +441,7 @@
             ? previousComparableSet ? Number(previousComparableSet.reps || 0) >= repMax && Number(previousComparableSet.rpe || 0) > 0 && Number(previousComparableSet.rpe || 0) <= rpeMax : false
             : qualifyingComparableSets;
         const previousLoad = previousComparableSet ? resistanceLoad(previousComparableSet, resistanceType) : 0;
-        const holdPriorLoad = !progressionReady && previousLoad > 0;
+        const holdPriorLoad = !finalPrescriptionIsAuthoritative && !progressionReady && previousLoad > 0;
         const targetLoad = holdPriorLoad ? previousLoad : plannedTargetLoad;
         const targetRepMin = holdPriorLoad && previousReps > 0 ? Math.min(repMin, previousReps) : repMin;
         const targetRepMax = holdPriorLoad && previousReps > 0 ? Math.min(repMax, previousReps) : repMax;

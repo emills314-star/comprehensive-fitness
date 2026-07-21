@@ -1294,7 +1294,7 @@
             <div class="exercise-level-controls">
               <label class="deload-toggle ${exercise.isDeload ? "active" : ""}"><input type="checkbox" data-action="exercise-deload" data-exercise-id="${exercise.id}" ${exercise.isDeload ? "checked" : ""} />Deload this exercise <span>${exercise.isDeload ? "Marked" : ""}</span></label>
               <details class="resistance-type-disclosure">
-                <summary>Resistance <span>${escapeHtml(resistanceTypeLabel(resistanceTypeFor(exercise)))}</span></summary>
+                <summary><strong>Resistance</strong><span>${escapeHtml(resistanceTypeLabel(resistanceTypeFor(exercise)))}</span></summary>
                 <div class="resistance-type-popover"><label class="resistance-type-control"><span>Resistance type</span><select data-action="exercise-resistance-type" data-exercise-id="${exercise.id}" aria-label="Resistance type for ${escapeHtml(exercise.name)}">${resistanceTypeOptions(resistanceTypeFor(exercise))}</select></label></div>
               </details>
             </div>
@@ -1358,7 +1358,9 @@
             : previousLoadText + " × " + previousPerformanceText + (previousRpeText !== "—" ? " @ " + previousRpeText : "");
         const previousField = setTypeSemantics(set).isWarmup
           ? '<div class="set-field set-previous"><span>Previous</span><strong>—</strong><small>Warm-up</small></div>'
-          : '<div class="set-field set-previous" title="Previous set from ' + escapeHtml(previousDateLabel) + '"><span>Previous</span><strong>' + escapeHtml(previousSummaryText) + '</strong><small>' + escapeHtml(previousDateLabel) + '</small></div>';
+          : previous?.priorSessionId
+            ? '<a class="set-field set-previous set-previous-link" href="#progress-history" data-action="open-session" data-session-id="' + escapeHtml(previous.priorSessionId) + '" title="Open the ' + escapeHtml(previousDateLabel) + ' workout"><span>Previous</span><strong>' + escapeHtml(previousSummaryText) + '</strong><small>' + escapeHtml(previousDateLabel) + '</small></a>'
+            : '<div class="set-field set-previous" title="No previous workout found"><span>Previous</span><strong>—</strong><small>No history</small></div>';
         const targetLoad = Number(set.targetWeight ?? set.weight ?? 0);
         const targetLoadText = formatResistance({ ...set, weight: targetLoad, addedLoad: resistanceType === "bodyweight_plus_load" ? targetLoad : set.addedLoad, assistanceLoad: resistanceType === "assisted_bodyweight" ? targetLoad : set.assistanceLoad, resistanceType });
         const targetRepText = targetRangeText(set.targetRepMin, set.targetRepMax || set.targetReps, " reps");
@@ -1493,11 +1495,15 @@
         const base = displaySnapshot.basePrescription;
         const final = displaySnapshot.finalPrescription;
         const changed = Boolean(final.readinessAdjustment?.changed);
+        const sourceUnit = final.prescribedLoad?.unit || data.settings.weightUnit;
+        const finalLoad = Number(convertWeightValue(final.prescribedLoad?.target || 0, sourceUnit, data.settings.weightUnit));
+        const loadText = finalLoad > 0 ? displayLoadNumber(finalLoad) + " " + data.settings.weightUnit + " × " : "";
+        const structureText = final.setStructure === "top_set_backoff" ? "top + back-off" : final.setStructure.replaceAll('_', ' ');
         const baseLine = `${prescriptionMetric(base.workingSets, " sets")} · ${prescriptionMetric(base.repRange, " reps")} · RPE ${prescriptionMetric(base.targetRpe)}`;
-        const finalLine = `${prescriptionMetric(final.workingSets, " sets")} · ${prescriptionMetric(final.repRange, " reps")} · RPE ${prescriptionMetric(final.targetRpe)}`;
+        const finalLine = `${prescriptionMetric(final.workingSets, " sets")} · ${loadText}${prescriptionMetric(final.repRange, " reps")} · RPE ${prescriptionMetric(final.targetRpe)}`;
         const summary = changed
           ? '<span class="prescription-tier"><span>Base prescription</span><strong>' + escapeHtml(baseLine) + '</strong></span><span class="prescription-tier readiness-tier"><span>Today only</span><strong>' + escapeHtml(finalLine) + '</strong></span><span class="why-link">Why this changed</span>'
-          : '<span class="prescription-tier"><span>' + escapeHtml(recommendationActionLabel(final)) + '</span><strong>' + escapeHtml(finalLine + ' · ' + final.setStructure.replaceAll('_', ' ')) + '</strong></span><span class="why-link">Why This Recommendation</span>';
+          : '<span class="prescription-tier"><span>' + escapeHtml(recommendationActionLabel(final)) + '</span><strong>' + escapeHtml(finalLine + ' · ' + structureText) + '</strong></span><span class="why-link">Why This Recommendation</span>';
         return '<details class="prescription-brief unified-prescription ' + (final.recommendationType.includes('deload') ? 'deload' : '') + ' ' + (changed ? 'readiness-adjusted' : '') + '"><summary data-action="toggle-prescription-rationale" aria-label="Why this recommendation?">' + summary + '</summary><div class="prescription-fact-grid"><div><span>Rest</span><strong>' + escapeHtml(prescriptionMetric(final.restSeconds, ' sec')) + '</strong></div><div><span>Frequency</span><strong>' + escapeHtml(prescriptionMetric(final.frequencyPerWeek, '/week')) + '</strong></div><div><span>Role</span><strong>' + escapeHtml(final.role.replaceAll('_', ' ')) + '</strong></div><div><span>Confidence</span><strong>' + escapeHtml(final.confidence) + '</strong></div></div><p class="prescription-action"><strong>Next action:</strong> ' + escapeHtml(final.progressionRule) + '</p>' + (changed ? '<p class="readiness-temporary"><strong>Temporary:</strong> ' + escapeHtml(final.readinessAdjustment.explanation + ' ' + final.readinessAdjustment.resumeRule) + '</p>' : '') + renderUnifiedEvidence(displaySnapshot) + '</details>';
       }
 
@@ -1560,17 +1566,22 @@
         const nextSet = setById(timer.pendingNextSetId);
         const nextExercise = nextSet ? exerciseById(nextSet.exerciseId) : null;
         return `
-          <div class="timer-bar" data-timer-id="${timer.id}">
-            <div class="timer-heading"><span class="timer-icon" aria-hidden="true">&#9201;</span><div class="timer-heading-copy"><span>${timer.isPaused ? "Paused" : "Rest"}</span><strong data-timer-countdown>${formatTimer(timer.remainingSeconds)}</strong><small>${escapeHtml(notificationStatus)}</small></div></div>
-            <div class="timer-secondary-controls"><button class="timer-control timer-pause" type="button" data-action="toggle-timer" title="${timer.isPaused ? "Resume timer" : "Pause timer"}" aria-label="${timer.isPaused ? "Resume timer" : "Pause timer"}">${timer.isPaused ? icon.play : icon.pause}</button><button class="timer-control timer-cancel" type="button" data-action="clear-timer" title="Cancel timer" aria-label="Cancel timer">${icon.delete}</button></div>
-            <div class="timer-progress" role="progressbar" aria-label="Rest elapsed" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}" style="--timer-progress:${progress}%"><span></span><b data-timer-progress-label>${formatTimer(timer.remainingSeconds)} remaining</b></div>
-            <div class="timer-primary-controls" aria-label="Rest timer adjustments">
-              <button class="timer-adjust" type="button" data-action="adjust-timer" data-seconds="-15" title="Reduce rest by 15 seconds" aria-label="Reduce rest by 15 seconds">-15 sec</button>
-              <button class="timer-adjust" type="button" data-action="adjust-timer" data-seconds="15" title="Add 15 seconds" aria-label="Add 15 seconds">+15 sec</button>
-              <button class="timer-skip" type="button" data-action="skip-timer" title="Skip remaining rest">Skip</button>
+          <details class="timer-bar" data-timer-id="${timer.id}">
+            <summary class="timer-summary" aria-label="${timer.isPaused ? "Paused rest timer" : "Rest timer"}, ${formatTimer(timer.remainingSeconds)} remaining. Open timer controls.">
+              <div class="timer-progress" role="progressbar" aria-label="Rest elapsed" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}" style="--timer-progress:${progress}%"><span></span><b data-timer-progress-label>${formatTimer(timer.remainingSeconds)}</b></div>
+              <span class="timer-summary-hint">Adjust</span>
+            </summary>
+            <div class="timer-controls-panel">
+              <div class="timer-heading"><span class="timer-icon" aria-hidden="true">&#9201;</span><div class="timer-heading-copy"><span>${timer.isPaused ? "Paused" : "Rest"}</span><strong data-timer-countdown>${formatTimer(timer.remainingSeconds)}</strong><small>${escapeHtml(notificationStatus)}</small></div></div>
+              <div class="timer-secondary-controls"><button class="timer-control timer-pause" type="button" data-action="toggle-timer" title="${timer.isPaused ? "Resume timer" : "Pause timer"}" aria-label="${timer.isPaused ? "Resume timer" : "Pause timer"}">${timer.isPaused ? icon.play : icon.pause}</button><button class="timer-control timer-cancel" type="button" data-action="clear-timer" title="Cancel timer" aria-label="Cancel timer">${icon.delete}</button></div>
+              <div class="timer-primary-controls" aria-label="Rest timer adjustments">
+                <button class="timer-adjust" type="button" data-action="adjust-timer" data-seconds="-15" title="Reduce rest by 15 seconds" aria-label="Reduce rest by 15 seconds">− 15 sec</button>
+                <button class="timer-adjust" type="button" data-action="adjust-timer" data-seconds="15" title="Add 15 seconds" aria-label="Add 15 seconds">+ 15 sec</button>
+                <button class="timer-skip" type="button" data-action="skip-timer" title="Skip remaining rest">Skip rest</button>
+              </div>
+              <div class="timer-context">After ${escapeHtml(sourceExercise?.name || "this set")} ${nextSet ? "&#8226; Next: " + escapeHtml(nextExercise?.name || sourceExercise?.name || "Exercise") + " &#8226; " + escapeHtml(setExecutionLabel(nextSet)) : "&#8226; Final set"}</div>
             </div>
-            <div class="timer-context">After ${escapeHtml(sourceExercise?.name || "this set")} ${nextSet ? "&#8226; Next: " + escapeHtml(nextExercise?.name || sourceExercise?.name || "Exercise") + " &#8226; " + escapeHtml(setExecutionLabel(nextSet)) : "&#8226; Final set"}</div>
-          </div>
+          </details>
         `;
       }
 

@@ -114,6 +114,15 @@ const straight = runtime.setPrescriptionForRole({ templateExercise: { name: "Leg
 assert.strictEqual(straight.targetLoad, 385);
 assert.strictEqual(straight.targetReps, 9, "Later straight sets keep role-specific history instead of copying Set 1");
 
+const unifiedLightTarget = { ...baseTarget, mode: "light", reps: 6, repLow: 6, repHigh: 10, weight: 160, rpe: 7, finalPrescription: { setStructure: "top_set_backoff" } };
+const unifiedTop = runtime.setPrescriptionForRole({ templateExercise: { name: "Bench Press", increment: 5 }, target: unifiedLightTarget, setType: { type: "top", repMin: 6, repMax: 10, rpeMin: 6, rpeMax: 7 }, previousSets: [{ id: "prior-top", setType: "top", setTypeIndex: 0, reps: 4, weight: 175, rpe: 7 }] });
+assert.strictEqual(unifiedTop.targetLoad, 160, "The immutable final prescription load must beat an older comparable load");
+assert.strictEqual(unifiedTop.targetReps, 6, "The immutable final prescription rep target must beat an older comparable rep count");
+assert.strictEqual(unifiedTop.progressionReady, false, "Using today's prescribed target must not falsely authorize the next increment");
+
+const unifiedLightTypes = runtime.resolvedSetTypesForPrescription({ setTypes: [{ type: "top", setCount: 1, countsTowardScore: true }, { type: "backoff", setCount: 1, countsTowardScore: true }] }, unifiedLightTarget);
+assert.deepStrictEqual(unifiedLightTypes.map((item) => item.type), ["top", "backoff"], "A unified top/back-off prescription must not be relabeled as straight work during a light session");
+
 const deloadTypes = runtime.resolvedSetTypesForPrescription({ setTypes: [{ type: "top", setCount: 1, countsTowardScore: true }, { type: "backoff", setCount: 2, countsTowardScore: true }, { type: "drop", setCount: 1, countsTowardScore: true }] }, { mode: "deload", sets: 2, rpe: 6 });
 assert.deepStrictEqual(deloadTypes.map((item) => item.type), ["deload"]);
 assert.strictEqual(deloadTypes[0].setCount, 2);
@@ -131,8 +140,9 @@ assert(html.includes("pointer-events: none"), "Informational set badges must not
 assert(!/set-type-badge[^>]+data-action/.test(html), "Set-type badges must not own edit or navigation actions");
 assert(html.includes("previousComparableSetForRole(previousSets, role, set.setTypeIndex, workingSetIndex)"));
 assert(html.includes("getMostRecentWorkoutPerformance"), "All prior-set consumers must share one workout-level resolver");
-assert(html.includes('class="set-field set-previous"'), "Comparable history must use one compact Previous column beside the current fields");
+assert(html.includes('class="set-field set-previous set-previous-link"'), "Comparable history must use one compact linked Previous column beside the current fields");
 assert(html.includes('previousSummaryText'), "The Previous column must combine load, reps, and RPE without losing resistance semantics");
+assert(html.includes('data-session-id="\' + escapeHtml(previous.priorSessionId)'), "The Previous link must preserve the exact source session ID");
 assert(html.includes("Broad exercise guidance"));
 assert(html.includes("These values come from the same saved prescription shown above."));
 assert(html.includes("exercise.recommendationSnapshot || unifiedPrescriptionSnapshot(exercise)"), "Broad guidance must reuse the unified prescription instead of hard-coded sets or reps");
