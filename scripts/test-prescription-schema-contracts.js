@@ -340,7 +340,8 @@ const blockedSnapshot = engine.createExercisePrescriptionSnapshot(evidence, {
 assertValidInstance(blockedSnapshot, snapshot, SCHEMA_FILES[2], "Hard-safety recommendation snapshot");
 assert.equal(blockedSnapshot.finalPrescription.executionBlocked, true);
 assert.deepEqual(blockedSnapshot.finalPrescription.workingSets, { min: 0, target: 0, max: 0 });
-const safeAlternative = pool.candidates.find((candidate) => candidate.exerciseId !== blockedSnapshot.exerciseId);
+const safeAlternative = pool.candidates.find((candidate) => candidate.exerciseId !== blockedSnapshot.exerciseId
+  && evidence.research.exerciseById.has(candidate.researchExerciseId || candidate.exerciseId));
 assert.ok(safeAlternative, "Safety schema contract requires a second catalog-backed candidate");
 const safetyResearchId = safeAlternative.researchExerciseId || safeAlternative.exerciseId;
 const safetyCatalogRecord = evidence.research.exerciseById.get(safetyResearchId);

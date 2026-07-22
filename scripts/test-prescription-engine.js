@@ -719,6 +719,41 @@ test("cambered bench aliases resolve through the canonical eligible library", ()
   assert(visible || excluded, "Eligible cambered bench must appear or carry an explicit exclusion reason");
 });
 
+test("all configured research-mapped Strong labels resolve to canonical public exercises", () => {
+  const evidence = loadEvidenceFromFiles(path.resolve(__dirname, ".."), { includeSessionMetrics: false, includeWeeklyVolume: false });
+  const engine = createPrescriptionEngine(evidence);
+  const expected = new Map([
+    ["Ab Wheel", "ex_ab_wheel"],
+    ["Bench Press (Barbell)", "ex_barbell_bench_press"],
+    ["Bicep Curl (Cable)", "ex_cable_curl"],
+    ["Bicep Curls Light (Cable)", "ex_cable_curl"],
+    ["Calf Press on Seated Leg Press", "ex_leg_press_calf_raise"],
+    ["Incline Bench Press (Dumbbell)", "ex_incline_dumbbell_press"],
+    ["Incline Curl (Dumbbell)", "ex_incline_dumbbell_curl"],
+    ["Lat Pulldown Double Pulley", "ex_lat_pulldown"],
+    ["Lateral Raise (Cable)", "ex_cable_lateral_raise"],
+    ["Leg Extension (Heavy)", "ex_leg_extension"],
+    ["Leg Extension (Machine)", "ex_leg_extension"],
+    ["Lying Leg Curl (Machine)", "ex_lying_leg_curl"],
+    ["Neck Curls (Back)", "ex_neck_extension"],
+    ["Neck Curls (Front)", "ex_neck_flexion"],
+    ["Seated Leg Curl (Machine)", "ex_seated_leg_curl"],
+    ["Standing Calf Raise (Machine)", "ex_standing_calf_raise"],
+    ["Tricep Pushdown - Dongles", "ex_cable_pushdown"],
+    ["Triceps Pushdown (Cable - Straight Bar)", "ex_cable_pushdown"]
+  ]);
+  expected.forEach((exerciseId, recordedName) => {
+    assert.deepStrictEqual(engine.resolveExerciseIdentity(recordedName), {
+      status: "resolved",
+      exerciseId,
+      source: "research_alias"
+    });
+    const target = engine.resolveDefaultPrescriptionTarget(recordedName);
+    assert.strictEqual(target.status, "resolved", `${recordedName} must reach canonical target resolution`);
+    assert.strictEqual(target.exerciseId, exerciseId);
+  });
+});
+
 test("equipment restrictions honor complete and alternative requirements", () => {
   const bench = { exercise_id: "ex_barbell_bench_press", equipment: "barbell_and_bench" };
   const nordic = { exercise_id: "ex_nordic_curl", equipment: "bodyweight" };

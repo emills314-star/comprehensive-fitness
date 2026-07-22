@@ -1383,15 +1383,22 @@
         const evidence = prescriptionEngine?.evidence;
         const explicitPerformanceId = String(exercise.performanceExerciseId || exercise.performance_exercise_id || exercise.personalExerciseId || exercise.personal_exercise_id || "").trim();
         const explicitResearchId = String(exercise.researchExerciseId || exercise.research_exercise_id || "").trim();
+        const explicitIdentitySource = String(exercise.identitySource || exercise.identity_source || "").trim();
         const directPublicIdentity = !explicitPerformanceId && name && typeof prescriptionEngine?.resolveExerciseIdentity === "function"
           ? prescriptionEngine.resolveExerciseIdentity(name)
           : null;
-        if (directPublicIdentity?.status === "resolved" && evidence?.research?.exerciseById?.has(directPublicIdentity.exerciseId)) {
-          return { status: "resolved", performanceExerciseId: directPublicIdentity.exerciseId, researchExerciseId: directPublicIdentity.exerciseId, identitySource: "research_identity", identityVersion: "exercise-identity/2.0.0", executable: true };
-        }
         const personalRecord = personalExerciseRecordForName(name || explicitPerformanceId, evidence);
         const personalId = explicitPerformanceId || personalRecord?.exercise_id || personalRecord?.exerciseId || "";
         const reconciled = personalId ? evidence?.personal?.reconciledIdentityByExerciseId?.get(personalId) : null;
+        if (directPublicIdentity?.status === "resolved" && evidence?.research?.exerciseById?.has(directPublicIdentity.exerciseId)) {
+          if (reconciled && !reconciled.invalid && !reconciled.publicIdentityCollision && reconciled.researchIdentitySource === "explicit_crosswalk" && reconciled.researchExerciseId === directPublicIdentity.exerciseId) {
+            return { status: "resolved", performanceExerciseId: personalId, researchExerciseId: directPublicIdentity.exerciseId, identitySource: "personal_research_crosswalk", identityVersion: "exercise-identity/2.1.0", executable: true };
+          }
+          const aliasPerformanceId = directPublicIdentity.source === "research_alias"
+            ? `alias_${normalizePrescriptionIdentity(name).replace(/\s+/g, "_")}`
+            : directPublicIdentity.exerciseId;
+          return { status: "resolved", performanceExerciseId: aliasPerformanceId, researchExerciseId: directPublicIdentity.exerciseId, identitySource: directPublicIdentity.source === "research_alias" ? "research_alias" : "research_identity", identityVersion: "exercise-identity/2.1.0", executable: true };
+        }
         if (reconciled?.invalid || reconciled?.publicIdentityCollision) {
           return { status: "unresolved", performanceExerciseId: personalId || null, researchExerciseId: null, reason: reconciled.invalid ? "invalid_reconciled_identity" : "personal_public_identity_collision", identitySource: "reconciled_personal_evidence", identityVersion: "exercise-identity/2.0.0" };
         }
@@ -1407,7 +1414,7 @@
           status: "resolved",
           performanceExerciseId,
           researchExerciseId: researchExerciseId || null,
-          identitySource: personalId ? (reconciled?.researchExerciseId ? "personal_research_crosswalk" : "personal_evidence") : researchExerciseId ? "research_identity" : "reporting_fallback",
+          identitySource: explicitIdentitySource === "research_alias" ? "research_alias" : personalId ? (reconciled?.researchExerciseId ? "personal_research_crosswalk" : "personal_evidence") : researchExerciseId ? "research_identity" : "reporting_fallback",
           identityVersion: "exercise-identity/2.0.0",
           executable: prescriptionIdentity.status === "resolved"
         };

@@ -808,7 +808,7 @@ test("exact personal variations retain performance history identity while sharin
   assert.equal(chestRow.executable, true, "A reconciled legacy personal ID must not be rejected only because it lacks a custom_ prefix");
   assert.equal(canonicalExerciseId("Lat Pulldown Double Pulley"), "double_pulley_lat_pulldown");
   assert.equal(canonicalExerciseId("Lat Pulldown"), "ex_lat_pulldown");
-  assert.equal(canonicalExerciseId("Bench Press"), "ex_barbell_bench_press", "A personal name collision must not shadow an authoritative public alias");
+  assert.equal(canonicalExerciseId("Bench Press"), "alias_bench_press", "A personal name collision must not shadow an authoritative public alias or its exact performance-history namespace");
   assert.notEqual(canonicalExerciseId("Lat Pulldown Double Pulley"), canonicalExerciseId("Lat Pulldown"), "Different machine variations must not share load history");
 });
 

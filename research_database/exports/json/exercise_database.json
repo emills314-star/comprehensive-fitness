@@ -2,7 +2,7 @@
   {
     "exercise_id": "ex_barbell_bench_press",
     "exercise_name": "Barbell Bench Press",
-    "exercise_aliases": "bench press",
+    "exercise_aliases": "bench press|bench press (barbell)",
     "movement_pattern": "horizontal_push",
     "equipment": "barbell_and_bench",
     "primary_muscles": "mg_chest_sternal",
@@ -152,7 +152,7 @@
   {
     "exercise_id": "ex_incline_dumbbell_press",
     "exercise_name": "Incline Dumbbell Press",
-    "exercise_aliases": "incline db press",
+    "exercise_aliases": "incline db press|incline bench press (dumbbell)",
     "movement_pattern": "horizontal_push",
     "equipment": "dumbbells_and_incline_bench",
     "primary_muscles": "mg_chest_clavicular",
@@ -502,7 +502,7 @@
   {
     "exercise_id": "ex_cable_lateral_raise",
     "exercise_name": "Cable Lateral Raise",
-    "exercise_aliases": "one arm cable lateral raise",
+    "exercise_aliases": "one arm cable lateral raise|lateral raise (cable)",
     "movement_pattern": "shoulder_abduction",
     "equipment": "cable",
     "primary_muscles": "mg_side_delts",
@@ -752,7 +752,7 @@
   {
     "exercise_id": "ex_lat_pulldown",
     "exercise_name": "Lat Pulldown",
-    "exercise_aliases": "cable pulldown",
+    "exercise_aliases": "cable pulldown|lat pulldown double pulley",
     "movement_pattern": "vertical_pull",
     "equipment": "cable_machine",
     "primary_muscles": "mg_lats",
@@ -1452,7 +1452,7 @@
   {
     "exercise_id": "ex_leg_extension",
     "exercise_name": "Leg Extension",
-    "exercise_aliases": "knee extension machine",
+    "exercise_aliases": "knee extension machine|leg extension (machine)|leg extension (heavy)",
     "movement_pattern": "knee_extension",
     "equipment": "machine",
     "primary_muscles": "mg_quadriceps",
@@ -1752,7 +1752,7 @@
   {
     "exercise_id": "ex_seated_leg_curl",
     "exercise_name": "Seated Leg Curl",
-    "exercise_aliases": "seated hamstring curl",
+    "exercise_aliases": "seated hamstring curl|seated leg curl (machine)",
     "movement_pattern": "knee_flexion",
     "equipment": "machine",
     "primary_muscles": "mg_hamstrings",
@@ -1802,7 +1802,7 @@
   {
     "exercise_id": "ex_lying_leg_curl",
     "exercise_name": "Lying Leg Curl",
-    "exercise_aliases": "prone hamstring curl",
+    "exercise_aliases": "prone hamstring curl|lying leg curl (machine)",
     "movement_pattern": "knee_flexion",
     "equipment": "machine",
     "primary_muscles": "mg_hamstrings",
@@ -2052,7 +2052,7 @@
   {
     "exercise_id": "ex_standing_calf_raise",
     "exercise_name": "Standing Calf Raise",
-    "exercise_aliases": "straight knee calf raise",
+    "exercise_aliases": "straight knee calf raise|standing calf raise (machine)",
     "movement_pattern": "plantar_flexion",
     "equipment": "machine_or_free_weight",
     "primary_muscles": "mg_calves_gastroc",
@@ -2152,7 +2152,7 @@
   {
     "exercise_id": "ex_leg_press_calf_raise",
     "exercise_name": "Leg Press Calf Raise",
-    "exercise_aliases": "calf press",
+    "exercise_aliases": "calf press|calf press on seated leg press",
     "movement_pattern": "plantar_flexion",
     "equipment": "leg_press",
     "primary_muscles": "mg_calves_gastroc",
@@ -2202,7 +2202,7 @@
   {
     "exercise_id": "ex_incline_dumbbell_curl",
     "exercise_name": "Incline Dumbbell Curl",
-    "exercise_aliases": "incline curl",
+    "exercise_aliases": "incline curl|incline curl (dumbbell)",
     "movement_pattern": "elbow_flexion",
     "equipment": "dumbbells_and_bench",
     "primary_muscles": "mg_biceps",
@@ -2302,7 +2302,7 @@
   {
     "exercise_id": "ex_cable_curl",
     "exercise_name": "Cable Curl",
-    "exercise_aliases": "standing cable curl",
+    "exercise_aliases": "standing cable curl|bicep curl (cable)|bicep curls light (cable)",
     "movement_pattern": "elbow_flexion",
     "equipment": "cable",
     "primary_muscles": "mg_biceps",
@@ -2402,7 +2402,7 @@
   {
     "exercise_id": "ex_cable_pushdown",
     "exercise_name": "Cable Triceps Pushdown",
-    "exercise_aliases": "triceps pressdown",
+    "exercise_aliases": "triceps pressdown|triceps pushdown (cable - straight bar)|tricep pushdown - dongles",
     "movement_pattern": "elbow_extension",
     "equipment": "cable",
     "primary_muscles": "mg_triceps",
@@ -2802,7 +2802,7 @@
   {
     "exercise_id": "ex_ab_wheel",
     "exercise_name": "Ab Wheel Rollout",
-    "exercise_aliases": "ab rollout",
+    "exercise_aliases": "ab rollout|ab wheel",
     "movement_pattern": "anti_extension",
     "equipment": "ab_wheel",
     "primary_muscles": "mg_abdominals",
@@ -2952,7 +2952,7 @@
   {
     "exercise_id": "ex_neck_flexion",
     "exercise_name": "Neck Flexion",
-    "exercise_aliases": "weighted neck curl",
+    "exercise_aliases": "weighted neck curl|neck curls (front)",
     "movement_pattern": "neck_flexion",
     "equipment": "plate_or_harness",
     "primary_muscles": "mg_neck_flexors",
@@ -3002,7 +3002,7 @@
   {
     "exercise_id": "ex_neck_extension",
     "exercise_name": "Neck Extension",
-    "exercise_aliases": "neck harness extension",
+    "exercise_aliases": "neck harness extension|neck curls (back)",
     "movement_pattern": "neck_extension",
     "equipment": "harness_or_band",
     "primary_muscles": "mg_neck_extensors",

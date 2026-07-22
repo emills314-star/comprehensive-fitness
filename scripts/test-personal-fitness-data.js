@@ -10,6 +10,7 @@ const { normalizeWorkouts, __test: workoutTest } = require("./personal-fitness/n
 const { confidenceLabel } = require("./personal-fitness/scoring");
 const { validatePersonalFitnessOutputs } = require("./personal-fitness/validator");
 const { assertJsonSafe, parseCsvLine, parseStrongDate, readCsv, readCsvRows } = require("./personal-fitness/utils");
+const { createPrescriptionEngine, loadEvidenceFromFiles } = require("../prescription-engine");
 
 const repositoryRoot = path.resolve(__dirname, "..");
 
@@ -48,6 +49,12 @@ async function main() {
   assert.equal(confidenceLabel(99, 2, 365, { confidence: { insufficient_exposures_max: 2 } }), "Insufficient personal evidence", "Tiny samples cannot receive high confidence");
 
   const loaded = await loadPersonalFitnessConfig(repositoryRoot);
+  const identityEngine = createPrescriptionEngine(loadEvidenceFromFiles(repositoryRoot, { includeSessionMetrics: false, includeWeeklyVolume: false }));
+  loaded.aliases.filter((alias) => alias.research_exercise_id).forEach((alias) => {
+    const identity = identityEngine.resolveExerciseIdentity(alias.recorded_name);
+    assert.equal(identity.status, "resolved", `${alias.recorded_name} must resolve through the public identity registry`);
+    assert.equal(identity.exerciseId, alias.research_exercise_id, `${alias.recorded_name} must retain its configured canonical research owner`);
+  });
   const recordedNames = new Set();
   await readCsv(path.join(loaded.rawRoot, "strong_workouts (8).csv"), (row) => recordedNames.add(row["Exercise Name"]));
   const catalog = buildCompleteExerciseCatalog([...recordedNames], loaded.aliases, loaded.muscleMap, loaded.mappingRules);

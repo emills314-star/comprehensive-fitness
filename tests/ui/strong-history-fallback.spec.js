@@ -103,6 +103,49 @@ test("Strong CSV unit choice is explicit, durable per record, and duplicate-safe
   expect(audit.conflictingUnitError).toContain("already imported as lb");
 });
 
+test("all configured research-mapped Strong labels resolve through the browser's public identity registry", async ({ page }) => {
+  await installBlankApp(page);
+  const expected = {
+    "Ab Wheel": "ex_ab_wheel",
+    "Bench Press (Barbell)": "ex_barbell_bench_press",
+    "Bicep Curl (Cable)": "ex_cable_curl",
+    "Bicep Curls Light (Cable)": "ex_cable_curl",
+    "Calf Press on Seated Leg Press": "ex_leg_press_calf_raise",
+    "Incline Bench Press (Dumbbell)": "ex_incline_dumbbell_press",
+    "Incline Curl (Dumbbell)": "ex_incline_dumbbell_curl",
+    "Lat Pulldown Double Pulley": "ex_lat_pulldown",
+    "Lateral Raise (Cable)": "ex_cable_lateral_raise",
+    "Leg Extension (Heavy)": "ex_leg_extension",
+    "Leg Extension (Machine)": "ex_leg_extension",
+    "Lying Leg Curl (Machine)": "ex_lying_leg_curl",
+    "Neck Curls (Back)": "ex_neck_extension",
+    "Neck Curls (Front)": "ex_neck_flexion",
+    "Seated Leg Curl (Machine)": "ex_seated_leg_curl",
+    "Standing Calf Raise (Machine)": "ex_standing_calf_raise",
+    "Tricep Pushdown - Dongles": "ex_cable_pushdown",
+    "Triceps Pushdown (Cable - Straight Bar)": "ex_cable_pushdown"
+  };
+  const audit = await page.evaluate((entries) => entries.map(([recordedName, exerciseId]) => ({
+    recordedName,
+    exerciseId,
+    identity: prescriptionEngine.resolveExerciseIdentity(recordedName),
+    profile: resolveExerciseIdentityProfile({ name: recordedName }),
+    target: prescriptionEngine.resolveDefaultPrescriptionTarget(recordedName)
+  })), Object.entries(expected));
+
+  for (const result of audit) {
+    expect(result.identity).toMatchObject({ status: "resolved", exerciseId: result.exerciseId, source: "research_alias" });
+    expect(result.profile).toMatchObject({ status: "resolved", researchExerciseId: result.exerciseId, executable: true });
+    expect(["research_alias", "personal_research_crosswalk"]).toContain(result.profile.identitySource);
+    if (result.profile.identitySource === "research_alias") {
+      expect(result.profile.performanceExerciseId).toBe(`alias_${result.recordedName.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "")}`);
+    } else {
+      expect(result.profile.performanceExerciseId).not.toBe(result.exerciseId);
+    }
+    expect(result.target).toMatchObject({ status: "resolved", exerciseId: result.exerciseId });
+  }
+});
+
 test("Strong-only history starts an editable workout without inventing a research identity", async ({ page }) => {
   test.setTimeout(120_000);
   await installBlankApp(page);

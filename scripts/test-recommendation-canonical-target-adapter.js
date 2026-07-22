@@ -8,7 +8,7 @@ const {
 const CREATED_AT = "2026-07-14T12:00:00.000Z";
 const EXPECTED_EXERCISE_COUNT = 62;
 const EXPECTED_RELATIONSHIP_COUNT = 151;
-const EXPECTED_ALIAS_COUNT = 66;
+const EXPECTED_ALIAS_COUNT = 84;
 const EXPECTED_DIRECT_TARGET_COUNT = 59;
 const ZERO_DIRECT_EXCEPTIONS = new Map([
   ["ex_farmers_carry", "Farmer's Carry"],
@@ -248,7 +248,7 @@ group("PrescriptionEngine exposes the canonical identity and default-target adap
   );
 });
 
-group("all canonical names and 66 aliases resolve across engine-equivalent case, whitespace, and separator variants", () => {
+group("all canonical names and 84 aliases resolve across engine-equivalent case, whitespace, and separator variants", () => {
   publicExerciseDatabase.forEach((exercise) => {
     assertResolvedIdentity(baseEngine.resolveExerciseIdentity(exercise.exercise_id), exercise.exercise_id, exercise.exercise_id);
     identitySpellingsForExercise(exercise).forEach((spelling) => {
