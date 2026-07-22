@@ -1,7 +1,7 @@
 # Role-aware exercise options
 
 **Date:** 2026-07-22
-**Status:** IMPLEMENTED; publication and hosted verification pending
+**Status:** IMPLEMENTED, DEPLOYED, AND HOSTED-VERIFIED
 
 ## Result
 
@@ -20,7 +20,9 @@
 - `npm.cmd test` — all 50 selected public scripts passed; the single private-only personal-data harness remained excluded by contract.
 - `npm.cmd run lint`, `npm.cmd run research:validate`, `npm.cmd run verify:pwa`, and both dependency audit modes passed. The full dependency tree retains two reported moderate development-only findings (`exceljs`, `uuid`); production has zero findings.
 - `npm.cmd run check:public` could not use its whole-workspace privacy step because this owner checkout intentionally contains pre-existing tracked private fitness artifacts and archived verification worktrees. Publication therefore uses an explicit staged-file privacy review; no private artifact is in this change.
-- Hosted checks remain pending before publication.
+- Production assets expose the separate top/back-off fields and service-worker cache generation `comprehensive-fitness-pwa-v56`.
+- The same focused Playwright regression passed on mobile and desktop against `https://comprehensive-fitness.vercel.app`.
+- The deployed Today shell loaded successfully in the in-app browser and rendered the current application runtime.
 
 ## Documentation review
 
@@ -28,4 +30,5 @@
 
 ## Publication
 
-- Pending commit, push to `main`, deployment, and hosted mobile/desktop verification.
+- Application commit `9c52274` was pushed to GitHub `main`.
+- Hosted URL: `https://comprehensive-fitness.vercel.app/?verify=9c52274#today`.
