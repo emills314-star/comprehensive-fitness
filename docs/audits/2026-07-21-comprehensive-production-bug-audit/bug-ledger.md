@@ -1,0 +1,62 @@
+# Comprehensive production bug audit
+
+## Campaign contract
+
+- **Status:** LOCAL VERIFICATION COMPLETE; HOSTED VERIFICATION PENDING
+- **Scope:** Implemented production PWA, public data contracts, mocked backend/push behavior, offline/PWA packaging, and Capacitor public packaging checks.
+- **Excluded:** Personal fitness records, non-production redesign parity, account/cloud restore, live wearable ingestion, signing/store release, and destructive live-service tests.
+- **Data boundary:** Public synthetic fixtures and isolated browser storage only.
+- **Reconciliation rule:** Reproduce, classify, fix, add a regression test, update governing documentation, rerun the owning charter, and complete hosted verification for user-facing changes.
+
+## Severity
+
+| Level | Definition |
+| --- | --- |
+| P0 | Safety, privacy, security, or credible data loss |
+| P1 | Crash, blocked critical flow, corrupted persistence, or materially incorrect recommendation |
+| P2 | Functional defect with a workaround |
+| P3 | Visual, accessibility, copy, or low-impact inconsistency |
+
+## Findings
+
+| ID | Severity | Feature | Status | Evidence / expected reconciliation |
+| --- | --- | --- | --- | --- |
+| BUG-001 | P2 | Progress navigation | FIXED | Same-Progress Back/Forward now clears transient detail state and rerenders the hash-selected subview. Mobile/desktop regression: `progress-browser-history.spec.js` 2/2. |
+| BUG-002 | P1 | Backup recoverability | FIXED | Full app backup import now shares the 50 MiB/100,000-record contract used by export; the separate personal-evidence limit remains 8 MiB. Boundary/integration contracts pass. |
+| BUG-003 | P1 | Backup validation | FIXED | Set, target, classifier, and readiness-baseline values now enforce editor-equivalent ranges, integer/step rules, and ordered min/max pairs before replacement. Invalid imports remain atomic. |
+| BUG-004 | P1 | Strong CSV units | FIXED | Import now requires an explicit lb/kg source choice, keeps display units independent, stores provenance on sets/original values/raw text, makes same-unit duplicates no-ops, and rejects conflicting reinterpretation. Node contracts 37/37; focused browser matrix 6/6. |
+| BUG-007 | P1 | Guided mesocycle entry | FIXED | The Setup label formatter no longer assumes an optional presentation-label map exists. Clean mobile/desktop planner-entry coverage passes without destination or console errors. |
+| BUG-005 | P2 | Secondary-page return | FIXED | Canonical navigation consumes recognized one-shot query fields while preserving unrelated verification parameters. Mobile/desktop return → Today → reload regression: 2/2. |
+| BUG-006 | P1 | Runtime recovery | FIXED | Runtime restoration now reads the local journal when IndexedDB throws or returns no record while retaining a real IndexedDB runtime as authoritative. Focused persistence regression passes. |
+| BUG-008 | P1 | Pain-free safety substitution | FIXED | Safety-locked selection uses an exact unambiguous catalog identity, evaluates every evidence-mapped substitute directly against current equipment instead of truncating through the five-item presentation rank, and revalidates the same identity after resolution. Node and mobile/desktop browser regressions pass. |
+| BUG-009 | P2 | 320 px / 200% active-set reflow | FIXED | Active set rows reflow to two columns at large text, numeric spinner chrome no longer consumes the value area, and progression copy wraps. The complete 320 CSS-pixel/200% reflow audit passes. |
+
+## Feature disposition matrix
+
+Every implemented area must finish as `PASS`, `FIXED`, `BLOCKED`, or `NEEDS REVIEW` with evidence.
+
+| Area | Current disposition |
+| --- | --- |
+| Shell, routes, responsive UI, accessibility | FIXED / PASS — complete mobile/desktop matrix |
+| Today, readiness, prescriptions, workout execution, timers | PASS — deterministic lifecycle mobile/desktop |
+| Plan, templates, guided mesocycles, historical plans | FIXED / PASS |
+| Submission, summary, PRs, grading | PASS — deterministic lifecycle mobile/desktop |
+| Progress overview, lifts, charts, history editing | FIXED / PASS |
+| More, settings, units, imports/exports, consent, clearing | FIXED / PASS |
+| Persistence conflict and draft/runtime recovery | FIXED / PASS |
+| Offline shell, service-worker update, public packaging | PASS — PWA/public-native verification |
+| Mocked push/sync backend contracts | PASS — public security/sync harnesses |
+| Physical device, system permissions, live service state | NEEDS REVIEW |
+
+## Evidence log
+
+- Final public gate: 50/50 selected harnesses passed from 51 discovered; one private-only harness was correctly excluded because it requires ignored personal artifacts.
+- `node scripts/test-runtime-persistence.js`: passed.
+- `node scripts/test-backup-contract.js`: passed.
+- `node scripts/test-app-integration-contracts.js`: 36/36 passed with the 50 MiB/100,000-record fixture contract.
+- Focused Progress + secondary-return Playwright matrix: 4/4 passed across mobile and desktop.
+- Strong source-unit Playwright matrix: 6/6 passed across mobile and desktop.
+- Critical template → readiness → active workout/timer → cancel/confirm submission → summary → all Progress views → reload → lb/kg round-trip: passed on mobile and desktop without console/page errors.
+- Complete Playwright audit: 226 passed, 18 intentional cross-project skips, 0 failed across 244 mobile/desktop cases.
+- Focused reconciliation after the first complete audit: dirty-history Back, large-text reflow, safety revalidation, and design-source contract 7 passed / 1 intentional skip; protected Lift baselines 5/5 passed outside update mode.
+- PWA/native packaging: 32/32 public assets passed. Static lint, workflow validation, production dependency audit (zero vulnerabilities), and tracked-content privacy scan (469 files) passed.

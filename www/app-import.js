@@ -652,7 +652,33 @@
         return numberFrom(row.Reps) > 0 || numberFrom(row.Weight) > 0 || numberFrom(row.Distance) > 0 || numberFrom(row.Seconds) > 0;
       }
 
-      function importStrongCsv(text) {
+      function normalizeStrongImportWeightUnit(value) {
+        const unit = String(value || "").trim().toLowerCase();
+        if (unit !== "lb" && unit !== "kg") throw new Error("Choose whether the Strong CSV Weight column uses pounds (lb) or kilograms (kg) before importing.");
+        return unit;
+      }
+
+      function retainedStrongImportWeightUnit(rawImport) {
+        if (rawImport?.weightUnit === "lb" || rawImport?.weightUnit === "kg") return rawImport.weightUnit;
+        const sessionExternalIds = new Set(rawImport?.sessionExternalIds || []);
+        if (!sessionExternalIds.size) return "";
+        const sessionIds = new Set(data.sessions.filter((session) => sessionExternalIds.has(session.externalId)).map((session) => session.id));
+        const exerciseIds = new Set(data.exercises.filter((exercise) => sessionIds.has(exercise.sessionId)).map((exercise) => exercise.id));
+        const units = new Set(data.sets.filter((set) => exerciseIds.has(set.exerciseId) && (set.weightUnit === "lb" || set.weightUnit === "kg")).map((set) => set.weightUnit));
+        return units.size === 1 ? [...units][0] : "";
+      }
+
+      function importStrongCsv(text, sourceWeightUnit) {
+        const weightUnit = normalizeStrongImportWeightUnit(sourceWeightUnit);
+        const retainedRawImport = (data.rawImports || []).find((item) => item.source === "strong" && item.originalText === text);
+        if (retainedRawImport) {
+          const retainedUnit = retainedStrongImportWeightUnit(retainedRawImport);
+          if (!retainedUnit) throw new Error("This Strong CSV was already imported before its source weight unit was recorded. No data was changed; keep the retained raw source and review its existing sets before importing again.");
+          if (retainedUnit !== weightUnit) throw new Error(`This Strong CSV was already imported as ${retainedUnit}. No data was changed; the same raw source cannot be reinterpreted as ${weightUnit}.`);
+          settingsMessage = `Strong CSV already imported as ${weightUnit}. No data was changed; the raw source backup is already retained.`;
+          render();
+          return;
+        }
         const rows = parseCsv(text).filter((row) => row.Date && row["Exercise Name"] && isStrongWorkSet(row));
         if (!rows.length) throw new Error("No Strong workout rows found.");
         const existingSessionIds = new Set(data.sessions.map((session) => session.externalId).filter(Boolean));
@@ -722,14 +748,14 @@
             sourceSetOrder: String(row["Set Order"] || ""),
             reps,
             weight,
-            weightUnit: data.settings.weightUnit,
+            weightUnit,
             resistanceType,
             isBodyweight: isBodyweightResistance(resistanceType),
             addedLoad: resistanceType === "bodyweight_plus_load" ? weight : 0,
             assistanceLoad: resistanceType === "assisted_bodyweight" ? weight : 0,
             rpe: numberFrom(row.RPE),
             completed: true,
-            originalImportedValue: { setOrder: String(row["Set Order"] || ""), weight: row.Weight, reps: row.Reps, rpe: row.RPE, distance: row.Distance, seconds: row.Seconds }
+            originalImportedValue: { setOrder: String(row["Set Order"] || ""), weight: row.Weight, weightUnit, reps: row.Reps, rpe: row.RPE, distance: row.Distance, seconds: row.Seconds }
           });
         });
 
@@ -739,10 +765,9 @@
             data.exercises.filter((exercise) => exercise.source === "strong"),
             data.sets
           );
-          const backupAlreadyStored = (data.rawImports || []).some((item) => item.source === "strong" && item.originalText === text);
-          commit({ ...data, templates: [...templates, ...data.templates], rawImports: backupAlreadyStored ? data.rawImports : [...(data.rawImports || []), { id: "strong-backup-" + importStamp, source: "strong", importedAt: isoNow(), originalText: text, sessionExternalIds: [] }] }, false);
+          commit({ ...data, templates: [...templates, ...data.templates], rawImports: [...(data.rawImports || []), { id: "strong-backup-" + importStamp, source: "strong", importedAt: isoNow(), originalText: text, weightUnit, sessionExternalIds: [] }] }, false);
           const audit = auditImportedTemplateHistory(templates);
-          settingsMessage = "Strong CSV already imported." + (templates.length ? " Added " + templates.length + " templates from active workout names." : "") + strongImportAuditMessage(audit) + (backupAlreadyStored ? "" : " Raw source backup retained.");
+          settingsMessage = `Strong workout rows already existed; retained this ${weightUnit} CSV source.` + (templates.length ? " Added " + templates.length + " templates from active workout names." : "") + strongImportAuditMessage(audit);
           render();
           return;
         }
@@ -781,11 +806,11 @@
           exercises: [...data.exercises, ...exercises],
           sets: [...data.sets, ...sets],
           templates: [...templates, ...data.templates],
-          rawImports: [...(data.rawImports || []), { id: "strong-" + importStamp, source: "strong", importedAt: isoNow(), originalText: text, sessionExternalIds: sessions.map((session) => session.externalId) }]
+          rawImports: [...(data.rawImports || []), { id: "strong-" + importStamp, source: "strong", importedAt: isoNow(), originalText: text, weightUnit, sessionExternalIds: sessions.map((session) => session.externalId) }]
         }, false);
         activeSessionId = sessions.sort((a, b) => b.date.localeCompare(a.date))[0]?.id || activeSessionId;
         const audit = auditImportedTemplateHistory(templates);
-        settingsMessage = "Imported " + sessions.length + " Strong workouts, " + exercises.length + " exercises, " + sets.length + " sets, and " + templates.length + " templates." + strongImportAuditMessage(audit);
+        settingsMessage = "Imported " + sessions.length + " Strong workouts, " + exercises.length + " exercises, " + sets.length + " sets, and " + templates.length + " templates with source weights in " + weightUnit + "." + strongImportAuditMessage(audit);
         render();
       }
 
@@ -840,7 +865,7 @@
         const allowedRecommendationFields = new Set(["recommendationId", "schemaVersion", "recommendationVersion", "engineVersion", "personalDataVersion", "researchDatabaseVersion", "mesocycleId", "exerciseId", "muscleGroupId", "exerciseScore", "muscleSpecificScore", "personalEvidenceWeight", "researchEvidenceWeight", "standardGuideline", "readinessAdjustment", "basePrescription", "finalPrescription", "explanation", "evidenceSummary", "confidence", "createdAt", "manualOverrides", "overrideLocked", "checksum", "request", "scores", "versions"]);
         const allowedCustomProfileFields = new Set(["schemaVersion", "status", "primaryMuscleGroupId", "secondaryMuscleGroupId", "resistanceType", "exerciseStyle", "progressionMetric", "smallestIncrement", "confirmedAt"]);
         const allowedOverrideFields = new Set(["overrideId", "recommendationId", "sessionId", "workoutId", "exerciseRuntimeId", "exerciseId", "setId", "field", "from", "to", "createdAt", "actor", "reason", "lockedForWorkout", "changes", "previousFinalPrescription", "outcome", "outcomeEvaluation", "action"]);
-        const allowedRawImportFields = new Set(["id", "source", "importedAt", "originalText", "sessionExternalIds"]);
+        const allowedRawImportFields = new Set(["id", "source", "importedAt", "originalText", "weightUnit", "sessionExternalIds"]);
         const allowedMigrationFields = new Set(["version", "startedAt", "completedAt", "inspected", "changed", "explicitRetained", "manualOverridesPreserved", "warmups", "topSets", "backoffSets", "dropSets", "ambiguous", "templatesReseeded", "changes"]);
         const allowedMigrationChangeFields = new Set(["setId", "exerciseId", "from", "to", "reason", "confidence"]);
         const VALID_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
@@ -881,6 +906,20 @@
             throw new Error(`${label} must be between ${config.min} and ${config.max} in ${config.step} increments.`);
           }
           return numeric;
+        };
+        const assertNumericDomain = (value, config, label) => {
+          if (value == null || value === "") return;
+          const numeric = Number(value);
+          const steps = config.step == null ? 0 : (numeric - config.min) / config.step;
+          if (!Number.isFinite(numeric)
+            || numeric < config.min
+            || (config.max != null && numeric > config.max)
+            || (config.integer && !Number.isInteger(numeric))
+            || (config.step != null && Math.abs(steps - Math.round(steps)) > 1e-9)) {
+            const maximum = config.max == null ? "or greater" : `and ${config.max}`;
+            const increment = config.step == null ? "" : ` in ${config.step} increments`;
+            throw new Error(`${label} must be between ${config.min} ${maximum}${increment}.`);
+          }
         };
         const assertCustomExerciseProfile = (profile, label) => {
           if (profile == null) return;
@@ -937,7 +976,16 @@
         const sets = imported.sets.map((record, index) => {
           assertAllowed(record, allowedSetFields, `Set ${index + 1}`);
           assertId(record.exerciseId, `Set ${index + 1} exercise reference`);
-          for (const field of ["setNumber", "sequenceIndex", "sequence", "setTypeIndex", "reps", "weight", "rpe", "addedLoad", "assistanceLoad", "durationSeconds", "distance", "targetReps", "targetRepMin", "targetRepMax", "targetWeight", "targetRpe", "targetRpeMin", "targetRpeMax", "targetRpeTolerance", "targetRestSeconds", "classificationConfidence", "classifierVersion"]) if (record[field] != null && record[field] !== "" && !Number.isFinite(Number(record[field]))) throw new Error(`Set ${index + 1} ${field} must be numeric.`);
+          const setNumericDomains = {
+            setNumber: { min: 0, integer: true }, sequenceIndex: { min: 0, integer: true }, sequence: { min: 0, integer: true }, setTypeIndex: { min: 0, integer: true },
+            reps: { min: 0, integer: true }, weight: { min: 0 }, rpe: { min: 0, max: 10, step: 0.5 }, addedLoad: { min: 0 }, assistanceLoad: { min: 0 },
+            durationSeconds: { min: 0, integer: true }, distance: { min: 0 }, targetReps: { min: 0, integer: true }, targetRepMin: { min: 0, integer: true }, targetRepMax: { min: 0, integer: true },
+            targetWeight: { min: 0 }, targetRpe: { min: 0, max: 10, step: 0.5 }, targetRpeMin: { min: 0, max: 10, step: 0.5 }, targetRpeMax: { min: 0, max: 10, step: 0.5 },
+            targetRpeTolerance: { min: 0, max: 10, step: 0.5 }, targetRestSeconds: { min: 0, max: 3600, integer: true }, classificationConfidence: { min: 0, max: 1 }, classifierVersion: { min: 1, integer: true }
+          };
+          Object.entries(setNumericDomains).forEach(([field, config]) => assertNumericDomain(record[field], config, `Set ${index + 1} ${field}`));
+          if (record.targetRepMin != null && record.targetRepMax != null && Number(record.targetRepMin) > Number(record.targetRepMax)) throw new Error(`Set ${index + 1} target rep minimum must not exceed its maximum.`);
+          if (record.targetRpeMin != null && record.targetRpeMax != null && Number(record.targetRpeMin) > Number(record.targetRpeMax)) throw new Error(`Set ${index + 1} target RPE minimum must not exceed its maximum.`);
           for (const field of ["completed", "skipped", "edited", "isWarmup", "countsTowardScore", "countsTowardVolume", "countsTowardProgression", "manualOverride", "reviewRequired"]) if (record[field] != null && typeof record[field] !== "boolean") throw new Error(`Set ${index + 1} ${field} must be boolean.`);
           return copyAllowed(record, allowedSetFields);
         });
@@ -1016,7 +1064,15 @@
         if (settings.readinessBaseline != null) {
           const allowedBaselineFields = new Set(["sleepHours", "sleepQuality", "hrv", "restingHr", "soreness", "band"]);
           assertAllowed(settings.readinessBaseline, allowedBaselineFields, "Settings readinessBaseline");
-          Object.entries(settings.readinessBaseline).forEach(([field, value]) => { if (value !== "" && value != null && !Number.isFinite(Number(value))) throw new Error(`Settings readinessBaseline ${field} must be numeric or empty.`); });
+          const readinessBaselineDomains = {
+            sleepHours: { min: 0, max: 14, step: 0.25 },
+            sleepQuality: { min: 1, max: 5, integer: true },
+            hrv: { min: 0, integer: true },
+            restingHr: { min: 0, integer: true },
+            soreness: { min: 1, max: 5, integer: true },
+            band: { min: 3, max: 20, integer: true }
+          };
+          Object.entries(readinessBaselineDomains).forEach(([field, config]) => assertNumericDomain(settings.readinessBaseline[field], config, `Settings readinessBaseline ${field}`));
         }
         const boundedRecords = (value, label, maximum, allowedFields) => {
           if (value == null) return [];
@@ -1034,6 +1090,7 @@
         rawImports.forEach((record, index) => {
           assertId(record.id, `Raw import ${index + 1}`);
           if (typeof record.source !== "string" || !record.source || record.source.length > 128) throw new Error(`Raw import ${index + 1} source is invalid.`);
+          if (record.weightUnit != null && !["lb", "kg"].includes(record.weightUnit)) throw new Error(`Raw import ${index + 1} weightUnit must be lb or kg.`);
           if (typeof record.originalText !== "string" || new TextEncoder().encode(record.originalText).byteLength > limits.maxFileBytes) throw new Error(`Raw import ${index + 1} source text exceeds the file limit.`);
           if (!Array.isArray(record.sessionExternalIds) || record.sessionExternalIds.length > MAX_SESSIONS || record.sessionExternalIds.some((value) => typeof value !== "string" || value.length > 128)) throw new Error(`Raw import ${index + 1} session references are invalid.`);
         });
@@ -1294,11 +1351,11 @@
           if (appDataPersistenceConflict) {
             throw new Error("Import is blocked because two valid saved app-data copies disagree and neither may be discarded automatically. Export downloads only the currently selected copy; the preserved alternate is excluded. Review the export, then use confirmed Clear All Local App Data before importing a replacement.");
           }
-          if (Number(file.size || 0) > BACKUP_IMPORT_LIMITS.maxFileBytes) throw new Error("Backup file is too large; the maximum size is 8 MiB.");
+          if (Number(file.size || 0) > BACKUP_IMPORT_LIMITS.maxFileBytes) throw new Error("Backup file is too large; the maximum size is 50 MiB.");
           const text = await file.text();
-          if (new TextEncoder().encode(text).byteLength > BACKUP_IMPORT_LIMITS.maxFileBytes) throw new Error("Backup file is too large; the maximum size is 8 MiB.");
+          if (new TextEncoder().encode(text).byteLength > BACKUP_IMPORT_LIMITS.maxFileBytes) throw new Error("Backup file is too large; the maximum size is 50 MiB.");
           if (file.name.toLowerCase().endsWith(".csv") || text.startsWith("Date,Workout Name,Duration,Exercise Name")) {
-            importStrongCsv(text);
+            importStrongCsv(text, strongImportWeightUnit);
             importStatus = { state: "accepted", message: settingsMessage || "Strong import complete." };
             return;
           }

@@ -892,7 +892,7 @@ test("browser Back guards dirty history edits and reload cannot persist the temp
   const historyEntry = page.locator(`[data-action="open-session"][data-session-id="${originalSession.id}"]`).first();
   await expect(historyEntry, "Dashboard history must provide the deterministic entry used to create a browser history record").toBeVisible();
   await historyEntry.click();
-  await expect(page).toHaveURL(/#lift$/);
+  await expect(page).toHaveURL(/#today$/);
   await page.getByRole("button", { name: "Edit History", exact: true }).click();
   await page.locator("summary").filter({ hasText: "Workout details" }).click();
 
@@ -904,13 +904,13 @@ test("browser Back guards dirty history edits and reload cannot persist the temp
 
   const dialog = page.getByRole("dialog", { name: "Cancel these edits?", exact: true });
   await expect(dialog, "Browser Back must invoke the same cancel-edit confirmation as explicit navigation").toBeVisible();
-  await expect(page, "A blocked browser Back must restore the canonical Lift URL").toHaveURL(/#lift$/);
+  await expect(page, "A blocked browser Back must restore the canonical Today URL for the submitted workout").toHaveURL(/#today$/);
   await expect(page.locator('[data-action="session-title"]'), "The guarded edit must remain visible and temporary beneath the dialog").toHaveValue(temporaryTitle);
   await dialog.getByRole("button", { name: "Keep Editing", exact: true }).click();
   await expect(page.locator('[data-action="session-title"]')).toHaveValue(temporaryTitle);
-  await primaryTab(page, "dashboard").click();
+  await primaryTab(page, "progress").click();
   await expect(dialog, "Explicit tab navigation must retain the same established cancel-edit guard").toBeVisible();
-  await expect(page).toHaveURL(/#lift$/);
+  await expect(page).toHaveURL(/#today$/);
   await expect(page.locator('[data-action="session-title"]')).toHaveValue(temporaryTitle);
   await dialog.getByRole("button", { name: "Keep Editing", exact: true }).click();
   const persistedDuringEdit = await readPersistedAppData(page);
@@ -1275,7 +1275,7 @@ test("live guided Available Equipment and Muscle Group Scope choices are named g
   expect.soft(undersized, "Every live multi-entry choice must provide a 44 by 44 CSS-pixel target").toEqual([]);
 });
 
-test("repeated Lift move, delete, add-set, warm-up, and duplicate controls include their exercise context", async ({ page }) => {
+test("repeated Lift move, delete, add-set, warm-up, and copy-set controls include their exercise context", async ({ page }) => {
   await installScenario(page);
   await openPrimaryTab(page, "lift");
   const cases = [
@@ -1289,7 +1289,7 @@ test("repeated Lift move, delete, add-set, warm-up, and duplicate controls inclu
     ['[data-action="delete-exercise"]', "delete", [/\bdelete(?: exercise)?\b/i]],
     ['[data-action="add-set"]', "add set", [/(?:\badd(?: a| one)? (?:working )?set\b|[+＋]\s*(?:working\s*)?set\b)/i]],
     ['[data-action="add-warmup-set"]', "add warm-up", [/(?:\badd(?: a| one)? warm[- ]?up(?: set)?\b|[+＋]\s*warm[- ]?up(?: set)?\b)/i]],
-    ['[data-action="duplicate-set"]', "duplicate", [/\bduplicate(?: set)?\b/i]]
+    ['[data-action="duplicate-set"]', "copy set", [/\bcopy(?: the last)? set\b/i]]
   ];
 
   let auditedControls = 0;
@@ -1323,7 +1323,7 @@ test("repeated Lift move, delete, add-set, warm-up, and duplicate controls inclu
   expect(auditedControls, "The live Lift fixture must expose repeated mutation controls to audit").toBeGreaterThan(0);
 });
 
-test("set transitions preserve manual scroll while explicit exercise jumps honor reduced motion", async ({ page }) => {
+test("set transitions preserve manual scroll and the retired workout-board jump stays absent", async ({ page }) => {
   await page.addInitScript(() => {
     const nativeScrollIntoView = Element.prototype.scrollIntoView;
     globalThis.__SCROLL_INTO_VIEW_AUDIT__ = [];
@@ -1343,8 +1343,7 @@ test("set transitions preserve manual scroll while explicit exercise jumps honor
   await page.waitForTimeout(250);
   expect(await page.evaluate(() => globalThis.__SCROLL_INTO_VIEW_AUDIT__), "Completing a set must not move the workout viewport").toEqual([]);
 
-  await page.locator('[data-action="focus-workout-exercise"][data-exercise-id="public-synthetic-active-exercise-2"]').click();
-  await expect.poll(() => page.evaluate(() => globalThis.__SCROLL_INTO_VIEW_AUDIT__.length), { timeout: 5_000 }).toBeGreaterThan(0);
+  await expect(page.locator('[data-action="focus-workout-exercise"]'), "The continuous workout document must not render the retired workout-board jump controls").toHaveCount(0);
   const result = await page.evaluate(() => ({
     mediaMatches: matchMedia("(prefers-reduced-motion: reduce)").matches,
     calls: globalThis.__SCROLL_INTO_VIEW_AUDIT__.map((entry) => ({ ...entry })),
@@ -1352,10 +1351,7 @@ test("set transitions preserve manual scroll while explicit exercise jumps honor
   }));
   expect(result.mediaMatches).toBe(true);
   expect(result.cssScrollBehavior).toBe("auto");
-  const expectedTargetId = "exercise-public-synthetic-active-exercise-2";
-  expect(result.calls.some((call) => call.id === expectedTargetId), `The explicit workout-board jump must target ${expectedTargetId}: ${JSON.stringify(result.calls)}`).toBe(true);
-  expect(result.calls.filter((call) => call.id !== expectedTargetId), `No unrelated element may be scrolled by the explicit jump: ${JSON.stringify(result.calls)}`).toEqual([]);
-  expect(result.calls.every((call) => call.behavior === "auto"), `Reduced motion must never request smooth programmatic scrolling: ${JSON.stringify(result.calls)}`).toBe(true);
+  expect(result.calls, "Completing a set in the continuous workout document must never invoke programmatic scrolling").toEqual([]);
 });
 
 test("forced-colors mode retains a visible non-shadow focus indicator on navigation and content controls", async ({ page }) => {

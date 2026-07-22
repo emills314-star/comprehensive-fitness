@@ -523,6 +523,7 @@
         if (action === "baseline-resting-hr") patchReadinessBaseline({ restingHr: target.value });
         if (action === "baseline-soreness") patchReadinessBaseline({ soreness: target.value });
         if (action === "baseline-band") patchReadinessBaseline({ band: target.value });
+        if (action === "strong-import-weight-unit") strongImportWeightUnit = target.value === "lb" || target.value === "kg" ? target.value : "";
         if (action === "template-readiness-sleep-quality") patchTemplateStartDraft({ sleepQuality: target.value }, false);
         if (action === "template-readiness-soreness") patchTemplateStartDraft({ soreness: target.value }, false);
         if (action === "template-readiness-nutrition") patchTemplateStartDraft({ nutritionStatus: target.value }, false);
@@ -901,6 +902,7 @@
       window.addEventListener("beforeunload", persistBeforeSuspend);
       window.addEventListener("popstate", () => {
         const nextTab = tabFromLocation();
+        const previousProgressView = progressView;
         progressView = progressViewFromLocation();
         if (historyEditFlow && nextTab !== "today") {
           activeTab = "today";
@@ -908,7 +910,16 @@
           requestHistoryEditConfirmation("cancel", { preserveOrigin: true });
           return;
         }
-        if (nextTab === activeTab) return;
+        if (nextTab === activeTab) {
+          if (activeTab === "progress" && progressView !== previousProgressView) {
+            dashboardDetail = null;
+            dashboardFocusStack.length = 0;
+            viewRenderError = null;
+            queuePostRenderFocus({ kind: "main" });
+            render();
+          }
+          return;
+        }
         tabScrollPositions.set(activeTab, window.scrollY);
         activeTab = nextTab;
         queuePostRenderFocus({ kind: "main" });

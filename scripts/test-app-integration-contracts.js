@@ -90,6 +90,22 @@ function publicResearchData() {
   };
 }
 
+test("safety substitution catalog identity uses an exact unambiguous public record", () => {
+  const resolve = evaluateFunction("exactResearchCatalogIdentity", {
+    normalizePrescriptionIdentity: (value) => String(value || "").toLowerCase().replace(/^ex_/, "").replace(/[^a-z0-9]+/g, " ").trim()
+  });
+  const catalog = [
+    { exercise_id: "ex_barbell_bench_press", exercise_name: "Barbell Bench Press" },
+    { exercise_id: "ex_cambered_barbell_bench_press", exercise_name: "Cambered Barbell Bench Press" }
+  ];
+  assert.equal(resolve("Cambered Barbell Bench Press", catalog), "ex_cambered_barbell_bench_press", "Exact catalog names must not collapse through broader aliases");
+  assert.equal(resolve("camber bar bench press", catalog), null, "Aliases must not resolve a safety-locked UI choice");
+  assert.equal(resolve("Barbell Bench Press", [...catalog, { exercise_id: "ex_duplicate", exercise_name: "barbell-bench press" }]), null, "Duplicate normalized catalog names must fail closed");
+  const contextSource = functionSource("safetySubstituteContext");
+  assert.match(contextSource, /equipmentCompatible\(record, configuredEquipment\)\.eligible/, "Safety candidate eligibility must evaluate every mapped catalog record against current equipment rather than an arbitrary top-five rank cutoff");
+  assert.doesNotMatch(contextSource, /rankExercisePool/, "Safety substitution eligibility must not discard evidence-linked alternatives merely because they fall outside a presentation ranking limit");
+});
+
 function deriveEngineSafetySubstitute(engine, blockedSnapshot, muscleGroupId, availableEquipment) {
   const originalExerciseId = blockedSnapshot.finalPrescription?.safetyRestriction?.originalExerciseId
     || blockedSnapshot.finalPrescription?.exerciseId
@@ -827,7 +843,8 @@ test("backup revision metadata is bounded and rebased while template numbers sha
   };
   const validate = evaluateFunction("validateImportedAppData", {
     BACKUP_IMPORT_LIMITS: limits,
-    validateBackupJsonShape: () => true
+    validateBackupJsonShape: () => true,
+    TextEncoder
   });
   const backup = (overrides = {}) => ({
     appDataVersion: 2,
@@ -873,6 +890,30 @@ test("backup revision metadata is bounded and rebased while template numbers sha
   });
   const canonical = validate(withTemplateValue("sets", "4"), limits);
   assert.equal(canonical.templates[0].exercises[0].sets, 4, "A valid numeric backup value must be canonicalized to a number");
+
+  const validSet = { id: "set-1", exerciseId: "exercise-1", setNumber: 1, sequenceIndex: 0, reps: 8, weight: 100, rpe: 8 };
+  const withSetValue = (field, value) => backup({
+    sessions: [{ id: "session-1" }],
+    exercises: [{ id: "exercise-1", sessionId: "session-1" }],
+    sets: [{ ...validSet, [field]: value }]
+  });
+  for (const [field, value] of [["reps", -1], ["reps", 1.5], ["weight", -0.5], ["rpe", 10.5], ["rpe", 7.25], ["durationSeconds", 1.5], ["targetRestSeconds", 3601], ["classificationConfidence", 1.1], ["classifierVersion", 0]]) {
+    assert.throws(() => validate(withSetValue(field, value), limits), new RegExp(`Set 1 ${field}|between`, "i"), `${field}=${value} must be rejected at import`);
+  }
+  assert.throws(() => validate(backup({
+    sessions: [{ id: "session-1" }],
+    exercises: [{ id: "exercise-1", sessionId: "session-1" }],
+    sets: [{ ...validSet, targetRepMin: 12, targetRepMax: 8 }]
+  }), limits), /target rep minimum/i);
+
+  const withBaselineValue = (field, value) => backup({ settings: { readinessBaseline: { [field]: value } } });
+  for (const [field, value] of [["sleepHours", 14.25], ["sleepHours", 7.6], ["sleepQuality", 0], ["sleepQuality", 2.5], ["hrv", -1], ["restingHr", 60.5], ["soreness", 6], ["band", 2], ["band", 8.5]]) {
+    assert.throws(() => validate(withBaselineValue(field, value), limits), new RegExp(`readinessBaseline ${field}|between`, "i"), `readinessBaseline.${field}=${value} must be rejected at import`);
+  }
+  assert.doesNotThrow(() => validate(backup({ settings: { readinessBaseline: { sleepHours: "7.5", sleepQuality: "4", hrv: "", restingHr: 60, soreness: 2, band: 8 } } }), limits));
+  const strongRawImport = { id: "strong-source-1", source: "strong", importedAt: "2026-07-21T12:00:00.000Z", originalText: "synthetic Strong CSV", weightUnit: "lb", sessionExternalIds: [] };
+  assert.equal(validate(backup({ rawImports: [strongRawImport] }), limits).rawImports[0].weightUnit, "lb", "Strong raw-source unit provenance must survive backup validation");
+  assert.throws(() => validate(backup({ rawImports: [{ ...strongRawImport, weightUnit: "stone" }] }), limits), /weightUnit must be lb or kg/i, "Unknown Strong source units must fail backup validation");
 
   const numericFields = {
     "template-exercise-sets": { field: "sets", min: 1, max: 100, step: 1, integer: true, label: "sets" },
@@ -988,6 +1029,19 @@ test("active and template recommendation snapshots require schema, checksum, ide
   assert.deepEqual(calls.map((item) => item.snapshot.kind), ["active-exercise", "active-workout", "template"]);
   assert.deepEqual(calls.filter((item) => item.hostExercise).map((item) => item.hostExercise.id), ["active-exercise", "template-exercise"], "Active/template exercise snapshots must remain bound to their host exercise");
   assert.equal(JSON.stringify(historicalSnapshot), historicalBefore, "Submitted historical snapshot bytes must remain untouched and unvalidated");
+});
+
+test("Strong CSV import requires explicit source-unit provenance and preserves it", () => {
+  const importStrongSource = functionSource("importStrongCsv");
+  const importFileSource = functionSource("importDataFile");
+  collectAssertions([
+    ["explicit source unit", () => assertContains(importStrongSource, /normalizeStrongImportWeightUnit\s*\(\s*sourceWeightUnit\s*\)/, "Strong import must validate an explicit source unit")],
+    ["per-set provenance", () => assertContains(importStrongSource, /weightUnit\s*,/, "Strong sets must store the selected source unit")],
+    ["raw-source provenance", () => assertContains(importStrongSource, /originalText:\s*text[\s\S]{0,160}weightUnit/, "Retained Strong source metadata must store the selected unit")],
+    ["deterministic duplicate", () => assertContains(importStrongSource, /retainedRawImport[\s\S]{0,900}No data was changed/, "An exact duplicate Strong source must be a deterministic no-op")],
+    ["file wiring", () => assertContains(importFileSource, /importStrongCsv\s*\(\s*text\s*,\s*strongImportWeightUnit\s*\)/, "The file importer must pass the explicit Strong unit choice")],
+    ["visible choice", () => assertContains(html, /data-action="strong-import-weight-unit"[\s\S]{0,500}Pounds \(lb\)[\s\S]{0,500}Kilograms \(kg\)/, "Settings must expose the Strong source-unit choice")]
+  ]);
 });
 
 test("recommendation presentation tolerates legacy partial snapshots without mutating audit history", () => {

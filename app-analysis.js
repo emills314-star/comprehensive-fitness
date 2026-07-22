@@ -1733,6 +1733,14 @@
               ${importInProgress ? '<p class="settings-note">Importing workout history. This can take a moment on iPhone, but navigation will recover automatically when it finishes.</p>' : ""}
               <button type="button" data-action="export-data">${icon.download} data</button>
               ${exportText ? '<textarea class="export-box" readonly aria-label="Exported backup JSON">' + escapeHtml(exportText) + '</textarea>' : ""}
+              <label>Strong CSV source weight unit
+                <select data-action="strong-import-weight-unit">
+                  <option value="" ${!strongImportWeightUnit ? "selected" : ""}>Choose the unit used in the CSV</option>
+                  <option value="lb" ${strongImportWeightUnit === "lb" ? "selected" : ""}>Pounds (lb)</option>
+                  <option value="kg" ${strongImportWeightUnit === "kg" ? "selected" : ""}>Kilograms (kg)</option>
+                </select>
+              </label>
+              <p class="settings-note">Strong exports do not identify the Weight column unit. Choose the unit used when the CSV was exported; it is stored on every imported set and with the retained raw source. This does not change the app display unit.</p>
               <label class="import-button">${icon.upload} ${importInProgress ? "importing..." : "backup or Strong CSV"}<input type="file" accept=".json,.csv,application/json,text/csv" data-action="import-data" ${importInProgress ? "disabled" : ""} /></label>
               ${migration ? '<div class="inline-panel"><strong>Strong data migration v' + escapeHtml(migration.version) + '</strong><p class="settings-note">Inspected ' + escapeHtml(migration.inspected) + ' sets; changed ' + escapeHtml(migration.changed) + '; preserved ' + escapeHtml(migration.manualOverridesPreserved) + ' manual corrections; identified ' + escapeHtml(migration.warmups) + ' warm-ups, ' + escapeHtml(migration.topSets) + ' top sets, ' + escapeHtml(migration.backoffSets) + ' back-off sets, and ' + escapeHtml(migration.dropSets) + ' drop sets. ' + escapeHtml(migration.ambiguous) + ' sets need review. ' + escapeHtml(migration.templatesReseeded || 0) + ' Strong templates were reseeded from active working sets.</p></div>' : ''}
               <div class="inline-panel"><strong>Recoverability</strong><p class="settings-note">${data.rawImports?.length || 0} raw Strong import${(data.rawImports?.length || 0) === 1 ? '' : 's'} retained. Older completed workouts remain in the retention archive and are included in exports, but excluded from current analysis.</p></div>

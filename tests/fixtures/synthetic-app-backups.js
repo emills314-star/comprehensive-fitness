@@ -9,13 +9,13 @@ const IDS = Object.freeze({
 });
 
 const BACKUP_BOUNDARIES = Object.freeze({
-  fileBytes: 8 * 1024 * 1024,
+  fileBytes: 50 * 1024 * 1024,
   jsonDepth: 32,
   objectKeys: 128,
-  sessions: 1024,
-  exercises: 4096,
-  sets: 16384,
-  templates: 512
+  sessions: 100000,
+  exercises: 100000,
+  sets: 100000,
+  templates: 100000
 });
 
 function generatedId(namespace, index) {

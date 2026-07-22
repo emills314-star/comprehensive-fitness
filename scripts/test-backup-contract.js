@@ -26,7 +26,8 @@ assert.equal(contract.validateAndSanitizeBackup({ ...validBackup(), appDataVersi
 assert.throws(() => contract.validateAndSanitizeBackup({ ...validBackup(), appDataVersion: 0 }), /appDataVersion must be 1 or 2/);
 assert.throws(() => contract.validateAndSanitizeBackup({ ...validBackup(), sessions: [{ id: '\"><img src=x onerror=alert(1)>' }] }), /safe structural identifier/);
 assert.throws(() => contract.validateAndSanitizeBackup({ ...validBackup(), sets: [{ id: "set-1", exerciseId: "missing" }] }), /unknown exercise/);
-assert.throws(() => contract.validateAndSanitizeBackup(validBackup(), { byteLength: contract.MAX_BACKUP_BYTES + 1 }), /50 MB import limit/);
+assert.equal(contract.MAX_BACKUP_BYTES, 50 * 1024 * 1024, "The shared backup contract must retain the recoverability boundary for large legitimate histories");
+assert.throws(() => contract.validateAndSanitizeBackup(validBackup(), { byteLength: contract.MAX_BACKUP_BYTES + 1 }), /50 MiB import limit/);
 
 const polluted = JSON.parse('{"appDataVersion":2,"sessions":[],"exercises":[],"sets":[],"templates":[],"settings":{},"__proto__":{"polluted":true}}');
 assert.throws(() => contract.validateAndSanitizeBackup(polluted), /forbidden property name/);

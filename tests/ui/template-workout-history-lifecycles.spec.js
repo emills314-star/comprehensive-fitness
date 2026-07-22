@@ -99,8 +99,14 @@ async function openPlan(page) {
   await expect(page.getByRole("heading", { name: "Templates", exact: true })).toBeVisible();
 }
 
+async function openProgressHistory(page) {
+  await page.locator('[data-action="set-tab"][data-tab="progress"]').click();
+  await page.locator('[data-action="set-progress-view"][data-progress-view="history"]').click();
+  await expect(page.locator(".history-view")).toBeVisible();
+}
+
 async function openSubmittedHistorySession(page) {
-  await page.locator('[data-action="set-tab"][data-tab="dashboard"]').click();
+  await openProgressHistory(page);
   const historyCard = page.locator(`[data-action="open-session"][data-session-id="${IDS.historySession}"]`);
   await expect(historyCard).toHaveCount(1);
   await historyCard.click();
@@ -469,7 +475,9 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
 
     await expect(page.locator(".destination-error"), "a persisted partial recommendation must not replace Today with the destination error surface").toHaveCount(0);
     await expect(page.locator(`#exercise-${IDS.activeBenchExercise}`)).toBeVisible();
-    await expect(page.locator(`#exercise-${IDS.activeBenchExercise} .unified-prescription`)).toContainText("2 sets");
+    const prescription = page.locator(`#exercise-${IDS.activeBenchExercise} .unified-prescription`);
+    await expect(prescription).toContainText("1x Top set");
+    await expect(prescription).toContainText("1x Back-off set");
     const inMemoryBytes = await page.evaluate((exerciseId) => JSON.stringify(data.exercises.find((exercise) => exercise.id === exerciseId).recommendationSnapshot), IDS.activeBenchExercise);
     expect(inMemoryBytes, "display normalization must leave the stored active snapshot byte-equivalent").toBe(JSON.stringify(partialSnapshot));
     expect(browserErrors, "partial active recommendation presentation must not emit browser errors").toEqual([]);
@@ -809,7 +817,7 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     assertUniqueEntityIds(stored);
 
     await reloadAndWait(page);
-    await page.locator('[data-action="set-tab"][data-tab="lift"]').click();
+    await page.locator('[data-action="set-tab"][data-tab="today"]').click();
     await expect(page.getByRole("heading", { name: NAMES.activeSession, exact: true })).toBeVisible();
     await expect(page.locator(`[data-action="exercise-name"][data-exercise-id="${IDS.activeBenchExercise}"]`)).toHaveValue(renamed);
     await expect(page.locator('[data-action="exercise-name"]')).toHaveCount(2);
@@ -1011,7 +1019,7 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     assertUniqueEntityIds(after);
 
     await reloadAndWait(page);
-    await page.locator('[data-action="set-tab"][data-tab="dashboard"]').click();
+    await openProgressHistory(page);
     const card = page.locator(`[data-action="open-session"][data-session-id="${IDS.historySession}"]`);
     await expect(card).toHaveCount(1);
     await expect(card).toContainText(EDITED_HISTORY_TITLE);
@@ -1078,7 +1086,7 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     }).toEqual({ started: 1, completed: 1, failed: 0 });
 
     await reloadAndWait(page);
-    await page.locator('[data-action="set-tab"][data-tab="dashboard"]').click();
+    await openProgressHistory(page);
     const card = page.locator(`[data-action="open-session"][data-session-id="${IDS.historySession}"]`);
     await expect(card).toHaveCount(1);
     await card.click();
@@ -1105,7 +1113,7 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
 
     await page.goBack();
     await expect.soft(page.getByRole("dialog", { name: "Cancel these edits?" }), "browser Back must enter the same guarded confirmation flow as primary navigation").toBeVisible({ timeout: 1_000 });
-    await expect.soft(page, "browser Back must not leave the edit surface before the user resolves the confirmation").toHaveURL(/#lift$/, { timeout: 1_000 });
+    await expect.soft(page, "browser Back must not leave the edit surface before the user resolves the confirmation").toHaveURL(/#today$/, { timeout: 1_000 });
     await expect.soft(page.locator('[data-action="session-title"]'), "the temporary edit must remain available while confirmation is unresolved").toHaveValue(temporaryTitle, { timeout: 1_000 });
 
     await reloadAndWait(page);

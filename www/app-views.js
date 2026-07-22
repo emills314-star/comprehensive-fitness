@@ -1055,17 +1055,16 @@
         const substitutionRows = research.substitutionsByExercise.get(originalResearchExerciseId) || [];
         const mappedIds = Array.from(new Set(substitutionRows.map((item) => item.substitute_exercise_id || item.substituteExerciseId).filter(Boolean)));
         const originalIds = new Set([originalExerciseId, originalResearchExerciseId, restriction.auditBaseTargets?.exerciseId, restriction.auditBaseTargets?.researchExerciseId, snapshot.basePrescription?.exerciseId, snapshot.basePrescription?.researchExerciseId].filter(Boolean));
-        let rankedById = new Map();
+        const equipmentCompatibleById = new Map();
         if (mesocycleReferenceValid && equipmentInputValid && scopeValid && muscleGroupId) {
-          try {
-            const ranked = prescriptionEngine.rankExercisePool(muscleGroupId, {
-              availableEquipment: configuredEquipment,
-              excludedExerciseIds: Array.from(excludedExerciseIds),
-              mesocycleType: mesocycle?.type,
-              maxCandidates: 100
-            });
-            rankedById = new Map((ranked.candidates || []).map((candidate) => [candidate.exerciseId, candidate]));
-          } catch { /* Invalid or incompatible current constraints fail closed below. */ }
+          mappedIds.forEach((exerciseId) => {
+            const record = research.exerciseById.get(exerciseId);
+            try {
+              equipmentCompatibleById.set(exerciseId, Boolean(record && prescriptionApi.equipmentCompatible(record, configuredEquipment).eligible));
+            } catch {
+              equipmentCompatibleById.set(exerciseId, false);
+            }
+          });
         }
         const resolvedSubstituteId = restriction.substituteResearchExerciseId || restriction.substituteExerciseId || "";
         const resolved = restriction.status === "resolved_by_confirmed_substitute" && restriction.painFreeConfirmed === true;
@@ -1073,7 +1072,7 @@
           research.exerciseById.has(exerciseId)
           && !originalIds.has(exerciseId)
           && !excludedExerciseIds.has(exerciseId)
-          && rankedById.has(exerciseId)
+          && equipmentCompatibleById.get(exerciseId) === true
         ));
         const allowedSafetySubstituteIds = resolved
           ? eligibleSafetySubstituteIds.filter((exerciseId) => exerciseId !== resolvedSubstituteId)
@@ -1084,7 +1083,9 @@
           : allowedSafetySubstituteIds[0] || "";
         const preferredRecord = preferredId ? research.exerciseById.get(preferredId) : null;
 
-        const observedExerciseId = exercise?.name ? prescriptionExerciseIdentity(exercise.name) || "" : "";
+        const observedExerciseId = exercise?.name
+          ? exactResearchCatalogIdentity(exercise.name, research.exerciseDatabase) || ""
+          : "";
         const declaredResolvedIds = [
           restriction.substituteExerciseId,
           restriction.substituteResearchExerciseId,
@@ -1108,7 +1109,7 @@
           if (!mesocycleReferenceValid) resolvedValidation = { valid: false, reason: "missing_mesocycle_context", message: "The saved substitute cannot be revalidated because its workout mesocycle no longer exists." };
           else if (!identityCoherent) resolvedValidation = { valid: false, reason: "substitute_identity_drift", message: "The confirmed substitute no longer retains one coherent current catalog identity." };
           else if (excludedExerciseIds.has(resolvedSubstituteId)) resolvedValidation = { valid: false, reason: "substitute_excluded", message: "The confirmed substitute is now excluded from this workout." };
-          else if (!equipmentInputValid || !rankedById.has(resolvedSubstituteId)) resolvedValidation = { valid: false, reason: "unavailable_equipment", message: "The confirmed substitute is not compatible with the currently available equipment." };
+          else if (!equipmentInputValid || equipmentCompatibleById.get(resolvedSubstituteId) !== true) resolvedValidation = { valid: false, reason: "unavailable_equipment", message: "The confirmed substitute is not compatible with the currently available equipment." };
           else if (!scopeValid) resolvedValidation = { valid: false, reason: "substitute_out_of_scope", message: "The confirmed substitute no longer satisfies the current mesocycle muscle scope." };
           else if (!mappedIds.includes(resolvedSubstituteId) || !eligibleSafetySubstituteIds.includes(resolvedSubstituteId)) resolvedValidation = { valid: false, reason: "substitute_not_allowed", message: "The confirmed substitute is no longer a valid evidence-linked alternative for the painful original exercise." };
           else resolvedValidation = { valid: true, reason: "confirmed_pain_free_substitute", message: "The confirmed substitute still satisfies current identity, equipment, exclusion, and program constraints." };
@@ -1607,7 +1608,8 @@
       function presentationLabel(value) {
         const key = String(value || "").trim().toLowerCase().replace(/^mg[_-]/, "").replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
         if (!key) return "Not Available";
-        return presentationLabels[key] || key.split("_").filter(Boolean).map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+        const mapped = typeof presentationLabels !== "undefined" ? presentationLabels[key] : "";
+        return mapped || key.split("_").filter(Boolean).map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
       }
 
       function guidedDraft() {

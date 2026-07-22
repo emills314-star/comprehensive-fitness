@@ -332,7 +332,9 @@
         const replacementName = String(read("exercise")).trim();
         let replacementId = "";
         if (replacementName) {
-          replacementId = prescriptionExerciseIdentity(replacementName) || "";
+          replacementId = safetyLocked
+            ? exactResearchCatalogIdentity(replacementName, safetyContext.exerciseCatalog) || ""
+            : prescriptionExerciseIdentity(replacementName) || "";
           if (!replacementId) return showAppToast("That replacement is not in the personal or research exercise database.");
           if (safetyLocked) {
             if (!safetyContext.allowedSafetySubstituteIds.includes(replacementId)) return showAppToast("That exercise is not an engine-confirmed substitute under the current equipment and exclusion settings.");

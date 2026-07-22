@@ -830,22 +830,20 @@ async function seedBlockedSafetyRecommendation(page, fixture, request) {
     const mappedIds = new Set(substitutionRows.map((item) => item.substitute_exercise_id || item.substituteExerciseId).filter(Boolean));
     if (!mappedIds.size) throw new Error(`Public substitution evidence has no alternatives for ${originalExerciseId}`);
     const availableEquipment = engineRequest.availableEquipment || [];
-    const ranked = prescriptionEngine.rankExercisePool(engineRequest.muscleGroupId, { availableEquipment });
-    const rankedById = new Map(ranked.candidates.map((candidate) => [candidate.exerciseId, candidate]));
     const preferred = blocked.finalPrescription?.preferredReplacementExerciseId || null;
     if (preferred && !mappedIds.has(preferred)) throw new Error(`Engine preferred replacement ${preferred} is absent from its public substitution evidence`);
     const eligibleIds = [...mappedIds].filter((exerciseId) => (
       prescriptionEngine.evidence.research.exerciseById.has(exerciseId)
-        && (availableEquipment.includes("all") || rankedById.has(exerciseId))
+        && prescriptionApi.equipmentCompatible(prescriptionEngine.evidence.research.exerciseById.get(exerciseId), availableEquipment).eligible === true
     ));
     if (!eligibleIds.length) throw new Error(`No engine-confirmed, catalog-backed substitute satisfies the supplied equipment constraint for ${originalExerciseId}`);
     const candidateId = preferred && eligibleIds.includes(preferred)
       ? preferred
-      : eligibleIds.find((exerciseId) => rankedById.has(exerciseId));
-    if (!candidateId) throw new Error(`Engine supplied neither a usable preferred replacement nor a ranked public substitute for ${originalExerciseId}`);
+      : eligibleIds[0];
+    if (!candidateId) throw new Error(`Engine supplied no usable public substitute for ${originalExerciseId}`);
     const catalogRecord = prescriptionEngine.evidence.research.exerciseById.get(candidateId);
     if (!catalogRecord) throw new Error("Engine-confirmed safety substitute does not retain a public catalog record");
-    const candidate = rankedById.get(candidateId) || {
+    const candidate = {
       exerciseId: candidateId,
       researchExerciseId: candidateId,
       exerciseName: catalogRecord.exercise_name
@@ -869,7 +867,7 @@ async function seedBlockedSafetyRecommendation(page, fixture, request) {
       candidate: {
         exerciseId: candidate.exerciseId,
         researchExerciseId: candidate.researchExerciseId || candidate.exerciseId,
-        exerciseName: candidate.exerciseName || catalogRecord.exercise_name
+        exerciseName: catalogRecord.exercise_name
       },
       allowedSafetySubstituteIds: eligibleIds
     };
@@ -1301,8 +1299,24 @@ test("confirmed pain-free substitution uses an explicit catalog-backed UI flow a
   await override.locator('[data-override-field="exercise"]').fill(substituteName);
   const confirmation = override.locator('[data-override-field="pain-free-confirmed"]');
   await expect.soft(confirmation, "Safety substitution requires an explicit pain-free confirmation control").toHaveCount(1);
-  if (await confirmation.count()) await confirmation.check();
+  if (await confirmation.count()) {
+    await confirmation.focus();
+    await confirmation.press("Space");
+    await expect(confirmation).toBeChecked();
+  }
+  const observedCatalog = await page.evaluate(({ exerciseRuntimeId, replacementName }) => {
+    const exercise = exerciseById(exerciseRuntimeId);
+    const context = safetySubstituteContext(exercise.recommendationSnapshot, { exercise, session: sessionById(exercise.sessionId) });
+    return {
+      resolved: exactResearchCatalogIdentity(replacementName, context.exerciseCatalog),
+      replacementName,
+      allowed: context.allowedSafetySubstituteIds,
+      catalog: context.exerciseCatalog.map((item) => ({ id: item.exercise_id, name: item.exercise_name }))
+    };
+  }, { exerciseRuntimeId: fixture.exerciseIds.bench, replacementName: substituteName });
+  expect(observedCatalog.resolved, JSON.stringify(observedCatalog)).toBe(substituteId);
   await override.locator('[data-action="apply-prescription-override"]').click();
+  await expect.poll(() => page.evaluate(() => appToast), { message: "The catalog-backed pain-free substitution must be accepted" }).toMatch(/Prescription override saved/i);
 
   const runtime = await runtimeWorkoutState(page);
   const substituted = runtime.exercises.find((item) => item.id === fixture.exerciseIds.bench);

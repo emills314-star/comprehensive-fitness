@@ -268,7 +268,7 @@ test("Settings converts real loads and persists profile, timer, readiness, unit,
 
   await page.getByLabel("Theme").selectOption("dark");
   await page.getByLabel("Color package").selectOption("heritage-atlas");
-  await page.getByLabel("Weight unit").selectOption("kg");
+  await page.locator('[data-action="weight-unit"]').selectOption("kg");
   await openSettingsGroup(page, "Training defaults");
   await page.locator('[data-action="training-goal"]').selectOption("strength");
   await openSettingsGroup(page, "Training defaults");
@@ -318,7 +318,7 @@ test("Settings converts real loads and persists profile, timer, readiness, unit,
   await expect(page.locator("html")).toHaveAttribute("data-color-package", "heritage-atlas");
   await expect(page.getByLabel("Theme")).toHaveValue("dark");
   await expect(page.getByLabel("Color package")).toHaveValue("heritage-atlas");
-  await expect(page.getByLabel("Weight unit")).toHaveValue("kg");
+  await expect(page.locator('[data-action="weight-unit"]')).toHaveValue("kg");
   const restored = await page.evaluate(() => ({ settings: structuredClone(data.settings), firstSet: structuredClone(data.sets[0]) }));
   expect(restored.settings).toMatchObject(inMemory.settings);
   expect(restored.firstSet).toMatchObject({ weight: 99.79, weightUnit: "kg", targetWeight: 99.79 });

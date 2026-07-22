@@ -273,15 +273,15 @@ test("resolved pain-free substitutions revalidate current equipment and exclusio
     const mappedIds = [...new Set((research.substitutionsByExercise.get(originalResearchId) || [])
       .map((row) => row.substitute_exercise_id || row.substituteExerciseId)
       .filter(Boolean))];
-    const rankedAll = prescriptionEngine.rankExercisePool(muscleGroupId, { availableEquipment: allEquipment, maxCandidates: 100 });
-    const eligibleIds = mappedIds.filter((id) => research.exerciseById.has(id) && rankedAll.candidates.some((candidate) => candidate.exerciseId === id));
+    const eligibleIds = mappedIds.filter((id) => {
+      const catalogRecord = research.exerciseById.get(id);
+      return Boolean(catalogRecord && prescriptionApi.equipmentCompatible(catalogRecord, allEquipment).eligible === true);
+    });
     const capabilities = ["bodyweight", "bands", "dumbbell", "barbell", "rack", "cable_station"];
     let selected = null;
     for (const exerciseId of eligibleIds) {
-      const invalidEquipment = capabilities.find((capability) => {
-        const restricted = prescriptionEngine.rankExercisePool(muscleGroupId, { availableEquipment: [capability], maxCandidates: 100 });
-        return !restricted.candidates.some((candidate) => candidate.exerciseId === exerciseId);
-      });
+      const catalogRecord = research.exerciseById.get(exerciseId);
+      const invalidEquipment = capabilities.find((capability) => prescriptionApi.equipmentCompatible(catalogRecord, [capability]).eligible !== true);
       if (invalidEquipment) {
         selected = { exerciseId, invalidEquipment };
         break;
@@ -472,7 +472,8 @@ test("unexpected engine faults stay distinct, non-executable, and visible instea
       const flags = fatigueFlags(weekStart);
       const flag = flags.find((item) => item.scope === "Lift" && item.name === exerciseName) || null;
       dashboardDetail = flag ? { type: "fatigue-flag", id: flag.id } : { type: "fatigue" };
-      activeTab = "dashboard";
+      progressView = "overview";
+      activeTab = "progress";
       render();
       const uiText = root.innerText;
       return { baselineRecommendationId: baseline.recommendationId, failure, legacyAdapter, coachTarget, flag, uiText, legacyAdvice };

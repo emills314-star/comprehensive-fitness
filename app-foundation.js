@@ -11,13 +11,13 @@
       const SET_CLASSIFIER_VERSION = 2;
       const DOMAIN_MIGRATION_VERSION = 3;
       const BACKUP_IMPORT_LIMITS = Object.freeze({
-        maxFileBytes: 8 * 1024 * 1024,
+        maxFileBytes: 50 * 1024 * 1024,
         maxJsonDepth: 32,
         maxObjectKeys: 128,
-        maxSessions: 1024,
-        maxExercises: 4096,
-        maxSets: 16384,
-        maxTemplates: 512
+        maxSessions: 100000,
+        maxExercises: 100000,
+        maxSets: 100000,
+        maxTemplates: 100000
       });
       const PERSONAL_EVIDENCE_IMPORT_LIMITS = Object.freeze({
         maxFileBytes: 8 * 1024 * 1024,
@@ -179,6 +179,7 @@
       let importInProgress = false;
       let importAttempt = 0;
       let importStatus = { state: "idle", message: "" };
+      let strongImportWeightUnit = "";
       let saveTimer = 0;
       let draftSaveTimer = 0;
       let idleSaveHandle = 0;
@@ -1315,6 +1316,16 @@
         return String(value || "").toLowerCase().replace(/^ex_/, "").replace(/[^a-z0-9]+/g, " ").trim();
       }
 
+      function exactResearchCatalogIdentity(value, records = prescriptionEngine?.evidence?.research?.exerciseDatabase) {
+        const requested = normalizePrescriptionIdentity(value);
+        if (!requested || !Array.isArray(records)) return null;
+        const matches = Array.from(new Set(records.filter((record) => (
+          normalizePrescriptionIdentity(record?.exercise_name || record?.exerciseName) === requested
+          || normalizePrescriptionIdentity(record?.exercise_id || record?.exerciseId) === requested
+        )).map((record) => String(record?.exercise_id || record?.exerciseId || "").trim()).filter(Boolean)));
+        return matches.length === 1 ? matches[0] : null;
+      }
+
       function personalExerciseRecordForName(exerciseName, evidence = prescriptionEngine?.evidence) {
         const requested = normalizePrescriptionIdentity(exerciseName);
         const personal = evidence?.personal;
@@ -2299,7 +2310,8 @@
         let runtime = null;
         try {
           runtime = await readIndexedValue("runtime");
-        } catch {
+        } catch { /* The local fallback is inspected below. */ }
+        if (!runtime) {
           try { runtime = JSON.parse(localStorage.getItem(RUNTIME_KEY) || "null"); } catch { runtime = null; }
         }
         if (!runtime) return;
@@ -3868,6 +3880,7 @@
 
       function tabUrl(tab) {
         const url = new URL(window.location.href);
+        ["view", "rest", "workout", "set", "exercise", "workoutId", "exerciseId", "completedSetId", "nextSetId", "timerId", "notificationId", "timerVersion"].forEach((key) => url.searchParams.delete(key));
         url.hash = tab === "progress" ? `progress-${progressView}` : tab;
         return url.pathname + url.search + url.hash;
       }

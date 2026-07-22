@@ -109,7 +109,7 @@
 
   function validateAndSanitizeBackup(input, options = {}) {
     const byteLength = Number(options.byteLength || 0);
-    if (byteLength > MAX_BACKUP_BYTES) fail("file exceeds the 50 MB import limit.");
+    if (byteLength > MAX_BACKUP_BYTES) fail("file exceeds the 50 MiB import limit.");
     if (!isPlainObject(input)) fail("the root must be an object.");
     if (input.backupSchemaVersion != null && input.backupSchemaVersion !== BACKUP_SCHEMA_VERSION) {
       fail("unsupported backup schema version.");

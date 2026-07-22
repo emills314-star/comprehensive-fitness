@@ -72,7 +72,7 @@ test("migration audit import fields are typed and every rendered value is escape
       templatesReseeded: payload,
       changes: []
     }];
-    activeTab = "data";
+    activeTab = "more";
     render();
     return { validation, payload };
   }, { model: state, ids: IDS });

@@ -45,12 +45,70 @@ async function waitForApp(page) {
   }).toBe("ready");
 }
 
+test("Strong CSV unit choice is explicit, durable per record, and duplicate-safe", async ({ page }) => {
+  test.setTimeout(120_000);
+  await installBlankApp(page);
+  const audit = await page.evaluate((csv) => {
+    data = { ...data, settings: { ...data.settings, weightUnit: "kg" } };
+    let missingUnitError = "";
+    try { importStrongCsv(csv); } catch (error) { missingUnitError = error.message; }
+    const beforeImport = { sessions: data.sessions.length, sets: data.sets.length, rawImports: data.rawImports.length };
+    importStrongCsv(csv, "lb");
+    const afterFirst = {
+      revision: data.dataRevision,
+      sessions: data.sessions.length,
+      exercises: data.exercises.length,
+      sets: data.sets.length,
+      templates: data.templates.length,
+      rawImports: data.rawImports.length
+    };
+    const importedSets = data.sets.filter((set) => data.exercises.some((exercise) => exercise.source === "strong" && exercise.id === set.exerciseId));
+    const retained = data.rawImports.find((item) => item.source === "strong" && item.originalText === csv);
+    importStrongCsv(csv, "lb");
+    const afterDuplicate = {
+      revision: data.dataRevision,
+      sessions: data.sessions.length,
+      exercises: data.exercises.length,
+      sets: data.sets.length,
+      templates: data.templates.length,
+      rawImports: data.rawImports.length
+    };
+    let conflictingUnitError = "";
+    try { importStrongCsv(csv, "kg"); } catch (error) { conflictingUnitError = error.message; }
+    return {
+      missingUnitError,
+      conflictingUnitError,
+      beforeImport,
+      afterFirst,
+      afterDuplicate,
+      appUnit: data.settings.weightUnit,
+      importedUnits: [...new Set(importedSets.map((set) => set.weightUnit))],
+      importedWeights: importedSets.map((set) => set.weight),
+      originalUnits: [...new Set(importedSets.map((set) => set.originalImportedValue?.weightUnit))],
+      rawUnit: retained?.weightUnit || "",
+      rawTextPreserved: retained?.originalText === csv
+    };
+  }, STRONG_CSV);
+
+  expect(audit.missingUnitError).toContain("Choose whether the Strong CSV Weight column uses");
+  expect(audit.beforeImport.sets).toBe(0);
+  expect(audit.beforeImport.rawImports).toBe(0);
+  expect(audit.appUnit).toBe("kg");
+  expect(audit.importedUnits).toEqual(["lb"]);
+  expect(audit.originalUnits).toEqual(["lb"]);
+  expect(audit.importedWeights).toContain(27.5);
+  expect(audit.rawUnit).toBe("lb");
+  expect(audit.rawTextPreserved).toBe(true);
+  expect(audit.afterDuplicate).toEqual(audit.afterFirst);
+  expect(audit.conflictingUnitError).toContain("already imported as lb");
+});
+
 test("Strong-only history starts an editable workout without inventing a research identity", async ({ page }) => {
   test.setTimeout(120_000);
   await installBlankApp(page);
 
   const audit = await page.evaluate((csv) => {
-    importStrongCsv(csv);
+    importStrongCsv(csv, "lb");
     const template = data.templates.find((item) => item.name === "Public Synthetic Strong Upper");
     const exercise = template?.exercises.find((item) => item.name === "Public Synthetic Strong Cable Sweep");
     return {
@@ -121,7 +179,7 @@ test("Last time searches the full submitted Strong archive and tolerates perform
   test.setTimeout(120_000);
   await installBlankApp(page);
   const templateId = await page.evaluate(({ csv, exerciseName, templateName }) => {
-    importStrongCsv(csv);
+    importStrongCsv(csv, "lb");
     const imported = data.exercises.find((exercise) => exercise.source === "strong" && exercise.name === exerciseName);
     const template = {
       id: "public-synthetic-archived-template",
