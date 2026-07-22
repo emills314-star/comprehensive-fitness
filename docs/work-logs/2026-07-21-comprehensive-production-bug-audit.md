@@ -1,6 +1,6 @@
 # Comprehensive production bug audit
 
-- **Status:** LOCAL COMPLETE; HOSTED VERIFICATION PENDING
+- **Status:** COMPLETE
 - **Audit ledger:** `docs/audits/2026-07-21-comprehensive-production-bug-audit/bug-ledger.md`
 - **Goal:** Exercise every implemented production feature with synthetic data, reconcile reproducible defects, and publish verified fixes.
 - **Safety:** No personal fitness data, credentials, private exports, or destructive live-service operations are in scope.
@@ -24,4 +24,4 @@
 
 - Updated: `docs/ARCHITECTURE.md`, `docs/DECISION_ENGINE.md`, `docs/UI_UX.md`, and `docs/ROADMAP.md`.
 - Reviewed without change: `docs/PROJECT.md`; the fixes reconcile existing implemented capability and do not add product scope.
-- Final hosted mobile/desktop verification remains required after the pushed commit deploys.
+- Hosted Vercel verification confirmed commit `44f925a` markers and passed 17 changed-flow browser cases with 1 intentional cross-project skip across mobile and desktop.

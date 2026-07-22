@@ -2,7 +2,7 @@
 
 ## Campaign contract
 
-- **Status:** LOCAL VERIFICATION COMPLETE; HOSTED VERIFICATION PENDING
+- **Status:** COMPLETE
 - **Scope:** Implemented production PWA, public data contracts, mocked backend/push behavior, offline/PWA packaging, and Capacitor public packaging checks.
 - **Excluded:** Personal fitness records, non-production redesign parity, account/cloud restore, live wearable ingestion, signing/store release, and destructive live-service tests.
 - **Data boundary:** Public synthetic fixtures and isolated browser storage only.
@@ -60,3 +60,4 @@ Every implemented area must finish as `PASS`, `FIXED`, `BLOCKED`, or `NEEDS REVI
 - Complete Playwright audit: 226 passed, 18 intentional cross-project skips, 0 failed across 244 mobile/desktop cases.
 - Focused reconciliation after the first complete audit: dirty-history Back, large-text reflow, safety revalidation, and design-source contract 7 passed / 1 intentional skip; protected Lift baselines 5/5 passed outside update mode.
 - PWA/native packaging: 32/32 public assets passed. Static lint, workflow validation, production dependency audit (zero vulnerabilities), and tracked-content privacy scan (469 files) passed.
+- Hosted deployment verification: commit `44f925a` runtime markers were present on Vercel; 17 changed-flow browser cases passed with 1 intentional cross-project skip across mobile/desktop, including the critical lifecycle, safety substitute, Strong import/history, planner entry, Progress history, secondary-page return, and 320 px/200% reflow.
