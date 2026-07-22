@@ -39,6 +39,7 @@
 - Branch: `main`
 - Application commit `2a0f87e` was pushed to GitHub `main`.
 - Cache-bypassing production reads returned HTTP 200 for the application runtime and research catalog, with 84 aliases and the expected bench, cable-curl, pushdown, and alias-performance contracts present.
+- Service-worker cache generation `comprehensive-fitness-pwa-v55` publishes the changed runtime/catalog to existing installed PWAs instead of retaining the earlier cached assets.
 - Hosted URL: `https://comprehensive-fitness.vercel.app/?verify=2a0f87e#today`.
 - The focused all-mapped-label Playwright regression passed on mobile and desktop against production.
 - The deployed in-app browser showed zero `unknown_exercise_identity` messages, zero **Exercise unavailable** cards, and zero console errors.
