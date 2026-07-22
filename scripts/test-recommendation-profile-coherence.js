@@ -383,13 +383,14 @@ test("material recommendation fields carry structured, referentially valid scien
 });
 
 test("material contract versions are coherent, deterministic, and retain repository-known read compatibility", () => {
-  assert.equal(ENGINE_VERSION, "3.3.8");
+  assert.equal(ENGINE_VERSION, "3.4.0");
   const options = { trainingGoal: "strength", experienceLevel: "advanced", nutritionPhase: "maintenance" };
   const first = prescribeBench(options);
   const second = prescribeBench(options);
-  assert.equal(first.schemaVersion, "1.3.0");
-  assert.equal(first.recommendationVersion, "2.3.0");
-  assert.equal(first.basePrescription.schemaVersion, "2.3.0");
+  assert.equal(first.schemaVersion, "1.4.0");
+  assert.equal(first.recommendationVersion, "2.4.0");
+  assert.equal(first.basePrescription.schemaVersion, "2.4.0");
+  assert.equal(first.standardGuideline.schemaVersion, "standard-guideline/1.0.0");
   assert.equal(first.basePrescription.programmingContext.profileVersion, "training-profile/1.1.0");
   assert.equal(first.recommendationId, second.recommendationId);
   assert.equal(first.checksum, second.checksum);
@@ -400,6 +401,7 @@ test("material contract versions are coherent, deterministic, and retain reposit
   prior.recommendationVersion = "2.2.0";
   prior.basePrescription.schemaVersion = "2.2.0";
   prior.finalPrescription.schemaVersion = "2.2.0";
+  delete prior.standardGuideline;
   assert.doesNotThrow(() => deserializeRecommendationSnapshot(refreshRecommendationChecksum(prior)));
 
   const obsolete = JSON.parse(JSON.stringify(first));
@@ -407,6 +409,7 @@ test("material contract versions are coherent, deterministic, and retain reposit
   obsolete.recommendationVersion = "2.1.0";
   obsolete.basePrescription.schemaVersion = "2.1.0";
   obsolete.finalPrescription.schemaVersion = "2.1.0";
+  delete obsolete.standardGuideline;
   assert.doesNotThrow(() => deserializeRecommendationSnapshot(refreshRecommendationChecksum(obsolete)));
 
   const mismatched = JSON.parse(JSON.stringify(first));

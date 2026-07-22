@@ -597,6 +597,10 @@
       .session-submitted, .summary-muted { border: 1px solid var(--line); color: var(--muted); padding: 12px; }
       .submit-confirmation { background: var(--surface-strong); border: 1px solid var(--green); display: grid; gap: 10px; padding: 16px; }
       .submit-confirmation span { color: var(--muted); margin: 0; }
+      .submit-quality { border-top: 1px solid var(--line); display: grid; gap: 7px; padding-top: 10px; }
+      .submit-quality small { color: var(--muted); font-size: .66rem; line-height: 1.4; }
+      .submit-quality label { align-items: center; display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr) minmax(120px, .7fr); }
+      .submit-quality label span { color: var(--text); font-size: .7rem; font-weight: 800; }
       .completed-summary { --grade-color: var(--current); animation: workout-grade-reveal .34s ease-out both; background: var(--surface-strong); border: 1px solid color-mix(in srgb, var(--grade-color) 50%, var(--line)); border-left: 4px solid var(--grade-color); border-right: 4px solid var(--grade-color); display: grid; gap: 16px; padding: 16px 14px; }
       .completed-summary.score-excellent, .grade-tone.score-excellent { --grade-color: var(--current); }
       .completed-summary.score-very-good, .grade-tone.score-very-good { --grade-color: #1f9272; }
@@ -632,6 +636,10 @@
       .workout-exercise-detail > div { border-top: 1px solid var(--line); display: grid; gap: 3px; padding: 8px 0; }
       .workout-exercise-detail span { color: var(--muted); font-size: .62rem; font-weight: 800; text-transform: uppercase; }
       .workout-exercise-detail strong, .workout-exercise-detail p { font-size: .69rem; line-height: 1.45; margin: 0; overflow-wrap: anywhere; }
+      .next-exposure-preview { background: color-mix(in srgb, var(--current) 7%, var(--surface)); border-bottom: 1px solid var(--line); display: grid; gap: 3px; padding: 9px; }
+      .next-exposure-preview span { color: var(--muted); font-size: .59rem; font-weight: 900; text-transform: uppercase; }
+      .next-exposure-preview strong { font-size: .71rem; }
+      .next-exposure-preview p { color: var(--muted); font-size: .65rem; line-height: 1.4; margin: 0; }
       .workout-confidence { color: var(--muted); font-size: .66rem; line-height: 1.45; }
       .role-prescription-list { border-top: 1px solid var(--line); display: grid; gap: 0; }
       .role-prescription { border-bottom: 1px solid var(--line); display: grid; gap: 9px; padding: 12px 0; }
@@ -1940,7 +1948,20 @@
       .standard-workload-heading span, .standard-workload-grid label { color: var(--muted); font-size: .59rem; font-weight: 850; letter-spacing: .04em; text-transform: uppercase; }
       .standard-workload-heading strong { color: var(--text); font-size: .78rem; }
       .standard-workload-heading .standard-workload-badge { background: var(--current-dark); border-radius: 999px; color: var(--current); letter-spacing: 0; padding: 4px 7px; text-transform: capitalize; white-space: nowrap; }
+      .standard-workload-heading .standard-workload-badge.above-standard { background: color-mix(in srgb, var(--amber) 15%, var(--surface)); color: var(--amber); }
+      .standard-workload-heading .standard-workload-badge.below-standard { background: color-mix(in srgb, var(--muted) 15%, var(--surface)); color: var(--muted); }
       .standard-workload-card > p { color: var(--muted); font-size: .65rem; line-height: 1.4; margin: 0; }
+      .guideline-levels { display: grid; gap: 6px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .guideline-levels > div { background: var(--surface-strong); display: grid; gap: 3px; min-width: 0; padding: 8px; }
+      .guideline-levels span { color: var(--muted); font-size: .56rem; font-weight: 900; text-transform: uppercase; }
+      .guideline-levels strong { font-size: .65rem; line-height: 1.35; overflow-wrap: anywhere; }
+      .custom-exercise-setup { background: color-mix(in srgb, var(--amber) 7%, var(--surface)); border: 1px solid color-mix(in srgb, var(--amber) 32%, var(--line)); border-radius: 12px; display: grid; gap: 10px; padding: 12px; }
+      .custom-exercise-setup.complete { background: color-mix(in srgb, var(--current) 6%, var(--surface)); border-color: color-mix(in srgb, var(--current) 28%, var(--line)); }
+      .custom-exercise-setup > p { color: var(--muted); font-size: .65rem; line-height: 1.45; margin: 0; }
+      .custom-profile-grid { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .custom-profile-grid label, .execution-quality-control { color: var(--muted); display: grid; font-size: .61rem; font-weight: 850; gap: 5px; }
+      .execution-quality-control { background: var(--surface-strong); padding: 10px; }
+      .execution-quality-control small { font-size: .6rem; font-weight: 600; line-height: 1.4; }
       .standard-workload-grid { display: grid; gap: 8px; grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr); }
       .standard-workload-grid label { display: grid; gap: 5px; }
       .standard-workload-grid input { min-height: 42px; text-align: center; }

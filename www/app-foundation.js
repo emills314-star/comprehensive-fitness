@@ -866,6 +866,54 @@
         return ` disabled aria-disabled="true" data-safety-reason="${escapeHtml(label)}"`;
       }
 
+      const customExerciseProfileVersion = "custom-exercise-profile/1.0.0";
+      const customExerciseStyles = new Set(["multi_joint", "single_joint", "isometric", "carry_locomotion"]);
+      const customProgressionMetrics = new Set(["load_and_reps", "reps_only", "assistance", "duration", "distance"]);
+      const executionQualityValues = new Set(["controlled", "breakdown", "not_assessed"]);
+
+      function canonicalCustomMuscleGroup(value) {
+        const source = String(value || "").trim();
+        const key = source.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+        return ({
+          back: "upper_back", shoulders: "front_delts", quads: "quadriceps",
+          core: "abdominals", neck: "neck_flexors"
+        })[key] || key;
+      }
+
+      function normalizeCustomExerciseProfile(profile) {
+        if (!profile || typeof profile !== "object" || Array.isArray(profile)) return null;
+        const primaryMuscleGroupId = canonicalCustomMuscleGroup(profile.primaryMuscleGroupId);
+        const secondaryMuscleGroupId = canonicalCustomMuscleGroup(profile.secondaryMuscleGroupId);
+        const resistanceType = resistanceTypeValues.includes(profile.resistanceType) ? profile.resistanceType : "";
+        const exerciseStyle = customExerciseStyles.has(profile.exerciseStyle) ? profile.exerciseStyle : "";
+        const progressionMetric = customProgressionMetrics.has(profile.progressionMetric) ? profile.progressionMetric : "";
+        const smallestIncrement = profile.smallestIncrement === "" || profile.smallestIncrement == null ? null : Number(profile.smallestIncrement);
+        const incrementRequired = ["load_and_reps", "assistance"].includes(progressionMetric);
+        const complete = Boolean(primaryMuscleGroupId && resistanceType && exerciseStyle && progressionMetric && (!incrementRequired || (Number.isFinite(smallestIncrement) && smallestIncrement > 0)));
+        return {
+          schemaVersion: customExerciseProfileVersion,
+          status: complete ? "complete" : "incomplete",
+          primaryMuscleGroupId,
+          secondaryMuscleGroupId,
+          resistanceType,
+          exerciseStyle,
+          progressionMetric,
+          smallestIncrement: Number.isFinite(smallestIncrement) && smallestIncrement > 0 ? smallestIncrement : null,
+          confirmedAt: complete && typeof profile.confirmedAt === "string" ? profile.confirmedAt : ""
+        };
+      }
+
+      function missingCustomExerciseMetrics(profile) {
+        const normalized = normalizeCustomExerciseProfile(profile) || {};
+        const missing = [];
+        if (!normalized.primaryMuscleGroupId) missing.push("Primary muscle group");
+        if (!normalized.resistanceType) missing.push("Resistance mode");
+        if (!normalized.exerciseStyle) missing.push("Exercise style");
+        if (!normalized.progressionMetric) missing.push("Progression metric");
+        if (["load_and_reps", "assistance"].includes(normalized.progressionMetric) && !normalized.smallestIncrement) missing.push("Smallest available increment");
+        return missing;
+      }
+
       function normalizeLoadedData(model) {
         const storedSettings = model.settings || {};
         const legacyGoal = String(storedSettings.goal || "").trim().toLowerCase();
@@ -944,7 +992,9 @@
           const exerciseSets = setsByExercise.get(exercise.id) || [];
           const legacyBodyweight = exerciseSets.length > 0 && exerciseSets.every((set) => Boolean(set.isBodyweight)) && isBodyweightExerciseName(exercise.name);
           const resistanceType = inferResistanceType(exercise.name, { ...exercise, isBodyweight: exercise.isBodyweight ?? legacyBodyweight }, exerciseSets);
-          return { ...exercise, resistanceType, isBodyweight: isBodyweightResistance(resistanceType) };
+          const customExerciseProfile = typeof normalizeCustomExerciseProfile === "function" ? normalizeCustomExerciseProfile(exercise.customExerciseProfile) : null;
+          const executionQualityAssessment = typeof executionQualityValues !== "undefined" && executionQualityValues.has(exercise.executionQualityAssessment) ? exercise.executionQualityAssessment : undefined;
+          return { ...exercise, ...(customExerciseProfile ? { customExerciseProfile } : {}), ...(executionQualityAssessment ? { executionQualityAssessment } : {}), resistanceType, isBodyweight: isBodyweightResistance(resistanceType) };
         });
         const normalizedExerciseById = new Map(model.exercises.map((exercise) => [exercise.id, exercise]));
         model.sets = model.sets.map((set) => {
@@ -954,7 +1004,7 @@
         });
         model.templates = (Array.isArray(model.templates) ? model.templates : []).map((template) => ({
           ...template,
-          exercises: (Array.isArray(template.exercises) ? template.exercises : []).map((exercise) => { const resistanceType = inferResistanceType(exercise.name, exercise); return { ...exercise, resistanceType, isBodyweight: isBodyweightResistance(resistanceType), targetRpe: Number(exercise.targetRpe || 0) || "", increment: Number(exercise.increment || 0) || "", setTypes: Array.isArray(exercise.setTypes) ? exercise.setTypes.map((setType) => normalizeTargetSetType(setType, { restSeconds: exercise.restSeconds, targetRpe: exercise.targetRpe })) : [] }; })
+          exercises: (Array.isArray(template.exercises) ? template.exercises : []).map((exercise) => { const resistanceType = inferResistanceType(exercise.name, exercise); const customExerciseProfile = typeof normalizeCustomExerciseProfile === "function" ? normalizeCustomExerciseProfile(exercise.customExerciseProfile) : null; return { ...exercise, ...(customExerciseProfile ? { customExerciseProfile } : {}), resistanceType, isBodyweight: isBodyweightResistance(resistanceType), targetRpe: Number(exercise.targetRpe || 0) || "", increment: Number(exercise.increment || 0) || "", setTypes: Array.isArray(exercise.setTypes) ? exercise.setTypes.map((setType) => normalizeTargetSetType(setType, { restSeconds: exercise.restSeconds, targetRpe: exercise.targetRpe })) : [] }; })
         }));
         model.appDataVersion = Math.max(2, Number(model.appDataVersion || 0));
         model.mesocycles = (Array.isArray(model.mesocycles) ? model.mesocycles : []).map((mesocycle) => ({
@@ -1353,6 +1403,10 @@
       }
 
       function exerciseIdentityFields(exerciseOrName) {
+        const explicit = typeof exerciseOrName === "object" && exerciseOrName?.identitySource === "user_declared_custom" && String(exerciseOrName.performanceExerciseId || "").trim()
+          ? { performanceExerciseId: String(exerciseOrName.performanceExerciseId), researchExerciseId: "", identitySource: "user_declared_custom", identityVersion: exerciseOrName.identityVersion || "exercise-identity/2.1.0" }
+          : null;
+        if (explicit) return explicit;
         const profile = resolveExerciseIdentityProfile(exerciseOrName);
         return profile.status === "resolved" ? {
           performanceExerciseId: profile.performanceExerciseId,
@@ -1397,30 +1451,60 @@
       }
 
       function appPrescriptionHistory(exerciseName, options = {}) {
-        const weeks = summarizeExerciseByWeek(exerciseName, { throughDate: options.throughDate || todayIso(), retentionAsOfDate: todayIso(), excludeSessionId: options.excludeSessionId });
-        return weeks.slice().reverse().map((week, index, ordered) => {
-          const previous = ordered[index - 1];
-          const currentPerformance = Number(week.bestEstimatedOneRepMax || 0);
-          const priorPerformance = Number(previous?.bestEstimatedOneRepMax || 0);
-          const change = currentPerformance > 0 && priorPerformance > 0 ? (currentPerformance / priorPerformance - 1) * 100 : null;
-          const status = week.intentionalReduction ? "planned_reduction" : change == null ? "baseline" : change >= 1 ? "improved" : change < -1.5 ? "regressed" : "held";
-          return {
-            workout_date: week.weekStart,
-            progression_status: status,
-            progression_pct_vs_prior: change,
-            comparison_performance_value: currentPerformance || null,
-            best_epley_e1rm: currentPerformance || null,
-            average_rpe: Number(week.averageRpe || 0) || null,
-            set_repetitions: JSON.stringify([week.maxRepsAtTopWeight, week.minRepsAtTopWeight].filter((value) => value > 0)),
-            set_loads: JSON.stringify(week.topWeight > 0 ? Array(Math.max(1, week.topWeightSetCount)).fill(week.topWeight) : []),
-            top_set_count: week.setsBelowTopWeight > 0 ? Math.max(1, week.topWeightSetCount) : 0,
-            back_off_set_count: week.setsBelowTopWeight,
-            straight_working_set_count: week.setsBelowTopWeight > 0 ? 0 : week.completedSets,
-            completed_set_ratio: week.completedSets / Math.max(1, week.completedSets + week.failedSets),
-            regression_duration_exposures: status === "regressed" ? Math.min(3, 1 + (previous?.progression_status === "regressed" ? 1 : 0)) : 0,
-            prescribed_reduction: Boolean(week.intentionalReduction),
-            prescribed_reduction_reasons: week.intentionalReductionReasons || []
-          };
+        const throughDate = options.throughDate || todayIso();
+        const performanceExerciseId = String(options.performanceExerciseId || "");
+        const exposures = [];
+        activeHistorySessions({ throughDate, asOfDate: todayIso() }).forEach((session) => {
+          if (session.id === options.excludeSessionId) return;
+          data.exercises.filter((exercise) => exercise.sessionId === session.id).forEach((exercise) => {
+            const sameIdentity = performanceExerciseId && exercise.performanceExerciseId === performanceExerciseId;
+            if (!sameIdentity && !exerciseMatches(exercise.name, exerciseName)) return;
+            const planned = setsForExercise(exercise.id).filter((set) => isWorkingSet(set, "progression") && !set.skipped);
+            const completed = planned.filter((set) => set.completed);
+            if (!planned.length && !completed.length) return;
+            const loads = completed.map((set) => Number(set.weight || 0));
+            const reps = completed.map((set) => Number(set.reps || 0));
+            const rpes = completed.map((set) => Number(set.rpe || 0)).filter((value) => value > 0);
+            const performance = completed.reduce((best, set) => Math.max(best, estimatedOneRepMax(set)), 0);
+            const affected = String(session.recovery?.affectedMuscle || "");
+            const pain = exercise.safetyRestriction?.reason === "pain" || Boolean(session.recovery?.pain && (!affected || musclesForExercise(exercise).some((item) => normalizePrescriptionIdentity(item.muscle) === normalizePrescriptionIdentity(affected))));
+            const quality = executionQualityValues.has(exercise.executionQualityAssessment) ? exercise.executionQualityAssessment : "not_assessed";
+            const prescribedReduction = Boolean(exercise.isDeload || exercise.adjusted || exercise.prescription?.isDeload || /deload|light/.test(String(exercise.finalPrescription?.recommendationType || "")));
+            exposures.push({
+              exposure_id: `app:${session.id}:${exercise.id}`,
+              workout_id: session.id,
+              session_id: session.id,
+              exercise_id: exercise.performanceExerciseId || performanceExerciseId || canonicalExerciseId(exercise),
+              research_exercise_id: exercise.researchExerciseId || null,
+              workout_date: sessionCompletionDate(session),
+              comparison_performance_value: performance || null,
+              best_epley_e1rm: performance || null,
+              average_rpe: rpes.length ? rpes.reduce((sum, value) => sum + value, 0) / rpes.length : null,
+              set_repetitions: JSON.stringify(reps),
+              set_loads: JSON.stringify(loads),
+              set_rpes: JSON.stringify(rpes),
+              set_types: JSON.stringify(completed.map((set) => normalizeCanonicalSetType(set.setType, set.isWarmup))),
+              completed_set_count: completed.length,
+              prescribed_set_count: planned.length,
+              completed_set_ratio: completed.length / Math.max(1, planned.length),
+              technique_valid: quality === "controlled" ? true : quality === "breakdown" ? false : null,
+              technique_quality: quality,
+              pain,
+              prescribed_reduction: prescribedReduction,
+              prescribed_reduction_reasons: prescribedReduction ? [exercise.adjustmentReason || exercise.finalPrescription?.progressionRule || "Planned reduced exposure"] : []
+            });
+          });
+        });
+        exposures.sort((left, right) => left.workout_date.localeCompare(right.workout_date) || left.exposure_id.localeCompare(right.exposure_id));
+        let priorPerformance = null;
+        let regressionRun = 0;
+        return exposures.map((exposure) => {
+          const current = Number(exposure.comparison_performance_value || 0);
+          const change = current > 0 && priorPerformance > 0 ? (current / priorPerformance - 1) * 100 : null;
+          const status = exposure.prescribed_reduction ? "planned_reduction" : change == null ? "baseline" : change >= 1 ? "improved" : change < -1.5 ? "regressed" : "held";
+          regressionRun = status === "regressed" ? regressionRun + 1 : 0;
+          if (current > 0 && !exposure.prescribed_reduction) priorPerformance = current;
+          return { ...exposure, progression_status: status, progression_pct_vs_prior: change, regression_duration_exposures: regressionRun };
         });
       }
 
@@ -1431,12 +1515,14 @@
           : { performanceExerciseId: options.performanceExerciseId || exerciseId };
         const performanceExerciseId = identityProfile.performanceExerciseId || exerciseId;
         const personal = (prescriptionEngine?.evidence.personal.historyFor(performanceExerciseId) || []).filter((item) => String(item.workout_date || item.date || "").slice(0, 10) <= throughDate);
-        const appHistory = appPrescriptionHistory(exerciseName, options);
-        const latestPersonalDate = personal.reduce((latest, item) => {
-          const date = String(item.workout_date || item.date || "").slice(0, 10);
-          return date > latest ? date : latest;
-        }, "");
-        return [...personal, ...appHistory.filter((item) => !latestPersonalDate || item.workout_date > latestPersonalDate)];
+        const appHistory = appPrescriptionHistory(exerciseName, { ...options, performanceExerciseId });
+        const seen = new Set();
+        return [...personal, ...appHistory].filter((item) => {
+          const key = item.exposure_id || item.exposureId || `${item.workout_id || item.workoutId || ""}|${item.exercise_id || item.exerciseId || performanceExerciseId}|${item.workout_date || item.date || ""}|${item.set_repetitions || ""}|${item.set_loads || ""}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        }).sort((left, right) => String(left.workout_date || left.date || "").localeCompare(String(right.workout_date || right.date || "")));
       }
 
       function prescriptionReadiness(recoveryInput = {}, history = []) {
@@ -1489,6 +1575,86 @@
         const explicitPersonalRecord = personal?.prescriptionsFor?.(exerciseId)?.find((record) => record?.muscle_group_id || record?.muscleGroupId)
           || personal?.muscleScoresFor?.(exerciseId)?.find((record) => record?.muscle_group_id || record?.muscleGroupId);
         return String(explicitPersonalRecord?.muscle_group_id || explicitPersonalRecord?.muscleGroupId || "").trim();
+      }
+
+      function customPrescriptionEngineFor(exercise, profile) {
+        const evidence = prescriptionEngine?.evidence;
+        if (!evidence || !prescriptionApi) return null;
+        const exerciseId = String(exercise.performanceExerciseId || "").trim();
+        if (!exerciseId || profile?.status !== "complete") return null;
+        const raw = evidence.personal?.raw || {};
+        const withoutIdentity = (rows) => (Array.isArray(rows) ? rows : []).filter((row) => String(row.exercise_id || row.exerciseId || "") !== exerciseId);
+        const progressionModel = profile.progressionMetric === "reps_only" ? "rep_progression"
+          : profile.progressionMetric === "assistance" ? "assistance_progression"
+            : ["duration", "distance"].includes(profile.progressionMetric) ? `${profile.progressionMetric}_progression` : "double_progression";
+        const personalData = {
+          exercisePrescriptions: [...withoutIdentity(raw.exercisePrescriptions || raw.exercise_prescriptions), {
+            exercise_id: exerciseId,
+            exercise_name: exercise.name,
+            muscle_group_id: profile.primaryMuscleGroupId,
+            role: profile.exerciseStyle === "single_joint" ? "secondary_hypertrophy" : "primary_hypertrophy",
+            recommended_increment: profile.smallestIncrement,
+            preferred_progression_model: progressionModel,
+            evidence_summary: "User-declared custom profile; muscle-level research and exact same-identity history only."
+          }],
+          exerciseScores: [...withoutIdentity(raw.exerciseScores || raw.exercise_scores), {
+            exercise_id: exerciseId,
+            exercise_name: exercise.name,
+            overall_personal_exercise_score: 50,
+            progression_score: 50,
+            recovery_efficiency_score: 50,
+            repeatability_score: 50,
+            confidence_rating: "low",
+            main_reason_for_score: "Custom exercise metadata is complete; canonical exercise comparison remains intentionally unavailable."
+          }],
+          exerciseMuscleScores: [...withoutIdentity(raw.exerciseMuscleScores || raw.exercise_muscle_scores), {
+            exercise_id: exerciseId,
+            exercise_name: exercise.name,
+            muscle_group: profile.primaryMuscleGroupId,
+            muscle_role: "primary",
+            contribution_weight: 1,
+            muscle_specific_effectiveness_score: 70
+          }],
+          exerciseSessionMetrics: withoutIdentity(raw.exerciseSessionMetrics || raw.exercise_session_metrics),
+          weeklyMuscleVolumeResponse: raw.weeklyMuscleVolumeResponse || raw.weekly_muscle_volume_response || [],
+          recoveryRules: raw.recoveryRules || raw.recovery_rules || [],
+          muscleGroupSweetSpots: raw.muscleGroupSweetSpots || raw.muscle_group_sweet_spots || [],
+          metadata: { ...(raw.metadata || {}), methodology_version: `${evidence.versions.personal || "unknown"}+custom-profile/1.0.0` }
+        };
+        return prescriptionApi.createPrescriptionEngine({ personalData, research: evidence.research, personalDataVersion: personalData.metadata.methodology_version, researchDatabaseVersion: evidence.versions.research });
+      }
+
+      function boundedCustomPrescriptionSnapshot(exercise, profile, options = {}) {
+        const customEngine = customPrescriptionEngineFor(exercise, profile);
+        if (!customEngine) return null;
+        const history = options.history || prescriptionHistoryForExercise(exercise.name, exercise.performanceExerciseId, { ...options, performanceExerciseId: exercise.performanceExerciseId, researchExerciseId: "" });
+        const request = {
+          exerciseId: exercise.performanceExerciseId,
+          muscleGroupId: profile.primaryMuscleGroupId,
+          history,
+          readiness: options.readiness || prescriptionReadiness(options.recovery || {}, history),
+          equipmentIncrement: Number(profile.smallestIncrement || 0) || undefined,
+          resistanceType: profile.resistanceType,
+          trainingGoal: options.trainingGoal ?? data.settings?.trainingGoal,
+          nutritionPhase: options.nutritionPhase ?? data.settings?.nutritionPhase,
+          experienceLevel: options.experienceLevel ?? data.settings?.experienceLevel,
+          returningAfterGap: options.returningAfterGap ?? data.settings?.returningAfterGap,
+          createdAt: options.createdAt || `${options.throughDate || todayIso()}T12:00:00.000Z`
+        };
+        Object.keys(request).forEach((key) => request[key] === undefined || request[key] === "" ? delete request[key] : null);
+        let snapshot = customEngine.prescribeExercise(request);
+        const disclosure = "Bounded custom guidance uses the declared profile, muscle-level research dosage, the current goal, and exact history for this custom identity. Canonical ranking, biomechanics, substitution, and equivalence claims are unavailable.";
+        for (const field of ["basePrescription", "finalPrescription"]) {
+          snapshot[field].preferredReplacementExerciseId = null;
+          snapshot[field].substitutionRule = "No canonical substitution or equivalence recommendation is available for this custom exercise.";
+          snapshot[field].evidenceSummary = Array.from(new Set([...(snapshot[field].evidenceSummary || []), disclosure]));
+          snapshot[field].userExplanation = `${disclosure} The current target is ${snapshot[field].workingSets.target} working sets of ${snapshot[field].repRange.min}-${snapshot[field].repRange.max} reps at RPE ${snapshot[field].targetRpe.min}-${snapshot[field].targetRpe.max}, with ${snapshot[field].restSeconds.min}-${snapshot[field].restSeconds.max} seconds of rest. ${snapshot[field].progressionRule}`;
+        }
+        snapshot.explanation = snapshot.finalPrescription.userExplanation;
+        snapshot.evidenceSummary = [...snapshot.finalPrescription.evidenceSummary];
+        snapshot.standardGuideline.explanation = disclosure;
+        snapshot = prescriptionApi.refreshRecommendationChecksum(snapshot);
+        return snapshot;
       }
 
       function unifiedPrescriptionSnapshot(exerciseOrName, options = {}) {
@@ -1555,6 +1721,7 @@
           executableActions: []
         });
         const exercise = typeof exerciseOrName === "string" ? { name: exerciseOrName } : (exerciseOrName || {});
+        const customProfile = typeof normalizeCustomExerciseProfile === "function" ? normalizeCustomExerciseProfile(exercise.customExerciseProfile) : null;
         if (exercise.recommendationSnapshot) {
           const owningSession = exercise.sessionId
             ? data.sessions.find((session) => session.id === exercise.sessionId)
@@ -1566,13 +1733,23 @@
           // before reuse.
           if (owningSession && isSessionSubmitted(owningSession)) return exercise.recommendationSnapshot;
           try {
-            validateExecutableRecommendationSnapshot(exercise.recommendationSnapshot, prescriptionEngine, exercise, "Stored executable recommendationSnapshot");
+            const validationEngine = customProfile?.status === "complete" && exercise.identitySource === "user_declared_custom"
+              ? customPrescriptionEngineFor(exercise, customProfile)
+              : prescriptionEngine;
+            validateExecutableRecommendationSnapshot(exercise.recommendationSnapshot, validationEngine, exercise, "Stored executable recommendationSnapshot");
             return exercise.recommendationSnapshot;
           } catch {
             return hardConstraintRejection(
               "invalid_stored_recommendation_snapshot",
               "The stored recommendation snapshot failed integrity, identity, or taxonomy validation and cannot be executed."
             );
+          }
+        }
+        if (customProfile?.status === "complete" && exercise.identitySource === "user_declared_custom") {
+          try {
+            return boundedCustomPrescriptionSnapshot(exercise, customProfile, options) || engineFailure();
+          } catch {
+            return engineFailure();
           }
         }
         const identityInput = Object.prototype.hasOwnProperty.call(options, "exerciseId")
@@ -3657,6 +3834,7 @@
               ...(typeof exerciseIdentityFields === "function" ? exerciseIdentityFields(exercise) : {}),
               primaryMuscle: exercise.primaryMuscle || "",
               secondaryMuscle: exercise.secondaryMuscle || "",
+              ...(exercise.customExerciseProfile ? { customExerciseProfile: normalizeCustomExerciseProfile(exercise.customExerciseProfile) } : {}),
               resistanceType: resistanceTypeFor(exercise),
               isBodyweight: isBodyweightResistance(resistanceTypeFor(exercise)),
               sets: Math.max(workingSets.length, 1),

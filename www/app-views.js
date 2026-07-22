@@ -1130,6 +1130,7 @@
         const snapshot = recommendationSnapshotForDisplay(rawSnapshot);
         if (!snapshot || exercise.sessionId !== activeWorkoutId || isSessionSubmitted(activeSession())) return "";
         const prescription = snapshot.finalPrescription;
+        const standard = snapshot.standardGuideline || snapshot.basePrescription;
         const restriction = prescription.safetyRestriction || null;
         const hasSafetyRestriction = restriction?.status === "blocked" || restriction?.status === "resolved_by_confirmed_substitute";
         const currentSafetyContext = hasSafetyRestriction
@@ -1172,24 +1173,68 @@
         const snapshot = recommendationSnapshotForDisplay(exercise.recommendationSnapshot);
         if (!snapshot || exercise.sessionId !== activeWorkoutId || isSessionSubmitted(activeSession())) return "";
         const prescription = snapshot.finalPrescription;
+        const standard = snapshot.standardGuideline || snapshot.basePrescription;
         const session = sessionById(exercise.sessionId);
         const template = session?.templateId ? data.templates.find((item) => item.id === session.templateId) : null;
         const templateExercise = template?.exercises?.find((item) => exerciseMatches(item.name, exercise.name));
         const savedStandard = templateExercise?.standardWorkloadOverride === true;
-        const confidence = String(prescription.confidence || "evidence-backed").replaceAll("_", " ");
+        const setsAbove = Number(prescription.workingSets.target) > Number(standard.workingSets.max);
+        const repsAbove = Number(prescription.repRange.max) > Number(standard.repRange.max);
+        const setsBelow = Number(prescription.workingSets.target) < Number(standard.workingSets.min);
+        const repsBelow = Number(prescription.repRange.min) < Number(standard.repRange.min);
+        const comparison = setsAbove || repsAbove ? "Above standard" : setsBelow || repsBelow ? "Below standard" : "Within standard";
+        const differences = [];
+        if (setsAbove) differences.push(`${prescription.workingSets.target - standard.workingSets.max} sets above`);
+        if (setsBelow) differences.push(`${standard.workingSets.min - prescription.workingSets.target} sets below`);
+        if (repsAbove) differences.push(`${prescription.repRange.max - standard.repRange.max} reps above the ceiling`);
+        if (repsBelow) differences.push(`${standard.repRange.min - prescription.repRange.min} reps below the floor`);
+        const savedLabel = savedStandard ? `${templateExercise.sets} sets · ${templateExercise.repMin || templateExercise.reps}-${templateExercise.repMax || templateExercise.reps} reps` : "No saved override";
         return `
           <section class="standard-workload-card" data-standard-workload-form="${exercise.id}" data-override-form="${exercise.id}">
-            <div class="standard-workload-heading"><div><span>Standard workload</span><strong>${savedStandard ? "Your saved default" : "Evidence-based starting point"}</strong></div><span class="standard-workload-badge">${escapeHtml(confidence)}</span></div>
-            <p>Choose the normal hypertrophy dose for this exercise. These fields start with the same research prescription used by today’s recommendation.</p>
+            <div class="standard-workload-heading"><div><span>Exercise guidelines</span><strong>Change unfinished work for today</strong></div><span class="standard-workload-badge ${comparison.toLowerCase().replaceAll(" ", "-")}">${comparison}</span></div>
+            <div class="guideline-levels" aria-label="Research, today, and saved exercise guidelines">
+              <div><span>Research standard</span><strong>${standard.workingSets.min}-${standard.workingSets.max} sets · ${standard.repRange.min}-${standard.repRange.max} reps</strong></div>
+              <div><span>Today’s guideline</span><strong>${prescription.workingSets.target} sets · ${prescription.repRange.min}-${prescription.repRange.max} reps</strong></div>
+              <div><span>Saved default</span><strong>${escapeHtml(savedLabel)}</strong></div>
+            </div>
+            <p class="standard-comparison-note">${differences.length ? `Today is ${differences.join(" and ")}. This is advisory; completed reps remain valid outcome evidence.` : "Today is inside the versioned goal-aware standard. Completed reps may still exceed the target and remain valid outcome evidence."}</p>
+            <p>Choose today’s working-set and rep guidelines for this exercise. These fields start with the same goal-aware research prescription used by today’s recommendation.</p>
             <div class="standard-workload-grid">
               <label>Working sets<input type="number" min="1" max="12" step="1" value="${prescription.workingSets.target}" data-override-field="sets" /></label>
               <label>Rep range<span class="range-inputs"><input type="number" min="1" max="50" step="1" value="${prescription.repRange.min}" data-override-field="rep-min" aria-label="Minimum standard repetitions" /><span aria-hidden="true">–</span><input type="number" min="1" max="50" step="1" value="${prescription.repRange.max}" data-override-field="rep-max" aria-label="Maximum standard repetitions" /></span></label>
             </div>
-            <input type="hidden" value="Standard workload preference" data-override-field="reason" />
-            ${templateExercise ? '<label class="standard-workload-save"><input type="checkbox" data-standard-save-template checked /> Use as the default when this template starts again</label>' : '<p class="standard-workload-note">This workout has no source template, so the change applies to today only.</p>'}
-            <button class="secondary-action standard-workload-apply" type="button" data-action="apply-standard-workload" data-exercise-id="${exercise.id}">Apply standard workload</button>
+            <input type="hidden" value="Today’s exercise guideline" data-override-field="reason" />
+            ${templateExercise ? '<label class="standard-workload-save"><input type="checkbox" data-standard-save-template /> Also save as the default when this template starts again</label>' : '<p class="standard-workload-note">This workout has no source template, so changes apply to today only.</p>'}
+            <button class="secondary-action standard-workload-apply" type="button" data-action="apply-standard-workload" data-exercise-id="${exercise.id}">Apply today’s guideline</button>
           </section>
         `;
+      }
+
+      function renderCustomExerciseSetup(exercise) {
+        if (exercise.identitySource !== "user_declared_custom" || exercise.sessionId !== activeWorkoutId || isSessionSubmitted(activeSession())) return "";
+        const profile = normalizeCustomExerciseProfile(exercise.customExerciseProfile) || {};
+        const missing = missingCustomExerciseMetrics(profile);
+        const resistance = profile.resistanceType || exercise.resistanceType || "external";
+        return `
+          <section class="custom-exercise-setup ${missing.length ? "incomplete" : "complete"}" data-custom-exercise-form="${exercise.id}">
+            <div class="standard-workload-heading"><div><span>${missing.length ? "Recommendation setup incomplete" : "Bounded custom guidance"}</span><strong>${missing.length ? "Complete the required metrics" : "Profile confirmed"}</strong></div></div>
+            ${missing.length ? `<p>No recommendation is shown yet. Missing: <strong>${escapeHtml(missing.join(", "))}</strong>.</p>` : "<p>Guidance uses this declared profile, muscle-level research, your goal, and exact history. Canonical ranking, biomechanics, substitution, and equivalence claims remain unavailable.</p>"}
+            <div class="custom-profile-grid">
+              <label>Primary muscle group<select data-custom-profile-field="primary-muscle"><option value="">Choose…</option>${muscleOptions(appMuscleFromPrescriptionGroup(profile.primaryMuscleGroupId) || exercise.primaryMuscle || "")}</select></label>
+              <label>Secondary muscle (optional)<select data-custom-profile-field="secondary-muscle">${muscleOptions(appMuscleFromPrescriptionGroup(profile.secondaryMuscleGroupId) || exercise.secondaryMuscle || "", true, "None")}</select></label>
+              <label>Resistance mode<select data-custom-profile-field="resistance-type">${resistanceTypeOptions(resistance)}</select></label>
+              <label>Exercise style<select data-custom-profile-field="exercise-style"><option value="">Choose…</option>${[["multi_joint","Multi-joint"],["single_joint","Single-joint"],["isometric","Isometric"],["carry_locomotion","Carry / locomotion"]].map(([value,label]) => `<option value="${value}" ${profile.exerciseStyle === value ? "selected" : ""}>${label}</option>`).join("")}</select></label>
+              <label>Progression metric<select data-custom-profile-field="progression-metric"><option value="">Choose…</option>${[["load_and_reps","Load and reps"],["reps_only","Reps only"],["assistance","Assistance"],["duration","Duration"],["distance","Distance"]].map(([value,label]) => `<option value="${value}" ${profile.progressionMetric === value ? "selected" : ""}>${label}</option>`).join("")}</select></label>
+              <label>Smallest available increment<input type="number" min="0.01" step="0.01" value="${profile.smallestIncrement || ""}" data-custom-profile-field="smallest-increment" placeholder="Required for load / assistance" /></label>
+            </div>
+            <button class="secondary-action" type="button" data-action="complete-custom-exercise-setup" data-exercise-id="${exercise.id}">${missing.length ? "Complete setup and generate guidance" : "Update profile and regenerate unfinished work"}</button>
+          </section>
+        `;
+      }
+
+      function renderExecutionQualityAssessment(exercise) {
+        const value = executionQualityValues.has(exercise.executionQualityAssessment) ? exercise.executionQualityAssessment : "not_assessed";
+        return `<label class="execution-quality-control">Did execution stay controlled?<select data-action="exercise-execution-quality" data-exercise-id="${exercise.id}"><option value="not_assessed" ${value === "not_assessed" ? "selected" : ""}>Not assessed</option><option value="controlled" ${value === "controlled" ? "selected" : ""}>Controlled</option><option value="breakdown" ${value === "breakdown" ? "selected" : ""}>Breakdown</option></select><small>Only a controlled, complete, pain-free exposure inside target effort can confirm progression.</small></label>`;
       }
 
       function renderExercise(exercise) {
@@ -1213,7 +1258,8 @@
         const workingSetIds = exerciseSets.filter((set) => isWorkingSet(set, "progression")).map((set) => set.id);
         const renderContext = { restSeconds, previousSets, warmupIds, workingSetIds, substituteValidation };
         const setHtml = measurePerformance("lift:setRows", () => exerciseSets.map((set) => renderSet(set, exercise, renderContext)).join(""), { exerciseId: exercise.id, count: exerciseSets.length });
-        const optionsHtml = measurePerformance("lift:exerciseOptions", () => renderStandardWorkloadControls(exercise) + renderPlateCalculator(exercise, firstWorkSet) + renderMuscleSelectors(exercise) + renderExerciseGuidance(exercise) + renderPrescriptionOverrideControls(exercise, resolvedSafetyContext), { exerciseId: exercise.id });
+        const customGuidanceIncomplete = exercise.identitySource === "user_declared_custom" && missingCustomExerciseMetrics(normalizeCustomExerciseProfile(exercise.customExerciseProfile)).length > 0;
+        const optionsHtml = measurePerformance("lift:exerciseOptions", () => renderCustomExerciseSetup(exercise) + renderStandardWorkloadControls(exercise) + renderExecutionQualityAssessment(exercise) + renderPlateCalculator(exercise, firstWorkSet) + renderMuscleSelectors(exercise) + (customGuidanceIncomplete ? "" : renderExerciseGuidance(exercise)) + renderPrescriptionOverrideControls(exercise, resolvedSafetyContext), { exerciseId: exercise.id });
         return `
           <article id="exercise-${exercise.id}" class="exercise-card ${isActiveExercise ? "active-exercise" : ""}">
             <div class="exercise-header">

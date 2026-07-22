@@ -3,8 +3,8 @@
 ## Metadata
 
 - **Purpose:** Product vision, verified scope, and boundary between current and intended behavior
-- **Last verified:** 2026-07-18
-- **Repository:** `main` @ `324f008`
+- **Last verified:** 2026-07-21
+- **Repository:** `main` working tree (progression-feedback implementation)
 - **Verification status:** VERIFIED from application code, tests, schemas, configuration, and existing docs; open conflicts are labeled
 - **Related:** [Architecture](ARCHITECTURE.md), [Decision engine](DECISION_ENGINE.md), [UI/UX](UI_UX.md), [Roadmap](ROADMAP.md), [documentation inventory](DOCUMENTATION_INVENTORY.md)
 
@@ -50,6 +50,7 @@ Product principles evidenced in the repository:
 | --- | --- | --- |
 | Workout templates and quick start | **IMPLEMENTED** | Create/use templates, template-specific set roles, rest targets, readiness preview, and active-workout locking in `index.html` (`renderTemplates`, `openTemplateStart`, `startTemplate`). |
 | Active workout logging | **IMPLEMENTED** | Exercises, warm-ups/working sets, load/reps/RPE, completion/skipping, timers, notes, travel state, draft restoration, and cancel flow. |
+| Progression feedback and editable exercise guidelines | **IMPLEMENTED** | Actual repetitions and added sets remain outcome data without rewriting the recommendation; Exercise options separates the versioned research standard, today’s editable guideline, and an optional saved template default. Per-exercise execution quality and exact submitted exposures govern future progression confirmation. Catalog exercises receive immediate guidance; user-declared custom exercises remain loggable and receive bounded muscle-level guidance only after required metadata is confirmed. |
 | Submission, history, summaries, and editing | **IMPLEMENTED** | Confirmed submission, PR calculation, grade/summary, submitted-only history, and explicit history-edit save/cancel (`submitWorkout`, `renderSubmitConfirmation`, `renderCompletedWorkoutSummary`). |
 | Progress and volume analytics | **IMPLEMENTED** | Interactive exercise charts, session detail, weekly weighted muscle volume, fatigue flags, hypertrophy scoring, and recent/all history. |
 | Recovery readiness | **IMPLEMENTED** | User-entered sleep, HRV, resting heart rate, soreness, illness, nutrition/protein status, personal baseline, readiness band, and conservative adjustment guidance. |
@@ -81,6 +82,8 @@ Product principles evidenced in the repository:
 - **Readiness:** A same-day, multi-domain comparison against a user baseline; it modifies today, not the base mesocycle.
 - **Prescription:** Versioned exercise targets and decision rules derived from personal and research evidence.
 - **Recommendation snapshot:** Immutable record of the base and readiness-adjusted prescription used for a workout.
+- **Standard guideline:** The versioned goal-aware set/rep/RPE/RIR/rest comparison range captured before a user override or same-day readiness adjustment.
+- **Custom exercise profile:** User-confirmed primary muscle, resistance mode, exercise style, progression metric, and applicable smallest increment attached to a stable non-canonical performance identity.
 - **Mesocycle:** A decision context (primary, alternative, lower-fatigue, or specialization), not an automatic calendar rotation.
 - **PR:** A submitted-workout performance record under implemented comparison semantics; see `docs/DECISION_ENGINE.md`.
 - **Weighted muscle volume:** Versioned canonical relationships count direct dynamic sets fully, meaningful fractional dynamic work at its configured weight, and incidental/unknown/isometric work at zero hypertrophy credit while retaining fatigue exposure separately.

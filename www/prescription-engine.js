@@ -16,21 +16,22 @@
 
   if (!familyLedger) throw new Error("Programming family ledger is required.");
 
-  const ENGINE_VERSION = "3.3.8";
-  const PRESCRIPTION_SCHEMA_VERSION = "2.3.0";
-  const SNAPSHOT_SCHEMA_VERSION = "1.3.0";
+  const ENGINE_VERSION = "3.4.0";
+  const PRESCRIPTION_SCHEMA_VERSION = "2.4.0";
+  const SNAPSHOT_SCHEMA_VERSION = "1.4.0";
   const TRAINING_PROFILE_VERSION = "training-profile/1.1.0";
   const MESOCYCLE_SCHEMA_VERSION = "mesocycle/2.6.0";
   const SCIENTIFIC_PROVENANCE_SCHEMA_VERSION = "recommendation-provenance/1.0.0";
   const PROGRESSION_CONFIRMATION_SCHEMA_VERSION = "progression-confirmation/1.0.0";
   const GOAL_POLICY_CONFLICT_SCHEMA_VERSION = "goal-policy-conflict/1.0.0";
-  const SUPPORTED_PRESCRIPTION_SCHEMA_VERSIONS = Object.freeze(new Set(["2.0.0", "2.1.0", "2.2.0", PRESCRIPTION_SCHEMA_VERSION]));
-  const SUPPORTED_SNAPSHOT_SCHEMA_VERSIONS = Object.freeze(new Set(["1.0.0", "1.1.0", "1.2.0", SNAPSHOT_SCHEMA_VERSION]));
+  const SUPPORTED_PRESCRIPTION_SCHEMA_VERSIONS = Object.freeze(new Set(["2.0.0", "2.1.0", "2.2.0", "2.3.0", PRESCRIPTION_SCHEMA_VERSION]));
+  const SUPPORTED_SNAPSHOT_SCHEMA_VERSIONS = Object.freeze(new Set(["1.0.0", "1.1.0", "1.2.0", "1.3.0", SNAPSHOT_SCHEMA_VERSION]));
   const SNAPSHOT_PRESCRIPTION_SCHEMA_PAIRS = Object.freeze({
     "1.0.0": "2.0.0",
     "1.1.0": "2.1.0",
     "1.2.0": "2.2.0",
-    "1.3.0": "2.3.0"
+    "1.3.0": "2.3.0",
+    "1.4.0": "2.4.0"
   });
   // Historical snapshots are validated and returned unchanged. The reader
   // intentionally does not synthesize current personalization, provenance, or
@@ -4385,6 +4386,20 @@
       personalExplanation,
       "The recommendation would change after confirmed comparable performance, repeated fatigue or pain, a materially different readiness pattern, or outcome data showing a less redundant substitute performs better."
     ].filter(Boolean).join(" ");
+    const standardGuideline = {
+      schemaVersion: "standard-guideline/1.0.0",
+      source: candidate.researchExercise ? "canonical_research_and_personal" : "bounded_custom_profile",
+      trainingGoal: context.goal.resolvedValue,
+      workingSets: deepClone(basePrescription.workingSets),
+      repRange: deepClone(basePrescription.repRange),
+      targetRpe: deepClone(basePrescription.targetRpe),
+      targetRir: deepClone(basePrescription.targetRir),
+      restSeconds: deepClone(basePrescription.restSeconds),
+      customExercise: !candidate.researchExercise,
+      explanation: candidate.researchExercise
+        ? "Versioned goal-aware research and qualifying personal evidence define this comparison range. Actual completed work remains outcome evidence and does not rewrite this standard."
+        : "Bounded guidance uses the declared custom-exercise profile, muscle-level research dosage, the training goal, and exact history for this stable custom identity. It does not make canonical ranking, biomechanics, substitution, or equivalence claims."
+    };
     const load = prescribedLoadFromHistory(candidate, policyProgression, deloadStatus, options);
     if (load) basePrescription.prescribedLoad = load;
     basePrescription = applyDeloadState(basePrescription, deloadStatus);
@@ -4418,6 +4433,7 @@
       muscleSpecificScore: score.muscleSpecificity,
       personalEvidenceWeight: score.personalEvidenceWeight,
       researchEvidenceWeight: score.researchEvidenceWeight,
+      standardGuideline,
       readinessAdjustment: deepClone(finalPrescription.readinessAdjustment),
       basePrescription: deepClone(basePrescription),
       finalPrescription: deepClone(finalPrescription),
@@ -4440,6 +4456,7 @@
       surface,
       basePrescription: snapshot.basePrescription,
       finalPrescription: snapshot.finalPrescription,
+      standardGuideline: snapshot.standardGuideline,
       evidenceSummary: snapshot.evidenceSummary,
       confidence: snapshot.confidence,
       versions: {
@@ -4952,6 +4969,13 @@
     } else {
       const checksumPattern = snapshot.schemaVersion === "1.0.0" ? /^[0-9a-f]{8,128}$/ : SNAPSHOT_CHECKSUM_PATTERN;
       if (typeof snapshot.checksum !== "string" || !checksumPattern.test(snapshot.checksum)) throw new Error("Invalid recommendation snapshot checksum; expected a lowercase hexadecimal checksum in the historical format for this schema.");
+    }
+    if (snapshot.schemaVersion === SNAPSHOT_SCHEMA_VERSION) {
+      const standard = snapshot.standardGuideline;
+      if (!standard || standard.schemaVersion !== "standard-guideline/1.0.0") throw new Error("Invalid recommendation snapshot; current snapshots require a versioned standardGuideline.");
+      if (!["canonical_research_and_personal", "bounded_custom_profile"].includes(standard.source)) throw new Error("Invalid recommendation snapshot standardGuideline source.");
+      if (!standard.workingSets || !standard.repRange || !standard.targetRpe || !standard.targetRir || !standard.restSeconds) throw new Error("Invalid recommendation snapshot standardGuideline ranges.");
+      if (typeof standard.customExercise !== "boolean" || typeof standard.explanation !== "string" || !standard.explanation.trim()) throw new Error("Invalid recommendation snapshot standardGuideline disclosure.");
     }
     ["basePrescription", "finalPrescription"].forEach((field) => {
       const prescription = snapshot[field];

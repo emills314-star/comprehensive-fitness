@@ -219,8 +219,8 @@ const mesocycle = load(SCHEMA_FILES[1]).schema;
 const snapshot = load(SCHEMA_FILES[2]).schema;
 const engineSource = fs.readFileSync(path.resolve(ROOT, "prescription-engine.js"), "utf8");
 
-assert.equal(exercise.properties.schemaVersion.const, "2.3.0");
-assert.deepEqual(exercise["x-runtimeReadCompatibility"].supportedVersions, ["2.0.0", "2.1.0", "2.2.0", "2.3.0"]);
+assert.equal(exercise.properties.schemaVersion.const, "2.4.0");
+assert.deepEqual(exercise["x-runtimeReadCompatibility"].supportedVersions, ["2.0.0", "2.1.0", "2.2.0", "2.3.0", "2.4.0"]);
 assertIncludesAll(exercise.required, ["programmingContext", "historyResolution", "progressionConfirmation", "scientificProvenance"], "ExercisePrescription.required");
 assert.equal(exercise.$defs.programmingContext.properties.profileVersion.const, "training-profile/1.1.0");
 assertIncludesAll(exercise.$defs.programmingContext.required, ["nutritionPhase", "returningAfterGap"], "programmingContext.required");
@@ -271,17 +271,19 @@ assertIncludesAll(mesocycle.$defs.candidateCore.required, [
 assert.equal(mesocycle.$defs.candidate.unevaluatedProperties, false);
 assert.equal(mesocycle.$defs.activeExercise.unevaluatedProperties, false);
 
-assert.equal(snapshot.properties.schemaVersion.const, "1.3.0");
+assert.equal(snapshot.properties.schemaVersion.const, "1.4.0");
 assert.deepEqual(snapshot["x-runtimeReadCompatibility"].prescriptionPairBySnapshot, {
   "1.0.0": "2.0.0",
   "1.1.0": "2.1.0",
   "1.2.0": "2.2.0",
-  "1.3.0": "2.3.0"
+  "1.3.0": "2.3.0",
+  "1.4.0": "2.4.0"
 });
 assert.equal(snapshot.additionalProperties, false);
 assertIncludesAll(snapshot.required, [
   "recommendationId", "recommendationVersion", "engineVersion", "personalDataVersion",
   "researchDatabaseVersion", "mesocycleId", "exerciseScore", "muscleSpecificScore",
+  "standardGuideline",
   "readinessAdjustment", "basePrescription", "finalPrescription", "explanation", "evidenceSummary",
   "confidence", "createdAt", "manualOverrides", "overrideLocked", "checksum"
 ], "RecommendationSnapshot.required");

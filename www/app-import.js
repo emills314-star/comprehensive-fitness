@@ -831,13 +831,14 @@
         }
         const allowedTopLevelFields = new Set(["appDataVersion", "domainMigrationVersion", "sessions", "exercises", "sets", "templates", "mesocycles", "activeMesocycleId", "recommendationHistory", "manualOverrides", "personalEvidencePackage", "rawImports", "migrationAudit", "dataRevision", "settings"]);
         const allowedSessionFields = new Set(["id", "externalId", "source", "date", "title", "isTravel", "notes", "submitted", "workoutStarted", "workoutState", "completedAt", "submittedAt", "startedAt", "createdAt", "updatedAt", "templateId", "recovery", "prs", "workoutAnalysis", "workoutPrescription", "adjustmentSummary", "deletedAt", "trashed", "canceledAt"]);
-        const allowedExerciseFields = new Set(["id", "externalId", "source", "sessionId", "name", "notes", "order", "primaryMuscle", "secondaryMuscle", "restSeconds", "resistanceType", "isBodyweight", "isDeload", "recommendationSnapshot", "basePrescription", "finalPrescription", "coachRecommendation", "executionBlocked", "safetyRestriction", "manualOverrides", "adjusted", "adjustmentReason", "triggerLabels", "canonicalExerciseId", "performanceExerciseId", "researchExerciseId", "identitySource", "identityVersion", "originalPrescription", "prescription", "recommendationVersion", "personalDataVersion", "researchDatabaseVersion", "programTargetContext", "appliedTargetContext", "overrideLocked"]);
+        const allowedExerciseFields = new Set(["id", "externalId", "source", "sessionId", "name", "notes", "order", "primaryMuscle", "secondaryMuscle", "restSeconds", "resistanceType", "isBodyweight", "isDeload", "customExerciseProfile", "executionQualityAssessment", "recommendationSnapshot", "basePrescription", "finalPrescription", "coachRecommendation", "executionBlocked", "safetyRestriction", "manualOverrides", "adjusted", "adjustmentReason", "triggerLabels", "canonicalExerciseId", "performanceExerciseId", "researchExerciseId", "identitySource", "identityVersion", "originalPrescription", "prescription", "recommendationVersion", "personalDataVersion", "researchDatabaseVersion", "programTargetContext", "appliedTargetContext", "overrideLocked"]);
         const allowedSetFields = new Set(["id", "exerciseId", "setNumber", "sequenceIndex", "sequence", "setTypeIndex", "setType", "reps", "weight", "weightUnit", "resistanceType", "rpe", "completed", "skipped", "edited", "isWarmup", "countsTowardScore", "countsTowardVolume", "countsTowardProgression", "addedLoad", "assistanceLoad", "durationSeconds", "distance", "distanceUnit", "targetReps", "targetRepMin", "targetRepMax", "targetWeight", "targetRpe", "targetRpeMin", "targetRpeMax", "targetRpeTolerance", "targetRestSeconds", "setPrescription", "previousComparableSet", "prescriptionReason", "prescriptionMode", "prescriptionConfidence", "validationWarning", "classificationSource", "classificationConfidence", "classifierVersion", "manualOverride", "reviewRequired", "classifiedAt", "sourceSetOrder", "originalImportedValue"]);
         const allowedTemplateFields = new Set(["id", "name", "notes", "createdAt", "updatedAt", "exercises", "mesocycleId", "mesocycleRevision", "trainingDayId", "source"]);
-        const allowedTemplateExerciseFields = new Set(["id", "name", "notes", "sets", "reps", "repMin", "repMax", "standardWorkloadOverride", "targetRpe", "increment", "restSeconds", "resistanceType", "isBodyweight", "primaryMuscle", "secondaryMuscle", "warmups", "setTypes", "canonicalExerciseId", "performanceExerciseId", "researchExerciseId", "identitySource", "identityVersion", "mesocycleSlotId", "assignmentId", "recommendationSnapshot"]);
+        const allowedTemplateExerciseFields = new Set(["id", "name", "notes", "sets", "reps", "repMin", "repMax", "standardWorkloadOverride", "targetRpe", "increment", "restSeconds", "resistanceType", "isBodyweight", "primaryMuscle", "secondaryMuscle", "customExerciseProfile", "warmups", "setTypes", "canonicalExerciseId", "performanceExerciseId", "researchExerciseId", "identitySource", "identityVersion", "mesocycleSlotId", "assignmentId", "recommendationSnapshot"]);
         const allowedSettingsFields = new Set(["weightUnit", "trainingGoal", "trainingGoalSource", "trainingGoalDisclosure", "nutritionPhase", "experienceLevel", "returningAfterGap", "trainingDaysPerWeek", "availableEquipment", "excludedExerciseIds", "theme", "colorPackage", "timerSound", "workoutCompletionSound", "timerVibration", "interactionVibration", "timerNotifications", "inAppRestAlerts", "restCompleteSound", "restCompleteSoundVolume", "restCompleteAutoDismissMs", "restCompleteLockScreenNotifications", "restCompleteAutoReturnToWorkout", "defaultRestSeconds", "notificationMessageDetail", "autoStartRestTimer", "autoHighlightNextSet", "autoScrollNextSet", "installGuideDismissed", "setupSoundConfirmed", "cloudWorkoutSyncConsent", "workoutCloudSync", "workoutCloudSyncConsentVersion", "readinessBaseline", "goal", "trainingStatus"]);
         const allowedMesocycleFields = new Set(["id", "schemaVersion", "builderMode", "rulesVersion", "type", "name", "status", "createdAt", "updatedAt", "durationWeeks", "durationBasis", "specializationMuscleGroups", "trainingDays", "split", "availableEquipment", "constraints", "exclusionResolution", "programmingContext", "planningStep", "availableMuscleGroupIds", "includedMuscleGroupIds", "equipmentUnavailableMuscleGroupIds", "omittedMuscleGroups", "scopeConfirmed", "currentProgramExerciseIds", "recentExerciseWindowDays", "pools", "activeExercises", "selectedPortfolio", "programSlots", "sessions", "programReview", "preservedProductiveExerciseIds", "versions", "lifecycle", "startedAt", "completedAt", "outcome", "reviewedAt", "review", "musclePriorities", "planningProgress", "guidedDays", "acceptedExceptions", "viabilityResult", "viabilityStale", "linkedTemplateIds", "creationResult", "revision"]);
-        const allowedRecommendationFields = new Set(["recommendationId", "schemaVersion", "recommendationVersion", "engineVersion", "personalDataVersion", "researchDatabaseVersion", "mesocycleId", "exerciseId", "muscleGroupId", "exerciseScore", "muscleSpecificScore", "personalEvidenceWeight", "researchEvidenceWeight", "readinessAdjustment", "basePrescription", "finalPrescription", "explanation", "evidenceSummary", "confidence", "createdAt", "manualOverrides", "overrideLocked", "checksum", "request", "scores", "versions"]);
+        const allowedRecommendationFields = new Set(["recommendationId", "schemaVersion", "recommendationVersion", "engineVersion", "personalDataVersion", "researchDatabaseVersion", "mesocycleId", "exerciseId", "muscleGroupId", "exerciseScore", "muscleSpecificScore", "personalEvidenceWeight", "researchEvidenceWeight", "standardGuideline", "readinessAdjustment", "basePrescription", "finalPrescription", "explanation", "evidenceSummary", "confidence", "createdAt", "manualOverrides", "overrideLocked", "checksum", "request", "scores", "versions"]);
+        const allowedCustomProfileFields = new Set(["schemaVersion", "status", "primaryMuscleGroupId", "secondaryMuscleGroupId", "resistanceType", "exerciseStyle", "progressionMetric", "smallestIncrement", "confirmedAt"]);
         const allowedOverrideFields = new Set(["overrideId", "recommendationId", "sessionId", "workoutId", "exerciseRuntimeId", "exerciseId", "setId", "field", "from", "to", "createdAt", "actor", "reason", "lockedForWorkout", "changes", "previousFinalPrescription", "outcome", "outcomeEvaluation", "action"]);
         const allowedRawImportFields = new Set(["id", "source", "importedAt", "originalText", "sessionExternalIds"]);
         const allowedMigrationFields = new Set(["version", "startedAt", "completedAt", "inspected", "changed", "explicitRetained", "manualOverridesPreserved", "warmups", "topSets", "backoffSets", "dropSets", "ambiguous", "templatesReseeded", "changes"]);
@@ -881,6 +882,19 @@
           }
           return numeric;
         };
+        const assertCustomExerciseProfile = (profile, label) => {
+          if (profile == null) return;
+          assertAllowed(profile, allowedCustomProfileFields, label);
+          if (profile.schemaVersion !== "custom-exercise-profile/1.0.0") throw new Error(`${label} schemaVersion is unsupported.`);
+          if (!["complete", "incomplete"].includes(profile.status)) throw new Error(`${label} status is invalid.`);
+          if (profile.primaryMuscleGroupId != null && (typeof profile.primaryMuscleGroupId !== "string" || profile.primaryMuscleGroupId.length > 128)) throw new Error(`${label} primary muscle is invalid.`);
+          if (profile.secondaryMuscleGroupId != null && (typeof profile.secondaryMuscleGroupId !== "string" || profile.secondaryMuscleGroupId.length > 128)) throw new Error(`${label} secondary muscle is invalid.`);
+          if (profile.resistanceType != null && !["", "external", "bodyweight", "bodyweight_plus_load", "assisted_bodyweight", "duration", "distance"].includes(profile.resistanceType)) throw new Error(`${label} resistance mode is invalid.`);
+          if (profile.exerciseStyle != null && !["", "multi_joint", "single_joint", "isometric", "carry_locomotion"].includes(profile.exerciseStyle)) throw new Error(`${label} exercise style is invalid.`);
+          if (profile.progressionMetric != null && !["", "load_and_reps", "reps_only", "assistance", "duration", "distance"].includes(profile.progressionMetric)) throw new Error(`${label} progression metric is invalid.`);
+          if (profile.smallestIncrement != null && (!Number.isFinite(Number(profile.smallestIncrement)) || Number(profile.smallestIncrement) <= 0 || Number(profile.smallestIncrement) > 10000)) throw new Error(`${label} smallest increment is invalid.`);
+          if (profile.confirmedAt != null && (typeof profile.confirmedAt !== "string" || profile.confirmedAt.length > 64)) throw new Error(`${label} confirmedAt is invalid.`);
+        };
 
         const unknownTopLevel = Object.keys(imported).find((key) => !allowedTopLevelFields.has(key));
         if (unknownTopLevel) throw new Error(`Backup contains an unknown top-level field: ${unknownTopLevel}.`);
@@ -916,6 +930,8 @@
           if (record.order != null && (!Number.isInteger(Number(record.order)) || Number(record.order) < 0)) throw new Error(`Exercise ${index + 1} order must be a non-negative integer.`);
           if (record.restSeconds != null && (!Number.isFinite(Number(record.restSeconds)) || Number(record.restSeconds) < 0 || Number(record.restSeconds) > 3600)) throw new Error(`Exercise ${index + 1} restSeconds is invalid.`);
           for (const field of ["isBodyweight", "isDeload", "executionBlocked", "adjusted", "overrideLocked"]) if (record[field] != null && typeof record[field] !== "boolean") throw new Error(`Exercise ${index + 1} ${field} must be boolean.`);
+          if (record.executionQualityAssessment != null && !["controlled", "breakdown", "not_assessed"].includes(record.executionQualityAssessment)) throw new Error(`Exercise ${index + 1} execution quality is invalid.`);
+          assertCustomExerciseProfile(record.customExerciseProfile, `Exercise ${index + 1} custom exercise profile`);
           return copyAllowed(record, allowedExerciseFields);
         });
         const sets = imported.sets.map((record, index) => {
@@ -954,6 +970,7 @@
               copiedExercise[field] = assertTemplateNumericValue(exercise[field], action, `Template ${index + 1} exercise ${exerciseIndex + 1} ${field}`);
             });
             if (exercise.standardWorkloadOverride != null && typeof exercise.standardWorkloadOverride !== "boolean") throw new Error(`Template ${index + 1} exercise ${exerciseIndex + 1} standard workload flag must be boolean.`);
+            assertCustomExerciseProfile(exercise.customExerciseProfile, `Template ${index + 1} exercise ${exerciseIndex + 1} custom exercise profile`);
             return copiedExercise;
           });
           return template;
@@ -1178,8 +1195,13 @@
         prescriptionApi.serializeRecommendationSnapshot(snapshot);
         const identity = engine.resolveExerciseIdentity(snapshot.exerciseId);
         const reconciledCustom = engine.evidence?.personal?.reconciledIdentityByExerciseId?.get(snapshot.exerciseId);
-        const trustedCustom = /^(?:custom|user)(?::|_)/.test(snapshot.exerciseId || "")
-          && reconciledCustom && !reconciledCustom.invalid && !reconciledCustom.researchExerciseId;
+        const declaredProfile = hostExercise && typeof normalizeCustomExerciseProfile === "function" ? normalizeCustomExerciseProfile(hostExercise.customExerciseProfile) : null;
+        const declaredCustom = hostExercise?.identitySource === "user_declared_custom"
+          && declaredProfile?.status === "complete"
+          && String(hostExercise.performanceExerciseId || "") === String(snapshot.exerciseId || "")
+          && declaredProfile.primaryMuscleGroupId === String(snapshot.muscleGroupId || "");
+        const trustedCustom = declaredCustom || (/^(?:custom|user)(?::|_)/.test(snapshot.exerciseId || "")
+          && reconciledCustom && !reconciledCustom.invalid && !reconciledCustom.researchExerciseId);
         if (identity?.status !== "resolved" && !trustedCustom) throw new Error(identity?.reason || "unknown_exercise_identity");
         const canonicalExerciseId = identity?.status === "resolved" ? identity.exerciseId : snapshot.exerciseId;
         if (canonicalExerciseId !== snapshot.exerciseId) throw new Error("Snapshot exercise identity is not the canonical reconciled identity.");
@@ -1202,7 +1224,7 @@
             ...(engine.evidence?.personal?.muscleScoresFor?.(canonicalExerciseId) || [])
           ];
           const trustedMuscleGroups = new Set(personalRows.map((record) => String(record?.muscle_group_id || record?.muscleGroupId || "").trim()).filter(Boolean));
-          if (!trustedMuscleGroups.has(snapshotMuscleGroupId)) throw new Error("Trusted custom snapshot target is not supported by reconciled personal evidence.");
+          if (!trustedMuscleGroups.has(snapshotMuscleGroupId) && !declaredCustom) throw new Error("Trusted custom snapshot target is not supported by reconciled personal evidence or its bounded declared profile.");
         }
 
         if (hostExercise && typeof hostExercise === "object") {
@@ -1241,7 +1263,11 @@
           const recommendations = session.workoutPrescription?.recommendations;
           if (recommendations == null) return;
           if (!Array.isArray(recommendations)) throw new Error(`Active session ${sessionIndex + 1} workoutPrescription recommendations must be an array.`);
-          recommendations.forEach((snapshot, snapshotIndex) => validateImportedExecutableRecommendationSnapshot(snapshot, engine, `Active session ${sessionIndex + 1} workout recommendation ${snapshotIndex + 1}`));
+          recommendations.forEach((snapshot, snapshotIndex) => {
+            const hostExercise = candidate.exercises.find((exercise) => exercise.sessionId === session.id && exercise.recommendationSnapshot?.recommendationId === snapshot?.recommendationId) || null;
+            const declaredCustomHost = hostExercise?.identitySource === "user_declared_custom" ? hostExercise : null;
+            validateImportedExecutableRecommendationSnapshot(snapshot, engine, `Active session ${sessionIndex + 1} workout recommendation ${snapshotIndex + 1}`, declaredCustomHost);
+          });
         });
         candidate.templates.forEach((template, templateIndex) => {
           template.exercises.forEach((exercise, exerciseIndex) => {

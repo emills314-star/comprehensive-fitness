@@ -25,7 +25,7 @@
         return [
           "add-exercise", "move-exercise", "delete-exercise", "add-set", "add-warmup-set", "duplicate-set", "delete-set", "toggle-set", "toggle-skip-set", "start-timer",
           "session-title", "session-date", "session-travel", "session-notes",
-          "exercise-name", "exercise-notes", "exercise-primary-muscle", "exercise-secondary-muscle", "exercise-deload", "exercise-resistance-type", "exercise-bodyweight", "exercise-rest-seconds",
+          "exercise-name", "exercise-notes", "exercise-primary-muscle", "exercise-secondary-muscle", "exercise-execution-quality", "exercise-deload", "exercise-resistance-type", "exercise-bodyweight", "exercise-rest-seconds",
           "set-reps", "set-weight", "set-rpe", "set-duration", "set-distance", "set-warmup",
           "recovery-sleep-hours", "recovery-sleep-quality", "recovery-hrv", "recovery-resting-hr", "recovery-soreness", "recovery-nutrition", "recovery-protein", "recovery-illness", "recovery-pain", "recovery-affected-muscle", "recovery-outside-note"
         ].includes(action);
@@ -222,6 +222,7 @@
           const form = target.closest("[data-standard-workload-form]");
           applyPrescriptionOverride(target.dataset.exerciseId, form, { standardWorkload: true, saveTemplateStandard: form?.querySelector("[data-standard-save-template]")?.checked === true });
         }
+        if (action === "complete-custom-exercise-setup") completeCustomExerciseSetup(target.dataset.exerciseId, target.closest("[data-custom-exercise-form]"));
         if (action === "save-template") saveActiveSessionAsTemplate();
         if (action === "start-template") openTemplateStart(target.dataset.templateId);
         if (action === "return-active-workout") { templateStartFlow = null; activeSessionId = activeWorkoutId; setActiveTab("lift"); }
@@ -411,6 +412,7 @@
         if (action === "add-exercise-secondary") addExerciseSecondaryMuscle = target.value;
         if (action === "exercise-primary-muscle") patchExercise(target.dataset.exerciseId, { primaryMuscle: target.value });
         if (action === "exercise-secondary-muscle") patchExercise(target.dataset.exerciseId, { secondaryMuscle: target.value });
+        if (action === "exercise-execution-quality") patchExercise(target.dataset.exerciseId, { executionQualityAssessment: executionQualityValues.has(target.value) ? target.value : "not_assessed" });
         if (action === "exercise-deload") {
           const exercise = exerciseById(target.dataset.exerciseId);
           const form = root.querySelector(`[data-override-form="${CSS.escape(target.dataset.exerciseId)}"]`);

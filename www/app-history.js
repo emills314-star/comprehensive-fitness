@@ -436,7 +436,21 @@
           const exercise = data.exercises.find((item) => item.id === set.exerciseId);
           return exercise?.sessionId === session.id && set.completed && isWorkingSet(set, "score");
         }).length;
-        return '<section class="submit-confirmation"><strong>Log this workout as completed?</strong><span>' + completed + ' completed working sets will update history, charts, volume, and PRs.</span><div class="row"><button class="primary-action" type="button" data-action="confirm-submit-workout">Log workout</button><button type="button" data-action="cancel-submit-workout">Keep editing</button></div></section>';
+        const qualityControls = data.exercises.filter((exercise) => exercise.sessionId === session.id && setsForExercise(exercise.id).some((set) => isWorkingSet(set, "progression"))).map((exercise) => {
+          const value = executionQualityValues.has(exercise.executionQualityAssessment) ? exercise.executionQualityAssessment : "not_assessed";
+          return '<label><span>' + escapeHtml(exercise.name) + '</span><select data-action="exercise-execution-quality" data-exercise-id="' + exercise.id + '"><option value="not_assessed" ' + (value === "not_assessed" ? "selected" : "") + '>Not assessed</option><option value="controlled" ' + (value === "controlled" ? "selected" : "") + '>Controlled</option><option value="breakdown" ' + (value === "breakdown" ? "selected" : "") + '>Breakdown</option></select></label>';
+        }).join('');
+        return '<section class="submit-confirmation"><strong>Log this workout as completed?</strong><span>' + completed + ' completed working sets will update history, charts, volume, and PRs.</span><div class="submit-quality"><b>Did execution stay controlled?</b><small>Submission is allowed without an assessment, but an unassessed exposure cannot confirm progression.</small>' + qualityControls + '</div><div class="row"><button class="primary-action" type="button" data-action="confirm-submit-workout">Log workout</button><button type="button" data-action="cancel-submit-workout">Keep editing</button></div></section>';
+      }
+
+      function renderBaseNextExposurePreview(session, result) {
+        const exercise = data.exercises.find((item) => item.id === result.exerciseId && item.sessionId === session.id);
+        if (!exercise) return "";
+        const snapshot = unifiedPrescriptionSnapshot({ ...exercise, recommendationSnapshot: null, basePrescription: null, finalPrescription: null, prescription: null }, { fresh: true, throughDate: sessionCompletionDate(session), recovery: {}, readiness: {} });
+        if (!snapshot?.finalPrescription || snapshot.hardConstraint || snapshot.type === "engine_failure") return '<div class="next-exposure-preview"><span>Base next exposure</span><strong>Available when recommendation evidence can be regenerated.</strong></div>';
+        const prescription = snapshot.finalPrescription;
+        const line = `${prescription.workingSets.target} sets · ${prescription.repRange.min}-${prescription.repRange.max} reps · RPE ${prescription.targetRpe.min}-${prescription.targetRpe.max}`;
+        return '<div class="next-exposure-preview"><span>Base next exposure</span><strong>' + escapeHtml(line) + '</strong><p>' + escapeHtml(prescription.progressionRule) + ' The next workout regenerates this through the same engine and may adjust it for that day’s readiness.</p></div>';
       }
 
       function renderWorkoutExerciseResult(result) {
@@ -470,7 +484,7 @@
           + '<section class="workout-summary-section"><h3>Category breakdown</h3><div class="workout-category-list">' + analysis.categoryScores.map((category) => '<div class="workout-category"><strong>' + escapeHtml(category.label) + '</strong><b>' + category.earned + ' / ' + category.possible + '</b><span>' + escapeHtml(category.reason) + '</span></div>').join('') + '</div></section>'
           + '<section class="workout-summary-section"><h3>Workout Highlights</h3><div class="workout-highlight-list">' + highlights + '</div></section>'
           + '<section class="workout-summary-section"><h3>Retrospective Session Review</h3><p class="settings-note">These observations explain execution and data quality. The unified prescription cards remain the sole source for the next training decision.</p><div class="workout-improvement-list">' + improvements + '</div></section>'
-          + '<section class="workout-summary-section"><h3>Exercise results</h3><div class="workout-exercise-list">' + analysis.exerciseResults.map(renderWorkoutExerciseResult).join('') + '</div></section>'
+          + '<section class="workout-summary-section"><h3>Exercise results</h3><div class="workout-exercise-list">' + analysis.exerciseResults.map((result) => renderWorkoutExerciseResult(result) + (options.history ? '' : renderBaseNextExposurePreview(session, result))).join('') + '</div></section>'
           + '<div class="workout-confidence"><strong>' + escapeHtml(analysis.confidence.charAt(0).toUpperCase() + analysis.confidence.slice(1)) + ' confidence.</strong> Based on ' + analysis.metrics.completedSets + ' completed working sets, ' + Math.round(analysis.metrics.rpeLoggedRatio * 100) + '% RPE coverage, and available prior comparable sessions. Warm-ups were excluded.</div>'
           + (options.history ? '' : '<button class="primary-action" type="button" data-action="close-completed-summary">Done</button>')
           + '</section>';

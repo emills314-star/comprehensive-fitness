@@ -3,8 +3,8 @@
 ## Metadata
 
 - **Purpose:** Verified technical architecture, data flows, and operational boundaries
-- **Last verified:** 2026-07-18
-- **Repository:** `main` @ `324f008`
+- **Last verified:** 2026-07-21
+- **Repository:** `main` working tree (progression-feedback implementation)
 - **Verification status:** VERIFIED locally; external deployment/device status is not repository-verifiable
 - **Related:** [Project](PROJECT.md), [decision engine](DECISION_ENGINE.md), [UI/UX](UI_UX.md), [roadmap](ROADMAP.md), [push backend](push-backend.md)
 
@@ -124,11 +124,11 @@ The active workout remains one continuous scroll document. Set/rest state transi
 ## Models and relationships
 
 - A **session** has many exercises and sets, recovery input, lifecycle timestamps/state, optional template/mesocycle context, PRs, and stored analysis.
-- An **exercise** belongs to a session and references its sets; it holds muscle/resistance metadata, prescription/snapshot, notes, and deload/override state.
+- An **exercise** belongs to a session and references its sets; it holds muscle/resistance metadata, prescription/snapshot, notes, deload/override state, optional `customExerciseProfile`, and optional `executionQualityAssessment`. A user-declared custom exercise receives a stable namespaced performance identity that survives name edits and never implies a public research crosswalk.
 - A **set** belongs to an exercise and has sequence/type, targets, actual load/reps/RPE, completion/skip/edit flags, resistance semantics, and inclusion flags for score/volume/progression.
 - A **template** owns exercise targets and set-role definitions but does not become history until a started workout is submitted.
 - A **mesocycle** holds type, dates/lifecycle, constraints, per-muscle candidate pools, program slots, a selected full-program portfolio, distributed sessions, muscle plans, and an interaction review. `activeExercises` remains a compatibility projection of the selected portfolio for older persisted plans.
-- A **recommendation snapshot** records engine/schema/evidence versions, base/final prescription, readiness adjustment, evidence, checksum, and append-only overrides (`schemas/recommendation-snapshot.v1.schema.json`).
+- A **recommendation snapshot** records engine/schema/evidence versions, a versioned `standardGuideline`, base/final prescription, readiness adjustment, evidence, checksum, and append-only overrides (`schemas/recommendation-snapshot.v1.schema.json`). Snapshot `1.4.0` pairs with prescription `2.4.0`; readers retain all repository-known earlier pairs without backfill.
 
 The root JSON Schemas are application decision contracts. `personal_fitness_data/schemas/` describe private pipeline artifacts; `research_database/schema/` describes public research tables. These are distinct layers.
 
@@ -144,7 +144,7 @@ flowchart TD
   EvidenceBuilder --> Imported[local imported package]
   ResearchExports --> Adapters[prescription-engine adapters]
   Imported --> Adapters
-  AppHistory[submitted app history] --> Adapters
+  AppHistory[distinct submitted exercise exposures] --> Adapters
   Adapters --> Snapshot[immutable prescription snapshot]
   Snapshot --> Surfaces[template / live / chart / coach / history]
 ```
@@ -154,6 +154,10 @@ The retained legacy automatic engine is portfolio-first and priority-ordered; it
 `research_database/source/exercise-muscle-taxonomy.js` is the single exercise–muscle relationship authority. Taxonomy 2.1.0 covers 62 canonical exercises with 151 exercise-muscle relationships and retains all 23 canonical anatomical muscle IDs. A complete projection maps them into 20 programming families; only the sternal/clavicular chest, gastrocnemius/soleus calf, and flexor/extensor neck pairs coalesce. The browser engine, planner, weekly/historical analytics, and private personal-evidence config adapter consume the mappings. Legacy name rules and personal mappings are fallback-only for custom exercises without a canonical research crosswalk.
 
 Future prescription generation now separates exercise identity, exact target selection, and broad reporting projection. The frontend resolves catalog IDs/names/aliases through `resolveExerciseIdentity`, then asks `resolveDefaultPrescriptionTarget` for the one eligible positive-credit dynamic/mixed direct relationship and passes that exact canonical `mg_*` ID into `prescribeExercise`. Any resolver failure other than the ordinary unknown/custom branch remains typed, non-executable, and zero-dose; collision reasons introduced by later engine versions therefore fail closed without a frontend allowlist update. A custom/user identity enters research prescription generation only when the prepared personal reconciliation map explicitly trusts it. An exact Strong performance identity may still be logged through the separately marked history fallback when it has submitted history and valid saved structure; that path never calls the research engine or asserts taxonomy. Explicit valid fractional targets remain caller-controlled. Broad Back/Chest/Shoulders-style projection continues only for filters, charts, and reporting and cannot fabricate a prescription target. A stored snapshot attached to submitted history is returned as the exact object before current validation, preserving historical bytes and lineage. A snapshot reused by an active exercise or template is executable state: it must pass current schema/checksum, canonical identity, exact target, and host binding without a fresh prescription call, or it becomes the deterministic zero-dose `invalid_stored_recommendation_snapshot` hard rejection and never enters the recommendation cache.
+
+Submitted app history enters the engine as distinct exercise exposures rather than weekly summaries. Each record has a stable workout/exercise identity, actual set loads/repetitions/RPE, planned and completed counts, reduction/pain state, and controlled/breakdown/unassessed execution quality. This preserves two same-week sessions as two progression observations. Stable exposure keys deduplicate repeat imports; missing execution assessment remains unknown and cannot confirm progression.
+
+Runtime custom guidance uses a transient evidence adapter built from the confirmed `customExerciseProfile`, public muscle-level dosage tables, the active training profile, and exact history for the stable custom identity. The emitted snapshot is the ordinary checksummed contract and may prepopulate unfinished rows, but user-facing evidence explicitly withholds canonical ranking, biomechanics, substitution, and equivalence claims. Incomplete custom profiles remain loggable and emit no recommendation. Backup import allowlists and bounds the profile and execution-quality fields on exercises and templates.
 
 Programming families are derived accounting, not a destructive taxonomy migration. `programming-family-ledger.js` is the shared browser/Node authority (`programming-family/1.0.0`; historical ledger `historical-family-volume/1.0.0`) consumed by the guided builder and prescription engine. It selects the strongest qualifying relationship once per exercise/family, keeps local and isometric fatigue additive and separate from hypertrophy credit, retains full precision through aggregation, and rounds only final exposed totals. Canonical muscle ownership overrides a conflicting supplied family. Historical family totals are emitted only when every used relationship has one common taxonomy version; missing or mixed provenance returns `blocked_unverifiable_taxonomy` and no family dose. Source records remain immutable, no persistent migration is required, and rollback is executable by recalculating those records with the prior relationship set. Legacy canonical `muscleTotals` remain available for compatible readers while family-aware consumers use the versioned projection.
 
