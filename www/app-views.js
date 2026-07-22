@@ -621,7 +621,14 @@
       }
 
       function openTemplateStart(templateId) {
-        if (!data.templates.some((template) => template.id === templateId)) return;
+        const template = data.templates.find((item) => item.id === templateId);
+        if (!template) return;
+        if (!Array.isArray(template.exercises) || template.exercises.length === 0) {
+          templateStartFlow = null;
+          showAppToast("Add at least one exercise before starting this template.");
+          render();
+          return;
+        }
         captureDialogFocusOrigin("template");
         if (hasActiveWorkout()) {
           templateStartFlow = { templateId, step: "active-conflict", draft: defaultRecovery() };

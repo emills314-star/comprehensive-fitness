@@ -139,6 +139,8 @@ No repository artifact identifies an actively assigned implementation item. **NE
 
 ## Bugs and regressions
 
+- **Empty templates could start empty workouts — FIXED:** Plan now disables Start with an accessible explanation when a template has no exercises, and both the start-sheet and workout-construction entry points reject stale/programmatic attempts. Restoring an exercise immediately restores the ordinary start flow; mobile and desktop browser regressions cover removal, persistence, runtime defense, and recovery.
+
 - **Guided planner Setup render failure — FIXED:** a clean Plan → Plan Your Mesocycle → Start Planning flow no longer enters the destination-error surface when formatting represented muscle labels. The label formatter now falls back safely when no optional presentation-label map is installed, and mobile/desktop browser coverage protects the real entry path and console health.
 
 - **Secondary-page Settings return became sticky — FIXED:** Privacy/Support use a one-shot Settings return query, but canonical tab URLs previously retained it. Navigating elsewhere and reloading could reopen More. Canonical navigation now consumes recognized app deep-link fields, preserves unrelated verification parameters, and browser coverage protects the return → Today → reload path.
@@ -153,6 +155,7 @@ No repository artifact identifies an actively assigned implementation item. **NE
 - **Rest timer green wrap — FIXED:** the active rest state now uses a bounded circular timer icon and preserves neutral exercise/set boundaries; a static presentation contract and approved phone-width mockup protect the treatment.
 - **Legacy planner frequency concentration — FIXED:** automatic portfolio placement now spreads distinct exercises serving the same muscle slot across compatible sessions before reusing a session. The 3/4/5-day broad-scope test meets every declared frequency target without weakening hard capacity or canonical-exercise rules.
 - **Stale navigation and research-version tests — FIXED:** app-integration navigation uses Today, Plan, Progress, and More, and the private adapter assertion expects the current research database version. The valid contracts were merged into current terminology rather than deleted.
+- **More runtime/import domain mismatch — FIXED:** More now normalizes typed default-rest and readiness-baseline values to the same ranges, increments, and integer rules enforced by their controls and the backup importer, preventing locally exported settings from becoming self-rejecting. Mobile/desktop browser coverage verifies bounded persistence and reload.
 
 - **Blank initial screen from removed readiness helper — FIXED:** browser QA reproduced `ReferenceError: readinessBandStatus is not defined`; `renderRecoveryPanel` no longer calls the removed duplicate scorer, and workout-safety coverage prevents recurrence.
 - **Exercise metadata normalization — NEEDS REVIEW:** runtime `mesocycle/2.3.0` now normalizes the research database's legacy free-text `equipment` field into complete requirement alternatives and derives joint actions from controlled movement patterns. A future research-database minor release should persist these normalized fields directly for every exercise; restricted personal-only records already fail closed until verified metadata exists.

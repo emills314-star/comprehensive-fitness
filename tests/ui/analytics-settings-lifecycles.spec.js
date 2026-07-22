@@ -324,6 +324,51 @@ test("Settings converts real loads and persists profile, timer, readiness, unit,
   expect(restored.firstSet).toMatchObject({ weight: 99.79, weightUnit: "kg", targetWeight: 99.79 });
 });
 
+test("More numeric settings enforce their import-safe domains and survive reload", async ({ page }) => {
+  await installFixture(page);
+  await openPrimaryTab(page, "data");
+  await openSettingsGroup(page, "Rest timer and alerts");
+
+  const control = page.locator('[data-action="default-rest-seconds"]');
+  await control.fill("9999");
+  await control.dispatchEvent("change");
+
+  await expect(page.locator('[data-action="default-rest-seconds"]')).toHaveValue("900");
+  expect(await page.evaluate(() => data.settings.defaultRestSeconds)).toBe(900);
+  await expect.poll(async () => (await persistedAppData(page))?.settings?.defaultRestSeconds, { timeout: 10_000 }).toBe(900);
+
+  const baselineCases = [
+    ["baseline-sleep-hours", "15", "14", "sleepHours"],
+    ["baseline-sleep-quality", "0", "1", "sleepQuality"],
+    ["baseline-hrv", "-4", "0", "hrv"],
+    ["baseline-resting-hr", "-2", "0", "restingHr"],
+    ["baseline-soreness", "9", "5", "soreness"],
+    ["baseline-band", "99", "20", "band"]
+  ];
+  for (const [action, attempted, expected, field] of baselineCases) {
+    await openSettingsGroup(page, "Readiness baseline");
+    const baselineControl = page.locator(`[data-action="${action}"]`);
+    await baselineControl.fill(attempted);
+    await baselineControl.dispatchEvent("change");
+    await expect(page.locator(`[data-action="${action}"]`)).toHaveValue(expected);
+    expect(await page.evaluate((key) => data.settings.readinessBaseline[key], field)).toBe(expected);
+  }
+  await expect.poll(async () => (await persistedAppData(page))?.settings?.readinessBaseline?.band, { timeout: 10_000 }).toBe("20");
+
+  await page.reload();
+  await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible({ timeout: 45_000 });
+  await openPrimaryTab(page, "data");
+  await openSettingsGroup(page, "Rest timer and alerts");
+  await expect(page.locator('[data-action="default-rest-seconds"]')).toHaveValue("900");
+  await openSettingsGroup(page, "Readiness baseline");
+  await expect(page.locator('[data-action="baseline-sleep-hours"]')).toHaveValue("14");
+  await expect(page.locator('[data-action="baseline-sleep-quality"]')).toHaveValue("1");
+  await expect(page.locator('[data-action="baseline-hrv"]')).toHaveValue("0");
+  await expect(page.locator('[data-action="baseline-resting-hr"]')).toHaveValue("0");
+  await expect(page.locator('[data-action="baseline-soreness"]')).toHaveValue("5");
+  await expect(page.locator('[data-action="baseline-band"]')).toHaveValue("20");
+});
+
 test("all ten color packages are selectable and apply distinct semantic colors", async ({ page }) => {
   await installFixture(page);
   await openPrimaryTab(page, "data");

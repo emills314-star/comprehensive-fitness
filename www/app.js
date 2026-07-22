@@ -501,7 +501,7 @@
           }
         }
         if (action === "in-app-rest-alerts") commit({ ...data, settings: { ...data.settings, inAppRestAlerts: target.checked } });
-        if (action === "default-rest-seconds") commit({ ...data, settings: { ...data.settings, defaultRestSeconds: Math.max(15, Number(target.value || 90)) } });
+        if (action === "default-rest-seconds") commit({ ...data, settings: { ...data.settings, defaultRestSeconds: Math.max(15, Math.min(900, Number(target.value || 90))) } });
         if (action === "notification-detail") commit({ ...data, settings: { ...data.settings, notificationMessageDetail: target.value } });
         if (action === "auto-start-rest") commit({ ...data, settings: { ...data.settings, autoStartRestTimer: target.checked } });
         if (action === "auto-highlight-next") commit({ ...data, settings: { ...data.settings, autoHighlightNextSet: target.checked } });

@@ -70,7 +70,8 @@ assert.match(html, /function fatigueFlags[\s\S]*fatigueFlagCache\.has\(cacheKey\
 
 assert.equal((templateRenderer.match(/id="active-workout-template-notice"/g) || []).length, 1, "Templates should show one active-workout notice");
 assert.match(templateRenderer, /Return to Active Workout/, "The compact notice must resume the canonical workout");
-assert.match(templateRenderer, /locked \? 'disabled aria-describedby="active-workout-template-notice"/, "Other template Start buttons must be truly disabled");
+assert.match(templateRenderer, /const startDisabledAttributes = locked[\s\S]*disabled aria-describedby="active-workout-template-notice"/, "Other template Start buttons must be truly disabled while a workout is active");
+assert.match(templateRenderer, /: emptyTemplate[\s\S]*disabled aria-describedby="' \+ escapeHtml\(emptyTemplateDescriptionId\)/, "Empty-template Start buttons must be truly disabled with an accessible explanation");
 assert.doesNotMatch(templateRenderer, /Submit or cancel .* before starting another template/, "Template cards must not repeat the restriction on every row");
 assert.doesNotMatch(templateRenderer, /fatigueFlags\(/, "Opening Templates must not recalculate completed-history fatigue analysis");
 assert.match(templateRenderer, /const advice = null;/, "Template-list rendering must defer readiness coaching to the start flow");

@@ -247,6 +247,53 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     expect(browserErrors, "template lifecycle browser errors").toEqual([]);
   });
 
+  test("an empty template cannot start an empty active workout and becomes startable after an exercise is restored", async ({ page }) => {
+    test.setTimeout(90_000);
+    const browserErrors = collectBrowserErrors(page);
+    await installFixture(page, buildTemplateLifecycleFixture());
+    await openPlan(page);
+
+    const templateId = IDS.controlTemplate;
+    let card = page.locator(`.template-card:has([data-template-id="${templateId}"])`);
+    await card.locator('[data-action="toggle-template-editor"]').click();
+    const exerciseIds = await card.locator('[data-action="template-exercise-name"]').evaluateAll((controls) => controls.map((control) => control.dataset.templateExerciseId));
+    expect(exerciseIds).toHaveLength(2);
+    for (const exerciseId of exerciseIds) {
+      card = page.locator(`.template-card:has([data-template-id="${templateId}"])`);
+      await card.locator(`[data-action="delete-template-exercise"][data-template-exercise-id="${exerciseId}"]`).click();
+    }
+
+    card = page.locator(`.template-card:has([data-template-id="${templateId}"])`);
+    const start = card.locator(`[data-action="start-template"][data-template-id="${templateId}"]`);
+    await expect(start, "A template with zero exercises must not offer an executable Start action").toBeDisabled();
+    await expect(card).toContainText("Add at least one exercise before starting this template.");
+    await waitForPersisted(page, (stored) => stored.templates.find((template) => template.id === templateId)?.exercises.length === 0, "the empty template state must persist without creating a workout");
+
+    const guarded = await page.evaluate((requestedTemplateId) => {
+      const beforeSessions = data.sessions.length;
+      openTemplateStart(requestedTemplateId);
+      startTemplate(requestedTemplateId, defaultRecovery(), "usual");
+      return {
+        beforeSessions,
+        afterSessions: data.sessions.length,
+        hasActiveWorkout: hasActiveWorkout(),
+        dialogOpen: Boolean(templateStartFlow)
+      };
+    }, templateId);
+    expect(guarded, "Runtime entry points must reject stale or programmatic empty-template starts").toEqual({
+      beforeSessions: guarded.beforeSessions,
+      afterSessions: guarded.beforeSessions,
+      hasActiveWorkout: false,
+      dialogOpen: false
+    });
+
+    await card.locator('[data-action="add-template-exercise"]').click();
+    card = page.locator(`.template-card:has([data-template-id="${templateId}"])`);
+    await expect(card.locator(`[data-action="start-template"][data-template-id="${templateId}"]`)).toBeEnabled();
+    await expect(card).not.toContainText("Add at least one exercise before starting this template.");
+    expect(browserErrors, "empty-template start guard browser errors").toEqual([]);
+  });
+
   test("template validation enforces exact HTML/domain boundaries, exposes accessible errors, and refuses invalid persistence", async ({ page }) => {
     test.setTimeout(90_000);
     await installFixture(page, buildTemplateLifecycleFixture());

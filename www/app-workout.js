@@ -201,7 +201,25 @@
       }
 
       function patchReadinessBaseline(patch, shouldRender = true) {
-        commit({ ...data, settings: { ...data.settings, readinessBaseline: { ...readinessBaseline(), ...patch } } }, shouldRender);
+        const domains = {
+          sleepHours: { min: 0, max: 14, step: 0.25 },
+          sleepQuality: { min: 1, max: 5, integer: true },
+          hrv: { min: 0, integer: true },
+          restingHr: { min: 0, integer: true },
+          soreness: { min: 1, max: 5, integer: true },
+          band: { min: 3, max: 20, integer: true }
+        };
+        const boundedPatch = Object.fromEntries(Object.entries(patch).map(([field, value]) => {
+          const domain = domains[field];
+          if (!domain) return [field, value];
+          let numeric = Number(value);
+          if (!Number.isFinite(numeric)) numeric = domain.min;
+          numeric = Math.max(domain.min, Math.min(domain.max ?? Number.MAX_SAFE_INTEGER, numeric));
+          if (domain.step) numeric = Math.round(numeric / domain.step) * domain.step;
+          if (domain.integer) numeric = Math.round(numeric);
+          return [field, String(numeric)];
+        }));
+        commit({ ...data, settings: { ...data.settings, readinessBaseline: { ...readinessBaseline(), ...boundedPatch } } }, shouldRender);
       }
 
       function exerciseNameForPrescriptionId(exerciseId, fallback) {
@@ -913,6 +931,12 @@
       function startTemplate(templateId, recovery = defaultRecovery(), readinessMode = "usual", options = {}) {
         const template = data.templates.find((item) => item.id === templateId);
         if (!template) return;
+        if (!Array.isArray(template.exercises) || template.exercises.length === 0) {
+          templateStartFlow = null;
+          showAppToast("Add at least one exercise before starting this template.");
+          render();
+          return;
+        }
         if (hasActiveWorkout()) {
           templateStartFlow = { templateId, step: "active-conflict", draft: cleanRecovery(recovery) };
           render();
