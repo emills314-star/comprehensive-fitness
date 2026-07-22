@@ -3643,12 +3643,24 @@
       function prescriptionSnapshotWithTemplateStandard(snapshot, templateExercise = {}, options = {}) {
         if (!snapshot?.finalPrescription || templateExercise.standardWorkloadOverride !== true || !prescriptionEngine) return snapshot;
         const current = snapshot.finalPrescription;
+        const savedRoles = templateExercise.standardRoleWorkload;
         const setCount = Number(templateExercise.sets || 0);
         const repMin = Number(templateExercise.repMin || 0);
         const repMax = Number(templateExercise.repMax || 0);
         const override = {};
-        if (Number.isInteger(setCount) && setCount >= 1 && setCount !== Number(current.workingSets?.target || 0)) override.setCount = setCount;
-        if (repMin >= 1 && repMax >= repMin && (repMin !== Number(current.repRange?.min || 0) || repMax !== Number(current.repRange?.max || 0))) override.repRange = { min: repMin, max: repMax };
+        if (savedRoles?.setStructure === current.setStructure && savedRoles?.topSet && ["top_set_backoff", "multiple_top_sets"].includes(current.setStructure)) {
+          const savedTop = { count: Number(savedRoles.topSet.count), repRange: { min: Number(savedRoles.topSet.repRange?.min), max: Number(savedRoles.topSet.repRange?.max) } };
+          const currentTopRange = current.topSet?.repRange || current.repRange;
+          if (savedTop.count !== Number(current.topSet?.count || 0) || savedTop.repRange.min !== Number(currentTopRange.min) || savedTop.repRange.max !== Number(currentTopRange.max)) override.topSet = savedTop;
+          if (current.setStructure === "top_set_backoff" && savedRoles.backoffSets) {
+            const savedBackoff = { count: Number(savedRoles.backoffSets.count), repRange: { min: Number(savedRoles.backoffSets.repRange?.min), max: Number(savedRoles.backoffSets.repRange?.max) } };
+            const currentBackoffRange = current.backoffSets?.repRange || current.repRange;
+            if (savedBackoff.count !== Number(current.backoffSets?.count || 0) || savedBackoff.repRange.min !== Number(currentBackoffRange.min) || savedBackoff.repRange.max !== Number(currentBackoffRange.max)) override.backoffSets = savedBackoff;
+          }
+        } else {
+          if (Number.isInteger(setCount) && setCount >= 1 && setCount !== Number(current.workingSets?.target || 0)) override.setCount = setCount;
+          if (repMin >= 1 && repMax >= repMin && (repMin !== Number(current.repRange?.min || 0) || repMax !== Number(current.repRange?.max || 0))) override.repRange = { min: repMin, max: repMax };
+        }
         if (!Object.keys(override).length) return snapshot;
         return prescriptionEngine.applyManualOverride(snapshot, override, {
           workoutId: options.workoutId || options.template?.id || "saved-standard-workload",

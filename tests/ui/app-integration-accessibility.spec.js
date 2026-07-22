@@ -1347,6 +1347,127 @@ test("confirmed pain-free substitution uses an explicit catalog-backed UI flow a
   }
 });
 
+test("exercise guidelines separate top sets from back-offs and keep straight sets compact", async ({ page }) => {
+  const fixture = safetyWorkoutState({ illness: false, pain: false });
+  await seedApplicationState(page, fixture.state);
+  await expect.poll(() => page.evaluate(() => Boolean(prescriptionEngine?.evidence?.research?.exerciseById?.has("ex_barbell_bench_press"))), {
+    message: "The prescription engine must finish loading before the role-aware workload fixture is created"
+  }).toBe(true);
+
+  const seeded = await page.evaluate(({ benchRuntimeId, legPressRuntimeId }) => {
+    const snapshot = prescriptionEngine.prescribeExercise({
+      exerciseId: "ex_barbell_bench_press",
+      muscleGroupId: "chest",
+      history: [{
+        workout_date: "2026-07-20",
+        progression_status: "held",
+        comparison_performance_value: 110,
+        set_repetitions: "[10,10,10]",
+        set_loads: "[100,100,100]",
+        set_rpes: "[8,8,8]",
+        average_rpe: 8,
+        completedSetRatio: 1
+      }],
+      experienceLevel: "advanced",
+      setStructurePreference: "advanced_if_supported",
+      createdAt: "2026-07-22T12:00:00.000Z"
+    });
+    if (snapshot.finalPrescription.setStructure !== "top_set_backoff") throw new Error(`Expected a top-set/back-off fixture, received ${snapshot.finalPrescription.setStructure}`);
+    const straightSnapshot = prescriptionEngine.prescribeExercise({
+      exerciseId: "ex_leg_press",
+      muscleGroupId: "mg_quadriceps",
+      experienceLevel: "beginner",
+      setStructurePreference: "straight_sets",
+      createdAt: "2026-07-22T12:00:01.000Z"
+    });
+    if (straightSnapshot.finalPrescription.setStructure !== "straight_sets") throw new Error(`Expected a straight-set fixture, received ${straightSnapshot.finalPrescription.setStructure}`);
+    const exercise = data.exercises.find((item) => item.id === benchRuntimeId);
+    Object.assign(exercise, {
+      recommendationSnapshot: snapshot,
+      basePrescription: snapshot.basePrescription,
+      finalPrescription: snapshot.finalPrescription,
+      prescription: legacyTargetFromSnapshot(snapshot, { name: exercise.name, resistanceType: exercise.resistanceType, increment: exercise.prescription?.increment }),
+      executionBlocked: false
+    });
+    const straightExercise = data.exercises.find((item) => item.id === legPressRuntimeId);
+    Object.assign(straightExercise, {
+      recommendationSnapshot: straightSnapshot,
+      basePrescription: straightSnapshot.basePrescription,
+      finalPrescription: straightSnapshot.finalPrescription,
+      prescription: legacyTargetFromSnapshot(straightSnapshot, { name: straightExercise.name, resistanceType: straightExercise.resistanceType, increment: straightExercise.prescription?.increment }),
+      executionBlocked: false
+    });
+    data.recommendationHistory = [snapshot, straightSnapshot];
+    render();
+    return [snapshot.finalPrescription.setStructure, straightSnapshot.finalPrescription.setStructure];
+  }, { benchRuntimeId: fixture.exerciseIds.bench, legPressRuntimeId: fixture.exerciseIds.legPress });
+  expect(seeded).toEqual(["top_set_backoff", "straight_sets"]);
+
+  const card = page.locator(`.exercise-card:has([data-exercise-id="${fixture.exerciseIds.bench}"])`).first();
+  await card.locator("details.exercise-options > summary").click();
+  const editor = card.locator('[data-standard-workload-form]');
+  await expect(editor.locator('[data-workload-structure="top_set_backoff"]')).toBeVisible();
+  await expect(editor.locator("fieldset.role-top")).toHaveCount(1);
+  await expect(editor.locator("fieldset.role-backoff")).toHaveCount(1);
+  await expect(editor.locator('[data-override-field="sets"]')).toHaveCount(0);
+
+  const straightCard = page.locator(`.exercise-card:has([data-exercise-id="${fixture.exerciseIds.legPress}"])`).first();
+  await straightCard.locator("details.exercise-options > summary").click();
+  const straightEditor = straightCard.locator('[data-standard-workload-form]');
+  await expect(straightEditor.locator('[data-workload-structure="straight_sets"]')).toBeVisible();
+  await expect(straightEditor.locator("fieldset.role-straight")).toHaveCount(1);
+  await expect(straightEditor.locator(".workload-role-card")).toHaveCount(1);
+  await expect(straightEditor.locator('[data-override-field="sets"]')).toHaveCount(1);
+
+  await page.setViewportSize({ width: 375, height: 812 });
+  const mobileBoxes = await editor.locator(".workload-role-card").evaluateAll((nodes) => nodes.map((node) => {
+    const rect = node.getBoundingClientRect();
+    return { x: Math.round(rect.x), y: Math.round(rect.y), border: getComputedStyle(node).borderInlineStartColor };
+  }));
+  expect(mobileBoxes[1].y).toBeGreaterThan(mobileBoxes[0].y);
+  expect(Math.abs(mobileBoxes[1].x - mobileBoxes[0].x)).toBeLessThanOrEqual(2);
+  expect(mobileBoxes[0].border).not.toBe(mobileBoxes[1].border);
+
+  await page.setViewportSize({ width: 900, height: 900 });
+  const desktopBoxes = await editor.locator(".workload-role-card").evaluateAll((nodes) => nodes.map((node) => {
+    const rect = node.getBoundingClientRect();
+    return { x: Math.round(rect.x), y: Math.round(rect.y) };
+  }));
+  expect(desktopBoxes[1].x).toBeGreaterThan(desktopBoxes[0].x);
+  expect(Math.abs(desktopBoxes[1].y - desktopBoxes[0].y)).toBeLessThanOrEqual(2);
+
+  await editor.locator('[data-override-field="top-sets"]').fill("2");
+  await editor.locator('[data-override-field="top-rep-min"]').fill("5");
+  await editor.locator('[data-override-field="top-rep-max"]').fill("6");
+  await editor.locator('[data-override-field="backoff-sets"]').fill("3");
+  await editor.locator('[data-override-field="backoff-rep-min"]').fill("8");
+  await editor.locator('[data-override-field="backoff-rep-max"]').fill("10");
+  await editor.locator('[data-action="apply-standard-workload"]').click();
+  await expect.poll(() => page.evaluate((exerciseRuntimeId) => {
+    const exercise = data.exercises.find((item) => item.id === exerciseRuntimeId);
+    return [exercise?.finalPrescription?.topSet?.count, exercise?.finalPrescription?.backoffSets?.count];
+  }, fixture.exerciseIds.bench), { message: "Role-aware workload changes must persist through the rerender" }).toEqual([2, 3]);
+
+  const result = await page.evaluate((exerciseRuntimeId) => {
+    const exercise = data.exercises.find((item) => item.id === exerciseRuntimeId);
+    const workingSets = data.sets.filter((set) => set.exerciseId === exerciseRuntimeId && !set.isWarmup && !set.completed);
+    return {
+      topSet: exercise.finalPrescription.topSet,
+      backoffSets: exercise.finalPrescription.backoffSets,
+      workingTarget: exercise.finalPrescription.workingSets.target,
+      audit: exercise.manualOverrides.at(-1)?.changes?.rolePrescription,
+      setTypes: workingSets.map((set) => set.setType),
+      setRanges: workingSets.map((set) => [set.targetRepMin, set.targetRepMax])
+    };
+  }, fixture.exerciseIds.bench);
+  expect(result.topSet).toMatchObject({ count: 2, repRange: { min: 5, max: 6 } });
+  expect(result.backoffSets).toMatchObject({ count: 3, repRange: { min: 8, max: 10 } });
+  expect(result.workingTarget).toBe(5);
+  expect(result.audit?.to).toMatchObject({ topSet: { count: 2 }, backoffSets: { count: 3 } });
+  expect(result.setTypes).toEqual(["top", "top", "backoff", "backoff", "backoff"]);
+  expect(result.setRanges).toEqual([[5, 6], [5, 6], [8, 10], [8, 10], [8, 10]]);
+});
+
 test("primary navigation exposes a skip target and moves focus into the selected view", async ({ page }) => {
   const skipLink = page.getByRole("link", { name: /skip.*content/i });
   await expect(skipLink).toHaveAttribute("href", "#main-content");

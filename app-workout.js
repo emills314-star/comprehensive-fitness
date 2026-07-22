@@ -322,12 +322,28 @@
         const safetyContext = safetyLocked ? currentSafetyContext : null;
         const read = (field) => form.querySelector(`[data-override-field="${field}"]`)?.value ?? "";
         const override = {};
+        const roleStandard = options.standardWorkload && ["top_set_backoff", "multiple_top_sets"].includes(current.setStructure);
+        const roleValue = (prefix) => ({
+          count: Number(read(`${prefix}-sets`)),
+          repMin: Number(read(`${prefix}-rep-min`)),
+          repMax: Number(read(`${prefix}-rep-max`))
+        });
+        const validRoleValue = (value, maximum) => Number.isInteger(value.count) && value.count >= 1 && value.count <= maximum
+          && Number.isInteger(value.repMin) && Number.isInteger(value.repMax) && value.repMin >= 1 && value.repMax <= 50 && value.repMin <= value.repMax;
         if (options.standardWorkload) {
-          const standardSets = Number(read("sets"));
-          const standardRepMin = Number(read("rep-min"));
-          const standardRepMax = Number(read("rep-max"));
-          if (!Number.isInteger(standardSets) || standardSets < 1 || standardSets > 12) return showAppToast("Choose between 1 and 12 working sets.");
-          if (!Number.isInteger(standardRepMin) || !Number.isInteger(standardRepMax) || standardRepMin < 1 || standardRepMax > 50 || standardRepMin > standardRepMax) return showAppToast("Choose a valid rep range from 1 to 50.");
+          if (roleStandard) {
+            const top = roleValue("top");
+            const backoff = current.setStructure === "top_set_backoff" ? roleValue("backoff") : null;
+            if (!validRoleValue(top, 10)) return showAppToast("Choose 1 to 10 top sets and a valid rep range from 1 to 50.");
+            if (backoff && !validRoleValue(backoff, 19)) return showAppToast("Choose 1 to 19 back-off sets and a valid rep range from 1 to 50.");
+            if (top.count + Number(backoff?.count || 0) > 20) return showAppToast("Choose no more than 20 total working sets.");
+          } else {
+            const standardSets = Number(read("sets"));
+            const standardRepMin = Number(read("rep-min"));
+            const standardRepMax = Number(read("rep-max"));
+            if (!Number.isInteger(standardSets) || standardSets < 1 || standardSets > 12) return showAppToast("Choose between 1 and 12 working sets.");
+            if (!Number.isInteger(standardRepMin) || !Number.isInteger(standardRepMax) || standardRepMin < 1 || standardRepMax > 50 || standardRepMin > standardRepMax) return showAppToast("Choose a valid rep range from 1 to 50.");
+          }
         }
         const replacementName = String(read("exercise")).trim();
         let replacementId = "";
@@ -347,11 +363,22 @@
         }
         if (safetyLocked && !replacementName) return showAppToast("Choose a distinct engine-confirmed substitute before resolving this safety restriction.");
         if (!safetyLocked) {
-          const sets = Number(read("sets"));
-          if (sets && sets !== Number(current.workingSets.target)) override.setCount = sets;
-          const repMin = Number(read("rep-min"));
-          const repMax = Number(read("rep-max"));
-          if (repMin && repMax && (repMin !== Number(current.repRange.min) || repMax !== Number(current.repRange.max))) override.repRange = { min: Math.min(repMin, repMax), max: Math.max(repMin, repMax) };
+          if (roleStandard) {
+            const top = roleValue("top");
+            const currentTopRange = current.topSet?.repRange || current.repRange;
+            if (top.count !== Number(current.topSet?.count || 0) || top.repMin !== Number(currentTopRange.min) || top.repMax !== Number(currentTopRange.max)) override.topSet = { count: top.count, repRange: { min: top.repMin, max: top.repMax } };
+            if (current.setStructure === "top_set_backoff") {
+              const backoff = roleValue("backoff");
+              const currentBackoffRange = current.backoffSets?.repRange || current.repRange;
+              if (backoff.count !== Number(current.backoffSets?.count || 0) || backoff.repMin !== Number(currentBackoffRange.min) || backoff.repMax !== Number(currentBackoffRange.max)) override.backoffSets = { count: backoff.count, repRange: { min: backoff.repMin, max: backoff.repMax } };
+            }
+          } else {
+            const sets = Number(read("sets"));
+            if (sets && sets !== Number(current.workingSets.target)) override.setCount = sets;
+            const repMin = Number(read("rep-min"));
+            const repMax = Number(read("rep-max"));
+            if (repMin && repMax && (repMin !== Number(current.repRange.min) || repMax !== Number(current.repRange.max))) override.repRange = { min: Math.min(repMin, repMax), max: Math.max(repMin, repMax) };
+          }
           const load = read("load") === "" ? null : Number(read("load"));
           if (load !== null && load !== Number(current.prescribedLoad?.target ?? 0)) override.load = load;
           const structure = read("structure");
@@ -372,11 +399,22 @@
         const session = sessionById(exercise.sessionId);
         const sourceTemplate = options.saveTemplateStandard && session?.templateId ? data.templates.find((item) => item.id === session.templateId) : null;
         const sourceTemplateExercise = sourceTemplate?.exercises?.find((item) => exerciseMatches(item.name, exercise.name)) || null;
+        const savedTop = roleStandard ? roleValue("top") : null;
+        const savedBackoff = roleStandard && current.setStructure === "top_set_backoff" ? roleValue("backoff") : null;
+        const savedRanges = roleStandard ? [savedTop, savedBackoff].filter(Boolean) : [];
+        const savedSetCount = roleStandard ? savedRanges.reduce((sum, role) => sum + role.count, 0) : Number(read("sets"));
+        const savedRepMin = roleStandard ? Math.min(...savedRanges.map((role) => role.repMin)) : Number(read("rep-min"));
+        const savedRepMax = roleStandard ? Math.max(...savedRanges.map((role) => role.repMax)) : Number(read("rep-max"));
         const standardTemplateValues = options.saveTemplateStandard && sourceTemplateExercise ? {
-          sets: Number(read("sets")),
-          reps: Math.round((Number(read("rep-min")) + Number(read("rep-max"))) / 2),
-          repMin: Number(read("rep-min")),
-          repMax: Number(read("rep-max")),
+          sets: savedSetCount,
+          reps: Math.round((savedRepMin + savedRepMax) / 2),
+          repMin: savedRepMin,
+          repMax: savedRepMax,
+          ...(roleStandard ? { standardRoleWorkload: {
+            setStructure: current.setStructure,
+            topSet: { count: savedTop.count, repRange: { min: savedTop.repMin, max: savedTop.repMax } },
+            ...(savedBackoff ? { backoffSets: { count: savedBackoff.count, repRange: { min: savedBackoff.repMin, max: savedBackoff.repMax } } } : {})
+          } } : { standardRoleWorkload: null }),
           standardWorkloadOverride: true
         } : null;
         const templatesWithStandard = () => standardTemplateValues
@@ -411,7 +449,7 @@
         const completedWorking = setsForExercise(exerciseId).filter((set) => isWorkingSet(set, "score") && set.completed);
         const incompleteWorking = setsForExercise(exerciseId).filter((set) => isWorkingSet(set, "score") && !set.completed);
         const warmups = setsForExercise(exerciseId).filter((set) => setTypeSemantics(set).isWarmup);
-        const desiredTypes = expandedOverrideSetTypes(prescription, override.repRange || null, override.setCount || null);
+        const desiredTypes = expandedOverrideSetTypes(prescription, override.topSet || override.backoffSets ? null : override.repRange || null, override.topSet || override.backoffSets ? null : override.setCount || null);
         const desiredIncomplete = desiredTypes.slice(Math.min(completedWorking.length, desiredTypes.length));
         const baseLoad = Number(prescription.prescribedLoad?.target || target.weight || 0);
         const rebuiltIncomplete = desiredIncomplete.map((role, index) => {

@@ -4,7 +4,7 @@
 
 - **Purpose:** Evidence-based status, priorities, defects, debt, and open product/research questions
 - **Last verified:** 2026-07-22
-- **Repository:** `main` working tree (Strong exercise-identity alias remediation)
+- **Repository:** `main` working tree (role-aware exercise-guideline editor)
 - **Verification status:** VERIFIED against current branch; dates/owners and unrecorded priorities are intentionally omitted
 - **Related:** [Project](PROJECT.md), [architecture](ARCHITECTURE.md), [decision engine](DECISION_ENGINE.md), [UI/UX](UI_UX.md)
 
@@ -29,6 +29,7 @@ All user-facing work now has a mandatory hosted-site browser-verification gate. 
 
 | Item | Status / priority | Acceptance evidence | References / docs |
 | --- | --- | --- | --- |
+| Role-aware exercise-guideline editor | **COMPLETED** / High | Straight sets use one compact shared-target box; top-set/back-off prescriptions use separate responsive boxes and preserve independent counts/ranges through audit replay, unfinished-row rebuilding, opt-in template defaults, and bounded backup import. Mobile and desktop browser regressions verify layout and persistence. | Application view/workout/foundation/import segments, snapshot schema, engine 3.4.1, contract/engine/browser tests; Project/Architecture/Decision Engine/UI/work log. |
 | Strong exercise-label identity remediation | **COMPLETED** / High | All 23 explicitly research-mapped Strong labels now resolve to their declared canonical exercises and dynamic targets on mobile and desktop; the full 149-name private inventory remains startable through canonical guidance or exact-history fallback. The 84 exported aliases are collision-checked, avoid fuzzy token/equipment heuristics, and retain separate performance identities for named/equipment/intensity variations. | Application identity profile, research source/generated exports, private inventory, engine/integration/browser regressions; Architecture/Decision Engine/UI/work log. |
 | Progression feedback, custom-exercise recommendations, and editable guidelines | **COMPLETED** / High | Extra reps and sets remain actual outcome data without rewriting the saved recommendation. Snapshot/prescription `1.4.0`/`2.4.0` capture a versioned research standard; Today compares it with editable unfinished work and an opt-in template default. Distinct execution-quality exposures govern confirmation. Known additions receive immediate guidance; unknown additions list required metadata and receive bounded muscle-level guidance only when complete. Submission shows a transient next-exposure preview. | Engine/application segments, root schemas, bounded import validation, progression/custom/schema/compatibility tests; Project/Architecture/Decision Engine/UI/work log. |
 | Quiet Coach four-destination workspace | **COMPLETED** / High | The former five-tab/reskin structure was superseded by Today, Plan, Progress, and More. Active workouts use one continuous exercise document with current-set highlighting. Progress unifies Overview, Lifts, and History. Rich navy remains distinct from semantic states, obsolete renderers/selectors are removed, and view failures render a non-mutating retry surface instead of a blank root. | `index.html`, application segments, protected/UI/accessibility suites and goldens; UI/Architecture/work log. |

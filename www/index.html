@@ -1947,7 +1947,7 @@
       .standard-workload-card { background: color-mix(in srgb, var(--current) 6%, var(--surface)); border: 1px solid color-mix(in srgb, var(--current) 28%, var(--line)); border-radius: 12px; display: grid; gap: 10px; padding: 12px; }
       .standard-workload-heading { align-items: start; display: flex; gap: 10px; justify-content: space-between; }
       .standard-workload-heading > div { display: grid; gap: 2px; }
-      .standard-workload-heading span, .standard-workload-grid label { color: var(--muted); font-size: .59rem; font-weight: 850; letter-spacing: .04em; text-transform: uppercase; }
+      .standard-workload-heading span { color: var(--muted); font-size: .59rem; font-weight: 850; letter-spacing: .04em; text-transform: uppercase; }
       .standard-workload-heading strong { color: var(--text); font-size: .78rem; }
       .standard-workload-heading .standard-workload-badge { background: var(--current-dark); border-radius: 999px; color: var(--current); letter-spacing: 0; padding: 4px 7px; text-transform: capitalize; white-space: nowrap; }
       .standard-workload-heading .standard-workload-badge.above-standard { background: color-mix(in srgb, var(--amber) 15%, var(--surface)); color: var(--amber); }
@@ -1964,9 +1964,18 @@
       .custom-profile-grid label, .execution-quality-control { color: var(--muted); display: grid; font-size: .61rem; font-weight: 850; gap: 5px; }
       .execution-quality-control { background: var(--surface-strong); padding: 10px; }
       .execution-quality-control small { font-size: .6rem; font-weight: 600; line-height: 1.4; }
-      .standard-workload-grid { display: grid; gap: 8px; grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr); }
-      .standard-workload-grid label { display: grid; gap: 5px; }
-      .standard-workload-grid input { min-height: 42px; text-align: center; }
+      .standard-role-grid { display: grid; gap: 8px; }
+      .standard-role-grid.split { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .workload-role-card { background: var(--surface-strong); border: 1px solid var(--line); border-radius: 10px; display: grid; gap: 8px; margin: 0; min-width: 0; padding: 10px; }
+      .workload-role-card.role-top { border-color: color-mix(in srgb, var(--current) 55%, var(--line)); box-shadow: inset 3px 0 0 var(--current); }
+      .workload-role-card.role-backoff { border-color: color-mix(in srgb, var(--amber) 42%, var(--line)); box-shadow: inset 3px 0 0 var(--amber); }
+      .workload-role-card.role-straight { box-shadow: inset 3px 0 0 color-mix(in srgb, var(--muted) 68%, var(--line)); }
+      .workload-role-card legend { align-items: baseline; display: flex; gap: 6px; padding: 0 4px; width: calc(100% - 8px); }
+      .workload-role-card legend span { color: var(--text); font-size: .72rem; font-weight: 900; }
+      .workload-role-card legend small { color: var(--muted); font-size: .55rem; margin-left: auto; white-space: nowrap; }
+      .workload-role-controls { align-items: end; display: grid; gap: 7px; grid-template-columns: minmax(48px, .55fr) minmax(0, 1.45fr); }
+      .workload-role-controls label { color: var(--muted); display: grid; font-size: .56rem; font-weight: 850; gap: 4px; letter-spacing: .04em; text-transform: uppercase; }
+      .workload-role-controls input { min-height: 40px; min-width: 0; padding: 5px; text-align: center; width: 100%; }
       .range-inputs { align-items: center; display: grid; gap: 5px; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
       .standard-workload-save { align-items: center; color: var(--text); display: flex; font-size: .66rem; font-weight: 750; gap: 8px; line-height: 1.3; }
       .standard-workload-save input { flex: 0 0 auto; height: 20px; width: 20px; }
@@ -2086,6 +2095,7 @@
         .set-actions { padding-left: 32px; padding-right: 8px; }
         .timer-bar { margin-left: 3px; margin-right: 3px; padding-left: 8px; padding-right: 8px; }
         .next-set-banner { padding-left: 32px; padding-right: 8px; }
+        .standard-role-grid.split { grid-template-columns: minmax(0, 1fr); }
         .dashboard-grid { grid-template-columns: minmax(0, 1fr); }
         html.large-text-reflow .brand-title small { max-width: none; overflow: visible; overflow-wrap: anywhere; text-overflow: clip; white-space: normal; }
         html.large-text-reflow .app-shell, html.large-text-reflow .app-main, html.large-text-reflow .view, html.large-text-reflow .view > *, html.large-text-reflow .screen-section, html.large-text-reflow .screen-section > *, html.large-text-reflow .section-heading > *, html.large-text-reflow .screen-heading > *, html.large-text-reflow .workout-heading > *, html.large-text-reflow .dashboard-grid, html.large-text-reflow .dashboard-grid > *, html.large-text-reflow .plan-list, html.large-text-reflow .plan-list > *, html.large-text-reflow .chart-list, html.large-text-reflow .chart-list > *, html.large-text-reflow .settings-panel, html.large-text-reflow .settings-panel > *, html.large-text-reflow .template-card, html.large-text-reflow .template-card > *, html.large-text-reflow .exercise-card, html.large-text-reflow .exercise-card > *, html.large-text-reflow .exercise-header > *, html.large-text-reflow .notification-prompt > *, html.large-text-reflow .quick-template-strip, html.large-text-reflow .quick-template-list { min-width: 0; max-width: 100%; }

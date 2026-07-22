@@ -32,12 +32,17 @@ assert.match(html, /\.return-active-session-fab \{[^}]*bottom: calc\(86px \+ env
 
 assert.match(views, /function renderStandardWorkloadControls\([\s\S]*recommendationSnapshotForDisplay\(exercise\.recommendationSnapshot\)[\s\S]*prescription\.workingSets\.target[\s\S]*prescription\.repRange\.min[\s\S]*prescription\.repRange\.max/, "Standard workload fields must prefill from the displayed final prescription");
 assert.match(views, /data-action="apply-standard-workload"/, "Standard workload must expose an explicit apply action");
+assert.match(views, /data-workload-structure="top_set_backoff"[\s\S]*data-override-field="top-sets"[\s\S]*data-override-field="backoff-sets"/, "Top-set/back-off prescriptions must render distinct role boxes");
+assert.match(views, /data-workload-structure="\$\{roleStructure\}"[\s\S]*role-straight[\s\S]*Same target each set/, "Straight-set prescriptions must render one compact shared-target box");
 assert.match(views, /data-standard-save-template/, "Template workouts must expose an explicit reusable-default choice");
 assert.match(interactions, /apply-standard-workload[\s\S]*standardWorkload: true[\s\S]*saveTemplateStandard/, "The standard-workload action must route through the audited prescription override");
 assert.match(workout, /standardWorkloadOverride: true[\s\S]*templates: templatesWithStandard\(\)/, "Applying a reusable standard must persist bounded template values with the active prescription update");
-assert.match(workout, /expandedOverrideSetTypes\(prescription, override\.repRange \|\| null, override\.setCount \|\| null\)/, "Today's rebuilt role rows must use the selected standard set count and range");
+assert.match(workout, /roleStandard[\s\S]*override\.topSet[\s\S]*override\.backoffSets[\s\S]*expandedOverrideSetTypes\(prescription, override\.topSet \|\| override\.backoffSets/, "Today's rebuilt role rows must use separate selected top-set and back-off doses");
+assert.match(workout, /standardRoleWorkload:[\s\S]*setStructure: current\.setStructure[\s\S]*topSet:[\s\S]*backoffSets:/, "Reusable template standards must preserve role-specific doses");
+assert.match(html, /\.standard-role-grid\.split \{[^}]*grid-template-columns: repeat\(2,[^}]*\}[\s\S]*\.workload-role-card\.role-top[\s\S]*\.workload-role-card\.role-backoff/, "Role boxes must remain visually distinct at supported widths");
 assert.match(foundation, /savedRepRange[\s\S]*executableRepRange[\s\S]*repMin: savedRepRange \? executableRepRange\.min/, "Future role rows must use the saved standard range even for top/back-off structures");
-assert.match(imports, /"repMin", "repMax", "standardWorkloadOverride"/, "Backup validation must preserve standard workload fields");
+assert.match(imports, /"repMin", "repMax", "standardWorkloadOverride", "standardRoleWorkload"/, "Backup validation must preserve shared and role-specific standard workload fields");
+assert.match(imports, /role workload requires an enabled standard workload override[\s\S]*at most 20 total working sets/, "Backup validation must reject orphaned or over-limit role defaults");
 assert.match(imports, /adjustedSnapshot[\s\S]*prescriptionSnapshotWithTemplateStandard\(adjustedSnapshot, templateExercise, \{ template: context\.template, workoutId: context\.workoutId \}\)/, "Readiness recalculation must retain an explicit saved standard on its fresh snapshot");
 assert.match(workout, /adjustTargetForRecovery\(historyTarget, recoveryAdvice, \{ recovery, exerciseName: templateExercise\.name, template, workoutId: session\.id \}\)/, "Workout identity must remain bound while readiness reapplies the standard");
 
@@ -55,5 +60,9 @@ const applied = helper(snapshot, { sets: 3, repMin: 8, repMax: 12, standardWorkl
 assert.equal(applied.applied, true);
 assert.deepEqual(captured.override, { setCount: 3, repRange: { min: 8, max: 12 } });
 assert.equal(captured.options.workoutId, "workout-1");
+const roleSnapshot = { finalPrescription: { setStructure: "top_set_backoff", workingSets: { target: 3 }, repRange: { min: 6, target: 8, max: 12 }, topSet: { count: 1, repRange: { min: 6, max: 8 } }, backoffSets: { count: 2, repRange: { min: 9, max: 12 } } } };
+helper(roleSnapshot, { standardWorkloadOverride: true, standardRoleWorkload: { setStructure: "top_set_backoff", topSet: { count: 1, repRange: { min: 5, max: 7 } }, backoffSets: { count: 3, repRange: { min: 8, max: 11 } } } }, { workoutId: "workout-roles" });
+assert.deepEqual(captured.override, { topSet: { count: 1, repRange: { min: 5, max: 7 } }, backoffSets: { count: 3, repRange: { min: 8, max: 11 } } });
+assert.equal(captured.options.workoutId, "workout-roles");
 
 console.log("Active-workout return and standard-workload contracts passed.");

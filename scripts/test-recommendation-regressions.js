@@ -736,7 +736,7 @@ test("no-op and duplicate-dimension requests never become persisted declarations
   assert.throws(() => engine.applyManualOverride(snapshot, {
     setStructure: "multiple_top_sets",
     topSet: { count: 2 }
-  }), /topSet|audit contract|unsupported/i, "unmodeled nested structure payloads must fail instead of bypassing the declared mapping");
+  }), /role-specific|set-structure|combined/i, "a role dose cannot be hidden inside the same audit entry as a structure transition");
   assert.throws(() => engine.applyManualOverride(snapshot, {
     setCount: 5,
     targetRpe: { min: 6, max: 7 }
@@ -782,6 +782,37 @@ test("no-op and duplicate-dimension requests never become persisted declarations
   const customResearchTamper = structuredClone(customReplacement);
   customResearchTamper.finalPrescription.researchExerciseId = "ex_dumbbell_bench_press";
   assert.throws(() => deserializeRecommendationSnapshot(refreshRecommendationChecksum(customResearchTamper)), /bijection|research identity|undeclared/i, "a rechecksummed custom replacement cannot gain an undeclared research identity");
+});
+
+test("top-set and back-off dose overrides remain role-specific and audit-replayable", () => {
+  const snapshot = engine.prescribeExercise({
+    exerciseId: "ex_barbell_bench_press",
+    muscleGroupId: "chest",
+    history: progressionHistory(),
+    experienceLevel: "advanced",
+    setStructurePreference: "advanced_if_supported",
+    createdAt
+  });
+  assert.equal(snapshot.finalPrescription.setStructure, "top_set_backoff");
+  const topRange = snapshot.finalPrescription.topSet.repRange;
+  const backoffRange = snapshot.finalPrescription.backoffSets.repRange;
+  const changed = engine.applyManualOverride(snapshot, {
+    topSet: { count: 1, repRange: { min: topRange.min, max: topRange.max + 1 } },
+    backoffSets: { count: 3, repRange: { min: backoffRange.min + 1, max: backoffRange.max + 2 } }
+  }, { createdAt: "2026-07-12T12:16:30.000Z", reason: "Tune role-specific session dose" });
+  assert.equal(changed.finalPrescription.topSet.count, 1);
+  assert.equal(changed.finalPrescription.backoffSets.count, 3);
+  assert.deepEqual(changed.finalPrescription.topSet.repRange, { min: topRange.min, target: Math.round((topRange.min + topRange.max + 1) / 2), max: topRange.max + 1 });
+  assert.equal(changed.finalPrescription.workingSets.target, 4);
+  assert.ok(changed.manualOverrides.at(-1).changes.rolePrescription);
+  assert.doesNotThrow(() => deserializeRecommendationSnapshot(changed));
+  assert.throws(() => engine.applyManualOverride(snapshot, {
+    topSet: { count: 11, repRange: topRange },
+    backoffSets: { count: 1, repRange: backoffRange }
+  }, { createdAt: "2026-07-12T12:16:31.000Z" }), /1 to 10 top sets|Top-set overrides require 1 to 10 sets/i);
+  const tampered = structuredClone(changed);
+  tampered.finalPrescription.backoffSets.count = 2;
+  assert.throws(() => deserializeRecommendationSnapshot(refreshRecommendationChecksum(tampered)), /rolePrescription|bijection|undeclared|nested/i);
 });
 
 test("ordinary exercise replacement resets exercise-specific executable guidance and only retains valid session dose", () => {

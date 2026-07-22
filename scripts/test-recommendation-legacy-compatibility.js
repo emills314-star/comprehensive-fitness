@@ -125,8 +125,8 @@ test("all five repository-known version pairs read while generation remains late
   }
   assert.equal(current.schemaVersion, "1.4.0", "current generation must remain latest-only");
   assert.equal(current.basePrescription.schemaVersion, "2.4.0", "current prescriptions must remain latest-only");
-  assert.equal(ENGINE_VERSION, "3.4.0", "the progression-feedback contract must remain traceable");
-  assert.equal(current.engineVersion, "3.4.0", "the current serialized recommendation behavior requires a traceable minor engine version");
+  assert.equal(ENGINE_VERSION, "3.4.1", "the role-aware override contract must remain traceable");
+  assert.equal(current.engineVersion, "3.4.1", "the current serialized recommendation behavior requires a traceable patch engine version");
 });
 
 test("engine 3.3.4 broad-target snapshots retain checksum, lineage, and byte-meaning compatibility", () => {
@@ -143,10 +143,10 @@ test("engine 3.3.4 broad-target snapshots retain checksum, lineage, and byte-mea
   assert.deepEqual(JSON.parse(serializeRecommendationSnapshot(read)), before, "round-trip serialization must preserve the 3.3.4 record exactly");
 });
 
-test("engine 3.4.0 can generate an exact canonical target with a versioned standard guideline", () => {
+test("engine 3.4.1 can generate an exact canonical target with a versioned standard guideline", () => {
   assert.equal(currentDefaultTarget.muscleGroupId, "mg_chest_sternal");
   assert.equal(currentDefaultTarget.taxonomyVersion, "2.1.0", "the transient resolver result must expose taxonomy provenance");
-  assert.equal(currentExact.engineVersion, "3.4.0");
+  assert.equal(currentExact.engineVersion, "3.4.1");
   assert.equal(currentExact.standardGuideline.schemaVersion, "standard-guideline/1.0.0");
   [currentExact, currentExact.basePrescription, currentExact.finalPrescription].forEach((layer) => {
     assert.equal(layer.muscleGroupId, "mg_chest_sternal", "new exact-target generation must preserve its canonical mg_* ID");
@@ -172,7 +172,7 @@ test("mixed history loads and appends without rewriting legacy records or IDs", 
   assert.deepEqual(loaded.map((item) => item.recommendationId), [legacyWithoutChecksum.recommendationId, broad334.recommendationId, currentExact.recommendationId]);
   assert.deepEqual(loaded[0], legacyWithoutChecksum, "one legacy record must not be rewritten while loading mixed history");
   assert.deepEqual(loaded[1], broad334, "an engine 3.3.4 broad-target record must remain unchanged in mixed history");
-  assert.deepEqual(loaded[2], currentExact, "legacy records must not prevent the engine 3.4.0 exact-target record from loading");
+  assert.deepEqual(loaded[2], currentExact, "legacy records must not prevent the engine 3.4.1 exact-target record from loading");
 
   const appendedLegacy = legacySnapshot(PAIRS[1]);
   appendRecommendationHistory(storage, appendedLegacy, { key: historyKey });

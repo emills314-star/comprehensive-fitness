@@ -16,7 +16,7 @@
 
   if (!familyLedger) throw new Error("Programming family ledger is required.");
 
-  const ENGINE_VERSION = "3.4.0";
+  const ENGINE_VERSION = "3.4.1";
   const PRESCRIPTION_SCHEMA_VERSION = "2.4.0";
   const SNAPSHOT_SCHEMA_VERSION = "1.4.0";
   const TRAINING_PROFILE_VERSION = "training-profile/1.1.0";
@@ -4543,6 +4543,43 @@
     return prescription;
   }
 
+  function compactRolePrescription(prescription) {
+    if (prescription?.setStructure === "top_set_backoff" && prescription.topSet && prescription.backoffSets) {
+      return {
+        topSet: { count: Number(prescription.topSet.count), repRange: normalizeRange(prescription.topSet.repRange, prescription.repRange, true) },
+        backoffSets: { count: Number(prescription.backoffSets.count), repRange: normalizeRange(prescription.backoffSets.repRange, prescription.repRange, true) }
+      };
+    }
+    if (prescription?.setStructure === "multiple_top_sets" && prescription.topSet) {
+      return { topSet: { count: Number(prescription.topSet.count), repRange: normalizeRange(prescription.topSet.repRange, prescription.repRange, true) } };
+    }
+    return null;
+  }
+
+  function applyRecordedRolePrescription(prescription, roles) {
+    const top = roles?.topSet;
+    const backoff = roles?.backoffSets;
+    if (!top || !prescription.topSet || !["top_set_backoff", "multiple_top_sets"].includes(prescription.setStructure)) throw new Error("Role-prescription overrides require an existing top-set prescription.");
+    if (prescription.setStructure === "top_set_backoff" && (!backoff || !prescription.backoffSets)) throw new Error("Top-set/back-off overrides require both role prescriptions.");
+    const normalizedTopRange = targetRange(normalizeRange(top.repRange, null, true), true);
+    const normalizedBackoffRange = backoff ? targetRange(normalizeRange(backoff.repRange, null, true), true) : null;
+    const topCount = Number(top.count);
+    const backoffCount = backoff ? Number(backoff.count) : 0;
+    const total = topCount + backoffCount;
+    if (!Number.isInteger(topCount) || topCount < 1 || topCount > 10 || !normalizedTopRange) throw new Error("Top-set overrides require 1 to 10 sets and a valid repetition range.");
+    if (backoff && (!Number.isInteger(backoffCount) || backoffCount < 1 || backoffCount > 19 || !normalizedBackoffRange)) throw new Error("Back-off overrides require 1 to 19 sets and a valid repetition range.");
+    if (total > DEFAULT_POLICY.absoluteMaximumWorkingSetsPerSession) throw new Error(`Role-prescription overrides may contain at most ${DEFAULT_POLICY.absoluteMaximumWorkingSetsPerSession} working sets.`);
+    for (const range of [normalizedTopRange, normalizedBackoffRange].filter(Boolean)) {
+      if (range.min < 1 || range.max > 100) throw new Error("Role-prescription repetition ranges must stay between 1 and 100.");
+    }
+    prescription.topSet = { ...prescription.topSet, enabled: true, count: topCount, repRange: normalizedTopRange };
+    if (backoff) prescription.backoffSets = { ...prescription.backoffSets, count: backoffCount, repRange: normalizedBackoffRange };
+    const ranges = [normalizedTopRange, normalizedBackoffRange].filter(Boolean);
+    prescription.repRange = targetRange({ min: Math.min(...ranges.map((range) => range.min)), max: Math.max(...ranges.map((range) => range.max)) }, true);
+    applyRecordedSetCount(prescription, total);
+    return prescription;
+  }
+
   function applyRecordedLoad(prescription, target) {
     prescription.prescribedLoad = {
       ...(prescription.prescribedLoad || {}),
@@ -4697,6 +4734,7 @@
       "repRange",
       "load",
       "setStructure",
+      "rolePrescription",
       "deloadRecommendation",
       "exerciseRotation",
       "mesocycleId",
@@ -4749,6 +4787,7 @@
     if (changes.safetyConfirmation) applyRecordedSafetyConfirmation(expected, changes.safetyConfirmation);
     if (changes.setCount) applyRecordedSetCount(expected, requireDeclaredChangePair(changes.setCount, expected.workingSets?.target, "setCount"));
     if (changes.repRange) expected.repRange = requireDeclaredChangePair(changes.repRange, expected.repRange, "repRange");
+    if (changes.rolePrescription) applyRecordedRolePrescription(expected, requireDeclaredChangePair(changes.rolePrescription, compactRolePrescription(expected), "rolePrescription"));
     if (changes.load) applyRecordedLoad(expected, requireDeclaredChangePair(changes.load, expected.prescribedLoad?.target ?? null, "load"));
     if (changes.setStructure) applyRecordedSetStructure(expected, requireDeclaredChangePair(changes.setStructure, expected.setStructure, "setStructure"));
     if (changes.deloadRecommendation) applyRecordedDeloadRecommendation(expected, requireDeclaredChangePair(changes.deloadRecommendation, expected.recommendationType, "deloadRecommendation"));
@@ -5657,7 +5696,11 @@
     ]);
     const unsupportedOverrideInputs = Object.keys(override).filter((field) => override[field] !== undefined && !supportedOverrideInputFields.has(field));
     if (unsupportedOverrideInputs.length) throw new Error(`Unsupported manual override fields are not represented by the current audit contract: ${unsupportedOverrideInputs.join(", ")}.`);
-    if (override.topSet !== undefined || override.backoffSets !== undefined) throw new Error("Manual topSet/backoffSets payloads are unsupported because the current audit contract records only a deterministic set-structure transition.");
+    if ((override.topSet !== undefined || override.backoffSets !== undefined) && (override.setCount !== undefined || override.workingSets?.target !== undefined || override.repRange !== undefined || override.setStructure !== undefined)) throw new Error("Role-specific and shared set/rep or set-structure overrides cannot be combined in one audit entry.");
+    for (const [label, role] of [["topSet", override.topSet], ["backoffSets", override.backoffSets]]) {
+      if (role === undefined) continue;
+      if (!role || typeof role !== "object" || Array.isArray(role) || Object.keys(role).some((field) => !["count", "repRange"].includes(field))) throw new Error(`Manual ${label} overrides support only count and repRange.`);
+    }
     if (override.setCount !== undefined && override.workingSets?.target !== undefined) throw new Error("Duplicate set-count inputs are unsupported; use either setCount or workingSets.target.");
     if (override.load !== undefined && override.prescribedLoad?.target !== undefined) throw new Error("Duplicate load inputs are unsupported; use either load or prescribedLoad.target.");
     if (override.researchExerciseId !== undefined && override.research_exercise_id !== undefined) throw new Error("Duplicate research-identity inputs are unsupported.");
@@ -5775,6 +5818,23 @@
       if (!auditValuesMatch(normalized, final.repRange)) {
         applied.repRange = { from: deepClone(final.repRange), to: deepClone(normalized) };
         final.repRange = deepClone(normalized);
+      }
+    }
+    if (override.topSet !== undefined || override.backoffSets !== undefined) {
+      const beforeRoles = compactRolePrescription(final);
+      if (!beforeRoles) throw new Error("Role-specific set/rep overrides require a top-set prescription.");
+      const requestedRoles = deepClone(beforeRoles);
+      if (override.topSet !== undefined) requestedRoles.topSet = { ...requestedRoles.topSet, ...deepClone(override.topSet) };
+      if (override.backoffSets !== undefined) {
+        if (!requestedRoles.backoffSets) throw new Error("Back-off overrides require a top-set/back-off prescription.");
+        requestedRoles.backoffSets = { ...requestedRoles.backoffSets, ...deepClone(override.backoffSets) };
+      }
+      const candidate = deepClone(final);
+      applyRecordedRolePrescription(candidate, requestedRoles);
+      const normalizedRoles = compactRolePrescription(candidate);
+      if (!auditValuesMatch(beforeRoles, normalizedRoles)) {
+        applied.rolePrescription = { from: beforeRoles, to: normalizedRoles };
+        applyRecordedRolePrescription(final, normalizedRoles);
       }
     }
     const rawLoad = firstPresent(override.load, override.prescribedLoad?.target);

@@ -1179,6 +1179,9 @@
         const template = session?.templateId ? data.templates.find((item) => item.id === session.templateId) : null;
         const templateExercise = template?.exercises?.find((item) => exerciseMatches(item.name, exercise.name));
         const savedStandard = templateExercise?.standardWorkloadOverride === true;
+        const roleStructure = prescription.setStructure === "top_set_backoff" ? "top_set_backoff" : prescription.setStructure === "multiple_top_sets" ? "multiple_top_sets" : "straight_sets";
+        const topRange = prescription.topSet?.repRange || prescription.repRange;
+        const backoffRange = prescription.backoffSets?.repRange || prescription.repRange;
         const setsAbove = Number(prescription.workingSets.target) > Number(standard.workingSets.max);
         const repsAbove = Number(prescription.repRange.max) > Number(standard.repRange.max);
         const setsBelow = Number(prescription.workingSets.target) < Number(standard.workingSets.min);
@@ -1189,7 +1192,36 @@
         if (setsBelow) differences.push(`${standard.workingSets.min - prescription.workingSets.target} sets below`);
         if (repsAbove) differences.push(`${prescription.repRange.max - standard.repRange.max} reps above the ceiling`);
         if (repsBelow) differences.push(`${standard.repRange.min - prescription.repRange.min} reps below the floor`);
-        const savedLabel = savedStandard ? `${templateExercise.sets} sets · ${templateExercise.repMin || templateExercise.reps}-${templateExercise.repMax || templateExercise.reps} reps` : "No saved override";
+        const savedRoles = templateExercise?.standardRoleWorkload;
+        const savedLabel = savedStandard && savedRoles?.topSet
+          ? `${savedRoles.topSet.count} top${savedRoles.backoffSets ? ` + ${savedRoles.backoffSets.count} back-off` : ""}`
+          : savedStandard ? `${templateExercise.sets} sets · ${templateExercise.repMin || templateExercise.reps}-${templateExercise.repMax || templateExercise.reps} reps` : "No saved override";
+        const roleEditor = roleStructure === "top_set_backoff" ? `
+          <div class="standard-role-grid split" data-workload-structure="top_set_backoff">
+            <fieldset class="workload-role-card role-top">
+              <legend><span>Top set</span><small>Primary effort</small></legend>
+              <div class="workload-role-controls">
+                <label><span>Sets</span><input type="number" min="1" max="10" step="1" value="${prescription.topSet?.count || 1}" data-override-field="top-sets" aria-label="Top set count" /></label>
+                <label class="role-rep-range"><span>Reps</span><span class="range-inputs"><input type="number" min="1" max="50" step="1" value="${topRange.min}" data-override-field="top-rep-min" aria-label="Minimum top set repetitions" /><span aria-hidden="true">–</span><input type="number" min="1" max="50" step="1" value="${topRange.max}" data-override-field="top-rep-max" aria-label="Maximum top set repetitions" /></span></label>
+              </div>
+            </fieldset>
+            <fieldset class="workload-role-card role-backoff">
+              <legend><span>Back-off sets</span><small>${prescription.backoffSets?.loadReductionPercent?.target || 0}% lighter</small></legend>
+              <div class="workload-role-controls">
+                <label><span>Sets</span><input type="number" min="1" max="19" step="1" value="${prescription.backoffSets?.count || Math.max(1, prescription.workingSets.target - 1)}" data-override-field="backoff-sets" aria-label="Back-off set count" /></label>
+                <label class="role-rep-range"><span>Reps</span><span class="range-inputs"><input type="number" min="1" max="50" step="1" value="${backoffRange.min}" data-override-field="backoff-rep-min" aria-label="Minimum back-off repetitions" /><span aria-hidden="true">–</span><input type="number" min="1" max="50" step="1" value="${backoffRange.max}" data-override-field="backoff-rep-max" aria-label="Maximum back-off repetitions" /></span></label>
+              </div>
+            </fieldset>
+          </div>` : `
+          <div class="standard-role-grid" data-workload-structure="${roleStructure}">
+            <fieldset class="workload-role-card ${roleStructure === "multiple_top_sets" ? "role-top" : "role-straight"}">
+              <legend><span>${roleStructure === "multiple_top_sets" ? "Top sets" : "Straight sets"}</span><small>${roleStructure === "multiple_top_sets" ? "Repeated primary efforts" : "Same target each set"}</small></legend>
+              <div class="workload-role-controls">
+                <label><span>Sets</span><input type="number" min="1" max="${roleStructure === "multiple_top_sets" ? 10 : 12}" step="1" value="${roleStructure === "multiple_top_sets" ? prescription.topSet?.count || prescription.workingSets.target : prescription.workingSets.target}" data-override-field="${roleStructure === "multiple_top_sets" ? "top-sets" : "sets"}" /></label>
+                <label class="role-rep-range"><span>Reps</span><span class="range-inputs"><input type="number" min="1" max="50" step="1" value="${roleStructure === "multiple_top_sets" ? topRange.min : prescription.repRange.min}" data-override-field="${roleStructure === "multiple_top_sets" ? "top-rep-min" : "rep-min"}" aria-label="Minimum standard repetitions" /><span aria-hidden="true">–</span><input type="number" min="1" max="50" step="1" value="${roleStructure === "multiple_top_sets" ? topRange.max : prescription.repRange.max}" data-override-field="${roleStructure === "multiple_top_sets" ? "top-rep-max" : "rep-max"}" aria-label="Maximum standard repetitions" /></span></label>
+              </div>
+            </fieldset>
+          </div>`;
         return `
           <section class="standard-workload-card" data-standard-workload-form="${exercise.id}" data-override-form="${exercise.id}">
             <div class="standard-workload-heading"><div><span>Exercise guidelines</span><strong>Change unfinished work for today</strong></div><span class="standard-workload-badge ${comparison.toLowerCase().replaceAll(" ", "-")}">${comparison}</span></div>
@@ -1199,11 +1231,8 @@
               <div><span>Saved default</span><strong>${escapeHtml(savedLabel)}</strong></div>
             </div>
             <p class="standard-comparison-note">${differences.length ? `Today is ${differences.join(" and ")}. This is advisory; completed reps remain valid outcome evidence.` : "Today is inside the versioned goal-aware standard. Completed reps may still exceed the target and remain valid outcome evidence."}</p>
-            <p>Choose today’s working-set and rep guidelines for this exercise. These fields start with the same goal-aware research prescription used by today’s recommendation.</p>
-            <div class="standard-workload-grid">
-              <label>Working sets<input type="number" min="1" max="12" step="1" value="${prescription.workingSets.target}" data-override-field="sets" /></label>
-              <label>Rep range<span class="range-inputs"><input type="number" min="1" max="50" step="1" value="${prescription.repRange.min}" data-override-field="rep-min" aria-label="Minimum standard repetitions" /><span aria-hidden="true">–</span><input type="number" min="1" max="50" step="1" value="${prescription.repRange.max}" data-override-field="rep-max" aria-label="Maximum standard repetitions" /></span></label>
-            </div>
+            <p>${roleStructure === "top_set_backoff" ? "Tune each role separately. Top-set and back-off targets remain distinct when unfinished rows are rebuilt." : "Choose today’s set count and repetition range. Unfinished rows keep one shared target."}</p>
+            ${roleEditor}
             <input type="hidden" value="Today’s exercise guideline" data-override-field="reason" />
             ${templateExercise ? '<label class="standard-workload-save"><input type="checkbox" data-standard-save-template /> Also save as the default when this template starts again</label>' : '<p class="standard-workload-note">This workout has no source template, so changes apply to today only.</p>'}
             <button class="secondary-action standard-workload-apply" type="button" data-action="apply-standard-workload" data-exercise-id="${exercise.id}">Apply today’s guideline</button>
