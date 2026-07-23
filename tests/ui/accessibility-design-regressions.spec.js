@@ -1337,7 +1337,19 @@ test("set transitions preserve manual scroll and the retired workout-board jump 
   });
   await installScenario(page, { reducedMotion: "reduce", viewport: { width: 320, height: 360 } });
   const setTwo = page.locator('[data-action="toggle-set"][data-set-id="public-synthetic-active-exercise-1-set-2"]');
+  const setTwoReps = page.locator('[data-action="set-reps"][data-set-id="public-synthetic-active-exercise-1-set-2"]');
   await expect(setTwo).toHaveAttribute("aria-pressed", "false");
+  expect(
+    await setTwoReps.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize)),
+    "Mobile set-entry fields must remain at least 16 CSS pixels so iOS Safari does not focus-zoom"
+  ).toBeGreaterThanOrEqual(16);
+  await setTwoReps.focus();
+  await expect(setTwoReps).toBeFocused();
+  await setTwo.dispatchEvent("pointerdown", { bubbles: true, isPrimary: true, pointerType: "touch" });
+  expect(
+    await setTwoReps.evaluate((element) => document.activeElement === element),
+    "Touching the completion checkmark must release the focused set-entry field before completion"
+  ).toBe(false);
   await page.evaluate(() => { globalThis.__SCROLL_INTO_VIEW_AUDIT__ = []; });
   await setTwo.click();
   await page.waitForTimeout(250);

@@ -46,10 +46,18 @@
         }
       }
 
+      function releaseSetEntryFocusForCompletion(target) {
+        if (target?.dataset?.action !== "toggle-set") return;
+        const active = document.activeElement;
+        if (!(active instanceof HTMLElement) || !active.matches(".workout-view .set-row input, .workout-view .set-row select, .workout-view .set-row textarea")) return;
+        active.blur();
+      }
+
       root.addEventListener("pointerdown", (event) => {
         const target = event.target.closest("button, select, summary[data-action], label.toggle-line, .alert-setting-card, .volume-card");
         if (!target || target.hasAttribute("disabled")) return;
         const actionTarget = event.target.closest("[data-action]") || target.querySelector?.("[data-action]");
+        releaseSetEntryFocusForCompletion(actionTarget || target);
         const level = feedbackLevelForAction(actionTarget?.dataset?.action || target.dataset.action, actionTarget || target);
         target.classList.add("is-pressing", "feedback-" + level);
         window.setTimeout(() => target.isConnected && target.classList.remove("is-pressing", "feedback-" + level), 180);
@@ -326,7 +334,10 @@
           ensureActiveSet();
         }
         if (action === "undo-set-type-override") undoManualSetType(target.dataset.setId);
-        if (action === "toggle-set") toggleSetCompletion(target.dataset.setId);
+        if (action === "toggle-set") {
+          releaseSetEntryFocusForCompletion(target);
+          toggleSetCompletion(target.dataset.setId);
+        }
         if (action === "toggle-skip-set") toggleSetSkipped(target.dataset.setId);
         if (action === "update-template-exercise") updateTemplateFromExercise(target.dataset.exerciseId);
         if (action === "request-submit-workout") { pendingSubmitSessionId = activeSessionId; render(); }

@@ -2381,6 +2381,9 @@
         .exercise-set-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
         .exercise-set-actions button { min-width: 0; padding-left: 5px; padding-right: 5px; }
       }
+      @media (max-width: 719px) {
+        .workout-view .set-row input, .workout-view .set-row select { font-size: max(16px, 1rem); }
+      }
       html.large-text-reflow .resistance-type-popover { min-width: 100%; position: static; }
     </style>
   </head>
