@@ -4,7 +4,7 @@
 
 - **Purpose:** Product vision, verified scope, and boundary between current and intended behavior
 - **Last verified:** 2026-07-23
-- **Repository:** `main` working tree (universal exercise-default editor)
+- **Repository:** `main` working tree (exercise-default RPE and disclosure cue)
 - **Verification status:** VERIFIED from application code, tests, schemas, configuration, and existing docs; open conflicts are labeled
 - **Related:** [Architecture](ARCHITECTURE.md), [Decision engine](DECISION_ENGINE.md), [UI/UX](UI_UX.md), [Roadmap](ROADMAP.md), [documentation inventory](DOCUMENTATION_INVENTORY.md)
 
@@ -50,7 +50,7 @@ Product principles evidenced in the repository:
 | --- | --- | --- |
 | Workout templates and quick start | **IMPLEMENTED** | Create/use templates, template-specific set roles, rest targets, readiness preview, and active-workout locking in `index.html` (`renderTemplates`, `openTemplateStart`, `startTemplate`). |
 | Active workout logging | **IMPLEMENTED** | Exercises, warm-ups/working sets, load/reps/RPE, completion/skipping, timers, notes, travel state, draft restoration, and cancel flow. |
-| Progression feedback and editable exercise defaults | **IMPLEMENTED** | Actual repetitions and added sets remain outcome data without rewriting the recommendation. Every active exercise—catalog, Strong-derived, historical, or new custom—has a compact default editor for working-set count, rep range, working rest, and warm-up rest, independent of whether research guidance exists. A nested individual-set editor can assign Top, Back-off, Drop, or Standard type plus a separate rep range and rest timer to each set. Applying changes audits and rebuilds unfinished rows only; saving to a source template is explicit. Research standards and custom-exercise recommendation limits remain separate from these user-owned execution defaults. |
+| Progression feedback and editable exercise defaults | **IMPLEMENTED** | Actual repetitions, logged RPE, and added sets remain outcome data without rewriting the recommendation. Every active exercise—catalog, Strong-derived, historical, or new custom—has a compact default editor for working-set count, rep range, target RPE, working rest, and warm-up rest, independent of whether research guidance exists. A nested individual-set editor can assign Top, Back-off, Drop, or Standard type plus a separate rep range, target RPE, and rest timer to each set. Applying changes audits and rebuilds unfinished rows only; saving to a source template is explicit. Research standards and custom-exercise recommendation limits remain separate from these user-owned execution defaults. |
 | Submission, history, summaries, and editing | **IMPLEMENTED** | Confirmed submission, PR calculation, grade/summary, submitted-only history, and explicit history-edit save/cancel (`submitWorkout`, `renderSubmitConfirmation`, `renderCompletedWorkoutSummary`). |
 | Progress and volume analytics | **IMPLEMENTED** | Interactive exercise charts, session detail, weekly weighted muscle volume, fatigue flags, hypertrophy scoring, and recent/all history. |
 | Recovery readiness | **IMPLEMENTED** | User-entered sleep, HRV, resting heart rate, soreness, illness, nutrition/protein status, personal baseline, readiness band, and conservative adjustment guidance. |
@@ -67,7 +67,7 @@ Product principles evidenced in the repository:
 
 1. Configure unit, goals, training status, readiness baseline, and notification preferences.
 2. Create or select a template; review readiness and proposed adjustments; explicitly start.
-3. Review or change exercise defaults; optionally open individual set targets for drop sets or differing reps/rest; then log warm-up and working sets, complete/skip sets, and use the exact completed set’s rest timer.
+3. Review or change exercise defaults; optionally open individual set targets for drop sets or differing reps, target RPE, and rest; then log warm-up and working sets, complete/skip sets, and use the exact completed set’s rest timer.
 4. Request submission, review confirmation, submit, then view grade, lifts, PRs, and recommendations.
 5. Reopen submitted sessions through Progress → History; inspect Progress → Lifts charts and Progress → Overview volume/fatigue detail.
 6. Optionally import Strong CSV history and a locally built private evidence package.

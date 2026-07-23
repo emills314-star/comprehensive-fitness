@@ -31,15 +31,17 @@ assert.match(interactions, /action === "return-to-active-session"[\s\S]*activeSe
 assert.match(html, /\.return-active-session-fab \{[^}]*bottom: calc\(86px \+ env\(safe-area-inset-bottom\)\);[^}]*position: fixed;[^}]*z-index: 18;/, "The return affordance must float above navigation and safe-area insets");
 
 assert.match(views, /function renderStandardWorkloadControls\([\s\S]*recommendationSnapshotForDisplay\(exercise\.recommendationSnapshot\)[\s\S]*data-default-field="sets"[\s\S]*data-default-field="rep-min"[\s\S]*data-default-field="rep-max"/, "Every exercise default editor must expose shared set and rep targets even when research guidance is absent");
+assert.match(views, /data-default-field="target-rpe"[\s\S]*data-default-field="working-rest"/, "Shared defaults must expose target RPE beside the dose and rest targets");
 assert.match(views, /data-default-field="working-rest"[\s\S]*data-default-field="warmup-rest"/, "Shared defaults must distinguish warm-up and working-set rest");
-assert.match(views, /data-individual-set-disclosure[\s\S]*Drop sets, different reps or different rest/, "The per-set targets must stay behind a nested disclosure");
-assert.match(views, /data-set-default-field="type"[\s\S]*data-set-default-field="rep-min"[\s\S]*data-set-default-field="rest"/, "The nested editor must expose independent type, rep range, and rest targets per set");
+assert.match(views, /data-individual-set-disclosure[\s\S]*Drop sets, different reps, RPE or rest/, "The per-set targets must stay behind a nested disclosure");
+assert.match(views, /data-set-default-field="type"[\s\S]*data-set-default-field="rep-min"[\s\S]*data-set-default-field="target-rpe"[\s\S]*data-set-default-field="rest"/, "The nested editor must expose independent type, rep range, RPE, and rest targets per set");
 assert.match(views, /data-action="apply-standard-workload"/, "Exercise defaults must expose an explicit apply action");
 assert.match(views, /data-standard-save-template/, "Template workouts must expose an explicit reusable-default choice");
 assert.match(interactions, /apply-standard-workload[\s\S]*applyExerciseDefaultTargets[\s\S]*saveTemplateStandard/, "The exercise-default action must route through the universal audited target writer");
 assert.match(workout, /function applyExerciseDefaultTargets\([\s\S]*action: "exercise_default_targets"[\s\S]*setTypes: workingTypes[\s\S]*warmups: templateWarmups[\s\S]*standardWorkloadOverride: true/, "Applying reusable exercise defaults must persist exact per-set targets and an audit entry");
 assert.match(workout, /completedWorking[\s\S]*incompleteWorking[\s\S]*set\.completed[\s\S]*desiredIncompletePlan/, "Applying defaults must preserve completed work and rebuild unfinished working rows only");
 assert.match(html, /\.default-target-grid \{[^}]*grid-template-columns:[^}]*\}[\s\S]*\.individual-set-disclosure[\s\S]*\.individual-set-row \{[^}]*grid-template-columns:/, "Shared and individual target editors must retain compact responsive grids");
+assert.match(html, /#f4c84c[\s\S]*content: "⌃"/, "Open sections must render a high-visibility yellow recollapse cue");
 assert.match(foundation, /savedRepRange[\s\S]*executableRepRange[\s\S]*repMin: savedRepRange \? executableRepRange\.min/, "Future role rows must use the saved standard range even for top/back-off structures");
 assert.match(imports, /"repMin", "repMax", "standardWorkloadOverride", "standardRoleWorkload"/, "Backup validation must preserve shared and role-specific standard workload fields");
 assert.match(imports, /role workload requires an enabled standard workload override[\s\S]*at most 20 total working sets/, "Backup validation must reject orphaned or over-limit role defaults");

@@ -1347,7 +1347,7 @@ test("confirmed pain-free substitution uses an explicit catalog-backed UI flow a
   }
 });
 
-test("every exercise exposes shared defaults plus per-set reps, types, and rest", async ({ page }) => {
+test("every exercise exposes shared defaults plus per-set reps, RPE, types, and rest", async ({ page }) => {
   const fixture = safetyWorkoutState({ illness: false, pain: false });
   await seedApplicationState(page, fixture.state);
   await expect.poll(() => page.evaluate(() => Boolean(prescriptionEngine?.evidence?.research?.exerciseById?.has("ex_barbell_bench_press"))), {
@@ -1418,14 +1418,22 @@ test("every exercise exposes shared defaults plus per-set reps, types, and rest"
   const card = page.locator(`.exercise-card:has([data-exercise-id="${fixture.exerciseIds.bench}"])`).first();
   await card.getByRole("button", { name: "Add warm-up set to Barbell Bench Press" }).click();
   await card.locator("details.exercise-options > summary").click();
+  const collapseCue = await card.locator("details.exercise-options > summary").evaluate((summary) => {
+    const style = getComputedStyle(summary, "::after");
+    return { content: style.content, background: style.backgroundColor };
+  });
+  expect(collapseCue.content).toContain("⌃");
+  expect(collapseCue.background).not.toBe("rgba(0, 0, 0, 0)");
   const editor = card.locator('[data-standard-workload-form]');
-  await expect(editor.getByText("Sets, reps & rest", { exact: true })).toBeVisible();
+  await expect(editor.getByText("Sets, reps, RPE & rest", { exact: true })).toBeVisible();
   await expect(editor.locator('[data-default-field="sets"]')).toBeVisible();
+  await expect(editor.locator('[data-default-field="target-rpe"]')).toBeVisible();
   await editor.locator("[data-individual-set-disclosure] > summary").click();
   await expect.poll(() => editor.locator("[data-individual-set-disclosure]").evaluate((node) => node.open)).toBe(true);
   await expect(editor.locator('[data-set-default-field="type"]')).toHaveCount(20);
   const warmupRow = editor.locator('[data-set-default-row][data-set-scope="warmup"]');
   await expect(warmupRow).toHaveCount(1);
+  await warmupRow.locator('[data-set-default-field="target-rpe"]').fill("4.5");
   await warmupRow.locator('[data-set-default-field="rest"]').fill("60");
 
   const straightCard = page.locator(`.exercise-card:has([data-exercise-id="${fixture.exerciseIds.legPress}"])`).first();
@@ -1434,23 +1442,25 @@ test("every exercise exposes shared defaults plus per-set reps, types, and rest"
   await expect.poll(() => straightEditor.locator("[data-individual-set-disclosure]").evaluate((node) => node.open)).toBe(false);
   await expect(straightEditor.locator('[data-default-field="working-rest"]')).toBeVisible();
   await expect(straightEditor.locator('[data-default-field="warmup-rest"]')).toBeVisible();
+  await expect(straightEditor.locator('[data-default-field="target-rpe"]')).toBeVisible();
 
   await editor.locator('[data-default-field="sets"]').fill("5");
   const rows = editor.locator('[data-set-default-row][data-set-scope="working"]:not([hidden])');
   await expect(rows).toHaveCount(5);
   const targets = [
-    ["top", "5", "6", "90"],
-    ["top", "5", "6", "150"],
-    ["backoff", "8", "10", "120"],
-    ["drop", "12", "15", "45"],
-    ["backoff", "8", "10", "120"]
+    ["top", "5", "6", "8.5", "90"],
+    ["top", "5", "6", "9", "150"],
+    ["backoff", "8", "10", "8", "120"],
+    ["drop", "12", "15", "9.5", "45"],
+    ["backoff", "8", "10", "8", "120"]
   ];
   for (let index = 0; index < targets.length; index += 1) {
     const row = rows.nth(index);
     await row.locator('[data-set-default-field="type"]').selectOption(targets[index][0]);
     await row.locator('[data-set-default-field="rep-min"]').fill(targets[index][1]);
     await row.locator('[data-set-default-field="rep-max"]').fill(targets[index][2]);
-    await row.locator('[data-set-default-field="rest"]').fill(targets[index][3]);
+    await row.locator('[data-set-default-field="target-rpe"]').fill(targets[index][3]);
+    await row.locator('[data-set-default-field="rest"]').fill(targets[index][4]);
   }
   await editor.locator("[data-standard-save-template]").check();
   await editor.locator('[data-action="apply-standard-workload"]').click();
@@ -1471,32 +1481,40 @@ test("every exercise exposes shared defaults plus per-set reps, types, and rest"
     return {
       setTypes: workingSets.map((set) => set.setType),
       setRanges: workingSets.map((set) => [set.targetRepMin, set.targetRepMax]),
+      setRpes: workingSets.map((set) => set.targetRpe),
       setRests: workingSets.map((set) => set.targetRestSeconds),
+      warmupRpe: warmupSet.targetRpe,
       warmupRest: warmupSet.targetRestSeconds,
       warmupTimerSeconds,
       timerSeconds: timer.durationSeconds,
       templateSets: templateExercise.sets,
+      templateWarmupRpe: templateExercise.warmups[0].targetRpe,
       templateWarmupRest: templateExercise.warmups[0].targetRestSeconds,
-      templateTypes: templateExercise.setTypes.map((setType) => [setType.type, setType.repMin, setType.repMax, setType.restSeconds]),
+      templateTypes: templateExercise.setTypes.map((setType) => [setType.type, setType.repMin, setType.repMax, setType.rpeMax, setType.restSeconds]),
       overrideAction: exercise.manualOverrides.at(-1)?.action
     };
   }, fixture.exerciseIds.bench);
   expect(result.setTypes).toEqual(["top", "top", "backoff", "drop", "backoff"]);
   expect(result.setRanges).toEqual([[5, 6], [5, 6], [8, 10], [12, 15], [8, 10]]);
+  expect(result.setRpes).toEqual([8.5, 9, 8, 9.5, 8]);
   expect(result.setRests).toEqual([90, 150, 120, 45, 120]);
+  expect(result.warmupRpe).toBe(4.5);
   expect(result.warmupRest).toBe(60);
   expect(result.warmupTimerSeconds).toBe(60);
   expect(result.timerSeconds).toBe(90);
   expect(result.templateSets).toBe(5);
+  expect(result.templateWarmupRpe).toBe(4.5);
   expect(result.templateWarmupRest).toBe(60);
   expect(result.templateTypes).toEqual([
-    ["top", 5, 6, 90],
-    ["top", 5, 6, 150],
-    ["backoff", 8, 10, 120],
-    ["drop", 12, 15, 45],
-    ["backoff", 8, 10, 120]
+    ["top", 5, 6, 8.5, 90],
+    ["top", 5, 6, 9, 150],
+    ["backoff", 8, 10, 8, 120],
+    ["drop", 12, 15, 9.5, 45],
+    ["backoff", 8, 10, 8, 120]
   ]);
   expect(result.overrideAction).toBe("exercise_default_targets");
+  await card.locator("details.exercise-options > summary").click();
+  await expect.poll(() => card.locator("details.exercise-options").evaluate((node) => node.open)).toBe(false);
 });
 
 test("an exercise without research or historical guidance still has editable defaults", async ({ page }) => {
@@ -1546,11 +1564,12 @@ test("an exercise without research or historical guidance still has editable def
   await editor.locator('[data-default-field="sets"]').fill("3");
   await editor.locator('[data-default-field="rep-min"]').fill("10");
   await editor.locator('[data-default-field="rep-max"]').fill("14");
+  await editor.locator('[data-default-field="target-rpe"]').fill("9");
   await editor.locator('[data-default-field="working-rest"]').fill("105");
   await editor.locator('[data-action="apply-standard-workload"]').click();
   await expect.poll(() => page.evaluate((exerciseId) => data.sets
     .filter((set) => set.exerciseId === exerciseId && !set.isWarmup)
-    .map((set) => [set.targetRepMin, set.targetRepMax, set.targetRestSeconds]), customId)).toEqual([[10, 14, 105], [10, 14, 105], [10, 14, 105]]);
+    .map((set) => [set.targetRepMin, set.targetRepMax, set.targetRpe, set.targetRestSeconds]), customId)).toEqual([[10, 14, 9, 105], [10, 14, 9, 105], [10, 14, 9, 105]]);
 });
 
 test("primary navigation exposes a skip target and moves focus into the selected view", async ({ page }) => {

@@ -500,8 +500,9 @@
           const type = normalizeSetTypeCode(set.setType, set.isWarmup);
           const repMin = Number(set.targetRepMin || set.targetReps || set.reps || 0);
           const repMax = Number(set.targetRepMax || set.targetReps || set.reps || repMin);
+          const targetRpe = Number(set.targetRpe ?? set.targetRpeMax ?? set.rpe ?? 0);
           const setRestSeconds = Number(set.targetRestSeconds || restSeconds || 0);
-          const key = [type, repMin, repMax, setRestSeconds].join("|");
+          const key = [type, repMin, repMax, targetRpe, setRestSeconds].join("|");
           const bucket = grouped.get(key) || [];
           bucket.push(set);
           grouped.set(key, bucket);
@@ -511,15 +512,15 @@
           const type = normalizeSetTypeCode(first.setType, first.isWarmup);
           const repMins = bucket.map((set) => Number(set.targetRepMin || set.targetReps || set.reps || 0)).filter((value) => value > 0);
           const repMaxes = bucket.map((set) => Number(set.targetRepMax || set.targetReps || set.reps || 0)).filter((value) => value > 0);
-          const rpes = bucket.map((set) => Number(set.rpe || 0)).filter((value) => value > 0);
+          const targetRpes = bucket.map((set) => Number(set.targetRpe ?? set.targetRpeMax ?? set.rpe ?? 0)).filter((value) => value > 0);
           return normalizeTargetSetType({
             id: first.sourceTemplateSetId || `saved-set-target-${groupIndex + 1}`,
             type,
             setCount: bucket.length,
             repMin: repMins.length ? Math.min(...repMins) : 0,
             repMax: repMaxes.length ? Math.max(...repMaxes) : 0,
-            rpeMin: rpes.length ? Math.min(...rpes) : 0,
-            rpeMax: rpes.length ? Math.max(...rpes) : 0,
+            rpeMin: targetRpes.length ? Math.max(1, Math.min(...targetRpes) - 1) : 0,
+            rpeMax: targetRpes.length ? Math.max(...targetRpes) : 0,
             rangeSource: "saved-set-targets",
             historySampleSize: bucket.length,
             restSeconds: Number(first.targetRestSeconds || restSeconds || 0),

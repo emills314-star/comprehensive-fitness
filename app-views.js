@@ -1194,6 +1194,8 @@
         const repMaxes = working.map((set) => Number(set.targetRepMax || set.targetReps || set.reps || 0)).filter((value) => value > 0);
         const repMin = repMins.length ? Math.min(...repMins) : Number(prescription?.repRange?.min || exercise.prescription?.repLow || exercise.prescription?.reps || 8);
         const repMax = repMaxes.length ? Math.max(...repMaxes) : Number(prescription?.repRange?.max || exercise.prescription?.repHigh || exercise.prescription?.reps || repMin);
+        const workingRpes = working.map((set) => Number(set.targetRpe ?? set.targetRpeMax ?? set.setPrescription?.rpeMax ?? set.rpe ?? 0)).filter((value) => value > 0);
+        const targetRpe = workingRpes[0] || Number(templateExercise?.targetRpe || prescription?.targetRpe?.max || exercise.prescription?.targetRpe || exercise.prescription?.rpe || 8);
         const workingRests = working.map((set) => Number(set.targetRestSeconds || 0)).filter((value) => value > 0);
         const workingRest = workingRests[0] || Number(exercise.restSeconds || prescription?.restSeconds?.target || data.settings.defaultRestSeconds || 90);
         const warmupRest = Number(warmups.find((set) => Number(set.targetRestSeconds) > 0)?.targetRestSeconds || Math.min(workingRest, 90));
@@ -1201,6 +1203,7 @@
           normalizeSetTypeCode(set.setType, set.isWarmup),
           Number(set.targetRepMin || set.targetReps || set.reps || repMin),
           Number(set.targetRepMax || set.targetReps || set.reps || repMax),
+          Number(set.targetRpe ?? set.targetRpeMax ?? set.setPrescription?.rpeMax ?? set.rpe ?? targetRpe),
           Number(set.targetRestSeconds || workingRest)
         ].join("|"));
         const individualized = new Set(signatures).size > 1 || working.some((set) => normalizeSetTypeCode(set.setType, set.isWarmup) !== "straight");
@@ -1223,20 +1226,22 @@
           const type = scope === "warmup" ? "warmup" : normalizeSetTypeCode(set?.setType, set?.isWarmup);
           const rowRepMin = Number(set?.targetRepMin || set?.targetReps || set?.reps || fallback.repMin);
           const rowRepMax = Number(set?.targetRepMax || set?.targetReps || set?.reps || fallback.repMax);
+          const rowTargetRpe = Number(set?.targetRpe ?? set?.targetRpeMax ?? set?.setPrescription?.rpeMax ?? set?.rpe ?? fallback.targetRpe);
           const rest = Number(set?.targetRestSeconds || fallback.rest);
           return `
             <div class="individual-set-row" data-set-default-row data-set-scope="${scope}" data-set-index="${index}" ${scope === "working" && index >= workingCount ? "hidden" : ""}>
               <span class="individual-set-index">${scope === "warmup" ? `WU${index + 1}` : index + 1}</span>
               ${scope === "warmup" ? '<span class="individual-set-type">Warm-up</span>' : `<label><span>Type</span><select data-set-default-field="type" aria-label="Working set ${index + 1} type">${roleOptions(type || "straight")}</select></label>`}
               <label><span>Reps</span><span class="range-inputs"><input type="number" min="1" max="50" value="${rowRepMin}" data-set-default-field="rep-min" aria-label="${scope === "warmup" ? "Warm-up" : "Working"} set ${index + 1} minimum reps" /><span>–</span><input type="number" min="1" max="50" value="${rowRepMax}" data-set-default-field="rep-max" aria-label="${scope === "warmup" ? "Warm-up" : "Working"} set ${index + 1} maximum reps" /></span></label>
-              <label><span>Rest</span><span class="unit-input"><input type="number" min="15" max="900" step="15" value="${rest}" data-set-default-field="rest" aria-label="${scope === "warmup" ? "Warm-up" : "Working"} set ${index + 1} rest seconds" /><small>sec</small></span></label>
+              <label class="individual-set-rpe"><span>RPE</span><input type="number" min="1" max="10" step="0.5" value="${rowTargetRpe}" data-set-default-field="target-rpe" aria-label="${scope === "warmup" ? "Warm-up" : "Working"} set ${index + 1} target RPE" /></label>
+              <label class="individual-set-rest"><span>Rest</span><span class="unit-input"><input type="number" min="15" max="900" step="15" value="${rest}" data-set-default-field="rest" aria-label="${scope === "warmup" ? "Warm-up" : "Working"} set ${index + 1} rest seconds" /><small>sec</small></span></label>
             </div>`;
         };
-        const warmupRows = warmups.map((set, index) => setRow("warmup", index, set, { repMin, repMax, rest: warmupRest })).join("");
-        const workingRows = Array.from({ length: 20 }, (_, index) => setRow("working", index, working[index], { repMin, repMax, rest: workingRest })).join("");
+        const warmupRows = warmups.map((set, index) => setRow("warmup", index, set, { repMin, repMax, targetRpe: Math.min(targetRpe, 6), rest: warmupRest })).join("");
+        const workingRows = Array.from({ length: 20 }, (_, index) => setRow("working", index, working[index], { repMin, repMax, targetRpe, rest: workingRest })).join("");
         return `
           <section class="standard-workload-card" data-standard-workload-form="${exercise.id}" data-override-form="${exercise.id}">
-            <div class="standard-workload-heading"><div><span>Exercise defaults</span><strong>Sets, reps & rest</strong></div><span class="standard-workload-badge ${comparison.toLowerCase().replaceAll(" ", "-")}">${comparison}</span></div>
+            <div class="standard-workload-heading"><div><span>Exercise defaults</span><strong>Sets, reps, RPE & rest</strong></div><span class="standard-workload-badge ${comparison.toLowerCase().replaceAll(" ", "-")}">${comparison}</span></div>
             <div class="guideline-context-row" aria-label="Exercise default context">
               <div><span>Research</span><strong>${standard ? `${standard.workingSets.min}-${standard.workingSets.max} sets · ${standard.repRange.min}-${standard.repRange.max} reps` : "No exercise-specific range"}</strong></div>
               <div><span>Saved</span><strong>${escapeHtml(savedLabel)}</strong></div>
@@ -1244,14 +1249,15 @@
             <div class="default-target-grid">
               <label><span>Working sets</span><input type="number" min="1" max="20" step="1" value="${workingCount}" data-default-field="sets" data-action="default-working-set-count" aria-label="Default working set count" /></label>
               <label><span>Rep range</span><span class="range-inputs"><input type="number" min="1" max="50" value="${repMin}" data-default-field="rep-min" aria-label="Default minimum repetitions" /><span>–</span><input type="number" min="1" max="50" value="${repMax}" data-default-field="rep-max" aria-label="Default maximum repetitions" /></span></label>
+              <label><span>Target RPE</span><input type="number" min="1" max="10" step="0.5" value="${targetRpe}" data-default-field="target-rpe" aria-label="Default target RPE" /></label>
               <label><span>Working rest</span><span class="unit-input"><input type="number" min="15" max="900" step="15" value="${workingRest}" data-default-field="working-rest" aria-label="Default working-set rest seconds" /><small>sec</small></span></label>
               <label><span>Warm-up rest</span><span class="unit-input"><input type="number" min="15" max="900" step="15" value="${warmupRest}" data-default-field="warmup-rest" aria-label="Default warm-up rest seconds" /><small>sec</small></span></label>
             </div>
             <details class="individual-set-disclosure" data-individual-set-disclosure ${individualized ? "open" : ""}>
-              <summary><span><strong>Individual set targets</strong><small>Drop sets, different reps or different rest</small></span><b>${individualized ? "Customized" : "Optional"}</b></summary>
+              <summary><span><strong>Individual set targets</strong><small>Drop sets, different reps, RPE or rest</small></span><b>${individualized ? "Customized" : "Optional"}</b></summary>
               <input type="hidden" value="${individualized ? "true" : "false"}" data-individual-set-enabled />
               <div class="individual-set-editor">
-                <p>Opening this section enables separate targets. Set type can mark top, back-off, or drop sets; rest starts after that specific set.</p>
+                <p>Opening this section enables separate targets. Set type can mark top, back-off, or drop sets; each row owns its RPE and rest target.</p>
                 ${warmupRows ? `<div class="individual-set-group"><h4>Warm-up sets</h4>${warmupRows}</div>` : ""}
                 <div class="individual-set-group"><h4>Working sets</h4>${workingRows}</div>
                 <button class="text-action" type="button" data-action="use-shared-set-targets">Use one target for every set</button>
