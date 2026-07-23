@@ -883,7 +883,7 @@
         window.clearInterval(timerInterval);
         releaseTimerWakeLock();
         if (previousTimer) cancelRestPush(previousTimer, "replaced");
-        const seconds = Number(options.seconds || exercise?.restSeconds || data.settings.defaultRestSeconds || 90);
+        const seconds = Number(options.seconds || set?.targetRestSeconds || exercise?.restSeconds || data.settings.defaultRestSeconds || 90);
         const next = requestedNext || (set?.completed || set?.skipped ? nextIncompleteSet(set.id) : set);
         restCompletionController?.dismiss("replaced_by_new_timer");
         timerCompleteNotice = null;

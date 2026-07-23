@@ -291,6 +291,7 @@
         const rpeMax = Number(raw.rpeMax ?? fallback.rpeMax ?? raw.targetRpe ?? raw.rpe ?? fallback.targetRpe ?? fallback.rpe ?? rpeMin ?? 0);
         const restSeconds = Number(raw.restSeconds ?? fallback.restSeconds ?? 0);
         return {
+          id: raw.id || fallback.id || "",
           type,
           label: raw.label || setTypeLabels[type] || "Working set",
           setCount,
@@ -497,23 +498,31 @@
         const grouped = new Map();
         sets.filter((set) => isWorkingSet(set, "progression")).forEach((set) => {
           const type = normalizeSetTypeCode(set.setType, set.isWarmup);
-          const bucket = grouped.get(type) || [];
+          const repMin = Number(set.targetRepMin || set.targetReps || set.reps || 0);
+          const repMax = Number(set.targetRepMax || set.targetReps || set.reps || repMin);
+          const setRestSeconds = Number(set.targetRestSeconds || restSeconds || 0);
+          const key = [type, repMin, repMax, setRestSeconds].join("|");
+          const bucket = grouped.get(key) || [];
           bucket.push(set);
-          grouped.set(type, bucket);
+          grouped.set(key, bucket);
         });
-        return Array.from(grouped.entries()).map(([type, bucket]) => {
-          const reps = bucket.map((set) => Number(set.reps || 0)).filter((value) => value > 0);
+        return Array.from(grouped.values()).map((bucket, groupIndex) => {
+          const first = bucket[0] || {};
+          const type = normalizeSetTypeCode(first.setType, first.isWarmup);
+          const repMins = bucket.map((set) => Number(set.targetRepMin || set.targetReps || set.reps || 0)).filter((value) => value > 0);
+          const repMaxes = bucket.map((set) => Number(set.targetRepMax || set.targetReps || set.reps || 0)).filter((value) => value > 0);
           const rpes = bucket.map((set) => Number(set.rpe || 0)).filter((value) => value > 0);
           return normalizeTargetSetType({
+            id: first.sourceTemplateSetId || `saved-set-target-${groupIndex + 1}`,
             type,
             setCount: bucket.length,
-            repMin: reps.length ? Math.min(...reps) : 0,
-            repMax: reps.length ? Math.max(...reps) : 0,
+            repMin: repMins.length ? Math.min(...repMins) : 0,
+            repMax: repMaxes.length ? Math.max(...repMaxes) : 0,
             rpeMin: rpes.length ? Math.min(...rpes) : 0,
             rpeMax: rpes.length ? Math.max(...rpes) : 0,
-            rangeSource: "workout-history",
+            rangeSource: "saved-set-targets",
             historySampleSize: bucket.length,
-            restSeconds,
+            restSeconds: Number(first.targetRestSeconds || restSeconds || 0),
             loadReductionMin: type === "drop" ? 20 : 0,
             loadReductionMax: type === "drop" ? 25 : 0,
             countsTowardScore: true,
@@ -655,6 +664,10 @@
 
       function targetSetTypeForSet(context, set, workingIndex) {
         if (!context?.setTypes?.length) return null;
+        const sourceTarget = set.sourceTemplateSetId
+          ? context.setTypes.find((item) => item.id === set.sourceTemplateSetId)
+          : null;
+        if (sourceTarget) return sourceTarget;
         const explicitType = normalizeSetTypeCode(set.setType, set.isWarmup);
         if (set.setType || set.isWarmup) return context.setTypes.find((item) => item.type === explicitType) || null;
         let cursor = 0;
@@ -683,7 +696,7 @@
           rpeMin,
           rpeMax,
           rpeTolerance: Number(type?.rpeTolerance ?? set.targetRpeTolerance ?? 1),
-          restSeconds: Number(type?.restSeconds ?? exercise.restSeconds ?? 0),
+          restSeconds: Number(set.targetRestSeconds ?? type?.restSeconds ?? exercise.restSeconds ?? 0),
           countsTowardScore: set.countsTowardScore != null ? Boolean(set.countsTowardScore) : type ? Boolean(type.countsTowardScore) : true,
           countsTowardVolume: set.countsTowardVolume != null ? Boolean(set.countsTowardVolume) : type ? Boolean(type.countsTowardVolume) : true,
           hasRepTarget: Boolean(repMin || repMax),

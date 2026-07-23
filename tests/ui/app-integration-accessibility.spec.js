@@ -1347,7 +1347,7 @@ test("confirmed pain-free substitution uses an explicit catalog-backed UI flow a
   }
 });
 
-test("exercise guidelines separate top sets from back-offs and keep straight sets compact", async ({ page }) => {
+test("every exercise exposes shared defaults plus per-set reps, types, and rest", async ({ page }) => {
   const fixture = safetyWorkoutState({ illness: false, pain: false });
   await seedApplicationState(page, fixture.state);
   await expect.poll(() => page.evaluate(() => Boolean(prescriptionEngine?.evidence?.research?.exerciseById?.has("ex_barbell_bench_press"))), {
@@ -1381,7 +1381,7 @@ test("exercise guidelines separate top sets from back-offs and keep straight set
       createdAt: "2026-07-22T12:00:01.000Z"
     });
     if (straightSnapshot.finalPrescription.setStructure !== "straight_sets") throw new Error(`Expected a straight-set fixture, received ${straightSnapshot.finalPrescription.setStructure}`);
-    const exercise = data.exercises.find((item) => item.id === benchRuntimeId);
+    const exercise = data.exercises.find((item) => item.id === benchRuntimeId) || data.exercises.find((item) => item.name === "Barbell Bench Press");
     Object.assign(exercise, {
       recommendationSnapshot: snapshot,
       basePrescription: snapshot.basePrescription,
@@ -1389,7 +1389,7 @@ test("exercise guidelines separate top sets from back-offs and keep straight set
       prescription: legacyTargetFromSnapshot(snapshot, { name: exercise.name, resistanceType: exercise.resistanceType, increment: exercise.prescription?.increment }),
       executionBlocked: false
     });
-    const straightExercise = data.exercises.find((item) => item.id === legPressRuntimeId);
+    const straightExercise = data.exercises.find((item) => item.id === legPressRuntimeId) || data.exercises.find((item) => item.name === "Leg Press");
     Object.assign(straightExercise, {
       recommendationSnapshot: straightSnapshot,
       basePrescription: straightSnapshot.basePrescription,
@@ -1397,6 +1397,18 @@ test("exercise guidelines separate top sets from back-offs and keep straight set
       prescription: legacyTargetFromSnapshot(straightSnapshot, { name: straightExercise.name, resistanceType: straightExercise.resistanceType, increment: straightExercise.prescription?.increment }),
       executionBlocked: false
     });
+    const templateId = "role-defaults-template";
+    data.sessions[0].templateId = templateId;
+    data.templates = [{
+      id: templateId,
+      name: "Role Defaults",
+      createdAt: "2026-07-22T12:00:00.000Z",
+      updatedAt: "2026-07-22T12:00:00.000Z",
+      exercises: [
+        { id: "template-bench", name: exercise.name, sets: snapshot.finalPrescription.workingSets.target, reps: snapshot.finalPrescription.repRange.max, repMin: snapshot.finalPrescription.repRange.min, repMax: snapshot.finalPrescription.repRange.max, restSeconds: snapshot.finalPrescription.restSeconds.target, setTypes: [], warmups: [] },
+        { id: "template-leg-press", name: straightExercise.name, sets: straightSnapshot.finalPrescription.workingSets.target, reps: straightSnapshot.finalPrescription.repRange.max, repMin: straightSnapshot.finalPrescription.repRange.min, repMax: straightSnapshot.finalPrescription.repRange.max, restSeconds: straightSnapshot.finalPrescription.restSeconds.target, setTypes: [], warmups: [] }
+      ]
+    }];
     data.recommendationHistory = [snapshot, straightSnapshot];
     render();
     return [snapshot.finalPrescription.setStructure, straightSnapshot.finalPrescription.setStructure];
@@ -1404,68 +1416,141 @@ test("exercise guidelines separate top sets from back-offs and keep straight set
   expect(seeded).toEqual(["top_set_backoff", "straight_sets"]);
 
   const card = page.locator(`.exercise-card:has([data-exercise-id="${fixture.exerciseIds.bench}"])`).first();
+  await card.getByRole("button", { name: "Add warm-up set to Barbell Bench Press" }).click();
   await card.locator("details.exercise-options > summary").click();
   const editor = card.locator('[data-standard-workload-form]');
-  await expect(editor.locator('[data-workload-structure="top_set_backoff"]')).toBeVisible();
-  await expect(editor.locator("fieldset.role-top")).toHaveCount(1);
-  await expect(editor.locator("fieldset.role-backoff")).toHaveCount(1);
-  await expect(editor.locator('[data-override-field="sets"]')).toHaveCount(0);
+  await expect(editor.getByText("Sets, reps & rest", { exact: true })).toBeVisible();
+  await expect(editor.locator('[data-default-field="sets"]')).toBeVisible();
+  await editor.locator("[data-individual-set-disclosure] > summary").click();
+  await expect.poll(() => editor.locator("[data-individual-set-disclosure]").evaluate((node) => node.open)).toBe(true);
+  await expect(editor.locator('[data-set-default-field="type"]')).toHaveCount(20);
+  const warmupRow = editor.locator('[data-set-default-row][data-set-scope="warmup"]');
+  await expect(warmupRow).toHaveCount(1);
+  await warmupRow.locator('[data-set-default-field="rest"]').fill("60");
 
   const straightCard = page.locator(`.exercise-card:has([data-exercise-id="${fixture.exerciseIds.legPress}"])`).first();
   await straightCard.locator("details.exercise-options > summary").click();
   const straightEditor = straightCard.locator('[data-standard-workload-form]');
-  await expect(straightEditor.locator('[data-workload-structure="straight_sets"]')).toBeVisible();
-  await expect(straightEditor.locator("fieldset.role-straight")).toHaveCount(1);
-  await expect(straightEditor.locator(".workload-role-card")).toHaveCount(1);
-  await expect(straightEditor.locator('[data-override-field="sets"]')).toHaveCount(1);
+  await expect.poll(() => straightEditor.locator("[data-individual-set-disclosure]").evaluate((node) => node.open)).toBe(false);
+  await expect(straightEditor.locator('[data-default-field="working-rest"]')).toBeVisible();
+  await expect(straightEditor.locator('[data-default-field="warmup-rest"]')).toBeVisible();
 
-  await page.setViewportSize({ width: 375, height: 812 });
-  const mobileBoxes = await editor.locator(".workload-role-card").evaluateAll((nodes) => nodes.map((node) => {
-    const rect = node.getBoundingClientRect();
-    return { x: Math.round(rect.x), y: Math.round(rect.y), border: getComputedStyle(node).borderInlineStartColor };
-  }));
-  expect(mobileBoxes[1].y).toBeGreaterThan(mobileBoxes[0].y);
-  expect(Math.abs(mobileBoxes[1].x - mobileBoxes[0].x)).toBeLessThanOrEqual(2);
-  expect(mobileBoxes[0].border).not.toBe(mobileBoxes[1].border);
-
-  await page.setViewportSize({ width: 900, height: 900 });
-  const desktopBoxes = await editor.locator(".workload-role-card").evaluateAll((nodes) => nodes.map((node) => {
-    const rect = node.getBoundingClientRect();
-    return { x: Math.round(rect.x), y: Math.round(rect.y) };
-  }));
-  expect(desktopBoxes[1].x).toBeGreaterThan(desktopBoxes[0].x);
-  expect(Math.abs(desktopBoxes[1].y - desktopBoxes[0].y)).toBeLessThanOrEqual(2);
-
-  await editor.locator('[data-override-field="top-sets"]').fill("2");
-  await editor.locator('[data-override-field="top-rep-min"]').fill("5");
-  await editor.locator('[data-override-field="top-rep-max"]').fill("6");
-  await editor.locator('[data-override-field="backoff-sets"]').fill("3");
-  await editor.locator('[data-override-field="backoff-rep-min"]').fill("8");
-  await editor.locator('[data-override-field="backoff-rep-max"]').fill("10");
+  await editor.locator('[data-default-field="sets"]').fill("5");
+  const rows = editor.locator('[data-set-default-row][data-set-scope="working"]:not([hidden])');
+  await expect(rows).toHaveCount(5);
+  const targets = [
+    ["top", "5", "6", "90"],
+    ["top", "5", "6", "150"],
+    ["backoff", "8", "10", "120"],
+    ["drop", "12", "15", "45"],
+    ["backoff", "8", "10", "120"]
+  ];
+  for (let index = 0; index < targets.length; index += 1) {
+    const row = rows.nth(index);
+    await row.locator('[data-set-default-field="type"]').selectOption(targets[index][0]);
+    await row.locator('[data-set-default-field="rep-min"]').fill(targets[index][1]);
+    await row.locator('[data-set-default-field="rep-max"]').fill(targets[index][2]);
+    await row.locator('[data-set-default-field="rest"]').fill(targets[index][3]);
+  }
+  await editor.locator("[data-standard-save-template]").check();
   await editor.locator('[data-action="apply-standard-workload"]').click();
   await expect.poll(() => page.evaluate((exerciseRuntimeId) => {
-    const exercise = data.exercises.find((item) => item.id === exerciseRuntimeId);
-    return [exercise?.finalPrescription?.topSet?.count, exercise?.finalPrescription?.backoffSets?.count];
-  }, fixture.exerciseIds.bench), { message: "Role-aware workload changes must persist through the rerender" }).toEqual([2, 3]);
+    return data.sets.filter((set) => set.exerciseId === exerciseRuntimeId && !set.isWarmup && !set.completed).length;
+  }, fixture.exerciseIds.bench), { message: "The individual working-set count must persist through rerender" }).toBe(5);
 
   const result = await page.evaluate((exerciseRuntimeId) => {
     const exercise = data.exercises.find((item) => item.id === exerciseRuntimeId);
+    const warmupSet = data.sets.find((set) => set.exerciseId === exerciseRuntimeId && set.isWarmup);
     const workingSets = data.sets.filter((set) => set.exerciseId === exerciseRuntimeId && !set.isWarmup && !set.completed);
+    const session = data.sessions.find((item) => item.id === exercise.sessionId);
+    const template = data.templates.find((item) => item.id === session.templateId);
+    const templateExercise = template.exercises.find((item) => item.name === exercise.name);
+    startTimer(exerciseRuntimeId, warmupSet.id);
+    const warmupTimerSeconds = timer.durationSeconds;
+    startTimer(exerciseRuntimeId, workingSets[0].id);
     return {
-      topSet: exercise.finalPrescription.topSet,
-      backoffSets: exercise.finalPrescription.backoffSets,
-      workingTarget: exercise.finalPrescription.workingSets.target,
-      audit: exercise.manualOverrides.at(-1)?.changes?.rolePrescription,
       setTypes: workingSets.map((set) => set.setType),
-      setRanges: workingSets.map((set) => [set.targetRepMin, set.targetRepMax])
+      setRanges: workingSets.map((set) => [set.targetRepMin, set.targetRepMax]),
+      setRests: workingSets.map((set) => set.targetRestSeconds),
+      warmupRest: warmupSet.targetRestSeconds,
+      warmupTimerSeconds,
+      timerSeconds: timer.durationSeconds,
+      templateSets: templateExercise.sets,
+      templateWarmupRest: templateExercise.warmups[0].targetRestSeconds,
+      templateTypes: templateExercise.setTypes.map((setType) => [setType.type, setType.repMin, setType.repMax, setType.restSeconds]),
+      overrideAction: exercise.manualOverrides.at(-1)?.action
     };
   }, fixture.exerciseIds.bench);
-  expect(result.topSet).toMatchObject({ count: 2, repRange: { min: 5, max: 6 } });
-  expect(result.backoffSets).toMatchObject({ count: 3, repRange: { min: 8, max: 10 } });
-  expect(result.workingTarget).toBe(5);
-  expect(result.audit?.to).toMatchObject({ topSet: { count: 2 }, backoffSets: { count: 3 } });
-  expect(result.setTypes).toEqual(["top", "top", "backoff", "backoff", "backoff"]);
-  expect(result.setRanges).toEqual([[5, 6], [5, 6], [8, 10], [8, 10], [8, 10]]);
+  expect(result.setTypes).toEqual(["top", "top", "backoff", "drop", "backoff"]);
+  expect(result.setRanges).toEqual([[5, 6], [5, 6], [8, 10], [12, 15], [8, 10]]);
+  expect(result.setRests).toEqual([90, 150, 120, 45, 120]);
+  expect(result.warmupRest).toBe(60);
+  expect(result.warmupTimerSeconds).toBe(60);
+  expect(result.timerSeconds).toBe(90);
+  expect(result.templateSets).toBe(5);
+  expect(result.templateWarmupRest).toBe(60);
+  expect(result.templateTypes).toEqual([
+    ["top", 5, 6, 90],
+    ["top", 5, 6, 150],
+    ["backoff", 8, 10, 120],
+    ["drop", 12, 15, 45],
+    ["backoff", 8, 10, 120]
+  ]);
+  expect(result.overrideAction).toBe("exercise_default_targets");
+});
+
+test("an exercise without research or historical guidance still has editable defaults", async ({ page }) => {
+  const fixture = safetyWorkoutState({ illness: false, pain: false });
+  await seedApplicationState(page, fixture.state);
+  const customId = await page.evaluate((sessionId) => {
+    const exerciseId = "custom-without-guidance";
+    const exercise = {
+      id: exerciseId,
+      sessionId,
+      name: "My Cable Variation",
+      performanceExerciseId: "user_custom_my_cable_variation",
+      researchExerciseId: "",
+      identitySource: "user_declared_custom",
+      identityVersion: "exercise-identity/2.1.0",
+      order: 99,
+      restSeconds: 75,
+      resistanceType: "external",
+      customExerciseProfile: { schemaVersion: "custom-exercise-profile/1.0.0", status: "incomplete" },
+      executionQualityAssessment: "not_assessed"
+    };
+    const set = {
+      ...data.sets[0],
+      id: "custom-without-guidance-set",
+      exerciseId,
+      setNumber: 1,
+      sequenceIndex: 0,
+      sequence: 0,
+      setTypeIndex: 0,
+      setType: "straight",
+      isWarmup: false,
+      reps: 8,
+      targetReps: 10,
+      targetRepMin: 8,
+      targetRepMax: 12,
+      targetRestSeconds: 75,
+      completed: false,
+      skipped: false
+    };
+    commit({ ...data, exercises: [...data.exercises, exercise], sets: [...data.sets, set] });
+    return exerciseId;
+  }, fixture.state.sessions[0].id);
+  const card = page.locator(`.exercise-card:has([data-exercise-id="${customId}"])`).first();
+  await card.locator("details.exercise-options > summary").click();
+  const editor = card.locator("[data-standard-workload-form]");
+  await expect(editor.getByText("No exercise-specific range", { exact: true })).toBeVisible();
+  await editor.locator('[data-default-field="sets"]').fill("3");
+  await editor.locator('[data-default-field="rep-min"]').fill("10");
+  await editor.locator('[data-default-field="rep-max"]').fill("14");
+  await editor.locator('[data-default-field="working-rest"]').fill("105");
+  await editor.locator('[data-action="apply-standard-workload"]').click();
+  await expect.poll(() => page.evaluate((exerciseId) => data.sets
+    .filter((set) => set.exerciseId === exerciseId && !set.isWarmup)
+    .map((set) => [set.targetRepMin, set.targetRepMax, set.targetRestSeconds]), customId)).toEqual([[10, 14, 105], [10, 14, 105], [10, 14, 105]]);
 });
 
 test("primary navigation exposes a skip target and moves focus into the selected view", async ({ page }) => {

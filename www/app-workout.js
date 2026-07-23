@@ -326,6 +326,238 @@
         showAppToast("Custom profile complete. Bounded guidance was applied to unfinished work only.");
       }
 
+      function readExerciseDefaultPlan(exercise, form) {
+        const read = (field) => form.querySelector(`[data-default-field="${field}"]`)?.value ?? "";
+        const workingSetCount = Number(read("sets"));
+        const repMin = Number(read("rep-min"));
+        const repMax = Number(read("rep-max"));
+        const workingRestSeconds = Number(read("working-rest"));
+        const warmupRestSeconds = Number(read("warmup-rest"));
+        if (!Number.isInteger(workingSetCount) || workingSetCount < 1 || workingSetCount > 20) throw new Error("Choose between 1 and 20 working sets.");
+        if (!Number.isInteger(repMin) || !Number.isInteger(repMax) || repMin < 1 || repMax > 50 || repMin > repMax) throw new Error("Choose an ordered rep range from 1 to 50.");
+        if (!Number.isInteger(workingRestSeconds) || workingRestSeconds < 15 || workingRestSeconds > 900) throw new Error("Choose working-set rest from 15 to 900 seconds.");
+        if (!Number.isInteger(warmupRestSeconds) || warmupRestSeconds < 15 || warmupRestSeconds > 900) throw new Error("Choose warm-up rest from 15 to 900 seconds.");
+
+        const individualized = form.querySelector("[data-individual-set-enabled]")?.value === "true";
+        const existingSets = setsForExercise(exercise.id);
+        const existingWarmups = existingSets.filter((set) => setTypeSemantics(set).isWarmup);
+        const existingWorking = existingSets.filter((set) => isWorkingSet(set, "progression"));
+        const existingFor = (scope, index) => (scope === "warmup" ? existingWarmups : existingWorking)[index] || null;
+        const readRows = (scope, count) => {
+          const rows = Array.from(form.querySelectorAll(`[data-set-default-row][data-set-scope="${scope}"]`)).slice(0, count);
+          if (rows.length !== count) throw new Error("The individual set plan is incomplete. Close and reopen Exercise options, then try again.");
+          return rows.map((row, index) => {
+            const existing = existingFor(scope, index);
+            const type = scope === "warmup" ? "warmup" : normalizeSetTypeCode(row.querySelector('[data-set-default-field="type"]')?.value || existing?.setType || "straight");
+            const rowRepMin = Number(row.querySelector('[data-set-default-field="rep-min"]')?.value);
+            const rowRepMax = Number(row.querySelector('[data-set-default-field="rep-max"]')?.value);
+            const restSeconds = Number(row.querySelector('[data-set-default-field="rest"]')?.value);
+            if (!Number.isInteger(rowRepMin) || !Number.isInteger(rowRepMax) || rowRepMin < 1 || rowRepMax > 50 || rowRepMin > rowRepMax) throw new Error(`${scope === "warmup" ? "Warm-up" : "Working"} set ${index + 1} needs an ordered rep range from 1 to 50.`);
+            if (!Number.isInteger(restSeconds) || restSeconds < 15 || restSeconds > 900) throw new Error(`${scope === "warmup" ? "Warm-up" : "Working"} set ${index + 1} needs rest from 15 to 900 seconds.`);
+            return { type, repMin: rowRepMin, repMax: rowRepMax, restSeconds, existing };
+          });
+        };
+        const warmups = individualized
+          ? readRows("warmup", existingWarmups.length)
+          : existingWarmups.map((existing) => ({
+              type: "warmup",
+              repMin: Number(existing.targetRepMin || existing.targetReps || existing.reps || repMin),
+              repMax: Number(existing.targetRepMax || existing.targetReps || existing.reps || repMax),
+              restSeconds: warmupRestSeconds,
+              existing
+            }));
+        const working = individualized
+          ? readRows("working", workingSetCount)
+          : Array.from({ length: workingSetCount }, (_, index) => ({
+              type: "straight",
+              repMin,
+              repMax,
+              restSeconds: workingRestSeconds,
+              existing: existingWorking[index] || null
+            }));
+        return {
+          individualized,
+          workingSetCount,
+          repMin,
+          repMax,
+          workingRestSeconds,
+          warmupRestSeconds,
+          warmups,
+          working: working.map((target, index) => ({
+            ...target,
+            sourceTargetId: `user-default-${exercise.id}-${index + 1}`
+          }))
+        };
+      }
+
+      function applyExerciseDefaultTargets(exerciseId, form, options = {}) {
+        const exercise = exerciseById(exerciseId);
+        if (!exercise || !form || exercise.sessionId !== activeWorkoutId || isSessionSubmitted(activeSession())) return;
+        let plan;
+        try {
+          plan = readExerciseDefaultPlan(exercise, form);
+        } catch (error) {
+          showAppToast(error?.message || "The exercise defaults could not be applied.");
+          return;
+        }
+
+        const allSets = setsForExercise(exercise.id);
+        const warmups = allSets.filter((set) => setTypeSemantics(set).isWarmup);
+        const completedWorking = allSets.filter((set) => isWorkingSet(set, "progression") && set.completed);
+        const incompleteWorking = allSets.filter((set) => isWorkingSet(set, "progression") && !set.completed);
+        const updateTarget = (existing, target, sequenceIndex, setNumber, setTypeIndex) => {
+          const midpoint = Math.round((target.repMin + target.repMax) / 2);
+          const base = existing || createSet(exercise.id, setNumber, target.existing || {});
+          return {
+            ...base,
+            setNumber,
+            sequenceIndex,
+            sequence: sequenceIndex,
+            setTypeIndex,
+            sourceTemplateSetId: target.sourceTargetId || base.sourceTemplateSetId,
+            setType: target.type,
+            isWarmup: target.type === "warmup",
+            countsTowardScore: target.type !== "warmup",
+            countsTowardVolume: target.type !== "warmup",
+            countsTowardProgression: target.type !== "warmup",
+            reps: midpoint,
+            targetReps: midpoint,
+            targetRepMin: target.repMin,
+            targetRepMax: target.repMax,
+            targetRestSeconds: target.restSeconds,
+            setPrescription: base.setPrescription ? {
+              ...base.setPrescription,
+              setType: target.type,
+              targetReps: midpoint,
+              repMin: target.repMin,
+              repMax: target.repMax,
+              restSeconds: target.restSeconds
+            } : base.setPrescription,
+            prescriptionReason: "User-saved exercise defaults.",
+            manualOverride: true,
+            edited: true,
+            completed: false,
+            skipped: false
+          };
+        };
+
+        const nextWarmups = warmups.map((set, index) => set.completed
+          ? set
+          : updateTarget(set, plan.warmups[index], index, index + 1, index));
+        const desiredIncompletePlan = plan.working.slice(Math.min(completedWorking.length, plan.working.length));
+        const nextIncomplete = desiredIncompletePlan.map((target, index) => {
+          const priorOfType = plan.working.slice(0, completedWorking.length + index).filter((item) => item.type === target.type).length;
+          return updateTarget(
+            incompleteWorking[index] || null,
+            target,
+            warmups.length + completedWorking.length + index,
+            completedWorking.length + index + 1,
+            priorOfType
+          );
+        });
+        const replacedSetIds = new Set([...warmups.filter((set) => !set.completed), ...incompleteWorking].map((set) => set.id));
+        const workingTypes = plan.working.map((target, index) => normalizeTargetSetType({
+          id: target.sourceTargetId || `user-default-${exercise.id}-${index + 1}`,
+          type: target.type,
+          setCount: 1,
+          repMin: target.repMin,
+          repMax: target.repMax,
+          rpeMin: Number(target.existing?.targetRpeMin || Math.max(1, Number(target.existing?.rpe || exercise.prescription?.rpe || 8) - 1)),
+          rpeMax: Number(target.existing?.targetRpeMax || target.existing?.rpe || exercise.prescription?.rpe || 8),
+          restSeconds: target.restSeconds,
+          loadReductionMin: target.type === "drop" ? 20 : target.type === "backoff" ? 8 : 0,
+          loadReductionMax: target.type === "drop" ? 25 : target.type === "backoff" ? 15 : 0,
+          countsTowardScore: true,
+          countsTowardVolume: true
+        }));
+        const now = isoNow();
+        const previousPlan = allSets.map((set) => ({
+          type: normalizeSetTypeCode(set.setType, set.isWarmup),
+          repMin: Number(set.targetRepMin || set.targetReps || set.reps || 0),
+          repMax: Number(set.targetRepMax || set.targetReps || set.reps || 0),
+          restSeconds: Number(set.targetRestSeconds || exercise.restSeconds || 0)
+        }));
+        const nextPlan = [...plan.warmups, ...plan.working].map((target) => ({ type: target.type, repMin: target.repMin, repMax: target.repMax, restSeconds: target.restSeconds }));
+        const overrideEntry = {
+          overrideId: id(),
+          recommendationId: exercise.recommendationSnapshot?.recommendationId || "",
+          sessionId: exercise.sessionId,
+          workoutId: exercise.sessionId,
+          exerciseRuntimeId: exercise.id,
+          exerciseId: exercise.performanceExerciseId || exercise.researchExerciseId || canonicalExerciseId(exercise.name),
+          field: "exerciseDefaults",
+          from: previousPlan,
+          to: nextPlan,
+          createdAt: now,
+          actor: "user",
+          reason: "User-saved exercise defaults",
+          lockedForWorkout: true,
+          changes: { setPlan: { from: previousPlan, to: nextPlan } },
+          action: "exercise_default_targets"
+        };
+        const aggregateRepMin = Math.min(...plan.working.map((target) => target.repMin));
+        const aggregateRepMax = Math.max(...plan.working.map((target) => target.repMax));
+        const appliedTargetContext = {
+          ...(exercise.appliedTargetContext || exercise.programTargetContext || {}),
+          id: exercise.appliedTargetContext?.id || `user-defaults-${exercise.id}`,
+          source: "User-saved exercise defaults",
+          effectiveStartDate: sessionById(exercise.sessionId)?.date || todayIso(),
+          setTypes: workingTypes,
+          confidence: "high"
+        };
+        const nextExercise = {
+          ...exercise,
+          restSeconds: plan.workingRestSeconds,
+          prescription: {
+            ...(exercise.prescription || {}),
+            sets: plan.working.length,
+            reps: Math.round((aggregateRepMin + aggregateRepMax) / 2),
+            repLow: aggregateRepMin,
+            repHigh: aggregateRepMax,
+            restSeconds: plan.workingRestSeconds
+          },
+          appliedTargetContext,
+          manualOverrides: [...(exercise.manualOverrides || []), overrideEntry],
+          overrideLocked: true
+        };
+
+        const session = sessionById(exercise.sessionId);
+        const sourceTemplate = options.saveTemplateStandard && session?.templateId ? data.templates.find((item) => item.id === session.templateId) : null;
+        const sourceTemplateExercise = sourceTemplate?.exercises?.find((item) => exerciseMatches(item.name, exercise.name)) || null;
+        const templateWarmups = plan.warmups.map((target, index) => ({
+          ...(sourceTemplateExercise?.warmups?.[index] || {}),
+          reps: Math.round((target.repMin + target.repMax) / 2),
+          targetRepMin: target.repMin,
+          targetRepMax: target.repMax,
+          targetRestSeconds: target.restSeconds
+        }));
+        const templates = sourceTemplateExercise
+          ? data.templates.map((template) => template.id === sourceTemplate.id ? {
+              ...template,
+              updatedAt: now,
+              exercises: template.exercises.map((item) => item.id === sourceTemplateExercise.id ? {
+                ...item,
+                sets: plan.working.length,
+                reps: Math.round((aggregateRepMin + aggregateRepMax) / 2),
+                repMin: aggregateRepMin,
+                repMax: aggregateRepMax,
+                restSeconds: plan.workingRestSeconds,
+                setTypes: workingTypes,
+                warmups: templateWarmups,
+                standardWorkloadOverride: true,
+                standardRoleWorkload: null
+              } : item)
+            } : template)
+          : data.templates;
+        commit({
+          ...data,
+          exercises: data.exercises.map((item) => item.id === exercise.id ? nextExercise : item),
+          sets: [...data.sets.filter((set) => !replacedSetIds.has(set.id)), ...nextWarmups.filter((set) => !set.completed), ...nextIncomplete],
+          templates
+        }, true, { invalidateAnalysis: false, deferPersistence: true });
+        showAppToast(sourceTemplateExercise ? "Exercise defaults applied and saved to the template." : "Exercise defaults applied to unfinished sets.");
+      }
+
       function applyPrescriptionOverride(exerciseId, form, options = {}) {
         const exercise = exerciseById(exerciseId);
         if (!exercise?.recommendationSnapshot || !prescriptionEngine || !form) return;
@@ -729,15 +961,20 @@
         if (!representative) return;
         const snapshot = exercise.recommendationSnapshot || null;
         const prescription = snapshot?.finalPrescription || null;
+        const repMins = workSets.map((set) => Number(set.targetRepMin || set.targetReps || set.reps || 0)).filter((value) => value > 0);
+        const repMaxes = workSets.map((set) => Number(set.targetRepMax || set.targetReps || set.reps || 0)).filter((value) => value > 0);
         patchTemplateExercise(template.id, templateExercise.id, {
           sets: workSets.length,
           reps: representative.reps,
-          repMin: prescription?.repRange?.min || representative.targetRepMin || representative.reps,
-          repMax: prescription?.repRange?.max || representative.targetRepMax || representative.reps,
+          repMin: repMins.length ? Math.min(...repMins) : prescription?.repRange?.min || representative.reps,
+          repMax: repMaxes.length ? Math.max(...repMaxes) : prescription?.repRange?.max || representative.reps,
           targetRpe: representative.rpe,
           restSeconds: exercise.restSeconds,
           setStructure: prescription?.setStructure || exercise.appliedTargetContext?.setTypes?.map((item) => item.type).join("+") || templateExercise.setStructure,
-          setTypes: exercise.appliedTargetContext?.setTypes || templateExercise.setTypes || [],
+          setTypes: templateSetTypesFromHistory(workSets, exercise.restSeconds),
+          warmups: setsForExercise(exercise.id).filter((set) => setTypeSemantics(set).isWarmup).map((set) => ({ reps: set.reps, targetRepMin: set.targetRepMin, targetRepMax: set.targetRepMax, targetRestSeconds: set.targetRestSeconds, weight: set.weight, weightUnit: set.weightUnit, resistanceType: set.resistanceType, isBodyweight: set.isBodyweight, addedLoad: set.addedLoad, assistanceLoad: set.assistanceLoad, rpe: set.rpe })),
+          standardWorkloadOverride: true,
+          standardRoleWorkload: null,
           recommendationSnapshot: snapshot,
           recommendationId: snapshot?.recommendationId || null,
           recommendationVersion: snapshot?.recommendationVersion || null,
@@ -976,14 +1213,17 @@
           const restSeconds = Number(target.restSeconds || historyTarget.restSeconds);
           const programTargetContext = unifiedTargetContext(historyTarget, template, templateExercise) || exerciseTargetContext(template, templateExercise, { source: "Current workout template", effectiveStartDate: session.date });
           let appliedTargetContext = unifiedTargetContext(target, template, templateExercise) || exerciseTargetContext(template, { ...templateExercise, sets: target.sets }, { sets: target.sets, rpe: target.rpe, restSeconds, source: target.adjusted ? "Readiness-adjusted target" : target.isDeload ? "Deload prescription" : "Saved workout prescription", effectiveStartDate: session.date, effectiveEndDate: session.date, confidence: target.confidence });
-          const baseTargetContext = appliedTargetContext || programTargetContext;
+          const savedDefaultTargetContext = templateExercise.standardWorkloadOverride === true && Array.isArray(templateExercise.setTypes) && templateExercise.setTypes.some((type) => type.countsTowardScore !== false && !type.isWarmup)
+            ? exerciseTargetContext(template, templateExercise, { source: "User-saved exercise defaults", effectiveStartDate: session.date, effectiveEndDate: session.date, confidence: "high" })
+            : null;
+          const baseTargetContext = savedDefaultTargetContext || appliedTargetContext || programTargetContext;
           const rpeShift = Number(target.rpe || 0) && Number(historyTarget.rpe || 0) ? Number(target.rpe) - Number(historyTarget.rpe) : 0;
           const effectiveRpeShift = ["deload", "light", "technique"].includes(target.mode) ? 0 : rpeShift;
           const resolvedTypes = resolvedSetTypesForPrescription(baseTargetContext, target, templateExercise).map((type) => ({
             ...type,
             rpeMin: type.rpeMin ? Math.max(1, type.rpeMin + effectiveRpeShift) : Math.max(1, Number(target.rpe || 0) - 1),
             rpeMax: type.rpeMax ? Math.max(1, type.rpeMax + effectiveRpeShift) : Number(target.rpe || 0),
-            restSeconds: Number(target.restSeconds || type.restSeconds || restSeconds)
+            restSeconds: Number(type.restSeconds || target.restSeconds || restSeconds)
           }));
           appliedTargetContext = { ...appliedTargetContext, setTypes: [...(appliedTargetContext?.setTypes || []).filter((type) => type.isWarmup), ...resolvedTypes] };
           const exercise = { id: id(), sessionId: session.id, ...(template.source === "strong" ? { source: "strong-template" } : {}), name: templateExercise.name, ...(typeof exerciseIdentityFields === "function" ? exerciseIdentityFields(templateExercise) : {}), primaryMuscle: templateExercise.primaryMuscle || "", secondaryMuscle: templateExercise.secondaryMuscle || "", ...(templateExercise.customExerciseProfile ? { customExerciseProfile: normalizeCustomExerciseProfile(templateExercise.customExerciseProfile) } : {}), executionQualityAssessment: "not_assessed", notes: "", originalPrescription: historyTarget, prescription: target, recommendationSnapshot: target.recommendationSnapshot || historyTarget.recommendationSnapshot || null, basePrescription: target.basePrescription || historyTarget.basePrescription || null, finalPrescription: target.finalPrescription || target.recommendationSnapshot?.finalPrescription || null, recommendationVersion: target.recommendationSnapshot?.recommendationVersion || null, personalDataVersion: target.recommendationSnapshot?.personalDataVersion || null, researchDatabaseVersion: target.recommendationSnapshot?.researchDatabaseVersion || null, programTargetContext, appliedTargetContext, adjustmentReason: target.adjustmentReason || "", manualOverrides: [], order: index, restSeconds, resistanceType: target.resistanceType || templateResistanceType, isBodyweight: isBodyweightResistance(resolvedResistanceType), isDeload: Boolean(target.isDeload), executionBlocked: Boolean(target.executionBlocked), safetyRestriction: target.safetyRestriction || null };

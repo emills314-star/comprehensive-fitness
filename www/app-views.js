@@ -1179,70 +1179,86 @@
 
       function renderStandardWorkloadControls(exercise) {
         const snapshot = recommendationSnapshotForDisplay(exercise.recommendationSnapshot);
-        if (!snapshot || exercise.sessionId !== activeWorkoutId || isSessionSubmitted(activeSession())) return "";
-        const prescription = snapshot.finalPrescription;
-        const standard = snapshot.standardGuideline || snapshot.basePrescription;
+        if (exercise.sessionId !== activeWorkoutId || isSessionSubmitted(activeSession())) return "";
+        const prescription = snapshot?.finalPrescription || exercise.finalPrescription || null;
+        const standard = snapshot?.standardGuideline || snapshot?.basePrescription || null;
         const session = sessionById(exercise.sessionId);
         const template = session?.templateId ? data.templates.find((item) => item.id === session.templateId) : null;
         const templateExercise = template?.exercises?.find((item) => exerciseMatches(item.name, exercise.name));
         const savedStandard = templateExercise?.standardWorkloadOverride === true;
-        const roleStructure = prescription.setStructure === "top_set_backoff" ? "top_set_backoff" : prescription.setStructure === "multiple_top_sets" ? "multiple_top_sets" : "straight_sets";
-        const topRange = prescription.topSet?.repRange || prescription.repRange;
-        const backoffRange = prescription.backoffSets?.repRange || prescription.repRange;
-        const setsAbove = Number(prescription.workingSets.target) > Number(standard.workingSets.max);
-        const repsAbove = Number(prescription.repRange.max) > Number(standard.repRange.max);
-        const setsBelow = Number(prescription.workingSets.target) < Number(standard.workingSets.min);
-        const repsBelow = Number(prescription.repRange.min) < Number(standard.repRange.min);
-        const comparison = setsAbove || repsAbove ? "Above standard" : setsBelow || repsBelow ? "Below standard" : "Within standard";
-        const differences = [];
-        if (setsAbove) differences.push(`${prescription.workingSets.target - standard.workingSets.max} sets above`);
-        if (setsBelow) differences.push(`${standard.workingSets.min - prescription.workingSets.target} sets below`);
-        if (repsAbove) differences.push(`${prescription.repRange.max - standard.repRange.max} reps above the ceiling`);
-        if (repsBelow) differences.push(`${standard.repRange.min - prescription.repRange.min} reps below the floor`);
-        const savedRoles = templateExercise?.standardRoleWorkload;
-        const savedLabel = savedStandard && savedRoles?.topSet
-          ? `${savedRoles.topSet.count} top${savedRoles.backoffSets ? ` + ${savedRoles.backoffSets.count} back-off` : ""}`
-          : savedStandard ? `${templateExercise.sets} sets · ${templateExercise.repMin || templateExercise.reps}-${templateExercise.repMax || templateExercise.reps} reps` : "No saved override";
-        const roleEditor = roleStructure === "top_set_backoff" ? `
-          <div class="standard-role-grid split" data-workload-structure="top_set_backoff">
-            <fieldset class="workload-role-card role-top">
-              <legend><span>Top set</span><small>Primary effort</small></legend>
-              <div class="workload-role-controls">
-                <label><span>Sets</span><input type="number" min="1" max="10" step="1" value="${prescription.topSet?.count || 1}" data-override-field="top-sets" aria-label="Top set count" /></label>
-                <label class="role-rep-range"><span>Reps</span><span class="range-inputs"><input type="number" min="1" max="50" step="1" value="${topRange.min}" data-override-field="top-rep-min" aria-label="Minimum top set repetitions" /><span aria-hidden="true">–</span><input type="number" min="1" max="50" step="1" value="${topRange.max}" data-override-field="top-rep-max" aria-label="Maximum top set repetitions" /></span></label>
-              </div>
-            </fieldset>
-            <fieldset class="workload-role-card role-backoff">
-              <legend><span>Back-off sets</span><small>${prescription.backoffSets?.loadReductionPercent?.target || 0}% lighter</small></legend>
-              <div class="workload-role-controls">
-                <label><span>Sets</span><input type="number" min="1" max="19" step="1" value="${prescription.backoffSets?.count || Math.max(1, prescription.workingSets.target - 1)}" data-override-field="backoff-sets" aria-label="Back-off set count" /></label>
-                <label class="role-rep-range"><span>Reps</span><span class="range-inputs"><input type="number" min="1" max="50" step="1" value="${backoffRange.min}" data-override-field="backoff-rep-min" aria-label="Minimum back-off repetitions" /><span aria-hidden="true">–</span><input type="number" min="1" max="50" step="1" value="${backoffRange.max}" data-override-field="backoff-rep-max" aria-label="Maximum back-off repetitions" /></span></label>
-              </div>
-            </fieldset>
-          </div>` : `
-          <div class="standard-role-grid" data-workload-structure="${roleStructure}">
-            <fieldset class="workload-role-card ${roleStructure === "multiple_top_sets" ? "role-top" : "role-straight"}">
-              <legend><span>${roleStructure === "multiple_top_sets" ? "Top sets" : "Straight sets"}</span><small>${roleStructure === "multiple_top_sets" ? "Repeated primary efforts" : "Same target each set"}</small></legend>
-              <div class="workload-role-controls">
-                <label><span>Sets</span><input type="number" min="1" max="${roleStructure === "multiple_top_sets" ? 10 : 12}" step="1" value="${roleStructure === "multiple_top_sets" ? prescription.topSet?.count || prescription.workingSets.target : prescription.workingSets.target}" data-override-field="${roleStructure === "multiple_top_sets" ? "top-sets" : "sets"}" /></label>
-                <label class="role-rep-range"><span>Reps</span><span class="range-inputs"><input type="number" min="1" max="50" step="1" value="${roleStructure === "multiple_top_sets" ? topRange.min : prescription.repRange.min}" data-override-field="${roleStructure === "multiple_top_sets" ? "top-rep-min" : "rep-min"}" aria-label="Minimum standard repetitions" /><span aria-hidden="true">–</span><input type="number" min="1" max="50" step="1" value="${roleStructure === "multiple_top_sets" ? topRange.max : prescription.repRange.max}" data-override-field="${roleStructure === "multiple_top_sets" ? "top-rep-max" : "rep-max"}" aria-label="Maximum standard repetitions" /></span></label>
-              </div>
-            </fieldset>
-          </div>`;
+        const exerciseSets = setsForExercise(exercise.id);
+        const warmups = exerciseSets.filter((set) => setTypeSemantics(set).isWarmup);
+        const working = exerciseSets.filter((set) => isWorkingSet(set, "progression"));
+        const workingCount = Math.max(1, working.length || Number(prescription?.workingSets?.target || exercise.prescription?.sets || 1));
+        const repMins = working.map((set) => Number(set.targetRepMin || set.targetReps || set.reps || 0)).filter((value) => value > 0);
+        const repMaxes = working.map((set) => Number(set.targetRepMax || set.targetReps || set.reps || 0)).filter((value) => value > 0);
+        const repMin = repMins.length ? Math.min(...repMins) : Number(prescription?.repRange?.min || exercise.prescription?.repLow || exercise.prescription?.reps || 8);
+        const repMax = repMaxes.length ? Math.max(...repMaxes) : Number(prescription?.repRange?.max || exercise.prescription?.repHigh || exercise.prescription?.reps || repMin);
+        const workingRests = working.map((set) => Number(set.targetRestSeconds || 0)).filter((value) => value > 0);
+        const workingRest = workingRests[0] || Number(exercise.restSeconds || prescription?.restSeconds?.target || data.settings.defaultRestSeconds || 90);
+        const warmupRest = Number(warmups.find((set) => Number(set.targetRestSeconds) > 0)?.targetRestSeconds || Math.min(workingRest, 90));
+        const signatures = working.map((set) => [
+          normalizeSetTypeCode(set.setType, set.isWarmup),
+          Number(set.targetRepMin || set.targetReps || set.reps || repMin),
+          Number(set.targetRepMax || set.targetReps || set.reps || repMax),
+          Number(set.targetRestSeconds || workingRest)
+        ].join("|"));
+        const individualized = new Set(signatures).size > 1 || working.some((set) => normalizeSetTypeCode(set.setType, set.isWarmup) !== "straight");
+        const currentSets = working.length || workingCount;
+        const setsAbove = standard ? currentSets > Number(standard.workingSets.max) : false;
+        const repsAbove = standard ? repMax > Number(standard.repRange.max) : false;
+        const setsBelow = standard ? currentSets < Number(standard.workingSets.min) : false;
+        const repsBelow = standard ? repMin < Number(standard.repRange.min) : false;
+        const comparison = !standard ? "Fully editable" : setsAbove || repsAbove ? "Above standard" : setsBelow || repsBelow ? "Below standard" : "Within standard";
+        const savedLabel = savedStandard
+          ? `${templateExercise.sets} sets · ${templateExercise.repMin || templateExercise.reps}-${templateExercise.repMax || templateExercise.reps} reps`
+          : templateExercise ? "Template uses generated targets" : "Today only";
+        const roleOptions = (selected) => [
+          ["straight", "Standard set"],
+          ["top", "Top set"],
+          ["backoff", "Back-off set"],
+          ["drop", "Drop set"]
+        ].map(([value, label]) => `<option value="${value}" ${selected === value ? "selected" : ""}>${label}</option>`).join("");
+        const setRow = (scope, index, set, fallback) => {
+          const type = scope === "warmup" ? "warmup" : normalizeSetTypeCode(set?.setType, set?.isWarmup);
+          const rowRepMin = Number(set?.targetRepMin || set?.targetReps || set?.reps || fallback.repMin);
+          const rowRepMax = Number(set?.targetRepMax || set?.targetReps || set?.reps || fallback.repMax);
+          const rest = Number(set?.targetRestSeconds || fallback.rest);
+          return `
+            <div class="individual-set-row" data-set-default-row data-set-scope="${scope}" data-set-index="${index}" ${scope === "working" && index >= workingCount ? "hidden" : ""}>
+              <span class="individual-set-index">${scope === "warmup" ? `WU${index + 1}` : index + 1}</span>
+              ${scope === "warmup" ? '<span class="individual-set-type">Warm-up</span>' : `<label><span>Type</span><select data-set-default-field="type" aria-label="Working set ${index + 1} type">${roleOptions(type || "straight")}</select></label>`}
+              <label><span>Reps</span><span class="range-inputs"><input type="number" min="1" max="50" value="${rowRepMin}" data-set-default-field="rep-min" aria-label="${scope === "warmup" ? "Warm-up" : "Working"} set ${index + 1} minimum reps" /><span>–</span><input type="number" min="1" max="50" value="${rowRepMax}" data-set-default-field="rep-max" aria-label="${scope === "warmup" ? "Warm-up" : "Working"} set ${index + 1} maximum reps" /></span></label>
+              <label><span>Rest</span><span class="unit-input"><input type="number" min="15" max="900" step="15" value="${rest}" data-set-default-field="rest" aria-label="${scope === "warmup" ? "Warm-up" : "Working"} set ${index + 1} rest seconds" /><small>sec</small></span></label>
+            </div>`;
+        };
+        const warmupRows = warmups.map((set, index) => setRow("warmup", index, set, { repMin, repMax, rest: warmupRest })).join("");
+        const workingRows = Array.from({ length: 20 }, (_, index) => setRow("working", index, working[index], { repMin, repMax, rest: workingRest })).join("");
         return `
           <section class="standard-workload-card" data-standard-workload-form="${exercise.id}" data-override-form="${exercise.id}">
-            <div class="standard-workload-heading"><div><span>Exercise guidelines</span><strong>Change unfinished work for today</strong></div><span class="standard-workload-badge ${comparison.toLowerCase().replaceAll(" ", "-")}">${comparison}</span></div>
-            <div class="guideline-levels" aria-label="Research, today, and saved exercise guidelines">
-              <div><span>Research standard</span><strong>${standard.workingSets.min}-${standard.workingSets.max} sets · ${standard.repRange.min}-${standard.repRange.max} reps</strong></div>
-              <div><span>Today’s guideline</span><strong>${prescription.workingSets.target} sets · ${prescription.repRange.min}-${prescription.repRange.max} reps</strong></div>
-              <div><span>Saved default</span><strong>${escapeHtml(savedLabel)}</strong></div>
+            <div class="standard-workload-heading"><div><span>Exercise defaults</span><strong>Sets, reps & rest</strong></div><span class="standard-workload-badge ${comparison.toLowerCase().replaceAll(" ", "-")}">${comparison}</span></div>
+            <div class="guideline-context-row" aria-label="Exercise default context">
+              <div><span>Research</span><strong>${standard ? `${standard.workingSets.min}-${standard.workingSets.max} sets · ${standard.repRange.min}-${standard.repRange.max} reps` : "No exercise-specific range"}</strong></div>
+              <div><span>Saved</span><strong>${escapeHtml(savedLabel)}</strong></div>
             </div>
-            <p class="standard-comparison-note">${differences.length ? `Today is ${differences.join(" and ")}. This is advisory; completed reps remain valid outcome evidence.` : "Today is inside the versioned goal-aware standard. Completed reps may still exceed the target and remain valid outcome evidence."}</p>
-            <p>${roleStructure === "top_set_backoff" ? "Tune each role separately. Top-set and back-off targets remain distinct when unfinished rows are rebuilt." : "Choose today’s set count and repetition range. Unfinished rows keep one shared target."}</p>
-            ${roleEditor}
-            <input type="hidden" value="Today’s exercise guideline" data-override-field="reason" />
-            ${templateExercise ? '<label class="standard-workload-save"><input type="checkbox" data-standard-save-template /> Also save as the default when this template starts again</label>' : '<p class="standard-workload-note">This workout has no source template, so changes apply to today only.</p>'}
-            <button class="secondary-action standard-workload-apply" type="button" data-action="apply-standard-workload" data-exercise-id="${exercise.id}">Apply today’s guideline</button>
+            <div class="default-target-grid">
+              <label><span>Working sets</span><input type="number" min="1" max="20" step="1" value="${workingCount}" data-default-field="sets" data-action="default-working-set-count" aria-label="Default working set count" /></label>
+              <label><span>Rep range</span><span class="range-inputs"><input type="number" min="1" max="50" value="${repMin}" data-default-field="rep-min" aria-label="Default minimum repetitions" /><span>–</span><input type="number" min="1" max="50" value="${repMax}" data-default-field="rep-max" aria-label="Default maximum repetitions" /></span></label>
+              <label><span>Working rest</span><span class="unit-input"><input type="number" min="15" max="900" step="15" value="${workingRest}" data-default-field="working-rest" aria-label="Default working-set rest seconds" /><small>sec</small></span></label>
+              <label><span>Warm-up rest</span><span class="unit-input"><input type="number" min="15" max="900" step="15" value="${warmupRest}" data-default-field="warmup-rest" aria-label="Default warm-up rest seconds" /><small>sec</small></span></label>
+            </div>
+            <details class="individual-set-disclosure" data-individual-set-disclosure ${individualized ? "open" : ""}>
+              <summary><span><strong>Individual set targets</strong><small>Drop sets, different reps or different rest</small></span><b>${individualized ? "Customized" : "Optional"}</b></summary>
+              <input type="hidden" value="${individualized ? "true" : "false"}" data-individual-set-enabled />
+              <div class="individual-set-editor">
+                <p>Opening this section enables separate targets. Set type can mark top, back-off, or drop sets; rest starts after that specific set.</p>
+                ${warmupRows ? `<div class="individual-set-group"><h4>Warm-up sets</h4>${warmupRows}</div>` : ""}
+                <div class="individual-set-group"><h4>Working sets</h4>${workingRows}</div>
+                <button class="text-action" type="button" data-action="use-shared-set-targets">Use one target for every set</button>
+              </div>
+            </details>
+            ${templateExercise ? '<label class="standard-workload-save"><input type="checkbox" data-standard-save-template /> Use these as the default next time this template starts</label>' : '<p class="standard-workload-note">These defaults stay with today’s exercise and carry into a template if you save this workout.</p>'}
+            <button class="primary-action standard-workload-apply" type="button" data-action="apply-standard-workload" data-exercise-id="${exercise.id}">Apply exercise defaults</button>
           </section>
         `;
       }
@@ -1290,6 +1306,8 @@
           : "";
         const firstWorkSet = exerciseSets.find((set) => isWorkingSet(set, "score")) || exerciseSets[0];
         const restSeconds = Number(exercise.restSeconds || data.settings.defaultRestSeconds || 90);
+        const setRestValues = Array.from(new Set(exerciseSets.map((set) => Number(set.targetRestSeconds || restSeconds)).filter((value) => value > 0)));
+        const restSummary = setRestValues.length > 1 ? "Per-set rest" : `${setRestValues[0] || restSeconds}s rest`;
         const previousSets = exerciseSets.some((set) => isWorkingSet(set, "progression")) ? measurePerformance("lift:previousPerformance", () => getMostRecentWorkoutSets(exercise.name, { excludeSessionId: exercise.sessionId, resistanceType: resistanceTypeFor(exercise) }), { exerciseId: exercise.id }) : [];
         const warmupIds = exerciseSets.filter((set) => setTypeSemantics(set).isWarmup).map((set) => set.id);
         const workingSetIds = exerciseSets.filter((set) => isWorkingSet(set, "progression")).map((set) => set.id);
@@ -1323,10 +1341,8 @@
               <button type="button" data-action="duplicate-set" data-exercise-id="${exercise.id}" aria-label="Copy the last set for ${escapeHtml(exercise.name)}"${workoutSafetyDisabledAttributes(duplicateSetSafety)}><span aria-hidden="true">&#10697;</span> Copy set</button>
             </div>
             <details class="exercise-options">
-              <summary>Exercise options <span>${restSeconds}s rest</span></summary>
+              <summary>Exercise options <span>${restSummary}</span></summary>
               <div class="disclosure-body">
-                <label class="rest-control">Rest after this lift<input type="number" min="15" step="15" value="${restSeconds}" data-action="exercise-rest-seconds" data-exercise-id="${exercise.id}" /> sec</label>
-                <p class="settings-note">${escapeHtml(exercise.prescription?.restReason || (restSeconds + " seconds is saved for this exercise. Adjust it here when equipment or session intent changes."))}</p>
                 ${optionsHtml}
                 ${activeSession()?.templateId ? '<button type="button" data-action="update-template-exercise" data-exercise-id="' + exercise.id + '">Update template from today</button><p class="settings-note">Edits stay in today’s workout unless you choose this button. Completed results—not the original target—drive future recommendations.</p>' : ""}
                 <textarea data-action="exercise-notes" data-exercise-id="${exercise.id}" placeholder="Exercise notes" aria-label="Exercise notes">${escapeHtml(exercise.notes)}</textarea>
@@ -1343,7 +1359,7 @@
       }
 
       function renderSet(set, exercise, context = {}) {
-        const restSeconds = Number(context.restSeconds || exercise.restSeconds || data.settings.defaultRestSeconds || 90);
+        const restSeconds = Number(set.targetRestSeconds || context.restSeconds || exercise.restSeconds || data.settings.defaultRestSeconds || 90);
         const completionSafety = guardWorkoutMutation("toggle-set", { exercise, set, substituteValidation: context.substituteValidation }, false);
         const skipSafety = guardWorkoutMutation("toggle-skip-set", { exercise, set, substituteValidation: context.substituteValidation }, false);
         const timerSafety = guardWorkoutMutation("start-timer", { exercise, set, substituteValidation: context.substituteValidation }, false);

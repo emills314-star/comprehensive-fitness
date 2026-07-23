@@ -598,7 +598,7 @@
               targetRpe: rpeSets.length ? Math.round(rpeSets.reduce((sum, set) => sum + Number(set.rpe || 0), 0) / rpeSets.length * 2) / 2 : existing.targetRpe || "",
               restSeconds: exercise.restSeconds || existing.restSeconds || 90,
               setTypes: templateSetTypesFromHistory(workingSets, exercise.restSeconds || existing.restSeconds || 90),
-              warmups: exerciseSets.filter((set) => setTypeSemantics(set).isWarmup).map((set) => ({ reps: set.reps, weight: set.weight, weightUnit: set.weightUnit, resistanceType: set.resistanceType, addedLoad: set.addedLoad, assistanceLoad: set.assistanceLoad, rpe: set.rpe }))
+              warmups: exerciseSets.filter((set) => setTypeSemantics(set).isWarmup).map((set) => ({ reps: set.reps, targetRepMin: set.targetRepMin, targetRepMax: set.targetRepMax, targetRestSeconds: set.targetRestSeconds, weight: set.weight, weightUnit: set.weightUnit, resistanceType: set.resistanceType, addedLoad: set.addedLoad, assistanceLoad: set.assistanceLoad, rpe: set.rpe }))
             };
           });
           report.templatesReseeded += 1;
@@ -3859,6 +3859,8 @@
             const sets = setsForExercise(exercise.id);
             const workingSets = sets.filter((set) => isWorkingSet(set, "progression"));
             const representative = workingSets[0];
+            const repMins = workingSets.map((set) => Number(set.targetRepMin || set.targetReps || set.reps || 0)).filter((value) => value > 0);
+            const repMaxes = workingSets.map((set) => Number(set.targetRepMax || set.targetReps || set.reps || 0)).filter((value) => value > 0);
             return {
               id: id(),
               name: exercise.name || "Exercise",
@@ -3870,11 +3872,14 @@
               isBodyweight: isBodyweightResistance(resistanceTypeFor(exercise)),
               sets: Math.max(workingSets.length, 1),
               reps: representative?.reps || 8,
+              repMin: repMins.length ? Math.min(...repMins) : representative?.reps || 8,
+              repMax: repMaxes.length ? Math.max(...repMaxes) : representative?.reps || 8,
               targetRpe: representative?.rpe || "",
               increment: progressionProfileForExercise(exercise.name).increment,
               restSeconds: exercise.restSeconds || recommendedRestSeconds(exercise.name, { reps: representative?.reps || 8 }),
               setTypes: templateSetTypesFromHistory(workingSets, exercise.restSeconds),
-              warmups: sets.filter((set) => setTypeSemantics(set).isWarmup).map((set) => ({ reps: set.reps, weight: set.weight, weightUnit: set.weightUnit, resistanceType: set.resistanceType, isBodyweight: set.isBodyweight, addedLoad: set.addedLoad, assistanceLoad: set.assistanceLoad, rpe: set.rpe }))
+              standardWorkloadOverride: true,
+              warmups: sets.filter((set) => setTypeSemantics(set).isWarmup).map((set) => ({ reps: set.reps, targetRepMin: set.targetRepMin, targetRepMax: set.targetRepMax, targetRestSeconds: set.targetRestSeconds, weight: set.weight, weightUnit: set.weightUnit, resistanceType: set.resistanceType, isBodyweight: set.isBodyweight, addedLoad: set.addedLoad, assistanceLoad: set.assistanceLoad, rpe: set.rpe }))
             };
           });
         return { id: id(), name: (session.title || "Workout") + " Template", notes: "", exercises, createdAt: isoNow(), updatedAt: isoNow() };

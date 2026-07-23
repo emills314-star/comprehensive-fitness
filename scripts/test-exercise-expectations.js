@@ -109,6 +109,19 @@ assert.equal(backoffExpectation.repMin, 8, "Back-off scoring must use its own re
 assert.equal(backoffExpectation.rpeMax, 8, "Back-off scoring must use its own RPE target");
 assert.equal(engine.setProgramExpectation(session, exercise, sets[0], 0).countsTowardScore, false, "Warm-up execution must never enter compliance scoring");
 
+const individualized = {
+  ...heavy,
+  setTypes: [
+    { id: "individual-1", type: "straight", setCount: 1, repMin: 5, repMax: 6, rpeMin: 7, rpeMax: 8, restSeconds: 90, countsTowardScore: true, countsTowardVolume: true },
+    { id: "individual-2", type: "straight", setCount: 1, repMin: 8, repMax: 10, rpeMin: 7, rpeMax: 8, restSeconds: 150, countsTowardScore: true, countsTowardVolume: true }
+  ]
+};
+const individualizedExercise = { ...exercise, appliedTargetContext: individualized };
+const individualizedSet = { ...sets[1], setType: "straight", sourceTemplateSetId: "individual-2", targetRepMin: 8, targetRepMax: 10, targetRestSeconds: 135 };
+const individualizedExpectation = engine.setProgramExpectation(session, individualizedExercise, individualizedSet, 1);
+assert.equal(individualizedExpectation.repMin, 8, "Per-set target identity must survive duplicate role types");
+assert.equal(individualizedExpectation.restSeconds, 135, "The set-specific rest target must take precedence over the role default");
+
 const actuals = engine.exerciseExpectationActuals("bench-press", { included: [{ weekStart: "2026-01-05" }] });
 assert.equal(actuals.length, 1, "One saved heavy context should produce one comparison block");
 assert.equal(actuals[0].plannedSets, 3, "Warm-ups must not inflate expected working sets");

@@ -220,7 +220,13 @@
         if (action === "apply-prescription-override") applyPrescriptionOverride(target.dataset.exerciseId, target.closest("[data-override-form]"));
         if (action === "apply-standard-workload") {
           const form = target.closest("[data-standard-workload-form]");
-          applyPrescriptionOverride(target.dataset.exerciseId, form, { standardWorkload: true, saveTemplateStandard: form?.querySelector("[data-standard-save-template]")?.checked === true });
+          applyExerciseDefaultTargets(target.dataset.exerciseId, form, { saveTemplateStandard: form?.querySelector("[data-standard-save-template]")?.checked === true });
+        }
+        if (action === "use-shared-set-targets") {
+          const disclosure = target.closest("[data-individual-set-disclosure]");
+          const enabled = disclosure?.querySelector("[data-individual-set-enabled]");
+          if (enabled) enabled.value = "false";
+          if (disclosure) disclosure.open = false;
         }
         if (action === "complete-custom-exercise-setup") completeCustomExerciseSetup(target.dataset.exerciseId, target.closest("[data-custom-exercise-form]"));
         if (action === "save-template") saveActiveSessionAsTemplate();
@@ -385,6 +391,13 @@
         if (action === "confirm-clear-data") await permanentlyClearLocalData();
       });
 
+      root.addEventListener("toggle", (event) => {
+        const disclosure = event.target.closest?.("[data-individual-set-disclosure]");
+        if (!disclosure || !disclosure.open) return;
+        const enabled = disclosure.querySelector("[data-individual-set-enabled]");
+        if (enabled) enabled.value = "true";
+      }, true);
+
       root.addEventListener("change", async (event) => {
         const target = event.target.closest("[data-action]");
         if (!target) return;
@@ -449,6 +462,11 @@
         if (action === "set-duration") patchSetValue(target.dataset.setId, "durationSeconds", target.value);
         if (action === "set-distance") patchSetValue(target.dataset.setId, "distance", target.value);
         if (action === "exercise-rest-seconds") patchExercise(target.dataset.exerciseId, { restSeconds: Number(target.value) });
+        if (action === "default-working-set-count") {
+          const form = target.closest("[data-standard-workload-form]");
+          const count = Math.max(1, Math.min(20, Number(target.value || 1)));
+          form?.querySelectorAll('[data-set-default-row][data-set-scope="working"]').forEach((row, index) => { row.hidden = index >= count; });
+        }
         if (action === "template-exercise-resistance") { const resistanceType = resistanceTypeValues.includes(target.value) ? target.value : "external"; patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { resistanceType, isBodyweight: isBodyweightResistance(resistanceType) }); }
         if (action === "hypertrophy-window") {
           hypertrophyWindowOffset = Math.max(0, Number(target.value || 0));
@@ -734,6 +752,11 @@
         if (action === "set-duration") patchSetValue(target.dataset.setId, "durationSeconds", target.value, false);
         if (action === "set-distance") patchSetValue(target.dataset.setId, "distance", target.value, false);
         if (action === "exercise-rest-seconds") patchExercise(target.dataset.exerciseId, { restSeconds: Number(target.value) }, false);
+        if (action === "default-working-set-count") {
+          const form = target.closest("[data-standard-workload-form]");
+          const count = Math.max(1, Math.min(20, Number(target.value || 1)));
+          form?.querySelectorAll('[data-set-default-row][data-set-scope="working"]').forEach((row, index) => { row.hidden = index >= count; });
+        }
         if (action === "template-name") patchTemplate(target.dataset.templateId, { name: target.value }, false);
         if (action === "template-exercise-name") patchTemplateExerciseName(target.dataset.templateId, target.dataset.templateExerciseId, target.value, false);
         if (action === "recovery-sleep-hours") patchRecovery({ sleepHours: target.value }, false);
