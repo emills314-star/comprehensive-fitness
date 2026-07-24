@@ -22,17 +22,17 @@
   - `npx playwright test tests/ui/app-integration-accessibility.spec.js --project=desktop --grep "every exercise exposes shared defaults"` — passed as part of the first focused run.
   - `npx playwright test tests/ui/app-integration-accessibility.spec.js --project=mobile --grep "every exercise exposes shared defaults"` — passed on isolated rerun after the first combined run’s evidence-loader poll timed out on mobile.
   - `npm run cap:sync` — passed for Android, iOS, and web; CocoaPods/Xcode cleanup remained unavailable on Windows as expected.
-- Branch and commit: `main`; pending publication.
-- Deployment inspected: pending.
-- Hosted URL/deployment identifier: pending.
-- Browser viewport/device sizes: local automated Chromium at iPhone 13 Mini/375 px and desktop 1280 × 900; hosted sizes pending.
-- Exact hosted flow tested: pending publication.
+- Branch and commit: `main` at implementation commit `8d5655d`, pushed to `origin/main`.
+- Deployment inspected: Vercel production alias served service-worker cache v63 and the achievement artwork allowlist after the implementation push.
+- Hosted URL/deployment identifier: `https://comprehensive-fitness.vercel.app/?verify=8d5655d`; direct cache inspection at `https://comprehensive-fitness.vercel.app/sw.js?verify=8d5655d`.
+- Browser viewport/device sizes: local and hosted automated Chromium at iPhone 13 Mini/375 px and desktop 1280 × 900.
+- Exact hosted flow tested: Production ran the focused active-workout flow through Exercise options → Individual set targets and measured the value/arrow geometry; a synthetic submitted workout then rendered every earned badge and verified its images, count, viewport containment, and console state.
 - Expected result: Individual-set arrow cells render at 36 px, numeric values retain at least 52 px, ranges stack below 360 px, no page-level horizontal overflow appears, and earned outcomes render the matching eight-image achievement strip without broken assets.
-- Actual result: Local mobile/desktop browser tests passed those geometry, overflow, badge-count, and image-load contracts.
-- Console/runtime errors: none in passing focused browser runs.
+- Actual result: Local focused browser checks passed, and the corresponding production matrix passed 4/4 across mobile and desktop.
+- Console/runtime errors: none in passing local or hosted focused browser runs.
 - Screenshots or visual evidence: user-provided cramped-state reference; final raster artwork in `resources/achievements/`; focused browser traces/screenshots are retained only on failure by the test configuration.
-- Remaining issues: Hosted deployment and mobile/desktop verification remain required before this log can be marked Complete. Exact underlying PR taxonomy remains **NEEDS REVIEW** in `docs/UI_UX.md`; badge derivation intentionally reuses the implemented PR engine.
+- Remaining issues: Exact underlying PR taxonomy remains **NEEDS REVIEW** in `docs/UI_UX.md`; badge derivation intentionally reuses the implemented PR engine.
 
 ## Final status
 
-**Implemented locally** — code, artwork, tests, docs, PWA synchronization, and native synchronization are complete; deployment and hosted browser verification remain.
+**Complete** — implementation, artwork, tests, documentation, privacy review, PWA/native synchronization, publication, and hosted mobile/desktop verification all passed.
