@@ -139,7 +139,20 @@ test("workout completion renders the full earned achievement strip from verified
       highlights: [{ title: "Performance moved forward", detail: "A new benchmark was established." }],
       improvements: [],
       categoryScores: [{ key: "execution", label: "Program execution", earned: 25, possible: 25, reason: "Every target was met." }],
-      exerciseResults: [],
+      exerciseResults: [{
+        exerciseId: currentExercise.id,
+        name: currentExercise.name,
+        resistanceType: "external",
+        isDeload: false,
+        isReadinessAdjusted: true,
+        plannedSets: 1,
+        completedSets: 1,
+        rangeCompliance: 1,
+        rpeCompliance: 1,
+        bestSet: { text: "1,000 lb × 10", reps: 10, load: 1000, rpe: 8 },
+        priorBestSet: { text: "80 lb × 10", reps: 10, load: 80, rpe: 8 },
+        comparison: { status: "progress", label: "Load progression", change: "+920 lb while remaining in range." }
+      }],
       confidence: "high",
       metrics: {
         plannedSets: 1,
@@ -159,6 +172,7 @@ test("workout completion renders the full earned achievement strip from verified
       keys: badges.map((badge) => badge.key),
       currentVolume: workoutSessionVolumeLoad(currentSession),
       priorVolume: workoutSessionVolumeLoad(priorSession),
+      priorExerciseVolume: priorExerciseVolumeHighWater(currentSession, currentExercise),
       historyIds: activeHistorySessions({ throughDate: currentSession.date }).map((session) => session.id)
     };
   });
@@ -179,6 +193,26 @@ test("workout completion renders the full earned achievement strip from verified
   const badges = strip.locator(".workout-achievement");
   await expect(badges).toHaveCount(8);
   await expect(strip.locator("img")).toHaveCount(8);
+  const interactiveBadges = strip.locator('[data-action="toggle-achievement-detail"]');
+  await expect(interactiveBadges).toHaveCount(7);
+  const planComplete = strip.locator(".workout-achievement.static", { hasText: "Plan Complete" });
+  await expect(planComplete).toHaveCount(1);
+  await expect(planComplete).not.toContainText("View exercise details");
+
+  const e1rmBadge = strip.locator('details.workout-achievement:has([data-achievement-key="e1rm_peak"])');
+  await e1rmBadge.locator("summary").click();
+  await expect(e1rmBadge).toHaveAttribute("open", "");
+  await expect(e1rmBadge.locator(".workout-achievement-detail")).toContainText("Barbell Bench Press");
+  await expect(e1rmBadge.locator(".workout-achievement-detail")).toContainText("245.0 e1RM");
+  await expect(e1rmBadge.locator(".workout-achievement-detail")).toContainText("Previous high-water mark");
+  await expect(e1rmBadge.locator(".workout-achievement-detail")).toContainText("183.7 e1RM");
+
+  const volumeBadge = strip.locator('details.workout-achievement:has([data-achievement-key="volume_record"])');
+  await volumeBadge.locator("summary").focus();
+  await volumeBadge.locator("summary").press("Enter");
+  await expect(volumeBadge).toHaveAttribute("open", "");
+  await expect(volumeBadge.locator(".workout-achievement-detail")).toContainText("10,000 lb");
+  await expect(volumeBadge.locator(".workout-achievement-detail")).toContainText(`${Math.round(achievementResult.priorExerciseVolume).toLocaleString()} lb`);
   const layout = await strip.evaluate((element) => ({
     ...(() => {
       const parseRgb = (value) => (value.match(/\d+(?:\.\d+)?/g) || []).slice(0, 3).map(Number);
@@ -200,18 +234,24 @@ test("workout completion renders the full earned achievement strip from verified
       const heading = element.querySelector(".workout-achievements-heading h3");
       const kicker = element.querySelector(".workout-achievements-heading .section-kicker");
       const earned = element.querySelector(".workout-achievements-heading > strong");
+      const evidence = element.querySelector("details[open] .workout-achievement-evidence");
+      const evidenceBackground = getComputedStyle(evidence).backgroundColor;
       return {
-        titleContrast: contrast(getComputedStyle(card.querySelector("strong")).color, cardBackground),
-        descriptionContrast: contrast(getComputedStyle(card.querySelector("span")).color, cardBackground),
+        titleContrast: contrast(getComputedStyle(card.querySelector(".workout-achievement-title")).color, cardBackground),
+        descriptionContrast: contrast(getComputedStyle(card.querySelector(".workout-achievement-description")).color, cardBackground),
         headingContrast: contrast(getComputedStyle(heading).color, sectionBackground),
         kickerContrast: contrast(getComputedStyle(kicker).color, sectionBackground),
-        earnedContrast: contrast(getComputedStyle(earned).color, getComputedStyle(earned).backgroundColor)
+        earnedContrast: contrast(getComputedStyle(earned).color, getComputedStyle(earned).backgroundColor),
+        evidenceNameContrast: contrast(getComputedStyle(evidence.querySelector("header strong")).color, evidenceBackground),
+        evidenceLabelContrast: contrast(getComputedStyle(evidence.querySelector("div span")).color, evidenceBackground),
+        evidenceValueContrast: contrast(getComputedStyle(evidence.querySelector("div strong")).color, evidenceBackground)
       };
     })(),
     stripWidth: element.getBoundingClientRect().width,
     pageWidth: document.documentElement.clientWidth,
     pageScrollWidth: document.documentElement.scrollWidth,
-    missingImages: [...element.querySelectorAll("img")].filter((image) => !image.complete || image.naturalWidth === 0).length
+    missingImages: [...element.querySelectorAll("img")].filter((image) => !image.complete || image.naturalWidth === 0).length,
+    openDetailWidth: element.querySelector('details[open]')?.getBoundingClientRect().width || 0
   }));
   expect(layout.missingImages).toBe(0);
   expect(layout.titleContrast).toBeGreaterThanOrEqual(7);
@@ -219,8 +259,12 @@ test("workout completion renders the full earned achievement strip from verified
   expect(layout.headingContrast).toBeGreaterThanOrEqual(7);
   expect(layout.kickerContrast).toBeGreaterThanOrEqual(4.5);
   expect(layout.earnedContrast).toBeGreaterThanOrEqual(7);
+  expect(layout.evidenceNameContrast).toBeGreaterThanOrEqual(7);
+  expect(layout.evidenceLabelContrast).toBeGreaterThanOrEqual(4.5);
+  expect(layout.evidenceValueContrast).toBeGreaterThanOrEqual(7);
   expect(layout.stripWidth).toBeLessThanOrEqual(layout.pageWidth);
   expect(layout.pageScrollWidth).toBeLessThanOrEqual(layout.pageWidth);
+  expect(layout.openDetailWidth).toBeGreaterThan(layout.stripWidth * 0.8);
   expect(browserErrors).toEqual([]);
 });
 

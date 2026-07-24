@@ -141,7 +141,8 @@ assert.match(html, /highlightedExercises\.has/, "Related PR and progression labe
 assert.doesNotMatch(html.match(/function renderCompletedWorkoutSummary[\s\S]*?\n      }/)[0], /internalScore\}\s*\/\s*100|internalScore\s*\+\s*['"] \/ 100/, "The overall workout result must not expose its internal numerical score");
 assert.match(html, /const workoutAchievementAssets = Object\.freeze\(\{[\s\S]*personal_record:[\s\S]*e1rm_peak:[\s\S]*volume_record:[\s\S]*plan_complete:[\s\S]*target_precision:[\s\S]*smart_training:[\s\S]*progression:[\s\S]*controlled_execution:/, "The completion summary must retain the full positive-outcome badge artwork map");
 assert.match(html, /<section class="workout-achievements"[\s\S]*Earned this workout[\s\S]*Achievement badges[\s\S]*workout-achievement-grid/, "Earned badges must render as a dedicated completion-summary strip");
-assert.match(html, /\.workout-achievements \{[^}]*background-color: #f3f7fc;[^}]*border: 2px solid #2d6ca9;[\s\S]*\.workout-achievement strong \{[^}]*color: #123d6b;[\s\S]*\.workout-achievement span \{[^}]*color: #435a70;/, "Achievement cards must use explicit high-contrast colors instead of a fallible theme token");
+assert.match(html, /\.workout-achievements \{[^}]*background-color: #f3f7fc;[^}]*border: 2px solid #2d6ca9;[\s\S]*\.workout-achievement-title \{[^}]*color: #123d6b;[\s\S]*\.workout-achievement-description \{[^}]*color: #435a70;/, "Achievement cards must use explicit high-contrast colors instead of a fallible theme token");
+assert.match(html, /function renderWorkoutAchievement[\s\S]*achievement\.key === "plan_complete"[\s\S]*Previous high-water mark[\s\S]*<details class="workout-achievement interactive"/, "Every earned badge except Plan Complete must disclose exercise evidence and a prior high-water mark");
 
 const achievementData = {
   settings: { weightUnit: "lb" },
@@ -153,8 +154,8 @@ const achievementData = {
     ] }
   ],
   exercises: [
-    { id: "prior-exercise", sessionId: "prior", executionQualityAssessment: "controlled" },
-    { id: "current-exercise", sessionId: "current", executionQualityAssessment: "controlled" }
+    { id: "prior-exercise", sessionId: "prior", name: "Bench Press", resistanceType: "external", executionQualityAssessment: "controlled" },
+    { id: "current-exercise", sessionId: "current", name: "Bench Press", resistanceType: "external", executionQualityAssessment: "controlled" }
   ],
   sets: [
     { exerciseId: "prior-exercise", completed: true, reps: 10, load: 80 },
@@ -163,8 +164,13 @@ const achievementData = {
 };
 const achievementFactory = new Function(
   "data", "workoutAchievementAssets", "canonicalExerciseId", "activeHistorySessions", "sessionComesBefore",
-  "isWorkingSet", "resistanceTypeFor", "resistanceLoad", "setsForExercise",
-  `${extractFunction(html, "workoutSessionVolumeLoad")}
+  "isWorkingSet", "resistanceTypeFor", "resistanceLoad", "setsForExercise", "exerciseMatches",
+  "estimatedOneRepMax", "formatLoadNumber", "formatSetPerformance", "bestWorkoutSet",
+  `${extractFunction(html, "workoutExerciseVolumeLoad")}
+   ${extractFunction(html, "workoutSessionVolumeLoad")}
+   ${extractFunction(html, "priorExerciseVolumeHighWater")}
+   ${extractFunction(html, "priorWorkoutPrSets")}
+   ${extractFunction(html, "workoutPrPreviousHighWater")}
    ${extractFunction(html, "workoutAchievementBadges")}
    return workoutAchievementBadges;`
 );
@@ -178,11 +184,28 @@ const achievementBadges = achievementFactory(
   () => achievementData.sessions,
   (candidate, session) => candidate.date < session.date,
   () => true,
-  () => "external",
+  (exercise) => exercise?.resistanceType || "external",
   (set) => set.load,
-  (exerciseId) => achievementData.sets.filter((set) => set.exerciseId === exerciseId)
+  (exerciseId) => achievementData.sets.filter((set) => set.exerciseId === exerciseId),
+  (left, right) => String(left).toLowerCase() === String(right).toLowerCase(),
+  (set) => set.load * (1 + set.reps / 30),
+  (value) => String(value),
+  (set) => set.load + " lb × " + set.reps,
+  (sets) => [...sets].sort((left, right) => right.load * (1 + right.reps / 30) - left.load * (1 + left.reps / 30))[0] || null
 );
-const earnedKeys = achievementBadges(achievementData.sessions[1], {
+const earnedBadges = achievementBadges(achievementData.sessions[1], {
+  exerciseResults: [{
+    exerciseId: "current-exercise",
+    name: "Bench Press",
+    completedSets: 1,
+    rangeCompliance: 1,
+    rpeCompliance: 1,
+    isReadinessAdjusted: true,
+    isDeload: false,
+    bestSet: { text: "100 lb × 10" },
+    priorBestSet: { text: "80 lb × 10" },
+    comparison: { status: "progress", label: "Load progression" }
+  }],
   metrics: {
     progressedExercises: 1,
     plannedSets: 1,
@@ -193,11 +216,16 @@ const earnedKeys = achievementBadges(achievementData.sessions[1], {
     rpeCompliance: 1
   },
   readinessContext: { adjustments: 1, adherence: 1 }
-}).map((badge) => badge.key);
+});
+const earnedKeys = earnedBadges.map((badge) => badge.key);
 assert.deepEqual(
   earnedKeys,
   ["e1rm_peak", "personal_record", "volume_record", "progression", "plan_complete", "target_precision", "controlled_execution", "smart_training"],
   "A benchmark workout should earn each distinct positive-outcome badge exactly once"
 );
+earnedBadges.filter((badge) => badge.key !== "plan_complete").forEach((badge) => {
+  assert.ok(badge.items.length > 0, `${badge.key} must identify at least one contributing exercise`);
+  assert.ok(badge.items.every((item) => item.current && item.previous), `${badge.key} must expose current and prior high-water evidence`);
+});
 
 console.log("Workout grade and achievement badge tests passed (thresholds, intent, persistence, records, precision, and recovery-aware outcomes).");
