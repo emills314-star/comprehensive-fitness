@@ -23,16 +23,16 @@
   - `npm run verify:pwa` — passed; service-worker cache v65 and 40 public/native assets verified.
   - `npm test` — passed 50/50 selected public harnesses.
   - `npm run cap:sync` — passed for Android, iOS, and web; CocoaPods/Xcode cleanup remained unavailable on Windows as expected.
-- Branch and commit: `main`; pending publication.
-- Deployment inspected: pending.
-- Hosted URL/deployment identifier: pending.
-- Browser viewport/device sizes: local automated Chromium at iPhone 13 Mini/375 px and desktop 1280 × 900; hosted sizes pending.
-- Exact hosted flow tested: pending publication.
+- Branch and implementation commit: `main` at `d636a1a`; pushed to `origin/main`.
+- Deployment inspected: Vercel production alias served service-worker cache v65 after the implementation push.
+- Hosted URL/deployment identifier: `https://comprehensive-fitness.vercel.app/?verify=d636a1a`.
+- Browser viewport/device sizes: automated Chromium at iPhone 13 Mini/375 px and desktop 1280 × 900, locally and against production.
+- Exact hosted flow tested: loaded the deployed app, seeded a completed workout that earns all eight categories, confirmed seven exercise-specific disclosure controls and one static Plan Complete card, opened e1RM by pointer and Volume Record by keyboard, verified current/prior evidence, checked full-width expansion, image loading, contrast floors, horizontal overflow, and console/runtime errors.
 - Expected result: seven badges show an explicit exercise-detail cue, expand by pointer or keyboard, remain within the achievement strip, and show current/prior evidence; Plan Complete remains non-interactive.
-- Actual result: local mobile/desktop focused tests passed.
-- Console/runtime errors: none in the passing focused run.
-- Remaining issues: hosted deployment and production mobile/desktop verification remain required.
+- Actual result: production mobile and desktop tests passed 2/2; every requested drill-down behavior and presentation check passed.
+- Console/runtime errors: none in the passing local or hosted focused runs.
+- Remaining issues: none for the requested badge drill-down behavior.
 
 ## Final status
 
-**Implemented locally** — implementation, focused tests, PWA synchronization, and documentation are complete; broader validation and hosted verification remain.
+**Complete** — implementation, tests, documentation, PWA/native synchronization, production deployment, and hosted mobile/desktop verification are complete.
