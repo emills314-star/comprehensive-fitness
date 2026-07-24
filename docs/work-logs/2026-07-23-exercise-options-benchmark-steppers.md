@@ -31,4 +31,4 @@
 - `npm.cmd run research:validate`
 - `npm.cmd run check:workflows`
 - `npm.cmd run check:privacy`
-- Deployment and hosted verification are recorded after publication.
+- GitHub commit `84b63e6` produced Vercel production deployment `dpl_3NHRZEMdjVGx9oHwMyDtQXw9Koz5` in `READY` state. Hosted asset checks confirmed the production alias serves cache generation `v62`, the Program benchmark and informational label, the numeric-stepper markup, the exact RPE-minimum field, and the delegated stepper interaction.
