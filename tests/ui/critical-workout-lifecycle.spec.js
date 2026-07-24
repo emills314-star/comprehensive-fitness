@@ -81,6 +81,116 @@ async function openProgressView(page, view) {
   await expect(page.locator(`[data-action="set-progress-view"][data-progress-view="${view}"]`)).toHaveAttribute("aria-current", "page");
 }
 
+test("workout completion renders the full earned achievement strip from verified outcomes", async ({ page }) => {
+  test.setTimeout(90_000);
+  const browserErrors = collectBrowserErrors(page);
+  await installCleanSyntheticContext(page);
+  const achievementResult = await page.evaluate(() => {
+    const priorSession = {
+      id: "achievement-prior-session",
+      title: "Prior Benchmark",
+      date: "2026-07-12",
+      submitted: true,
+      submittedAt: "2026-07-12T18:00:00.000Z",
+      workoutState: "completed"
+    };
+    const currentSession = {
+      id: "achievement-current-session",
+      title: "Benchmark Session",
+      date: "2026-07-16",
+      submitted: true,
+      submittedAt: "2026-07-16T18:00:00.000Z",
+      workoutState: "completed",
+      prs: [
+        { exercise: "Barbell Bench Press", type: "Best estimated performance", value: "245.0 e1RM" },
+        { exercise: "Barbell Bench Press", type: "Heaviest load", value: "205 lb × 5" }
+      ]
+    };
+    const priorExercise = {
+      id: "achievement-prior-exercise",
+      sessionId: priorSession.id,
+      name: "Barbell Bench Press",
+      resistanceType: "external",
+      executionQualityAssessment: "controlled"
+    };
+    const currentExercise = {
+      id: "achievement-current-exercise",
+      sessionId: currentSession.id,
+      name: "Barbell Bench Press",
+      resistanceType: "external",
+      executionQualityAssessment: "controlled"
+    };
+    data.sessions.push(priorSession, currentSession);
+    data.exercises.push(priorExercise, currentExercise);
+    data.sets.push(
+      { id: "achievement-prior-set", exerciseId: priorExercise.id, setNumber: 1, setType: "straight", completed: true, reps: 10, weight: 80, rpe: 8 },
+      { id: "achievement-current-set", exerciseId: currentExercise.id, setNumber: 1, setType: "straight", completed: true, reps: 10, weight: 1000, rpe: 8, targetRpe: 8, targetRepMin: 8, targetRepMax: 10 }
+    );
+    entityStructureRevision += 1;
+    entityIndexCache = null;
+    invalidateCompletedAnalysis();
+    currentSession.workoutAnalysis = {
+      version: 1,
+      grade: "A+",
+      internalScore: 98,
+      intent: "Readiness-adjusted training",
+      interpretation: "Exceptional session",
+      rationale: "The adjusted plan was completed precisely",
+      highlights: [{ title: "Performance moved forward", detail: "A new benchmark was established." }],
+      improvements: [],
+      categoryScores: [{ key: "execution", label: "Program execution", earned: 25, possible: 25, reason: "Every target was met." }],
+      exerciseResults: [],
+      confidence: "high",
+      metrics: {
+        plannedSets: 1,
+        completedSets: 1,
+        completionRatio: 1,
+        averageRangeCompliance: 1,
+        rpeLoggedRatio: 1,
+        rpeCompliance: 1,
+        progressedExercises: 1
+      },
+      readinessContext: { adjustments: 1, adherence: 1 },
+      deloadContext: { isDeload: false }
+    };
+    const badges = workoutAchievementBadges(currentSession, currentSession.workoutAnalysis);
+    document.querySelector("main.app-main").innerHTML = renderCompletedWorkoutSummary(currentSession);
+    return {
+      keys: badges.map((badge) => badge.key),
+      currentVolume: workoutSessionVolumeLoad(currentSession),
+      priorVolume: workoutSessionVolumeLoad(priorSession),
+      historyIds: activeHistorySessions({ throughDate: currentSession.date }).map((session) => session.id)
+    };
+  });
+
+  expect(achievementResult.keys, JSON.stringify(achievementResult)).toEqual([
+    "e1rm_peak",
+    "personal_record",
+    "volume_record",
+    "progression",
+    "plan_complete",
+    "target_precision",
+    "controlled_execution",
+    "smart_training"
+  ]);
+  const strip = page.locator(".workout-achievements");
+  await expect(strip).toBeVisible();
+  await expect(strip).toContainText("8 earned");
+  const badges = strip.locator(".workout-achievement");
+  await expect(badges).toHaveCount(8);
+  await expect(strip.locator("img")).toHaveCount(8);
+  const layout = await strip.evaluate((element) => ({
+    stripWidth: element.getBoundingClientRect().width,
+    pageWidth: document.documentElement.clientWidth,
+    pageScrollWidth: document.documentElement.scrollWidth,
+    missingImages: [...element.querySelectorAll("img")].filter((image) => !image.complete || image.naturalWidth === 0).length
+  }));
+  expect(layout.missingImages).toBe(0);
+  expect(layout.stripWidth).toBeLessThanOrEqual(layout.pageWidth);
+  expect(layout.pageScrollWidth).toBeLessThanOrEqual(layout.pageWidth);
+  expect(browserErrors).toEqual([]);
+});
+
 test("critical workout lifecycle remains coherent through submission, progress, reload, and unit conversion", async ({ page }) => {
   test.setTimeout(180_000);
   const browserErrors = collectBrowserErrors(page);

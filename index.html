@@ -620,6 +620,18 @@
       .workout-grade-copy p { color: var(--muted); font-size: .72rem; line-height: 1.5; margin: 0; }
       .workout-grade-mark { color: var(--grade-color); font-size: 3.45rem; font-weight: 950; letter-spacing: 0; line-height: .86; min-width: 72px; text-align: right; }
       .workout-grade-intent { color: var(--muted); font-size: .65rem; font-weight: 800; }
+      .workout-achievements { background: linear-gradient(145deg, color-mix(in srgb, var(--navy) 96%, black), color-mix(in srgb, var(--current) 35%, var(--navy))); border: 1px solid color-mix(in srgb, var(--current) 72%, white); border-radius: 14px; color: white; display: grid; gap: 12px; overflow: hidden; padding: 13px; position: relative; }
+      .workout-achievements::after { background: radial-gradient(circle, color-mix(in srgb, var(--amber) 35%, transparent), transparent 68%); content: ""; height: 130px; pointer-events: none; position: absolute; right: -50px; top: -65px; width: 130px; }
+      .workout-achievements-heading { align-items: end; display: flex; gap: 12px; justify-content: space-between; position: relative; z-index: 1; }
+      .workout-achievements-heading > div { display: grid; gap: 2px; }
+      .workout-achievements-heading h3 { color: white; font-size: .9rem; margin: 0; }
+      .workout-achievements-heading .section-kicker { color: color-mix(in srgb, white 72%, var(--current)); }
+      .workout-achievements-heading > strong { color: #f4c84c; font-size: .66rem; white-space: nowrap; }
+      .workout-achievement-grid { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); position: relative; z-index: 1; }
+      .workout-achievement { align-content: start; background: color-mix(in srgb, white 8%, transparent); border: 1px solid color-mix(in srgb, white 18%, transparent); border-radius: 11px; display: grid; gap: 5px; justify-items: center; min-width: 0; padding: 10px 8px; text-align: center; }
+      .workout-achievement img { aspect-ratio: 1; border-radius: 50%; box-shadow: 0 7px 18px rgba(0, 0, 0, .3), 0 0 0 2px color-mix(in srgb, #f4c84c 38%, transparent); height: 72px; object-fit: cover; width: 72px; }
+      .workout-achievement strong { color: white; font-size: .7rem; line-height: 1.25; }
+      .workout-achievement span { color: color-mix(in srgb, white 78%, var(--current)); font-size: .6rem; line-height: 1.35; }
       .workout-summary-section { border-top: 1px solid var(--line); display: grid; gap: 9px; padding-top: 13px; }
       .workout-summary-section > h3 { font-size: .82rem; margin: 0; }
       .workout-category-list, .workout-highlight-list, .workout-improvement-list, .workout-exercise-list { display: grid; gap: 0; }
@@ -2015,6 +2027,10 @@
       .individual-set-row[hidden] { display: none !important; }
       .individual-set-fields { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); min-width: 0; }
       .individual-set-fields > label:first-child, .individual-set-fields > .individual-set-type { grid-column: 1 / -1; }
+      .individual-set-row .range-steppers { gap: 10px; }
+      .individual-set-row .numeric-stepper { gap: 3px; grid-template-columns: 36px minmax(52px, 1fr) 36px; }
+      .individual-set-row .numeric-stepper button { border-radius: 7px; font-size: .56rem; min-height: 40px; min-width: 36px; }
+      .individual-set-row .numeric-stepper input { font-variant-numeric: tabular-nums; font-weight: 850; min-height: 40px; min-width: 52px; padding: 3px 2px; }
       .individual-set-row select { background: var(--surface-strong); border-color: transparent; font-size: .62rem; min-height: 44px; min-width: 0; text-align: left; width: 100%; }
       .individual-set-index { align-items: center; background: var(--navy); border-radius: 999px; color: white; display: flex; font-size: .58rem; font-weight: 900; height: 25px; justify-content: center; margin-bottom: 7px; width: 25px; }
       .individual-set-type { color: var(--muted); font-size: .62rem; font-weight: 800; padding-top: 5px; }
@@ -2130,6 +2146,10 @@
       @media (max-width: 600px) {
         .default-target-grid, .individual-set-fields { grid-template-columns: minmax(0, 1fr); }
         .individual-set-fields > label:first-child, .individual-set-fields > .individual-set-type { grid-column: auto; }
+        .workout-achievement-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      }
+      @media (max-width: 360px) {
+        .individual-set-row .range-steppers { grid-template-columns: minmax(0, 1fr); }
       }
       @media (max-width: 380px) {
         .brand-title small { max-width: 95px; }

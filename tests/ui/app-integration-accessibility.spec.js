@@ -1445,6 +1445,17 @@ test("every exercise exposes shared defaults plus per-set reps, RPE, types, and 
   await expect(editor.locator('[data-set-default-field="type"]')).toHaveCount(20);
   const warmupRow = editor.locator('[data-set-default-row][data-set-scope="warmup"]');
   await expect(warmupRow).toHaveCount(1);
+  const compactStepperGeometry = await warmupRow.locator("[data-numeric-stepper]").first().evaluate((stepper) => {
+    const input = stepper.querySelector("input");
+    const buttons = [...stepper.querySelectorAll("button")];
+    return {
+      inputWidth: input?.getBoundingClientRect().width || 0,
+      buttonWidths: buttons.map((button) => button.getBoundingClientRect().width)
+    };
+  });
+  expect(compactStepperGeometry.inputWidth).toBeGreaterThanOrEqual(52);
+  expect(compactStepperGeometry.buttonWidths).toHaveLength(2);
+  for (const width of compactStepperGeometry.buttonWidths) expect(width).toBeLessThanOrEqual(36.5);
   await warmupRow.locator('[data-set-default-field="target-rpe-min"]').fill("3.5");
   await warmupRow.locator('[data-set-default-field="target-rpe-max"]').fill("4.5");
   await warmupRow.locator('[data-set-default-field="rest"]').fill("60");

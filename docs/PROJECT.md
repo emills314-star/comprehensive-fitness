@@ -3,8 +3,8 @@
 ## Metadata
 
 - **Purpose:** Product vision, verified scope, and boundary between current and intended behavior
-- **Last verified:** 2026-07-23
-- **Repository:** `main` working tree (exercise-default RPE and disclosure cue)
+- **Last verified:** 2026-07-24
+- **Repository:** `main` working tree (mobile individual-set controls and workout achievements)
 - **Verification status:** VERIFIED from application code, tests, schemas, configuration, and existing docs; open conflicts are labeled
 - **Related:** [Architecture](ARCHITECTURE.md), [Decision engine](DECISION_ENGINE.md), [UI/UX](UI_UX.md), [Roadmap](ROADMAP.md), [documentation inventory](DOCUMENTATION_INVENTORY.md)
 
@@ -51,7 +51,7 @@ Product principles evidenced in the repository:
 | Workout templates and quick start | **IMPLEMENTED** | Create/use templates, template-specific set roles, rest targets, readiness preview, and active-workout locking in `index.html` (`renderTemplates`, `openTemplateStart`, `startTemplate`). |
 | Active workout logging | **IMPLEMENTED** | Exercises, warm-ups/working sets, load/reps/RPE, completion/skipping, timers, notes, travel state, draft restoration, and cancel flow. |
 | Progression feedback and editable exercise defaults | **IMPLEMENTED** | Actual repetitions, logged RPE, and added sets remain outcome data without rewriting the recommendation. Every active exercise—catalog, Strong-derived, historical, or new custom—has a compact default editor for working-set count, rep range, target RPE range, working rest, and warm-up rest, independent of whether research guidance exists. Every numeric target uses a bounded down/value/up stepper whose center remains directly editable. A nested individual-set editor can assign Top, Back-off, Drop, or Standard type plus a separate rep range, target RPE range, and rest timer to each set. Applying changes audits and rebuilds unfinished rows only; saving to a source template is explicit. Broad guidance is a read-only benchmark strip rather than field-like controls, keeping research standards and custom-exercise recommendation limits separate from user-owned execution defaults. |
-| Submission, history, summaries, and editing | **IMPLEMENTED** | Confirmed submission, PR calculation, grade/summary, submitted-only history, and explicit history-edit save/cancel (`submitWorkout`, `renderSubmitConfirmation`, `renderCompletedWorkoutSummary`). |
+| Submission, history, summaries, and editing | **IMPLEMENTED** | Confirmed submission, PR calculation, grade/summary, submitted-only history, and explicit history-edit save/cancel (`submitWorkout`, `renderSubmitConfirmation`, `renderCompletedWorkoutSummary`). The completion summary derives an earned benchmark strip from verified session outcomes: estimated-performance peaks, other PRs, session external-load volume records, comparable progression, full plan completion, rep/RPE precision, controlled execution, and successful readiness-adjusted or deload execution. |
 | Progress and volume analytics | **IMPLEMENTED** | Interactive exercise charts, session detail, weekly weighted muscle volume, fatigue flags, hypertrophy scoring, and recent/all history. |
 | Recovery readiness | **IMPLEMENTED** | User-entered sleep, HRV, resting heart rate, soreness, illness, nutrition/protein status, personal baseline, readiness band, and conservative adjustment guidance. |
 | Prescription and mesocycle engine | **IMPLEMENTED** | User-defined muscle scope with explicit omission confirmation, versioned goal-aware progression and confirmation rules, traceable candidate pools, evidence-derived weekly set/frequency slots, portfolio-first compatibility construction, guided user-directed planning, split-aware session allocation, blocking validation, progression/hold/deload/rotation decisions, confidence, snapshots, exact session-row prepopulation, and audited overrides in `prescription-engine.js` and the application adapters. |
@@ -68,7 +68,7 @@ Product principles evidenced in the repository:
 1. Configure unit, goals, training status, readiness baseline, and notification preferences.
 2. Create or select a template; review readiness and proposed adjustments; explicitly start.
 3. Review the read-only program benchmark, change exercise defaults with bounded steppers or direct entry, and optionally open individual set targets for drop sets or differing rep ranges, target RPE ranges, and rest; then log warm-up and working sets, complete/skip sets, and use the exact completed set’s rest timer.
-4. Request submission, review confirmation, submit, then view grade, lifts, PRs, and recommendations.
+4. Request submission, review confirmation, submit, then view the grade, earned achievement badges, lifts, PRs, and recommendations.
 5. Reopen submitted sessions through Progress → History; inspect Progress → Lifts charts and Progress → Overview volume/fatigue detail.
 6. Optionally import Strong CSV history and a locally built private evidence package.
 7. Optionally install the PWA and enable backend-assisted rest notifications.

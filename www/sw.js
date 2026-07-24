@@ -1,4 +1,4 @@
-const CACHE_NAME = "comprehensive-fitness-pwa-v62";
+const CACHE_NAME = "comprehensive-fitness-pwa-v63";
 const CACHE_PREFIX = "comprehensive-fitness-pwa-";
 const APP_SHELL = Object.freeze([
   "/",
@@ -30,7 +30,15 @@ const APP_SHELL = Object.freeze([
   "/resources/icon-180.png",
   "/resources/icon-192.png",
   "/resources/icon-512.png",
-  "/resources/icon-maskable-512.png"
+  "/resources/icon-maskable-512.png",
+  "/resources/achievements/badge-personal-record.png",
+  "/resources/achievements/badge-e1rm-peak.png",
+  "/resources/achievements/badge-volume-record.png",
+  "/resources/achievements/badge-plan-complete.png",
+  "/resources/achievements/badge-target-precision.png",
+  "/resources/achievements/badge-smart-training.png",
+  "/resources/achievements/badge-progression.png",
+  "/resources/achievements/badge-controlled-execution.png"
 ]);
 const PUBLIC_CACHE_PATHS = new Set(APP_SHELL);
 const PUBLIC_NAVIGATION_PATHS = new Set(["/", "/index.html", "/privacy.html", "/support.html"]);

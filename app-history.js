@@ -469,10 +469,84 @@
           + '</div></details>';
       }
 
+      const workoutAchievementAssets = Object.freeze({
+        personal_record: "/resources/achievements/badge-personal-record.png",
+        e1rm_peak: "/resources/achievements/badge-e1rm-peak.png",
+        volume_record: "/resources/achievements/badge-volume-record.png",
+        plan_complete: "/resources/achievements/badge-plan-complete.png",
+        target_precision: "/resources/achievements/badge-target-precision.png",
+        smart_training: "/resources/achievements/badge-smart-training.png",
+        progression: "/resources/achievements/badge-progression.png",
+        controlled_execution: "/resources/achievements/badge-controlled-execution.png"
+      });
+
+      function workoutSessionVolumeLoad(session) {
+        const exerciseIds = new Set(data.exercises.filter((exercise) => exercise.sessionId === session.id).map((exercise) => exercise.id));
+        return data.sets.reduce((total, set) => {
+          if (!exerciseIds.has(set.exerciseId) || !set.completed || set.skipped || !isWorkingSet(set, "volume")) return total;
+          const exercise = data.exercises.find((item) => item.id === set.exerciseId);
+          const resistanceType = resistanceTypeFor(exercise, set);
+          if (resistanceType !== "external") return total;
+          return total + Math.max(0, resistanceLoad(set, resistanceType)) * Math.max(0, Number(set.reps || 0));
+        }, 0);
+      }
+
+      function workoutAchievementBadges(session, analysis) {
+        if (!analysis) return [];
+        const achievements = [];
+        const add = (key, title, detail) => achievements.push({ key, title, detail, asset: workoutAchievementAssets[key] });
+        const prs = Array.isArray(session.prs) ? session.prs : Array.isArray(analysis.prs) ? analysis.prs : [];
+        const e1rmPrs = prs.filter((pr) => /estimated/i.test(pr.type));
+        const otherPrs = prs.filter((pr) => !/estimated/i.test(pr.type));
+        const uniquePrExercises = new Set(otherPrs.map((pr) => canonicalExerciseId(pr.exercise))).size;
+        if (e1rmPrs.length) add("e1rm_peak", "New e1RM Peak", e1rmPrs.length === 1 ? e1rmPrs[0].exercise + " reached " + e1rmPrs[0].value + "." : e1rmPrs.length + " exercises reached a new estimated peak.");
+        if (otherPrs.length) add("personal_record", "Personal Record", otherPrs.length + " new record" + (otherPrs.length === 1 ? "" : "s") + " across " + uniquePrExercises + " exercise" + (uniquePrExercises === 1 ? "" : "s") + ".");
+
+        const currentVolume = workoutSessionVolumeLoad(session);
+        const priorVolume = Math.max(0, ...activeHistorySessions({ throughDate: session.date })
+          .filter((candidate) => candidate.id !== session.id && sessionComesBefore(candidate, session))
+          .map(workoutSessionVolumeLoad));
+        if (currentVolume > 0 && priorVolume > 0 && currentVolume > priorVolume) {
+          const gain = Math.round(((currentVolume - priorVolume) / priorVolume) * 100);
+          add("volume_record", "Volume Record", Math.round(currentVolume).toLocaleString() + " " + data.settings.weightUnit + " lifted, " + gain + "% above the prior session high.");
+        }
+
+        if (Number(analysis.metrics?.progressedExercises || 0) > 0) {
+          const count = Number(analysis.metrics.progressedExercises);
+          add("progression", "Forward Progress", count + " exercise" + (count === 1 ? "" : "s") + " improved against prior comparable work.");
+        }
+        if (Number(analysis.metrics?.plannedSets || 0) > 0 && Number(analysis.metrics?.completionRatio || 0) === 1) {
+          add("plan_complete", "Plan Complete", "Every prescribed working set was completed.");
+        }
+        if (Number(analysis.metrics?.completedSets || 0) > 0
+          && Number(analysis.metrics?.averageRangeCompliance || 0) >= 0.98
+          && Number(analysis.metrics?.rpeLoggedRatio || 0) >= 0.99
+          && Number(analysis.metrics?.rpeCompliance || 0) >= 0.95) {
+          add("target_precision", "Dialed In", "Every completed working set stayed in range and every logged RPE stayed on target.");
+        }
+
+        const assessedExercises = data.exercises.filter((exercise) =>
+          exercise.sessionId === session.id
+          && setsForExercise(exercise.id).some((set) => set.completed && !set.skipped && isWorkingSet(set, "progression"))
+        );
+        if (assessedExercises.length && assessedExercises.every((exercise) => exercise.executionQualityAssessment === "controlled")) {
+          add("controlled_execution", "Controlled Execution", "Every trained exercise was marked controlled.");
+        }
+        const readinessAdherence = Number(analysis.readinessContext?.adherence || 0);
+        if ((Number(analysis.readinessContext?.adjustments || 0) > 0 || analysis.deloadContext?.isDeload) && readinessAdherence >= 0.9) {
+          add("smart_training", analysis.deloadContext?.isDeload ? "Recovery Protected" : "Smart Adjustment", analysis.deloadContext?.isDeload ? "The deload plan was completed with its recovery intent intact." : "Today’s readiness-adjusted targets were followed successfully.");
+        }
+        return achievements;
+      }
+
       function renderCompletedWorkoutSummary(session, options = {}) {
         const analysis = workoutAnalysisForSession(session);
         if (!analysis) return '<section class="completed-summary score-critical"><div class="section-kicker">Workout logged</div><div class="summary-muted">Not enough completed or prescribed working-set data was available to assign a defensible workout grade.</div>' + (options.history ? '' : '<button type="button" data-action="close-completed-summary">Return to Lift Home</button>') + '</section>';
         const tone = workoutGradeScoreTone(analysis.internalScore);
+        const achievements = workoutAchievementBadges(session, analysis);
+        const achievementSection = achievements.length
+          ? '<section class="workout-achievements" aria-labelledby="workout-achievements-title"><div class="workout-achievements-heading"><div><span class="section-kicker">Earned this workout</span><h3 id="workout-achievements-title">Achievement badges</h3></div><strong>' + achievements.length + ' earned</strong></div><div class="workout-achievement-grid" role="list">' + achievements.map((achievement) => '<article class="workout-achievement" role="listitem"><img src="' + achievement.asset + '" alt="" width="256" height="256" loading="lazy" decoding="async" /><strong>' + escapeHtml(achievement.title) + '</strong><span>' + escapeHtml(achievement.detail) + '</span></article>').join('') + '</div></section>'
+          : '';
         const highlights = analysis.highlights.length
           ? analysis.highlights.map((item) => '<div class="workout-highlight"><strong>' + escapeHtml(item.title) + '</strong><span>' + escapeHtml(item.detail) + '</span></div>').join('')
           : '<div class="summary-muted">No distinct progression event was identified, but repeatable plan execution still contributes to the grade.</div>';
@@ -481,6 +555,7 @@
           : '<div class="summary-muted">No major execution issues were identified. Continue the current progression plan.</div>';
         return '<section class="completed-summary ' + tone + '" aria-label="Post-workout grade and analysis">'
           + '<div class="workout-grade-hero"><div class="workout-grade-copy"><div class="section-kicker">' + (options.history ? 'Saved workout review' : 'Workout logged') + '</div><h2>Workout Grade: ' + escapeHtml(analysis.grade) + '</h2><span class="workout-grade-intent">' + escapeHtml(analysis.intent) + '</span><p>' + escapeHtml(analysis.interpretation) + '. ' + escapeHtml(analysis.rationale) + '</p></div><div class="workout-grade-mark" role="img" aria-label="Workout grade ' + escapeHtml(hypertrophyGradeLabel(analysis.grade)) + '">' + escapeHtml(analysis.grade) + '</div></div>'
+          + achievementSection
           + '<section class="workout-summary-section"><h3>Category breakdown</h3><div class="workout-category-list">' + analysis.categoryScores.map((category) => '<div class="workout-category"><strong>' + escapeHtml(category.label) + '</strong><b>' + category.earned + ' / ' + category.possible + '</b><span>' + escapeHtml(category.reason) + '</span></div>').join('') + '</div></section>'
           + '<section class="workout-summary-section"><h3>Workout Highlights</h3><div class="workout-highlight-list">' + highlights + '</div></section>'
           + '<section class="workout-summary-section"><h3>Retrospective Session Review</h3><p class="settings-note">These observations explain execution and data quality. The unified prescription cards remain the sole source for the next training decision.</p><div class="workout-improvement-list">' + improvements + '</div></section>'
