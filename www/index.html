@@ -620,18 +620,18 @@
       .workout-grade-copy p { color: var(--muted); font-size: .72rem; line-height: 1.5; margin: 0; }
       .workout-grade-mark { color: var(--grade-color); font-size: 3.45rem; font-weight: 950; letter-spacing: 0; line-height: .86; min-width: 72px; text-align: right; }
       .workout-grade-intent { color: var(--muted); font-size: .65rem; font-weight: 800; }
-      .workout-achievements { background: linear-gradient(145deg, color-mix(in srgb, var(--navy) 96%, black), color-mix(in srgb, var(--current) 35%, var(--navy))); border: 1px solid color-mix(in srgb, var(--current) 72%, white); border-radius: 14px; color: white; display: grid; gap: 12px; overflow: hidden; padding: 13px; position: relative; }
-      .workout-achievements::after { background: radial-gradient(circle, color-mix(in srgb, var(--amber) 35%, transparent), transparent 68%); content: ""; height: 130px; pointer-events: none; position: absolute; right: -50px; top: -65px; width: 130px; }
-      .workout-achievements-heading { align-items: end; display: flex; gap: 12px; justify-content: space-between; position: relative; z-index: 1; }
+      .workout-achievements { background-color: #f3f7fc; background-image: linear-gradient(145deg, #edf4fc, #ffffff 64%, #fff8e9); border: 2px solid #2d6ca9; border-radius: 14px; color: #153b64; display: grid; gap: 14px; overflow: hidden; padding: 15px; position: relative; }
+      .workout-achievements::after { background: radial-gradient(circle, rgba(229, 171, 47, .24), transparent 68%); content: ""; height: 150px; pointer-events: none; position: absolute; right: -48px; top: -72px; width: 150px; }
+      .workout-achievements-heading { align-items: center; border-bottom: 1px solid #c9d9e9; display: flex; gap: 12px; justify-content: space-between; padding-bottom: 10px; position: relative; z-index: 1; }
       .workout-achievements-heading > div { display: grid; gap: 2px; }
-      .workout-achievements-heading h3 { color: white; font-size: .9rem; margin: 0; }
-      .workout-achievements-heading .section-kicker { color: color-mix(in srgb, white 72%, var(--current)); }
-      .workout-achievements-heading > strong { color: #f4c84c; font-size: .66rem; white-space: nowrap; }
-      .workout-achievement-grid { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); position: relative; z-index: 1; }
-      .workout-achievement { align-content: start; background: color-mix(in srgb, white 8%, transparent); border: 1px solid color-mix(in srgb, white 18%, transparent); border-radius: 11px; display: grid; gap: 5px; justify-items: center; min-width: 0; padding: 10px 8px; text-align: center; }
-      .workout-achievement img { aspect-ratio: 1; border-radius: 50%; box-shadow: 0 7px 18px rgba(0, 0, 0, .3), 0 0 0 2px color-mix(in srgb, #f4c84c 38%, transparent); height: 72px; object-fit: cover; width: 72px; }
-      .workout-achievement strong { color: white; font-size: .7rem; line-height: 1.25; }
-      .workout-achievement span { color: color-mix(in srgb, white 78%, var(--current)); font-size: .6rem; line-height: 1.35; }
+      .workout-achievements-heading h3 { color: #102f50; font-size: .95rem; margin: 0; }
+      .workout-achievements-heading .section-kicker { color: #245b91; }
+      .workout-achievements-heading > strong { background: #143f6b; border: 1px solid #0e3155; border-radius: 999px; color: #fff1b8; font-size: .66rem; padding: 6px 9px; white-space: nowrap; }
+      .workout-achievement-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); position: relative; z-index: 1; }
+      .workout-achievement { align-content: start; background: #ffffff; border: 1px solid #d3dfec; border-radius: 11px; box-shadow: 0 6px 16px rgba(19, 53, 88, .09); display: grid; gap: 7px; justify-items: center; min-width: 0; padding: 12px 9px 13px; text-align: center; }
+      .workout-achievement img { aspect-ratio: 1; border-radius: 50%; box-shadow: 0 7px 18px rgba(14, 43, 74, .22), 0 0 0 2px rgba(203, 148, 31, .42); height: 84px; object-fit: cover; width: 84px; }
+      .workout-achievement strong { color: #123d6b; font-size: .76rem; line-height: 1.3; margin-top: 1px; }
+      .workout-achievement span { color: #435a70; font-size: .66rem; line-height: 1.48; text-wrap: balance; }
       .workout-summary-section { border-top: 1px solid var(--line); display: grid; gap: 9px; padding-top: 13px; }
       .workout-summary-section > h3 { font-size: .82rem; margin: 0; }
       .workout-category-list, .workout-highlight-list, .workout-improvement-list, .workout-exercise-list { display: grid; gap: 0; }

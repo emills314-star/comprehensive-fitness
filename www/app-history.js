@@ -499,8 +499,8 @@
         const e1rmPrs = prs.filter((pr) => /estimated/i.test(pr.type));
         const otherPrs = prs.filter((pr) => !/estimated/i.test(pr.type));
         const uniquePrExercises = new Set(otherPrs.map((pr) => canonicalExerciseId(pr.exercise))).size;
-        if (e1rmPrs.length) add("e1rm_peak", "New e1RM Peak", e1rmPrs.length === 1 ? e1rmPrs[0].exercise + " reached " + e1rmPrs[0].value + "." : e1rmPrs.length + " exercises reached a new estimated peak.");
-        if (otherPrs.length) add("personal_record", "Personal Record", otherPrs.length + " new record" + (otherPrs.length === 1 ? "" : "s") + " across " + uniquePrExercises + " exercise" + (uniquePrExercises === 1 ? "" : "s") + ".");
+        if (e1rmPrs.length) add("e1rm_peak", "New e1RM Peak", e1rmPrs.length === 1 ? e1rmPrs[0].exercise + " reached " + e1rmPrs[0].value + "." : "New estimated strength peaks on " + e1rmPrs.length + " exercises.");
+        if (otherPrs.length) add("personal_record", "Personal Record", otherPrs.length + " record" + (otherPrs.length === 1 ? "" : "s") + " earned across " + uniquePrExercises + " exercise" + (uniquePrExercises === 1 ? "" : "s") + ".");
 
         const currentVolume = workoutSessionVolumeLoad(session);
         const priorVolume = Math.max(0, ...activeHistorySessions({ throughDate: session.date })
@@ -508,21 +508,21 @@
           .map(workoutSessionVolumeLoad));
         if (currentVolume > 0 && priorVolume > 0 && currentVolume > priorVolume) {
           const gain = Math.round(((currentVolume - priorVolume) / priorVolume) * 100);
-          add("volume_record", "Volume Record", Math.round(currentVolume).toLocaleString() + " " + data.settings.weightUnit + " lifted, " + gain + "% above the prior session high.");
+          add("volume_record", "Volume Record", Math.round(currentVolume).toLocaleString() + " " + data.settings.weightUnit + " total load × reps—" + gain + "% above the previous session high.");
         }
 
         if (Number(analysis.metrics?.progressedExercises || 0) > 0) {
           const count = Number(analysis.metrics.progressedExercises);
-          add("progression", "Forward Progress", count + " exercise" + (count === 1 ? "" : "s") + " improved against prior comparable work.");
+          add("progression", "Forward Progress", count + " exercise" + (count === 1 ? "" : "s") + " outperformed the previous comparable workout.");
         }
         if (Number(analysis.metrics?.plannedSets || 0) > 0 && Number(analysis.metrics?.completionRatio || 0) === 1) {
-          add("plan_complete", "Plan Complete", "Every prescribed working set was completed.");
+          add("plan_complete", "Plan Complete", "Completed every prescribed working set.");
         }
         if (Number(analysis.metrics?.completedSets || 0) > 0
           && Number(analysis.metrics?.averageRangeCompliance || 0) >= 0.98
           && Number(analysis.metrics?.rpeLoggedRatio || 0) >= 0.99
           && Number(analysis.metrics?.rpeCompliance || 0) >= 0.95) {
-          add("target_precision", "Dialed In", "Every completed working set stayed in range and every logged RPE stayed on target.");
+          add("target_precision", "Dialed In", "All completed sets met both rep-range and logged RPE targets.");
         }
 
         const assessedExercises = data.exercises.filter((exercise) =>
@@ -530,11 +530,11 @@
           && setsForExercise(exercise.id).some((set) => set.completed && !set.skipped && isWorkingSet(set, "progression"))
         );
         if (assessedExercises.length && assessedExercises.every((exercise) => exercise.executionQualityAssessment === "controlled")) {
-          add("controlled_execution", "Controlled Execution", "Every trained exercise was marked controlled.");
+          add("controlled_execution", "Controlled Execution", "Controlled execution was confirmed for every trained exercise.");
         }
         const readinessAdherence = Number(analysis.readinessContext?.adherence || 0);
         if ((Number(analysis.readinessContext?.adjustments || 0) > 0 || analysis.deloadContext?.isDeload) && readinessAdherence >= 0.9) {
-          add("smart_training", analysis.deloadContext?.isDeload ? "Recovery Protected" : "Smart Adjustment", analysis.deloadContext?.isDeload ? "The deload plan was completed with its recovery intent intact." : "Today’s readiness-adjusted targets were followed successfully.");
+          add("smart_training", analysis.deloadContext?.isDeload ? "Recovery Protected" : "Smart Adjustment", analysis.deloadContext?.isDeload ? "Completed the deload while preserving its recovery intent." : "Followed today’s adjusted targets with at least 90% adherence.");
         }
         return achievements;
       }

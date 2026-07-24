@@ -141,6 +141,7 @@ assert.match(html, /highlightedExercises\.has/, "Related PR and progression labe
 assert.doesNotMatch(html.match(/function renderCompletedWorkoutSummary[\s\S]*?\n      }/)[0], /internalScore\}\s*\/\s*100|internalScore\s*\+\s*['"] \/ 100/, "The overall workout result must not expose its internal numerical score");
 assert.match(html, /const workoutAchievementAssets = Object\.freeze\(\{[\s\S]*personal_record:[\s\S]*e1rm_peak:[\s\S]*volume_record:[\s\S]*plan_complete:[\s\S]*target_precision:[\s\S]*smart_training:[\s\S]*progression:[\s\S]*controlled_execution:/, "The completion summary must retain the full positive-outcome badge artwork map");
 assert.match(html, /<section class="workout-achievements"[\s\S]*Earned this workout[\s\S]*Achievement badges[\s\S]*workout-achievement-grid/, "Earned badges must render as a dedicated completion-summary strip");
+assert.match(html, /\.workout-achievements \{[^}]*background-color: #f3f7fc;[^}]*border: 2px solid #2d6ca9;[\s\S]*\.workout-achievement strong \{[^}]*color: #123d6b;[\s\S]*\.workout-achievement span \{[^}]*color: #435a70;/, "Achievement cards must use explicit high-contrast colors instead of a fallible theme token");
 
 const achievementData = {
   settings: { weightUnit: "lb" },

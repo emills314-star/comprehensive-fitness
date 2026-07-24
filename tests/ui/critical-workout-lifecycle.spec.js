@@ -180,12 +180,45 @@ test("workout completion renders the full earned achievement strip from verified
   await expect(badges).toHaveCount(8);
   await expect(strip.locator("img")).toHaveCount(8);
   const layout = await strip.evaluate((element) => ({
+    ...(() => {
+      const parseRgb = (value) => (value.match(/\d+(?:\.\d+)?/g) || []).slice(0, 3).map(Number);
+      const luminance = (value) => {
+        const channels = parseRgb(value).map((channel) => {
+          const normalized = channel / 255;
+          return normalized <= 0.03928 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+        });
+        return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+      };
+      const contrast = (foreground, background) => {
+        const light = Math.max(luminance(foreground), luminance(background));
+        const dark = Math.min(luminance(foreground), luminance(background));
+        return (light + 0.05) / (dark + 0.05);
+      };
+      const card = element.querySelector(".workout-achievement");
+      const cardBackground = getComputedStyle(card).backgroundColor;
+      const sectionBackground = getComputedStyle(element).backgroundColor;
+      const heading = element.querySelector(".workout-achievements-heading h3");
+      const kicker = element.querySelector(".workout-achievements-heading .section-kicker");
+      const earned = element.querySelector(".workout-achievements-heading > strong");
+      return {
+        titleContrast: contrast(getComputedStyle(card.querySelector("strong")).color, cardBackground),
+        descriptionContrast: contrast(getComputedStyle(card.querySelector("span")).color, cardBackground),
+        headingContrast: contrast(getComputedStyle(heading).color, sectionBackground),
+        kickerContrast: contrast(getComputedStyle(kicker).color, sectionBackground),
+        earnedContrast: contrast(getComputedStyle(earned).color, getComputedStyle(earned).backgroundColor)
+      };
+    })(),
     stripWidth: element.getBoundingClientRect().width,
     pageWidth: document.documentElement.clientWidth,
     pageScrollWidth: document.documentElement.scrollWidth,
     missingImages: [...element.querySelectorAll("img")].filter((image) => !image.complete || image.naturalWidth === 0).length
   }));
   expect(layout.missingImages).toBe(0);
+  expect(layout.titleContrast).toBeGreaterThanOrEqual(7);
+  expect(layout.descriptionContrast).toBeGreaterThanOrEqual(4.5);
+  expect(layout.headingContrast).toBeGreaterThanOrEqual(7);
+  expect(layout.kickerContrast).toBeGreaterThanOrEqual(4.5);
+  expect(layout.earnedContrast).toBeGreaterThanOrEqual(7);
   expect(layout.stripWidth).toBeLessThanOrEqual(layout.pageWidth);
   expect(layout.pageScrollWidth).toBeLessThanOrEqual(layout.pageWidth);
   expect(browserErrors).toEqual([]);
