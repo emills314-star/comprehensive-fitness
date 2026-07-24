@@ -331,12 +331,13 @@
         const workingSetCount = Number(read("sets"));
         const repMin = Number(read("rep-min"));
         const repMax = Number(read("rep-max"));
-        const targetRpe = Number(read("target-rpe"));
+        const targetRpeMin = Number(read("target-rpe-min"));
+        const targetRpeMax = Number(read("target-rpe-max"));
         const workingRestSeconds = Number(read("working-rest"));
         const warmupRestSeconds = Number(read("warmup-rest"));
         if (!Number.isInteger(workingSetCount) || workingSetCount < 1 || workingSetCount > 20) throw new Error("Choose between 1 and 20 working sets.");
         if (!Number.isInteger(repMin) || !Number.isInteger(repMax) || repMin < 1 || repMax > 50 || repMin > repMax) throw new Error("Choose an ordered rep range from 1 to 50.");
-        if (!Number.isFinite(targetRpe) || targetRpe < 1 || targetRpe > 10 || !Number.isInteger(targetRpe * 2)) throw new Error("Choose a target RPE from 1 to 10 in 0.5 steps.");
+        if (!Number.isFinite(targetRpeMin) || !Number.isFinite(targetRpeMax) || targetRpeMin < 1 || targetRpeMax > 10 || targetRpeMin > targetRpeMax || !Number.isInteger(targetRpeMin * 2) || !Number.isInteger(targetRpeMax * 2)) throw new Error("Choose an ordered target RPE range from 1 to 10 in 0.5 steps.");
         if (!Number.isInteger(workingRestSeconds) || workingRestSeconds < 15 || workingRestSeconds > 900) throw new Error("Choose working-set rest from 15 to 900 seconds.");
         if (!Number.isInteger(warmupRestSeconds) || warmupRestSeconds < 15 || warmupRestSeconds > 900) throw new Error("Choose warm-up rest from 15 to 900 seconds.");
 
@@ -353,12 +354,13 @@
             const type = scope === "warmup" ? "warmup" : normalizeSetTypeCode(row.querySelector('[data-set-default-field="type"]')?.value || existing?.setType || "straight");
             const rowRepMin = Number(row.querySelector('[data-set-default-field="rep-min"]')?.value);
             const rowRepMax = Number(row.querySelector('[data-set-default-field="rep-max"]')?.value);
-            const rowTargetRpe = Number(row.querySelector('[data-set-default-field="target-rpe"]')?.value);
+            const rowTargetRpeMin = Number(row.querySelector('[data-set-default-field="target-rpe-min"]')?.value);
+            const rowTargetRpeMax = Number(row.querySelector('[data-set-default-field="target-rpe-max"]')?.value);
             const restSeconds = Number(row.querySelector('[data-set-default-field="rest"]')?.value);
             if (!Number.isInteger(rowRepMin) || !Number.isInteger(rowRepMax) || rowRepMin < 1 || rowRepMax > 50 || rowRepMin > rowRepMax) throw new Error(`${scope === "warmup" ? "Warm-up" : "Working"} set ${index + 1} needs an ordered rep range from 1 to 50.`);
-            if (!Number.isFinite(rowTargetRpe) || rowTargetRpe < 1 || rowTargetRpe > 10 || !Number.isInteger(rowTargetRpe * 2)) throw new Error(`${scope === "warmup" ? "Warm-up" : "Working"} set ${index + 1} needs a target RPE from 1 to 10 in 0.5 steps.`);
+            if (!Number.isFinite(rowTargetRpeMin) || !Number.isFinite(rowTargetRpeMax) || rowTargetRpeMin < 1 || rowTargetRpeMax > 10 || rowTargetRpeMin > rowTargetRpeMax || !Number.isInteger(rowTargetRpeMin * 2) || !Number.isInteger(rowTargetRpeMax * 2)) throw new Error(`${scope === "warmup" ? "Warm-up" : "Working"} set ${index + 1} needs an ordered target RPE range from 1 to 10 in 0.5 steps.`);
             if (!Number.isInteger(restSeconds) || restSeconds < 15 || restSeconds > 900) throw new Error(`${scope === "warmup" ? "Warm-up" : "Working"} set ${index + 1} needs rest from 15 to 900 seconds.`);
-            return { type, repMin: rowRepMin, repMax: rowRepMax, targetRpe: rowTargetRpe, restSeconds, existing };
+            return { type, repMin: rowRepMin, repMax: rowRepMax, targetRpe: rowTargetRpeMax, targetRpeMin: rowTargetRpeMin, targetRpeMax: rowTargetRpeMax, restSeconds, existing };
           });
         };
         const warmups = individualized
@@ -367,7 +369,9 @@
               type: "warmup",
               repMin: Number(existing.targetRepMin || existing.targetReps || existing.reps || repMin),
               repMax: Number(existing.targetRepMax || existing.targetReps || existing.reps || repMax),
-              targetRpe: Number(existing.targetRpe ?? existing.targetRpeMax ?? existing.rpe ?? Math.min(targetRpe, 6)),
+              targetRpe: Number(existing.targetRpeMax ?? existing.targetRpe ?? existing.rpe ?? Math.min(targetRpeMax, 6)),
+              targetRpeMin: Number(existing.targetRpeMin ?? Math.max(1, Number(existing.targetRpeMax ?? existing.targetRpe ?? existing.rpe ?? Math.min(targetRpeMax, 6)) - 1)),
+              targetRpeMax: Number(existing.targetRpeMax ?? existing.targetRpe ?? existing.rpe ?? Math.min(targetRpeMax, 6)),
               restSeconds: warmupRestSeconds,
               existing
             }));
@@ -377,7 +381,9 @@
               type: "straight",
               repMin,
               repMax,
-              targetRpe,
+              targetRpe: targetRpeMax,
+              targetRpeMin,
+              targetRpeMax,
               restSeconds: workingRestSeconds,
               existing: existingWorking[index] || null
             }));
@@ -386,7 +392,9 @@
           workingSetCount,
           repMin,
           repMax,
-          targetRpe,
+          targetRpe: targetRpeMax,
+          targetRpeMin,
+          targetRpeMax,
           workingRestSeconds,
           warmupRestSeconds,
           warmups,
@@ -428,13 +436,13 @@
             countsTowardVolume: target.type !== "warmup",
             countsTowardProgression: target.type !== "warmup",
             reps: midpoint,
-            rpe: target.targetRpe,
+            rpe: target.targetRpeMax,
             targetReps: midpoint,
             targetRepMin: target.repMin,
             targetRepMax: target.repMax,
-            targetRpe: target.targetRpe,
-            targetRpeMin: Math.max(1, target.targetRpe - 1),
-            targetRpeMax: target.targetRpe,
+            targetRpe: target.targetRpeMax,
+            targetRpeMin: target.targetRpeMin,
+            targetRpeMax: target.targetRpeMax,
             targetRestSeconds: target.restSeconds,
             setPrescription: base.setPrescription ? {
               ...base.setPrescription,
@@ -442,8 +450,8 @@
               targetReps: midpoint,
               repMin: target.repMin,
               repMax: target.repMax,
-              rpeMin: Math.max(1, target.targetRpe - 1),
-              rpeMax: target.targetRpe,
+              rpeMin: target.targetRpeMin,
+              rpeMax: target.targetRpeMax,
               restSeconds: target.restSeconds
             } : base.setPrescription,
             prescriptionReason: "User-saved exercise defaults.",
@@ -475,8 +483,8 @@
           setCount: 1,
           repMin: target.repMin,
           repMax: target.repMax,
-          rpeMin: Math.max(1, target.targetRpe - 1),
-          rpeMax: target.targetRpe,
+          rpeMin: target.targetRpeMin,
+          rpeMax: target.targetRpeMax,
           restSeconds: target.restSeconds,
           loadReductionMin: target.type === "drop" ? 20 : target.type === "backoff" ? 8 : 0,
           loadReductionMax: target.type === "drop" ? 25 : target.type === "backoff" ? 15 : 0,
@@ -488,10 +496,12 @@
           type: normalizeSetTypeCode(set.setType, set.isWarmup),
           repMin: Number(set.targetRepMin || set.targetReps || set.reps || 0),
           repMax: Number(set.targetRepMax || set.targetReps || set.reps || 0),
-          targetRpe: Number(set.targetRpe ?? set.targetRpeMax ?? set.rpe ?? 0),
+          targetRpe: Number(set.targetRpeMax ?? set.targetRpe ?? set.rpe ?? 0),
+          targetRpeMin: Number(set.targetRpeMin ?? Math.max(1, Number(set.targetRpeMax ?? set.targetRpe ?? set.rpe ?? 0) - 1)),
+          targetRpeMax: Number(set.targetRpeMax ?? set.targetRpe ?? set.rpe ?? 0),
           restSeconds: Number(set.targetRestSeconds || exercise.restSeconds || 0)
         }));
-        const nextPlan = [...plan.warmups, ...plan.working].map((target) => ({ type: target.type, repMin: target.repMin, repMax: target.repMax, targetRpe: target.targetRpe, restSeconds: target.restSeconds }));
+        const nextPlan = [...plan.warmups, ...plan.working].map((target) => ({ type: target.type, repMin: target.repMin, repMax: target.repMax, targetRpe: target.targetRpeMax, targetRpeMin: target.targetRpeMin, targetRpeMax: target.targetRpeMax, restSeconds: target.restSeconds }));
         const overrideEntry = {
           overrideId: id(),
           recommendationId: exercise.recommendationSnapshot?.recommendationId || "",
@@ -528,8 +538,10 @@
             reps: Math.round((aggregateRepMin + aggregateRepMax) / 2),
             repLow: aggregateRepMin,
             repHigh: aggregateRepMax,
-            rpe: plan.targetRpe,
-            targetRpe: plan.targetRpe,
+            rpe: plan.targetRpeMax,
+            targetRpe: plan.targetRpeMax,
+            targetRpeMin: plan.targetRpeMin,
+            targetRpeMax: plan.targetRpeMax,
             restSeconds: plan.workingRestSeconds
           },
           appliedTargetContext,
@@ -545,9 +557,9 @@
           reps: Math.round((target.repMin + target.repMax) / 2),
           targetRepMin: target.repMin,
           targetRepMax: target.repMax,
-          targetRpe: target.targetRpe,
-          targetRpeMin: Math.max(1, target.targetRpe - 1),
-          targetRpeMax: target.targetRpe,
+          targetRpe: target.targetRpeMax,
+          targetRpeMin: target.targetRpeMin,
+          targetRpeMax: target.targetRpeMax,
           targetRestSeconds: target.restSeconds
         }));
         const templates = sourceTemplateExercise
@@ -560,7 +572,7 @@
                 reps: Math.round((aggregateRepMin + aggregateRepMax) / 2),
                 repMin: aggregateRepMin,
                 repMax: aggregateRepMax,
-                targetRpe: plan.targetRpe,
+                targetRpe: plan.targetRpeMax,
                 restSeconds: plan.workingRestSeconds,
                 setTypes: workingTypes,
                 warmups: templateWarmups,

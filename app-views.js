@@ -1194,8 +1194,10 @@
         const repMaxes = working.map((set) => Number(set.targetRepMax || set.targetReps || set.reps || 0)).filter((value) => value > 0);
         const repMin = repMins.length ? Math.min(...repMins) : Number(prescription?.repRange?.min || exercise.prescription?.repLow || exercise.prescription?.reps || 8);
         const repMax = repMaxes.length ? Math.max(...repMaxes) : Number(prescription?.repRange?.max || exercise.prescription?.repHigh || exercise.prescription?.reps || repMin);
-        const workingRpes = working.map((set) => Number(set.targetRpe ?? set.targetRpeMax ?? set.setPrescription?.rpeMax ?? set.rpe ?? 0)).filter((value) => value > 0);
-        const targetRpe = workingRpes[0] || Number(templateExercise?.targetRpe || prescription?.targetRpe?.max || exercise.prescription?.targetRpe || exercise.prescription?.rpe || 8);
+        const workingRpeMaxes = working.map((set) => Number(set.targetRpeMax ?? set.targetRpe ?? set.setPrescription?.rpeMax ?? set.rpe ?? 0)).filter((value) => value > 0);
+        const targetRpeMax = workingRpeMaxes[0] || Number(templateExercise?.targetRpe || prescription?.targetRpe?.max || exercise.prescription?.targetRpeMax || exercise.prescription?.targetRpe || exercise.prescription?.rpe || 8);
+        const workingRpeMins = working.map((set) => Number(set.targetRpeMin ?? set.setPrescription?.rpeMin ?? Math.max(1, Number(set.targetRpeMax ?? set.targetRpe ?? set.rpe ?? targetRpeMax) - 1))).filter((value) => value > 0);
+        const targetRpeMin = workingRpeMins[0] || Number(prescription?.targetRpe?.min || exercise.prescription?.targetRpeMin || Math.max(1, targetRpeMax - 1));
         const workingRests = working.map((set) => Number(set.targetRestSeconds || 0)).filter((value) => value > 0);
         const workingRest = workingRests[0] || Number(exercise.restSeconds || prescription?.restSeconds?.target || data.settings.defaultRestSeconds || 90);
         const warmupRest = Number(warmups.find((set) => Number(set.targetRestSeconds) > 0)?.targetRestSeconds || Math.min(workingRest, 90));
@@ -1203,7 +1205,8 @@
           normalizeSetTypeCode(set.setType, set.isWarmup),
           Number(set.targetRepMin || set.targetReps || set.reps || repMin),
           Number(set.targetRepMax || set.targetReps || set.reps || repMax),
-          Number(set.targetRpe ?? set.targetRpeMax ?? set.setPrescription?.rpeMax ?? set.rpe ?? targetRpe),
+          Number(set.targetRpeMin ?? set.setPrescription?.rpeMin ?? targetRpeMin),
+          Number(set.targetRpeMax ?? set.targetRpe ?? set.setPrescription?.rpeMax ?? set.rpe ?? targetRpeMax),
           Number(set.targetRestSeconds || workingRest)
         ].join("|"));
         const individualized = new Set(signatures).size > 1 || working.some((set) => normalizeSetTypeCode(set.setType, set.isWarmup) !== "straight");
@@ -1222,23 +1225,33 @@
           ["backoff", "Back-off set"],
           ["drop", "Drop set"]
         ].map(([value, label]) => `<option value="${value}" ${selected === value ? "selected" : ""}>${label}</option>`).join("");
+        const numericStepper = ({ field, value, min, max, step, label, setField = false, action = "" }) => `
+          <span class="numeric-stepper" data-numeric-stepper>
+            <button type="button" data-action="adjust-exercise-default" data-delta="-${step}" aria-label="Decrease ${escapeHtml(label)}">▼</button>
+            <input type="number" min="${min}" max="${max}" step="${step}" value="${value}" ${setField ? "data-set-default-field" : "data-default-field"}="${field}" ${action ? `data-action="${action}"` : ""} aria-label="${escapeHtml(label)}" />
+            <button type="button" data-action="adjust-exercise-default" data-delta="${step}" aria-label="Increase ${escapeHtml(label)}">▲</button>
+          </span>`;
         const setRow = (scope, index, set, fallback) => {
           const type = scope === "warmup" ? "warmup" : normalizeSetTypeCode(set?.setType, set?.isWarmup);
           const rowRepMin = Number(set?.targetRepMin || set?.targetReps || set?.reps || fallback.repMin);
           const rowRepMax = Number(set?.targetRepMax || set?.targetReps || set?.reps || fallback.repMax);
-          const rowTargetRpe = Number(set?.targetRpe ?? set?.targetRpeMax ?? set?.setPrescription?.rpeMax ?? set?.rpe ?? fallback.targetRpe);
+          const rowTargetRpeMax = Number(set?.targetRpeMax ?? set?.targetRpe ?? set?.setPrescription?.rpeMax ?? set?.rpe ?? fallback.targetRpeMax);
+          const rowTargetRpeMin = Number(set?.targetRpeMin ?? set?.setPrescription?.rpeMin ?? fallback.targetRpeMin ?? Math.max(1, rowTargetRpeMax - 1));
           const rest = Number(set?.targetRestSeconds || fallback.rest);
+          const scopeLabel = scope === "warmup" ? "Warm-up" : "Working";
           return `
             <div class="individual-set-row" data-set-default-row data-set-scope="${scope}" data-set-index="${index}" ${scope === "working" && index >= workingCount ? "hidden" : ""}>
               <span class="individual-set-index">${scope === "warmup" ? `WU${index + 1}` : index + 1}</span>
-              ${scope === "warmup" ? '<span class="individual-set-type">Warm-up</span>' : `<label><span>Type</span><select data-set-default-field="type" aria-label="Working set ${index + 1} type">${roleOptions(type || "straight")}</select></label>`}
-              <label><span>Reps</span><span class="range-inputs"><input type="number" min="1" max="50" value="${rowRepMin}" data-set-default-field="rep-min" aria-label="${scope === "warmup" ? "Warm-up" : "Working"} set ${index + 1} minimum reps" /><span>–</span><input type="number" min="1" max="50" value="${rowRepMax}" data-set-default-field="rep-max" aria-label="${scope === "warmup" ? "Warm-up" : "Working"} set ${index + 1} maximum reps" /></span></label>
-              <label class="individual-set-rpe"><span>RPE</span><input type="number" min="1" max="10" step="0.5" value="${rowTargetRpe}" data-set-default-field="target-rpe" aria-label="${scope === "warmup" ? "Warm-up" : "Working"} set ${index + 1} target RPE" /></label>
-              <label class="individual-set-rest"><span>Rest</span><span class="unit-input"><input type="number" min="15" max="900" step="15" value="${rest}" data-set-default-field="rest" aria-label="${scope === "warmup" ? "Warm-up" : "Working"} set ${index + 1} rest seconds" /><small>sec</small></span></label>
+              <div class="individual-set-fields">
+                ${scope === "warmup" ? '<span class="individual-set-type">Warm-up</span>' : `<label><span>Type</span><select data-set-default-field="type" aria-label="Working set ${index + 1} type">${roleOptions(type || "straight")}</select></label>`}
+                <label><span>Reps</span><span class="range-steppers"><span class="range-bound"><small>Min</small>${numericStepper({ field: "rep-min", value: rowRepMin, min: 1, max: 50, step: 1, label: `${scopeLabel} set ${index + 1} minimum reps`, setField: true })}</span><span class="range-bound"><small>Max</small>${numericStepper({ field: "rep-max", value: rowRepMax, min: 1, max: 50, step: 1, label: `${scopeLabel} set ${index + 1} maximum reps`, setField: true })}</span></span></label>
+                <label class="individual-set-rpe"><span>Target RPE range</span><span class="range-steppers"><span class="range-bound"><small>Min</small>${numericStepper({ field: "target-rpe-min", value: rowTargetRpeMin, min: 1, max: 10, step: 0.5, label: `${scopeLabel} set ${index + 1} minimum target RPE`, setField: true })}</span><span class="range-bound"><small>Max</small>${numericStepper({ field: "target-rpe-max", value: rowTargetRpeMax, min: 1, max: 10, step: 0.5, label: `${scopeLabel} set ${index + 1} maximum target RPE`, setField: true })}</span></span></label>
+                <label class="individual-set-rest"><span>Rest <small>seconds</small></span>${numericStepper({ field: "rest", value: rest, min: 15, max: 900, step: 15, label: `${scopeLabel} set ${index + 1} rest seconds`, setField: true })}</label>
+              </div>
             </div>`;
         };
-        const warmupRows = warmups.map((set, index) => setRow("warmup", index, set, { repMin, repMax, targetRpe: Math.min(targetRpe, 6), rest: warmupRest })).join("");
-        const workingRows = Array.from({ length: 20 }, (_, index) => setRow("working", index, working[index], { repMin, repMax, targetRpe, rest: workingRest })).join("");
+        const warmupRows = warmups.map((set, index) => setRow("warmup", index, set, { repMin, repMax, targetRpeMin: Math.min(targetRpeMin, 5), targetRpeMax: Math.min(targetRpeMax, 6), rest: warmupRest })).join("");
+        const workingRows = Array.from({ length: 20 }, (_, index) => setRow("working", index, working[index], { repMin, repMax, targetRpeMin, targetRpeMax, rest: workingRest })).join("");
         return `
           <section class="standard-workload-card" data-standard-workload-form="${exercise.id}" data-override-form="${exercise.id}">
             <div class="standard-workload-heading"><div><span>Exercise defaults</span><strong>Sets, reps, RPE & rest</strong></div><span class="standard-workload-badge ${comparison.toLowerCase().replaceAll(" ", "-")}">${comparison}</span></div>
@@ -1247,17 +1260,17 @@
               <div><span>Saved</span><strong>${escapeHtml(savedLabel)}</strong></div>
             </div>
             <div class="default-target-grid">
-              <label><span>Working sets</span><input type="number" min="1" max="20" step="1" value="${workingCount}" data-default-field="sets" data-action="default-working-set-count" aria-label="Default working set count" /></label>
-              <label><span>Rep range</span><span class="range-inputs"><input type="number" min="1" max="50" value="${repMin}" data-default-field="rep-min" aria-label="Default minimum repetitions" /><span>–</span><input type="number" min="1" max="50" value="${repMax}" data-default-field="rep-max" aria-label="Default maximum repetitions" /></span></label>
-              <label><span>Target RPE</span><input type="number" min="1" max="10" step="0.5" value="${targetRpe}" data-default-field="target-rpe" aria-label="Default target RPE" /></label>
-              <label><span>Working rest</span><span class="unit-input"><input type="number" min="15" max="900" step="15" value="${workingRest}" data-default-field="working-rest" aria-label="Default working-set rest seconds" /><small>sec</small></span></label>
-              <label><span>Warm-up rest</span><span class="unit-input"><input type="number" min="15" max="900" step="15" value="${warmupRest}" data-default-field="warmup-rest" aria-label="Default warm-up rest seconds" /><small>sec</small></span></label>
+              <label><span>Working sets</span>${numericStepper({ field: "sets", value: workingCount, min: 1, max: 20, step: 1, label: "Default working set count", action: "default-working-set-count" })}</label>
+              <label><span>Rep range</span><span class="range-steppers"><span class="range-bound"><small>Min</small>${numericStepper({ field: "rep-min", value: repMin, min: 1, max: 50, step: 1, label: "Default minimum repetitions" })}</span><span class="range-bound"><small>Max</small>${numericStepper({ field: "rep-max", value: repMax, min: 1, max: 50, step: 1, label: "Default maximum repetitions" })}</span></span></label>
+              <label><span>Target RPE range</span><span class="range-steppers"><span class="range-bound"><small>Min</small>${numericStepper({ field: "target-rpe-min", value: targetRpeMin, min: 1, max: 10, step: 0.5, label: "Default minimum target RPE" })}</span><span class="range-bound"><small>Max</small>${numericStepper({ field: "target-rpe-max", value: targetRpeMax, min: 1, max: 10, step: 0.5, label: "Default maximum target RPE" })}</span></span></label>
+              <label><span>Working rest <small>seconds</small></span>${numericStepper({ field: "working-rest", value: workingRest, min: 15, max: 900, step: 15, label: "Default working-set rest seconds" })}</label>
+              <label><span>Warm-up rest <small>seconds</small></span>${numericStepper({ field: "warmup-rest", value: warmupRest, min: 15, max: 900, step: 15, label: "Default warm-up rest seconds" })}</label>
             </div>
             <details class="individual-set-disclosure" data-individual-set-disclosure ${individualized ? "open" : ""}>
               <summary><span><strong>Individual set targets</strong><small>Drop sets, different reps, RPE or rest</small></span><b>${individualized ? "Customized" : "Optional"}</b></summary>
               <input type="hidden" value="${individualized ? "true" : "false"}" data-individual-set-enabled />
               <div class="individual-set-editor">
-                <p>Opening this section enables separate targets. Set type can mark top, back-off, or drop sets; each row owns its RPE and rest target.</p>
+                <p>Opening this section enables separate targets. Set type can mark top, back-off, or drop sets; each row owns its rep range, target RPE range, and rest target.</p>
                 ${warmupRows ? `<div class="individual-set-group"><h4>Warm-up sets</h4>${warmupRows}</div>` : ""}
                 <div class="individual-set-group"><h4>Working sets</h4>${workingRows}</div>
                 <button class="text-action" type="button" data-action="use-shared-set-targets">Use one target for every set</button>
@@ -1320,7 +1333,7 @@
         const renderContext = { restSeconds, previousSets, warmupIds, workingSetIds, substituteValidation };
         const setHtml = measurePerformance("lift:setRows", () => exerciseSets.map((set) => renderSet(set, exercise, renderContext)).join(""), { exerciseId: exercise.id, count: exerciseSets.length });
         const customGuidanceIncomplete = exercise.identitySource === "user_declared_custom" && missingCustomExerciseMetrics(normalizeCustomExerciseProfile(exercise.customExerciseProfile)).length > 0;
-        const optionsHtml = measurePerformance("lift:exerciseOptions", () => renderCustomExerciseSetup(exercise) + renderStandardWorkloadControls(exercise) + renderExecutionQualityAssessment(exercise) + renderPlateCalculator(exercise, firstWorkSet) + renderMuscleSelectors(exercise) + (customGuidanceIncomplete ? "" : renderExerciseGuidance(exercise)) + renderPrescriptionOverrideControls(exercise, resolvedSafetyContext), { exerciseId: exercise.id });
+        const optionsHtml = measurePerformance("lift:exerciseOptions", () => renderCustomExerciseSetup(exercise) + (customGuidanceIncomplete ? "" : renderExerciseGuidance(exercise)) + renderStandardWorkloadControls(exercise) + renderExecutionQualityAssessment(exercise) + renderPlateCalculator(exercise, firstWorkSet) + renderMuscleSelectors(exercise) + renderPrescriptionOverrideControls(exercise, resolvedSafetyContext), { exerciseId: exercise.id });
         return `
           <article id="exercise-${exercise.id}" class="exercise-card ${isActiveExercise ? "active-exercise" : ""}">
             <div class="exercise-header">

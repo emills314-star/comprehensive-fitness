@@ -226,6 +226,21 @@
         if (action === "cancel-delete-mesocycle") { pendingDeleteMesocycleId = ""; render(); }
         if (action === "confirm-delete-mesocycle") deleteMesocycleDraft(target.dataset.mesocycleId);
         if (action === "apply-prescription-override") applyPrescriptionOverride(target.dataset.exerciseId, target.closest("[data-override-form]"));
+        if (action === "adjust-exercise-default") {
+          const input = target.closest("[data-numeric-stepper]")?.querySelector('input[type="number"]');
+          if (input && !input.disabled) {
+            const delta = Number(target.dataset.delta || input.step || 1);
+            const minimum = Number(input.min);
+            const maximum = Number(input.max);
+            const precision = String(input.step || delta).includes(".") ? String(input.step || delta).split(".")[1].length : 0;
+            const current = Number(input.value);
+            const fallback = Number.isFinite(minimum) ? minimum : 0;
+            const next = Math.min(Number.isFinite(maximum) ? maximum : Infinity, Math.max(Number.isFinite(minimum) ? minimum : -Infinity, (Number.isFinite(current) ? current : fallback) + delta));
+            input.value = Number(next.toFixed(precision)).toString();
+            input.dispatchEvent(new Event("input", { bubbles: true }));
+            input.dispatchEvent(new Event("change", { bubbles: true }));
+          }
+        }
         if (action === "apply-standard-workload") {
           const form = target.closest("[data-standard-workload-form]");
           applyExerciseDefaultTargets(target.dataset.exerciseId, form, { saveTemplateStandard: form?.querySelector("[data-standard-save-template]")?.checked === true });

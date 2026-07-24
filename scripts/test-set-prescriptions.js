@@ -152,7 +152,9 @@ assert(html.includes('class="set-field set-previous set-previous-link"'), "Compa
 assert(html.includes('previousSummaryText'), "The Previous column must combine load, reps, and RPE without losing resistance semantics");
 assert(html.includes('data-session-id="\' + escapeHtml(previous.priorSessionId)'), "The Previous link must preserve the exact source session ID");
 assert(html.includes("Broad exercise guidance"));
-assert(html.includes("These values come from the same saved prescription shown above."));
+assert(html.includes("Program benchmark"));
+assert(html.includes("Informational · not an input"));
+assert(html.includes("these values are already set by the saved prescription."));
 assert(html.includes("roleSessionPrescriptionLine(exercise, fallbackFinalLine)"), "The unified recommendation summary must be built from the same generated rows that are prepopulated");
 assert(html.includes("History and high watermark:"), "The expanded recommendation must explain its historical load anchor");
 assert(html.includes("exercise.recommendationSnapshot || unifiedPrescriptionSnapshot(exercise)"), "Broad guidance must reuse the unified prescription instead of hard-coded sets or reps");

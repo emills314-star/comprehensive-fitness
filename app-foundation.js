@@ -3766,16 +3766,19 @@
           ? `RPE ${prescription.targetRpe.min}-${prescription.targetRpe.max}`
           : prescription && prescription.targetRir.min !== null && prescription.targetRir.max !== null ? `RIR ${prescription.targetRir.min}-${prescription.targetRir.max}` : "See saved prescription";
         return `
-          <div class="exercise-guidance">
-            <strong>Broad exercise guidance</strong>
-            <div class="guidance-grid">
-              <div class="guidance-pill"><span>Sets</span><b>${escapeHtml(setText)}</b></div>
-              <div class="guidance-pill"><span>Reps</span><b>${escapeHtml(repText)}</b></div>
-              <div class="guidance-pill"><span>Effort</span><b>${escapeHtml(effortText)}</b></div>
+          <aside class="exercise-guidance guidance-benchmark-strip" aria-label="Broad exercise guidance benchmark">
+            <div class="guidance-benchmark-heading">
+              <div><strong>Program benchmark</strong><span>Informational · not an input</span></div>
+              <b>Program reference</b>
             </div>
-            <p class="muted-note">These values come from the same saved prescription shown above. The cues are technique reminders, not a second recommendation.</p>
+            <div class="guidance-benchmark-values" aria-label="Read-only benchmark values">
+              <span>${escapeHtml(setText)} sets</span>
+              <span>${escapeHtml(repText)}</span>
+              <span>${escapeHtml(effortText)}</span>
+            </div>
+            <p class="muted-note">Broad exercise guidance · these values are already set by the saved prescription.</p>
             <ul class="cue-list">${guidance.cues.map((cue) => "<li>" + escapeHtml(cue) + "</li>").join("")}</ul>
-          </div>
+          </aside>
         `;
       }
 

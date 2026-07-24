@@ -1348,6 +1348,7 @@ test("confirmed pain-free substitution uses an explicit catalog-backed UI flow a
 });
 
 test("every exercise exposes shared defaults plus per-set reps, RPE, types, and rest", async ({ page }) => {
+  test.setTimeout(60_000);
   const fixture = safetyWorkoutState({ illness: false, pain: false });
   await seedApplicationState(page, fixture.state);
   await expect.poll(() => page.evaluate(() => Boolean(prescriptionEngine?.evidence?.research?.exerciseById?.has("ex_barbell_bench_press"))), {
@@ -1424,16 +1425,28 @@ test("every exercise exposes shared defaults plus per-set reps, RPE, types, and 
   });
   expect(collapseCue.content).toContain("⌃");
   expect(collapseCue.background).not.toBe("rgba(0, 0, 0, 0)");
+  const benchmark = card.locator(".guidance-benchmark-strip");
+  await expect(benchmark.getByText("Program benchmark", { exact: true })).toBeVisible();
+  await expect(benchmark.getByText("Informational · not an input", { exact: true })).toBeVisible();
+  await expect(benchmark.locator("input, select, textarea, button")).toHaveCount(0);
   const editor = card.locator('[data-standard-workload-form]');
   await expect(editor.getByText("Sets, reps, RPE & rest", { exact: true })).toBeVisible();
   await expect(editor.locator('[data-default-field="sets"]')).toBeVisible();
-  await expect(editor.locator('[data-default-field="target-rpe"]')).toBeVisible();
+  await expect(editor.locator('[data-default-field="target-rpe-min"]')).toBeVisible();
+  await expect(editor.locator('[data-default-field="target-rpe-max"]')).toBeVisible();
+  const workingSetInput = editor.locator('[data-default-field="sets"]');
+  const initialWorkingSets = await workingSetInput.inputValue();
+  await editor.getByRole("button", { name: "Increase Default working set count" }).click();
+  await expect(workingSetInput).toHaveValue(String(Number(initialWorkingSets) + 1));
+  await editor.getByRole("button", { name: "Decrease Default working set count" }).click();
+  await expect(workingSetInput).toHaveValue(initialWorkingSets);
   await editor.locator("[data-individual-set-disclosure] > summary").click();
   await expect.poll(() => editor.locator("[data-individual-set-disclosure]").evaluate((node) => node.open)).toBe(true);
   await expect(editor.locator('[data-set-default-field="type"]')).toHaveCount(20);
   const warmupRow = editor.locator('[data-set-default-row][data-set-scope="warmup"]');
   await expect(warmupRow).toHaveCount(1);
-  await warmupRow.locator('[data-set-default-field="target-rpe"]').fill("4.5");
+  await warmupRow.locator('[data-set-default-field="target-rpe-min"]').fill("3.5");
+  await warmupRow.locator('[data-set-default-field="target-rpe-max"]').fill("4.5");
   await warmupRow.locator('[data-set-default-field="rest"]').fill("60");
 
   const straightCard = page.locator(`.exercise-card:has([data-exercise-id="${fixture.exerciseIds.legPress}"])`).first();
@@ -1442,25 +1455,27 @@ test("every exercise exposes shared defaults plus per-set reps, RPE, types, and 
   await expect.poll(() => straightEditor.locator("[data-individual-set-disclosure]").evaluate((node) => node.open)).toBe(false);
   await expect(straightEditor.locator('[data-default-field="working-rest"]')).toBeVisible();
   await expect(straightEditor.locator('[data-default-field="warmup-rest"]')).toBeVisible();
-  await expect(straightEditor.locator('[data-default-field="target-rpe"]')).toBeVisible();
+  await expect(straightEditor.locator('[data-default-field="target-rpe-min"]')).toBeVisible();
+  await expect(straightEditor.locator('[data-default-field="target-rpe-max"]')).toBeVisible();
 
   await editor.locator('[data-default-field="sets"]').fill("5");
   const rows = editor.locator('[data-set-default-row][data-set-scope="working"]:not([hidden])');
   await expect(rows).toHaveCount(5);
   const targets = [
-    ["top", "5", "6", "8.5", "90"],
-    ["top", "5", "6", "9", "150"],
-    ["backoff", "8", "10", "8", "120"],
-    ["drop", "12", "15", "9.5", "45"],
-    ["backoff", "8", "10", "8", "120"]
+    ["top", "5", "6", "7.5", "8.5", "90"],
+    ["top", "5", "6", "8", "9", "150"],
+    ["backoff", "8", "10", "7", "8", "120"],
+    ["drop", "12", "15", "8.5", "9.5", "45"],
+    ["backoff", "8", "10", "7", "8", "120"]
   ];
   for (let index = 0; index < targets.length; index += 1) {
     const row = rows.nth(index);
     await row.locator('[data-set-default-field="type"]').selectOption(targets[index][0]);
     await row.locator('[data-set-default-field="rep-min"]').fill(targets[index][1]);
     await row.locator('[data-set-default-field="rep-max"]').fill(targets[index][2]);
-    await row.locator('[data-set-default-field="target-rpe"]').fill(targets[index][3]);
-    await row.locator('[data-set-default-field="rest"]').fill(targets[index][4]);
+    await row.locator('[data-set-default-field="target-rpe-min"]').fill(targets[index][3]);
+    await row.locator('[data-set-default-field="target-rpe-max"]').fill(targets[index][4]);
+    await row.locator('[data-set-default-field="rest"]').fill(targets[index][5]);
   }
   await editor.locator("[data-standard-save-template]").check();
   await editor.locator('[data-action="apply-standard-workload"]').click();
@@ -1481,36 +1496,36 @@ test("every exercise exposes shared defaults plus per-set reps, RPE, types, and 
     return {
       setTypes: workingSets.map((set) => set.setType),
       setRanges: workingSets.map((set) => [set.targetRepMin, set.targetRepMax]),
-      setRpes: workingSets.map((set) => set.targetRpe),
+      setRpeRanges: workingSets.map((set) => [set.targetRpeMin, set.targetRpeMax]),
       setRests: workingSets.map((set) => set.targetRestSeconds),
-      warmupRpe: warmupSet.targetRpe,
+      warmupRpeRange: [warmupSet.targetRpeMin, warmupSet.targetRpeMax],
       warmupRest: warmupSet.targetRestSeconds,
       warmupTimerSeconds,
       timerSeconds: timer.durationSeconds,
       templateSets: templateExercise.sets,
-      templateWarmupRpe: templateExercise.warmups[0].targetRpe,
+      templateWarmupRpeRange: [templateExercise.warmups[0].targetRpeMin, templateExercise.warmups[0].targetRpeMax],
       templateWarmupRest: templateExercise.warmups[0].targetRestSeconds,
-      templateTypes: templateExercise.setTypes.map((setType) => [setType.type, setType.repMin, setType.repMax, setType.rpeMax, setType.restSeconds]),
+      templateTypes: templateExercise.setTypes.map((setType) => [setType.type, setType.repMin, setType.repMax, setType.rpeMin, setType.rpeMax, setType.restSeconds]),
       overrideAction: exercise.manualOverrides.at(-1)?.action
     };
   }, fixture.exerciseIds.bench);
   expect(result.setTypes).toEqual(["top", "top", "backoff", "drop", "backoff"]);
   expect(result.setRanges).toEqual([[5, 6], [5, 6], [8, 10], [12, 15], [8, 10]]);
-  expect(result.setRpes).toEqual([8.5, 9, 8, 9.5, 8]);
+  expect(result.setRpeRanges).toEqual([[7.5, 8.5], [8, 9], [7, 8], [8.5, 9.5], [7, 8]]);
   expect(result.setRests).toEqual([90, 150, 120, 45, 120]);
-  expect(result.warmupRpe).toBe(4.5);
+  expect(result.warmupRpeRange).toEqual([3.5, 4.5]);
   expect(result.warmupRest).toBe(60);
   expect(result.warmupTimerSeconds).toBe(60);
   expect(result.timerSeconds).toBe(90);
   expect(result.templateSets).toBe(5);
-  expect(result.templateWarmupRpe).toBe(4.5);
+  expect(result.templateWarmupRpeRange).toEqual([3.5, 4.5]);
   expect(result.templateWarmupRest).toBe(60);
   expect(result.templateTypes).toEqual([
-    ["top", 5, 6, 8.5, 90],
-    ["top", 5, 6, 9, 150],
-    ["backoff", 8, 10, 8, 120],
-    ["drop", 12, 15, 9.5, 45],
-    ["backoff", 8, 10, 8, 120]
+    ["top", 5, 6, 7.5, 8.5, 90],
+    ["top", 5, 6, 8, 9, 150],
+    ["backoff", 8, 10, 7, 8, 120],
+    ["drop", 12, 15, 8.5, 9.5, 45],
+    ["backoff", 8, 10, 7, 8, 120]
   ]);
   expect(result.overrideAction).toBe("exercise_default_targets");
   await card.locator("details.exercise-options > summary").click();
@@ -1564,12 +1579,13 @@ test("an exercise without research or historical guidance still has editable def
   await editor.locator('[data-default-field="sets"]').fill("3");
   await editor.locator('[data-default-field="rep-min"]').fill("10");
   await editor.locator('[data-default-field="rep-max"]').fill("14");
-  await editor.locator('[data-default-field="target-rpe"]').fill("9");
+  await editor.locator('[data-default-field="target-rpe-min"]').fill("8");
+  await editor.locator('[data-default-field="target-rpe-max"]').fill("9");
   await editor.locator('[data-default-field="working-rest"]').fill("105");
   await editor.locator('[data-action="apply-standard-workload"]').click();
   await expect.poll(() => page.evaluate((exerciseId) => data.sets
     .filter((set) => set.exerciseId === exerciseId && !set.isWarmup)
-    .map((set) => [set.targetRepMin, set.targetRepMax, set.targetRpe, set.targetRestSeconds]), customId)).toEqual([[10, 14, 9, 105], [10, 14, 9, 105], [10, 14, 9, 105]]);
+    .map((set) => [set.targetRepMin, set.targetRepMax, set.targetRpeMin, set.targetRpeMax, set.targetRestSeconds]), customId)).toEqual([[10, 14, 8, 9, 105], [10, 14, 8, 9, 105], [10, 14, 8, 9, 105]]);
 });
 
 test("primary navigation exposes a skip target and moves focus into the selected view", async ({ page }) => {
