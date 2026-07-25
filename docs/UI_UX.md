@@ -4,8 +4,8 @@
 
 - **Purpose:** Verified user experience, interaction contracts, and intended UX gaps
 - **Last verified:** 2026-07-25
-- **Repository:** `main` working tree (design scales, reward layer, and legibility floor)
-- **Verification status:** VERIFIED from `index.html`, UI/domain tests, and local browser measurement at 375 px; **NOT hosted-verified** — the deployed flow and Playwright visual goldens have not been re-approved for this change. Physical-device accessibility remains partly unverified
+- **Repository:** `main` working tree (active exercise context and exercise-options session updates)
+- **Verification status:** VERIFIED from application code, UI/domain tests, and local/hosted mobile and desktop behavior for the affected flows; Playwright visual goldens were not changed. Physical-device accessibility remains partly unverified
 - **Related:** [Project](PROJECT.md), [architecture](ARCHITECTURE.md), [decision engine](DECISION_ENGINE.md), [roadmap](ROADMAP.md)
 
 ## Living-document rule

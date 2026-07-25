@@ -3,8 +3,8 @@
 ## Metadata
 
 - **Purpose:** Product vision, verified scope, and boundary between current and intended behavior
-- **Last verified:** 2026-07-24
-- **Repository:** `main` working tree (mobile individual-set controls and workout achievements)
+- **Last verified:** 2026-07-25
+- **Repository:** `main` working tree (active exercise context and exercise-options session updates)
 - **Verification status:** VERIFIED from application code, tests, schemas, configuration, and existing docs; open conflicts are labeled
 - **Related:** [Architecture](ARCHITECTURE.md), [Decision engine](DECISION_ENGINE.md), [UI/UX](UI_UX.md), [Roadmap](ROADMAP.md), [documentation inventory](DOCUMENTATION_INVENTORY.md)
 

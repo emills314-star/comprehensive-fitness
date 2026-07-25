@@ -3,9 +3,9 @@
 ## Metadata
 
 - **Purpose:** Verified technical architecture, data flows, and operational boundaries
-- **Last verified:** 2026-07-24
-- **Repository:** `main` working tree (mobile individual-set controls and workout achievements)
-- **Verification status:** VERIFIED locally; external deployment/device status is not repository-verifiable
+- **Last verified:** 2026-07-25
+- **Repository:** `main` working tree (active exercise context and exercise-options session updates)
+- **Verification status:** VERIFIED locally; the affected production flows were hosted-verified on 2026-07-25, while physical-device status remains externally unverified
 - **Related:** [Project](PROJECT.md), [decision engine](DECISION_ENGINE.md), [UI/UX](UI_UX.md), [roadmap](ROADMAP.md), [push backend](push-backend.md)
 
 ## Living-document rule
