@@ -407,7 +407,8 @@
 
       function applyExerciseDefaultTargets(exerciseId, form, options = {}) {
         const exercise = exerciseById(exerciseId);
-        if (!exercise || !form || exercise.sessionId !== activeWorkoutId || isSessionSubmitted(activeSession())) return;
+        const session = exercise ? sessionById(exercise.sessionId) : null;
+        if (!exercise || !form || !session || exercise.sessionId !== activeWorkoutId || isSessionSubmitted(session)) return;
         let plan;
         try {
           plan = readExerciseDefaultPlan(exercise, form);
@@ -549,7 +550,6 @@
           overrideLocked: true
         };
 
-        const session = sessionById(exercise.sessionId);
         const sourceTemplate = options.saveTemplateStandard && session?.templateId ? data.templates.find((item) => item.id === session.templateId) : null;
         const sourceTemplateExercise = sourceTemplate?.exercises?.find((item) => exerciseMatches(item.name, exercise.name)) || null;
         const templateWarmups = plan.warmups.map((target, index) => ({
@@ -583,9 +583,11 @@
           : data.templates;
         commit({
           ...data,
+          sessions: data.sessions.map((item) => item.id === session.id ? { ...item, updatedAt: now } : item),
           exercises: data.exercises.map((item) => item.id === exercise.id ? nextExercise : item),
           sets: [...data.sets.filter((set) => !replacedSetIds.has(set.id)), ...nextWarmups.filter((set) => !set.completed), ...nextIncomplete],
-          templates
+          templates,
+          manualOverrides: [...data.manualOverrides, overrideEntry]
         }, true, { invalidateAnalysis: false, deferPersistence: true });
         showAppToast(sourceTemplateExercise ? "Exercise defaults applied and saved to the template." : "Exercise defaults applied to unfinished sets.");
       }

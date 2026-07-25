@@ -88,6 +88,7 @@
       let activeSessionId = "";
       let activeWorkoutId = "";
       let workoutFocusExerciseId = "";
+      let historyReturnExerciseId = "";
       let viewRenderError = null;
       let timer = null;
       let timerInterval = 0;
@@ -3436,7 +3437,7 @@
           exercise: latest.exercise,
           sets: completed
             .filter((entry) => entry.session.id === latest.session.id && entry.exercise.id === latest.exercise.id)
-            .map((entry) => ({ ...entry.set, priorSessionId: entry.session.id, priorSessionDate: entry.session.date, priorExerciseName: entry.exercise.name, priorResistanceType: resistanceTypeFor(entry.exercise, entry.set) }))
+            .map((entry) => ({ ...entry.set, priorSessionId: entry.session.id, priorSessionDate: entry.session.date, priorExerciseId: entry.exercise.id, priorExerciseName: entry.exercise.name, priorResistanceType: resistanceTypeFor(entry.exercise, entry.set) }))
         } : null;
         previousPerformanceCache.set(cacheKey, result);
         return result;

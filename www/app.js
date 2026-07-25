@@ -53,6 +53,16 @@
         active.blur();
       }
 
+      function focusWorkoutExercise(exerciseId) {
+        if (!exerciseId) return;
+        window.requestAnimationFrame(() => {
+          const exercise = document.getElementById("exercise-" + exerciseId);
+          if (!exercise) return;
+          exercise.scrollIntoView({ block: "start", behavior: preferredScrollBehavior() });
+          exercise.focus({ preventScroll: true });
+        });
+      }
+
       root.addEventListener("pointerdown", (event) => {
         const target = event.target.closest("button, select, summary[data-action], label.toggle-line, .alert-setting-card, .volume-card");
         if (!target || target.hasAttribute("disabled")) return;
@@ -109,7 +119,7 @@
         if (action === "focus-workout-exercise") {
           workoutFocusExerciseId = target.dataset.exerciseId || "";
           render();
-          window.requestAnimationFrame(() => document.getElementById("exercise-" + workoutFocusExerciseId)?.scrollIntoView({ block: "start", behavior: preferredScrollBehavior() }));
+          focusWorkoutExercise(workoutFocusExerciseId);
         }
         if (action === "open-history") setProgressView("history");
         if (action === "toggle-theme") commit({ ...data, settings: { ...data.settings, theme: data.settings.theme === "light" ? "dark" : "light" } });
@@ -256,10 +266,14 @@
         if (action === "start-template") openTemplateStart(target.dataset.templateId);
         if (action === "return-active-workout") { templateStartFlow = null; activeSessionId = activeWorkoutId; setActiveTab("lift"); }
         if (action === "return-to-active-session") {
+          const returnExerciseId = historyReturnExerciseId;
           activeSessionId = activeWorkoutId;
           viewingHistorySessionId = "";
           completedSummarySessionId = "";
+          workoutFocusExerciseId = returnExerciseId;
+          historyReturnExerciseId = "";
           setActiveTab("today", { force: true });
+          focusWorkoutExercise(returnExerciseId);
         }
         if (action === "request-cancel-workout") requestCancelWorkout("workout", target.dataset.sessionId || "");
         if (action === "request-cancel-workout-from-template") requestCancelWorkout("template", activeWorkoutId);
@@ -406,8 +420,11 @@
           historyEditConfirm = "";
           activeSessionId = requestedSession.id;
           viewingHistorySessionId = isSessionSubmitted(requestedSession) ? requestedSession.id : "";
+          historyReturnExerciseId = target.dataset.returnExerciseId || "";
+          workoutFocusExerciseId = target.dataset.exerciseId || "";
           planVolumeDetailId = "";
           setActiveTab("today", { force: true });
+          focusWorkoutExercise(workoutFocusExerciseId);
         }
         if (action === "export-data") exportData();
         if (action === "delete-remote-installation") await deleteRemoteInstallationData();
@@ -425,6 +442,15 @@
       }, true);
 
       root.addEventListener("change", async (event) => {
+        const changedControl = event.target;
+        const workloadForm = changedControl.closest?.("[data-standard-workload-form]");
+        if (workloadForm && changedControl.matches?.("[data-default-field]")) {
+          const enabled = workloadForm.querySelector("[data-individual-set-enabled]");
+          if (enabled) enabled.value = "false";
+        } else if (workloadForm && changedControl.matches?.("[data-set-default-field]")) {
+          const enabled = workloadForm.querySelector("[data-individual-set-enabled]");
+          if (enabled) enabled.value = "true";
+        }
         const target = event.target.closest("[data-action]");
         if (!target) return;
         const action = target.dataset.action;

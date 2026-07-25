@@ -1179,7 +1179,8 @@
 
       function renderStandardWorkloadControls(exercise) {
         const snapshot = recommendationSnapshotForDisplay(exercise.recommendationSnapshot);
-        if (exercise.sessionId !== activeWorkoutId || isSessionSubmitted(activeSession())) return "";
+        const owningSession = sessionById(exercise.sessionId);
+        if (exercise.sessionId !== activeWorkoutId || !owningSession || isSessionSubmitted(owningSession)) return "";
         const prescription = snapshot?.finalPrescription || exercise.finalPrescription || null;
         const standard = snapshot?.standardGuideline || snapshot?.basePrescription || null;
         const session = sessionById(exercise.sessionId);
@@ -1283,7 +1284,8 @@
       }
 
       function renderCustomExerciseSetup(exercise) {
-        if (exercise.identitySource !== "user_declared_custom" || exercise.sessionId !== activeWorkoutId || isSessionSubmitted(activeSession())) return "";
+        const owningSession = sessionById(exercise.sessionId);
+        if (exercise.identitySource !== "user_declared_custom" || exercise.sessionId !== activeWorkoutId || !owningSession || isSessionSubmitted(owningSession)) return "";
         const profile = normalizeCustomExerciseProfile(exercise.customExerciseProfile) || {};
         const missing = missingCustomExerciseMetrics(profile);
         const resistance = profile.resistanceType || exercise.resistanceType || "external";
@@ -1335,7 +1337,7 @@
         const customGuidanceIncomplete = exercise.identitySource === "user_declared_custom" && missingCustomExerciseMetrics(normalizeCustomExerciseProfile(exercise.customExerciseProfile)).length > 0;
         const optionsHtml = measurePerformance("lift:exerciseOptions", () => renderCustomExerciseSetup(exercise) + (customGuidanceIncomplete ? "" : renderExerciseGuidance(exercise)) + renderStandardWorkloadControls(exercise) + renderExecutionQualityAssessment(exercise) + renderPlateCalculator(exercise, firstWorkSet) + renderMuscleSelectors(exercise) + renderPrescriptionOverrideControls(exercise, resolvedSafetyContext), { exerciseId: exercise.id });
         return `
-          <article id="exercise-${exercise.id}" class="exercise-card ${isActiveExercise ? "active-exercise" : ""}">
+          <article id="exercise-${exercise.id}" class="exercise-card ${isActiveExercise ? "active-exercise" : ""} ${workoutFocusExerciseId === exercise.id ? "context-exercise" : ""}" tabindex="-1" aria-label="Exercise: ${escapeHtml(exercise.name)}">
             <div class="exercise-header">
               <textarea class="exercise-name exercise-name-field" rows="1" data-action="exercise-name" data-exercise-id="${exercise.id}" aria-label="Exercise name: ${escapeHtml(exercise.name)}" title="${escapeHtml(exercise.name)}">${escapeHtml(exercise.name)}</textarea>
               <div class="exercise-actions">
@@ -1410,7 +1412,7 @@
         const previousField = setTypeSemantics(set).isWarmup
           ? '<div class="set-field set-previous"><span>Previous</span><strong>—</strong><small>Warm-up</small></div>'
           : previous?.priorSessionId
-            ? '<a class="set-field set-previous set-previous-link" href="#progress-history" data-action="open-session" data-session-id="' + escapeHtml(previous.priorSessionId) + '" title="Open the ' + escapeHtml(previousDateLabel) + ' workout"><span>Previous</span><strong>' + escapeHtml(previousSummaryText) + '</strong><small>' + escapeHtml(previousDateLabel) + '</small></a>'
+            ? '<a class="set-field set-previous set-previous-link" href="#progress-history" data-action="open-session" data-session-id="' + escapeHtml(previous.priorSessionId) + '" data-exercise-id="' + escapeHtml(previous.priorExerciseId || "") + '" data-return-exercise-id="' + escapeHtml(exercise.id) + '" title="Open ' + escapeHtml(previous.priorExerciseName || exercise.name) + ' in the ' + escapeHtml(previousDateLabel) + ' workout"><span>Previous</span><strong>' + escapeHtml(previousSummaryText) + '</strong><small>' + escapeHtml(previousDateLabel) + '</small></a>'
             : '<div class="set-field set-previous" title="No previous workout found"><span>Previous</span><strong>—</strong><small>No history</small></div>';
         const targetLoad = Number(set.targetWeight ?? set.weight ?? 0);
         const targetLoadText = formatResistance({ ...set, weight: targetLoad, addedLoad: resistanceType === "bodyweight_plus_load" ? targetLoad : set.addedLoad, assistanceLoad: resistanceType === "assisted_bodyweight" ? targetLoad : set.assistanceLoad, resistanceType });

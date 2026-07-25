@@ -27,7 +27,9 @@ function extractFunction(source, name) {
 }
 
 assert.match(views, /canReturnToActiveSession = historyReadOnly && hasActiveWorkout\(\)[\s\S]*data-action="return-to-active-session"/, "History opened during a workout must expose a dedicated return affordance");
-assert.match(interactions, /action === "return-to-active-session"[\s\S]*activeSessionId = activeWorkoutId;[\s\S]*viewingHistorySessionId = "";[\s\S]*setActiveTab\("today", \{ force: true \}\)/, "Returning must restore the canonical active workout and clear History state");
+assert.match(foundation, /priorExerciseId: entry\.exercise\.id/, "Comparable prior sets must retain the exact submitted exercise identity");
+assert.match(views, /data-action="open-session"[\s\S]*data-exercise-id="[\s\S]*data-return-exercise-id="/, "Previous must carry both the historical and active exercise identities");
+assert.match(interactions, /action === "return-to-active-session"[\s\S]*activeSessionId = activeWorkoutId;[\s\S]*viewingHistorySessionId = "";[\s\S]*workoutFocusExerciseId = returnExerciseId;[\s\S]*focusWorkoutExercise\(returnExerciseId\)/, "Returning must restore the canonical active workout and its originating exercise");
 assert.match(html, /\.return-active-session-fab \{[^}]*bottom: calc\(86px \+ env\(safe-area-inset-bottom\)\);[^}]*position: fixed;[^}]*z-index: 18;/, "The return affordance must float above navigation and safe-area insets");
 
 assert.match(views, /function renderStandardWorkloadControls\([\s\S]*recommendationSnapshotForDisplay\(exercise\.recommendationSnapshot\)[\s\S]*numericStepper\(\{ field: "sets"[\s\S]*numericStepper\(\{ field: "rep-min"[\s\S]*numericStepper\(\{ field: "rep-max"/, "Every exercise default editor must expose shared set and rep targets even when research guidance is absent");
@@ -41,7 +43,9 @@ assert.match(interactions, /action === "adjust-exercise-default"[\s\S]*data-nume
 assert.match(views, /data-action="apply-standard-workload"/, "Exercise defaults must expose an explicit apply action");
 assert.match(views, /data-standard-save-template/, "Template workouts must expose an explicit reusable-default choice");
 assert.match(interactions, /apply-standard-workload[\s\S]*applyExerciseDefaultTargets[\s\S]*saveTemplateStandard/, "The exercise-default action must route through the universal audited target writer");
+assert.match(interactions, /changedControl\.matches\?\.\("\[data-default-field\]"\)[\s\S]*enabled\.value = "false"[\s\S]*changedControl\.matches\?\.\("\[data-set-default-field\]"\)[\s\S]*enabled\.value = "true"/, "The most recently edited shared or individual target surface must become authoritative");
 assert.match(workout, /function applyExerciseDefaultTargets\([\s\S]*action: "exercise_default_targets"[\s\S]*setTypes: workingTypes[\s\S]*warmups: templateWarmups[\s\S]*standardWorkloadOverride: true/, "Applying reusable exercise defaults must persist exact per-set targets and an audit entry");
+assert.match(workout, /sessions: data\.sessions\.map\([\s\S]*updatedAt: now[\s\S]*manualOverrides: \[\.\.\.data\.manualOverrides, overrideEntry\]/, "Applying exercise defaults must update the owning active session and its top-level audit ledger");
 assert.match(workout, /targetRpeMin > targetRpeMax[\s\S]*Choose an ordered target RPE range from 1 to 10 in 0\.5 steps/, "Shared defaults must reject reversed or off-step target RPE ranges");
 assert.match(workout, /rowTargetRpeMin > rowTargetRpeMax[\s\S]*needs an ordered target RPE range from 1 to 10 in 0\.5 steps/, "Individual targets must reject reversed or off-step target RPE ranges");
 assert.match(workout, /completedWorking[\s\S]*incompleteWorking[\s\S]*set\.completed[\s\S]*desiredIncompletePlan/, "Applying defaults must preserve completed work and rebuild unfinished working rows only");

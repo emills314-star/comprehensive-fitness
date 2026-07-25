@@ -620,6 +620,58 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     expect(browserErrors, "compact Today and History hierarchy must not emit browser errors").toEqual([]);
   });
 
+  test("Previous and return preserve exercise context while Exercise options updates the active session", async ({ page }) => {
+    test.setTimeout(90_000);
+    const browserErrors = collectBrowserErrors(page);
+    await installFixture(page, buildActiveWorkoutLifecycleFixture());
+
+    const previous = page.locator(`#set-${IDS.activeRowSet1} .set-previous-link`);
+    await expect(previous).toHaveAttribute("data-exercise-id", IDS.historyRowExercise);
+    await expect(previous).toHaveAttribute("data-return-exercise-id", IDS.activeRowExercise);
+    await previous.click();
+
+    const historyExercise = page.locator(`#exercise-${IDS.historyRowExercise}`);
+    await expect(historyExercise).toBeVisible();
+    await expect.poll(() => page.evaluate((exerciseId) => document.activeElement?.id === `exercise-${exerciseId}`, IDS.historyRowExercise), {
+      message: "Previous must focus the matching exercise in the submitted session"
+    }).toBe(true);
+
+    await page.getByRole("button", { name: "Return to active session" }).click();
+    const activeExercise = page.locator(`#exercise-${IDS.activeRowExercise}`);
+    await expect(activeExercise).toBeVisible();
+    await expect.poll(() => page.evaluate((exerciseId) => document.activeElement?.id === `exercise-${exerciseId}`, IDS.activeRowExercise), {
+      message: "Returning must restore the same exercise in the active session"
+    }).toBe(true);
+
+    const initialSessionUpdatedAt = await page.evaluate((sessionId) => data.sessions.find((session) => session.id === sessionId)?.updatedAt, IDS.activeSession);
+    await activeExercise.locator("details.exercise-options > summary").click();
+    const editor = activeExercise.locator("[data-standard-workload-form]");
+    await editor.locator('[data-default-field="sets"]').fill("3");
+    await editor.locator('[data-default-field="rep-min"]').fill("12");
+    await editor.locator('[data-default-field="rep-max"]').fill("14");
+    await editor.locator('[data-default-field="target-rpe-min"]').fill("8");
+    await editor.locator('[data-default-field="target-rpe-max"]').fill("9");
+    await editor.locator('[data-default-field="working-rest"]').fill("135");
+    await editor.locator('[data-action="apply-standard-workload"]').click();
+
+    const persisted = await waitForPersisted(page, (stored) => {
+      const activeSets = stored.sets.filter((set) => set.exerciseId === IDS.activeRowExercise && !set.isWarmup);
+      const historySets = stored.sets.filter((set) => set.exerciseId === IDS.historyRowExercise && !set.isWarmup);
+      const session = stored.sessions.find((item) => item.id === IDS.activeSession);
+      const audit = stored.manualOverrides.find((item) => item.sessionId === IDS.activeSession && item.exerciseRuntimeId === IDS.activeRowExercise && item.action === "exercise_default_targets");
+      return activeSets.length === 3
+        && activeSets.every((set) => set.targetRepMin === 12 && set.targetRepMax === 14 && set.targetRpeMin === 8 && set.targetRpeMax === 9 && set.targetRestSeconds === 135)
+        && historySets.length === 2
+        && session?.updatedAt !== initialSessionUpdatedAt
+        && Boolean(audit);
+    }, "Exercise options must durably update only the owning active session");
+    expect(persisted.sessions.find((session) => session.id === IDS.historySession)?.updatedAt).toBe("2026-07-16T15:00:00.000Z");
+
+    await reloadAndWait(page);
+    await expect(page.locator(`#exercise-${IDS.activeRowExercise} .set-row:not(.warmup)`)).toHaveCount(3);
+    expect(browserErrors, "context-preserving Previous and exercise-default updates must not emit browser errors").toEqual([]);
+  });
+
   test("legacy Back on a catalog Seated Cable Row resolves to its canonical upper-back target and remains auditable", async ({ page }) => {
     test.setTimeout(120_000);
     const fixture = buildTemplateLifecycleFixture();
