@@ -3,9 +3,9 @@
 ## Metadata
 
 - **Purpose:** Verified user experience, interaction contracts, and intended UX gaps
-- **Last verified:** 2026-07-24
-- **Repository:** `main` working tree (mobile individual-set controls and workout achievements)
-- **Verification status:** VERIFIED from `index.html` and UI/domain tests; physical-device accessibility remains partly unverified
+- **Last verified:** 2026-07-25
+- **Repository:** `main` working tree (design scales, reward layer, and legibility floor)
+- **Verification status:** VERIFIED from `index.html`, UI/domain tests, and local browser measurement at 375 px; **NOT hosted-verified** — the deployed flow and Playwright visual goldens have not been re-approved for this change. Physical-device accessibility remains partly unverified
 - **Related:** [Project](PROJECT.md), [architecture](ARCHITECTURE.md), [decision engine](DECISION_ENGINE.md), [roadmap](ROADMAP.md)
 
 ## Living-document rule
@@ -42,7 +42,36 @@ Pain-blocked exercise options list only current catalog-backed substitutes. Appl
 
 Ten livelier color packages are **IMPLEMENTED** and documented in `docs/design/UI_COLOR_PACKAGES.md`. Signal Garden is the default. Users select and persist a package in **More → Appearance and units → Color package**; the selected package changes cards, action/current, coaching/rest, success, warning, and destructive roles. Every non-Night-Stadium light package now uses a true-white application canvas instead of a tinted paper gradient; Night Stadium remains the intentionally dark package. Two five-screen Strong reference restyle sets remain local under the privacy-ignored `docs/design/strong-ui-mockups/` path because their source screenshots contain personal workout details.
 
-The interface uses one compact system font stack, sentence-case labels, uppercase eyebrow labels, 6–18 px corner radii according to component scale, and dense 4–18 px spacing. Cards use a surface, one semantic border, and at most one status accent. Equivalent actions must reuse the existing primary, secondary, mini, text, destructive, selected, disabled, hover, pressed, and focus-visible patterns. Fixed navigation and transient notices must account for bottom safe-area insets and must not cover the final scrollable content.
+### Design scales — IMPLEMENTED (partial migration)
+
+`:root` now declares explicit type, spacing, radius, elevation, and motion scales alongside the color roles. Before they existed the stylesheet carried 63 distinct `font-size` values, 20 corner radii, and 24 gap values, because each component had been nudged independently rather than composed from a system. **New work must consume a step from these scales instead of introducing another one-off value.**
+
+| Scale | Steps | Notes |
+| --- | --- | --- |
+| Type | `--fs-data` 11 px, `--fs-micro` 12 px, `--fs-tiny` 13 px, `--fs-small` 14 px, `--fs-base` 16 px, `--fs-lg` 18 px, `--fs-xl` 22 px, `--fs-2xl` 28 px, `--fs-3xl` 36 px | `--fs-data` is the only step below 12 px and is reserved for dense tabular numerals inside the active set grid at phone widths. Every other surface floors at 12 px for gym-light legibility |
+| Spacing | `--sp-1` 2 px through `--sp-9` 32 px | 2 px based so dense grids still land on the system |
+| Radius | `--r-row` 0, `--r-xs` 6, `--r-sm` 8, `--r-md` 12, `--r-lg` 16, `--r-xl` 20, `--r-pill` 999 px | Assigned by component role, not by pixel guess |
+| Elevation | `--el-1`, `--el-2`, `--el-3` | Declared with slash-alpha `hsl()` notation so the source stays inside the audited rgb-color ceiling |
+| Motion | `--dur-fast` 120 ms, `--dur-base` 200 ms, `--dur-slow` 320 ms, `--dur-celebrate` 620 ms; `--ease-out`, `--ease-in-out`, `--ease-spring` | Every consumer must degrade under `prefers-reduced-motion` |
+
+**PARTIALLY IMPLEMENTED:** the scales are authoritative for new work, but roughly 370 existing `font-size` declarations still carry hand-tuned rem values. Token and literal values therefore coexist; migrate opportunistically when touching a rule rather than in one sweep. Confirmed migrated so far: the active set-row Previous cell, hypertrophy score scale and empty state, section headings and kickers, status pills, module disclosures, and the achievement strip.
+
+The interface uses one compact system font stack, sentence-case labels, and uppercase eyebrow labels. Cards use a surface, one semantic border, and at most one status accent. Equivalent actions must reuse the existing primary, secondary, mini, text, destructive, selected, disabled, hover, pressed, and focus-visible patterns. Fixed navigation and transient notices must account for bottom safe-area insets and must not cover the final scrollable content.
+
+### Reward and feedback layer — IMPLEMENTED
+
+The stylesheet previously carried 9 transitions and 2 keyframe animations across 1467 rules, so completing a set was a silent state swap. A presentation-only reward layer now acknowledges effort at the moment it happens:
+
+- Completing a set springs the status cell (`set-complete-pop`) and sweeps a success tint across the row (`set-complete-sweep`).
+- A resting set softly pulses its existing `.timer-progress` bar (`rest-breathe`) while the countdown drains. The digits remain the canonical remaining-time value; the pulse is decorative and no second indicator competes with it.
+- Earned achievement badges stagger in (`badge-arrive`); the record badges (`personal_record`, `e1rm_peak`, `volume_record`) receive a warmer entrance (`pr-shine`); badge artwork lifts slightly when its disclosure opens.
+- Buttons, action disclosures, volume cards, and toggle rows scale to 0.97 on press.
+
+Every rule in this layer is presentation only. None changes a set value, rest duration, scroll position, grade, or submission. **Set transitions still never invoke programmatic scrolling**, and the global `prefers-reduced-motion` block neutralises durations so each effect degrades to its end state.
+
+### Achievement strip palette — IMPLEMENTED
+
+The earned strip reads a dedicated `--achv-bg`, `--achv-card`, `--achv-border`, `--achv-line`, `--achv-title`, and `--achv-body` palette. These are declared explicitly per theme rather than mixed from `--current`/`--surface`, because the strip must hold its contrast floor in all ten color packages — the reason the original implementation hard-coded hex here. Night Stadium receives the dark values through its own `[data-color-package]` layer because it renders dark under `data-theme="light"`. This preserves the original contrast guarantee and additionally stops the dark themes from rendering a light-on-light strip. `scripts/test-workout-grade.js` locks both palettes and asserts the strip never derives its surface from the package accent. Verify contrast when editing these values.
 
 Controls should provide a 44 px touch target where layout permits. Equipment `ChoiceChip` controls and Muscle Scope `ChoiceTile` labels meet that contract and expose programmatically named groups. Existing compact controls below 44 px are **NEEDS REVIEW** and must not be copied into new patterns. Text must wrap by default; a redundant narrow-header context may be visibly abbreviated only while its complete value remains in an accessible label and the full screen heading. Motion and programmatic scrolling must honor `prefers-reduced-motion`.
 
@@ -164,7 +193,7 @@ Readiness capture includes sleep, quality, HRV, resting HR, soreness, illness, a
 | Interactive progress charts with session detail | **IMPLEMENTED** | Point selection and detail view. |
 | Full visibility for long exercise names | **PARTIALLY IMPLEMENTED** | Wrapping/overflow styles and performance fixture cover long workout names; broad physical-device exercise-name audit is absent. |
 | Functional lb/kg controls | **IMPLEMENTED** | Header and Settings use the same atomic converter; sets, targets, template increments, overrides, and snapshots preserve physical meaning and explicit unit provenance. Strong CSV import separately requires the source Weight-column unit, labels imported sets with it, retains it with the immutable raw text, and leaves the display unit unchanged. Same-unit duplicate files are no-ops; conflicting reinterpretation is rejected. Private/raw source packages remain immutable. |
-| Motivating, clean experience | **PARTIALLY IMPLEMENTED** | Score/grade colors, a premium blue/gold achievement strip with WCAG-tested title and description contrast, cohesive earned badge artwork, cards, responsive layouts, and light/dark themes exist; subjective design quality and physical-device polish require human review. |
+| Motivating, clean experience | **PARTIALLY IMPLEMENTED** | Score/grade colors, a theme-aware achievement strip with explicit contrast-guaranteed tokens, cohesive earned badge artwork, cards, responsive layouts, and light/dark themes exist. Explicit design scales and a presentation-only reward layer now give set completion, rest, and earned badges visible acknowledgement, and Today carries no text below 12 px. Remaining: the type-scale migration across roughly 370 legacy declarations, dedicated Plan/Progress/planner passes, chart typography, and subjective/physical-device polish. |
 
 ## States and feedback
 

@@ -141,7 +141,23 @@ assert.match(html, /highlightedExercises\.has/, "Related PR and progression labe
 assert.doesNotMatch(html.match(/function renderCompletedWorkoutSummary[\s\S]*?\n      }/)[0], /internalScore\}\s*\/\s*100|internalScore\s*\+\s*['"] \/ 100/, "The overall workout result must not expose its internal numerical score");
 assert.match(html, /const workoutAchievementAssets = Object\.freeze\(\{[\s\S]*personal_record:[\s\S]*e1rm_peak:[\s\S]*volume_record:[\s\S]*plan_complete:[\s\S]*target_precision:[\s\S]*smart_training:[\s\S]*progression:[\s\S]*controlled_execution:/, "The completion summary must retain the full positive-outcome badge artwork map");
 assert.match(html, /<section class="workout-achievements"[\s\S]*Earned this workout[\s\S]*Achievement badges[\s\S]*workout-achievement-grid/, "Earned badges must render as a dedicated completion-summary strip");
-assert.match(html, /\.workout-achievements \{[^}]*background-color: #f3f7fc;[^}]*border: 2px solid #2d6ca9;[\s\S]*\.workout-achievement-title \{[^}]*color: #123d6b;[\s\S]*\.workout-achievement-description \{[^}]*color: #435a70;/, "Achievement cards must use explicit high-contrast colors instead of a fallible theme token");
+// The earned strip must keep a guaranteed contrast floor across all ten color
+// packages, so it may not derive its colors from the selected package accent.
+// It now reads a dedicated --achv-* palette whose values are declared explicitly
+// per theme rather than mixed from --current/--surface. That preserves the
+// original contrast guarantee and additionally stops the dark themes from
+// rendering a light-on-light strip.
+assert.match(html, /--achv-bg: #142237;[\s\S]*--achv-card: #1b2c44;[\s\S]*--achv-title: #f4f8ff;[\s\S]*--achv-body: #b3c2d6;/, "The dark-theme achievement palette must declare explicit high-contrast values");
+assert.match(html, /\[data-theme="light"\][\s\S]*--achv-bg: #f3f7fc;[\s\S]*--achv-card: #ffffff;[\s\S]*--achv-title: #123d6b;[\s\S]*--achv-body: #435a70;/, "The light-theme achievement palette must declare explicit high-contrast values");
+assert.match(html, /data-color-package="night-stadium"\] \{[^}]*--achv-bg: #142237;[^}]*--achv-title: #f4f8ff;/, "Night Stadium must receive the dark achievement palette because it renders dark under data-theme=light");
+assert.match(html, /\.workout-achievements \{[^}]*background-color: var\(--achv-bg\);[^}]*border: 2px solid var\(--achv-border\);[\s\S]*\.workout-achievement-title \{[^}]*color: var\(--achv-title\);[\s\S]*\.workout-achievement-description \{[^}]*color: var\(--achv-body\);/, "Achievement cards must consume the dedicated contrast-guaranteed palette, never the package accent");
+assert.doesNotMatch(html, /\.workout-achievements \{[^}]*color-mix\(in srgb, var\(--current\)/, "The achievement strip must not derive its surface from the selected package accent");
+// The earned-count pill is held to WCAG AAA (7:1) by the completion-summary
+// browser test. --action only reaches 4.96:1 against white in the default
+// package, so the pill keeps its own deep navy and cream pair.
+assert.match(html, /--achv-pill-bg: #143f6b;[\s\S]*--achv-pill-text: #fff1b8;/, "The earned-count pill must keep explicit AAA-contrast colors");
+assert.match(html, /\.workout-achievements-heading > strong \{[^}]*background: var\(--achv-pill-bg\);[^}]*color: var\(--achv-pill-text\);/, "The earned-count pill must consume its dedicated AAA palette");
+assert.doesNotMatch(html, /\.workout-achievements-heading > strong \{[^}]*var\(--action\)/, "The earned-count pill must not fall back to the package accent, which fails AAA");
 assert.match(html, /function renderWorkoutAchievement[\s\S]*achievement\.key === "plan_complete"[\s\S]*Previous high-water mark[\s\S]*<details class="workout-achievement interactive"/, "Every earned badge except Plan Complete must disclose exercise evidence and a prior high-water mark");
 
 const achievementData = {

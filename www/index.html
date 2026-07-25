@@ -57,6 +57,82 @@
         --color-warning: var(--amber);
         --color-danger: var(--red);
         --color-rest: var(--rest-accent);
+
+        /* Design scales. Before these existed the stylesheet carried 63 distinct
+           font sizes, 20 radii, and 24 gap values because each component was
+           nudged independently. New work must consume a step from these scales
+           instead of introducing another one-off value. */
+
+        /* Type scale. --fs-data is the only step below 12px and is reserved for
+           dense tabular numerals inside the active set grid at phone widths.
+           Everything else floors at 12px so gym-light legibility is preserved. */
+        --fs-data: 0.6875rem;
+        --fs-micro: 0.75rem;
+        --fs-tiny: 0.8125rem;
+        --fs-small: 0.875rem;
+        --fs-base: 1rem;
+        --fs-lg: 1.125rem;
+        --fs-xl: 1.375rem;
+        --fs-2xl: 1.75rem;
+        --fs-3xl: 2.25rem;
+
+        /* Spacing scale, 2px-based so dense grids still land on the system. */
+        --sp-1: 2px;
+        --sp-2: 4px;
+        --sp-3: 6px;
+        --sp-4: 8px;
+        --sp-5: 12px;
+        --sp-6: 16px;
+        --sp-7: 20px;
+        --sp-8: 24px;
+        --sp-9: 32px;
+
+        /* Radius scale by role rather than by pixel guess. */
+        --r-row: 0px;
+        --r-xs: 6px;
+        --r-sm: 8px;
+        --r-md: 12px;
+        --r-lg: 16px;
+        --r-xl: 20px;
+        --r-pill: 999px;
+
+        /* Elevation. Uses slash-alpha hsl notation so the source stays inside the
+           audited rgb-color ceiling in tests/ui/ui-audit.spec.js. */
+        --el-1: 0 1px 2px hsl(215 40% 12% / 0.06);
+        --el-2: 0 4px 12px hsl(215 40% 12% / 0.08);
+        --el-3: 0 12px 30px hsl(215 40% 12% / 0.12);
+
+        /* Motion. The stylesheet previously had 9 transitions and 2 keyframes in
+           1467 rules, so nothing ever acknowledged a tap. Every use of these
+           must degrade under prefers-reduced-motion. */
+        --dur-fast: 120ms;
+        --dur-base: 200ms;
+        --dur-slow: 320ms;
+        --dur-celebrate: 620ms;
+        --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+        --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+        --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+        /* Achievement strip palette. These are deliberately explicit values rather
+           than derivations of the selected color package: the earned strip must
+           hold its contrast floor in all ten packages, which is why the original
+           implementation hard-coded hex here. Keeping them as named per-theme
+           tokens preserves that guarantee while also letting the dark themes stop
+           rendering a light-on-light strip. Verify contrast when editing. */
+        --achv-bg: #142237;
+        --achv-card: #1b2c44;
+        --achv-border: #4fa3ff;
+        --achv-line: #334c69;
+        --achv-title: #f4f8ff;
+        --achv-body: #b3c2d6;
+        /* The earned-count pill is held to WCAG AAA (7:1) by
+           tests/ui/critical-workout-lifecycle.spec.js, so it keeps its own deep
+           navy and cream pair in both themes rather than reusing --action, which
+           only reaches 4.96:1 against white. Do not swap these for accent tokens. */
+        --achv-pill-bg: #143f6b;
+        --achv-pill-border: #0e3155;
+        --achv-pill-text: #fff1b8;
+
         color: var(--text);
         background: var(--bg);
         font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -91,6 +167,12 @@
         --input-bg: hsl(0 0% 100%);
         --nav-bg: rgba(255, 255, 255, 0.96);
         --shadow: 0 12px 30px rgba(18, 32, 51, 0.08);
+        --achv-bg: #f3f7fc;
+        --achv-card: #ffffff;
+        --achv-border: #2d6ca9;
+        --achv-line: #c9d9e9;
+        --achv-title: #123d6b;
+        --achv-body: #435a70;
       }
 
       /* Saved color packages share semantic roles while giving the app a more
@@ -115,7 +197,7 @@
       [data-theme="light"][data-color-package="redwood-circuit"] { --bg: #f5e9d8; --bg-soft: #eadbc6; --panel: #fffdfc; --panel-2: #f1f5f0; --panel-3: #eadcc7; --surface: #faf7f2; --surface-strong: #fffdfc; --input-bg: #fff; --nav-bg: rgba(255,253,252,.96); --current-dark: #e8eef3; }
       [data-theme="light"][data-color-package="mediterranean-set"] { --bg: #f3efd9; --bg-soft: #e8e2c5; --panel: #fffef7; --panel-2: #f2f5ff; --panel-3: #f4e8ad; --surface: #faf9ef; --surface-strong: #fffef7; --input-bg: #fff; --nav-bg: rgba(255,254,247,.96); --current-dark: #e8eeff; }
       [data-theme="light"][data-color-package="modern-primary"] { --bg: #f7f5ef; --bg-soft: #ece9df; --panel: #fff; --panel-2: #f1f6ff; --panel-3: #fff1ba; --surface: #f7f9fc; --surface-strong: #fff; --input-bg: #fff; --nav-bg: rgba(255,255,255,.96); --current-dark: #e5f0ff; }
-      [data-theme="light"][data-color-package="night-stadium"] { --bg: #0c1727; --bg-soft: #101d30; --panel: #142237; --panel-2: #182941; --panel-3: #20344f; --surface: #182941; --surface-strong: #20344f; --input-bg: #101d30; --nav-bg: rgba(12,23,39,.97); --line: #334c69; --line-strong: #527292; --text: #f4f8ff; --muted: #b3c2d6; --muted-2: #91a5bd; --current-dark: #173a5e; --success-dark: rgba(66,206,121,.14); }
+      [data-theme="light"][data-color-package="night-stadium"] { --bg: #0c1727; --bg-soft: #101d30; --panel: #142237; --panel-2: #182941; --panel-3: #20344f; --surface: #182941; --surface-strong: #20344f; --input-bg: #101d30; --nav-bg: rgba(12,23,39,.97); --line: #334c69; --line-strong: #527292; --text: #f4f8ff; --muted: #b3c2d6; --muted-2: #91a5bd; --current-dark: #173a5e; --success-dark: rgba(66,206,121,.14); --achv-bg: #142237; --achv-card: #1b2c44; --achv-border: #4fa3ff; --achv-line: #334c69; --achv-title: #f4f8ff; --achv-body: #b3c2d6; }
 
       [data-theme="light"]:not([data-color-package="night-stadium"]) { --bg: #fff; --bg-soft: #fff; }
 
@@ -620,39 +702,44 @@
       .workout-grade-copy p { color: var(--muted); font-size: .72rem; line-height: 1.5; margin: 0; }
       .workout-grade-mark { color: var(--grade-color); font-size: 3.45rem; font-weight: 950; letter-spacing: 0; line-height: .86; min-width: 72px; text-align: right; }
       .workout-grade-intent { color: var(--muted); font-size: .65rem; font-weight: 800; }
-      .workout-achievements { background-color: #f3f7fc; background-image: linear-gradient(145deg, #edf4fc, #ffffff 64%, #fff8e9); border: 2px solid #2d6ca9; border-radius: 14px; color: #153b64; display: grid; gap: 14px; overflow: hidden; padding: 15px; position: relative; }
-      .workout-achievements::after { background: radial-gradient(circle, rgba(229, 171, 47, .24), transparent 68%); content: ""; height: 150px; pointer-events: none; position: absolute; right: -48px; top: -72px; width: 150px; }
-      .workout-achievements-heading { align-items: center; border-bottom: 1px solid #c9d9e9; display: flex; gap: 12px; justify-content: space-between; padding-bottom: 10px; position: relative; z-index: 1; }
-      .workout-achievements-heading > div { display: grid; gap: 2px; }
-      .workout-achievements-heading h3 { color: #102f50; font-size: .95rem; margin: 0; }
-      .workout-achievements-heading .section-kicker { color: #245b91; }
-      .workout-achievements-heading > strong { background: #143f6b; border: 1px solid #0e3155; border-radius: 999px; color: #fff1b8; font-size: .66rem; padding: 6px 9px; white-space: nowrap; }
-      .workout-achievement-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); position: relative; z-index: 1; }
-      .workout-achievement { align-content: start; background: #ffffff; border: 1px solid #d3dfec; border-radius: 11px; box-shadow: 0 6px 16px rgba(19, 53, 88, .09); display: grid; justify-items: stretch; min-width: 0; overflow: hidden; text-align: center; }
-      .workout-achievement.static { gap: 7px; justify-items: center; padding: 12px 9px 13px; }
+      /* The earned strip is the app's single most rewarding surface, so it keeps
+         its warm trophy-case treatment. Every value now resolves from semantic
+         tokens: the previous hard-coded light-mode hex rendered light-on-light in
+         the Night Stadium dark package. */
+      .workout-achievements { background-color: var(--achv-bg); background-image: linear-gradient(145deg, var(--achv-bg), var(--achv-card) 64%, color-mix(in srgb, var(--rest-accent) 12%, var(--achv-card))); border: 2px solid var(--achv-border); border-radius: var(--r-lg); color: var(--achv-title); display: grid; gap: var(--sp-6); overflow: hidden; padding: var(--sp-6); position: relative; }
+      .workout-achievements::after { background: radial-gradient(circle, color-mix(in srgb, var(--rest-accent) 26%, transparent), transparent 68%); content: ""; height: 150px; pointer-events: none; position: absolute; right: -48px; top: -72px; width: 150px; }
+      .workout-achievements-heading { align-items: center; border-bottom: 1px solid var(--achv-line); display: flex; gap: var(--sp-5); justify-content: space-between; padding-bottom: var(--sp-5); position: relative; z-index: 1; }
+      .workout-achievements-heading > div { display: grid; gap: var(--sp-1); }
+      .workout-achievements-heading h3 { color: var(--achv-title); font-size: var(--fs-base); margin: 0; }
+      .workout-achievements-heading .section-kicker { color: var(--green); }
+      .workout-achievements-heading > strong { background: var(--achv-pill-bg); border: 1px solid var(--achv-pill-border); border-radius: var(--r-pill); color: var(--achv-pill-text); font-size: var(--fs-micro); padding: var(--sp-3) var(--sp-4); white-space: nowrap; }
+      .workout-achievement-grid { display: grid; gap: var(--sp-5); grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); position: relative; z-index: 1; }
+      .workout-achievement { align-content: start; background: var(--achv-card); border: 1px solid var(--achv-line); border-radius: var(--r-md); box-shadow: var(--el-2); display: grid; justify-items: stretch; min-width: 0; overflow: hidden; text-align: center; }
+      .workout-achievement.static { gap: var(--sp-4); justify-items: center; padding: var(--sp-5) var(--sp-4) var(--sp-5); }
       .workout-achievement.interactive[open] { grid-column: 1 / -1; }
-      .workout-achievement-summary { align-content: start; cursor: pointer; display: grid; gap: 7px; justify-items: center; list-style: none; min-width: 0; padding: 12px 9px 11px; }
+      .workout-achievement-summary { align-content: start; cursor: pointer; display: grid; gap: var(--sp-4); justify-items: center; list-style: none; min-width: 0; padding: var(--sp-5) var(--sp-4); }
       .workout-achievement-summary::-webkit-details-marker { display: none; }
-      .workout-achievement-summary:focus-visible { outline: 3px solid #176fc1; outline-offset: -3px; }
-      .workout-achievement img { aspect-ratio: 1; border-radius: 50%; box-shadow: 0 7px 18px rgba(14, 43, 74, .22), 0 0 0 2px rgba(203, 148, 31, .42); height: 84px; object-fit: cover; width: 84px; }
-      .workout-achievement-title { color: #123d6b; font-size: .76rem; line-height: 1.3; margin-top: 1px; }
-      .workout-achievement-description { color: #435a70; font-size: .66rem; line-height: 1.48; text-wrap: balance; }
-      .workout-achievement-cue { align-items: center; color: #174f85; display: flex; font-size: .62rem; font-weight: 850; gap: 5px; justify-content: center; margin-top: 2px; }
-      .workout-achievement-cue b { color: #b77600; font-size: .9rem; line-height: .7; transition: transform .18s ease; }
+      .workout-achievement-summary:focus-visible { outline: 3px solid var(--current); outline-offset: -3px; }
+      .workout-achievement img { aspect-ratio: 1; border-radius: var(--r-pill); box-shadow: var(--el-3), 0 0 0 2px color-mix(in srgb, var(--rest-accent) 46%, transparent); height: 84px; object-fit: cover; transition: transform var(--dur-base) var(--ease-spring); width: 84px; }
+      .workout-achievement:hover img, .workout-achievement[open] img { transform: scale(1.05) rotate(-2deg); }
+      .workout-achievement-title { color: var(--achv-title); font-size: var(--fs-small); line-height: 1.3; margin-top: 1px; }
+      .workout-achievement-description { color: var(--achv-body); font-size: var(--fs-micro); line-height: 1.48; text-wrap: balance; }
+      .workout-achievement-cue { align-items: center; color: var(--green); display: flex; font-size: var(--fs-micro); font-weight: 800; gap: var(--sp-3); justify-content: center; margin-top: var(--sp-1); }
+      .workout-achievement-cue b { color: var(--rest-accent); font-size: var(--fs-base); line-height: .7; transition: transform var(--dur-base) var(--ease-out); }
       .workout-achievement[open] .workout-achievement-cue b { transform: rotate(180deg); }
-      .workout-achievement-detail { background: #edf4fb; border-top: 1px solid #c8d9e9; color: #183d62; display: grid; gap: 11px; padding: 13px; text-align: left; }
+      .workout-achievement-detail { background: var(--achv-bg); border-top: 1px solid var(--achv-line); color: var(--achv-title); display: grid; gap: var(--sp-5); padding: var(--sp-5); text-align: left; }
       .workout-achievement-detail > div:first-child { display: grid; gap: 3px; }
       .workout-achievement-detail > div:first-child > strong { color: #102f50; font-size: .82rem; }
-      .workout-achievement-detail p { color: #435a70; font-size: .68rem; line-height: 1.45; margin: 0; }
+      .workout-achievement-detail p { color: var(--achv-body); font-size: var(--fs-micro); line-height: 1.45; margin: 0; }
       .workout-achievement-evidence-list { display: grid; gap: 8px; }
-      .workout-achievement-evidence { background: #ffffff; border: 1px solid #cbd9e7; border-radius: 9px; display: grid; gap: 7px; padding: 10px; }
+      .workout-achievement-evidence { background: var(--achv-card); border: 1px solid var(--achv-line); border-radius: var(--r-sm); display: grid; gap: 7px; padding: 10px; }
       .workout-achievement-evidence header { align-items: baseline; display: flex; flex-wrap: wrap; gap: 3px 8px; justify-content: space-between; }
-      .workout-achievement-evidence header strong { color: #123d6b; font-size: .75rem; }
+      .workout-achievement-evidence header strong { color: var(--achv-title); font-size: var(--fs-small); }
       .workout-achievement-evidence header span { color: #5a6d80; font-size: .61rem; font-weight: 800; }
       .workout-achievement-evidence > div { display: grid; gap: 2px; grid-template-columns: minmax(96px, .8fr) minmax(0, 1.2fr); }
       .workout-achievement-evidence > div > span { color: #546b82; font-size: .62rem; }
       .workout-achievement-evidence > div > strong { color: #173d64; font-size: .68rem; min-width: 0; overflow-wrap: anywhere; }
-      .workout-achievement-evidence.empty { color: #435a70; font-size: .68rem; text-align: left; }
+      .workout-achievement-evidence.empty { color: var(--achv-body); font-size: var(--fs-micro); text-align: left; }
       .workout-summary-section { border-top: 1px solid var(--line); display: grid; gap: 9px; padding-top: 13px; }
       .workout-summary-section > h3 { font-size: .82rem; margin: 0; }
       .workout-category-list, .workout-highlight-list, .workout-improvement-list, .workout-exercise-list { display: grid; gap: 0; }
@@ -834,7 +921,7 @@
       .mesocycle-builder { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 14px; }
       .planner-section-heading { border-bottom: 1px solid var(--line); display: grid; gap: 4px; grid-column: 1 / -1; padding-bottom: 10px; }
       .planner-section-heading h3, .planner-section-heading p { margin: 0; }
-      .planner-section-heading p { color: var(--muted); font-size: .68rem; }
+      .planner-section-heading p { color: var(--muted); font-size: var(--fs-micro); }
       .planner-field, .mesocycle-builder > label, .candidate-muscle-select { color: var(--text); display: grid; font-size: .72rem; font-weight: 900; gap: 7px; letter-spacing: .01em; }
       .planner-field input, .planner-field select, .mesocycle-builder > label input, .mesocycle-builder > label select, .candidate-muscle-select select { background: var(--input-bg); border: 1px solid var(--line-strong); border-radius: 10px; color: var(--text); min-height: 48px; padding: 10px 12px; }
       .planner-field input:focus, .planner-field select:focus, .candidate-muscle-select select:focus { border-color: var(--current); box-shadow: 0 0 0 3px color-mix(in srgb, var(--current) 24%, transparent); }
@@ -1257,8 +1344,9 @@
       .hypertrophy-score-meta { color: var(--muted); display: flex; flex-wrap: wrap; font-size: .66rem; gap: 4px 10px; grid-column: 1 / -1; line-height: 1.35; }
       .hypertrophy-score-bar { background: var(--line); border-radius: 999px; grid-column: 1 / -1; height: 6px; overflow: hidden; }
       .hypertrophy-score-bar span { background: var(--score-color); display: block; height: 100%; width: calc(var(--score) * 1%); }
-      .hypertrophy-score-empty { background: var(--surface); border: 1px dashed var(--line-strong); border-radius: 8px; display: grid; gap: 5px; padding: 13px; }
-      .hypertrophy-score-empty p { color: var(--muted); font-size: .7rem; margin: 0; }
+      .hypertrophy-score-empty { background: var(--surface); border: 1px dashed var(--line-strong); border-radius: var(--r-sm); display: grid; gap: var(--sp-3); padding: var(--sp-5); }
+      .hypertrophy-score-empty p { color: var(--muted); font-size: var(--fs-micro); line-height: 1.45; margin: 0; }
+      .hypertrophy-score-empty > strong { color: var(--text); font-size: var(--fs-small); line-height: 1.35; }
       .hypertrophy-detail { border-bottom: 1px solid var(--line); border-top: 1px solid var(--line); display: grid; gap: 12px; padding: 12px 0; }
       .hypertrophy-detail h2, .hypertrophy-detail h3, .hypertrophy-detail p { margin: 0; }
       .hypertrophy-detail > p, .hypertrophy-detail li { color: var(--muted); font-size: .72rem; line-height: 1.45; }
@@ -1532,8 +1620,8 @@
       .set-field > span { color: var(--muted); font-size: .55rem; font-weight: 900; letter-spacing: .04em; line-height: 1; text-transform: uppercase; }
       .set-field input { width: 100%; }
       .set-previous { align-content: stretch; align-self: stretch; gap: 1px; grid-template-rows: auto minmax(0, 1fr) auto; }
-      .set-previous strong { align-self: center; color: #4b5563 !important; font-size: .56rem; font-weight: 800; line-height: 1.12; margin: 0; overflow: hidden; text-overflow: ellipsis; transform: translateY(4px); white-space: nowrap; }
-      .set-previous small { align-self: end; color: #4b5563 !important; font-size: .46rem; font-weight: 700; line-height: 1.1; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; transform: none; white-space: nowrap; }
+      .set-previous strong { align-self: center; color: var(--muted); font-size: var(--fs-micro); font-weight: 800; line-height: 1.12; margin: 0; overflow: hidden; text-overflow: ellipsis; transform: translateY(3px); white-space: nowrap; }
+      .set-previous small { align-self: end; color: var(--muted-2); font-size: var(--fs-data); font-weight: 700; line-height: 1.1; margin-top: var(--sp-1); overflow: hidden; text-overflow: ellipsis; transform: none; white-space: nowrap; }
       .set-previous-link { background: transparent; border: 0; border-radius: 5px; color: inherit; padding: 3px 2px; text-decoration: none; }
       .set-previous-link > span { color: var(--current); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--current) 52%, transparent); text-underline-offset: 2px; }
       .set-previous-link:hover, .set-previous-link:focus-visible { background: var(--current-dark); outline: 2px solid var(--current); outline-offset: 1px; }
@@ -1615,6 +1703,89 @@
       .update-banner { align-items: center; background: var(--current-dark); border: 1px solid var(--current); display: flex; font-size: .7rem; gap: 9px; justify-content: space-between; padding: 9px 11px; }
       .update-banner button { min-height: 32px; padding: 4px 8px; }
       @keyframes next-set-pulse { 0% { box-shadow: inset 0 0 0 1px var(--current), 0 0 0 0 color-mix(in srgb, var(--current) 35%, transparent); } 100% { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--current) 60%, transparent), 0 0 0 8px transparent; } }
+
+      /* ---------------------------------------------------------------------
+         Reward and feedback layer.
+         The app previously had 9 transitions across 1467 rules, so completing a
+         set was a silent state swap. These rules acknowledge effort at the exact
+         moment it happens. Everything here is presentation only: no rule below
+         changes set values, timer duration, scroll position, or submission.
+         The global prefers-reduced-motion block already neutralises durations,
+         so each effect degrades to its end state rather than disappearing.
+         --------------------------------------------------------------------- */
+
+      /* Completion. A brief spring on the status cell plus a sweep of the row
+         background, so a completed set reads as an accomplishment. */
+      @keyframes set-complete-pop {
+        0% { transform: scale(1); }
+        45% { transform: scale(1.28); }
+        100% { transform: scale(1); }
+      }
+      @keyframes set-complete-sweep {
+        0% { background-position: 100% 0; }
+        100% { background-position: -100% 0; }
+      }
+      .set-block.completed .set-status { animation: set-complete-pop var(--dur-celebrate) var(--ease-spring) both; }
+      .set-block.completed {
+        background-image: linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--success) 16%, transparent) 50%, transparent 100%);
+        background-repeat: no-repeat;
+        background-size: 200% 100%;
+        animation: set-complete-sweep var(--dur-celebrate) var(--ease-out) both;
+      }
+
+      /* Rest. The existing .timer-progress bar already carries --timer-progress
+         from the renderer, so the countdown gains a soft pulse while it drains
+         rather than a second competing indicator. Digits stay canonical. */
+      /* The pulse matches the rail it surrounds: .timer-progress already fills and
+         borders in --current, which test-rest-timer-presentation.js pins as "the
+         app's complementary current blue". Gold --rest-accent stays on the rest
+         label and disclosure chevron so the rest role remains distinguishable. */
+      @keyframes rest-breathe {
+        0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--current) 34%, transparent); }
+        50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--current) 5%, transparent); }
+      }
+      .set-block.resting-set .timer-progress { animation: rest-breathe 2s var(--ease-in-out) infinite; }
+
+      /* Achievements. Badges stagger in so the earned strip feels like a
+         reveal instead of a table that was always there. */
+      @keyframes badge-arrive {
+        0% { opacity: 0; transform: translateY(10px) scale(.9); }
+        60% { opacity: 1; transform: translateY(0) scale(1.04); }
+        100% { opacity: 1; transform: translateY(0) scale(1); }
+      }
+      .workout-achievement-grid > .workout-achievement { animation: badge-arrive var(--dur-slow) var(--ease-spring) both; }
+      .workout-achievement-grid > .workout-achievement:nth-child(1) { animation-delay: 40ms; }
+      .workout-achievement-grid > .workout-achievement:nth-child(2) { animation-delay: 100ms; }
+      .workout-achievement-grid > .workout-achievement:nth-child(3) { animation-delay: 160ms; }
+      .workout-achievement-grid > .workout-achievement:nth-child(4) { animation-delay: 220ms; }
+      .workout-achievement-grid > .workout-achievement:nth-child(5) { animation-delay: 280ms; }
+      .workout-achievement-grid > .workout-achievement:nth-child(6) { animation-delay: 340ms; }
+      .workout-achievement-grid > .workout-achievement:nth-child(7) { animation-delay: 400ms; }
+      .workout-achievement-grid > .workout-achievement:nth-child(8) { animation-delay: 460ms; }
+
+      /* Record badges earn a warmer entrance than ordinary badges. The key lives
+         on the nested summary, so this matches the badge that contains it. */
+      @keyframes pr-shine {
+        0% { opacity: 0; transform: scale(.86); }
+        55% { opacity: 1; transform: scale(1.08); }
+        100% { opacity: 1; transform: scale(1); }
+      }
+      .workout-achievement-grid > .workout-achievement:has(summary[data-achievement-key="personal_record"]),
+      .workout-achievement-grid > .workout-achievement:has(summary[data-achievement-key="e1rm_peak"]),
+      .workout-achievement-grid > .workout-achievement:has(summary[data-achievement-key="volume_record"]) {
+        animation: pr-shine var(--dur-celebrate) var(--ease-spring) both;
+      }
+      .workout-improvement-list li { animation: badge-arrive var(--dur-slow) var(--ease-out) both; }
+
+      /* Tap acknowledgement. Every interactive surface now responds. */
+      button, summary[data-action], .volume-card, label.toggle-line {
+        transition: transform var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+      }
+      button:active, summary[data-action]:active, .volume-card:active, label.toggle-line:active { transform: scale(.97); }
+      .primary-action:hover, .secondary-action:hover { box-shadow: var(--el-2); }
+
+      /* Disclosures and cards settle rather than snap. */
+      .module-disclosure, .compact-disclosure, .insight-module { transition: box-shadow var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out); }
 
       .adjustment-summary { background: color-mix(in srgb, var(--amber) 11%, var(--surface)); border-left: 3px solid var(--amber); color: var(--text); font-weight: 900; padding: 10px 12px; }
 
@@ -1942,9 +2113,9 @@
       .view { gap: 12px; padding-bottom: 18px; }
       .screen-heading, .workout-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
       .screen-heading h1, .workout-heading h1 { margin: 1px 0 0; font-size: 1.42rem; line-height: 1.1; }
-      .section-kicker { font-size: .64rem; }
-      .screen-intro { margin: -5px 0 0; color: var(--muted); font-size: .8rem; line-height: 1.38; }
-      .status-pill { min-height: 23px; padding: 3px 7px; border-radius: 999px; font-size: .64rem; white-space: nowrap; }
+      .section-kicker { font-size: var(--fs-micro); }
+      .screen-intro { margin: -5px 0 0; color: var(--muted); font-size: var(--fs-small); line-height: 1.4; }
+      .status-pill { min-height: 24px; padding: var(--sp-2) var(--sp-4); border-radius: var(--r-pill); font-size: var(--fs-micro); white-space: nowrap; }
       .workout-status-strip, .dashboard-summary-row, .chart-metric-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; gap: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--surface); }
       .workout-status-strip > span { min-height: 38px; display: grid; place-items: center; color: var(--muted); font-size: .7rem; font-weight: 800; text-align: center; border-right: 1px solid var(--line); }
       .workout-status-strip .icon-button { align-self: center; margin: 0 5px; }
@@ -1954,14 +2125,14 @@
       .quick-template-card small, .quick-template-card span { font-size: .67rem; }
       .lift-home-view { gap: 16px; }
       .lift-home-score { border-top: 1px solid var(--line); display: grid; gap: 10px; padding-top: 14px; }
-      .score-scale { display: flex; flex-wrap: wrap; gap: 5px; }
-      .score-scale span { border: 1px solid currentColor; border-radius: 999px; font-size: .58rem; font-weight: 850; padding: 4px 7px; }
+      .score-scale { display: flex; flex-wrap: wrap; gap: var(--sp-3); }
+      .score-scale span { border: 1px solid currentColor; border-radius: var(--r-pill); font-size: var(--fs-micro); font-weight: 800; padding: var(--sp-2) var(--sp-4); }
       .score-scale .score-excellent { color: var(--current); }
-      .score-scale .score-very-good { color: #1b8065; }
-      .score-scale .score-good { color: #758f18; }
-      .score-scale .score-mixed { color: #a96500; }
-      .score-scale .score-limiting { color: #c74a00; }
-      .score-scale .score-critical { color: #c52222; }
+      .score-scale .score-very-good { color: var(--success); }
+      .score-scale .score-good { color: color-mix(in srgb, var(--success) 55%, var(--amber)); }
+      .score-scale .score-mixed { color: var(--amber); }
+      .score-scale .score-limiting { color: color-mix(in srgb, var(--amber) 45%, var(--red)); }
+      .score-scale .score-critical { color: var(--red); }
       .exercise-card { padding: 11px 4px 11px 0; border-radius: 0; border-width: 1px 0; background: transparent; box-shadow: none; gap: 9px; }
       .exercise-card::before { display: none; }
       .exercise-card header { align-items: center; gap: 7px; }
@@ -2095,10 +2266,10 @@
       .template-editor { margin-top: 8px; }
       .full-width { width: 100%; min-height: 42px; }
       .screen-section { display: grid; gap: 9px; }
-      .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 10px; }
-      .section-heading h2 { margin: 0; font-size: .94rem; }
-      .section-heading p { margin: 3px 0 0; color: var(--muted); font-size: .7rem; line-height: 1.35; }
-      .section-heading > span { color: var(--muted); font-size: .68rem; white-space: nowrap; }
+      .section-heading { display: flex; align-items: end; justify-content: space-between; gap: var(--sp-5); }
+      .section-heading h2 { margin: 0; font-size: var(--fs-base); }
+      .section-heading p { margin: var(--sp-2) 0 0; color: var(--muted); font-size: var(--fs-micro); line-height: 1.45; }
+      .section-heading > span { color: var(--muted); font-size: var(--fs-micro); white-space: nowrap; }
       .text-button { min-height: 30px; padding: 0; border: 0; background: transparent; color: var(--green-2); font-size: .72rem; font-weight: 850; }
       .dashboard-summary-row, .chart-metric-row { grid-template-columns: repeat(3, minmax(0, 1fr)); border-radius: 8px; overflow: hidden; }
       .dashboard-summary-row > div, .dashboard-summary-row > button, .chart-metric-row > div { min-height: 64px; display: flex; flex-direction: column; justify-content: center; padding: 8px; border: 0; border-right: 1px solid var(--line); border-radius: 0; }
@@ -2216,8 +2387,8 @@
       .module-action-row { display: grid; gap: 8px; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); margin-top: 4px; }
       .module-action-row > * { min-height: 48px; width: 100%; }
       .module-disclosure { border-top: 1px solid var(--line); margin-top: 2px; padding-top: 4px; }
-      .module-disclosure summary { align-items: center; cursor: pointer; display: flex; font-size: .75rem; font-weight: 850; justify-content: space-between; min-height: 44px; }
-      .module-disclosure summary span { color: var(--muted); font-size: .68rem; }
+      .module-disclosure summary { align-items: center; cursor: pointer; display: flex; font-size: var(--fs-small); font-weight: 850; justify-content: space-between; min-height: 44px; }
+      .module-disclosure summary span { color: var(--muted); font-size: var(--fs-micro); }
       .module-disclosure .score-scale { padding: 8px 0 2px; }
       .lift-home-view > .workout-heading, .dashboard-view > .screen-heading, .templates-view > .screen-heading, .charts-view > .screen-heading, .settings-view > .screen-heading { padding: 4px 2px; }
       .quick-template-strip { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; display: grid; gap: 10px; padding: 14px; }
