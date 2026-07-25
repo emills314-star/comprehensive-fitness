@@ -47,6 +47,14 @@ Fixed by giving the pill its own `--achv-pill-bg` / `--achv-pill-border` / `--ac
 
 This partially vindicates the original "fallible theme token" comment: the concern was real, and the correct resolution was dedicated explicit tokens rather than either hard-coded hex or package-derived colors.
 
+### Owner review on the hosted preview
+
+The change was published to a branch and reviewed by the repository owner on the Vercel preview for PR #5. The owner approved the rest-timer pulse and asked for it to be blue rather than gold.
+
+Applied: `rest-breathe` now pulses `--current` instead of `--rest-accent`. This is also the more coherent choice — `.timer-progress` already fills and borders in `--current`, which `scripts/test-rest-timer-presentation.js:17` pins as "the app's complementary current blue", so the gold pulse had been the inconsistent element. Gold `--rest-accent` remains on the rest label and disclosure chevron, so the rest role stays visually distinct per the semantic-separation rule in `docs/UI_UX.md`. PWA cache advanced v66 → v67.
+
+**Scope of this verification:** the owner confirmed the rest-timer treatment specifically. A full hosted pass over set entry, iOS Safari focus-zoom, submission, and the dark-package achievement strip was not separately reported back, so those remain locally verified only.
+
 ### Decision recorded: achievement strip contrast
 
 `scripts/test-workout-grade.js` previously asserted the strip must use explicit hex "instead of a fallible theme token" — a deliberate outcome of the 2026-07-24 washed-out contrast repair. That hard-coding also meant the strip rendered light-on-light in the Night Stadium dark package.

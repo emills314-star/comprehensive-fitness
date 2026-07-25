@@ -1736,9 +1736,13 @@
       /* Rest. The existing .timer-progress bar already carries --timer-progress
          from the renderer, so the countdown gains a soft pulse while it drains
          rather than a second competing indicator. Digits stay canonical. */
+      /* The pulse matches the rail it surrounds: .timer-progress already fills and
+         borders in --current, which test-rest-timer-presentation.js pins as "the
+         app's complementary current blue". Gold --rest-accent stays on the rest
+         label and disclosure chevron so the rest role remains distinguishable. */
       @keyframes rest-breathe {
-        0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--rest-accent) 34%, transparent); }
-        50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--rest-accent) 5%, transparent); }
+        0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--current) 34%, transparent); }
+        50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--current) 5%, transparent); }
       }
       .set-block.resting-set .timer-progress { animation: rest-breathe 2s var(--ease-in-out) infinite; }
 
