@@ -30,8 +30,10 @@ assert.match(interactions, /function releaseSetEntryFocusForCompletion\(target\)
 assert.match(interactions, /root\.addEventListener\("pointerdown"[\s\S]*releaseSetEntryFocusForCompletion\(actionTarget \|\| target\);/, "The checkmark must release set-entry focus before its default pointer focus transition");
 assert.match(html, /@media \(max-width: 390px\)[\s\S]*grid-template-columns: 28px minmax\(0, 1\.45fr\) minmax\(0, \.88fr\) minmax\(0, \.72fr\) minmax\(0, \.64fr\) 44px;/, "Narrow set rows must retain all six bounded columns");
 assert.match(html, /\.set-previous \{[^}]*align-self: stretch;[^}]*grid-template-rows: auto minmax\(0, 1fr\) auto;/, "Previous must reserve separate label, active-value, and date rows");
-assert.match(html, /\.set-previous strong \{[^}]*align-self: center;[^}]*color: #4b5563 !important;[^}]*font-size: \.56rem;[^}]*margin: 0;[^}]*transform: translateY\(4px\)/, "Previous values must use compact dark-gray text centered with active values");
-assert.match(html, /\.set-previous small \{[^}]*align-self: end;[^}]*color: #4b5563 !important;[^}]*font-size: \.46rem;[^}]*margin-top: 2px;[^}]*transform: none;/, "Previous dates must retain a separate lower spacing band");
+assert.match(html, /\.set-previous strong \{[^}]*align-self: center;[^}]*color: var\(--muted\);[^}]*font-size: var\(--fs-micro\);[^}]*margin: 0;[^}]*transform: translateY\(3px\)/, "Previous values must use muted token text centered with active values");
+assert.match(html, /\.set-previous small \{[^}]*align-self: end;[^}]*color: var\(--muted-2\);[^}]*font-size: var\(--fs-data\);[^}]*margin-top: var\(--sp-1\);[^}]*transform: none;/, "Previous dates must retain a separate lower spacing band on the dense-data type step");
+assert.match(html, /--fs-data: 0\.6875rem;/, "The dense-data type step must stay at 11px so the Previous date remains legible");
+assert.match(html, /--fs-micro: 0\.75rem;/, "The micro type step must floor at 12px for gym-light legibility");
 assert.match(html, /\.resistance-type-disclosure > summary::after \{[^}]*color: var\(--current\)/, "The resistance disclosure arrow must use the app blue");
 assert.match(interactions, /if \(action === "open-session"\)[\s\S]*event\.preventDefault\(\);[\s\S]*setActiveTab\("today", \{ force: true \}\);/, "A Previous link must force-render its exact submitted session even while Today already owns the active destination");
 
