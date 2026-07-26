@@ -73,7 +73,7 @@ test("Templates initial frame stays progressive under large history", async ({ p
   await page.goto("/?perf=1&perfFixture=large");
   await page.waitForLoadState("load");
   await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: /Plan$/ }).click();
-  await expect(page.getByRole("heading", { name: "Templates", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your plan", exact: true })).toBeVisible();
 
   const result = await page.evaluate(() => {
     const events = (window.__CF_PERF__ || []).filter((event) => event.label === "renderTotal:plan");
@@ -164,6 +164,127 @@ test("design-system source does not accumulate one-off styling", async () => {
   expect(metrics.rgbColors, "replace new rgb colors with semantic tokens").toBeLessThanOrEqual(40);
   expect(metrics.inlineStyles, "do not add inline presentation styles").toBeLessThanOrEqual(3);
   expect(metrics.importantRules, "avoid new specificity overrides").toBeLessThanOrEqual(17);
+});
+
+test("all confidence text retains contrast in every color package and theme", async ({ page }) => {
+  const colorPackages = [
+    "heritage-atlas",
+    "signal-garden",
+    "alpine-ledger",
+    "training-hall",
+    "harbor-pulse",
+    "prairie-electric",
+    "redwood-circuit",
+    "mediterranean-set",
+    "modern-primary",
+    "night-stadium"
+  ];
+  const results = await page.evaluate(({ colorPackages }) => {
+    const probeHost = document.createElement("div");
+    probeHost.innerHTML = [1, 2, 3].map((level) => (
+      `<section data-contrast-level="${level}">
+        <span class="chip" data-conf="${level}" data-contrast-name="chip">Confidence ${level}</span>
+        <div class="claim-card" data-conf="${level}">
+          <span class="cc-title" data-contrast-name="cc-title">Today's target</span>
+          <strong class="cc-value" data-contrast-name="cc-value">145 lb × 8 reps</strong>
+          <span class="cc-why" data-contrast-name="cc-why">Confidence and evidence summary</span>
+          <div class="claim-projection-grid">
+            <div>
+              <span class="claim-projection-label" data-contrast-name="claim-projection-label">Rest</span>
+              <strong class="claim-projection-value" data-contrast-name="claim-projection-value">120 sec</strong>
+            </div>
+          </div>
+          <div class="claim-projection-rule">
+            <span data-contrast-name="claim-projection-rule-label">Next action</span>
+            <strong data-contrast-name="claim-projection-rule-value">Progress after the completed range</strong>
+          </div>
+          <div class="prescription-base">
+            <span data-contrast-name="prescription-base-label">Base prescription</span>
+            <strong data-contrast-name="prescription-base-value">3 sets · 8 reps</strong>
+          </div>
+        </div>
+        <article class="role-prescription" data-conf="${level}">
+          <div class="role-prescription-heading">
+            <span>Top set</span>
+            <span class="role-confidence-label" data-contrast-name="role-confidence-label">Confidence ${level}</span>
+          </div>
+          <p class="role-evidence-copy" data-contrast-name="role-evidence-copy">Stored evidence for this role.</p>
+        </article>
+        <div class="rationale-heading" data-conf="${level}">
+          <div>
+            <strong class="evidence-confidence-label" data-contrast-name="evidence-confidence-label">Confidence ${level}</strong>
+            <span class="evidence-confidence-copy" data-contrast-name="evidence-confidence-copy">Personal and research evidence</span>
+          </div>
+        </div>
+      </section>`
+    )).join("");
+    document.body.append(probeHost);
+    const parseColor = (value) => {
+      const normalized = String(value);
+      const channels = (normalized.match(/[\d.]+/g) || []).map(Number);
+      const srgb = normalized.startsWith("color(srgb");
+      return {
+        red: (channels[0] || 0) * (srgb ? 255 : 1),
+        green: (channels[1] || 0) * (srgb ? 255 : 1),
+        blue: (channels[2] || 0) * (srgb ? 255 : 1),
+        alpha: channels[3] ?? 1
+      };
+    };
+    const composite = (foreground, background) => ({
+      red: foreground.red * foreground.alpha + background.red * (1 - foreground.alpha),
+      green: foreground.green * foreground.alpha + background.green * (1 - foreground.alpha),
+      blue: foreground.blue * foreground.alpha + background.blue * (1 - foreground.alpha),
+      alpha: 1
+    });
+    const effectiveBackground = (element) => {
+      const layers = [];
+      for (let node = element; node && node !== document.body; node = node.parentElement) {
+        layers.push(parseColor(getComputedStyle(node).backgroundColor));
+      }
+      let background = parseColor(getComputedStyle(document.body).backgroundColor);
+      for (const layer of layers.reverse()) background = composite(layer, background);
+      return background;
+    };
+    const luminance = (rgb) => rgb.reduce((sum, channel, index) => {
+      const value = channel / 255;
+      const linear = value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+      return sum + linear * [0.2126, 0.7152, 0.0722][index];
+    }, 0);
+    const contrast = (foreground, background) => {
+      const foregroundLuminance = luminance([foreground.red, foreground.green, foreground.blue]);
+      const backgroundLuminance = luminance([background.red, background.green, background.blue]);
+      return (Math.max(foregroundLuminance, backgroundLuminance) + 0.05)
+        / (Math.min(foregroundLuminance, backgroundLuminance) + 0.05);
+    };
+    const measurements = [];
+    for (const theme of ["dark", "light"]) {
+      document.documentElement.dataset.theme = theme;
+      for (const colorPackage of colorPackages) {
+        document.documentElement.dataset.colorPackage = colorPackage;
+        for (const element of probeHost.querySelectorAll("[data-contrast-name]")) {
+          const background = effectiveBackground(element);
+          const foreground = composite(parseColor(getComputedStyle(element).color), background);
+          const levelHost = element.closest("[data-contrast-level]");
+          measurements.push({
+            theme,
+            colorPackage,
+            level: Number(levelHost.dataset.contrastLevel),
+            selector: element.dataset.contrastName,
+            ratio: contrast(foreground, background)
+          });
+        }
+      }
+    }
+    probeHost.remove();
+    return measurements;
+  }, { colorPackages });
+
+  for (const result of results) {
+    expect(
+      result.ratio,
+      `${result.theme}/${result.colorPackage} confidence level ${result.level} ${result.selector} contrast`
+    ).toBeGreaterThanOrEqual(4.5);
+  }
 });
 
 test("the authoritative UI documentation remains present", async () => {

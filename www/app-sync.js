@@ -890,7 +890,7 @@
         measurePerformance("timer:primeAlerts", () => primeTimerAlerts());
         measurePerformance("timer:requestWakeLock", () => requestTimerWakeLock());
         pendingNextSetId = next?.id || "";
-        if (pendingNextSetId) activeSetId = "";
+        if (pendingNextSetId) activeSetId = pendingNextSetId;
         timer = {
           id: id(),
           version: Number(previousTimer?.version || 0) + 1,
@@ -1011,7 +1011,11 @@
         }
         saveRuntime();
         removeTimerDom(previous);
-        if (activeSetId) applyCurrentSetVisual(activeSetId, activeSetNotice || "Current set");
+        if (activeSetId) {
+          applyCurrentSetVisual(activeSetId, activeSetNotice || "Current set");
+          const nextControl = root.querySelector('[data-set-id="' + activeSetId + '"][data-action="set-weight"], [data-set-id="' + activeSetId + '"][data-action="set-reps"], [data-set-id="' + activeSetId + '"][data-action="set-duration"], [data-set-id="' + activeSetId + '"][data-action="set-distance"], [data-set-id="' + activeSetId + '"][data-action="set-rpe"], [data-set-id="' + activeSetId + '"][data-action="toggle-set"]');
+          if (nextControl) focusVisibleEnabledElement(nextControl, { sequential: false });
+        }
         else updateWorkoutStatusDom();
       }
 

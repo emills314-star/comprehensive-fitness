@@ -69,10 +69,10 @@
       let data = emptyData();
       const primaryTabIds = ["today", "plan", "progress", "more"];
       const focusActionAllowlist = new Set([
-        "set-tab", "start-template", "request-cancel-workout", "request-save-history-edits", "request-cancel-history-edits", "clear-data",
+        "set-tab", "start-template", "start-next-template", "toggle-set", "set-weight", "set-reps", "set-rpe", "set-duration", "set-distance", "session-menu", "request-cancel-workout", "request-save-history-edits", "request-cancel-history-edits", "clear-data",
         "continue-template-start", "return-active-workout", "use-usual-readiness", "review-template-readiness", "start-adjusted-workout",
         "keep-workout", "keep-history-editing", "cancel-clear-data", "close-dashboard-detail", "dashboard-detail-parent",
-        "open-history", "open-progress", "set-progress-view", "retry-view-render", "focus-workout-exercise", "open-dashboard-detail", "open-dashboard-session", "open-volume-session", "open-fatigue-flag",
+        "open-history", "open-progress", "set-progress-view", "retry-view-render", "focus-workout-exercise", "open-dashboard-detail", "open-dashboard-session", "open-volume-session", "open-fatigue-flag", "toggle-volume-muscle",
         "cancel-template-start", "log-today-readiness", "edit-readiness-metrics", "start-original-workout",
         "template-readiness-sleep-hours", "template-readiness-sleep-quality", "template-readiness-hrv", "template-readiness-resting-hr",
         "template-readiness-soreness", "template-readiness-nutrition", "template-readiness-protein", "template-readiness-illness",
@@ -80,7 +80,7 @@
         "clear-data-ack", "clear-data-phrase", "sync-before-clear", "confirm-clear-data", "confirm-cancel-workout",
         "confirm-save-history-edits", "confirm-cancel-history-edits"
       ]);
-      const focusDescriptorDataKeys = ["tab", "templateId", "sessionId", "exerciseId", "progressView", "detail", "flagId"];
+      const focusDescriptorDataKeys = ["tab", "templateId", "sessionId", "exerciseId", "setId", "progressView", "detail", "flagId", "muscle"];
       const focusableCandidateSelector = 'button, input, select, textarea, a[href], summary, [tabindex]';
       let progressView = progressViewFromLocation();
       let activeTab = tabFromLocation();
@@ -320,20 +320,25 @@
       let guidedCreationPending = false;
       const expandedTemplateEditorIds = new Set();
 
+      const svgIcon = (paths, viewBox = "0 0 24 24") => '<svg class="ui-icon" viewBox="' + viewBox + '" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + paths + '</svg>';
       const icon = {
-        workout: "Now",
-        templates: "Map",
-        review: "Trend",
-        settings: "Menu",
-        add: "+",
-        clock: "Rest",
-        done: "&#10003;",
-        delete: "X",
-        pause: "&#10074;&#10074;",
-        play: "&#9654;",
-        duplicate: "Copy",
-        download: "Export",
-        upload: "Import"
+        workout: svgIcon('<path d="M4 12h3l2-5 4 10 2-5h5"/><path d="M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/>'),
+        templates: svgIcon('<path d="M4 5.5 9 3l6 2.5L20 3v15.5L15 21l-6-2.5L4 21Z"/><path d="M9 3v15.5M15 5.5V21"/>'),
+        review: svgIcon('<path d="M4 19V9m6 10V5m6 14v-7m4 7H2"/>'),
+        settings: svgIcon('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.1A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.1A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.1A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.14.37.37.7.68.95.3.25.7.4 1.1.4H21v4h-.1c-.4 0-.8.14-1.1.4-.2.08-.3.16-.4.25Z"/>'),
+        add: svgIcon('<path d="M12 5v14M5 12h14"/>'),
+        clock: svgIcon('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+        done: svgIcon('<path d="m5 12 4 4L19 6"/>'),
+        delete: svgIcon('<path d="M5 7h14M9 7V4h6v3m2 0-1 13H8L7 7m3 4v5m4-5v5"/>'),
+        pause: svgIcon('<path d="M9 7v10M15 7v10"/>'),
+        play: svgIcon('<path d="m9 6 9 6-9 6Z"/>'),
+        duplicate: svgIcon('<rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>'),
+        download: svgIcon('<path d="M12 3v12m-4-4 4 4 4-4M5 20h14"/>'),
+        upload: svgIcon('<path d="M12 15V3m-4 4 4-4 4 4M5 20h14"/>'),
+        grip: svgIcon('<circle cx="8" cy="7" r=".7" fill="currentColor" stroke="none"/><circle cx="16" cy="7" r=".7" fill="currentColor" stroke="none"/><circle cx="8" cy="12" r=".7" fill="currentColor" stroke="none"/><circle cx="16" cy="12" r=".7" fill="currentColor" stroke="none"/><circle cx="8" cy="17" r=".7" fill="currentColor" stroke="none"/><circle cx="16" cy="17" r=".7" fill="currentColor" stroke="none"/>'),
+        more: svgIcon('<circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none"/>'),
+        up: svgIcon('<path d="m6 14 6-6 6 6"/>'),
+        down: svgIcon('<path d="m6 10 6 6 6-6"/>')
       };
 
       function emptyData() {
@@ -2703,7 +2708,7 @@
 
       function ensureActiveSet() {
         if (timer?.isActive) {
-          activeSetId = "";
+          activeSetId = timer.pendingNextSetId || "";
           return;
         }
         const current = data.sets.find((set) => set.id === activeSetId);

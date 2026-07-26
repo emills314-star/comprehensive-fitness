@@ -67,12 +67,20 @@ async function installScenario(page, { fixture, viewport, theme = "light", malfo
 
 async function openSurface(page, surface, { expandDashboard = false, liftHeading = ACTIVE_WORKOUT_TITLE } = {}) {
   const navigation = page.getByRole("navigation", { name: "Main navigation" });
-  const target = navigation.getByRole("button", { name: surface === "dashboard" ? /Progress$/ : /Today$/ });
-  await target.click();
-  await expect(target).toHaveAttribute("aria-current", "page");
+  let target = navigation.getByRole("button", { name: surface === "dashboard" ? /Progress$/ : /Today$/ });
+  if (await target.count()) {
+    await target.click();
+    await expect(target).toHaveAttribute("aria-current", "page");
+  } else if (surface === "dashboard") {
+    await page.evaluate(() => { activeTab = "progress"; render(); });
+    target = navigation.getByRole("button", { name: /Progress$/ });
+    await expect(target).toHaveAttribute("aria-current", "page");
+  } else {
+    target = page.locator('[data-action="session-menu"]');
+  }
   if (surface === "dashboard") {
     await page.locator('[data-action="set-progress-view"][data-progress-view="overview"]').click();
-    await expect(page.getByRole("heading", { name: "Training signals, in context.", exact: true })).toBeVisible();
+    await expect(page.locator(".progress-conclusion")).toBeVisible();
     if (expandDashboard) {
       const chest = page.locator('[data-action="toggle-volume-muscle"][data-muscle="Chest"]');
       await expect(chest).toHaveCount(1);
@@ -139,11 +147,13 @@ async function assertProtectedLayout(page, surface, expectedWidth, { requireProt
   });
   expect(layout.innerWidth).toBe(expectedWidth);
   expect(layout.hasMain, "a named main landmark must remain present").toBe(true);
-  expect(layout.hasNavigation, "a named primary navigation landmark must remain present").toBe(true);
+  expect(layout.hasNavigation, "primary navigation must be absent only from the active workout shell").toBe(surface !== "lift");
   expect(layout.overflow, `${surface} must not introduce horizontal content overflow`).toEqual([]);
   expect(layout.clippedTargets, `${surface} controls must remain inside the viewport`).toEqual([]);
-  expect(layout.navTargets).toHaveLength(4);
-  expect(layout.navTargets.every((target) => target.height >= 44), "primary navigation targets must remain at least 44 CSS px tall").toBe(true);
+  expect(layout.navTargets).toHaveLength(surface === "lift" ? 0 : 4);
+  if (surface !== "lift") {
+    expect(layout.navTargets.every((target) => target.height >= 44), "primary navigation targets must remain at least 44 CSS px tall").toBe(true);
+  }
   if (requireProtectedTargets) {
     expect(layout.protectedTargets.length).toBeGreaterThan(0);
     expect(layout.protectedTargets.every((target) => target.height >= 44 && target.width >= 44), "critical Lift/Dashboard controls must retain 44 CSS px targets").toBe(true);
@@ -177,8 +187,8 @@ async function assertRichLabels(page, surface, viewportWidth) {
     await expect(page.getByText("Previous", { exact: true }).first()).toBeVisible();
     await expect(page.getByLabel("Set options").first()).toBeVisible();
   } else {
-    await expect(page.locator(".dashboard-coach.coach-lead")).toBeVisible();
-    await expect(page.locator('[data-action="open-dashboard-detail"][data-detail="sessions"]')).toContainText("3");
+    await expect(page.locator(".progress-switcher")).toBeVisible();
+    await expect(page.locator(".progress-conclusion")).toContainText("volume and fatigue signals");
     const recentTitle = page.locator(".recent-history-title").filter({ hasText: LONG_HISTORY_TITLE });
     await expect(recentTitle).toHaveCount(1);
     await expect(recentTitle).toBeVisible();
@@ -241,19 +251,16 @@ test.describe("protected Lift and Dashboard visual baselines", () => {
     await chest.click();
     await expect(chest).toHaveAttribute("aria-expanded", "true");
     await expect(page.locator(".volume-card.expanded")).toContainText(LONG_EXERCISE_NAMES.chest);
-    const sessions = page.locator('[data-action="open-dashboard-detail"][data-detail="sessions"]');
-    await sessions.click();
-    await expect(page.getByRole("heading", { name: "Logged sessions", exact: true })).toBeVisible();
-    const loggedSessionTitle = page.locator('.drilldown-item[data-action="open-dashboard-session"] strong').filter({ hasText: LONG_HISTORY_TITLE });
-    await expect(loggedSessionTitle).toHaveCount(1);
-    await expect(loggedSessionTitle).toBeVisible();
+    const fatigue = page.locator('[data-action="open-fatigue-flag"]').first();
+    await fatigue.click();
+    await expect(page.locator(".dashboard-detail-view")).toBeVisible();
     const back = page.getByRole("button", { name: "Back", exact: true });
     await back.click();
-    await expect(page.getByRole("heading", { name: "Training signals, in context.", exact: true })).toBeVisible();
+    await expect(page.locator(".progress-conclusion")).toBeVisible();
     expect(browserErrors, "protected interaction browser errors").toEqual([]);
   });
 
-  test("empty Lift and Dashboard states stay readable at 390 px", async ({ page }, testInfo) => {
+  test("empty Lift state stays readable at 390 px", async ({ page }, testInfo) => {
     desktopProjectOnly(testInfo);
     test.setTimeout(90_000);
     const browserErrors = collectBrowserErrors(page);
@@ -264,12 +271,23 @@ test.describe("protected Lift and Dashboard visual baselines", () => {
     await openSurface(page, "lift", { liftHeading: "Today" });
     await expect(page.locator(".coach-lead")).toBeVisible();
     await expect(page).toHaveScreenshot("protected-lift-empty-mobile-390.png", { fullPage: true, animations: "disabled", caret: "hide", scale: "css", maxDiffPixelRatio: 0.003 });
+    expect(browserErrors, "empty Lift browser errors").toEqual([]);
+  });
+
+  test("empty Dashboard state stays readable at 390 px", async ({ page }, testInfo) => {
+    desktopProjectOnly(testInfo);
+    test.setTimeout(90_000);
+    const browserErrors = collectBrowserErrors(page);
+    await installScenario(page, {
+      fixture: buildEmptyProtectedSurfaceFixture(),
+      viewport: { width: 390, height: 844 }
+    });
     await openSurface(page, "dashboard");
     await expect(page.getByText("Log a working set to start your weekly volume dashboard.", { exact: true })).toBeVisible();
     await expect(page.getByText("No saved workouts yet.", { exact: true })).toBeVisible();
     await assertProtectedLayout(page, "dashboard empty state", 390, { requireProtectedTargets: false });
     await expect(page).toHaveScreenshot("protected-dashboard-empty-mobile-390.png", { fullPage: true, animations: "disabled", caret: "hide", scale: "css", maxDiffPixelRatio: 0.003 });
-    expect(browserErrors, "empty-state browser errors").toEqual([]);
+    expect(browserErrors, "empty Dashboard browser errors").toEqual([]);
   });
 
   test("malformed local storage fails closed into a usable empty Dashboard", async ({ page }, testInfo) => {

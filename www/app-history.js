@@ -459,7 +459,10 @@
           ? '<div><span>Readiness adjustment</span><strong>Original: ' + escapeHtml(readablePrescriptionLine(readiness.original || {})) + '</strong><p>Today: ' + escapeHtml(readablePrescriptionLine(readiness.adjusted || {})) + '. ' + escapeHtml(readiness.reason) + '</p></div>'
           : '';
         const prDetail = result.prs?.length ? '<div><span>Personal records</span><strong>' + result.prs.map((pr) => escapeHtml(pr.type + ': ' + pr.value)).join('<br>') + '</strong></div>' : '';
-        return '<details class="workout-exercise-result"><summary><strong>' + escapeHtml(result.name) + '</strong><span>' + result.completedSets + '/' + result.plannedSets + ' working sets - ' + escapeHtml(result.intent) + '</span><b>' + escapeHtml(result.comparison.label) + ' &rsaquo;</b></summary><div class="workout-exercise-detail">'
+        const deltaClass = result.comparison?.status === "progress" ? "over" : result.comparison?.status === "regression" ? "out" : result.comparison?.status === "same" ? "on" : "none";
+        const targetText = result.targetRpe ? result.plannedSets + ' sets @ RPE ' + formatLoadNumber(result.targetRpe) : result.plannedSets + ' working sets';
+        const actualText = result.completedSets + ' sets' + (result.averageRpe ? ' @ RPE ' + formatLoadNumber(result.averageRpe) : '');
+        return '<details class="workout-exercise-result summary-diff-result"><summary><span class="diff"><span class="drow"><span class="plan"><span class="lbl">' + escapeHtml(result.name) + '</span><span class="val">' + escapeHtml(targetText) + '</span></span><span class="act"><span class="lbl">Performed</span><span class="val">' + escapeHtml(actualText) + '</span></span><span class="dlt"><span class="d ' + deltaClass + '">' + escapeHtml(result.comparison.label) + '</span></span></span></span></summary><div class="workout-exercise-detail">'
           + '<div><span>Best set</span><strong>' + escapeHtml(result.bestSet?.text || 'No completed working set') + '</strong></div>'
           + '<div><span>Previous comparable best</span><strong>' + escapeHtml(result.priorBestSet?.text || 'No prior comparable submitted set') + '</strong></div>'
           + '<div><span>Change</span><p>' + escapeHtml(result.comparison.change) + '</p></div>'

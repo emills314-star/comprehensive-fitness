@@ -274,7 +274,7 @@ test("critical workout lifecycle remains coherent through submission, progress, 
   await installCleanSyntheticContext(page);
 
   await page.locator('[data-action="set-tab"][data-tab="plan"]').click();
-  await expect(page.getByRole("heading", { name: "Templates", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your plan", exact: true })).toBeVisible();
   await expect(page.locator(".template-card")).toHaveCount(0);
   await page.locator('[data-action="new-template"]').click();
 
@@ -317,8 +317,13 @@ test("critical workout lifecycle remains coherent through submission, progress, 
     has: page.locator('[data-action="toggle-set"]')
   }).first();
   const completion = firstWorkingSet.locator('[data-action="toggle-set"]');
+  await expect(firstWorkingSet.locator('[data-set-mode="current"]')).toHaveCount(1);
   await completion.click();
   await expect(completion).toHaveAttribute("aria-pressed", "true");
+  await expect(firstWorkingSet.locator('[data-set-mode="current"]')).toHaveCount(0);
+  await expect(firstWorkingSet.locator('[data-set-mode="logged"]')).toHaveCount(1);
+  await expect(completion).toBeFocused();
+  await expect(page.locator('[data-workout-rollup]')).toContainText("1/3");
   const timer = firstWorkingSet.locator(".timer-bar");
   await expect(timer, "completing an eligible set must start its rest timer").toBeVisible();
   await timer.locator("summary").click();
@@ -351,8 +356,8 @@ test("critical workout lifecycle remains coherent through submission, progress, 
 
   await openProgressView(page, "overview");
   await expect(page.locator(".dashboard-view")).toBeVisible();
-  await expect(page.getByText("This week's coach", { exact: true })).toBeVisible();
-  await expect(page.locator(".dashboard-summary-row")).toContainText("logged sessions");
+  await expect(page.locator(".progress-switcher")).toBeVisible();
+  await expect(page.locator(".progress-conclusion")).toContainText("volume and fatigue signals");
 
   await openProgressView(page, "lifts");
   await expect(page.getByRole("combobox", { name: "Search or select exercise" })).toHaveValue(EXERCISE_NAME, { timeout: 45_000 });
@@ -367,17 +372,18 @@ test("critical workout lifecycle remains coherent through submission, progress, 
   const beforeUnitChange = await persistedData(page);
   const originalSet = beforeUnitChange.sets.find((set) => set.exerciseId === activeExercise.id && set.completed);
   expect(originalSet.weightUnit).toBe("lb");
+  await page.locator('[data-action="set-tab"][data-tab="more"]').click();
   await page.locator('[data-action="toggle-unit"]').click();
   const kilograms = await waitForPersisted(page, (stored) => stored?.settings?.weightUnit === "kg" && stored.sets.find((set) => set.id === originalSet.id)?.weightUnit === "kg", "lb to kg conversion must persist coherently");
   const kilogramSet = kilograms.sets.find((set) => set.id === originalSet.id);
   expect(kilogramSet.weight).toBeCloseTo(originalSet.weight / 2.2046226218, 2);
-  await expect(page.locator('[data-action="toggle-unit"]')).toHaveText("KG");
+  await expect(page.locator('[data-action="toggle-unit"]')).toContainText("KG");
 
   await page.locator('[data-action="toggle-unit"]').click();
   const pounds = await waitForPersisted(page, (stored) => stored?.settings?.weightUnit === "lb" && stored.sets.find((set) => set.id === originalSet.id)?.weightUnit === "lb", "kg to lb round trip must persist coherently");
   expect(pounds.sets.find((set) => set.id === originalSet.id).weight).toBeCloseTo(originalSet.weight, 1);
   await page.reload();
-  await expect(page.locator('[data-action="toggle-unit"]')).toHaveText("LB", { timeout: 45_000 });
+  await expect(page.locator('[data-action="toggle-unit"]')).toContainText("LB", { timeout: 45_000 });
   await openProgressView(page, "history");
   await expect(page.locator(`[data-action="open-session"][data-session-id="${activeSession.id}"]`)).toHaveCount(1);
   expect(browserErrors, "the complete critical lifecycle must not emit browser errors").toEqual([]);

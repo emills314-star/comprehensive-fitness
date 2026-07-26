@@ -53,7 +53,12 @@ assert.match(html, /Objective, Schedule, and Constraints[\s\S]*Available Equipme
 assert.doesNotMatch(html, /Leave all unselected to allow the complete library/, "Equipment access must never depend on an ambiguous empty selection");
 assert.doesNotMatch(html, />Unknown</, "Planner cards must not expose meaningless Unknown metadata");
 assert.match(html, /All Equipment \/ Standard Gym[\s\S]*Bodyweight[\s\S]*Bands[\s\S]*Dumbbells[\s\S]*Barbell[\s\S]*Rack[\s\S]*Cable Station/, "Planner equipment choices must use the simplified capability bundles");
-assert.match(html, /Base prescription[\s\S]*Today only/, "Live UI must keep base and readiness-adjusted prescriptions distinct");
+const unifiedPrescriptionStart = html.indexOf("function renderUnifiedPrescriptionDetails(");
+const unifiedPrescriptionEnd = html.indexOf("function renderPrescriptionDetails(", unifiedPrescriptionStart);
+assert(unifiedPrescriptionStart >= 0 && unifiedPrescriptionEnd > unifiedPrescriptionStart, "Unified prescription rendering must remain independently inspectable");
+const unifiedPrescriptionSource = html.slice(unifiedPrescriptionStart, unifiedPrescriptionEnd);
+assert.match(unifiedPrescriptionSource, /const claimTitle = changed \? "Today only" : recommendationActionLabel\(final\);[\s\S]*class="cc-title">' \+ escapeHtml\(claimTitle\)/, "A readiness-adjusted target must render Today only as the claim title");
+assert.match(unifiedPrescriptionSource, /const baseComparison = changed \? '<div class="prescription-base"><span>Base prescription<\/span><strong>' \+ escapeHtml\(baseLine\)/, "The unadjusted base must render in its distinct prescription-base comparison markup");
 assert.match(html, /data-action="template-readiness-nutrition"[\s\S]*data-action="template-readiness-protein"/, "Workout readiness must collect current nutrition and protein context");
 assert.match(html, /nutritionAdequate:[\s\S]*proteinAdequate:[\s\S]*energyAvailabilityLow:/, "Current nutrition must reach the unified readiness evaluation");
 assert.match(html, /private personal evidence package/, "Hosted devices need a privacy-safe local evidence import");

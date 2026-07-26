@@ -418,23 +418,30 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await expect(page.getByRole("heading", { name: NAMES.controlTemplate, exact: true })).toBeVisible({ timeout: 45_000 });
     await expect(page.getByText("In progress", { exact: true })).toBeVisible();
     await expect(page.locator(".exercise-card"), "the active workout must render every exercise in one continuous document").toHaveCount(2);
-    const lastTimeFacts = page.locator(".set-row:not(.warmup) .set-previous");
-    expect(await lastTimeFacts.count(), "every generated working set must expose one combined prior-performance value").toBeGreaterThanOrEqual(4);
-    expect((await lastTimeFacts.allTextContents()).every((text) => text.includes("July 16") && !text.includes("No prior working set found")), "role expansion must reuse ordered prior sets instead of losing history").toBe(true);
+    const lastTimeFacts = page.locator(".set-current-editor .set-previous");
+    await expect(lastTimeFacts, "the current V3 editor must expose its combined prior-performance value").toHaveCount(1);
+    expect((await lastTimeFacts.allTextContents()).every((text) => text.includes("July 16") && !text.includes("No prior working set found")), "the current role must retain its ordered prior-set history").toBe(true);
     await expect(lastTimeFacts.first()).toContainText("145");
     await expect(lastTimeFacts.first()).toContainText("8");
     await expect(lastTimeFacts.first()).toContainText("July 16");
     const firstExercise = page.locator(".exercise-card").first();
-    const firstWorkingSet = firstExercise.locator(".set-row:not(.warmup)").first();
+    const firstWorkingSet = firstExercise.locator(".set-current-editor").first();
     const generatedTarget = await firstWorkingSet.evaluate((row) => ({
       load: row.querySelector('[data-action="set-weight"]').value,
       reps: row.querySelector('[data-action="set-reps"]').value
     }));
-    const recommendationSummary = firstExercise.locator(".unified-prescription > summary");
-    await expect(recommendationSummary, "the recommendation must show the exact generated load that prepopulates the row").toContainText(generatedTarget.load);
-    await expect(recommendationSummary, "the recommendation must show the exact generated rep target that prepopulates the row").toContainText(`x ${generatedTarget.reps} reps`);
-    await recommendationSummary.click();
-    await expect(firstExercise.locator(".role-prescription-list"), "expanded rationale must reuse the generated role rows").toContainText(`${generatedTarget.reps} reps`);
+    const recommendationClaim = firstExercise.locator(".unified-prescription > .prescription-claim");
+    await expect(recommendationClaim, "the recommendation claim must show the exact generated load that prepopulates the row").toContainText(generatedTarget.load);
+    await expect(recommendationClaim, "the recommendation claim must show the exact generated rep target that prepopulates the row").toContainText(`x ${generatedTarget.reps} reps`);
+    await expect(firstExercise.locator(".unified-prescription > summary"), "prescription evidence must not retain a disclosure stop").toHaveCount(0);
+    await expect(firstExercise.locator(".role-prescription-list"), "always-visible rationale must reuse the generated role rows").toContainText(`${generatedTarget.reps} reps`);
+    await expect(recommendationClaim.locator('a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])'), "the always-visible claim and evidence must not introduce a keyboard stop").toHaveCount(0);
+    const precedingResistanceSummary = firstExercise.locator(".resistance-type-disclosure > summary");
+    const nextSetControl = firstExercise.locator(".set-block").first().locator('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]:not([tabindex="-1"])').first();
+    await precedingResistanceSummary.focus();
+    await expect(precedingResistanceSummary, "the traversal must begin at the real control immediately before the prescription surface").toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(nextSetControl, "Tab must cross the non-interactive prescription evidence and land on the next real workout control").toBeFocused();
 
     const stored = await waitForPersisted(page, (data) => {
       const sessions = data.sessions.filter((item) => item.templateId === IDS.controlTemplate && item.workoutStarted && !item.submitted);
@@ -668,7 +675,9 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     expect(persisted.sessions.find((session) => session.id === IDS.historySession)?.updatedAt).toBe("2026-07-16T15:00:00.000Z");
 
     await reloadAndWait(page);
-    await expect(page.locator(`#exercise-${IDS.activeRowExercise} .set-row:not(.warmup)`)).toHaveCount(3);
+    await expect(page.locator(`#exercise-${IDS.activeRowExercise} .set-block`)).toHaveCount(3);
+    await expect(page.locator(`#exercise-${IDS.activeRowExercise} [data-set-mode="current"]`)).toHaveCount(1);
+    await expect(page.locator(`#exercise-${IDS.activeRowExercise} [data-set-mode="pending"]`)).toHaveCount(2);
     expect(browserErrors, "context-preserving Previous and exercise-default updates must not emit browser errors").toEqual([]);
   });
 

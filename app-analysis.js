@@ -13,11 +13,11 @@
         }
         return `
           <section class="view templates-view">
-            <div class="screen-heading">
-              <div><div class="section-kicker">Plan</div><h1>Templates</h1></div>
+            <div class="screen-heading plan-heading">
+              <div><div class="section-kicker">Reusable training sheets</div><h1>Your plan</h1><p>Choose a template, then let readiness shape only today’s execution.</p></div>
               <button class="icon-button" type="button" data-action="new-template" title="New template">${icon.add}</button>
             </div>
-            <section class="coach-lead templates-coach"><div class="section-kicker">Planning principle</div><h2>Build the base plan. Let today's readiness shape the execution.</h2><p>Start a familiar workout in one tap. Planning, editing, and evidence stay available as separate modules so they do not compete with the next action.</p></section>
+            <section class="coach-lead templates-coach"><div class="section-kicker">Planning principle</div><h2>The sheet is stable; today can still adapt.</h2><p>Choose the repeatable workout that fits today. Readiness can adjust the session without rewriting the template.</p></section>
             ${renderMesocyclePlanner()}
             ${running ? '<section class="active-workout-notice" id="active-workout-template-notice" role="status"><div><div class="section-kicker">Workout in progress</div><strong>' + escapeHtml(running.title || 'Active workout') + '</strong><span>Finish or cancel your current workout before starting another template.</span></div><div><button class="primary-action" type="button" data-action="return-active-workout">Return to Active Workout</button><button class="text-danger-action" type="button" data-action="request-cancel-workout-from-template">Manage Active Workout</button></div></section>' : ''}
             ${volumeFlags.length ? '<section class="plan-volume-alerts"><div class="section-heading"><div><h2>Weekly volume checks</h2><p>Review these before adding more work.</p></div></div><div class="drilldown-list">' + volumeFlags.map((flag) => '<button class="drilldown-item fatigue-' + flag.concern + '" type="button" data-action="open-plan-volume-warning" data-flag-id="' + escapeHtml(flag.id) + '"><strong>' + escapeHtml(flag.name + ': ' + flag.reason) + '</strong><span class="fatigue-severity ' + flag.concern + '">' + escapeHtml(flag.concern.charAt(0).toUpperCase() + flag.concern.slice(1)) + ' concern</span><small>' + escapeHtml(flag.evidence[0]) + ' · Tap for exact contributors</small><span class="drilldown-chevron" aria-hidden="true">›</span></button>').join('') + '</div></section>' : ''}
@@ -138,7 +138,7 @@
         const duration = Math.max(15, Math.round(prescribedSets * 2.5));
         const coachLine = advice ? advice.detail.split(". ").slice(0, 2).join(". ") : "";
         return `
-          <article class="template-card compact-template ${isActiveTemplate ? "active-template" : locked ? "locked-template" : ""}">
+          <article class="template-card compact-template plan-template-card ex-block ${isActiveTemplate ? "active-template" : locked ? "locked-template" : ""}">
             <div class="template-topline">
               <div class="template-title">${usesLargeTextReflow()
                 ? '<textarea class="exercise-name autosize-title-field" rows="1" data-action="template-name" data-template-id="' + template.id + '" aria-label="Template name">' + escapeHtml(template.name) + '</textarea>'
@@ -1226,8 +1226,8 @@
           ? '<text class="chart-axis-label" x="' + chartPoints[0].x.toFixed(1) + '" y="' + (height - 7) + '" text-anchor="middle">' + escapeHtml(shortChartDate(chartPoints[0].date)) + '</text>'
           : '<text class="chart-axis-label" x="' + plot.left + '" y="' + (height - 7) + '">' + escapeHtml(shortChartDate(chartPoints[0].date)) + '</text><text class="chart-axis-label" x="' + (width - plot.right) + '" y="' + (height - 7) + '" text-anchor="end">' + escapeHtml(shortChartDate(chartPoints.at(-1).date)) + '</text>';
         return `
-          <div class="chart-card" data-chart-key="${chartKey}">
-            <header><strong>${escapeHtml(title)}</strong><span class="status-pill">${values.length} points</span></header>
+          <div class="chart-card evidence-chart" data-chart-key="${chartKey}">
+            <header><strong>${escapeHtml(title)}</strong><span class="status-pill">${values.length} evidenced point${values.length === 1 ? "" : "s"}</span></header>
             <div class="chart-svg">
               <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(title)} chart">
                 <defs><clipPath id="chart-clip-${chartKey}"><rect x="${plot.left - 3}" y="${plot.top - 3}" width="${plotWidth + 6}" height="${plotHeight + 6}" rx="3"></rect></clipPath></defs>
@@ -1638,6 +1638,10 @@
           <section class="view settings-view">
             <div class="screen-heading"><div><div class="section-kicker">Settings</div><h1>Training setup</h1></div></div>
             <section class="coach-lead settings-coach"><div class="section-kicker">Local-first setup</div><h2>Your training preferences stay organized and under your control.</h2><p>Common display choices lead. Training, readiness, alerts, data, and high-risk actions remain separated into focused modules.</p></section>
+            <div class="more-quick-controls" aria-label="Appearance shortcuts">
+              <button type="button" data-action="toggle-unit" title="Switch pounds and kilograms"><span>Units</span><strong>${data.settings.weightUnit.toUpperCase()}</strong></button>
+              <button type="button" data-action="toggle-theme" title="Toggle light and dark theme"><span>Theme</span><strong>${escapeHtml(themeLabel())}</strong></button>
+            </div>
             ${appDataPersistenceConflict ? '<p class="settings-note persistence-conflict-note" role="status">' + escapeHtml(appDataPersistenceConflict.message) + '</p>' : ""}
             ${settingsMessage ? '<p class="settings-note persistence-status-note" role="status">' + escapeHtml(settingsMessage) + '</p>' : ""}
             <details class="settings-group" open><summary>Appearance and units <span>Display</span></summary><div class="disclosure-body settings-panel">

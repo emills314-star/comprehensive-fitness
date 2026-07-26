@@ -3,8 +3,8 @@
 ## Metadata
 
 - **Purpose:** Catalog of implemented and intended logic that turns history, research, and readiness into guidance
-- **Last verified:** 2026-07-24
-- **Repository:** `main` working tree (engine `3.4.1`)
+- **Last verified:** 2026-07-25
+- **Repository:** `main` working tree (engine `3.4.1`; confidence presentation mapping added without engine changes)
 - **Verification status:** VERIFIED against `prescription-engine.js`, relevant `index.html` logic, schemas, data pipelines, and tests
 - **Related:** [Project](PROJECT.md), [architecture](ARCHITECTURE.md), [UI/UX](UI_UX.md), [training data map](training-prescription-data.md), [research methodology](../research_database/METHODOLOGY.md)
 
@@ -38,6 +38,21 @@ Implemented precedence is tested as:
 4. Research defaults when meaningful personal evidence is absent.
 
 Fewer than three comparable exposures remain research-led (`DEFAULT_POLICY.minimumComparableExposures`, `scripts/test-prescription-engine.js`). Confidence considers exposure count/span, variation consistency, RPE, recovery, nutrition completeness, data completeness, and confounding (`derivePersonalEvidenceMetrics`, `calculateEvidenceWeight`). Exact IDs/aliases are preferred; unresolved variants remain separate.
+
+### Prescription confidence presentation mapping — IMPLEMENTED LOCALLY
+
+`calculateEvidenceWeight` already returns one categorical string in `confidence`; this is the confidence contract used by the Evidence & Change prescription UI. It is exactly four categories, not a numeric level supplied by the view:
+
+| Engine `confidence` | Existing engine condition | UI `data-conf` |
+| --- | --- | --- |
+| `research_default` | Fewer than `minimumComparableExposures` (default 3); `personalEvidenceWeight` is exactly 0 and research remains controlling | `1` |
+| `low` | At least the minimum exposure count but below the moderate/high gates | `2` |
+| `moderate` | `personalEvidenceWeight >= 0.4` and at least `moderateComparableExposures` (default 5) | `3` |
+| `high` | `personalEvidenceWeight >= 0.68` and at least `highComparableExposures` (default 8) | `4` |
+
+The numeric UI level is presentation-only and is not persisted or returned by the engine. The categorical string is retained on base/final prescriptions, recommendation snapshots, and surface projections. `personalEvidenceWeight` and `researchEvidenceWeight` remain separate 0–1 blend weights, while `personalDataConfidence` remains a separate 0–100 evidence-quality score. None is substituted for `confidence`.
+
+Role-level progression may separately use `setPrescription.confidence: "conditional"` to describe whether a future increment is ready. That is not a fifth evidence-confidence category and is not mapped to `data-conf`. The claim UI reads the stored `evidenceConfidence`/snapshot confidence category instead. Missing or legacy non-contract confidence renders as unavailable rather than being coerced into the four levels.
 
 Private exercise identity reconciliation examines all three executable personal sources: exercise scores, exercise prescriptions, and exercise-muscle scores. A newly selected evidence file or backup is rejected atomically when any reconciled identity is invalid; no runtime engine, IndexedDB record, revision, completed-analysis cache, prescription cache, or muscle-assignment cache is changed. A valid, collision-free personal ID remains executable regardless of whether it uses a newer `custom_`/`user_` naming convention. An invalid identity already present in persisted legacy data is preserved for audit and marked invalid by the reconciler, but identity, prescription, muscle assignment, history grouping, and volume consumers fail closed for that exercise. A successful evidence replacement invalidates every dependent cache before new results are consumed.
 
@@ -179,6 +194,8 @@ Session-density review begins above eight exercises; more than ten exercises rem
 PRs are calculated only during submission (`submitWorkoutPrs`, `submitWorkout`). Warm-ups and sets excluded from progression do not qualify. Resistance-specific performance semantics distinguish external, bodyweight, added-load, assisted-bodyweight, duration, and distance work. The app preserves PRs on the submitted session and celebrates them in the summary. **NEEDS REVIEW:** the UI uses broader performance-value comparisons rather than a single documented named taxonomy such as “load PR / rep PR / e1RM PR”; product copy should define which PR categories users see.
 
 Weekly muscle volume uses Monday–Sunday submitted history. Direct sets count 1; exercise-specific fractional work counts its taxonomy credit; incidental and unknown relationships count zero; isometric exposure affects fatigue context rather than hypertrophy-set totals. Each exercise is first coalesced by programming family so anatomical subdivisions cannot duplicate one exposure; broad UI regions remain a reporting projection. Warm-ups and excluded sets do not count; explicitly deloaded work is excluded from overload flags (`weeklyMuscleVolume`, `fatigueFlags`). The derived result carries relationship taxonomy provenance, programming-family and ledger versions, family totals, projection status, and a non-persisting rollback contract. Missing or mixed relationship provenance fails closed with no family dose. Logged workout facts remain unchanged; changing or rolling back a taxonomy recalculates derived values from immutable records, so no snapshot backfill or application-data migration is required. Full precision is retained through aggregation and only final exposed totals are rounded.
+
+**IMPLEMENTED presentation contract:** Progress compares each muscle’s actual submitted weighted sets with the existing weekly `targetLow`/`targetHigh` range returned through `targetRangeForMuscle` and `weeklyMuscleVolume`. The range is the planned target shown by the UI; it is not a reconstruction of scheduled template sets. The delta is derived only against that range. There is no canonical template-level historical completion rate. Session-level `plannedSets`, `completedSets`, and `completionRatio` remain valid workout-analysis facts, but Phase 3 does not aggregate them by template because eligibility windows, template revisions, cancelled sessions, and denominators are unspecified.
 
 Workout grades use progression, program adherence, working-set completion/consistency, RPE compliance/logging, adjustment intent, and severe fatigue safeguards (`calculateWorkoutAnalysis`, `scoreWorkoutGradeMetrics`; `scripts/test-workout-grade.js`). Warm-ups are excluded. A well-executed planned deload can earn an A-level grade; reduced load is not intrinsically failure.
 

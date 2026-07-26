@@ -15,7 +15,7 @@
           const remainingInExercise = data.sets.filter((item) => item.exerciseId === set.exerciseId && !item.isWarmup && !item.completed && !item.skipped && item.id !== set.id).length;
           return remainingInExercise === 0 ? "success" : "medium";
         }
-        if (["start-timer", "skip-timer", "start-template", "start-template-with-metrics", "use-usual-readiness", "request-submit-workout", "request-save-history-edits", "begin-history-edit", "save-template", "update-template-exercise", "add-set", "add-warmup-set", "duplicate-set"].includes(action)) return "medium";
+        if (["start-timer", "skip-timer", "start-template", "start-next-template", "start-template-with-metrics", "use-usual-readiness", "request-submit-workout", "request-save-history-edits", "begin-history-edit", "save-template", "update-template-exercise", "add-set", "add-warmup-set", "duplicate-set"].includes(action)) return "medium";
         if (["request-delete-template", "request-cancel-workout", "request-cancel-workout-from-template", "request-cancel-history-edits", "clear-data", "toggle-skip-set"].includes(action)) return "warning";
         if (["set-tab", "adjust-timer", "select-chart-exercise", "show-chart-point", "toggle-achievement-detail", "toggle-prescription-rationale", "open-fatigue-flag", "open-plan-volume-warning", "exercise-deload", "exercise-resistance-type", "exercise-bodyweight", "set-warmup", "timer-sound", "timer-vibration", "workout-completion-sound", "interaction-vibration", "timer-notifications", "in-app-rest-alerts", "toggle-rest-notifications", "preview-rest-complete-sound", "rest-complete-auto-return"].includes(action)) return "light";
         return "none";
@@ -49,7 +49,7 @@
       function releaseSetEntryFocusForCompletion(target) {
         if (target?.dataset?.action !== "toggle-set") return;
         const active = document.activeElement;
-        if (!(active instanceof HTMLElement) || !active.matches(".workout-view .set-row input, .workout-view .set-row select, .workout-view .set-row textarea")) return;
+        if (!(active instanceof HTMLElement) || !active.matches(".workout-view .set-current-editor input, .workout-view .set-current-editor select, .workout-view .set-current-editor textarea")) return;
         active.blur();
       }
 
@@ -263,7 +263,7 @@
         }
         if (action === "complete-custom-exercise-setup") completeCustomExerciseSetup(target.dataset.exerciseId, target.closest("[data-custom-exercise-form]"));
         if (action === "save-template") saveActiveSessionAsTemplate();
-        if (action === "start-template") openTemplateStart(target.dataset.templateId);
+        if (action === "start-template" || action === "start-next-template") openTemplateStart(target.dataset.templateId);
         if (action === "return-active-workout") { templateStartFlow = null; activeSessionId = activeWorkoutId; setActiveTab("lift"); }
         if (action === "return-to-active-session") {
           const returnExerciseId = historyReturnExerciseId;
@@ -289,6 +289,7 @@
         if (action === "start-original-workout" && templateStartFlow) startTemplate(templateStartFlow.templateId, templateStartFlow.draft, "daily-original", { useOriginal: true });
         if (action === "add-template-exercise") addTemplateExercise(target.dataset.templateId);
         if (action === "toggle-volume-muscle") {
+          queuePostRenderFocus(focusDescriptorForElement(target));
           expandedVolumeMuscle = expandedVolumeMuscle === target.dataset.muscle ? "" : target.dataset.muscle;
           render();
         }

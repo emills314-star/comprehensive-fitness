@@ -45,7 +45,13 @@ assert.match(html, /if \(templateStartFlow && !data\.templates\.some/, "Invalid 
 const mobileFormControlCss = extractBraceBlock(html, "@media (max-width: 719px)");
 assert.match(mobileFormControlCss, /input, select, textarea \{ font-size: max\(16px,\s*1rem\); \}/, "Mobile form controls must prevent iOS focus zoom without overriding larger user text");
 assert.match(html, /function renderPrescriptionDetails\(exercise\)/, "Recommendation rationale must use the structured readable renderer");
-assert.match(html, /class="role-progression-facts"/, "Recommendation rationale must separate role-specific confidence, range, and increment");
+const rolePrescriptionStart = html.indexOf("function renderRolePrescriptionDetails(");
+const rolePrescriptionEnd = html.indexOf("function roleSessionPrescriptionLine(", rolePrescriptionStart);
+assert(rolePrescriptionStart >= 0 && rolePrescriptionEnd > rolePrescriptionStart, "Role prescription rendering must remain independently inspectable");
+const rolePrescriptionSource = html.slice(rolePrescriptionStart, rolePrescriptionEnd);
+assert.match(rolePrescriptionSource, /set\.setPrescription\?\.evidenceConfidence[\s\S]*research_default: \{ level: 1,[\s\S]*high: \{ level: 4,[\s\S]*\}\)\[confidenceKey\] \|\| null;/, "Role confidence must be guarded by the four-category engine evidence mapping");
+assert.match(rolePrescriptionSource, /class="claim-card role-prescription-claim' \+ \(confidence \? '' : ' confidence-unavailable'\) \+ '"' \+ confidenceAttributes/, "Role targets must use the guarded confidence claim treatment");
+assert.match(rolePrescriptionSource, /class="claim-projection-grid role-claim-projections"[\s\S]*>Target reps<[\s\S]*escapeHtml\(String\(targetReps\)\)[\s\S]*>Next increment<[\s\S]*escapeHtml\(nextIncrement\)/, "The role claim must retain guarded target reps and next-increment projections");
 assert.match(html, /class="cancel-impact"/, "Workout cancellation must explain removed and preserved data visually");
 assert.match(html, /async function beginHistoryEdit\(\)/, "Logged workouts must enter an explicit asynchronous edit transaction");
 const beginHistoryEditStart = html.indexOf("async function beginHistoryEdit()");

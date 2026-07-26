@@ -122,7 +122,10 @@ assert.match(html, /data-action="toggle-rest-notifications"/, "Lift exposes the 
 assert.match(html, /inAppRestAlerts/, "In-app alerts are persisted in the canonical settings object");
 assert.match(html, /timerCompleteNotice = data\.settings\.inAppRestAlerts !== false/, "In-app completion behavior follows the canonical setting");
 assert.match(html, /Foreground completion sound confirmed/, "Sound testing produces a visible confirmed state");
-assert.match(html, /class="role-progression-facts"/, "Role details separate confidence, target reps, and next increment");
+const roleDetailsSource = extractFunction("renderRolePrescriptionDetails");
+assert.match(roleDetailsSource, /set\.setPrescription\?\.evidenceConfidence[\s\S]*research_default: \{ level: 1,[\s\S]*high: \{ level: 4,[\s\S]*\}\)\[confidenceKey\] \|\| null;/, "Role details must guard confidence with the engine's four evidence categories");
+assert.match(roleDetailsSource, /class="claim-card role-prescription-claim' \+ \(confidence \? '' : ' confidence-unavailable'\) \+ '"' \+ confidenceAttributes/, "Role details must keep targets inside the guarded confidence claim");
+assert.match(roleDetailsSource, /class="claim-projection-grid role-claim-projections"[\s\S]*>Target reps<[\s\S]*escapeHtml\(String\(targetReps\)\)[\s\S]*>Next increment<[\s\S]*escapeHtml\(nextIncrement\)/, "Role details must keep target reps and next increment inside the claim");
 assert.match(html, /class="set-progress-disclosure"[\s\S]*<summary><span>Progress when<\/span>/, "Set rows keep progression rules in a compact native disclosure");
 assert.match(html, /class="discard-workout-button"[^>]*>Discard Workout</, "Cancellation uses the polished concise destructive action");
 assert.match(html, /Your unsaved sets, notes, timer state, and session progress will be discarded/, "Cancellation warning explains the impact");

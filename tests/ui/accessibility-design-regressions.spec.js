@@ -175,10 +175,21 @@ function primaryTab(page, tabId) {
 
 async function openPrimaryTab(page, tabId) {
   const destination = ({ lift: "today", dashboard: "progress", charts: "progress", data: "more" })[tabId] || tabId;
-  const target = primaryTab(page, destination);
-  await expect(target).toHaveCount(1);
-  await target.click();
-  await expect(target).toHaveAttribute("aria-current", "page");
+  let target = primaryTab(page, destination);
+  if (await target.count()) {
+    await target.click();
+  } else if (destination === "today") {
+    await expect(page.locator(".workout-view")).toBeVisible();
+    await page.locator("#main-content").focus();
+  } else {
+    await page.evaluate((tab) => {
+      activeTab = tab;
+      render();
+      document.getElementById("main-content")?.focus();
+    }, destination);
+    target = primaryTab(page, destination);
+  }
+  if (destination !== "today" || await target.count()) await expect(target).toHaveAttribute("aria-current", "page");
   if (tabId === "charts" || tabId === "dashboard") {
     const view = page.locator(`[data-action="set-progress-view"][data-progress-view="${tabId === "charts" ? "lifts" : "overview"}"]`);
     await view.click();
@@ -842,22 +853,26 @@ test("dialog initial focus falls back to the first visible enabled control when 
 test("cancel-workout dialog owns safe focus, traps both directions, and restores its trigger after Escape, close, and backdrop", async ({ page }) => {
   await installScenario(page);
   const trigger = page.locator(`[data-action="request-cancel-workout"][data-session-id="${ACTIVE_SESSION_ID}"]`);
+  const menu = page.locator('[data-action="session-menu"]');
   await expect(trigger).toHaveCount(1);
 
+  await menu.click();
   await trigger.click();
   let dialog = page.getByRole("dialog", { name: "Cancel this workout?", exact: true });
   await expectDialogTrap(page, dialog, dialog.getByRole("button", { name: "Keep Workout", exact: true }));
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
-  await expect.soft(trigger, "Escape must restore focus to the newly rendered Cancel Workout trigger").toBeFocused({ timeout: 1_500 });
+  await expect.soft(menu, "Escape must restore focus to the durable Workout menu trigger").toBeFocused({ timeout: 1_500 });
 
+  await menu.click();
   await trigger.click();
   dialog = page.getByRole("dialog", { name: "Cancel this workout?", exact: true });
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "Keep Workout", exact: true }).click();
   await expect(dialog).toHaveCount(0);
-  await expect.soft(trigger, "The safe close action must restore focus to the newly rendered Cancel Workout trigger").toBeFocused({ timeout: 1_500 });
+  await expect.soft(menu, "The safe close action must restore focus to the durable Workout menu trigger").toBeFocused({ timeout: 1_500 });
 
+  await menu.click();
   await trigger.click();
   dialog = page.getByRole("dialog", { name: "Cancel this workout?", exact: true });
   await expect(dialog).toBeVisible();
@@ -866,7 +881,7 @@ test("cancel-workout dialog owns safe focus, traps both directions, and restores
   await expect.soft(dialog, "Backdrop dismissal must close the cancel-workout dialog").toHaveCount(0, { timeout: 1_000 });
   const backdropOutcome = await page.evaluate(() => ({
     closed: !document.querySelector('.bottom-sheet[aria-labelledby="cancel-workout-title"]'),
-    triggerFocused: document.activeElement?.matches?.('[data-action="request-cancel-workout"]') === true
+    triggerFocused: document.activeElement?.matches?.('[data-action="session-menu"]') === true
   }));
   expect.soft(backdropOutcome, "Backdrop dismissal must close the dialog and restore its durable trigger").toEqual({ closed: true, triggerFocused: true });
   if (!backdropOutcome.closed) {
@@ -1226,20 +1241,17 @@ test("revisionless legacy divergence is wrapped and preserved without destructiv
   expect((await readPersistedAppData(page)).templates.find((template) => template.id === templateId)?.name).toBe("Revisionless IndexedDB copy");
 });
 
-test("Dashboard detail receives initial focus and Back restores the durable originating summary control", async ({ page }) => {
+test("Dashboard volume evidence expands from and restores focus to its durable originating control", async ({ page }) => {
   await installScenario(page);
   await openPrimaryTab(page, "dashboard");
-  const origin = page.locator('[data-action="open-dashboard-detail"][data-detail="sessions"]');
+  const origin = page.locator('[data-action="toggle-volume-muscle"]').first();
   await expect(origin).toHaveCount(1);
   await origin.click();
-
-  const detail = page.locator(".dashboard-detail-view");
-  const back = detail.getByRole("button", { name: "Back", exact: true });
-  await expect(detail).toBeVisible();
-  await expect.soft(back, "Dashboard drill-down must move initial focus to Back").toBeFocused({ timeout: 1_500 });
-  await back.click();
-  await expect(detail).toHaveCount(0);
-  await expect.soft(origin, "Back must focus the newly rendered summary control that opened the detail").toBeFocused({ timeout: 1_500 });
+  await expect(origin).toHaveAttribute("aria-expanded", "true");
+  await expect.soft(origin, "Expanding inline evidence must retain focus on its durable trigger").toBeFocused({ timeout: 1_500 });
+  await origin.click();
+  await expect(origin).toHaveAttribute("aria-expanded", "false");
+  await expect.soft(origin, "Collapsing inline evidence must retain focus on its durable trigger").toBeFocused({ timeout: 1_500 });
 });
 
 test("live guided Available Equipment and Muscle Group Scope choices are named groups with 44 CSS-pixel targets", async ({ page }) => {
@@ -1298,6 +1310,7 @@ test("repeated Lift move, delete, add-set, warm-up, and copy-set controls includ
     await expect(exerciseField).toHaveCount(1);
     const card = exerciseField.locator("xpath=ancestor::article[contains(concat(' ', normalize-space(@class), ' '), ' exercise-card ')][1]");
     await expect(card).toHaveCount(1);
+    await card.locator(".exercise-overflow > summary").click();
     const expectedContext = new RegExp(exerciseName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
     for (const [selector, actionLabel, expectedActionParts] of actions) {
       const controls = card.locator(selector);
@@ -1369,10 +1382,8 @@ test("set transitions preserve manual scroll and the retired workout-board jump 
 test("forced-colors mode retains a visible non-shadow focus indicator on navigation and content controls", async ({ page }) => {
   test.setTimeout(90_000);
   await installScenario(page, { forcedColors: "active", includeHistory: false });
-  const targets = [
-    primaryTab(page, "progress"),
-    page.locator(`[data-action="request-cancel-workout"][data-session-id="${ACTIVE_SESSION_ID}"]`)
-  ];
+  await openPrimaryTab(page, "dashboard");
+  const targets = [primaryTab(page, "progress"), page.locator('[data-action="set-progress-view"][data-progress-view="overview"]')];
   expect(await page.evaluate(() => matchMedia("(forced-colors: active)").matches)).toBe(true);
 
   await page.keyboard.press("Tab");
