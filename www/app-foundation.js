@@ -69,7 +69,7 @@
       let data = emptyData();
       const primaryTabIds = ["today", "plan", "progress", "more"];
       const focusActionAllowlist = new Set([
-        "set-tab", "start-template", "start-next-template", "toggle-set", "set-weight", "set-reps", "set-rpe", "set-duration", "set-distance", "session-menu", "request-cancel-workout", "request-save-history-edits", "request-cancel-history-edits", "clear-data",
+        "set-tab", "start-template", "start-next-template", "toggle-set", "set-weight", "set-reps", "set-rpe", "set-duration", "set-distance", "session-menu", "request-submit-workout", "request-cancel-workout", "request-save-history-edits", "request-cancel-history-edits", "clear-data",
         "continue-template-start", "return-active-workout", "use-usual-readiness", "review-template-readiness", "start-adjusted-workout",
         "keep-workout", "keep-history-editing", "cancel-clear-data", "close-dashboard-detail", "dashboard-detail-parent",
         "open-history", "open-progress", "set-progress-view", "retry-view-render", "focus-workout-exercise", "open-dashboard-detail", "open-dashboard-session", "open-volume-session", "open-fatigue-flag", "toggle-volume-muscle",
@@ -322,8 +322,8 @@
 
       const svgIcon = (paths, viewBox = "0 0 24 24") => '<svg class="ui-icon" viewBox="' + viewBox + '" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + paths + '</svg>';
       const icon = {
-        workout: svgIcon('<path d="M4 12h3l2-5 4 10 2-5h5"/><path d="M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/>'),
-        templates: svgIcon('<path d="M4 5.5 9 3l6 2.5L20 3v15.5L15 21l-6-2.5L4 21Z"/><path d="M9 3v15.5M15 5.5V21"/>'),
+        workout: svgIcon('<path d="M4 9.5v5M7.5 5.5v13M16.5 5.5v13M20 9.5v5M7.5 12h9"/>'),
+        templates: svgIcon('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/>'),
         review: svgIcon('<path d="M4 19V9m6 10V5m6 14v-7m4 7H2"/>'),
         settings: svgIcon('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.1A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.1A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.1A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.14.37.37.7.68.95.3.25.7.4 1.1.4H21v4h-.1c-.4 0-.8.14-1.1.4-.2.08-.3.16-.4.25Z"/>'),
         add: svgIcon('<path d="M12 5v14M5 12h14"/>'),

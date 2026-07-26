@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en" data-theme="light" data-color-package="signal-garden">
+<head>
+<meta charset="utf-8">
+<title>Merged — Leaving an active workout</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="frame.css">
+<link rel="stylesheet" href="merged.css">
+<style>
+/* Screen-local: the three exit mechanisms being compared. */
+.ctx {
+  flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-6);
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+.ctx .ctx-copy { display: grid; gap: 2px; min-width: 0; }
+.ctx .ctx-copy b { font-size: var(--fs-tiny); font-weight: 850; letter-spacing: -0.01em; }
+.ctx .ctx-copy span { font-size: var(--fs-micro); color: var(--muted); font-variant-numeric: tabular-nums; }
+.ctx .ctx-act {
+  width: 44px; height: 44px; flex: 0 0 auto;
+  border: 1px solid var(--line-strong); border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: var(--fs-base); font-weight: 900; color: var(--muted);
+}
+.ctx .ctx-act.live { border-color: var(--current); color: var(--current); }
+
+.menu {
+  position: absolute; top: 92px; right: var(--sp-6); z-index: 5;
+  width: 208px; display: grid;
+  background: var(--panel); border: 1px solid var(--line-strong);
+  border-radius: var(--r-md); box-shadow: var(--el-3); overflow: hidden;
+}
+.menu button {
+  appearance: none; background: transparent; border: 0; border-bottom: 1px solid var(--line);
+  min-height: 48px; padding: 0 var(--sp-5); text-align: left;
+  font-family: inherit; font-size: var(--fs-tiny); font-weight: 850; color: var(--text);
+}
+.menu button:last-child { border-bottom: 0; }
+.menu button.danger { color: var(--red); }
+
+/* B — the session dock */
+.dock {
+  flex: 0 0 auto;
+  display: grid; grid-template-columns: 1fr auto auto; gap: var(--sp-3);
+  align-items: center;
+  padding: var(--sp-4) var(--sp-5) var(--sp-7);
+  border-top: 1px solid var(--line); background: var(--nav-bg);
+}
+.dock .dk-meta { display: grid; gap: 1px; min-width: 0; }
+.dock .dk-meta b { font-size: var(--fs-tiny); font-weight: 900; font-variant-numeric: tabular-nums; }
+.dock .dk-meta span { font-size: var(--fs-micro); color: var(--muted); font-variant-numeric: tabular-nums; }
+.dock .dk-finish {
+  height: 48px; padding: 0 var(--sp-6); border-radius: var(--r-md);
+  background: var(--action); color: var(--on-action);
+  display: flex; align-items: center; justify-content: center;
+  font-size: var(--fs-tiny); font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase;
+}
+.dock .dk-more {
+  width: 48px; height: 48px; border-radius: var(--r-md);
+  border: 1px solid var(--line-strong);
+  display: flex; align-items: center; justify-content: center;
+  font-size: var(--fs-base); font-weight: 900; color: var(--muted);
+}
+
+/* C — workout-aware nav */
+.wnav {
+  flex: 0 0 auto;
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--line); background: var(--nav-bg);
+  padding: var(--sp-4) 0 var(--sp-7);
+}
+.wnav span { text-align: center; font-size: var(--fs-micro); font-weight: 850; color: var(--muted-2); display: grid; gap: 3px; }
+.wnav span i { font-style: normal; font-size: var(--fs-micro); }
+.wnav span.on { color: var(--current); font-weight: 900; }
+.wnav span.on b {
+  display: inline-block; font-size: var(--fs-data); font-weight: 900;
+  background: var(--current); color: var(--on-action);
+  border-radius: var(--r-pill); padding: 1px 6px; margin-left: 3px;
+  font-variant-numeric: tabular-nums;
+}
+
+.tiny-note { font-size: var(--fs-micro); color: var(--muted-2); text-align: center; padding-bottom: var(--sp-3); }
+</style>
+</head>
+<body>
+
+<header class="sheet-head">
+  <div class="eyebrow">Merged system · open question</div>
+  <h1>Leaving an active workout</h1>
+  <p>Hiding the navigation during a session is right — it is the gym-mode instinct, and it works. But the only exit currently sits in the footer <b>after every exercise</b>, so mid-session it is roughly three and a half screens away, and it gets further away the earlier you are in the workout. Three ways to fix that, in increasing order of how much they change.</p>
+</header>
+
+<div class="sheet">
+
+  <!-- A — HEADER EXIT --------------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="exit-a-header">
+      <div class="statusbar"><span>10:14</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="ctx">
+        <span class="ctx-copy"><b>Upper A — Push Focus</b><span>2 of 9 sets · 32:16 elapsed</span></span>
+        <span class="ctx-act live">•••</span>
+      </div>
+      <div class="menu">
+        <button>Finish workout</button>
+        <button>Save as template</button>
+        <button class="danger">Cancel workout</button>
+      </div>
+      <div class="m-body tight">
+        <div class="ex-head" style="padding-top:4px">
+          <b>Bench Press</b>
+          <span class="chip" data-conf="4">185 × 8 @ 8</span>
+        </div>
+        <div class="diff">
+          <div class="drow">
+            <span class="plan"><span class="lbl">Set 1</span><span class="val">185 × 8 @ 8</span></span>
+            <span class="act"><span class="lbl">10:06</span><span class="val">185 × 8 @ 8.0</span></span>
+            <span class="dlt"><span class="d on">on</span></span>
+          </div>
+        </div>
+        <div class="claim-card" data-conf="4" style="gap:10px">
+          <div class="cc-row"><span class="cc-title">Set 2 · now</span></div>
+          <div class="cc-value">185 lb × 8 @ RPE 8</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+            <span class="tap" style="box-shadow:none"><span class="tap-hint">Load</span><span class="tap-val">185</span></span>
+            <span class="tap" style="box-shadow:none"><span class="tap-hint">Reps</span><span class="tap-val">8</span></span>
+            <span class="tap" style="box-shadow:none"><span class="tap-hint">RPE</span><span class="tap-val empty">—</span></span>
+          </div>
+        </div>
+        <div class="m-label bare"><span>Remaining</span><span>7 sets · 2 lifts</span></div>
+        <div class="setgrid">
+          <div class="setrow todo"><span class="si">3</span><span class="sp">Bench Press</span><span class="sv">185 × 8 @ 8</span><span class="sk d none">—</span></div>
+          <div class="setrow todo"><span class="si">4</span><span class="sp">Bench Press</span><span class="sv">185 × 8 @ 8</span><span class="sk d none">—</span></div>
+        </div>
+        <div class="note bottom">The session header is already sticky. This adds one 44px control to it and nothing else.</div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>A · Header exit</b><span>Smallest change. The exit joins the sticky header that already shows session context, so it is always one tap away. Costs nothing in vertical space — but the top-right corner is the hardest place to reach one-handed.</span></div>
+  </div>
+
+  <!-- B — SESSION DOCK -------------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="exit-b-dock">
+      <div class="statusbar"><span>10:14</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="ctx">
+        <span class="ctx-copy"><b>Upper A — Push Focus</b><span>Bench Press · set 2 of 4</span></span>
+      </div>
+      <div class="m-body tight">
+        <div class="ex-head" style="padding-top:4px">
+          <b>Bench Press</b>
+          <span class="chip" data-conf="4">185 × 8 @ 8</span>
+        </div>
+        <div class="diff">
+          <div class="drow">
+            <span class="plan"><span class="lbl">Set 1</span><span class="val">185 × 8 @ 8</span></span>
+            <span class="act"><span class="lbl">10:06</span><span class="val">185 × 8 @ 8.0</span></span>
+            <span class="dlt"><span class="d on">on</span></span>
+          </div>
+        </div>
+        <div class="claim-card" data-conf="4" style="gap:10px">
+          <div class="cc-row"><span class="cc-title">Set 2 · now</span></div>
+          <div class="cc-value">185 lb × 8 @ RPE 8</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+            <span class="tap" style="box-shadow:none"><span class="tap-hint">Load</span><span class="tap-val">185</span></span>
+            <span class="tap" style="box-shadow:none"><span class="tap-hint">Reps</span><span class="tap-val">8</span></span>
+            <span class="tap" style="box-shadow:none"><span class="tap-hint">RPE</span><span class="tap-val empty">—</span></span>
+          </div>
+        </div>
+        <div class="m-label bare"><span>Remaining</span><span>7 sets · 2 lifts</span></div>
+        <div class="setgrid">
+          <div class="setrow todo"><span class="si">3</span><span class="sp">Bench Press</span><span class="sv">185 × 8 @ 8</span><span class="sk d none">—</span></div>
+          <div class="setrow todo"><span class="si">4</span><span class="sp">Bench Press</span><span class="sv">185 × 8 @ 8</span><span class="sk d none">—</span></div>
+          <div class="setrow todo"><span class="si">1</span><span class="sp">Incline DB</span><span class="sv">70 × 10 @ 8</span><span class="sk d none">—</span></div>
+        </div>
+        <div class="note bottom">Submit stops being a destination you scroll to. It is simply always there.</div>
+      </div>
+      <div class="dock">
+        <span class="dk-meta"><b>2 of 9 sets</b><span>32:16 elapsed</span></span>
+        <span class="dk-finish">Finish</span>
+        <span class="dk-more">•••</span>
+      </div>
+    </section>
+    <div class="screen-caption"><b>B · Session dock</b><span><b>Recommended.</b> The nav's slot becomes a single-purpose workout bar. Finish is always in the thumb zone instead of 3.5 screens down, progress is always visible, and Cancel lives in its overflow.</span></div>
+  </div>
+
+  <!-- C — WORKOUT-AWARE NAV --------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="exit-c-nav">
+      <div class="statusbar"><span>10:14</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="ctx">
+        <span class="ctx-copy"><b>Upper A — Push Focus</b><span>2 of 9 sets · 32:16 elapsed</span></span>
+      </div>
+      <div class="m-body tight">
+        <div class="ex-head" style="padding-top:4px">
+          <b>Bench Press</b>
+          <span class="chip" data-conf="4">185 × 8 @ 8</span>
+        </div>
+        <div class="diff">
+          <div class="drow">
+            <span class="plan"><span class="lbl">Set 1</span><span class="val">185 × 8 @ 8</span></span>
+            <span class="act"><span class="lbl">10:06</span><span class="val">185 × 8 @ 8.0</span></span>
+            <span class="dlt"><span class="d on">on</span></span>
+          </div>
+        </div>
+        <div class="claim-card" data-conf="4" style="gap:10px">
+          <div class="cc-row"><span class="cc-title">Set 2 · now</span></div>
+          <div class="cc-value">185 lb × 8 @ RPE 8</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+            <span class="tap" style="box-shadow:none"><span class="tap-hint">Load</span><span class="tap-val">185</span></span>
+            <span class="tap" style="box-shadow:none"><span class="tap-hint">Reps</span><span class="tap-val">8</span></span>
+            <span class="tap" style="box-shadow:none"><span class="tap-hint">RPE</span><span class="tap-val empty">—</span></span>
+          </div>
+        </div>
+        <div class="m-label bare"><span>Remaining</span><span>7 sets · 2 lifts</span></div>
+        <div class="setgrid">
+          <div class="setrow todo"><span class="si">3</span><span class="sp">Bench Press</span><span class="sv">185 × 8 @ 8</span><span class="sk d none">—</span></div>
+          <div class="setrow todo"><span class="si">4</span><span class="sp">Bench Press</span><span class="sv">185 × 8 @ 8</span><span class="sk d none">—</span></div>
+        </div>
+        <div class="tiny-note">Leaving does not end the session — the tab stays live.</div>
+      </div>
+      <nav class="wnav">
+        <span class="on"><i>Workout</i><b>2/9</b></span>
+        <span><i>Plan</i></span>
+        <span><i>Progress</i></span>
+        <span><i>More</i></span>
+      </nav>
+    </section>
+    <div class="screen-caption"><b>C · Workout-aware nav</b><span>The nav returns, but the first tab becomes a live Workout tab carrying set progress. You can check Progress mid-session and come back. Safest and most conventional — but it gives up the undistracted gym surface entirely.</span></div>
+  </div>
+
+</div>
+</body>
+</html>

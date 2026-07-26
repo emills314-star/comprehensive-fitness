@@ -934,6 +934,8 @@
 
       function updateTimerDisplay() {
         if (!timer) return;
+        const dockElapsed = document.querySelector("[data-session-dock-elapsed]");
+        if (dockElapsed) dockElapsed.textContent = workoutProgress().elapsed;
         const selector = '.timer-bar[data-timer-id="' + CSS.escape(timer.id) + '"]';
         const bar = document.querySelector(selector);
         if (!bar) return;

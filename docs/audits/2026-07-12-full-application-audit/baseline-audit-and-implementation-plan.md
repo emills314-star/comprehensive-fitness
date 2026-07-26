@@ -1,5 +1,7 @@
 # Baseline audit and implementation plan
 
+> **HISTORICAL RECORD — superseded for UI intent on 2026-07-26:** This audit records the 2026-07-12 baseline and remains evidence of the state and decisions at that date. Its instructions to preserve the compact shell, fixed navigation, Lift/Dashboard appearance, and incremental visual-change boundary do not govern the later Evidence & Change migration. Current UI intent is governed by `docs/UI_UX.md` and migration status by `docs/ROADMAP.md`; pixel-appearance protection resumes only after owner review accepts the complete replacement baseline set.
+
 ## Baseline decision
 
 Source revision `main` @ `5edcd4b` is feature-rich and visually coherent, but it is not release-ready under the fixed rubrics. The original domain and browser suites pass, yet independent synthetic checks reproduce safety, data-integrity, security/privacy, accessibility, and test-validity defects that those suites did not cover.

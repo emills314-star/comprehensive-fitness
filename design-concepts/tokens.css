@@ -1,0 +1,189 @@
+/* Comprehensive Fitness design tokens.
+   VERBATIM extract of index.html lines 19-202 (:root, [data-theme="light"],
+   and all ten [data-color-package] blocks). Do not edit by hand: design-concepts/capture.js
+   re-extracts the same range and fails if this file has drifted. */
+
+      :root {
+        --bg: hsl(215 63% 7%);
+        --bg-soft: hsl(214 56% 10%);
+        --panel: hsl(213 51% 11%);
+        --panel-2: hsl(213 52% 13%);
+        --panel-3: hsl(214 51% 15%);
+        --line: hsl(212 31% 26%);
+        --line-strong: hsl(211 29% 39%);
+        --text: hsl(214 41% 97%);
+        --muted: hsl(212 18% 71%);
+        --muted-2: hsl(211 17% 57%);
+        --green: hsl(211 36% 59%);
+        --green-2: hsl(210 35% 79%);
+        --green-dark: hsl(212 47% 18%);
+        --amber: hsl(37 69% 60%);
+        --rest-accent: hsl(38 65% 56%);
+        --rest-text: hsl(39 79% 72%);
+        --red: hsl(0 73% 70%);
+        --success: hsl(150 36% 55%);
+        --success-dark: rgba(101, 182, 141, 0.14);
+        --current: hsl(211 36% 59%);
+        --current-dark: hsl(212 47% 18%);
+        --action: hsl(211 56% 29%);
+        --on-action: hsl(0 0% 100%);
+        --surface: hsl(213 52% 13%);
+        --surface-strong: hsl(214 51% 15%);
+        --input-bg: hsl(214 56% 10%);
+        --nav-bg: rgba(7, 17, 31, 0.96);
+        --shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+        --color-accent: var(--current);
+        --color-accent-subtle: var(--current-dark);
+        --color-text: var(--text);
+        --color-muted: var(--muted);
+        --color-background: var(--bg);
+        --color-surface: var(--surface);
+        --color-border: var(--line);
+        --color-border-strong: var(--line-strong);
+        --color-success: var(--success);
+        --color-warning: var(--amber);
+        --color-danger: var(--red);
+        --color-rest: var(--rest-accent);
+
+        /* Design scales. Before these existed the stylesheet carried 63 distinct
+           font sizes, 20 radii, and 24 gap values because each component was
+           nudged independently. New work must consume a step from these scales
+           instead of introducing another one-off value. */
+
+        /* Type scale. --fs-data is the only step below 12px and is reserved for
+           dense tabular numerals inside the active set grid at phone widths.
+           Everything else floors at 12px so gym-light legibility is preserved. */
+        --fs-data: 0.6875rem;
+        --fs-micro: 0.75rem;
+        --fs-tiny: 0.8125rem;
+        --fs-small: 0.875rem;
+        --fs-base: 1rem;
+        --fs-lg: 1.125rem;
+        --fs-xl: 1.375rem;
+        --fs-2xl: 1.75rem;
+        --fs-3xl: 2.25rem;
+
+        /* Spacing scale, 2px-based so dense grids still land on the system. */
+        --sp-1: 2px;
+        --sp-2: 4px;
+        --sp-3: 6px;
+        --sp-4: 8px;
+        --sp-5: 12px;
+        --sp-6: 16px;
+        --sp-7: 20px;
+        --sp-8: 24px;
+        --sp-9: 32px;
+
+        /* Radius scale by role rather than by pixel guess. */
+        --r-row: 0px;
+        --r-xs: 6px;
+        --r-sm: 8px;
+        --r-md: 12px;
+        --r-lg: 16px;
+        --r-xl: 20px;
+        --r-pill: 999px;
+
+        /* Elevation. Uses slash-alpha hsl notation so the source stays inside the
+           audited rgb-color ceiling in tests/ui/ui-audit.spec.js. */
+        --el-1: 0 1px 2px hsl(215 40% 12% / 0.06);
+        --el-2: 0 4px 12px hsl(215 40% 12% / 0.08);
+        --el-3: 0 12px 30px hsl(215 40% 12% / 0.12);
+
+        /* Motion. The stylesheet previously had 9 transitions and 2 keyframes in
+           1467 rules, so nothing ever acknowledged a tap. Every use of these
+           must degrade under prefers-reduced-motion. */
+        --dur-fast: 120ms;
+        --dur-base: 200ms;
+        --dur-slow: 320ms;
+        --dur-celebrate: 620ms;
+        --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+        --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+        --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+        /* Achievement strip palette. These are deliberately explicit values rather
+           than derivations of the selected color package: the earned strip must
+           hold its contrast floor in all ten packages, which is why the original
+           implementation hard-coded hex here. Keeping them as named per-theme
+           tokens preserves that guarantee while also letting the dark themes stop
+           rendering a light-on-light strip. Verify contrast when editing. */
+        --achv-bg: #142237;
+        --achv-card: #1b2c44;
+        --achv-border: #4fa3ff;
+        --achv-line: #334c69;
+        --achv-title: #f4f8ff;
+        --achv-body: #b3c2d6;
+        /* The earned-count pill is held to WCAG AAA (7:1) by
+           tests/ui/critical-workout-lifecycle.spec.js, so it keeps its own deep
+           navy and cream pair in both themes rather than reusing --action, which
+           only reaches 4.96:1 against white. Do not swap these for accent tokens. */
+        --achv-pill-bg: #143f6b;
+        --achv-pill-border: #0e3155;
+        --achv-pill-text: #fff1b8;
+
+        color: var(--text);
+        background: var(--bg);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      [data-theme="light"] {
+        --bg: hsl(210 22% 96%);
+        --bg-soft: hsl(210 31% 95%);
+        --panel: hsl(0 0% 100%);
+        --panel-2: hsl(210 40% 98%);
+        --panel-3: hsl(210 31% 95%);
+        --line: hsl(214 25% 87%);
+        --line-strong: hsl(212 23% 69%);
+        --text: hsl(215 48% 14%);
+        --muted: hsl(213 16% 44%);
+        --muted-2: hsl(212 14% 55%);
+        --green: hsl(212 60% 24%);
+        --green-2: hsl(211 54% 31%);
+        --green-dark: hsl(212 45% 94%);
+        --amber: hsl(37 82% 33%);
+        --rest-accent: hsl(35 81% 36%);
+        --rest-text: hsl(35 89% 24%);
+        --red: hsl(0 46% 50%);
+        --success: hsl(156 55% 31%);
+        --success-dark: rgba(35, 122, 87, 0.1);
+        --current: hsl(212 60% 24%);
+        --current-dark: hsl(212 45% 94%);
+        --action: hsl(212 60% 24%);
+        --on-action: hsl(0 0% 100%);
+        --surface: hsl(210 40% 98%);
+        --surface-strong: hsl(0 0% 100%);
+        --input-bg: hsl(0 0% 100%);
+        --nav-bg: rgba(255, 255, 255, 0.96);
+        --shadow: 0 12px 30px rgba(18, 32, 51, 0.08);
+        --achv-bg: #f3f7fc;
+        --achv-card: #ffffff;
+        --achv-border: #2d6ca9;
+        --achv-line: #c9d9e9;
+        --achv-title: #123d6b;
+        --achv-body: #435a70;
+      }
+
+      /* Saved color packages share semantic roles while giving the app a more
+         energetic canvas and clearer state separation. */
+      [data-color-package="heritage-atlas"] { --current: #245ca6; --action: #245ca6; --green: #245ca6; --green-2: #4b7fbd; --success: #287052; --amber: #b87916; --rest-accent: #d19f27; --red: #a33a32; }
+      [data-color-package="signal-garden"] { --current: #176fd1; --action: #176fd1; --green: #176fd1; --green-2: #4898e8; --success: #168a54; --amber: #b86610; --rest-accent: #e4a900; --red: #c83f35; }
+      [data-color-package="alpine-ledger"] { --current: #347cb8; --action: #286b9f; --green: #347cb8; --green-2: #67a2ca; --success: #205e48; --amber: #aa6c08; --rest-accent: #d9982b; --red: #b53d35; }
+      [data-color-package="training-hall"] { --current: #285cb5; --action: #285cb5; --green: #285cb5; --green-2: #577fc5; --success: #327341; --amber: #a96611; --rest-accent: #d8b54b; --red: #8e2f3c; }
+      [data-color-package="harbor-pulse"] { --current: #0878bd; --action: #0878bd; --green: #0878bd; --green-2: #42a0d8; --success: #16766f; --amber: #b95c18; --rest-accent: #d8a72d; --red: #bd3c32; }
+      [data-color-package="prairie-electric"] { --current: #3d61c8; --action: #3d61c8; --green: #3d61c8; --green-2: #6c84d4; --success: #4b8338; --amber: #a86113; --rest-accent: #d2a222; --red: #b73529; }
+      [data-color-package="redwood-circuit"] { --current: #294e75; --action: #294e75; --green: #294e75; --green-2: #587895; --success: #557b5c; --amber: #9d591d; --rest-accent: #c28b43; --red: #913a30; }
+      [data-color-package="mediterranean-set"] { --current: #285fc7; --action: #285fc7; --green: #285fc7; --green-2: #5a80d1; --success: #687d2b; --amber: #a65d12; --rest-accent: #d1ae12; --red: #b34432; }
+      [data-color-package="modern-primary"] { --current: #1769d2; --action: #1769d2; --green: #1769d2; --green-2: #4d91e0; --success: #168358; --amber: #ad620d; --rest-accent: #dba900; --red: #c2382f; }
+      [data-color-package="night-stadium"] { --current: #4fa3ff; --action: #1769aa; --green: #4fa3ff; --green-2: #82bdff; --success: #42ce79; --amber: #f4c84c; --rest-accent: #f29c38; --rest-text: #ffd278; --red: #ff6b61; }
+
+      [data-theme="light"][data-color-package="heritage-atlas"] { --bg: #f5e9c9; --bg-soft: #eee0bc; --panel: #fffdf5; --panel-2: #f9f1dc; --panel-3: #f1e3c1; --surface: #fff9e9; --surface-strong: #fffdf5; --input-bg: #fffdf5; --nav-bg: rgba(255,253,245,.96); --current-dark: #e5edf8; --success-dark: rgba(40,112,82,.12); }
+      [data-theme="light"][data-color-package="signal-garden"] { --bg: #fff8e8; --bg-soft: #f7edcf; --panel: #fff; --panel-2: #f1f8ff; --panel-3: #fff0bd; --surface: #f6fbff; --surface-strong: #fff; --input-bg: #fff; --nav-bg: rgba(255,255,255,.96); --current-dark: #e5f2ff; --green-2: #1259a6; --success-dark: rgba(22,138,84,.12); }
+      [data-theme="light"][data-color-package="alpine-ledger"] { --bg: #edf4f1; --bg-soft: #e0ece7; --panel: #fff; --panel-2: #edf7fa; --panel-3: #dcebee; --surface: #f5faf8; --surface-strong: #fff; --input-bg: #fff; --nav-bg: rgba(255,255,255,.96); --current-dark: #e6f1f8; }
+      [data-theme="light"][data-color-package="training-hall"] { --bg: #f4ebdd; --bg-soft: #ebddca; --panel: #fffcf7; --panel-2: #f7efe2; --panel-3: #eee0c9; --surface: #fff8ef; --surface-strong: #fffcf7; --input-bg: #fffdf9; --nav-bg: rgba(255,252,247,.96); --current-dark: #e8eef9; }
+      [data-theme="light"][data-color-package="harbor-pulse"] { --bg: #f4e5ce; --bg-soft: #ead7bb; --panel: #fffdf8; --panel-2: #eaf7fc; --panel-3: #f7e5b4; --surface: #f5fbfd; --surface-strong: #fffdf8; --input-bg: #fff; --nav-bg: rgba(255,253,248,.96); --current-dark: #e1f2fb; }
+      [data-theme="light"][data-color-package="prairie-electric"] { --bg: #f2e2b9; --bg-soft: #e8d59f; --panel: #fffdf6; --panel-2: #f1f3ff; --panel-3: #f1dfaa; --surface: #faf8ef; --surface-strong: #fffdf6; --input-bg: #fff; --nav-bg: rgba(255,253,246,.96); --current-dark: #e9edff; }
+      [data-theme="light"][data-color-package="redwood-circuit"] { --bg: #f5e9d8; --bg-soft: #eadbc6; --panel: #fffdfc; --panel-2: #f1f5f0; --panel-3: #eadcc7; --surface: #faf7f2; --surface-strong: #fffdfc; --input-bg: #fff; --nav-bg: rgba(255,253,252,.96); --current-dark: #e8eef3; }
+      [data-theme="light"][data-color-package="mediterranean-set"] { --bg: #f3efd9; --bg-soft: #e8e2c5; --panel: #fffef7; --panel-2: #f2f5ff; --panel-3: #f4e8ad; --surface: #faf9ef; --surface-strong: #fffef7; --input-bg: #fff; --nav-bg: rgba(255,254,247,.96); --current-dark: #e8eeff; }
+      [data-theme="light"][data-color-package="modern-primary"] { --bg: #f7f5ef; --bg-soft: #ece9df; --panel: #fff; --panel-2: #f1f6ff; --panel-3: #fff1ba; --surface: #f7f9fc; --surface-strong: #fff; --input-bg: #fff; --nav-bg: rgba(255,255,255,.96); --current-dark: #e5f0ff; }
+      [data-theme="light"][data-color-package="night-stadium"] { --bg: #0c1727; --bg-soft: #101d30; --panel: #142237; --panel-2: #182941; --panel-3: #20344f; --surface: #182941; --surface-strong: #20344f; --input-bg: #101d30; --nav-bg: rgba(12,23,39,.97); --line: #334c69; --line-strong: #527292; --text: #f4f8ff; --muted: #b3c2d6; --muted-2: #91a5bd; --current-dark: #173a5e; --success-dark: rgba(66,206,121,.14); --achv-bg: #142237; --achv-card: #1b2c44; --achv-border: #4fa3ff; --achv-line: #334c69; --achv-title: #f4f8ff; --achv-body: #b3c2d6; }
+
+      [data-theme="light"]:not([data-color-package="night-stadium"]) { --bg: #fff; --bg-soft: #fff; }

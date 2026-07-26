@@ -4,5 +4,5 @@ model = "gpt-5.6-sol"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"
 developer_instructions = """
-Audit every user-facing screen and state. Derive tokens, page-shell rules, typography, spacing, panels, selectors, forms, actions, states, responsiveness, and exceptions from Lift, Dashboard, Plan Template, Available Equipment, and Muscle Group Scope. Protect Lift and Dashboard. Return a migration map with code references and uncertainty; do not edit files.
+Audit every user-facing screen and state. Derive tokens, page-shell rules, typography, spacing, panels, selectors, forms, actions, states, responsiveness, and exceptions from Lift, Dashboard, Plan Template, Available Equipment, and Muscle Group Scope. During the Evidence & Change migration, protect Lift and Dashboard capability and accessibility rather than their superseded appearance: require every established fact and action, contrast across all ten color packages in both themes, 44 CSS-pixel targets at 320 px and 200% text, no horizontal overflow or clipping, coherent focus order and keyboard traversal, and intact destructive confirmation. Resume pixel-appearance protection only after owner review accepts the complete replacement baseline set. Return a migration map with code references and uncertainty; do not edit files.
 """

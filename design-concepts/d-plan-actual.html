@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="en" data-theme="light" data-color-package="signal-garden">
+<head>
+<meta charset="utf-8">
+<title>Concept D — Plan vs Actual</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="frame.css">
+<style>
+/* ============================================================
+   CONCEPT D — PLAN VS ACTUAL
+   Thesis: the app's central relationship is prescribed versus
+   performed. That delta drives the grade, the progression, the
+   fatigue flags and the score - so make the whole interface a diff.
+
+   Every screen carries the same three-column spine at a different
+   scale: PLAN | ACTUAL | DELTA. Set, exercise, session, week, block.
+   The set row stops being a form: the prescription is printed and
+   you fill in the answer beside it.
+
+   Delta is the ONLY place strong colour appears.
+     --success on target   --amber under   --current over   --red outside
+   ============================================================ */
+
+.screen { letter-spacing: -0.01em; }
+
+.d-top {
+  flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: var(--sp-2) var(--sp-7) var(--sp-4);
+}
+.d-top .wordmark {
+  font-size: var(--fs-micro); font-weight: 900; letter-spacing: 0.13em;
+  text-transform: uppercase; color: var(--muted);
+}
+.d-top .back { font-size: var(--fs-tiny); font-weight: 850; color: var(--current); }
+.d-top .chips { display: flex; gap: var(--sp-3); }
+.d-top .chips span {
+  font-size: var(--fs-micro); font-weight: 850;
+  padding: var(--sp-2) var(--sp-4);
+  border: 1px solid var(--line); border-radius: var(--r-pill); color: var(--muted);
+}
+
+.d-body {
+  flex: 1 1 auto; min-height: 0;
+  display: flex; flex-direction: column; gap: var(--sp-5);
+  padding: 0 var(--sp-7) var(--sp-5);
+  overflow: hidden;
+}
+
+.d-head { display: grid; gap: var(--sp-3); }
+.d-head .eyebrow {
+  font-size: var(--fs-micro); font-weight: 900; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--current);
+}
+.d-head h1 { margin: 0; font-size: var(--fs-xl); font-weight: 850; letter-spacing: -0.03em; line-height: 1.2; }
+
+/* ---------- THE SPINE ---------------------------------------- */
+.diff { display: grid; }
+.drow {
+  display: grid;
+  grid-template-columns: 1fr 1fr 56px;
+  align-items: stretch;
+  border-bottom: 1px solid var(--line);
+}
+.drow > * { padding: var(--sp-4) var(--sp-3); display: flex; flex-direction: column; justify-content: center; gap: var(--sp-1); }
+.drow .plan { background: var(--panel-2); border-right: 1px solid var(--line); }
+.drow .act { border-right: 1px solid var(--line); }
+.drow .dlt { align-items: center; justify-content: center; }
+
+.dhead { border-bottom: 2px solid var(--line-strong); }
+.dhead > * {
+  padding-block: var(--sp-3);
+  font-size: var(--fs-micro); font-weight: 900; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--muted-2);
+}
+.dhead .plan { background: transparent; }
+
+.lbl { font-size: var(--fs-micro); font-weight: 800; color: var(--muted-2); letter-spacing: 0.04em; }
+.val { font-size: var(--fs-tiny); font-weight: 850; font-variant-numeric: tabular-nums; }
+.val.big { font-size: var(--fs-base); font-weight: 900; letter-spacing: -0.02em; }
+.plan .val { color: var(--muted); font-weight: 750; }
+.act .val { color: var(--text); }
+.act .val.empty { color: var(--muted-2); font-weight: 700; }
+
+.d { font-size: var(--fs-micro); font-weight: 900; font-variant-numeric: tabular-nums; text-align: center; }
+.d.on { color: var(--success); }
+.d.under { color: var(--amber); }
+.d.over { color: var(--current); }
+.d.out { color: var(--red); }
+.d.none { color: var(--muted-2); font-weight: 750; }
+
+.drow.now { background: var(--current-dark); }
+.drow.now .plan { background: color-mix(in srgb, var(--current) 10%, transparent); }
+.drow.now .act { box-shadow: inset 0 0 0 2px var(--current); border-radius: var(--r-xs); }
+.drow.pending .act .val { color: var(--muted-2); font-weight: 700; }
+.drow.pending .plan .val { color: var(--muted-2); }
+
+.exname {
+  display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-4);
+  padding: var(--sp-5) 0 var(--sp-3);
+}
+.exname b { font-size: var(--fs-base); font-weight: 850; letter-spacing: -0.02em; }
+.exname span { font-size: var(--fs-micro); font-weight: 850; color: var(--muted); }
+
+.d-label {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: var(--fs-micro); font-weight: 900; letter-spacing: 0.13em;
+  text-transform: uppercase; color: var(--muted-2);
+  padding-bottom: var(--sp-3); border-bottom: 1px solid var(--line);
+}
+
+/* ---------- adherence readout (replaces a score) -------------- */
+.adherence {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-5);
+  padding: var(--sp-5);
+  border: 1px solid var(--line); border-radius: var(--r-md);
+  background: var(--panel);
+  box-shadow: var(--el-1);
+}
+.adherence .ad-copy { display: grid; gap: var(--sp-2); }
+.adherence .ad-copy b { font-size: var(--fs-small); font-weight: 850; letter-spacing: -0.01em; }
+.adherence .ad-copy span { font-size: var(--fs-micro); color: var(--muted); line-height: 1.45; }
+.adherence .ad-num { text-align: right; }
+.adherence .ad-num b {
+  display: block; font-size: 42px; line-height: 0.9; font-weight: 900;
+  letter-spacing: -0.04em; color: var(--success); font-variant-numeric: tabular-nums;
+}
+.adherence .ad-num span { font-size: var(--fs-micro); font-weight: 850; color: var(--muted); }
+
+.rest-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-5); border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--rest-accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--rest-accent) 45%, transparent);
+}
+.rest-bar b { font-size: var(--fs-xl); font-weight: 900; color: var(--rest-text); font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
+.rest-bar .rb-copy { display: grid; gap: 2px; }
+.rest-bar .rb-copy span { font-size: var(--fs-micro); font-weight: 850; color: var(--rest-text); letter-spacing: 0.08em; text-transform: uppercase; }
+.rest-bar .rb-copy i { font-style: normal; font-size: var(--fs-micro); font-weight: 750; color: var(--muted); }
+
+.note { font-size: var(--fs-micro); color: var(--muted); line-height: 1.55; }
+.note b { color: var(--text); font-weight: 850; }
+
+.d-cta {
+  flex: 0 0 auto; margin-top: auto;
+  height: 60px; border-radius: var(--r-md);
+  background: var(--action); color: var(--on-action);
+  display: flex; align-items: center; justify-content: center;
+  font-size: var(--fs-small); font-weight: 900;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  box-shadow: var(--el-2);
+}
+
+/* ---------- history strip (evidence screen) ------------------- */
+.hist { display: grid; }
+.hrow {
+  display: grid; grid-template-columns: 60px 1fr 1fr 44px;
+  gap: var(--sp-3); align-items: center;
+  padding: var(--sp-3) 0; border-bottom: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
+}
+.hrow.head span {
+  font-size: var(--fs-micro); font-weight: 900; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--muted-2);
+}
+.hrow .hd { font-size: var(--fs-micro); font-weight: 800; color: var(--muted-2); }
+.hrow .hp { font-size: var(--fs-micro); font-weight: 750; color: var(--muted); }
+.hrow .ha { font-size: var(--fs-tiny); font-weight: 850; }
+.hrow .hx { font-size: var(--fs-micro); font-weight: 900; text-align: right; }
+
+.verdict {
+  display: grid; gap: var(--sp-3);
+  padding: var(--sp-5); border-radius: var(--r-md);
+  background: var(--success-dark); border: 2px solid var(--success);
+}
+.verdict b { font-size: var(--fs-micro); font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; color: var(--success); }
+.verdict span { font-size: var(--fs-tiny); color: var(--muted); line-height: 1.55; }
+.verdict span em { font-style: normal; color: var(--text); font-weight: 850; }
+
+/* ---------- plan ---------------------------------------------- */
+.tpl {
+  display: grid; gap: var(--sp-3);
+  padding: var(--sp-5) 0; border-bottom: 1px solid var(--line);
+}
+.tpl-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-4); }
+.tpl-head b { font-size: var(--fs-base); font-weight: 850; letter-spacing: -0.02em; }
+.tpl-head .rate { font-size: var(--fs-micro); font-weight: 900; font-variant-numeric: tabular-nums; }
+.tpl-head .rate.on { color: var(--success); }
+.tpl-head .rate.under { color: var(--amber); }
+.tpl-head .rate.none { color: var(--muted-2); }
+.tpl-meta { font-size: var(--fs-micro); color: var(--muted); line-height: 1.5; }
+.tpl-track { height: 10px; border-radius: var(--r-pill); background: var(--panel-3); overflow: hidden; display: flex; }
+.tpl-track i { display: block; height: 100%; }
+.tpl-track i.done { background: var(--success); }
+.tpl-track i.miss { background: var(--amber); }
+
+/* ---------- completion ---------------------------------------- */
+.summary-hero { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-5); }
+.summary-hero .sh-copy { display: grid; gap: var(--sp-2); }
+.summary-hero .sh-copy b { font-size: var(--fs-lg); font-weight: 850; letter-spacing: -0.02em; }
+.summary-hero .sh-copy span { font-size: var(--fs-micro); color: var(--muted); line-height: 1.45; }
+.summary-hero .gmark { font-size: 68px; line-height: 0.82; font-weight: 900; letter-spacing: -0.06em; color: var(--current); }
+</style>
+</head>
+<body>
+
+<header class="sheet-head">
+  <div class="eyebrow">Concept D</div>
+  <h1>Plan vs Actual</h1>
+  <p>The relationship at the centre of this app is prescribed versus performed — that delta is what drives the grade, the progression, the fatigue flags and the score. So the whole interface becomes a diff. Every screen carries the same three-column spine at a different scale: <b>plan, actual, delta</b> — set, exercise, session, week, block. The set row stops being a form; the prescription is printed and you fill in the answer beside it. Delta is the only place strong colour is spent.</p>
+</header>
+
+<div class="sheet">
+
+  <!-- 1. TODAY ------------------------------------------------ -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="today">
+      <div class="statusbar"><span>9:41</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="d-top">
+        <span class="wordmark">Comprehensive Fitness</span>
+        <span class="chips"><span>LB</span><span>Light</span></span>
+      </div>
+      <div class="d-body">
+        <div class="d-head">
+          <div class="eyebrow">Thursday · Upper A</div>
+          <h1>What changed since you last ran this.</h1>
+        </div>
+
+        <div class="diff">
+          <div class="drow dhead"><span class="plan">Today's plan</span><span class="act">Last time</span><span class="dlt">Δ</span></div>
+
+          <div class="drow">
+            <span class="plan"><span class="lbl">Bench Press</span><span class="val big">185 × 8</span></span>
+            <span class="act"><span class="lbl">Jul 16</span><span class="val big">180 × 8</span></span>
+            <span class="dlt"><span class="d over">+5</span></span>
+          </div>
+          <div class="drow">
+            <span class="plan"><span class="lbl">Incline DB Press</span><span class="val big">70 × 10</span></span>
+            <span class="act"><span class="lbl">Jul 16</span><span class="val big">70 × 8</span></span>
+            <span class="dlt"><span class="d over">+2 r</span></span>
+          </div>
+          <div class="drow">
+            <span class="plan"><span class="lbl">Cable Fly</span><span class="val big">40 × 14</span></span>
+            <span class="act"><span class="lbl">Jul 16</span><span class="val big">40 × 14</span></span>
+            <span class="dlt"><span class="d none">hold</span></span>
+          </div>
+          <div class="drow">
+            <span class="plan"><span class="lbl">Lateral Raise</span><span class="val big">20 × 15</span></span>
+            <span class="act"><span class="lbl">Jul 16</span><span class="val big">20 × 14</span></span>
+            <span class="dlt"><span class="d over">+1 r</span></span>
+          </div>
+          <div class="drow">
+            <span class="plan"><span class="lbl">Triceps Pushdown</span><span class="val big">55 × 12</span></span>
+            <span class="act"><span class="lbl">Jul 16</span><span class="val big">55 × 12</span></span>
+            <span class="dlt"><span class="d none">hold</span></span>
+          </div>
+        </div>
+
+        <div class="adherence">
+          <span class="ad-copy">
+            <b>You have been executing the plan.</b>
+            <span>Across the last 4 sessions, 94% of prescribed sets were completed inside their bands.</span>
+          </span>
+          <span class="ad-num"><b>94%</b><span>adherence</span></span>
+        </div>
+
+        <div class="note">Three lifts step up today. Two hold because last week's effort sat at the top of the band — the app is not asking for more until that settles.</div>
+
+        <div class="d-cta">Start · 18 sets</div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>1 · Today</b><span>Today opens as a diff against the last run, so the first thing you see is what the app changed and what it left alone.</span></div>
+  </div>
+
+  <!-- 2. ACTIVE WORKOUT --------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="workout">
+      <div class="statusbar"><span>10:14</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="d-top">
+        <span class="wordmark">Upper A · 9 of 18 · 24:16</span>
+        <span class="chips"><span>94%</span></span>
+      </div>
+      <div class="d-body">
+        <div class="rest-bar">
+          <span class="rb-copy"><span>Rest</span><i>next: set 3 · 185 × 8 @ 8</i></span>
+          <b>1:12</b>
+        </div>
+
+        <div class="exname"><b>Bench Press</b><span>set 3 of 4</span></div>
+
+        <div class="diff">
+          <div class="drow dhead"><span class="plan">Prescribed</span><span class="act">Performed</span><span class="dlt">Δ</span></div>
+
+          <div class="drow">
+            <span class="plan"><span class="lbl">Warm-up</span><span class="val">135 × 10</span></span>
+            <span class="act"><span class="lbl">10:02</span><span class="val">135 × 10</span></span>
+            <span class="dlt"><span class="d on">✓</span></span>
+          </div>
+          <div class="drow">
+            <span class="plan"><span class="lbl">Set 1 · RPE 8</span><span class="val">185 × 8</span></span>
+            <span class="act"><span class="lbl">RPE 8.0</span><span class="val">185 × 8</span></span>
+            <span class="dlt"><span class="d on">on</span></span>
+          </div>
+          <div class="drow">
+            <span class="plan"><span class="lbl">Set 2 · RPE 8</span><span class="val">185 × 8</span></span>
+            <span class="act"><span class="lbl">RPE 8.5</span><span class="val">185 × 8</span></span>
+            <span class="dlt"><span class="d under">+0.5</span></span>
+          </div>
+          <div class="drow now">
+            <span class="plan"><span class="lbl">Set 3 · RPE 8</span><span class="val big">185 × 8</span></span>
+            <span class="act"><span class="lbl">Tap to log</span><span class="val big empty">— × —</span></span>
+            <span class="dlt"><span class="d none">—</span></span>
+          </div>
+          <div class="drow pending">
+            <span class="plan"><span class="lbl">Set 4 · RPE 8</span><span class="val">185 × 8</span></span>
+            <span class="act"><span class="lbl">pending</span><span class="val">— × —</span></span>
+            <span class="dlt"><span class="d none">—</span></span>
+          </div>
+        </div>
+
+        <div class="d-label" style="margin-top:4px"><span>Session so far</span><span>plan vs actual</span></div>
+        <div class="diff">
+          <div class="drow">
+            <span class="plan"><span class="lbl">Sets</span><span class="val big">18</span></span>
+            <span class="act"><span class="lbl">Completed</span><span class="val big">9</span></span>
+            <span class="dlt"><span class="d none">50%</span></span>
+          </div>
+          <div class="drow">
+            <span class="plan"><span class="lbl">Mean RPE</span><span class="val big">8.0</span></span>
+            <span class="act"><span class="lbl">Logged</span><span class="val big">8.2</span></span>
+            <span class="dlt"><span class="d under">+0.2</span></span>
+          </div>
+        </div>
+
+        <div class="note">Effort is drifting half a point above plan. If set 4 lands at 8.5 the next exposure holds at 185 instead of stepping to 190.</div>
+
+        <div class="d-label" style="margin-top:auto;border-bottom:0;padding-bottom:0">
+          <span>Up next</span><span>Incline DB Press · 3 × 10 @ 8</span>
+        </div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>2 · Active workout</b><span>The set row is a diff, not a form. The plan is printed on the left and you answer on the right; the delta column is the only colour.</span></div>
+  </div>
+
+  <!-- 3. PRESCRIPTION & EVIDENCE ------------------------------ -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="evidence">
+      <div class="statusbar"><span>9:41</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="d-top">
+        <span class="back">← Bench Press</span>
+        <span class="chips"><span>LB</span></span>
+      </div>
+      <div class="d-body">
+        <div class="d-head">
+          <div class="eyebrow">Why 185 × 8 @ RPE 8</div>
+          <h1>You have met the plan six times running.</h1>
+        </div>
+
+        <div class="verdict">
+          <b>The rule that fired</b>
+          <span>Two consecutive sessions completing all prescribed reps at or below target RPE → <em>add 5 lb</em>. You did it four times.</span>
+        </div>
+
+        <div>
+          <div class="d-label"><span>Session history</span><span>plan → actual</span></div>
+          <div class="hist">
+            <div class="hrow head"><span>Date</span><span>Prescribed</span><span>Performed</span><span style="text-align:right">Δ</span></div>
+            <div class="hrow"><span class="hd">Jul 16</span><span class="hp">180 × 8 @ 8</span><span class="ha">180 × 8 @ 8.0</span><span class="hx d on">on</span></div>
+            <div class="hrow"><span class="hd">Jul 9</span><span class="hp">180 × 8 @ 8</span><span class="ha">180 × 8 @ 7.5</span><span class="hx d over">−0.5</span></div>
+            <div class="hrow"><span class="hd">Jul 2</span><span class="hp">175 × 8 @ 8</span><span class="ha">175 × 8 @ 8.0</span><span class="hx d on">on</span></div>
+            <div class="hrow"><span class="hd">Jun 25</span><span class="hp">175 × 8 @ 8</span><span class="ha">175 × 8 @ 8.0</span><span class="hx d on">on</span></div>
+            <div class="hrow"><span class="hd">Jun 18</span><span class="hp">170 × 8 @ 8</span><span class="ha">170 × 7 @ 9.0</span><span class="hx d out">−1 r</span></div>
+            <div class="hrow"><span class="hd">Jun 11</span><span class="hp">170 × 8 @ 8</span><span class="ha">170 × 8 @ 8.5</span><span class="hx d under">+0.5</span></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="d-label"><span>What breaks the streak</span><span>next exposure</span></div>
+          <div class="diff" style="margin-top:2px">
+            <div class="drow">
+              <span class="plan"><span class="lbl">If RPE ≤ 7.0</span><span class="val">two sessions</span></span>
+              <span class="act"><span class="lbl">Then</span><span class="val">190 × 8</span></span>
+              <span class="dlt"><span class="d over">+10</span></span>
+            </div>
+            <div class="drow">
+              <span class="plan"><span class="lbl">If RPE ≥ 9.5</span><span class="val">one session</span></span>
+              <span class="act"><span class="lbl">Then</span><span class="val">185 × 8</span></span>
+              <span class="dlt"><span class="d none">hold</span></span>
+            </div>
+            <div class="drow">
+              <span class="plan"><span class="lbl">If reps missed</span><span class="val">one session</span></span>
+              <span class="act"><span class="lbl">Then</span><span class="val">180 × 8</span></span>
+              <span class="dlt"><span class="d out">−5</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="note" style="margin-top:auto">Jun 18 is the only miss in the window. It cost one week of progression and the plan absorbed it without a deload.</div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>3 · Prescription &amp; evidence</b><span>The reasoning is just the diff extended backwards. Six paired rows explain the recommendation without a paragraph of prose.</span></div>
+  </div>
+
+  <!-- 4. PROGRESS --------------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="progress">
+      <div class="statusbar"><span>9:41</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="d-top">
+        <span class="wordmark">Progress</span>
+        <span class="chips"><span>‹ Jul 21–27 ›</span></span>
+      </div>
+      <div class="d-body">
+        <div class="d-head">
+          <div class="eyebrow">Week 3 of 6</div>
+          <h1>You trained the plan, except for back.</h1>
+        </div>
+
+        <div class="adherence">
+          <span class="ad-copy">
+            <b>3 of 4 sessions ran as written.</b>
+            <span>Tuesday's pull session was cut short at 9 of 14 sets.</span>
+          </span>
+          <span class="ad-num"><b>88%</b><span>adherence</span></span>
+        </div>
+
+        <div>
+          <div class="d-label"><span>Weekly volume</span><span>sets</span></div>
+          <div class="diff">
+            <div class="drow dhead"><span class="plan">Planned</span><span class="act">Actual</span><span class="dlt">Δ</span></div>
+            <div class="drow">
+              <span class="plan"><span class="lbl">Chest</span><span class="val big">16</span></span>
+              <span class="act"><span class="lbl">logged</span><span class="val big">16</span></span>
+              <span class="dlt"><span class="d on">on</span></span>
+            </div>
+            <div class="drow">
+              <span class="plan"><span class="lbl">Back</span><span class="val big">14</span></span>
+              <span class="act"><span class="lbl">logged</span><span class="val big">9</span></span>
+              <span class="dlt"><span class="d out">−5</span></span>
+            </div>
+            <div class="drow">
+              <span class="plan"><span class="lbl">Quads</span><span class="val big">18</span></span>
+              <span class="act"><span class="lbl">logged</span><span class="val big">22</span></span>
+              <span class="dlt"><span class="d over">+4</span></span>
+            </div>
+            <div class="drow">
+              <span class="plan"><span class="lbl">Delts</span><span class="val big">14</span></span>
+              <span class="act"><span class="lbl">logged</span><span class="val big">14</span></span>
+              <span class="dlt"><span class="d on">on</span></span>
+            </div>
+            <div class="drow">
+              <span class="plan"><span class="lbl">Hamstrings</span><span class="val big">12</span></span>
+              <span class="act"><span class="lbl">logged</span><span class="val big">11</span></span>
+              <span class="dlt"><span class="d under">−1</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="d-label"><span>Effort</span><span>target vs logged rpe</span></div>
+          <div class="diff">
+            <div class="drow">
+              <span class="plan"><span class="lbl">Upper sessions</span><span class="val">8.0</span></span>
+              <span class="act"><span class="lbl">mean logged</span><span class="val">8.2</span></span>
+              <span class="dlt"><span class="d under">+0.2</span></span>
+            </div>
+            <div class="drow">
+              <span class="plan"><span class="lbl">Lower sessions</span><span class="val">8.0</span></span>
+              <span class="act"><span class="lbl">mean logged</span><span class="val">8.9</span></span>
+              <span class="dlt"><span class="d out">+0.9</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="note">Quads ran 4 sets over plan at nearly a full RPE point above target. That pairing, not either number alone, is what raised the fatigue flag.</div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>4 · Progress</b><span>The same spine at week scale. A fatigue flag stops being an opaque verdict — you can see the two deltas that caused it.</span></div>
+  </div>
+
+  <!-- 5. PLAN -------------------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="plan">
+      <div class="statusbar"><span>9:41</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="d-top">
+        <span class="wordmark">Plan</span>
+        <span class="chips"><span>+ New</span></span>
+      </div>
+      <div class="d-body">
+        <div class="d-head">
+          <div class="eyebrow">Mesocycle 4 · week 3 of 6</div>
+          <h1>Which templates you actually finish.</h1>
+        </div>
+
+        <div>
+          <div class="d-label"><span>Templates</span><span>completion rate</span></div>
+
+          <div class="tpl">
+            <div class="tpl-head"><b>Upper A — Push Focus</b><span class="rate on">100%</span></div>
+            <div class="tpl-track"><i class="done" style="width:100%"></i></div>
+            <div class="tpl-meta">5 lifts · 18 sets · run 6 times · every set completed</div>
+          </div>
+
+          <div class="tpl">
+            <div class="tpl-head"><b>Lower A — Quad Focus</b><span class="rate on">96%</span></div>
+            <div class="tpl-track"><i class="done" style="width:96%"></i><i class="miss" style="width:4%"></i></div>
+            <div class="tpl-meta">5 lifts · 16 sets · run 6 times · 3 sets dropped across the block</div>
+          </div>
+
+          <div class="tpl">
+            <div class="tpl-head"><b>Upper B — Pull Focus</b><span class="rate under">64%</span></div>
+            <div class="tpl-track"><i class="done" style="width:64%"></i><i class="miss" style="width:36%"></i></div>
+            <div class="tpl-meta">5 lifts · 17 sets · run 5 times · consistently cut after the 3rd lift</div>
+          </div>
+
+          <div class="tpl">
+            <div class="tpl-head"><b>Lower B — Hinge Focus</b><span class="rate none">not run</span></div>
+            <div class="tpl-track"></div>
+            <div class="tpl-meta">4 lifts · 15 sets · created Jun 30 · never started</div>
+          </div>
+        </div>
+
+        <div class="verdict" style="background:color-mix(in srgb, var(--amber) 10%, transparent);border-color:var(--amber)">
+          <b style="color:var(--amber)">The plan is not the problem</b>
+          <span>Back is 5 sets under because <em>Upper B gets cut after the third lift</em>, five runs in a row. Shortening it to 4 lifts would land the volume you keep planning and missing.</span>
+        </div>
+
+        <div class="d-cta">Trim Upper B to 4 lifts</div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>5 · Plan</b><span>A template is judged by the gap between what it prescribes and what you finish — which turns a volume shortfall into a fixable design flaw.</span></div>
+  </div>
+
+  <!-- 6. COMPLETED SUMMARY ------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="summary">
+      <div class="statusbar"><span>11:09</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="d-top">
+        <span class="wordmark">Session logged</span>
+        <span class="chips"><span>Done</span></span>
+      </div>
+      <div class="d-body">
+        <div class="d-head">
+          <div class="eyebrow">Upper A — Push Focus · 54 min</div>
+          <div class="summary-hero">
+            <span class="sh-copy">
+              <b>18 of 18, inside the bands.</b>
+              <span>One lift ran half a point hot; everything else matched the sheet.</span>
+            </span>
+            <span class="gmark">A−</span>
+          </div>
+        </div>
+
+        <div>
+          <div class="d-label"><span>The session, diffed</span><span>plan → actual</span></div>
+          <div class="diff">
+            <div class="drow dhead"><span class="plan">Prescribed</span><span class="act">Performed</span><span class="dlt">Δ</span></div>
+            <div class="drow">
+              <span class="plan"><span class="lbl">Bench Press</span><span class="val">4 × 8 @ 8.0</span></span>
+              <span class="act"><span class="lbl">185 lb</span><span class="val">4 × 8 @ 8.1</span></span>
+              <span class="dlt"><span class="d on">on</span></span>
+            </div>
+            <div class="drow">
+              <span class="plan"><span class="lbl">Incline DB Press</span><span class="val">3 × 10 @ 8.0</span></span>
+              <span class="act"><span class="lbl">70 lb</span><span class="val">3 × 10 @ 8.0</span></span>
+              <span class="dlt"><span class="d on">on</span></span>
+            </div>
+            <div class="drow">
+              <span class="plan"><span class="lbl">Cable Fly</span><span class="val">3 × 14 @ 9.0</span></span>
+              <span class="act"><span class="lbl">40 lb</span><span class="val">3 × 14 @ 9.5</span></span>
+              <span class="dlt"><span class="d under">+0.5</span></span>
+            </div>
+            <div class="drow">
+              <span class="plan"><span class="lbl">Lateral Raise</span><span class="val">4 × 15 @ 8.0</span></span>
+              <span class="act"><span class="lbl">20 lb</span><span class="val">4 × 15 @ 8.0</span></span>
+              <span class="dlt"><span class="d on">on</span></span>
+            </div>
+            <div class="drow">
+              <span class="plan"><span class="lbl">Triceps Pushdown</span><span class="val">4 × 12 @ 8.0</span></span>
+              <span class="act"><span class="lbl">55 lb</span><span class="val">4 × 12 @ 8.0</span></span>
+              <span class="dlt"><span class="d on">on</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="adherence">
+          <span class="ad-copy">
+            <b>Every prescribed set was performed.</b>
+            <span>Mean effort 8.1 against an 8.0 target — a 0.1 drift, well inside tolerance.</span>
+          </span>
+          <span class="ad-num"><b>100%</b><span>adherence</span></span>
+        </div>
+
+        <div class="note" style="margin-top:auto">Because the sheet was met, four lifts step up next exposure. <b>Cable Fly holds</b> — it was the one that ran hot.</div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>6 · Completed summary</b><span>The payoff screen is the full session diff, and the grade is visibly just a reading of the delta column.</span></div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -44,7 +44,7 @@ description = "Read-only visual-system, shared-component, and screen-migration a
 config_file = "agents/ui_design_system_auditor.toml"
 
 [agents.visual_test_engineer]
-description = "Read-only browser and visual-regression specialist protecting Lift and Dashboard."
+description = "Read-only browser and visual-regression specialist protecting Lift and Dashboard capability and accessibility rather than superseded appearance during the Evidence & Change migration; pixel-appearance protection resumes after owner review accepts the complete replacement baseline set."
 config_file = "agents/visual_test_engineer.toml"
 
 [agents.accessibility_tester]

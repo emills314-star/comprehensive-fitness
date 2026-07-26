@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en" data-theme="light" data-color-package="signal-garden">
+<head>
+<meta charset="utf-8">
+<title>Merged — History &amp; lift analysis</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="frame.css">
+<link rel="stylesheet" href="merged.css">
+<style>
+/* Screen-local: the analysis surfaces are the only place a second chart form
+   and a week table appear. Everything else reuses merged.css. */
+.score-hero { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-5); }
+.score-hero .sh-copy { display: grid; gap: var(--sp-2); }
+.score-hero .sh-copy b { font-size: var(--fs-lg); font-weight: 850; letter-spacing: -0.02em; }
+.score-hero .sh-copy span { font-size: var(--fs-micro); color: var(--muted); line-height: 1.45; }
+.score-hero .sh-num { text-align: right; display: grid; gap: 2px; }
+.score-hero .sh-num b {
+  font-size: 52px; line-height: 0.85; font-weight: 900;
+  letter-spacing: -0.05em; color: var(--current); font-variant-numeric: tabular-nums;
+}
+.score-hero .sh-num span { font-size: var(--fs-micro); font-weight: 850; color: var(--muted); }
+
+.wk { display: grid; }
+.wk-row {
+  display: grid; grid-template-columns: 56px 1fr 44px 44px 34px;
+  gap: var(--sp-3); align-items: center;
+  padding: var(--sp-3) 0; border-bottom: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
+}
+.wk-row.head span {
+  font-size: var(--fs-micro); font-weight: 900; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--muted-2);
+}
+.wk-row .wd { font-size: var(--fs-micro); font-weight: 800; color: var(--muted-2); }
+.wk-row .wv { font-size: var(--fs-tiny); font-weight: 850; }
+.wk-row .wn { font-size: var(--fs-micro); font-weight: 800; color: var(--muted); text-align: right; }
+.wk-row .wt {
+  font-size: var(--fs-micro); font-weight: 900; text-align: center;
+  color: var(--muted-2);
+}
+.wk-row .wt.deload { color: var(--amber); }
+
+.sess-row {
+  display: grid; grid-template-columns: 1fr auto auto;
+  gap: var(--sp-4); align-items: center;
+  padding: var(--sp-4) 0; border-bottom: 1px solid var(--line);
+}
+.sess-row .sc { display: grid; gap: var(--sp-1); min-width: 0; }
+.sess-row .sc b { font-size: var(--fs-tiny); font-weight: 850; }
+.sess-row .sc span { font-size: var(--fs-micro); color: var(--muted); }
+.sess-row .sg { font-size: var(--fs-lg); font-weight: 900; letter-spacing: -0.03em; color: var(--current); }
+.sess-row .sg.mid { color: var(--amber); }
+</style>
+</head>
+<body>
+
+<header class="sheet-head">
+  <div class="eyebrow">Merged system · analysis</div>
+  <h1>Lift analysis and history</h1>
+  <p>Analysis is where a design can most easily overstate what it knows. Every chart segment declares whether it is evidenced, every score declares its confidence, and the "actual vs expected" grid the engine already computes becomes the same diff spine used everywhere else.</p>
+</header>
+
+<div class="sheet">
+
+  <!-- 1. LIFT ANALYSIS ------------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="lift-analysis">
+      <div class="statusbar"><span>9:41</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="m-top">
+        <span class="wordmark">Progress · Lifts</span>
+        <span class="chips"><span>Bench Press ⌄</span></span>
+      </div>
+      <div class="m-body tight">
+        <div class="m-head">
+          <div class="eyebrow">Estimated 1RM · 6 qualifying weeks</div>
+          <h1>232 lb, up 4 over three weeks.</h1>
+        </div>
+
+        <svg class="chart" viewBox="0 0 340 96" preserveAspectRatio="none" aria-hidden="true" style="height:96px">
+          <line x1="0" y1="16" x2="340" y2="16" stroke="var(--line)" stroke-width="1"/>
+          <line x1="0" y1="56" x2="340" y2="56" stroke="var(--line)" stroke-width="1"/>
+          <polyline points="10,80 76,70 142,64" fill="none" stroke="var(--muted-2)" stroke-width="3" stroke-dasharray="5 4" stroke-linecap="round"/>
+          <polyline points="142,64 208,44 274,32 330,15" fill="none" stroke="var(--current)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="10" cy="80" r="4" fill="var(--bg)" stroke="var(--muted-2)" stroke-width="2"/>
+          <circle cx="76" cy="70" r="4" fill="var(--bg)" stroke="var(--muted-2)" stroke-width="2"/>
+          <circle cx="142" cy="64" r="4.5" fill="var(--current)"/>
+          <circle cx="208" cy="44" r="4.5" fill="var(--current)"/>
+          <circle cx="274" cy="32" r="4.5" fill="var(--current)"/>
+          <circle cx="330" cy="15" r="5.5" fill="var(--current)"/>
+        </svg>
+        <div class="chart-key">
+          <span><i></i>evidenced</span>
+          <span><i class="thin"></i>1 set that week</span>
+        </div>
+
+        <div class="score-hero" style="border-top:1px solid var(--line);padding-top:12px">
+          <span class="sh-copy">
+            <b>Hypertrophy score</b>
+            <span>Effort and rep targets are being met; volume is the limiter.</span>
+          </span>
+          <span class="sh-num"><b>78</b><span>B+ · moderate</span></span>
+        </div>
+
+        <div class="callout info" style="display:flex;align-items:center;gap:16px">
+          <span class="meter lg" data-conf="3"><i></i><i></i><i></i><i></i></span>
+          <span style="display:grid;gap:3px">
+            <b>Moderate confidence</b>
+            <span style="font-size:var(--fs-micro)">6 qualifying weeks, 2 skipped as deloads, 1 week below the data floor.</span>
+          </span>
+        </div>
+
+        <div>
+          <div class="m-label"><span>Actual vs expected</span><span>analysed window</span></div>
+          <div class="diff">
+            <div class="drow dhead"><span class="plan">Expected</span><span class="act">Actual</span><span class="dlt">Δ</span></div>
+            <div class="drow">
+              <span class="plan"><span class="lbl">Working sets</span><span class="val big">24</span></span>
+              <span class="act"><span class="lbl">logged</span><span class="val big">22</span></span>
+              <span class="dlt"><span class="d under">−2</span></span>
+            </div>
+            <div class="drow">
+              <span class="plan"><span class="lbl">Reps</span><span class="val big">8</span></span>
+              <span class="act"><span class="lbl">96% compliance</span><span class="val big">7.9</span></span>
+              <span class="dlt"><span class="d on">on</span></span>
+            </div>
+            <div class="drow">
+              <span class="plan"><span class="lbl">Effort</span><span class="val big">8.0</span></span>
+              <span class="act"><span class="lbl">91% compliance</span><span class="val big">8.2</span></span>
+              <span class="dlt"><span class="d under">+0.2</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="note bottom">The score is held down by the 2-set volume shortfall, not by execution. Reps and effort are inside band.</div>
+      </div>
+      <nav class="m-nav"><span>Today</span><span>Plan</span><span class="on">Progress</span><span>More</span></nav>
+    </section>
+    <div class="screen-caption"><b>1 · Lift analysis</b><span>Chart, score and compliance in one read. The score states what is limiting it instead of leaving you to infer it.</span></div>
+  </div>
+
+  <!-- 2. CHART POINT DETAIL --------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="chart-point">
+      <div class="statusbar"><span>9:42</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="m-top">
+        <span class="back">← Bench Press</span>
+        <span class="chips"><span>Jul 16</span></span>
+      </div>
+      <div class="m-body tight">
+        <svg class="chart" viewBox="0 0 340 96" preserveAspectRatio="none" aria-hidden="true" style="height:96px">
+          <line x1="0" y1="16" x2="340" y2="16" stroke="var(--line)" stroke-width="1"/>
+          <line x1="0" y1="56" x2="340" y2="56" stroke="var(--line)" stroke-width="1"/>
+          <line x1="274" y1="0" x2="274" y2="96" stroke="var(--current)" stroke-width="1.5" stroke-dasharray="3 3"/>
+          <polyline points="10,80 76,70 142,64" fill="none" stroke="var(--muted-2)" stroke-width="3" stroke-dasharray="5 4" stroke-linecap="round"/>
+          <polyline points="142,64 208,44 274,32 330,15" fill="none" stroke="var(--current)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="274" cy="32" r="9" fill="none" stroke="var(--current)" stroke-width="2"/>
+          <circle cx="274" cy="32" r="4.5" fill="var(--current)"/>
+          <circle cx="330" cy="15" r="4.5" fill="var(--current)" opacity="0.45"/>
+        </svg>
+
+        <div class="m-head">
+          <div class="eyebrow">Selected · Jul 16</div>
+          <h1>228 lb estimated.</h1>
+        </div>
+
+        <div class="rollup">
+          <span class="ru"><b>180</b><span>top load</span></span>
+          <span class="ru"><b>8</b><span>reps</span></span>
+          <span class="ru"><b>8.0</b><span>RPE</span></span>
+        </div>
+
+        <div>
+          <div class="m-label"><span>Sets that session</span><span>plan → actual</span></div>
+          <div class="diff">
+            <div class="drow">
+              <span class="plan"><span class="lbl">Set 1</span><span class="val">180 × 8 @ 8</span></span>
+              <span class="act"><span class="lbl">performed</span><span class="val">180 × 8 @ 8.0</span></span>
+              <span class="dlt"><span class="d on">on</span></span>
+            </div>
+            <div class="drow">
+              <span class="plan"><span class="lbl">Set 2</span><span class="val">180 × 8 @ 8</span></span>
+              <span class="act"><span class="lbl">performed</span><span class="val">180 × 8 @ 8.0</span></span>
+              <span class="dlt"><span class="d on">on</span></span>
+            </div>
+            <div class="drow">
+              <span class="plan"><span class="lbl">Set 3</span><span class="val">180 × 8 @ 8</span></span>
+              <span class="act"><span class="lbl">performed</span><span class="val">180 × 8 @ 8.5</span></span>
+              <span class="dlt"><span class="d under">+0.5</span></span>
+            </div>
+            <div class="drow">
+              <span class="plan"><span class="lbl">Set 4</span><span class="val">180 × 8 @ 8</span></span>
+              <span class="act"><span class="lbl">performed</span><span class="val">180 × 7 @ 9.0</span></span>
+              <span class="dlt"><span class="d out">−1 r</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="callout good">
+          <b>vs the previous exposure</b>
+          <span>Jul 9 estimated 224 lb. This session is <em>+4 lb</em>, and it is the exposure that fired the +5 lb progression you are running today.</span>
+        </div>
+
+        <div class="note bottom">Set 4 dropped a rep at RPE 9. One miss inside a four-set block does not block progression; two consecutive would.</div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>2 · Chart point</b><span>Tapping a point opens the session behind it — including the set that missed, which is usually the interesting one.</span></div>
+  </div>
+
+  <!-- 3. HISTORY BY SESSION --------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="history-sessions">
+      <div class="statusbar"><span>9:41</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="m-top">
+        <span class="wordmark">Progress · History</span>
+        <span class="chips"><span>Sessions</span><span>Lifts</span></span>
+      </div>
+      <div class="m-body tight">
+        <div class="m-head">
+          <div class="eyebrow">47 logged sessions</div>
+          <h1>Training log.</h1>
+        </div>
+
+        <div class="rollup">
+          <span class="ru"><b>47</b><span>sessions</span></span>
+          <span class="ru"><b>92%</b><span class="d on">adherence</span></span>
+          <span class="ru"><b>B+</b><span>mean grade</span></span>
+        </div>
+
+        <div>
+          <div class="m-label"><span>This week</span><span>grade</span></div>
+          <div class="sess-row">
+            <span class="sc"><b>Upper A — Push Focus</b><span>Jul 23 · 18 sets · 54 min</span></span>
+            <span class="d on">100%</span>
+            <span class="sg">A−</span>
+          </div>
+          <div class="sess-row">
+            <span class="sc"><b>Lower A — Quad Focus</b><span>Jul 21 · 22 sets · 61 min</span></span>
+            <span class="d over">+4</span>
+            <span class="sg mid">B</span>
+          </div>
+          <div class="sess-row">
+            <span class="sc"><b>Upper B — Pull Focus</b><span>Jul 19 · 9 of 14 sets · 38 min</span></span>
+            <span class="d out">−5</span>
+            <span class="sg mid">C+</span>
+          </div>
+        </div>
+
+        <div>
+          <div class="m-label"><span>Last week</span><span>grade</span></div>
+          <div class="sess-row">
+            <span class="sc"><b>Upper A — Push Focus</b><span>Jul 16 · 18 sets · 52 min</span></span>
+            <span class="d on">100%</span>
+            <span class="sg">A−</span>
+          </div>
+          <div class="sess-row">
+            <span class="sc"><b>Lower B — Hinge Focus</b><span>Jul 14 · 15 sets · 57 min</span></span>
+            <span class="d on">100%</span>
+            <span class="sg">A</span>
+          </div>
+          <div class="sess-row">
+            <span class="sc"><b>Upper B — Pull Focus</b><span>Jul 12 · 9 of 14 sets · 36 min</span></span>
+            <span class="d out">−5</span>
+            <span class="sg mid">C+</span>
+          </div>
+        </div>
+
+        <div class="callout warn">
+          <b>A pattern, not an accident</b>
+          <span>Upper B has been cut short <em>five runs in a row</em>, always after the third lift. It is the only session type dragging the mean grade down.</span>
+        </div>
+
+        <div class="note bottom">Sessions older than six months move to the retention archive — kept in exports, excluded from analysis.</div>
+      </div>
+      <nav class="m-nav"><span>Today</span><span>Plan</span><span class="on">Progress</span><span>More</span></nav>
+    </section>
+    <div class="screen-caption"><b>3 · History by session</b><span>The log carries adherence beside the grade, which is what surfaces the Upper B pattern without anyone going looking for it.</span></div>
+  </div>
+
+  <!-- 4. HISTORY BY EXERCISE --------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="history-exercise">
+      <div class="statusbar"><span>9:43</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="m-top">
+        <span class="back">← History</span>
+        <span class="chips"><span>Bench Press</span></span>
+      </div>
+      <div class="m-body tight">
+        <div class="m-head">
+          <div class="eyebrow">By exercise · 12 qualifying sessions</div>
+          <h1>Bench Press</h1>
+        </div>
+
+        <div class="callout good" style="display:flex;align-items:center;gap:16px">
+          <span class="meter lg" data-conf="4"><i></i><i></i><i></i><i></i></span>
+          <span style="display:grid;gap:3px">
+            <b>Fully evidenced</b>
+            <span style="font-size:var(--fs-micro)">No gap longer than 6 days across 9 weeks.</span>
+          </span>
+        </div>
+
+        <div>
+          <div class="m-label"><span>Recent weeks</span><span>top · sets · rpe</span></div>
+          <div class="wk">
+            <div class="wk-row head"><span>Week</span><span>Top set</span><span>Sets</span><span>RPE</span><span></span></div>
+            <div class="wk-row"><span class="wd">Jul 21</span><span class="wv">185 × 8</span><span class="wn">4</span><span class="wn">8.1</span><span class="wt"></span></div>
+            <div class="wk-row"><span class="wd">Jul 14</span><span class="wv">180 × 8</span><span class="wn">4</span><span class="wn">8.0</span><span class="wt"></span></div>
+            <div class="wk-row"><span class="wd">Jul 7</span><span class="wv">175 × 8</span><span class="wn">4</span><span class="wn">8.0</span><span class="wt"></span></div>
+            <div class="wk-row"><span class="wd">Jun 30</span><span class="wv">155 × 6</span><span class="wn">2</span><span class="wn">6.5</span><span class="wt deload">DL</span></div>
+            <div class="wk-row"><span class="wd">Jun 23</span><span class="wv">175 × 7</span><span class="wn">4</span><span class="wn">9.0</span><span class="wt"></span></div>
+            <div class="wk-row"><span class="wd">Jun 16</span><span class="wv">170 × 8</span><span class="wn">4</span><span class="wn">8.5</span><span class="wt"></span></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="m-label"><span>Four-week summary</span><span>plan → actual</span></div>
+          <div class="diff">
+            <div class="drow">
+              <span class="plan"><span class="lbl">Prescribed sets</span><span class="val big">16</span></span>
+              <span class="act"><span class="lbl">completed</span><span class="val big">16</span></span>
+              <span class="dlt"><span class="d on">on</span></span>
+            </div>
+            <div class="drow">
+              <span class="plan"><span class="lbl">Load added</span><span class="val big">+15</span></span>
+              <span class="act"><span class="lbl">realised</span><span class="val big">+15</span></span>
+              <span class="dlt"><span class="d on">on</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="note bottom">Jun 30 is excluded from scoring as a planned deload. Jun 23 is the only session that missed reps in the window.</div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>4 · History by exercise</b><span>Deload weeks are marked and excluded rather than silently flattening the trend, which is the honest version of this table.</span></div>
+  </div>
+
+</div>
+</body>
+</html>

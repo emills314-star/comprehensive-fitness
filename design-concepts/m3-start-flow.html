@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en" data-theme="light" data-color-package="signal-garden">
+<head>
+<meta charset="utf-8">
+<title>Merged — Start &amp; readiness flow</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="frame.css">
+<link rel="stylesheet" href="merged.css">
+</head>
+<body>
+
+<header class="sheet-head">
+  <div class="eyebrow">Merged system · start &amp; readiness</div>
+  <h1>Starting a session, and what readiness moves</h1>
+  <p>Readiness is the app's other big claim, and today it is logged and applied almost invisibly. Here the adjustment review uses the same diff spine as everything else: <b>base prescription → today's adjusted target → the delta</b>, with the reason for each change stated rather than hidden.</p>
+</header>
+
+<div class="sheet">
+
+  <!-- 1. START CONFIRM ------------------------------------------ -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="start-confirm">
+      <div class="statusbar"><span>9:41</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="m-top">
+        <span class="wordmark">Comprehensive Fitness</span>
+        <span class="chips"><span>LB</span></span>
+      </div>
+      <div class="m-body">
+        <div class="m-head">
+          <div class="eyebrow">Thursday · Upper A</div>
+          <h1>What changed since you last ran this.</h1>
+        </div>
+        <div class="diff">
+          <div class="drow">
+            <span class="plan"><span class="lbl">Bench Press</span><span class="val big">185 × 8</span></span>
+            <span class="act"><span class="lbl">Jul 16</span><span class="val big">180 × 8</span></span>
+            <span class="dlt"><span class="d over">+5</span></span>
+          </div>
+          <div class="drow">
+            <span class="plan"><span class="lbl">Incline DB</span><span class="val big">70 × 10</span></span>
+            <span class="act"><span class="lbl">Jul 16</span><span class="val big">70 × 8</span></span>
+            <span class="dlt"><span class="d over">+2 r</span></span>
+          </div>
+        </div>
+      </div>
+      <nav class="m-nav"><span class="on">Today</span><span>Plan</span><span>Progress</span><span>More</span></nav>
+
+      <div class="scrim">
+        <div class="sheet-card">
+          <div class="m-head">
+            <div class="eyebrow">Start session</div>
+            <h2>Upper A — Push Focus</h2>
+            <div class="sub">5 lifts · 18 sets · about 52 min</div>
+          </div>
+
+          <div class="callout info" style="display:flex;align-items:center;gap:16px">
+            <span class="meter lg" data-conf="3"><i></i><i></i><i></i><i></i></span>
+            <span style="display:grid;gap:3px">
+              <b>3 of 5 lifts fully evidenced</b>
+              <span style="font-size:var(--fs-micro)">Cable Fly is still running on research defaults.</span>
+            </span>
+          </div>
+
+          <div>
+            <div class="m-label bare" style="padding-bottom:8px"><span>Readiness</span><span>last logged Jul 16</span></div>
+            <div class="note">Your usual baseline will be used unless you log today's metrics. Logging takes about 20 seconds and can lower targets before you start.</div>
+          </div>
+
+          <div class="sheet-actions stacked">
+            <span class="sheet-btn primary">Log today's readiness</span>
+            <span class="sheet-btn">Use my usual baseline</span>
+          </div>
+        </div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>1 · Start</b><span>The sheet leads with how well evidenced the session is, then offers readiness as a real choice rather than a buried setting.</span></div>
+  </div>
+
+  <!-- 2. READINESS LOG ------------------------------------------ -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="readiness-log">
+      <div class="statusbar"><span>9:42</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="m-top">
+        <span class="back">← Cancel</span>
+        <span class="chips"><span>Step 1 of 2</span></span>
+      </div>
+      <div class="m-body tight">
+        <div class="m-head">
+          <div class="eyebrow">Today's readiness</div>
+          <h1>How did you arrive?</h1>
+        </div>
+
+        <div class="field">
+          <div class="f-top"><span class="f-name">Sleep</span><span class="d none">baseline 7.5 h</span></div>
+          <div class="stepper">
+            <span class="sb">−</span><span class="sv">6.0 h</span><span class="sb">+</span>
+            <span class="d under" style="margin-left:auto">−1.5 vs usual</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="f-top"><span class="f-name">Sleep quality</span></div>
+          <div class="segmented"><span>1</span><span class="on">2</span><span>3</span><span>4</span><span>5</span></div>
+        </div>
+
+        <div class="field">
+          <div class="f-top"><span class="f-name">Soreness</span><span class="f-help">chest &amp; triceps</span></div>
+          <div class="segmented"><span>1</span><span>2</span><span>3</span><span class="on">4</span><span>5</span></div>
+        </div>
+
+        <div class="field">
+          <div class="f-top"><span class="f-name">HRV</span><span class="d none">baseline 62 ms</span></div>
+          <div class="stepper">
+            <span class="sb">−</span><span class="sv">51 ms</span><span class="sb">+</span>
+            <span class="d out" style="margin-left:auto">−11 vs usual</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="f-top"><span class="f-name">Resting HR</span><span class="d none">baseline 54 bpm</span></div>
+          <div class="stepper">
+            <span class="sb">−</span><span class="sv">58 bpm</span><span class="sb">+</span>
+            <span class="d under" style="margin-left:auto">+4 vs usual</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="f-top"><span class="f-name">Illness or pain</span></div>
+          <div class="segmented"><span class="on">None</span><span>Illness</span><span>Pain</span></div>
+        </div>
+
+        <div class="field" style="border-bottom:0">
+          <div class="f-top"><span class="f-name">Ate enough today</span><span class="toggle on"><i></i></span></div>
+        </div>
+
+        <div class="m-cta bottom">See what this changes</div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>2 · Readiness</b><span>Every input is scored against your own baseline as you enter it, so the delta grammar starts before the workout does.</span></div>
+  </div>
+
+  <!-- 3. ADJUSTMENT REVIEW -------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="readiness-review">
+      <div class="statusbar"><span>9:43</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="m-top">
+        <span class="back">← Back</span>
+        <span class="chips"><span>Step 2 of 2</span></span>
+      </div>
+      <div class="m-body">
+        <div class="m-head">
+          <div class="eyebrow">Today only · not saved to the plan</div>
+          <h1>Three lifts come down today.</h1>
+        </div>
+
+        <div class="callout warn">
+          <b>What triggered this</b>
+          <span>Sleep 1.5 h below baseline, HRV 11 ms down, and <em>soreness 4 of 5 in chest and triceps</em>. Three signals crossing at once lowers pressing volume and load.</span>
+        </div>
+
+        <div>
+          <div class="m-label"><span>Adjustments</span><span>base → today · Δ</span></div>
+          <div class="diff">
+            <div class="drow dhead"><span class="plan">Base plan</span><span class="act">Today</span><span class="dlt">Δ</span></div>
+            <div class="drow">
+              <span class="plan"><span class="lbl" style="display:flex;justify-content:space-between;gap:6px">Bench Press <span class="meter" data-conf="4"><i></i><i></i><i></i><i></i></span></span><span class="val big">185 × 8</span></span>
+              <span class="act"><span class="lbl">4 sets → 3</span><span class="val big">175 × 8</span></span>
+              <span class="dlt"><span class="d under">−10</span></span>
+            </div>
+            <div class="drow">
+              <span class="plan"><span class="lbl" style="display:flex;justify-content:space-between;gap:6px">Incline DB <span class="meter" data-conf="3"><i></i><i></i><i></i><i></i></span></span><span class="val big">70 × 10</span></span>
+              <span class="act"><span class="lbl">3 sets</span><span class="val big">65 × 10</span></span>
+              <span class="dlt"><span class="d under">−5</span></span>
+            </div>
+            <div class="drow">
+              <span class="plan"><span class="lbl" style="display:flex;justify-content:space-between;gap:6px">Cable Fly <span class="meter" data-conf="1"><i></i><i></i><i></i><i></i></span></span><span class="val big">40 × 14</span></span>
+              <span class="act"><span class="lbl">3 sets → 2</span><span class="val big">40 × 14</span></span>
+              <span class="dlt"><span class="d under">−1 set</span></span>
+            </div>
+            <div class="drow">
+              <span class="plan"><span class="lbl" style="display:flex;justify-content:space-between;gap:6px">Lateral Raise <span class="meter" data-conf="2"><i></i><i></i><i></i><i></i></span></span><span class="val big">20 × 15</span></span>
+              <span class="act"><span class="lbl">unchanged</span><span class="val big">20 × 15</span></span>
+              <span class="dlt"><span class="d none">—</span></span>
+            </div>
+            <div class="drow">
+              <span class="plan"><span class="lbl" style="display:flex;justify-content:space-between;gap:6px">Pushdown <span class="meter" data-conf="3"><i></i><i></i><i></i><i></i></span></span><span class="val big">55 × 12</span></span>
+              <span class="act"><span class="lbl">unchanged</span><span class="val big">55 × 12</span></span>
+              <span class="dlt"><span class="d none">—</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="note">Lateral Raise and Pushdown are untouched because neither loads the sore tissue. Your saved plan is unchanged — this applies to today's session only.</div>
+
+        <div style="display:grid;gap:10px;margin-top:auto">
+          <div class="m-cta">Start adjusted workout</div>
+          <div class="m-cta ghost" style="height:52px">Use original targets</div>
+        </div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>3 · Adjustment review</b><span>The most important screen in the flow. Readiness stops being invisible: you see every change, its size, and why the untouched lifts were left alone.</span></div>
+  </div>
+
+  <!-- 4. ACTIVE CONFLICT ---------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="start-conflict">
+      <div class="statusbar"><span>9:41</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="m-top">
+        <span class="wordmark">Plan · Mesocycle 4</span>
+        <span class="chips"><span>+ New</span></span>
+      </div>
+      <div class="m-body">
+        <div class="m-head">
+          <div class="eyebrow">Week 3 of 6</div>
+          <h1>Two templates are fully evidenced.</h1>
+        </div>
+        <div class="ex-block" style="border-top:1px solid var(--line)">
+          <div class="ex-head"><b>Upper A — Push Focus</b><span class="chip" data-conf="4">Evidenced</span></div>
+          <div class="ex-why">5 lifts · 18 sets · ~52 min · run 6 times</div>
+        </div>
+      </div>
+      <nav class="m-nav"><span>Today</span><span class="on">Plan</span><span>Progress</span><span>More</span></nav>
+
+      <div class="scrim">
+        <div class="sheet-card">
+          <div class="m-head">
+            <div class="eyebrow quiet">A session is already running</div>
+            <h2>Lower A — Quad Focus</h2>
+          </div>
+
+          <div class="rollup">
+            <span class="ru"><b>11<span style="color:var(--muted-2);font-weight:750">/16</span></b><span>sets</span></span>
+            <span class="ru"><b>38:04</b><span>elapsed</span></span>
+            <span class="ru"><b>8.9</b><span class="d out">+0.9 vs 8.0</span></span>
+          </div>
+
+          <div class="callout provisional">
+            <b>Nothing is lost either way</b>
+            <span>Returning resumes exactly where you left off. Discarding removes <em>only this draft</em> — your logged history is untouched.</span>
+          </div>
+
+          <div class="sheet-actions stacked">
+            <span class="sheet-btn primary">Return to Lower A</span>
+            <span class="sheet-btn">Discard it and start Upper A</span>
+            <span class="sheet-btn" style="border:0">Keep browsing</span>
+          </div>
+        </div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>4 · Start conflict</b><span>The running session is summarised with the same roll-up used in the workout, so the choice is made on facts rather than a warning.</span></div>
+  </div>
+
+  <!-- 5. CANCEL WORKOUT ----------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="cancel-workout">
+      <div class="statusbar"><span>10:52</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="m-top">
+        <span class="wordmark">Upper A · 11 of 18 · 38:04</span>
+        <span class="chips"><span>94%</span></span>
+      </div>
+      <div class="m-body">
+        <div class="rest-strip">
+          <span class="rs-copy"><span>Rest</span><i>next: set 4 · 185 × 8 @ 8</i></span>
+          <b>0:48</b>
+        </div>
+        <div class="ex-head" style="padding-top:4px">
+          <b>Bench Press</b>
+          <span class="chip" data-conf="4">185 × 8 @ 8</span>
+        </div>
+      </div>
+
+      <div class="scrim">
+        <div class="sheet-card">
+          <div class="m-head">
+            <div class="eyebrow quiet" style="color:var(--red)">Discard this workout</div>
+            <h2>11 logged sets will be removed.</h2>
+          </div>
+
+          <div class="diff">
+            <div class="drow dhead"><span class="plan">Removed</span><span class="act">Kept</span><span class="dlt"></span></div>
+            <div class="drow">
+              <span class="plan"><span class="lbl">This draft</span><span class="val">11 sets · 38 min</span></span>
+              <span class="act"><span class="lbl">Your history</span><span class="val">all 47 sessions</span></span>
+              <span class="dlt"><span class="d on">safe</span></span>
+            </div>
+            <div class="drow">
+              <span class="plan"><span class="lbl">Today's readiness</span><span class="val">the adjustment</span></span>
+              <span class="act"><span class="lbl">Your templates</span><span class="val">unchanged</span></span>
+              <span class="dlt"><span class="d on">safe</span></span>
+            </div>
+          </div>
+
+          <div class="callout bad">
+            <b>This cannot be undone</b>
+            <span>The 11 sets logged in this session are not recoverable once discarded.</span>
+          </div>
+
+          <div class="sheet-actions">
+            <span class="sheet-btn">Keep working</span>
+            <span class="sheet-btn danger">Discard</span>
+          </div>
+        </div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>5 · Discard</b><span>Destructive confirmation as a diff: what goes, what stays. The scope is shown rather than described.</span></div>
+  </div>
+
+</div>
+</body>
+</html>

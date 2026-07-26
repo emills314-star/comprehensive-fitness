@@ -1311,6 +1311,7 @@ test("repeated Lift move, delete, add-set, warm-up, and copy-set controls includ
     const card = exerciseField.locator("xpath=ancestor::article[contains(concat(' ', normalize-space(@class), ' '), ' exercise-card ')][1]");
     await expect(card).toHaveCount(1);
     await card.locator(".exercise-overflow > summary").click();
+    await card.locator(".exercise-details > summary").click();
     const expectedContext = new RegExp(exerciseName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
     for (const [selector, actionLabel, expectedActionParts] of actions) {
       const controls = card.locator(selector);

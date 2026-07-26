@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en" data-theme="light" data-color-package="signal-garden">
+<head>
+<meta charset="utf-8">
+<title>Merged — Icon set for review</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="frame.css">
+<link rel="stylesheet" href="merged.css">
+<style>
+/* Screen-local: the icon review board. Glyphs are the shipped definitions from
+   app-foundation.js:323-342, copied verbatim, 24x24 viewBox, 1.8 stroke,
+   currentColor. */
+.board { width: 390px; }
+.ui-icon { display: block; }
+
+.nav-strip {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  background: var(--nav-bg); padding: var(--sp-4) 0;
+}
+.nav-strip span {
+  display: grid; gap: var(--sp-2); justify-items: center;
+  font-size: var(--fs-micro); font-weight: 850; color: var(--muted-2);
+}
+.nav-strip span.on { color: var(--current); font-weight: 900; }
+
+.grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0; }
+.cell {
+  display: grid; grid-template-columns: 56px 1fr; gap: var(--sp-4);
+  align-items: center; padding: var(--sp-4) var(--sp-3);
+  border-bottom: 1px solid var(--line);
+}
+.cell .art {
+  width: 56px; height: 56px; border-radius: var(--r-sm);
+  border: 1px solid var(--line); display: flex; align-items: center; justify-content: center;
+  color: var(--text);
+}
+.cell .art .ui-icon { width: 40px; height: 40px; }
+.cell .meta { display: grid; gap: 2px; min-width: 0; }
+.cell .meta b { font-size: var(--fs-micro); font-weight: 900; }
+.cell .meta span { font-size: var(--fs-micro); color: var(--muted); line-height: 1.35; }
+
+.actual {
+  display: flex; align-items: center; gap: var(--sp-5); flex-wrap: wrap;
+  padding: var(--sp-5) 0;
+}
+.actual .a-item { display: flex; align-items: center; gap: var(--sp-3); color: var(--text); }
+.actual .a-item span { font-size: var(--fs-micro); font-weight: 800; color: var(--muted); }
+
+.flagged { border-left: 3px solid var(--amber); padding-left: var(--sp-4); }
+</style>
+</head>
+<body>
+
+<header class="sheet-head">
+  <div class="eyebrow">Merged system · needs your ruling</div>
+  <h1>The icon set</h1>
+  <p>All 17 glyphs currently shipping in the Phase 5 shell, copied verbatim from <code>app-foundation.js:323-342</code>. One 24×24 viewBox, 1.8px stroke, <code>currentColor</code>, rendered at 22px. Shown enlarged so you can see the drawing, and at real size in the nav where it actually matters. The two I'd question are marked.</p>
+</header>
+
+<div class="sheet">
+
+  <!-- 1 — NAV AT REAL SIZE ---------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="icons-in-place">
+      <div class="statusbar"><span>9:41</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="m-body">
+        <div class="m-head">
+          <div class="eyebrow">At shipping size</div>
+          <h1>22px, in the nav.</h1>
+          <div class="sub">This is the only place most of these are seen. Judge them here first — enlarged, everything looks fine.</div>
+        </div>
+
+        <div class="nav-strip">
+          <span class="on">
+            <svg class="ui-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h3l2-5 4 10 2-5h5"/><path d="M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/></svg>
+            Today
+          </span>
+          <span>
+            <svg class="ui-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5 9 3l6 2.5L20 3v15.5L15 21l-6-2.5L4 21Z"/><path d="M9 3v15.5M15 5.5V21"/></svg>
+            Plan
+          </span>
+          <span>
+            <svg class="ui-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V9m6 10V5m6 14v-7m4 7H2"/></svg>
+            Progress
+          </span>
+          <span>
+            <svg class="ui-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.1A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.1A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.1A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.14.37.37.7.68.95.3.25.7.4 1.1.4H21v4h-.1c-.4 0-.8.14-1.1.4-.2.08-.3.16-.4.25Z"/></svg>
+            More
+          </span>
+        </div>
+
+        <div class="m-label bare"><span>In-content, at 22px</span></div>
+        <div class="actual">
+          <span class="a-item"><svg class="ui-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/></svg><span>done</span></span>
+          <span class="a-item"><svg class="ui-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span>add</span></span>
+          <span class="a-item"><svg class="ui-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>rest</span></span>
+          <span class="a-item"><svg class="ui-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M9 7V4h6v3m2 0-1 13H8L7 7m3 4v5m4-5v5"/></svg><span>delete</span></span>
+          <span class="a-item"><svg class="ui-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none"/></svg><span>overflow</span></span>
+          <span class="a-item"><svg class="ui-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="7" r=".7" fill="currentColor" stroke="none"/><circle cx="16" cy="7" r=".7" fill="currentColor" stroke="none"/><circle cx="8" cy="12" r=".7" fill="currentColor" stroke="none"/><circle cx="16" cy="12" r=".7" fill="currentColor" stroke="none"/><circle cx="8" cy="17" r=".7" fill="currentColor" stroke="none"/><circle cx="16" cy="17" r=".7" fill="currentColor" stroke="none"/></svg><span>grip</span></span>
+        </div>
+
+        <div class="callout warn">
+          <b>The two I would question</b>
+          <span><em>Today</em> is a barbell inside a rounded rectangle. At 22px the bar reads, the box reads as a card, and together they are ambiguous. <em>Plan</em> is a folded map — recognisable, but it says "places", not "training week".</span>
+        </div>
+
+        <div class="note bottom">Everything else is conventional: check, plus, clock, trash, chevrons, three-dot overflow, six-dot grip. Those carry no interpretation risk.</div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>1 · At real size</b><span>22px in the nav and in content. This is the only view that matters for judging them — enlargement flatters every icon.</span></div>
+  </div>
+
+  <!-- 2 — ENLARGED, THE FOUR NAV GLYPHS --------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="icons-nav-enlarged">
+      <div class="statusbar"><span>9:41</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="m-body">
+        <div class="m-head">
+          <div class="eyebrow">Enlarged 2×</div>
+          <h1>The four navigation glyphs.</h1>
+          <div class="sub">These replaced the text labels "Now / Map / Trend / Menu".</div>
+        </div>
+
+        <div class="cell flagged">
+          <span class="art"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h3l2-5 4 10 2-5h5"/><path d="M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/></svg></span>
+          <span class="meta"><b>Today</b><span>A barbell path inside a rounded card. Two ideas competing in 22px.</span></span>
+        </div>
+        <div class="cell flagged">
+          <span class="art"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5 9 3l6 2.5L20 3v15.5L15 21l-6-2.5L4 21Z"/><path d="M9 3v15.5M15 5.5V21"/></svg></span>
+          <span class="meta"><b>Plan</b><span>A folded map. Legible, but the metaphor is geography, not a training block.</span></span>
+        </div>
+        <div class="cell">
+          <span class="art"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V9m6 10V5m6 14v-7m4 7H2"/></svg></span>
+          <span class="meta"><b>Progress</b><span>Bar chart on an axis. Unambiguous.</span></span>
+        </div>
+        <div class="cell" style="border-bottom:0">
+          <span class="art"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.1A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.1A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.1A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.14.37.37.7.68.95.3.25.7.4 1.1.4H21v4h-.1c-.4 0-.8.14-1.1.4-.2.08-.3.16-.4.25Z"/></svg></span>
+          <span class="meta"><b>More</b><span>Gear. The densest glyph here — most at risk of muddying at 22px.</span></span>
+        </div>
+
+        <div class="callout info bottom">
+          <b>Remember they keep their labels</b>
+          <span>All four sit above the words Today, Plan, Progress and More. An icon that is merely <em>ambiguous</em> costs little when a label sits under it. That is why I would only change the two flagged, not the set.</span>
+        </div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>2 · Nav glyphs enlarged</b><span>Today and Plan carry interpretation risk. Progress and More are conventional.</span></div>
+  </div>
+
+  <!-- 3 — THE REST OF THE SET ------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="icons-full-set">
+      <div class="statusbar"><span>9:41</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="m-body tight">
+        <div class="m-head">
+          <div class="eyebrow">The remaining 13</div>
+          <h1>Action glyphs.</h1>
+        </div>
+        <div class="grid">
+          <div class="cell"><span class="art"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/></svg></span><span class="meta"><b>done</b><span>set complete</span></span></div>
+          <div class="cell"><span class="art"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span class="meta"><b>add</b><span>add set / exercise</span></span></div>
+          <div class="cell"><span class="art"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><span class="meta"><b>clock</b><span>rest timer</span></span></div>
+          <div class="cell"><span class="art"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M9 7V4h6v3m2 0-1 13H8L7 7m3 4v5m4-5v5"/></svg></span><span class="meta"><b>delete</b><span>remove, destructive</span></span></div>
+          <div class="cell"><span class="art"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7v10M15 7v10"/></svg></span><span class="meta"><b>pause</b><span>rest timer</span></span></div>
+          <div class="cell"><span class="art"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 9 6-9 6Z"/></svg></span><span class="meta"><b>play</b><span>resume</span></span></div>
+          <div class="cell"><span class="art"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></span><span class="meta"><b>duplicate</b><span>copy set</span></span></div>
+          <div class="cell"><span class="art"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-4-4 4 4 4-4M5 20h14"/></svg></span><span class="meta"><b>download</b><span>export</span></span></div>
+          <div class="cell"><span class="art"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3m-4 4 4-4 4 4M5 20h14"/></svg></span><span class="meta"><b>upload</b><span>import</span></span></div>
+          <div class="cell"><span class="art"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="7" r=".7" fill="currentColor" stroke="none"/><circle cx="16" cy="7" r=".7" fill="currentColor" stroke="none"/><circle cx="8" cy="12" r=".7" fill="currentColor" stroke="none"/><circle cx="16" cy="12" r=".7" fill="currentColor" stroke="none"/><circle cx="8" cy="17" r=".7" fill="currentColor" stroke="none"/><circle cx="16" cy="17" r=".7" fill="currentColor" stroke="none"/></svg></span><span class="meta"><b>grip</b><span>reorder handle</span></span></div>
+          <div class="cell"><span class="art"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none"/></svg></span><span class="meta"><b>more</b><span>overflow menu</span></span></div>
+          <div class="cell"><span class="art"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6 14 6-6 6 6"/></svg></span><span class="meta"><b>up</b><span>move exercise up</span></span></div>
+          <div class="cell" style="border-bottom:0"><span class="art"><svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6 10 6 6 6-6"/></svg></span><span class="meta"><b>down</b><span>move exercise down</span></span></div>
+          <div class="cell" style="border-bottom:0"></div>
+        </div>
+        <div class="note bottom">All 13 are standard shapes with settled meanings. I see no reason to change any of them.</div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>3 · The remaining 13</b><span>Conventional action glyphs. No interpretation risk.</span></div>
+  </div>
+
+</div>
+</body>
+</html>

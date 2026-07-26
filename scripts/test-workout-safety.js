@@ -73,7 +73,7 @@ assert.match(html, /Overall Program Hypertrophy Score/, "The Lift home must lead
 assert.match(html, /function hypertrophyScoreTone\(score\)/, "Hypertrophy scores must use stable range-based color coding");
 assert.match(html, /\.brand-bar::before/, "The top header background must extend across the full viewport");
 assert.match(html, /viewingHistorySessionId = isSessionSubmitted/, "Logged workouts must only remain visible when deliberately opened from history");
-assert.match(html, /\.volume-card\.expanded \{ grid-column: 1 \/ -1;/, "Expanded weekly muscle details must span the full dashboard width");
+assert.match(html, /\.volume-table-entry\.expanded \{ background: var\(--surface\); \}/, "Expanded weekly muscle details must remain attached to their continuous table row");
 assert.match(html, /\.volume-exercise-row > span:first-child small \{ display: none; \}/, "Weekly muscle details must omit distracting volume-load strings");
 assert.match(html, /score-excellent \{ --score-color: var\(--current\); \}/, "Excellent scores must resolve into the app's established blue");
 assert.match(html, /score-very-good \{ --score-color: #1f9272; \}/, "Very-good scores must bridge green and blue with a distinct teal");

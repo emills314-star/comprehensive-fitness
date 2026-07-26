@@ -61,11 +61,22 @@ for (const tabName of tabs) {
     }));
     expect(accessibility.violations, accessibility.violations.map((item) => `${item.id}: ${item.help}`).join("\n")).toEqual([]);
     expect(consoleErrors, "browser console errors").toEqual([]);
-    await expect(page).toHaveScreenshot(`${tabName.toLowerCase()}-${testInfo.project.name}.png`, {
-      fullPage: true,
-      animations: "disabled",
-      maxDiffPixelRatio: 0.01
-    });
+    if (process.env.CF_PHASE5_REVIEW_DIR) {
+      fs.mkdirSync(process.env.CF_PHASE5_REVIEW_DIR, { recursive: true });
+      await page.screenshot({
+        path: path.join(process.env.CF_PHASE5_REVIEW_DIR, `${tabName.toLowerCase()}-${testInfo.project.name}.png`),
+        fullPage: true,
+        animations: "disabled",
+        caret: "hide"
+      });
+    }
+    if (!process.env.CF_PHASE5_REVIEW_DIR) {
+      await expect(page).toHaveScreenshot(`${tabName.toLowerCase()}-${testInfo.project.name}.png`, {
+        fullPage: true,
+        animations: "disabled",
+        maxDiffPixelRatio: 0.01
+      });
+    }
   });
 }
 

@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en" data-theme="light" data-color-package="signal-garden">
+<head>
+<meta charset="utf-8">
+<title>Merged — Settings, data &amp; states</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="frame.css">
+<link rel="stylesheet" href="merged.css">
+<style>
+/* Screen-local: the typed-confirmation input and the banner stack appear only
+   in the destructive and system-state surfaces. */
+.typed {
+  display: grid; gap: var(--sp-3);
+  padding: var(--sp-4); border-radius: var(--r-sm);
+  border: 2px solid var(--red);
+  background: var(--input-bg);
+}
+.typed .t-hint { font-size: var(--fs-micro); font-weight: 850; color: var(--muted); }
+.typed .t-box {
+  min-height: 48px; border-radius: var(--r-xs);
+  border: 1px solid var(--line-strong); background: var(--surface-strong);
+  display: flex; align-items: center; padding: 0 var(--sp-4);
+  font-size: var(--fs-base); font-weight: 900; letter-spacing: 0.08em;
+  color: var(--muted-2);
+}
+
+.banner {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-5); border-radius: var(--r-sm);
+}
+.banner .b-copy { display: grid; gap: 2px; min-width: 0; }
+.banner .b-copy b { font-size: var(--fs-tiny); font-weight: 850; }
+.banner .b-copy span { font-size: var(--fs-micro); line-height: 1.4; }
+.banner .b-act { font-size: var(--fs-micro); font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+.banner.offline { background: color-mix(in srgb, var(--text) 7%, transparent); border: 1px solid var(--line-strong); }
+.banner.offline .b-copy span { color: var(--muted); }
+.banner.offline .b-act { color: var(--muted-2); }
+.banner.update { background: var(--current-dark); border: 1px solid var(--current); }
+.banner.update .b-copy b { color: var(--current); }
+.banner.update .b-copy span { color: var(--muted); }
+.banner.update .b-act { color: var(--current); }
+</style>
+</head>
+<body>
+
+<header class="sheet-head">
+  <div class="eyebrow">Merged system · settings, data &amp; states</div>
+  <h1>The surfaces nobody designs</h1>
+  <p>Settings, the privacy boundary, destructive confirmations, and the empty and failure states. The first-run screen is the most useful test of the whole direction: with zero history, <b>every claim in the app is provisional</b> — and the design has to say so without looking broken.</p>
+</header>
+
+<div class="sheet">
+
+  <!-- 1. SETTINGS ------------------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="settings">
+      <div class="statusbar"><span>9:41</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="m-top">
+        <span class="wordmark">More</span>
+        <span class="chips"><span>v4.2</span></span>
+      </div>
+      <div class="m-body tight">
+        <div class="m-head">
+          <div class="eyebrow">Settings</div>
+          <h1>Training setup.</h1>
+        </div>
+
+        <div class="field">
+          <div class="f-top"><span class="f-name">Weight unit</span></div>
+          <div class="segmented"><span class="on">lb</span><span>kg</span></div>
+        </div>
+
+        <div class="field">
+          <div class="f-top"><span class="f-name">Theme</span></div>
+          <div class="segmented"><span class="on">Light</span><span>Dark</span><span>System</span></div>
+        </div>
+
+        <div class="field">
+          <div class="f-top"><span class="f-name">Colour package</span><span class="f-help">10 available</span></div>
+          <div class="chiprow">
+            <span class="pick on">Signal Garden</span><span class="pick">Heritage Atlas</span><span class="pick">Night Stadium</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="f-top"><span class="f-name">Default rest</span><span class="d none">per-exercise overrides win</span></div>
+          <div class="stepper"><span class="sb">−</span><span class="sv">2:30</span><span class="sb">+</span></div>
+        </div>
+
+        <div class="field">
+          <div class="f-top"><span class="f-name">Lock-screen rest alerts</span><span class="toggle on"><i></i></span></div>
+          <div class="f-help">Notification permission granted. Shows exercise and set number.</div>
+        </div>
+
+        <div class="field">
+          <div class="f-top"><span class="f-name">Auto-start rest on set completion</span><span class="toggle on"><i></i></span></div>
+        </div>
+
+        <div class="field" style="border-bottom:0">
+          <div class="f-top"><span class="f-name">Interaction vibration</span><span class="toggle"><i></i></span></div>
+        </div>
+
+        <div>
+          <div class="m-label"><span>More</span><span></span></div>
+          <div class="row-item"><span class="ri-copy"><b>Training defaults</b><span>Goal, nutrition phase, experience</span></span><span class="chev">›</span></div>
+          <div class="row-item"><span class="ri-copy"><b>Readiness baseline</b><span>Sleep 7.5 h · HRV 62 ms · RHR 54</span></span><span class="chev">›</span></div>
+          <div class="row-item"><span class="ri-copy"><b>Data and backup</b><span>Export, import, sync consent</span></span><span class="chev">›</span></div>
+          <div class="row-item"><span class="ri-copy" style="color:var(--red)"><b style="color:var(--red)">Danger zone</b><span>Clear local data, delete remote copy</span></span><span class="chev">›</span></div>
+        </div>
+      </div>
+      <nav class="m-nav"><span>Today</span><span>Plan</span><span>Progress</span><span class="on">More</span></nav>
+    </section>
+    <div class="screen-caption"><b>1 · Settings</b><span>Controls that affect prescriptions are annotated with what they override, so nothing silently changes a target.</span></div>
+  </div>
+
+  <!-- 2. DATA & BACKUP --------------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="data-backup">
+      <div class="statusbar"><span>9:44</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="m-top">
+        <span class="back">← More</span>
+        <span class="chips"><span>Local-first</span></span>
+      </div>
+      <div class="m-body tight">
+        <div class="m-head">
+          <div class="eyebrow">Data and backup</div>
+          <h1>Everything stays on this device.</h1>
+        </div>
+
+        <div class="callout good">
+          <b>The boundary</b>
+          <span>Your workout records live in this browser's storage. Nothing is uploaded unless you turn on the cloud copy below, and <em>notifications never carry workout content</em> unless you allow it.</span>
+        </div>
+
+        <div class="field">
+          <div class="f-top"><span class="f-name">Cloud copy of workouts</span><span class="toggle"><i></i></span></div>
+          <div class="f-help">Off. Turning this on uploads session records so they survive clearing the browser.</div>
+        </div>
+
+        <div class="field">
+          <div class="f-top"><span class="f-name">Notification detail</span></div>
+          <div class="segmented"><span class="on">Exercise &amp; set</span><span>Private</span></div>
+        </div>
+
+        <div>
+          <div class="m-label"><span>Recoverability</span><span>status</span></div>
+          <div class="row-item">
+            <span class="ri-copy"><b>Last export</b><span>Jul 18 · 47 sessions · 1.2 MB</span></span>
+            <span class="ri-val d under">5 days ago</span>
+          </div>
+          <div class="row-item">
+            <span class="ri-copy"><b>Cloud copy</b><span>Disabled</span></span>
+            <span class="ri-val d none">none</span>
+          </div>
+          <div class="row-item">
+            <span class="ri-copy"><b>Storage persistence</b><span>Granted — the browser will not evict this data</span></span>
+            <span class="ri-val d on">ok</span>
+          </div>
+        </div>
+
+        <div class="callout warn">
+          <b>One copy only</b>
+          <span>With the cloud copy off and the last export 5 days old, <em>up to 5 days of training would be lost</em> if this browser's storage were cleared.</span>
+        </div>
+
+        <div>
+          <div class="m-label"><span>Research basis</span><span>public database</span></div>
+          <div class="row-item">
+            <span class="ri-copy"><b>142 sources</b><span>Prescription defaults, volume landmarks, progression rules</span></span>
+            <span class="chev">›</span>
+          </div>
+        </div>
+
+        <div style="display:grid;gap:10px;margin-top:auto">
+          <div class="m-cta">Export all data</div>
+          <div class="m-cta ghost" style="height:52px">Import backup or Strong CSV</div>
+        </div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>2 · Data &amp; backup</b><span>Recoverability is stated as a delta — "5 days ago" — and the consequence is spelled out rather than left to the user to work out.</span></div>
+  </div>
+
+  <!-- 3. DANGER ZONE ------------------------------------------------ -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="danger-zone">
+      <div class="statusbar"><span>9:46</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="m-top">
+        <span class="back">← More</span>
+        <span class="chips"><span>Danger zone</span></span>
+      </div>
+      <div class="m-body tight">
+        <div class="m-head">
+          <div class="eyebrow quiet" style="color:var(--red)">Danger zone</div>
+          <h1>Clear all local data.</h1>
+        </div>
+      </div>
+
+      <div class="scrim">
+        <div class="sheet-card">
+          <div class="m-head">
+            <div class="eyebrow quiet" style="color:var(--red)">This cannot be undone</div>
+            <h2>47 sessions will be erased.</h2>
+          </div>
+
+          <div class="diff">
+            <div class="drow dhead"><span class="plan">Erased</span><span class="act">Kept</span><span class="dlt"></span></div>
+            <div class="drow">
+              <span class="plan"><span class="lbl">Sessions</span><span class="val">all 47</span></span>
+              <span class="act"><span class="lbl">Your export file</span><span class="val">Jul 18 copy</span></span>
+              <span class="dlt"><span class="d on">safe</span></span>
+            </div>
+            <div class="drow">
+              <span class="plan"><span class="lbl">Templates</span><span class="val">all 4</span></span>
+              <span class="act"><span class="lbl">Research database</span><span class="val">reinstalled</span></span>
+              <span class="dlt"><span class="d on">safe</span></span>
+            </div>
+            <div class="drow">
+              <span class="plan"><span class="lbl">Readiness baseline</span><span class="val">and history</span></span>
+              <span class="act"><span class="lbl">Remote copy</span><span class="val">none exists</span></span>
+              <span class="dlt"><span class="d none">n/a</span></span>
+            </div>
+          </div>
+
+          <div class="callout bad">
+            <b>5 days are not in any backup</b>
+            <span>Your last export was Jul 18. Sessions logged since then exist <em>only here</em> and will not be recoverable.</span>
+          </div>
+
+          <div class="typed">
+            <span class="t-hint">Type CLEAR to confirm</span>
+            <span class="t-box">CLEAR</span>
+          </div>
+
+          <div class="sheet-actions">
+            <span class="sheet-btn">Export first</span>
+            <span class="sheet-btn danger">Erase everything</span>
+          </div>
+        </div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>3 · Destructive</b><span>The confirmation names the exact scope, and the callout does the arithmetic the user would otherwise have to do themselves.</span></div>
+  </div>
+
+  <!-- 4. FIRST RUN --------------------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="state-first-run">
+      <div class="statusbar"><span>9:41</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="m-top">
+        <span class="wordmark">Comprehensive Fitness</span>
+        <span class="chips"><span>LB</span><span>Light</span></span>
+      </div>
+      <div class="m-body">
+        <div class="m-head">
+          <div class="eyebrow">Thursday · first session</div>
+          <h1>Nothing here is evidenced yet.</h1>
+          <div class="sub">Every target below comes from research defaults. After two sessions they start coming from you.</div>
+        </div>
+
+        <div style="display:grid;gap:12px">
+          <div class="claim-card" data-conf="1">
+            <div class="cc-row">
+              <span class="cc-title">Bench Press</span>
+              <span class="meter" data-conf="1"><i></i><i></i><i></i><i></i></span>
+            </div>
+            <div class="cc-value">Set your starting load</div>
+            <div class="cc-why">No history. Pick a weight you could do for about 10 reps and the app will calibrate from there.</div>
+          </div>
+
+          <div class="claim-card" data-conf="1">
+            <div class="cc-row">
+              <span class="cc-title">Incline DB Press</span>
+              <span class="meter" data-conf="1"><i></i><i></i><i></i><i></i></span>
+            </div>
+            <div class="cc-value">Set your starting load</div>
+            <div class="cc-why">No history.</div>
+          </div>
+        </div>
+
+        <div class="callout provisional">
+          <b>What changes as you log</b>
+          <span>After <em>2 sessions</em> a lift gets its own progression rule. After <em>6</em> it reaches high confidence and the app stops leaning on research defaults for it.</span>
+        </div>
+
+        <div class="m-cta bottom">Start first session</div>
+      </div>
+      <nav class="m-nav"><span class="on">Today</span><span>Plan</span><span>Progress</span><span>More</span></nav>
+    </section>
+    <div class="screen-caption"><b>4 · First run</b><span>The hardest test of the direction. With no data every claim is dashed — and the screen has to read as honest rather than broken.</span></div>
+  </div>
+
+  <!-- 5. SYSTEM STATES ------------------------------------------------ -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="state-system">
+      <div class="statusbar"><span>9:41</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="m-top">
+        <span class="wordmark">System states</span>
+        <span class="chips"><span>reference</span></span>
+      </div>
+      <div class="m-body tight">
+        <div class="m-label bare"><span>Offline</span><span>local actions continue</span></div>
+        <div class="banner offline">
+          <span class="b-copy"><b>Offline</b><span>Logging works. Cloud copy resumes when you reconnect.</span></span>
+          <span class="b-act">Details</span>
+        </div>
+
+        <div class="m-label bare" style="margin-top:6px"><span>Update available</span><span>notify ≠ install</span></div>
+        <div class="banner update">
+          <span class="b-copy"><b>A new version is ready</b><span>Installs on next launch, or update now. Your session is preserved.</span></span>
+          <span class="b-act">Update</span>
+        </div>
+
+        <div class="m-label bare" style="margin-top:6px"><span>Loading</span><span>layout preserved</span></div>
+        <div style="display:grid;gap:8px">
+          <span class="skeleton" style="height:14px;width:52%"></span>
+          <span class="skeleton" style="height:26px;width:82%"></span>
+          <span class="skeleton" style="height:60px"></span>
+        </div>
+
+        <div class="m-label bare" style="margin-top:6px"><span>Destination error</span><span>recoverable</span></div>
+        <div class="state" style="flex:0 0 auto;padding:20px 8px;gap:12px">
+          <span class="glyph bad">!</span>
+          <b>Progress could not be opened</b>
+          <span>Your data is intact. This is a display fault — retrying rebuilds the view from stored records.</span>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;margin-top:4px">
+            <span class="sheet-btn primary" style="height:46px">Retry</span>
+            <span class="sheet-btn" style="height:46px">Update app</span>
+          </div>
+        </div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>5 · System states</b><span>Shown together as a reference sheet, not one moment. Each separates what failed from what is safe — the loading state keeps layout so nothing jumps.</span></div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en" data-theme="light" data-color-package="signal-garden">
+<head>
+<meta charset="utf-8">
+<title>Merged — Barbell, calendar, and the colour question</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="frame.css">
+<link rel="stylesheet" href="merged.css">
+<style>
+/* Screen-local: navigation label treatments and the colour demonstration. */
+.ui-icon { display: block; }
+
+.nav {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  background: var(--nav-bg); padding: var(--sp-4) 0 var(--sp-5);
+}
+.nav > span {
+  display: grid; gap: var(--sp-2); justify-items: center;
+  color: var(--muted-2);
+}
+.nav > span em {
+  font-style: normal; font-size: var(--fs-tiny); font-weight: 850; letter-spacing: -0.01em;
+}
+.nav > span.on { color: var(--current); }
+.nav > span.on em { font-weight: 900; }
+
+/* B — active tab as a horizontal pill */
+.nav.pill > span.on {
+  grid-auto-flow: column; grid-template-columns: auto auto; gap: var(--sp-3);
+  align-items: center; justify-items: center;
+  background: var(--current-dark); border-radius: var(--r-pill);
+  padding: var(--sp-2) var(--sp-4); margin-inline: var(--sp-2);
+}
+
+/* C — live session badge */
+.nav .live-dot {
+  position: relative;
+}
+.nav .live-dot::after {
+  content: ""; position: absolute; top: -2px; right: -6px;
+  width: 8px; height: 8px; border-radius: var(--r-pill);
+  background: var(--current); border: 1.5px solid var(--panel);
+}
+
+/* The counter-example: per-tab identity colour */
+.nav.tinted > span:nth-child(1) { color: var(--current); }
+.nav.tinted > span:nth-child(2) { color: var(--rest-accent); }
+.nav.tinted > span:nth-child(3) { color: var(--success); }
+.nav.tinted > span:nth-child(4) { color: var(--amber); }
+
+.compare { display: grid; gap: var(--sp-5); }
+.compare .label {
+  font-size: var(--fs-micro); font-weight: 900; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--muted-2);
+}
+.big-art {
+  display: flex; align-items: center; justify-content: center; gap: var(--sp-8);
+  padding: var(--sp-6) 0;
+}
+.big-art .slot { display: grid; gap: var(--sp-3); justify-items: center; color: var(--text); }
+.big-art .slot .ui-icon { width: 64px; height: 64px; }
+.big-art .slot b { font-size: var(--fs-tiny); font-weight: 850; }
+.big-art .slot s { text-decoration: none; font-size: var(--fs-micro); color: var(--muted); }
+</style>
+</head>
+<body>
+
+<header class="sheet-head">
+  <div class="eyebrow">Merged system · navigation</div>
+  <h1>Barbell, calendar, and whether colour helps</h1>
+  <p>Today becomes an actual barbell and Plan becomes a calendar — both literal, both read at 22px. Labels stay paired with every glyph. On colour: my recommendation is <b>no additional colour beyond the active state</b>, and the third screen shows why.</p>
+</header>
+
+<div class="sheet">
+
+  <!-- 1 — THE NEW GLYPHS ------------------------------------------ -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="nav-new-glyphs">
+      <div class="statusbar"><span>9:41</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="m-body">
+        <div class="m-head">
+          <div class="eyebrow">Replacements</div>
+          <h1>Literal, not metaphorical.</h1>
+        </div>
+
+        <div class="big-art">
+          <span class="slot">
+            <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4M7.5 7v10M16.5 7v10M20 10v4M7.5 12h9"/></svg>
+            <b>Today</b><s>was a pulse line in a box</s>
+          </span>
+          <span class="slot">
+            <svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
+            <b>Plan</b><s>was a folded map</s>
+          </span>
+        </div>
+
+        <div class="m-label bare"><span>At 22px, in place</span></div>
+        <div class="nav">
+          <span class="on">
+            <svg class="ui-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4M7.5 7v10M16.5 7v10M20 10v4M7.5 12h9"/></svg>
+            <em>Today</em>
+          </span>
+          <span>
+            <svg class="ui-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
+            <em>Plan</em>
+          </span>
+          <span>
+            <svg class="ui-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V9m6 10V5m6 14v-7m4 7H2"/></svg>
+            <em>Progress</em>
+          </span>
+          <span>
+            <svg class="ui-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.1A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.1A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.1A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.14.37.37.7.68.95.3.25.7.4 1.1.4H21v4h-.1c-.4 0-.8.14-1.1.4-.2.08-.3.16-.4.25Z"/></svg>
+            <em>More</em>
+          </span>
+        </div>
+
+        <div class="callout good">
+          <b>Labels bumped one step</b>
+          <span>From 12px to <em>13px at weight 850</em>, active at 900. The word is now doing at least as much work as the glyph, which is what removes the ambiguity for good.</span>
+        </div>
+
+        <div class="note bottom">The barbell is five strokes: two inner plates, two outer plates, one bar. The calendar is the standard rounded frame with two hangers and a header rule. Both survive 22px because neither has interior detail.</div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>1 · The new glyphs</b><span>Barbell and calendar at 64px and at shipping size, with labels one step heavier.</span></div>
+  </div>
+
+  <!-- 2 — LABEL TREATMENTS ---------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="nav-label-options">
+      <div class="statusbar"><span>9:41</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="m-body">
+        <div class="m-head">
+          <div class="eyebrow">Pairing the word with the glyph</div>
+          <h1>Three ways.</h1>
+        </div>
+
+        <div class="compare">
+          <div>
+            <div class="label">A · Stacked, strengthened &nbsp;— recommended</div>
+            <div class="nav">
+              <span class="on"><svg class="ui-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4M7.5 7v10M16.5 7v10M20 10v4M7.5 12h9"/></svg><em>Today</em></span>
+              <span><svg class="ui-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg><em>Plan</em></span>
+              <span><svg class="ui-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V9m6 10V5m6 14v-7m4 7H2"/></svg><em>Progress</em></span>
+              <span><svg class="ui-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M4.6 15a1.7 1.7 0 0 1-1.6-1.4v-3.2A1.7 1.7 0 0 1 4.6 9M19.4 9a1.7 1.7 0 0 1 1.6 1.4v3.2a1.7 1.7 0 0 1-1.6 1.4M9 4.6A1.7 1.7 0 0 1 10.4 3h3.2A1.7 1.7 0 0 1 15 4.6M15 19.4a1.7 1.7 0 0 1-1.4 1.6h-3.2A1.7 1.7 0 0 1 9 19.4"/></svg><em>More</em></span>
+            </div>
+          </div>
+
+          <div>
+            <div class="label">B · Active tab becomes a pill</div>
+            <div class="nav pill">
+              <span class="on"><svg class="ui-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4M7.5 7v10M16.5 7v10M20 10v4M7.5 12h9"/></svg><em>Today</em></span>
+              <span><svg class="ui-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg><em>Plan</em></span>
+              <span><svg class="ui-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V9m6 10V5m6 14v-7m4 7H2"/></svg><em>Progress</em></span>
+              <span><svg class="ui-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M4.6 15a1.7 1.7 0 0 1-1.6-1.4v-3.2A1.7 1.7 0 0 1 4.6 9M19.4 9a1.7 1.7 0 0 1 1.6 1.4v3.2a1.7 1.7 0 0 1-1.6 1.4M9 4.6A1.7 1.7 0 0 1 10.4 3h3.2A1.7 1.7 0 0 1 15 4.6M15 19.4a1.7 1.7 0 0 1-1.4 1.6h-3.2A1.7 1.7 0 0 1 9 19.4"/></svg><em>More</em></span>
+            </div>
+          </div>
+
+          <div>
+            <div class="label">C · Stacked, with a live-session dot</div>
+            <div class="nav">
+              <span><span class="live-dot"><svg class="ui-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4M7.5 7v10M16.5 7v10M20 10v4M7.5 12h9"/></svg></span><em>Today</em></span>
+              <span class="on"><svg class="ui-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg><em>Plan</em></span>
+              <span><svg class="ui-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V9m6 10V5m6 14v-7m4 7H2"/></svg><em>Progress</em></span>
+              <span><svg class="ui-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M4.6 15a1.7 1.7 0 0 1-1.6-1.4v-3.2A1.7 1.7 0 0 1 4.6 9M19.4 9a1.7 1.7 0 0 1 1.6 1.4v3.2a1.7 1.7 0 0 1-1.6 1.4M9 4.6A1.7 1.7 0 0 1 10.4 3h3.2A1.7 1.7 0 0 1 15 4.6M15 19.4a1.7 1.7 0 0 1-1.4 1.6h-3.2A1.7 1.7 0 0 1 9 19.4"/></svg><em>More</em></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="callout info">
+          <b>Why A</b>
+          <span>B steals horizontal room and "Progress" is the longest label — at 320px the pill crowds. C's dot is genuinely useful but belongs <em>with the dock</em>, not instead of it, and the dock already shows live progress.</span>
+        </div>
+
+        <div class="note bottom">All three keep every label. None relies on the glyph alone.</div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>2 · Label treatments</b><span>A is the recommendation. B crowds at 320px; C duplicates what the session dock already says.</span></div>
+  </div>
+
+  <!-- 3 — THE COLOUR QUESTION ------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="nav-colour">
+      <div class="statusbar"><span>9:41</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="m-body">
+        <div class="m-head">
+          <div class="eyebrow">Your question</div>
+          <h1>Colour would hurt here.</h1>
+          <div class="sub">Recommendation: keep the accent for the active tab and nothing more.</div>
+        </div>
+
+        <div>
+          <div class="label" style="font-size:var(--fs-micro);font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-2);padding-bottom:8px">What per-tab colour does</div>
+          <div class="nav tinted">
+            <span><svg class="ui-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4M7.5 7v10M16.5 7v10M20 10v4M7.5 12h9"/></svg><em>Today</em></span>
+            <span><svg class="ui-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg><em>Plan</em></span>
+            <span><svg class="ui-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V9m6 10V5m6 14v-7m4 7H2"/></svg><em>Progress</em></span>
+            <span><svg class="ui-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M4.6 15a1.7 1.7 0 0 1-1.6-1.4v-3.2A1.7 1.7 0 0 1 4.6 9M19.4 9a1.7 1.7 0 0 1 1.6 1.4v3.2a1.7 1.7 0 0 1-1.6 1.4M9 4.6A1.7 1.7 0 0 1 10.4 3h3.2A1.7 1.7 0 0 1 15 4.6M15 19.4a1.7 1.7 0 0 1-1.4 1.6h-3.2A1.7 1.7 0 0 1 9 19.4"/></svg><em>More</em></span>
+          </div>
+        </div>
+
+        <div class="callout bad">
+          <b>Every hue already means something</b>
+          <span>Green <em>Progress</em> reads as "done". Amber <em>More</em> reads as "warning". Gold <em>Plan</em> reads as "resting". These are not free colours — the whole app spends them on state, and the delta column depends on them being unambiguous.</span>
+        </div>
+
+        <div class="callout good">
+          <b>Where colour does earn its place</b>
+          <span>Only for <em>state</em>, never identity: the active tab in <em>--current</em>, exactly as now. Everything else in the nav stays neutral ink so the palette's meanings hold everywhere else.</span>
+        </div>
+
+        <div class="callout provisional">
+          <b>One thing to fix while you are here</b>
+          <span>The <em>grip</em> and <em>overflow</em> glyphs render faint at 22px because they use quieter contextual ink. That is a contrast issue, not a colour one — raise them to a token that clears AA against their surface.</span>
+        </div>
+
+        <div class="note bottom">The 4-tab nav is one of the few surfaces where the app has no state to express beyond "you are here". Spending hue there would cost more than it buys.</div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>3 · Colour</b><span>Per-tab identity colour collides with the semantic palette. Accent-for-active only.</span></div>
+  </div>
+
+</div>
+</body>
+</html>

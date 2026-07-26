@@ -1,5 +1,7 @@
 # Design-system specification
 
+> **HISTORICAL RECORD — superseded for UI intent on 2026-07-26:** This specification records the design-system decision in force on 2026-07-12. Its preservation requirements for the compact shell, fixed navigation, Lift/Dashboard hierarchy and density, and progressive per-day layout remain historical evidence but do not constrain the later Evidence & Change migration. Current UI intent is governed by `docs/UI_UX.md` and migration status by `docs/ROADMAP.md`; capability and accessibility invariants remain binding, and pixel-appearance protection resumes only after owner review accepts the complete replacement baseline set.
+
 ## Design decision
 
 The existing visual direction is retained. Lift and Dashboard are protected surfaces and must not be converted into a generic card dashboard. Available Equipment and Muscle Group Scope are the reference patterns for comparable multi-entry choice interfaces.

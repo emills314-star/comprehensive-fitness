@@ -30,7 +30,9 @@ assert.match(quickStarts, /today-template-strip[\s\S]*today-template-card/, "Tod
 assert.match(quickStarts, /"return-active-workout" : "start-template"/, "Today must retain quick-template start actions");
 
 assert.match(progress, /bucket\.targetLow[\s\S]*bucket\.targetHigh[\s\S]*bucket\.sets/, "Progress must use the real weekly planned range and actual weighted sets");
-assert.match(progress, /class="diff volume-diff"[\s\S]*Planned range[\s\S]*Logged[\s\S]*class="d /, "Progress must render plan, actual, and delta as distinct roles");
+assert.match(progress, /class="volume-table diff"[\s\S]*class="volume-table-head"[\s\S]*Muscle \/ planned range[\s\S]*Logged[\s\S]*Delta/, "Progress must render one shared header for its continuous comparison table");
+assert.match(progress, /class="volume-card-toggle volume-table-row"[\s\S]*class="plan volume-muscle-cell"[\s\S]*class="act"[\s\S]*class="dlt"[\s\S]*class="d /, "Each muscle must render as one plan, actual, and delta row");
+assert.doesNotMatch(progress, /volume-detail-hero|Weekly target[\s\S]*Status/, "Progress drilldown must not repeat the row's muscle, target, and status facts");
 assert.match(progress, /bucket\.status === "over" \? "out"/, "Exceeding a volume ceiling must render as an out-of-tolerance delta");
 assert.doesNotMatch(progress, /style="--meter:/, "Progress must not retain the prototype-style inline meter");
 
@@ -43,7 +45,7 @@ assert.match(templateCard, /const advice = null/, "Phase 3 must not silently rev
 
 assert.match(exerciseResult, /summary-diff-result[\s\S]*class="diff"[\s\S]*class="plan"[\s\S]*class="act"[\s\S]*class="dlt"/, "Completed exercise results must expose plan, actual, and judgment slots");
 assert.match(summary, /Workout Grade:[\s\S]*workout-confidence/, "Completed summary must retain grade and explicit confidence evidence");
-for (const className of ["today-coach", "volume-diff", "plan-template-card", "summary-diff-result"]) {
+for (const className of ["today-coach", "volume-table", "plan-template-card", "summary-diff-result"]) {
   assert.match(html, new RegExp(`\\.${className.replaceAll("-", "\\-")}`), `${className} styles must ship in the production stylesheet`);
 }
 

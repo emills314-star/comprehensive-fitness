@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="en" data-theme="light" data-color-package="signal-garden">
+<head>
+<meta charset="utf-8">
+<title>Concept C — Confidence</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="frame.css">
+<style>
+/* ============================================================
+   CONCEPT C — CONFIDENCE
+   Thesis: the app's honesty is its product. Every derived value
+   already carries a confidence, so the interface should LOOK
+   exactly as certain as the data is. Certainty becomes a visual
+   dimension sitting alongside hue.
+
+     data-conf="4"  solid fill, full weight        - well evidenced
+     data-conf="3"  tinted fill, solid border
+     data-conf="2"  outline only, solid border
+     data-conf="1"  dashed outline, muted ink      - provisional
+
+   Evidence is never a disclosure: it is the always-visible second
+   line of every claim.
+   ============================================================ */
+
+.screen { letter-spacing: -0.01em; }
+
+.c-top {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-2) var(--sp-7) var(--sp-4);
+}
+.c-top .wordmark {
+  font-size: var(--fs-micro);
+  font-weight: 900;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.c-top .back { font-size: var(--fs-tiny); font-weight: 850; color: var(--current); }
+.c-top .chips { display: flex; gap: var(--sp-3); }
+.c-top .chips span {
+  font-size: var(--fs-micro); font-weight: 850;
+  padding: var(--sp-2) var(--sp-4);
+  border: 1px solid var(--line); border-radius: var(--r-pill); color: var(--muted);
+}
+
+.c-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+  padding: 0 var(--sp-7) var(--sp-5);
+  overflow: hidden;
+}
+
+.c-head { display: grid; gap: var(--sp-3); }
+.c-head .eyebrow {
+  font-size: var(--fs-micro); font-weight: 900; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--current);
+}
+.c-head h1 { margin: 0; font-size: var(--fs-xl); font-weight: 850; letter-spacing: -0.03em; line-height: 1.2; }
+
+.c-label {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: var(--fs-micro); font-weight: 900; letter-spacing: 0.13em;
+  text-transform: uppercase; color: var(--muted-2);
+  padding-bottom: var(--sp-3); border-bottom: 1px solid var(--line);
+}
+
+/* ---------- THE CONFIDENCE METER ----------------------------- */
+.meter { display: flex; gap: 2px; align-items: flex-end; }
+.meter i { width: 7px; border-radius: 1px; background: var(--line-strong); display: block; }
+.meter i:nth-child(1) { height: 7px; }
+.meter i:nth-child(2) { height: 11px; }
+.meter i:nth-child(3) { height: 15px; }
+.meter i:nth-child(4) { height: 19px; }
+.meter[data-conf="4"] i { background: var(--success); }
+.meter[data-conf="3"] i:nth-child(-n+3) { background: var(--success); }
+.meter[data-conf="2"] i:nth-child(-n+2) { background: var(--amber); }
+.meter[data-conf="1"] i:nth-child(1) { background: var(--amber); }
+
+/* ---------- THE RENDERING RULE -------------------------------- */
+/* Any asserted value wears its own certainty. */
+.claim-card {
+  display: grid; gap: var(--sp-3);
+  padding: var(--sp-5);
+  border-radius: var(--r-md);
+}
+.claim-card[data-conf="4"] { background: var(--current); border: 2px solid var(--current); }
+.claim-card[data-conf="4"] .cc-title,
+.claim-card[data-conf="4"] .cc-value { color: var(--on-action); }
+.claim-card[data-conf="4"] .cc-why { color: color-mix(in srgb, var(--on-action) 82%, transparent); }
+.claim-card[data-conf="4"] .meter i { background: var(--on-action); }
+
+.claim-card[data-conf="3"] { background: var(--current-dark); border: 2px solid var(--current); }
+.claim-card[data-conf="3"] .cc-value { color: var(--current); }
+
+.claim-card[data-conf="2"] { background: transparent; border: 2px solid var(--line-strong); }
+.claim-card[data-conf="2"] .cc-value { color: var(--muted); }
+
+.claim-card[data-conf="1"] { background: transparent; border: 2px dashed var(--line-strong); }
+.claim-card[data-conf="1"] .cc-title,
+.claim-card[data-conf="1"] .cc-value { color: var(--muted-2); }
+
+.cc-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); }
+.cc-title { font-size: var(--fs-small); font-weight: 850; letter-spacing: -0.01em; }
+.cc-value { font-size: var(--fs-xl); font-weight: 900; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.cc-why { font-size: var(--fs-micro); color: var(--muted); line-height: 1.5; font-weight: 700; }
+
+/* Inline target chip carrying the same rule. */
+.chip {
+  display: inline-flex; align-items: center; gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--r-xs);
+  font-size: var(--fs-micro); font-weight: 900;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.chip[data-conf="4"] { background: var(--current); color: var(--on-action); border: 1px solid var(--current); }
+.chip[data-conf="3"] { background: var(--current-dark); color: var(--current); border: 1px solid var(--current); }
+.chip[data-conf="2"] { background: transparent; color: var(--muted); border: 1px solid var(--line-strong); }
+.chip[data-conf="1"] { background: transparent; color: var(--muted-2); border: 1px dashed var(--line-strong); }
+
+/* ---------- workout ------------------------------------------ */
+.ex-block { display: grid; gap: var(--sp-4); padding: var(--sp-5) 0; border-bottom: 1px solid var(--line); }
+.ex-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-4); }
+.ex-head b { font-size: var(--fs-base); font-weight: 850; letter-spacing: -0.02em; }
+.ex-why { font-size: var(--fs-micro); color: var(--muted); line-height: 1.5; font-weight: 700; }
+.ex-why.thin { color: var(--amber); }
+
+.setgrid { display: grid; gap: var(--sp-2); }
+.setrow {
+  display: grid; grid-template-columns: 26px 1fr 96px 26px;
+  gap: var(--sp-3); align-items: center;
+  padding: var(--sp-3) var(--sp-3);
+  border-radius: var(--r-xs);
+  font-variant-numeric: tabular-nums;
+}
+.setrow .si { font-size: var(--fs-micro); font-weight: 900; color: var(--muted-2); }
+.setrow .sp { font-size: var(--fs-micro); font-weight: 750; color: var(--muted-2); }
+.setrow .sv { font-size: var(--fs-tiny); font-weight: 850; text-align: right; }
+.setrow .sk { font-size: var(--fs-micro); font-weight: 900; text-align: center; color: var(--success); }
+.setrow.done { background: var(--success-dark); }
+.setrow.now { background: var(--current-dark); box-shadow: inset 0 0 0 2px var(--current); }
+.setrow.now .sk { color: var(--current); }
+.setrow.todo .sv { color: var(--muted-2); font-weight: 750; }
+
+.rest-strip {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-5);
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--rest-accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--rest-accent) 45%, transparent);
+}
+.rest-strip b { font-size: var(--fs-xl); font-weight: 900; color: var(--rest-text); font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
+.rest-strip span { font-size: var(--fs-micro); font-weight: 850; color: var(--rest-text); letter-spacing: 0.08em; text-transform: uppercase; }
+
+/* ---------- evidence ----------------------------------------- */
+.big-claim { font-size: var(--fs-2xl); font-weight: 850; letter-spacing: -0.04em; line-height: 1.1; }
+.conf-banner {
+  display: flex; align-items: center; gap: var(--sp-5);
+  padding: var(--sp-5);
+  border-radius: var(--r-md);
+  background: var(--success-dark);
+  border: 2px solid var(--success);
+}
+.conf-banner .cb-copy { display: grid; gap: var(--sp-1); }
+.conf-banner .cb-copy b { font-size: var(--fs-small); font-weight: 900; color: var(--success); letter-spacing: 0.04em; text-transform: uppercase; }
+.conf-banner .cb-copy span { font-size: var(--fs-micro); color: var(--muted); font-weight: 750; }
+.conf-banner .meter i { width: 9px; }
+.conf-banner .meter i:nth-child(1) { height: 12px; }
+.conf-banner .meter i:nth-child(2) { height: 18px; }
+.conf-banner .meter i:nth-child(3) { height: 24px; }
+.conf-banner .meter i:nth-child(4) { height: 30px; }
+
+.ev { display: grid; grid-template-columns: 1fr auto; gap: var(--sp-4); align-items: center; padding: var(--sp-4) 0; border-bottom: 1px solid var(--line); }
+.ev .ev-copy { display: grid; gap: var(--sp-1); }
+.ev .ev-copy b { font-size: var(--fs-tiny); font-weight: 850; }
+.ev .ev-copy span { font-size: var(--fs-micro); color: var(--muted); line-height: 1.45; }
+.ev .ev-w { font-size: var(--fs-micro); font-weight: 900; color: var(--muted-2); font-variant-numeric: tabular-nums; }
+
+.raise { display: grid; gap: var(--sp-3); padding: var(--sp-5); border-radius: var(--r-md); border: 2px dashed var(--line-strong); }
+.raise b { font-size: var(--fs-micro); font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted-2); }
+.raise span { font-size: var(--fs-tiny); color: var(--muted); line-height: 1.55; }
+
+/* ---------- progress ----------------------------------------- */
+.spark { width: 100%; height: 92px; display: block; }
+.spark-key { display: flex; gap: var(--sp-6); }
+.spark-key span { display: flex; align-items: center; gap: var(--sp-3); font-size: var(--fs-micro); font-weight: 800; color: var(--muted); }
+.spark-key i { width: 22px; height: 0; border-top: 3px solid var(--current); display: block; }
+.spark-key i.thin { border-top-style: dashed; border-color: var(--muted-2); }
+
+.trend-row {
+  display: grid; grid-template-columns: 1fr auto auto;
+  gap: var(--sp-4); align-items: center;
+  padding: var(--sp-4) 0; border-bottom: 1px solid var(--line);
+}
+.trend-row .tn { display: grid; gap: var(--sp-1); }
+.trend-row .tn b { font-size: var(--fs-tiny); font-weight: 850; }
+.trend-row .tn span { font-size: var(--fs-micro); color: var(--muted); }
+.trend-row .tv { font-size: var(--fs-tiny); font-weight: 900; font-variant-numeric: tabular-nums; }
+.trend-row .tv.thin { color: var(--muted-2); font-weight: 750; }
+
+/* ---------- plan ---------------------------------------------- */
+.tpl-block { display: grid; gap: var(--sp-4); padding: var(--sp-5) 0; border-bottom: 1px solid var(--line); }
+.tpl-block .tb-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-4); }
+.tpl-block .tb-head b { font-size: var(--fs-base); font-weight: 850; letter-spacing: -0.02em; }
+.tpl-block .tb-head span { font-size: var(--fs-micro); font-weight: 800; color: var(--muted); white-space: nowrap; }
+.lift-line { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); padding: var(--sp-2) 0; }
+.lift-line .ln { font-size: var(--fs-tiny); font-weight: 800; }
+.lift-line .ln.thin { color: var(--muted-2); font-weight: 700; }
+
+/* ---------- completion ---------------------------------------- */
+.grade-block { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-5); }
+.grade-block .gb-copy { display: grid; gap: var(--sp-2); }
+.grade-block .gb-copy b { font-size: var(--fs-lg); font-weight: 850; letter-spacing: -0.02em; }
+.grade-block .gb-copy span { font-size: var(--fs-micro); color: var(--muted); line-height: 1.45; }
+.grade-block .gmark { font-size: 72px; line-height: 0.82; font-weight: 900; letter-spacing: -0.06em; color: var(--current); }
+
+.caveat {
+  display: grid; gap: var(--sp-3);
+  padding: var(--sp-5);
+  border-radius: var(--r-md);
+  border: 2px dashed var(--amber);
+  background: color-mix(in srgb, var(--amber) 8%, transparent);
+}
+.caveat b { font-size: var(--fs-micro); font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; color: var(--amber); }
+.caveat span { font-size: var(--fs-tiny); color: var(--muted); line-height: 1.55; }
+
+.result-row {
+  display: grid; grid-template-columns: 1fr auto auto;
+  gap: var(--sp-4); align-items: center;
+  padding: var(--sp-4) 0; border-bottom: 1px solid var(--line);
+}
+.result-row .rn { font-size: var(--fs-tiny); font-weight: 850; }
+.result-row .rv { font-size: var(--fs-tiny); font-weight: 800; color: var(--muted); font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+
+<header class="sheet-head">
+  <div class="eyebrow">Concept C</div>
+  <h1>Confidence</h1>
+  <p>Every derived number in this app already carries a confidence, so the interface renders itself to look exactly as certain as the data is. Certainty becomes a visual dimension alongside hue: well-evidenced values are solid and filled, provisional ones are dashed outlines in muted ink. You can see what the app is sure about before reading a word — and evidence is never a disclosure, it is the always-visible second line of every claim.</p>
+</header>
+
+<div class="sheet">
+
+  <!-- 1. TODAY ------------------------------------------------ -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="today">
+      <div class="statusbar"><span>9:41</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="c-top">
+        <span class="wordmark">Comprehensive Fitness</span>
+        <span class="chips"><span>LB</span><span>Light</span></span>
+      </div>
+      <div class="c-body">
+        <div class="c-head">
+          <div class="eyebrow">Thursday · Upper A</div>
+          <h1>What I am sure about today.</h1>
+        </div>
+
+        <div style="display:grid;gap:12px">
+          <div class="claim-card" data-conf="4">
+            <div class="cc-row">
+              <span class="cc-title">Bench Press</span>
+              <span class="meter" data-conf="4"><i></i><i></i><i></i><i></i></span>
+            </div>
+            <div class="cc-value">185 lb × 8 @ RPE 8</div>
+            <div class="cc-why">12 qualifying sessions. Effort has landed inside the band four times running.</div>
+          </div>
+
+          <div class="claim-card" data-conf="3">
+            <div class="cc-row">
+              <span class="cc-title">Incline DB Press</span>
+              <span class="meter" data-conf="3"><i></i><i></i><i></i><i></i></span>
+            </div>
+            <div class="cc-value">70 lb × 10 @ RPE 8</div>
+            <div class="cc-why">6 sessions. One outlier at RPE 9.5 is still inside the model's tolerance.</div>
+          </div>
+
+          <div class="claim-card" data-conf="2">
+            <div class="cc-row">
+              <span class="cc-title">Lateral Raise</span>
+              <span class="meter" data-conf="2"><i></i><i></i><i></i><i></i></span>
+            </div>
+            <div class="cc-value">20 lb × 15 @ RPE 8</div>
+            <div class="cc-why">3 sessions, all at the same load. Not enough spread to read a trend yet.</div>
+          </div>
+
+          <div class="claim-card" data-conf="1">
+            <div class="cc-row">
+              <span class="cc-title">Cable Fly</span>
+              <span class="meter" data-conf="1"><i></i><i></i><i></i><i></i></span>
+            </div>
+            <div class="cc-value">40 lb × 14 @ RPE 9</div>
+            <div class="cc-why">1 session. This is a starting guess from research defaults, not from you.</div>
+          </div>
+        </div>
+
+        <div style="margin-top:auto;display:grid;gap:10px">
+          <div class="c-label" style="border-bottom:0;padding-bottom:0"><span>Reading the shapes</span></div>
+          <div style="display:flex;gap:16px;align-items:center">
+            <span style="display:flex;align-items:center;gap:8px;font-size:var(--fs-micro);font-weight:800;color:var(--muted)">
+              <i style="width:20px;height:14px;border-radius:3px;background:var(--current);display:block"></i>evidenced
+            </span>
+            <span style="display:flex;align-items:center;gap:8px;font-size:var(--fs-micro);font-weight:800;color:var(--muted)">
+              <i style="width:20px;height:14px;border-radius:3px;border:2px dashed var(--line-strong);display:block"></i>provisional
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>1 · Today</b><span>The session sorts itself by certainty. The filled card is a recommendation; the dashed one is openly a guess.</span></div>
+  </div>
+
+  <!-- 2. ACTIVE WORKOUT --------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="workout">
+      <div class="statusbar"><span>10:14</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="c-top">
+        <span class="wordmark">Upper A · 9 of 18 sets</span>
+        <span class="chips"><span>24:16</span></span>
+      </div>
+      <div class="c-body">
+        <div class="rest-strip">
+          <span>Rest · next set 3</span>
+          <b>1:12</b>
+        </div>
+
+        <div class="ex-block" style="border-top:1px solid var(--line)">
+          <div class="ex-head">
+            <b>Bench Press</b>
+            <span class="chip" data-conf="4">185 × 8 @ 8 <span class="meter" data-conf="4" style="filter:none"><i></i><i></i><i></i><i></i></span></span>
+          </div>
+          <div class="ex-why">Confident: 12 qualifying sessions, +5 lb from last week.</div>
+          <div class="setgrid">
+            <div class="setrow done"><span class="si">W1</span><span class="sp">—</span><span class="sv">135 × 10</span><span class="sk">✓</span></div>
+            <div class="setrow done"><span class="si">1</span><span class="sp">180 × 8</span><span class="sv">185 × 8 @ 8</span><span class="sk">✓</span></div>
+            <div class="setrow done"><span class="si">2</span><span class="sp">180 × 8</span><span class="sv">185 × 8 @ 8</span><span class="sk">✓</span></div>
+            <div class="setrow now"><span class="si">3</span><span class="sp">180 × 8</span><span class="sv">185 × 8 @ 8</span><span class="sk">→</span></div>
+            <div class="setrow todo"><span class="si">4</span><span class="sp">180 × 7</span><span class="sv">185 × 8 @ 8</span><span class="sk"></span></div>
+          </div>
+        </div>
+
+        <div class="ex-block">
+          <div class="ex-head">
+            <b>Incline DB Press</b>
+            <span class="chip" data-conf="3">70 × 10 @ 8</span>
+          </div>
+          <div class="ex-why">6 sessions. One outlier at RPE 9.5 is inside tolerance.</div>
+        </div>
+
+        <div class="ex-block">
+          <div class="ex-head">
+            <b>Cable Fly</b>
+            <span class="chip" data-conf="1">40 × 14 @ 9</span>
+          </div>
+          <div class="ex-why thin">Provisional — 1 session. Log this one and the target firms up next week.</div>
+        </div>
+
+        <div class="ex-block" style="border-bottom:0">
+          <div class="ex-head">
+            <b>Lateral Raise</b>
+            <span class="chip" data-conf="2">20 × 15 @ 8</span>
+          </div>
+          <div class="ex-why">3 sessions, all at one load. Not enough spread to read a trend.</div>
+        </div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>2 · Active workout</b><span>Every target wears its certainty inline, so you know which numbers to trust and which to treat as a starting point.</span></div>
+  </div>
+
+  <!-- 3. PRESCRIPTION & EVIDENCE ------------------------------ -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="evidence">
+      <div class="statusbar"><span>9:41</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="c-top">
+        <span class="back">← Bench Press</span>
+        <span class="chips"><span>LB</span></span>
+      </div>
+      <div class="c-body">
+        <div class="c-head">
+          <div class="eyebrow">Why 185 × 8 @ RPE 8</div>
+          <div class="big-claim">Add 5 lb.</div>
+        </div>
+
+        <div class="conf-banner">
+          <span class="meter" data-conf="4"><i></i><i></i><i></i><i></i></span>
+          <span class="cb-copy">
+            <b>High confidence</b>
+            <span>12 qualifying sessions across 9 weeks. No gap longer than 6 days.</span>
+          </span>
+        </div>
+
+        <div>
+          <div class="c-label"><span>What it rests on</span><span>weight</span></div>
+          <div class="ev">
+            <span class="ev-copy"><b>Your last four sessions</b><span>Effort landed at 8.0 against an 8.0 target, every time.</span></span>
+            <span class="ev-w">0.38</span>
+          </div>
+          <div class="ev">
+            <span class="ev-copy"><b>e1RM trend</b><span>232 lb, rising 4 lb over three weeks with no plateau.</span></span>
+            <span class="ev-w">0.24</span>
+          </div>
+          <div class="ev">
+            <span class="ev-copy"><b>Double progression, 6–10 reps</b><span>Research default for a compound press in an accumulation block.</span></span>
+            <span class="ev-w">0.22</span>
+          </div>
+          <div class="ev">
+            <span class="ev-copy"><b>Execution quality</b><span>Controlled on 4 of the last 4 logged sessions.</span></span>
+            <span class="ev-w">0.16</span>
+          </div>
+        </div>
+
+        <div class="raise">
+          <b>What would lower this</b>
+          <span>A session logged at RPE 9.5 or above, a gap longer than 14 days, or an execution breakdown would drop this to <b>moderate</b> and hold the load instead of adding to it.</span>
+        </div>
+
+        <div class="c-label" style="border-bottom:0;padding-bottom:0;margin-top:auto">
+          <span>Engine v4.2</span><span>personal 62% · research 38%</span>
+        </div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>3 · Prescription &amp; evidence</b><span>The hero screen. Nothing is hidden: the claim, its certainty, everything it rests on, and what would shake it.</span></div>
+  </div>
+
+  <!-- 4. PROGRESS --------------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="progress">
+      <div class="statusbar"><span>9:41</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="c-top">
+        <span class="wordmark">Progress · Bench Press</span>
+        <span class="chips"><span>6 weeks</span></span>
+      </div>
+      <div class="c-body">
+        <div class="c-head">
+          <div class="eyebrow">Estimated 1RM</div>
+          <h1>232 lb, and the last three weeks are worth believing.</h1>
+        </div>
+
+        <svg class="spark" viewBox="0 0 340 92" preserveAspectRatio="none" aria-hidden="true">
+          <line x1="0" y1="18" x2="340" y2="18" stroke="var(--line)" stroke-width="1"/>
+          <line x1="0" y1="55" x2="340" y2="55" stroke="var(--line)" stroke-width="1"/>
+          <polyline points="8,74 64,66 120,60" fill="none" stroke="var(--muted-2)" stroke-width="3"
+                    stroke-dasharray="5 4" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="120,60 176,44 232,36 288,22 332,16" fill="none" stroke="var(--current)"
+                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="332" cy="16" r="5" fill="var(--current)"/>
+          <circle cx="8" cy="74" r="4" fill="var(--bg)" stroke="var(--muted-2)" stroke-width="2"/>
+          <circle cx="64" cy="66" r="4" fill="var(--bg)" stroke="var(--muted-2)" stroke-width="2"/>
+        </svg>
+
+        <div class="spark-key">
+          <span><i></i>evidenced</span>
+          <span><i class="thin"></i>1 set that week</span>
+        </div>
+
+        <div>
+          <div class="c-label"><span>Weekly volume</span><span>certainty</span></div>
+          <div class="trend-row">
+            <span class="tn"><b>Chest</b><span>16 sets · 3 sessions · 14–20 target</span></span>
+            <span class="tv">in range</span>
+            <span class="meter" data-conf="4"><i></i><i></i><i></i><i></i></span>
+          </div>
+          <div class="trend-row">
+            <span class="tn"><b>Quads</b><span>22 sets · 2 sessions · 12–18 target</span></span>
+            <span class="tv">over</span>
+            <span class="meter" data-conf="3"><i></i><i></i><i></i><i></i></span>
+          </div>
+          <div class="trend-row">
+            <span class="tn"><b>Back</b><span>9 sets · 1 session · 14–22 target</span></span>
+            <span class="tv thin">under</span>
+            <span class="meter" data-conf="2"><i></i><i></i><i></i><i></i></span>
+          </div>
+          <div class="trend-row">
+            <span class="tn"><b>Hamstrings</b><span>11 sets · 2 sessions · 10–16 target</span></span>
+            <span class="tv">in range</span>
+            <span class="meter" data-conf="3"><i></i><i></i><i></i><i></i></span>
+          </div>
+          <div class="trend-row">
+            <span class="tn"><b>Biceps</b><span>7 sets · 2 sessions · 8–14 target</span></span>
+            <span class="tv thin">under</span>
+            <span class="meter" data-conf="2"><i></i><i></i><i></i><i></i></span>
+          </div>
+          <div class="trend-row">
+            <span class="tn"><b>Calves</b><span>4 sets · 1 session · no baseline</span></span>
+            <span class="tv thin">unknown</span>
+            <span class="meter" data-conf="1"><i></i><i></i><i></i><i></i></span>
+          </div>
+        </div>
+
+        <div class="raise" style="margin-top:auto">
+          <b>Read this carefully</b>
+          <span>The dashed stretch of the line is one working set per week. It is drawn because it happened, not because it is a trend.</span>
+        </div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>4 · Progress</b><span>The chart itself goes dashed where the data thins out. A trend you should not trust never looks like one you should.</span></div>
+  </div>
+
+  <!-- 5. PLAN -------------------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="plan">
+      <div class="statusbar"><span>9:41</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="c-top">
+        <span class="wordmark">Plan</span>
+        <span class="chips"><span>+ New</span></span>
+      </div>
+      <div class="c-body">
+        <div class="c-head">
+          <div class="eyebrow">Mesocycle 4 · week 3 of 6</div>
+          <h1>Two templates are fully evidenced.</h1>
+        </div>
+
+        <div class="tpl-block">
+          <div class="tb-head"><b>Upper A — Push Focus</b><span class="chip" data-conf="4">Evidenced</span></div>
+          <div>
+            <div class="lift-line"><span class="ln">Bench Press</span><span class="meter" data-conf="4"><i></i><i></i><i></i><i></i></span></div>
+            <div class="lift-line"><span class="ln">Incline DB Press</span><span class="meter" data-conf="3"><i></i><i></i><i></i><i></i></span></div>
+            <div class="lift-line"><span class="ln">Lateral Raise</span><span class="meter" data-conf="2"><i></i><i></i><i></i><i></i></span></div>
+            <div class="lift-line"><span class="ln thin">Cable Fly</span><span class="meter" data-conf="1"><i></i><i></i><i></i><i></i></span></div>
+            <div class="lift-line"><span class="ln">Triceps Pushdown</span><span class="meter" data-conf="3"><i></i><i></i><i></i><i></i></span></div>
+          </div>
+        </div>
+
+        <div class="tpl-block">
+          <div class="tb-head"><b>Lower A — Quad Focus</b><span class="chip" data-conf="3">Mostly evidenced</span></div>
+          <div>
+            <div class="lift-line"><span class="ln">Back Squat</span><span class="meter" data-conf="4"><i></i><i></i><i></i><i></i></span></div>
+            <div class="lift-line"><span class="ln">Leg Press</span><span class="meter" data-conf="3"><i></i><i></i><i></i><i></i></span></div>
+            <div class="lift-line"><span class="ln thin">Leg Curl</span><span class="meter" data-conf="1"><i></i><i></i><i></i><i></i></span></div>
+          </div>
+        </div>
+
+        <div class="tpl-block" style="border-bottom:0">
+          <div class="tb-head"><b>Upper B — Pull Focus</b><span class="chip" data-conf="1">Provisional</span></div>
+          <div>
+            <div class="lift-line"><span class="ln thin">Weighted Pull-up</span><span class="meter" data-conf="1"><i></i><i></i><i></i><i></i></span></div>
+            <div class="lift-line"><span class="ln thin">Barbell Row</span><span class="meter" data-conf="1"><i></i><i></i><i></i><i></i></span></div>
+            <div class="lift-line"><span class="ln thin">Face Pull</span><span class="meter" data-conf="1"><i></i><i></i><i></i><i></i></span></div>
+          </div>
+        </div>
+
+        <div class="raise" style="margin-top:auto">
+          <b>Why Upper B is dashed</b>
+          <span>It has been run once. Two more sessions move every lift in it off research defaults and onto your own numbers.</span>
+        </div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>5 · Plan</b><span>A template's reliability is visible before you start it — the dashed one will mostly be guessing.</span></div>
+  </div>
+
+  <!-- 6. COMPLETED SUMMARY ------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="summary">
+      <div class="statusbar"><span>11:09</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="c-top">
+        <span class="wordmark">Session logged</span>
+        <span class="chips"><span>Done</span></span>
+      </div>
+      <div class="c-body">
+        <div class="c-head">
+          <div class="eyebrow">Upper A — Push Focus · 54 min</div>
+          <div class="grade-block">
+            <span class="gb-copy">
+              <b>Held the plan under load.</b>
+              <span>18 of 18 sets completed inside their prescribed bands.</span>
+            </span>
+            <span class="gmark">A−</span>
+          </div>
+        </div>
+
+        <div class="conf-banner" style="background:var(--current-dark);border-color:var(--current)">
+          <span class="meter" data-conf="3"><i></i><i></i><i></i><i></i></span>
+          <span class="cb-copy">
+            <b style="color:var(--current)">Moderate confidence in this grade</b>
+            <span>Three of five lifts had comparable history. Two did not.</span>
+          </span>
+        </div>
+
+        <div>
+          <div class="c-label"><span>Results</span><span>compared against</span></div>
+          <div class="result-row">
+            <span class="rn">Bench Press</span><span class="rv">185 × 8 · +5 lb</span>
+            <span class="meter" data-conf="4"><i></i><i></i><i></i><i></i></span>
+          </div>
+          <div class="result-row">
+            <span class="rn">Incline DB Press</span><span class="rv">70 × 10 · +2 reps</span>
+            <span class="meter" data-conf="3"><i></i><i></i><i></i><i></i></span>
+          </div>
+          <div class="result-row">
+            <span class="rn">Triceps Pushdown</span><span class="rv">55 × 12 · held</span>
+            <span class="meter" data-conf="3"><i></i><i></i><i></i><i></i></span>
+          </div>
+          <div class="result-row">
+            <span class="rn">Lateral Raise</span><span class="rv">20 × 15 · no baseline</span>
+            <span class="meter" data-conf="2"><i></i><i></i><i></i><i></i></span>
+          </div>
+          <div class="result-row">
+            <span class="rn">Cable Fly</span><span class="rv">40 × 14 · no baseline</span>
+            <span class="meter" data-conf="1"><i></i><i></i><i></i><i></i></span>
+          </div>
+        </div>
+
+        <div class="caveat">
+          <b>What the grade cannot see</b>
+          <span>Cable Fly and Lateral Raise had no comparable previous session, so they contributed to completion but not to progression. The grade would be <b>A</b> with one more exposure of each.</span>
+        </div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>6 · Completed summary</b><span>Even the grade declares its own certainty, and says plainly what it could not measure.</span></div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -323,7 +323,8 @@ test("critical workout lifecycle remains coherent through submission, progress, 
   await expect(firstWorkingSet.locator('[data-set-mode="current"]')).toHaveCount(0);
   await expect(firstWorkingSet.locator('[data-set-mode="logged"]')).toHaveCount(1);
   await expect(completion).toBeFocused();
-  await expect(page.locator('[data-workout-rollup]')).toContainText("1/3");
+  await expect(page.locator('[data-session-dock-progress]')).toHaveText("1 of 3 sets");
+  await expect(page.locator('[data-workout-rollup]')).not.toContainText("1/3");
   const timer = firstWorkingSet.locator(".timer-bar");
   await expect(timer, "completing an eligible set must start its rest timer").toBeVisible();
   await timer.locator("summary").click();
@@ -346,8 +347,13 @@ test("critical workout lifecycle remains coherent through submission, progress, 
   const summary = page.locator('.completed-summary[aria-label="Post-workout grade and analysis"]');
   await expect(summary).toBeVisible({ timeout: 45_000 });
   await expect(summary).toContainText("Workout logged");
+  await expect(page.locator(".session-dock-submitted")).toHaveText("Workout logged");
+  await expect(page.locator(".session-dock-finish")).toHaveCount(0);
   const submitted = await waitForPersisted(page, (stored) => stored?.sessions?.filter((session) => session.id === activeSession.id && session.submitted).length === 1, "confirmed submission must persist exactly one completed session");
   expect(submitted.sets.filter((set) => set.exerciseId === activeExercise.id && set.completed)).toHaveLength(1);
+  await page.locator('[data-action="close-completed-summary"]').click();
+  await expect(page.locator(".session-dock")).toHaveCount(0);
+  await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible();
 
   await openProgressView(page, "history");
   const submittedCard = page.locator(`[data-action="open-session"][data-session-id="${activeSession.id}"]`);

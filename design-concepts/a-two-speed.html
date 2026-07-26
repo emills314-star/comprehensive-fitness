@@ -1,0 +1,799 @@
+<!doctype html>
+<html lang="en" data-theme="light" data-color-package="signal-garden">
+<head>
+<meta charset="utf-8">
+<title>Concept A — Two-Speed</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="frame.css">
+<style>
+/* ============================================================
+   CONCEPT A — TWO-SPEED
+   Thesis: the app is used in two incompatible contexts and should
+   have two visual languages, not one compromise.
+     .gym   — under the bar. One hand, two seconds, bad light.
+              Near-monochrome, one live accent, enormous numerals,
+              no cards, no disclosures, no nav.
+     .study — between sessions. Reading, planning, understanding.
+              Full palette, layered, evidence open by default.
+   ============================================================ */
+
+.screen { letter-spacing: -0.01em; }
+.pad { padding-inline: var(--sp-7); }
+.rule { height: 1px; background: var(--line); flex: 0 0 auto; }
+.grow { flex: 1 1 auto; min-height: 0; }
+.caps {
+  font-size: var(--fs-micro);
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* ---------- STUDY LANGUAGE ---------------------------------- */
+.study { background: var(--bg); }
+
+.study-top {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-2) var(--sp-7) var(--sp-5);
+}
+.study-top .wordmark {
+  font-size: var(--fs-micro);
+  font-weight: 900;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.study-top .chips { display: flex; gap: var(--sp-3); }
+.study-top .chips span {
+  font-size: var(--fs-micro);
+  font-weight: 850;
+  padding: var(--sp-2) var(--sp-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  color: var(--muted);
+}
+
+.study-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+  padding: 0 var(--sp-7) var(--sp-5);
+  overflow: hidden;
+}
+
+.study h1 {
+  margin: 0;
+  font-size: var(--fs-2xl);
+  font-weight: 850;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+.study h2 {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: 850;
+  letter-spacing: -0.02em;
+}
+.study .eyebrow {
+  font-size: var(--fs-micro);
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--current);
+}
+.study .sub { font-size: var(--fs-small); color: var(--muted); line-height: 1.5; }
+
+.section-label {
+  font-size: var(--fs-micro);
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+  padding-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--line);
+}
+
+/* The door into gym mode: visually the heaviest object on the screen. */
+.gym-door {
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--panel);
+  box-shadow: var(--el-2);
+  padding: var(--sp-6);
+  display: grid;
+  gap: var(--sp-5);
+}
+.gym-door .door-meta { display: grid; gap: var(--sp-2); }
+.gym-door .door-title { font-size: var(--fs-xl); font-weight: 850; letter-spacing: -0.02em; }
+.gym-door .door-facts { font-size: var(--fs-tiny); color: var(--muted); font-weight: 700; }
+.door-button {
+  height: 68px;
+  border-radius: var(--r-md);
+  background: var(--action);
+  color: var(--on-action);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-base);
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  box-shadow: var(--el-2);
+}
+.door-secondary {
+  text-align: center;
+  font-size: var(--fs-tiny);
+  font-weight: 800;
+  color: var(--current);
+}
+
+.stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-4); }
+.stat {
+  display: grid;
+  gap: var(--sp-1);
+  padding: var(--sp-4) 0;
+  border-top: 2px solid var(--line-strong);
+}
+.stat b { font-size: var(--fs-2xl); font-weight: 850; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+.stat span { font-size: var(--fs-micro); color: var(--muted); font-weight: 750; }
+
+.read-card {
+  display: grid;
+  gap: var(--sp-3);
+  padding: var(--sp-5) 0;
+  border-top: 1px solid var(--line);
+}
+.read-card .rc-title { font-size: var(--fs-base); font-weight: 850; letter-spacing: -0.02em; }
+.read-card .rc-body { font-size: var(--fs-tiny); color: var(--muted); line-height: 1.5; }
+.read-card .rc-tag {
+  justify-self: start;
+  font-size: var(--fs-micro);
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--r-xs);
+  background: var(--current-dark);
+  color: var(--current);
+}
+.read-card .rc-tag.warn { background: color-mix(in srgb, var(--amber) 16%, transparent); color: var(--amber); }
+
+.study-nav {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--line);
+  background: var(--nav-bg);
+  padding: var(--sp-4) 0 var(--sp-7);
+}
+.study-nav span {
+  text-align: center;
+  font-size: var(--fs-micro);
+  font-weight: 850;
+  color: var(--muted-2);
+}
+.study-nav span.on { color: var(--current); font-weight: 900; }
+
+/* ---------- GYM LANGUAGE ------------------------------------ */
+/* One accent at a time. --live is the single colour the screen is
+   allowed to spend on state; everything else is ink on canvas. */
+.gym { background: var(--bg); --live: var(--current); }
+.gym[data-live="rest"] { --live: var(--rest-accent); }
+.gym[data-live="done"] { --live: var(--success); }
+
+.gym-top {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: var(--sp-2) var(--sp-7) var(--sp-6);
+  color: var(--muted);
+}
+.gym-top .caps { color: var(--muted); }
+.gym-top .elapsed { font-size: var(--fs-tiny); font-weight: 850; font-variant-numeric: tabular-nums; }
+
+/* Just-logged set: deliberately demoted to ink, because REST owns the accent. */
+.logged {
+  flex: 0 0 auto;
+  padding: var(--sp-5) var(--sp-7);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.logged .tick {
+  width: 22px; height: 22px;
+  flex: 0 0 auto;
+  border-radius: var(--r-pill);
+  border: 2px solid var(--muted-2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: var(--fs-micro); font-weight: 900;
+}
+.logged .lg-text { font-size: var(--fs-tiny); font-weight: 800; }
+.logged .lg-text b { font-variant-numeric: tabular-nums; }
+
+.rest-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-4);
+  padding: var(--sp-6) var(--sp-7);
+}
+.rest-stage .caps { color: var(--live); }
+.rest-clock {
+  font-size: 138px;
+  line-height: 0.86;
+  font-weight: 850;
+  letter-spacing: -0.06em;
+  color: var(--live);
+  font-variant-numeric: tabular-nums;
+}
+.rest-rail {
+  width: 100%;
+  height: 10px;
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--live) 18%, transparent);
+  overflow: hidden;
+}
+.rest-rail i { display: block; height: 100%; width: 52%; background: var(--live); border-radius: var(--r-pill); }
+.rest-of { font-size: var(--fs-tiny); font-weight: 800; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.gym-controls {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-4);
+  padding: 0 var(--sp-7) var(--sp-6);
+}
+.gym-controls button {
+  appearance: none;
+  height: 76px;
+  border: 2px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--fs-base);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+.next-up {
+  flex: 0 0 auto;
+  border-top: 1px solid var(--line);
+  padding: var(--sp-6) var(--sp-7);
+  display: grid;
+  gap: var(--sp-4);
+}
+.next-up .caps { color: var(--muted); }
+.next-up .nu-name { font-size: var(--fs-xl); font-weight: 850; letter-spacing: -0.03em; }
+.nu-targets { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-4); }
+.nu-cell {
+  border: 2px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: var(--sp-4) var(--sp-3);
+  display: grid;
+  gap: var(--sp-1);
+  text-align: center;
+}
+.nu-cell b { font-size: var(--fs-2xl); font-weight: 850; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+.nu-cell span { font-size: var(--fs-micro); font-weight: 800; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+
+.gym-foot {
+  flex: 0 0 auto;
+  border-top: 1px solid var(--line);
+  padding: var(--sp-5) var(--sp-7) var(--sp-7);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.gym-foot .progress { font-size: var(--fs-tiny); font-weight: 850; color: var(--muted); font-variant-numeric: tabular-nums; }
+.gym-foot .end { font-size: var(--fs-tiny); font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; color: var(--red); }
+
+/* ---------- STUDY: evidence ---------------------------------- */
+.back-line { font-size: var(--fs-tiny); font-weight: 850; color: var(--current); }
+.claim {
+  font-size: var(--fs-xl);
+  font-weight: 850;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+.conf-line {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-4) 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.conf-bars { display: flex; gap: 3px; }
+.conf-bars i { width: 9px; height: 18px; border-radius: 2px; background: var(--line-strong); }
+.conf-bars i.on { background: var(--success); }
+.conf-line .cl-text { font-size: var(--fs-tiny); font-weight: 800; }
+.conf-line .cl-text span { color: var(--muted); font-weight: 700; }
+
+.fact-list { display: grid; gap: 0; }
+.fact {
+  display: grid;
+  grid-template-columns: 116px 1fr;
+  gap: var(--sp-4);
+  padding: var(--sp-4) 0;
+  border-bottom: 1px solid var(--line);
+  align-items: baseline;
+}
+.fact dt { font-size: var(--fs-micro); font-weight: 850; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
+.fact dd { margin: 0; font-size: var(--fs-tiny); font-weight: 800; font-variant-numeric: tabular-nums; }
+.fact dd em { font-style: normal; color: var(--muted); font-weight: 700; }
+.fact dd .ok { color: var(--success); }
+
+.rule-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--sp-4);
+  padding: var(--sp-4) 0;
+  border-bottom: 1px solid var(--line);
+  align-items: center;
+}
+.rule-row .rr-if { font-size: var(--fs-tiny); color: var(--muted); font-weight: 700; }
+.rule-row .rr-then { font-size: var(--fs-tiny); font-weight: 900; color: var(--current); font-variant-numeric: tabular-nums; }
+.rule-row .rr-then.warn { color: var(--amber); }
+
+.engine-note { font-size: var(--fs-micro); color: var(--muted-2); font-weight: 700; }
+
+/* ---------- STUDY: progress --------------------------------- */
+.vol-row { display: grid; gap: var(--sp-3); padding: var(--sp-4) 0; border-bottom: 1px solid var(--line); }
+.vol-head { display: flex; justify-content: space-between; align-items: baseline; }
+.vol-head b { font-size: var(--fs-small); font-weight: 850; }
+.vol-head span { font-size: var(--fs-micro); font-weight: 800; color: var(--muted); font-variant-numeric: tabular-nums; }
+.vol-track { height: 8px; border-radius: var(--r-pill); background: var(--panel-3); overflow: hidden; position: relative; }
+.vol-track i { display: block; height: 100%; border-radius: var(--r-pill); background: var(--current); }
+.vol-track i.low { background: var(--amber); }
+.vol-track i.over { background: var(--red); }
+.vol-track i.good { background: var(--success); }
+
+.flag {
+  display: grid;
+  grid-template-columns: 4px 1fr;
+  gap: var(--sp-4);
+  padding: var(--sp-4) 0;
+  border-bottom: 1px solid var(--line);
+  align-items: center;
+}
+.flag .bar { align-self: stretch; border-radius: var(--r-pill); background: var(--amber); }
+.flag .bar.high { background: var(--red); }
+.flag .f-copy { display: grid; gap: var(--sp-1); }
+.flag .f-copy b { font-size: var(--fs-tiny); font-weight: 850; }
+.flag .f-copy span { font-size: var(--fs-micro); color: var(--muted); line-height: 1.45; }
+
+.session-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--sp-4) 0;
+  border-bottom: 1px solid var(--line);
+}
+.session-row .sr-copy { display: grid; gap: var(--sp-1); }
+.session-row .sr-copy b { font-size: var(--fs-tiny); font-weight: 850; }
+.session-row .sr-copy span { font-size: var(--fs-micro); color: var(--muted); }
+.session-row .grade { font-size: var(--fs-lg); font-weight: 900; letter-spacing: -0.03em; color: var(--current); }
+
+/* ---------- STUDY: plan ------------------------------------- */
+.tpl {
+  display: grid;
+  gap: var(--sp-3);
+  padding: var(--sp-5) 0;
+  border-bottom: 1px solid var(--line);
+}
+.tpl-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-4); }
+.tpl-head b { font-size: var(--fs-base); font-weight: 850; letter-spacing: -0.02em; }
+.tpl-head span { font-size: var(--fs-micro); font-weight: 800; color: var(--muted); white-space: nowrap; }
+.tpl-lifts { font-size: var(--fs-micro); color: var(--muted); line-height: 1.5; }
+.tpl-go {
+  justify-self: start;
+  font-size: var(--fs-micro);
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--current);
+}
+.meso {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--panel-2);
+  padding: var(--sp-5);
+  display: grid;
+  gap: var(--sp-3);
+}
+.meso b { font-size: var(--fs-small); font-weight: 850; }
+.meso .weeks { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--sp-2); }
+.meso .weeks i {
+  height: 30px;
+  border-radius: var(--r-xs);
+  background: var(--panel-3);
+  border: 1px solid var(--line);
+  display: flex; align-items: center; justify-content: center;
+  font-size: var(--fs-micro); font-weight: 850; color: var(--muted); font-style: normal;
+}
+.meso .weeks i.done { background: var(--current); border-color: var(--current); color: var(--on-action); }
+.meso .weeks i.now { border-color: var(--current); border-width: 2px; color: var(--current); }
+.meso span { font-size: var(--fs-micro); color: var(--muted); }
+
+/* ---------- STUDY: completion (the seam) --------------------- */
+.grade-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-5);
+  padding: var(--sp-6) 0;
+}
+.grade-hero .gh-copy { display: grid; gap: var(--sp-2); }
+.grade-hero .gh-copy b { font-size: var(--fs-lg); font-weight: 850; letter-spacing: -0.02em; }
+.grade-hero .gh-copy span { font-size: var(--fs-micro); color: var(--muted); line-height: 1.45; }
+.grade-mark {
+  font-size: 76px;
+  line-height: 0.82;
+  font-weight: 900;
+  letter-spacing: -0.06em;
+  color: var(--current);
+}
+.badges { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-4); }
+.badge {
+  border: 1px solid var(--achv-line);
+  background: var(--achv-card);
+  border-radius: var(--r-md);
+  padding: var(--sp-4) var(--sp-3);
+  display: grid;
+  gap: var(--sp-2);
+  justify-items: center;
+  text-align: center;
+}
+.badge i {
+  width: 34px; height: 34px;
+  border-radius: var(--r-pill);
+  background: var(--achv-pill-bg);
+  color: var(--achv-pill-text);
+  display: flex; align-items: center; justify-content: center;
+  font-size: var(--fs-tiny); font-weight: 900; font-style: normal;
+}
+.badge b { font-size: var(--fs-micro); font-weight: 850; color: var(--achv-title); line-height: 1.3; }
+
+.res-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: var(--sp-4);
+  align-items: baseline;
+  padding: var(--sp-4) 0;
+  border-bottom: 1px solid var(--line);
+}
+.res-row .rn { font-size: var(--fs-tiny); font-weight: 850; }
+.res-row .rv { font-size: var(--fs-tiny); font-weight: 800; font-variant-numeric: tabular-nums; color: var(--muted); }
+.res-row .rd { font-size: var(--fs-tiny); font-weight: 900; color: var(--success); font-variant-numeric: tabular-nums; }
+.res-row .rd.flat { color: var(--muted-2); }
+</style>
+</head>
+<body>
+
+<header class="sheet-head">
+  <div class="eyebrow">Concept A</div>
+  <h1>Two-Speed</h1>
+  <p>The app is used in two incompatible contexts, so it carries two visual languages instead of one compromise. <b>Gym</b> is near-monochrome, spends exactly one accent on the live state, and sizes numbers to be read at arm's length with no cards, disclosures, or navigation. <b>Study</b> is dense, layered, and opens its evidence by default. Starting a workout does not navigate — it changes the app's personality.</p>
+</header>
+
+<div class="sheet">
+
+  <!-- 1. TODAY ------------------------------------------------ -->
+  <div class="screen-wrap">
+    <section class="screen study" data-screen="today">
+      <div class="statusbar"><span>9:41</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="study-top">
+        <span class="wordmark">Comprehensive Fitness</span>
+        <span class="chips"><span>LB</span><span>Light</span></span>
+      </div>
+      <div class="study-body">
+        <div>
+          <div class="eyebrow">Thursday, July 23</div>
+          <h1 style="margin-top:6px">Ready to train.</h1>
+        </div>
+
+        <div class="gym-door">
+          <div class="door-meta">
+            <div class="section-label" style="border:0;padding:0">Today's session</div>
+            <div class="door-title">Upper A — Push Focus</div>
+            <div class="door-facts">5 lifts · 18 sets · about 52 min</div>
+          </div>
+          <div class="door-button">Enter gym mode</div>
+          <div class="door-secondary">Choose a different session</div>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat"><b>3</b><span>sessions</span></div>
+          <div class="stat"><b>47</b><span>hard sets</span></div>
+          <div class="stat"><b>78</b><span>score</span></div>
+        </div>
+
+        <div>
+          <div class="section-label">Worth reading</div>
+          <div class="read-card">
+            <span class="rc-tag warn">Volume</span>
+            <div class="rc-title">Chest is two sets under target.</div>
+            <div class="rc-body">12 of a 14-set weekly minimum. Today's push session covers it with room to spare.</div>
+          </div>
+          <div class="read-card">
+            <span class="rc-tag">Trend</span>
+            <div class="rc-title">Bench e1RM is up 4 lb.</div>
+            <div class="rc-body">232 lb estimated, a three-week high across 12 qualifying sessions.</div>
+          </div>
+        </div>
+      </div>
+      <nav class="study-nav"><span class="on">Today</span><span>Plan</span><span>Progress</span><span>More</span></nav>
+    </section>
+    <div class="screen-caption"><b>1 · Today</b><span>Study language. The door into gym mode is the heaviest object on the screen; everything else is reading.</span></div>
+  </div>
+
+  <!-- 2. ACTIVE WORKOUT --------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen gym" data-screen="workout" data-live="rest">
+      <div class="statusbar"><span>10:14</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="gym-top">
+        <span class="caps">Upper A · Push</span>
+        <span class="elapsed">24:16</span>
+      </div>
+
+      <div class="logged">
+        <span class="tick">✓</span>
+        <span class="lg-text">Set 2 logged &nbsp;·&nbsp; <b>185 lb × 8 @ RPE 8</b></span>
+      </div>
+
+      <div class="rest-stage">
+        <span class="caps">Rest</span>
+        <div class="rest-clock">1:12</div>
+        <div class="rest-rail"><i></i></div>
+        <div class="rest-of">of 2:30</div>
+      </div>
+
+      <div class="gym-controls">
+        <button>−15</button>
+        <button>+15</button>
+        <button>Skip</button>
+      </div>
+
+      <div class="next-up">
+        <span class="caps">Next · set 3 of 4</span>
+        <div class="nu-name">Bench Press</div>
+        <div class="nu-targets">
+          <div class="nu-cell"><b>185</b><span>lb</span></div>
+          <div class="nu-cell"><b>8</b><span>reps</span></div>
+          <div class="nu-cell"><b>8</b><span>RPE</span></div>
+        </div>
+      </div>
+
+      <div class="gym-foot">
+        <span class="progress">9 of 18 sets</span>
+        <span class="end">End session</span>
+      </div>
+    </section>
+    <div class="screen-caption"><b>2 · Active workout</b><span>Gym language, resting. Gold is the only colour spent, so the just-logged set is demoted to ink. Nothing is tappable that is not urgent.</span></div>
+  </div>
+
+  <!-- 3. PRESCRIPTION & EVIDENCE ------------------------------ -->
+  <div class="screen-wrap">
+    <section class="screen study" data-screen="evidence">
+      <div class="statusbar"><span>9:41</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="study-top">
+        <span class="back-line">← Bench Press</span>
+        <span class="chips"><span>LB</span></span>
+      </div>
+      <div class="study-body">
+        <div>
+          <div class="eyebrow">Why 185 × 8 @ RPE 8</div>
+          <div class="claim" style="margin-top:8px">Add 5 lb from last session.</div>
+        </div>
+
+        <div class="conf-line">
+          <span class="conf-bars"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span>
+          <span class="cl-text">High confidence <span>· 12 qualifying sessions</span></span>
+        </div>
+
+        <div>
+          <div class="section-label">From your training</div>
+          <dl class="fact-list" style="margin:0">
+            <div class="fact"><dt>Last session</dt><dd>180 × 8 <em>@ RPE 8.0</em></dd></div>
+            <div class="fact"><dt>e1RM trend</dt><dd>232 lb <em>· +4 lb over 3 weeks</em></dd></div>
+            <div class="fact"><dt>Effort</dt><dd>8.0 target, 8.0 actual <span class="ok">on target</span></dd></div>
+            <div class="fact"><dt>Rest taken</dt><dd>2:28 avg <em>vs 2:30 prescribed</em></dd></div>
+            <div class="fact"><dt>Execution</dt><dd>Controlled <em>· 4 of last 4</em></dd></div>
+          </dl>
+        </div>
+
+        <div>
+          <div class="section-label">From research</div>
+          <dl class="fact-list" style="margin:0">
+            <div class="fact"><dt>Weight 0.6</dt><dd>Double progression <em>6–10 reps</em></dd></div>
+            <div class="fact"><dt>Weight 0.4</dt><dd>RPE-anchored autoregulation</dd></div>
+          </dl>
+        </div>
+
+        <div>
+          <div class="section-label">What would change this</div>
+          <div class="rule-row"><span class="rr-if">Two sessions at RPE 7 or below</span><span class="rr-then">+10 lb</span></div>
+          <div class="rule-row"><span class="rr-if">One session at RPE 9.5 or above</span><span class="rr-then warn">Hold load</span></div>
+          <div class="rule-row"><span class="rr-if">Reported shoulder pain</span><span class="rr-then warn">Substitute</span></div>
+        </div>
+
+        <div class="engine-note">Engine v4.2 · personal evidence 62% / research 38%</div>
+      </div>
+      <nav class="study-nav"><span class="on">Today</span><span>Plan</span><span>Progress</span><span>More</span></nav>
+    </section>
+    <div class="screen-caption"><b>3 · Prescription &amp; evidence</b><span>Study language. Every level the shipped app hides behind four nested disclosures is open on one page.</span></div>
+  </div>
+
+  <!-- 4. PROGRESS --------------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen study" data-screen="progress">
+      <div class="statusbar"><span>9:41</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="study-top">
+        <span class="wordmark">Progress</span>
+        <span class="chips"><span>‹ Jul 21–27 ›</span></span>
+      </div>
+      <div class="study-body">
+        <div>
+          <div class="eyebrow">This week</div>
+          <h1 style="margin-top:6px">Back is the gap.</h1>
+          <div class="sub" style="margin-top:8px">Chest, delts and quads are inside range. Back sits 5 sets under its minimum with two sessions left.</div>
+        </div>
+
+        <div>
+          <div class="section-label">Weekly volume</div>
+          <div class="vol-row">
+            <div class="vol-head"><b>Chest</b><span>14 / 12–20</span></div>
+            <div class="vol-track"><i class="good" style="width:70%"></i></div>
+          </div>
+          <div class="vol-row">
+            <div class="vol-head"><b>Back</b><span>9 / 14–22</span></div>
+            <div class="vol-track"><i class="low" style="width:41%"></i></div>
+          </div>
+          <div class="vol-row">
+            <div class="vol-head"><b>Quads</b><span>22 / 12–18</span></div>
+            <div class="vol-track"><i class="over" style="width:100%"></i></div>
+          </div>
+          <div class="vol-row">
+            <div class="vol-head"><b>Delts</b><span>16 / 12–20</span></div>
+            <div class="vol-track"><i class="good" style="width:80%"></i></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="section-label">Fatigue flags</div>
+          <div class="flag">
+            <span class="bar high"></span>
+            <span class="f-copy"><b>Quads · high</b><span>22 sets against an 18-set ceiling for two consecutive weeks.</span></span>
+          </div>
+          <div class="flag">
+            <span class="bar"></span>
+            <span class="f-copy"><b>Chest · moderate</b><span>Three sessions logged above the prescribed RPE band.</span></span>
+          </div>
+        </div>
+
+        <div>
+          <div class="section-label">Recent sessions</div>
+          <div class="session-row">
+            <span class="sr-copy"><b>Upper A — Push Focus</b><span>Jul 21 · 18 sets · 54 min</span></span>
+            <span class="grade">A−</span>
+          </div>
+          <div class="session-row">
+            <span class="sr-copy"><b>Lower A — Quad Focus</b><span>Jul 19 · 16 sets · 61 min</span></span>
+            <span class="grade">B+</span>
+          </div>
+        </div>
+      </div>
+      <nav class="study-nav"><span>Today</span><span>Plan</span><span class="on">Progress</span><span>More</span></nav>
+    </section>
+    <div class="screen-caption"><b>4 · Progress</b><span>Study language at full density. One sentence states the week's conclusion before any chart asks to be read.</span></div>
+  </div>
+
+  <!-- 5. PLAN -------------------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen study" data-screen="plan">
+      <div class="statusbar"><span>9:41</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="study-top">
+        <span class="wordmark">Plan</span>
+        <span class="chips"><span>+ New</span></span>
+      </div>
+      <div class="study-body">
+        <div>
+          <div class="eyebrow">Mesocycle 4</div>
+          <h1 style="margin-top:6px">Week 3 of 6.</h1>
+        </div>
+
+        <div class="meso">
+          <b>Upper / Lower · 4 days</b>
+          <div class="weeks"><i class="done">1</i><i class="done">2</i><i class="now">3</i><i>4</i><i>5</i><i>6</i></div>
+          <span>Deload scheduled in week 6. Volume rises 2 sets per muscle per week.</span>
+        </div>
+
+        <div>
+          <div class="section-label">Templates</div>
+          <div class="tpl">
+            <div class="tpl-head"><b>Upper A — Push Focus</b><span>~52 min</span></div>
+            <div class="tpl-lifts">Bench Press · Incline DB Press · Cable Fly · Lateral Raise · Triceps Pushdown</div>
+            <div class="tpl-go">Start · 5 lifts · 18 sets</div>
+          </div>
+          <div class="tpl">
+            <div class="tpl-head"><b>Lower A — Quad Focus</b><span>~61 min</span></div>
+            <div class="tpl-lifts">Back Squat · Leg Press · Romanian Deadlift · Leg Curl · Calf Raise</div>
+            <div class="tpl-go">Start · 5 lifts · 16 sets</div>
+          </div>
+          <div class="tpl">
+            <div class="tpl-head"><b>Upper B — Pull Focus</b><span>~55 min</span></div>
+            <div class="tpl-lifts">Weighted Pull-up · Barbell Row · Lat Pulldown · Face Pull · Hammer Curl</div>
+            <div class="tpl-go">Start · 5 lifts · 17 sets</div>
+          </div>
+          <div class="tpl">
+            <div class="tpl-head"><b>Lower B — Hinge Focus</b><span>~58 min</span></div>
+            <div class="tpl-lifts">Deadlift · Hip Thrust · Bulgarian Split Squat · Leg Extension</div>
+            <div class="tpl-go">Start · 4 lifts · 15 sets</div>
+          </div>
+        </div>
+      </div>
+      <nav class="study-nav"><span>Today</span><span class="on">Plan</span><span>Progress</span><span>More</span></nav>
+    </section>
+    <div class="screen-caption"><b>5 · Plan</b><span>Study language. The mesocycle is a six-cell strip rather than a wizard you re-enter.</span></div>
+  </div>
+
+  <!-- 6. COMPLETED SUMMARY ------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen study" data-screen="summary">
+      <div class="statusbar"><span>11:09</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="study-top">
+        <span class="wordmark">Session logged</span>
+        <span class="chips"><span>Done</span></span>
+      </div>
+      <div class="study-body">
+        <div>
+          <div class="eyebrow">Upper A — Push Focus · 54 min</div>
+          <div class="grade-hero">
+            <span class="gh-copy">
+              <b>Held the plan under load.</b>
+              <span>18 of 18 sets completed inside their prescribed rep and effort bands.</span>
+            </span>
+            <span class="grade-mark">A−</span>
+          </div>
+        </div>
+
+        <div>
+          <div class="section-label">Earned</div>
+          <div class="badges" style="margin-top:12px">
+            <div class="badge"><i>PR</i><b>Personal record</b></div>
+            <div class="badge"><i>e1</i><b>e1RM peak</b></div>
+            <div class="badge"><i>✓</i><b>Plan complete</b></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="section-label">Results</div>
+          <div class="res-row"><span class="rn">Bench Press</span><span class="rv">185 × 8 @ 8</span><span class="rd">+5 lb</span></div>
+          <div class="res-row"><span class="rn">Incline DB Press</span><span class="rv">70 × 10 @ 8</span><span class="rd">+2 reps</span></div>
+          <div class="res-row"><span class="rn">Cable Fly</span><span class="rv">40 × 14 @ 9</span><span class="rd flat">held</span></div>
+          <div class="res-row"><span class="rn">Lateral Raise</span><span class="rv">20 × 15 @ 8</span><span class="rd">+1 rep</span></div>
+          <div class="res-row"><span class="rn">Triceps Pushdown</span><span class="rv">55 × 12 @ 8</span><span class="rd flat">held</span></div>
+        </div>
+
+        <div class="engine-note">Next exposure previews at 190 × 8. Nothing is committed until you start that session.</div>
+      </div>
+      <nav class="study-nav"><span class="on">Today</span><span>Plan</span><span>Progress</span><span>More</span></nav>
+    </section>
+    <div class="screen-caption"><b>6 · Completed summary</b><span>The seam back into Study language: gym mode ends, the palette and density return at once.</span></div>
+  </div>
+
+</div>
+</body>
+</html>

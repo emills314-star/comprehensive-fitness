@@ -13,20 +13,34 @@ const setRenderer = views.slice(views.indexOf("function renderSet(set, exercise"
 
 assert.doesNotMatch(workout, /Workout board|renderWorkoutSessionBoard|sessionBoardHtml/, "Today must not render the removed Workout Board");
 assert.doesNotMatch(views.slice(0, views.indexOf("function resizeExerciseNameFields")), /brand-mark|brand-title|brand-action|theme-toggle/, "The replacement shell must not retain the CF tile, wordmark, or header toggles");
-assert.match(views, /shellWorkoutVisible \? "" : `<nav class="bottom-nav"/, "Active workout mode must remove the bottom navigation from the document");
-assert.match(views, /class="workout-footer-actions"[\s\S]*submit-workout[\s\S]*class="session-overflow"[\s\S]*request-cancel-workout/, "Workout completion must expose one primary Submit action and move cancellation into overflow");
+assert.match(views, /shellWorkoutDockVisible \? renderSessionDock\(session,[\s\S]*: `<nav class="bottom-nav"/, "Active workout mode must replace tab navigation with the persistent session dock");
+assert.match(views, /class="session-dock"[\s\S]*data-action="request-submit-workout">Finish<\/button>[\s\S]*data-action="session-menu"[\s\S]*data-action="request-cancel-workout"/, "The session dock must expose Finish and an overflow containing Cancel workout");
+assert.doesNotMatch(views, /class="workout-footer-actions"/, "The workout footer must not retain a duplicate Submit action");
+assert.doesNotMatch(views.slice(0, views.indexOf("function resizeExerciseNameFields")), /shellMetric|shell-metric/, "The sticky session header must not duplicate the dock's set count or elapsed time");
+assert.doesNotMatch(workout, /progress\.completed\}\/\$\{progress\.total\} sets|<span>\$\{progress\.elapsed\}<\/span>/, "The in-content session context must not duplicate the dock's set count or elapsed time");
+assert.match(foundation, /"request-submit-workout"/, "The dock Finish action must remain eligible for focus restoration");
 assert.match(foundation, /const svgIcon =[\s\S]*<svg class="ui-icon"[\s\S]*stroke="currentColor"/, "The shell icon vocabulary must use inline currentColor stroked SVG");
 assert.doesNotMatch(foundation.slice(foundation.indexOf("const icon ="), foundation.indexOf("function emptyData")), /workout: "Now"|templates: "Map"|review: "Trend"|settings: "Menu"|clock: "Rest"|duplicate: "Copy"|download: "Export"|upload: "Import"/, "Literal text icon labels must not return");
+assert.match(foundation, /workout: svgIcon\('<path d="M4 9\.5v5M7\.5 5\.5v13M16\.5 5\.5v13M20 9\.5v5M7\.5 12h9"\/>'\)/, "Today navigation must use the optically balanced barbell glyph");
+assert.match(foundation, /templates: svgIcon\('<rect x="3" y="5" width="18" height="16" rx="2"\/><path d="M8 3v4M16 3v4M3 10h18"\/>'\)/, "Plan navigation must use the calendar glyph");
+assert.match(views, /function navButton\(tab, label, iconKey\)[\s\S]*<span class="nav-icon"[^>]*>['"]? \+ icon\[iconKey\][\s\S]*<span>['"]? \+ label \+ ['"]?<\/span>/, "Every navigation item must retain its visible text label beneath its glyph");
+assert.match(html, /\.bottom-nav \.nav-button \{[^}]*flex-direction: column;[^}]*font-size: var\(--fs-tiny\);[^}]*font-weight: 850;[^}]*justify-content: center;/, "Navigation must use the approved stacked Option A label treatment");
+assert.match(html, /\.bottom-nav \.nav-button \{[^}]*color: color-mix\(in srgb, var\(--muted-2\) 55%, var\(--text\)\);/, "Inactive navigation must use contrast-safe subordinate ink");
+assert.match(html, /\.bottom-nav \.nav-button\[aria-current="page"\] \{[^}]*background: transparent;[^}]*color: color-mix\(in srgb, var\(--current\) 35%, var\(--text\)\);[^}]*font-weight: 900;/, "Only the active navigation tab may spend contrast-adjusted current-state color");
+assert.match(html, /html\.large-text-reflow \.session-dock \{[^}]*grid-template-columns: minmax\(0, 1fr\) 48px;[^}]*\}[\s\S]*html\.large-text-reflow \.session-dock-finish,[^}]*grid-column: 1 \/ -1;[^}]*grid-row: 2;/, "The large-text session dock must give Finish a full-width second row");
+assert.match(html, /\.session-dock-finish \{[^}]*overflow-wrap: normal;[^}]*white-space: nowrap;[^}]*word-break: normal;/, "Finish must remain one unbroken word without shrinking its type");
 assert.doesNotMatch(workout, /adjustmentSummary|renderRecoveryPanel|renderActiveWorkoutAdvice/, "Today must not append recovery adjustments below the logger");
 assert.match(workout, /const session = activeSession\(\);\s*if \(!session\) return renderLiftHome\(\);\s*if \(liftHomeIsVisible\(\)\)/, "Today must fail safely before reading fields from a missing session");
 assert.match(exercise, /class="exercise-header"[\s\S]*exercise-grip[\s\S]*exercise-name-field[\s\S]*confidenceChip[\s\S]*exercise-overflow/, "Exercise chrome must collapse to grip, name, confidence, and overflow in one header");
-assert.match(exercise, /class="exercise-meta-row"[\s\S]*resistance-type-disclosure[\s\S]*deload-toggle[\s\S]*restSummary/, "Resistance, deload, and rest must share one compact meta row");
-assert.match(exercise, /class="exercise-set-actions"/, "Exercise set actions must use the compact action rail");
+assert.doesNotMatch(exercise, /class="exercise-meta-row"|class="exercise-set-actions"|restSummary/, "Retained resistance, load-state, rest, and set-action chrome must not surround the V3 set states");
+assert.match(exercise, /class="exercise-details"[\s\S]*resistance-type-control[\s\S]*deload-toggle[\s\S]*exercise-management-actions/, "Secondary exercise settings and set management must remain reachable in one disclosure");
 assert.match(setRenderer, /class="set-field set-previous set-previous-link"[\s\S]*data-action="open-session"/, "Comparable history must link to its exact submitted session");
 assert.doesNotMatch(setRenderer, /set-field-history|historyMarkup/, "Previous performance must not repeat below every editable field");
 assert.match(setRenderer, /class="set-tools-disclosure"/, "Secondary set controls must collapse behind one compact disclosure");
-assert.match(setRenderer, /data-set-mode="logged"[\s\S]*Plan[\s\S]*Actual[\s\S]*Delta/, "A logged set must render the V3 plan, actual, and delta spine");
-assert.match(setRenderer, /const isOnTarget[\s\S]*\? "on"[\s\S]*const deltaLabel = isOnTarget \? "" : "<span>Delta<\/span>"/, "An on-target logged set must collapse its redundant numeric delta to compact on text");
+assert.match(setRenderer, /data-set-mode="logged"[\s\S]*class="plan"[\s\S]*class="act"[\s\S]*class="dlt"/, "A logged set must render one compact V3 plan, actual, and delta row");
+assert.match(setRenderer, /isLoggedMode \? "" : `<div class="set-heading"/, "Logged rows must not retain a separate badge heading");
+assert.match(setRenderer, /isLoggedMode \? "" : `<details class="set-tools-disclosure"/, "Logged rows must not retain a separate options row");
+assert.match(setRenderer, /const isOnTarget[\s\S]*\? "on"[\s\S]*class="d ' \+ rpeDeltaClass/, "An on-target logged set must collapse its redundant numeric delta to compact on text");
 assert.match(setRenderer, /data-set-mode="current"[\s\S]*current-set-inputs/, "The current set must render the focused V3 entry editor");
 assert.match(setRenderer, /data-set-mode="pending"[\s\S]*targetSummary/, "A pending set must render only its quiet target line");
 assert.match(views, /function replaceSetBlockDom\(setId[\s\S]*currentBlock\.replaceWith\(replacement\)/, "Completing or advancing a set must replace its structural subtree");
@@ -37,7 +51,7 @@ assert.match(foundation, /"setId"/, "Set focus descriptors must include the stab
 assert.match(setRenderer, /class="set-progress-disclosure"/, "Progress When must be collapsed behind a native disclosure");
 assert.doesNotMatch(setRenderer, /set-prescription-context/, "The removed block-level prescription grid must not return");
 assert.match(html, /\.compact-workout-layout \{[^}]*grid-template-columns: minmax\(0, 1fr\) !important;/, "The compact logger must not reserve an empty Workout Board column");
-assert.match(html, /\.exercise-set-actions button \{[^}]*border-radius: 999px;/, "Set actions must use the sleek pill treatment");
+assert.match(html, /\.exercise-management-actions \{[^}]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/, "Set management must remain compact and responsive inside Exercise details");
 assert.match(html, /\.set-progress-disclosure > summary \{[^}]*min-height: 44px;/, "Collapsed progression rows must retain a 44 px touch target");
 assert.match(html, /\.set-tools-disclosure:not\(\[open\]\) \{[^}]*height: 0;/, "A collapsed set must not reserve vertical space for secondary controls");
 assert.match(html, /\.workout-view \.set-actions \.mini-button \{[^}]*min-height: 44px;/, "Compact set actions must retain a 44 px touch target");
@@ -53,7 +67,7 @@ assert.match(html, /\.set-previous strong \{[^}]*align-self: center;[^}]*color: 
 assert.match(html, /\.set-previous small \{[^}]*align-self: end;[^}]*color: var\(--muted-2\);[^}]*font-size: var\(--fs-data\);[^}]*margin-top: var\(--sp-1\);[^}]*transform: none;/, "Previous dates must retain a separate lower spacing band on the dense-data type step");
 assert.match(html, /--fs-data: 0\.6875rem;/, "The dense-data type step must stay at 11px so the Previous date remains legible");
 assert.match(html, /--fs-micro: 0\.75rem;/, "The micro type step must floor at 12px for gym-light legibility");
-assert.match(html, /\.resistance-type-disclosure > summary::after \{[^}]*color: var\(--current\)/, "The resistance disclosure arrow must use the app blue");
+assert.match(html, /\.exercise-details > summary \{[^}]*min-height: 44px;/, "Exercise details must remain a full keyboard and touch target");
 assert.match(interactions, /if \(action === "open-session"\)[\s\S]*event\.preventDefault\(\);[\s\S]*setActiveTab\("today", \{ force: true \}\);/, "A Previous link must force-render its exact submitted session even while Today already owns the active destination");
 
 console.log("Compact workout-page presentation contract passed.");

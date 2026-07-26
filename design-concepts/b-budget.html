@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="en" data-theme="light" data-color-package="signal-garden">
+<head>
+<meta charset="utf-8">
+<title>Concept B — Budget</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="frame.css">
+<style>
+/* ============================================================
+   CONCEPT B — BUDGET
+   Thesis: hypertrophy training is allocation against research
+   landmarks. ONE primitive - the allocation bar - applied
+   fractally at every scale: set inside exercise, exercise inside
+   session, session inside week, week inside mesocycle. The bar is
+   the container; there are no generic cards. Navigation is a zoom
+   level, not four peer tabs.
+   Colour is quantitative, never decorative:
+     --success banked   --current today   --line remaining
+     --amber over target   --red past ceiling
+   ============================================================ */
+
+.screen { letter-spacing: -0.01em; }
+.b-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+  padding: var(--sp-5) var(--sp-7) var(--sp-6);
+  overflow: hidden;
+}
+
+/* ---------- zoom ladder (replaces tabs) --------------------- */
+.zoom {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-7) var(--sp-4);
+  border-bottom: 1px solid var(--line);
+  font-size: var(--fs-micro);
+  font-weight: 850;
+  color: var(--muted-2);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.zoom b { font-weight: 900; color: var(--current); }
+.zoom i { font-style: normal; opacity: 0.5; }
+
+.b-head { display: grid; gap: var(--sp-3); }
+.b-head .eyebrow {
+  font-size: var(--fs-micro);
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+}
+.b-head h1 {
+  margin: 0;
+  font-size: var(--fs-xl);
+  font-weight: 850;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+.b-head h1 u { text-decoration: none; color: var(--current); }
+.b-head h1 u.low { color: var(--amber); }
+
+.b-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: var(--fs-micro);
+  font-weight: 900;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+  padding-bottom: var(--sp-3);
+  border-bottom: 2px solid var(--line-strong);
+}
+
+/* ---------- THE PRIMITIVE ------------------------------------ */
+.alloc { display: grid; gap: var(--sp-3); padding: var(--sp-4) 0; }
+.alloc + .alloc { border-top: 1px solid var(--line); }
+
+.alloc-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-4); }
+.alloc-head .an { font-size: var(--fs-small); font-weight: 850; }
+.alloc-head .av { font-size: var(--fs-micro); font-weight: 800; color: var(--muted); font-variant-numeric: tabular-nums; }
+.alloc-head .av b { color: var(--text); font-weight: 900; }
+
+.track {
+  position: relative;
+  height: 24px;
+  border-radius: var(--r-xs);
+  background: var(--panel-3);
+  overflow: hidden;
+}
+.track .seg { position: absolute; top: 0; bottom: 0; }
+.seg.banked { left: 0; background: var(--success); }
+.seg.today { background: var(--current); }
+.seg.over { background: var(--red); }
+.seg.plan { background: color-mix(in srgb, var(--current) 30%, transparent); }
+.track .tick { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--text); opacity: 0.5; }
+
+.scale {
+  position: relative;
+  height: 13px;
+  font-size: var(--fs-micro);
+  font-weight: 800;
+  color: var(--muted-2);
+}
+.scale span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+
+.legend { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-5); align-items: center; }
+.legend span { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-micro); font-weight: 800; color: var(--muted); }
+.legend i { width: 11px; height: 11px; border-radius: 3px; display: block; }
+.legend i.banked { background: var(--success); }
+.legend i.today { background: var(--current); }
+.legend i.rest { background: var(--panel-3); border: 1px solid var(--line-strong); }
+.legend i.over { background: var(--red); }
+
+.status {
+  font-size: var(--fs-micro);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--r-xs);
+}
+.status.under { background: color-mix(in srgb, var(--amber) 16%, transparent); color: var(--amber); }
+.status.inside { background: var(--success-dark); color: var(--success); }
+.status.over { background: color-mix(in srgb, var(--red) 14%, transparent); color: var(--red); }
+
+.b-cta {
+  flex: 0 0 auto;
+  margin-top: auto;
+  height: 62px;
+  border-radius: var(--r-md);
+  background: var(--action);
+  color: var(--on-action);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-4);
+  font-size: var(--fs-small);
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  box-shadow: var(--el-2);
+}
+
+/* ---------- workout: sets as withdrawals -------------------- */
+.set-line {
+  display: grid;
+  grid-template-columns: 30px 1fr 74px;
+  gap: var(--sp-4);
+  align-items: center;
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--line);
+}
+.set-line .sn { font-size: var(--fs-micro); font-weight: 900; color: var(--muted-2); }
+.set-line .sbar { height: 14px; border-radius: var(--r-xs); background: var(--panel-3); overflow: hidden; }
+.set-line .sbar i { display: block; height: 100%; background: var(--success); }
+.set-line .sbar i.now { background: var(--current); }
+.set-line .sv { font-size: var(--fs-micro); font-weight: 850; text-align: right; font-variant-numeric: tabular-nums; }
+.set-line .sv.dim { color: var(--muted-2); font-weight: 750; }
+.set-line.current { background: var(--current-dark); border-radius: var(--r-xs); padding-inline: var(--sp-3); }
+
+.rest-alloc { display: grid; gap: var(--sp-3); padding: var(--sp-5); border-radius: var(--r-md); background: var(--panel-2); border: 1px solid var(--line); }
+.rest-alloc .ra-head { display: flex; justify-content: space-between; align-items: baseline; }
+.rest-alloc .ra-head b { font-size: var(--fs-micro); font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; color: var(--rest-text); }
+.rest-alloc .ra-head span { font-size: var(--fs-xl); font-weight: 900; color: var(--rest-accent); font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
+.rest-alloc .ra-track { height: 14px; border-radius: var(--r-xs); background: color-mix(in srgb, var(--rest-accent) 18%, transparent); overflow: hidden; }
+.rest-alloc .ra-track i { display: block; height: 100%; width: 52%; background: var(--rest-accent); }
+.rest-alloc .ra-foot { font-size: var(--fs-micro); font-weight: 800; color: var(--muted); }
+
+.contrib { display: grid; gap: var(--sp-4); }
+.contrib .ct-row { display: grid; grid-template-columns: 78px 1fr auto; gap: var(--sp-4); align-items: center; }
+.contrib .ct-row b { font-size: var(--fs-micro); font-weight: 850; }
+.contrib .ct-row .plus { font-size: var(--fs-micro); font-weight: 900; color: var(--current); font-variant-numeric: tabular-nums; }
+
+/* ---------- evidence ----------------------------------------- */
+.split { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--sp-4); }
+.cell {
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: var(--sp-4);
+  display: grid;
+  gap: var(--sp-2);
+}
+.cell b { font-size: var(--fs-2xl); font-weight: 850; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+.cell span { font-size: var(--fs-micro); font-weight: 800; color: var(--muted); }
+.cell.accent { border-color: var(--current); background: var(--current-dark); }
+.cell.accent b { color: var(--current); }
+
+.landmark-note { font-size: var(--fs-micro); color: var(--muted); line-height: 1.55; }
+.landmark-note b { color: var(--text); }
+
+.reason { display: grid; gap: var(--sp-3); }
+.reason .rl {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: var(--sp-4);
+  align-items: baseline;
+  font-size: var(--fs-tiny);
+  line-height: 1.5;
+  color: var(--muted);
+}
+.reason .rl i { font-style: normal; font-weight: 900; color: var(--current); }
+.reason .rl b { color: var(--text); font-weight: 850; }
+
+/* ---------- plan: allocation matrix -------------------------- */
+.matrix { display: grid; gap: 0; }
+.mrow {
+  display: grid;
+  grid-template-columns: 66px repeat(4, 1fr) 44px;
+  gap: var(--sp-2);
+  align-items: center;
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--line);
+}
+.mrow.head { border-bottom: 2px solid var(--line-strong); padding-bottom: var(--sp-3); }
+.mrow.head span {
+  font-size: var(--fs-micro);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-2);
+  text-align: center;
+}
+.mrow.head span:first-child { text-align: left; }
+.mrow .mn { font-size: var(--fs-micro); font-weight: 850; }
+.mcell {
+  height: 32px;
+  border-radius: var(--r-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-micro);
+  font-weight: 900;
+  background: var(--panel-3);
+  color: var(--muted-2);
+  font-variant-numeric: tabular-nums;
+}
+.mcell.on { background: var(--current); color: var(--on-action); }
+.mcell.soft { background: color-mix(in srgb, var(--current) 26%, transparent); color: var(--current); }
+.mrow .mt { font-size: var(--fs-micro); font-weight: 900; text-align: right; font-variant-numeric: tabular-nums; }
+.mrow .mt.low { color: var(--amber); }
+.mrow .mt.ok { color: var(--success); }
+
+/* ---------- completion --------------------------------------- */
+.report-hero { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-5); }
+.report-hero .rh-copy { display: grid; gap: var(--sp-2); }
+.report-hero .rh-copy b { font-size: var(--fs-lg); font-weight: 850; letter-spacing: -0.02em; }
+.report-hero .rh-copy span { font-size: var(--fs-micro); color: var(--muted); line-height: 1.45; }
+.report-hero .rh-num { text-align: right; }
+.report-hero .rh-num b { display: block; font-size: 54px; line-height: 0.9; font-weight: 900; letter-spacing: -0.05em; color: var(--success); font-variant-numeric: tabular-nums; }
+.report-hero .rh-num span { font-size: var(--fs-micro); font-weight: 850; color: var(--muted); }
+
+.delta-row {
+  display: grid;
+  grid-template-columns: 1fr 54px 54px;
+  gap: var(--sp-3);
+  align-items: baseline;
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
+}
+.delta-row .dn { font-size: var(--fs-tiny); font-weight: 850; }
+.delta-row .dp { font-size: var(--fs-tiny); font-weight: 750; color: var(--muted); text-align: right; }
+.delta-row .da { font-size: var(--fs-tiny); font-weight: 900; text-align: right; color: var(--success); }
+.delta-row.head span {
+  font-size: var(--fs-micro); font-weight: 900; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--muted-2); text-align: right;
+}
+.delta-row.head span:first-child { text-align: left; }
+</style>
+</head>
+<body>
+
+<header class="sheet-head">
+  <div class="eyebrow">Concept B</div>
+  <h1>Budget</h1>
+  <p>Training is allocation against research landmarks, so the app is built from exactly one primitive — the allocation bar — repeated fractally at every scale: a set inside an exercise, an exercise inside a session, a session inside a week, a week inside a mesocycle. The bar <b>is</b> the container; there are no generic cards. Colour is quantitative rather than decorative, and navigation is a zoom level instead of four peer tabs.</p>
+</header>
+
+<div class="sheet">
+
+  <!-- 1. TODAY ------------------------------------------------ -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="today">
+      <div class="statusbar"><span>9:41</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="zoom">Mesocycle 4 <i>›</i> <b>Week 3</b> <i>›</i> Thursday</div>
+      <div class="b-body">
+        <div class="b-head">
+          <div class="eyebrow">Today's withdrawal</div>
+          <h1>Today books <u>8</u> of the <u class="low">19 sets</u> you still owe this week.</h1>
+        </div>
+
+        <div>
+          <div class="b-label"><span>Week 3 budget</span><span>sets</span></div>
+
+          <div class="alloc">
+            <div class="alloc-head"><span class="an">Chest</span><span class="av"><b>12</b> banked · +4 today · 14–20</span></div>
+            <div class="track">
+              <span class="seg banked" style="width:55%"></span>
+              <span class="seg today" style="left:55%;width:18%"></span>
+              <span class="tick" style="left:64%"></span>
+              <span class="tick" style="left:91%"></span>
+            </div>
+            <div class="scale"><span style="left:64%">min 14</span><span style="left:91%">max 20</span></div>
+          </div>
+
+          <div class="alloc">
+            <div class="alloc-head"><span class="an">Triceps</span><span class="av"><b>8</b> banked · +3 today · 10–16</span></div>
+            <div class="track">
+              <span class="seg banked" style="width:44%"></span>
+              <span class="seg today" style="left:44%;width:17%"></span>
+              <span class="tick" style="left:55%"></span>
+              <span class="tick" style="left:89%"></span>
+            </div>
+            <div class="scale"><span style="left:55%">min 10</span><span style="left:89%">max 16</span></div>
+          </div>
+
+          <div class="alloc">
+            <div class="alloc-head"><span class="an">Side delts</span><span class="av"><b>10</b> banked · +1 today · 12–20</span></div>
+            <div class="track">
+              <span class="seg banked" style="width:47%"></span>
+              <span class="seg today" style="left:47%;width:5%"></span>
+              <span class="tick" style="left:56%"></span>
+              <span class="tick" style="left:93%"></span>
+            </div>
+            <div class="scale"><span style="left:56%">min 12</span><span style="left:93%">max 20</span></div>
+          </div>
+
+          <div class="alloc">
+            <div class="alloc-head"><span class="an">Back</span><span class="av"><b>9</b> banked · none today · 14–22</span></div>
+            <div class="track">
+              <span class="seg banked" style="width:38%"></span>
+              <span class="tick" style="left:60%"></span>
+              <span class="tick" style="left:94%"></span>
+            </div>
+            <div class="scale"><span style="left:60%">min 14</span><span style="left:94%">max 22</span></div>
+          </div>
+        </div>
+
+        <div class="legend">
+          <span><i class="banked"></i>banked</span>
+          <span><i class="today"></i>today</span>
+          <span><i class="rest"></i>still owed</span>
+        </div>
+
+        <div class="b-cta">Start Upper A · 18 sets</div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>1 · Today</b><span>Today is not a to-do list, it is a withdrawal. Each bar shows what is banked, what this session adds, and what the week still owes.</span></div>
+  </div>
+
+  <!-- 2. ACTIVE WORKOUT --------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="workout">
+      <div class="statusbar"><span>10:14</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="zoom">Week 3 <i>›</i> Upper A <i>›</i> <b>Bench Press</b> <i>›</i> Set 3</div>
+      <div class="b-body">
+        <div class="b-head">
+          <div class="eyebrow">Session · 9 of 18 sets · 24:16</div>
+          <h1>Bench Press</h1>
+        </div>
+
+        <div class="alloc" style="padding-top:0">
+          <div class="alloc-head"><span class="an">This exercise</span><span class="av"><b>2</b> of 4 sets banked</span></div>
+          <div class="track">
+            <span class="seg banked" style="width:50%"></span>
+            <span class="seg today" style="left:50%;width:25%"></span>
+          </div>
+        </div>
+
+        <div>
+          <div class="b-label"><span>Sets</span><span>load × reps @ rpe</span></div>
+          <div class="set-line"><span class="sn">W1</span><span class="sbar"><i style="width:100%"></i></span><span class="sv dim">135 × 10</span></div>
+          <div class="set-line"><span class="sn">1</span><span class="sbar"><i style="width:100%"></i></span><span class="sv">185 × 8 @ 8</span></div>
+          <div class="set-line"><span class="sn">2</span><span class="sbar"><i style="width:100%"></i></span><span class="sv">185 × 8 @ 8</span></div>
+          <div class="set-line current"><span class="sn">3</span><span class="sbar"><i class="now" style="width:38%"></i></span><span class="sv">185 × 8 @ 8</span></div>
+          <div class="set-line"><span class="sn">4</span><span class="sbar"></span><span class="sv dim">185 × 8 @ 8</span></div>
+        </div>
+
+        <div class="rest-alloc">
+          <div class="ra-head"><b>Rest budget</b><span>1:12</span></div>
+          <div class="ra-track"><i></i></div>
+          <div class="ra-foot">1:18 spent of 2:30 · the same bar, spending time instead of sets</div>
+        </div>
+
+        <div>
+          <div class="b-label"><span>This set pays into</span><span>week 3</span></div>
+          <div class="contrib" style="padding-top:12px">
+            <div class="ct-row">
+              <b>Chest</b>
+              <span class="track" style="height:14px">
+                <span class="seg banked" style="width:55%"></span>
+                <span class="seg today" style="left:55%;width:5%"></span>
+                <span class="tick" style="left:64%"></span>
+              </span>
+              <span class="plus">+1.0</span>
+            </div>
+            <div class="ct-row">
+              <b>Triceps</b>
+              <span class="track" style="height:14px">
+                <span class="seg banked" style="width:44%"></span>
+                <span class="seg today" style="left:44%;width:3%"></span>
+                <span class="tick" style="left:55%"></span>
+              </span>
+              <span class="plus">+0.5</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="landmark-note" style="margin-top:auto">Up next: <b>Incline DB Press</b> · 3 sets · pays 2.0 chest, 1.0 front delts.</div>
+
+        <div class="b-cta">Log set 3</div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>2 · Active workout</b><span>The set, the exercise, the rest timer and the week are the same component at four scales. Logging visibly moves the week.</span></div>
+  </div>
+
+  <!-- 3. PRESCRIPTION & EVIDENCE ------------------------------ -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="evidence">
+      <div class="statusbar"><span>9:41</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="zoom">Week 3 <i>›</i> Upper A <i>›</i> <b>Why 4 sets</b></div>
+      <div class="b-body">
+        <div class="b-head">
+          <div class="eyebrow">Allocation reasoning</div>
+          <h1>Chest owes <u class="low">6 sets</u> and has <u>2 sessions</u> left.</h1>
+        </div>
+
+        <div class="split">
+          <div class="cell accent"><b>4</b><span>here, today</span></div>
+          <div class="cell"><b>2</b><span>Saturday, Upper B</span></div>
+        </div>
+
+        <div>
+          <div class="b-label"><span>Research landmarks</span><span>chest, weekly</span></div>
+          <div class="alloc">
+            <div class="alloc-head"><span class="an">Effective sets</span><span class="av"><b>12</b> banked → 16 projected</span></div>
+            <div class="track">
+              <span class="seg banked" style="width:50%"></span>
+              <span class="seg plan" style="left:50%;width:17%"></span>
+              <span class="tick" style="left:42%"></span>
+              <span class="tick" style="left:67%"></span>
+              <span class="tick" style="left:92%"></span>
+            </div>
+            <div class="scale"><span style="left:42%">MEV 10</span><span style="left:67%">MAV 16</span><span style="left:92%">MRV 22</span></div>
+          </div>
+          <div class="landmark-note" style="padding-top:10px">Four sets lands you on <b>MAV</b> — the adaptive maximum for this block — without crossing the recoverable ceiling before the week 6 deload.</div>
+        </div>
+
+        <div>
+          <div class="b-label"><span>Why not more</span><span>constraints</span></div>
+          <div class="reason" style="padding-top:12px">
+            <div class="rl"><i>1</i><span><b>Quads are already over.</b> 22 sets against an 18 ceiling. Adding session volume anywhere raises systemic fatigue.</span></div>
+            <div class="rl"><i>2</i><span><b>A moderate chest flag is open.</b> Three sessions logged above the prescribed effort band.</span></div>
+            <div class="rl"><i>3</i><span><b>Week 4 steps up.</b> The block adds two sets per muscle next week; spending them now removes the runway.</span></div>
+          </div>
+        </div>
+
+        <div class="landmark-note" style="margin-top:auto">Load and reps follow the allocation, not the reverse: <b>185 × 8 @ RPE 8</b>, the load that makes four sets recoverable.</div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>3 · Prescription &amp; evidence</b><span>The recommendation is defended as an allocation. MEV / MAV / MRV become labelled ticks on the same bar used everywhere else.</span></div>
+  </div>
+
+  <!-- 4. PROGRESS --------------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="progress">
+      <div class="statusbar"><span>9:41</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="zoom">Mesocycle 4 <i>›</i> <b>Week 3</b> <i>›</i> Jul 21–27</div>
+      <div class="b-body">
+        <div class="b-head">
+          <div class="eyebrow">Week 3 ledger</div>
+          <h1>Two accounts out of range.</h1>
+        </div>
+
+        <div>
+          <div class="b-label"><span>All muscles</span><span>banked / range</span></div>
+
+          <div class="alloc">
+            <div class="alloc-head"><span class="an">Quads <span class="status over">over</span></span><span class="av"><b>22</b> / 12–18</span></div>
+            <div class="track">
+              <span class="seg banked" style="width:74%"></span>
+              <span class="seg over" style="left:74%;width:26%"></span>
+              <span class="tick" style="left:40%"></span><span class="tick" style="left:74%"></span>
+            </div>
+          </div>
+
+          <div class="alloc">
+            <div class="alloc-head"><span class="an">Back <span class="status under">under</span></span><span class="av"><b>9</b> / 14–22</span></div>
+            <div class="track">
+              <span class="seg banked" style="width:38%"></span>
+              <span class="tick" style="left:60%"></span><span class="tick" style="left:94%"></span>
+            </div>
+          </div>
+
+          <div class="alloc">
+            <div class="alloc-head"><span class="an">Chest <span class="status inside">in range</span></span><span class="av"><b>16</b> / 14–20</span></div>
+            <div class="track">
+              <span class="seg banked" style="width:73%"></span>
+              <span class="tick" style="left:64%"></span><span class="tick" style="left:91%"></span>
+            </div>
+          </div>
+
+          <div class="alloc">
+            <div class="alloc-head"><span class="an">Side delts <span class="status inside">in range</span></span><span class="av"><b>14</b> / 12–20</span></div>
+            <div class="track">
+              <span class="seg banked" style="width:66%"></span>
+              <span class="tick" style="left:56%"></span><span class="tick" style="left:93%"></span>
+            </div>
+          </div>
+
+          <div class="alloc">
+            <div class="alloc-head"><span class="an">Hamstrings <span class="status inside">in range</span></span><span class="av"><b>11</b> / 10–16</span></div>
+            <div class="track">
+              <span class="seg banked" style="width:62%"></span>
+              <span class="tick" style="left:55%"></span><span class="tick" style="left:89%"></span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="b-label"><span>Block to date</span><span>weeks 1–6</span></div>
+          <div class="alloc">
+            <div class="alloc-head"><span class="an">Mesocycle 4</span><span class="av"><b>3</b> of 6 weeks · deload week 6</span></div>
+            <div class="track">
+              <span class="seg banked" style="width:42%"></span>
+              <span class="seg today" style="left:42%;width:16%"></span>
+              <span class="tick" style="left:84%"></span>
+            </div>
+            <div class="scale"><span style="left:84%">deload</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>4 · Progress</b><span>The natural home of the primitive. Over and under read instantly because every bar shares one scale and one colour rule.</span></div>
+  </div>
+
+  <!-- 5. PLAN -------------------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="plan">
+      <div class="statusbar"><span>9:41</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="zoom"><b>Mesocycle 4</b> <i>›</i> Week 3 allocation</div>
+      <div class="b-body">
+        <div class="b-head">
+          <div class="eyebrow">Allocate the week</div>
+          <h1>Back needs <u class="low">5 more sets</u> across two days.</h1>
+        </div>
+
+        <div>
+          <div class="b-label"><span>Sets per day</span><span>tap to move</span></div>
+          <div class="matrix">
+            <div class="mrow head"><span>Muscle</span><span>Mon</span><span>Tue</span><span>Thu</span><span>Sat</span><span>Wk</span></div>
+            <div class="mrow">
+              <span class="mn">Chest</span>
+              <span class="mcell on">6</span><span class="mcell">—</span><span class="mcell on">6</span><span class="mcell soft">4</span>
+              <span class="mt ok">16</span>
+            </div>
+            <div class="mrow">
+              <span class="mn">Back</span>
+              <span class="mcell">—</span><span class="mcell on">5</span><span class="mcell">—</span><span class="mcell soft">4</span>
+              <span class="mt low">9</span>
+            </div>
+            <div class="mrow">
+              <span class="mn">Quads</span>
+              <span class="mcell">—</span><span class="mcell on">12</span><span class="mcell">—</span><span class="mcell on">10</span>
+              <span class="mt">22</span>
+            </div>
+            <div class="mrow">
+              <span class="mn">Delts</span>
+              <span class="mcell on">4</span><span class="mcell">—</span><span class="mcell on">6</span><span class="mcell soft">4</span>
+              <span class="mt ok">14</span>
+            </div>
+            <div class="mrow">
+              <span class="mn">Hams</span>
+              <span class="mcell">—</span><span class="mcell on">5</span><span class="mcell">—</span><span class="mcell soft">6</span>
+              <span class="mt ok">11</span>
+            </div>
+            <div class="mrow">
+              <span class="mn">Arms</span>
+              <span class="mcell on">3</span><span class="mcell">—</span><span class="mcell on">3</span><span class="mcell soft">3</span>
+              <span class="mt ok">9</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="legend">
+          <span><i class="today"></i>logged</span>
+          <span><i class="rest"></i>rest day</span>
+          <span style="color:var(--current)">tinted = planned, not yet trained</span>
+        </div>
+
+        <div>
+          <div class="b-label"><span>Unallocated</span><span>this week</span></div>
+          <div class="alloc">
+            <div class="alloc-head"><span class="an">Back</span><span class="av">5 sets need a home</span></div>
+            <div class="track">
+              <span class="seg banked" style="width:38%"></span>
+              <span class="seg plan" style="left:38%;width:22%"></span>
+              <span class="tick" style="left:60%"></span>
+            </div>
+            <div class="scale"><span style="left:60%">min 14</span></div>
+          </div>
+        </div>
+
+        <div class="b-cta">Add a pull session</div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>5 · Plan</b><span>Planning is literally allocation: move sets between days and every bar in the app updates.</span></div>
+  </div>
+
+  <!-- 6. COMPLETED SUMMARY ------------------------------------- -->
+  <div class="screen-wrap">
+    <section class="screen" data-screen="summary">
+      <div class="statusbar"><span>11:09</span><span class="sb-dots"><i></i><i></i></span></div>
+      <div class="zoom">Week 3 <i>›</i> <b>Upper A</b> <i>›</i> Statement</div>
+      <div class="b-body">
+        <div class="b-head">
+          <div class="eyebrow">Session statement · 54 min</div>
+          <div class="report-hero">
+            <span class="rh-copy">
+              <b>18 of 18 sets banked.</b>
+              <span>Nothing was skipped and nothing overdrew its account.</span>
+            </span>
+            <span class="rh-num"><b>100%</b><span>of plan</span></span>
+          </div>
+        </div>
+
+        <div>
+          <div class="b-label"><span>Paid into</span><span>planned / banked</span></div>
+          <div class="delta-row head"><span>Muscle</span><span>Plan</span><span>Banked</span></div>
+          <div class="delta-row"><span class="dn">Chest</span><span class="dp">4.0</span><span class="da">4.0</span></div>
+          <div class="delta-row"><span class="dn">Triceps</span><span class="dp">3.0</span><span class="da">3.5</span></div>
+          <div class="delta-row"><span class="dn">Side delts</span><span class="dp">1.0</span><span class="da">1.0</span></div>
+          <div class="delta-row"><span class="dn">Front delts</span><span class="dp">2.0</span><span class="da">2.0</span></div>
+        </div>
+
+        <div>
+          <div class="b-label"><span>Week 3 after this session</span><span>sets</span></div>
+          <div class="alloc">
+            <div class="alloc-head"><span class="an">Chest <span class="status inside">in range</span></span><span class="av"><b>16</b> / 14–20</span></div>
+            <div class="track">
+              <span class="seg banked" style="width:55%"></span>
+              <span class="seg today" style="left:55%;width:18%"></span>
+              <span class="tick" style="left:64%"></span><span class="tick" style="left:91%"></span>
+            </div>
+          </div>
+          <div class="alloc">
+            <div class="alloc-head"><span class="an">Triceps <span class="status inside">in range</span></span><span class="av"><b>11.5</b> / 10–16</span></div>
+            <div class="track">
+              <span class="seg banked" style="width:44%"></span>
+              <span class="seg today" style="left:44%;width:20%"></span>
+              <span class="tick" style="left:55%"></span><span class="tick" style="left:89%"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="landmark-note" style="margin-top:auto">Back is the only account still short: <b>5 sets</b> across the two days left in week 3.</div>
+      </div>
+    </section>
+    <div class="screen-caption"><b>6 · Completed summary</b><span>The payoff is a statement of account: what was planned, what was banked, and which balance the week still needs.</span></div>
+  </div>
+
+</div>
+</body>
+</html>

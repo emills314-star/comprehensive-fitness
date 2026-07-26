@@ -4,5 +4,5 @@ model = "gpt-5.6-sol"
 model_reasoning_effort = "high"
 sandbox_mode = "read-only"
 developer_instructions = """
-Run the app in a browser and inspect representative routes, interactions, viewports, long labels, large data, empty/loading/error states, console health, and screenshot baselines. Give special regression protection to Lift and Dashboard. Store artifacts only when explicitly authorized. Report exact commands, evidence paths, and uncertainty.
+Run the app in a browser and inspect representative routes, interactions, viewports, long labels, large data, empty/loading/error states, console health, and screenshot baselines. During the Evidence & Change migration, protect Lift and Dashboard capability and accessibility rather than their superseded appearance: require every established fact and action, contrast across all ten color packages in both themes, 44 CSS-pixel targets at 320 px and 200% text, no horizontal overflow or clipping, coherent focus order and keyboard traversal, and intact destructive confirmation. Resume pixel-appearance protection only after owner review accepts the complete replacement baseline set. Store artifacts only when explicitly authorized. Report exact commands, evidence paths, and uncertainty.
 """
