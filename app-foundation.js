@@ -70,10 +70,10 @@
       const primaryTabIds = ["today", "plan", "progress", "more"];
       const focusActionAllowlist = new Set([
         "set-tab", "start-template", "start-next-template", "toggle-set", "set-weight", "set-reps", "set-rpe", "set-duration", "set-distance", "session-menu", "request-submit-workout", "request-cancel-workout", "request-save-history-edits", "request-cancel-history-edits", "clear-data",
-        "continue-template-start", "return-active-workout", "use-usual-readiness", "review-template-readiness", "start-adjusted-workout",
+        "return-active-workout", "use-usual-readiness", "review-template-readiness", "start-adjusted-workout",
         "keep-workout", "keep-history-editing", "cancel-clear-data", "close-dashboard-detail", "dashboard-detail-parent",
         "open-history", "open-progress", "set-progress-view", "retry-view-render", "focus-workout-exercise", "open-dashboard-detail", "open-dashboard-session", "open-volume-session", "open-fatigue-flag", "toggle-volume-muscle",
-        "cancel-template-start", "log-today-readiness", "edit-readiness-metrics", "start-original-workout",
+        "cancel-template-start", "log-today-readiness", "edit-readiness-metrics", "start-original-workout", "adjust-template-readiness",
         "template-readiness-sleep-hours", "template-readiness-sleep-quality", "template-readiness-hrv", "template-readiness-resting-hr",
         "template-readiness-soreness", "template-readiness-nutrition", "template-readiness-protein", "template-readiness-illness",
         "template-readiness-pain", "template-readiness-affected-muscle", "template-readiness-note",
@@ -4034,11 +4034,10 @@
         if (templateStartFlow) {
           const action = ({
             "active-conflict": "return-active-workout",
-            confirm: "continue-template-start",
-            readiness: "use-usual-readiness",
-            metrics: "review-template-readiness",
+            confirm: "log-today-readiness",
+            readiness: "template-readiness-sleep-hours",
             review: "start-adjusted-workout"
-          })[templateStartFlow.step] || "continue-template-start";
+          })[templateStartFlow.step] || "log-today-readiness";
           return actionFocusDescriptor(action);
         }
         if (cancelWorkoutFlow) return actionFocusDescriptor("keep-workout");

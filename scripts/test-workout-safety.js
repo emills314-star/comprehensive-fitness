@@ -52,7 +52,7 @@ const rolePrescriptionSource = html.slice(rolePrescriptionStart, rolePrescriptio
 assert.match(rolePrescriptionSource, /set\.setPrescription\?\.evidenceConfidence[\s\S]*research_default: \{ level: 1,[\s\S]*high: \{ level: 4,[\s\S]*\}\)\[confidenceKey\] \|\| null;/, "Role confidence must be guarded by the four-category engine evidence mapping");
 assert.match(rolePrescriptionSource, /class="claim-card role-prescription-claim' \+ \(confidence \? '' : ' confidence-unavailable'\) \+ '"' \+ confidenceAttributes/, "Role targets must use the guarded confidence claim treatment");
 assert.match(rolePrescriptionSource, /class="claim-projection-grid role-claim-projections"[\s\S]*>Target reps<[\s\S]*escapeHtml\(String\(targetReps\)\)[\s\S]*>Next increment<[\s\S]*escapeHtml\(nextIncrement\)/, "The role claim must retain guarded target reps and next-increment projections");
-assert.match(html, /class="cancel-impact"/, "Workout cancellation must explain removed and preserved data visually");
+assert.match(html, /class="diff cancel-workout-diff"[\s\S]*>Removed<[\s\S]*>Kept<[\s\S]*This draft[\s\S]*Submitted history[\s\S]*Templates and settings/, "Workout cancellation must compare exactly what is removed with the history, templates, and settings that remain");
 assert.match(html, /async function beginHistoryEdit\(\)/, "Logged workouts must enter an explicit asynchronous edit transaction");
 const beginHistoryEditStart = html.indexOf("async function beginHistoryEdit()");
 const beginHistoryEditEnd = html.indexOf("function requestHistoryEditConfirmation", beginHistoryEditStart);
@@ -65,7 +65,7 @@ assert.match(html, /Save Edits/, "History editing must expose a save action");
 assert.match(html, /Cancel Edits/, "History editing must expose a cancel action");
 assert.match(html, /const editingHistory = isEditingHistorySession\(\);[\s\S]*?if \(!editingHistory\) acknowledgeActiveSet/, "Historical set edits must not start live-workout behavior");
 assert.match(html, /if \(action === "close-completed-summary"\) returnToLiftHome/, "Closing a completed workout must return to the Lift home");
-assert.match(html, /readinessReviewTitle\.textContent = "Today's Readiness Adjustments"/, "Readiness headings must render with encoding-safe apostrophes");
+assert.match(html, /id="readiness-review-title"[\s\S]*The saved template is not rewritten/, "Readiness review headings must be rendered directly from encoding-safe source copy");
 assert.match(html, /function explainReadinessAdjustmentChoice\(original, adjusted, triggers\)/, "Readiness rationale must explain why load, reps, sets, RPE, and rest were selected");
 assert.match(html, /Why these levers:/, "Readiness explanations must separate the trigger from the adjustment mechanism");
 assert.match(html, /function renderLiftHome\(\)/, "The idle Lift tab must use a dedicated program home view");

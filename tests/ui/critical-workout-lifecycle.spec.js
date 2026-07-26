@@ -300,8 +300,6 @@ test("critical workout lifecycle remains coherent through submission, progress, 
 
   await templateCard.locator(`[data-action="start-template"][data-template-id="${templateId}"]`).click();
   await expect(page.getByRole("dialog", { name: `Start ${TEMPLATE_NAME}?` })).toBeVisible();
-  await page.locator('[data-action="continue-template-start"]').click();
-  await expect(page.getByRole("dialog", { name: "Use your usual readiness?" })).toBeVisible();
   await page.locator('[data-action="use-usual-readiness"]').click();
   await expect(page.getByRole("heading", { name: TEMPLATE_NAME, exact: true })).toBeVisible({ timeout: 45_000 });
   await expect(page.getByText("In progress", { exact: true })).toBeVisible();

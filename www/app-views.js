@@ -43,11 +43,6 @@
             ${renderTimerCompleteNotice()}
           </div>
         `;
-        const readinessReviewTitle = root.querySelector("#readiness-review-title");
-        if (readinessReviewTitle) readinessReviewTitle.textContent = "Today's Readiness Adjustments";
-        const dailyReadinessTitle = root.querySelector("#daily-readiness-title");
-        if (dailyReadinessTitle) dailyReadinessTitle.textContent = "Today's readiness";
-        root.querySelectorAll(".readiness-comparison > .today > span").forEach((label) => { label.textContent = "Today's readiness"; });
         const chartLiftLabel = root.querySelector('label[for="chart-exercise-search"]');
         if (chartLiftLabel) chartLiftLabel.textContent = "Change lift";
         adaptOverflowingTitleFields();
@@ -715,6 +710,100 @@
         if (!templateStartFlow) return;
         templateStartFlow = { ...templateStartFlow, draft: cleanRecovery({ ...templateStartFlow.draft, ...patch }) };
         if (shouldRender) render();
+        else syncTemplateReadinessDeltas();
+      }
+
+      function readinessConfidence(target) {
+        const key = String(target?.confidence || target?.recommendationSnapshot?.finalPrescription?.confidence || target?.recommendationSnapshot?.confidence || "").trim().toLowerCase();
+        return ({
+          conditional: { level: 1, label: "Conditional" },
+          research_default: { level: 1, label: "Research default" },
+          low: { level: 2, label: "Low" },
+          medium: { level: 3, label: "Moderate" },
+          moderate: { level: 3, label: "Moderate" },
+          high: { level: 4, label: "High" }
+        })[key] || null;
+      }
+
+      function readinessMeter(confidence, large = false) {
+        if (!confidence) return '<span class="readiness-confidence-missing">Confidence unavailable</span>';
+        return '<span class="meter' + (large ? ' lg' : '') + '" data-conf="' + confidence.level + '" aria-label="' + escapeHtml(confidence.label + ' prescription confidence') + '"><i></i><i></i><i></i><i></i></span>';
+      }
+
+      function templateStartEvidenceSummary(template) {
+        const recovery = defaultRecovery();
+        const advice = cachedTemplateAdvice(template, recoveryRecommendationForSession({ id: "template-start-evidence", date: todayIso(), recovery }), { recovery });
+        const confidences = advice.items.map((item) => readinessConfidence(item.target)).filter(Boolean);
+        const moderateOrHigh = confidences.filter((item) => item.level >= 3).length;
+        const lowest = confidences.length ? confidences.reduce((current, item) => item.level < current.level ? item : current) : null;
+        return { advice, available: confidences.length, moderateOrHigh, lowest };
+      }
+
+      function readinessMetricDelta(field, value, baseline = readinessBaseline()) {
+        const numeric = value === "" || value == null ? null : Number(value);
+        const baselineValue = Number(baseline[field]);
+        const unit = field === "sleepHours" ? " h" : field === "hrv" ? " ms" : field === "restingHr" ? " bpm" : field === "sleepQuality" || field === "soreness" ? "/5" : "";
+        if (numeric === null || !Number.isFinite(numeric)) return { text: "Enter today’s value", tone: "none" };
+        if (!Number.isFinite(baselineValue) || ((field === "hrv" || field === "restingHr") && baseline[field] === "")) return { text: "No stored baseline", tone: "none" };
+        const delta = Number((numeric - baselineValue).toFixed(field === "sleepHours" ? 2 : 0));
+        if (delta === 0) return { text: "at usual", tone: "none" };
+        const moreIsBetter = field === "sleepHours" || field === "sleepQuality" || field === "hrv";
+        const lessIsBetter = field === "restingHr" || field === "soreness";
+        const desirable = (delta > 0 && moreIsBetter) || (delta < 0 && lessIsBetter);
+        const stronglyAdverse = (field === "hrv" && delta < 0) || (field === "soreness" && delta > 0);
+        return { text: (delta > 0 ? "+" : "−") + Math.abs(delta) + unit + " vs usual", tone: desirable ? "over" : stronglyAdverse ? "out" : "under" };
+      }
+
+      function readinessMetricField({ field, label, action, value, min, max, step, unit }) {
+        const baseline = readinessBaseline();
+        const delta = readinessMetricDelta(field, value, baseline);
+        const baselineValue = baseline[field] === "" ? "not set" : baseline[field] + unit;
+        return '<div class="field readiness-field"><div class="f-top"><label class="f-name" for="template-readiness-' + field + '">' + escapeHtml(label) + '</label><span class="f-help">usual ' + escapeHtml(baselineValue) + '</span></div><div class="stepper"><button class="sb" type="button" data-action="adjust-template-readiness" data-field="' + field + '" data-step="' + (-step) + '" aria-label="Decrease ' + escapeHtml(label) + '">−</button><input class="sv" id="template-readiness-' + field + '" type="number" min="' + min + '" max="' + max + '" step="' + step + '" value="' + escapeHtml(value) + '" data-action="' + action + '" aria-label="' + escapeHtml(label) + '" /><button class="sb" type="button" data-action="adjust-template-readiness" data-field="' + field + '" data-step="' + step + '" aria-label="Increase ' + escapeHtml(label) + '">+</button><span class="d ' + delta.tone + '" data-readiness-delta="' + field + '">' + escapeHtml(delta.text) + '</span></div></div>';
+      }
+
+      function readinessSegmentedField({ field, label, action, value, options }) {
+        return '<fieldset class="field readiness-field"><legend class="f-name">' + escapeHtml(label) + '</legend><div class="segmented" role="radiogroup" aria-label="' + escapeHtml(label) + '">' + options.map(([optionValue, optionLabel]) => '<label><input type="radio" name="template-readiness-' + field + '" value="' + escapeHtml(optionValue) + '" data-action="' + action + '" ' + (String(value) === String(optionValue) ? 'checked' : '') + ' /><span>' + escapeHtml(optionLabel) + '</span></label>').join('') + '</div></fieldset>';
+      }
+
+      function syncTemplateReadinessDeltas() {
+        if (!templateStartFlow) return;
+        const baseline = readinessBaseline();
+        ["sleepHours", "sleepQuality", "hrv", "restingHr", "soreness"].forEach((field) => {
+          const node = root.querySelector('[data-readiness-delta="' + field + '"]');
+          if (!node) return;
+          const delta = readinessMetricDelta(field, templateStartFlow.draft[field], baseline);
+          node.className = "d " + delta.tone;
+          node.textContent = delta.text;
+        });
+      }
+
+      function adjustTemplateReadinessMetric(field, step) {
+        if (!templateStartFlow) return;
+        const domains = { sleepHours: { min: 0, max: 14 }, hrv: { min: 0, max: 400 }, restingHr: { min: 0, max: 240 } };
+        const domain = domains[field];
+        if (!domain) return;
+        const current = Number(templateStartFlow.draft[field] === "" ? readinessBaseline()[field] || domain.min : templateStartFlow.draft[field]);
+        const next = Math.max(domain.min, Math.min(domain.max, Number((current + Number(step || 0)).toFixed(field === "sleepHours" ? 2 : 0))));
+        patchTemplateStartDraft({ [field]: String(next) }, false);
+        const action = field === "sleepHours" ? "template-readiness-sleep-hours" : field === "restingHr" ? "template-readiness-resting-hr" : "template-readiness-hrv";
+        const input = root.querySelector('[data-action="' + action + '"]');
+        if (input) input.value = String(next);
+      }
+
+      function readinessTargetDelta(item) {
+        if (!item.changed) return { text: "—", tone: "none" };
+        if (item.adjusted?.executionBlocked) return { text: "stop", tone: "out" };
+        const changes = [];
+        const add = (label, from, to, suffix = "") => {
+          const delta = Number(to || 0) - Number(from || 0);
+          if (delta) changes.push((delta > 0 ? "+" : "−") + Math.abs(Number(delta.toFixed(2))) + suffix + (label ? " " + label : ""));
+        };
+        add("sets", item.original.sets, item.adjusted.sets);
+        add("", item.original.weight, item.adjusted.weight, item.original.weightUnit ? " " + item.original.weightUnit : "");
+        add("reps", item.original.reps, item.adjusted.reps);
+        add("RPE", item.original.rpe, item.adjusted.rpe);
+        add("rest", item.original.restSeconds, item.adjusted.restSeconds, "s");
+        return { text: changes.join(" · ") || "adjusted", tone: "under" };
       }
 
       function renderTemplateStartSheet() {
@@ -723,46 +812,69 @@
         if (!template) return "";
         if (templateStartFlow.step === "active-conflict") {
           const active = activeWorkoutSession();
+          const rollup = workoutSessionRollup();
+          const rpe = rollup.meanRpe === null ? "—" : rollup.meanRpe.toFixed(1);
+          const drift = rollup.drift === null ? "No RPE drift" : (rollup.drift > 0 ? "+" : rollup.drift < 0 ? "−" : "") + Math.abs(rollup.drift).toFixed(1) + " vs " + rollup.targetMeanRpe.toFixed(1);
+          const driftTone = rollup.drift === null ? "none" : Math.abs(rollup.drift) < 0.05 ? "on" : rollup.drift > 0 ? "out" : "over";
+          const adherence = rollup.adherence === null ? "—" : Math.round(rollup.adherence * 100) + "%";
           return `
-            <div class="sheet-backdrop" data-action="cancel-template-start" role="presentation">
-              <section class="bottom-sheet dialog-sheet" role="dialog" aria-modal="true" aria-labelledby="active-workout-title" data-sheet-content>
+            <div class="scrim sheet-backdrop" data-action="cancel-template-start" role="presentation">
+              <section class="sheet-card bottom-sheet dialog-sheet start-flow-sheet" role="dialog" aria-modal="true" aria-labelledby="active-workout-title" data-sheet-content>
                 <button class="sheet-close" type="button" data-action="cancel-template-start" aria-label="Close workout dialog">&times;</button>
-                <div><div class="section-kicker">Workout in progress</div><h2 id="active-workout-title">You already have an active workout.</h2><p>${escapeHtml(active?.title || "Your current workout")} must be submitted or explicitly canceled before another template can begin.</p></div>
+                <div><div class="section-kicker">A session is already running</div><h2 id="active-workout-title">${escapeHtml(active?.title || "Your current workout")}</h2><p>Choose whether to return to this draft or explicitly discard it before starting ${escapeHtml(template.name)}.</p></div>
+                <div class="rollup start-conflict-rollup" aria-label="Active session summary without dock-owned progress"><span class="ru"><b>${escapeHtml(rpe)}</b><span class="d ${driftTone}">${escapeHtml(drift)}</span></span><span class="ru"><b>${escapeHtml(adherence)}</b><span>adherence</span></span><span class="ru"><b>Draft</b><span>not submitted</span></span></div>
+                <div class="callout provisional"><b>Nothing is lost either way</b><span>Returning resumes the current draft. Discarding removes <em>only that draft</em>; submitted history and templates stay intact.</span></div>
                 <div class="sheet-actions stacked">
-                  <button class="primary-action" type="button" data-action="return-active-workout">Return to Active Workout</button>
-                  <button class="danger-button" type="button" data-action="request-cancel-workout-from-template">Cancel Current Workout</button>
+                  <button class="primary-action sheet-btn" type="button" data-action="return-active-workout">Return to ${escapeHtml(active?.title || "active workout")}</button>
+                  <button class="sheet-btn danger-button" type="button" data-action="request-cancel-workout-from-template">Discard it and start ${escapeHtml(template.name)}</button>
                   <button class="mini-button" type="button" data-action="cancel-template-start">Keep browsing templates</button>
                 </div>
               </section>
             </div>`;
         }
         if (templateStartFlow.step === "confirm") {
+          const evidence = templateStartEvidenceSummary(template);
+          const totalSets = evidence.advice.totalSets || templateExerciseCount(template);
+          const duration = Math.max(15, Math.round(totalSets * 2.5));
+          const lowerConfidence = template.exercises.length - evidence.moderateOrHigh;
           return `
-            <div class="sheet-backdrop" data-action="cancel-template-start" role="presentation">
-              <section class="bottom-sheet dialog-sheet" role="dialog" aria-modal="true" aria-labelledby="template-start-title" data-sheet-content>
+            <div class="scrim sheet-backdrop" data-action="cancel-template-start" role="presentation">
+              <section class="sheet-card bottom-sheet dialog-sheet start-flow-sheet" role="dialog" aria-modal="true" aria-labelledby="template-start-title" data-sheet-content>
                 <button class="sheet-close" type="button" data-action="cancel-template-start" aria-label="Close template setup">&times;</button>
-                <h2 id="template-start-title">Start ${escapeHtml(template.name)}?</h2>
-                <p>This will prepare today’s targets from your workout history. Your current workout will not change until you continue through readiness.</p>
-                <div class="sheet-actions">
-                  <button type="button" data-action="cancel-template-start">Cancel</button>
-                  <button class="primary-action" type="button" data-action="continue-template-start">Continue</button>
+                <div><div class="section-kicker">Start session</div><h2 id="template-start-title">Start ${escapeHtml(template.name)}?</h2><p>${template.exercises.length} lift${template.exercises.length === 1 ? "" : "s"} · ${totalSets} prescribed sets · about ${duration} min</p></div>
+                <div class="callout info readiness-evidence-summary">${readinessMeter(evidence.lowest, true)}<span><b>${evidence.moderateOrHigh} of ${template.exercises.length} lifts have moderate or high prescription confidence</b><span>${lowerConfidence ? lowerConfidence + " lift" + (lowerConfidence === 1 ? " remains" : "s remain") + " conditional, low-confidence, or research-led." : "Every lift clears the moderate-confidence threshold."} ${evidence.lowest ? "The meter shows the least-certain lift: " + evidence.lowest.label.toLowerCase() + "." : "No stored confidence is available for this session."}</span></span></div>
+                <div class="readiness-choice-copy"><strong>Readiness</strong><span>Your stored baseline is used unless you log today’s metrics. Logging can lower today’s targets without changing the saved template.</span></div>
+                <div class="sheet-actions stacked">
+                  <button class="primary-action sheet-btn" type="button" data-action="log-today-readiness">Log today’s readiness</button>
+                  <button class="sheet-btn" type="button" data-action="use-usual-readiness">Use my usual baseline</button>
+                  <button class="mini-button" type="button" data-action="cancel-template-start">Cancel</button>
                 </div>
               </section>
             </div>
           `;
         }
         if (templateStartFlow.step === "readiness") {
+          const recovery = templateStartFlow.draft;
+          const sleepQualityDelta = readinessMetricDelta("sleepQuality", recovery.sleepQuality);
+          const sorenessDelta = readinessMetricDelta("soreness", recovery.soreness);
           return `
-            <div class="sheet-backdrop" data-action="cancel-template-start" role="presentation">
-              <section class="bottom-sheet dialog-sheet" role="dialog" aria-modal="true" aria-labelledby="readiness-choice-title" data-sheet-content>
-                <button class="sheet-close" type="button" data-action="cancel-template-start" aria-label="Close readiness setup">&times;</button>
-                <h2 id="readiness-choice-title">Use your usual readiness?</h2>
-                <p>Your saved baseline will be used unless you enter today’s objective or observable metrics.</p>
-                <div class="sheet-actions stacked">
-                  <button class="primary-action" type="button" data-action="use-usual-readiness">Use usual readiness</button>
-                  <button type="button" data-action="log-today-readiness">Log today’s metrics</button>
-                  <button class="mini-button" type="button" data-action="cancel-template-start">Cancel</button>
+            <div class="scrim sheet-backdrop" data-action="cancel-template-start" role="presentation">
+              <section class="sheet-card bottom-sheet dialog-sheet readiness-log-sheet" role="dialog" aria-modal="true" aria-labelledby="daily-readiness-title" data-sheet-content>
+                <button class="sheet-close" type="button" data-action="cancel-template-start" aria-label="Close daily readiness">&times;</button>
+                <div><div class="section-kicker">Today’s readiness · step 1 of 2</div><h2 id="daily-readiness-title">How did you arrive?</h2><p>Each entered value is compared with your stored usual value. Blank metrics remain missing and do not count as zero.</p></div>
+                <div class="readiness-draft">
+                  ${readinessMetricField({ field: "sleepHours", label: "Sleep", action: "template-readiness-sleep-hours", value: recovery.sleepHours, min: 0, max: 14, step: 0.25, unit: " h" })}
+                  ${readinessSegmentedField({ field: "sleepQuality", label: "Sleep quality", action: "template-readiness-sleep-quality", value: recovery.sleepQuality, options: [["", "Not entered"], [1, "1"], [2, "2"], [3, "3"], [4, "4"], [5, "5"]] })}<span class="d ${sleepQualityDelta.tone}" data-readiness-delta="sleepQuality">${escapeHtml(sleepQualityDelta.text)}</span>
+                  ${readinessSegmentedField({ field: "soreness", label: "Soreness", action: "template-readiness-soreness", value: recovery.soreness, options: [["", "Not entered"], [1, "1"], [2, "2"], [3, "3"], [4, "4"], [5, "5"]] })}<span class="d ${sorenessDelta.tone}" data-readiness-delta="soreness">${escapeHtml(sorenessDelta.text)}</span>
+                  ${readinessMetricField({ field: "hrv", label: "HRV", action: "template-readiness-hrv", value: recovery.hrv, min: 0, max: 400, step: 1, unit: " ms" })}
+                  ${readinessMetricField({ field: "restingHr", label: "Resting heart rate", action: "template-readiness-resting-hr", value: recovery.restingHr, min: 0, max: 240, step: 1, unit: " bpm" })}
+                  ${readinessSegmentedField({ field: "nutritionStatus", label: "Nutrition today", action: "template-readiness-nutrition", value: recovery.nutritionStatus, options: [["", "Not entered"], ["on_plan", "On plan"], ["below_plan", "Below plan"], ["low_energy", "Low energy"]] })}
+                  ${readinessSegmentedField({ field: "proteinStatus", label: "Protein target", action: "template-readiness-protein", value: recovery.proteinStatus, options: [["", "Not entered"], ["adequate", "Met"], ["below_target", "Below target"]] })}
+                  <fieldset class="field readiness-field"><legend class="f-name">Illness or pain</legend><div class="readiness-toggle-grid"><label class="toggle-line"><span>Current illness</span><span class="toggle ${recovery.illness ? "on" : ""}"><input type="checkbox" data-action="template-readiness-illness" ${recovery.illness ? "checked" : ""} /><i></i></span></label><label class="toggle-line"><span>Pain or injury</span><span class="toggle ${recovery.pain ? "on" : ""}"><input type="checkbox" data-action="template-readiness-pain" ${recovery.pain ? "checked" : ""} /><i></i></span></label></div></fieldset>
+                  <div class="field readiness-field"><label class="f-name" for="template-readiness-area">Affected area</label><select id="template-readiness-area" data-action="template-readiness-affected-muscle"><option value="">Not specified</option>${muscleGroups.map((muscle) => '<option value="' + muscle + '" ' + (recovery.affectedMuscle === muscle ? 'selected' : '') + '>' + muscle + '</option>').join('')}</select></div>
+                  <div class="field readiness-field"><label class="f-name" for="template-readiness-note">Optional context</label><textarea id="template-readiness-note" data-action="template-readiness-note" placeholder="Anything outside your normal band">${escapeHtml(recovery.outsideBandNote)}</textarea></div>
                 </div>
+                <div class="sheet-actions stacked"><button class="primary-action sheet-btn" type="button" data-action="review-template-readiness">See what this changes</button><button class="mini-button" type="button" data-action="cancel-template-start">Cancel</button></div>
               </section>
             </div>
           `;
@@ -773,49 +885,21 @@
           const changes = templateReadinessPreview(template, recovery);
           const changed = changes.filter((item) => item.changed);
           const unchanged = changes.filter((item) => !item.changed);
+          const triggerLabels = Array.from(new Set(changed.flatMap((item) => item.triggers)));
           return `
-            <div class="sheet-backdrop" data-action="cancel-template-start" role="presentation">
-              <section class="bottom-sheet dialog-sheet readiness-review-sheet" role="dialog" aria-modal="true" aria-labelledby="readiness-review-title" data-sheet-content>
+            <div class="scrim sheet-backdrop" data-action="cancel-template-start" role="presentation">
+              <section class="sheet-card bottom-sheet dialog-sheet readiness-review-sheet" role="dialog" aria-modal="true" aria-labelledby="readiness-review-title" data-sheet-content>
                 <button class="sheet-close" type="button" data-action="cancel-template-start" aria-label="Close readiness review">&times;</button>
-                <div><div class="section-kicker">Before training</div><h2 id="readiness-review-title">Todayâ€™s Readiness Adjustments</h2><p>${escapeHtml(preview.label)}. Every change below is tied only to a marker you entered.</p></div>
-                <div class="readiness-change-list">${changed.length ? changed.map(renderReadableReadinessChange).join("") : '<div class="readiness-unchanged"><strong>No target changes</strong><span>Your entered markers remain within the normal band for this plan.</span></div>'}</div>
-                ${unchanged.length ? '<details class="compact-disclosure"><summary>Exercises unchanged <span>' + unchanged.length + '</span></summary><div class="disclosure-body readiness-unchanged-list">' + unchanged.map((item) => '<div><strong>' + escapeHtml(item.name) + '</strong><span>' + escapeHtml(prescriptionLine(item.original)) + '</span></div>').join('') + '</div></details>' : ''}
-                <div class="sheet-actions stacked">
-                  <button class="primary-action" type="button" data-action="start-adjusted-workout">Start Adjusted Workout</button>
-                  ${changed.length && !recovery.illness && !recovery.pain ? '<button type="button" data-action="start-original-workout">Use Original Targets</button>' : ''}
-                  <button class="mini-button" type="button" data-action="edit-readiness-metrics">Review Changes</button>
-                  <button class="mini-button" type="button" data-action="cancel-template-start">Cancel</button>
-                </div>
+                <div><div class="section-kicker">Today only · step 2 of 2</div><h2 id="readiness-review-title">${changed.length ? changed.length + " lift" + (changed.length === 1 ? " changes" : "s change") + " today." : "The base plan stays intact."}</h2><p>${escapeHtml(preview.label)}. The saved template is not rewritten.</p></div>
+                <div class="callout ${changed.length ? "warn" : "info"}"><b>What triggered this</b><span>${triggerLabels.length ? escapeHtml(triggerLabels.join("; ")) : "No converging adverse readiness signals crossed the adjustment rule. The engine kept the base prescription."}</span></div>
+                <div class="readiness-review-label"><strong>Adjustments</strong><span>base plan → today · Δ</span></div>
+                <div class="diff readiness-change-list"><div class="drow dhead"><span class="plan">Base plan</span><span class="act">Today</span><span class="dlt">Δ</span></div>${changes.map(renderReadableReadinessChange).join("")}</div>
+                ${unchanged.length ? '<div class="readiness-unchanged-note"><strong>Why ' + unchanged.length + ' lift' + (unchanged.length === 1 ? ' is' : 's are') + ' untouched</strong><span>The entered signals did not produce an executable target change for ' + escapeHtml(unchanged.map((item) => item.name).join(", ")) + '. Their base prescriptions remain today’s targets.</span></div>' : ''}
+                <div class="sheet-actions stacked"><button class="primary-action sheet-btn" type="button" data-action="start-adjusted-workout">Start ${changed.length ? "adjusted" : "planned"} workout</button>${changed.length && !recovery.illness && !recovery.pain ? '<button type="button" data-action="start-original-workout">Use Original Targets</button>' : ''}<button class="mini-button" type="button" data-action="edit-readiness-metrics">Back to readiness</button><button class="mini-button" type="button" data-action="cancel-template-start">Cancel</button></div>
               </section>
             </div>`;
         }
-        return `
-          <div class="sheet-backdrop" data-action="cancel-template-start" role="presentation">
-            <section class="bottom-sheet dialog-sheet" role="dialog" aria-modal="true" aria-labelledby="daily-readiness-title" data-sheet-content>
-              <button class="sheet-close" type="button" data-action="cancel-template-start" aria-label="Close daily readiness">&times;</button>
-              <div><h2 id="daily-readiness-title">Today’s readiness</h2><p>${formatDate(todayIso())} · ${escapeHtml(preview.label)}. ${escapeHtml(preview.action)}</p></div>
-              <div class="readiness-draft">
-                <div class="recovery-inputs">
-                  <label>Sleep hours<input type="number" min="0" max="14" step="0.25" value="${escapeHtml(recovery.sleepHours)}" data-action="template-readiness-sleep-hours" /></label>
-                  <label>Sleep quality<select data-action="template-readiness-sleep-quality"><option value="">-</option>${[1,2,3,4,5].map((value) => '<option value="' + value + '" ' + (String(recovery.sleepQuality) === String(value) ? "selected" : "") + '>' + value + '/5</option>').join("")}</select></label>
-                  <label>HRV<input type="number" min="0" step="1" value="${escapeHtml(recovery.hrv)}" data-action="template-readiness-hrv" /></label>
-                  <label>Resting heart rate<input type="number" min="0" step="1" value="${escapeHtml(recovery.restingHr)}" data-action="template-readiness-resting-hr" /></label>
-                  <label>Soreness<select data-action="template-readiness-soreness"><option value="">-</option>${[1,2,3,4,5].map((value) => '<option value="' + value + '" ' + (String(recovery.soreness) === String(value) ? "selected" : "") + '>' + value + '/5</option>').join("")}</select></label>
-                  <label>Nutrition today<select data-action="template-readiness-nutrition"><option value="" ${recovery.nutritionStatus === '' ? 'selected' : ''}>Not entered</option><option value="on_plan" ${recovery.nutritionStatus === 'on_plan' ? 'selected' : ''}>On plan</option><option value="below_plan" ${recovery.nutritionStatus === 'below_plan' ? 'selected' : ''}>Below planned intake</option><option value="low_energy" ${recovery.nutritionStatus === 'low_energy' ? 'selected' : ''}>Possible low energy availability</option></select></label>
-                  <label>Protein target<select data-action="template-readiness-protein"><option value="" ${recovery.proteinStatus === '' ? 'selected' : ''}>Not entered</option><option value="adequate" ${recovery.proteinStatus === 'adequate' ? 'selected' : ''}>Met</option><option value="below_target" ${recovery.proteinStatus === 'below_target' ? 'selected' : ''}>Below target</option></select></label>
-                  <label class="toggle-line"><input type="checkbox" data-action="template-readiness-illness" ${recovery.illness ? "checked" : ""} />Current illness</label>
-                  <label class="toggle-line"><input type="checkbox" data-action="template-readiness-pain" ${recovery.pain ? "checked" : ""} />Pain or injury affecting training</label>
-                  <label>Affected area<select data-action="template-readiness-affected-muscle"><option value="">Not specified</option>${muscleGroups.map((muscle) => '<option value="' + muscle + '" ' + (recovery.affectedMuscle === muscle ? 'selected' : '') + '>' + muscle + '</option>').join('')}</select></label>
-                </div>
-                <textarea data-action="template-readiness-note" placeholder="Optional note if something is outside your normal band" aria-label="Optional outside-normal-band note">${escapeHtml(recovery.outsideBandNote)}</textarea>
-              </div>
-              <div class="sheet-actions">
-                <button type="button" data-action="cancel-template-start">Cancel</button>
-                <button class="primary-action" type="button" data-action="review-template-readiness">Review changes</button>
-              </div>
-            </section>
-          </div>
-        `;
+        return "";
       }
 
       function prescriptionLine(target) {
@@ -823,7 +907,9 @@
       }
 
       function renderReadableReadinessChange(item) {
-        return '<article class="readiness-change-card"><h3>' + escapeHtml(item.name) + '</h3><div class="readiness-comparison"><div><span>Original recommendation</span><strong>' + escapeHtml(readablePrescriptionLine(item.original)) + '</strong></div><div class="today"><span>Today\'s readiness</span><strong>' + escapeHtml(readablePrescriptionLine(item.adjusted)) + '</strong></div></div><div class="readiness-why"><strong>Why this changed</strong><span>' + escapeHtml(item.reason) + '</span><small>Triggered by: ' + escapeHtml(item.triggers.join('; ')) + '</small></div></article>';
+        const confidence = readinessConfidence(item.original);
+        const delta = readinessTargetDelta(item);
+        return '<article class="readiness-change-entry ' + (item.changed ? 'changed' : 'unchanged') + '"><div class="drow"><span class="plan"><span class="readiness-lift-label"><span class="lbl">' + escapeHtml(item.name) + '</span>' + readinessMeter(confidence) + '</span><span class="val">' + escapeHtml(readablePrescriptionLine(item.original)) + '</span></span><span class="act"><span class="lbl">' + (item.changed ? escapeHtml(describeReadinessTargetChanges(item.original, item.adjusted)) : 'unchanged') + '</span><span class="val">' + escapeHtml(readablePrescriptionLine(item.adjusted)) + '</span></span><span class="dlt"><span class="d ' + delta.tone + '">' + escapeHtml(delta.text) + '</span></span></div><p class="readiness-row-reason"><strong>' + (item.changed ? 'Why this changed: ' : 'Why this stayed: ') + '</strong>' + escapeHtml(item.reason) + (item.triggers.length ? ' <span>Triggered by ' + escapeHtml(item.triggers.join('; ')) + '.</span>' : '') + '</p></article>';
       }
 
       function requestCancelWorkout(source = "workout", requestedSessionId = "") {
@@ -847,11 +933,17 @@
         if (!cancelWorkoutFlow) return "";
         const session = data.sessions.find((item) => item.id === cancelWorkoutFlow.sessionId);
         if (!session || isSessionSubmitted(session)) return "";
+        const exerciseIds = new Set(data.exercises.filter((item) => item.sessionId === session.id).map((item) => item.id));
+        const completedSets = data.sets.filter((item) => exerciseIds.has(item.exerciseId) && item.completed && !item.skipped).length;
+        const recovery = sessionRecovery(session);
+        const hasReadiness = Object.entries(recovery).some(([key, value]) => key !== "affectedMuscle" ? value !== "" && value !== false : Boolean(value));
+        const historyCount = activeHistorySessions().length;
         return `
-          <div class="sheet-backdrop" data-action="keep-workout" role="presentation">
-            <section class="bottom-sheet dialog-sheet destructive-sheet" role="dialog" aria-modal="true" aria-labelledby="cancel-workout-title" data-sheet-content>
-              <div class="cancel-hero"><span class="cancel-visual" aria-hidden="true">!</span><div><div class="section-kicker">Active session</div><h2 id="cancel-workout-title">Cancel this workout?</h2><p>Your unsaved sets, notes, timer state, and session progress will be discarded. This workout will not be added to your completed history.</p></div></div>
-              <div class="cancel-impact"><div><b aria-hidden="true">-</b><div><strong>Only this draft is removed</strong><span>The workout timer, rest timer, scheduled alert, notes, and unsaved set entries will be cleared.</span></div></div><div><b aria-hidden="true">&#10003;</b><div><strong>Your history remains intact</strong><span>Submitted workouts, templates, personal records, charts, and settings stay unchanged.</span></div></div></div>
+          <div class="scrim sheet-backdrop" data-action="keep-workout" role="presentation">
+            <section class="sheet-card bottom-sheet dialog-sheet destructive-sheet" role="dialog" aria-modal="true" aria-label="Cancel this workout?" data-sheet-content>
+              <div><div class="section-kicker destructive-kicker">Discard this workout</div><h2 id="cancel-workout-title">${completedSets} completed set${completedSets === 1 ? "" : "s"} will be removed.</h2><p>The scope is limited to this unsubmitted draft.</p></div>
+              <div class="diff cancel-workout-diff"><div class="drow dhead"><span class="plan">Removed</span><span class="act">Kept</span><span class="dlt">Scope</span></div><div class="drow"><span class="plan"><span class="lbl">This draft</span><span class="val">${completedSets} completed set${completedSets === 1 ? "" : "s"}, notes, and timer state</span></span><span class="act"><span class="lbl">Submitted history</span><span class="val">${historyCount} session${historyCount === 1 ? "" : "s"}</span></span><span class="dlt"><span class="d on">safe</span></span></div><div class="drow"><span class="plan"><span class="lbl">Today’s readiness</span><span class="val">${hasReadiness ? "this draft’s check-in" : "no entered check-in"}</span></span><span class="act"><span class="lbl">Templates and settings</span><span class="val">${data.templates.length} template${data.templates.length === 1 ? "" : "s"} · unchanged</span></span><span class="dlt"><span class="d on">safe</span></span></div></div>
+              <div class="callout bad"><b>This cannot be undone</b><span>The completed entries in this unsubmitted session are not recoverable after discard.</span></div>
               <div class="sheet-actions cancel-sheet-actions">
                 <button class="primary-action" type="button" data-action="keep-workout">Keep Workout</button>
                 <button class="discard-workout-button" type="button" data-action="confirm-cancel-workout">Discard Workout</button>

@@ -1,6 +1,7 @@
 "use strict";
 
 const { test, expect } = require("@playwright/test");
+const AxeBuilder = require("axe-core");
 const {
   ACTIVE_SESSION_ID,
   FIXED_NOW,
@@ -811,7 +812,10 @@ test("template-start dialog owns initial focus, traps both directions, and resto
 
   await trigger.click();
   let dialog = page.getByRole("dialog", { name: /Start .*Public Synthetic Upper Strength/i });
-  await expectDialogTrap(page, dialog, dialog.getByRole("button", { name: "Continue", exact: true }));
+  await expect.soft(page.locator(".brand-bar"), "Opening template setup must make the shell header inert").toHaveAttribute("inert", "");
+  await expect.soft(page.locator("#main-content"), "Opening template setup must make application content inert").toHaveAttribute("inert", "");
+  await expect.soft(page.locator(".bottom-nav"), "Opening template setup must make tab navigation inert").toHaveAttribute("inert", "");
+  await expectDialogTrap(page, dialog, dialog.getByRole("button", { name: "Log today’s readiness", exact: true }));
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
   await expect.soft(trigger, "Escape must restore focus to the newly rendered template trigger").toBeFocused({ timeout: 1_500 });
@@ -834,12 +838,12 @@ test("template-start dialog owns initial focus, traps both directions, and resto
 
 test("dialog initial focus falls back to the first visible enabled control when the preferred action is hidden", async ({ page }) => {
   await installScenario(page, { activeWorkout: false, includeHistory: false });
-  await page.addStyleTag({ content: '[data-action="continue-template-start"] { display: none !important; }' });
+  await page.addStyleTag({ content: '[data-action="log-today-readiness"] { display: none !important; }' });
   const trigger = page.locator('[data-action="start-template"][data-template-id="public-synthetic-template-upper"]');
   await trigger.click();
 
   const dialog = page.getByRole("dialog", { name: /Start .*Public Synthetic Upper Strength/i });
-  const preferred = dialog.locator('[data-action="continue-template-start"]');
+  const preferred = dialog.locator('[data-action="log-today-readiness"]');
   const fallback = dialog.getByRole("button", { name: "Close template setup", exact: true });
   const finalVisibleControl = dialog.getByRole("button", { name: "Cancel", exact: true });
   await expect(dialog).toBeVisible();
@@ -848,6 +852,88 @@ test("dialog initial focus falls back to the first visible enabled control when 
 
   await page.keyboard.press("Shift+Tab");
   await expect(finalVisibleControl, "The Tab trap must use the same visible/enabled filtering and skip the hidden nominal action").toBeFocused();
+});
+
+test("start and readiness sheets retain contrast across every package and theme", async ({ page }, testInfo) => {
+  test.setTimeout(180_000);
+  test.skip(testInfo.project.name !== "desktop", "One deterministic Chromium project owns the complete readiness color-package matrix.");
+  await installScenario(page, { activeWorkout: false, includeHistory: false, viewport: { width: 390, height: 844 } });
+  await page.addScriptTag({ content: AxeBuilder.source });
+  await page.locator('[data-action="start-template"][data-template-id="public-synthetic-template-upper"]').click();
+  const colorPackages = [
+    "heritage-atlas", "signal-garden", "alpine-ledger", "training-hall", "harbor-pulse",
+    "prairie-electric", "redwood-circuit", "mediterranean-set", "modern-primary", "night-stadium"
+  ];
+  const failures = [];
+  const auditSheet = async (surface) => {
+    for (const theme of ["light", "dark"]) {
+      for (const colorPackage of colorPackages) {
+        await page.evaluate(({ colorPackage, theme }) => {
+          document.documentElement.dataset.colorPackage = colorPackage;
+          document.documentElement.dataset.theme = theme;
+        }, { colorPackage, theme });
+        await page.waitForTimeout(150);
+        const violations = await page.evaluate(async () => {
+          const sheet = document.querySelector(".sheet-card");
+          return (await axe.run(sheet, { runOnly: { type: "rule", values: ["color-contrast"] } })).violations;
+        });
+        if (violations.length) {
+          failures.push({
+            colorPackage,
+            surface,
+            theme,
+            targets: violations.flatMap((violation) => violation.nodes.map((node) => node.target.join(" ")))
+          });
+        }
+      }
+    }
+  };
+
+  await auditSheet("confirm");
+  await page.getByRole("button", { name: "Log today’s readiness", exact: true }).click();
+  await auditSheet("readiness");
+  expect(failures, "the complete confirm/readiness sheet matrix must clear WCAG text contrast").toEqual([]);
+});
+
+test("readiness form targets reflow without clipping at 320 CSS pixels and 200 percent text", async ({ page }, testInfo) => {
+  test.setTimeout(90_000);
+  test.skip(testInfo.project.name !== "desktop", "One deterministic Chromium project owns the exact readiness reflow geometry.");
+  await installScenario(page, { activeWorkout: false, includeHistory: false, viewport: { width: 320, height: 720 } });
+  await page.addStyleTag({ content: "html { font-size: 200% !important; }" });
+  await page.locator('[data-action="start-template"][data-template-id="public-synthetic-template-upper"]').click();
+  await page.getByRole("button", { name: "Log today’s readiness", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "How did you arrive?", exact: true });
+  await expect(dialog).toBeVisible();
+
+  const geometry = await dialog.evaluate((sheet) => {
+    const targets = [...sheet.querySelectorAll("button, .segmented label > span, .toggle-line, input.sv, select, textarea")]
+      .filter((element) => {
+        const style = getComputedStyle(element);
+        const rect = element.getBoundingClientRect();
+        return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+      })
+      .map((element) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          height: rect.height,
+          label: element.getAttribute("aria-label") || element.textContent?.trim() || element.tagName,
+          width: rect.width
+        };
+      });
+    return {
+      bodyWidth: document.body.scrollWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      targets,
+      viewportWidth: innerWidth
+    };
+  });
+  expect.soft(geometry.viewportWidth).toBe(320);
+  expect.soft(geometry.documentWidth, "the readiness sheet must not widen the document at 320 px / 200% text").toBeLessThanOrEqual(321);
+  expect.soft(geometry.bodyWidth, "the readiness sheet must not widen the body at 320 px / 200% text").toBeLessThanOrEqual(321);
+  expect.soft(
+    geometry.targets.filter((target) => target.height < 44 || target.width < 44),
+    "every visible readiness action must remain at least 44 by 44 CSS pixels"
+  ).toEqual([]);
 });
 
 test("cancel-workout dialog owns safe focus, traps both directions, and restores its trigger after Escape, close, and backdrop", async ({ page }) => {
@@ -859,6 +945,10 @@ test("cancel-workout dialog owns safe focus, traps both directions, and restores
   await menu.click();
   await trigger.click();
   let dialog = page.getByRole("dialog", { name: "Cancel this workout?", exact: true });
+  await expect.soft(page.locator(".brand-bar"), "A destructive sheet must make the shell header inert").toHaveAttribute("inert", "");
+  await expect.soft(page.locator("#main-content"), "A destructive sheet must make workout content inert").toHaveAttribute("inert", "");
+  await expect.soft(page.locator(".session-dock"), "A destructive sheet must overlay and make the persistent session dock inert").toHaveAttribute("inert", "");
+  await expect.soft(page.locator(".session-dock")).toHaveAttribute("aria-hidden", "true");
   await expectDialogTrap(page, dialog, dialog.getByRole("button", { name: "Keep Workout", exact: true }));
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);

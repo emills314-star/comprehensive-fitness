@@ -169,7 +169,6 @@ test("Strong-only history starts an editable workout without inventing a researc
 
   await page.locator('[data-action="set-tab"][data-tab="plan"]').click();
   await page.locator(`[data-action="start-template"][data-template-id="${audit.templateId}"]`).click();
-  await page.locator('[data-action="continue-template-start"]').click();
   await page.locator('[data-action="use-usual-readiness"]').click();
 
   await expect(page.getByRole("heading", { name: STRONG_TEMPLATE, exact: true })).toBeVisible({ timeout: 45_000 });
@@ -254,7 +253,6 @@ test("Last time searches the full submitted Strong archive and tolerates perform
 
   await page.locator('[data-action="set-tab"][data-tab="plan"]').click();
   await page.locator(`[data-action="start-template"][data-template-id="${templateId}"]`).click();
-  await page.locator('[data-action="continue-template-start"]').click();
   await page.locator('[data-action="use-usual-readiness"]').click();
   await expect(page.getByRole("heading", { name: OLD_STRONG_TEMPLATE, exact: true })).toBeVisible({ timeout: 45_000 });
 

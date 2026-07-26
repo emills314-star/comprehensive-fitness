@@ -128,7 +128,7 @@ assert.match(roleDetailsSource, /class="claim-card role-prescription-claim' \+ \
 assert.match(roleDetailsSource, /class="claim-projection-grid role-claim-projections"[\s\S]*>Target reps<[\s\S]*escapeHtml\(String\(targetReps\)\)[\s\S]*>Next increment<[\s\S]*escapeHtml\(nextIncrement\)/, "Role details must keep target reps and next increment inside the claim");
 assert.match(html, /class="set-progress-disclosure"[\s\S]*<summary><span>Progress when<\/span>/, "Set rows keep progression rules in a compact native disclosure");
 assert.match(html, /class="discard-workout-button"[^>]*>Discard Workout</, "Cancellation uses the polished concise destructive action");
-assert.match(html, /Your unsaved sets, notes, timer state, and session progress will be discarded/, "Cancellation warning explains the impact");
+assert.match(html, /class="diff cancel-workout-diff"[\s\S]*>Removed<[\s\S]*>Kept<[\s\S]*This draft[\s\S]*completed set[\s\S]*notes, and timer state[\s\S]*Submitted history[\s\S]*Templates and settings/, "Cancellation must explain the draft facts removed and distinguish submitted history, templates, and settings that remain");
 assert.match(html, /data-action="keep-workout"/, "The safe cancellation action remains available");
 assert.doesNotMatch(html, /data-action="keep-workout" autofocus/, "The cancellation sheet must open at the warning instead of auto-scrolling to its actions");
 assert.match(html, /cancelRestPush\(previousTimer, "workout-canceled"\)/, "Discarding a workout still cancels scheduled rest alerts");

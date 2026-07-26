@@ -102,6 +102,8 @@ Positive readiness means “follow the plan and take already-planned progression
 
 Missing markers do not count as zeros. Sparse input reduces the number of independent domains available and normally preserves the base plan. Conflicting markers are retained as evidence; multiple independent adverse domains outweigh a lone positive marker. Confidence is expressed in snapshots/evidence, but there is no probabilistic readiness confidence interval.
 
+The workout-start view compares entered readiness values with the persisted, user-configured `data.settings.readinessBaseline` after `cleanReadinessBaseline` normalization. That object contains sleep hours, sleep quality, HRV, resting heart rate, soreness, and the readiness band. It is not computed from workout history, and the view does not derive or update it on the fly. Missing entered metrics remain absent; missing stored HRV or resting-heart-rate values suppress the comparison delta. These comparisons are presentation only. Adjustment authority remains `evaluateReadiness`/`readinessAdjustmentFor`, and the review consumes the existing per-exercise `{ original, adjusted, changed, reason, triggers }` projection without creating a second rule or reason.
+
 ## Prescription, progression, and overload
 
 `createExercisePrescriptionSnapshot` combines personal/research defaults, selected set structure, volume, progression, staleness, deload, readiness, and explanation. `createWorkoutPrescription` groups immutable exercise snapshots.

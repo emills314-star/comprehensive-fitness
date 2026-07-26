@@ -280,11 +280,11 @@
         if (action === "keep-workout") closeCancelWorkout();
         if (action === "confirm-cancel-workout") discardActiveWorkout();
         if (action === "cancel-template-start") closeTemplateStart();
-        if (action === "continue-template-start" && templateStartFlow) { templateStartFlow = { ...templateStartFlow, step: "readiness" }; render(); }
         if (action === "use-usual-readiness" && templateStartFlow) startTemplate(templateStartFlow.templateId, defaultRecovery(), "usual");
-        if (action === "log-today-readiness" && templateStartFlow) { templateStartFlow = { ...templateStartFlow, step: "metrics" }; render(); }
+        if (action === "log-today-readiness" && templateStartFlow) { templateStartFlow = { ...templateStartFlow, step: "readiness" }; render(); }
         if (action === "review-template-readiness" && templateStartFlow) { templateStartFlow = { ...templateStartFlow, step: "review" }; render(); }
-        if (action === "edit-readiness-metrics" && templateStartFlow) { templateStartFlow = { ...templateStartFlow, step: "metrics" }; render(); }
+        if (action === "edit-readiness-metrics" && templateStartFlow) { templateStartFlow = { ...templateStartFlow, step: "readiness" }; render(); }
+        if (action === "adjust-template-readiness" && templateStartFlow) adjustTemplateReadinessMetric(target.dataset.field, target.dataset.step);
         if (action === "start-adjusted-workout" && templateStartFlow) startTemplate(templateStartFlow.templateId, templateStartFlow.draft, "daily");
         if (action === "start-original-workout" && templateStartFlow) startTemplate(templateStartFlow.templateId, templateStartFlow.draft, "daily-original", { useOriginal: true });
         if (action === "add-template-exercise") addTemplateExercise(target.dataset.templateId);
