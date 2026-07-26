@@ -189,6 +189,18 @@
         if (action === "close-guided-mesocycle") { guidedMesocycleView = "closed"; guidedExerciseBrowserDayId = ""; guidedWeeklySummaryOpen = false; render(); }
         if (action === "open-guided-guidelines" || action === "guided-back-guidelines") { guidedMesocycleView = "guidelines"; guidedExerciseBrowserDayId = ""; guidedWeeklySummaryOpen = false; render(); }
         if (action === "open-guided-setup") setGuidedStep("setup");
+        if (action === "adjust-guided-setup") {
+          queuePostRenderFocus(focusDescriptorForElement(target));
+          const delta = Number(target.dataset.delta || 0);
+          if (target.dataset.field === "duration") {
+            mesocycleDurationDraft = String(Math.max(2, Math.min(12, Number(mesocycleDurationDraft || 6) + delta)));
+            render();
+          }
+          if (target.dataset.field === "training-days") {
+            const trainingDaysPerWeek = Math.max(1, Math.min(7, Number(data.settings.trainingDaysPerWeek || 4) + delta));
+            commit({ ...data, settings: { ...data.settings, trainingDaysPerWeek } });
+          }
+        }
         if (action === "create-guided-draft") createGuidedMesocycleDraft();
         if (action === "toggle-guided-day") { guidedSelectedDayId = target.dataset.dayId; render(); }
         if (action === "open-guided-exercise-browser") { guidedExerciseBrowserDayId = target.dataset.dayId; guidedExerciseSearch = ""; guidedPendingAssignment = null; render(); }

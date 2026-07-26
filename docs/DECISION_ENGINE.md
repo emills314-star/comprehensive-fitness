@@ -3,8 +3,8 @@
 ## Metadata
 
 - **Purpose:** Catalog of implemented and intended logic that turns history, research, and readiness into guidance
-- **Last verified:** 2026-07-25
-- **Repository:** `main` working tree (engine `3.4.1`; confidence presentation mapping added without engine changes)
+- **Last verified:** 2026-07-26
+- **Repository:** `main` working tree (engine `3.4.1`; guided mesocycle presentation migrated without planning-engine changes)
 - **Verification status:** VERIFIED against `prescription-engine.js`, relevant `index.html` logic, schemas, data pipelines, and tests
 - **Related:** [Project](PROJECT.md), [architecture](ARCHITECTURE.md), [UI/UX](UI_UX.md), [training data map](training-prescription-data.md), [research methodology](../research_database/METHODOLOGY.md)
 
@@ -18,13 +18,17 @@ Read this document before changing readiness, recovery, progression, volume, PR,
 
 The introductory guide and viability evaluator consume the same exported `PLANNING_RULES` object. Normal sessions should remain at or below 18 working sets; more than two direct exercises for one muscle in one day is a strong warning; normal/priority muscles default to two meaningful weekly exposures, maintenance to one, and specialization to at least two. Direct sets, exercise-specific fractional contribution, weighted stimulus, and isometric exposure remain separate.
 
-The engine's `aggregateMuscleResearchDefaults` adapter is the only guided-builder research target boundary. It reads `minimum_effective_weekly_sets` and `typical_effective_weekly_sets_low/high`, then applies documented maintenance or specialization adjustments. The builder does not parse alternate field names or maintain a duplicate fallback formula.
+The engine's `aggregateMuscleResearchDefaults` adapter is the authoritative guided-builder research target boundary. It reads `minimum_effective_weekly_sets` and `typical_effective_weekly_sets_low/high`, then the view applies the existing maintenance or specialization presentation adjustment. The application retains a dormant `{ min: 6, target: 10, max: 14 }` compatibility fallback when no adapter range exists. That fallback is not described as a research-derived range: it carries `evidenceFallback: true`, renders as categorical `research_default` / UI level 1 with a dashed outline, and is covered as a provisional missing-data path.
 
-Target-muscle candidate eligibility requires canonical `direct_load` or positive-credit `meaningful_fractional_load` (legacy `primary`/`secondary` remain schema-compatible). Isometric stabilizing, incidental, unknown, and zero-credit relationships are excluded even when a private personal-derived row claims secondary involvement. `targetMuscleEffectiveness` combines canonical specificity with target-relevant progression, recovery, research support, and fatigue efficiency; confidence and overall exercise quality remain separate fields.
+Target-muscle candidate eligibility requires canonical `direct_load` or positive-credit `meaningful_fractional_load` (legacy `primary`/`secondary` remain schema-compatible). Isometric stabilizing, incidental, unknown, and zero-credit relationships are excluded even when a private personal-derived row claims secondary involvement. `scores.targetMuscleEffectiveness` combines canonical specificity with target-relevant progression, recovery, research support, and fatigue efficiency; the UI shows that 0–100 score beside the engine's `scores.weightingReason`. Candidate evidence certainty is separate: categorical `candidate.personalDataConfidence` drives the four-level meter, while adjacent `candidate.scores.personalDataConfidence` is a numeric 0–100 evidence-quality value. The latter must not be coerced into `data-conf`.
 
 Empty configured days are technical blockers. Unusual but usable volume or frequency choices are warnings the user may explicitly accept. Cross-day reuse of the same canonical exercise is allowed and creates no finding. Any assignment, move, or set edit makes the prior viability result stale.
 
-Viability begins at 100 and deducts for unresolved blockers, strong warnings, and advisories. Grades are Excellent (90+), Good (80+), Workable (70+), and Needs Revision. Only unresolved technical blockers prevent linked-template creation.
+Viability begins at 100 and deducts for unresolved blockers, strong warnings, and advisories. Grades are Excellent (90+), Good (80+), Workable (70+), and Needs Revision. Presentation groups the three engine severities as Blocking, Warnings, and Advisory. The engine's `readyToGenerate` is the sole creation gate; only unresolved technical blockers prevent linked-template creation.
+
+Candidate gap preview is a presentation query over the existing pure planning functions, not a new score or approximation. The view applies the candidate to a temporary draft with `addExercise`, recomputes `volumeLedger`, reads the matching `muscleTargetStatuses` result, then discards the temporary draft. The real draft is not mutated until the user confirms the assignment.
+
+The current Create comparison does not claim completed-block execution. No per-muscle actual-volume aggregate exists on the mesocycle completion record; the completion outcome currently retains coarse metadata such as `completedFromApp: true`. The UI therefore compares a positive comparable previous plan with the current plan, or shows the current plan alone. Deriving mesocycle execution volume is **PLANNED** engine/data-contract work in `docs/ROADMAP.md`.
 
 Guided muscle status is computed once from total effective sets (`direct + credited fractional`), exposure frequency, and distribution. A muscle is successful only when every applicable rule passes. Priority is blocking/invalid, fatigue or recovery risk, above target, missing frequency, below target, poor distribution, then fully valid. A fractional-only total may satisfy volume; it does not satisfy frequency unless qualifying work occurs across the required exposures. Remaining volume is `max(0, minimum target - total effective sets)` and retains half-set precision when applicable. Build, Needs Attention, Completed, Viability, Review, and Create consume the same status object.
 

@@ -3018,6 +3018,122 @@
       .sheet-card .sheet-btn:not(.primary-action), .sheet-card .mini-button, .readiness-evidence-summary .readiness-confidence-missing { color: var(--text); }
       .sheet-card .mini-button { min-height: 44px; }
       .readiness-log-sheet .d.none { color: color-mix(in srgb, var(--muted) 20%, var(--text)); }
+
+      /* Evidence & Change: guided mesocycle builder */
+      .sr-only { border: 0; clip: rect(0 0 0 0); clip-path: inset(50%); height: 1px; margin: -1px; overflow: hidden; padding: 0; position: absolute; white-space: nowrap; width: 1px; }
+      .guided-builder { gap: var(--sp-6); padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
+      .guided-builder-header { background: color-mix(in srgb, var(--bg) 94%, transparent); border-bottom-color: var(--line); display: grid; gap: var(--sp-2); padding-block: var(--sp-2); }
+      .guided-builder-header > .row button { min-height: 44px; }
+      .guided-builder button:not(.primary-action) { color: var(--text); }
+      .guided-builder .primary-action { background: var(--text); border-color: var(--text); color: var(--bg); }
+      .guided-builder .section-kicker { color: color-mix(in srgb, var(--current) 25%, var(--text)); }
+      .guided-builder .lbl, .guided-builder .rollup .ru span { color: color-mix(in srgb, var(--muted) 20%, var(--text)); }
+      .guided-builder .d.on { color: color-mix(in srgb, var(--success) 30%, var(--text)); }
+      .guided-builder .d.under { color: color-mix(in srgb, var(--amber) 30%, var(--text)); }
+      .guided-builder .d.over { color: color-mix(in srgb, var(--current) 30%, var(--text)); }
+      .guided-builder .d.out { color: color-mix(in srgb, var(--red) 32%, var(--text)); }
+      .guided-progress { display: grid; gap: var(--sp-2); overflow: visible; padding: 0; }
+      .steps { display: grid; gap: var(--sp-2); grid-template-columns: repeat(5, minmax(44px, 1fr)); }
+      .guided-progress .steps button { align-items: center; background: transparent; border: 0; border-radius: 0; display: flex; justify-content: center; min-height: 44px; min-width: 44px; padding: 0; position: relative; }
+      .guided-progress .steps button::before { background: color-mix(in srgb, var(--text) 16%, transparent); border-radius: var(--r-pill); content: ""; height: 4px; width: 100%; }
+      .guided-progress .steps button.on::before { background: color-mix(in srgb, var(--current) 38%, var(--text)); height: 6px; }
+      .guided-progress .steps button.done::before { background: color-mix(in srgb, var(--success) 38%, var(--text)); }
+      .guided-progress .steps button.unlocked::before { background: color-mix(in srgb, var(--current) 18%, var(--text)); }
+      .guided-progress .steps button.locked::before { background: color-mix(in srgb, var(--text) 10%, transparent); }
+      .guided-progress .steps button:disabled { opacity: 1; }
+      .guided-progress .steps button:focus-visible { outline: 2px solid var(--current); outline-offset: 2px; }
+      .step-label { align-items: baseline; display: flex; gap: var(--sp-3); justify-content: space-between; }
+      .step-label b { font-size: var(--fs-tiny); font-weight: 900; }
+      .step-label span { color: color-mix(in srgb, var(--muted) 30%, var(--text)); font-size: var(--fs-micro); font-variant-numeric: tabular-nums; font-weight: 800; }
+      .guided-builder .section-heading p, .guided-builder .f-help, .guided-builder .guided-plan-scope-note { color: color-mix(in srgb, var(--muted) 30%, var(--text)); }
+
+      .chiprow { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+      .pick { align-items: center; background: transparent; border: 1px solid var(--line-strong); border-radius: var(--r-pill); color: var(--text); cursor: pointer; display: inline-flex; font-size: var(--fs-micro); font-weight: 850; justify-content: center; min-height: 44px; min-width: 44px; padding: var(--sp-2) var(--sp-4); position: relative; }
+      .pick input { height: 1px; opacity: 0; position: absolute; width: 1px; }
+      .pick.on, .pick:has(input:checked), .pick[aria-pressed="true"] { background: color-mix(in srgb, var(--current) 16%, transparent); border-color: color-mix(in srgb, var(--current) 35%, var(--text)); font-weight: 900; }
+      .pick:focus-visible, .pick:focus-within { outline: 2px solid var(--current); outline-offset: 2px; }
+      .guided-builder .equipment-picker, .guided-builder .muscle-scope-panel { background: transparent; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding: var(--sp-4) 0; }
+      .guided-builder :is(.equipment-picker, .muscle-scope-panel) .f-top { align-items: baseline; display: flex; gap: var(--sp-4); justify-content: space-between; }
+      .guided-builder :is(.equipment-picker, .muscle-scope-panel) .f-name { color: var(--text); font-size: var(--fs-tiny); font-weight: 850; }
+      .guided-builder .equipment-chips, .guided-builder .muscle-scope-options { display: flex; flex-wrap: wrap; gap: var(--sp-2); grid-template-columns: none; }
+      .guided-builder .equipment-chip, .guided-builder .muscle-scope-option { color: var(--text); font-size: var(--fs-micro); min-height: 44px; }
+      .guided-builder .equipment-chip[aria-pressed="true"], .guided-builder .choice-chip[aria-pressed="true"] { background: color-mix(in srgb, var(--current) 16%, transparent); border-color: color-mix(in srgb, var(--current) 35%, var(--text)); color: var(--text); }
+      .guided-objective-picker { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+      .day-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: none; overflow: hidden; }
+      .day-card .dc-top { align-items: center; background: transparent; border: 0; display: flex; gap: var(--sp-4); justify-content: space-between; min-height: 56px; padding: var(--sp-4); width: 100%; }
+      .day-card .dc-top > span:first-child { display: grid; gap: var(--sp-1); min-width: 0; }
+      .day-card .dc-top span, .day-card .dc-top small { color: color-mix(in srgb, var(--muted) 25%, var(--text)); font-size: var(--fs-micro); }
+      .day-card.open { border-color: var(--line-strong); }
+      .guided-day-list, .guided-review-days { display: grid; gap: var(--sp-3); }
+      .guided-day-header { background: transparent; padding: 0; }
+      .guided-day-body { gap: 0; padding: 0 var(--sp-4) var(--sp-4); }
+      .assign { align-items: center; background: transparent; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; display: grid; gap: var(--sp-3); grid-template-columns: minmax(0, 1fr) auto; min-height: 60px; padding: var(--sp-3) 0; }
+      .assign .as-name { display: grid; gap: var(--sp-1); min-width: 0; }
+      .assign .as-name em, .assign .as-name small { color: color-mix(in srgb, var(--muted) 25%, var(--text)); font-size: var(--fs-micro); font-style: normal; line-height: 1.4; }
+      .assign-controls { align-items: end; display: grid; gap: var(--sp-2); grid-column: 1 / -1; grid-template-columns: minmax(0, 1fr) minmax(140px, .7fr) auto; }
+      .assign-controls label { color: var(--text); display: grid; font-size: var(--fs-micro); font-weight: 850; gap: var(--sp-1); }
+      .assign-controls select, .assign-controls button { min-height: 44px; min-width: 44px; }
+      .guided-set-stepper { grid-template-columns: 44px minmax(72px, 1fr) 44px; }
+      .guided-add-exercise { color: var(--text); grid-template-columns: minmax(0, 1fr); text-align: left; width: 100%; }
+      .guided-build-actions { display: grid; gap: var(--sp-3); grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+      .guided-build-actions button { min-height: 48px; }
+
+      .guided-priority-summary { background: transparent; border: 0; border-radius: 0; gap: var(--sp-3); padding: 0; }
+      .guided-volume-diff, .guided-plan-diff { border-block: 1px solid var(--line-strong); }
+      .guided-volume-diff .drow, .guided-plan-diff .drow { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(96px, .7fr); }
+      .guided-priority-row { border: 0; border-radius: 0; min-height: 72px; padding: 0; }
+      .guided-muscle-link { align-items: start; background: transparent; border: 0; display: grid; gap: var(--sp-1); min-height: 44px; min-width: 44px; padding: 0; text-align: left; }
+      .guided-muscle-link .lbl { color: var(--text); }
+      .guided-priority-row small { color: color-mix(in srgb, var(--muted) 25%, var(--text)); font-size: var(--fs-micro); line-height: 1.4; }
+      .guided-target-claim[data-conf="1"] { border: 1px dashed color-mix(in srgb, var(--muted-2) 40%, var(--text)); margin: var(--sp-2); padding: var(--sp-2); }
+      .guided-completed-summary summary { color: var(--text); }
+
+      .guided-workspace-gap { border-block: 1px solid var(--line); padding-block: var(--sp-4); }
+      .guided-picker-controls { display: grid; gap: var(--sp-3); grid-template-columns: minmax(160px, .7fr) minmax(0, 1fr); }
+      .guided-picker-controls .f-top { grid-column: 1 / -1; }
+      .guided-picker-controls label { color: var(--text); display: grid; font-size: var(--fs-micro); font-weight: 850; gap: var(--sp-1); }
+      .guided-picker-controls select, .guided-picker-controls input { min-height: 44px; }
+      .exercise-browser-card { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; gap: var(--sp-3); padding: var(--sp-4) 0; }
+      .guided-effectiveness-score { background: transparent; border-color: var(--line-strong); color: var(--text); }
+      .guided-candidate-confidence { align-items: center; display: flex; gap: var(--sp-3); }
+      .guided-candidate-confidence strong, .guided-confidence-unavailable, .guided-builder .ex-why { color: color-mix(in srgb, var(--muted) 25%, var(--text)); font-size: var(--fs-micro); }
+      .guided-gap-projection { background: transparent; border-block: 1px solid var(--line); }
+      .guided-active-config { background: transparent; border-color: var(--current); }
+
+      .viability-group, .guided-plan-comparison { display: grid; gap: var(--sp-3); }
+      .guided-builder .finding { background: transparent; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; display: grid; gap: var(--sp-3); grid-template-columns: 5px minmax(0, 1fr); padding: var(--sp-4) 0; }
+      .guided-builder .finding .bar { background: color-mix(in srgb, var(--amber) 45%, var(--text)); border-radius: var(--r-pill); }
+      .guided-builder .finding .bar.bad { background: color-mix(in srgb, var(--red) 45%, var(--text)); }
+      .guided-builder .finding .bar.info { background: color-mix(in srgb, var(--current) 35%, var(--text)); }
+      .guided-builder .finding .f-copy { display: grid; gap: var(--sp-2); min-width: 0; }
+      .guided-builder .finding .f-copy > span, .guided-builder .finding small { color: color-mix(in srgb, var(--muted) 25%, var(--text)); font-size: var(--fs-micro); line-height: 1.5; }
+      .guided-builder .finding button { min-height: 44px; }
+      .guided-plan-comparison .guided-current-plan { border-block: 1px solid var(--line-strong); }
+      .guided-current-plan-heading { color: var(--text); font-size: var(--fs-tiny); font-weight: 900; padding: var(--sp-3) 0; }
+      .guided-plan-comparison .row-item { background: transparent; border-top: 1px solid var(--line); }
+      .guided-plan-scope-note { font-size: var(--fs-micro); line-height: 1.5; }
+      .guided-review-exercises { list-style: none; padding: 0; }
+      .guided-review-exercises .assign { grid-template-columns: minmax(0, 1fr); }
+      .guided-completion { background: transparent; border-color: var(--line-strong); }
+      .guided-completion .completion-mark { background: color-mix(in srgb, var(--success) 35%, var(--text)); color: var(--bg); }
+
+      @media (min-width: 760px) {
+        .guided-day-list, .exercise-browser-results { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      }
+      @media (max-width: 480px) {
+        .guided-objective-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .guided-picker-controls, .guided-build-actions, .assign-controls { grid-template-columns: minmax(0, 1fr); }
+        .guided-volume-diff .drow, .guided-plan-diff .drow { grid-template-columns: minmax(0, 1fr); }
+        .guided-volume-diff .dhead, .guided-plan-diff .dhead { display: none; }
+        .guided-volume-diff .dlt, .guided-plan-diff .dlt { align-items: flex-start; border-top: 1px solid var(--line); }
+        .day-card .dc-top { align-items: flex-start; flex-direction: column; }
+      }
+      html.large-text-reflow .guided-objective-picker, html.large-text-reflow .guided-picker-controls, html.large-text-reflow .guided-build-actions, html.large-text-reflow .assign-controls { grid-template-columns: minmax(0, 1fr); }
+      html.large-text-reflow .guided-volume-diff .drow, html.large-text-reflow .guided-plan-diff .drow { grid-template-columns: minmax(0, 1fr); }
+      html.large-text-reflow .guided-volume-diff .dhead, html.large-text-reflow .guided-plan-diff .dhead { display: none; }
+      html.large-text-reflow .guided-volume-diff .dlt, html.large-text-reflow .guided-plan-diff .dlt { align-items: flex-start; border-top: 1px solid var(--line); }
+      html.large-text-reflow .day-card .dc-top { align-items: flex-start; flex-direction: column; }
     </style>
   </head>
   <body>

@@ -36,8 +36,8 @@ assert.match(html, /manualOverrides:/, "App data must retain manual override eve
 assert.match(html, /applyPrescriptionOverride\(/, "Live workouts must support explicit prescription overrides");
 assert.match(html, /evaluateWorkoutOverrideOutcomes\(/, "Completed workouts must evaluate override outcomes");
 assert.match(html, /renderMesocyclePlanner\(/, "Plan must expose the mesocycle lifecycle");
-assert.match(html, /Guided Mesocycle Builder[\s\S]*Weekly Volume & Frequency[\s\S]*Check Viability/, "The reachable planner must expose the guided build and viability flow");
-assert.match(html, /Review Every Training Day[\s\S]*Create Mesocycle Templates/, "Guided creation must review every generated template before persistence");
+assert.match(html, /guided-build-step[\s\S]*Check viability[\s\S]*Full weekly review/, "The reachable planner must expose the guided build and viability flow");
+assert.match(html, /Templates to create[\s\S]*Create mesocycle templates/, "Guided creation must review every generated template before persistence");
 assert.doesNotMatch(html, /function renderMesocycleCard\(|function renderMesocycleCandidate\(|Build full-program draft|Open Planner Review/, "The unreachable automatic-planner review must remain removed");
 assert.match(html, /Base Session Intent[\s\S]*Today’s readiness may modify/, "Templates must distinguish stable intent from readiness changes");
 assert.match(html, /analysis-period-menu[\s\S]*select-chart-period/, "Charts period selection must use the custom control surface");
@@ -49,10 +49,24 @@ assert.doesNotMatch(html, /It replaces the misleading former/, "Migration termin
 assert.match(html, /Muscle Groups and Scope[\s\S]*mesocycle-muscle-scope/, "Planner must let the user choose every muscle group in scope");
 assert.doesNotMatch(html.slice(html.indexOf("function renderHistoricalMesocycles()"), html.indexOf("function renderTemplates()")), /renderMesocycleCard\(/, "Historical mesocycles must not eagerly render full planner cards");
 assert.match(html, /primary_progression[\s\S]*alternative_exercise[\s\S]*lower_fatigue_resensitization[\s\S]*specialization/, "All four mesocycle types must be available");
-assert.match(html, /Objective, Schedule, and Constraints[\s\S]*Available Equipment[\s\S]*Muscle Groups and Scope/, "Guided setup must follow objective/schedule, equipment, then scope dependencies");
+assert.match(html, /What is this block for\?[\s\S]*Available Equipment[\s\S]*Muscle Groups and Scope/, "Guided setup must follow objective/schedule, equipment, then scope dependencies");
 assert.doesNotMatch(html, /Leave all unselected to allow the complete library/, "Equipment access must never depend on an ambiguous empty selection");
 assert.doesNotMatch(html, />Unknown</, "Planner cards must not expose meaningless Unknown metadata");
 assert.match(html, /All Equipment \/ Standard Gym[\s\S]*Bodyweight[\s\S]*Bands[\s\S]*Dumbbells[\s\S]*Barbell[\s\S]*Rack[\s\S]*Cable Station/, "Planner equipment choices must use the simplified capability bundles");
+assert.match(html, /candidate\.personalDataConfidence is the categorical evidence[\s\S]*candidate\.scores\.personalDataConfidence is[\s\S]*numeric 0–100/, "The candidate confidence naming collision must remain explicit at the use site");
+assert.match(html, /targetMuscleEffectiveness: Number\(candidate\.scores\?\.targetMuscleEffectiveness\)[\s\S]*evidenceReason: candidate\.scores\?\.weightingReason/, "Candidate cards must preserve the engine effectiveness score and comparable-exposure explanation");
+assert.match(html, /guidedConfidenceMeter\(candidate\.personalDataConfidence, 'candidate'\)[\s\S]*candidate\.scores\?\.weightingReason/, "Candidate evidence meters must use the categorical tier while the evidence line uses the engine reason");
+assert.match(html, /guidedMesocycleApi\.addExercise\(draft,[\s\S]*guided-projection-[\s\S]*guidedMesocycleApi\.volumeLedger\(temporaryDraft[\s\S]*guidedMesocycleApi\.muscleTargetStatuses\(temporaryDraft/, "Candidate gap previews must use the pure addExercise-to-ledger-to-status projection path");
+assert.match(html, /evidenceFallback: true, confidence: "research_default"[\s\S]*data-conf="1" aria-label="Research-default weekly target range"/, "A dormant weekly-range fallback must render as a level-one provisional claim");
+assert.match(html, /result\.readyToGenerate[\s\S]*!finalResult\?\.readyToGenerate/, "Only the viability engine readyToGenerate gate may unlock creation");
+assert.match(html, /const currentLabel = draft\.name \+ " plan"[\s\S]*const priorLabel = prior\.name \+ " plan"/, "Plan comparison columns must label both blocks explicitly as plans");
+const guidedPlanComparisonStart = html.indexOf("function renderGuidedPlanComparison(");
+const guidedPlanComparisonEnd = html.indexOf("function renderGuidedTemplateReview(", guidedPlanComparisonStart);
+assert(guidedPlanComparisonStart >= 0 && guidedPlanComparisonEnd > guidedPlanComparisonStart, "Guided plan comparison must remain independently inspectable");
+assert.doesNotMatch(html.slice(guidedPlanComparisonStart, guidedPlanComparisonEnd), /\b(actual|achieved|logged|performed)\b/i, "Create comparison copy must not imply execution data");
+for (const requiredClass of ["steps", "step-label", "day-card", "assign", "chiprow", "pick"]) {
+  assert.match(html, new RegExp(`\\.${requiredClass}\\s*\\{`), `Guided production CSS must define .${requiredClass}`);
+}
 const unifiedPrescriptionStart = html.indexOf("function renderUnifiedPrescriptionDetails(");
 const unifiedPrescriptionEnd = html.indexOf("function renderPrescriptionDetails(", unifiedPrescriptionStart);
 assert(unifiedPrescriptionStart >= 0 && unifiedPrescriptionEnd > unifiedPrescriptionStart, "Unified prescription rendering must remain independently inspectable");
@@ -106,8 +120,9 @@ const oneDayLedger = guidedApi.volumeLedger(oneDayFractional, (assignment) => as
 const oneDayStatus = guidedApi.muscleTargetStatuses(oneDayFractional, oneDayLedger, () => ({ min: 2, target: 6, max: 12 }))[0];
 assert.equal(oneDayStatus.volumeStatus, "within", "volume must be independently satisfied by fractional work");
 assert.equal(oneDayStatus.overallStatus, "needs_frequency", "missing frequency must override a successful volume badge");
-assert.match(html, /Needs Attention/, "the Build UI must separate unresolved muscles from Completed");
-assert.match(html, /Mesocycle Completed/, "successful creation must have a persistent completion state");
+assert.match(html, /Volume vs target/, "the Build UI must expose the plan-to-target comparison");
+assert.match(html, /No unresolved muscle-group requirements/, "the Build UI must distinguish a fully covered plan from unresolved volume");
+assert.match(html, /Mesocycle completed/, "successful creation must have a persistent completion state");
 assert.match(html, /Why This Recommendation/, "recommendation explanation labels must be standardized");
 assert.doesNotMatch(html, /Why\? \/ Evidence/, "legacy recommendation labels must not leak into the UI");
 assert.match(html, /intentionalReduction/, "prescribed light work must be marked so fatigue flags do not misclassify it as weakness");

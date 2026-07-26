@@ -114,10 +114,10 @@ test("Mesocycle Planner follows dependencies and enforces restricted equipment",
   await page.locator('.nav-button[data-tab="plan"]').click();
   await expect(page.locator(".mesocycle-planner h2")).toContainText("Plan Your Mesocycle", { timeout: 30_000 });
   await page.getByRole("button", { name: "Plan Your Mesocycle" }).click();
-  await expect(page.getByText("Before You Build", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Start Planning" }).click();
-  const workflow = await page.evaluate(() => [...document.querySelectorAll(".guided-progress button")].map((item) => item.textContent.replace("✓", "").trim()));
-  expect(workflow).toEqual(["Guide", "Setup", "Build", "Check", "Create"]);
+  await expect(page.getByText("Before you build", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Start planning" }).click();
+  const workflow = await page.evaluate(() => [...document.querySelectorAll(".guided-progress button")].map((item) => item.dataset.step));
+  expect(workflow).toEqual(["guide", "setup", "build", "check", "create"]);
   await expect(page.locator('[data-action="guided-step"][data-step="guide"]')).toBeEnabled();
   await expect(page.locator('[data-action="guided-step"][data-step="build"]')).toBeDisabled();
 
@@ -150,15 +150,15 @@ test("Mesocycle Planner follows dependencies and enforces restricted equipment",
   await page.locator('[data-action="close-guided-exercise-browser"]').click();
   await page.locator('[data-action="guided-step"][data-step="setup"]').click();
   await page.getByRole("button", { name: "All Equipment / Standard Gym" }).click();
-  await page.getByRole("button", { name: "Create Empty Training Days" }).click();
+  await page.getByRole("button", { name: "Build the days" }).click();
   await page.getByRole("button", { name: "Add Exercise" }).click();
   const configureButtons = page.locator('[data-action="select-guided-exercise"]:not([disabled])');
   expect(await configureButtons.count()).toBeGreaterThan(0);
   await configureButtons.first().click();
-  await expect(page.getByText("Configuring Now", { exact: true })).toBeVisible();
+  await expect(page.getByText("Configuring now", { exact: true })).toBeVisible();
   await expect(page.locator("[data-guided-configuration]")).toBeFocused();
   await page.locator('[data-action="confirm-guided-exercise"]').click();
-  await expect(page.getByText(/Already Added to Day 1/)).toBeVisible();
+  await expect(page.getByText(/Already added to Day 1/)).toBeVisible();
 });
 
 test("design-system source does not accumulate one-off styling", async () => {
@@ -310,20 +310,20 @@ test("Mesocycle Planner progresses from compact setup to full review", async ({ 
   const nav = page.getByRole("navigation", { name: "Main navigation" });
   await nav.getByRole("button", { name: /Plan$/ }).click();
   await page.getByRole("button", { name: "Plan Your Mesocycle" }).click();
-  await page.getByRole("button", { name: "Start Planning" }).click();
+  await page.getByRole("button", { name: "Start planning" }).click();
   await page.getByLabel("Duration (weeks)").fill("4");
   await page.getByLabel("Training Days per Week").fill("4");
   await page.getByRole("button", { name: "Dumbbells" }).click();
   await page.getByRole("button", { name: "Rack" }).click();
   await expect(page.getByRole("button", { name: "Dumbbells" })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "All Equipment / Standard Gym" }).click();
-  await page.getByRole("button", { name: "Create Empty Training Days" }).click();
-  await expect(page.getByText("Guided Mesocycle Builder", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Build the days" }).click();
+  await expect(page.locator(".guided-build-step")).toBeVisible();
   expect(await page.locator(".guided-day").count()).toBe(4);
-  await page.getByRole("button", { name: "Weekly Volume & Frequency" }).click();
-  await expect(page.getByText("Weekly Muscle Volume", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Check Viability" }).click();
-  await expect(page.getByText("Viability Check", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Full weekly review" }).click();
+  await expect(page.getByText("Weekly muscle volume", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Check viability" }).click();
+  await expect(page.locator(".guided-check-step")).toBeVisible();
   expect(await page.locator(".finding.blocking").count()).toBeGreaterThan(0);
   expect(await page.getByText("Passed Checks", { exact: true }).count()).toBe(0);
   if (process.env.PLAYWRIGHT_BASE_URL) console.log(`HOSTED_GUIDED_MESOCYCLE ${testInfo.project.name}: empty-day blocker and live weekly summary verified`);

@@ -77,10 +77,11 @@
         "template-readiness-sleep-hours", "template-readiness-sleep-quality", "template-readiness-hrv", "template-readiness-resting-hr",
         "template-readiness-soreness", "template-readiness-nutrition", "template-readiness-protein", "template-readiness-illness",
         "template-readiness-pain", "template-readiness-affected-muscle", "template-readiness-note",
+        "adjust-guided-setup",
         "clear-data-ack", "clear-data-phrase", "sync-before-clear", "confirm-clear-data", "confirm-cancel-workout",
         "confirm-save-history-edits", "confirm-cancel-history-edits"
       ]);
-      const focusDescriptorDataKeys = ["tab", "templateId", "sessionId", "exerciseId", "setId", "progressView", "detail", "flagId", "muscle"];
+      const focusDescriptorDataKeys = ["tab", "templateId", "sessionId", "exerciseId", "setId", "progressView", "detail", "flagId", "muscle", "field"];
       const focusableCandidateSelector = 'button, input, select, textarea, a[href], summary, [tabindex]';
       let progressView = progressViewFromLocation();
       let activeTab = tabFromLocation();

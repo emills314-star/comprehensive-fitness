@@ -194,7 +194,7 @@ test("guided planning honors equipment, muscle scope, partial search, no results
   await installFixture(page, buildEmptyAnalyticsSettingsFixture());
   await openPrimaryTab(page, "plan");
   await page.getByRole("button", { name: "Plan Your Mesocycle" }).click();
-  await page.getByRole("button", { name: "Start Planning" }).click();
+  await page.getByRole("button", { name: "Start planning" }).click();
 
   await setNumericSetting(page, "mesocycle-training-days", 2);
   const allEquipment = page.locator('[data-action="toggle-mesocycle-equipment"][data-value="all"]');
@@ -235,6 +235,30 @@ test("guided planning honors equipment, muscle scope, partial search, no results
     expect(await cards.count()).toBeGreaterThan(0);
     const names = await cards.locator("h3").allTextContents();
     expect(names.every((name) => /bench/i.test(name))).toBe(true);
+    if (dayIndex === 0) {
+      const evidenceContract = await page.evaluate(() => {
+        const card = document.querySelector(".exercise-browser-card");
+        const exerciseName = card?.querySelector("h3")?.textContent?.trim();
+        const candidate = guidedCandidatePool(guidedExerciseMuscleFilter).find((item) => item.exerciseName === exerciseName);
+        const draft = guidedDraft();
+        return {
+          assignments: draft.guidedDays.reduce((sum, item) => sum + item.assignments.length, 0),
+          categoricalConfidence: candidate.personalDataConfidence,
+          numericEvidenceQuality: candidate.scores.personalDataConfidence,
+          reason: candidate.scores.weightingReason,
+          renderedLevel: Number(card.querySelector(".meter")?.dataset.conf),
+          renderedReason: card.querySelector(".ex-why")?.textContent?.trim(),
+          renderedScore: card.querySelector(".guided-effectiveness-score")?.textContent?.trim(),
+          score: candidate.scores.targetMuscleEffectiveness
+        };
+      });
+      expect(evidenceContract.renderedScore).toBe(`${Math.round(evidenceContract.score)} / 100`);
+      expect(evidenceContract.renderedReason).toBe(evidenceContract.reason);
+      expect(evidenceContract.renderedLevel).toBe(({ research_default: 1, low: 2, moderate: 3, high: 4 })[evidenceContract.categoricalConfidence]);
+      expect(typeof evidenceContract.numericEvidenceQuality).toBe("number");
+      expect(await page.evaluate(() => guidedDraft().guidedDays.reduce((sum, item) => sum + item.assignments.length, 0))).toBe(evidenceContract.assignments);
+      await expect(cards.first().locator(".guided-gap-projection"), "Rendering an exact temporary projection must not require committing the candidate").toBeVisible();
+    }
     await cards.first().locator('[data-action="select-guided-exercise"]:not([disabled])').click();
     const pending = page.locator("[data-guided-configuration]");
     await expect(pending).toBeVisible();
@@ -250,14 +274,16 @@ test("guided planning honors equipment, muscle scope, partial search, no results
   await addFiveBenchPressSets(0);
   await addFiveBenchPressSets(1);
   await page.locator('[data-action="check-guided-viability"]').click();
-  await expect(page.getByText("Viability Check", { exact: true })).toBeVisible();
+  await expect(page.locator(".guided-check-step")).toBeVisible();
   await expect(page.locator(".finding.blocking")).toHaveCount(0);
   const reviewCreation = page.locator('[data-action="open-guided-generation-review"]');
   await expect(reviewCreation).toBeEnabled();
   await reviewCreation.click();
-  await expect(page.getByText(/2 linked templates will preserve/)).toBeVisible();
+  await expect(page.locator(".guided-create-step")).toContainText("2 templates, 6 weeks.");
+  await expect(page.locator(".guided-create-step")).toContainText("No comparable earlier plan is stored.");
+  await expect(page.locator(".guided-create-step")).not.toContainText(/\b(actual|achieved|logged|performed)\b/i);
   await page.locator('[data-action="create-guided-templates"]').click();
-  await expect(page.getByText("Mesocycle Completed", { exact: true })).toBeVisible();
+  await expect(page.getByText("Mesocycle completed", { exact: true })).toBeVisible();
   await expect(page.locator('[data-action="start-first-mesocycle-template"]')).toBeEnabled();
   expect(await page.evaluate(() => data.templates.length)).toBe(2);
 });
