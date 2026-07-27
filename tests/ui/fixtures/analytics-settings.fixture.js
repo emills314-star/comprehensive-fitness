@@ -215,6 +215,30 @@ function buildAnalyticsSettingsFixture() {
   return model;
 }
 
+function buildAnalyticsEvidenceFixture() {
+  const model = buildAnalyticsSettingsFixture();
+  const thinSessionId = "public-analytics-session-02";
+  const thinExercise = model.exercises.find((exercise) => exercise.sessionId === thinSessionId && exercise.name === "Dumbbell Bench Press");
+  const thinSets = model.sets.filter((set) => set.exerciseId === thinExercise.id).sort((left, right) => left.setNumber - right.setNumber);
+  thinSets.slice(1).forEach((set) => { set.completed = false; });
+
+  const deloadSessionId = "public-analytics-session-04";
+  const deloadExercise = model.exercises.find((exercise) => exercise.sessionId === deloadSessionId && exercise.name === "Dumbbell Bench Press");
+  deloadExercise.isDeload = true;
+
+  const secondSession = {
+    ...completedSession(0),
+    id: "public-analytics-session-00-second",
+    title: "Public Synthetic Second Same-Date Session"
+  };
+  const secondExercise = completedExercise(secondSession, EXERCISES[2], 0);
+  const secondSet = completedSet(secondExercise, 0, 0, EXERCISES[2]);
+  model.sessions.push(secondSession);
+  model.exercises.push(secondExercise);
+  model.sets.push(secondSet);
+  return model;
+}
+
 function buildEmptyAnalyticsSettingsFixture() {
   return emptyModel();
 }
@@ -224,6 +248,7 @@ module.exports = {
   EXERCISES,
   FIXED_NOW,
   STORAGE_KEY,
+  buildAnalyticsEvidenceFixture,
   buildAnalyticsSettingsFixture,
   buildEmptyAnalyticsSettingsFixture
 };

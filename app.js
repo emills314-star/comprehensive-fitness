@@ -172,7 +172,12 @@
           } : null;
           render();
         }
-        if (action === "close-chart-point") { chartDetailPoint = null; render(); }
+        if (action === "close-chart-point") {
+          const returnPoint = chartDetailPoint ? { chartKey: chartDetailPoint.chartKey, chartDate: chartDetailPoint.date } : null;
+          chartDetailPoint = null;
+          if (returnPoint) queuePostRenderFocus(actionFocusDescriptor("show-chart-point", returnPoint));
+          render();
+        }
         if (action === "toggle-hypertrophy-score") { hypertrophyScoreExpanded = !hypertrophyScoreExpanded; render(); }
         if (action === "select-chart-period") {
           hypertrophyWindowOffset = Math.max(0, Number(target.dataset.periodOffset || 0));

@@ -188,31 +188,49 @@
         const archived = data.sessions.filter((session) => isSessionSubmitted(session) && !activeIds.has(session.id)).sort((a, b) => b.date.localeCompare(a.date));
         const totalSessions = activeHistory.length;
         const sessions = [...activeHistory].sort((a, b) => sessionCompletionDate(b).localeCompare(sessionCompletionDate(a))).slice(0, 120);
+        const sessionModels = sessions.map((session) => {
+          const facts = sessionWorkoutFacts(session);
+          const analysis = workoutAnalysisForSession(session);
+          const plannedSets = Number(analysis?.metrics?.plannedSets ?? facts.sets.filter((set) => isWorkingSet(set, "score")).length);
+          const completedSets = Number(analysis?.metrics?.completedSets ?? facts.completed.length);
+          const completionRatio = plannedSets > 0 ? completedSets / plannedSets : null;
+          const completionDelta = completionRatio == null
+            ? { tone: "none", text: "—" }
+            : completedSets === plannedSets ? { tone: "on", text: "100%" }
+              : completedSets < plannedSets ? { tone: "out", text: "−" + (plannedSets - completedSets) }
+                : { tone: "over", text: "+" + (completedSets - plannedSets) };
+          return { session, facts, analysis, plannedSets, completedSets, completionRatio, completionDelta };
+        });
+        const totals = sessionModels.reduce((sum, item) => ({
+          completed: sum.completed + item.completedSets,
+          planned: sum.planned + item.plannedSets,
+          score: sum.score + (Number.isFinite(Number(item.analysis?.internalScore)) ? Number(item.analysis.internalScore) : 0),
+          scored: sum.scored + (Number.isFinite(Number(item.analysis?.internalScore)) ? 1 : 0)
+        }), { completed: 0, planned: 0, score: 0, scored: 0 });
+        const completion = totals.planned ? Math.round(totals.completed / totals.planned * 100) + "%" : "—";
+        const meanScore = totals.scored ? Math.round(totals.score / totals.scored) : null;
+        const meanGrade = meanScore == null ? "—" : workoutLetterGrade(meanScore);
+        const groups = new Map();
+        sessionModels.forEach((item) => {
+          const weekStart = startOfWeekIso(sessionCompletionDate(item.session));
+          const group = groups.get(weekStart) || [];
+          group.push(item);
+          groups.set(weekStart, group);
+        });
+        const currentWeek = startOfWeekIso(todayIso());
+        const renderSession = (item) => {
+          const { session, facts, analysis, plannedSets, completedSets, completionDelta } = item;
+          const grade = analysis?.grade || "";
+          return '<button class="row-item history-session-row" type="button" data-action="open-session" data-session-id="' + escapeHtml(session.id) + '"><span class="ri-copy"><b>' + escapeHtml(session.title || "Workout") + '</b><span>' + formatDate(sessionCompletionDate(session)) + ' · ' + completedSets + (plannedSets ? ' of ' + plannedSets : '') + ' sets · ' + facts.durationMinutes + ' min' + (facts.estimatedDuration ? ' est.' : '') + (facts.exercises.some((exercise) => exercise.isDeload) ? ' · deload work' : '') + '</span></span><span class="d ' + completionDelta.tone + '">' + escapeHtml(completionDelta.text) + '</span><span class="ri-val" aria-label="' + (grade ? 'Workout grade ' + escapeHtml(grade) : 'Workout grade unavailable') + '">' + escapeHtml(grade || '—') + '</span></button>';
+        };
         return `
           <section class="view history-view">
-            <div class="screen-heading"><div><div class="section-kicker">History</div><h1>Training log</h1></div>${nested ? '<button class="text-button" type="button" data-action="close-dashboard-detail">Back</button>' : ''}</div>
-            <details class="history-section" open>
-              <summary>By session <span>${totalSessions} logged</span></summary>
-              <div class="disclosure-body">
-              ${totalSessions > sessions.length ? '<p class="settings-note">Showing the latest ' + sessions.length + ' sessions. Exercise review still uses the full imported history.</p>' : ""}
-              ${sessions.length ? sessions.map((session) => {
-              const exercises = (dataEntityIndex().exerciseIndicesBySession.get(session.id) || []).map((index) => data.exercises[index]);
-              const analysis = session?.workoutAnalysis?.version === 1 ? session.workoutAnalysis : null;
-              const grade = WORKOUT_GRADE_THRESHOLDS.some((threshold) => threshold.grade === analysis?.grade) ? analysis.grade : "";
-              const gradeScore = Number.isFinite(Number(analysis?.internalScore)) ? Number(analysis.internalScore) : WORKOUT_GRADE_THRESHOLDS.find((threshold) => threshold.grade === grade)?.minimum;
-              const gradeTone = grade && Number.isFinite(gradeScore) ? workoutGradeScoreTone(gradeScore) : "score-unavailable";
-              return `
-                <button class="session-card" type="button" data-action="open-session" data-session-id="${session.id}">
-                  <div class="history-session-heading"><strong class="history-session-title">${escapeHtml(session.title || "Workout")}</strong><span class="history-session-meta">${grade ? '<b class="history-session-grade grade-tone ' + gradeTone + '" aria-label="Workout grade ' + escapeHtml(grade) + '">' + escapeHtml(grade) + '</b>' : ''}<time datetime="${escapeHtml(session.date)}">${formatDate(session.date)}</time></span></div>
-                  <p>${session.isTravel ? "Travel" : "Home"}${exercises.some((exercise) => exercise.isDeload) ? " · Deload work" : ""}</p>
-                  <small>${escapeHtml(exercises.map((exercise) => exercise.name + (exercise.isDeload ? " (Deload)" : "")).join(", ") || "No exercises yet")}</small>
-                </button>
-              `;
-              }).join("") : '<div class="empty-state">Completed workouts will appear here.</div>'}
-              </div>
-            </details>
-            <details class="history-section">
-              <summary>By exercise <span>${getExerciseNames().length} lifts</span></summary>
+            <div class="screen-heading"><div><div class="section-kicker">History · ${totalSessions} logged sessions</div><h1>Training log.</h1></div>${nested ? '<button class="text-button" type="button" data-action="close-dashboard-detail">Back</button>' : ''}</div>
+            <div class="rollup history-rollup" aria-label="Submitted history summary"><span class="ru"><b>${totalSessions}</b><span>sessions</span></span><span class="ru"><b>${escapeHtml(completion)}</b><span>set completion</span></span><span class="ru"><b>${escapeHtml(meanGrade)}</b><span>mean grade</span></span></div>
+            ${totalSessions > sessions.length ? '<p class="settings-note">Showing the latest ' + sessions.length + ' sessions. Exercise review still uses the full imported history.</p>' : ""}
+            <div class="history-session-groups">${sessionModels.length ? Array.from(groups.entries()).map(([weekStart, items]) => '<section><div class="m-label"><span>' + (weekStart === currentWeek ? 'This week' : escapeHtml(formatWeek(weekStart))) + '</span><span>completion · grade</span></div><div class="history-session-list">' + items.map(renderSession).join("") + '</div></section>').join("") : '<div class="empty-state">Completed workouts will appear here.</div>'}</div>
+            <details class="history-section history-by-exercise">
+              <summary>Review by exercise <span>${getExerciseNames().length} lifts</span></summary>
               <div class="disclosure-body">${renderExerciseHistory()}</div>
             </details>
             ${archived.length ? '<details class="history-section"><summary>Retention archive <span>' + archived.length + ' recoverable</span></summary><div class="disclosure-body"><p class="settings-note">These completed workouts are older than the rolling six-calendar-month window. They remain in exports but do not affect charts, coaching, PRs, templates, or weekly volume.</p>' + archived.slice(0, 40).map((session) => '<div class="session-card"><div class="history-session-heading"><strong class="history-session-title">' + escapeHtml(session.title || 'Workout') + '</strong><span class="history-session-meta">' + formatDate(sessionCompletionDate(session)) + '</span></div></div>').join('') + '</div></details>' : ''}
@@ -220,26 +238,47 @@
         `;
       }
 
+      function exerciseDeloadPresentation(week) {
+        if (week?.isDeload) return { confidence: 4, label: "Recorded deload", note: "Explicitly marked and excluded from scoring." };
+        if (week?.isLikelyDeload) return { confidence: 2, label: "Possible deload", note: "Inferred from the available history; not presented as a recorded fact." };
+        return null;
+      }
+
       function renderExerciseHistory() {
         const names = getExerciseNames();
         if (!names.length) return '<div class="empty-state">No exercise history yet.</div>';
         return names.map((name) => {
-          const weeks = summarizeExerciseByWeek(name).slice(0, 4);
+          const weeks = summarizeExerciseByWeek(name).slice(0, 6);
+          const summaryWeeks = weeks.filter((week) => !week.isLikelyDeload).slice(0, 4);
+          const plannedSets = summaryWeeks.reduce((sum, week) => sum + Number(week.plannedSets || week.completedSets + week.failedSets || 0), 0);
+          const completedSets = summaryWeeks.reduce((sum, week) => sum + Number(week.completedSets || 0), 0);
+          const setDelta = completedSets === plannedSets
+            ? { tone: "on", text: "on" }
+            : completedSets < plannedSets ? { tone: "under", text: "−" + (plannedSets - completedSets) }
+              : { tone: "out", text: "+" + (completedSets - plannedSets) };
+          const deloadNotes = weeks.map((week) => ({ week, presentation: exerciseDeloadPresentation(week) })).filter((item) => item.presentation);
           return `
-            <article class="history-exercise">
-              <h2>${escapeHtml(name)}</h2>
-              <div class="trend-table">
-                <div class="trend-head"><span>Week</span><span>Top</span><span>Sets</span><span>RPE</span></div>
+            <details class="history-exercise">
+              <summary class="ex-head"><span><b>${escapeHtml(name)}</b><span class="sets">${weeks.length} recent week${weeks.length === 1 ? '' : 's'}</span></span><span aria-hidden="true">›</span></summary>
+              <div class="disclosure-body">
+              <div class="m-label"><span>Recent weeks</span><span>top · sets · RPE</span></div>
+              <div class="vol">
+                <div class="vol-head"><span>Week</span><span>Top set</span><span>Sets</span><span>RPE</span><span>Status</span></div>
                 ${weeks.map((week) => `
-                  <div class="trend-row">
-                    <span>${formatDate(week.weekStart)}${week.travelCount ? " - Travel" : ""}${week.isDeload ? " - Deload" : ""}</span>
-                    <span>${week.topWeight}</span>
-                    <span>${week.completedSets}/${week.completedSets + week.failedSets}</span>
-                    <span>${week.averageRpe ? week.averageRpe.toFixed(1) : "-"}</span>
+                  <div class="vol-row">
+                    <span>${formatDate(week.weekStart)}${week.travelCount ? " · Travel" : ""}</span>
+                    <span>${week.topWeight > 0 ? week.topWeight + ' × ' + (week.maxRepsAtTopWeight || '—') : '—'}</span>
+                    <span>${week.completedSets}/${Number(week.plannedSets || week.completedSets + week.failedSets)}</span>
+                    <span>${week.averageRpe ? week.averageRpe.toFixed(1) : "—"}</span>
+                    <span>${(() => { const deload = exerciseDeloadPresentation(week); return deload ? '<span class="chip deload-history-chip" data-conf="' + deload.confidence + '">' + escapeHtml(deload.label) + '</span>' : '—'; })()}</span>
                   </div>
                 `).join("")}
               </div>
-            </article>
+              <div class="m-label"><span>Four-week summary</span><span>plan → completed</span></div>
+              <div class="diff exercise-history-diff"><div class="drow dhead"><span class="plan">Prescribed</span><span class="act">Completed</span><span class="dlt">Δ</span></div><div class="drow"><span class="plan"><span class="lbl">Working sets</span><span class="val big">${plannedSets}</span></span><span class="act"><span class="lbl">Non-deload weeks</span><span class="val big">${completedSets}</span></span><span class="dlt"><span class="d ${setDelta.tone}">${escapeHtml(setDelta.text)}</span></span></div></div>
+              ${deloadNotes.map(({ week, presentation }) => '<div class="callout ' + (presentation.confidence === 4 ? 'info' : 'provisional') + '"><b>' + escapeHtml(formatDate(week.weekStart) + ' · ' + presentation.label) + '</b><span>' + escapeHtml(presentation.note) + '</span></div>').join("")}
+              </div>
+            </details>
           `;
         }).join("");
       }
@@ -722,7 +761,7 @@
           const allowCurrentFallback = (typeof hypertrophyWindowOffset === "undefined" ? 0 : hypertrophyWindowOffset) === 0;
           const context = resolveExerciseTargetContext(session, exercise, { allowCurrentFallback });
           const key = context ? context.id + "|" + JSON.stringify(context.setTypes) : "unconfigured";
-          const group = groups.get(key) || { key, label: context?.templateName || "Historical target unavailable", sessionType: context?.sessionType || "unknown", sessions: new Set(), dates: [], plannedSets: 0, completedSets: 0, repTracked: 0, repHits: 0, rpeTracked: 0, rpeHits: 0, restTotal: 0, restCount: 0, roles: new Map(), context };
+          const group = groups.get(key) || { key, label: context?.templateName || "Historical target unavailable", sessionType: context?.sessionType || "unknown", sessions: new Set(), dates: [], plannedSets: 0, completedSets: 0, repTracked: 0, repHits: 0, repTotal: 0, rpeTracked: 0, rpeHits: 0, rpeTotal: 0, restTotal: 0, restCount: 0, roles: new Map(), context };
           group.sessions.add(session.id);
           group.dates.push(session.date);
           let workingIndex = 0;
@@ -731,7 +770,7 @@
             if (expectation.isWarmup || !expectation.countsTowardScore) return;
             workingIndex += 1;
             const roleKey = expectation.setType || "straight";
-            const role = group.roles.get(roleKey) || { key: roleKey, label: expectation.label || setTypeLabels[roleKey] || "Working set", plannedSets: 0, completedSets: 0, repTracked: 0, repHits: 0, rpeTracked: 0, rpeHits: 0, repMin: expectation.repMin, repMax: expectation.repMax, rpeMin: expectation.rpeMin, rpeMax: expectation.rpeMax, restSeconds: expectation.restSeconds };
+            const role = group.roles.get(roleKey) || { key: roleKey, label: expectation.label || setTypeLabels[roleKey] || "Working set", plannedSets: 0, completedSets: 0, repTracked: 0, repHits: 0, repTotal: 0, rpeTracked: 0, rpeHits: 0, rpeTotal: 0, repMin: expectation.repMin, repMax: expectation.repMax, rpeMin: expectation.rpeMin, rpeMax: expectation.rpeMax, restSeconds: expectation.restSeconds };
             group.plannedSets += 1;
             role.plannedSets += 1;
             if (!set.completed) { group.roles.set(roleKey, role); return; }
@@ -741,12 +780,16 @@
               group.repTracked += 1;
               role.repTracked += 1;
               const reps = Number(set.reps || 0);
+              group.repTotal += reps;
+              role.repTotal += reps;
               if (reps >= (expectation.repMin || expectation.repMax) && reps <= (expectation.repMax || expectation.repMin)) { group.repHits += 1; role.repHits += 1; }
             }
             const rpe = Number(set.rpe || 0);
             if (rpe > 0 && expectation.hasRpeTarget) {
               group.rpeTracked += 1;
               role.rpeTracked += 1;
+              group.rpeTotal += rpe;
+              role.rpeTotal += rpe;
               const low = expectation.rpeMin || Math.max(0, expectation.rpeMax - expectation.rpeTolerance);
               const high = expectation.rpeMin ? expectation.rpeMax : expectation.rpeMax + expectation.rpeTolerance;
               if (rpe >= low && rpe <= high) { group.rpeHits += 1; role.rpeHits += 1; }
@@ -1124,20 +1167,49 @@
       }
 
       function exerciseProgressSeries(exerciseName, options = {}) {
-        const cacheKey = [analysisRevision, options.canonicalExerciseId || canonicalExerciseId(exerciseName), options.throughDate || todayIso(), (options.qualifyingWeekIds || []).join(","), options.resistanceType || ""].join("|");
+        const weekClassifications = Array.isArray(options.weekClassifications) ? options.weekClassifications : [];
+        const classificationSignature = weekClassifications.map((week) => [
+          week.weekStart,
+          Number(week.completedSets || 0),
+          Boolean(week.qualifies),
+          Boolean(week.isDeload)
+        ].join(":")).join(",");
+        const cacheKey = [analysisRevision, options.canonicalExerciseId || canonicalExerciseId(exerciseName), options.throughDate || todayIso(), (options.qualifyingWeekIds || []).join(","), classificationSignature, options.resistanceType || ""].join("|");
         if (exerciseProgressCache.has(cacheKey)) return exerciseProgressCache.get(cacheKey);
         const scoped = getExerciseSets(exerciseName, { canonicalExerciseId: options.canonicalExerciseId });
         const exerciseById = new Map(scoped.exercises.map((exercise) => [exercise.id, exercise]));
         const allowedWeeks = options.qualifyingWeekIds ? new Set(options.qualifyingWeekIds) : null;
+        const classificationByWeek = new Map(weekClassifications.map((week) => [week.weekStart, {
+          weekStart: week.weekStart,
+          completedSets: Number(week.completedSets || 0),
+          qualifies: Boolean(week.qualifies),
+          isDeload: Boolean(week.isDeload)
+        }]));
         const sessionById = new Map(activeHistorySessions({ asOfDate: options.retentionAsOfDate || todayIso(), throughDate: options.throughDate || todayIso() }).map((session) => [session.id, session]));
         const resistanceType = options.resistanceType || scoped.exercises.map((exercise) => resistanceTypeFor(exercise)).find(Boolean) || "external";
         const byWeek = new Map();
         scoped.sets.filter((set) => set.completed && isWorkingSet(set, "progression") && (set.reps > 0 || set.durationSeconds > 0 || set.distance > 0)).forEach((set) => {
           const exercise = exerciseById.get(set.exerciseId);
           const session = exercise ? sessionById.get(exercise.sessionId) : null;
-          if (!session || (allowedWeeks && !allowedWeeks.has(startOfWeekIso(session.date)))) return;
+          if (!session) return;
+          const weekStart = startOfWeekIso(session.date);
+          const classification = classificationByWeek.get(weekStart);
+          // The score selection remains authoritative. The chart may additionally retain
+          // non-deload low-data weeks, but never derives sufficiency from the plotted value.
+          if (classificationByWeek.size) {
+            if (!classification || classification.isDeload) return;
+          } else if (allowedWeeks && !allowedWeeks.has(weekStart)) return;
           const week = session.date;
-          const bucket = byWeek.get(week) || { week, primary: resistanceType === "assisted_bodyweight" ? Infinity : 0, secondary: 0, details: [] };
+          const bucket = byWeek.get(week) || {
+            week,
+            weekStart,
+            completedSets: classification?.completedSets ?? 0,
+            qualifies: classification?.qualifies ?? true,
+            isDeload: classification?.isDeload ?? false,
+            primary: resistanceType === "assisted_bodyweight" ? Infinity : 0,
+            secondary: 0,
+            details: []
+          };
           const load = resistanceLoad(set, resistanceType);
           const primaryValue = resistanceType === "external" ? estimatedOneRepMax(set)
             : resistanceType === "bodyweight_plus_load" ? load
@@ -1147,7 +1219,7 @@
                     : Number(set.reps || 0);
           bucket.primary = resistanceType === "assisted_bodyweight" ? Math.min(bucket.primary, primaryValue || Infinity) : Math.max(bucket.primary, primaryValue);
           bucket.secondary += resistanceType === "external" ? load * set.reps : resistanceType === "duration" ? Number(set.durationSeconds || 0) : resistanceType === "distance" ? Number(set.distance || 0) : Number(set.reps || 0);
-          bucket.details.push({ ...set, resistanceType, addedLoad: set.addedLoad, assistanceLoad: set.assistanceLoad, sessionTitle: session.title, sessionDate: session.date });
+          bucket.details.push({ ...set, resistanceType, addedLoad: set.addedLoad, assistanceLoad: set.assistanceLoad, sessionId: session.id, sessionTitle: session.title, sessionDate: session.date });
           byWeek.set(week, bucket);
         });
         const weeks = Array.from(byWeek.values()).sort((a, b) => a.week.localeCompare(b.week)).slice(-16);
@@ -1160,8 +1232,8 @@
         const result = {
           resistanceType,
           ...labels,
-          e1rm: weeks.map((week) => ({ label: formatDate(week.week), date: week.week, value: Number.isFinite(week.primary) ? Math.round(week.primary * 10) / 10 : 0, metricType: labels.primaryMetric, details: week.details })),
-          volume: weeks.map((week) => ({ label: formatDate(week.week), date: week.week, value: Math.round(week.secondary * 10) / 10, metricType: labels.secondaryMetric, details: week.details }))
+          e1rm: weeks.map((week) => ({ label: formatDate(week.week), date: week.week, weekStart: week.weekStart, completedSets: week.completedSets, qualifies: week.qualifies, isDeload: week.isDeload, value: Number.isFinite(week.primary) ? Math.round(week.primary * 10) / 10 : 0, metricType: labels.primaryMetric, details: week.details })),
+          volume: weeks.map((week) => ({ label: formatDate(week.week), date: week.week, weekStart: week.weekStart, completedSets: week.completedSets, qualifies: week.qualifies, isDeload: week.isDeload, value: Math.round(week.secondary * 10) / 10, metricType: labels.secondaryMetric, details: week.details }))
         };
         exerciseProgressCache.set(cacheKey, result);
         return result;
@@ -1210,7 +1282,17 @@
           x: validPoints.length === 1 ? plot.left + plotWidth / 2 : plot.left + (index / (validPoints.length - 1)) * plotWidth,
           y: plot.top + (1 - (point.value - domainMin) / domainSpread) * plotHeight
         }));
-        const polyline = chartPoints.map((point) => point.x.toFixed(1) + "," + point.y.toFixed(1)).join(" ");
+        const chartSegments = chartPoints.slice(1).map((point, index) => {
+          const previous = chartPoints[index];
+          const evidenced = Boolean(previous.qualifies && point.qualifies);
+          return '<polyline class="chart-line ' + (evidenced ? 'evidenced' : 'thin') + '" data-evidence="' + (evidenced ? 'evidenced' : 'provisional') + '" points="' + previous.x.toFixed(1) + ',' + previous.y.toFixed(1) + ' ' + point.x.toFixed(1) + ',' + point.y.toFixed(1) + '" clip-path="url(#chart-clip-' + chartKey + ')"></polyline>';
+        }).join("");
+        const evidencedCount = chartPoints.filter((point) => point.qualifies).length;
+        const provisionalCount = chartPoints.length - evidencedCount;
+        const pointCaption = [
+          evidencedCount + " evidenced point" + (evidencedCount === 1 ? "" : "s"),
+          provisionalCount ? provisionalCount + " provisional point" + (provisionalCount === 1 ? "" : "s") : ""
+        ].filter(Boolean).join(" · ");
         const selected = chartDetailPoint?.chartKey === chartKey
           && chartDetailPoint?.exerciseId === (scope.exerciseId || "")
           && Number(chartDetailPoint?.windowOffset || 0) === Number(scope.windowOffset || 0)
@@ -1227,17 +1309,18 @@
           : '<text class="chart-axis-label" x="' + plot.left + '" y="' + (height - 7) + '">' + escapeHtml(shortChartDate(chartPoints[0].date)) + '</text><text class="chart-axis-label" x="' + (width - plot.right) + '" y="' + (height - 7) + '" text-anchor="end">' + escapeHtml(shortChartDate(chartPoints.at(-1).date)) + '</text>';
         return `
           <div class="chart-card evidence-chart" data-chart-key="${chartKey}">
-            <header><strong>${escapeHtml(title)}</strong><span class="status-pill">${values.length} evidenced point${values.length === 1 ? "" : "s"}</span></header>
+            <header><strong>${escapeHtml(title)}</strong><span class="status-pill">${escapeHtml(pointCaption)}</span></header>
             <div class="chart-svg">
               <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(title)} chart">
                 <defs><clipPath id="chart-clip-${chartKey}"><rect x="${plot.left - 3}" y="${plot.top - 3}" width="${plotWidth + 6}" height="${plotHeight + 6}" rx="3"></rect></clipPath></defs>
                 ${grid}
-                <polyline class="chart-line" points="${polyline}" clip-path="url(#chart-clip-${chartKey})"></polyline>
+                ${chartSegments}
                 ${selectedPoint ? '<line class="chart-selected-guide" x1="' + selectedPoint.x.toFixed(1) + '" y1="' + selectedPoint.y.toFixed(1) + '" x2="' + selectedPoint.x.toFixed(1) + '" y2="' + (plot.top + plotHeight).toFixed(1) + '"></line>' : ""}
-                ${chartPoints.map((point, index) => { const isSelected = index === selectedIndex; const activationKey = registerChartPointActivation(chartKey, point, scope); return '<g class="chart-point ' + (isSelected ? 'selected' : '') + '" role="button" tabindex="0" aria-pressed="' + (isSelected ? 'true' : 'false') + '" aria-label="' + escapeHtml(title + ': ' + point.value + ' on ' + formatDate(point.date)) + '" data-action="show-chart-point" data-chart-point-key="' + activationKey + '"><circle class="hit-area" cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="17"></circle><circle class="selected-ring" cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="9"></circle><circle class="visible-point" cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="4.5"></circle></g>'; }).join("")}
+                ${chartPoints.map((point, index) => { const isSelected = index === selectedIndex; const activationKey = registerChartPointActivation(chartKey, point, scope); const evidenceLabel = point.qualifies ? 'evidenced' : 'provisional, ' + point.completedSets + ' completed set' + (point.completedSets === 1 ? '' : 's') + ' that week'; return '<g class="chart-point ' + (point.qualifies ? 'evidenced ' : 'thin ') + (isSelected ? 'selected' : '') + '" role="button" tabindex="0" aria-pressed="' + (isSelected ? 'true' : 'false') + '" aria-label="' + escapeHtml(title + ': ' + point.value + ' on ' + formatDate(point.date) + ', ' + evidenceLabel) + '" data-action="show-chart-point" data-chart-key="' + chartKey + '" data-chart-date="' + escapeHtml(point.date) + '" data-chart-point-key="' + activationKey + '"><circle class="hit-area" cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="34"></circle><circle class="selected-ring" cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="9"></circle><circle class="visible-point" cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="4.5"></circle></g>'; }).join("")}
                 ${dateLabels}
               </svg>
             </div>
+            ${provisionalCount ? '<div class="chart-key" aria-label="Chart evidence legend"><span><i></i>evidenced</span><span><i class="thin"></i>provisional week</span></div>' : ""}
             ${selected ? renderChartPointDetail(chartKey, title, selected, validPoints) : ""}
           </div>
         `;
@@ -1254,33 +1337,113 @@
         return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(date);
       }
 
+      function chartPointSessionGroups(point) {
+        const groups = new Map();
+        (point.details || []).forEach((set) => {
+          const key = set.sessionId || set.sessionTitle || point.date;
+          const group = groups.get(key) || {
+            id: set.sessionId || "",
+            title: set.sessionTitle || "Workout on " + formatDate(point.date),
+            date: set.sessionDate || point.date,
+            sets: []
+          };
+          group.sets.push(set);
+          groups.set(key, group);
+        });
+        return Array.from(groups.values()).map((group) => ({
+          ...group,
+          sets: group.sets.slice().sort((left, right) => canonicalSetSequence(left) - canonicalSetSequence(right))
+        }));
+      }
+
+      function chartPointSetComparison(set, workingIndex = 0) {
+        const exercise = data.exercises.find((item) => item.id === set.exerciseId) || selectedExerciseRecord();
+        const session = data.sessions.find((item) => item.id === (set.sessionId || exercise?.sessionId));
+        const expectation = session && exercise
+          ? setProgramExpectation(session, exercise, set, workingIndex, { allowCurrentFallback: false })
+          : null;
+        const resistanceType = resistanceTypeFor(exercise, set);
+        const targetLoad = Number(set.targetWeight ?? 0);
+        const targetLoadText = targetLoad > 0
+          ? formatResistance({ ...set, weight: targetLoad, resistanceType }, exercise)
+          : "";
+        const repMin = Number(expectation?.repMin || set.targetRepMin || set.targetReps || 0);
+        const repMax = Number(expectation?.repMax || set.targetRepMax || set.targetReps || repMin || 0);
+        const rpeMin = Number(expectation?.rpeMin || set.targetRpeMin || 0);
+        const rpeMax = Number(expectation?.rpeMax || set.targetRpeMax || set.targetRpe || rpeMin || 0);
+        const actualReps = Number(set.reps || 0);
+        const actualRpe = Number(set.rpe || 0);
+        const hasRepTarget = repMin > 0 || repMax > 0;
+        const hasRpeTarget = rpeMin > 0 || rpeMax > 0;
+        const repLow = repMin || repMax;
+        const repHigh = repMax || repMin;
+        const rpeLow = rpeMin || Math.max(0, rpeMax - Number(expectation?.rpeTolerance || set.targetRpeTolerance || 1));
+        const rpeHigh = rpeMax || rpeMin;
+        let delta = { tone: "none", text: "no comparison" };
+        if (hasRepTarget) {
+          if (actualReps < repLow) delta = { tone: "out", text: "−" + formatLoadNumber(repLow - actualReps) + " rep" + (Math.abs(repLow - actualReps) === 1 ? "" : "s") };
+          else if (actualReps > repHigh) delta = { tone: "over", text: "+" + formatLoadNumber(actualReps - repHigh) + " rep" + (Math.abs(actualReps - repHigh) === 1 ? "" : "s") };
+          else if (hasRpeTarget && actualRpe > 0 && actualRpe > rpeHigh) delta = { tone: "out", text: "+" + formatLoadNumber(actualRpe - rpeHigh) + " RPE" };
+          else if (hasRpeTarget && actualRpe > 0 && actualRpe < rpeLow) delta = { tone: "over", text: "−" + formatLoadNumber(rpeLow - actualRpe) + " RPE" };
+          else if (!hasRpeTarget || actualRpe > 0) delta = { tone: "on", text: "on" };
+        }
+        const planParts = [
+          targetLoadText,
+          hasRepTarget ? targetRangeText(repLow, repHigh, " reps") : "",
+          hasRpeTarget ? targetRangeText(rpeLow, rpeHigh, " RPE") : ""
+        ].filter(Boolean);
+        return {
+          actual: formatSetPerformance(set, exercise),
+          delta,
+          plan: planParts.join(" · ") || "Saved target unavailable"
+        };
+      }
+
+      function renderChartPointSetGroups(point) {
+        const groups = chartPointSessionGroups(point);
+        const multipleSessions = groups.length > 1;
+        return (multipleSessions ? '<div class="callout info"><b>' + groups.length + ' sessions contributed on this date</b><span>The chart point is a date bucket. Sets remain grouped under the workout that produced them.</span></div>' : '')
+          + groups.map((group) => '<section class="chart-session-group"><div class="m-label"><span>' + escapeHtml(group.title) + '</span><span>' + formatDate(group.date) + '</span></div><div class="diff chart-set-diff">'
+            + group.sets.map((set, index) => {
+              const comparison = chartPointSetComparison(set, index);
+              return '<div class="drow"><span class="plan"><span class="lbl">Set ' + (Number(set.setNumber) || index + 1) + ' target</span><span class="val">' + escapeHtml(comparison.plan) + '</span></span><span class="act"><span class="lbl">Performed</span><span class="val">' + escapeHtml(comparison.actual) + '</span></span><span class="dlt"><span class="d ' + comparison.delta.tone + '">' + escapeHtml(comparison.delta.text) + '</span></span></div>';
+            }).join("") + '</div></section>').join("");
+      }
+
       function renderChartPointDetail(chartKey, title, point, points) {
         const exerciseName = selectedExerciseName();
         const exercise = selectedExerciseRecord();
         const index = points.findIndex((item) => item.date === point.date && item.value === point.value);
         const previous = index > 0 ? points[index - 1] : null;
         const comparison = previous && previous.value ? ((point.value - previous.value) / previous.value) * 100 : null;
+        const best = [...(point.details || [])].sort((left, right) => {
+          if (point.metricType === "assistance_load") return Number(left.weight || 0) - Number(right.weight || 0);
+          if (point.metricType === "e1rm") return estimatedOneRepMax(right) - estimatedOneRepMax(left);
+          return Number(right.weight || 0) - Number(left.weight || 0) || Number(right.reps || 0) - Number(left.reps || 0);
+        })[0];
+        const unitLabel = ["e1rm", "added_load", "assistance_load", "conventional_volume"].includes(point.metricType)
+          ? " " + data.settings.weightUnit
+          : point.metricType.includes("duration") ? " sec"
+            : point.metricType.includes("distance") ? " m"
+              : " reps";
+        const metricValue = point.metricType === "conventional_volume" ? point.value.toLocaleString() : point.value;
         const close = '<button class="icon-button" type="button" data-action="close-chart-point" aria-label="Close chart detail">X</button>';
-        if (chartKey === "e1rm") {
-          if (point.metricType !== "e1rm") {
-            const best = [...point.details].sort((a, b) => point.metricType === "assistance_load" ? Number(a.weight || 0) - Number(b.weight || 0) : Number(b.weight || 0) - Number(a.weight || 0) || Number(b.reps || 0) - Number(a.reps || 0))[0];
-            const unitLabel = ["added_load", "assistance_load"].includes(point.metricType) ? " " + data.settings.weightUnit : point.metricType.includes("duration") ? " sec" : point.metricType.includes("distance") ? " m" : " reps";
-            return '<article class="chart-detail" role="status"><div class="row split"><strong>' + escapeHtml(title + ' · ' + point.value + unitLabel) + '</strong>' + close + '</div><div class="chart-detail-facts"><div><span>Date</span><strong>' + formatDate(point.date) + '</strong></div><div><span>Exercise</span><strong>' + escapeHtml(exerciseName) + '</strong></div><div><span>Best set</span><strong>' + escapeHtml(best ? formatSetPerformance(best, exercise) : '-') + '</strong></div><div><span>Metric</span><strong>' + escapeHtml(title) + '</strong></div></div><small>Bodyweight resistance is tracked through reps, effort, and explicit added or assistance load. This is not treated as total system load.</small></article>';
-          }
-          const best = [...point.details].filter((set) => set.weight > 0).sort((a, b) => estimatedOneRepMax(b) - estimatedOneRepMax(a))[0];
-          const priorMax = Math.max(0, ...points.slice(0, Math.max(0, index)).map((item) => item.value));
-          const isPr = point.value > priorMax;
-          return '<article class="chart-detail" role="status"><div class="row split"><strong>Estimated 1RM · ' + point.value + ' ' + data.settings.weightUnit + '</strong>' + close + '</div><div class="chart-detail-facts"><div><span>Date</span><strong>' + formatDate(point.date) + '</strong></div><div><span>Exercise</span><strong>' + escapeHtml(exerciseName) + '</strong></div><div><span>Load × reps</span><strong>' + escapeHtml(best ? best.weight + ' ' + data.settings.weightUnit + ' × ' + best.reps : '-') + '</strong></div><div><span>RPE</span><strong>' + escapeHtml(best?.rpe || '-') + '</strong></div></div><small>Epley estimate: load × (1 + reps ÷ 30).' + (isPr ? ' Personal record for the available history.' : '') + '</small></article>';
-        }
-        if (chartKey === "volume") {
-          if (point.metricType !== "conventional_volume") {
-            const contributing = point.details.slice().sort((a, b) => a.setNumber - b.setNumber);
-            return '<article class="chart-detail volume-chart-detail" role="status"><div class="row split"><div><span class="section-kicker">Selected exercise work</span><strong>' + escapeHtml(title + ' · ' + point.value) + '</strong></div>' + close + '</div><div class="chart-detail-facts"><div><span>Date</span><strong>' + formatDate(point.date) + '</strong></div><div><span>Exercise</span><strong>' + escapeHtml(exerciseName) + '</strong></div><div><span>Sets included</span><strong>' + contributing.length + '</strong></div><div><span>Vs previous</span><strong>' + (comparison == null ? 'Baseline' : (comparison >= 0 ? '+' : '') + comparison.toFixed(1) + '%') + '</strong></div></div><div class="volume-set-list">' + contributing.map((set, index) => '<div class="volume-set-row"><strong>Set ' + (set.setNumber > 0 ? set.setNumber : index + 1) + '</strong><div class="volume-set-main"><strong>' + escapeHtml(formatSetPerformance(set, exercise)) + '</strong><span>' + resistanceTypeLabel(set.resistanceType) + '</span></div><div class="volume-set-total"><span>Contribution</span><strong>' + (point.metricType.includes('duration') ? Number(set.durationSeconds || 0) + ' sec' : point.metricType.includes('distance') ? Number(set.distance || 0) + ' m' : Number(set.reps || 0) + ' reps') + '</strong></div></div>').join('') + '</div><small>No unsupported bodyweight-based volume load is estimated.</small></article>';
-          }
-          const contributing = point.details.filter((set) => set.weight > 0).sort((a, b) => a.setNumber - b.setNumber);
-          return '<article class="chart-detail volume-chart-detail" role="status"><div class="row split"><div><span class="section-kicker">Selected exercise volume</span><strong>Volume load · ' + point.value.toLocaleString() + ' ' + data.settings.weightUnit + '</strong></div>' + close + '</div><div class="chart-detail-facts"><div><span>Date</span><strong>' + formatDate(point.date) + '</strong></div><div><span>Exercise</span><strong>' + escapeHtml(exerciseName) + '</strong></div><div><span>Sets included</span><strong>' + contributing.length + '</strong></div><div><span>Vs previous</span><strong>' + (comparison == null ? 'Baseline' : (comparison >= 0 ? '+' : '') + comparison.toFixed(1) + '%') + '</strong></div></div><div class="volume-set-list">' + contributing.map((set, index) => { const setVolume = Number(set.weight || 0) * Number(set.reps || 0); return '<div class="volume-set-row"><strong>Set ' + (set.setNumber > 0 ? set.setNumber : index + 1) + '</strong><div class="volume-set-main"><strong>' + set.weight + ' ' + data.settings.weightUnit + ' × ' + set.reps + '</strong><span>' + (set.rpe ? 'RPE ' + set.rpe : 'RPE not recorded') + '</span></div><div class="volume-set-total"><span>Set volume</span><strong>' + setVolume.toLocaleString() + ' ' + data.settings.weightUnit + '</strong></div></div>'; }).join('') + '</div><small>' + escapeHtml(contributing[0]?.sessionTitle || '') + ' · Total reflects this exercise only.</small></article>';
-        }
-        return "";
+        const priorMax = chartKey === "e1rm" ? Math.max(0, ...points.slice(0, Math.max(0, index)).map((item) => item.value)) : 0;
+        const isPr = chartKey === "e1rm" && point.value > priorMax;
+        const evidence = point.qualifies
+          ? '<span class="chip" data-conf="4">Evidenced · ' + point.completedSets + ' sets that week</span>'
+          : '<span class="chip" data-conf="1">Provisional · ' + point.completedSets + ' set' + (point.completedSets === 1 ? '' : 's') + ' that week</span>';
+        const note = point.metricType === "e1rm"
+          ? 'Epley estimate: load × (1 + reps ÷ 30).' + (isPr ? ' Personal record for the available history.' : '')
+          : point.metricType === "conventional_volume"
+            ? 'Volume load reflects this exercise on the selected date only.'
+            : 'Bodyweight resistance uses recorded reps, duration, distance, and explicit added or assistance load; unsupported total-system load is not estimated.';
+        return '<article class="chart-detail" role="status"><div class="row split"><div><span class="section-kicker">Selected date · ' + formatDate(point.date) + '</span><strong>' + escapeHtml(title + ' · ' + metricValue + unitLabel) + '</strong><span class="chart-detail-exercise">' + escapeHtml(exerciseName) + '</span></div>' + close + '</div>'
+          + evidence
+          + '<div class="rollup chart-point-rollup"><span class="ru"><b>' + escapeHtml(best ? formatResistance(best, exercise) : '—') + '</b><span>top load</span></span><span class="ru"><b>' + escapeHtml(best?.reps || '—') + '</b><span>reps</span></span><span class="ru"><b>' + escapeHtml(best?.rpe || '—') + '</b><span>RPE</span></span></div>'
+          + '<div><div class="m-label"><span>Sets on ' + formatDate(point.date) + '</span><span>target → performed</span></div>' + renderChartPointSetGroups(point) + '</div>'
+          + '<div class="callout ' + (comparison == null ? 'provisional' : comparison >= 0 ? 'good' : 'warn') + '"><b>Against the previous chart point</b><span>' + (comparison == null ? 'This date establishes the comparison baseline.' : '<em>' + (comparison >= 0 ? '+' : '') + comparison.toFixed(1) + '%</em> for this metric.') + '</span></div>'
+          + '<small>' + escapeHtml(note) + '</small></article>';
       }
 
       function renderLiftProgressSummary(weeks, weekStart) {
@@ -1366,13 +1529,20 @@
         if (analysis.score == null) return '<section class="hypertrophy-score-empty"><strong>' + escapeHtml(analysis.scopeLabel) + ' · Not enough data yet</strong><p>' + (analysis.scopeType === 'exercise' ? 'Submit at least one qualifying week with two completed working sets for this exact exercise variation. The app will not substitute the overall-program score.' : 'Submit at least one week with three completed working sets and at least half of its planned work finished.') + '</p></section>';
         const trend = analysis.trend == null ? "No prior six-week window" : (analysis.trend >= 0 ? "+" : "") + analysis.trend + " vs prior window";
         const weekText = analysis.included.length + (analysis.included.length === 1 ? " qualifying week" : " qualifying weeks") + (analysis.provisional ? " · Provisional" : "");
+        const confidenceLevel = analysis.confidence === "high" ? 4 : analysis.confidence === "moderate" ? 3 : 2;
+        const limiting = analysis.improvements[0]?.detail || analysis.interpretation;
+        const filledSegments = Math.max(0, Math.min(10, Math.round(Number(analysis.score || 0) / 10)));
+        const confidenceAccounting = analysis.included.length + " qualifying week" + (analysis.included.length === 1 ? "" : "s")
+          + ", " + analysis.skippedDeloadWeeks.length + " skipped as deload" + (analysis.skippedDeloadWeeks.length === 1 ? "" : "s")
+          + ", " + analysis.incompleteWeeks.length + " below the data floor.";
         return `<div class="hypertrophy-score-wrap">
-          <button class="hypertrophy-score-card ${hypertrophyScoreTone(analysis.score)}" type="button" data-action="toggle-hypertrophy-score" aria-expanded="${hypertrophyScoreExpanded ? 'true' : 'false'}" style="--score:${analysis.score}">
-            <div><span class="hypertrophy-score-title">${escapeHtml(analysis.scoreTitle)}</span><strong class="hypertrophy-score-number">${analysis.score} <small>/ 100</small></strong><span class="hypertrophy-score-scope">${escapeHtml(analysis.scopeDescription)}</span></div>
-            <span class="hypertrophy-score-grade" role="img" aria-label="Letter grade ${escapeHtml(hypertrophyGradeLabel(hypertrophyLetterGrade(analysis.score)))}">${hypertrophyLetterGrade(analysis.score)}</span>
-            <div class="hypertrophy-score-bar"><span></span></div>
-            <div class="hypertrophy-score-meta"><strong>${escapeHtml(analysis.interpretation)}</strong><span>${escapeHtml(hypertrophyWindowLabel(analysis))}</span><span>${escapeHtml(weekText)}</span><span>${escapeHtml(trend)}</span><span>${escapeHtml(analysis.confidence)} confidence</span><span>${hypertrophyScoreExpanded ? 'Hide analysis' : 'Open analysis'} ›</span></div>
+          <button class="hypertrophy-score-card analysis-score-card" type="button" data-action="toggle-hypertrophy-score" aria-expanded="${hypertrophyScoreExpanded ? 'true' : 'false'}">
+            <span class="score-hero-copy"><span class="hypertrophy-score-title">Hypertrophy score</span><strong>${escapeHtml(limiting)}</strong><span>${escapeHtml(trend)} · ${escapeHtml(weekText)}</span></span>
+            <span class="score-hero-number"><b>${analysis.score}</b><span class="hypertrophy-score-grade" role="img" aria-label="Letter grade ${escapeHtml(hypertrophyGradeLabel(hypertrophyLetterGrade(analysis.score)))}">${hypertrophyLetterGrade(analysis.score)} · ${escapeHtml(analysis.confidence)}</span></span>
+            <span class="track" aria-label="${analysis.score} out of 100">${Array.from({ length: 10 }, (_, index) => '<i class="seg ' + (index < filledSegments ? 'filled' : '') + '"></i>').join("")}</span>
+            <span class="hypertrophy-score-meta"><span>${escapeHtml(hypertrophyWindowLabel(analysis))}</span><span>${hypertrophyScoreExpanded ? 'Hide full score accounting' : 'Open full score accounting'} ›</span></span>
           </button>
+          <div class="callout info analysis-confidence"><span class="meter lg" data-conf="${confidenceLevel}" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span><b>${escapeHtml(analysis.confidence.charAt(0).toUpperCase() + analysis.confidence.slice(1))} confidence</b><span>${escapeHtml(confidenceAccounting)}</span></span></div>
           ${hypertrophyScoreExpanded && !options.deferDetail ? renderHypertrophyScoreDetail(analysis) : ""}
         </div>`;
       }
@@ -1401,30 +1571,50 @@
         const actuals = exerciseExpectationActuals(exerciseId, analysis);
         const historicalConfigured = actuals.filter((group) => group.context).length;
         const historicalChanged = new Set(actuals.filter((group) => group.context).map((group) => group.context.id + "|" + JSON.stringify(group.context.setTypes))).size > 1;
+        const comparisonDelta = (actual, low, high, unit = "") => {
+          if (!Number.isFinite(actual) || !Number.isFinite(low) || !Number.isFinite(high) || high <= 0) return { tone: "none", text: "—" };
+          if (actual < low) return { tone: "under", text: "−" + formatLoadNumber(low - actual) + unit };
+          if (actual > high) return { tone: "out", text: "+" + formatLoadNumber(actual - high) + unit };
+          return { tone: "on", text: "on" };
+        };
+        const renderRoleDiff = (group, role) => {
+          const target = group.context.setTypes.find((type) => type.type === role.key) || {};
+          const expectedSets = Number(target.setCount || 0);
+          const actualSets = group.sessionCount ? Math.round(role.completedSets / group.sessionCount * 10) / 10 : 0;
+          const setDelta = comparisonDelta(actualSets, expectedSets, expectedSets, "");
+          const repLow = Number(target.repMin || target.repMax || 0);
+          const repHigh = Number(target.repMax || target.repMin || 0);
+          const averageReps = role.repTracked ? Math.round(role.repTotal / role.repTracked * 10) / 10 : null;
+          const repDelta = comparisonDelta(averageReps, repLow, repHigh, " r");
+          const rpeLow = Number(target.rpeMin || target.rpeMax || 0);
+          const rpeHigh = Number(target.rpeMax || target.rpeMin || 0);
+          const averageRpe = role.rpeTracked ? Math.round(role.rpeTotal / role.rpeTracked * 10) / 10 : null;
+          const rpeDelta = comparisonDelta(averageRpe, rpeLow, rpeHigh, " RPE");
+          const repCompliance = role.repTracked ? Math.round(role.repHits / role.repTracked * 100) + "% compliance" : "Not scored";
+          const rpeCompliance = role.rpeTracked ? Math.round(role.rpeHits / role.rpeTracked * 100) + "% compliance" : "Not scored";
+          return '<section class="expectation-role-diff"><div class="m-label bare"><span>' + escapeHtml(role.label) + '</span><span>' + group.sessionCount + (group.sessionCount === 1 ? ' session' : ' sessions') + '</span></div><div class="diff"><div class="drow dhead"><span class="plan">Expected</span><span class="act">Actual</span><span class="dlt">Δ</span></div>'
+            + '<div class="drow"><span class="plan"><span class="lbl">Working sets</span><span class="val big">' + expectedSets + '</span></span><span class="act"><span class="lbl">Average per session</span><span class="val big">' + actualSets + '</span></span><span class="dlt"><span class="d ' + setDelta.tone + '">' + escapeHtml(setDelta.text) + '</span></span></div>'
+            + '<div class="drow"><span class="plan"><span class="lbl">Reps</span><span class="val big">' + escapeHtml(targetRangeText(repLow, repHigh)) + '</span></span><span class="act"><span class="lbl">' + escapeHtml(repCompliance) + '</span><span class="val big">' + (averageReps == null ? '—' : averageReps) + '</span></span><span class="dlt"><span class="d ' + repDelta.tone + '">' + escapeHtml(repDelta.text) + '</span></span></div>'
+            + '<div class="drow"><span class="plan"><span class="lbl">Effort</span><span class="val big">' + escapeHtml(targetRangeText(rpeLow, rpeHigh)) + '</span></span><span class="act"><span class="lbl">' + escapeHtml(rpeCompliance) + '</span><span class="val big">' + (averageRpe == null ? '—' : averageRpe) + '</span></span><span class="dlt"><span class="d ' + rpeDelta.tone + '">' + escapeHtml(rpeDelta.text) + '</span></span></div>'
+            + '</div></section>';
+        };
         return `<section class="exercise-expectations" aria-label="Exercise Expectations">
-          <div class="section-heading"><div><div class="section-kicker">Score standard</div><h2>Exercise Expectations</h2><p>These are the program targets used to interpret rep execution, effort, completion, and volume.</p></div></div>
-          ${contexts.length ? contexts.map((context, index) => `<article class="expectation-context">
-            <div class="expectation-context-head"><div><h3>${escapeHtml(context.templateName)}</h3><p>${escapeHtml(context.role)} · ${escapeHtml(context.source)}${index === 0 ? ' · Current' : ''}</p></div><span class="status-pill ${index === 0 ? 'inside' : ''}">${escapeHtml(context.sessionType)}</span></div>
-            <div class="set-type-list">${context.setTypes.map(renderTargetSetType).join('')}</div>
-            <details class="expectation-advanced"><summary>Progression and scoring rules</summary><p><strong>Progression:</strong> ${escapeHtml(context.progressionRule)}</p><p>Each submitted set is graded against the set type and prescription saved with that workout. Readiness adjustments remain temporary and do not overwrite this base template.</p></details>
-          </article>`).join('') : hypertrophyWindowOffset > 0 ? '<div class="expectation-missing"><strong>Historical targets only</strong><span>Current template targets are intentionally hidden in this snapshot. The execution below uses only prescriptions saved with workouts inside the selected period.</span></div>' : '<div class="expectation-missing"><strong>No active program target</strong><span>Add this exercise to a workout template and configure sets, reps, RPE, and rest. Missing targets are excluded from compliance scoring rather than invented.</span></div>'}
-          <div class="actual-expected"><h3>Actual vs Expected · analyzed window</h3>
+          <div class="section-heading"><div><div class="section-kicker">Actual vs expected · analyzed window</div><h2>Execution against the saved plan</h2><p>Every period is judged against the prescription stored with it. Missing targets remain unscored.</p></div></div>
+          <div class="actual-expected">
             ${actuals.length ? actuals.map((group) => {
               const dateLabel = group.dateStart ? ' · ' + formatDate(group.dateStart) + (group.dateEnd && group.dateEnd !== group.dateStart ? ' to ' + formatDate(group.dateEnd) : '') : '';
               if (!group.context) return '<div class="actual-expected-context"><strong>Historical target unavailable' + dateLabel + '</strong><div class="expectation-missing"><span>The submitted sets remain visible, but this period has no effective-dated prescription. Compliance is excluded and confidence is reduced.</span></div></div>';
               const roles = group.roles || [];
-              return '<div class="actual-expected-context"><strong>' + escapeHtml(group.label) + dateLabel + ' · ' + group.sessionCount + (group.sessionCount === 1 ? ' session' : ' sessions') + (group.context.resolutionSource === 'current-fallback' ? ' · current target fallback' : '') + '</strong><div class="actual-role-grid">'
-                + roles.map((role) => {
-                  const target = group.context.setTypes.find((type) => type.type === role.key) || {};
-                  const expectedReps = target.repMin || target.repMax ? (target.repMin || target.repMax) + (target.repMax && target.repMax !== target.repMin ? '–' + target.repMax : '') + ' reps' : 'Not configured';
-                  const expectedRpe = target.rpeMin || target.rpeMax ? (target.rpeMin || target.rpeMax) + (target.rpeMax && target.rpeMax !== target.rpeMin ? '–' + target.rpeMax : '') : 'Not configured';
-                  const repActual = role.repTracked ? role.repHits + ' of ' + role.repTracked + ' in range · ' + Math.round(role.repHits / role.repTracked * 100) + '%' : (expectedReps === 'Not configured' ? 'Excluded from score' : 'No completed sets');
-                  const rpeActual = role.rpeTracked ? role.rpeHits + ' of ' + role.rpeTracked + ' in range · ' + Math.round(role.rpeHits / role.rpeTracked * 100) + '%' : (expectedRpe === 'Not configured' ? 'Excluded from score' : 'No logged RPE');
-                  const averageSets = group.sessionCount ? Math.round(role.completedSets / group.sessionCount * 10) / 10 : 0;
-                  return '<div class="actual-role-card"><strong>' + escapeHtml(role.label) + '</strong><div class="actual-role-metric"><div><span>Expected sets</span><b>' + Number(target.setCount || 0) + ' per session</b></div><div><span>Actual sets</span><b>' + averageSets + ' average</b></div></div><div class="actual-role-metric"><div><span>Expected reps</span><b>' + escapeHtml(expectedReps) + '</b></div><div><span>Rep compliance</span><b>' + escapeHtml(repActual) + '</b></div></div><div class="actual-role-metric"><div><span>Expected RPE</span><b>' + escapeHtml(expectedRpe) + '</b></div><div><span>RPE compliance</span><b>' + escapeHtml(rpeActual) + '</b></div></div></div>';
-                }).join('') + '</div></div>';
+              return '<div class="actual-expected-context"><strong>' + escapeHtml(group.label) + dateLabel + (group.context.resolutionSource === 'current-fallback' ? ' · current target fallback' : '') + '</strong><div class="actual-role-grid">' + roles.map((role) => renderRoleDiff(group, role)).join('') + '</div></div>';
             }).join('') : '<div class="expectation-missing"><strong>No qualifying execution data</strong><span>Current program expectations are shown above. Submit this exercise to populate the six-week comparison.</span></div>'}
           </div>
+          <details class="expectation-context-library"><summary>Program targets used for this comparison <span>${contexts.length || historicalConfigured} context${(contexts.length || historicalConfigured) === 1 ? '' : 's'}</span></summary><div class="disclosure-body">
+            ${contexts.length ? contexts.map((context, index) => `<article class="expectation-context">
+              <div class="expectation-context-head"><div><h3>${escapeHtml(context.templateName)}</h3><p>${escapeHtml(context.role)} · ${escapeHtml(context.source)}${index === 0 ? ' · Current' : ''}</p></div><span class="status-pill ${index === 0 ? 'inside' : ''}">${escapeHtml(context.sessionType)}</span></div>
+              <div class="set-type-list">${context.setTypes.map(renderTargetSetType).join('')}</div>
+              <details class="expectation-advanced"><summary>Progression and scoring rules</summary><p><strong>Progression:</strong> ${escapeHtml(context.progressionRule)}</p><p>Each submitted set is graded against the set type and prescription saved with that workout. Readiness adjustments remain temporary and do not overwrite this base template.</p></details>
+            </article>`).join('') : hypertrophyWindowOffset > 0 ? '<div class="expectation-missing"><strong>Historical targets only</strong><span>Current template targets are intentionally hidden in this snapshot. The execution above uses only prescriptions saved with workouts inside the selected period.</span></div>' : '<div class="expectation-missing"><strong>No active program target</strong><span>Add this exercise to a workout template and configure sets, reps, RPE, and rest. Missing targets are excluded from compliance scoring rather than invented.</span></div>'}
+          </div></details>
           ${historicalChanged ? '<p class="expectation-note"><strong>Targets changed during this window.</strong> Each session was scored against the target saved on that date; current template settings were not applied retroactively.</p>' : ''}
           ${actuals.some((group) => !group.context) ? '<p class="expectation-note"><strong>Some historical targets are unknown.</strong> Those imported or legacy sets remain visible, but rep-range and RPE compliance are not scored without a saved prescription.</p>' : ''}
           ${contexts.length > 1 ? '<p class="expectation-note"><strong>Multiple program contexts.</strong> Heavy, light, technique, and other template uses remain separate above and in the actual-versus-expected comparison.</p>' : ''}
@@ -1449,7 +1639,18 @@
         const allWeeks = selectedName ? measurePerformance("charts:summarizeExerciseByWeek", () => summarizeExerciseByWeek(selectedName, analysisOptions), { exerciseId: selectedExerciseId }) : [];
         const qualifyingWeekIds = new Set(analysis.qualifyingWeekIds || []);
         const weeks = allWeeks.filter((week) => qualifyingWeekIds.has(week.weekStart));
-        const progress = selectedName ? measurePerformance("charts:exerciseProgressSeries", () => exerciseProgressSeries(selectedName, { ...analysisOptions, qualifyingWeekIds: analysis.qualifyingWeekIds, resistanceType: exercise?.resistanceType }), { exerciseId: selectedExerciseId }) : { e1rm: [], volume: [], primaryTitle: "Estimated 1RM", secondaryTitle: "Volume load", latestPrimary: "Latest e1RM", latestSecondary: "Latest volume", resistanceType: "external" };
+        const selectedWeekStarts = (analysis.included || []).map((week) => week.weekStart).sort();
+        const oldestSelectedWeek = selectedWeekStarts[0] || "";
+        const newestSelectedWeek = selectedWeekStarts.at(-1) || "";
+        const chartWeekClassifications = (analysis.allWeeks || [])
+          .filter((week) => oldestSelectedWeek && newestSelectedWeek && week.weekStart >= oldestSelectedWeek && week.weekStart <= newestSelectedWeek)
+          .map((week) => ({
+            weekStart: week.weekStart,
+            completedSets: Number(week.completedSets || 0),
+            qualifies: Boolean(week.qualifies),
+            isDeload: Boolean(week.isDeload)
+          }));
+        const progress = selectedName ? measurePerformance("charts:exerciseProgressSeries", () => exerciseProgressSeries(selectedName, { ...analysisOptions, qualifyingWeekIds: analysis.qualifyingWeekIds, weekClassifications: chartWeekClassifications, resistanceType: exercise?.resistanceType }), { exerciseId: selectedExerciseId }) : { e1rm: [], volume: [], primaryTitle: "Estimated 1RM", secondaryTitle: "Volume load", latestPrimary: "Latest e1RM", latestSecondary: "Latest volume", resistanceType: "external" };
         const latestReviewWeek = weeks[0]?.weekStart || "";
         const recommendation = selectedName && latestReviewWeek ? coachRecommendationForExercise(selectedName, { ...analysisOptions, weekStart: latestReviewWeek, historical: hypertrophyWindowOffset > 0 }) : null;
         if (catalog.length === 0) {
@@ -1457,6 +1658,11 @@
         }
         const latestOneRm = progress.e1rm.filter((point) => point.value > 0).at(-1);
         const latestVolume = progress.volume.filter((point) => point.value > 0).at(-1);
+        const previousOneRm = progress.e1rm.filter((point) => point.value > 0).at(-2);
+        const primaryChange = latestOneRm && previousOneRm ? Math.round((latestOneRm.value - previousOneRm.value) * 10) / 10 : null;
+        const primaryHeadline = latestOneRm
+          ? formatLoadNumber(latestOneRm.value) + (progress.resistanceType === "external" ? " " + data.settings.weightUnit : "") + (primaryChange == null ? " establishes the current baseline." : ", " + (primaryChange >= 0 ? "up " : "down ") + formatLoadNumber(Math.abs(primaryChange)) + " from the prior point.")
+          : "Build the first reliable comparison point.";
         const chartPointScope = {
           exerciseId: selectedExerciseId,
           windowOffset: hypertrophyWindowOffset,
@@ -1467,13 +1673,17 @@
         return `
           <section class="view charts-view">
             <div class="screen-heading"><div><div class="section-kicker">${hypertrophyWindowOffset > 0 ? 'Historical snapshot through ' + formatDate(analysis.windowEnd) : 'Selected lift'}</div><h1>${escapeHtml(selectedName)}</h1></div><span class="status-pill inside">${analysis.included.length} qualifying week${analysis.included.length === 1 ? '' : 's'} · ${analysis.dataPointCount} sets</span></div>
-            <section class="coach-lead charts-coach"><div class="section-kicker">Progress focus</div><h2>${latestOneRm ? escapeHtml(progress.latestPrimary) + ': ' + escapeHtml(latestOneRm.value) : 'Build the first reliable comparison point.'}</h2><p>One primary trend leads this view. Scope, volume, expectations, recommendation evidence remain available below.</p></section>
+            <section class="m-head analysis-lead"><div class="eyebrow">${escapeHtml(progress.primaryTitle)} · ${analysis.included.length} qualifying week${analysis.included.length === 1 ? '' : 's'}</div><h2>${escapeHtml(primaryHeadline)}</h2></section>
             <div class="chart-control-panel" aria-label="Selected lift controls">
               <div class="chart-viewing-summary"><div><span>Viewing</span><strong>${escapeHtml(selectedName)}</strong><span>Exercise analysis · ${formatDate(analysis.windowStart)} – ${formatDate(analysis.windowEnd)}</span></div><span class="status-pill inside">${analysis.included.length} qualifying · ${analysis.skippedDeloadWeeks.length} deload skipped</span></div>
               <div class="chart-control-field chart-control-lift"><label for="chart-exercise-search">Chart lift</label><div class="chart-search-input"><input id="chart-exercise-search" type="search" data-action="review-exercise-input" role="combobox" aria-autocomplete="list" aria-controls="chart-exercise-suggestions" aria-expanded="${chartExerciseSearchOpen ? 'true' : 'false'}" aria-label="Search or select exercise" autocomplete="off" value="${escapeHtml(chartExerciseDraft || selectedName)}" /><button class="chart-search-clear" type="button" data-action="clear-chart-exercise-search" aria-label="Clear exercise search">×</button></div><div id="chart-exercise-suggestions" class="exercise-suggestions" role="listbox" ${chartExerciseSearchOpen ? '' : 'hidden'}>${renderExerciseSuggestions()}</div><small class="exercise-search-error" role="status" ${chartExerciseSearchError ? '' : 'hidden'}>${escapeHtml(chartExerciseSearchError)}</small></div>
               <div class="chart-control-field analysis-period-control"><span>Analysis period</span><details class="analysis-period-menu"><summary>${escapeHtml((hypertrophyWindowOffset === 0 ? 'Latest qualifying period' : 'Historical period ' + hypertrophyWindowOffset) + ' · ' + hypertrophyWindowLabel(analysis))}<span aria-hidden="true">⌄</span></summary><div class="analysis-period-options">${analysis.windowOptions.length ? analysis.windowOptions.map((option, index) => '<button type="button" data-action="select-chart-period" data-period-offset="' + option.offset + '" aria-pressed="' + (option.offset === hypertrophyWindowOffset) + '"><strong>' + escapeHtml(index === 0 ? 'Latest 6 qualifying weeks' : 'Previous qualifying period ' + index) + '</strong><br><small>' + escapeHtml(hypertrophyWindowLabel(option.selection)) + '</small></button>').join('') : '<button type="button" aria-pressed="true">Latest qualifying period</button>'}</div></details></div>
               <p class="chart-control-context">Score, rationale, weeks, charts, and coaching use only submitted ${escapeHtml(selectedName)} history. Equipment and named variations remain separate.</p>
             </div>
+            <section class="screen-section primary-analysis-chart">
+              <div class="m-label"><span>Primary trend</span><span>solid evidenced · dashed provisional</span></div>
+              ${renderChart("e1rm", progress.primaryTitle, progress.e1rm, "No comparable completed sets yet.", chartPointScope)}
+            </section>
             ${renderHypertrophyScore(analysis, { deferDetail: true })}
             ${renderExerciseExpectations(selectedExerciseId, analysis)}
             ${hypertrophyScoreExpanded ? renderHypertrophyScoreDetail(analysis) : ""}
@@ -1481,9 +1691,8 @@
             ${latestReviewWeek && progress.resistanceType === 'external' ? renderLiftProgressSummary(weeks, latestReviewWeek) : ''}
             ${recommendation ? '<section class="coach-recommendation-wrap"><div class="section-kicker">' + (hypertrophyWindowOffset > 0 ? 'Coach recommendation at the end of this period' : 'Coach Recommendation') + '</div>' + renderRecommendation(recommendation) + '</section>' : ""}
             <section class="screen-section">
-              <div class="section-heading"><div><h2>Progress charts</h2><p>Tap a point to see its value, date, and session context.</p></div></div>
-              <div class="chart-list">
-                ${renderChart("e1rm", progress.primaryTitle, progress.e1rm, "No comparable completed sets yet.", chartPointScope)}
+              <div class="section-heading"><div><h2>Supporting volume</h2><p>Activate a point to inspect the selected date and its contributing sets.</p></div></div>
+              <div class="chart-list supporting-chart-list">
                 ${renderChart("volume", progress.secondaryTitle, progress.volume, "No completed work is available for this metric yet.", chartPointScope)}
               </div>
             </section>

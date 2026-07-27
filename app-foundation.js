@@ -73,6 +73,7 @@
         "return-active-workout", "use-usual-readiness", "review-template-readiness", "start-adjusted-workout",
         "keep-workout", "keep-history-editing", "cancel-clear-data", "close-dashboard-detail", "dashboard-detail-parent",
         "open-history", "open-progress", "set-progress-view", "retry-view-render", "focus-workout-exercise", "open-dashboard-detail", "open-dashboard-session", "open-volume-session", "open-fatigue-flag", "toggle-volume-muscle",
+        "show-chart-point", "close-chart-point", "toggle-hypertrophy-score",
         "cancel-template-start", "log-today-readiness", "edit-readiness-metrics", "start-original-workout", "adjust-template-readiness",
         "template-readiness-sleep-hours", "template-readiness-sleep-quality", "template-readiness-hrv", "template-readiness-resting-hr",
         "template-readiness-soreness", "template-readiness-nutrition", "template-readiness-protein", "template-readiness-illness",
@@ -81,7 +82,7 @@
         "clear-data-ack", "clear-data-phrase", "sync-before-clear", "confirm-clear-data", "confirm-cancel-workout",
         "confirm-save-history-edits", "confirm-cancel-history-edits"
       ]);
-      const focusDescriptorDataKeys = ["tab", "templateId", "sessionId", "exerciseId", "setId", "progressView", "detail", "flagId", "muscle", "field"];
+      const focusDescriptorDataKeys = ["tab", "templateId", "sessionId", "exerciseId", "setId", "progressView", "detail", "flagId", "muscle", "field", "chartKey", "chartDate"];
       const focusableCandidateSelector = 'button, input, select, textarea, a[href], summary, [tabindex]';
       let progressView = progressViewFromLocation();
       let activeTab = tabFromLocation();
@@ -3159,6 +3160,7 @@
             averageRpeAtTopWeight: topWeightRpeSets.length
               ? topWeightRpeSets.reduce((sum, set) => sum + set.rpe, 0) / topWeightRpeSets.length
               : 0,
+            plannedSets: bucket.sets.length,
             completedSets: completed.length,
             failedSets: bucket.sets.filter((set) => !set.completed && !set.skipped).length,
             averageRpe: rpeSets.length ? rpeSets.reduce((sum, set) => sum + set.rpe, 0) / rpeSets.length : 0,
@@ -3961,7 +3963,7 @@
       }
 
       function isVisibleEnabledFocusable(element, options = {}) {
-        if (!(element instanceof HTMLElement) || !element.matches(focusableCandidateSelector)) return false;
+        if (!(element instanceof HTMLElement || element instanceof SVGElement) || !element.matches(focusableCandidateSelector)) return false;
         if (element.matches(":disabled") || element.getAttribute("aria-disabled") === "true") return false;
         if (element.closest('[inert], [hidden], [aria-hidden="true"]')) return false;
         const style = window.getComputedStyle(element);

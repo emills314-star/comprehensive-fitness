@@ -9,6 +9,7 @@ const {
   STORAGE_KEY,
   buildProtectedSurfaceFixture
 } = require("./fixtures/protected-surfaces.fixture");
+const { buildAnalyticsEvidenceFixture } = require("./fixtures/analytics-settings.fixture");
 
 const PRIMARY_TABS = [
   { id: "today", view: ".workout-view" },
@@ -38,7 +39,7 @@ function focusedFixture({ activeWorkout = true, includeHistory = true } = {}) {
 }
 
 async function installScenario(page, options = {}) {
-  const fixture = focusedFixture({
+  const fixture = options.fixture || focusedFixture({
     activeWorkout: options.activeWorkout !== false,
     includeHistory: options.includeHistory !== false
   });
@@ -1489,6 +1490,139 @@ test("guided mesocycle controls reflow, retain focus, and keep 44 CSS-pixel targ
   assertGeometry(await measure("build"));
   await page.locator('[data-action="open-guided-exercise-browser"]').first().click();
   assertGeometry(await measure("candidate-workspace"));
+});
+
+test("lift analysis and history retain contrast across every package and theme", async ({ page }, testInfo) => {
+  test.setTimeout(240_000);
+  test.skip(testInfo.project.name !== "desktop", "One deterministic Chromium project owns the complete analysis color-package matrix.");
+  await installScenario(page, {
+    activeWorkout: false,
+    fixture: buildAnalyticsEvidenceFixture(),
+    viewport: { width: 390, height: 844 }
+  });
+  await page.addScriptTag({ content: AxeBuilder.source });
+  await openPrimaryTab(page, "charts");
+  await expect(page.locator(".chart-recalculating")).toHaveCount(0, { timeout: 15_000 });
+  const search = page.getByRole("combobox", { name: "Search or select exercise" });
+  await search.fill("Dumbbell Bench Press");
+  await search.press("Enter");
+  await expect(page.locator(".chart-recalculating")).toHaveCount(0, { timeout: 15_000 });
+  await expect(page.locator('.chart-line[data-evidence="provisional"]').first()).toBeVisible();
+
+  const colorPackages = [
+    "heritage-atlas", "signal-garden", "alpine-ledger", "training-hall", "harbor-pulse",
+    "prairie-electric", "redwood-circuit", "mediterranean-set", "modern-primary", "night-stadium"
+  ];
+  const failures = [];
+  const auditCurrentSurface = async (surface, selector) => {
+    for (const theme of ["light", "dark"]) {
+      for (const colorPackage of colorPackages) {
+        await page.evaluate(({ colorPackage, theme }) => {
+          document.documentElement.dataset.colorPackage = colorPackage;
+          document.documentElement.dataset.theme = theme;
+        }, { colorPackage, theme });
+        await page.waitForTimeout(180);
+        const violations = await page.evaluate(async (surfaceSelector) => {
+          const surface = document.querySelector(surfaceSelector);
+          return (await axe.run(surface, { runOnly: { type: "rule", values: ["color-contrast"] } })).violations;
+        }, selector);
+        if (violations.length) {
+          failures.push({
+            colorPackage,
+            surface,
+            theme,
+            targets: violations.flatMap((violation) => violation.nodes.map((node) => ({
+              selector: node.target.join(" "),
+              summary: node.failureSummary
+            })))
+          });
+        }
+      }
+    }
+  };
+
+  await auditCurrentSurface("lift analysis", ".charts-view");
+  await page.locator('[data-action="set-progress-view"][data-progress-view="history"]').click();
+  await expect(page.locator(".history-view")).toBeVisible();
+  await page.locator(".history-by-exercise > summary").click();
+  await page.locator(".history-exercise > summary").first().click();
+  await auditCurrentSurface("history", ".history-view");
+  const failureSummary = Array.from(failures.reduce((summary, failure) => {
+    failure.targets.forEach((target) => {
+      const key = `${failure.surface} · ${target.selector}`;
+      const entry = summary.get(key) || { surfaceAndSelector: key, variants: [] };
+      entry.variants.push(`${failure.colorPackage}/${failure.theme}`);
+      summary.set(key, entry);
+    });
+    return summary;
+  }, new Map()).values()).map((entry) => ({
+    ...entry,
+    variants: Array.from(new Set(entry.variants))
+  }));
+  expect(failureSummary, "analysis and history must clear WCAG text contrast in every package and theme").toEqual([]);
+});
+
+test("lift analysis and history reflow without clipping and retain 44 CSS-pixel actions at 320 pixels and 200 percent text", async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
+  test.skip(testInfo.project.name !== "desktop", "One deterministic Chromium project owns exact analysis increased-text geometry.");
+  await installScenario(page, {
+    activeWorkout: false,
+    fixture: buildAnalyticsEvidenceFixture(),
+    viewport: { width: 320, height: 720 }
+  });
+  await page.addStyleTag({ content: "html { font-size: 200% !important; }" });
+  await openPrimaryTab(page, "charts");
+  await expect(page.locator(".chart-recalculating")).toHaveCount(0, { timeout: 15_000 });
+  const search = page.getByRole("combobox", { name: "Search or select exercise" });
+  await search.fill("Dumbbell Bench Press");
+  await search.press("Enter");
+  await expect(page.locator(".chart-recalculating")).toHaveCount(0, { timeout: 15_000 });
+
+  const measure = async (surface, selector) => page.locator(selector).evaluate((root, surfaceName) => {
+    const targets = [...root.querySelectorAll("button, summary, input, select, [role='button'][tabindex]")]
+      .filter((element) => {
+        const style = getComputedStyle(element);
+        const rect = element.getBoundingClientRect();
+        return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0 && !element.matches(":disabled");
+      })
+      .map((element) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          height: Math.round(rect.height * 100) / 100,
+          label: element.getAttribute("aria-label") || element.textContent?.trim().replace(/\s+/g, " ") || element.tagName,
+          left: Math.round(rect.left * 100) / 100,
+          right: Math.round(rect.right * 100) / 100,
+          width: Math.round(rect.width * 100) / 100
+        };
+      });
+    return {
+      bodyWidth: document.body.scrollWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      surface: surfaceName,
+      targets,
+      viewportWidth: innerWidth
+    };
+  }, surface);
+  const assertGeometry = (geometry) => {
+    expect.soft(geometry.viewportWidth, `${geometry.surface} must run at 320 CSS pixels`).toBe(320);
+    expect.soft(geometry.documentWidth, `${geometry.surface} must not widen the document`).toBeLessThanOrEqual(321);
+    expect.soft(geometry.bodyWidth, `${geometry.surface} must not widen the body`).toBeLessThanOrEqual(321);
+    expect.soft(
+      geometry.targets.filter((target) => target.height < 44 || target.width < 44),
+      `${geometry.surface} visible actions must remain at least 44 by 44 CSS pixels`
+    ).toEqual([]);
+    expect.soft(
+      geometry.targets.filter((target) => target.left < -1 || target.right > 321),
+      `${geometry.surface} visible actions must not clip horizontally`
+    ).toEqual([]);
+  };
+
+  assertGeometry(await measure("lift analysis", ".charts-view"));
+  await page.locator('[data-action="set-progress-view"][data-progress-view="history"]').click();
+  await expect(page.locator(".history-view")).toBeVisible();
+  await page.locator(".history-by-exercise > summary").click();
+  await page.locator(".history-exercise > summary").first().click();
+  assertGeometry(await measure("history", ".history-view"));
 });
 
 test("repeated Lift move, delete, add-set, warm-up, and copy-set controls include their exercise context", async ({ page }) => {

@@ -42,6 +42,7 @@ assert.match(html, /function resolveExerciseTargetContext\(session, exercise, op
 assert.match(html, /const context = resolveExerciseTargetContext\(session, exercise, \{ allowCurrentFallback \}\)/, "Actual-vs-Expected must consume the canonical target resolver");
 assert.match(html, /group\.roles\.get\(roleKey\)/, "Actual-vs-Expected must aggregate top, straight, back-off, and drop roles separately");
 assert.match(html, /Historical target unavailable[\s\S]*confidence is reduced/, "Unavailable historical targets need a precise low-confidence state");
-assert.match(html, /expectedReps === 'Not configured' \? 'Excluded from score'/, "Genuinely missing targets must be excluded rather than penalized");
+assert.match(html, /if \(!group\.context\)[\s\S]*Compliance is excluded/, "Genuinely missing targets must be excluded rather than penalized");
+assert.match(html, /role\.repTracked \? Math\.round\([\s\S]*: "Not scored"/, "Missing role-level rep targets must stay visibly unscored");
 
 console.log("Rest navigation, timer presentation, warm-up ordering, and target mapping tests passed.");

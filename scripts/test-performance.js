@@ -87,8 +87,8 @@ assert.match(recentHistoryModelSource, /session\?\.workoutAnalysis\?\.version ==
 assert.doesNotMatch(recentHistoryModelSource, /workoutAnalysisForSession/, "Recent History must not recalculate grades while rendering rows");
 assert.doesNotMatch(recentHistoryRenderer, /["']Grade\s/, "Recent History must display only the letter grade");
 assert.doesNotMatch(historyRenderer, /Grade ['"]?\s*\+|Grade \$\{/, "Progress History must not prefix the visible grade with the word Grade");
-assert.match(historyRenderer, /class="history-session-title"/, "Progress History session names must use the blue title treatment");
-assert.match(historyRenderer, /class="history-session-grade grade-tone/, "Progress History grades must use the shared color-coded grade treatment");
+assert.match(historyRenderer, /class="ri-copy"><b>[\s\S]*session\.title/, "Progress History session names must remain the primary row copy");
+assert.match(historyRenderer, /class="ri-val" aria-label="' \+ \(grade \? 'Workout grade '/, "Progress History grades must remain separately labelled facts");
 assert.match(recentHistoryModelSource, /workoutName[\s\S]*completedDate[\s\S]*workoutGrade/, "Recent History must model title, date, and grade as separate fields");
 assert.match(recentHistoryRenderer, /class="recent-history-title"[\s\S]*class="recent-history-meta"/, "The full-width title must render before the metadata row");
 assert.match(recentHistoryRenderer, /class="recent-history-date"[\s\S]*dateMarkup \+ '<span class="recent-history-grade/, "Date and grade must render as separate metadata values");
@@ -97,7 +97,7 @@ assert.match(recentHistoryModelSource, /Date unavailable/, "Missing dates need a
 assert.match(recentHistoryRenderer, /&mdash;/, "Missing grades need a neutral fixed-area placeholder");
 assert.match(html, /\.recent-history-title \{[^}]*overflow-wrap: anywhere;[^}]*white-space: normal;/, "Long workout names must wrap without touching metadata");
 assert.match(html, /\.recent-history-title \{[^}]*color: var\(--current\);/, "Recent workout names must use the blue action color");
-assert.match(html, /\.history-session-title \{[^}]*color: var\(--current\);/, "Progress History session names must use the blue action color");
+assert.match(html, /\.row-item \.ri-copy b \{[^}]*font-size: var\(--fs-tiny\);[^}]*font-weight: 850;/, "Progress History session names must retain the shared strong row hierarchy");
 assert.match(html, /\.recent-history-card \{[^}]*grid-template-columns: minmax\(0, 1fr\);/, "Workout titles need a dedicated full-width card row");
 assert.match(html, /\.recent-history-meta \{[^}]*grid-template-columns: minmax\(0, 1fr\) 44px;/, "Date and grade need separate metadata tracks");
 assert.match(html, /\.recent-history-grade \{[^}]*width: 44px;[^}]*white-space: nowrap;/, "Plus and minus grades must stay in a fixed non-wrapping area");
