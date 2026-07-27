@@ -197,7 +197,7 @@
           const completionDelta = completionRatio == null
             ? { tone: "none", text: "—" }
             : completedSets === plannedSets ? { tone: "on", text: "100%" }
-              : completedSets < plannedSets ? { tone: "out", text: "−" + (plannedSets - completedSets) }
+              : completedSets < plannedSets ? { tone: "under", text: "−" + (plannedSets - completedSets) }
                 : { tone: "over", text: "+" + (completedSets - plannedSets) };
           return { session, facts, analysis, plannedSets, completedSets, completionRatio, completionDelta };
         });
@@ -225,7 +225,7 @@
         };
         return `
           <section class="view history-view">
-            <div class="screen-heading"><div><div class="section-kicker">History · ${totalSessions} logged sessions</div><h1>Training log.</h1></div>${nested ? '<button class="text-button" type="button" data-action="close-dashboard-detail">Back</button>' : ''}</div>
+            <div class="screen-heading"><div><div class="section-kicker">History</div><h1>Training log.</h1></div>${nested ? '<button class="text-button" type="button" data-action="close-dashboard-detail">Back</button>' : ''}</div>
             <div class="rollup history-rollup" aria-label="Submitted history summary"><span class="ru"><b>${totalSessions}</b><span>sessions</span></span><span class="ru"><b>${escapeHtml(completion)}</b><span>set completion</span></span><span class="ru"><b>${escapeHtml(meanGrade)}</b><span>mean grade</span></span></div>
             ${totalSessions > sessions.length ? '<p class="settings-note">Showing the latest ' + sessions.length + ' sessions. Exercise review still uses the full imported history.</p>' : ""}
             <div class="history-session-groups">${sessionModels.length ? Array.from(groups.entries()).map(([weekStart, items]) => '<section><div class="m-label"><span>' + (weekStart === currentWeek ? 'This week' : escapeHtml(formatWeek(weekStart))) + '</span><span>completion · grade</span></div><div class="history-session-list">' + items.map(renderSession).join("") + '</div></section>').join("") : '<div class="empty-state">Completed workouts will appear here.</div>'}</div>
@@ -233,7 +233,7 @@
               <summary>Review by exercise <span>${getExerciseNames().length} lifts</span></summary>
               <div class="disclosure-body">${renderExerciseHistory()}</div>
             </details>
-            ${archived.length ? '<details class="history-section"><summary>Retention archive <span>' + archived.length + ' recoverable</span></summary><div class="disclosure-body"><p class="settings-note">These completed workouts are older than the rolling six-calendar-month window. They remain in exports but do not affect charts, coaching, PRs, templates, or weekly volume.</p>' + archived.slice(0, 40).map((session) => '<div class="session-card"><div class="history-session-heading"><strong class="history-session-title">' + escapeHtml(session.title || 'Workout') + '</strong><span class="history-session-meta">' + formatDate(sessionCompletionDate(session)) + '</span></div></div>').join('') + '</div></details>' : ''}
+            ${archived.length ? '<details class="history-section"><summary>Retention archive <span>' + archived.length + ' recoverable</span></summary><div class="disclosure-body"><p class="settings-note">These completed workouts are older than the rolling six-calendar-month primary history window. They remain in exports and in the full submitted archive, where they can still supply long-range comparisons and fallback coaching evidence. Current-period volume uses the selected week.</p>' + archived.slice(0, 40).map((session) => '<div class="session-card"><div class="history-session-heading"><strong class="history-session-title">' + escapeHtml(session.title || 'Workout') + '</strong><span class="history-session-meta">' + formatDate(sessionCompletionDate(session)) + '</span></div></div>').join('') + '</div></details>' : ''}
           </section>
         `;
       }
@@ -1381,10 +1381,10 @@
         const rpeHigh = rpeMax || rpeMin;
         let delta = { tone: "none", text: "no comparison" };
         if (hasRepTarget) {
-          if (actualReps < repLow) delta = { tone: "out", text: "−" + formatLoadNumber(repLow - actualReps) + " rep" + (Math.abs(repLow - actualReps) === 1 ? "" : "s") };
-          else if (actualReps > repHigh) delta = { tone: "over", text: "+" + formatLoadNumber(actualReps - repHigh) + " rep" + (Math.abs(actualReps - repHigh) === 1 ? "" : "s") };
+          if (actualReps < repLow) delta = { tone: "under", text: "−" + formatLoadNumber(repLow - actualReps) + " rep" + (Math.abs(repLow - actualReps) === 1 ? "" : "s") };
+          else if (actualReps > repHigh) delta = { tone: "out", text: "+" + formatLoadNumber(actualReps - repHigh) + " rep" + (Math.abs(actualReps - repHigh) === 1 ? "" : "s") };
           else if (hasRpeTarget && actualRpe > 0 && actualRpe > rpeHigh) delta = { tone: "out", text: "+" + formatLoadNumber(actualRpe - rpeHigh) + " RPE" };
-          else if (hasRpeTarget && actualRpe > 0 && actualRpe < rpeLow) delta = { tone: "over", text: "−" + formatLoadNumber(rpeLow - actualRpe) + " RPE" };
+          else if (hasRpeTarget && actualRpe > 0 && actualRpe < rpeLow) delta = { tone: "under", text: "−" + formatLoadNumber(rpeLow - actualRpe) + " RPE" };
           else if (!hasRpeTarget || actualRpe > 0) delta = { tone: "on", text: "on" };
         }
         const planParts = [
@@ -1847,11 +1847,11 @@
 
       function renderStoragePersistenceFact() {
         const presentation = storagePersistenceStatus === "granted"
-          ? { detail: "Granted by this browser.", delta: "granted", tone: "on" }
+          ? { detail: "Granted by this browser.", value: "granted" }
           : storagePersistenceStatus === "not-granted"
-            ? { detail: "Not granted. Local data can still be stored, but the browser may evict it under storage pressure.", delta: "not granted", tone: "under" }
-            : { detail: "This browser does not expose storage-persistence status.", delta: "unsupported", tone: "none" };
-        return '<div class="row-item storage-persistence-fact"><span class="ri-copy"><b>Storage persistence</b><span>' + escapeHtml(presentation.detail) + '</span></span><span class="ri-val d ' + presentation.tone + '">' + escapeHtml(presentation.delta) + '</span></div>';
+            ? { detail: "Not granted. Local data can still be stored, but the browser may evict it under storage pressure.", value: "not granted" }
+            : { detail: "This browser does not expose storage-persistence status.", value: "unsupported" };
+        return '<div class="row-item storage-persistence-fact"><span class="ri-copy"><b>Storage persistence</b><span>' + escapeHtml(presentation.detail) + '</span></span><span class="ri-val settings-fact">' + escapeHtml(presentation.value) + '</span></div>';
       }
 
       function renderSettings() {
@@ -1891,7 +1891,7 @@
           <label class="field"><span class="f-top"><span class="f-name">Alert auto-dismiss</span><span class="f-help">Seconds</span></span><input type="number" min="1" max="60" step="1" value="${Math.round(Number(data.settings.restCompleteAutoDismissMs || 5000) / 1000)}" data-action="rest-complete-dismiss-seconds" /></label>
           ${renderAlertSetting("rest-complete-auto-return", "Return after alert", "Return to the active workout automatically when the in-app alert dismisses.", data.settings.restCompleteAutoReturnToWorkout === true)}
           ${renderAlertSetting("interaction-vibration", "Interaction vibration", "Used only where the browser exposes vibration support.", data.settings.interactionVibration !== false)}
-          <div class="field"><div class="f-top"><span class="f-name">Default rest duration</span><span class="f-help">Per-exercise and per-set targets override this</span></div><div class="stepper settings-rest-stepper"><button class="sb" type="button" data-action="adjust-default-rest" data-delta="-15" aria-label="Reduce default rest by 15 seconds">&minus;</button><input class="sv" type="number" min="15" max="900" step="15" value="${Number(data.settings.defaultRestSeconds || 90)}" data-action="default-rest-seconds" aria-label="Default rest duration in seconds" /><button class="sb" type="button" data-action="adjust-default-rest" data-delta="15" aria-label="Increase default rest by 15 seconds">+</button><span class="d none">${formatTimer(Number(data.settings.defaultRestSeconds || 90))}</span></div></div>
+          <div class="field"><div class="f-top"><span class="f-name">Default rest duration</span><span class="f-help">Seconds · per-exercise and per-set targets override this</span></div><div class="stepper settings-rest-stepper"><button class="sb" type="button" data-action="adjust-default-rest" data-delta="-15" aria-label="Reduce default rest by 15 seconds">&minus;</button><input class="sv" type="number" min="15" max="900" step="15" value="${Number(data.settings.defaultRestSeconds || 90)}" data-action="default-rest-seconds" aria-label="Default rest duration in seconds" /><button class="sb" type="button" data-action="adjust-default-rest" data-delta="15" aria-label="Increase default rest by 15 seconds">+</button></div></div>
           <div class="field"><div class="f-top"><span class="f-name">Notification detail</span><span class="f-help">Visible lock-screen wording only</span></div>${renderSegmentedSetting("notification-detail", "settings-notification-detail", data.settings.notificationMessageDetail === "private" ? "private" : "exercise-set", [["exercise-set", "Exercise and set"], ["private", "Private body"]])}</div>
           <div class="callout warn notification-privacy-boundary"><b>Private changes the visible notification body only</b><span>The notification service still receives installation and timer identifiers, workout, exercise and set identifiers, the exercise name, the upcoming-set label or number, and the completion time. Private body mode hides those workout details from the visible alert; it does not keep them off the server-side timer record.</span></div>
           ${renderAlertSetting("auto-start-rest", "Start rest automatically", "Starts the prescribed rest after a set is completed.", data.settings.autoStartRestTimer !== false)}

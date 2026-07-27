@@ -1293,7 +1293,7 @@ test("confirmed pain-free substitution uses an explicit catalog-backed UI flow a
   expect.soft(sourceHistory?.finalPrescription?.safetyRestriction?.originalExerciseId).toBe(blockedOriginalId);
 
   const card = page.locator(`.exercise-card:has([data-exercise-id="${fixture.exerciseIds.bench}"])`).first();
-  await card.locator("details.exercise-options > summary").click();
+  await card.locator("details.exercise-details > summary").click();
   const override = card.locator("details.prescription-override");
   await override.locator("summary").click();
   await override.locator('[data-override-field="exercise"]').fill(substituteName);
@@ -1417,14 +1417,16 @@ test("every exercise exposes shared defaults plus per-set reps, RPE, types, and 
   expect(seeded).toEqual(["top_set_backoff", "straight_sets"]);
 
   const card = page.locator(`.exercise-card:has([data-exercise-id="${fixture.exerciseIds.bench}"])`).first();
+  const exerciseDetails = card.locator("details.exercise-details");
+  await exerciseDetails.locator(":scope > summary").click();
   await card.getByRole("button", { name: "Add warm-up set to Barbell Bench Press" }).click();
-  await card.locator("details.exercise-options > summary").click();
-  const collapseCue = await card.locator("details.exercise-options > summary").evaluate((summary) => {
+  if (!await exerciseDetails.evaluate((node) => node.open)) await exerciseDetails.locator(":scope > summary").click();
+  const collapseCue = await exerciseDetails.locator(":scope > summary").evaluate((summary) => {
     const style = getComputedStyle(summary, "::after");
     return { content: style.content, background: style.backgroundColor };
   });
-  expect(collapseCue.content).toContain("⌃");
-  expect(collapseCue.background).not.toBe("rgba(0, 0, 0, 0)");
+  expect(collapseCue.content).toContain("−");
+  expect(collapseCue.background).toBe("rgba(0, 0, 0, 0)");
   const benchmark = card.locator(".guidance-benchmark-strip");
   await expect(benchmark.getByText("Program benchmark", { exact: true })).toBeVisible();
   await expect(benchmark.getByText("Informational · not an input", { exact: true })).toBeVisible();
@@ -1461,7 +1463,7 @@ test("every exercise exposes shared defaults plus per-set reps, RPE, types, and 
   await warmupRow.locator('[data-set-default-field="rest"]').fill("60");
 
   const straightCard = page.locator(`.exercise-card:has([data-exercise-id="${fixture.exerciseIds.legPress}"])`).first();
-  await straightCard.locator("details.exercise-options > summary").click();
+  await straightCard.locator("details.exercise-details > summary").click();
   const straightEditor = straightCard.locator('[data-standard-workload-form]');
   await expect.poll(() => straightEditor.locator("[data-individual-set-disclosure]").evaluate((node) => node.open)).toBe(false);
   await expect(straightEditor.locator('[data-default-field="working-rest"]')).toBeVisible();
@@ -1539,8 +1541,8 @@ test("every exercise exposes shared defaults plus per-set reps, RPE, types, and 
     ["backoff", 8, 10, 7, 8, 120]
   ]);
   expect(result.overrideAction).toBe("exercise_default_targets");
-  await card.locator("details.exercise-options > summary").click();
-  await expect.poll(() => card.locator("details.exercise-options").evaluate((node) => node.open)).toBe(false);
+  if (await exerciseDetails.evaluate((node) => node.open)) await exerciseDetails.locator(":scope > summary").click();
+  await expect.poll(() => exerciseDetails.evaluate((node) => node.open)).toBe(false);
 });
 
 test("an exercise without research or historical guidance still has editable defaults", async ({ page }) => {
@@ -1584,7 +1586,7 @@ test("an exercise without research or historical guidance still has editable def
     return exerciseId;
   }, fixture.state.sessions[0].id);
   const card = page.locator(`.exercise-card:has([data-exercise-id="${customId}"])`).first();
-  await card.locator("details.exercise-options > summary").click();
+  await card.locator("details.exercise-details > summary").click();
   const editor = card.locator("[data-standard-workload-form]");
   await expect(editor.getByText("No exercise-specific range", { exact: true })).toBeVisible();
   await editor.locator('[data-default-field="sets"]').fill("3");
@@ -1608,7 +1610,7 @@ test("primary navigation exposes a skip target and moves focus into the selected
   const progress = page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: /Progress$/ });
   await progress.click();
   await expect(page.locator(".dashboard-view")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Training signals, in context.", exact: true })).toBeVisible();
+  await expect(page.locator('[data-action="set-progress-view"][data-progress-view="overview"]')).toHaveAttribute("aria-current", "page");
   const focusIsInView = await page.evaluate(() => {
     const active = document.activeElement;
     const main = document.querySelector("#main-content");
@@ -1633,15 +1635,31 @@ test("closing the template-start dialog restores focus to its quick-start button
   await expect(quickStart).toBeFocused();
 });
 
-test("Progress overview detail Back restores focus to the originating summary control", async ({ page }) => {
+test("Progress overview muscle expansion restores focus to the originating row", async ({ page }) => {
+  await page.evaluate((model) => {
+    data = model;
+    entityStructureRevision += 1;
+    entityIndexCache = null;
+    activeSessionId = "";
+    activeWorkoutId = "";
+    viewingHistorySessionId = "";
+    completedSummarySessionId = "";
+    activeSetId = "";
+    timer = null;
+    render();
+  }, validFullState());
   const navigation = page.getByRole("navigation", { name: "Main navigation" });
   await navigation.getByRole("button", { name: /Progress$/ }).click();
-  const origin = page.locator('[data-action="open-dashboard-detail"]').first();
+  const untrained = page.locator("details.volume-untrained");
+  if (await untrained.count() && !await untrained.evaluate((node) => node.open)) await untrained.locator(":scope > summary").click();
+  const origin = page.locator('[data-action="toggle-volume-muscle"]').first();
+  await expect(origin).toBeVisible();
   await origin.focus();
   await origin.click();
-  await expect(page.locator(".dashboard-detail-view")).toBeVisible();
-  await page.locator('[data-action="close-dashboard-detail"]').click();
-  await expect(page.locator(".dashboard-detail-view")).toHaveCount(0);
+  await expect(origin).toHaveAttribute("aria-expanded", "true");
+  await expect(origin).toBeFocused();
+  await origin.click();
+  await expect(origin).toHaveAttribute("aria-expanded", "false");
   await expect(origin).toBeFocused();
 });
 

@@ -185,12 +185,13 @@ test("Strong-only history starts an editable workout without inventing a researc
   await expect(pallofCard.locator('[data-action="add-set"]')).toBeEnabled();
 
   const lastTime = card.locator(".set-previous");
-  await expect(lastTime).toHaveCount(2);
+  await expect(lastTime).toHaveCount(1);
   expect((await lastTime.allTextContents()).every((text) => text.includes("July 17") && !text.includes("No prior working set found"))).toBe(true);
   await expect(lastTime.first()).toContainText("27.5");
   await expect(lastTime.first()).toContainText("14");
 
   const beforeCount = await page.evaluate((exerciseId) => data.sets.filter((set) => set.exerciseId === exerciseId && !set.isWarmup).length, activeExerciseId);
+  await card.locator("details.exercise-details > summary").click();
   await card.locator('[data-action="add-set"]').click();
   await expect.poll(() => page.evaluate((exerciseId) => data.sets.filter((set) => set.exerciseId === exerciseId && !set.isWarmup).length, activeExerciseId)).toBe(beforeCount + 1);
 

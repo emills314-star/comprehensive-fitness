@@ -18,20 +18,19 @@
         const shellWorkoutVisible = activeTab === "today" && hasActiveWorkout() && activeWorkoutId === session.id && !viewingHistorySessionId && !completedSummarySessionId;
         const shellWorkoutSubmitted = activeTab === "today" && completedSummarySessionId === session.id && isSessionSubmitted(session);
         const shellWorkoutDockVisible = shellWorkoutVisible || shellWorkoutSubmitted;
-        const shellProgress = shellWorkoutVisible ? workoutProgress() : null;
-        const shellTitle = shellWorkoutVisible ? session.title || "Workout" : activeTab === "today" ? "Today" : activeTab === "plan" ? "Plan" : activeTab === "progress" ? "Progress" : "More";
+        const shellTitle = activeTab === "today" ? "Today" : activeTab === "plan" ? "Plan" : activeTab === "progress" ? "Progress" : "More";
         const domStartedAt = performanceNow();
         root.innerHTML = `
           <div class="app-shell">
             <a class="skip-link" href="#main-content" data-action="skip-content" ${modalOpen ? 'tabindex="-1" aria-hidden="true"' : ""}>Skip to main content</a>
             <header class="brand-bar" ${modalOpen ? 'inert aria-hidden="true"' : ""}>
-              <div class="shell-context"><strong>${escapeHtml(shellTitle)}</strong>${shellProgress ? '<span>' + escapeHtml(shellProgress.current) + '</span>' : ''}</div>
+              <div class="shell-context"><strong>${escapeHtml(shellTitle)}</strong></div>
             </header>
             ${renderOfflineBanner()}
             ${renderUpdateBanner()}
             ${appToast ? '<div class="app-toast" role="status" aria-live="polite">' + escapeHtml(appToast) + '</div>' : ''}
             <main class="app-main" id="main-content" tabindex="-1" ${modalOpen ? 'inert aria-hidden="true"' : ""}>${viewHtml}</main>
-            ${shellWorkoutDockVisible ? renderSessionDock(session, shellProgress || workoutProgress(), { submitted: shellWorkoutSubmitted, inert: modalOpen }) : `<nav class="bottom-nav" aria-label="Main navigation" ${modalOpen ? 'inert aria-hidden="true"' : ""}>
+            ${shellWorkoutDockVisible ? renderSessionDock(session, workoutProgress(), { submitted: shellWorkoutSubmitted, inert: modalOpen }) : `<nav class="bottom-nav" aria-label="Main navigation" ${modalOpen ? 'inert aria-hidden="true"' : ""}>
               ${navButton("today", "Today", "workout")}
               ${navButton("plan", "Plan", "templates")}
               ${navButton("progress", "Progress", "review")}
@@ -106,12 +105,7 @@
       }
 
       function updateWorkoutStatusDom() {
-        const status = root.querySelector(".workout-status-strip");
         const progress = workoutProgress();
-        if (status) {
-          const values = status.querySelectorAll(":scope > span");
-          if (values[0]) values[0].textContent = progress.current;
-        }
         const rollup = root.querySelector("[data-workout-rollup]");
         if (rollup) rollup.outerHTML = renderWorkoutRollup();
         const dockCompleted = root.querySelector("[data-session-dock-progress]");
@@ -198,7 +192,7 @@
           : renderRecovery
             ? 'A new app version is ready. Your open workout will be saved before updating.'
             : workoutActive
-            ? 'Update available. It will wait until this workout is logged.'
+            ? 'Update available. It will wait while an active workout remains open.'
             : 'A new app version is ready.';
         return '<div class="banner update update-banner" role="status"><span class="b-copy"><b>Update available</b><span>' + message + '</span></span>' + (historyEditing || (workoutActive && !renderRecovery) ? '' : '<button class="b-act" type="button" data-action="apply-update">Update now</button>') + '</div>';
       }
@@ -293,10 +287,6 @@
                 <span class="status-pill ${isSessionSubmitted(session) ? "good" : session.id === activeWorkoutId && hasActiveWorkout() ? "inside" : "neutral"}">${isSessionSubmitted(session) ? "Logged" : session.id === activeWorkoutId && hasActiveWorkout() ? "In progress" : "Ready"}</span>
               </div>
               <div class="coach-focus"><span>Current focus</span><strong>${escapeHtml(progress.current)}</strong><small>${progress.remaining ? progress.remaining + " working set" + (progress.remaining === 1 ? "" : "s") + " remain. Stay with the next useful action." : "Review the session, then submit when it is complete."}</small></div>
-              <div class="workout-status-strip">
-                <span>${escapeHtml(progress.current)}</span>
-                <button class="icon-button" type="button" data-action="new-session" title="${hasActiveWorkout() ? "Finish or cancel the active workout before starting another" : "New workout"}" aria-label="${hasActiveWorkout() ? "New workout unavailable while a workout is active" : "New workout"}" ${hasActiveWorkout() ? "disabled" : ""}>${icon.add}</button>
-              </div>
             </section>
             ${renderNotificationPrompt()}
             <div class="workout-layout compact-workout-layout">
@@ -438,7 +428,7 @@
         const driftText = rollup.drift === null
           ? "No RPE logged"
           : (rollup.drift > 0 ? "+" : rollup.drift < 0 ? "−" : "") + Math.abs(rollup.drift).toFixed(1) + " vs " + rollup.targetMeanRpe.toFixed(1);
-        const driftClass = rollup.drift === null ? "none" : Math.abs(rollup.drift) < 0.05 ? "on" : rollup.drift > 0 ? "out" : "over";
+        const driftClass = rollup.drift === null ? "none" : Math.abs(rollup.drift) < 0.05 ? "on" : rollup.drift > 0 ? "out" : "under";
         const adherenceText = rollup.adherence === null ? "—" : Math.round(rollup.adherence * 100) + "%";
         return '<div class="rollup workout-rollup" data-workout-rollup aria-label="Session roll-up"><span class="ru"><b>' + rpeText + '</b><span class="d ' + driftClass + '">' + escapeHtml(driftText) + '</span></span><span class="ru"><b>' + adherenceText + '</b><span>adherence</span></span></div>';
       }
@@ -498,7 +488,7 @@
               </div>
             </div>
             <section class="screen-section">
-              <div class="section-heading"><div><h2>Weekly muscle volume</h2><p>Tap a muscle to see the contributing lifts.</p></div><span>${formatWeek(dashboardWeekStart).replace("Week of ", "")}</span></div>
+              <div class="section-heading"><div><h2>Weekly muscle volume</h2><p>Tap a muscle to see the contributing lifts.</p></div></div>
               <div class="volume-table diff" aria-label="Weekly muscle volume plan, actual, and delta">
                 <div class="volume-table-head" aria-hidden="true">
                   <span>Muscle / planned range</span>
@@ -753,11 +743,7 @@
         if (!Number.isFinite(baselineValue) || ((field === "hrv" || field === "restingHr") && baseline[field] === "")) return { text: "No stored baseline", tone: "none" };
         const delta = Number((numeric - baselineValue).toFixed(field === "sleepHours" ? 2 : 0));
         if (delta === 0) return { text: "at usual", tone: "none" };
-        const moreIsBetter = field === "sleepHours" || field === "sleepQuality" || field === "hrv";
-        const lessIsBetter = field === "restingHr" || field === "soreness";
-        const desirable = (delta > 0 && moreIsBetter) || (delta < 0 && lessIsBetter);
-        const stronglyAdverse = (field === "hrv" && delta < 0) || (field === "soreness" && delta > 0);
-        return { text: (delta > 0 ? "+" : "−") + Math.abs(delta) + unit + " vs usual", tone: desirable ? "over" : stronglyAdverse ? "out" : "under" };
+        return { text: (delta > 0 ? "+" : "−") + Math.abs(delta) + unit + " vs usual", tone: "none" };
       }
 
       function readinessMetricField({ field, label, action, value, min, max, step, unit }) {
@@ -821,7 +807,7 @@
           const rollup = workoutSessionRollup();
           const rpe = rollup.meanRpe === null ? "—" : rollup.meanRpe.toFixed(1);
           const drift = rollup.drift === null ? "No RPE drift" : (rollup.drift > 0 ? "+" : rollup.drift < 0 ? "−" : "") + Math.abs(rollup.drift).toFixed(1) + " vs " + rollup.targetMeanRpe.toFixed(1);
-          const driftTone = rollup.drift === null ? "none" : Math.abs(rollup.drift) < 0.05 ? "on" : rollup.drift > 0 ? "out" : "over";
+          const driftTone = rollup.drift === null ? "none" : Math.abs(rollup.drift) < 0.05 ? "on" : rollup.drift > 0 ? "out" : "under";
           const adherence = rollup.adherence === null ? "—" : Math.round(rollup.adherence * 100) + "%";
           return `
             <div class="scrim sheet-backdrop" data-action="cancel-template-start" role="presentation">
@@ -829,7 +815,7 @@
                 <button class="sheet-close" type="button" data-action="cancel-template-start" aria-label="Close workout dialog">&times;</button>
                 <div><div class="section-kicker">A session is already running</div><h2 id="active-workout-title">${escapeHtml(active?.title || "Your current workout")}</h2><p>Choose whether to return to this draft or explicitly discard it before starting ${escapeHtml(template.name)}.</p></div>
                 <div class="rollup start-conflict-rollup" aria-label="Active session summary without dock-owned progress"><span class="ru"><b>${escapeHtml(rpe)}</b><span class="d ${driftTone}">${escapeHtml(drift)}</span></span><span class="ru"><b>${escapeHtml(adherence)}</b><span>adherence</span></span><span class="ru"><b>Draft</b><span>not submitted</span></span></div>
-                <div class="callout provisional"><b>Nothing is lost either way</b><span>Returning resumes the current draft. Discarding removes <em>only that draft</em>; submitted history and templates stay intact.</span></div>
+                <div class="callout bad"><b>Discarding permanently removes this draft</b><span>Returning resumes the current draft. Discarding removes its exercises, sets, notes, readiness check-in, and timer state. Submitted history and templates stay intact.</span></div>
                 <div class="sheet-actions stacked">
                   <button class="primary-action sheet-btn" type="button" data-action="return-active-workout">Return to ${escapeHtml(active?.title || "active workout")}</button>
                   <button class="sheet-btn danger-button" type="button" data-action="request-cancel-workout-from-template">Discard it and start ${escapeHtml(template.name)}</button>
@@ -940,16 +926,17 @@
         const session = data.sessions.find((item) => item.id === cancelWorkoutFlow.sessionId);
         if (!session || isSessionSubmitted(session)) return "";
         const exerciseIds = new Set(data.exercises.filter((item) => item.sessionId === session.id).map((item) => item.id));
-        const completedSets = data.sets.filter((item) => exerciseIds.has(item.exerciseId) && item.completed && !item.skipped).length;
+        const draftSets = data.sets.filter((item) => exerciseIds.has(item.exerciseId));
+        const completedSets = draftSets.filter((item) => item.completed && !item.skipped).length;
         const recovery = sessionRecovery(session);
         const hasReadiness = Object.entries(recovery).some(([key, value]) => key !== "affectedMuscle" ? value !== "" && value !== false : Boolean(value));
         const historyCount = activeHistorySessions().length;
         return `
           <div class="scrim sheet-backdrop" data-action="keep-workout" role="presentation">
             <section class="sheet-card bottom-sheet dialog-sheet destructive-sheet" role="dialog" aria-modal="true" aria-label="Cancel this workout?" data-sheet-content>
-              <div><div class="section-kicker destructive-kicker">Discard this workout</div><h2 id="cancel-workout-title">${completedSets} completed set${completedSets === 1 ? "" : "s"} will be removed.</h2><p>The scope is limited to this unsubmitted draft.</p></div>
-              <div class="diff cancel-workout-diff"><div class="drow dhead"><span class="plan">Removed</span><span class="act">Kept</span><span class="dlt">Scope</span></div><div class="drow"><span class="plan"><span class="lbl">This draft</span><span class="val">${completedSets} completed set${completedSets === 1 ? "" : "s"}, notes, and timer state</span></span><span class="act"><span class="lbl">Submitted history</span><span class="val">${historyCount} session${historyCount === 1 ? "" : "s"}</span></span><span class="dlt"><span class="d on">safe</span></span></div><div class="drow"><span class="plan"><span class="lbl">Today’s readiness</span><span class="val">${hasReadiness ? "this draft’s check-in" : "no entered check-in"}</span></span><span class="act"><span class="lbl">Templates and settings</span><span class="val">${data.templates.length} template${data.templates.length === 1 ? "" : "s"} · unchanged</span></span><span class="dlt"><span class="d on">safe</span></span></div></div>
-              <div class="callout bad"><b>This cannot be undone</b><span>The completed entries in this unsubmitted session are not recoverable after discard.</span></div>
+              <div><div class="section-kicker destructive-kicker">Discard this workout</div><h2 id="cancel-workout-title">This unsubmitted draft will be removed.</h2><p>The scope is limited to this workout draft.</p></div>
+              <div class="diff cancel-workout-diff"><div class="drow dhead"><span class="plan">Removed</span><span class="act">Kept</span><span class="dlt">Scope</span></div><div class="drow"><span class="plan"><span class="lbl">This draft</span><span class="val">${exerciseIds.size} exercise${exerciseIds.size === 1 ? "" : "s"}, ${draftSets.length} set entr${draftSets.length === 1 ? "y" : "ies"} (${completedSets} completed), notes, and timer state</span></span><span class="act"><span class="lbl">Submitted history</span><span class="val">${historyCount} session${historyCount === 1 ? "" : "s"}</span></span><span class="dlt"><span>unchanged</span></span></div><div class="drow"><span class="plan"><span class="lbl">Today’s readiness</span><span class="val">${hasReadiness ? "this draft’s check-in" : "no entered check-in"}</span></span><span class="act"><span class="lbl">Templates and settings</span><span class="val">${data.templates.length} template${data.templates.length === 1 ? "" : "s"} · unchanged</span></span><span class="dlt"><span>unchanged</span></span></div></div>
+              <div class="callout bad"><b>This cannot be undone</b><span>The exercise, set, note, readiness, and timer records in this draft are not recoverable after discard.</span></div>
               <div class="sheet-actions cancel-sheet-actions">
                 <button class="primary-action" type="button" data-action="keep-workout">Keep Workout</button>
                 <button class="discard-workout-button" type="button" data-action="confirm-cancel-workout">Discard Workout</button>
@@ -1610,7 +1597,7 @@
           : !targetRpe || !Number(set.rpe || 0)
             ? "Logged"
             : (rpeDelta > 0 ? "+" : "") + formatLoadNumber(rpeDelta) + " RPE";
-        const rpeDeltaClass = rpeDelta > 0 ? "out" : rpeDelta < 0 ? "over" : "on";
+        const rpeDeltaClass = !targetRpe || !Number(set.rpe || 0) ? "none" : rpeDelta > 0 ? "out" : rpeDelta < 0 ? "under" : "on";
         const statusButton = '<button class="check-button ' + (set.completed ? "checked" : "") + '" type="button" data-action="toggle-set" data-set-id="' + set.id + '" title="' + (set.completed ? "Completed" : "Mark set complete") + '" aria-label="' + (set.completed ? "Set completed" : "Mark set complete") + '" aria-pressed="' + (set.completed ? "true" : "false") + '"' + workoutSafetyDisabledAttributes(completionSafety) + '>' + icon.done + '</button>';
         const loadField = resistanceType === "bodyweight"
           ? '<div class="set-field"><span>Load</span><div class="resistance-readout">BW</div></div>'
@@ -1661,54 +1648,14 @@
         });
         if (!byRole.size) return "";
         return '<div class="role-prescription-list">' + Array.from(byRole.entries()).map(([role, set]) => {
-          const load = formatResistance({ ...set, weight: Number(set.targetWeight ?? set.weight ?? 0), addedLoad: set.resistanceType === "bodyweight_plus_load" ? Number(set.targetWeight ?? set.addedLoad ?? 0) : set.addedLoad, assistanceLoad: set.resistanceType === "assisted_bodyweight" ? Number(set.targetWeight ?? set.assistanceLoad ?? 0) : set.assistanceLoad });
-          const reps = targetRangeText(set.targetRepMin, set.targetRepMax || set.targetReps, " reps");
-          const targetReps = Number(set.targetReps || set.reps || set.targetRepMin || 0);
-          const rpe = targetRangeText(set.targetRpeMin, set.targetRpeMax || set.targetRpe, " RPE");
           const previous = formatPreviousSetPerformance(set.previousComparableSet, exercise);
           const nextIncrement = set.setPrescription?.nextLoad != null
             ? formatResistance({ ...set, weight: set.setPrescription.nextLoad, addedLoad: set.resistanceType === "bodyweight_plus_load" ? set.setPrescription.nextLoad : set.addedLoad, assistanceLoad: set.resistanceType === "assisted_bodyweight" ? set.setPrescription.nextLoad : set.assistanceLoad })
             : "Not configured";
-          const confidenceKey = String(
-            set.setPrescription?.evidenceConfidence
-            || exercise.recommendationSnapshot?.finalPrescription?.confidence
-            || exercise.recommendationSnapshot?.confidence
-            || ""
-          ).trim().toLowerCase();
-          const confidence = ({
-            research_default: { level: 1, label: "Research-default" },
-            low: { level: 2, label: "Low" },
-            moderate: { level: 3, label: "Moderate" },
-            high: { level: 4, label: "High" }
-          })[confidenceKey] || null;
-          const confidenceAttributes = confidence ? ' data-conf="' + confidence.level + '"' : "";
-          const confidenceMeter = confidence
-            ? '<span class="meter" data-conf="' + confidence.level + '" aria-hidden="true"><i></i><i></i><i></i><i></i></span>'
-            : "";
-          const confidenceLabel = confidence ? confidence.label + " confidence" : "Confidence unavailable";
           const progressionRule = set.setPrescription?.progressionRule || "No progression rule is stored for this role.";
           const reason = recommendationExplanationForDisplay(set.setPrescription?.reason || set.prescriptionReason, "No additional role rationale is stored with this recommendation.");
-          return '<div class="role-prescription"' + confidenceAttributes + '><div class="role-prescription-heading"><span>' + escapeHtml(setTypeLabels[role] || "Working set") + '</span><span class="role-confidence-label">' + escapeHtml(confidenceLabel) + '</span></div><div class="role-performance-grid"><div class="role-performance-fact"><small>Last performed</small><strong>' + escapeHtml(previous) + '</strong></div><div class="claim-card role-prescription-claim' + (confidence ? '' : ' confidence-unavailable') + '"' + confidenceAttributes + '><div class="cc-row"><span class="cc-title">Today\'s target</span>' + confidenceMeter + '</div><strong class="cc-value">' + escapeHtml(load + ' × ' + targetReps + ' reps') + '</strong><span class="cc-why">' + escapeHtml(confidenceLabel + ' · ' + reps + ' range · ' + rpe) + '</span><div class="claim-projection-grid role-claim-projections"><div><span class="claim-projection-label">Target reps</span><strong class="claim-projection-value">' + escapeHtml(String(targetReps)) + '</strong></div><div><span class="claim-projection-label">Next increment</span><strong class="claim-projection-value">' + escapeHtml(nextIncrement) + '</strong></div></div><div class="claim-projection-rule"><span>Progress when</span><strong>' + escapeHtml(progressionRule) + '</strong></div></div></div><p class="role-evidence-copy">' + escapeHtml(reason) + '</p></div>';
+          return '<div class="role-prescription"><div class="role-prescription-heading"><span>' + escapeHtml(setTypeLabels[role] || "Working set") + '</span></div><div class="role-performance-grid"><div class="role-performance-fact"><small>Last performed</small><strong>' + escapeHtml(previous) + '</strong></div><div class="role-performance-fact"><small>Next increment</small><strong>' + escapeHtml(nextIncrement) + '</strong></div></div><p class="role-evidence-copy"><strong>Progress when:</strong> ' + escapeHtml(progressionRule) + '</p><p class="role-evidence-copy">' + escapeHtml(reason) + '</p></div>';
         }).join('') + '</div>';
-      }
-
-      function roleSessionPrescriptionLine(exercise, fallback = "") {
-        const groups = new Map();
-        setsForExercise(exercise.id).filter((set) => isWorkingSet(set, "score")).forEach((set) => {
-          const role = normalizeSetTypeCode(set.setType, set.isWarmup);
-          const group = groups.get(role) || { set, count: 0 };
-          group.count += 1;
-          groups.set(role, group);
-        });
-        if (!groups.size) return fallback;
-        return Array.from(groups.entries()).map(([role, group]) => {
-          const set = group.set;
-          const load = formatResistance({ ...set, weight: Number(set.targetWeight ?? set.weight ?? 0), addedLoad: set.resistanceType === "bodyweight_plus_load" ? Number(set.targetWeight ?? set.addedLoad ?? 0) : set.addedLoad, assistanceLoad: set.resistanceType === "assisted_bodyweight" ? Number(set.targetWeight ?? set.assistanceLoad ?? 0) : set.assistanceLoad });
-          const reps = targetRangeText(set.targetRepMin, set.targetRepMax || set.targetReps, " reps");
-          const targetReps = Number(set.targetReps || set.reps || set.targetRepMin || 0);
-          const rpe = targetRangeText(set.targetRpeMin, set.targetRpeMax || set.targetRpe, " RPE");
-          return `${group.count}x ${setTypeLabels[role] || "working"}: ${load} x ${targetReps} reps (${reps} range) @ ${rpe}`;
-        }).join(" | ");
       }
 
       function prescriptionMetric(value, suffix = "") {
@@ -1777,13 +1724,8 @@
           high: { level: 4, label: "High" }
         })[confidenceKey] || null;
         const changed = Boolean(final.readinessAdjustment?.changed);
-        const sourceUnit = final.prescribedLoad?.unit || data.settings.weightUnit;
-        const finalLoad = Number(convertWeightValue(final.prescribedLoad?.target || 0, sourceUnit, data.settings.weightUnit));
-        const loadText = finalLoad > 0 ? displayLoadNumber(finalLoad) + " " + data.settings.weightUnit + " × " : "";
         const structureText = final.setStructure === "top_set_backoff" ? "top + back-off" : final.setStructure.replaceAll('_', ' ');
         const baseLine = `${prescriptionMetric(base.workingSets, " sets")} · ${prescriptionMetric(base.repRange, " reps")} · RPE ${prescriptionMetric(base.targetRpe)}`;
-        const fallbackFinalLine = `${prescriptionMetric(final.workingSets, " sets")} · ${loadText}${prescriptionMetric(final.repRange, " reps")} · RPE ${prescriptionMetric(final.targetRpe)}`;
-        const finalLine = roleSessionPrescriptionLine(exercise, fallbackFinalLine);
         const personalWeight = Number(final.personalEvidenceWeight ?? displaySnapshot.personalEvidenceWeight);
         const researchWeight = Number(final.researchEvidenceWeight ?? displaySnapshot.researchEvidenceWeight);
         const weightSummary = [
@@ -1796,7 +1738,7 @@
           : "";
         const confidenceLine = confidence ? confidence.label + " confidence" : "Confidence unavailable";
         const claimTitle = changed ? "Today only" : recommendationActionLabel(final);
-        const claimValue = changed ? finalLine : finalLine + " · " + structureText;
+        const claimValue = prescriptionMetric(final.workingSets, " working sets") + " · " + structureText;
         const baseComparison = changed ? '<div class="prescription-base"><span>Base prescription</span><strong>' + escapeHtml(baseLine) + '</strong></div>' : "";
         return '<section class="prescription-brief unified-prescription ' + (final.recommendationType.includes('deload') ? 'deload' : '') + ' ' + (changed ? 'readiness-adjusted' : '') + '" aria-label="Prescription and evidence"><div class="claim-card prescription-claim' + (confidence ? '' : ' confidence-unavailable') + '"' + confidenceAttributes + '><div class="cc-row"><span class="cc-title">' + escapeHtml(claimTitle) + '</span>' + confidenceMeter + '</div><strong class="cc-value">' + escapeHtml(claimValue) + '</strong><span class="cc-why">' + escapeHtml(confidenceLine + (weightSummary ? " · " + weightSummary : "")) + '</span>' + baseComparison + '<div class="claim-projection-grid prescription-claim-projections"><div><span class="claim-projection-label">Rest</span><strong class="claim-projection-value">' + escapeHtml(prescriptionMetric(final.restSeconds, ' sec')) + '</strong></div><div><span class="claim-projection-label">Frequency</span><strong class="claim-projection-value">' + escapeHtml(prescriptionMetric(final.frequencyPerWeek, '/week')) + '</strong></div><div><span class="claim-projection-label">Role</span><strong class="claim-projection-value">' + escapeHtml(final.role.replaceAll('_', ' ')) + '</strong></div></div><div class="claim-projection-rule"><span>Next action</span><strong>' + escapeHtml(final.progressionRule) + '</strong></div></div>' + (changed ? '<p class="readiness-temporary"><strong>Temporary:</strong> ' + escapeHtml(final.readinessAdjustment.explanation + ' ' + final.readinessAdjustment.resumeRule) + '</p>' : '') + renderRolePrescriptionDetails(exercise) + renderUnifiedEvidence(displaySnapshot) + '</section>';
       }
@@ -2298,11 +2240,17 @@
         const labelFor = (item, index) => item.overallStatus === 'above' ? 'Above Target' : item.overallStatus === 'needs_frequency' ? 'Needs Frequency' : item.overallStatus === 'needs_distribution' ? 'Needs Distribution' : (index === 0 ? 'Recommended · ' : '') + 'Below Target';
         const classFor = (item) => item.overallStatus === 'above' ? 'deload' : item.overallStatus === 'within' ? 'good' : 'rest';
         const row = (item, index = 0) => {
-          const tone = item.volumeStatus === 'above' ? 'out' : item.volumeStatus === 'below' ? 'under' : 'on';
-          const delta = item.volumeStatus === 'above' ? '+' + Number((item.totalEffectiveSets - item.targetRange.max).toFixed(1))
-            : item.volumeStatus === 'below' ? '−' + item.setsRemaining : 'on';
+          const deltaPresentation = item.overallStatus === 'above'
+            ? { tone: 'out', text: '+' + Number((item.totalEffectiveSets - item.targetRange.max).toFixed(1)) }
+            : item.volumeStatus === 'below'
+              ? { tone: 'under', text: '−' + item.setsRemaining }
+              : item.overallStatus === 'needs_frequency'
+                ? { tone: 'under', text: '−' + item.frequencyRemaining + ' day' + (item.frequencyRemaining === 1 ? '' : 's') }
+                : item.overallStatus === 'needs_distribution'
+                  ? { tone: 'under', text: 'rebalance' }
+                  : { tone: 'on', text: 'on' };
           const targetConfidence = item.targetRange.evidenceFallback ? ' data-conf="1" aria-label="Research-default weekly target range"' : '';
-          return '<div class="drow guided-priority-row ' + item.overallStatus + '"><span class="plan"><button type="button" class="guided-muscle-link" data-action="choose-guided-muscle" data-muscle-group-id="' + escapeHtml(item.muscleGroupId) + '"><span class="lbl">' + escapeHtml(presentationLabel(item.muscleGroupId)) + '</span><span class="val big">' + item.totalEffectiveSets + '</span></button><small>' + item.directSets + ' direct + ' + item.fractionalSets + ' fractional</small></span><span class="act guided-target-claim"' + targetConfidence + '><span class="lbl">Target range</span><span class="val big">' + item.targetRange.min + '–' + item.targetRange.max + '</span></span><span class="dlt"><span class="d ' + tone + '">' + delta + '</span><span class="status-pill ' + classFor(item) + '">' + labelFor(item, index) + '</span><small>Frequency ' + (item.frequencyTarget - item.frequencyRemaining) + ' of ' + item.frequencyTarget + '</small></span></div>';
+          return '<div class="drow guided-priority-row ' + item.overallStatus + '"><span class="plan"><button type="button" class="guided-muscle-link" data-action="choose-guided-muscle" data-muscle-group-id="' + escapeHtml(item.muscleGroupId) + '"><span class="lbl">' + escapeHtml(presentationLabel(item.muscleGroupId)) + '</span><span class="val big">' + item.totalEffectiveSets + '</span></button><small>' + item.directSets + ' direct + ' + item.fractionalSets + ' fractional</small></span><span class="act guided-target-claim"' + targetConfidence + '><span class="lbl">Target range</span><span class="val big">' + item.targetRange.min + '–' + item.targetRange.max + '</span></span><span class="dlt"><span class="d ' + deltaPresentation.tone + '">' + deltaPresentation.text + '</span><span class="status-pill ' + classFor(item) + '">' + labelFor(item, index) + '</span><small>Frequency ' + (item.frequencyTarget - item.frequencyRemaining) + ' of ' + item.frequencyTarget + '</small></span></div>';
         };
         const rows = visible.length ? visible.map(row).join('') : '<div class="empty-state">No unresolved muscle-group requirements.</div>';
         const completedPanel = completed.length ? '<details class="guided-completed-summary"><summary>Within target · ' + completed.length + ' muscle group' + (completed.length === 1 ? '' : 's') + '</summary><div class="diff guided-volume-diff">' + completed.map(row).join('') + '</div></details>' : '';
@@ -2376,7 +2324,7 @@
           const result = draft.viabilityResult;
           const active = result.findings.filter((item) => !item.accepted);
           const advisoryCount = active.filter((item) => ['information', 'advisory'].includes(item.severity)).length;
-          return '<section class="guided-builder guided-check-step">' + header(3, 'return-guided-builder') + '<div class="section-heading viability-heading"><div><div class="section-kicker">Viability</div><h2>' + result.blockingCount + ' blocker' + (result.blockingCount === 1 ? '' : 's') + ', ' + result.warningCount + ' warning' + (result.warningCount === 1 ? '' : 's') + ', ' + advisoryCount + ' advisory.</h2><p>' + escapeHtml(result.grade) + ' · ' + result.score + '/100</p></div></div><div class="rollup"><span class="ru"><b>' + result.blockingCount + '</b><span>blocking</span></span><span class="ru"><b>' + result.warningCount + '</b><span>warnings</span></span><span class="ru"><b>' + advisoryCount + '</b><span>advisory</span></span></div>' + renderGuidedViabilityFindings(result) + '<div class="callout provisional"><b>What the check cannot see</b><span>Viability evaluates programmed volume, frequency, distribution, and recovery landmarks. It cannot know schedule disruptions, equipment queues, or how the block will feel.</span></div><button class="primary-action" type="button" data-action="open-guided-generation-review" ' + (!result.readyToGenerate ? 'disabled' : '') + '>' + (result.readyToGenerate ? 'Review template creation' : 'Resolve blockers to continue') + '</button></section>';
+          return '<section class="guided-builder guided-check-step">' + header(3, 'return-guided-builder') + '<div class="section-heading viability-heading"><div><div class="section-kicker">Viability</div><h2>' + escapeHtml(result.grade) + '</h2><p>' + result.score + '/100 program viability</p></div></div><div class="rollup"><span class="ru"><b>' + result.blockingCount + '</b><span>blocking</span></span><span class="ru"><b>' + result.warningCount + '</b><span>warnings</span></span><span class="ru"><b>' + advisoryCount + '</b><span>advisory</span></span></div>' + renderGuidedViabilityFindings(result) + '<div class="callout provisional"><b>What the check cannot see</b><span>Viability evaluates programmed volume, frequency, distribution, and recovery landmarks. It cannot know schedule disruptions, equipment queues, or how the block will feel.</span></div><button class="primary-action" type="button" data-action="open-guided-generation-review" ' + (!result.readyToGenerate ? 'disabled' : '') + '>' + (result.readyToGenerate ? 'Review template creation' : 'Resolve blockers to continue') + '</button></section>';
         }
         if (!guidedSelectedDayId) guidedSelectedDayId = draft.guidedDays[0]?.id || '';
         const topNeed = guidedMuscleStatuses(draft).find((item) => item.overallStatus !== "within");

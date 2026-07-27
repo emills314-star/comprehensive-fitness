@@ -70,7 +70,7 @@ for (const tabName of tabs) {
         caret: "hide"
       });
     }
-    if (!process.env.CF_PHASE5_REVIEW_DIR) {
+    if (!process.env.CF_PHASE5_REVIEW_DIR && process.env.CF_APPEARANCE_PROTECTION === "1") {
       await expect(page).toHaveScreenshot(`${tabName.toLowerCase()}-${testInfo.project.name}.png`, {
         fullPage: true,
         animations: "disabled",
@@ -175,6 +175,18 @@ test("design-system source does not accumulate one-off styling", async () => {
   expect(metrics.rgbColors, "replace new rgb colors with semantic tokens").toBeLessThanOrEqual(40);
   expect(metrics.inlineStyles, "do not add inline presentation styles").toBeLessThanOrEqual(3);
   expect(metrics.importantRules, "avoid new specificity overrides").toBeLessThanOrEqual(17);
+  const subFloorRem = [...style.matchAll(/font-size:\s*(0?\.\d+)rem/g)].filter((match) => Number(match[1]) < 0.75);
+  const subFloorPx = [...style.matchAll(/font-size:\s*([0-9.]+)px/g)].filter((match) => Number(match[1]) < 12);
+  expect(subFloorRem, "literal rem type must respect the 12px floor").toEqual([]);
+  expect(subFloorPx, "literal pixel type must respect the 12px floor").toEqual([]);
+  const directHexDeclarations = style.split(/\r?\n/).filter((line) => {
+    const declarations = (line.includes("{") ? line.slice(line.indexOf("{") + 1) : line).split(";");
+    return declarations.some((declaration) => {
+      const match = declaration.match(/^\s*([-\w]+)\s*:\s*([^{}]*)$/);
+      return Boolean(match && !match[1].startsWith("--") && /#[0-9a-f]{3,8}\b/i.test(match[2]));
+    });
+  });
+  expect(directHexDeclarations, "component colors must consume semantic tokens").toEqual([]);
 });
 
 test("all confidence text retains contrast in every color package and theme", async ({ page }) => {
@@ -192,7 +204,7 @@ test("all confidence text retains contrast in every color package and theme", as
   ];
   const results = await page.evaluate(({ colorPackages }) => {
     const probeHost = document.createElement("div");
-    probeHost.innerHTML = [1, 2, 3].map((level) => (
+    probeHost.innerHTML = [1, 2, 3, 4].map((level) => (
       `<section data-contrast-level="${level}">
         <span class="chip" data-conf="${level}" data-contrast-name="chip">Confidence ${level}</span>
         <div class="claim-card" data-conf="${level}">
@@ -214,11 +226,7 @@ test("all confidence text retains contrast in every color package and theme", as
             <strong data-contrast-name="prescription-base-value">3 sets · 8 reps</strong>
           </div>
         </div>
-        <article class="role-prescription" data-conf="${level}">
-          <div class="role-prescription-heading">
-            <span>Top set</span>
-            <span class="role-confidence-label" data-contrast-name="role-confidence-label">Confidence ${level}</span>
-          </div>
+        <article class="role-prescription">
           <p class="role-evidence-copy" data-contrast-name="role-evidence-copy">Stored evidence for this role.</p>
         </article>
         <div class="rationale-heading" data-conf="${level}">

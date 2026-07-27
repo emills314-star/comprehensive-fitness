@@ -49,16 +49,15 @@ for (const [key, level] of [["research_default", 1], ["low", 2], ["moderate", 3]
   assert.match(style, new RegExp(`\\.meter\\[data-conf="${level}"\\]`), `meter level ${level} treatment must be shipped`);
 }
 
-assert.match(prescriptionSurface, /set\.setPrescription\?\.evidenceConfidence/, "role claims must use the engine evidence category, not progression readiness");
-assert.doesNotMatch(prescriptionSurface, /set\.setPrescription\?\.confidence \|\| set\.prescriptionConfidence \|\| "low"/, "role claims must not fabricate a low confidence fallback");
+assert.doesNotMatch(prescriptionSurface, /set\.setPrescription\?\.confidence \|\| set\.prescriptionConfidence \|\| "low"/, "prescription evidence must not fabricate a low confidence fallback");
 assert.match(prescriptionSurface, /<section class="prescription-brief unified-prescription/, "unified prescriptions must render as always-visible sections");
 assert.match(prescriptionSurface, /<section class="recommendation-rationale" aria-label="Recommendation evidence"/, "recommendation evidence must be an always-visible labelled section");
 assert.match(prescriptionSurface, /class="claim-card prescription-claim/, "the prescription target must render as a confidence-bearing claim");
 assert.match(prescriptionSurface, /class="claim-projection-grid prescription-claim-projections"/, "rest, frequency, and role projections must remain inside the unified confidence claim");
-assert.match(prescriptionSurface, /class="claim-projection-grid role-claim-projections"/, "target reps and next increment must remain inside the role confidence claim");
 assert.match(prescriptionSurface, /class="claim-projection-rule"/, "progression rules must remain inside their confidence claim");
 assert.match(prescriptionSurface, /class="role-evidence-copy"/, "stored role rationale must remain separately identified as evidence");
 assert.match(prescriptionSurface, /<div class="role-prescription"/, "role prescription groups without headings must use neutral container semantics");
+assert.doesNotMatch(prescriptionSurface, /role-confidence-label|role-prescription-claim|Today\\?'s target/, "role evidence must not restate exercise-level confidence or set-row targets");
 assert.doesNotMatch(prescriptionSurface, /<article class="role-prescription"/, "role prescription groups must not expose unnamed article landmarks");
 assert.doesNotMatch(prescriptionSurface, /role-progression-facts|prescription-fact-grid/, "forward-looking prescription values must not return to fact-styled grids");
 assert.doesNotMatch(style, /\.role-progression-facts|\.prescription-fact-grid/, "obsolete current-tinted projection grids must not be shipped");
@@ -92,7 +91,6 @@ for (const contrastName of [
   "claim-projection-rule-value",
   "prescription-base-label",
   "prescription-base-value",
-  "role-confidence-label",
   "role-evidence-copy",
   "evidence-confidence-label",
   "evidence-confidence-copy"
@@ -105,6 +103,6 @@ assert.match(lifecycleAudit, /Tab must cross the non-interactive prescription ev
 
 assert.match(decisionEngine, /\| `research_default` \|[^\n]+\| `1` \|/, "Decision Engine documentation must record the research_default UI mapping");
 assert.match(decisionEngine, /\| `moderate` \|[^\n]+\| `3` \|/, "Decision Engine documentation must record the moderate UI mapping");
-assert.match(uiUx, /forward-looking prescription field/, "UI/UX documentation must preserve claim/fact role separation");
+assert.match(uiUx, /Exact numeric targets belong to the generated set rows/, "UI/UX documentation must preserve single-owner claim/fact separation");
 
 console.log("Prescription claim-and-evidence contract passed.");

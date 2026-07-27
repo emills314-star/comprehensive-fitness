@@ -623,7 +623,7 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     expect(browserErrors, "structured legacy prescription presentation must not emit browser errors").toEqual([]);
   });
 
-  test("compact set rows and Progress History use the white and blue hierarchy", async ({ page }) => {
+  test("compact set rows and Progress History keep logged facts in plain ink", async ({ page }) => {
     const browserErrors = collectBrowserErrors(page);
     const fixture = buildActiveWorkoutLifecycleFixture();
     fixture.sessions.find((session) => session.id === IDS.historySession).workoutAnalysis = {
@@ -660,30 +660,30 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await page.evaluate(() => setActiveTab("progress"));
     await page.locator('[data-action="set-progress-view"][data-progress-view="history"]').click();
     await expect(page.locator(".history-view")).toBeVisible();
-    const card = page.locator(`.session-card[data-session-id="${IDS.historySession}"]`);
-    const title = card.locator(".history-session-title");
-    const grade = card.locator(".history-session-grade");
+    const card = page.locator(`.history-session-row[data-session-id="${IDS.historySession}"]`);
+    const title = card.locator(".ri-copy b");
+    const grade = card.locator(".ri-val");
     await expect(title).toHaveText(NAMES.historySession);
     await expect(grade).toHaveText("B");
     await expect(card).not.toContainText("Grade B");
     const hierarchy = await card.evaluate((element) => {
-      const title = element.querySelector(".history-session-title");
-      const grade = element.querySelector(".history-session-grade");
+      const title = element.querySelector(".ri-copy b");
+      const grade = element.querySelector(".ri-val");
       const probe = document.createElement("span");
-      probe.style.color = "var(--current)";
+      probe.style.color = "var(--text)";
       document.body.appendChild(probe);
-      const currentColor = getComputedStyle(probe).color;
+      const textColor = getComputedStyle(probe).color;
       probe.remove();
       return {
         titleColor: getComputedStyle(title).color,
-        currentColor,
+        textColor,
         gradeColor: getComputedStyle(grade).color,
         gradeBackground: getComputedStyle(grade).backgroundColor
       };
     });
-    expect(hierarchy.titleColor, "past-session names should use the blue action color").toBe(hierarchy.currentColor);
-    expect(hierarchy.gradeColor, "the grade should use a distinct score color").not.toBe(hierarchy.titleColor);
-    expect(hierarchy.gradeBackground).not.toBe("rgba(0, 0, 0, 0)");
+    expect(hierarchy.titleColor, "logged session names should use plain text ink").toBe(hierarchy.textColor);
+    expect(hierarchy.gradeColor, "the saved grade fact should use the same plain ink").toBe(hierarchy.titleColor);
+    expect(hierarchy.gradeBackground).toBe("rgba(0, 0, 0, 0)");
     expect(browserErrors, "compact Today and History hierarchy must not emit browser errors").toEqual([]);
   });
 
@@ -1003,15 +1003,18 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await installFixture(page, buildActiveWorkoutLifecycleFixture());
     const before = await persistedData(page);
 
-    await page.locator('[data-action="session-menu"]').click();
-    await page.locator(`[data-action="request-cancel-workout"][data-session-id="${IDS.activeSession}"]`).click();
+    const sessionMenu = page.locator(".session-dock-overflow");
+    if (!await sessionMenu.evaluate((node) => node.open)) await sessionMenu.locator(":scope > summary").click();
+    await expect(sessionMenu).toHaveAttribute("open", "");
+    await sessionMenu.getByRole("button", { name: "Cancel workout" }).click();
     await expect(page.getByRole("dialog", { name: "Cancel this workout?" })).toBeVisible();
     await page.getByRole("button", { name: "Keep Workout", exact: true }).click();
     await expect(page.getByRole("heading", { name: NAMES.activeSession, exact: true })).toBeVisible();
     expect((await persistedData(page)).sessions.some((item) => item.id === IDS.activeSession)).toBe(true);
 
-    await page.locator('[data-action="session-menu"]').click();
-    await page.locator(`[data-action="request-cancel-workout"][data-session-id="${IDS.activeSession}"]`).click();
+    if (!await sessionMenu.evaluate((node) => node.open)) await sessionMenu.locator(":scope > summary").click();
+    await expect(sessionMenu).toHaveAttribute("open", "");
+    await sessionMenu.getByRole("button", { name: "Cancel workout" }).click();
     await page.locator('[data-action="confirm-cancel-workout"]').click();
     const after = await waitForPersisted(page, (data) => !data.sessions.some((item) => item.id === IDS.activeSession), "discard must remove the active session");
     expect(after.exercises.some((item) => item.sessionId === IDS.activeSession)).toBe(false);

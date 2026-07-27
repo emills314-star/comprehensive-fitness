@@ -124,12 +124,11 @@ assert.match(html, /inAppRestAlerts/, "In-app alerts are persisted in the canoni
 assert.match(html, /timerCompleteNotice = data\.settings\.inAppRestAlerts !== false/, "In-app completion behavior follows the canonical setting");
 assert.match(html, /Foreground completion sound confirmed/, "Sound testing produces a visible confirmed state");
 const roleDetailsSource = extractFunction("renderRolePrescriptionDetails");
-assert.match(roleDetailsSource, /set\.setPrescription\?\.evidenceConfidence[\s\S]*research_default: \{ level: 1,[\s\S]*high: \{ level: 4,[\s\S]*\}\)\[confidenceKey\] \|\| null;/, "Role details must guard confidence with the engine's four evidence categories");
-assert.match(roleDetailsSource, /class="claim-card role-prescription-claim' \+ \(confidence \? '' : ' confidence-unavailable'\) \+ '"' \+ confidenceAttributes/, "Role details must keep targets inside the guarded confidence claim");
-assert.match(roleDetailsSource, /class="claim-projection-grid role-claim-projections"[\s\S]*>Target reps<[\s\S]*escapeHtml\(String\(targetReps\)\)[\s\S]*>Next increment<[\s\S]*escapeHtml\(nextIncrement\)/, "Role details must keep target reps and next increment inside the claim");
+assert.match(roleDetailsSource, />Last performed<[\s\S]*>Next increment<[\s\S]*Progress when:/, "Role details must retain historical context and the progression gate");
+assert.doesNotMatch(roleDetailsSource, /role-confidence-label|role-prescription-claim|Today\\?'s target/, "Role details must not repeat exercise-level confidence or the set-row-owned target");
 assert.match(html, /class="set-progress-disclosure"[\s\S]*<summary><span>Progress when<\/span>/, "Set rows keep progression rules in a compact native disclosure");
 assert.match(html, /class="discard-workout-button"[^>]*>Discard Workout</, "Cancellation uses the polished concise destructive action");
-assert.match(html, /class="diff cancel-workout-diff"[\s\S]*>Removed<[\s\S]*>Kept<[\s\S]*This draft[\s\S]*completed set[\s\S]*notes, and timer state[\s\S]*Submitted history[\s\S]*Templates and settings/, "Cancellation must explain the draft facts removed and distinguish submitted history, templates, and settings that remain");
+assert.match(html, /class="diff cancel-workout-diff"[\s\S]*>Removed<[\s\S]*>Kept<[\s\S]*This draft[\s\S]*exerciseIds\.size[\s\S]*draftSets\.length[\s\S]*completedSets[\s\S]*notes, and timer state[\s\S]*Submitted history[\s\S]*Templates and settings/, "Cancellation must explain the exercise and set records removed and distinguish submitted history, templates, and settings that remain");
 assert.match(html, /data-action="keep-workout"/, "The safe cancellation action remains available");
 assert.doesNotMatch(html, /data-action="keep-workout" autofocus/, "The cancellation sheet must open at the warning instead of auto-scrolling to its actions");
 assert.match(html, /cancelRestPush\(previousTimer, "workout-canceled"\)/, "Discarding a workout still cancels scheduled rest alerts");

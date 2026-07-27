@@ -15,7 +15,7 @@ test("browser Back and Forward restore the rendered Progress subview", async ({ 
 
   await page.locator('[data-action="set-progress-view"][data-progress-view="history"]').click();
   await expect(page).toHaveURL(/#progress-history$/);
-  await expect(page.locator(".history-view h1")).toHaveText("Training log");
+  await expect(page.locator(".history-view h1")).toHaveText("Training log.");
 
   await page.goBack();
   await expect(page).toHaveURL(/#progress-lifts$/);
@@ -26,6 +26,6 @@ test("browser Back and Forward restore the rendered Progress subview", async ({ 
   await page.goForward();
   await expect(page).toHaveURL(/#progress-history$/);
   await expect(page.locator('[data-action="set-progress-view"][data-progress-view="history"]')).toHaveAttribute("aria-current", "page");
-  await expect(page.locator(".history-view h1")).toHaveText("Training log");
+  await expect(page.locator(".history-view h1")).toHaveText("Training log.");
   await expect(page.locator(".charts-view")).toHaveCount(0);
 });

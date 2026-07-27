@@ -44,7 +44,7 @@ assert.match(templates, /const volumeFlags = \[\]/, "Phase 3 must not silently r
 assert.match(templateCard, /const advice = null/, "Phase 3 must not silently revive template advice");
 
 assert.match(exerciseResult, /summary-diff-result[\s\S]*class="diff"[\s\S]*class="plan"[\s\S]*class="act"[\s\S]*class="dlt"/, "Completed exercise results must expose plan, actual, and judgment slots");
-assert.match(summary, /Workout Grade:[\s\S]*workout-confidence/, "Completed summary must retain grade and explicit confidence evidence");
+assert.match(summary, /<h2>Workout analysis<\/h2>[\s\S]*workout-grade-mark[\s\S]*workout-confidence/, "Completed summary must retain one grade owner and explicit confidence evidence");
 for (const className of ["today-coach", "volume-table", "plan-template-card", "summary-diff-result"]) {
   assert.match(html, new RegExp(`\\.${className.replaceAll("-", "\\-")}`), `${className} styles must ship in the production stylesheet`);
 }

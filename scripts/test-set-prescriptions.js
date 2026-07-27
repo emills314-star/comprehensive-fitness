@@ -155,7 +155,9 @@ assert(html.includes("Broad exercise guidance"));
 assert(html.includes("Program benchmark"));
 assert(html.includes("Informational · not an input"));
 assert(html.includes("these values are already set by the saved prescription."));
-assert(html.includes("roleSessionPrescriptionLine(exercise, fallbackFinalLine)"), "The unified recommendation summary must be built from the same generated rows that are prepopulated");
+assert(!html.includes("roleSessionPrescriptionLine("), "The recommendation explanation must not restate the set-row-owned numeric targets");
+assert(html.includes('const claimValue = prescriptionMetric(final.workingSets, " working sets")'), "The recommendation claim must stay high-level while set rows own exact targets");
+assert(html.includes(">Last performed<") && html.includes(">Next increment<"), "Role evidence must retain historical and progression context without repeating the target");
 assert(html.includes("History and high watermark:"), "The expanded recommendation must explain its historical load anchor");
 assert(html.includes("exercise.recommendationSnapshot || unifiedPrescriptionSnapshot(exercise)"), "Broad guidance must reuse the unified prescription instead of hard-coded sets or reps");
 

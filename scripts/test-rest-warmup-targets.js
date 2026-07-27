@@ -22,7 +22,8 @@ assert.match(schedule, /timerVersion: Number\(body\.timerVersion \|\| 1\)/, "Sch
 
 assert.match(html, /\.set-block\.resting-set \{ border-left-color: var\(--line\) !important; border-right-color: var\(--line\) !important;/, "Resting rows must preserve neutral boundaries instead of wrapping the exercise in rest color");
 assert.doesNotMatch(html, /\.timer-bar\.complete/, "Completed-set green styling must not leak into the active rest timer");
-assert.match(html, /\.timer-skip \{ background:[^}]*#607587/, "Skip must be visually distinct from gold timer adjustments");
+assert.match(html, /\.timer-skip \{ background: color-mix\(in srgb, var\(--muted\) 12%, var\(--surface\)\);/, "Skip must use the neutral token treatment");
+assert.doesNotMatch(html, /\.timer-skip \{[^}]*(?:var\(--amber\)|var\(--rest-accent\))/, "Skip must remain visually distinct from gold timer adjustments");
 assert.match(html, /data-timer-progress-label/, "The integrated progress track must include readable remaining time");
 
 assert.match(html, /sequenceIndex: warmupIndex,[\s\S]*setTypeIndex: warmupIndex/, "Template warm-ups must receive stable canonical sequence positions");

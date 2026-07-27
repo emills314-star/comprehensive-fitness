@@ -365,7 +365,7 @@ test("critical workout lifecycle remains coherent through submission, progress, 
 
   await openProgressView(page, "lifts");
   await expect(page.getByRole("combobox", { name: "Search or select exercise" })).toHaveValue(EXERCISE_NAME, { timeout: 45_000 });
-  await expect(page.getByRole("heading", { name: "Progress charts", exact: true })).toBeVisible();
+  await expect(page.locator(".charts-view h1")).toHaveText(EXERCISE_NAME);
 
   await page.reload();
   await expect(page.locator("main.app-main")).toBeVisible({ timeout: 45_000 });
@@ -377,17 +377,17 @@ test("critical workout lifecycle remains coherent through submission, progress, 
   const originalSet = beforeUnitChange.sets.find((set) => set.exerciseId === activeExercise.id && set.completed);
   expect(originalSet.weightUnit).toBe("lb");
   await page.locator('[data-action="set-tab"][data-tab="more"]').click();
-  await page.locator('[data-action="toggle-unit"]').click();
+  await page.locator('[data-action="weight-unit"][value="kg"]').check();
   const kilograms = await waitForPersisted(page, (stored) => stored?.settings?.weightUnit === "kg" && stored.sets.find((set) => set.id === originalSet.id)?.weightUnit === "kg", "lb to kg conversion must persist coherently");
   const kilogramSet = kilograms.sets.find((set) => set.id === originalSet.id);
   expect(kilogramSet.weight).toBeCloseTo(originalSet.weight / 2.2046226218, 2);
-  await expect(page.locator('[data-action="toggle-unit"]')).toContainText("KG");
+  await expect(page.locator('[data-action="weight-unit"][value="kg"]')).toBeChecked();
 
-  await page.locator('[data-action="toggle-unit"]').click();
+  await page.locator('[data-action="weight-unit"][value="lb"]').check();
   const pounds = await waitForPersisted(page, (stored) => stored?.settings?.weightUnit === "lb" && stored.sets.find((set) => set.id === originalSet.id)?.weightUnit === "lb", "kg to lb round trip must persist coherently");
   expect(pounds.sets.find((set) => set.id === originalSet.id).weight).toBeCloseTo(originalSet.weight, 1);
   await page.reload();
-  await expect(page.locator('[data-action="toggle-unit"]')).toContainText("LB", { timeout: 45_000 });
+  await expect(page.locator('[data-action="weight-unit"][value="lb"]')).toBeChecked({ timeout: 45_000 });
   await openProgressView(page, "history");
   await expect(page.locator(`[data-action="open-session"][data-session-id="${activeSession.id}"]`)).toHaveCount(1);
   expect(browserErrors, "the complete critical lifecycle must not emit browser errors").toEqual([]);
