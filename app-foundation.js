@@ -78,8 +78,8 @@
         "template-readiness-sleep-hours", "template-readiness-sleep-quality", "template-readiness-hrv", "template-readiness-resting-hr",
         "template-readiness-soreness", "template-readiness-nutrition", "template-readiness-protein", "template-readiness-illness",
         "template-readiness-pain", "template-readiness-affected-muscle", "template-readiness-note",
-        "adjust-guided-setup",
-        "clear-data-ack", "clear-data-phrase", "sync-before-clear", "confirm-clear-data", "confirm-cancel-workout",
+        "adjust-guided-setup", "adjust-default-rest",
+        "clear-data-ack", "clear-data-phrase", "sync-before-clear", "export-data", "export-before-clear", "confirm-clear-data", "confirm-cancel-workout",
         "confirm-save-history-edits", "confirm-cancel-history-edits"
       ]);
       const focusDescriptorDataKeys = ["tab", "templateId", "sessionId", "exerciseId", "setId", "progressView", "detail", "flagId", "muscle", "field", "chartKey", "chartDate"];
@@ -142,6 +142,7 @@
       let updateAvailable = false;
       let pendingControllerReload = false;
       let persistenceReady = false;
+      let storagePersistenceStatus = "unsupported";
       let syncFlushTimer = 0;
       let syncConsentEpoch = 0;
       let syncConsentTransition = Promise.resolve();
@@ -179,6 +180,15 @@
       let dashboardReturnScroll = 0;
       let settingsMessage = "";
       let appDataPersistenceConflict = null;
+
+      async function readStoragePersistenceStatus() {
+        if (typeof navigator === "undefined" || typeof navigator.storage?.persisted !== "function") return "unsupported";
+        try {
+          return await navigator.storage.persisted() ? "granted" : "not-granted";
+        } catch {
+          return "unsupported";
+        }
+      }
       let importInProgress = false;
       let importAttempt = 0;
       let importStatus = { state: "idle", message: "" };
@@ -4006,6 +4016,13 @@
         const descriptor = pendingFocusDescriptor;
         pendingFocusDescriptor = null;
         const target = resolveFocusDescriptor(descriptor);
+        if (target) {
+          const closedAncestors = [];
+          for (let ancestor = target.parentElement; ancestor; ancestor = ancestor.parentElement) {
+            if (ancestor instanceof HTMLDetailsElement && !ancestor.open) closedAncestors.push(ancestor);
+          }
+          closedAncestors.reverse().forEach((details) => { details.open = true; });
+        }
         const focusedTarget = focusVisibleEnabledElement(target, { sequential: false });
         if (focusedTarget) return focusedTarget;
         const activeDialog = root.querySelector('[role="dialog"][aria-modal="true"]');

@@ -398,9 +398,9 @@ test("Settings converts real loads and persists profile, timer, readiness, unit,
   await installFixture(page);
   await openPrimaryTab(page, "data");
 
-  await page.getByLabel("Theme").selectOption("dark");
-  await page.getByLabel("Color package").selectOption("heritage-atlas");
-  await page.locator('[data-action="weight-unit"]').selectOption("kg");
+  await page.locator('[data-action="theme-mode"][value="dark"]').check();
+  await page.locator('[data-action="color-package"][value="heritage-atlas"]').check();
+  await page.locator('[data-action="weight-unit"][value="kg"]').check();
   await openSettingsGroup(page, "Training defaults");
   await page.locator('[data-action="training-goal"]').selectOption("strength");
   await openSettingsGroup(page, "Training defaults");
@@ -448,9 +448,9 @@ test("Settings converts real loads and persists profile, timer, readiness, unit,
 
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await expect(page.locator("html")).toHaveAttribute("data-color-package", "heritage-atlas");
-  await expect(page.getByLabel("Theme")).toHaveValue("dark");
-  await expect(page.getByLabel("Color package")).toHaveValue("heritage-atlas");
-  await expect(page.locator('[data-action="weight-unit"]')).toHaveValue("kg");
+  await expect(page.locator('[data-action="theme-mode"][value="dark"]')).toBeChecked();
+  await expect(page.locator('[data-action="color-package"][value="heritage-atlas"]')).toBeChecked();
+  await expect(page.locator('[data-action="weight-unit"][value="kg"]')).toBeChecked();
   const restored = await page.evaluate(() => ({ settings: structuredClone(data.settings), firstSet: structuredClone(data.sets[0]) }));
   expect(restored.settings).toMatchObject(inMemory.settings);
   expect(restored.firstSet).toMatchObject({ weight: 99.79, weightUnit: "kg", targetWeight: 99.79 });
@@ -504,16 +504,16 @@ test("More numeric settings enforce their import-safe domains and survive reload
 test("all ten color packages are selectable and apply distinct semantic colors", async ({ page }) => {
   await installFixture(page);
   await openPrimaryTab(page, "data");
-  await page.getByLabel("Theme").selectOption("light");
-  const selector = page.getByLabel("Color package");
-  const packageIds = await selector.locator("option").evaluateAll((options) => options.map((option) => option.value));
+  await page.locator('[data-action="theme-mode"][value="light"]').check();
+  const selectors = page.locator('[data-action="color-package"]');
+  const packageIds = await selectors.evaluateAll((options) => options.map((option) => option.value));
   expect(packageIds).toEqual([
     "heritage-atlas", "signal-garden", "alpine-ledger", "training-hall", "harbor-pulse",
     "prairie-electric", "redwood-circuit", "mediterranean-set", "modern-primary", "night-stadium"
   ]);
   const applied = new Set();
   for (const packageId of packageIds) {
-    await selector.selectOption(packageId);
+    await page.locator(`[data-action="color-package"][value="${packageId}"]`).check();
     await expect(page.locator("html")).toHaveAttribute("data-color-package", packageId);
     applied.add(await page.evaluate(() => {
       const style = getComputedStyle(document.documentElement);
@@ -555,7 +555,7 @@ test("persistence exhaustion keeps the in-memory setting and immediately surface
   }, STORAGE_KEY);
 
   try {
-    await page.getByLabel("Theme").selectOption("dark");
+    await page.locator('[data-action="theme-mode"][value="dark"]').check();
     await expect.poll(() => page.evaluate(() => ({
       ...globalThis.__CF_PERSISTENCE_FAILURE_AUDIT__,
       theme: data.settings.theme,
@@ -581,13 +581,19 @@ test("Clear All Local App Data supports cancel, exact dual confirmation, default
   await clearButton.click();
   let dialog = page.getByRole("dialog", { name: "Clear All Local App Data?" });
   await expect(dialog).toBeVisible();
-  await dialog.getByRole("button", { name: "Keep My Data" }).click();
+  const keepButton = dialog.getByRole("button", { name: "Keep My Data" });
+  await expect(keepButton, "The destructive sheet must focus its safe action first").toBeFocused();
+  await keepButton.click();
   await expect(dialog).toHaveCount(0);
+  await expect(clearButton, "Closing the destructive sheet must restore its trigger").toBeFocused();
   expect(await page.evaluate(() => ({ sessions: data.sessions.length, templates: data.templates.length }))).toEqual({ sessions: 14, templates: 1 });
 
   await openSettingsGroup(page, "Danger Zone");
   await clearButton.click();
   dialog = page.getByRole("dialog", { name: "Clear All Local App Data?" });
+  await expect(dialog.getByRole("button", { name: "Keep My Data" })).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(dialog.getByRole("button", { name: "Export first" })).toBeFocused();
   const acknowledge = dialog.getByRole("checkbox", { name: /I understand/ });
   const phrase = dialog.getByRole("textbox", { name: "Type CLEAR to confirm local data deletion" });
   const confirm = dialog.getByRole("button", { name: "Permanently Clear Local Data" });
@@ -710,10 +716,45 @@ test("the registered service worker serves the public app shell while the isolat
     offlineEnabled = true;
     await page.reload({ waitUntil: "domcontentloaded", timeout: 30_000 });
     await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByRole("heading", { name: "Today", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Today", exact: true })).toBeVisible();
+    await expect(page.locator(".offline-banner")).toContainText("Workout logging and local changes continue");
+    await expect(page.locator(".offline-banner")).toContainText("cloud-copy operations wait");
     expect(await page.evaluate(() => ({ online: navigator.onLine, controlled: Boolean(navigator.serviceWorker.controller) }))).toEqual({ online: false, controlled: true });
   } finally {
     if (offlineEnabled) await context.setOffline(false).catch(() => undefined);
     await context.close();
+  }
+});
+
+test("Settings states the verified privacy and recoverability boundaries without fabricated backup facts", async ({ page }) => {
+  await page.addInitScript(() => {
+    if (navigator.storage) Object.defineProperty(navigator.storage, "persisted", { configurable: true, value: async () => true });
+  });
+  await installFixture(page);
+  await openPrimaryTab(page, "data");
+  await openSettingsGroup(page, "Data and backup");
+
+  const dataGroup = page.locator("details.settings-group").filter({ has: page.locator("summary", { hasText: "Data and backup" }) });
+  await expect(dataGroup).toContainText("active, unsubmitted workout");
+  await expect(dataGroup).toContainText("every associated exercise and set object");
+  await expect(dataGroup).toContainText("Cloud copy is not a backup");
+  await expect(dataGroup).toContainText("no cloud-history or restore endpoint");
+  await expect(dataGroup).toContainText("48 research source records");
+  await expect(dataGroup).toContainText("Granted by this browser");
+  await expect(dataGroup).not.toContainText(/Jul \d|days ago|sessions since|MB/i);
+
+  await openSettingsGroup(page, "Rest timer and alerts");
+  const alertsGroup = page.locator("details.settings-group").filter({ has: page.locator("summary", { hasText: "Rest timer and alerts" }) });
+  await expect(alertsGroup).toContainText("Private changes the visible notification body only");
+  await expect(alertsGroup).toContainText("exercise name");
+  await expect(alertsGroup).toContainText("server-side timer record");
+
+  for (const [status, expected] of [["not-granted", "Not granted"], ["unsupported", "does not expose"]]) {
+    await page.evaluate((nextStatus) => {
+      storagePersistenceStatus = nextStatus;
+      render();
+    }, status);
+    await openSettingsGroup(page, "Data and backup");
+    await expect(page.locator(".storage-persistence-fact")).toContainText(expected);
   }
 });

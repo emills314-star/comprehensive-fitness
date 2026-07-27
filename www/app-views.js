@@ -4,7 +4,7 @@
         document.documentElement.classList.toggle("large-text-reflow", usesLargeTextReflow());
         const session = activeSession();
         if (!session) {
-          root.innerHTML = '<div class="loading">Loading your training log...</div>';
+          root.innerHTML = '<section class="state loading-state" role="status" aria-live="polite"><div class="state-skeleton" aria-hidden="true"><span class="skeleton skeleton-kicker"></span><span class="skeleton skeleton-title"></span><span class="skeleton skeleton-panel"></span></div><span class="visually-hidden">Loading your training log...</span></section>';
           return;
         }
         if (templateStartFlow && !data.templates.some((template) => template.id === templateStartFlow.templateId)) templateStartFlow = null;
@@ -27,6 +27,7 @@
             <header class="brand-bar" ${modalOpen ? 'inert aria-hidden="true"' : ""}>
               <div class="shell-context"><strong>${escapeHtml(shellTitle)}</strong>${shellProgress ? '<span>' + escapeHtml(shellProgress.current) + '</span>' : ''}</div>
             </header>
+            ${renderOfflineBanner()}
             ${renderUpdateBanner()}
             ${appToast ? '<div class="app-toast" role="status" aria-live="polite">' + escapeHtml(appToast) + '</div>' : ''}
             <main class="app-main" id="main-content" tabindex="-1" ${modalOpen ? 'inert aria-hidden="true"' : ""}>${viewHtml}</main>
@@ -199,7 +200,12 @@
             : workoutActive
             ? 'Update available. It will wait until this workout is logged.'
             : 'A new app version is ready.';
-        return '<div class="update-banner" role="status"><span>' + message + '</span>' + (historyEditing || (workoutActive && !renderRecovery) ? '' : '<button type="button" data-action="apply-update">Update now</button>') + '</div>';
+        return '<div class="banner update update-banner" role="status"><span class="b-copy"><b>Update available</b><span>' + message + '</span></span>' + (historyEditing || (workoutActive && !renderRecovery) ? '' : '<button class="b-act" type="button" data-action="apply-update">Update now</button>') + '</div>';
+      }
+
+      function renderOfflineBanner() {
+        if (navigator.onLine !== false) return "";
+        return '<div class="banner offline offline-banner" role="status"><span class="b-copy"><b>Offline</b><span>Workout logging and local changes continue. Notifications and cloud-copy operations wait for a connection.</span></span><span class="b-act" aria-hidden="true">Local mode</span></div>';
       }
 
       function navButton(tab, label, iconKey) {
@@ -233,7 +239,7 @@
             const updateAction = updateAvailable && !historyEditFlow && !historyEditStartPending
               ? '<button class="secondary-action" type="button" data-action="apply-update">Update app</button>'
               : '';
-            return `<section class="view destination-error" role="alert"><div class="destination-error-mark" aria-hidden="true">!</div><div><div class="section-kicker">${escapeHtml(activeTab)}</div><h1>This area could not be opened.</h1><p>Your workout data has not been changed. Retry rebuilds this view's derived indexes. If an app update is ready, save this workout and apply it here.</p><div class="destination-error-actions"><button class="primary-action" type="button" data-action="retry-view-render">Retry</button>${updateAction}</div></div></section>`;
+            return `<section class="view state destination-error" role="alert"><span class="glyph bad destination-error-mark" aria-hidden="true">!</span><div><div class="section-kicker">${escapeHtml(activeTab)}</div><h1>This area could not be opened.</h1><p>Your stored workout data is intact. This is a display fault; Retry rebuilds this view's derived indexes without changing those records. If an app update is ready, save this workout and apply it here.</p><div class="destination-error-actions"><button class="primary-action" type="button" data-action="retry-view-render">Retry</button>${updateAction}</div></div></section>`;
           }
         }
       }

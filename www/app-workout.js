@@ -43,17 +43,29 @@
         const blockedMessage = remoteBlock || clearDataFlow.blockedMessage || "";
         const unlocked = clearDataFlow.acknowledged && clearDataFlow.phrase === "CLEAR" && !blockedMessage;
         const risk = unsynced.workoutCount || unsynced.setChanges || unsynced.queueCount;
+        const sourceCount = Number(prescriptionEngine?.evidence?.research?.manifest?.tables?.research_library?.record_count || 0);
+        const sessionCount = data.sessions.filter((session) => isSessionSubmitted(session) || data.exercises.some((exercise) => exercise.sessionId === session.id)).length;
+        const mesocycleCount = data.mesocycles?.length || 0;
+        const personalEvidenceCount = data.personalEvidencePackage ? 1 : 0;
         return `
-          <div class="sheet-backdrop" data-action="cancel-clear-data" role="presentation">
-            <section class="bottom-sheet dialog-sheet destructive-sheet clear-data-sheet" role="dialog" aria-modal="true" aria-labelledby="clear-data-title" data-sheet-content>
-              <div><div class="section-kicker">Danger Zone</div><h2 id="clear-data-title">Clear All Local App Data?</h2><p>This removes the active workout, unsaved sets, offline and cached workout data, cached templates and history, local preferences, app notification settings, IndexedDB records, local storage, service-worker caches, and pending sync operations from this device.</p></div>
-              ${blockedMessage ? '<div class="destructive-warning" role="status"><strong>Local clearing is paused</strong><span>' + escapeHtml(blockedMessage) + '</span></div>' : ''}
-              ${risk ? '<div class="destructive-warning"><strong>Unsynchronized data detected</strong><span>This device contains ' + unsynced.workoutCount + ' unsynchronized workout' + (unsynced.workoutCount === 1 ? '' : 's') + ' and ' + unsynced.setChanges + ' unsaved set change' + (unsynced.setChanges === 1 ? '' : 's') + '. Clearing now may permanently delete them.</span>' + (unsynced.canSync ? '<button type="button" data-action="sync-before-clear">Sync Now</button>' : '<small>Sync is unavailable or not configured. Export a backup before clearing if this data matters.</small>') + '</div>' : '<div class="inline-panel"><strong>No pending local workout changes were detected.</strong></div>'}
-              <div class="clear-data-scope"><strong>Cloud deletion boundary</strong><span>Retained workout copies are deleted before local authorization is removed. The app stops here while offline rather than orphaning server data. Any data that exists only on this device will still be lost.</span></div>
+          <div class="scrim sheet-backdrop" data-action="cancel-clear-data" role="presentation">
+            <section class="sheet-card bottom-sheet dialog-sheet destructive-sheet clear-data-sheet" role="dialog" aria-modal="true" aria-labelledby="clear-data-title" data-sheet-content>
+              <div><div class="section-kicker destructive-kicker">This cannot be undone</div><h2 id="clear-data-title">Clear All Local App Data?</h2><p>The scope below distinguishes records this action erases from material outside local app storage.</p></div>
+              <div class="diff clear-data-diff">
+                <div class="drow dhead"><span class="plan">Erased</span><span class="act">Outside local storage</span><span class="dlt">Scope</span></div>
+                <div class="drow"><span class="plan"><span class="lbl">Workout records</span><span class="val">${sessionCount} session${sessionCount === 1 ? '' : 's'}, exercises, sets, notes and active timers</span></span><span class="act"><span class="lbl">Downloaded exports</span><span class="val">Files already saved outside this app are not deleted</span></span><span class="dlt"><span class="d none">local</span></span></div>
+                <div class="drow"><span class="plan"><span class="lbl">Plans</span><span class="val">${data.templates.length} template${data.templates.length === 1 ? '' : 's'} and ${mesocycleCount} mesocycle${mesocycleCount === 1 ? '' : 's'}</span></span><span class="act"><span class="lbl">Public research database</span><span class="val">${sourceCount ? sourceCount + ' source records reload with the app' : 'Reloads with the app'}</span></span><span class="dlt"><span class="d none">public</span></span></div>
+                <div class="drow"><span class="plan"><span class="lbl">Personal setup</span><span class="val">Settings, readiness baseline, imports${personalEvidenceCount ? ' and imported personal evidence' : ''}</span></span><span class="act"><span class="lbl">Remote workout copies</span><span class="val">Deleted first; write-only and not recoverable here</span></span><span class="dlt"><span class="d out">erased</span></span></div>
+              </div>
+              ${blockedMessage ? '<div class="callout bad" role="status"><b>Local clearing is paused</b><span>' + escapeHtml(blockedMessage) + '</span></div>' : ''}
+              ${risk ? '<div class="callout warn"><b>Unsynchronized workout changes detected</b><span>This device contains ' + unsynced.workoutCount + ' unsynchronized workout' + (unsynced.workoutCount === 1 ? '' : 's') + ' and ' + unsynced.setChanges + ' unsaved set change' + (unsynced.setChanges === 1 ? '' : 's') + '. This is a cloud-queue and draft count, not a measure of backup coverage.</span>' + (unsynced.canSync ? '<button type="button" data-action="sync-before-clear">Sync now</button>' : '') + '</div>' : ''}
+              <div class="callout bad"><b>Only an exported file can restore local records</b><span>Cloud copy has no read or restore endpoint. The app does not record when you last exported, so it cannot claim how much training is covered by a backup.</span></div>
+              <div class="clear-data-scope"><strong>Remote deletion boundary</strong><span>Retained workout and notification records are deleted before local authorization is removed. The app stops while offline or cleanup is unresolved rather than orphaning server data.</span></div>
               <label class="toggle-line destructive-ack"><input type="checkbox" data-action="clear-data-ack" ${clearDataFlow.acknowledged ? 'checked' : ''} />I understand that unsynchronized data may be permanently deleted</label>
-              <label class="typed-confirmation">Type <strong>CLEAR</strong> to continue<input type="text" value="${escapeHtml(clearDataFlow.phrase)}" data-action="clear-data-phrase" autocomplete="off" autocapitalize="characters" aria-label="Type CLEAR to confirm local data deletion" /></label>
+              <div class="typed"><label class="t-hint">Type <strong>CLEAR</strong> to continue<input class="t-box" type="text" value="${escapeHtml(clearDataFlow.phrase)}" data-action="clear-data-phrase" autocomplete="off" autocapitalize="characters" aria-label="Type CLEAR to confirm local data deletion" /></label></div>
               <div class="sheet-actions stacked">
                 <button class="primary-action" type="button" data-action="cancel-clear-data">Keep My Data</button>
+                <button type="button" data-action="export-before-clear">Export first</button>
                 <button class="danger-button" type="button" data-action="confirm-clear-data" ${unlocked ? '' : 'disabled'}>Permanently Clear Local Data</button>
               </div>
             </section>

@@ -66,6 +66,8 @@ The frontend sends the exact `timerVersion` in immediate and queued cancellation
 4. Immediately before Web Push, delivery confirms the same claim and state again. Success, retry, and invalidation updates can commit only while that claim remains current.
 5. `POST /api/push/cancel` revokes Redis state and the delivery claim before attempting scheduler cleanup. A QStash deletion failure cannot make the canceled timer authoritative again.
 
+Scheduling transmits and stores the installation and timer identifiers, workout/exercise/set identifiers, exercise name, upcoming-set label or number, and completion time. `messageDetail: "private"` changes the visible notification body to a generic next-set message; it does not remove those fields from the server timer record or navigation payload.
+
 The client also closes the schedule-response race. It records the client timer ID/version as canceled before awaiting any in-flight schedule. A later successful schedule response is reconciled to its authoritative server notification ID and canceled immediately. If the schedule outcome is ambiguous, the client durably queues cancellation under the client ID/version instead of claiming success; the cancel endpoint resolves that client ID against the stored timer.
 
 The material race boundary is explicit: once the server has dispatched a Web Push network request, it cannot recall that request. Cancellation or deletion still revokes the Redis claim, so the request cannot commit success, schedule a retry, or resurrect timer state. User-facing copy and tests must not promise perfect recall after dispatch.
@@ -84,7 +86,7 @@ The Settings Danger Zone starts this endpoint explicitly and renders its state. 
 
 ## Workout mutation sync
 
-`POST /api/sync/workout` is installation-authorized and write-only. It enforces a 256 KiB request limit, at most 100 exercises and 1,000 sets, referential consistency, and bounded identifiers. Mutation IDs provide idempotency. A repeated revision with different content returns a conflict, a stale revision cannot overwrite newer data, and a deleting/deleted installation is rejected. Payloads and mutation receipts expire after 90 days.
+`POST /api/sync/workout` is installation-authorized and write-only. The frontend can select an active, unsubmitted workout and sends the complete current session object plus every associated exercise and set object; submission is not the only upload point. The endpoint enforces a 256 KiB request limit, at most 100 exercises and 1,000 sets, referential consistency, and bounded identifiers. Mutation IDs provide idempotency. A repeated revision with different content returns a conflict, a stale revision cannot overwrite newer data, and a deleting/deleted installation is rejected. Payloads and mutation receipts expire after 90 days.
 
 The frontend requires a separate persisted `cloudWorkoutSyncConsent` value that defaults to `false`. Notification enrollment never sets it. During enablement the checkbox remains canonical and busy; enabled state becomes visible only after installation authorization, server consent, and the explicit IndexedDB app-data write succeed. Each transition advances a consent epoch synchronously; queue work and uploads recheck that epoch around asynchronous reads, writes, timers, and requests. Revocation clears the delay, aborts active fetches, waits for stale operations, durably empties the queue, and calls server consent revocation to delete retained workout/mutation keys. Offline or failed revocation is persisted for retry.
 

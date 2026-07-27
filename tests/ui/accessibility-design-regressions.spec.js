@@ -943,7 +943,7 @@ test("cancel-workout dialog owns safe focus, traps both directions, and restores
   const menu = page.locator('[data-action="session-menu"]');
   await expect(trigger).toHaveCount(1);
 
-  await menu.click();
+  if (!await trigger.isVisible()) await menu.click();
   await trigger.click();
   let dialog = page.getByRole("dialog", { name: "Cancel this workout?", exact: true });
   await expect.soft(page.locator(".brand-bar"), "A destructive sheet must make the shell header inert").toHaveAttribute("inert", "");
@@ -955,7 +955,7 @@ test("cancel-workout dialog owns safe focus, traps both directions, and restores
   await expect(dialog).toHaveCount(0);
   await expect.soft(menu, "Escape must restore focus to the durable Workout menu trigger").toBeFocused({ timeout: 1_500 });
 
-  await menu.click();
+  if (!await trigger.isVisible()) await menu.click();
   await trigger.click();
   dialog = page.getByRole("dialog", { name: "Cancel this workout?", exact: true });
   await expect(dialog).toBeVisible();
@@ -963,7 +963,7 @@ test("cancel-workout dialog owns safe focus, traps both directions, and restores
   await expect(dialog).toHaveCount(0);
   await expect.soft(menu, "The safe close action must restore focus to the durable Workout menu trigger").toBeFocused({ timeout: 1_500 });
 
-  await menu.click();
+  if (!await trigger.isVisible()) await menu.click();
   await trigger.click();
   dialog = page.getByRole("dialog", { name: "Cancel this workout?", exact: true });
   await expect(dialog).toBeVisible();
@@ -1248,7 +1248,7 @@ test("equal-revision divergent copies preserve the alternate through later norma
   expect(localFallbackData(preservedBeforeSave).templates.find((template) => template.id === templateId)?.name).toBe(localName);
   await expect(page.locator(".persistence-conflict-note")).toContainText(/conflicting saved app-data copies.*preserved.*export.*clear all/i);
 
-  await page.locator('[data-action="toggle-theme"]').click();
+  await page.locator('[data-action="theme-mode"][value="dark"]').check();
   await expect.poll(async () => (await readPersistedAppData(page)).dataRevision).toBeGreaterThan(base.dataRevision);
   const preservedAfterSave = await page.evaluate((storageKey) => JSON.parse(localStorage.getItem(storageKey) || "null"), STORAGE_KEY);
   expect(localFallbackData(preservedAfterSave).templates.find((template) => template.id === templateId)?.name).toBe(localName);
@@ -1785,4 +1785,131 @@ test("all primary views reflow at 320 CSS pixels with 200 percent text and no do
     expect.soft(overflow.offscreen, `${entry.id} at 200% text must not render unclipped content outside the viewport; ${evidence}`).toEqual([]);
     expect.soft(overflow.nestedOverflow, `${entry.id} at 200% text must not contain clipped or nested horizontal overflow beyond the documented carousel exclusion; ${evidence}`).toEqual([]);
   }
+});
+
+test("Settings controls retain 44 CSS-pixel targets and reflow at 320 pixels with 200 percent text", async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
+  test.skip(testInfo.project.name !== "desktop", "One deterministic Chromium project owns exact Settings increased-text geometry.");
+  await installScenario(page, { activeWorkout: false, includeHistory: false, viewport: { width: 320, height: 720 } });
+  await page.addStyleTag({ content: "html { font-size: 200% !important; }" });
+  await openPrimaryTab(page, "more");
+  await page.locator("details.settings-group").evaluateAll((groups) => groups.forEach((group) => { group.open = true; }));
+
+  const geometry = await page.locator(".settings-view").evaluate((surface) => {
+    const visible = (element) => {
+      const style = getComputedStyle(element);
+      return style.display !== "none" && style.visibility !== "hidden" && element.getClientRects().length > 0;
+    };
+    const proxyFor = (element) => element.matches('input[type="radio"]')
+      ? element.closest(".pick, .segmented label")
+      : element.matches('input[type="checkbox"]')
+        ? element.closest(".toggle")
+        : element.matches('input[type="file"]')
+          ? element.closest(".import-button")
+          : element;
+    const proxies = Array.from(surface.querySelectorAll("button, select, input, summary, a[href]"))
+      .filter(visible)
+      .map(proxyFor)
+      .filter(Boolean)
+      .filter((element, index, all) => all.indexOf(element) === index)
+      .map((element) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          name: element.getAttribute("aria-label") || element.textContent.trim().slice(0, 60),
+          width: rect.width,
+          height: rect.height,
+          left: rect.left,
+          right: rect.right
+        };
+      });
+    return {
+      viewportWidth: innerWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      bodyWidth: document.body.scrollWidth,
+      proxies
+    };
+  });
+  expect.soft(geometry.viewportWidth).toBe(320);
+  expect.soft(geometry.documentWidth, "Settings must not widen the document").toBeLessThanOrEqual(321);
+  expect.soft(geometry.bodyWidth, "Settings must not widen the body").toBeLessThanOrEqual(321);
+  expect.soft(geometry.proxies.filter((target) => target.width < 44 || target.height < 44), "Every visible Settings action proxy must remain at least 44 by 44 CSS pixels").toEqual([]);
+  expect.soft(geometry.proxies.filter((target) => target.left < -1 || target.right > 321), "Settings controls must not clip horizontally").toEqual([]);
+});
+
+test("Settings privacy, data, and destructive surfaces retain contrast across every package and theme", async ({ page }, testInfo) => {
+  test.setTimeout(240_000);
+  test.skip(testInfo.project.name !== "desktop", "One deterministic Chromium project owns the complete Settings color-package matrix.");
+  await installScenario(page, { activeWorkout: false, includeHistory: false, viewport: { width: 390, height: 844 } });
+  await page.addScriptTag({ content: AxeBuilder.source });
+  await openPrimaryTab(page, "more");
+  await page.locator("details.settings-group").evaluateAll((groups) => groups.forEach((group) => { group.open = true; }));
+  const colorPackages = [
+    "heritage-atlas", "signal-garden", "alpine-ledger", "training-hall", "harbor-pulse",
+    "prairie-electric", "redwood-circuit", "mediterranean-set", "modern-primary", "night-stadium"
+  ];
+  const failures = [];
+  for (const theme of ["light", "dark"]) {
+    for (const colorPackage of colorPackages) {
+      await page.evaluate(({ colorPackage, theme }) => {
+        data.settings.colorPackage = colorPackage;
+        data.settings.theme = theme;
+        document.documentElement.dataset.colorPackage = colorPackage;
+        document.documentElement.dataset.theme = theme;
+      }, { colorPackage, theme });
+      await page.waitForTimeout(180);
+      const violations = await page.evaluate(async () => {
+        axe.reset();
+        return (await axe.run(document.querySelector(".settings-view"), {
+          runOnly: { type: "rule", values: ["color-contrast"] }
+        })).violations;
+      });
+      if (violations.length) failures.push({
+        colorPackage,
+        theme,
+        surface: "settings",
+        targets: violations.flatMap((violation) => violation.nodes.map((node) => ({
+          selector: node.target.join(" "),
+          summary: node.failureSummary
+        })))
+      });
+    }
+  }
+  await page.locator('[data-action="clear-data"]').click();
+  await expect(page.locator(".clear-data-sheet")).toBeVisible();
+  for (const theme of ["light", "dark"]) {
+    for (const colorPackage of colorPackages) {
+      await page.evaluate(({ colorPackage, theme }) => {
+        data.settings.colorPackage = colorPackage;
+        data.settings.theme = theme;
+        document.documentElement.dataset.colorPackage = colorPackage;
+        document.documentElement.dataset.theme = theme;
+      }, { colorPackage, theme });
+      await page.waitForTimeout(180);
+      const violations = await page.evaluate(async () => {
+        axe.reset();
+        return (await axe.run(document.querySelector(".clear-data-sheet"), {
+          runOnly: { type: "rule", values: ["color-contrast"] }
+        })).violations;
+      });
+      if (violations.length) failures.push({
+        colorPackage,
+        theme,
+        surface: "clear-data",
+        targets: violations.flatMap((violation) => violation.nodes.map((node) => ({
+          selector: node.target.join(" "),
+          summary: node.failureSummary
+        })))
+      });
+    }
+  }
+  const failureSummary = Array.from(failures.reduce((summary, failure) => {
+    failure.targets.forEach((target) => {
+      const key = `${failure.surface}:${target.selector}`;
+      const entry = summary.get(key) || { surface: failure.surface, selector: target.selector, summary: target.summary, variants: [] };
+      entry.variants.push(`${failure.colorPackage}/${failure.theme}`);
+      summary.set(key, entry);
+    });
+    return summary;
+  }, new Map()).values()).map((entry) => ({ ...entry, variants: Array.from(new Set(entry.variants)) }));
+  expect(failureSummary, "Settings must clear WCAG text contrast in every package and theme").toEqual([]);
 });

@@ -1818,7 +1818,7 @@
       function renderAlertSetting(action, label, detail, checked, options = {}) {
         const selected = Boolean(checked && !options.unavailable);
         const stateLabel = options.stateLabel || (selected ? "Enabled" : options.unavailable ? "Unavailable" : "Disabled");
-        return '<label class="alert-setting-card ' + (selected ? 'selected' : '') + ' ' + (options.unavailable ? 'unavailable' : '') + '"><input type="checkbox" data-action="' + action + '" ' + (checked ? 'checked' : '') + ' ' + (options.unavailable ? 'disabled' : '') + ' /><span><strong>' + escapeHtml(label) + '</strong><small>' + escapeHtml(detail) + '</small></span><b>' + (selected ? '&#10003; ' : '') + escapeHtml(stateLabel) + '</b></label>';
+        return '<label class="field alert-setting-field ' + (options.unavailable ? 'unavailable' : '') + '"><span class="f-top"><span class="f-name">' + escapeHtml(label) + '</span><span class="toggle ' + (selected ? 'on' : '') + '"><input type="checkbox" data-action="' + action + '" ' + (checked ? 'checked' : '') + ' ' + (options.unavailable ? 'disabled' : '') + ' aria-label="' + escapeHtml(label) + '" /><i aria-hidden="true"></i></span></span><span class="f-help">' + escapeHtml(detail) + ' <b class="setting-state">' + escapeHtml(stateLabel) + '.</b></span></label>';
       }
 
       function renderPwaSetup() {
@@ -1829,12 +1829,29 @@
         const soundReady = Boolean(data.settings.setupSoundConfirmed);
         return `
           <div class="setup-flow">
-            <div class="setup-step ${installed ? "complete" : ""}"><span class="setup-number">${installed ? "&#10003;" : "1"}</span><div><strong>Install the app</strong><p>${installed ? "Running as an installed Home Screen app." : "In Safari: Share > Add to Home Screen > Open as Web App > Add."}</p></div>${installed ? '<span class="status-pill enabled">Installed</span>' : '<button type="button" data-action="dismiss-install-guide">Instructions read</button>'}</div>
-            <div class="setup-step ${notificationsReady ? "complete" : ""}"><span class="setup-number">${notificationsReady ? "&#10003;" : "2"}</span><div><strong>Enable notifications</strong><p>Alerts can arrive while the phone is locked or another app is open, subject to iPhone notification, Silent Mode, and Focus settings.</p></div><button class="${notificationsReady ? 'selected-control' : ''}" type="button" data-action="request-notifications">${notificationsReady ? "&#10003; Enabled" : "Enable"}</button></div>
-            <div class="setup-step ${tested ? "complete" : ""}"><span class="setup-number">${tested ? "&#10003;" : "3"}</span><div><strong>Test notification</strong><p>Send a server push to verify this installation and its lock-screen permission.</p></div><button type="button" data-action="test-notification" ${notificationsReady ? "" : "disabled"}>Send test</button></div>
-            <div class="setup-step ${soundReady ? "complete" : ""}"><span class="setup-number">${soundReady ? "&#10003;" : "4"}</span><div><strong>Confirm foreground sound</strong><p>Audio is primed by this tap so timer completion does not fail silently.</p></div><button class="${soundReady ? 'selected-control' : ''}" type="button" data-action="test-timer-sound">${soundReady ? "&#10003; Confirmed" : "Test sound"}</button></div>
+            <div class="row-item setup-step ${installed ? "complete" : ""}"><span class="ri-copy"><b>Install the app</b><span>${installed ? "Running as an installed Home Screen app." : "In Safari: Share > Add to Home Screen > Open as Web App > Add."}</span></span>${installed ? '<span class="ri-val">Installed</span>' : '<button type="button" data-action="dismiss-install-guide">Instructions read</button>'}</div>
+            <div class="row-item setup-step ${notificationsReady ? "complete" : ""}"><span class="ri-copy"><b>Enable notifications</b><span>Alerts can arrive while the phone is locked or another app is open, subject to system notification, Silent Mode, and Focus settings.</span></span><button class="${notificationsReady ? 'selected-control' : ''}" type="button" data-action="request-notifications">${notificationsReady ? "Enabled" : "Enable"}</button></div>
+            <div class="row-item setup-step ${tested ? "complete" : ""}"><span class="ri-copy"><b>Test notification</b><span>Send a server push to verify this installation and its lock-screen permission.</span></span><button type="button" data-action="test-notification" ${notificationsReady ? "" : "disabled"}>Send test</button></div>
+            <div class="row-item setup-step ${soundReady ? "complete" : ""}"><span class="ri-copy"><b>Confirm foreground sound</b><span>Audio is primed by this tap so timer completion does not fail silently.</span></span><button class="${soundReady ? 'selected-control' : ''}" type="button" data-action="test-timer-sound">${soundReady ? "Confirmed" : "Test sound"}</button></div>
           </div>
         `;
+      }
+
+      function renderSettingsGroup(title, meta, content, options = {}) {
+        return `<details class="group settings-group ${options.className || ""}" ${options.id ? 'id="' + escapeHtml(options.id) + '"' : ""} ${options.open ? "open" : ""}><summary><span class="g-top"><span class="g-name">${escapeHtml(title)}</span><span class="g-meta">${escapeHtml(meta)}</span></span></summary><div class="settings-panel">${content}</div></details>`;
+      }
+
+      function renderSegmentedSetting(action, name, currentValue, options) {
+        return '<div class="segmented">' + options.map(([value, label]) => '<label><input type="radio" name="' + escapeHtml(name) + '" value="' + escapeHtml(value) + '" data-action="' + escapeHtml(action) + '" ' + (currentValue === value ? 'checked' : '') + ' /><span>' + escapeHtml(label) + '</span></label>').join('') + '</div>';
+      }
+
+      function renderStoragePersistenceFact() {
+        const presentation = storagePersistenceStatus === "granted"
+          ? { detail: "Granted by this browser.", delta: "granted", tone: "on" }
+          : storagePersistenceStatus === "not-granted"
+            ? { detail: "Not granted. Local data can still be stored, but the browser may evict it under storage pressure.", delta: "not granted", tone: "under" }
+            : { detail: "This browser does not expose storage-persistence status.", delta: "unsupported", tone: "none" };
+        return '<div class="row-item storage-persistence-fact"><span class="ri-copy"><b>Storage persistence</b><span>' + escapeHtml(presentation.detail) + '</span></span><span class="ri-val d ' + presentation.tone + '">' + escapeHtml(presentation.delta) + '</span></div>';
       }
 
       function renderSettings() {
@@ -1843,153 +1860,94 @@
         const migration = data.migrationAudit?.at(-1);
         const reviewSets = data.sets.filter((set) => set.reviewRequired);
         const localClearBlock = localClearBlockReason();
+        const sourceCount = Number(prescriptionEngine?.evidence?.research?.manifest?.tables?.research_library?.record_count || 0);
+        const cloudEnabled = data.settings.cloudWorkoutSyncConsent === true;
+        const colorPackages = [
+          ["heritage-atlas", "Heritage Atlas"], ["signal-garden", "Signal Garden"], ["alpine-ledger", "Alpine Ledger"],
+          ["training-hall", "Training Hall"], ["harbor-pulse", "Harbor Pulse"], ["prairie-electric", "Prairie Electric"],
+          ["redwood-circuit", "Redwood Circuit"], ["mediterranean-set", "Mediterranean Set"], ["modern-primary", "Modern Primary"],
+          ["night-stadium", "Night Stadium"]
+        ];
+        const appearance = `
+          <div class="field"><div class="f-top"><span class="f-name">Weight unit</span><span class="f-help">Converts load-bearing app data</span></div>${renderSegmentedSetting("weight-unit", "settings-weight-unit", data.settings.weightUnit, [["lb", "Pounds"], ["kg", "Kilograms"]])}</div>
+          <div class="field"><div class="f-top"><span class="f-name">Theme</span><span class="f-help">Display only</span></div>${renderSegmentedSetting("theme-mode", "settings-theme", data.settings.theme, [["light", "Light"], ["dark", "Dark"]])}</div>
+          <div class="field"><div class="f-top"><span class="f-name">Colour package</span><span class="f-help">10 available</span></div><div class="chiprow">${colorPackages.map(([value, label]) => '<label class="pick"><input type="radio" name="settings-color-package" value="' + value + '" data-action="color-package" ' + (data.settings.colorPackage === value ? 'checked' : '') + ' />' + label + '</label>').join('')}</div><span class="f-help">Changes semantic surfaces and state colours without changing training logic.</span></div>`;
+        const training = `
+          <label class="field"><span class="f-top"><span class="f-name">Training goal</span><span class="f-help">Sets the disclosed programming objective</span></span><select data-action="training-goal"><option value="" ${!data.settings.trainingGoal ? "selected" : ""}>Not specified (balanced default)</option><option value="strength" ${data.settings.trainingGoal === "strength" ? "selected" : ""}>Strength</option><option value="hypertrophy" ${data.settings.trainingGoal === "hypertrophy" ? "selected" : ""}>Hypertrophy</option><option value="muscular_endurance" ${data.settings.trainingGoal === "muscular_endurance" ? "selected" : ""}>Muscular endurance</option><option value="general_fitness" ${data.settings.trainingGoal === "general_fitness" ? "selected" : ""}>General fitness</option></select></label>
+          <label class="field"><span class="f-top"><span class="f-name">Nutrition phase</span><span class="f-help">Context, not a fabricated goal</span></span><select data-action="nutrition-phase"><option value="" ${!data.settings.nutritionPhase ? "selected" : ""}>Not specified</option><option value="deficit" ${data.settings.nutritionPhase === "deficit" ? "selected" : ""}>Energy deficit</option><option value="maintenance" ${data.settings.nutritionPhase === "maintenance" ? "selected" : ""}>Maintenance</option><option value="surplus" ${data.settings.nutritionPhase === "surplus" ? "selected" : ""}>Energy surplus</option><option value="recomposition" ${data.settings.nutritionPhase === "recomposition" ? "selected" : ""}>Body recomposition</option></select></label>
+          <label class="field"><span class="f-top"><span class="f-name">Training experience</span></span><select data-action="experience-level"><option value="" ${!data.settings.experienceLevel ? "selected" : ""}>Not specified</option><option value="novice" ${data.settings.experienceLevel === "novice" ? "selected" : ""}>Novice</option><option value="intermediate" ${data.settings.experienceLevel === "intermediate" ? "selected" : ""}>Intermediate</option><option value="advanced" ${data.settings.experienceLevel === "advanced" ? "selected" : ""}>Advanced</option></select></label>
+          <label class="field"><span class="f-top"><span class="f-name">Returning after a training gap</span></span><select data-action="returning-after-gap"><option value="" ${data.settings.returningAfterGap == null ? "selected" : ""}>Not specified</option><option value="true" ${data.settings.returningAfterGap === true ? "selected" : ""}>Yes</option><option value="false" ${data.settings.returningAfterGap === false ? "selected" : ""}>No</option></select></label>
+          <p class="settings-note">Missing profile values remain disclosed as defaults. Nutrition phase never invents a training goal or changes dose without qualifying recovery or performance evidence.</p>`;
+        const alerts = `
+          <div class="alert-settings-list">
+            ${renderAlertSetting("timer-notifications", "Lock-screen rest notifications", "Requires permission and an installed Home Screen app.", pushStatus.notificationsEnabled, { stateLabel: pushStatus.permissionStatus === "denied" ? "Permission denied" : pushStatus.lockScreenReady ? "Enabled" : "Needs setup" })}
+            ${renderAlertSetting("in-app-rest-alerts", "In-app completion alert", "Shows the tappable Rest complete banner while using the app.", pushStatus.inAppAlertEnabled)}
+            ${renderAlertSetting("timer-sound", "Foreground completion sound", "Respects browser audio restrictions and system controls.", pushStatus.foregroundSoundEnabled, { stateLabel: pushStatus.foregroundSoundEnabled ? (pushStatus.soundConfirmed ? "Confirmed" : "Not tested") : "Disabled" })}
+            ${renderAlertSetting("timer-vibration", "Browser vibration", "Used only where the browser exposes vibration support.", data.settings.timerVibration !== false, { unavailable: !pushStatus.vibrationSupported, stateLabel: pushStatus.vibrationSupported ? "Enabled" : "Unsupported" })}
+            ${renderAlertSetting("workout-completion-sound", "Workout and PR sound", "Plays only for workout completion and meaningful milestones.", data.settings.workoutCompletionSound !== false)}
+          </div>
+          <label class="field"><span class="f-top"><span class="f-name">Rest-complete sound</span></span><select data-action="rest-complete-sound"><option value="sharp_two_tone" ${data.settings.restCompleteSound === "sharp_two_tone" ? "selected" : ""}>Sharp two-tone chime (default)</option><option value="clear_bell" ${data.settings.restCompleteSound === "clear_bell" ? "selected" : ""}>Clear bell</option><option value="whistle" ${data.settings.restCompleteSound === "whistle" ? "selected" : ""}>Whistle tone</option></select></label>
+          <div class="field"><div class="f-top"><span class="f-name">Rest-complete volume</span><button type="button" data-action="preview-rest-complete-sound">Preview sound</button></div><input type="range" min="0" max="1" step="0.05" value="${Number(data.settings.restCompleteSoundVolume ?? 0.85)}" data-action="rest-complete-volume" aria-label="Rest-complete volume" /></div>
+          <label class="field"><span class="f-top"><span class="f-name">Alert auto-dismiss</span><span class="f-help">Seconds</span></span><input type="number" min="1" max="60" step="1" value="${Math.round(Number(data.settings.restCompleteAutoDismissMs || 5000) / 1000)}" data-action="rest-complete-dismiss-seconds" /></label>
+          ${renderAlertSetting("rest-complete-auto-return", "Return after alert", "Return to the active workout automatically when the in-app alert dismisses.", data.settings.restCompleteAutoReturnToWorkout === true)}
+          ${renderAlertSetting("interaction-vibration", "Interaction vibration", "Used only where the browser exposes vibration support.", data.settings.interactionVibration !== false)}
+          <div class="field"><div class="f-top"><span class="f-name">Default rest duration</span><span class="f-help">Per-exercise and per-set targets override this</span></div><div class="stepper settings-rest-stepper"><button class="sb" type="button" data-action="adjust-default-rest" data-delta="-15" aria-label="Reduce default rest by 15 seconds">&minus;</button><input class="sv" type="number" min="15" max="900" step="15" value="${Number(data.settings.defaultRestSeconds || 90)}" data-action="default-rest-seconds" aria-label="Default rest duration in seconds" /><button class="sb" type="button" data-action="adjust-default-rest" data-delta="15" aria-label="Increase default rest by 15 seconds">+</button><span class="d none">${formatTimer(Number(data.settings.defaultRestSeconds || 90))}</span></div></div>
+          <div class="field"><div class="f-top"><span class="f-name">Notification detail</span><span class="f-help">Visible lock-screen wording only</span></div>${renderSegmentedSetting("notification-detail", "settings-notification-detail", data.settings.notificationMessageDetail === "private" ? "private" : "exercise-set", [["exercise-set", "Exercise and set"], ["private", "Private body"]])}</div>
+          <div class="callout warn notification-privacy-boundary"><b>Private changes the visible notification body only</b><span>The notification service still receives installation and timer identifiers, workout, exercise and set identifiers, the exercise name, the upcoming-set label or number, and the completion time. Private body mode hides those workout details from the visible alert; it does not keep them off the server-side timer record.</span></div>
+          ${renderAlertSetting("auto-start-rest", "Start rest automatically", "Starts the prescribed rest after a set is completed.", data.settings.autoStartRestTimer !== false)}
+          ${renderAlertSetting("auto-highlight-next", "Highlight the next set", "Marks the next planned set when rest ends.", data.settings.autoHighlightNextSet !== false)}
+          ${"Notification" in window && Notification.permission === "denied" ? '<div class="callout bad"><b>Notification permission denied</b><span>Open system notification settings for Comprehensive Fitness, then enable alerts, sounds, and lock-screen delivery.</span></div>' : ""}
+          <div class="m-label"><span>Installed app setup</span><span>${escapeHtml(pushStatus.label)}</span></div>${renderPwaSetup()}
+          ${notificationMessage ? '<p class="settings-note">' + escapeHtml(notificationMessage) + '</p>' : ""}`;
+        const readiness = `
+          <div class="callout provisional"><b>Your usual range</b><span>These values are your stored normal averages. Blank metrics remain missing; they are never treated as zero.</span></div>
+          <div class="recovery-inputs">
+            <label class="field"><span class="f-name">Average sleep hours</span><input type="number" min="0" max="14" step="0.25" value="${escapeHtml(baseline.sleepHours)}" data-action="baseline-sleep-hours" /></label>
+            <label class="field"><span class="f-name">Average sleep quality</span><input type="number" min="1" max="5" step="1" value="${escapeHtml(baseline.sleepQuality)}" data-action="baseline-sleep-quality" /></label>
+            <label class="field"><span class="f-name">Average HRV</span><input type="number" min="0" step="1" value="${escapeHtml(baseline.hrv)}" data-action="baseline-hrv" /></label>
+            <label class="field"><span class="f-name">Average resting HR</span><input type="number" min="0" step="1" value="${escapeHtml(baseline.restingHr)}" data-action="baseline-resting-hr" /></label>
+            <label class="field"><span class="f-name">Average soreness</span><input type="number" min="1" max="5" step="1" value="${escapeHtml(baseline.soreness)}" data-action="baseline-soreness" /></label>
+            <label class="field"><span class="f-name">Band tolerance</span><input type="number" min="3" max="20" step="1" value="${escapeHtml(baseline.band)}" data-action="baseline-band" /></label>
+          </div>`;
+        const dataAndBackup = `
+          <div class="callout info privacy-boundary"><b>Local by default</b><span>Workout history, templates, mesocycles, settings, readiness and imported personal evidence stay in this browser unless you explicitly export them or enable the workout cloud copy. Public research files ship with the app.</span></div>
+          ${renderAlertSetting("cloud-workout-sync-consent", "Optional workout cloud copy", "Default off. When enabled, the app may transmit the full current session—including an active, unsubmitted workout—and every associated exercise and set object. Server copies expire after 90 days, are write-only, and cannot be restored in the app.", cloudEnabled, { stateLabel: cloudEnabled ? "Enabled" : "Local only" })}
+          <div class="callout bad cloud-not-backup"><b>Cloud copy is not a backup</b><span>There is no cloud-history or restore endpoint. A downloaded app-data export is the only implemented copy that can be imported to recover these records. ${cloudEnabled ? "Cloud copy is currently enabled, but it still cannot restore this app." : "Cloud copy is currently off."}</span></div>
+          <div class="recoverability-list"><div class="m-label"><span>Recoverability</span><span>verified facts</span></div>${renderStoragePersistenceFact()}<div class="row-item"><span class="ri-copy"><b>Recoverable copy</b><span>The app does not record when you last exported. Create and retain a downloaded export yourself.</span></span><span class="ri-val">Export only</span></div></div>
+          ${syncMessage ? '<p class="settings-note">' + escapeHtml(syncMessage) + '</p>' : ''}
+          <div class="research-basis"><div class="m-label"><span>Research basis</span><span>public database</span></div><div class="row-item"><span class="ri-copy"><b>${sourceCount ? sourceCount + " research source records" : "Public research database"}</b><span>${prescriptionEngine?.evidence?.research?.exerciseDatabase?.length || 0} exercises · ${prescriptionEngine?.evidence?.research?.muscleGroupRecommendations?.length || 0} muscle prescriptions · ${prescriptionEngine?.evidence?.research?.progressionRules?.length || 0} progression rules · ${prescriptionEngine?.evidence?.research?.nutritionStrategies?.length || 0} nutrition strategies</span></span><span class="ri-val">${escapeHtml(prescriptionEvidenceStatus.researchVersion)}</span></div></div>
+          <div class="row-item"><span class="ri-copy"><b>Unified prescription evidence · ${escapeHtml(prescriptionEvidenceStatus.state)}</b><span>${escapeHtml(prescriptionEvidenceStatus.message)} Engine ${escapeHtml(prescriptionApi?.ENGINE_VERSION || 'unavailable')} · personal ${escapeHtml(prescriptionEvidenceStatus.personalVersion)} · ${data.recommendationHistory.length} recommendation snapshots · ${data.manualOverrides.length} override events.</span></span></div>
+          <label class="import-button">${icon.upload} private personal evidence package<input type="file" accept=".json,application/json" data-action="import-personal-evidence" /></label>
+          <p class="settings-note">The imported aggregate evidence package stays in this device's IndexedDB and in exported app backups. Protected source files are never part of the public deployment.</p>
+          ${importAttempt ? '<p role="status" aria-live="polite" data-import-status data-import-state="' + escapeHtml(importStatus.state) + '" data-import-attempt="' + importAttempt + '">' + escapeHtml(importStatus.message) + '</p>' : ''}
+          ${importInProgress ? '<p class="settings-note">Importing workout history. This can take a moment, but navigation will recover automatically when it finishes.</p>' : ""}
+          <button class="primary-action" type="button" data-action="export-data">${icon.download} Export all app data</button>
+          ${exportText ? '<textarea class="export-box" readonly aria-label="Exported backup JSON">' + escapeHtml(exportText) + '</textarea>' : ""}
+          <label class="field"><span class="f-top"><span class="f-name">Strong CSV source weight unit</span><span class="f-help">Does not change the display unit</span></span><select data-action="strong-import-weight-unit"><option value="" ${!strongImportWeightUnit ? "selected" : ""}>Choose the unit used in the CSV</option><option value="lb" ${strongImportWeightUnit === "lb" ? "selected" : ""}>Pounds (lb)</option><option value="kg" ${strongImportWeightUnit === "kg" ? "selected" : ""}>Kilograms (kg)</option></select></label>
+          <label class="import-button">${icon.upload} ${importInProgress ? "importing..." : "Import backup or Strong CSV"}<input type="file" accept=".json,.csv,application/json,text/csv" data-action="import-data" ${importInProgress ? "disabled" : ""} /></label>
+          ${migration ? '<div class="callout info"><b>Strong data migration v' + escapeHtml(migration.version) + '</b><span>Inspected ' + escapeHtml(migration.inspected) + ' sets; changed ' + escapeHtml(migration.changed) + '; preserved ' + escapeHtml(migration.manualOverridesPreserved) + ' manual corrections; ' + escapeHtml(migration.ambiguous) + ' sets need review.</span></div>' : ''}
+          <div class="row-item"><span class="ri-copy"><b>Retained source material</b><span>${data.rawImports?.length || 0} raw Strong import${(data.rawImports?.length || 0) === 1 ? '' : 's'} retained. Older completed workouts remain in the retention archive and exports, but outside current analysis.</span></span></div>
+          ${reviewSets.length ? '<div class="callout warn"><b>Manual review queue · ' + reviewSets.length + '</b><span>Open the submitted workout from History, choose Edit, then select the set type.</span></div>' : ''}`;
+        const danger = `
+          <div class="callout bad"><b>High-risk actions</b><span>These actions change or delete stored records. Each destructive path names its scope and requires confirmation.</span></div>
+          <div class="row-item"><span class="ri-copy"><b>Clear All Local App Data</b><span>Removes local app records. Retained server records are deleted first; clearing pauses offline or while remote cleanup is unresolved.</span></span><button class="danger-button" type="button" data-action="clear-data" ${localClearBlock ? "disabled" : ""}>Clear All Local App Data</button></div>
+          ${localClearBlock ? '<p class="settings-note" role="status">' + escapeHtml(localClearBlock) + '</p>' : ''}
+          <div class="row-item"><span class="ri-copy"><b>Delete Remote Installation Data</b><span>Revokes this installation and removes its remote notification and workout-copy records. Local workouts remain.</span></span><button class="danger-button" type="button" data-action="delete-remote-installation" ${pushIdentity?.token ? "" : "disabled"}>${pushIdentity?.deletion?.retryable ? "Retry Remote Deletion" : "Delete Remote Installation Data"}</button></div>
+          ${pushIdentity?.deletion?.message ? '<p class="settings-note" role="status">' + escapeHtml(pushIdentity.deletion.message) + '</p>' : ''}
+          <div class="m-label"><span>Support</span><span>guidance</span></div><p class="settings-note">Progression guidance is informational fitness guidance, not medical advice. Stop if something hurts and use your own judgment.</p><p class="settings-links"><a href="./privacy.html">Privacy Policy</a><a href="./support.html">Support</a></p>`;
         return `
           <section class="view settings-view">
-            <div class="screen-heading"><div><div class="section-kicker">Settings</div><h1>Training setup</h1></div></div>
-            <section class="coach-lead settings-coach"><div class="section-kicker">Local-first setup</div><h2>Your training preferences stay organized and under your control.</h2><p>Common display choices lead. Training, readiness, alerts, data, and high-risk actions remain separated into focused modules.</p></section>
-            <div class="more-quick-controls" aria-label="Appearance shortcuts">
-              <button type="button" data-action="toggle-unit" title="Switch pounds and kilograms"><span>Units</span><strong>${data.settings.weightUnit.toUpperCase()}</strong></button>
-              <button type="button" data-action="toggle-theme" title="Toggle light and dark theme"><span>Theme</span><strong>${escapeHtml(themeLabel())}</strong></button>
-            </div>
+            <div class="screen-heading"><div><div class="section-kicker">Settings</div><h1>Training setup.</h1><p>Six groups contain every current app setting, data action and destructive control.</p></div></div>
             ${appDataPersistenceConflict ? '<p class="settings-note persistence-conflict-note" role="status">' + escapeHtml(appDataPersistenceConflict.message) + '</p>' : ""}
             ${settingsMessage ? '<p class="settings-note persistence-status-note" role="status">' + escapeHtml(settingsMessage) + '</p>' : ""}
-            <details class="settings-group" open><summary>Appearance and units <span>Display</span></summary><div class="disclosure-body settings-panel">
-              <label>Weight unit
-                <select data-action="weight-unit">
-                  <option value="lb" ${data.settings.weightUnit === "lb" ? "selected" : ""}>Pounds</option>
-                  <option value="kg" ${data.settings.weightUnit === "kg" ? "selected" : ""}>Kilograms</option>
-                </select>
-              </label>
-              <label>Theme
-                <select data-action="theme-mode">
-                  <option value="dark" ${data.settings.theme !== "light" ? "selected" : ""}>Dark training sheet</option>
-                  <option value="light" ${data.settings.theme === "light" ? "selected" : ""}>Light training sheet</option>
-                </select>
-              </label>
-              <label>Color package
-                <select data-action="color-package">
-                  <option value="heritage-atlas" ${data.settings.colorPackage === "heritage-atlas" ? "selected" : ""}>Heritage Atlas</option>
-                  <option value="signal-garden" ${data.settings.colorPackage === "signal-garden" ? "selected" : ""}>Signal Garden</option>
-                  <option value="alpine-ledger" ${data.settings.colorPackage === "alpine-ledger" ? "selected" : ""}>Alpine Ledger</option>
-                  <option value="training-hall" ${data.settings.colorPackage === "training-hall" ? "selected" : ""}>Training Hall</option>
-                  <option value="harbor-pulse" ${data.settings.colorPackage === "harbor-pulse" ? "selected" : ""}>Harbor Pulse</option>
-                  <option value="prairie-electric" ${data.settings.colorPackage === "prairie-electric" ? "selected" : ""}>Prairie Electric</option>
-                  <option value="redwood-circuit" ${data.settings.colorPackage === "redwood-circuit" ? "selected" : ""}>Redwood Circuit</option>
-                  <option value="mediterranean-set" ${data.settings.colorPackage === "mediterranean-set" ? "selected" : ""}>Mediterranean Set</option>
-                  <option value="modern-primary" ${data.settings.colorPackage === "modern-primary" ? "selected" : ""}>Modern Primary</option>
-                  <option value="night-stadium" ${data.settings.colorPackage === "night-stadium" ? "selected" : ""}>Night Stadium</option>
-                </select>
-                <small>Changes the app canvas, cards, actions, coaching, success, warning, and destructive colors.</small>
-              </label>
-            </div></details>
-            <details class="settings-group" open><summary>iPhone app setup <span class="status-pill ${pushStatus.className}">${pushStatus.label}</span></summary><div class="disclosure-body settings-panel">
-              ${renderPwaSetup()}
-              ${notificationMessage ? '<p class="settings-note">' + escapeHtml(notificationMessage) + '</p>' : ""}
-            </div></details>
-            <details class="settings-group"><summary>Training defaults <span>Goal</span></summary><div class="disclosure-body settings-panel">
-              <label>Training goal
-                <select data-action="training-goal">
-                  <option value="" ${!data.settings.trainingGoal ? "selected" : ""}>Not specified (balanced default)</option>
-                  <option value="strength" ${data.settings.trainingGoal === "strength" ? "selected" : ""}>Strength</option>
-                  <option value="hypertrophy" ${data.settings.trainingGoal === "hypertrophy" ? "selected" : ""}>Hypertrophy</option>
-                  <option value="muscular_endurance" ${data.settings.trainingGoal === "muscular_endurance" ? "selected" : ""}>Muscular endurance</option>
-                  <option value="general_fitness" ${data.settings.trainingGoal === "general_fitness" ? "selected" : ""}>General fitness</option>
-                </select>
-              </label>
-              <label>Nutrition phase
-                <select data-action="nutrition-phase">
-                  <option value="" ${!data.settings.nutritionPhase ? "selected" : ""}>Not specified</option>
-                  <option value="deficit" ${data.settings.nutritionPhase === "deficit" ? "selected" : ""}>Energy deficit</option>
-                  <option value="maintenance" ${data.settings.nutritionPhase === "maintenance" ? "selected" : ""}>Maintenance</option>
-                  <option value="surplus" ${data.settings.nutritionPhase === "surplus" ? "selected" : ""}>Energy surplus</option>
-                  <option value="recomposition" ${data.settings.nutritionPhase === "recomposition" ? "selected" : ""}>Body recomposition</option>
-                </select>
-              </label>
-              <label>Training experience
-                <select data-action="experience-level">
-                  <option value="" ${!data.settings.experienceLevel ? "selected" : ""}>Not specified</option>
-                  <option value="novice" ${data.settings.experienceLevel === "novice" ? "selected" : ""}>Novice</option>
-                  <option value="intermediate" ${data.settings.experienceLevel === "intermediate" ? "selected" : ""}>Intermediate</option>
-                  <option value="advanced" ${data.settings.experienceLevel === "advanced" ? "selected" : ""}>Advanced</option>
-                </select>
-              </label>
-              <label>Returning after a training gap
-                <select data-action="returning-after-gap">
-                  <option value="" ${data.settings.returningAfterGap == null ? "selected" : ""}>Not specified</option>
-                  <option value="true" ${data.settings.returningAfterGap === true ? "selected" : ""}>Yes</option>
-                  <option value="false" ${data.settings.returningAfterGap === false ? "selected" : ""}>No</option>
-                </select>
-              </label>
-              <p class="settings-note">Missing profile values stay disclosed as defaults. Nutrition phase is context only and never fabricates a training goal or changes dose without qualifying recovery or performance evidence.</p>
-            </div></details>
-            <details class="settings-group"><summary>Rest timer and alerts <span class="status-pill ${pushStatus.className}">${pushStatus.label}</span></summary><div class="disclosure-body settings-panel">
-              <div class="alert-settings-list">
-                ${renderAlertSetting("timer-notifications", "Lock-screen rest notifications", "Requires permission and an installed iPhone Home Screen app.", pushStatus.notificationsEnabled, { stateLabel: pushStatus.permissionStatus === "denied" ? "Permission denied" : pushStatus.lockScreenReady ? "Enabled" : "Needs setup" })}
-                ${renderAlertSetting("in-app-rest-alerts", "In-app completion alert", "Shows the tappable Rest complete banner while using the app.", pushStatus.inAppAlertEnabled)}
-                ${renderAlertSetting("timer-sound", "Foreground completion sound", "Respects browser audio restrictions and iPhone system controls.", pushStatus.foregroundSoundEnabled, { stateLabel: pushStatus.foregroundSoundEnabled ? (pushStatus.soundConfirmed ? "Confirmed" : "Not tested") : "Disabled" })}
-                ${renderAlertSetting("timer-vibration", "Browser vibration", "Used only where the browser exposes vibration support.", data.settings.timerVibration !== false, { unavailable: !pushStatus.vibrationSupported, stateLabel: pushStatus.vibrationSupported ? "Enabled" : "Unsupported" })}
-                ${renderAlertSetting("workout-completion-sound", "Workout and PR sound", "Plays only for workout completion and meaningful milestones.", data.settings.workoutCompletionSound !== false)}
-              </div>
-              <label>Rest-complete sound<select data-action="rest-complete-sound"><option value="sharp_two_tone" ${data.settings.restCompleteSound === "sharp_two_tone" ? "selected" : ""}>Sharp two-tone chime (default)</option><option value="clear_bell" ${data.settings.restCompleteSound === "clear_bell" ? "selected" : ""}>Clear bell</option><option value="whistle" ${data.settings.restCompleteSound === "whistle" ? "selected" : ""}>Whistle tone</option></select></label>
-              <div class="row wrap"><label class="grow">Rest-complete volume<input type="range" min="0" max="1" step="0.05" value="${Number(data.settings.restCompleteSoundVolume ?? 0.85)}" data-action="rest-complete-volume" /></label><button type="button" data-action="preview-rest-complete-sound">Preview sound</button></div>
-              <label>Alert auto-dismiss<input type="number" min="1" max="60" step="1" value="${Math.round(Number(data.settings.restCompleteAutoDismissMs || 5000) / 1000)}" data-action="rest-complete-dismiss-seconds" /> seconds</label>
-              <label class="toggle-line"><input type="checkbox" data-action="rest-complete-auto-return" ${data.settings.restCompleteAutoReturnToWorkout === true ? "checked" : ""} />Return to the active workout automatically when the alert dismisses</label>
-              <label class="toggle-line"><input type="checkbox" data-action="interaction-vibration" ${data.settings.interactionVibration !== false ? "checked" : ""} />Interaction vibration where supported</label>
-              <label>Default rest duration<input type="number" min="15" max="900" step="15" value="${Number(data.settings.defaultRestSeconds || 90)}" data-action="default-rest-seconds" /></label>
-              <label>Notification detail<select data-action="notification-detail"><option value="exercise-set" ${data.settings.notificationMessageDetail !== "private" ? "selected" : ""}>Exercise and upcoming set</option><option value="private" ${data.settings.notificationMessageDetail === "private" ? "selected" : ""}>Private: next set ready</option></select></label>
-              <label class="toggle-line"><input type="checkbox" data-action="auto-start-rest" ${data.settings.autoStartRestTimer !== false ? "checked" : ""} />Start rest automatically after a completed set</label>
-              <label class="toggle-line"><input type="checkbox" data-action="auto-highlight-next" ${data.settings.autoHighlightNextSet !== false ? "checked" : ""} />Highlight the next set after rest</label>
-              ${"Notification" in window && Notification.permission === "denied" ? '<div class="inline-panel"><strong>Permission denied</strong><p class="settings-note">Open iPhone Settings > Notifications > Comprehensive Fitness, then enable Allow Notifications, Sounds, and Lock Screen.</p></div>' : ""}
-              <p class="settings-note">The selected foreground signal uses short Web Audio tones that mix with other audio instead of permanently taking it over. Lock-screen notifications use the operating system sound; browsers cannot guarantee the same custom tone or app volume, and Silent/Focus settings still apply. Turn sound off while leaving haptics on for haptic-only mode.</p>
-            </div></details>
-            <details class="settings-group"><summary>Readiness baseline <span>Your normal</span></summary><div class="disclosure-body settings-panel">
-              <div class="inline-panel">
-                <h2>Average readiness baseline</h2>
-                <p class="settings-note">These are your normal averages. The app treats today as normal unless today leaves the band, repeats outside-band behavior, or you add an outside-band note.</p>
-                <div class="recovery-inputs">
-                  <label>Avg sleep hours<input type="number" min="0" max="14" step="0.25" value="${escapeHtml(baseline.sleepHours)}" data-action="baseline-sleep-hours" /></label>
-                  <label>Avg sleep quality<input type="number" min="1" max="5" step="1" value="${escapeHtml(baseline.sleepQuality)}" data-action="baseline-sleep-quality" /></label>
-                  <label>Avg HRV<input type="number" min="0" step="1" value="${escapeHtml(baseline.hrv)}" data-action="baseline-hrv" /></label>
-                  <label>Avg resting HR<input type="number" min="0" step="1" value="${escapeHtml(baseline.restingHr)}" data-action="baseline-resting-hr" /></label>
-                  <label>Avg soreness<input type="number" min="1" max="5" step="1" value="${escapeHtml(baseline.soreness)}" data-action="baseline-soreness" /></label>
-                  <label>Band tolerance<input type="number" min="3" max="20" step="1" value="${escapeHtml(baseline.band)}" data-action="baseline-band" /></label>
-                </div>
-              </div>
-            </div></details>
-            <details class="settings-group"><summary>Data and backup <span>Import / export</span></summary><div class="disclosure-body settings-panel">
-              ${renderAlertSetting("cloud-workout-sync-consent", "Optional workout cloud copy", "Default off. Stores submitted workout copies for up to 90 days; this is not restore or multi-device sync.", data.settings.cloudWorkoutSyncConsent === true, { stateLabel: data.settings.cloudWorkoutSyncConsent === true ? "Enabled" : "Local only" })}
-              <div class="inline-panel"><strong>Explicitly optional and separate from notifications</strong><p class="settings-note">Enabling rest notifications never uploads workouts. Turning cloud copy off stops new uploads, clears pending uploads, and requests deletion of retained server workout copies. Keep your exported backup as the recovery source.</p></div>
-              ${syncMessage ? '<p class="settings-note">' + escapeHtml(syncMessage) + '</p>' : ''}
-              <p class="settings-note">Research basis: database ${escapeHtml(prescriptionEvidenceStatus.researchVersion)} with ${prescriptionEngine?.evidence?.research?.exerciseDatabase?.length || 0} exercises, ${prescriptionEngine?.evidence?.research?.muscleGroupRecommendations?.length || 0} muscle/subdivision prescriptions, ${prescriptionEngine?.evidence?.research?.progressionRules?.length || 0} progression rules, and ${prescriptionEngine?.evidence?.research?.nutritionStrategies?.length || 0} nutrition strategies. Exact ranges are selected per exercise and muscle rather than copied from one global rule.</p>
-              <div class="inline-panel"><strong>Unified prescription evidence · ${escapeHtml(prescriptionEvidenceStatus.state)}</strong><p class="settings-note">${escapeHtml(prescriptionEvidenceStatus.message)}</p><p class="settings-note">Engine ${escapeHtml(prescriptionApi?.ENGINE_VERSION || 'unavailable')} · personal ${escapeHtml(prescriptionEvidenceStatus.personalVersion)} · research ${escapeHtml(prescriptionEvidenceStatus.researchVersion)} · ${data.recommendationHistory.length} immutable recommendation snapshot${data.recommendationHistory.length === 1 ? '' : 's'} · ${data.manualOverrides.length} override event${data.manualOverrides.length === 1 ? '' : 's'}.</p></div>
-              <label class="import-button">${icon.upload} private personal evidence package<input type="file" accept=".json,application/json" data-action="import-personal-evidence" /></label>
-              <p class="settings-note">The evidence package stays in this device's IndexedDB and exports. Protected personal analysis files are never included in the public deployment.</p>
-              ${importAttempt ? '<p role="status" aria-live="polite" data-import-status data-import-state="' + escapeHtml(importStatus.state) + '" data-import-attempt="' + importAttempt + '">' + escapeHtml(importStatus.message) + '</p>' : ''}
-              ${importInProgress ? '<p class="settings-note">Importing workout history. This can take a moment on iPhone, but navigation will recover automatically when it finishes.</p>' : ""}
-              <button type="button" data-action="export-data">${icon.download} data</button>
-              ${exportText ? '<textarea class="export-box" readonly aria-label="Exported backup JSON">' + escapeHtml(exportText) + '</textarea>' : ""}
-              <label>Strong CSV source weight unit
-                <select data-action="strong-import-weight-unit">
-                  <option value="" ${!strongImportWeightUnit ? "selected" : ""}>Choose the unit used in the CSV</option>
-                  <option value="lb" ${strongImportWeightUnit === "lb" ? "selected" : ""}>Pounds (lb)</option>
-                  <option value="kg" ${strongImportWeightUnit === "kg" ? "selected" : ""}>Kilograms (kg)</option>
-                </select>
-              </label>
-              <p class="settings-note">Strong exports do not identify the Weight column unit. Choose the unit used when the CSV was exported; it is stored on every imported set and with the retained raw source. This does not change the app display unit.</p>
-              <label class="import-button">${icon.upload} ${importInProgress ? "importing..." : "backup or Strong CSV"}<input type="file" accept=".json,.csv,application/json,text/csv" data-action="import-data" ${importInProgress ? "disabled" : ""} /></label>
-              ${migration ? '<div class="inline-panel"><strong>Strong data migration v' + escapeHtml(migration.version) + '</strong><p class="settings-note">Inspected ' + escapeHtml(migration.inspected) + ' sets; changed ' + escapeHtml(migration.changed) + '; preserved ' + escapeHtml(migration.manualOverridesPreserved) + ' manual corrections; identified ' + escapeHtml(migration.warmups) + ' warm-ups, ' + escapeHtml(migration.topSets) + ' top sets, ' + escapeHtml(migration.backoffSets) + ' back-off sets, and ' + escapeHtml(migration.dropSets) + ' drop sets. ' + escapeHtml(migration.ambiguous) + ' sets need review. ' + escapeHtml(migration.templatesReseeded || 0) + ' Strong templates were reseeded from active working sets.</p></div>' : ''}
-              <div class="inline-panel"><strong>Recoverability</strong><p class="settings-note">${data.rawImports?.length || 0} raw Strong import${(data.rawImports?.length || 0) === 1 ? '' : 's'} retained. Older completed workouts remain in the retention archive and are included in exports, but excluded from current analysis.</p></div>
-              ${reviewSets.length ? '<div class="inline-panel"><strong>Manual review queue · ' + reviewSets.length + '</strong><p class="settings-note">These imported sets could not be classified confidently. Open the submitted workout from History, choose Edit, then select the set type.</p></div>' : ''}
-            </div></details>
-            <details class="settings-group danger-zone"><summary>Danger Zone <span>High-risk actions</span></summary><div class="disclosure-body settings-panel">
-              <div><strong>Clear All Local App Data</strong><p class="settings-note">Removes app data stored on this device. If optional workout cloud copy is enabled, the app first disables it and confirms deletion of retained server copies; active remote cleanup or an offline deletion must finish before local credentials can be cleared.</p></div>
-              <button class="danger-button" type="button" data-action="clear-data" ${localClearBlock ? "disabled" : ""}>${icon.delete} Clear All Local App Data</button>
-              ${localClearBlock ? '<p class="settings-note" role="status">' + escapeHtml(localClearBlock) + '</p>' : ''}
-              <div><strong>Delete Remote Installation Data</strong><p class="settings-note">Revokes this installation and resumes bounded server cleanup until deletion is confirmed. Local workout data remains on this device.</p></div>
-              <button class="danger-button" type="button" data-action="delete-remote-installation" ${pushIdentity?.token ? "" : "disabled"}>${icon.delete} ${pushIdentity?.deletion?.retryable ? "Retry Remote Deletion" : "Delete Remote Installation Data"}</button>
-              ${pushIdentity?.deletion?.message ? '<p class="settings-note" role="status">' + escapeHtml(pushIdentity.deletion.message) + '</p>' : ''}
-            </div></details>
-            <details class="settings-group" id="support-guidance"><summary>Support and guidance <span>Privacy</span></summary><div class="disclosure-body settings-panel"><p class="settings-note">Progression guidance is informational fitness guidance, not medical advice. Stop if something hurts and use your own judgment.</p><p class="settings-links"><a href="./privacy.html">Privacy Policy</a><a href="./support.html">Support</a></p></div></details>
+            ${renderSettingsGroup("Appearance and units", "Display", appearance, { open: true })}
+            ${renderSettingsGroup("Training defaults", "Goal and context", training)}
+            ${renderSettingsGroup("Rest timer and alerts", pushStatus.label, alerts)}
+            ${renderSettingsGroup("Readiness baseline", "Your usual", readiness)}
+            ${renderSettingsGroup("Data and backup", "Privacy and recovery", dataAndBackup)}
+            <div id="support-guidance" class="settings-support-anchor">
+              ${renderSettingsGroup("Danger Zone", "Support and high-risk actions", danger, { className: "danger-zone", open: false })}
+            </div>
           </section>
         `;
       }

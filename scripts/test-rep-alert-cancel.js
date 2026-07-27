@@ -116,8 +116,9 @@ assert.strictEqual(unsupportedVibration.label, "Partially enabled");
 assert.strictEqual(unsupportedVibration.vibrationSupported, false);
 
 assert.match(html, /function renderAlertSetting\(/, "Alert settings use one selected-state component");
-assert.match(html, /'<label class="alert-setting-card '/, "The shared alert setting renderer owns the card markup");
-assert.match(html, /\.alert-setting-card\.selected \{ background: var\(--current\)/, "Enabled alert controls use the CF blue");
+assert.match(html, /'<label class="field alert-setting-field '/, "The shared alert setting renderer owns the migrated field markup");
+assert.match(html, /class="toggle ' \+ \(selected \? 'on' : ''\)[\s\S]*data-action="' \+ action[\s\S]*class="setting-state"/, "Every alert field keeps its operable toggle and explicit state label");
+assert.doesNotMatch(html, /\.alert-setting-card\.selected\s*\{\s*background:\s*var\(--current\)/, "Enabled alert settings must not return to the superseded filled-card treatment");
 assert.match(html, /data-action="toggle-rest-notifications"/, "Lift exposes the canonical rest-notification control");
 assert.match(html, /inAppRestAlerts/, "In-app alerts are persisted in the canonical settings object");
 assert.match(html, /timerCompleteNotice = data\.settings\.inAppRestAlerts !== false/, "In-app completion behavior follows the canonical setting");

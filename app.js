@@ -64,7 +64,7 @@
       }
 
       root.addEventListener("pointerdown", (event) => {
-        const target = event.target.closest("button, select, summary[data-action], label.toggle-line, .alert-setting-card, .volume-card");
+        const target = event.target.closest("button, select, summary[data-action], label.toggle-line, label.alert-setting-field, .volume-card");
         if (!target || target.hasAttribute("disabled")) return;
         const actionTarget = event.target.closest("[data-action]") || target.querySelector?.("[data-action]");
         releaseSetEntryFocusForCompletion(actionTarget || target);
@@ -444,7 +444,15 @@
           setActiveTab("today", { force: true });
           focusWorkoutExercise(workoutFocusExerciseId);
         }
-        if (action === "export-data") exportData();
+        if (action === "adjust-default-rest") {
+          const nextSeconds = Math.max(15, Math.min(900, Number(data.settings.defaultRestSeconds || 90) + Number(target.dataset.delta || 0)));
+          queuePostRenderFocus(focusDescriptorForElement(target));
+          commit({ ...data, settings: { ...data.settings, defaultRestSeconds: nextSeconds } });
+        }
+        if (action === "export-data" || action === "export-before-clear") {
+          queuePostRenderFocus(focusDescriptorForElement(target));
+          exportData();
+        }
         if (action === "delete-remote-installation") await deleteRemoteInstallationData();
         if (action === "clear-data") await requestClearLocalData();
         if (action === "cancel-clear-data") closeClearDataFlow();
@@ -964,6 +972,7 @@
       async function boot() {
         await loadData();
         await initializePrescriptionEvidence();
+        storagePersistenceStatus = await readStoragePersistenceStatus();
         installDevelopmentPerformanceFixture();
         await applyWorkoutDeepLink();
         if (!["today", "plan", "more", "progress-overview", "progress-lifts", "progress-history"].includes(window.location.hash.replace(/^#/, ""))) window.history.replaceState({ ...(window.history.state || {}), tab: activeTab }, "", tabUrl(activeTab));
@@ -1034,6 +1043,7 @@
       });
       window.addEventListener("beforeinstallprompt", (event) => { event.preventDefault(); installPromptEvent = event; });
       window.addEventListener("online", () => {
+        render();
         reconcileWorkoutSyncConsent();
         reconcilePushRevocation();
         flushWorkoutSyncQueue();
@@ -1041,3 +1051,4 @@
         if (pushIdentity?.token && (pushIdentity.status === "deleting" || pushIdentity.deletion?.retryable === true)) deleteRemoteInstallationData({ automatic: true });
         if (timer?.isActive && !timer.isPaused && timer.endsAt > Date.now() && timer.notificationStatus !== "scheduled") scheduleRestPush({ ...timer });
       });
+      window.addEventListener("offline", () => render());
