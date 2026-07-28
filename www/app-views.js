@@ -1644,18 +1644,61 @@
         const byRole = new Map();
         setsForExercise(exercise.id).filter((set) => isWorkingSet(set, "score")).forEach((set) => {
           const role = normalizeSetTypeCode(set.setType, set.isWarmup);
-          if (!byRole.has(role)) byRole.set(role, set);
+          const group = byRole.get(role) || { set, count: 0 };
+          group.count += 1;
+          byRole.set(role, group);
         });
         if (!byRole.size) return "";
-        return '<div class="role-prescription-list">' + Array.from(byRole.entries()).map(([role, set]) => {
+        return '<div class="role-prescription-list">' + Array.from(byRole.entries()).map(([role, group]) => {
+          const set = group.set;
           const previous = formatPreviousSetPerformance(set.previousComparableSet, exercise);
           const nextIncrement = set.setPrescription?.nextLoad != null
             ? formatResistance({ ...set, weight: set.setPrescription.nextLoad, addedLoad: set.resistanceType === "bodyweight_plus_load" ? set.setPrescription.nextLoad : set.addedLoad, assistanceLoad: set.resistanceType === "assisted_bodyweight" ? set.setPrescription.nextLoad : set.assistanceLoad })
             : "Not configured";
           const progressionRule = set.setPrescription?.progressionRule || "No progression rule is stored for this role.";
           const reason = recommendationExplanationForDisplay(set.setPrescription?.reason || set.prescriptionReason, "No additional role rationale is stored with this recommendation.");
-          return '<div class="role-prescription"><div class="role-prescription-heading"><span>' + escapeHtml(setTypeLabels[role] || "Working set") + '</span></div><div class="role-performance-grid"><div class="role-performance-fact"><small>Last performed</small><strong>' + escapeHtml(previous) + '</strong></div><div class="role-performance-fact"><small>Next increment</small><strong>' + escapeHtml(nextIncrement) + '</strong></div></div><p class="role-evidence-copy"><strong>Progress when:</strong> ' + escapeHtml(progressionRule) + '</p><p class="role-evidence-copy">' + escapeHtml(reason) + '</p></div>';
+          return '<div class="role-prescription"><div class="role-prescription-heading"><span>' + group.count + 'x ' + escapeHtml(setTypeLabels[role] || "Working set") + '</span></div><div class="role-performance-grid"><div class="role-performance-fact"><small>Last performed</small><strong>' + escapeHtml(previous) + '</strong></div><div class="role-performance-fact"><small>Next increment</small><strong>' + escapeHtml(nextIncrement) + '</strong></div></div><p class="role-evidence-copy"><strong>Progress when:</strong> ' + escapeHtml(progressionRule) + '</p><p class="role-evidence-copy">' + escapeHtml(reason) + '</p></div>';
         }).join('') + '</div>';
+      }
+
+      function roleSessionPrescriptionLine(exercise, fallback = "") {
+        const groups = new Map();
+        setsForExercise(exercise.id).filter((set) => isWorkingSet(set, "score")).forEach((set) => {
+          const role = normalizeSetTypeCode(set.setType, set.isWarmup);
+          const group = groups.get(role) || { set, count: 0 };
+          group.count += 1;
+          groups.set(role, group);
+        });
+        if (!groups.size) return fallback;
+        return Array.from(groups.entries()).map(([role, group]) => {
+          const set = group.set;
+          const resistanceType = resistanceTypeFor(exercise, set);
+          const rawLoad = resistanceType === "bodyweight_plus_load"
+            ? set.targetWeight ?? set.addedLoad ?? set.weight
+            : resistanceType === "assisted_bodyweight"
+              ? set.targetWeight ?? set.assistanceLoad ?? set.weight
+              : set.targetWeight ?? set.weight;
+          const loadAvailable = resistanceType === "bodyweight" || (rawLoad !== null && rawLoad !== undefined && rawLoad !== "" && Number.isFinite(Number(rawLoad)));
+          const load = loadAvailable ? formatResistance({
+            ...set,
+            weight: Number(rawLoad ?? 0),
+            addedLoad: resistanceType === "bodyweight_plus_load" ? Number(rawLoad ?? 0) : set.addedLoad,
+            assistanceLoad: resistanceType === "assisted_bodyweight" ? Number(rawLoad ?? 0) : set.assistanceLoad
+          }, exercise) : "";
+          const rawTargetReps = set.targetReps ?? set.reps ?? set.targetRepMin;
+          const targetReps = rawTargetReps !== null && rawTargetReps !== undefined && rawTargetReps !== "" && Number.isFinite(Number(rawTargetReps)) && Number(rawTargetReps) > 0
+            ? Number(rawTargetReps)
+            : null;
+          const hasRepRange = [set.targetRepMin, set.targetRepMax].some((value) => value !== null && value !== undefined && value !== "" && Number.isFinite(Number(value)) && Number(value) > 0);
+          const hasRpeRange = [set.targetRpeMin, set.targetRpeMax, set.targetRpe].some((value) => value !== null && value !== undefined && value !== "" && Number.isFinite(Number(value)));
+          const target = [load, targetReps !== null ? `${load ? "x " : ""}${targetReps} reps` : ""].filter(Boolean).join(" ");
+          const context = [
+            hasRepRange ? targetRangeText(set.targetRepMin, set.targetRepMax || set.targetReps, " reps") + " range" : "",
+            hasRpeRange ? targetRangeText(set.targetRpeMin, set.targetRpeMax || set.targetRpe, " RPE") : ""
+          ].filter(Boolean).join(" @ ");
+          const details = [target, context ? `(${context})` : ""].filter(Boolean).join(" ");
+          return `${group.count}x ${setTypeLabels[role] || "working"}${details ? ": " + details : ""}`;
+        }).join(" | ");
       }
 
       function prescriptionMetric(value, suffix = "") {
@@ -1724,8 +1767,13 @@
           high: { level: 4, label: "High" }
         })[confidenceKey] || null;
         const changed = Boolean(final.readinessAdjustment?.changed);
+        const sourceUnit = final.prescribedLoad?.unit || data.settings.weightUnit;
+        const finalLoad = Number(convertWeightValue(final.prescribedLoad?.target || 0, sourceUnit, data.settings.weightUnit));
+        const loadText = finalLoad > 0 ? displayLoadNumber(finalLoad) + " " + data.settings.weightUnit + " x " : "";
         const structureText = final.setStructure === "top_set_backoff" ? "top + back-off" : final.setStructure.replaceAll('_', ' ');
         const baseLine = `${prescriptionMetric(base.workingSets, " sets")} · ${prescriptionMetric(base.repRange, " reps")} · RPE ${prescriptionMetric(base.targetRpe)}`;
+        const fallbackFinalLine = `${prescriptionMetric(final.workingSets, " sets")} · ${loadText}${prescriptionMetric(final.repRange, " reps")} · RPE ${prescriptionMetric(final.targetRpe)}`;
+        const finalLine = roleSessionPrescriptionLine(exercise, fallbackFinalLine);
         const personalWeight = Number(final.personalEvidenceWeight ?? displaySnapshot.personalEvidenceWeight);
         const researchWeight = Number(final.researchEvidenceWeight ?? displaySnapshot.researchEvidenceWeight);
         const weightSummary = [
@@ -1738,7 +1786,7 @@
           : "";
         const confidenceLine = confidence ? confidence.label + " confidence" : "Confidence unavailable";
         const claimTitle = changed ? "Today only" : recommendationActionLabel(final);
-        const claimValue = prescriptionMetric(final.workingSets, " working sets") + " · " + structureText;
+        const claimValue = changed ? finalLine : finalLine + " · " + structureText;
         const baseComparison = changed ? '<div class="prescription-base"><span>Base prescription</span><strong>' + escapeHtml(baseLine) + '</strong></div>' : "";
         return '<section class="prescription-brief unified-prescription ' + (final.recommendationType.includes('deload') ? 'deload' : '') + ' ' + (changed ? 'readiness-adjusted' : '') + '" aria-label="Prescription and evidence"><div class="claim-card prescription-claim' + (confidence ? '' : ' confidence-unavailable') + '"' + confidenceAttributes + '><div class="cc-row"><span class="cc-title">' + escapeHtml(claimTitle) + '</span>' + confidenceMeter + '</div><strong class="cc-value">' + escapeHtml(claimValue) + '</strong><span class="cc-why">' + escapeHtml(confidenceLine + (weightSummary ? " · " + weightSummary : "")) + '</span>' + baseComparison + '<div class="claim-projection-grid prescription-claim-projections"><div><span class="claim-projection-label">Rest</span><strong class="claim-projection-value">' + escapeHtml(prescriptionMetric(final.restSeconds, ' sec')) + '</strong></div><div><span class="claim-projection-label">Frequency</span><strong class="claim-projection-value">' + escapeHtml(prescriptionMetric(final.frequencyPerWeek, '/week')) + '</strong></div><div><span class="claim-projection-label">Role</span><strong class="claim-projection-value">' + escapeHtml(final.role.replaceAll('_', ' ')) + '</strong></div></div><div class="claim-projection-rule"><span>Next action</span><strong>' + escapeHtml(final.progressionRule) + '</strong></div></div>' + (changed ? '<p class="readiness-temporary"><strong>Temporary:</strong> ' + escapeHtml(final.readinessAdjustment.explanation + ' ' + final.readinessAdjustment.resumeRule) + '</p>' : '') + renderRolePrescriptionDetails(exercise) + renderUnifiedEvidence(displaySnapshot) + '</section>';
       }

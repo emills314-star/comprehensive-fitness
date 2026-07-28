@@ -155,9 +155,12 @@ assert(html.includes("Broad exercise guidance"));
 assert(html.includes("Program benchmark"));
 assert(html.includes("Informational · not an input"));
 assert(html.includes("these values are already set by the saved prescription."));
-assert(!html.includes("roleSessionPrescriptionLine("), "The recommendation explanation must not restate the set-row-owned numeric targets");
-assert(html.includes('const claimValue = prescriptionMetric(final.workingSets, " working sets")'), "The recommendation claim must stay high-level while set rows own exact targets");
-assert(html.includes(">Last performed<") && html.includes(">Next increment<"), "Role evidence must retain historical and progression context without repeating the target");
+assert(html.includes("function roleSessionPrescriptionLine("), "The recommendation claim must project the same generated rows that prepopulate the workout");
+assert(html.includes("roleSessionPrescriptionLine(exercise, fallbackFinalLine)"), "The recommendation claim must use the exact live-row load, repetition target, and role composition when available");
+assert(html.includes("targetWeight") && html.includes("targetReps"), "The shared row projection must retain the generated load and repetition target");
+assert(html.includes("loadAvailable") && html.includes('details ? ": " + details : ""'), "The shared row projection must omit genuinely absent target values instead of fabricating zero load or reps");
+assert(html.includes("group.count + 'x '"), "Role evidence headings must retain their live set counts");
+assert(html.includes(">Last performed<") && html.includes(">Next increment<"), "Role evidence must retain historical and progression context without restoring a separate target claim");
 assert(html.includes("History and high watermark:"), "The expanded recommendation must explain its historical load anchor");
 assert(html.includes("exercise.recommendationSnapshot || unifiedPrescriptionSnapshot(exercise)"), "Broad guidance must reuse the unified prescription instead of hard-coded sets or reps");
 

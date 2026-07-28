@@ -57,7 +57,11 @@ assert.match(prescriptionSurface, /class="claim-projection-grid prescription-cla
 assert.match(prescriptionSurface, /class="claim-projection-rule"/, "progression rules must remain inside their confidence claim");
 assert.match(prescriptionSurface, /class="role-evidence-copy"/, "stored role rationale must remain separately identified as evidence");
 assert.match(prescriptionSurface, /<div class="role-prescription"/, "role prescription groups without headings must use neutral container semantics");
-assert.doesNotMatch(prescriptionSurface, /role-confidence-label|role-prescription-claim|Today\\?'s target/, "role evidence must not restate exercise-level confidence or set-row targets");
+assert.match(prescriptionSurface, /roleSessionPrescriptionLine\(exercise, fallbackFinalLine\)/, "the exercise claim must state the exact generated row prescription");
+assert.match(prescriptionSurface, /targetWeight[\s\S]*targetReps[\s\S]*group\.count/, "the claim must retain generated load, repetition target, and role composition");
+assert.match(prescriptionSurface, /loadAvailable[\s\S]*details \? ": " \+ details : ""/, "the claim must omit genuinely absent target values instead of fabricating zeros");
+assert.match(prescriptionSurface, /group\.count \+ 'x '/, "role evidence headings must retain their live set counts");
+assert.doesNotMatch(prescriptionSurface, /role-confidence-label|role-prescription-claim|Today\\?'s target/, "role evidence must not restore a separate target claim or repeat exercise-level confidence");
 assert.doesNotMatch(prescriptionSurface, /<article class="role-prescription"/, "role prescription groups must not expose unnamed article landmarks");
 assert.doesNotMatch(prescriptionSurface, /role-progression-facts|prescription-fact-grid/, "forward-looking prescription values must not return to fact-styled grids");
 assert.doesNotMatch(style, /\.role-progression-facts|\.prescription-fact-grid/, "obsolete current-tinted projection grids must not be shipped");
@@ -103,6 +107,6 @@ assert.match(lifecycleAudit, /Tab must cross the non-interactive prescription ev
 
 assert.match(decisionEngine, /\| `research_default` \|[^\n]+\| `1` \|/, "Decision Engine documentation must record the research_default UI mapping");
 assert.match(decisionEngine, /\| `moderate` \|[^\n]+\| `3` \|/, "Decision Engine documentation must record the moderate UI mapping");
-assert.match(uiUx, /Exact numeric targets belong to the generated set rows/, "UI/UX documentation must preserve single-owner claim/fact separation");
+assert.match(uiUx, /persisted generated set rows remain authoritative for executable load and repetition targets[\s\S]*exercise-level claim is their textual owner/, "UI/UX documentation must distinguish executable authority from human-readable claim ownership");
 
 console.log("Prescription claim-and-evidence contract passed.");

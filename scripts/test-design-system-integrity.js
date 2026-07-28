@@ -25,7 +25,8 @@ const renderUpdateBanner = functionSource(views, "renderUpdateBanner", "renderOf
 const readinessMetricDelta = functionSource(views, "readinessMetricDelta", "readinessMetricField");
 const renderTemplateStartSheet = functionSource(views, "renderTemplateStartSheet", "prescriptionLine");
 const renderCancelWorkoutSheet = functionSource(views, "renderCancelWorkoutSheet", "closeCancelWorkout");
-const renderRolePrescriptionDetails = functionSource(views, "renderRolePrescriptionDetails", "prescriptionMetric");
+const renderRolePrescriptionDetails = functionSource(views, "renderRolePrescriptionDetails", "roleSessionPrescriptionLine");
+const roleSessionPrescriptionLine = functionSource(views, "roleSessionPrescriptionLine", "prescriptionMetric");
 const renderUnifiedPrescriptionDetails = functionSource(views, "renderUnifiedPrescriptionDetails", "renderPrescriptionDetails");
 const renderGuidedPriority = functionSource(views, "renderGuidedMusclePrioritySummary", "renderGuidedExerciseWorkspace");
 const renderGuidedMesocycle = functionSource(views, "renderGuidedMesocycle", "renderMesocyclePlanner");
@@ -49,8 +50,11 @@ assert.match(renderCancelWorkoutSheet, /exerciseIds\.size[\s\S]*draftSets\.lengt
 assert.doesNotMatch(renderSettings, /formatTimer\(Number\(data\.settings\.defaultRestSeconds/, "Settings must not restate default rest in a second format");
 assert.match(renderCompletedSummary, /<h2>Workout analysis<\/h2>/, "the grade mark must be the sole visible grade value");
 assert.doesNotMatch(renderGuidedMesocycle, /<h2>' \+ result\.blockingCount/, "viability counts must be owned by the roll-up");
-assert.doesNotMatch(renderUnifiedPrescriptionDetails, /finalLine|fallbackFinalLine/, "the explanation must not repeat the set-row-owned numeric target");
-assert.doesNotMatch(renderRolePrescriptionDetails, /Today\\?'s target|role-confidence-label|role-prescription-claim/, "role evidence must not repeat the target or exercise-level confidence");
+assert.match(renderUnifiedPrescriptionDetails, /roleSessionPrescriptionLine\(exercise, fallbackFinalLine\)/, "the prescription claim must project the exact executable row targets");
+assert.match(roleSessionPrescriptionLine, /targetWeight[\s\S]*targetReps[\s\S]*group\.count/, "the prescription claim must retain generated load, repetition target, and role composition");
+assert.match(roleSessionPrescriptionLine, /loadAvailable[\s\S]*details \? ": " \+ details : ""/, "the claim must omit genuinely absent load and repetition values instead of inventing zero targets");
+assert.match(renderRolePrescriptionDetails, /group\.count \+ 'x '/, "role evidence headings must state the exact live set count");
+assert.doesNotMatch(renderRolePrescriptionDetails, /Today\\?'s target|role-confidence-label|role-prescription-claim/, "role evidence must not introduce a second target claim or repeat exercise-level confidence");
 
 assert.match(renderWorkoutRollup, /rollup\.drift > 0 \? "out" : "under"/, "RPE drift below target must use under, not over");
 assert.match(chartPointComparison, /actualReps < repLow\) delta = \{ tone: "under"/, "reps below target must use under");
