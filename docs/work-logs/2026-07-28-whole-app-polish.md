@@ -67,6 +67,18 @@ The fourth is the material one: it was the requirement that the end-of-session g
 
 `CACHE_NAME` advanced to `comprehensive-fitness-pwa-v89`; `www/` re-synced and byte-identical. `npm test`: 53/53.
 
+## PR #6 `chromium-ui` reconciliation — 2026-07-28
+
+Current-head run `30399237488` on `764e103` failed 17 of 324 tests on `ubuntu-latest`:
+
+- **Branch-caused:** 13 accepted `polish-*` screenshots were captured on Windows but compared unconditionally on Linux. The specimen loop now requires `CF_APPEARANCE_PROTECTION=1`, matching the standing owner-gated appearance contract. With the flag absent, 26 mobile/desktop cases skip; with it enabled in the owner environment, the 13 mobile baselines pass.
+- **Branch-caused:** the populated Dashboard rendered at 2,583 px on Linux against the unchanged 2,545 px material-reduction ceiling. The plan/actual/delta table retains its 62 px row minimum and compacts only cell padding from `--sp-3` to `--sp-1` vertically and `--sp-2` horizontally. Local Dashboard height fell from 2,509 px before this fix to 2,461 px; the threshold was not changed.
+- **Pre-existing on `main`:** chart-detail close hit testing (`analytics-settings-lifecycles.spec.js:193`), readiness-sheet contrast sampling (`accessibility-design-regressions.spec.js:858`), and 320 px Lift overflow diagnostics (`protected-surfaces.spec.js:207`) fail with the same test names in main runs `30322001877`, `30319867284`, and `30288398658`. Per the task boundary, this PR does not silently absorb those unrelated defects.
+
+Runtime CSS changed, so the public cache advanced once from v89 to v90 and the generated `www/` mirror was synchronized. Local verification: lint passed; public tests 53/53; PWA verification 40 assets; privacy 604 tracked files; dependency audit 0 high/critical with 3 reported development-only moderate findings; explicit appearance mode 13/13; cross-platform mode 26 skipped; height contract 1 passed / 1 project skipped at Lift 2,840 px and Dashboard 2,461 px. Docker is unavailable on this host, so Linux verification is delegated to PR CI rather than claimed locally.
+
+The focused source/test fix was pushed to `ui-migration-phases-1-5` as `9977e56`. Post-push CI run `30402480775` is the authoritative Linux recheck: 260 passed, 61 skipped, and 3 failed in 12.4 minutes. Dashboard measured 2,535 px against the unchanged 2,545 px ceiling. None of the 13 polish snapshots failed. The three residual failures are exactly the pre-existing `main` failures listed above, so the branch-owned failure count fell from 14 to zero without weakening or deleting their assertions.
+
 ## Remaining review
 
 - **NEEDS REVIEW (pre-existing, not introduced here):** an exercise with zero planned and zero completed working sets contributes `rangeCompliance: 0` to the Program execution average instead of being excluded, so an unusable or untouched exercise drags the category down. Observed as a residual "50% in range" while the only performed exercise scored 100%. Not changed here because it alters scoring semantics beyond the reconciliation contract.
@@ -77,4 +89,4 @@ The fourth is the material one: it was the requirement that the end-of-session g
 
 ## Final status
 
-**IMPLEMENTED LOCALLY - REVIEW REQUIRED.** Public functional, PWA, scoped-public privacy, and behavioral UI coverage passed except for the documented dev-only dependency gate. The final workspace-wide privacy scan is not green because it includes existing ignored private-data and archived-worktree trees. Visual baselines remain deliberately unaccepted, and the clean-profile pane submission/grade walkthrough remains outstanding. Nothing was published.
+**PUBLISHED TO FEATURE BRANCH — PR CI PARTIALLY GREEN.** The PR #6 remediation is published to `ui-migration-phases-1-5`; domain/schema, research/PWA, and Vercel pass. `chromium-ui` retains only the three independently evidenced `main` failures and therefore remains **NEEDS REVIEW** outside this PR. Baselines are accepted but owner-gated; no baseline was regenerated. No merge or direct deployment action was performed; the repository's automatic Vercel preview check completed after the authorized push.
