@@ -208,6 +208,7 @@ const polishVisualStates = [
 for (const [name, markup] of polishVisualStates) {
   test(`polish visual state: ${name}`, async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "mobile", "Specimens render inside a fixed 360 px container, so a second project would only duplicate the mobile image.");
+    test.skip(process.env.CF_APPEARANCE_PROTECTION !== "1", "Appearance comparison is owner-gated and platform-specific; baselines are captured on the owner's machine.");
     await page.setViewportSize({ width: 390, height: 844 });
     await page.getByRole("navigation", { name: "Main navigation" }).waitFor();
     await page.locator("body").evaluate((body, content) => {
