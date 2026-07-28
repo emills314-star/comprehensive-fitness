@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Comprehensive Fitness - Overshoot">
+  <defs>
+    <linearGradient id="bg-03-overshoot-maskable" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#16283f"/>
+      <stop offset="1" stop-color="#07101d"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg-03-overshoot-maskable)"/>
+  <defs>
+    <mask id="beyond-03-overshoot-maskable">
+      <rect width="1024" height="1024" fill="#ffffff"/>
+      <rect x="244" y="244" width="480" height="480" rx="116" fill="#000000"/>
+    </mask>
+  </defs>
+  <g transform="translate(0 20)">
+  <rect x="440" y="216" width="336" height="336" rx="84" fill="#4fa3ff"/>
+  <rect x="264" y="264" width="440" height="440" rx="96" fill="none" stroke="#2f7bcf" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="440" y="216" width="336" height="336" rx="84" fill="#f4c84c" mask="url(#beyond-03-overshoot-maskable)"/>
+  </g>
+</svg>

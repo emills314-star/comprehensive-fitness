@@ -1316,7 +1316,10 @@ test("confirmed pain-free substitution uses an explicit catalog-backed UI flow a
   }, { exerciseRuntimeId: fixture.exerciseIds.bench, replacementName: substituteName });
   expect(observedCatalog.resolved, JSON.stringify(observedCatalog)).toBe(substituteId);
   await override.locator('[data-action="apply-prescription-override"]').click();
-  await expect.poll(() => page.evaluate(() => appToast), { message: "The catalog-backed pain-free substitution must be accepted" }).toMatch(/Prescription override saved/i);
+  await expect.poll(() => page.evaluate(() => {
+    const messages = [appToast?.message, ...appToastQueue.map((toast) => toast.message)].filter(Boolean);
+    return messages.find((message) => /Prescription override saved/i.test(message)) || "";
+  }), { message: "The catalog-backed pain-free substitution must be accepted" }).toMatch(/Prescription override saved/i);
 
   const runtime = await runtimeWorkoutState(page);
   const substituted = runtime.exercises.find((item) => item.id === fixture.exerciseIds.bench);
@@ -1425,8 +1428,8 @@ test("every exercise exposes shared defaults plus per-set reps, RPE, types, and 
     const style = getComputedStyle(summary, "::after");
     return { content: style.content, background: style.backgroundColor };
   });
-  expect(collapseCue.content).toContain("−");
-  expect(collapseCue.background).toBe("rgba(0, 0, 0, 0)");
+  expect(collapseCue.content).toContain("⌄");
+  expect(collapseCue.background).not.toBe("rgba(0, 0, 0, 0)");
   const benchmark = card.locator(".guidance-benchmark-strip");
   await expect(benchmark.getByText("Program benchmark", { exact: true })).toBeVisible();
   await expect(benchmark.getByText("Informational · not an input", { exact: true })).toBeVisible();

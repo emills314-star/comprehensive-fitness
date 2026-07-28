@@ -1,0 +1,24 @@
+<!--
+  Android adaptive-icon foreground. Transparent canvas - the background comes
+  from @color/ic_launcher_background in
+  android/app/src/main/res/values/ic_launcher_background.xml.
+
+  Android masks an adaptive icon down to the central 72dp of a 108dp canvas and
+  only guarantees a 66dp circle, so the mark is scaled to 0.8 here. The raw art
+  has a bounding radius of 387 on the 1024 canvas (75.6% of the half-canvas);
+  0.8 brings that to 60.5%, just inside the 61% the 66dp safe circle allows.
+  Do not remove that scale - at full size the plates get cropped on round masks.
+
+  Edit resources/icon.svg first, mirror the change here, then regenerate:
+
+      node scripts/build-icons.js
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Comprehensive Fitness">
+  <g transform="translate(512 512) scale(0.8) translate(-512 -512)">
+    <rect x="122" y="488" width="780" height="48" rx="24" fill="#f4f7fa"/>
+    <rect x="236" y="352" width="80" height="320" rx="40" fill="#4fa3ff"/>
+    <rect x="708" y="352" width="80" height="320" rx="40" fill="#4fa3ff"/>
+    <rect x="160" y="402" width="56" height="220" rx="28" fill="#f4c84c"/>
+    <rect x="808" y="402" width="56" height="220" rx="28" fill="#f4c84c"/>
+  </g>
+</svg>

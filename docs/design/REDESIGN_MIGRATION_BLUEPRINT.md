@@ -1,12 +1,13 @@
 # Redesign Migration Blueprint: Dual Track
 
-> **Status:** IMPLEMENTED architecture specification and non-production interaction lab; PLANNED production migration
+> **Status:** HISTORICAL production-migration proposal; IMPLEMENTED non-production architecture specification and interaction lab
 > **Winner:** Dual Track
-> **Non-goal:** No recommendation, progression, privacy, persistence, import, or synchronization semantics change in this phase.
+> **Superseded production path:** The later Evidence & Change migration governs current production UI work through `docs/UI_UX.md` and `docs/ROADMAP.md`. This document does not authorize a React cutover, require legacy appearance parity, or impose its phase order on that migration.
+> **Retained scope:** UI-neutral capability, safety, data-integrity, privacy, accessibility, explicit-submission, consent-separation, and recovery invariants remain useful design evidence.
 
 ## Outcome
 
-Replace the presentation layer with a React/TypeScript Dual Track shell while preserving the prescription engine, guided-mesocycle engine, schemas, IndexedDB records, backup format, APIs, service-worker behavior, sync consent, and immutable historical snapshots. The legacy interface remains the behavioral reference until every parity gate passes. There is no permanent redesign toggle.
+This proposal described replacing the presentation layer with a React/TypeScript Dual Track shell while preserving the prescription engine, guided-mesocycle engine, schemas, IndexedDB records, backup format, APIs, service-worker behavior, sync consent, and immutable historical snapshots. It is not the current production migration plan. For its historical proposal scope, legacy behavior—not markup, layout, density, or pixel appearance—was the parity reference. There was no proposed permanent redesign toggle.
 
 ## Target structure
 

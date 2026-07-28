@@ -71,7 +71,8 @@ const unifiedPrescriptionStart = html.indexOf("function renderUnifiedPrescriptio
 const unifiedPrescriptionEnd = html.indexOf("function renderPrescriptionDetails(", unifiedPrescriptionStart);
 assert(unifiedPrescriptionStart >= 0 && unifiedPrescriptionEnd > unifiedPrescriptionStart, "Unified prescription rendering must remain independently inspectable");
 const unifiedPrescriptionSource = html.slice(unifiedPrescriptionStart, unifiedPrescriptionEnd);
-assert.match(unifiedPrescriptionSource, /const claimTitle = changed \? "Today only" : recommendationActionLabel\(final\);[\s\S]*class="cc-title">' \+ escapeHtml\(claimTitle\)/, "A readiness-adjusted target must render Today only as the claim title");
+assert.match(html, /function renderRecommendationHead\(snapshot, options = \{\}\)[\s\S]*const adjustedInSession = Boolean\(options\.exercise\?\.overrideLocked && options\.exercise\?\.manualOverrides\?\.length\);[\s\S]*const title = adjustedInSession \? "Adjusted in session" : changed \? "Today only" : recommendationActionLabel\(prescription\);[\s\S]*class="cc-title">' \+ escapeHtml\(title\)/, "An audited in-session override must own the compact claim title, while an otherwise readiness-adjusted target must still render Today only");
+assert.match(html, /adjustedInSession \? '<span class="cc-why">locked for this workout<\/span>' : ''/, "An audited in-session override must disclose that its targets are locked for this workout");
 assert.match(unifiedPrescriptionSource, /const baseComparison = changed \? '<div class="prescription-base"><span>Base prescription<\/span><strong>' \+ escapeHtml\(baseLine\)/, "The unadjusted base must render in its distinct prescription-base comparison markup");
 assert.match(html, /field: "nutritionStatus", label: "Nutrition today", action: "template-readiness-nutrition"[\s\S]*field: "proteinStatus", label: "Protein target", action: "template-readiness-protein"/, "The shared segmented readiness renderer must collect current nutrition and protein context in distinct fields");
 assert.match(html, /if \(action === "template-readiness-nutrition"\) patchTemplateStartDraft\(\{ nutritionStatus: target\.value \}, false\);[\s\S]*if \(action === "template-readiness-protein"\) patchTemplateStartDraft\(\{ proteinStatus: target\.value \}, false\);/, "Nutrition and protein readiness choices must remain independently delegated into the draft");
@@ -123,8 +124,8 @@ assert.equal(oneDayStatus.overallStatus, "needs_frequency", "missing frequency m
 assert.match(html, /Volume vs target/, "the Build UI must expose the plan-to-target comparison");
 assert.match(html, /No unresolved muscle-group requirements/, "the Build UI must distinguish a fully covered plan from unresolved volume");
 assert.match(html, /Mesocycle completed/, "successful creation must have a persistent completion state");
-assert.match(html, /Why This Recommendation/, "recommendation explanation labels must be standardized");
-assert.doesNotMatch(html, /Why\? \/ Evidence/, "legacy recommendation labels must not leak into the UI");
+assert.match(html, /Prescription detail[\s\S]*Research confidence[\s\S]*<span>Evidence<\/span>/, "recommendation explanations must expose the standardized prescription, confidence, and evidence sections");
+assert.doesNotMatch(html, /Why\? \/ Evidence|Why This Recommendation/, "superseded undivided recommendation labels must not leak into the compact section vocabulary");
 assert.match(html, /intentionalReduction/, "prescribed light work must be marked so fatigue flags do not misclassify it as weakness");
 assert.match(html, /roundLoadForUnit/, "all displayed and edited loads must use the shared precision boundary");
 

@@ -13,7 +13,12 @@ assert.match(html, /\.timer-summary \{[^}]*min-height: 44px/, "The rest rail tap
 assert.match(html, /\.timer-primary-controls button \{[^}]*min-height: 44px/, "Rest adjustment controls must remain at least 44 CSS px");
 assert.match(html, /\.timer-bar strong \{[^}]*color: var\(--(?:text|rest-text)\)/, "Primary rest text must use a semantic contrast-bearing text token");
 assert.match(html, /\.timer-bar span \{[^}]*color: var\(--(?:text|rest-text)\)/, "Supporting rest text must use a semantic contrast-bearing text token");
-assert.match(views, /<summary class="timer-summary"[\s\S]*<button[^>]*data-action="toggle-timer"[\s\S]*<button[^>]*data-action="clear-timer"[\s\S]*<button[^>]*data-action="adjust-timer"[\s\S]*<button[^>]*data-action="skip-timer"/, "Native summary and button controls must remain reachable by keyboard");
-assert.doesNotMatch(views.slice(views.indexOf("function renderTimer(setId)"), views.indexOf("function renderTimerCompleteNotice()")), /tabindex="-1"/, "Rest timer controls must not be removed from keyboard traversal");
+const timerRenderer = views.slice(views.indexOf("function renderTimer(setId)"), views.indexOf("function renderTimerCompleteNotice()"));
+for (const action of ["toggle-timer", "clear-timer", "adjust-timer", "skip-timer"]) {
+  assert.match(timerRenderer, new RegExp('<button[^>]*data-action="' + action + '"'), action + " must remain a native keyboard-reachable button");
+}
+assert.doesNotMatch(timerRenderer, /tabindex="-1"/, "Rest timer controls must not be removed from keyboard traversal");
+assert.match(timerRenderer, /data-phase="\$\{timer\.remainingSeconds <= 10 \? "final" : "resting"\}"/, "The rail must expose the final-ten-second phase without a second indicator");
+assert.doesNotMatch(timerRenderer, /timer-heading|timer-icon|timer-rest-copy"[\s\S]*<small>/, "Collapsed rest must not duplicate next-set context or restore the retired clock disc");
 
 console.log("Rest timer capability and accessibility contract passed.");

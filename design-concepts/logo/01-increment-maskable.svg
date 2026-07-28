@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Comprehensive Fitness - Increment">
+  <defs>
+    <linearGradient id="bg-01-increment-maskable" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#16283f"/>
+      <stop offset="1" stop-color="#07101d"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg-01-increment-maskable)"/>
+  <rect x="240" y="608" width="400" height="104" rx="52" fill="#1f4f88"/>
+  <rect x="304" y="460" width="400" height="104" rx="52" fill="#2f7bcf"/>
+  <rect x="368" y="312" width="400" height="104" rx="52" fill="#4fa3ff"/>
+  <circle cx="716" cy="364" r="52" fill="#f4c84c"/>
+</svg>

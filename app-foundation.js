@@ -69,7 +69,7 @@
       let data = emptyData();
       const primaryTabIds = ["today", "plan", "progress", "more"];
       const focusActionAllowlist = new Set([
-        "set-tab", "start-template", "start-next-template", "toggle-set", "set-weight", "set-reps", "set-rpe", "set-duration", "set-distance", "session-menu", "request-submit-workout", "request-cancel-workout", "request-save-history-edits", "request-cancel-history-edits", "clear-data",
+        "set-tab", "start-template", "start-next-template", "toggle-set", "set-weight", "set-reps", "set-rpe", "set-duration", "set-distance", "reconcile-apply", "reconcile-dismiss", "session-menu", "request-submit-workout", "request-cancel-workout", "request-save-history-edits", "request-cancel-history-edits", "clear-data",
         "return-active-workout", "use-usual-readiness", "review-template-readiness", "start-adjusted-workout",
         "keep-workout", "keep-history-editing", "cancel-clear-data", "close-dashboard-detail", "dashboard-detail-parent",
         "open-history", "open-progress", "set-progress-view", "retry-view-render", "focus-workout-exercise", "open-dashboard-detail", "open-dashboard-session", "open-volume-session", "open-fatigue-flag", "toggle-volume-muscle",
@@ -170,7 +170,11 @@
       let historyEditStartPending = false;
       let historyEditConfirm = "";
       let viewingHistorySessionId = "";
-      let appToast = "";
+      let appToast = null;
+      const appToastQueue = [];
+      let appToastTimer = 0;
+      const openDisclosureIds = new Set();
+      const knownDisclosureIds = new Set();
       let pendingDeleteTemplateId = "";
       let expandedVolumeMuscle = "";
       let dashboardWeekStart = startOfWeekIso(todayIso());
@@ -350,7 +354,12 @@
         grip: svgIcon('<circle cx="8" cy="7" r=".7" fill="currentColor" stroke="none"/><circle cx="16" cy="7" r=".7" fill="currentColor" stroke="none"/><circle cx="8" cy="12" r=".7" fill="currentColor" stroke="none"/><circle cx="16" cy="12" r=".7" fill="currentColor" stroke="none"/><circle cx="8" cy="17" r=".7" fill="currentColor" stroke="none"/><circle cx="16" cy="17" r=".7" fill="currentColor" stroke="none"/>'),
         more: svgIcon('<circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none"/>'),
         up: svgIcon('<path d="m6 14 6-6 6 6"/>'),
-        down: svgIcon('<path d="m6 10 6 6 6-6"/>')
+        down: svgIcon('<path d="m6 10 6 6 6-6"/>'),
+        info: svgIcon('<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>'),
+        warning: svgIcon('<path d="M12 3 2.5 20h19L12 3Z"/><path d="M12 9v5M12 17h.01"/>'),
+        left: svgIcon('<path d="m15 18-6-6 6-6"/>'),
+        right: svgIcon('<path d="m9 6 6 6-6 6"/>'),
+        close: svgIcon('<path d="m6 6 12 12M18 6 6 18"/>')
       };
 
       function emptyData() {

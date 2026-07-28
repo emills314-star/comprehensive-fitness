@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#FFFFFF</color>
+    <!--
+      Adaptive-icon background. Must stay dark: resources/icon-foreground.svg
+      draws the bar in --text cream, which disappears entirely on the white this
+      held before the Sleeve mark landed. #0E1B2A is --panel, sitting between the
+      two stops of the gradient the web icon's canvas uses.
+    -->
+    <color name="ic_launcher_background">#0E1B2A</color>
 </resources>

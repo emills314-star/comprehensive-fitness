@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Comprehensive Fitness - Overshoot">
+  <defs>
+    <mask id="beyond-03-overshoot-glyph">
+      <rect width="1024" height="1024" fill="#ffffff"/>
+      <rect x="244" y="244" width="480" height="480" rx="116" fill="#000000"/>
+    </mask>
+  </defs>
+  <g transform="translate(0 20)">
+  <rect x="440" y="216" width="336" height="336" rx="84" fill="currentColor"/>
+  <rect x="264" y="264" width="440" height="440" rx="96" fill="none" stroke="currentColor" stroke-opacity="0.62" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="440" y="216" width="336" height="336" rx="84" fill="currentColor" fill-opacity="0.48" mask="url(#beyond-03-overshoot-glyph)"/>
+  </g>
+</svg>

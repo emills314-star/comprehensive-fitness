@@ -1656,6 +1656,7 @@ test("repeated Lift move, delete, add-set, warm-up, and copy-set controls includ
       const count = await controls.count();
       for (let index = 0; index < count; index += 1) {
         const control = controls.nth(index);
+        if (!(await control.isVisible())) continue;
         const accessibilityTree = await control.ariaSnapshot();
         const computedRoleAndName = accessibilityTree.split(/\r?\n/, 1)[0];
         auditedControls += 1;

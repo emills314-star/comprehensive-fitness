@@ -4,5 +4,5 @@ model = "gpt-5.6-terra"
 model_reasoning_effort = "high"
 sandbox_mode = "workspace-write"
 developer_instructions = """
-Implement only the approved bounded change in the assigned isolated worktree and files. Preserve unrelated work, follow AGENTS.md, add or update tests, run focused verification, and report risks plus exact commands/results. Do not expand scope, publish, merge, or assign a quality score.
+Implement only the approved bounded change in the assigned isolated worktree and files. Preserve unrelated work, follow AGENTS.md, add or update tests, run focused verification, and report risks plus exact commands/results. Update shared documentation only when it is explicitly within owned files; otherwise report the documentation impact to the integration owner. Do not expand scope, publish, merge, accept baselines, or assign a quality score.
 """

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Comprehensive Fitness - Rack">
+  <defs>
+    <mask id="rack-08-rack-glyph">
+    <rect x="272" y="200" width="64" height="624" rx="32" fill="#ffffff"/>
+    <rect x="688" y="200" width="64" height="624" rx="32" fill="#ffffff"/>
+    <circle cx="304" cy="246" r="13" fill="#000000"/>
+    <circle cx="720" cy="246" r="13" fill="#000000"/>
+    <circle cx="304" cy="314" r="13" fill="#000000"/>
+    <circle cx="720" cy="314" r="13" fill="#000000"/>
+    <circle cx="304" cy="382" r="13" fill="#000000"/>
+    <circle cx="720" cy="382" r="13" fill="#000000"/>
+    <circle cx="304" cy="450" r="13" fill="#000000"/>
+    <circle cx="720" cy="450" r="13" fill="#000000"/>
+    <circle cx="304" cy="518" r="13" fill="#000000"/>
+    <circle cx="720" cy="518" r="13" fill="#000000"/>
+    <circle cx="304" cy="586" r="13" fill="#000000"/>
+    <circle cx="720" cy="586" r="13" fill="#000000"/>
+    <circle cx="304" cy="654" r="13" fill="#000000"/>
+    <circle cx="720" cy="654" r="13" fill="#000000"/>
+    <circle cx="304" cy="722" r="13" fill="#000000"/>
+    <circle cx="720" cy="722" r="13" fill="#000000"/>
+    <circle cx="304" cy="790" r="13" fill="#000000"/>
+    <circle cx="720" cy="790" r="13" fill="#000000"/>
+    </mask>
+  </defs>
+  <g mask="url(#rack-08-rack-glyph)">
+    <rect x="272" y="200" width="64" height="624" rx="32" fill="currentColor" fill-opacity="0.34"/>
+    <rect x="688" y="200" width="64" height="624" rx="32" fill="currentColor" fill-opacity="0.34"/>
+  </g>
+  <rect x="256" y="330" width="96" height="104" rx="26" fill="currentColor" fill-opacity="0.48"/>
+  <rect x="672" y="330" width="96" height="104" rx="26" fill="currentColor" fill-opacity="0.48"/>
+  <rect x="216" y="352" width="592" height="60" rx="30" fill="currentColor" fill-opacity="0.85"/>
+</svg>

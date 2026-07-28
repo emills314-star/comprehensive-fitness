@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Comprehensive Fitness - Landmark">
+  <defs>
+    <linearGradient id="bg-02-landmark-light" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#eef2f6"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="220" fill="url(#bg-02-landmark-light)"/>
+  <g transform="translate(0 26)">
+  <path d="M 356.4 667.6 A 220 220 0 1 1 667.6 667.6" fill="none" stroke="#cbdcef" stroke-width="88" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 356.4 667.6 A 220 220 0 0 1 629.9 326.2" fill="none" stroke="#1769d2" stroke-width="88" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 443.9 378.3 L 380.3 253.6" fill="none" stroke="#b87916" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 609.4 397.9 L 700.3 291.5" fill="none" stroke="#b87916" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 654.7 558.4 L 787.8 601.6" fill="none" stroke="#b87916" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

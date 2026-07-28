@@ -28,7 +28,7 @@
             </header>
             ${renderOfflineBanner()}
             ${renderUpdateBanner()}
-            ${appToast ? '<div class="app-toast" role="status" aria-live="polite">' + escapeHtml(appToast) + '</div>' : ''}
+            ${appToast ? '<div class="app-toast" data-severity="' + escapeHtml(appToast.severity) + '" role="status" aria-live="polite"><span class="app-toast-icon" aria-hidden="true">' + ({ success: icon.done, warn: icon.warning, error: icon.delete, info: icon.info }[appToast.severity] || icon.info) + '</span><span>' + escapeHtml(appToast.message) + '</span>' + (appToast.action ? '<button type="button" data-action="' + escapeHtml(appToast.action) + '"' + (appToast.setId ? ' data-set-id="' + escapeHtml(appToast.setId) + '"' : '') + '>' + escapeHtml(appToast.actionLabel || "Undo") + '</button>' : '') + '</div>' : ''}
             <main class="app-main" id="main-content" tabindex="-1" ${modalOpen ? 'inert aria-hidden="true"' : ""}>${viewHtml}</main>
             ${shellWorkoutDockVisible ? renderSessionDock(session, workoutProgress(), { submitted: shellWorkoutSubmitted, inert: modalOpen }) : `<nav class="bottom-nav" aria-label="Main navigation" ${modalOpen ? 'inert aria-hidden="true"' : ""}>
               ${navButton("today", "Today", "workout")}
@@ -43,6 +43,10 @@
             ${renderTimerCompleteNotice()}
           </div>
         `;
+        root.querySelectorAll("details[data-disclosure-id]").forEach((details) => {
+          const disclosureId = details.dataset.disclosureId;
+          if (knownDisclosureIds.has(disclosureId)) details.open = openDisclosureIds.has(disclosureId);
+        });
         const chartLiftLabel = root.querySelector('label[for="chart-exercise-search"]');
         if (chartLiftLabel) chartLiftLabel.textContent = "Change lift";
         adaptOverflowingTitleFields();
@@ -112,6 +116,7 @@
         const dockElapsed = root.querySelector("[data-session-dock-elapsed]");
         if (dockCompleted) dockCompleted.textContent = progress.completed + " of " + progress.total + " sets";
         if (dockElapsed) dockElapsed.textContent = progress.elapsed;
+        root.querySelectorAll("[data-session-dock-track] .seg").forEach((segment, index) => segment.classList.toggle("filled", index < Math.round((progress.completed / Math.max(1, progress.total)) * 10)));
       }
 
       function renderSetContext(exercise, substituteValidation = null) {
@@ -158,16 +163,22 @@
         updateWorkoutStatusDom();
       }
 
+      function syncReconcilePromptDom(exerciseId) {
+        const slot = root.querySelector('[data-reconcile-slot="' + CSS.escape(exerciseId) + '"]');
+        const exercise = exerciseById(exerciseId);
+        if (slot && exercise) slot.innerHTML = renderReconcilePrompt(exercise);
+      }
+
       function syncTimerDom() {
         if (!timer) return;
-        const bar = document.querySelector(".timer-bar");
+        const bar = root.querySelector('.timer-bar[data-timer-id="' + CSS.escape(timer.id) + '"]');
         if (!bar) return;
-        bar.dataset.timerId = timer.id;
-        const stateLabel = bar.querySelector(".timer-heading-copy > span");
-        const status = bar.querySelector(".timer-heading-copy small");
+        const stateLabel = bar.querySelector(".timer-rest-copy > span");
+        const context = bar.querySelector(".timer-context");
         const pause = bar.querySelector('[data-action="toggle-timer"]');
         if (stateLabel) stateLabel.textContent = timer.isPaused ? "Paused" : "Rest";
-        if (status) status.textContent = timer.isPaused ? "Notification paused" : timer.notificationStatus === "scheduled" ? "Lock-screen alert scheduled" : timer.notificationStatus === "error" ? "Foreground alert only" : "Scheduling alert";
+        bar.toggleAttribute("data-paused", timer.isPaused);
+        if (context) context.textContent = timerNextContextLabel(timer) + " · " + timerNotificationStatusLabel(timer);
         if (pause) {
           pause.innerHTML = timer.isPaused ? icon.play : icon.pause;
           pause.setAttribute("title", timer.isPaused ? "Resume timer" : "Pause timer");
@@ -233,14 +244,14 @@
             const updateAction = updateAvailable && !historyEditFlow && !historyEditStartPending
               ? '<button class="secondary-action" type="button" data-action="apply-update">Update app</button>'
               : '';
-            return `<section class="view state destination-error" role="alert"><span class="glyph bad destination-error-mark" aria-hidden="true">!</span><div><div class="section-kicker">${escapeHtml(activeTab)}</div><h1>This area could not be opened.</h1><p>Your stored workout data is intact. This is a display fault; Retry rebuilds this view's derived indexes without changing those records. If an app update is ready, save this workout and apply it here.</p><div class="destination-error-actions"><button class="primary-action" type="button" data-action="retry-view-render">Retry</button>${updateAction}</div></div></section>`;
+            return `<section class="view state destination-error" role="alert"><span class="glyph bad destination-error-mark" aria-hidden="true">${icon.warning}</span><div><div class="section-kicker">${escapeHtml(activeTab)}</div><h1>This area could not be opened.</h1><p>Your stored workout data is intact. This is a display fault; Retry rebuilds this view's derived indexes without changing those records. If an app update is ready, save this workout and apply it here.</p><div class="destination-error-actions"><button class="primary-action" type="button" data-action="retry-view-render">Retry</button>${updateAction}</div></div></section>`;
           }
         }
       }
 
       function renderSessionDock(session, progress, { submitted = false, inert = false } = {}) {
         return `<aside class="session-dock" aria-label="Workout session controls" ${inert ? 'inert aria-hidden="true"' : ""}>
-          <span class="session-dock-progress"><strong data-session-dock-progress>${progress.completed} of ${progress.total} sets</strong><small data-session-dock-elapsed>${escapeHtml(progress.elapsed)}</small></span>
+          <span class="session-dock-progress"><strong data-session-dock-progress>${progress.completed} of ${progress.total} sets</strong><span class="track" data-session-dock-track aria-label="${progress.completed} of ${progress.total} sets completed">${Array.from({ length: 10 }, (_, index) => '<i class="seg ' + (index < Math.round((progress.completed / Math.max(1, progress.total)) * 10) ? 'filled' : '') + '"></i>').join("")}</span><small data-session-dock-elapsed>${escapeHtml(progress.elapsed)}</small><i class="session-dock-elapsed-rule" aria-hidden="true"></i></span>
           ${submitted
             ? '<span class="session-dock-submitted" role="status">Workout logged</span>'
             : '<button class="primary-action session-dock-finish" type="button" data-action="request-submit-workout">Finish</button>'}
@@ -469,7 +480,7 @@
           return `
             <div class="volume-table-entry ${quiet ? "quiet-volume" : ""} ${expanded ? "expanded" : ""}">
               <button class="volume-card-toggle volume-table-row" type="button" data-action="toggle-volume-muscle" data-muscle="${escapeHtml(bucket.muscle)}" aria-expanded="${expanded ? "true" : "false"}">
-                <span class="plan volume-muscle-cell"><span class="volume-muscle-heading"><strong>${escapeHtml(bucket.muscle)}</strong><span class="status-pill ${bucket.status}">${label}</span></span><span class="val">${bucket.targetLow}-${bucket.targetHigh}</span><small>${bucket.exerciseCount || 0} contributing lift${bucket.exerciseCount === 1 ? "" : "s"}</small></span>
+                <span class="plan volume-muscle-cell"><span class="volume-muscle-heading"><strong>${escapeHtml(bucket.muscle)}</strong><span class="status-pill ${bucket.status}">${label}</span></span><span class="val">${bucket.targetLow}-${bucket.targetHigh}</span>${rangeBar({ low: bucket.targetLow, high: bucket.targetHigh, actual: bucket.sets, tone: deltaClass })}<small>${bucket.exerciseCount || 0} contributing lift${bucket.exerciseCount === 1 ? "" : "s"}</small></span>
                 <span class="act"><span class="val">${bucket.sets.toFixed(bucket.sets % 1 ? 1 : 0)}</span></span>
                 <span class="dlt"><span class="d ${deltaClass}">${deltaText}</span></span>
               </button>
@@ -482,9 +493,9 @@
             <div class="screen-heading">
               <div><div class="section-kicker">Dashboard</div><h1>Volume and fatigue</h1></div>
               <div class="dashboard-period" aria-label="Dashboard week">
-                <button type="button" data-action="dashboard-week" data-direction="-1" aria-label="Previous dashboard week">‹</button>
+                <button type="button" data-action="dashboard-week" data-direction="-1" aria-label="Previous dashboard week">${icon.left}</button>
                 <strong>${formatDate(dashboardWeekStart)}</strong>
-                <button type="button" data-action="dashboard-week" data-direction="1" aria-label="Next dashboard week" ${dashboardWeekStart >= currentWeek ? "disabled" : ""}>›</button>
+                <button type="button" data-action="dashboard-week" data-direction="1" aria-label="Next dashboard week" ${dashboardWeekStart >= currentWeek ? "disabled" : ""}>${icon.right}</button>
               </div>
             </div>
             <section class="screen-section">
@@ -495,7 +506,7 @@
                   <span>Logged</span>
                   <span>Delta</span>
                 </div>
-                ${trained.length ? trained.map((bucket) => renderBucket(bucket)).join("") : '<div class="empty-state">Log a working set to start your weekly volume dashboard.</div>'}
+                ${trained.length ? trained.map((bucket) => renderBucket(bucket)).join("") : '<div class="empty-state actionable"><span class="glyph" aria-hidden="true">' + icon.workout + '</span><strong>No weekly volume yet</strong><span>Log a working set to start the plan-versus-actual view.</span><button type="button" data-action="set-tab" data-tab="today">Go to Today</button></div>'}
                 ${untrained.length ? '<details class="volume-untrained compact-disclosure"><summary>All muscles <span>' + untrained.length + ' untouched</span></summary><div class="volume-untrained-rows">' + untrained.map((bucket) => renderBucket(bucket, true)).join("") + '</div></details>' : ""}
               </div>
             </section>
@@ -538,11 +549,11 @@
 
       function renderFatigueFlagRow(flag) {
         const concern = flag.concern || "low";
-        return '<button class="drilldown-item fatigue-' + concern + '" type="button" data-action="open-fatigue-flag" data-flag-id="' + escapeHtml(flag.id) + '" aria-label="Open ' + escapeHtml(flag.scope + ' ' + flag.name + ' fatigue flag') + '"><strong>' + escapeHtml(flag.scope + ': ' + flag.name) + '</strong><span class="fatigue-severity ' + concern + '">' + escapeHtml(concern.charAt(0).toUpperCase() + concern.slice(1) + ' concern') + '</span><span>' + escapeHtml(flag.reason) + '</span><small>' + escapeHtml(formatDate(flag.triggeredAt)) + '</small><span class="drilldown-chevron" aria-hidden="true">›</span></button>';
+        return '<button class="drilldown-item fatigue-' + concern + '" type="button" data-action="open-fatigue-flag" data-flag-id="' + escapeHtml(flag.id) + '" aria-label="Open ' + escapeHtml(flag.scope + ' ' + flag.name + ' fatigue flag') + '"><strong>' + escapeHtml(flag.scope + ': ' + flag.name) + '</strong><span class="fatigue-severity ' + concern + '">' + escapeHtml(concern.charAt(0).toUpperCase() + concern.slice(1) + ' concern') + '</span><span>' + escapeHtml(flag.reason) + '</span><small>' + escapeHtml(formatDate(flag.triggeredAt)) + '</small><span class="drilldown-chevron" aria-hidden="true">' + icon.right + '</span></button>';
       }
 
       function renderDashboardDetailHeader(title, subtitle, nested = false, backAction = "") {
-        return '<div class="dashboard-detail-header"><button type="button" data-action="' + (backAction || (nested ? 'dashboard-detail-parent' : 'close-dashboard-detail')) + '" aria-label="Back">‹</button><div><h1>' + escapeHtml(title) + '</h1><p>' + escapeHtml(subtitle) + '</p></div></div>';
+        return '<div class="dashboard-detail-header"><button type="button" data-action="' + (backAction || (nested ? 'dashboard-detail-parent' : 'close-dashboard-detail')) + '" aria-label="Back">' + icon.left + '</button><div><h1>' + escapeHtml(title) + '</h1><p>' + escapeHtml(subtitle) + '</p></div></div>';
       }
 
       function renderWeeklyVolumeWarningDetail(flag, options = {}) {
@@ -552,10 +563,10 @@
         return `<section class="view dashboard-detail-view">${renderDashboardDetailHeader(detail.muscle + " weekly volume", formatWeek(detail.weekStart), true, options.backAction || "")}
           <article class="volume-warning-detail ${flag.concern}">
             <div class="volume-warning-hero"><div><span class="fatigue-severity ${flag.concern}">${escapeHtml(flag.concern.charAt(0).toUpperCase() + flag.concern.slice(1))} concern</span><h2>${formatSets(detail.actual)} weighted sets</h2><p>${formatSets(detail.exceededBy)} above the planned ${detail.targetLow}-${detail.targetHigh} set range.</p></div></div>
-            <div class="volume-warning-numbers"><div><span>Planned</span><strong>${detail.targetLow}-${detail.targetHigh}</strong></div><div><span>Weighted Stimulus</span><strong>${formatSets(detail.actual)}</strong></div><div><span>Direct Sets</span><strong>${formatSets(detail.directSets)}</strong></div><div><span>Fractional Contribution</span><strong>${formatSets(detail.indirectSets)}</strong></div></div>
+            <div class="volume-warning-numbers"><div><span>Planned</span><strong>${detail.targetLow}-${detail.targetHigh}</strong></div><div><span>Weighted Stimulus</span><strong>${formatSets(detail.actual)}</strong>${rangeBar({ low: detail.targetLow, high: detail.targetHigh, actual: detail.actual, tone: detail.status === "below" ? "under" : detail.status === "above" ? "out" : "on" })}</div><div><span>Direct Sets</span><strong>${formatSets(detail.directSets)}</strong></div><div><span>Fractional Contribution</span><strong>${formatSets(detail.indirectSets)}</strong></div></div>
             <p class="settings-note">Calculated with exercise–muscle taxonomy ${escapeHtml(prescriptionEvidenceStatus.researchVersion)}. Fractional contributions use exercise-specific weights. Isometric stabilization and incidental involvement affect fatigue where relevant but receive no hypertrophy-set credit.</p>
             <section><h3>What contributed</h3><div class="volume-session-groups">${(detail.sessionGroups || []).map((session) => '<section class="volume-session-group"><button class="volume-session-heading" type="button" data-action="' + sessionAction + '" data-session-id="' + session.id + '"><span><strong>' + escapeHtml(session.title) + '</strong><small>' + formatDate(session.date) + '</small></span><span>' + formatSets(session.sets) + ' sets &rsaquo;</span></button><div class="volume-exercise-rows">' + session.exercises.map((exercise) => '<div class="volume-exercise-row"><span><strong>' + escapeHtml(exercise.name) + '</strong><small>' + (exercise.volumeLoad > 0 ? Math.round(exercise.volumeLoad) + ' ' + data.settings.weightUnit + ' volume load' : 'Rep and effort contribution') + '</small></span><span class="volume-set-breakdown"><b>' + formatSets(exercise.sets) + ' sets</b><small>' + (exercise.directSets ? formatSets(exercise.directSets) + ' direct' : '') + (exercise.directSets && exercise.indirectSets ? ' · ' : '') + (exercise.indirectSets ? formatSets(exercise.indirectSets) + ' indirect' : '') + '</small></span></div>').join('') + '</div></section>').join('') || '<div class="empty-state">No submitted contributions found.</div>'}</div></section>
-            <section><h3>Submitted workouts included</h3><div class="drilldown-list">${detail.sessions.map((session) => '<button class="drilldown-item compact" type="button" data-action="' + sessionAction + '" data-session-id="' + escapeHtml(session.id) + '"><strong>' + escapeHtml(session.title) + '</strong><span>' + formatDate(session.date) + '</span><span class="drilldown-chevron" aria-hidden="true">›</span></button>').join('') || '<div class="empty-state">No submitted workouts contributed.</div>'}</div></section>
+            <section><h3>Submitted workouts included</h3><div class="drilldown-list">${detail.sessions.map((session) => '<button class="drilldown-item compact" type="button" data-action="' + sessionAction + '" data-session-id="' + escapeHtml(session.id) + '"><strong>' + escapeHtml(session.title) + '</strong><span>' + formatDate(session.date) + '</span><span class="drilldown-chevron" aria-hidden="true">' + icon.right + '</span></button>').join('') || '<div class="empty-state">No submitted workouts contributed.</div>'}</div></section>
             <section><h3>Deload handling</h3><p>${detail.excludedDeloadSessions.length ? detail.excludedDeloadSessions.length + ' explicitly marked deload workout' + (detail.excludedDeloadSessions.length === 1 ? ' was' : 's were') + ' excluded: ' + escapeHtml(detail.excludedDeloadSessions.map((session) => session.title + ' (' + formatDate(session.date) + ')').join(', ')) + '.' : 'No explicitly marked deload exercises were present in this week.'}</p></section>
             <section><h3>Rule used</h3><p>${escapeHtml(flag.rule)}</p></section>
             <section><h3>Recommended next step</h3><p>${escapeHtml(flag.recommendation)}</p></section>
@@ -580,7 +591,7 @@
           </section>`;
         }
         if (dashboardDetail.type === "sessions") {
-          return `<section class="view dashboard-detail-view">${renderDashboardDetailHeader("Logged sessions", period)}<div class="drilldown-list">${sessions.length ? sessions.map((session) => { const facts = sessionWorkoutFacts(session); return '<button class="drilldown-item" type="button" data-action="open-dashboard-session" data-session-id="' + session.id + '"><strong>' + escapeHtml(session.title || 'Workout') + '</strong><span>' + formatDate(session.date) + ' · ' + facts.durationMinutes + ' min' + (facts.estimatedDuration ? ' est.' : '') + ' · ' + facts.exercises.length + ' exercises</span><small>' + facts.completed.length + ' completed sets' + (facts.prs.length ? ' · ' + facts.prs.length + ' PR' + (facts.prs.length === 1 ? '' : 's') : '') + '</small><span class="drilldown-chevron" aria-hidden="true">›</span></button>'; }).join('') : '<div class="empty-state">No submitted workouts in this period.</div>'}</div></section>`;
+          return `<section class="view dashboard-detail-view">${renderDashboardDetailHeader("Logged sessions", period)}<div class="drilldown-list">${sessions.length ? sessions.map((session) => { const facts = sessionWorkoutFacts(session); return '<button class="drilldown-item" type="button" data-action="open-dashboard-session" data-session-id="' + session.id + '"><strong>' + escapeHtml(session.title || 'Workout') + '</strong><span>' + formatDate(session.date) + ' · ' + facts.durationMinutes + ' min' + (facts.estimatedDuration ? ' est.' : '') + ' · ' + facts.exercises.length + ' exercises</span><small>' + facts.completed.length + ' completed sets' + (facts.prs.length ? ' · ' + facts.prs.length + ' PR' + (facts.prs.length === 1 ? '' : 's') : '') + '</small><span class="drilldown-chevron" aria-hidden="true">' + icon.right + '</span></button>'; }).join('') : '<div class="empty-state">No submitted workouts in this period.</div>'}</div></section>`;
         }
         if (dashboardDetail.type === "muscles") {
           const trained = volumes.filter((bucket) => bucket.sets > 0);
@@ -637,7 +648,7 @@
 
       function renderRecentSessions() {
         const sessions = activeHistorySessions().slice().sort((a, b) => sessionCompletionDate(b).localeCompare(sessionCompletionDate(a))).slice(0, 5);
-        if (!sessions.length) return '<div class="empty-state">No saved workouts yet.</div>';
+        if (!sessions.length) return '<div class="empty-state actionable"><span class="glyph" aria-hidden="true">' + icon.review + '</span><strong>No saved workouts yet</strong><span>Submit a workout to create durable history and trend evidence.</span><button type="button" data-action="set-tab" data-tab="today">Start from Today</button></div>';
         return '<div class="recent-history-list">' + sessions.map((session) => {
           const record = recentHistoryCardModel(session);
           const dateMarkup = record.completedDate
@@ -724,6 +735,42 @@
       function readinessMeter(confidence, large = false) {
         if (!confidence) return '<span class="readiness-confidence-missing">Confidence unavailable</span>';
         return '<span class="meter' + (large ? ' lg' : '') + '" data-conf="' + confidence.level + '" aria-label="' + escapeHtml(confidence.label + ' prescription confidence') + '"><i></i><i></i><i></i><i></i></span>';
+      }
+
+      function rangeBar({ low, high, actual, tone = "none" }) {
+        const targetLow = Number(low);
+        const targetHigh = Number(high);
+        const actualValue = Number(actual);
+        if (![targetLow, targetHigh, actualValue].every(Number.isFinite) || targetHigh <= 0 || targetLow < 0 || targetHigh < targetLow) return "";
+        const scaleMax = targetHigh * 1.5;
+        const percent = (value) => Math.max(0, Math.min(100, value / scaleMax * 100));
+        const label = actualValue + " against a target of " + targetLow + " to " + targetHigh;
+        return '<span class="range-bar" data-tone="' + escapeHtml(tone) + '" role="img" aria-label="' + escapeHtml(label) + '" style="--band-start:' + percent(targetLow).toFixed(2) + '%;--band-end:' + percent(targetHigh).toFixed(2) + '%;--actual:' + percent(actualValue).toFixed(2) + '%"><i class="rb-band"></i><i class="rb-mark"></i></span>';
+      }
+
+      function pips(completed, total, label = "") {
+        const maximum = Math.max(0, Math.floor(Number(total) || 0));
+        const current = Math.max(0, Math.min(maximum, Math.floor(Number(completed) || 0)));
+        if (!maximum) return "";
+        return '<span class="pips" role="img" aria-label="' + escapeHtml(label || current + " of " + maximum) + '">' + Array.from({ length: maximum }, (_, index) => '<i' + (index < current ? ' class="on"' : '') + '></i>').join("") + '</span>';
+      }
+
+      function sparkline(values, { width = 64, height = 18, tone = "none", label = "Trend" } = {}) {
+        const points = (Array.isArray(values) ? values : []).map(Number).filter(Number.isFinite);
+        if (points.length < 2) return "";
+        const min = Math.min(...points);
+        const max = Math.max(...points);
+        const span = max - min || 1;
+        const coordinates = points.map((value, index) => {
+          const x = index / (points.length - 1) * width;
+          const y = height - ((value - min) / span * (height - 2) + 1);
+          return x.toFixed(2) + "," + y.toFixed(2);
+        }).join(" ");
+        return '<span class="sparkline d ' + escapeHtml(tone) + '"><svg role="img" aria-label="' + escapeHtml(label) + '" viewBox="0 0 ' + width + ' ' + height + '" width="' + width + '" height="' + height + '"><polyline points="' + coordinates + '" /></svg></span>';
+      }
+
+      function noData(label = "No recorded data") {
+        return '<span class="no-data" title="' + escapeHtml(label) + '" aria-label="' + escapeHtml(label) + '">—</span>';
       }
 
       function templateStartEvidenceSummary(template) {
@@ -1085,13 +1132,23 @@
         returnToLiftHome("History edits canceled.");
       }
 
-      function showAppToast(message) {
-        appToast = message;
-        window.setTimeout(() => {
-          if (appToast !== message) return;
-          appToast = "";
+      function showAppToast(message, options = {}) {
+        const toast = { message: String(message), severity: options.severity || "info", action: options.action || "", actionLabel: options.actionLabel || "", setId: options.setId || "", duration: Number(options.duration || 2800) };
+        if (appToast) {
+          appToastQueue.push(toast);
+          return;
+        }
+        const present = (next) => {
+          appToast = next;
           render();
-        }, 2800);
+          window.clearTimeout(appToastTimer);
+          appToastTimer = window.setTimeout(() => {
+            appToast = null;
+            const queued = appToastQueue.shift();
+            if (queued) present(queued); else render();
+          }, next.duration);
+        };
+        present(toast);
       }
 
       async function removeWorkoutFromSyncQueue(sessionId) {
@@ -1379,9 +1436,9 @@
         ].map(([value, label]) => `<option value="${value}" ${selected === value ? "selected" : ""}>${label}</option>`).join("");
         const numericStepper = ({ field, value, min, max, step, label, setField = false, action = "" }) => `
           <span class="numeric-stepper" data-numeric-stepper>
-            <button type="button" data-action="adjust-exercise-default" data-delta="-${step}" aria-label="Decrease ${escapeHtml(label)}">▼</button>
+            <button type="button" data-action="adjust-exercise-default" data-delta="-${step}" aria-label="Decrease ${escapeHtml(label)}">${icon.down}</button>
             <input type="number" min="${min}" max="${max}" step="${step}" value="${value}" ${setField ? "data-set-default-field" : "data-default-field"}="${field}" ${action ? `data-action="${action}"` : ""} aria-label="${escapeHtml(label)}" />
-            <button type="button" data-action="adjust-exercise-default" data-delta="${step}" aria-label="Increase ${escapeHtml(label)}">▲</button>
+            <button type="button" data-action="adjust-exercise-default" data-delta="${step}" aria-label="Increase ${escapeHtml(label)}">${icon.up}</button>
           </span>`;
         const setRow = (scope, index, set, fallback) => {
           const type = scope === "warmup" ? "warmup" : normalizeSetTypeCode(set?.setType, set?.isWarmup);
@@ -1459,7 +1516,40 @@
 
       function renderExecutionQualityAssessment(exercise) {
         const value = executionQualityValues.has(exercise.executionQualityAssessment) ? exercise.executionQualityAssessment : "not_assessed";
-        return `<label class="execution-quality-control">Did execution stay controlled?<select data-action="exercise-execution-quality" data-exercise-id="${exercise.id}"><option value="not_assessed" ${value === "not_assessed" ? "selected" : ""}>Not assessed</option><option value="controlled" ${value === "controlled" ? "selected" : ""}>Controlled</option><option value="breakdown" ${value === "breakdown" ? "selected" : ""}>Breakdown</option></select><small>Only a controlled, complete, pain-free exposure inside target effort can confirm progression.</small></label>`;
+        return `<div class="execution-quality-control"><span>Did execution stay controlled?</span><div class="segmented" role="group" aria-label="Execution quality">${[["not_assessed","Not assessed"],["controlled","Controlled"],["breakdown","Breakdown"]].map(([option, label]) => '<button type="button" value="' + option + '" data-action="exercise-execution-quality" data-exercise-id="' + exercise.id + '" aria-pressed="' + (value === option) + '">' + label + '</button>').join('')}</div><small>Only a controlled, complete, pain-free exposure inside target effort can confirm progression.</small></div>`;
+      }
+
+      function renderReconcilePrompt(exercise) {
+        const pending = exercise.pendingReconcile;
+        const set = pending ? setById(pending.setId) : null;
+        if (!pending || !set) return "";
+        const fields = new Set(pending.fields || []);
+        const resistanceType = resistanceTypeFor(exercise, set);
+        const loggedParts = [];
+        const deltaParts = [];
+        let tone = "over";
+        if (fields.has("load")) {
+          const actual = resistanceLoad(set, resistanceType);
+          const target = Number(set.targetWeight || 0);
+          loggedParts.push(formatResistance(set, exercise));
+          deltaParts.push(formatLoadNumber(Math.abs(actual - target)) + " " + (set.weightUnit || data.settings.weightUnit) + (actual > target ? " above" : " below") + " target");
+          if (actual < target) tone = "under";
+        }
+        if (fields.has("reps")) {
+          const low = Number(set.targetRepMin || set.targetReps || 0);
+          const high = Number(set.targetRepMax || set.targetReps || 0);
+          loggedParts.push(Number(set.reps || 0) + " reps");
+          deltaParts.push(Number(set.reps || 0) < low ? (low - Number(set.reps || 0)) + " reps below target" : (Number(set.reps || 0) - high) + " reps above target");
+          if (Number(set.reps || 0) < low) tone = "under";
+        }
+        if (fields.has("rpe")) {
+          const target = Number(set.targetRpe || set.targetRpeMax || set.targetRpeMin || 0);
+          loggedParts.push("RPE " + formatLoadNumber(set.rpe));
+          deltaParts.push(formatLoadNumber(Math.abs(Number(set.rpe) - target)) + " RPE " + (Number(set.rpe) > target ? "above" : "below") + " target");
+          tone = Number(set.rpe) > target ? "out" : "under";
+        }
+        const remaining = Number(pending.remainingSetCount || 0);
+        return '<div class="reconcile-strip" role="status" data-tone="' + tone + '"><span class="reconcile-copy"><strong>' + escapeHtml(loggedParts.join(" × ")) + ' logged</strong><small>' + escapeHtml(deltaParts.join(" · ")) + ' · ' + remaining + (remaining === 1 ? ' set remains' : ' sets remain') + '</small></span><span class="reconcile-actions"><button class="primary-action" type="button" data-action="reconcile-apply" data-exercise-id="' + exercise.id + '">Apply to remaining</button><button class="mini-button" type="button" data-action="reconcile-dismiss" data-exercise-id="' + exercise.id + '">Just this set</button></span></div>';
       }
 
       function renderExercise(exercise) {
@@ -1499,6 +1589,7 @@
             ${renderPrescriptionDetails(exercise)}
             ${substituteRecoveryHtml}
             ${setHtml}
+            <div data-reconcile-slot="${exercise.id}">${renderReconcilePrompt(exercise)}</div>
             <details class="exercise-details">
               <summary>Exercise details</summary>
               <div class="disclosure-body">
@@ -1531,6 +1622,7 @@
         const completionSafety = guardWorkoutMutation("toggle-set", { exercise, set, substituteValidation: context.substituteValidation }, false);
         const skipSafety = guardWorkoutMutation("toggle-skip-set", { exercise, set, substituteValidation: context.substituteValidation }, false);
         const timerSafety = guardWorkoutMutation("start-timer", { exercise, set, substituteValidation: context.substituteValidation }, false);
+        const addWarmupSafety = guardWorkoutMutation("add-warmup-set", { exercise, set, substituteValidation: context.substituteValidation }, false);
         const resistanceType = resistanceTypeFor(exercise, set);
         const visualState = setVisualState(set);
         const isLoggedMode = visualState === "completed" && !isEditingHistorySession();
@@ -1558,10 +1650,10 @@
             ? previousPerformanceText + (previousRpeText !== "—" ? " @ " + previousRpeText : "")
             : previousLoadText + " × " + previousPerformanceText + (previousRpeText !== "—" ? " @ " + previousRpeText : "");
         const previousField = setTypeSemantics(set).isWarmup
-          ? '<div class="set-field set-previous"><span>Previous</span><strong>—</strong><small>Warm-up</small></div>'
+          ? '<div class="set-field set-previous"><span>Previous</span><strong>' + noData("No comparable warm-up") + '</strong><small>Warm-up</small></div>'
           : previous?.priorSessionId
             ? '<a class="set-field set-previous set-previous-link" href="#progress-history" data-action="open-session" data-session-id="' + escapeHtml(previous.priorSessionId) + '" data-exercise-id="' + escapeHtml(previous.priorExerciseId || "") + '" data-return-exercise-id="' + escapeHtml(exercise.id) + '" title="Open ' + escapeHtml(previous.priorExerciseName || exercise.name) + ' in the ' + escapeHtml(previousDateLabel) + ' workout"><span>Previous</span><strong>' + escapeHtml(previousSummaryText) + '</strong><small>' + escapeHtml(previousDateLabel) + '</small></a>'
-            : '<div class="set-field set-previous" title="No previous workout found"><span>Previous</span><strong>—</strong><small>No history</small></div>';
+            : '<div class="set-field set-previous"><span>Previous</span><strong>' + noData("No previous workout found") + '</strong><small>No history</small></div>';
         const targetLoad = Number(set.targetWeight ?? set.weight ?? 0);
         const targetLoadText = formatResistance({ ...set, weight: targetLoad, addedLoad: resistanceType === "bodyweight_plus_load" ? targetLoad : set.addedLoad, assistanceLoad: resistanceType === "assisted_bodyweight" ? targetLoad : set.assistanceLoad, resistanceType });
         const targetRepText = targetRangeText(set.targetRepMin, set.targetRepMax || set.targetReps, " reps");
@@ -1598,17 +1690,20 @@
             ? "Logged"
             : (rpeDelta > 0 ? "+" : "") + formatLoadNumber(rpeDelta) + " RPE";
         const rpeDeltaClass = !targetRpe || !Number(set.rpe || 0) ? "none" : rpeDelta > 0 ? "out" : rpeDelta < 0 ? "under" : "on";
+        const repTone = Number(set.reps || 0) < Number(set.targetRepMin || set.targetReps || 0) ? "under" : Number(set.reps || 0) > Number(set.targetRepMax || set.targetReps || 0) ? "over" : "on";
+        const repRangeSignal = rangeBar({ low: Number(set.targetRepMin || set.targetReps || 0), high: Number(set.targetRepMax || set.targetReps || 0), actual: isLoggedMode ? Number(set.reps || 0) : Number(set.targetReps || set.targetRepMin || 0), tone: isLoggedMode ? repTone : "none" });
+        const setConfidenceLevel = ({ research_default: 1, low: 2, moderate: 3, high: 4 })[String(set.setPrescription?.confidence || set.prescriptionConfidence || "").toLowerCase()] || 0;
         const statusButton = '<button class="check-button ' + (set.completed ? "checked" : "") + '" type="button" data-action="toggle-set" data-set-id="' + set.id + '" title="' + (set.completed ? "Completed" : "Mark set complete") + '" aria-label="' + (set.completed ? "Set completed" : "Mark set complete") + '" aria-pressed="' + (set.completed ? "true" : "false") + '"' + workoutSafetyDisabledAttributes(completionSafety) + '>' + icon.done + '</button>';
         const loadField = resistanceType === "bodyweight"
           ? '<div class="set-field"><span>Load</span><div class="resistance-readout">BW</div></div>'
           : resistanceType === "duration" || resistanceType === "distance"
-            ? '<div class="set-field"><span>Load</span><div class="resistance-readout">—</div></div>'
+            ? '<div class="set-field"><span>Load</span><div class="resistance-readout">' + noData("External load does not apply") + '</div></div>'
             : '<label class="set-field"><span>' + (resistanceType === 'bodyweight_plus_load' ? 'Added' : resistanceType === 'assisted_bodyweight' ? 'Assist' : 'Load') + '</span><input type="number" min="0" step="' + (data.settings.weightUnit === 'lb' ? '0.5' : '0.001') + '" value="' + displayLoadNumber(resistanceLoad(set, resistanceType), set.weightUnit || data.settings.weightUnit) + '" data-action="set-weight" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' ' + (resistanceType === 'bodyweight_plus_load' ? 'added load' : resistanceType === 'assisted_bodyweight' ? 'assistance load' : 'load') + '" /></label>';
         const setBody = isLoggedMode
-          ? '<div class="set-logged diff" data-set-mode="logged"><div class="drow"><span class="plan"><span class="lbl">' + escapeHtml(setLabel + ' · ' + executionLabel) + '</span><strong>' + escapeHtml(targetSummary) + '</strong></span><span class="act"><span class="lbl">Actual</span><strong>' + escapeHtml(actualSummary) + '</strong></span><span class="dlt"><strong class="d ' + rpeDeltaClass + '">' + escapeHtml(rpeDeltaText) + '</strong></span>' + statusButton + '</div></div>'
+          ? '<div class="set-logged diff" data-set-mode="logged"><div class="drow"><span class="plan"><span class="lbl">' + escapeHtml(setLabel + ' · ' + executionLabel) + '</span><strong>' + escapeHtml(targetSummary) + '</strong>' + repRangeSignal + '</span><span class="act"><span class="lbl">Actual</span><strong>' + escapeHtml(actualSummary) + '</strong></span><span class="dlt"><span class="lbl">RPE</span><strong class="d ' + rpeDeltaClass + '">' + escapeHtml(rpeDeltaText) + '</strong></span>' + statusButton + '</div></div>'
           : isNext || isEditingHistorySession()
             ? '<div class="set-current-editor claim-card" data-set-mode="current"><div class="set-current-heading"><div><span class="eyebrow">' + escapeHtml(setLabel) + '</span><strong>' + escapeHtml(targetSummary) + '</strong></div>' + statusButton + '</div><div class="current-set-inputs">' + previousField + loadField + performanceField + '<label class="set-field"><span>RPE</span><input type="number" min="0" max="10" step="0.5" value="' + set.rpe + '" data-action="set-rpe" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' RPE" /></label></div></div>'
-            : '<div class="set-pending-line" data-set-mode="pending"><span>' + escapeHtml(setLabel) + '</span><strong>' + escapeHtml(targetSummary) + '</strong></div>';
+            : '<div class="set-pending-line" data-set-mode="pending"><span>' + escapeHtml(setLabel) + '</span><strong>' + escapeHtml(targetSummary) + '</strong>' + repRangeSignal + '</div>';
         return `
           <div id="set-${set.id}" data-set-state="${visualState}" class="set-block ${visualState === "completed" ? "completed" : ""} ${isNext ? "next-set" : ""} ${isNext && activeSetAcknowledged ? "acknowledged" : ""} ${visualState === "edited" ? "edited-set" : ""} ${visualState === "skipped" ? "skipped-set" : ""} ${isResting ? "resting-set" : ""}">
             ${isLoggedMode ? "" : `<div class="set-heading">
@@ -1620,11 +1715,12 @@
             ${isLoggedMode ? "" : `<details class="set-tools-disclosure" ${isResting || visualState === "edited" || isEditingHistorySession() ? "open" : ""}>
               <summary aria-label="Set options"><span aria-hidden="true">•••</span></summary>
               <div class="set-tools-panel">
-                ${!setTypeSemantics(set).isWarmup ? '<details class="set-progress-disclosure"><summary><span>Progress when</span><b>Next ' + escapeHtml(nextIncrementText) + '</b></summary><div><strong>' + escapeHtml(progressionRule) + '</strong><small>Today: ' + escapeHtml(targetLoadText + ' · ' + targetRepText + ' · ' + targetRpeText) + ' · ' + escapeHtml(String(set.setPrescription?.confidence || set.prescriptionConfidence || 'low') + ' confidence') + '</small></div></details>' : ""}
+                ${!setTypeSemantics(set).isWarmup ? '<details class="set-progress-disclosure"><summary><span>Progress when</span><b>Next ' + escapeHtml(nextIncrementText) + '</b></summary><div><strong>' + escapeHtml(progressionRule) + '</strong><small>Today: ' + escapeHtml(targetLoadText + ' · ' + targetRepText + ' · ' + targetRpeText) + '</small>' + (setConfidenceLevel ? '<span class="meter" data-conf="' + setConfidenceLevel + '" aria-label="Prescription confidence level ' + setConfidenceLevel + ' of 4"><i></i><i></i><i></i><i></i></span>' : '') + '</div></details>' : ""}
                 <div class="set-actions">
                   <button class="mini-button set-rest-button" type="button" data-action="start-timer" data-exercise-id="${exercise.id}" data-set-id="${set.id}"${workoutSafetyDisabledAttributes(timerSafety)}>${icon.clock} ${formatTimer(restSeconds)}</button>
-                  ${isEditingHistorySession() ? '<label class="set-type-editor"><span>Set type</span><select data-action="set-type-override" data-set-id="' + set.id + '">' + ['warmup','straight','top','backoff','drop'].map((type) => '<option value="' + type + '" ' + (normalizeSetTypeCode(set.setType, set.isWarmup) === type ? 'selected' : '') + '>' + escapeHtml(setTypeLabels[type]) + '</option>').join('') + '</select></label>' : ''}
-                  ${set.manualOverride && isEditingHistorySession() && set.classificationUndo ? '<button class="mini-button" type="button" data-action="undo-set-type-override" data-set-id="' + set.id + '">Undo type change</button>' : ''}
+                  <label class="set-type-editor"><span>Set type</span><select data-action="set-type-override" data-set-id="${set.id}">${['warmup','straight','top','backoff','drop'].map((type) => '<option value="' + type + '" ' + (normalizeSetTypeCode(set.setType, set.isWarmup) === type ? 'selected' : '') + '>' + escapeHtml(setTypeLabels[type]) + '</option>').join('')}</select></label>
+                  ${set.manualOverride && set.classificationUndo ? '<button class="mini-button" type="button" data-action="undo-set-type-override" data-set-id="' + set.id + '">Undo type change</button>' : ''}
+                  <button class="mini-button" type="button" data-action="add-warmup-set" data-exercise-id="${exercise.id}" aria-label="Insert warm-up above ${escapeHtml(exercise.name)} set ${set.setNumber}"${workoutSafetyDisabledAttributes(addWarmupSafety)}>Insert warm-up above</button>
                   <button class="mini-button set-skip-button ${set.skipped ? "active" : ""}" type="button" data-action="toggle-skip-set" data-set-id="${set.id}"${workoutSafetyDisabledAttributes(skipSafety)}>${set.skipped ? "Skipped" : "Skip"}</button>
                   <button class="mini-button" type="button" data-action="delete-set" data-set-id="${set.id}">Remove</button>
                   ${visualState === "edited" ? '<span class="edited-indicator">Edited, not completed</span>' : ""}
@@ -1712,18 +1808,75 @@
         return `${target ?? min ?? max}${range}${suffix}`;
       }
 
-      function renderUnifiedEvidence(snapshot) {
-        const displaySnapshot = recommendationSnapshotForDisplay(snapshot);
-        if (!displaySnapshot) return "";
-        const prescription = displaySnapshot.finalPrescription;
-        const base = displaySnapshot.basePrescription;
-        const confidenceKey = String(prescription.confidence || displaySnapshot.confidence || "").trim().toLowerCase();
-        const confidence = ({
+      function recommendationConfidence(snapshot) {
+        const prescription = snapshot?.finalPrescription;
+        const key = String(prescription?.confidence || snapshot?.confidence || "").trim().toLowerCase();
+        return ({
           research_default: { level: 1, label: "Research-default" },
           low: { level: 2, label: "Low" },
           moderate: { level: 3, label: "Moderate" },
           high: { level: 4, label: "High" }
-        })[confidenceKey] || null;
+        })[key] || null;
+      }
+
+      function recommendationPrescriptionLine(snapshot, exercise = null) {
+        const prescription = snapshot.finalPrescription;
+        const sourceUnit = prescription.prescribedLoad?.unit || data.settings.weightUnit;
+        const load = Number(convertWeightValue(prescription.prescribedLoad?.target || 0, sourceUnit, data.settings.weightUnit));
+        const loadText = load > 0 ? displayLoadNumber(load) + " " + data.settings.weightUnit + " × " : "";
+        const fallback = `${prescriptionMetric(prescription.workingSets, " working")} · ${loadText}${prescriptionMetric(prescription.repRange, " reps")} · RPE ${prescriptionMetric(prescription.targetRpe)}`;
+        return exercise ? roleSessionPrescriptionLine(exercise, fallback) : fallback;
+      }
+
+      function renderRecommendationHead(snapshot, options = {}) {
+        const displaySnapshot = recommendationSnapshotForDisplay(snapshot);
+        if (!displaySnapshot) return "";
+        const prescription = displaySnapshot.finalPrescription;
+        const confidence = recommendationConfidence(displaySnapshot);
+        const adjustedInSession = Boolean(options.exercise?.overrideLocked && options.exercise?.manualOverrides?.length);
+        const changed = Boolean(prescription.readinessAdjustment?.changed);
+        const title = adjustedInSession ? "Adjusted in session" : changed ? "Today only" : recommendationActionLabel(prescription);
+        const meter = confidence ? '<span class="meter lg" data-conf="' + confidence.level + '" aria-hidden="true"><i></i><i></i><i></i><i></i></span>' : "";
+        return '<div class="claim-card prescription-claim recommendation-head' + (confidence ? '' : ' confidence-unavailable') + '"' + (confidence ? ' data-conf="' + confidence.level + '"' : '') + '><div class="cc-row"><span class="cc-title">' + escapeHtml(title) + '</span>' + meter + '</div><strong class="cc-value">' + escapeHtml(recommendationPrescriptionLine(displaySnapshot, options.exercise || null)) + '</strong>' + (adjustedInSession ? '<span class="cc-why">locked for this workout</span>' : '') + '</div>';
+      }
+
+      function renderPrescriptionDetailSection(snapshot, options = {}) {
+        const displaySnapshot = recommendationSnapshotForDisplay(snapshot);
+        if (!displaySnapshot) return "";
+        const base = displaySnapshot.basePrescription;
+        const prescription = displaySnapshot.finalPrescription;
+        const changed = Boolean(prescription.readinessAdjustment?.changed);
+        const readiness = changed ? '<div class="readiness-temporary"><strong>Base:</strong> ' + escapeHtml(base.workingSets.target + ' sets · ' + base.repRange.min + '-' + base.repRange.max + ' reps · RPE ' + base.targetRpe.min + '-' + base.targetRpe.max) + '<br/><strong>Today:</strong> ' + escapeHtml(prescription.workingSets.target + ' sets · ' + prescription.repRange.min + '-' + prescription.repRange.max + ' reps · RPE ' + prescription.targetRpe.min + '-' + prescription.targetRpe.max) + '<br/>' + escapeHtml(prescription.readinessAdjustment.explanation) + '</div>' : '';
+        const roles = options.exercise ? renderRolePrescriptionDetails(options.exercise) : "";
+        return '<details class="recommendation-section" data-disclosure-id="' + escapeHtml(options.idPrefix || "recommendation") + '-prescription"><summary>Prescription detail</summary><div class="recommendation-section-body"><div class="unified-recommendation-grid"><div><span>Sets</span><strong>' + escapeHtml(prescriptionMetric(prescription.workingSets)) + '</strong></div><div><span>Reps</span><strong>' + escapeHtml(prescriptionMetric(prescription.repRange)) + '</strong></div><div><span>Effort</span><strong>RPE ' + escapeHtml(prescription.targetRpe.min + '-' + prescription.targetRpe.max) + ' · RIR ' + escapeHtml(prescription.targetRir.min + '-' + prescription.targetRir.max) + '</strong></div><div><span>Set structure</span><strong>' + escapeHtml(prescription.setStructure.replaceAll('_', ' ')) + '</strong></div><div><span>Rest</span><strong>' + escapeHtml(prescriptionMetric(prescription.restSeconds, ' sec')) + '</strong></div><div><span>Mesocycle role</span><strong>' + escapeHtml(prescription.role.replaceAll('_', ' ')) + '</strong></div></div>' + readiness + '<div class="claim-projection-rule"><span>Next action</span><strong>' + escapeHtml(prescription.progressionRule) + '</strong></div><div class="claim-projection-rule"><span>Deload status</span><strong>' + escapeHtml(recommendationLabel(prescription.deloadStatus?.state || 'normal')) + '</strong></div>' + roles + '</div></details>';
+      }
+
+      function renderConfidenceSection(snapshot, options = {}) {
+        const displaySnapshot = recommendationSnapshotForDisplay(snapshot);
+        if (!displaySnapshot) return "";
+        const prescription = displaySnapshot.finalPrescription;
+        const confidence = recommendationConfidence(displaySnapshot);
+        const personalWeight = Number(prescription.personalEvidenceWeight ?? displaySnapshot.personalEvidenceWeight);
+        const researchWeight = Number(prescription.researchEvidenceWeight ?? displaySnapshot.researchEvidenceWeight);
+        const exerciseScore = Number(prescription.exerciseScore ?? displaySnapshot.exerciseScore);
+        const weightSummary = [Number.isFinite(personalWeight) ? "personal " + Math.round(personalWeight * 100) + "%" : "", Number.isFinite(researchWeight) ? "research " + Math.round(researchWeight * 100) + "%" : ""].filter(Boolean).join(" · ");
+        const facts = [
+          Number.isFinite(personalWeight) ? ["Personal evidence", Math.round(personalWeight * 100) + "%"] : null,
+          Number.isFinite(researchWeight) ? ["Research evidence", Math.round(researchWeight * 100) + "%"] : null,
+          Number.isFinite(exerciseScore) ? ["Exercise score", Math.round(exerciseScore) + "/100"] : null,
+          prescription.staleness?.label ? ["Staleness", prescription.staleness.label] : null,
+          prescription.deloadStatus?.state ? ["Deload scope", recommendationLabel(prescription.deloadStatus.state)] : null,
+          ["Versions", `Rx ${displaySnapshot.recommendationVersion} · personal ${displaySnapshot.personalDataVersion} · research ${displaySnapshot.researchDatabaseVersion}`]
+        ].filter(Boolean);
+        const visual = confidence ? '<span class="meter lg" data-conf="' + confidence.level + '" aria-hidden="true"><i></i><i></i><i></i><i></i></span>' : '<span class="rationale-icon" aria-hidden="true">i</span>';
+        return '<details class="recommendation-section" data-disclosure-id="' + escapeHtml(options.idPrefix || "recommendation") + '-confidence"><summary>Research confidence</summary><div class="recommendation-section-body"><div class="rationale-heading"' + (confidence ? ' data-conf="' + confidence.level + '"' : '') + '>' + visual + '<div><strong class="evidence-confidence-label">' + escapeHtml(confidence ? confidence.label + " confidence" : "Confidence unavailable") + '</strong><span class="evidence-confidence-copy">' + escapeHtml(weightSummary || "Evidence weighting unavailable") + '</span></div></div><div class="rationale-facts">' + facts.map(([label, value]) => '<div class="rationale-fact"><span>' + escapeHtml(label) + '</span><strong>' + escapeHtml(value) + '</strong></div>').join('') + '</div></div></details>';
+      }
+
+      function renderEvidenceSection(snapshot, options = {}) {
+        const displaySnapshot = recommendationSnapshotForDisplay(snapshot);
+        if (!displaySnapshot) return "";
+        const prescription = displaySnapshot.finalPrescription;
+        const base = displaySnapshot.basePrescription;
         const sourceUnit = prescription.prescribedLoad?.unit || data.settings.weightUnit;
         const previousLoad = Number(convertWeightValue(prescription.prescribedLoad?.previous || base.prescribedLoad?.previous || 0, sourceUnit, data.settings.weightUnit));
         const targetLoad = Number(convertWeightValue(prescription.prescribedLoad?.target || 0, sourceUnit, data.settings.weightUnit));
@@ -1732,26 +1885,13 @@
         if (base.repRange.target !== prescription.repRange.target) changes.push('Rep target ' + (base.repRange.target ?? base.repRange.min + '–' + base.repRange.max) + ' → ' + (prescription.repRange.target ?? prescription.repRange.min + '–' + prescription.repRange.max));
         if (previousLoad && targetLoad && previousLoad !== targetLoad) changes.push('Load ' + displayLoadNumber(previousLoad) + ' → ' + displayLoadNumber(targetLoad) + ' ' + data.settings.weightUnit);
         if (base.targetRpe.min !== prescription.targetRpe.min || base.targetRpe.max !== prescription.targetRpe.max) changes.push('RPE ' + base.targetRpe.min + '–' + base.targetRpe.max + ' → ' + prescription.targetRpe.min + '–' + prescription.targetRpe.max);
-        const personalWeight = Number(prescription.personalEvidenceWeight ?? displaySnapshot.personalEvidenceWeight);
-        const researchWeight = Number(prescription.researchEvidenceWeight ?? displaySnapshot.researchEvidenceWeight);
-        const exerciseScore = Number(prescription.exerciseScore ?? displaySnapshot.exerciseScore);
-        const weightSummary = [
-          Number.isFinite(personalWeight) ? "personal " + Math.round(personalWeight * 100) + "%" : "",
-          Number.isFinite(researchWeight) ? "research " + Math.round(researchWeight * 100) + "%" : ""
-        ].filter(Boolean).join(" · ");
-        const scores = [];
-        if (Number.isFinite(personalWeight)) scores.push(["Personal evidence", Math.round(personalWeight * 100) + "%"]);
-        if (Number.isFinite(researchWeight)) scores.push(["Research evidence", Math.round(researchWeight * 100) + "%"]);
-        if (Number.isFinite(exerciseScore)) scores.push(["Exercise score", Math.round(exerciseScore) + "/100"]);
-        if (prescription.staleness?.label) scores.push(["Staleness", prescription.staleness.label]);
-        if (prescription.deloadStatus?.state) scores.push(["Deload scope", recommendationLabel(prescription.deloadStatus.state)]);
-        scores.push(["Versions", `Rx ${displaySnapshot.recommendationVersion} · personal ${displaySnapshot.personalDataVersion} · research ${displaySnapshot.researchDatabaseVersion}`]);
-        const confidenceVisual = confidence
-          ? '<span class="meter lg" data-conf="' + confidence.level + '" aria-hidden="true"><i></i><i></i><i></i><i></i></span>'
-          : '<span class="rationale-icon" aria-hidden="true">i</span>';
-        const evidenceItems = Array.isArray(prescription.evidenceSummary) ? prescription.evidenceSummary.filter(Boolean) : [];
+        const items = Array.isArray(prescription.evidenceSummary) ? prescription.evidenceSummary.filter(Boolean) : [];
         const changeRule = prescription.substitutionRule || prescription.regressionRule || "";
-        return '<section class="recommendation-rationale" aria-label="Recommendation evidence"><div class="rationale-heading"' + (confidence ? ' data-conf="' + confidence.level + '"' : '') + '>' + confidenceVisual + '<div><strong class="evidence-confidence-label">' + escapeHtml(confidence ? confidence.label + " confidence" : "Confidence unavailable") + '</strong><span class="evidence-confidence-copy">' + escapeHtml(weightSummary || "Evidence weighting unavailable") + '</span></div></div><h4>Why This Recommendation</h4>' + (prescription.userExplanation ? '<p class="rationale-reason">' + escapeHtml(prescription.userExplanation) + '</p>' : '') + (prescription.prescribedLoad?.reason ? '<p class="settings-note"><strong>History and high watermark:</strong> ' + escapeHtml(prescription.prescribedLoad.reason) + '</p>' : '') + (changes.length ? '<div class="prescription-change-list"><strong>What changed</strong><span>' + escapeHtml(changes.join(' · ')) + '</span></div>' : '') + '<div class="rationale-facts">' + scores.map(([label, value]) => '<div class="rationale-fact"><span>' + escapeHtml(label) + '</span><strong>' + escapeHtml(value) + '</strong></div>').join('') + '</div><h4>Evidence</h4>' + (evidenceItems.length ? '<ul>' + evidenceItems.map((item) => '<li>' + escapeHtml(item) + '</li>').join('') + '</ul>' : '<p class="settings-note">No evidence summary is stored with this recommendation.</p>') + (changeRule ? '<p class="settings-note"><strong>What would change this:</strong> ' + escapeHtml(changeRule) + '</p>' : '') + '</section>';
+        return '<details class="recommendation-section" data-disclosure-id="' + escapeHtml(options.idPrefix || "recommendation") + '-evidence"><summary><span>Evidence</span><span class="cnt">' + items.length + '</span></summary><div class="recommendation-section-body recommendation-rationale" aria-label="Recommendation evidence">' + (prescription.userExplanation ? '<p class="rationale-reason">' + escapeHtml(prescription.userExplanation) + '</p>' : '') + (changes.length ? '<div class="prescription-change-list"><strong>What changed</strong><span>' + escapeHtml(changes.join(' · ')) + '</span></div>' : '') + (prescription.prescribedLoad?.reason ? '<p class="settings-note"><strong>History and high watermark:</strong> ' + escapeHtml(prescription.prescribedLoad.reason) + '</p>' : '') + (items.length ? '<ul>' + items.map((item) => '<li>' + escapeHtml(item) + '</li>').join('') + '</ul>' : '<p class="settings-note">No evidence summary is stored with this recommendation.</p>') + (changeRule ? '<p class="settings-note"><strong>What would change this:</strong> ' + escapeHtml(changeRule) + '</p>' : '') + '</div></details>';
+      }
+
+      function renderUnifiedEvidence(snapshot, options = {}) {
+        return renderPrescriptionDetailSection(snapshot, options) + renderConfidenceSection(snapshot, options) + renderEvidenceSection(snapshot, options);
       }
 
       function renderUnifiedPrescriptionDetails(exercise, snapshot) {
@@ -1785,10 +1925,11 @@
           ? '<span class="meter" data-conf="' + confidence.level + '" aria-hidden="true"><i></i><i></i><i></i><i></i></span>'
           : "";
         const confidenceLine = confidence ? confidence.label + " confidence" : "Confidence unavailable";
-        const claimTitle = changed ? "Today only" : recommendationActionLabel(final);
+        const adjustedInSession = Boolean(exercise.overrideLocked && exercise.manualOverrides?.length);
+        const claimTitle = adjustedInSession ? "Adjusted in session" : changed ? "Today only" : recommendationActionLabel(final);
         const claimValue = changed ? finalLine : finalLine + " · " + structureText;
         const baseComparison = changed ? '<div class="prescription-base"><span>Base prescription</span><strong>' + escapeHtml(baseLine) + '</strong></div>' : "";
-        return '<section class="prescription-brief unified-prescription ' + (final.recommendationType.includes('deload') ? 'deload' : '') + ' ' + (changed ? 'readiness-adjusted' : '') + '" aria-label="Prescription and evidence"><div class="claim-card prescription-claim' + (confidence ? '' : ' confidence-unavailable') + '"' + confidenceAttributes + '><div class="cc-row"><span class="cc-title">' + escapeHtml(claimTitle) + '</span>' + confidenceMeter + '</div><strong class="cc-value">' + escapeHtml(claimValue) + '</strong><span class="cc-why">' + escapeHtml(confidenceLine + (weightSummary ? " · " + weightSummary : "")) + '</span>' + baseComparison + '<div class="claim-projection-grid prescription-claim-projections"><div><span class="claim-projection-label">Rest</span><strong class="claim-projection-value">' + escapeHtml(prescriptionMetric(final.restSeconds, ' sec')) + '</strong></div><div><span class="claim-projection-label">Frequency</span><strong class="claim-projection-value">' + escapeHtml(prescriptionMetric(final.frequencyPerWeek, '/week')) + '</strong></div><div><span class="claim-projection-label">Role</span><strong class="claim-projection-value">' + escapeHtml(final.role.replaceAll('_', ' ')) + '</strong></div></div><div class="claim-projection-rule"><span>Next action</span><strong>' + escapeHtml(final.progressionRule) + '</strong></div></div>' + (changed ? '<p class="readiness-temporary"><strong>Temporary:</strong> ' + escapeHtml(final.readinessAdjustment.explanation + ' ' + final.readinessAdjustment.resumeRule) + '</p>' : '') + renderRolePrescriptionDetails(exercise) + renderUnifiedEvidence(displaySnapshot) + '</section>';
+        return '<section class="prescription-brief unified-prescription recommendation-card-v2 ' + (final.recommendationType.includes('deload') ? 'deload' : '') + ' ' + (changed ? 'readiness-adjusted' : '') + '" aria-label="Prescription and evidence">' + renderRecommendationHead(displaySnapshot, { exercise }) + renderUnifiedEvidence(displaySnapshot, { exercise, idPrefix: "exercise-" + exercise.id }) + '</section>';
       }
 
       function renderPrescriptionDetails(exercise) {
@@ -1827,13 +1968,22 @@
         available.forEach((plate) => {
           const count = Math.floor((remaining + 0.001) / plate);
           if (count > 0) {
-            plates.push(count + " × " + plate);
+            plates.push({ count, plate });
             remaining = Math.round((remaining - count * plate) * 100) / 100;
           }
         });
-        const plateText = plates.length ? plates.join(" + ") : "empty bar";
-        const remainder = remaining > 0.01 ? " · " + remaining + " " + unit + " per side cannot be made with standard plates" : "";
-        return '<div class="plate-calculator"><strong>Plate calculator · ' + total + ' ' + unit + '</strong><span>Each side: ' + plateText + remainder + '</span></div>';
+        let x = 42;
+        const maxPlate = available[0];
+        const plateSvg = plates.flatMap(({ count, plate }, plateIndex) => Array.from({ length: count }, (_, index) => {
+          const height = Math.round(22 + (plate / maxPlate) * 32);
+          const width = Math.max(5, Math.round(5 + (plate / maxPlate) * 5));
+          const node = '<g class="plate plate-' + (plateIndex % 5) + '"><rect x="' + x + '" y="' + (42 - height / 2) + '" width="' + width + '" height="' + height + '" rx="2"/>' + (index === 0 ? '<text x="' + (x + width / 2) + '" y="79" text-anchor="middle">' + plate + '</text>' : '') + '</g>';
+          x += width + 2;
+          return node;
+        })).join('');
+        const summary = plates.length ? plates.map(({ count, plate }) => count + ' × ' + plate).join(' + ') : 'empty bar';
+        const remainder = remaining > 0.01 ? '<span class="d out">' + remaining + ' ' + unit + ' per side cannot be made</span>' : '';
+        return '<div class="plate-calculator"><strong>Plate calculator · ' + total + ' ' + unit + '</strong><svg class="plate-diagram" viewBox="0 0 180 86" role="img" aria-label="Each side: ' + escapeHtml(summary) + '"><line x1="8" y1="42" x2="170" y2="42"/><rect class="plate-sleeve" x="18" y="36" width="24" height="12" rx="2"/>' + plateSvg + '</svg><span>Each side: ' + escapeHtml(summary) + '</span>' + remainder + '</div>';
       }
 
       function isBarbellExercise(name) {
@@ -1845,32 +1995,45 @@
         if (!timer || timer.setId !== setId) return "";
         const elapsed = Math.max(0, timer.durationSeconds - timer.remainingSeconds);
         const progress = timer.durationSeconds > 0 ? Math.min(100, Math.round((elapsed / timer.durationSeconds) * 100)) : 100;
-        const notificationStatus = timer.notificationStatus === "scheduled" ? "Lock-screen alert scheduled" : timer.notificationStatus === "error" ? "Foreground alert only" : timer.notificationStatus === "paused" ? "Notification paused" : "Scheduling alert";
-        const sourceExercise = exerciseById(timer.exerciseId);
-        const nextSet = setById(timer.pendingNextSetId);
-        const nextExercise = nextSet ? exerciseById(nextSet.exerciseId) : null;
-        const nextContext = nextSet
-          ? "Next: " + (nextExercise?.name || sourceExercise?.name || "Exercise") + " · " + setExecutionLabel(nextSet)
-          : "Final set";
+        const nextContext = timerNextContextLabel(timer);
+        const notificationStatus = timerNotificationStatusLabel(timer);
         return `
-          <details class="timer-bar" data-timer-id="${timer.id}">
+          <details class="timer-bar" data-timer-id="${timer.id}" data-disclosure-id="rest-timer" data-phase="${timer.remainingSeconds <= 10 ? "final" : "resting"}" ${timer.isPaused ? 'data-paused="true"' : ""}>
             <summary class="timer-summary" aria-label="${timer.isPaused ? "Paused rest timer" : "Rest timer"}, ${formatTimer(timer.remainingSeconds)} remaining. Open timer controls.">
-              <span class="timer-rest-copy"><span>${timer.isPaused ? "Paused" : "Rest"}</span><small>${escapeHtml(nextContext)}</small></span>
-              <strong data-timer-progress-label>${formatTimer(timer.remainingSeconds)}</strong>
               <span class="timer-progress" role="progressbar" aria-label="Rest elapsed" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}" style="--timer-progress:${progress}%"><span></span></span>
+              <span class="timer-rest-copy"><span>${timer.isPaused ? "Paused" : "Rest"}</span></span>
+              <strong data-timer-progress-label>${formatTimer(timer.remainingSeconds)}</strong>
             </summary>
             <div class="timer-controls-panel">
-              <div class="timer-heading"><span class="timer-icon" aria-hidden="true">&#9201;</span><div class="timer-heading-copy"><span>${timer.isPaused ? "Paused" : "Rest"}</span><strong data-timer-countdown>${formatTimer(timer.remainingSeconds)}</strong><small>${escapeHtml(notificationStatus)}</small></div></div>
-              <div class="timer-secondary-controls"><button class="timer-control timer-pause" type="button" data-action="toggle-timer" title="${timer.isPaused ? "Resume timer" : "Pause timer"}" aria-label="${timer.isPaused ? "Resume timer" : "Pause timer"}">${timer.isPaused ? icon.play : icon.pause}</button><button class="timer-control timer-cancel" type="button" data-action="clear-timer" title="Cancel timer" aria-label="Cancel timer">${icon.delete}</button></div>
               <div class="timer-primary-controls" aria-label="Rest timer adjustments">
                 <button class="timer-adjust" type="button" data-action="adjust-timer" data-seconds="-15" title="Reduce rest by 15 seconds" aria-label="Reduce rest by 15 seconds">− 15 sec</button>
                 <button class="timer-adjust" type="button" data-action="adjust-timer" data-seconds="15" title="Add 15 seconds" aria-label="Add 15 seconds">+ 15 sec</button>
                 <button class="timer-skip" type="button" data-action="skip-timer" title="Skip remaining rest">Skip rest</button>
               </div>
-              <div class="timer-context">After ${escapeHtml(sourceExercise?.name || "this set")} ${nextSet ? "&#8226; Next: " + escapeHtml(nextExercise?.name || sourceExercise?.name || "Exercise") + " &#8226; " + escapeHtml(setExecutionLabel(nextSet)) : "&#8226; Final set"}</div>
+              <div class="timer-secondary-controls"><button class="timer-control timer-pause" type="button" data-action="toggle-timer" title="${timer.isPaused ? "Resume timer" : "Pause timer"}" aria-label="${timer.isPaused ? "Resume timer" : "Pause timer"}">${timer.isPaused ? icon.play : icon.pause}</button><button class="timer-control timer-cancel" type="button" data-action="clear-timer" title="Cancel timer" aria-label="Cancel timer">${icon.delete}</button></div>
+              <div class="timer-context">${escapeHtml(nextContext + " · " + notificationStatus)}</div>
             </div>
           </details>
         `;
+      }
+
+      function timerNotificationStatusLabel(timerSnapshot) {
+        return timerSnapshot?.notificationStatus === "scheduled"
+          ? "Lock-screen alert scheduled"
+          : timerSnapshot?.notificationStatus === "error"
+            ? "Foreground alert only"
+            : timerSnapshot?.notificationStatus === "paused"
+              ? "Notification paused"
+              : "Scheduling alert";
+      }
+
+      function timerNextContextLabel(timerSnapshot) {
+        const sourceExercise = exerciseById(timerSnapshot?.exerciseId);
+        const nextSet = setById(timerSnapshot?.pendingNextSetId);
+        const nextExercise = nextSet ? exerciseById(nextSet.exerciseId) : null;
+        return nextSet
+          ? "Next: " + (nextExercise?.name || sourceExercise?.name || "Exercise") + " · " + setExecutionLabel(nextSet)
+          : "Final set";
       }
 
       function renderTimerCompleteNotice() {
@@ -2188,7 +2351,7 @@
       function renderGuidedCompletion(draft, headerHtml) {
         const result = draft.creationResult || {};
         const action = result.createdCount && result.updatedCount ? 'created and updated' : result.updatedCount ? 'updated' : 'created';
-        return '<section class="guided-builder guided-completion" role="status" aria-live="polite">' + headerHtml + '<div class="completion-mark" aria-hidden="true">✓</div><div class="section-heading"><div><div class="section-kicker">Mesocycle completed</div><h2>Your workout templates were ' + action + ' successfully.</h2><p>' + Number(result.templateCount || 0) + ' workout template' + (Number(result.templateCount || 0) === 1 ? '' : 's') + ' for ' + draft.durationWeeks + ' weeks · ' + draft.trainingDays + ' training days per week.</p></div></div><div class="rollup"><span class="ru"><b>' + Number(result.templateCount || 0) + '</b><span>templates</span></span><span class="ru"><b>' + draft.durationWeeks + '</b><span>weeks</span></span><span class="ru"><b>' + Number(result.acceptedWarningIds?.length || 0) + '</b><span>accepted exceptions</span></span></div><div class="row wrap"><button class="primary-action" type="button" data-action="view-created-templates">View Templates</button><button type="button" data-action="view-completed-mesocycle">View Mesocycle</button><button type="button" data-action="start-first-mesocycle-template">Start First Workout</button></div></section>';
+        return '<section class="guided-builder guided-completion" role="status" aria-live="polite">' + headerHtml + '<div class="completion-mark" aria-hidden="true">' + icon.done + '</div><div class="section-heading"><div><div class="section-kicker">Mesocycle completed</div><h2>Your workout templates were ' + action + ' successfully.</h2><p>' + Number(result.templateCount || 0) + ' workout template' + (Number(result.templateCount || 0) === 1 ? '' : 's') + ' for ' + draft.durationWeeks + ' weeks · ' + draft.trainingDays + ' training days per week.</p></div></div><div class="rollup"><span class="ru"><b>' + Number(result.templateCount || 0) + '</b><span>templates</span></span><span class="ru"><b>' + draft.durationWeeks + '</b><span>weeks</span></span><span class="ru"><b>' + Number(result.acceptedWarningIds?.length || 0) + '</b><span>accepted exceptions</span></span></div><div class="row wrap"><button class="primary-action" type="button" data-action="view-created-templates">View Templates</button><button type="button" data-action="view-completed-mesocycle">View Mesocycle</button><button type="button" data-action="start-first-mesocycle-template">Start First Workout</button></div></section>';
       }
 
       function renderGuidedViabilityFindings(result) {
@@ -2298,7 +2461,7 @@
                   ? { tone: 'under', text: 'rebalance' }
                   : { tone: 'on', text: 'on' };
           const targetConfidence = item.targetRange.evidenceFallback ? ' data-conf="1" aria-label="Research-default weekly target range"' : '';
-          return '<div class="drow guided-priority-row ' + item.overallStatus + '"><span class="plan"><button type="button" class="guided-muscle-link" data-action="choose-guided-muscle" data-muscle-group-id="' + escapeHtml(item.muscleGroupId) + '"><span class="lbl">' + escapeHtml(presentationLabel(item.muscleGroupId)) + '</span><span class="val big">' + item.totalEffectiveSets + '</span></button><small>' + item.directSets + ' direct + ' + item.fractionalSets + ' fractional</small></span><span class="act guided-target-claim"' + targetConfidence + '><span class="lbl">Target range</span><span class="val big">' + item.targetRange.min + '–' + item.targetRange.max + '</span></span><span class="dlt"><span class="d ' + deltaPresentation.tone + '">' + deltaPresentation.text + '</span><span class="status-pill ' + classFor(item) + '">' + labelFor(item, index) + '</span><small>Frequency ' + (item.frequencyTarget - item.frequencyRemaining) + ' of ' + item.frequencyTarget + '</small></span></div>';
+          return '<div class="drow guided-priority-row ' + item.overallStatus + '"><span class="plan"><button type="button" class="guided-muscle-link" data-action="choose-guided-muscle" data-muscle-group-id="' + escapeHtml(item.muscleGroupId) + '"><span class="lbl">' + escapeHtml(presentationLabel(item.muscleGroupId)) + '</span><span class="val big">' + item.totalEffectiveSets + '</span></button>' + rangeBar({ low: item.targetRange.min, high: item.targetRange.max, actual: item.totalEffectiveSets, tone: deltaPresentation.tone }) + '<small>' + item.directSets + ' direct + ' + item.fractionalSets + ' fractional</small></span><span class="act guided-target-claim"' + targetConfidence + '><span class="lbl">Target range</span><span class="val big">' + item.targetRange.min + '–' + item.targetRange.max + '</span></span><span class="dlt"><span class="d ' + deltaPresentation.tone + '">' + deltaPresentation.text + '</span><span class="status-pill ' + classFor(item) + '">' + labelFor(item, index) + '</span>' + pips(item.frequencyTarget - item.frequencyRemaining, item.frequencyTarget, 'Frequency ' + (item.frequencyTarget - item.frequencyRemaining) + ' of ' + item.frequencyTarget) + '</span></div>';
         };
         const rows = visible.length ? visible.map(row).join('') : '<div class="empty-state">No unresolved muscle-group requirements.</div>';
         const completedPanel = completed.length ? '<details class="guided-completed-summary"><summary>Within target · ' + completed.length + ' muscle group' + (completed.length === 1 ? '' : 's') + '</summary><div class="diff guided-volume-diff">' + completed.map(row).join('') + '</div></details>' : '';
@@ -2350,7 +2513,7 @@
             const unlocked = index <= transientUnlocked;
             const completed = (progressState?.completedSteps || []).includes(step) || (!draft && index < activeIndex);
             const stateClass = index === activeIndex ? 'on current' : completed ? 'done completed' : unlocked ? 'unlocked' : 'locked';
-            return '<button type="button" class="' + stateClass + '" data-action="guided-step" data-step="' + step + '" ' + (!unlocked ? 'disabled' : '') + ' aria-current="' + (index === activeIndex ? 'step' : 'false') + '" aria-label="' + escapeHtml(label + (index === activeIndex ? ', current step' : completed ? ', completed step' : unlocked ? ', available step' : ', locked step')) + '"><span class="sr-only">' + (completed ? '✓ ' : '') + label + '</span></button>';
+            return '<button type="button" class="' + stateClass + '" data-action="guided-step" data-step="' + step + '" ' + (!unlocked ? 'disabled' : '') + ' aria-current="' + (index === activeIndex ? 'step' : 'false') + '" aria-label="' + escapeHtml(label + (index === activeIndex ? ', current step' : completed ? ', completed step' : unlocked ? ', available step' : ', locked step')) + '"><span class="sr-only">' + (completed ? 'Completed: ' : '') + label + '</span></button>';
           }).join('') + '</div><div class="step-label"><b>' + escapeHtml(activeLabel) + '</b><span>' + (activeIndex + 1) + ' of ' + guidedMesocycleApi.STEPS.length + '</span></div></nav>';
         };
         const header = (step, backAction) => '<div class="guided-builder-header"><div class="row split"><button type="button" data-action="' + backAction + '">Back</button><button type="button" data-action="open-guided-guidelines">Programming Guide</button></div>' + progress(step) + '</div>';
@@ -2400,5 +2563,5 @@
           if (prescriptionEngine?.canDeleteMesocycle(mesocycle)) actions.push(pendingDeleteMesocycleId === mesocycle.id ? '<span><button class="danger" type="button" data-action="confirm-delete-mesocycle" data-mesocycle-id="' + mesocycle.id + '">Confirm delete</button><button type="button" data-action="cancel-delete-mesocycle">Cancel</button></span>' : '<button class="danger" type="button" data-action="request-delete-mesocycle" data-mesocycle-id="' + mesocycle.id + '">Delete unused draft</button>');
           return actions.length ? '<div class="row wrap">' + actions.join('') + '</div>' : '';
         };
-        return `<section class="screen-section mesocycle-history"><div class="section-heading"><div><div class="section-kicker">Template Management</div><h2>Historical Mesocycles</h2><p>Review completed, archived, abandoned, and earlier blocks.</p></div></div>${historical.length ? historical.map((mesocycle) => '<article class="mesocycle-card mesocycle-history-summary"><div class="row split"><div><strong>' + escapeHtml(mesocycle.name) + '</strong><small>' + escapeHtml(mesocycleTypeLabel(mesocycle.type)) + '</small></div><span class="status-pill neutral">' + escapeHtml(presentationLabel(mesocycle.status)) + '</span></div><div class="mesocycle-history-meta"><span>Created ' + formatDate(mesocycle.createdAt) + '</span><span>' + (mesocycle.startedAt ? 'Started ' + formatDate(mesocycle.startedAt) : 'Never activated') + '</span><span>' + (mesocycle.completedAt ? 'Completed ' + formatDate(mesocycle.completedAt) : mesocycle.abandonedAt ? 'Abandoned ' + formatDate(mesocycle.abandonedAt) : 'Not completed') + '</span><span>' + (mesocycle.selectedPortfolio?.length || 0) + ' exercises</span></div>' + historyActions(mesocycle) + '</article>').join('') : '<div class="empty-state">Completed and previous mesocycles will appear here.</div>'}</section>`;
+        return `<section class="screen-section mesocycle-history"><div class="section-heading"><div><div class="section-kicker">Template Management</div><h2>Historical Mesocycles</h2><p>Review completed, archived, abandoned, and earlier blocks.</p></div></div>${historical.length ? historical.map((mesocycle) => '<article class="mesocycle-card mesocycle-history-summary"><div class="row split"><div><strong>' + escapeHtml(mesocycle.name) + '</strong><small>' + escapeHtml(mesocycleTypeLabel(mesocycle.type)) + '</small></div><span class="status-pill neutral">' + escapeHtml(presentationLabel(mesocycle.status)) + '</span></div><div class="mesocycle-timeline" role="list" aria-label="' + escapeHtml(mesocycle.name) + ' lifecycle"><span class="timeline-node complete" role="listitem"><i></i><b>Created</b><small>' + formatDate(mesocycle.createdAt) + '</small></span><span class="timeline-node ' + (mesocycle.startedAt ? 'complete' : 'pending') + '" role="listitem"><i></i><b>Started</b><small>' + (mesocycle.startedAt ? formatDate(mesocycle.startedAt) : 'Not activated') + '</small></span><span class="timeline-node ' + (mesocycle.completedAt || mesocycle.abandonedAt ? 'complete' : 'pending') + '" role="listitem"><i></i><b>' + (mesocycle.abandonedAt ? 'Abandoned' : 'Completed') + '</b><small>' + (mesocycle.completedAt ? formatDate(mesocycle.completedAt) : mesocycle.abandonedAt ? formatDate(mesocycle.abandonedAt) : 'Not completed') + '</small></span><span class="timeline-node complete" role="listitem"><i></i><b>Exercises</b><small>' + (mesocycle.selectedPortfolio?.length || 0) + '</small></span></div>' + historyActions(mesocycle) + '</article>').join('') : '<div class="empty-state actionable"><span class="glyph" aria-hidden="true">' + icon.templates + '</span><strong>No previous blocks yet</strong><span>Use Plan Your Mesocycle above to create the first lifecycle record.</span></div>'}</section>`;
       }

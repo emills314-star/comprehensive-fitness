@@ -4589,6 +4589,16 @@
     return prescription;
   }
 
+  function applyRecordedTargetRpe(prescription, target) {
+    const value = number(target, NaN);
+    if (!Number.isFinite(value) || value < 0 || value > 10) throw new Error("Manual RPE override must be between 0 and 10.");
+    prescription.targetRpe = { min: value, max: value };
+    prescription.targetRir = { min: 10 - value, target: 10 - value, max: 10 - value };
+    if (prescription.topSet) prescription.topSet = { ...prescription.topSet, targetRpe: value, targetRir: 10 - value };
+    if (prescription.backoffSets) prescription.backoffSets = { ...prescription.backoffSets, targetRpe: value, targetRir: 10 - value };
+    return prescription;
+  }
+
   function applyRecordedSetStructure(prescription, setStructure) {
     prescription.setStructure = setStructure;
     prescription.setStructureReason = "Manual user override for this workout; the decision engine will not replace it during the same workout.";
@@ -4733,6 +4743,7 @@
       "setCount",
       "repRange",
       "load",
+      "targetRpe",
       "setStructure",
       "rolePrescription",
       "deloadRecommendation",
@@ -4789,6 +4800,10 @@
     if (changes.repRange) expected.repRange = requireDeclaredChangePair(changes.repRange, expected.repRange, "repRange");
     if (changes.rolePrescription) applyRecordedRolePrescription(expected, requireDeclaredChangePair(changes.rolePrescription, compactRolePrescription(expected), "rolePrescription"));
     if (changes.load) applyRecordedLoad(expected, requireDeclaredChangePair(changes.load, expected.prescribedLoad?.target ?? null, "load"));
+    if (changes.targetRpe) {
+      const targetRpe = requireDeclaredChangePair(changes.targetRpe, expected.targetRpe, "targetRpe");
+      applyRecordedTargetRpe(expected, targetRpe.max);
+    }
     if (changes.setStructure) applyRecordedSetStructure(expected, requireDeclaredChangePair(changes.setStructure, expected.setStructure, "setStructure"));
     if (changes.deloadRecommendation) applyRecordedDeloadRecommendation(expected, requireDeclaredChangePair(changes.deloadRecommendation, expected.recommendationType, "deloadRecommendation"));
     if (changes.exerciseRotation) expected.recommendationType = requireDeclaredChangePair(changes.exerciseRotation, expected.recommendationType, "exerciseRotation");
@@ -5692,7 +5707,7 @@
     const supportedOverrideInputFields = new Set([
       "exerciseId", "exerciseSelection", "replacementExerciseId", "researchExerciseId", "research_exercise_id",
       "painFreeConfirmed", "reason", "setCount", "workingSets", "repRange", "load", "prescribedLoad",
-      "setStructure", "topSet", "backoffSets", "deloadRecommendation", "exerciseRotation", "mesocycleId"
+      "rpe", "setStructure", "topSet", "backoffSets", "deloadRecommendation", "exerciseRotation", "mesocycleId"
     ]);
     const unsupportedOverrideInputs = Object.keys(override).filter((field) => override[field] !== undefined && !supportedOverrideInputFields.has(field));
     if (unsupportedOverrideInputs.length) throw new Error(`Unsupported manual override fields are not represented by the current audit contract: ${unsupportedOverrideInputs.join(", ")}.`);
@@ -5845,6 +5860,16 @@
       if (load !== (final.prescribedLoad?.target ?? null)) {
         applied.load = { from: final.prescribedLoad?.target ?? null, to: load };
         applyRecordedLoad(final, load);
+      }
+    }
+    const rpe = nullableNumber(override.rpe);
+    if (override.rpe !== undefined && override.rpe !== null && rpe === null) throw new Error("Manual RPE override must be numeric.");
+    if (rpe !== null) {
+      if (rpe < 0 || rpe > 10) throw new Error("Manual RPE override must be between 0 and 10.");
+      const nextTargetRpe = { min: rpe, max: rpe };
+      if (!auditValuesMatch(nextTargetRpe, final.targetRpe)) {
+        applied.targetRpe = { from: deepClone(final.targetRpe), to: nextTargetRpe };
+        applyRecordedTargetRpe(final, rpe);
       }
     }
     if (override.setStructure) {

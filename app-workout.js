@@ -607,6 +607,7 @@
       function applyPrescriptionOverride(exerciseId, form, options = {}) {
         const exercise = exerciseById(exerciseId);
         if (!exercise?.recommendationSnapshot || !prescriptionEngine || !form) return;
+        const directOverride = typeof form.querySelector === "function" ? null : { ...form };
         const current = exercise.recommendationSnapshot.finalPrescription;
         const restriction = current.safetyRestriction || null;
         const currentSafetyContext = restriction
@@ -616,8 +617,8 @@
           || restriction?.status === "blocked"
           || (restriction?.status === "resolved_by_confirmed_substitute" && currentSafetyContext?.resolvedValidation?.valid !== true);
         const safetyContext = safetyLocked ? currentSafetyContext : null;
-        const read = (field) => form.querySelector(`[data-override-field="${field}"]`)?.value ?? "";
-        const override = {};
+        const read = (field) => directOverride ? "" : form.querySelector(`[data-override-field="${field}"]`)?.value ?? "";
+        const override = directOverride || {};
         const roleStandard = options.standardWorkload && ["top_set_backoff", "multiple_top_sets"].includes(current.setStructure);
         const roleValue = (prefix) => ({
           count: Number(read(`${prefix}-sets`)),
@@ -641,7 +642,7 @@
             if (!Number.isInteger(standardRepMin) || !Number.isInteger(standardRepMax) || standardRepMin < 1 || standardRepMax > 50 || standardRepMin > standardRepMax) return showAppToast("Choose a valid rep range from 1 to 50.");
           }
         }
-        const replacementName = String(read("exercise")).trim();
+        const replacementName = directOverride ? "" : String(read("exercise")).trim();
         let replacementId = "";
         if (replacementName) {
           replacementId = safetyLocked
@@ -657,8 +658,8 @@
             override.painFreeConfirmed = form.querySelector('[data-override-field="pain-free-confirmed"]')?.checked === true;
           } else if (replacementId !== current.exerciseId) override.exerciseId = replacementId;
         }
-        if (safetyLocked && !replacementName) return showAppToast("Choose a distinct engine-confirmed substitute before resolving this safety restriction.");
-        if (!safetyLocked) {
+        if (!directOverride && safetyLocked && !replacementName) return showAppToast("Choose a distinct engine-confirmed substitute before resolving this safety restriction.");
+        if (!directOverride && !safetyLocked) {
           if (roleStandard) {
             const top = roleValue("top");
             const currentTopRange = current.topSet?.repRange || current.repRange;
@@ -686,7 +687,7 @@
           const mesocycleId = read("mesocycle");
           if (mesocycleId && mesocycleId !== exercise.recommendationSnapshot.mesocycleId) override.mesocycleId = mesocycleId;
         }
-        const reason = String(read("reason")).trim() || (options.standardWorkload ? "Standard workload preference" : "Intentional workout prescription override");
+        const reason = String(options.reason || read("reason")).trim() || (options.standardWorkload ? "Standard workload preference" : "Intentional workout prescription override");
         if (override.deloadRecommendation && override.deloadRecommendation !== "normal" && !current.recommendationType.includes("deload")) {
           if (override.setCount === undefined) override.setCount = Math.max(1, Math.ceil(current.workingSets.target * 0.5));
           if (override.load === undefined && Number(current.prescribedLoad?.target || 0) > 0) override.load = Number((current.prescribedLoad.target * (override.deloadRecommendation === "full_program_deload" ? 0.85 : 0.9)).toFixed(2));
@@ -783,7 +784,7 @@
         const replacedSetIds = new Set(incompleteWorking.map((set) => set.id));
         const nextName = replacementId ? exerciseNameForPrescriptionId(replacementId, replacementName) : exercise.name;
         const overrideEntry = { ...snapshot.manualOverrides.at(-1), recommendationId: snapshot.recommendationId, exerciseRuntimeId: exercise.id, sessionId: exercise.sessionId };
-        const nextExercise = { ...exercise, name: nextName, recommendationSnapshot: snapshot, basePrescription: snapshot.basePrescription, finalPrescription: prescription, prescription: target, adjustmentReason: target.adjustmentReason || "", isDeload: prescription.recommendationType.includes("deload"), executionBlocked: Boolean(prescription.executionBlocked), safetyRestriction: prescription.safetyRestriction || null, manualOverrides: [...(exercise.manualOverrides || []), overrideEntry], overrideLocked: true, restSeconds: prescription.restSeconds.target };
+        const nextExercise = { ...exercise, name: nextName, recommendationSnapshot: snapshot, basePrescription: snapshot.basePrescription, finalPrescription: prescription, prescription: target, adjustmentReason: target.adjustmentReason || "", isDeload: prescription.recommendationType.includes("deload"), executionBlocked: Boolean(prescription.executionBlocked), safetyRestriction: prescription.safetyRestriction || null, manualOverrides: [...(exercise.manualOverrides || []), overrideEntry], overrideLocked: true, restSeconds: prescription.restSeconds.target, pendingReconcile: options.clearPendingReconcile ? null : exercise.pendingReconcile };
         const workoutRecommendations = session?.workoutPrescription?.recommendations || [];
         const workoutPrescription = session?.workoutPrescription ? {
           ...session.workoutPrescription,
@@ -795,16 +796,20 @@
         const recommendationHistory = data.recommendationHistory.some((item) => item.recommendationId === snapshot.recommendationId)
           ? data.recommendationHistory.map((item) => item.recommendationId === snapshot.recommendationId ? snapshot : item)
           : [...data.recommendationHistory, snapshot];
+        const retainedSets = data.sets.filter((set) => !replacedSetIds.has(set.id)).map((set) =>
+          options.sourceSetId && set.id === options.sourceSetId ? { ...set, ...(options.sourceSetPatch || {}) } : set
+        );
         commit({
           ...data,
           sessions: data.sessions.map((item) => item.id === exercise.sessionId ? { ...item, mesocycleId: snapshot.mesocycleId || item.mesocycleId, workoutPrescription } : item),
           exercises: data.exercises.map((item) => item.id === exercise.id ? nextExercise : item),
-          sets: [...data.sets.filter((set) => !replacedSetIds.has(set.id)), ...rebuiltIncomplete],
+          sets: [...retainedSets, ...rebuiltIncomplete],
           templates: templatesWithStandard(),
           recommendationHistory,
           manualOverrides: [...data.manualOverrides, overrideEntry]
         }, true, { invalidateAnalysis: false, deferPersistence: true });
-        showAppToast(options.standardWorkload ? (standardTemplateValues ? "Standard workload applied and saved for future sessions." : "Standard workload applied to this session.") : "Prescription override saved and locked for this workout.");
+        showAppToast(options.toast || (options.standardWorkload ? (standardTemplateValues ? "Standard workload applied and saved for future sessions." : "Standard workload applied to this session.") : "Prescription override saved and locked for this workout."));
+        return snapshot;
       }
 
       function patchExercise(exerciseId, patch, shouldRender = true) {
@@ -898,7 +903,7 @@
           classifiedAt: isoNow(),
           classificationUndo: current.classificationUndo || { setType: current.setType, isWarmup: current.isWarmup, countsTowardScore: current.countsTowardScore, countsTowardVolume: current.countsTowardVolume, countsTowardProgression: current.countsTowardProgression, classificationSource: current.classificationSource, classificationConfidence: current.classificationConfidence, manualOverride: current.manualOverride, reviewRequired: current.reviewRequired }
         });
-        showAppToast("Set type updated. Analysis and template history will use the correction.");
+        showAppToast("Set type updated. Analysis and template history will use the correction.", { severity: "success", action: "undo-set-type-override", actionLabel: "Undo", setId });
       }
 
       function undoManualSetType(setId) {
@@ -946,6 +951,70 @@
         patchSet(setId, patch, shouldRender);
       }
 
+      function completedSetReconcileState(set, exercise) {
+        if (!set || !exercise || setTypeSemantics(set).isWarmup) return null;
+        const remainingSets = setsForExercise(exercise.id).filter((item) =>
+          item.id !== set.id && isWorkingSet(item, "score") && !item.completed && !item.skipped
+        );
+        if (!remainingSets.length) return null;
+        const fields = [];
+        const resistanceType = resistanceTypeFor(exercise, set);
+        const targetWeight = Number(set.targetWeight ?? 0);
+        const actualWeight = resistanceLoad(set, resistanceType);
+        const increment = Number(exercise.prescription?.increment || progressionProfileForExercise(exercise.name).increment || 0);
+        if (resistanceType !== "bodyweight" && targetWeight > 0 && Math.abs(actualWeight - targetWeight) > Math.max(increment, targetWeight * 0.03)) fields.push("load");
+        const targetRepMin = Number(set.targetRepMin || set.targetReps || 0);
+        const targetRepMax = Number(set.targetRepMax || set.targetReps || 0);
+        if (targetRepMin > 0 && targetRepMax > 0 && (Number(set.reps || 0) < targetRepMin || Number(set.reps || 0) > targetRepMax)) fields.push("reps");
+        const targetRpe = Number(set.targetRpe || set.targetRpeMax || set.targetRpeMin || 0);
+        if (targetRpe > 0 && Number(set.rpe || 0) > 0 && Math.abs(Number(set.rpe) - targetRpe) > 1) fields.push("rpe");
+        return fields.length ? { setId: set.id, fields, remainingSetCount: remainingSets.length } : null;
+      }
+
+      function reconcileCompletedSet(exerciseId, applyToRemaining) {
+        const exercise = exerciseById(exerciseId);
+        const pending = exercise?.pendingReconcile;
+        const sourceSet = pending ? setById(pending.setId) : null;
+        if (!exercise || !pending || !sourceSet) return;
+        if (!applyToRemaining) {
+          patchSet(sourceSet.id, { deviationIntent: "one_off" }, false);
+          patchExercise(exercise.id, { pendingReconcile: null }, false);
+          syncReconcilePromptDom(exercise.id);
+          showAppToast("Logged as a deliberate one-off. Remaining targets were not changed.");
+          return;
+        }
+        const fields = new Set(pending.fields || []);
+        const resistanceType = resistanceTypeFor(exercise, sourceSet);
+        const override = {};
+        const sourceSetPatch = { deviationIntent: "accepted" };
+        if (fields.has("load")) {
+          const load = resistanceLoad(sourceSet, resistanceType);
+          override.load = load;
+          sourceSetPatch.targetWeight = load;
+        }
+        if (fields.has("reps")) {
+          const reps = Number(sourceSet.reps || 0);
+          override.repRange = { min: reps, max: reps };
+          sourceSetPatch.targetReps = reps;
+          sourceSetPatch.targetRepMin = reps;
+          sourceSetPatch.targetRepMax = reps;
+        }
+        if (fields.has("rpe")) {
+          const rpe = Number(sourceSet.rpe || 0);
+          override.rpe = rpe;
+          sourceSetPatch.targetRpe = rpe;
+          sourceSetPatch.targetRpeMin = rpe;
+          sourceSetPatch.targetRpeMax = rpe;
+        }
+        applyPrescriptionOverride(exercise.id, override, {
+          reason: "in_session_edit",
+          sourceSetId: sourceSet.id,
+          sourceSetPatch,
+          clearPendingReconcile: true,
+          toast: "Remaining sets updated. Today's grade will use the new targets."
+        });
+      }
+
       function toggleSetCompletion(setId) {
         const interactionStartedAt = performanceNow();
         const authorization = guardWorkoutMutation("toggle-set", { setId });
@@ -967,8 +1036,11 @@
 
         const next = nextIncompleteSet(set.id);
         const exercise = exerciseById(set.exerciseId);
+        const pendingReconcile = completedSetReconcileState(set, exercise);
         patchSet(set.id, { completed: true, skipped: false }, false);
+        if (pendingReconcile) patchExercise(exercise.id, { pendingReconcile }, false);
         applyCompletedSetVisual(set.id);
+        if (pendingReconcile) syncReconcilePromptDom(exercise.id);
         if (next && data.settings.autoStartRestTimer !== false) {
           startTimer(exercise?.id || set.exerciseId, set.id, { pendingNextSetId: next.id, deferRender: true });
           recordPerformance("interaction:completeSet", interactionStartedAt, { setId, timerStarted: true });

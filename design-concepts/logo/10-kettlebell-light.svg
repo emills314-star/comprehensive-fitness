@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Comprehensive Fitness - Kettlebell">
+  <defs>
+    <linearGradient id="bg-10-kettlebell-light" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#eef2f6"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="220" fill="url(#bg-10-kettlebell-light)"/>
+  <path d="M 428 556 C 414 236 610 236 596 556" fill="none" stroke="#1769d2" stroke-width="54" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="512" cy="660" r="192" fill="#1769d2"/>
+  <rect x="356" y="790" width="312" height="72" rx="32" fill="#183b62"/>
+</svg>

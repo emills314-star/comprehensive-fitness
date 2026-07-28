@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Comprehensive Fitness - Press">
+  <defs>
+    <linearGradient id="bg-09-press-maskable" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#16283f"/>
+      <stop offset="1" stop-color="#07101d"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg-09-press-maskable)"/>
+  <rect x="248" y="272" width="528" height="58" rx="29" fill="#f4f7fa"/>
+  <rect x="248" y="236" width="62" height="130" rx="28" fill="#4fa3ff"/>
+  <rect x="714" y="236" width="62" height="130" rx="28" fill="#4fa3ff"/>
+  <path d="M 398 618 L 374 346" fill="none" stroke="#2f7bcf" stroke-width="62" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 626 618 L 650 346" fill="none" stroke="#2f7bcf" stroke-width="62" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="392" y="562" width="240" height="72" rx="36" fill="#2f7bcf"/>
+  <rect x="440" y="604" width="144" height="178" rx="70" fill="#2f7bcf"/>
+  <circle cx="512" cy="456" r="74" fill="#f4f7fa"/>
+</svg>

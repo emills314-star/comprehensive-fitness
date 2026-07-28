@@ -438,11 +438,17 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await expect(firstExercise.locator(".role-prescription-list"), "always-visible rationale must reuse the generated role rows").toContainText(`${generatedTarget.reps} reps`);
     await expect(recommendationClaim.locator('a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])'), "the always-visible claim and evidence must not introduce a keyboard stop").toHaveCount(0);
     const precedingExerciseMenu = firstExercise.locator(".exercise-overflow > summary");
+    const recommendationSections = firstExercise.locator(".recommendation-section > summary");
     const nextSetControl = firstExercise.locator(".set-block").first().locator('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]:not([tabindex="-1"])').first();
     await precedingExerciseMenu.focus();
     await expect(precedingExerciseMenu, "the traversal must begin at the real control immediately before the prescription surface").toBeFocused();
+    await expect(recommendationSections, "the compact prescription must expose its three native disclosure controls").toHaveCount(3);
+    for (let index = 0; index < await recommendationSections.count(); index += 1) {
+      await page.keyboard.press("Tab");
+      await expect(recommendationSections.nth(index), "Tab must traverse the prescription, confidence, and evidence disclosures in order").toBeFocused();
+    }
     await page.keyboard.press("Tab");
-    await expect(nextSetControl, "Tab must cross the non-interactive prescription evidence and land on the next real workout control").toBeFocused();
+    await expect(nextSetControl, "Tab must leave the recommendation disclosures for the next real workout control").toBeFocused();
 
     const stored = await waitForPersisted(page, (data) => {
       const sessions = data.sessions.filter((item) => item.templateId === IDS.controlTemplate && item.workoutStarted && !item.submitted);

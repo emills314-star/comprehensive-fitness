@@ -561,14 +561,18 @@ test("manual overrides are audited and locked for the workout", () => {
   const engine = createPrescriptionEngine(fixture());
   const snapshot = engine.prescribeExercise({ exerciseId: "personal_press", muscleGroupId: "chest", history: improvingHistory, createdAt: "2026-07-11T12:00:00.000Z" });
   const overridden = applyManualOverride(snapshot, {
-    setCount: 4, repRange: { min: 8, max: 12 }, load: 112.5, setStructure: "straight_sets",
+    setCount: 4, repRange: { min: 8, max: 12 }, load: 112.5, rpe: 8.5, setStructure: "straight_sets",
     deloadRecommendation: false, mesocycleId: "meso_user_choice"
   }, { workoutId: "workout_1", reason: "Good warm-ups", createdAt: "2026-07-11T12:05:00.000Z" });
   assert.strictEqual(overridden.finalPrescription.workingSets.target, 4);
   assert.strictEqual(overridden.finalPrescription.prescribedLoad.target, 112.5);
+  assert.deepStrictEqual(overridden.finalPrescription.targetRpe, { min: 8.5, max: 8.5 });
+  assert.deepStrictEqual(overridden.finalPrescription.targetRir, { min: 1.5, target: 1.5, max: 1.5 });
   assert.strictEqual(overridden.finalPrescription.setStructure, "straight_sets");
   assert.strictEqual(overridden.overrideLocked, true);
   assert.strictEqual(overridden.manualOverrides.length, 1);
+  assert.deepStrictEqual(overridden.manualOverrides[0].changes.targetRpe.to, { min: 8.5, max: 8.5 });
+  assert.doesNotThrow(() => deserializeRecommendationSnapshot(overridden), "The recorded RPE override must remain checksum-valid and replayable.");
   const recomputed = engine.prescribeExercise({ exerciseId: "personal_press", muscleGroupId: "chest", history: regressionHistory, createdAt: "2026-07-11T12:10:00.000Z" });
   assert.deepStrictEqual(reconcileRecommendation(overridden, recomputed), overridden, "same-workout override must not be undone");
   const evaluated = evaluateManualOverrideOutcome(overridden, { completed: true, progressed: true, recoveryCost: 30, pain: false }, { evaluatedAt: "2026-07-12T12:00:00.000Z" });

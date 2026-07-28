@@ -1,0 +1,24 @@
+<!--
+  Full-bleed variant of resources/icon.svg. Same geometry, no corner radius, so
+  the platform applies its own mask instead of double-rounding a pre-rounded
+  square. Feeds the manifest's purpose:"maskable" slot, the iOS AppIcon (which
+  must be opaque edge to edge) and the Android legacy launcher PNGs.
+
+  Edit resources/icon.svg first, mirror the change here, then regenerate:
+
+      node scripts/build-icons.js
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Comprehensive Fitness">
+  <defs>
+    <linearGradient id="cf-canvas-maskable" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#16283f"/>
+      <stop offset="1" stop-color="#07101d"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#cf-canvas-maskable)"/>
+  <rect x="122" y="488" width="780" height="48" rx="24" fill="#f4f7fa"/>
+  <rect x="236" y="352" width="80" height="320" rx="40" fill="#4fa3ff"/>
+  <rect x="708" y="352" width="80" height="320" rx="40" fill="#4fa3ff"/>
+  <rect x="160" y="402" width="56" height="220" rx="28" fill="#f4c84c"/>
+  <rect x="808" y="402" width="56" height="220" rx="28" fill="#f4c84c"/>
+</svg>

@@ -1,22 +1,22 @@
 # Repository agent guide
 
 > **Purpose:** Working agreement for coding agents  
-> **Last verified:** 2026-07-11 · `main` @ `7c52a2b`  
-> **Status:** VERIFIED against repository structure and test scripts  
+> **Last verified:** 2026-07-27
+> **Status:** VERIFIED by repository policy conflict audit; implementation facts still require revision-specific evidence
 > **Related:** [`docs/PROJECT.md`](docs/PROJECT.md), [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`docs/DECISION_ENGINE.md`](docs/DECISION_ENGINE.md), [`docs/UI_UX.md`](docs/UI_UX.md), [`docs/ROADMAP.md`](docs/ROADMAP.md)
 
 Before changing code, read the relevant documents in `docs/` and inspect the affected implementation. Code proves current behavior; it does not automatically prove intended behavior.
 
 ## Mandatory documentation loop
 
-Every application change must include its associated documentation change in the same task and working tree:
+Every integrated application change must include its associated documentation change in the same task and integration working tree:
 
 1. **Before implementation:** identify and read the documents governing the affected behavior.
 2. **During implementation:** keep code, tests, and documented intent separate when they disagree; do not silently choose one.
 3. **After implementation:** return to the governing documents and update them to match the verified result.
 4. **Before completion:** inspect the final diff and confirm that every changed application area has a corresponding documentation review or update.
 
-Do not postpone documentation to a later task. If a relevant document needs no text change, explicitly report that it was reviewed and why it remains accurate. A code-only application change is incomplete.
+Do not postpone integration-owned documentation to a later task. An isolated worker that does not own the governing documents must report the required documentation impact to the integration owner rather than editing shared documents outside its assignment. If a relevant document needs no text change, explicitly report that it was reviewed and why it remains accurate. A code-only integrated application change is incomplete.
 
 ## Required workflow
 
@@ -32,13 +32,15 @@ Do not postpone documentation to a later task. If a relevant document needs no t
 
 ## Approval preference
 
-The repository owner prefers agents to proceed autonomously and complete all safe, in-scope work without pausing for optional confirmation. When the execution environment requires approval, request it promptly and explain the concrete action. Where the interface supports persistent approvals, offer a reusable, reasonably scoped rule for the relevant command or workflow.
+The repository owner prefers agents to proceed autonomously with safe, reversible, in-scope local work without pausing for optional confirmation. This autonomy does not authorize committing, merging, accepting visual baselines, deploying, publishing, or pushing any branch. Those actions require explicit owner authorization in the current task. When the execution environment requires approval, request it promptly and explain the concrete action. Where the interface supports persistent approvals, offer a reusable, reasonably scoped rule for the relevant command or workflow.
 
 This preference does not grant permissions, disable sandboxing, or override platform safety controls. Do not claim that `AGENTS.md` enables global “approve everything,” and do not request blanket or unnecessarily broad command access. Actual approval mode must be configured by the repository owner in the Codex application or local session settings.
 
 ## Publishing policy
 
-After an in-scope change is implemented, tested, documented, and cross-checked, commit the completed change and push it to the repository's GitHub `main` branch unless the owner explicitly requests a different branch, a local-only result, or no publication. Do not describe work as complete before the push succeeds. Report the pushed commit identifier in the final response.
+Do not commit, merge, deploy, publish, or push when the prompt is silent about publication. Publication requires explicit owner authorization in the current task after the candidate revision has passed its applicable tests, documentation review, privacy review, independent review, and any required human acceptance gate. Authorization to commit or push a feature branch does not authorize merging or pushing to `main`; authorization to publish one revision does not carry forward to later revisions.
+
+When publication is explicitly authorized, publish only the reviewed candidate revision and destination named by the owner. Never use publication to satisfy a local implementation or review definition of done. Report the destination and pushed commit identifier after the action succeeds.
 
 Publishing source changes must never publish personal fitness or health data. Before staging, inspect the complete Git status and exclude all raw, normalized, derived, report, packaged, backup, or locally imported personal-data artifacts, including content under `personal_fitness_data/raw/`, `personal_fitness_data/normalized/`, `personal_fitness_data/derived/`, `personal_fitness_data/reports/`, `private-personal-data/`, and `www/private-personal-data/`. Also exclude credentials, tokens, environment files, deployment secrets, app-data exports, local databases, and generated audit artifacts that may contain user data.
 
@@ -65,6 +67,12 @@ Do not place secrets, credentials, tokens, private source exports, or raw person
 
 ## Definition of done
 
-A task is not complete until the implementation has been tested, the relevant documentation has been reviewed and updated, the staged content has passed the privacy review, and the completed source changes have been pushed to GitHub under the publishing policy above.
+Use the narrowest truthful completion state:
 
-The final report must name the documentation files updated, or name each reviewed document that required no change.
+- **Implemented locally:** the requested implementation, focused tests, documentation review, and local cross-check are complete.
+- **Review-ready:** the candidate revision and evidence are stable enough for the required independent or human review; required baselines remain unaccepted until the designated reviewer accepts them.
+- **Approved for publication:** all applicable automated, privacy, independent, and human acceptance gates have passed and the owner has explicitly authorized publication.
+- **Published:** the explicitly authorized revision reached the explicitly authorized destination and any required hosted verification completed.
+- **Blocked/incomplete:** a required in-scope gate failed or could not be checked.
+
+A local implementation or review task can be complete without a commit, deployment, or publication. Do not label a release published or hosted-verified until those actions actually succeed. The final report must name the documentation files updated, or name each reviewed document that required no change, and identify every unverified external, device, baseline, merge, deployment, or publication gate.
