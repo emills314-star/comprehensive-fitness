@@ -320,6 +320,7 @@ test.describe("Lift and Dashboard capability and accessibility invariants", () =
       "prairie-electric", "redwood-circuit", "mediterranean-set", "modern-primary", "night-stadium"
     ];
     const contrastFailures = [];
+    const dockAndGlyphContrast = [];
     const navigationHierarchyFailures = [];
     for (const theme of ["light", "dark"]) {
       for (const colorPackage of colorPackages) {
@@ -341,6 +342,62 @@ test.describe("Lift and Dashboard capability and accessibility invariants", () =
               theme,
               targets: violations.flatMap((violation) => violation.nodes.map((node) => node.target.join(" ")))
             });
+          }
+          if (surface === "lift") {
+            const samples = await page.evaluate(() => {
+              const parseColor = (value) => {
+                const parts = String(value).match(/[\d.]+/g)?.map(Number) || [];
+                return { r: parts[0] || 0, g: parts[1] || 0, b: parts[2] || 0, a: parts.length > 3 ? parts[3] : 1 };
+              };
+              const composite = (foreground, background) => {
+                const alpha = foreground.a + background.a * (1 - foreground.a);
+                if (!alpha) return { r: 255, g: 255, b: 255, a: 1 };
+                return {
+                  r: (foreground.r * foreground.a + background.r * background.a * (1 - foreground.a)) / alpha,
+                  g: (foreground.g * foreground.a + background.g * background.a * (1 - foreground.a)) / alpha,
+                  b: (foreground.b * foreground.a + background.b * background.a * (1 - foreground.a)) / alpha,
+                  a: alpha
+                };
+              };
+              const effectiveBackground = (element) => {
+                const layers = [];
+                for (let node = element; node; node = node.parentElement) layers.push(parseColor(getComputedStyle(node).backgroundColor));
+                let color = { r: 255, g: 255, b: 255, a: 1 };
+                for (const layer of layers.reverse()) color = composite(layer, color);
+                return color;
+              };
+              const luminance = (color) => {
+                const channel = (value) => {
+                  const normalized = value / 255;
+                  return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+                };
+                return 0.2126 * channel(color.r) + 0.7152 * channel(color.g) + 0.0722 * channel(color.b);
+              };
+              const ratio = (foreground, background) => {
+                const first = luminance(foreground);
+                const second = luminance(background);
+                return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
+              };
+              const sample = (name, selector) => {
+                const element = document.querySelector(selector);
+                if (!element) return { name, missing: true };
+                const foreground = parseColor(getComputedStyle(element).color);
+                const background = effectiveBackground(element);
+                return {
+                  name,
+                  foreground: `rgb(${Math.round(foreground.r)}, ${Math.round(foreground.g)}, ${Math.round(foreground.b)})`,
+                  background: `rgb(${Math.round(background.r)}, ${Math.round(background.g)}, ${Math.round(background.b)})`,
+                  ratio: Number(ratio(foreground, background).toFixed(2))
+                };
+              };
+              return [
+                sample("finish", ".session-dock-finish"),
+                sample("grip", ".exercise-grip"),
+                sample("exercise-overflow", ".exercise-overflow > summary"),
+                sample("session-overflow", ".session-dock-overflow > summary")
+              ];
+            });
+            dockAndGlyphContrast.push({ colorPackage, theme, samples });
           }
           if (surface === "dashboard") {
             const hierarchy = await page.evaluate(() => {
@@ -368,7 +425,10 @@ test.describe("Lift and Dashboard capability and accessibility invariants", () =
         }
       }
     }
+    console.log(`DOCK_GLYPH_CONTRAST ${JSON.stringify(dockAndGlyphContrast)}`);
     expect(contrastFailures, "every Lift/Dashboard package and theme must meet WCAG contrast").toEqual([]);
+    expect(dockAndGlyphContrast.flatMap((entry) => entry.samples.filter((sample) => sample.name === "finish" && (sample.missing || sample.ratio < 4.5)).map((sample) => ({ ...entry, samples: [sample] }))), "Finish must retain 4.5:1 text contrast across every package and theme").toEqual([]);
+    expect(dockAndGlyphContrast.flatMap((entry) => entry.samples.filter((sample) => sample.name !== "finish" && (sample.missing || sample.ratio < 3)).map((sample) => ({ ...entry, samples: [sample] }))), "22 px grip and overflow glyphs must retain 3:1 non-text contrast across every package and theme").toEqual([]);
     expect(navigationHierarchyFailures, "inactive navigation must remain visually subordinate while the bordered active tab carries state").toEqual([]);
   });
 
