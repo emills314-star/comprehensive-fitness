@@ -1,8 +1,10 @@
 # Work log template
 
-Use this for every user-facing implementation. Keep the final status honest:
+Use this for every user-facing implementation. Hosted deployment fields apply only when deployment is explicitly in scope. Keep the final status honest:
 
 - **Implemented locally:** code and tests are complete locally.
+- **Review-ready:** the candidate is ready for its required independent or human review.
+- **Approved for publication:** required gates passed and the owner explicitly authorized publication.
 - **Deployed:** the intended branch/build was published.
 - **Verified on hosted website:** the deployed URL passed the browser flow.
 - **Blocked/incomplete:** one of those gates failed or could not be checked.
@@ -30,4 +32,4 @@ Use this for every user-facing implementation. Keep the final status honest:
 
 ## Final status
 
-Use **Complete** only when Implemented locally, Deployed, and Verified on hosted website are all true. Otherwise use **Implemented locally**, **Deployed but not hosted-verified**, or **Blocked/incomplete** and explain the missing gate.
+Use the narrowest truthful state: **Implemented locally**, **Review-ready**, **Approved for publication**, **Published**, **Published but not hosted-verified**, or **Blocked/incomplete**. Local implementation and review tasks do not require deployment to be complete. Use **Published** only after the explicitly authorized revision reaches the explicitly authorized destination and all deployment-scoped verification succeeds.

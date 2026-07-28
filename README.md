@@ -13,7 +13,7 @@ A local-first, installable workout tracker for logging strength sessions and get
 
 Coding agents should begin with [AGENTS.md](AGENTS.md). The core documents distinguish verified implementation from planned behavior; focused research, private-pipeline, push, setup, and performance documents remain authoritative for their specialized details.
 
-Every application change must update its associated living documentation in the same task. Agents read the relevant documents before implementation, return to them after implementation, update `docs/ROADMAP.md`, and report any unresolved code-versus-intent mismatch as `NEEDS REVIEW`.
+Every integrated application change must update its associated living documentation in the same task. Agents read the relevant documents before implementation, return to them after implementation, update `docs/ROADMAP.md`, and report any unresolved code-versus-intent mismatch as `NEEDS REVIEW`. Isolated workers that do not own shared documentation report the required documentation impact to the integration owner.
 
 The repository also contains a private, reproducible [personal fitness data layer](personal_fitness_data/README.md). Its raw and generated health data are intentionally excluded from Git and deployment.
 

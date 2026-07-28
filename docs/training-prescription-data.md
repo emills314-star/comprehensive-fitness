@@ -4,7 +4,7 @@ This document is the durable map for future recommendation-engine iterations. It
 
 ## Exercise–muscle taxonomy 2.1
 
-The canonical relationship source is `research_database/source/exercise-muscle-taxonomy.js`; generated `exercise_muscle_map` and `exercise_taxonomy_review_queue` artifacts are the runtime/data-contract outputs. Every mapped row includes classification, loading/ROM role, hypertrophy credit, local-fatigue weight, confidence, evidence notes/IDs, review state/date, and taxonomy version. The 23 canonical anatomical IDs project into 20 programming families for guided-plan accounting; relationships and history keep their canonical IDs. Final-only family rounding is implemented in the guided ledger, not yet in the separate recommendation/historical calculation. See `research_database/EXERCISE_MUSCLE_TAXONOMY.md`. Legacy binary mappings are compatibility-only.
+The canonical relationship source is `research_database/source/exercise-muscle-taxonomy.js`; generated `exercise_muscle_map` and `exercise_taxonomy_review_queue` artifacts are the runtime/data-contract outputs. Every mapped row includes classification, loading/ROM role, hypertrophy credit, local-fatigue weight, confidence, evidence notes/IDs, review state/date, and taxonomy version. The 23 canonical anatomical IDs project into 20 programming families for guided-plan accounting; relationships and history keep their canonical IDs. One shared versioned family ledger now governs guided and historical/recommendation projection: it coalesces qualifying relationships within an exercise/family, retains additive local fatigue, and rounds only final exposed aggregates. See `research_database/EXERCISE_MUSCLE_TAXONOMY.md`. Legacy binary mappings are compatibility-only.
 
 ## Current versions
 

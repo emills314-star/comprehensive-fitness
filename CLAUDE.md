@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Start here
 
-`AGENTS.md` is the binding working agreement for coding agents in this repo — read it before changing code. It defines the mandatory documentation loop, the publishing policy, the privacy review required before every commit, and the status labels (`IMPLEMENTED` / `PARTIALLY IMPLEMENTED` / `PLANNED` / `ASSUMPTION` / `NEEDS REVIEW`) that must be preserved in docs.
+`AGENTS.md` is the binding working agreement for coding agents in this repo — read it before changing code. It defines the integration-owned documentation loop, the explicit-authorization publishing policy, the privacy review required before every commit, truthful completion states, and the status labels (`IMPLEMENTED` / `PARTIALLY IMPLEMENTED` / `PLANNED` / `ASSUMPTION` / `NEEDS REVIEW`) that must be preserved in docs. Prompt silence never authorizes committing, merging, accepting visual baselines, deploying, publishing, or pushing.
 
 The living documents in `docs/` are authoritative for intent; code proves only current behavior. Route changes to the right doc:
 
@@ -16,7 +16,7 @@ The living documents in `docs/` are authoritative for intent; code proves only c
 | Screens, navigation, state, copy, interaction | `docs/UI_UX.md` |
 | Status, priority, defects, debt, open questions | `docs/ROADMAP.md` |
 
-An application change that does not update its governing document is incomplete.
+An integrated application change that does not update its governing document is incomplete. Isolated workers that do not own shared documentation report the required documentation impact to the integration owner.
 
 ## Commands
 

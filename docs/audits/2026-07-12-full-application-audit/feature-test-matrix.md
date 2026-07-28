@@ -1,5 +1,7 @@
 # Full feature test matrix
 
+> **HISTORICAL AUDIT MATRIX — superseded for Lift/Dashboard appearance on 2026-07-26:** This matrix remains evidence of the 2026-07-12 audit scope and retains its behavioral, safety, data-integrity, accessibility, responsive, and capability coverage. References to protected Lift/Dashboard visuals or appearance do not constrain the Evidence & Change migration. Current UI intent and migration gates are in `docs/UI_UX.md` and `docs/ROADMAP.md`; 44 CSS-pixel targets, zoom/reflow, focus, keyboard, contrast, and destructive-confirmation requirements remain binding. Pixel-appearance protection resumes only after owner review accepts the complete replacement baseline set.
+
 ## Shared public synthetic fixtures
 
 | ID | Fixture |
@@ -26,7 +28,7 @@
 | # | Feature and source boundary | Core happy/boundary/error cases | Specialist coverage | Fixture / turns |
 | ---: | --- | --- | --- | --- |
 | 1 | Five-tab shell, `primaryTabIds`, `render`, `setActiveTab` | Navigate/hash/theme/unit; reload/deep link/repeated tab; unknown hash/storage/render failure | Route focus/skip/current announcement; responsive/dark/zoom; transition timing; query privacy | F0/F1/F4 · FT-01-S · IR-01 |
-| 2 | Lift overview/quick start | Start/resume; empty/long labels/active conflict; missing template/engine unavailable/cancel | Protected visual/behavior, button semantics, readiness/prescription agreement, large render | F0/F1/F3/F4 · FT-02-C · IR-02 |
+| 2 | Lift overview/quick start | Start/resume; empty/long labels/active conflict; missing template/engine unavailable/cancel | Capability/behavior and current migration-gate coverage; button semantics, readiness/prescription agreement, large render | F0/F1/F3/F4 · FT-02-C · IR-02 |
 | 3 | Template CRUD/start | Create/edit/duplicate/delete/start/save; 0/1/many exercises and max sets; invalid/cancel/storage error | Escaping, planned intent/resistance persistence, disclosure focus/mobile, progressive render | F0/F1/F4 · FT-03-S · IR-03 |
 | 4 | Guided Guide→Setup→Build→Check→Create | 1–7 days, 2–12 weeks, all/restricted scope; blockers/stale viability/idempotent retry | Taxonomy/equipment/time/scope invariants, volume/frequency property tests, keyboard/mobile/science | F2/F4/F5/F11 · FT-04-C · IR-04 |
 | 5 | Legacy automatic mesocycle compatibility | Deserialize/view every version/lifecycle; missing/corrupt references; explicit unreachable classification | Historical immutability, no false reachability claims, archive performance | F5 · FT-05-C · IR-05 |
@@ -43,7 +45,7 @@
 | 16 | Web Push alerts | Register/schedule/deliver/cancel/test; permissions/token/duplicate; offline/retry/revoke/delete | Auth/quotas/TTL/minimal payload/separate sync consent, permission UX, mocked API + device | F9 · FT-16-C · IR-16 |
 | 17 | Submission/grade/PR/summary | Confirm→submit→summary; partial/skipped/deload/resistance variants; double/cancel/save failure | Exactly-once history, sync consent, coherent grading/PR, focus/live/mobile/large workout | F3/F4 · FT-17-C · IR-17 |
 | 18 | History/edit transaction | View/edit/save/cancel; oldest/newest/legacy/mixed unit; invalid/interrupted/rollback | Atomic replacement/cache invalidation, escaping, future recommendation effects, long/large history | F4/F5 · FT-18-C · IR-18 |
-| 19 | Dashboard | Volume/fatigue/detail; week/date/empty/large/legacy; unmapped/invalid/evidence unavailable | Canonical credits/deload filtering, protected visual/a11y/zoom, finite traceable totals, aggregation budget | F0/F4/F5/F11 · FT-19-C · IR-19 |
+| 19 | Dashboard | Volume/fatigue/detail; week/date/empty/large/legacy; unmapped/invalid/evidence unavailable | Canonical credits/deload filtering, capability/a11y/zoom and current migration-gate coverage, finite traceable totals, aggregation budget | F0/F4/F5/F11 · FT-19-C · IR-19 |
 | 20 | Charts/expectations/points | Exercise/period/point; no/one/many/mixed/date edges; invalid/unmapped/empty | Comparable-set correctness, textual chart alternative, keyboard points/mobile labels/query timing | F0/F4/F5 · FT-20-S · IR-20 |
 | 21 | Search/filter/options | Exact/partial/case/alias/combined; no result/ties/legacy/long; malformed query | Escaping, canonical/equipment/scope constraints, keyboard names/count announcements, 10k options | F4/F5/F11 · FT-21-S · IR-21 |
 | 22 | Backup JSON | Round trip/legacy/duplicate/idempotent; malformed/oversized/invalid refs/partial read | Transaction/rollback/counts, stored-XSS/prototype pollution, snapshot checksums, size/memory | F0/F5/F6 · FT-22-C · IR-22 |

@@ -14,12 +14,14 @@ Update this inventory whenever a Markdown document is created, renamed, merged, 
 
 No existing Markdown was deleted during the reconciliation. The core documents are authoritative for cross-cutting product/current-state questions; focused documents remain authoritative within their narrower scope.
 
+Focused authority never makes a dated audit, work log, benchmark, remediation specification, or superseded plan a standing agent policy. Those records govern only their named revision and scope. When a focused document conflicts with current `AGENTS.md` policy or a current core document, follow the current policy/core document and record the mismatch as `NEEDS REVIEW`; do not silently revive the historical instruction.
+
 | Existing document | Decision | Rationale / moved knowledge |
 | --- | --- | --- |
 | `README.md` | **RETAIN, entry point** | Links the core documents and avoids duplicating their detail. |
 | `docs/training-prescription-data.md` | **RETAIN, specialized** | Unique version/count/crosswalk/schema/runtime map. Core principles are summarized in Architecture/Decision Engine; detailed inventories stay here. Public counts are reconciled to the current validator and must be refreshed after later rebuilds. |
 | `docs/push-backend.md` | **RETAIN, authoritative backend operations; external status NEEDS REVIEW** | Unique API/service/Redis lifecycle, retention, deletion continuation, race boundary, environment, and physical-test operations. Historical deployment observations are dated and cannot prove current external state. |
-| `docs/WORK_LOG_TEMPLATE.md` and `docs/work-logs/` | **RETAIN, operational** | Required evidence format for local validation, deployment inspection, and hosted browser verification of user-facing changes. |
+| `docs/WORK_LOG_TEMPLATE.md` and `docs/work-logs/` | **RETAIN, operational** | Required evidence format for user-facing changes. Local, review-ready, publication-approved, published, and hosted-verified states remain distinct; deployment fields apply only when deployment is explicitly in scope. |
 | `docs/performance.md` | **RETAIN as benchmark record** | Unique benchmark method/results. Architecture captures only current performance decisions; rerun benchmark before treating old numbers as current. |
 | `docs/design/UI_COLOR_PACKAGES.md` | **RETAIN as non-production design exploration** | Ten semantic palette packages support visual selection. The two five-screen Strong reference restyle sets remain local under the privacy-ignored `docs/design/strong-ui-mockups/` path because their source screenshots contain personal workout details. None are implemented app themes. |
 | `docs/iphone-pwa-personal-coach-setup.md` | **RETAIN, operational; NEEDS REVIEW** | Unique installation/private-import/device acceptance steps. External “complete” claims need human verification. |
@@ -33,7 +35,7 @@ No existing Markdown was deleted during the reconciliation. The core documents a
 | `research_database/EXERCISE_MUSCLE_TAXONOMY.md` | **RETAIN, authoritative taxonomy contract** | Canonical relationship meanings, 23-to-20 guided-family projection, fail-closed source/mapping ID provenance, historical-integration boundary, and review queue. |
 | `store/app-store-notes.md` | **RETAIN as release checklist** | Unique store metadata/prerequisites; current release remains blocked. |
 | `docs/design/COMPLETE_REDESIGN_CONCEPTS.md` | **RETAIN, authoritative blank-slate concept decision** | Defines the UI-neutral capability contract, 15 structural systems, capability feasibility evidence, ranked finalists, Dual Track winner, and partial Figma-source status. |
-| `docs/design/REDESIGN_MIGRATION_BLUEPRINT.md` | **RETAIN, authoritative redesign migration plan** | Defines the typed UI boundary, phased React cutover, verification gates, safety invariants, and legacy-retirement criteria. |
+| `docs/design/REDESIGN_MIGRATION_BLUEPRINT.md` | **RETAIN as historical production-migration proposal and non-production architecture evidence** | Its React/Dual Track cutover and phase order were superseded by the Evidence & Change production migration. UI-neutral capability, safety, privacy, data-integrity, accessibility, consent, submission, and recovery invariants remain useful evidence. Current UI intent and migration status live in UI/UX and Roadmap. |
 
 ## Naming decisions
 

@@ -1,5 +1,7 @@
 # Remediation Specification — Stage 1 + Stage 2 Findings
 
+> **HISTORICAL REMEDIATION SPECIFICATION:** Every command, count, version, branch, publishing instruction, and implementation order below is scoped to the documented `main` @ `d636a1a` baseline. It is not a standing repository policy and must not redirect the Evidence & Change migration or override `AGENTS.md`, `docs/UI_UX.md`, or `docs/ROADMAP.md`. In particular, cache `v65` instructions are historical; current work must read the live `CACHE_NAME` and advance it only under the current architecture contract.
+
 ## Metadata
 
 - **Purpose:** Complete, self-contained implementation spec for every issue found in the Stage 1 and Stage 2 independent reviews
@@ -15,10 +17,10 @@
 These are the repo's own rules (`AGENTS.md`, `docs/ARCHITECTURE.md`). Violating them breaks installed clients.
 
 1. **`www/` is generated, not source.** Edit root files only, then run `npm run sync:web`. Never hand-edit `www/`.
-2. **Any cross-file runtime contract change must advance `CACHE_NAME` in `sw.js`.** Current value is `comprehensive-fitness-pwa-v65`. Increment once per shipped batch (not once per file). Without this, an installed PWA can pair a new UI with a stale cached engine.
+2. **Any cross-file runtime contract change must advance `CACHE_NAME` in `sw.js`.** At this specification's `d636a1a` baseline the value was `comprehensive-fitness-pwa-v65`; do not reuse that value as current state. Increment once per shipped batch (not once per file). Without this, an installed PWA can pair a new UI with a stale cached engine.
 3. **Mandatory documentation loop.** Every application change updates its governing doc in the same task. Routing: domain logic → `docs/DECISION_ENGINE.md`; structure → `docs/ARCHITECTURE.md`; scope → `docs/PROJECT.md`; UI → `docs/UI_UX.md`; status → `docs/ROADMAP.md` (always).
 4. **Privacy review before every commit.** Run `git status`, inspect the staged list, confirm no `personal_fitness_data/`, `private-personal-data/`, or `www/private-personal-data/` content is included.
-5. **Do not commit or push** unless the repository owner asks. The publishing policy in `AGENTS.md` assumes owner-directed work.
+5. **Do not commit or push** unless the repository owner explicitly authorizes that action in the current task. This baseline-specific reminder agrees with the current explicit-authorization publishing policy in `AGENTS.md`.
 6. **Validation gate for every batch:** `npm test` → `npm run lint` → `npm run verify:pwa`. Note that `npm test` is currently red for an unrelated reason — fix R1 first so you have a clean signal.
 
 ---
