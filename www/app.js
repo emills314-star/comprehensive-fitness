@@ -15,7 +15,7 @@
           const remainingInExercise = data.sets.filter((item) => item.exerciseId === set.exerciseId && !item.isWarmup && !item.completed && !item.skipped && item.id !== set.id).length;
           return remainingInExercise === 0 ? "success" : "medium";
         }
-        if (["start-timer", "skip-timer", "start-template", "start-next-template", "start-template-with-metrics", "use-usual-readiness", "request-submit-workout", "request-save-history-edits", "begin-history-edit", "save-template", "update-template-exercise", "add-set", "add-warmup-set", "duplicate-set"].includes(action)) return "medium";
+        if (["start-timer", "skip-timer", "start-template", "start-next-template", "start-template-with-metrics", "use-usual-readiness", "request-submit-workout", "request-save-history-edits", "begin-history-edit", "save-template", "update-template-exercise", "add-set", "add-warmup-set", "duplicate-set", "reconcile-apply"].includes(action)) return "medium";
         if (["request-delete-template", "request-cancel-workout", "request-cancel-workout-from-template", "request-cancel-history-edits", "clear-data", "toggle-skip-set"].includes(action)) return "warning";
         if (["set-tab", "adjust-timer", "select-chart-exercise", "show-chart-point", "toggle-achievement-detail", "toggle-prescription-rationale", "open-fatigue-flag", "open-plan-volume-warning", "exercise-deload", "exercise-resistance-type", "exercise-bodyweight", "set-warmup", "timer-sound", "timer-vibration", "workout-completion-sound", "interaction-vibration", "timer-notifications", "in-app-rest-alerts", "toggle-rest-notifications", "preview-rest-complete-sound", "rest-complete-auto-return"].includes(action)) return "light";
         return "none";
@@ -253,6 +253,8 @@
         if (action === "cancel-delete-mesocycle") { pendingDeleteMesocycleId = ""; render(); }
         if (action === "confirm-delete-mesocycle") deleteMesocycleDraft(target.dataset.mesocycleId);
         if (action === "apply-prescription-override") applyPrescriptionOverride(target.dataset.exerciseId, target.closest("[data-override-form]"));
+        if (action === "reconcile-apply") reconcileCompletedSet(target.dataset.exerciseId, true);
+        if (action === "reconcile-dismiss") reconcileCompletedSet(target.dataset.exerciseId, false);
         if (action === "adjust-exercise-default") {
           const input = target.closest("[data-numeric-stepper]")?.querySelector('input[type="number"]');
           if (input && !input.disabled) {
@@ -461,6 +463,13 @@
       });
 
       root.addEventListener("toggle", (event) => {
+        const persistedDisclosure = event.target.closest?.("details[data-disclosure-id]");
+        if (persistedDisclosure) {
+          const disclosureId = persistedDisclosure.dataset.disclosureId;
+          knownDisclosureIds.add(disclosureId);
+          if (persistedDisclosure.open) openDisclosureIds.add(disclosureId);
+          else openDisclosureIds.delete(disclosureId);
+        }
         const disclosure = event.target.closest?.("[data-individual-set-disclosure]");
         if (!disclosure || !disclosure.open) return;
         const enabled = disclosure.querySelector("[data-individual-set-enabled]");

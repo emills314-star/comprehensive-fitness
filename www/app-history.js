@@ -95,12 +95,17 @@
         const repLow = Number(prescription.repLow || profile.lowerRep || 1);
         const repHigh = Number(prescription.repHigh || profile.upperRep || Math.max(repLow, 20));
         const plannedSets = allWorkingSets.length;
-        const rangeMatches = completedSets.filter((set) => Number(set.reps || 0) >= repLow && Number(set.reps || 0) <= repHigh).length;
+        const setRepBounds = (set) => {
+          const low = Number(set.targetRepMin || 0);
+          const high = Number(set.targetRepMax || 0);
+          return low > 0 && high > 0 && high >= low ? { low, high } : { low: repLow, high: repHigh };
+        };
+        const rangeMatches = completedSets.filter((set) => set.deviationIntent === "one_off" || (Number(set.reps || 0) >= setRepBounds(set).low && Number(set.reps || 0) <= setRepBounds(set).high)).length;
         const targetRepSets = completedSets.filter((set) => Number(set.targetReps || 0) > 0);
-        const targetRepMatches = targetRepSets.filter((set) => Number(set.reps || 0) >= Number(set.targetReps || 0) - 1 && Number(set.reps || 0) <= repHigh).length;
+        const targetRepMatches = targetRepSets.filter((set) => set.deviationIntent === "one_off" || (Number(set.reps || 0) >= Number(set.targetReps || 0) - 1 && Number(set.reps || 0) <= setRepBounds(set).high)).length;
         const loadTargetSets = completedSets.filter((set) => Number(set.targetWeight ?? 0) > 0 || resistanceType === "bodyweight");
         const loadMatches = loadTargetSets.filter((set) => {
-          if (resistanceType === "bodyweight") return true;
+          if (set.deviationIntent === "one_off" || resistanceType === "bodyweight") return true;
           const actual = resistanceLoad(set, resistanceType);
           const target = Number(set.targetWeight ?? prescription.weight ?? 0);
           const tolerance = Math.max(Number(prescription.increment || profile.increment || 0), target * 0.1);
@@ -109,7 +114,7 @@
         const loggedRpeSets = completedSets.filter((set) => Number(set.rpe || 0) > 0);
         const rpeMatches = loggedRpeSets.filter((set) => {
           const target = Number(set.targetRpe || prescription.rpe || 0);
-          return target <= 0 || Math.abs(Number(set.rpe || 0) - target) <= 1;
+          return set.deviationIntent === "one_off" || target <= 0 || Math.abs(Number(set.rpe || 0) - target) <= 1;
         }).length;
         const firstSet = completedSets[0] || null;
         const lastSet = completedSets[completedSets.length - 1] || null;
@@ -147,6 +152,7 @@
           plannedSets,
           completedSets: completedSets.length,
           skippedSets: allWorkingSets.filter((set) => set.skipped).length,
+          oneOffCount: completedSets.filter((set) => set.deviationIntent === "one_off").length,
           repLow,
           repHigh,
           rangeCompliance: completedSets.length ? rangeMatches / completedSets.length : 0,
@@ -185,9 +191,11 @@
         } = metrics;
         const progressedCount = results.filter((result) => result.comparison.status === "progress").length;
         const regressedCount = results.filter((result) => result.comparison.status === "regression").length;
+        const oneOffCount = results.reduce((sum, result) => sum + Number(result.oneOffCount || 0), 0);
+        const oneOffReason = oneOffCount ? "; " + oneOffCount + " set" + (oneOffCount === 1 ? " was" : "s were") + " logged as a deliberate one-off and not scored against the original load, rep, or RPE target" : "";
         const categoryScores = [
           { key: "progression", label: "Progression quality", earned: Math.round(30 * clampWorkoutMetric(progressionRatio)), possible: 30, reason: progressedCount + " exercise" + (progressedCount === 1 ? "" : "s") + " progressed; " + regressedCount + " regressed versus prior comparable work." },
-          { key: "execution", label: "Program execution", earned: Math.round(25 * clampWorkoutMetric(programRatio)), possible: 25, reason: Math.round(averageWorkoutMetric(results.map((result) => result.rangeCompliance), 0) * 100) + "% of completed working sets stayed inside their programmed rep ranges; prescribed load and rep targets were assessed separately." },
+          { key: "execution", label: "Program execution", earned: Math.round(25 * clampWorkoutMetric(programRatio)), possible: 25, reason: Math.round(averageWorkoutMetric(results.map((result) => result.rangeCompliance), 0) * 100) + "% of completed working sets stayed inside their programmed rep ranges; prescribed load and rep targets were assessed separately" + oneOffReason + "." },
           { key: "rpe", label: "RPE management", earned: Math.round(20 * clampWorkoutMetric(rpeComplianceWeighted * rpeLoggedRatio + 0.65 * (1 - rpeLoggedRatio))), possible: 20, reason: loggedRpeCount + " of " + completedSets + " completed working sets included RPE; " + Math.round(rpeComplianceWeighted * 100) + "% of logged RPE values were within one point of target." },
           { key: "completion", label: "Set completion and consistency", earned: Math.round(15 * clampWorkoutMetric(completionRatio * 0.8 + stabilityRatio * 0.2)), possible: 15, reason: completedSets + " of " + plannedSets + " prescribed working sets were completed; set-to-set stability contributed only within this category." },
           { key: "fatigue", label: "Fatigue management", earned: Math.round(10 * clampWorkoutMetric(intentAdherence - severeFatigueSignals * 0.12)), possible: 10, reason: adjustedResults.length ? Math.round(intentAdherence * 100) + "% adherence to readiness or deload intent; " + severeFatigueSignals + " severe fatigue pattern" + (severeFatigueSignals === 1 ? "" : "s") + " detected." : severeFatigueSignals ? severeFatigueSignals + " severe rep-loss-plus-RPE-rise pattern" + (severeFatigueSignals === 1 ? " was" : "s were") + " detected." : "No readiness, deload, or severe within-session fatigue rule was violated." }
@@ -641,13 +649,15 @@
         const items = achievement.items?.length
           ? achievement.items.map((item) => '<article class="workout-achievement-evidence"><header><strong>' + escapeHtml(item.name) + '</strong><span>' + escapeHtml(item.metric || "Performance") + '</span></header><div><span>This workout</span><strong>' + escapeHtml(item.current || "Completed work") + '</strong></div><div><span>Previous high-water mark</span><strong>' + escapeHtml(item.previous || "No prior submitted benchmark") + '</strong></div></article>').join('')
           : '<div class="workout-achievement-evidence empty"><strong>Exercise detail is unavailable for this older saved workout.</strong><span>The badge remains valid from its submitted workout evidence.</span></div>';
-        return '<details class="workout-achievement interactive" role="listitem" name="workout-achievement"><summary class="workout-achievement-summary" data-action="toggle-achievement-detail" data-achievement-key="' + achievement.key + '">' + summary + '<span class="workout-achievement-cue">View exercise details <b aria-hidden="true">⌄</b></span></summary><div class="workout-achievement-detail"><div><span class="section-kicker">Why you earned it</span><strong>' + escapeHtml(achievement.title) + '</strong><p>' + escapeHtml(achievement.detail) + '</p></div><div class="workout-achievement-evidence-list">' + items + '</div></div></details>';
+        return '<details class="workout-achievement interactive" role="listitem" name="workout-achievement"><summary class="workout-achievement-summary" data-action="toggle-achievement-detail" data-achievement-key="' + achievement.key + '">' + summary + '<span class="workout-achievement-cue">View exercise details</span></summary><div class="workout-achievement-detail"><div><span class="section-kicker">Why you earned it</span><strong>' + escapeHtml(achievement.title) + '</strong><p>' + escapeHtml(achievement.detail) + '</p></div><div class="workout-achievement-evidence-list">' + items + '</div></div></details>';
       }
 
       function renderCompletedWorkoutSummary(session, options = {}) {
         const analysis = workoutAnalysisForSession(session);
         if (!analysis) return '<section class="completed-summary score-critical"><div class="section-kicker">Workout logged</div><div class="summary-muted">Not enough completed or prescribed working-set data was available to assign a defensible workout grade.</div>' + (options.history ? '' : '<button type="button" data-action="close-completed-summary">Return to Lift Home</button>') + '</section>';
         const tone = workoutGradeScoreTone(analysis.internalScore);
+        const gradeSegments = Math.max(0, Math.min(10, Math.round(Number(analysis.internalScore || 0) / 10)));
+        const confidenceLevel = analysis.confidence === "high" ? 4 : analysis.confidence === "moderate" ? 3 : analysis.confidence === "low" ? 2 : 1;
         const achievements = workoutAchievementBadges(session, analysis);
         const achievementSection = achievements.length
           ? '<section class="workout-achievements" aria-labelledby="workout-achievements-title"><div class="workout-achievements-heading"><div><span class="section-kicker">Earned this workout</span><h3 id="workout-achievements-title">Achievement badges</h3></div><strong>' + achievements.length + ' earned</strong></div><div class="workout-achievement-grid" role="list">' + achievements.map(renderWorkoutAchievement).join('') + '</div></section>'
@@ -656,16 +666,16 @@
           ? analysis.highlights.map((item) => '<div class="workout-highlight"><strong>' + escapeHtml(item.title) + '</strong><span>' + escapeHtml(item.detail) + '</span></div>').join('')
           : '<div class="summary-muted">No distinct progression event was identified, but repeatable plan execution still contributes to the grade.</div>';
         const improvements = analysis.improvements.length
-          ? analysis.improvements.map((item) => '<div class="workout-improvement"><strong>' + escapeHtml(item.title) + '</strong><span><b>Observed:</b> ' + escapeHtml(item.metric) + '. <b>Target:</b> ' + escapeHtml(item.expected) + '.</span><span>' + escapeHtml(item.detail) + '</span></div>').join('')
+          ? '<div class="diff workout-improvement-diff"><div class="drow dhead"><span class="plan">Observed</span><span class="act">Target</span><span class="dlt">Review</span></div>' + analysis.improvements.map((item) => '<div class="drow"><span class="plan"><span class="lbl">' + escapeHtml(item.title) + '</span><span class="val">' + escapeHtml(item.metric) + '</span></span><span class="act"><span class="lbl">Expected</span><span class="val">' + escapeHtml(item.expected) + '</span></span><span class="dlt"><span class="d under">adjust</span></span><p>' + escapeHtml(item.detail) + '</p></div>').join('') + '</div>'
           : '<div class="summary-muted">No major execution issues were identified. Continue the current progression plan.</div>';
         return '<section class="completed-summary ' + tone + '" aria-label="Post-workout grade and analysis">'
-          + '<div class="workout-grade-hero"><div class="workout-grade-copy"><div class="section-kicker">' + (options.history ? 'Saved workout review' : 'Workout logged') + '</div><h2>Workout analysis</h2><span class="workout-grade-intent">' + escapeHtml(analysis.intent) + '</span><p>' + escapeHtml(analysis.interpretation) + '. ' + escapeHtml(analysis.rationale) + '</p></div><div class="workout-grade-mark" role="img" aria-label="Workout grade ' + escapeHtml(hypertrophyGradeLabel(analysis.grade)) + '">' + escapeHtml(analysis.grade) + '</div></div>'
+          + '<div class="workout-grade-hero"><div class="workout-grade-copy"><div class="section-kicker">' + (options.history ? 'Saved workout review' : 'Workout logged') + '</div><h2>Workout analysis</h2><span class="workout-grade-intent">' + escapeHtml(analysis.intent) + '</span><p>' + escapeHtml(analysis.interpretation) + '. ' + escapeHtml(analysis.rationale) + '</p><span class="track" aria-label="Workout grade strength">' + Array.from({ length: 10 }, (_, index) => '<i class="seg ' + (index < gradeSegments ? 'filled' : '') + '"></i>').join('') + '</span></div><div class="workout-grade-mark" role="img" aria-label="Workout grade ' + escapeHtml(hypertrophyGradeLabel(analysis.grade)) + '">' + escapeHtml(analysis.grade) + '</div></div>'
           + achievementSection
-          + '<section class="workout-summary-section"><h3>Category breakdown</h3><div class="workout-category-list">' + analysis.categoryScores.map((category) => '<div class="workout-category"><strong>' + escapeHtml(category.label) + '</strong><b>' + category.earned + ' / ' + category.possible + '</b><span>' + escapeHtml(category.reason) + '</span></div>').join('') + '</div></section>'
+          + '<section class="workout-summary-section"><h3>Category breakdown</h3><div class="workout-category-list">' + analysis.categoryScores.map((category) => '<div class="workout-category weight-' + category.possible + '"><strong>' + escapeHtml(category.label) + '</strong><b>' + category.earned + ' / ' + category.possible + '</b><span class="category-bar" aria-hidden="true"><i class="category-fill fill-' + Math.round((category.earned / Math.max(1, category.possible)) * 10) + '"></i></span><span>' + escapeHtml(category.reason) + '</span></div>').join('') + '</div></section>'
           + '<section class="workout-summary-section"><h3>Workout Highlights</h3><div class="workout-highlight-list">' + highlights + '</div></section>'
           + '<section class="workout-summary-section"><h3>Retrospective Session Review</h3><p class="settings-note">These observations explain execution and data quality. The unified prescription cards remain the sole source for the next training decision.</p><div class="workout-improvement-list">' + improvements + '</div></section>'
           + '<section class="workout-summary-section"><h3>Exercise results</h3><div class="workout-exercise-list">' + analysis.exerciseResults.map((result) => renderWorkoutExerciseResult(result) + (options.history ? '' : renderBaseNextExposurePreview(session, result))).join('') + '</div></section>'
-          + '<div class="workout-confidence"><strong>' + escapeHtml(analysis.confidence.charAt(0).toUpperCase() + analysis.confidence.slice(1)) + ' confidence.</strong> Based on ' + analysis.metrics.completedSets + ' completed working sets, ' + Math.round(analysis.metrics.rpeLoggedRatio * 100) + '% RPE coverage, and available prior comparable sessions. Warm-ups were excluded.</div>'
+          + '<div class="workout-confidence"><span class="meter lg" data-conf="' + confidenceLevel + '" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span><strong>' + escapeHtml(analysis.confidence.charAt(0).toUpperCase() + analysis.confidence.slice(1)) + ' confidence.</strong> Based on ' + analysis.metrics.completedSets + ' completed working sets, ' + Math.round(analysis.metrics.rpeLoggedRatio * 100) + '% RPE coverage, and available prior comparable sessions. Warm-ups were excluded.</span></div>'
           + (options.history ? '' : '<button class="primary-action" type="button" data-action="close-completed-summary">Done</button>')
           + '</section>';
       }

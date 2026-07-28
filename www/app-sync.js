@@ -942,10 +942,16 @@
         const countdown = bar.querySelector("[data-timer-countdown]");
         const progressLabel = bar.querySelector("[data-timer-progress-label]");
         const progress = bar.querySelector(".timer-progress");
+        const summary = bar.querySelector(".timer-summary");
+        const stateLabel = bar.querySelector(".timer-rest-copy > span");
         const elapsed = Math.max(0, timer.durationSeconds - timer.remainingSeconds);
         const percent = timer.durationSeconds > 0 ? Math.min(100, Math.round((elapsed / timer.durationSeconds) * 100)) : 100;
         if (countdown) countdown.textContent = formatTimer(timer.remainingSeconds);
-        if (progressLabel) progressLabel.textContent = formatTimer(timer.remainingSeconds) + " remaining";
+        if (progressLabel) progressLabel.textContent = formatTimer(timer.remainingSeconds);
+        if (stateLabel) stateLabel.textContent = timer.isPaused ? "Paused" : "Rest";
+        if (summary) summary.setAttribute("aria-label", (timer.isPaused ? "Paused rest timer" : "Rest timer") + ", " + formatTimer(timer.remainingSeconds) + " remaining. Open timer controls.");
+        bar.dataset.phase = timer.remainingSeconds <= 10 ? "final" : "resting";
+        bar.toggleAttribute("data-paused", timer.isPaused);
         if (progress) {
           progress.setAttribute("aria-valuenow", String(percent));
           progress.style.setProperty("--timer-progress", percent + "%");

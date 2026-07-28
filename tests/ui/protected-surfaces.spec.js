@@ -297,8 +297,8 @@ test.describe("Lift and Dashboard capability and accessibility invariants", () =
       viewport: { width: 390, height: 844 }
     });
     await openSurface(page, "dashboard");
-    await expect(page.getByText("Log a working set to start your weekly volume dashboard.", { exact: true })).toBeVisible();
-    await expect(page.getByText("No saved workouts yet.", { exact: true })).toBeVisible();
+    await expect(page.getByText("Log a working set to start the plan-versus-actual view.", { exact: true })).toBeVisible();
+    await expect(page.getByText("No saved workouts yet", { exact: true })).toBeVisible();
     await assertProtectedLayout(page, "dashboard empty state", 390, { requireProtectedTargets: false });
     if (process.env.CF_PHASE5_REVIEW_DIR) {
       fs.mkdirSync(process.env.CF_PHASE5_REVIEW_DIR, { recursive: true });
@@ -597,8 +597,8 @@ test.describe("Lift and Dashboard capability and accessibility invariants", () =
       viewport: { width: 390, height: 844 }
     });
     await openSurface(page, "dashboard");
-    await expect(page.getByText("Log a working set to start your weekly volume dashboard.", { exact: true })).toBeVisible();
-    await expect(page.getByText("No saved workouts yet.", { exact: true })).toBeVisible();
+    await expect(page.getByText("Log a working set to start the plan-versus-actual view.", { exact: true })).toBeVisible();
+    await expect(page.getByText("No saved workouts yet", { exact: true })).toBeVisible();
     await assertProtectedLayout(page, "Dashboard malformed-storage recovery", 390, { requireProtectedTargets: false });
     expect(browserErrors, "malformed-storage recovery browser errors").toEqual([]);
   });

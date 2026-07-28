@@ -20,7 +20,7 @@
             <section class="coach-lead templates-coach"><div class="section-kicker">Planning principle</div><h2>The sheet is stable; today can still adapt.</h2><p>Choose the repeatable workout that fits today. Readiness can adjust the session without rewriting the template.</p></section>
             ${renderMesocyclePlanner()}
             ${running ? '<section class="active-workout-notice" id="active-workout-template-notice" role="status"><div><div class="section-kicker">Workout in progress</div><strong>' + escapeHtml(running.title || 'Active workout') + '</strong><span>Finish or cancel your current workout before starting another template.</span></div><div><button class="primary-action" type="button" data-action="return-active-workout">Return to Active Workout</button><button class="text-danger-action" type="button" data-action="request-cancel-workout-from-template">Manage Active Workout</button></div></section>' : ''}
-            ${volumeFlags.length ? '<section class="plan-volume-alerts"><div class="section-heading"><div><h2>Weekly volume checks</h2><p>Review these before adding more work.</p></div></div><div class="drilldown-list">' + volumeFlags.map((flag) => '<button class="drilldown-item fatigue-' + flag.concern + '" type="button" data-action="open-plan-volume-warning" data-flag-id="' + escapeHtml(flag.id) + '"><strong>' + escapeHtml(flag.name + ': ' + flag.reason) + '</strong><span class="fatigue-severity ' + flag.concern + '">' + escapeHtml(flag.concern.charAt(0).toUpperCase() + flag.concern.slice(1)) + ' concern</span><small>' + escapeHtml(flag.evidence[0]) + ' · Tap for exact contributors</small><span class="drilldown-chevron" aria-hidden="true">›</span></button>').join('') + '</div></section>' : ''}
+            ${volumeFlags.length ? '<section class="plan-volume-alerts"><div class="section-heading"><div><h2>Weekly volume checks</h2><p>Review these before adding more work.</p></div></div><div class="drilldown-list">' + volumeFlags.map((flag) => '<button class="drilldown-item fatigue-' + flag.concern + '" type="button" data-action="open-plan-volume-warning" data-flag-id="' + escapeHtml(flag.id) + '"><strong>' + escapeHtml(flag.name + ': ' + flag.reason) + '</strong><span class="fatigue-severity ' + flag.concern + '">' + escapeHtml(flag.concern.charAt(0).toUpperCase() + flag.concern.slice(1)) + ' concern</span><small>' + escapeHtml(flag.evidence[0]) + ' · Tap for exact contributors</small><span class="drilldown-chevron" aria-hidden="true">' + icon.right + '</span></button>').join('') + '</div></section>' : ''}
             <div class="template-library">${data.templates.length ? data.templates.map((template) => renderTemplateCard(template, running)).join("") : '<div class="empty-state">Create a leg day, push day, pull day, or any repeatable workout. Templates store exercises, sets, and target reps; you fill in weights during the workout.</div>'}</div>
             <button class="secondary-action full-width" type="button" data-action="save-template">Save current workout as a template</button>
             ${renderHistoricalMesocycles()}
@@ -221,7 +221,7 @@
         const renderSession = (item) => {
           const { session, facts, analysis, plannedSets, completedSets, completionDelta } = item;
           const grade = analysis?.grade || "";
-          return '<button class="row-item history-session-row" type="button" data-action="open-session" data-session-id="' + escapeHtml(session.id) + '"><span class="ri-copy"><b>' + escapeHtml(session.title || "Workout") + '</b><span>' + formatDate(sessionCompletionDate(session)) + ' · ' + completedSets + (plannedSets ? ' of ' + plannedSets : '') + ' sets · ' + facts.durationMinutes + ' min' + (facts.estimatedDuration ? ' est.' : '') + (facts.exercises.some((exercise) => exercise.isDeload) ? ' · deload work' : '') + '</span></span><span class="d ' + completionDelta.tone + '">' + escapeHtml(completionDelta.text) + '</span><span class="ri-val" aria-label="' + (grade ? 'Workout grade ' + escapeHtml(grade) : 'Workout grade unavailable') + '">' + escapeHtml(grade || '—') + '</span></button>';
+          return '<button class="row-item history-session-row" type="button" data-action="open-session" data-session-id="' + escapeHtml(session.id) + '"><span class="ri-copy"><b>' + escapeHtml(session.title || "Workout") + '</b><span>' + formatDate(sessionCompletionDate(session)) + ' · ' + completedSets + (plannedSets ? ' of ' + plannedSets : '') + ' sets · ' + facts.durationMinutes + ' min' + (facts.estimatedDuration ? ' est.' : '') + (facts.exercises.some((exercise) => exercise.isDeload) ? ' · deload work' : '') + '</span></span><span class="d ' + completionDelta.tone + '">' + escapeHtml(completionDelta.text) + '</span><span class="ri-val" aria-label="' + (grade ? 'Workout grade ' + escapeHtml(grade) : 'Workout grade unavailable') + '">' + (grade ? escapeHtml(grade) : noData("Workout grade unavailable")) + '</span></button>';
         };
         return `
           <section class="view history-view">
@@ -259,18 +259,19 @@
           const deloadNotes = weeks.map((week) => ({ week, presentation: exerciseDeloadPresentation(week) })).filter((item) => item.presentation);
           return `
             <details class="history-exercise">
-              <summary class="ex-head"><span><b>${escapeHtml(name)}</b><span class="sets">${weeks.length} recent week${weeks.length === 1 ? '' : 's'}</span></span><span aria-hidden="true">›</span></summary>
+              <summary class="ex-head"><span><b>${escapeHtml(name)}</b><span class="sets">${weeks.length} recent week${weeks.length === 1 ? '' : 's'}</span></span><span aria-hidden="true">${icon.right}</span></summary>
               <div class="disclosure-body">
               <div class="m-label"><span>Recent weeks</span><span>top · sets · RPE</span></div>
               <div class="vol">
-                <div class="vol-head"><span>Week</span><span>Top set</span><span>Sets</span><span>RPE</span><span>Status</span></div>
-                ${weeks.map((week) => `
+                <div class="vol-head"><span>Week</span><span>Top set</span><span>Sets</span><span>RPE</span><span>Status</span><span>Trend</span></div>
+                ${weeks.map((week, index) => `
                   <div class="vol-row">
                     <span>${formatDate(week.weekStart)}${week.travelCount ? " · Travel" : ""}</span>
-                    <span>${week.topWeight > 0 ? week.topWeight + ' × ' + (week.maxRepsAtTopWeight || '—') : '—'}</span>
+                    <span>${week.topWeight > 0 ? week.topWeight + ' × ' + (week.maxRepsAtTopWeight || noData("Repetitions unavailable")) : noData("Top set unavailable")}</span>
                     <span>${week.completedSets}/${Number(week.plannedSets || week.completedSets + week.failedSets)}</span>
-                    <span>${week.averageRpe ? week.averageRpe.toFixed(1) : "—"}</span>
-                    <span>${(() => { const deload = exerciseDeloadPresentation(week); return deload ? '<span class="chip deload-history-chip" data-conf="' + deload.confidence + '">' + escapeHtml(deload.label) + '</span>' : '—'; })()}</span>
+                    <span>${week.averageRpe ? week.averageRpe.toFixed(1) : noData("Mean RPE unavailable")}</span>
+                    <span>${(() => { const deload = exerciseDeloadPresentation(week); return deload ? '<span class="chip deload-history-chip" data-conf="' + deload.confidence + '">' + escapeHtml(deload.label) + '</span>' : noData("No deload classification"); })()}</span>
+                    <span>${sparkline(weeks.slice(index).reverse().map((item) => Number(item.topWeight || 0)), { label: "Top-set trend" })}</span>
                   </div>
                 `).join("")}
               </div>
@@ -1279,9 +1280,16 @@
         const plotHeight = height - plot.top - plot.bottom;
         const chartPoints = validPoints.map((point, index) => ({
           ...point,
+          isPr: chartKey === "e1rm" && point.qualifies && point.value > Math.max(0, ...validPoints.slice(0, index).filter((item) => item.qualifies).map((item) => item.value)),
           x: validPoints.length === 1 ? plot.left + plotWidth / 2 : plot.left + (index / (validPoints.length - 1)) * plotWidth,
           y: plot.top + (1 - (point.value - domainMin) / domainSpread) * plotHeight
         }));
+        const evidencedArea = chartPoints.slice(1).map((point, index) => {
+          const previous = chartPoints[index];
+          if (!previous.qualifies || !point.qualifies) return "";
+          const floor = plot.top + plotHeight;
+          return '<polygon class="chart-area" points="' + previous.x.toFixed(1) + ',' + floor.toFixed(1) + ' ' + previous.x.toFixed(1) + ',' + previous.y.toFixed(1) + ' ' + point.x.toFixed(1) + ',' + point.y.toFixed(1) + ' ' + point.x.toFixed(1) + ',' + floor.toFixed(1) + '" clip-path="url(#chart-clip-' + chartKey + ')"></polygon>';
+        }).join("");
         const chartSegments = chartPoints.slice(1).map((point, index) => {
           const previous = chartPoints[index];
           const evidenced = Boolean(previous.qualifies && point.qualifies);
@@ -1299,14 +1307,14 @@
           ? chartDetailPoint : null;
         const selectedIndex = selected ? chartPoints.findIndex((point) => point.date === selected.date && point.value === selected.value) : -1;
         const selectedPoint = selectedIndex >= 0 ? chartPoints[selectedIndex] : null;
-        const grid = [0, 0.5, 1].map((ratio) => {
+        const grid = [0, 1 / 3, 2 / 3, 1].map((ratio) => {
           const y = plot.top + ratio * plotHeight;
           const value = domainMax - ratio * domainSpread;
           return '<line class="chart-grid-line" x1="' + plot.left + '" y1="' + y.toFixed(1) + '" x2="' + (width - plot.right) + '" y2="' + y.toFixed(1) + '"></line><text class="chart-axis-label" x="' + (plot.left - 5) + '" y="' + (y + 3).toFixed(1) + '" text-anchor="end">' + escapeHtml(formatChartAxisValue(value)) + '</text>';
         }).join("");
         const dateLabels = chartPoints.length === 1
           ? '<text class="chart-axis-label" x="' + chartPoints[0].x.toFixed(1) + '" y="' + (height - 7) + '" text-anchor="middle">' + escapeHtml(shortChartDate(chartPoints[0].date)) + '</text>'
-          : '<text class="chart-axis-label" x="' + plot.left + '" y="' + (height - 7) + '">' + escapeHtml(shortChartDate(chartPoints[0].date)) + '</text><text class="chart-axis-label" x="' + (width - plot.right) + '" y="' + (height - 7) + '" text-anchor="end">' + escapeHtml(shortChartDate(chartPoints.at(-1).date)) + '</text>';
+          : '<text class="chart-axis-label" x="' + plot.left + '" y="' + (height - 7) + '">' + escapeHtml(shortChartDate(chartPoints[0].date)) + '</text><text class="chart-axis-label" x="' + chartPoints[Math.floor((chartPoints.length - 1) / 2)].x.toFixed(1) + '" y="' + (height - 7) + '" text-anchor="middle">' + escapeHtml(shortChartDate(chartPoints[Math.floor((chartPoints.length - 1) / 2)].date)) + '</text><text class="chart-axis-label" x="' + (width - plot.right) + '" y="' + (height - 7) + '" text-anchor="end">' + escapeHtml(shortChartDate(chartPoints.at(-1).date)) + '</text>';
         return `
           <div class="chart-card evidence-chart" data-chart-key="${chartKey}">
             <header><strong>${escapeHtml(title)}</strong><span class="status-pill">${escapeHtml(pointCaption)}</span></header>
@@ -1314,9 +1322,10 @@
               <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(title)} chart">
                 <defs><clipPath id="chart-clip-${chartKey}"><rect x="${plot.left - 3}" y="${plot.top - 3}" width="${plotWidth + 6}" height="${plotHeight + 6}" rx="3"></rect></clipPath></defs>
                 ${grid}
+                ${evidencedArea}
                 ${chartSegments}
                 ${selectedPoint ? '<line class="chart-selected-guide" x1="' + selectedPoint.x.toFixed(1) + '" y1="' + selectedPoint.y.toFixed(1) + '" x2="' + selectedPoint.x.toFixed(1) + '" y2="' + (plot.top + plotHeight).toFixed(1) + '"></line>' : ""}
-                ${chartPoints.map((point, index) => { const isSelected = index === selectedIndex; const activationKey = registerChartPointActivation(chartKey, point, scope); const evidenceLabel = point.qualifies ? 'evidenced' : 'provisional, ' + point.completedSets + ' completed set' + (point.completedSets === 1 ? '' : 's') + ' that week'; return '<g class="chart-point ' + (point.qualifies ? 'evidenced ' : 'thin ') + (isSelected ? 'selected' : '') + '" role="button" tabindex="0" aria-pressed="' + (isSelected ? 'true' : 'false') + '" aria-label="' + escapeHtml(title + ': ' + point.value + ' on ' + formatDate(point.date) + ', ' + evidenceLabel) + '" data-action="show-chart-point" data-chart-key="' + chartKey + '" data-chart-date="' + escapeHtml(point.date) + '" data-chart-point-key="' + activationKey + '"><circle class="hit-area" cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="34"></circle><circle class="selected-ring" cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="9"></circle><circle class="visible-point" cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="4.5"></circle></g>'; }).join("")}
+                ${chartPoints.map((point, index) => { const isSelected = index === selectedIndex; const activationKey = registerChartPointActivation(chartKey, point, scope); const evidenceLabel = point.qualifies ? 'evidenced' : 'provisional, ' + point.completedSets + ' completed set' + (point.completedSets === 1 ? '' : 's') + ' that week'; return '<g class="chart-point ' + (point.qualifies ? 'evidenced ' : 'thin ') + (point.isPr ? 'pr ' : '') + (isSelected ? 'selected' : '') + '" role="button" tabindex="0" aria-pressed="' + (isSelected ? 'true' : 'false') + '" aria-label="' + escapeHtml(title + ': ' + point.value + ' on ' + formatDate(point.date) + ', ' + evidenceLabel + (point.isPr ? ', personal record' : '')) + '" data-action="show-chart-point" data-chart-key="' + chartKey + '" data-chart-date="' + escapeHtml(point.date) + '" data-chart-point-key="' + activationKey + '"><circle class="hit-area" cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="34"></circle><circle class="selected-ring" cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="9"></circle><circle class="visible-point" cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="4.5"></circle>' + (point.isPr ? '<path class="chart-pr-marker" d="M' + point.x.toFixed(1) + ' ' + (point.y - 13).toFixed(1) + 'l2.2 4.4 4.8.7-3.5 3.4.8 4.8-4.3-2.3-4.3 2.3.8-4.8-3.5-3.4 4.8-.7Z"></path>' : '') + '</g>'; }).join("")}
                 ${dateLabels}
               </svg>
             </div>
@@ -1427,7 +1436,7 @@
             : point.metricType.includes("distance") ? " m"
               : " reps";
         const metricValue = point.metricType === "conventional_volume" ? point.value.toLocaleString() : point.value;
-        const close = '<button class="icon-button" type="button" data-action="close-chart-point" aria-label="Close chart detail">X</button>';
+        const close = '<button class="icon-button" type="button" data-action="close-chart-point" aria-label="Close chart detail">' + icon.close + '</button>';
         const priorMax = chartKey === "e1rm" ? Math.max(0, ...points.slice(0, Math.max(0, index)).map((item) => item.value)) : 0;
         const isPr = chartKey === "e1rm" && point.value > priorMax;
         const evidence = point.qualifies
@@ -1440,7 +1449,7 @@
             : 'Bodyweight resistance uses recorded reps, duration, distance, and explicit added or assistance load; unsupported total-system load is not estimated.';
         return '<article class="chart-detail" role="status"><div class="row split"><div><span class="section-kicker">Selected date · ' + formatDate(point.date) + '</span><strong>' + escapeHtml(title + ' · ' + metricValue + unitLabel) + '</strong><span class="chart-detail-exercise">' + escapeHtml(exerciseName) + '</span></div>' + close + '</div>'
           + evidence
-          + '<div class="rollup chart-point-rollup"><span class="ru"><b>' + escapeHtml(best ? formatResistance(best, exercise) : '—') + '</b><span>top load</span></span><span class="ru"><b>' + escapeHtml(best?.reps || '—') + '</b><span>reps</span></span><span class="ru"><b>' + escapeHtml(best?.rpe || '—') + '</b><span>RPE</span></span></div>'
+          + '<div class="rollup chart-point-rollup"><span class="ru"><b>' + (best ? escapeHtml(formatResistance(best, exercise)) : noData("Top load unavailable")) + '</b><span>top load</span></span><span class="ru"><b>' + (best?.reps ? escapeHtml(best.reps) : noData("Repetitions unavailable")) + '</b><span>reps</span></span><span class="ru"><b>' + (best?.rpe ? escapeHtml(best.rpe) : noData("RPE unavailable")) + '</b><span>RPE</span></span></div>'
           + '<div><div class="m-label"><span>Sets on ' + formatDate(point.date) + '</span><span>target → performed</span></div>' + renderChartPointSetGroups(point) + '</div>'
           + '<div class="callout ' + (comparison == null ? 'provisional' : comparison >= 0 ? 'good' : 'warn') + '"><b>Against the previous chart point</b><span>' + (comparison == null ? 'This date establishes the comparison baseline.' : '<em>' + (comparison >= 0 ? '+' : '') + comparison.toFixed(1) + '%</em> for this metric.') + '</span></div>'
           + '<small>' + escapeHtml(note) + '</small></article>';
@@ -1456,12 +1465,11 @@
         const loadChange = current.topWeight - previous.topWeight;
         const volumeChange = current.completedSets - previous.completedSets;
         const direction = e1rmChange > 0.5 ? "improved" : e1rmChange < -0.5 ? "regressed" : "held steady";
-        const details = [
-          "Estimated 1RM " + direction + (Math.abs(e1rmChange) > 0.05 ? " by " + Math.abs(e1rmChange).toFixed(1) + " " + data.settings.weightUnit : ""),
-          loadChange === 0 ? "top load held" : "top load " + (loadChange > 0 ? "rose " : "fell ") + Math.abs(loadChange) + " " + data.settings.weightUnit,
-          volumeChange === 0 ? "working sets held" : Math.abs(volumeChange) + " " + (volumeChange > 0 ? "more" : "fewer") + " completed sets"
-        ];
-        return '<div class="inline-panel"><strong>' + formatDate(current.weekStart) + ' vs ' + formatDate(previous.weekStart) + '</strong><p class="settings-note">' + escapeHtml(details.join("; ")) + '. ' + (current.isDeload ? 'This week was marked as a deload, so it is not treated as a regression.' : 'Use this comparison with RPE and rep quality, not load alone.') + '</p></div>';
+        const deltaChip = (label, value, suffix, positiveGood = true) => {
+          const tone = Math.abs(value) < 0.05 ? "on" : value > 0 ? (positiveGood ? "over" : "out") : "under";
+          return '<span class="d ' + tone + '"><b>' + escapeHtml(label) + '</b> ' + (value > 0 ? '+' : '') + escapeHtml(formatLoadNumber(value) + suffix) + '</span>';
+        };
+        return '<div class="inline-panel lift-progress-summary"><strong>' + formatDate(current.weekStart) + ' vs ' + formatDate(previous.weekStart) + '</strong><div class="delta-chip-row">' + deltaChip('Estimated 1RM', e1rmChange, ' ' + data.settings.weightUnit) + deltaChip('Top load', loadChange, ' ' + data.settings.weightUnit) + deltaChip('Working sets', volumeChange, '') + '</div><p class="settings-note">' + (current.isDeload ? 'This week was marked as a deload, so it is not treated as a regression.' : 'Use this comparison with RPE and rep quality, not load alone.') + '</p></div>';
       }
 
       function hypertrophyWindowLabel(selection) {
@@ -1525,7 +1533,7 @@
       }
 
       function renderHypertrophyScore(analysis, options = {}) {
-        if (hypertrophyScoreLoading) return '<section class="hypertrophy-score-empty score-loading" role="status" aria-live="polite"><strong>Recalculating Hypertrophy Score...</strong><p>Loading the submitted history for the selected exercise.</p></section>';
+        if (hypertrophyScoreLoading) return '<section class="hypertrophy-score-empty score-loading" role="status" aria-live="polite"><span class="skeleton skeleton-kicker" aria-hidden="true"></span><span class="skeleton skeleton-title" aria-hidden="true"></span><span class="skeleton skeleton-panel" aria-hidden="true"></span><span class="visually-hidden">Recalculating Hypertrophy Score from submitted history.</span></section>';
         if (analysis.score == null) return '<section class="hypertrophy-score-empty"><strong>' + escapeHtml(analysis.scopeLabel) + ' · Not enough data yet</strong><p>' + (analysis.scopeType === 'exercise' ? 'Submit at least one qualifying week with two completed working sets for this exact exercise variation. The app will not substitute the overall-program score.' : 'Submit at least one week with three completed working sets and at least half of its planned work finished.') + '</p></section>';
         const trend = analysis.trend == null ? "No prior six-week window" : (analysis.trend >= 0 ? "+" : "") + analysis.trend + " vs prior window";
         const weekText = analysis.included.length + (analysis.included.length === 1 ? " qualifying week" : " qualifying weeks") + (analysis.provisional ? " · Provisional" : "");
@@ -1540,7 +1548,7 @@
             <span class="score-hero-copy"><span class="hypertrophy-score-title">Hypertrophy score</span><strong>${escapeHtml(limiting)}</strong><span>${escapeHtml(trend)} · ${escapeHtml(weekText)}</span></span>
             <span class="score-hero-number"><b>${analysis.score}</b><span class="hypertrophy-score-grade" role="img" aria-label="Letter grade ${escapeHtml(hypertrophyGradeLabel(hypertrophyLetterGrade(analysis.score)))}">${hypertrophyLetterGrade(analysis.score)} · ${escapeHtml(analysis.confidence)}</span></span>
             <span class="track" aria-label="${analysis.score} out of 100">${Array.from({ length: 10 }, (_, index) => '<i class="seg ' + (index < filledSegments ? 'filled' : '') + '"></i>').join("")}</span>
-            <span class="hypertrophy-score-meta"><span>${escapeHtml(hypertrophyWindowLabel(analysis))}</span><span>${hypertrophyScoreExpanded ? 'Hide full score accounting' : 'Open full score accounting'} ›</span></span>
+            <span class="hypertrophy-score-meta"><span>${escapeHtml(hypertrophyWindowLabel(analysis))}</span><span>${hypertrophyScoreExpanded ? 'Hide full score accounting' : 'Open full score accounting'} ${icon.right}</span></span>
           </button>
           <div class="callout info analysis-confidence"><span class="meter lg" data-conf="${confidenceLevel}" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span><b>${escapeHtml(analysis.confidence.charAt(0).toUpperCase() + analysis.confidence.slice(1))} confidence</b><span>${escapeHtml(confidenceAccounting)}</span></span></div>
           ${hypertrophyScoreExpanded && !options.deferDetail ? renderHypertrophyScoreDetail(analysis) : ""}
@@ -1594,8 +1602,8 @@
           const rpeCompliance = role.rpeTracked ? Math.round(role.rpeHits / role.rpeTracked * 100) + "% compliance" : "Not scored";
           return '<section class="expectation-role-diff"><div class="m-label bare"><span>' + escapeHtml(role.label) + '</span><span>' + group.sessionCount + (group.sessionCount === 1 ? ' session' : ' sessions') + '</span></div><div class="diff"><div class="drow dhead"><span class="plan">Expected</span><span class="act">Actual</span><span class="dlt">Δ</span></div>'
             + '<div class="drow"><span class="plan"><span class="lbl">Working sets</span><span class="val big">' + expectedSets + '</span></span><span class="act"><span class="lbl">Average per session</span><span class="val big">' + actualSets + '</span></span><span class="dlt"><span class="d ' + setDelta.tone + '">' + escapeHtml(setDelta.text) + '</span></span></div>'
-            + '<div class="drow"><span class="plan"><span class="lbl">Reps</span><span class="val big">' + escapeHtml(targetRangeText(repLow, repHigh)) + '</span></span><span class="act"><span class="lbl">' + escapeHtml(repCompliance) + '</span><span class="val big">' + (averageReps == null ? '—' : averageReps) + '</span></span><span class="dlt"><span class="d ' + repDelta.tone + '">' + escapeHtml(repDelta.text) + '</span></span></div>'
-            + '<div class="drow"><span class="plan"><span class="lbl">Effort</span><span class="val big">' + escapeHtml(targetRangeText(rpeLow, rpeHigh)) + '</span></span><span class="act"><span class="lbl">' + escapeHtml(rpeCompliance) + '</span><span class="val big">' + (averageRpe == null ? '—' : averageRpe) + '</span></span><span class="dlt"><span class="d ' + rpeDelta.tone + '">' + escapeHtml(rpeDelta.text) + '</span></span></div>'
+            + '<div class="drow"><span class="plan"><span class="lbl">Reps</span><span class="val big">' + escapeHtml(targetRangeText(repLow, repHigh)) + '</span></span><span class="act"><span class="lbl">' + escapeHtml(repCompliance) + '</span><span class="val big">' + (averageReps == null ? noData("Mean repetitions unavailable") : averageReps) + '</span></span><span class="dlt"><span class="d ' + repDelta.tone + '">' + escapeHtml(repDelta.text) + '</span></span></div>'
+            + '<div class="drow"><span class="plan"><span class="lbl">Effort</span><span class="val big">' + escapeHtml(targetRangeText(rpeLow, rpeHigh)) + '</span></span><span class="act"><span class="lbl">' + escapeHtml(rpeCompliance) + '</span><span class="val big">' + (averageRpe == null ? noData("Mean RPE unavailable") : averageRpe) + '</span></span><span class="dlt"><span class="d ' + rpeDelta.tone + '">' + escapeHtml(rpeDelta.text) + '</span></span></div>'
             + '</div></section>';
         };
         return `<section class="exercise-expectations" aria-label="Exercise Expectations">
@@ -1687,7 +1695,7 @@
             ${renderHypertrophyScore(analysis, { deferDetail: true })}
             ${renderExerciseExpectations(selectedExerciseId, analysis)}
             ${hypertrophyScoreExpanded ? renderHypertrophyScoreDetail(analysis) : ""}
-            <div class="chart-metric-row"><div><span>${escapeHtml(progress.latestPrimary)}</span><strong>${latestOneRm ? latestOneRm.value : "-"}</strong></div><div><span>${escapeHtml(progress.latestSecondary)}</span><strong>${latestVolume ? latestVolume.value : "-"}</strong></div><div><span>Data points</span><strong>${analysis.dataPointCount}</strong></div></div>
+            <div class="chart-metric-row"><div><span>${escapeHtml(progress.latestPrimary)}</span><strong>${latestOneRm ? latestOneRm.value : "-"}</strong>${sparkline(progress.e1rm.map((point) => Number(point.value || 0)), { label: progress.latestPrimary + " trend" })}<span class="d ${progress.e1rm.length > 1 && Number(progress.e1rm.at(-1).value) >= Number(progress.e1rm.at(-2).value) ? "over" : "under"}">${progress.e1rm.length > 1 ? formatLoadNumber(Number(progress.e1rm.at(-1).value) - Number(progress.e1rm.at(-2).value)) : "—"}</span></div><div><span>${escapeHtml(progress.latestSecondary)}</span><strong>${latestVolume ? latestVolume.value : "-"}</strong>${sparkline(progress.volume.map((point) => Number(point.value || 0)), { label: progress.latestSecondary + " trend" })}<span class="d ${progress.volume.length > 1 && Number(progress.volume.at(-1).value) >= Number(progress.volume.at(-2).value) ? "over" : "under"}">${progress.volume.length > 1 ? formatLoadNumber(Number(progress.volume.at(-1).value) - Number(progress.volume.at(-2).value)) : "—"}</span></div><div><span>Data points</span><strong>${analysis.dataPointCount}</strong>${pips(Math.min(analysis.dataPointCount, 6), 6, analysis.dataPointCount + " data points")}</div></div>
             ${latestReviewWeek && progress.resistanceType === 'external' ? renderLiftProgressSummary(weeks, latestReviewWeek) : ''}
             ${recommendation ? '<section class="coach-recommendation-wrap"><div class="section-kicker">' + (hypertrophyWindowOffset > 0 ? 'Coach recommendation at the end of this period' : 'Coach Recommendation') + '</div>' + renderRecommendation(recommendation) + '</section>' : ""}
             <section class="screen-section">
@@ -1697,13 +1705,14 @@
               </div>
             </section>
             <section class="screen-section trend-section"><div class="section-heading"><div><h2>Recent weeks</h2></div></div><div class="trend-table">
-              <div class="trend-head"><span>Week</span><span>Top</span><span>Sets</span><span>RPE</span></div>
-              ${weeks.map((week) => `
+              <div class="trend-head"><span>Week</span><span>Top</span><span>Sets</span><span>RPE</span><span>Trend</span></div>
+              ${weeks.map((week, index) => `
                 <div class="trend-row">
                   <span>${formatDate(week.weekStart)}${week.travelCount ? " - Travel" : ""}${week.isDeload ? " - Deload" : ""}</span>
                   <span>${week.topWeight}</span>
                   <span>${week.completedSets}/${week.completedSets + week.failedSets}</span>
                   <span>${week.averageRpe ? week.averageRpe.toFixed(1) : "-"}</span>
+                  <span>${sparkline(weeks.slice(index).reverse().map((item) => Number(item.topWeight || 0)), { label: "Top-set trend" })}</span>
                 </div>
               `).join("")}
             </div></section>
@@ -1727,27 +1736,12 @@
           if (!snapshot) {
             return '<article class="recommendation change blocked-recommendation" role="alert"><span>Recommendation unavailable</span><h2>Saved recommendation needs to be rebuilt</h2><p>The lift history remains available, but this recommendation cannot be displayed safely.</p></article>';
           }
-          const base = snapshot.basePrescription;
           const prescription = snapshot.finalPrescription;
-          const changed = Boolean(prescription.readinessAdjustment?.changed);
           const tone = prescription.recommendationType.includes("deload") ? "deload" : ["substitute", "rotate_exercise"].includes(prescription.recommendationType) ? "change" : prescription.recommendationType === "progress" ? "progress" : "hold";
           return `
-            <article class="recommendation unified-recommendation ${tone}">
-              <span>${escapeHtml(prescription.recommendationType.replaceAll('_', ' '))} · ${escapeHtml(prescription.confidence)} confidence</span>
-              <h2>${escapeHtml(recommendationLabel(prescription.recommendationType))}</h2>
-              <p><strong>${escapeHtml(recommendation.affectedExerciseName || prescription.exerciseId)}</strong></p>
-              <div class="unified-recommendation-grid">
-                <div><span>Sets</span><strong>${escapeHtml(prescriptionMetric(prescription.workingSets))}</strong></div>
-                <div><span>Reps</span><strong>${escapeHtml(prescriptionMetric(prescription.repRange))}</strong></div>
-                <div><span>Effort</span><strong>RPE ${escapeHtml(prescription.targetRpe.min + '-' + prescription.targetRpe.max)} · RIR ${escapeHtml(prescription.targetRir.min + '-' + prescription.targetRir.max)}</strong></div>
-                <div><span>Set structure</span><strong>${escapeHtml(prescription.setStructure.replaceAll('_', ' '))}</strong></div>
-                <div><span>Rest</span><strong>${escapeHtml(prescriptionMetric(prescription.restSeconds, ' sec'))}</strong></div>
-                <div><span>Mesocycle role</span><strong>${escapeHtml(prescription.role.replaceAll('_', ' '))}</strong></div>
-              </div>
-              ${changed ? '<div class="readiness-temporary"><strong>Base:</strong> ' + escapeHtml(base.workingSets.target + ' sets · ' + base.repRange.min + '-' + base.repRange.max + ' reps · RPE ' + base.targetRpe.min + '-' + base.targetRpe.max) + '<br/><strong>Today:</strong> ' + escapeHtml(prescription.workingSets.target + ' sets · ' + prescription.repRange.min + '-' + prescription.repRange.max + ' reps · RPE ' + prescription.targetRpe.min + '-' + prescription.targetRpe.max) + '<br/>' + escapeHtml(prescription.readinessAdjustment.explanation) + '</div>' : ''}
-              <p><strong>Next action:</strong> ${escapeHtml(prescription.progressionRule)}</p>
-              <p><strong>Deload status:</strong> ${escapeHtml(recommendationLabel(prescription.deloadStatus?.state || 'normal'))}</p>
-              <details class="compact-disclosure"><summary>Why This Recommendation <span>${prescription.evidenceSummary.length}</span></summary>${renderUnifiedEvidence(snapshot)}</details>
+            <article class="recommendation unified-recommendation recommendation-card-v2 ${tone}">
+              ${renderRecommendationHead(snapshot)}
+              ${renderUnifiedEvidence(snapshot, { idPrefix: "analysis-" + (recommendation.affectedExerciseName || prescription.exerciseId) })}
             </article>
           `;
         }
@@ -1871,7 +1865,7 @@
         const appearance = `
           <div class="field"><div class="f-top"><span class="f-name">Weight unit</span><span class="f-help">Converts load-bearing app data</span></div>${renderSegmentedSetting("weight-unit", "settings-weight-unit", data.settings.weightUnit, [["lb", "Pounds"], ["kg", "Kilograms"]])}</div>
           <div class="field"><div class="f-top"><span class="f-name">Theme</span><span class="f-help">Display only</span></div>${renderSegmentedSetting("theme-mode", "settings-theme", data.settings.theme, [["light", "Light"], ["dark", "Dark"]])}</div>
-          <div class="field"><div class="f-top"><span class="f-name">Colour package</span><span class="f-help">10 available</span></div><div class="chiprow">${colorPackages.map(([value, label]) => '<label class="pick"><input type="radio" name="settings-color-package" value="' + value + '" data-action="color-package" ' + (data.settings.colorPackage === value ? 'checked' : '') + ' />' + label + '</label>').join('')}</div><span class="f-help">Changes semantic surfaces and state colours without changing training logic.</span></div>`;
+          <div class="field"><div class="f-top"><span class="f-name">Colour package</span><span class="f-help">10 available</span></div><div class="chiprow color-package-picks">${colorPackages.map(([value, label]) => '<label class="pick" data-color-package="' + value + '"><input type="radio" name="settings-color-package" value="' + value + '" data-action="color-package" ' + (data.settings.colorPackage === value ? 'checked' : '') + ' /><span class="package-swatches" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>' + label + '</span></label>').join('')}</div><span class="f-help">Changes semantic surfaces and state colours without changing training logic.</span></div>`;
         const training = `
           <label class="field"><span class="f-top"><span class="f-name">Training goal</span><span class="f-help">Sets the disclosed programming objective</span></span><select data-action="training-goal"><option value="" ${!data.settings.trainingGoal ? "selected" : ""}>Not specified (balanced default)</option><option value="strength" ${data.settings.trainingGoal === "strength" ? "selected" : ""}>Strength</option><option value="hypertrophy" ${data.settings.trainingGoal === "hypertrophy" ? "selected" : ""}>Hypertrophy</option><option value="muscular_endurance" ${data.settings.trainingGoal === "muscular_endurance" ? "selected" : ""}>Muscular endurance</option><option value="general_fitness" ${data.settings.trainingGoal === "general_fitness" ? "selected" : ""}>General fitness</option></select></label>
           <label class="field"><span class="f-top"><span class="f-name">Nutrition phase</span><span class="f-help">Context, not a fabricated goal</span></span><select data-action="nutrition-phase"><option value="" ${!data.settings.nutritionPhase ? "selected" : ""}>Not specified</option><option value="deficit" ${data.settings.nutritionPhase === "deficit" ? "selected" : ""}>Energy deficit</option><option value="maintenance" ${data.settings.nutritionPhase === "maintenance" ? "selected" : ""}>Maintenance</option><option value="surplus" ${data.settings.nutritionPhase === "surplus" ? "selected" : ""}>Energy surplus</option><option value="recomposition" ${data.settings.nutritionPhase === "recomposition" ? "selected" : ""}>Body recomposition</option></select></label>
@@ -1920,7 +1914,7 @@
           <label class="import-button">${icon.upload} private personal evidence package<input type="file" accept=".json,application/json" data-action="import-personal-evidence" /></label>
           <p class="settings-note">The imported aggregate evidence package stays in this device's IndexedDB and in exported app backups. Protected source files are never part of the public deployment.</p>
           ${importAttempt ? '<p role="status" aria-live="polite" data-import-status data-import-state="' + escapeHtml(importStatus.state) + '" data-import-attempt="' + importAttempt + '">' + escapeHtml(importStatus.message) + '</p>' : ''}
-          ${importInProgress ? '<p class="settings-note">Importing workout history. This can take a moment, but navigation will recover automatically when it finishes.</p>' : ""}
+          ${importInProgress ? '<div class="state-skeleton import-skeleton" role="status" aria-live="polite"><span class="skeleton skeleton-kicker" aria-hidden="true"></span><span class="skeleton skeleton-title" aria-hidden="true"></span><span class="skeleton skeleton-panel" aria-hidden="true"></span><span class="visually-hidden">Importing workout history. Navigation will recover automatically when it finishes.</span></div>' : ""}
           <button class="primary-action" type="button" data-action="export-data">${icon.download} Export all app data</button>
           ${exportText ? '<textarea class="export-box" readonly aria-label="Exported backup JSON">' + escapeHtml(exportText) + '</textarea>' : ""}
           <label class="field"><span class="f-top"><span class="f-name">Strong CSV source weight unit</span><span class="f-help">Does not change the display unit</span></span><select data-action="strong-import-weight-unit"><option value="" ${!strongImportWeightUnit ? "selected" : ""}>Choose the unit used in the CSV</option><option value="lb" ${strongImportWeightUnit === "lb" ? "selected" : ""}>Pounds (lb)</option><option value="kg" ${strongImportWeightUnit === "kg" ? "selected" : ""}>Kilograms (kg)</option></select></label>

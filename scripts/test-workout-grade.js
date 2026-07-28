@@ -50,8 +50,8 @@ assert.equal(grade(69), "D");
 assert.equal(grade(60), "D");
 assert.equal(grade(59), "F");
 
-function result(status = "stable", rangeCompliance = 1, progressionRatio = 0.9) {
-  return { comparison: { status }, rangeCompliance, progressionRatio };
+function result(status = "stable", rangeCompliance = 1, progressionRatio = 0.9, oneOffCount = 0) {
+  return { comparison: { status }, rangeCompliance, progressionRatio, oneOffCount };
 }
 
 function metrics(overrides = {}) {
@@ -132,7 +132,16 @@ const oneOutlierResults = [result("progress", 1, 1), result("progress", 1, 1), r
 const oneOutlier = score(metrics({ results: oneOutlierResults }));
 assert.ok(oneOutlier.internalScore >= 90, "One extreme exercise outlier must not destroy an otherwise strong workout");
 
+const deliberateOneOff = score(metrics({ results: [result("stable", 1, 0.9, 1)] }));
+assert.match(deliberateOneOff.categoryScores.find((category) => category.key === "execution").reason, /1 set was logged as a deliberate one-off/, "The grade rationale must disclose deliberate one-off scoring.");
+
 assert.match(html, /filter\(\(set\) => isWorkingSet\(set, "score"\)\)/, "Canonical set semantics must exclude warm-ups before grading");
+assert.match(html, /set\.deviationIntent === "one_off" \|\| \(Number\(set\.reps/, "A deliberate one-off must count as compliant with the rep-range grade.");
+assert.match(html, /const setRepBounds = \(set\) => \{[\s\S]*?Number\(set\.targetRepMin[\s\S]*?Number\(set\.targetRepMax[\s\S]*?\{ low: repLow, high: repHigh \}/, "Rep-range grading must prefer the set's own reconciled bounds and fall back to the exercise range.");
+assert.match(html, /rangeMatches = completedSets\.filter\(\(set\) =>[^\n]*setRepBounds\(set\)\.low[^\n]*setRepBounds\(set\)\.high/, "Rep-range compliance must be measured against the reconciled per-set range.");
+assert.match(html, /targetRepMatches = targetRepSets\.filter\(\(set\) =>[^\n]*setRepBounds\(set\)\.high/, "Target-rep compliance must use the reconciled ceiling, not the original exercise range.");
+assert.match(html, /set\.deviationIntent === "one_off" \|\| resistanceType === "bodyweight"/, "A deliberate one-off must count as compliant with the load grade.");
+assert.match(html, /set\.deviationIntent === "one_off" \|\| target <= 0 \|\| Math\.abs\(Number\(set\.rpe/, "A deliberate one-off must count as compliant with the RPE grade.");
 assert.match(html, /const workoutAnalysis = calculateWorkoutAnalysis\(completedSession, \{ prs \}\)/, "Submission must calculate structured workout analysis");
 assert.match(html, /workoutAnalysis \}\s*: item/, "The submitted session must persist its workout analysis");
 assert.match(html, /calculateWorkoutAnalysis\(updatedSession, \{ prs \}\)/, "Saving history edits must recalculate the grade");

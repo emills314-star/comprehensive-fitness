@@ -50,11 +50,11 @@ for (const [key, level] of [["research_default", 1], ["low", 2], ["moderate", 3]
 }
 
 assert.doesNotMatch(prescriptionSurface, /set\.setPrescription\?\.confidence \|\| set\.prescriptionConfidence \|\| "low"/, "prescription evidence must not fabricate a low confidence fallback");
-assert.match(prescriptionSurface, /<section class="prescription-brief unified-prescription/, "unified prescriptions must render as always-visible sections");
-assert.match(prescriptionSurface, /<section class="recommendation-rationale" aria-label="Recommendation evidence"/, "recommendation evidence must be an always-visible labelled section");
+assert.match(prescriptionSurface, /<section class="prescription-brief unified-prescription recommendation-card-v2/, "unified prescriptions must render a compact recommendation card");
+assert.match(prescriptionSurface, /<details class="recommendation-section"[\s\S]*<summary><span>Evidence<\/span><span class="cnt">/, "recommendation evidence must be a counted native disclosure");
 assert.match(prescriptionSurface, /class="claim-card prescription-claim/, "the prescription target must render as a confidence-bearing claim");
-assert.match(prescriptionSurface, /class="claim-projection-grid prescription-claim-projections"/, "rest, frequency, and role projections must remain inside the unified confidence claim");
-assert.match(prescriptionSurface, /class="claim-projection-rule"/, "progression rules must remain inside their confidence claim");
+assert.match(prescriptionSurface, /class="unified-recommendation-grid"/, "sets, reps, effort, structure, rest, and role must remain available in prescription detail");
+assert.match(prescriptionSurface, /class="claim-projection-rule"[\s\S]*Next action[\s\S]*Deload status/, "progression and deload status must remain in prescription detail");
 assert.match(prescriptionSurface, /class="role-evidence-copy"/, "stored role rationale must remain separately identified as evidence");
 assert.match(prescriptionSurface, /<div class="role-prescription"/, "role prescription groups without headings must use neutral container semantics");
 assert.match(prescriptionSurface, /roleSessionPrescriptionLine\(exercise, fallbackFinalLine\)/, "the exercise claim must state the exact generated row prescription");
@@ -65,8 +65,8 @@ assert.doesNotMatch(prescriptionSurface, /role-confidence-label|role-prescriptio
 assert.doesNotMatch(prescriptionSurface, /<article class="role-prescription"/, "role prescription groups must not expose unnamed article landmarks");
 assert.doesNotMatch(prescriptionSurface, /role-progression-facts|prescription-fact-grid/, "forward-looking prescription values must not return to fact-styled grids");
 assert.doesNotMatch(style, /\.role-progression-facts|\.prescription-fact-grid/, "obsolete current-tinted projection grids must not be shipped");
-assert.doesNotMatch(prescriptionSurface, /<details class="prescription-brief|<summary[^>]*toggle-prescription-rationale/, "the prescription/evidence surface must not restore nested disclosures");
-assert.doesNotMatch(prescriptionSurface, /aria-expanded|data-action=/, "always-visible prescription evidence must not add disclosure state or a keyboard stop");
+assert.doesNotMatch(prescriptionSurface, /<details class="prescription-brief|<summary[^>]*toggle-prescription-rationale/, "the card itself must remain visible and must not restore the retired action-driven outer disclosure");
+assert.doesNotMatch(prescriptionSurface, /aria-expanded|data-action=/, "native recommendation disclosures must not add synthetic disclosure state or action-driven keyboard stops");
 
 const focusAllowlist = foundation.match(/const focusActionAllowlist = new Set\(\[([\s\S]*?)\]\);/)?.[1] || "";
 assert.ok(focusAllowlist, "the focus restoration action allowlist must remain discoverable");
@@ -103,10 +103,11 @@ for (const contrastName of [
 }
 assert.match(uiAudit, /effectiveBackground/, "confidence contrast must composite translucent package surfaces");
 assert.match(lifecycleAudit, /page\.keyboard\.press\("Tab"\)/, "the live prescription surface must have a real keyboard traversal regression");
-assert.match(lifecycleAudit, /Tab must cross the non-interactive prescription evidence and land on the next real workout control/, "focus traversal must assert the next durable control");
+assert.match(lifecycleAudit, /the compact prescription must expose its three native disclosure controls/, "focus traversal must cover all three native recommendation disclosures");
+assert.match(lifecycleAudit, /Tab must leave the recommendation disclosures for the next real workout control/, "focus traversal must assert the next durable control after those disclosures");
 
 assert.match(decisionEngine, /\| `research_default` \|[^\n]+\| `1` \|/, "Decision Engine documentation must record the research_default UI mapping");
 assert.match(decisionEngine, /\| `moderate` \|[^\n]+\| `3` \|/, "Decision Engine documentation must record the moderate UI mapping");
-assert.match(uiUx, /persisted generated set rows remain authoritative for executable load and repetition targets[\s\S]*exercise-level claim is their textual owner/, "UI/UX documentation must distinguish executable authority from human-readable claim ownership");
+assert.match(uiUx, /persisted generated (?:set )?rows remain authoritative for executable load and repetition targets[\s\S]*exercise-level claim remains their textual owner/, "UI/UX documentation must distinguish executable authority from human-readable claim ownership");
 
 console.log("Prescription claim-and-evidence contract passed.");

@@ -189,6 +189,35 @@ test("design-system source does not accumulate one-off styling", async () => {
   expect(directHexDeclarations, "component colors must consume semantic tokens").toEqual([]);
 });
 
+const polishVisualStates = [
+  ["rest-rail-collapsed", '<details class="timer-bar" data-phase="resting"><summary class="timer-summary"><span class="timer-progress" style="--timer-progress:35%"><span></span></span><span class="timer-rest-copy"><span>Rest</span></span><strong>1:24</strong></summary></details>'],
+  ["rest-rail-expanded", '<details class="timer-bar" data-phase="resting" open><summary class="timer-summary"><span class="timer-progress" style="--timer-progress:35%"><span></span></span><span class="timer-rest-copy"><span>Rest</span></span><strong>1:24</strong></summary><div class="timer-controls-panel"><div class="timer-primary-controls"><button>−15</button><button>+15</button><button>Skip</button></div><div class="timer-context">Next: Bench Press · In-app alert ready</div></div></details>'],
+  ["rest-rail-final-10s", '<details class="timer-bar" data-phase="final"><summary class="timer-summary"><span class="timer-progress" style="--timer-progress:92%"><span></span></span><span class="timer-rest-copy"><span>Rest</span></span><strong>0:08</strong></summary></details>'],
+  ["rest-rail-paused", '<details class="timer-bar" data-phase="resting" data-paused="true"><summary class="timer-summary"><span class="timer-progress" style="--timer-progress:48%"><span></span></span><span class="timer-rest-copy"><span>Paused</span></span><strong>0:47</strong></summary></details>'],
+  ["reconcile-strip", '<div class="reconcile-strip" data-tone="over"><span class="reconcile-copy"><strong>195 lb × 8 logged</strong><small>10 lb above target · 2 sets remain</small></span><span class="reconcile-actions"><button class="primary-action">Apply to remaining</button><button class="mini-button">Just this set</button></span></div>'],
+  ["recommendation-closed", '<section class="recommendation-card-v2"><div class="claim-card recommendation-head" data-conf="3"><div class="cc-row"><span class="cc-title">Hold</span><span class="meter lg" data-conf="3"><i></i><i></i><i></i><i></i></span></div><strong class="cc-value">2 working · 110 lb × 8 reps · RPE 8</strong></div><details class="recommendation-section"><summary>Prescription detail</summary></details><details class="recommendation-section"><summary>Research confidence</summary></details><details class="recommendation-section"><summary><span>Evidence</span><span class="cnt">3</span></summary></details></section>'],
+  ["recommendation-prescription-open", '<section class="recommendation-card-v2"><details class="recommendation-section" open><summary>Prescription detail</summary><div class="recommendation-section-body"><div class="unified-recommendation-grid"><div><span>Sets</span><strong>2</strong></div><div><span>Reps</span><strong>8–10</strong></div><div><span>Effort</span><strong>RPE 7–9</strong></div><div><span>Rest</span><strong>120 sec</strong></div></div></div></details></section>'],
+  ["recommendation-confidence-open", '<section class="recommendation-card-v2"><details class="recommendation-section" open><summary>Research confidence</summary><div class="recommendation-section-body"><div class="rationale-heading" data-conf="3"><span class="meter lg" data-conf="3"><i></i><i></i><i></i><i></i></span><div><strong>Moderate confidence</strong><span>personal 62% · research 38%</span></div></div></div></details></section>'],
+  ["recommendation-evidence-open", '<section class="recommendation-card-v2"><details class="recommendation-section" open><summary><span>Evidence</span><span class="cnt">3</span></summary><div class="recommendation-section-body"><ul><li>Three comparable exposures</li><li>Load held inside the progression gate</li><li>RPE coverage is complete</li></ul></div></details></section>'],
+  ["caret-closed", '<details class="compact-disclosure"><summary>Section disclosure</summary></details>'],
+  ["caret-open", '<details class="compact-disclosure" open><summary>Section disclosure</summary><div class="disclosure-body">Visible detail</div></details>'],
+  ["range-bar-tones", '<div class="range-tone-specimen">' + ["on", "under", "over", "out", "none"].map((tone, index) => '<label>' + tone + '<span class="range-bar" data-tone="' + tone + '" style="--band-start:30%;--band-end:70%;--actual:' + (25 + index * 13) + '%"><i class="rb-band"></i><i class="rb-mark"></i></span></label>').join("") + '</div>'],
+  ["plate-diagram", '<div class="plate-calculator"><strong>Plate calculator · 225 lb</strong><svg class="plate-diagram" viewBox="0 0 180 86"><line x1="8" y1="42" x2="170" y2="42"></line><rect class="plate-sleeve" x="18" y="36" width="24" height="12" rx="2"></rect><g class="plate plate-0"><rect x="42" y="15" width="10" height="54" rx="2"></rect></g><g class="plate plate-1"><rect x="54" y="21" width="8" height="42" rx="2"></rect></g></svg><span>Each side: 2 × 45</span></div>']
+];
+
+for (const [name, markup] of polishVisualStates) {
+  test(`polish visual state: ${name}`, async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "mobile", "Specimens render inside a fixed 360 px container, so a second project would only duplicate the mobile image.");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByRole("navigation", { name: "Main navigation" }).waitFor();
+    await page.locator("body").evaluate((body, content) => {
+      body.innerHTML = '<main id="polish-specimen" style="max-width:360px;padding:24px"></main>';
+      document.getElementById("polish-specimen").innerHTML = content;
+    }, markup);
+    await expect(page.locator("#polish-specimen")).toHaveScreenshot(`polish-${name}.png`, { animations: "disabled" });
+  });
+}
+
 test("all confidence text retains contrast in every color package and theme", async ({ page }) => {
   const colorPackages = [
     "heritage-atlas",
