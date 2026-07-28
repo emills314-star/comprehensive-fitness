@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Comprehensive Fitness - Rack">
+  <defs>
+    <linearGradient id="bg-08-rack-maskable" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#16283f"/>
+      <stop offset="1" stop-color="#07101d"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg-08-rack-maskable)"/>
+  <defs>
+    <mask id="rack-08-rack-maskable">
+    <rect x="272" y="200" width="64" height="624" rx="32" fill="#ffffff"/>
+    <rect x="688" y="200" width="64" height="624" rx="32" fill="#ffffff"/>
+    <circle cx="304" cy="246" r="13" fill="#000000"/>
+    <circle cx="720" cy="246" r="13" fill="#000000"/>
+    <circle cx="304" cy="314" r="13" fill="#000000"/>
+    <circle cx="720" cy="314" r="13" fill="#000000"/>
+    <circle cx="304" cy="382" r="13" fill="#000000"/>
+    <circle cx="720" cy="382" r="13" fill="#000000"/>
+    <circle cx="304" cy="450" r="13" fill="#000000"/>
+    <circle cx="720" cy="450" r="13" fill="#000000"/>
+    <circle cx="304" cy="518" r="13" fill="#000000"/>
+    <circle cx="720" cy="518" r="13" fill="#000000"/>
+    <circle cx="304" cy="586" r="13" fill="#000000"/>
+    <circle cx="720" cy="586" r="13" fill="#000000"/>
+    <circle cx="304" cy="654" r="13" fill="#000000"/>
+    <circle cx="720" cy="654" r="13" fill="#000000"/>
+    <circle cx="304" cy="722" r="13" fill="#000000"/>
+    <circle cx="720" cy="722" r="13" fill="#000000"/>
+    <circle cx="304" cy="790" r="13" fill="#000000"/>
+    <circle cx="720" cy="790" r="13" fill="#000000"/>
+    </mask>
+  </defs>
+  <g mask="url(#rack-08-rack-maskable)">
+    <rect x="272" y="200" width="64" height="624" rx="32" fill="#1f4f88"/>
+    <rect x="688" y="200" width="64" height="624" rx="32" fill="#1f4f88"/>
+  </g>
+  <rect x="256" y="330" width="96" height="104" rx="26" fill="#f4c84c"/>
+  <rect x="672" y="330" width="96" height="104" rx="26" fill="#f4c84c"/>
+  <rect x="216" y="352" width="592" height="60" rx="30" fill="#f4f7fa"/>
+</svg>

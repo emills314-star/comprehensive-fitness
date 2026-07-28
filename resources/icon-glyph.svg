@@ -1,0 +1,19 @@
+<!--
+  In-app mark. Single colour via currentColor, no canvas, so it inherits
+  whatever --current the active colour package supplies and restains itself
+  across all ten packages instead of needing ten assets.
+
+  Three weights of the same ink stand in for the icon's three colours: plates
+  solid, bar at 0.85, change plate at 0.5. Because it is one hue it stays legible
+  on --surface, on --action and on --rest-accent alike.
+
+  Not referenced by any screen yet. Edit resources/icon.svg first, then mirror
+  the geometry here.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Comprehensive Fitness">
+  <rect x="122" y="488" width="780" height="48" rx="24" fill="currentColor" fill-opacity="0.85"/>
+  <rect x="236" y="352" width="80" height="320" rx="40" fill="currentColor"/>
+  <rect x="708" y="352" width="80" height="320" rx="40" fill="currentColor"/>
+  <rect x="160" y="402" width="56" height="220" rx="28" fill="currentColor" fill-opacity="0.5"/>
+  <rect x="808" y="402" width="56" height="220" rx="28" fill="currentColor" fill-opacity="0.5"/>
+</svg>

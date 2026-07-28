@@ -1,5 +1,32 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-  <rect width="1024" height="1024" rx="220" fill="#101418"/>
-  <path d="M152 552h96V472h-96v80Zm624 0h96V472h-96v80ZM304 632h96V392h-96v240Zm320 0h96V392h-96v240ZM448 544h128v-64H448v64Z" fill="#f6f8f5"/>
-  <path d="M112 648h64V376h-64v272Zm736 0h64V376h-64v272Z" fill="#78d6a3"/>
+<!--
+  Comprehensive Fitness app mark - "Sleeve": a loaded bar in profile, two plates
+  a side on a long bare bar, the outer pair gold for the change plate.
+
+  Source of truth for every rasterised icon. Edit here, then regenerate:
+
+      node scripts/build-icons.js
+
+  Colours are literal because baked PNGs sit outside the CSS custom-property
+  system, but every value comes from the token block in index.html lines 19-202:
+  canvas #16283f -> #07101d is --panel-3 -> --bg, bar #f4f7fa is --text,
+  plates #4fa3ff is night-stadium --current, collar #f4c84c is night-stadium
+  --amber. No hue here is absent from the shipped palette.
+
+  All art sits inside the circle of radius 396 about (512,512), well inside the
+  409.6 radius Android reserves for maskable icons, so the same geometry
+  survives the rounded-square, circle and squircle masks.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Comprehensive Fitness">
+  <defs>
+    <linearGradient id="cf-canvas" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#16283f"/>
+      <stop offset="1" stop-color="#07101d"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="220" fill="url(#cf-canvas)"/>
+  <rect x="122" y="488" width="780" height="48" rx="24" fill="#f4f7fa"/>
+  <rect x="236" y="352" width="80" height="320" rx="40" fill="#4fa3ff"/>
+  <rect x="708" y="352" width="80" height="320" rx="40" fill="#4fa3ff"/>
+  <rect x="160" y="402" width="56" height="220" rx="28" fill="#f4c84c"/>
+  <rect x="808" y="402" width="56" height="220" rx="28" fill="#f4c84c"/>
 </svg>

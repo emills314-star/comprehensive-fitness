@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Comprehensive Fitness - Forecast">
+  <path d="M 232 700 L 380 620 L 496 528" fill="none" stroke="currentColor" stroke-width="72" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="496" cy="528" r="50" fill="currentColor"/>
+  <circle cx="578.7" cy="458.7" r="23" fill="currentColor" fill-opacity="0.48"/>
+  <circle cx="633.9" cy="412.4" r="23" fill="currentColor" fill-opacity="0.48"/>
+  <circle cx="689" cy="366.2" r="23" fill="currentColor" fill-opacity="0.48"/>
+  <circle cx="768" cy="300" r="48" fill="none" stroke="currentColor" stroke-opacity="0.48" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
