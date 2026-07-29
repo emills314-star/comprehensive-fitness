@@ -90,3 +90,7 @@ The focused source/test fix was pushed to `ui-migration-phases-1-5` as `9977e56`
 ## Final status
 
 **PUBLISHED TO FEATURE BRANCH — PR CI PARTIALLY GREEN.** The PR #6 remediation is published to `ui-migration-phases-1-5`; domain/schema, research/PWA, and Vercel pass. `chromium-ui` retains only the three independently evidenced `main` failures and therefore remains **NEEDS REVIEW** outside this PR. Baselines are accepted but owner-gated; no baseline was regenerated. No merge or direct deployment action was performed; the repository's automatic Vercel preview check completed after the authorized push.
+
+## Publication postscript — 2026-07-28
+
+This work log's final status above is revision-bound evidence from before the owner merged PR #6. The owner subsequently merged the seven reviewed commits with merge commit `cf075d0`; no squash was used. The three inherited Chromium failures are addressed in the later uncommitted follow-up documented by `2026-07-28-post-merge-chromium-ui-repair.md`. This postscript preserves the historical report while preventing its former “no merge” statement from being mistaken for current repository status.

@@ -1456,6 +1456,7 @@
       .chart-point.selected .selected-ring { stroke: var(--current); }
       .chart-selected-guide { stroke: var(--current); stroke-dasharray: 3 3; stroke-width: 1; }
       .chart-detail { background: var(--current-dark); border: 1px solid color-mix(in srgb, var(--current) 48%, var(--line)); border-radius: var(--r-xs); display: grid; gap: 8px; margin-top: 8px; padding: 10px; }
+      .chart-detail .icon-button { flex: 0 0 48px; position: relative; scroll-margin-block: calc(var(--sp-9) * 3); z-index: 1; }
       .chart-detail p, .chart-detail small { color: var(--muted); margin: 0; }
       .chart-detail-facts { display: grid; gap: 6px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .chart-detail-facts div { display: grid; gap: 2px; }
@@ -1957,6 +1958,7 @@
       .readiness-evidence-summary { align-items: center; grid-template-columns: auto minmax(0, 1fr); }
       .readiness-evidence-summary > span:last-child { display: grid; gap: var(--sp-1); }
       .readiness-evidence-summary > span:last-child b { color: var(--text); font-size: var(--fs-tiny); letter-spacing: 0; text-transform: none; }
+      .readiness-evidence-summary > span:last-child > span { color: color-mix(in srgb, var(--muted) 25%, var(--text)); }
       .readiness-confidence-missing { color: var(--muted); font-size: var(--fs-micro); font-weight: 800; }
       .field { border: 0; border-bottom: 1px solid var(--line); display: grid; gap: var(--sp-3); margin: 0; min-width: 0; padding: var(--sp-4) 0; }
       .field .f-top { align-items: baseline; display: flex; gap: var(--sp-4); justify-content: space-between; }
@@ -2832,8 +2834,8 @@
       .set-logged-status > span { grid-column: 1 / -1; }
       .set-logged-status .check-button { grid-column: 2; grid-row: 2; }
       .set-current-editor { border: 1px solid var(--current); border-radius: var(--r-sm); display: grid; gap: var(--sp-3); margin: var(--sp-2) var(--sp-1); padding: var(--sp-4); }
-      .set-current-heading { align-items: center; display: flex; gap: var(--sp-3); justify-content: space-between; padding-right: 42px; }
-      .set-current-heading > div { display: grid; gap: var(--sp-1); min-width: 0; }
+      .set-current-heading { align-items: center; display: flex; gap: var(--sp-3); justify-content: space-between; }
+      .set-current-heading > div { display: grid; flex: 1 1 auto; gap: var(--sp-1); min-width: 0; }
       .set-current-heading strong { overflow-wrap: anywhere; }
       .current-set-inputs { display: grid; gap: var(--sp-2); grid-template-columns: repeat(4, minmax(0, 1fr)); min-width: 0; }
       .current-set-inputs .set-field { min-width: 0; }
