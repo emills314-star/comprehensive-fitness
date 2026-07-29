@@ -323,8 +323,9 @@ test("critical workout lifecycle remains coherent through submission, progress, 
   await expect(completion).toBeFocused();
   await expect(page.locator('[data-session-dock-progress]')).toHaveText("1 of 3 sets");
   await expect(page.locator('[data-workout-rollup]')).not.toContainText("1/3");
-  const timer = firstWorkingSet.locator(".timer-bar");
+  const timer = page.locator(".workout-timer-slot > .timer-bar");
   await expect(timer, "completing an eligible set must start its rest timer").toBeVisible();
+  await expect(firstWorkingSet.locator(".timer-bar"), "the M1 rest strip must not be nested inside a logged set").toHaveCount(0);
   await timer.locator("summary").click();
   await timer.getByRole("button", { name: "Pause timer" }).click();
   await expect(timer.getByRole("button", { name: "Resume timer" })).toBeVisible();
@@ -332,7 +333,7 @@ test("critical workout lifecycle remains coherent through submission, progress, 
   await timer.getByRole("button", { name: "Add 15 seconds" }).click();
   if (!await timer.evaluate((element) => element.open)) await timer.locator("summary").click();
   await timer.getByRole("button", { name: "Skip rest", exact: true }).click();
-  await expect(firstWorkingSet.locator(".timer-bar")).toHaveCount(0);
+  await expect(page.locator(".workout-timer-slot > .timer-bar")).toHaveCount(0);
 
   await page.locator('[data-action="request-submit-workout"]').click();
   await expect(page.getByText("Log this workout as completed?", { exact: true })).toBeVisible();
@@ -344,7 +345,7 @@ test("critical workout lifecycle remains coherent through submission, progress, 
   await page.locator('[data-action="confirm-submit-workout"]').click();
   const summary = page.locator('.completed-summary[aria-label="Post-workout grade and analysis"]');
   await expect(summary).toBeVisible({ timeout: 45_000 });
-  await expect(summary).toContainText("Workout logged");
+  await expect(summary).toContainText("Session logged");
   await expect(page.locator(".session-dock-submitted")).toHaveText("Workout logged");
   await expect(page.locator(".session-dock-finish")).toHaveCount(0);
   const submitted = await waitForPersisted(page, (stored) => stored?.sessions?.filter((session) => session.id === activeSession.id && session.submitted).length === 1, "confirmed submission must persist exactly one completed session");

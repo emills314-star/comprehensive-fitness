@@ -646,8 +646,10 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
       return {
         collapsed: !block.querySelector(".set-tools-disclosure").open,
         height: block.getBoundingClientRect().height,
-        previousCenter: previous.top + previous.height / 2,
-        loadCenter: load.top + load.height / 2,
+        previousTop: previous.top,
+        previousWidth: previous.width,
+        loadBottom: load.bottom,
+        editorWidth: block.querySelector(".set-current-editor").getBoundingClientRect().width,
         bodyBackground: style.backgroundColor
       };
     });
@@ -660,7 +662,8 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     expect(pendingLayout.collapsed, "pending set controls should start collapsed").toBe(true);
     expect(pendingLayout.mode, "a pending set must use the V3 target-only shape").toBe("pending");
     expect(pendingLayout.height, "the pending target line must remain vertically cheaper than the current editor").toBeLessThan(currentLayout.height);
-    expect(Math.abs(currentLayout.previousCenter - currentLayout.loadCenter), "Previous must sit beside the current boxes instead of below them").toBeLessThanOrEqual(10);
+    expect(currentLayout.previousTop, "Previous history must follow the three primary M1 entry boxes").toBeGreaterThanOrEqual(currentLayout.loadBottom - 1);
+    expect(currentLayout.previousWidth, "Previous history must remain a compact full-width strip rather than a fourth primary entry box").toBeGreaterThanOrEqual(currentLayout.editorWidth * 0.85);
     expect(currentLayout.bodyBackground, "the light application canvas must be true white").toBe("rgb(255, 255, 255)");
 
     await page.evaluate(() => setActiveTab("progress"));
@@ -1029,7 +1032,7 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     expect(after.templates.find((item) => item.id === IDS.controlTemplate)).toEqual(before.templates.find((item) => item.id === IDS.controlTemplate));
 
     await reloadAndWait(page);
-    await expect(page.getByRole("heading", { name: "What the plan asks today.", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "What changed since you last ran this.", exact: true })).toBeVisible();
     expect((await persistedData(page)).sessions.filter((item) => item.id === IDS.historySession)).toHaveLength(1);
     expect(browserErrors, "cancel-workout lifecycle browser errors").toEqual([]);
   });
@@ -1076,7 +1079,7 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await page.locator('[data-action="confirm-submit-workout"]').click();
 
     await expect(page.locator('[aria-label="Post-workout grade and analysis"]')).toBeVisible({ timeout: 45_000 });
-    await expect(page.locator('.completed-summary[aria-label="Post-workout grade and analysis"]')).toContainText("Workout logged");
+    await expect(page.locator('.completed-summary[aria-label="Post-workout grade and analysis"]')).toContainText("Session logged");
     const afterFirst = await waitForPersisted(page, (data) => data.sessions.filter((item) => item.id === IDS.activeSession && item.submitted).length === 1, "the UI confirmation must persist one submitted session");
     await waitForSubmissionWrites(page);
     expect(await submissionProbe(page)).toMatchObject({

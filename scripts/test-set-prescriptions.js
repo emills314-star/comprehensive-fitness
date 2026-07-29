@@ -148,7 +148,7 @@ assert(html.includes("pointer-events: none"), "Informational set badges must not
 assert(!/set-type-badge[^>]+data-action/.test(html), "Set-type badges must not own edit or navigation actions");
 assert(html.includes("previousComparableSetForRole(previousSets, role, set.setTypeIndex, workingSetIndex)"));
 assert(html.includes("getMostRecentWorkoutPerformance"), "All prior-set consumers must share one workout-level resolver");
-assert(html.includes('class="set-field set-previous set-previous-link"'), "Comparable history must use one compact linked Previous column beside the current fields");
+assert(html.includes('class="set-field set-previous set-previous-link"'), "Comparable history must remain one compact linked Previous strip within the current editor");
 assert(html.includes('previousSummaryText'), "The Previous column must combine load, reps, and RPE without losing resistance semantics");
 assert(html.includes('data-session-id="\' + escapeHtml(previous.priorSessionId)'), "The Previous link must preserve the exact source session ID");
 assert(html.includes("Broad exercise guidance"));

@@ -16,6 +16,7 @@ function section(source, start, end) {
 }
 
 const today = section(views, "function renderLiftHome()", "function workoutProgress()");
+const todayPlan = section(views, "function renderTodayPlanPreview(", "function renderLiftHome()");
 const quickStarts = section(views, "function renderQuickStartTemplates()", "function openTemplateStart(");
 const progress = section(views, "function renderProgressOverview()", "function dashboardWeekEnd(");
 const templates = section(analysis, "function renderTemplates()", "function templateNumericDraftKey(");
@@ -23,8 +24,10 @@ const templateCard = section(analysis, "function renderTemplateCard(", "function
 const exerciseResult = section(history, "function renderWorkoutExerciseResult(", "const workoutAchievementAssets");
 const summary = section(history, "function renderCompletedWorkoutSummary(", "\n      }");
 
-assert.match(today, /What the plan asks today|Build the plan before chasing the outcome/, "Today must lead with one current decision");
-assert.match(today, /data-action="start-next-template"/, "Today must expose one primary next-template action");
+assert.match(today, /What changed since you last ran this|Build the plan before chasing the outcome/, "Today must lead with one current decision");
+assert.match(today, /todayPlanPreview\(nextTemplate\)[\s\S]*renderTodayPlanPreview\(nextTemplate, planPreview\)/, "Today must derive and render its plan-versus-last-performance preview");
+assert.match(todayPlan, /data-action="start-next-template"/, "Today must expose one primary next-template action");
+assert.strictEqual((views.match(/data-action="start-next-template"/g) || []).length, 1, "Today must render exactly one next-template action");
 assert.match(today, /data-action="open-progress"/, "Today must retain the weekly-review action");
 assert.match(quickStarts, /today-template-strip[\s\S]*today-template-card/, "Today quick starts must use the Phase 3 presentation");
 assert.match(quickStarts, /"return-active-workout" : "start-template"/, "Today must retain quick-template start actions");
@@ -44,8 +47,8 @@ assert.match(templates, /const volumeFlags = \[\]/, "Phase 3 must not silently r
 assert.match(templateCard, /const advice = null/, "Phase 3 must not silently revive template advice");
 
 assert.match(exerciseResult, /summary-diff-result[\s\S]*class="diff"[\s\S]*class="plan"[\s\S]*class="act"[\s\S]*class="dlt"/, "Completed exercise results must expose plan, actual, and judgment slots");
-assert.match(summary, /<h2>Workout analysis<\/h2>[\s\S]*workout-grade-mark[\s\S]*workout-confidence/, "Completed summary must retain one grade owner and explicit confidence evidence");
-for (const className of ["today-coach", "volume-table", "plan-template-card", "summary-diff-result"]) {
+assert.match(summary, /completionHeadline[\s\S]*workout-confidence[\s\S]*workout-grade-mark[\s\S]*confidence[\s\S]*exerciseResults/, "Completed summary must retain one grade owner, explicit confidence evidence, and the exercise diff");
+for (const className of ["today-plan-preview", "volume-table", "plan-template-card", "summary-diff-result"]) {
   assert.match(html, new RegExp(`\\.${className.replaceAll("-", "\\-")}`), `${className} styles must ship in the production stylesheet`);
 }
 

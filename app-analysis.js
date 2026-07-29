@@ -18,11 +18,11 @@
               <button class="icon-button" type="button" data-action="new-template" title="New template">${icon.add}</button>
             </div>
             <section class="coach-lead templates-coach"><div class="section-kicker">Planning principle</div><h2>The sheet is stable; today can still adapt.</h2><p>Choose the repeatable workout that fits today. Readiness can adjust the session without rewriting the template.</p></section>
-            ${renderMesocyclePlanner()}
             ${running ? '<section class="active-workout-notice" id="active-workout-template-notice" role="status"><div><div class="section-kicker">Workout in progress</div><strong>' + escapeHtml(running.title || 'Active workout') + '</strong><span>Finish or cancel your current workout before starting another template.</span></div><div><button class="primary-action" type="button" data-action="return-active-workout">Return to Active Workout</button><button class="text-danger-action" type="button" data-action="request-cancel-workout-from-template">Manage Active Workout</button></div></section>' : ''}
             ${volumeFlags.length ? '<section class="plan-volume-alerts"><div class="section-heading"><div><h2>Weekly volume checks</h2><p>Review these before adding more work.</p></div></div><div class="drilldown-list">' + volumeFlags.map((flag) => '<button class="drilldown-item fatigue-' + flag.concern + '" type="button" data-action="open-plan-volume-warning" data-flag-id="' + escapeHtml(flag.id) + '"><strong>' + escapeHtml(flag.name + ': ' + flag.reason) + '</strong><span class="fatigue-severity ' + flag.concern + '">' + escapeHtml(flag.concern.charAt(0).toUpperCase() + flag.concern.slice(1)) + ' concern</span><small>' + escapeHtml(flag.evidence[0]) + ' · Tap for exact contributors</small><span class="drilldown-chevron" aria-hidden="true">' + icon.right + '</span></button>').join('') + '</div></section>' : ''}
             <div class="template-library">${data.templates.length ? data.templates.map((template) => renderTemplateCard(template, running)).join("") : '<div class="empty-state">Create a leg day, push day, pull day, or any repeatable workout. Templates store exercises, sets, and target reps; you fill in weights during the workout.</div>'}</div>
             <button class="secondary-action full-width" type="button" data-action="save-template">Save current workout as a template</button>
+            ${renderMesocyclePlanner()}
             ${renderHistoricalMesocycles()}
           </section>
         `;
@@ -225,7 +225,7 @@
         };
         return `
           <section class="view history-view">
-            <div class="screen-heading"><div><div class="section-kicker">History</div><h1>Training log.</h1></div>${nested ? '<button class="text-button" type="button" data-action="close-dashboard-detail">Back</button>' : ''}</div>
+            <div class="screen-heading"><div><div class="section-kicker">Progress · History</div><h1>Training log.</h1></div>${nested ? '<button class="text-button" type="button" data-action="close-dashboard-detail">Back</button>' : ''}</div>
             <div class="rollup history-rollup" aria-label="Submitted history summary"><span class="ru"><b>${totalSessions}</b><span>sessions</span></span><span class="ru"><b>${escapeHtml(completion)}</b><span>set completion</span></span><span class="ru"><b>${escapeHtml(meanGrade)}</b><span>mean grade</span></span></div>
             ${totalSessions > sessions.length ? '<p class="settings-note">Showing the latest ' + sessions.length + ' sessions. Exercise review still uses the full imported history.</p>' : ""}
             <div class="history-session-groups">${sessionModels.length ? Array.from(groups.entries()).map(([weekStart, items]) => '<section><div class="m-label"><span>' + (weekStart === currentWeek ? 'This week' : escapeHtml(formatWeek(weekStart))) + '</span><span>completion · grade</span></div><div class="history-session-list">' + items.map(renderSession).join("") + '</div></section>').join("") : '<div class="empty-state">Completed workouts will appear here.</div>'}</div>
@@ -1680,7 +1680,7 @@
         };
         return `
           <section class="view charts-view">
-            <div class="screen-heading"><div><div class="section-kicker">${hypertrophyWindowOffset > 0 ? 'Historical snapshot through ' + formatDate(analysis.windowEnd) : 'Selected lift'}</div><h1>${escapeHtml(selectedName)}</h1></div><span class="status-pill inside">${analysis.included.length} qualifying week${analysis.included.length === 1 ? '' : 's'} · ${analysis.dataPointCount} sets</span></div>
+            <div class="screen-heading"><div><div class="section-kicker">${hypertrophyWindowOffset > 0 ? 'Progress · Lifts · Historical snapshot through ' + formatDate(analysis.windowEnd) : 'Progress · Lifts'}</div><h1>${escapeHtml(selectedName)}</h1></div><span class="status-pill inside">${analysis.included.length} qualifying week${analysis.included.length === 1 ? '' : 's'} · ${analysis.dataPointCount} sets</span></div>
             <section class="m-head analysis-lead"><div class="eyebrow">${escapeHtml(progress.primaryTitle)} · ${analysis.included.length} qualifying week${analysis.included.length === 1 ? '' : 's'}</div><h2>${escapeHtml(primaryHeadline)}</h2></section>
             <div class="chart-control-panel" aria-label="Selected lift controls">
               <div class="chart-viewing-summary"><div><span>Viewing</span><strong>${escapeHtml(selectedName)}</strong><span>Exercise analysis · ${formatDate(analysis.windowStart)} – ${formatDate(analysis.windowEnd)}</span></div><span class="status-pill inside">${analysis.included.length} qualifying · ${analysis.skippedDeloadWeeks.length} deload skipped</span></div>

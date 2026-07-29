@@ -3317,6 +3317,1867 @@
       html.large-text-reflow .history-session-row .ri-copy { grid-column: 1 / -1; }
       html.large-text-reflow .vol-head { display: none; }
       html.large-text-reflow .vol-row { grid-template-columns: minmax(0, 1fr); }
+
+      /* M1 V3 progressive execution: visual hierarchy only. All native workout
+         controls remain in their existing disclosures and keep their semantics. */
+      .brand-bar.active-session-bar {
+        background: var(--bg);
+        border-bottom: 1px solid var(--line);
+        border-radius: 0;
+        box-shadow: none;
+        min-height: 58px;
+        padding-block: var(--sp-5);
+      }
+      .brand-bar.active-session-bar::before { box-shadow: none; }
+      .active-session-bar .shell-context {
+        align-items: baseline;
+        display: grid;
+        gap: var(--sp-1) var(--sp-4);
+        grid-template-columns: minmax(0, 1fr) auto;
+        width: 100%;
+      }
+      .active-session-bar .shell-context :is(strong, h1) {
+        font-size: var(--fs-tiny);
+        font-weight: 950;
+        letter-spacing: .13em;
+        margin: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+      .active-session-bar .shell-session-state {
+        border: 1px solid var(--line);
+        border-radius: var(--r-pill);
+        color: var(--muted);
+        font-size: var(--fs-micro);
+        font-weight: 900;
+        grid-column: 2;
+        grid-row: 1;
+        padding: var(--sp-1) var(--sp-3);
+        white-space: nowrap;
+      }
+      .active-session-bar .shell-context small {
+        color: var(--muted);
+        font-size: var(--fs-micro);
+        font-weight: 800;
+        grid-column: 1 / -1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .workout-view .active-workout-hero.execution-hero {
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        display: none;
+        gap: 0;
+        padding: var(--sp-2) 0;
+      }
+      .current-workout-heading {
+        align-items: baseline;
+        display: grid;
+        gap: var(--sp-1) var(--sp-4);
+        grid-template-columns: minmax(0, 1fr) auto;
+        min-width: 0;
+      }
+      .current-workout-heading .section-kicker {
+        font-size: var(--fs-micro);
+        grid-column: 1 / -1;
+        letter-spacing: .12em;
+      }
+      .current-workout-heading > strong {
+        font-size: var(--fs-small);
+        line-height: 1.25;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .current-workout-heading > small {
+        color: var(--muted);
+        font-size: var(--fs-micro);
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .workout-timer-slot:empty { display: none; }
+      .workout-timer-slot .timer-bar {
+        background: color-mix(in srgb, var(--rest-accent) 12%, var(--surface));
+        border-color: color-mix(in srgb, var(--rest-accent) 65%, var(--line));
+        border-radius: var(--r-md);
+        margin: 0;
+      }
+      .workout-timer-slot .timer-summary {
+        gap: var(--sp-5);
+        min-height: 64px;
+        padding: var(--sp-4) var(--sp-5);
+      }
+      .workout-timer-slot .timer-progress {
+        inset: auto 0 0;
+        height: 3px;
+      }
+      .workout-timer-slot .timer-progress > span {
+        border-right: 0;
+        height: 100%;
+        inset-block: auto 0;
+      }
+      .workout-timer-slot .timer-rest-copy {
+        display: grid;
+        gap: var(--sp-1);
+      }
+      .workout-timer-slot .timer-rest-copy > span {
+        color: var(--rest-text);
+        font-size: var(--fs-tiny);
+        font-weight: 950;
+      }
+      .workout-timer-slot .timer-rest-copy > small {
+        color: color-mix(in srgb, var(--rest-text) 52%, var(--text));
+        font-size: var(--fs-micro);
+        font-weight: 800;
+        line-height: 1.2;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .workout-timer-slot .timer-summary > strong {
+        color: var(--rest-text);
+        font-size: var(--fs-xl);
+        font-weight: 950;
+      }
+
+      .workout-view > .notification-prompt {
+        border-radius: var(--r-sm);
+        gap: var(--sp-3);
+        order: 4;
+        padding: var(--sp-3) var(--sp-4);
+      }
+      .workout-view > .notification-prompt strong { font-size: var(--fs-micro); }
+      .workout-view > .notification-prompt span {
+        font-size: var(--fs-data);
+        line-height: 1.25;
+      }
+      .workout-view > .notification-prompt button {
+        font-size: var(--fs-micro);
+        min-height: 44px;
+      }
+
+      .compact-workout-layout .workout-focus-column { gap: var(--sp-4); }
+      .workout-view .exercise-card,
+      .workout-view .exercise-card.active-exercise {
+        background: transparent;
+        border: 0;
+        border-bottom: 1px solid var(--line);
+        border-radius: 0;
+        box-shadow: none;
+        gap: 0;
+        padding: 0;
+      }
+      .workout-view .exercise-header {
+        border-bottom: 1px solid var(--line);
+        min-height: 54px;
+        padding: var(--sp-2) 0;
+      }
+      .workout-view .exercise-grip { color: var(--muted-2); }
+      .workout-view .exercise-name-field {
+        background: transparent;
+        border: 0;
+        color: var(--text);
+        font-size: var(--fs-base);
+        font-weight: 950;
+        min-height: 44px;
+        padding: var(--sp-4) 0;
+      }
+      .workout-view .exercise-confidence {
+        border-radius: var(--r-sm);
+        font-size: var(--fs-micro);
+        gap: var(--sp-3);
+        min-height: 34px;
+        padding: var(--sp-3) var(--sp-4);
+      }
+      .workout-view .exercise-confidence.confidence-unavailable {
+        background: transparent;
+        border: 1px solid var(--line-strong);
+        color: var(--muted);
+      }
+      .workout-view .exercise-confidence .meter[data-conf] i { width: var(--sp-3); }
+
+      .workout-view .set-block {
+        border-left: 0;
+        border-right: 0;
+        border-radius: 0;
+      }
+      .workout-view .set-block.next-set {
+        animation: none;
+        background: transparent;
+        border-left: 0;
+        border-right: 0;
+        border-radius: 0;
+        box-shadow: none;
+      }
+      .workout-view .set-block.next-set > .set-heading,
+      .workout-view .set-block.next-set > .next-set-banner {
+        display: none;
+      }
+      .workout-view .set-logged .drow {
+        grid-template-columns: minmax(0, 1.35fr) minmax(0, 1.35fr) minmax(48px, .45fr) 44px;
+        min-height: 52px;
+      }
+      .workout-view .set-logged .drow > * {
+        align-content: center;
+        padding: var(--sp-3) var(--sp-4);
+      }
+      .workout-view .set-logged .plan {
+        background: color-mix(in srgb, var(--current) 6%, var(--surface));
+        border-right: 1px solid var(--line);
+      }
+      .workout-view .set-logged .act { border-right: 1px solid var(--line); }
+      .workout-view .set-logged .lbl {
+        color: color-mix(in srgb, var(--muted-2) 65%, var(--text));
+        font-size: var(--fs-micro);
+        font-weight: 900;
+      }
+      .workout-view .set-logged strong {
+        font-size: var(--fs-tiny);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .workout-view .set-logged .range-bar { margin-top: var(--sp-2); }
+      .workout-view .set-logged .dlt {
+        justify-items: center;
+        padding-inline: var(--sp-2);
+        text-align: center;
+      }
+      .workout-view .set-logged .dlt .lbl { display: none; }
+      .workout-view .set-logged > .drow > .check-button {
+        margin: 0;
+      }
+
+      .workout-view .set-current-editor {
+        background: var(--action);
+        border: 1px solid var(--action);
+        border-radius: var(--r-md);
+        color: var(--on-action);
+        gap: var(--sp-5);
+        margin: var(--sp-4) 0;
+        padding: var(--sp-5);
+      }
+      .workout-view .set-current-heading {
+        align-items: center;
+        display: grid;
+        gap: var(--sp-3);
+        grid-template-columns: minmax(0, 1fr) auto 44px;
+      }
+      .workout-view .set-current-heading > div { display: contents; }
+      .workout-view .set-current-heading .eyebrow {
+        grid-column: 1;
+        grid-row: 1;
+      }
+      .workout-view .set-current-heading > div > strong {
+        grid-column: 1 / 3;
+        grid-row: 2;
+      }
+      .workout-view .set-current-heading .eyebrow,
+      .workout-view .set-current-heading strong,
+      .workout-view .current-set-count {
+        color: var(--on-action);
+      }
+      .workout-view .set-current-heading .eyebrow {
+        font-size: var(--fs-tiny);
+        font-weight: 950;
+        letter-spacing: 0;
+        text-transform: none;
+      }
+      .workout-view .set-current-heading strong {
+        font-size: var(--fs-lg);
+        font-weight: 950;
+        line-height: 1.15;
+      }
+      .workout-view .current-set-count {
+        font-size: var(--fs-micro);
+        font-weight: 900;
+        grid-column: 2;
+        grid-row: 1;
+        white-space: nowrap;
+      }
+      .workout-view .set-current-heading .check-button {
+        background: color-mix(in srgb, var(--on-action) 12%, transparent);
+        border-color: color-mix(in srgb, var(--on-action) 58%, transparent);
+        color: var(--on-action);
+        grid-column: 3;
+        grid-row: 1 / 3;
+        min-height: 44px;
+        min-width: 44px;
+      }
+      .workout-view .current-set-inputs {
+        gap: var(--sp-4);
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .workout-view .current-set-inputs > .set-field:not(.set-previous) {
+        background: var(--on-action);
+        border: 1px solid color-mix(in srgb, var(--on-action) 76%, transparent);
+        border-radius: var(--r-sm);
+        min-height: 64px;
+        padding: var(--sp-4);
+      }
+      .workout-view .current-set-inputs > .set-field:not(.set-previous) > span {
+        color: var(--action);
+        font-size: var(--fs-micro);
+      }
+      .workout-view .current-set-inputs > .set-field:not(.set-previous) input,
+      .workout-view .current-set-inputs > .set-field:not(.set-previous) .resistance-readout {
+        background: transparent;
+        border: 0;
+        color: var(--action);
+        font-size: var(--fs-xl);
+        font-weight: 950;
+        min-height: 36px;
+        padding: 0;
+      }
+      .workout-view .current-set-inputs input::placeholder {
+        color: var(--muted-2);
+        opacity: 1;
+      }
+      .workout-view .set-previous {
+        align-items: center;
+        background: transparent;
+        border: 1px solid color-mix(in srgb, var(--on-action) 34%, transparent);
+        border-radius: var(--r-xs);
+        display: grid;
+        gap: var(--sp-2) var(--sp-4);
+        grid-column: 1 / -1;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-rows: auto;
+        min-height: 44px;
+        order: 4;
+        padding: var(--sp-2) var(--sp-4);
+      }
+      .workout-view .set-previous > span,
+      .workout-view .set-previous > strong,
+      .workout-view .set-previous > small,
+      .workout-view .set-previous-link > span {
+        color: var(--on-action);
+        margin: 0;
+        transform: none;
+      }
+      .workout-view .set-previous > strong {
+        font-size: var(--fs-micro);
+        text-align: left;
+      }
+      .workout-view .set-previous > small { font-size: var(--fs-data); }
+      .workout-view .set-previous-link:hover,
+      .workout-view .set-previous-link:focus-visible {
+        background: color-mix(in srgb, var(--on-action) 16%, transparent);
+        outline-color: var(--on-action);
+      }
+      .workout-view .set-tools-disclosure > summary:hover,
+      .workout-view .set-tools-disclosure > summary:focus-visible {
+        background: color-mix(in srgb, var(--current) 10%, transparent);
+      }
+
+      .workout-view .set-pending-line {
+        gap: var(--sp-1) var(--sp-4);
+        grid-template-columns: 26px minmax(0, 1fr) auto;
+        min-height: 52px;
+        padding: var(--sp-3) 52px var(--sp-3) var(--sp-3);
+      }
+      .workout-view .set-pending-line .pending-set-label {
+        color: var(--text);
+        grid-row: 1 / 3;
+      }
+      .workout-view .set-pending-line .pending-exercise-name {
+        color: color-mix(in srgb, var(--muted) 35%, var(--text));
+        font-size: var(--fs-micro);
+        font-weight: 800;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .workout-view .set-pending-line strong {
+        color: color-mix(in srgb, var(--muted) 35%, var(--text));
+        font-size: var(--fs-tiny);
+        grid-column: 3;
+        grid-row: 1 / 3;
+        white-space: nowrap;
+      }
+      .workout-view .set-pending-line .range-bar {
+        grid-column: 2;
+        margin: 0;
+      }
+      .workout-view .exercise-details,
+      .workout-view .compact-disclosure {
+        border-color: var(--line);
+      }
+      .workout-view .exercise-details > summary,
+      .workout-view .compact-disclosure > summary {
+        color: var(--muted);
+        font-size: var(--fs-micro);
+        min-height: 44px;
+      }
+      .workout-view .workout-rollup {
+        gap: var(--sp-3);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .workout-view .workout-rollup .ru {
+        background: transparent;
+        min-height: 58px;
+      }
+      .workout-view .workout-rollup .ru b { font-size: var(--fs-xl); }
+
+      .session-dock {
+        border-radius: var(--r-md) var(--r-md) 0 0;
+        box-shadow: 0 -8px 24px color-mix(in srgb, var(--bg) 28%, transparent);
+      }
+
+      @media (max-width: 380px) {
+        .workout-view .exercise-header {
+          display: grid;
+          grid-template-columns: 24px minmax(0, 1fr) 44px;
+          padding-top: var(--sp-2);
+        }
+        .workout-view .exercise-header .exercise-actions {
+          position: static;
+        }
+        .workout-view .exercise-confidence {
+          grid-column: 2;
+          grid-row: 2;
+          justify-self: start;
+        }
+        .workout-view .exercise-overflow {
+          grid-column: 3;
+          grid-row: 1 / 3;
+        }
+        .workout-view .set-logged .drow {
+          grid-template-columns: minmax(0, 1.25fr) minmax(0, 1.25fr) 48px 44px;
+        }
+        .workout-view .current-set-inputs {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+      }
+      @media (max-width: 340px) {
+        .current-workout-heading { grid-template-columns: minmax(0, 1fr); }
+        .current-workout-heading > small { white-space: normal; }
+        .workout-view .set-logged .drow {
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px;
+        }
+        .workout-view .set-logged .dlt { display: none; }
+        .workout-view .set-logged > .drow > .check-button { grid-column: 3; }
+        .workout-view .set-current-heading {
+          grid-template-columns: minmax(0, 1fr) 44px;
+        }
+        .workout-view .set-current-heading > div > strong {
+          grid-column: 1;
+          grid-row: 2;
+        }
+        .workout-view .current-set-count {
+          grid-column: 1;
+          grid-row: 3;
+        }
+        .workout-view .set-current-heading .check-button {
+          grid-column: 2;
+          grid-row: 1 / 4;
+        }
+        .workout-view .current-set-inputs {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .workout-view .set-previous { grid-template-columns: minmax(0, 1fr); }
+        .workout-view .set-pending-line {
+          align-items: start;
+          grid-template-columns: 24px minmax(0, 1fr);
+        }
+        .workout-view .set-pending-line strong {
+          grid-column: 2;
+          grid-row: 2;
+          justify-self: start;
+        }
+        .workout-view .set-pending-line .range-bar {
+          grid-column: 2;
+          grid-row: 3;
+        }
+      }
+      html.large-text-reflow .current-workout-heading,
+      html.large-text-reflow .workout-view .set-current-heading,
+      html.large-text-reflow .workout-view .current-set-inputs,
+      html.large-text-reflow .workout-view .set-previous,
+      html.large-text-reflow .workout-view .set-pending-line {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      html.large-text-reflow .workout-view .exercise-header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        padding-top: var(--sp-2);
+      }
+      html.large-text-reflow .workout-view .exercise-grip,
+      html.large-text-reflow .workout-view .exercise-name-field,
+      html.large-text-reflow .workout-view .exercise-confidence,
+      html.large-text-reflow .workout-view .exercise-overflow {
+        grid-column: 1;
+        grid-row: auto;
+      }
+      html.large-text-reflow .workout-view .exercise-confidence {
+        justify-self: stretch;
+        white-space: normal;
+      }
+      html.large-text-reflow .current-workout-heading > small,
+      html.large-text-reflow .workout-view .current-set-count,
+      html.large-text-reflow .workout-view .set-logged strong,
+      html.large-text-reflow .workout-view .set-pending-line strong {
+        overflow: visible;
+        white-space: normal;
+      }
+      html.large-text-reflow .workout-view .set-current-heading .check-button {
+        grid-column: 1;
+        grid-row: auto;
+        justify-self: start;
+      }
+      html.large-text-reflow .workout-view .set-current-heading .eyebrow,
+      html.large-text-reflow .workout-view .set-current-heading > div > strong,
+      html.large-text-reflow .workout-view .current-set-count {
+        grid-column: 1;
+        grid-row: auto;
+      }
+      html.large-text-reflow .workout-view .set-pending-line .pending-set-label,
+      html.large-text-reflow .workout-view .set-pending-line .pending-exercise-name,
+      html.large-text-reflow .workout-view .set-pending-line strong,
+      html.large-text-reflow .workout-view .set-pending-line .range-bar {
+        grid-column: 1;
+        grid-row: auto;
+      }
+
+      /* M2 core: Evidence & Change hierarchy, scoped to the existing destinations. */
+      .lift-home-view:has(.today-plan-preview) {
+        gap: var(--sp-5);
+      }
+      .lift-home-view:has(.today-plan-preview) .today-heading {
+        align-items: end;
+        border-bottom: 0;
+        padding-bottom: 0;
+      }
+      .lift-home-view:has(.today-plan-preview) .today-heading h1 {
+        font-size: var(--fs-2xl);
+        letter-spacing: -.04em;
+        line-height: 1.08;
+        margin-top: var(--sp-4);
+        max-width: 22ch;
+      }
+      .lift-home-view:has(.today-plan-preview) .today-heading .status-pill {
+        display: none;
+      }
+      .lift-home-view:has(.today-plan-preview) .today-coach {
+        display: none;
+      }
+      .today-plan-preview {
+        border-bottom: 1px solid var(--line);
+        border-top: 1px solid var(--line-strong);
+        overflow: hidden;
+      }
+      .today-plan-head {
+        display: grid;
+        grid-template-columns: minmax(0, 1.35fr) minmax(0, 1.35fr) 54px;
+      }
+      .today-plan-head > span {
+        align-items: center;
+        display: flex;
+        min-width: 0;
+        padding: var(--sp-3) var(--sp-4);
+      }
+      .today-plan-head > span:last-child {
+        justify-content: center;
+      }
+      .today-plan-row {
+        grid-template-columns: minmax(0, 1.35fr) minmax(0, 1.35fr) 54px;
+        min-height: 70px;
+      }
+      .today-plan-row > * {
+        min-width: 0;
+        padding: var(--sp-3) var(--sp-4);
+      }
+      .today-plan-row .plan {
+        display: grid;
+        gap: var(--sp-1) var(--sp-3);
+        grid-template-columns: minmax(0, 1fr) auto;
+      }
+      .today-plan-name {
+        color: color-mix(in srgb, var(--muted) 56%, var(--text));
+        font-size: var(--fs-micro);
+        font-weight: 900;
+        grid-column: 1 / -1;
+        line-height: 1.2;
+      }
+      .today-plan-target {
+        color: color-mix(in srgb, var(--muted) 52%, var(--text));
+        font-size: var(--fs-base);
+        font-variant-numeric: tabular-nums;
+        font-weight: 850;
+        line-height: 1.15;
+      }
+      .today-plan-row .meter {
+        align-self: end;
+        justify-self: end;
+      }
+      .today-plan-row .act .lbl {
+        color: color-mix(in srgb, var(--muted) 55%, var(--text));
+        font-weight: 850;
+        line-height: 1.2;
+      }
+      .today-plan-row .act .val {
+        font-size: var(--fs-base);
+        font-weight: 950;
+        line-height: 1.15;
+      }
+      .today-plan-row .dlt {
+        padding-inline: var(--sp-2);
+      }
+      .today-plan-row .d {
+        font-size: var(--fs-small);
+      }
+      .today-hold-callout {
+        background: transparent;
+        border: 2px dashed var(--line-strong);
+        margin: 0;
+      }
+      .today-hold-callout b {
+        color: color-mix(in srgb, var(--muted) 46%, var(--text));
+      }
+      .today-hold-callout span {
+        color: color-mix(in srgb, var(--muted) 30%, var(--text));
+      }
+      .today-plan-actions {
+        grid-template-columns: minmax(0, 1fr);
+        margin: 0;
+      }
+      .today-plan-actions .today-primary-action {
+        font-size: var(--fs-base);
+        min-height: 60px;
+      }
+      .today-plan-actions .secondary-action {
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+        min-height: 44px;
+      }
+      .lift-home-view:has(.today-plan-preview) .today-template-strip {
+        margin-top: var(--sp-4);
+      }
+      .lift-home-view:has(.today-plan-preview) .today-template-card {
+        min-height: 72px;
+      }
+
+      .templates-view {
+        display: grid;
+      }
+      .templates-view > .plan-heading { order: 1; }
+      .templates-view > .active-workout-notice,
+      .templates-view > .plan-volume-alerts { order: 2; }
+      .templates-view > .template-library { order: 3; }
+      .templates-view > .templates-coach { order: 4; }
+      .templates-view > [data-action="save-template"] { order: 5; }
+      .templates-view > .mesocycle-planner { order: 6; }
+      .templates-view > .mesocycle-history { order: 7; }
+      .templates-view .plan-heading {
+        border-bottom: 1px solid var(--line);
+        padding-bottom: var(--sp-5);
+      }
+      .templates-view .plan-heading .section-kicker::first-line {
+        color: color-mix(in srgb, var(--muted) 42%, var(--text));
+      }
+      .templates-view .templates-coach {
+        border-left: 0;
+        border-radius: var(--r-md);
+        padding: var(--sp-5);
+      }
+      .templates-view .templates-coach::before {
+        display: none;
+      }
+      .templates-view .templates-coach h2 {
+        font-size: var(--fs-lg);
+      }
+      .templates-view .plan-template-card {
+        border-bottom: 1px solid var(--line);
+        gap: var(--sp-3);
+        padding: var(--sp-5) 0;
+      }
+      .templates-view .plan-template-card:first-child {
+        border-top: 0;
+      }
+      .templates-view .plan-template-card .exercise-name {
+        font-size: var(--fs-lg);
+        font-weight: 950;
+      }
+      .templates-view .plan-template-card .template-start {
+        min-width: 76px;
+      }
+      .templates-view .plan-template-card .compact-disclosure {
+        border-top-color: var(--line);
+        padding-inline: 0;
+      }
+      .templates-view > .mesocycle-planner {
+        border-top: 1px solid var(--line);
+        margin-top: var(--sp-5);
+        padding-top: var(--sp-7);
+      }
+
+      .progress-workspace {
+        gap: var(--sp-6);
+      }
+      .progress-workspace-header {
+        background: transparent;
+        border: 0;
+        border-bottom: 1px solid var(--line);
+        border-radius: 0;
+        gap: var(--sp-2);
+        padding: 0 0 var(--sp-4);
+      }
+      .progress-switcher {
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        gap: var(--sp-6);
+        grid-template-columns: repeat(3, auto);
+        justify-content: start;
+        padding: 0;
+      }
+      .progress-switcher button {
+        border-bottom: 3px solid transparent;
+        border-radius: 0;
+        color: color-mix(in srgb, var(--muted) 55%, var(--text));
+        min-height: 44px;
+        padding: var(--sp-3) 0;
+      }
+      .progress-switcher button[aria-current="page"] {
+        background: transparent;
+        border-bottom-color: var(--current);
+        color: var(--text);
+      }
+      .progress-conclusion {
+        color: color-mix(in srgb, var(--muted) 38%, var(--text));
+        font-size: var(--fs-small);
+        line-height: 1.45;
+      }
+      .dashboard-view {
+        gap: var(--sp-7);
+      }
+      .dashboard-view > .screen-section {
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        padding: 0;
+      }
+      .dashboard-view .section-heading h2 {
+        font-size: var(--fs-lg);
+      }
+      .dashboard-view .section-heading p {
+        font-size: var(--fs-micro);
+        margin-top: var(--sp-1);
+      }
+      .dashboard-view .volume-table-head,
+      .dashboard-view .volume-table-row {
+        grid-template-columns: minmax(0, 1.35fr) minmax(74px, .8fr) 54px;
+      }
+      .dashboard-view .volume-table-head > span {
+        padding: var(--sp-2) var(--sp-3);
+      }
+      .dashboard-view .volume-table-row {
+        min-height: 74px;
+      }
+      .dashboard-view .volume-table-row > span {
+        padding: var(--sp-2) var(--sp-3);
+      }
+      .dashboard-view .volume-muscle-heading {
+        flex-wrap: nowrap;
+      }
+      .dashboard-view .volume-muscle-heading strong {
+        font-size: var(--fs-small);
+      }
+      .dashboard-view .volume-muscle-heading .status-pill {
+        font-size: var(--fs-micro);
+        min-height: 28px;
+        padding: var(--sp-1) var(--sp-2);
+      }
+      .dashboard-view .volume-muscle-cell .val,
+      .dashboard-view .volume-table-row .act .val {
+        font-size: var(--fs-lg);
+        font-weight: 950;
+      }
+      .dashboard-view .volume-muscle-cell small {
+        font-size: var(--fs-micro);
+      }
+      .dashboard-view .drilldown-item:is(.fatigue-high, .fatigue-moderate) {
+        background: color-mix(in srgb, var(--amber) 10%, transparent);
+        border: 2px solid var(--amber);
+        border-radius: var(--r-md);
+        box-shadow: none;
+        gap: var(--sp-2);
+        padding: var(--sp-5);
+      }
+      .dashboard-view .drilldown-item:is(.fatigue-high, .fatigue-moderate) .fatigue-severity {
+        color: color-mix(in srgb, var(--amber) 34%, var(--text));
+      }
+
+      .completed-workout-view {
+        gap: var(--sp-5);
+      }
+      .completed-workout-view > .completed-summary {
+        animation: none;
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        gap: var(--sp-6);
+        padding: 0;
+      }
+      .summary-toolbar {
+        align-items: center;
+        display: flex;
+        justify-content: space-between;
+      }
+      .summary-toolbar .section-kicker {
+        color: color-mix(in srgb, var(--muted) 45%, var(--text));
+      }
+      .summary-toolbar .primary-action {
+        border-radius: var(--r-pill);
+        min-height: 44px;
+        padding-inline: var(--sp-5);
+      }
+      .completed-workout-view .workout-grade-hero {
+        align-items: end;
+        gap: var(--sp-4);
+      }
+      .completed-workout-view .workout-grade-copy {
+        gap: var(--sp-3);
+      }
+      .completed-workout-view .workout-grade-copy h2 {
+        font-size: var(--fs-xl);
+        letter-spacing: -.035em;
+        line-height: 1.12;
+      }
+      .completed-workout-view .workout-grade-copy p {
+        font-size: var(--fs-small);
+      }
+      .completed-workout-view .workout-grade-copy > .track {
+        display: none;
+      }
+      .completed-workout-view .workout-grade-mark {
+        font-size: var(--fs-3xl);
+        letter-spacing: -.08em;
+        line-height: .8;
+        scale: 1.7;
+        transform-origin: right bottom;
+      }
+      .completed-workout-view .workout-confidence {
+        background: var(--current-dark);
+        border: 2px solid var(--current);
+        border-radius: var(--r-md);
+        color: color-mix(in srgb, var(--muted) 35%, var(--text));
+        font-size: var(--fs-small);
+        gap: var(--sp-6);
+        line-height: 1.5;
+        padding: var(--sp-6);
+      }
+      .completed-workout-view .workout-confidence strong {
+        color: color-mix(in srgb, var(--current) 34%, var(--text));
+        display: block;
+        font-size: var(--fs-small);
+        letter-spacing: .08em;
+        margin-bottom: var(--sp-2);
+        text-transform: uppercase;
+      }
+      .summary-section-label {
+        align-items: baseline;
+        display: flex;
+        gap: var(--sp-4);
+        justify-content: space-between;
+      }
+      .summary-section-label h3,
+      .summary-section-label span {
+        color: color-mix(in srgb, var(--muted) 48%, var(--text));
+        font-size: var(--fs-micro);
+        font-weight: 950;
+        letter-spacing: .09em;
+        margin: 0;
+        text-transform: uppercase;
+      }
+      .completed-workout-view .primary-exercise-results {
+        border-top: 0;
+        padding-top: 0;
+      }
+      .completed-workout-view .summary-diff-result .drow {
+        grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.2fr) 54px;
+      }
+      .completed-workout-view .summary-diff-result .plan,
+      .completed-workout-view .summary-diff-result .act,
+      .completed-workout-view .summary-diff-result .dlt {
+        min-width: 0;
+        padding: var(--sp-3);
+      }
+      .completed-workout-view .summary-diff-result .val {
+        font-size: var(--fs-tiny);
+      }
+      .completed-workout-view .next-exposure-preview {
+        margin-top: 0;
+      }
+
+      @media (max-width: 380px) {
+        .today-plan-head,
+        .today-plan-row {
+          grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.15fr) 48px;
+        }
+        .today-plan-row > *,
+        .today-plan-head > span {
+          padding-inline: var(--sp-3);
+        }
+        .today-plan-target,
+        .today-plan-row .act .val {
+          font-size: var(--fs-small);
+        }
+        .templates-view .plan-template-card .template-topline {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+        }
+        .templates-view .plan-template-card .template-card-actions {
+          grid-column: 2;
+          grid-row: 1;
+          margin-left: 0;
+        }
+        .progress-switcher {
+          gap: var(--sp-5);
+        }
+        .dashboard-view .volume-table-head,
+        .dashboard-view .volume-table-row {
+          grid-template-columns: minmax(0, 1.25fr) minmax(62px, .7fr) 48px;
+        }
+        .dashboard-view .volume-muscle-heading {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+        .completed-workout-view .workout-grade-mark {
+          font-size: var(--fs-3xl);
+          scale: 1;
+        }
+      }
+
+      html.large-text-reflow .today-plan-head,
+      html.large-text-reflow .today-plan-row,
+      html.large-text-reflow .completed-workout-view .summary-diff-result .drow {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      html.large-text-reflow .today-plan-head > span:last-child {
+        justify-content: flex-start;
+      }
+      html.large-text-reflow .today-plan-row .dlt {
+        align-items: flex-start;
+        border-top: 1px solid var(--line);
+      }
+      html.large-text-reflow .summary-toolbar,
+      html.large-text-reflow .summary-section-label {
+        align-items: stretch;
+        display: grid;
+      }
+
+      /* M3 start and readiness flow: compact sheet hierarchy only. The existing
+         two-step decisions, baseline inputs, evidence, and safe exits are intact. */
+      :is(.start-flow-sheet, .readiness-log-sheet, .readiness-review-sheet, .destructive-sheet) {
+        background: var(--panel);
+        gap: var(--sp-4);
+        max-width: 420px;
+        padding: var(--sp-6);
+      }
+      :is(.start-flow-sheet, .readiness-log-sheet, .readiness-review-sheet, .destructive-sheet) .section-kicker {
+        font-size: var(--fs-micro);
+        letter-spacing: .12em;
+      }
+      :is(.start-flow-sheet, .readiness-log-sheet, .readiness-review-sheet, .destructive-sheet) h2 {
+        font-size: var(--fs-xl);
+        letter-spacing: -.035em;
+        line-height: 1.12;
+      }
+      :is(.start-flow-sheet, .readiness-log-sheet, .readiness-review-sheet, .destructive-sheet) > div:first-of-type > p {
+        font-size: var(--fs-tiny);
+        line-height: 1.45;
+        margin-top: var(--sp-2);
+      }
+      :is(.start-flow-sheet, .readiness-log-sheet, .readiness-review-sheet) .sheet-close {
+        background: transparent;
+        font-size: var(--fs-small);
+        right: var(--sp-5);
+        top: var(--sp-5);
+      }
+      :is(.start-flow-sheet, .readiness-log-sheet, .readiness-review-sheet, .destructive-sheet) .primary-action {
+        background: var(--action);
+        border-color: var(--action);
+        color: var(--on-action);
+      }
+      :is(.start-flow-sheet, .readiness-log-sheet, .readiness-review-sheet, .destructive-sheet) .sheet-actions {
+        gap: var(--sp-3);
+      }
+      :is(.start-flow-sheet, .readiness-log-sheet, .readiness-review-sheet, .destructive-sheet) .sheet-actions button {
+        font-size: var(--fs-tiny);
+        min-height: 48px;
+      }
+      .start-flow-sheet .readiness-evidence-summary {
+        gap: var(--sp-5);
+        padding: var(--sp-5);
+      }
+      .start-flow-sheet .readiness-evidence-summary > span:last-child b {
+        font-size: var(--fs-tiny);
+        line-height: 1.3;
+      }
+      .start-flow-sheet .readiness-evidence-summary > span:last-child > span {
+        font-size: var(--fs-micro);
+        line-height: 1.4;
+      }
+      .start-flow-sheet .readiness-choice-copy {
+        gap: var(--sp-1);
+        padding: var(--sp-3) 0;
+      }
+      .start-flow-sheet .readiness-choice-copy span {
+        font-size: var(--fs-micro);
+      }
+      .start-conflict-rollup .ru {
+        min-width: 0;
+        padding: var(--sp-4) var(--sp-2);
+      }
+      .start-conflict-rollup .ru b {
+        font-size: var(--fs-base);
+      }
+      .start-flow-sheet > .callout {
+        padding: var(--sp-5);
+      }
+      .start-flow-sheet > .callout span {
+        font-size: var(--fs-tiny);
+        line-height: 1.45;
+      }
+
+      .readiness-log-sheet,
+      .readiness-review-sheet {
+        max-height: calc(100vh - var(--sp-4));
+      }
+      .readiness-draft {
+        gap: 0;
+      }
+      .readiness-log-sheet .field {
+        gap: var(--sp-2);
+        padding: var(--sp-3) 0;
+      }
+      .readiness-log-sheet .field .f-name {
+        font-size: var(--fs-tiny);
+      }
+      .readiness-log-sheet .field .f-help,
+      .readiness-log-sheet .stepper .d,
+      .readiness-log-sheet > .readiness-draft > .d {
+        font-size: var(--fs-micro);
+      }
+      .readiness-log-sheet .stepper {
+        gap: var(--sp-2);
+        grid-template-columns: 44px minmax(64px, 1fr) 44px minmax(84px, auto);
+      }
+      .readiness-log-sheet .stepper .d {
+        grid-column: auto;
+        text-align: right;
+      }
+      .readiness-log-sheet .segmented:has(label:nth-child(6)) {
+        gap: var(--sp-2);
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+      }
+      .readiness-log-sheet .segmented:not(:has(label:nth-child(6))) {
+        gap: var(--sp-2);
+        grid-template-columns: repeat(auto-fit, minmax(68px, 1fr));
+      }
+      .readiness-log-sheet .segmented label > span {
+        font-size: var(--fs-micro);
+        min-height: 44px;
+        padding: var(--sp-2);
+      }
+      .readiness-log-sheet .sheet-actions,
+      .readiness-review-sheet .sheet-actions {
+        background: var(--panel);
+        bottom: calc(var(--sp-6) * -1);
+        margin-inline: calc(var(--sp-6) * -1);
+        padding: var(--sp-4) var(--sp-6) var(--sp-6);
+        position: sticky;
+        z-index: 2;
+      }
+
+      .readiness-review-sheet .callout {
+        gap: var(--sp-2);
+        padding: var(--sp-5);
+      }
+      .readiness-review-sheet .callout span {
+        font-size: var(--fs-tiny);
+        line-height: 1.45;
+      }
+      .readiness-review-sheet .readiness-change-entry .drow {
+        grid-template-columns: minmax(0, 1.08fr) minmax(0, 1.08fr) 62px;
+      }
+      .readiness-review-sheet .readiness-change-entry .plan,
+      .readiness-review-sheet .readiness-change-entry .act,
+      .readiness-review-sheet .readiness-change-entry .dlt {
+        min-width: 0;
+        padding: var(--sp-3);
+      }
+      .readiness-review-sheet .readiness-change-entry .dlt {
+        align-items: center;
+        border-top: 0;
+      }
+      .readiness-review-sheet .readiness-change-entry .lbl,
+      .readiness-review-sheet .readiness-change-entry .val,
+      .readiness-review-sheet .readiness-change-entry .d {
+        font-size: var(--fs-micro);
+        line-height: 1.25;
+      }
+      .readiness-review-sheet .readiness-row-reason {
+        font-size: var(--fs-micro);
+        line-height: 1.4;
+        padding: var(--sp-3);
+      }
+
+      .destructive-sheet .cancel-workout-diff .drow {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 56px;
+      }
+      .destructive-sheet .cancel-workout-diff .plan,
+      .destructive-sheet .cancel-workout-diff .act,
+      .destructive-sheet .cancel-workout-diff .dlt {
+        min-width: 0;
+        padding: var(--sp-3);
+      }
+      .destructive-sheet .cancel-workout-diff .dlt {
+        align-items: center;
+        border-top: 0;
+      }
+      .destructive-sheet .cancel-workout-diff :is(.lbl, .val, .dlt) {
+        font-size: var(--fs-micro);
+        line-height: 1.3;
+      }
+      .destructive-sheet .callout {
+        gap: var(--sp-2);
+        padding: var(--sp-5);
+      }
+      .destructive-sheet .callout span {
+        font-size: var(--fs-tiny);
+        line-height: 1.45;
+      }
+      .destructive-sheet .cancel-sheet-actions .primary-action {
+        background: transparent;
+        border-color: var(--line-strong);
+        color: var(--text);
+      }
+      .destructive-sheet .discard-workout-button {
+        background: var(--red);
+        border-color: var(--red);
+        color: var(--on-action);
+      }
+
+      @media (max-width: 360px) {
+        .readiness-log-sheet .stepper {
+          grid-template-columns: 44px minmax(54px, 1fr) 44px;
+        }
+        .readiness-log-sheet .stepper .d {
+          grid-column: 1 / -1;
+          text-align: left;
+        }
+        .readiness-review-sheet .readiness-change-entry .drow,
+        .destructive-sheet .cancel-workout-diff .drow {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .readiness-review-sheet .readiness-change-entry .dlt,
+        .destructive-sheet .cancel-workout-diff .dlt {
+          align-items: flex-start;
+          border-top: 1px solid var(--line);
+        }
+      }
+      html.large-text-reflow .readiness-log-sheet .stepper,
+      html.large-text-reflow .readiness-review-sheet .readiness-change-entry .drow,
+      html.large-text-reflow .destructive-sheet .cancel-workout-diff .drow {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      html.large-text-reflow .readiness-log-sheet .segmented {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      html.large-text-reflow .readiness-log-sheet .stepper :is(.sb, .sv, .d) {
+        grid-column: auto;
+        justify-self: stretch;
+        text-align: left;
+        width: 100%;
+      }
+      html.large-text-reflow .readiness-review-sheet .readiness-change-entry .dlt,
+      html.large-text-reflow .destructive-sheet .cancel-workout-diff .dlt {
+        align-items: flex-start;
+        border-top: 1px solid var(--line);
+      }
+
+      /* M4 guided mesocycle: keep the five-stage planner and its canonical
+         muscle scope, while applying the mockup's denser ledger treatment. */
+      body:has(.guided-builder) .brand-bar {
+        display: none;
+      }
+      .guided-builder {
+        gap: var(--sp-4);
+      }
+      .guided-builder-header {
+        margin-inline: calc(0px - var(--sp-6));
+        padding: var(--sp-2) var(--sp-6);
+        top: 0;
+      }
+      .guided-builder-header > .row button {
+        background: transparent;
+        border: 0;
+        font-size: var(--fs-tiny);
+        min-height: 44px;
+        padding-inline: 0;
+        width: auto;
+      }
+      .guided-builder-header > .row button:last-child {
+        border: 1px solid var(--line);
+        border-radius: var(--r-pill);
+        padding-inline: var(--sp-4);
+      }
+      .guided-builder .primary-action {
+        background: var(--action);
+        border-color: var(--action);
+        color: var(--on-action);
+      }
+      .guided-builder .section-heading {
+        gap: var(--sp-2);
+      }
+      .guided-builder .section-heading h2 {
+        font-size: var(--fs-xl);
+        letter-spacing: -.03em;
+        line-height: 1.12;
+      }
+      .guided-builder .section-heading p {
+        font-size: var(--fs-tiny);
+        line-height: 1.45;
+      }
+      .guided-builder .field {
+        gap: var(--sp-2);
+        padding: var(--sp-3) 0;
+      }
+      .guided-builder .stepper {
+        gap: var(--sp-2);
+        grid-template-columns: 44px minmax(64px, 1fr) 44px;
+      }
+      .guided-builder .stepper .d {
+        grid-column: auto;
+      }
+      .guided-builder .guided-objective-picker {
+        gap: var(--sp-2);
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+      .guided-builder .guided-objective-picker label > span {
+        font-size: var(--fs-micro);
+        padding-inline: var(--sp-2);
+      }
+      .guided-builder :is(.equipment-picker, .muscle-scope-panel) {
+        padding: var(--sp-3) 0;
+      }
+      .guided-builder .guided-priority-summary {
+        gap: var(--sp-2);
+      }
+      .guided-builder .guided-priority-row {
+        min-height: 62px;
+      }
+      .guided-builder .guided-volume-diff .drow,
+      .guided-builder .guided-plan-diff .drow {
+        grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr) 104px;
+      }
+      .guided-builder .guided-volume-diff .dhead,
+      .guided-builder .guided-plan-diff .dhead {
+        display: grid;
+      }
+      .guided-builder .guided-volume-diff :is(.plan, .act, .dlt),
+      .guided-builder .guided-plan-diff :is(.plan, .act, .dlt) {
+        min-width: 0;
+        padding: var(--sp-2) var(--sp-3);
+      }
+      .guided-builder .guided-volume-diff :is(.lbl, .val, .d),
+      .guided-builder .guided-plan-diff :is(.lbl, .val, .d) {
+        font-size: var(--fs-micro);
+        line-height: 1.25;
+      }
+      .guided-builder .guided-volume-diff .dlt,
+      .guided-builder .guided-plan-diff .dlt {
+        align-items: center;
+        border-top: 0;
+        overflow: hidden;
+      }
+      .guided-builder .guided-volume-diff .dlt .status-pill,
+      .guided-builder .guided-plan-diff .dlt .status-pill {
+        font-size: var(--fs-micro);
+        line-height: 1.1;
+        max-width: 100%;
+        min-height: 0;
+        padding: var(--sp-1) var(--sp-2);
+        text-align: center;
+        white-space: normal;
+      }
+      .guided-builder .guided-target-claim[data-conf="1"] {
+        margin: 0;
+        padding: var(--sp-2) var(--sp-3);
+      }
+      .guided-builder .day-card .dc-top {
+        min-height: 52px;
+        padding: var(--sp-3);
+      }
+      .guided-builder .exercise-browser-results {
+        gap: 0;
+      }
+      .guided-builder .exercise-browser-card {
+        gap: var(--sp-2);
+        padding: var(--sp-3) 0;
+      }
+      .guided-builder .exercise-browser-card h3 {
+        font-size: var(--fs-base);
+      }
+      .guided-builder .exercise-browser-card .primary-action {
+        font-size: var(--fs-micro);
+        min-height: 44px;
+      }
+      .guided-builder .finding {
+        gap: var(--sp-2);
+        padding: var(--sp-3) 0;
+      }
+      .guided-builder .finding .f-copy {
+        gap: var(--sp-1);
+      }
+      .guided-builder .finding .f-copy > strong {
+        font-size: var(--fs-tiny);
+        line-height: 1.3;
+      }
+      .guided-builder .guided-plan-comparison .row-item {
+        min-height: 48px;
+        padding: var(--sp-3) 0;
+      }
+      .guided-builder .guided-plan-comparison .row-item :is(b, span, .ri-val) {
+        font-size: var(--fs-micro);
+      }
+
+      @media (max-width: 360px) {
+        .guided-builder .guided-objective-picker {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .guided-builder .guided-volume-diff .drow,
+        .guided-builder .guided-plan-diff .drow {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .guided-builder .guided-volume-diff .dhead,
+        .guided-builder .guided-plan-diff .dhead {
+          display: none;
+        }
+        .guided-builder .guided-volume-diff .dlt,
+        .guided-builder .guided-plan-diff .dlt {
+          align-items: flex-start;
+          border-top: 1px solid var(--line);
+        }
+      }
+      html.large-text-reflow .guided-builder .guided-objective-picker,
+      html.large-text-reflow .guided-builder .guided-volume-diff .drow,
+      html.large-text-reflow .guided-builder .guided-plan-diff .drow {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      html.large-text-reflow .guided-builder .guided-volume-diff .dhead,
+      html.large-text-reflow .guided-builder .guided-plan-diff .dhead {
+        display: none;
+      }
+      html.large-text-reflow .guided-builder .guided-volume-diff .dlt,
+      html.large-text-reflow .guided-builder .guided-plan-diff .dlt {
+        align-items: flex-start;
+        border-top: 1px solid var(--line);
+      }
+
+      /* M5 analysis and history: preserve the complete evidence, chart, and
+         disclosure model while adopting the mockup's compact audit-ledger UI. */
+      body:has(.progress-workspace .charts-view) .brand-bar,
+      body:has(.progress-workspace .history-view) .brand-bar {
+        display: none;
+      }
+      .progress-workspace:has(.charts-view),
+      .progress-workspace:has(.history-view) {
+        gap: var(--sp-4);
+      }
+      .progress-workspace:has(.charts-view) > .progress-workspace-header,
+      .progress-workspace:has(.history-view) > .progress-workspace-header {
+        gap: var(--sp-1);
+        padding-bottom: var(--sp-2);
+      }
+      .progress-workspace:has(.charts-view) .progress-switcher,
+      .progress-workspace:has(.history-view) .progress-switcher {
+        gap: var(--sp-5);
+      }
+      .progress-workspace:has(.charts-view) .progress-switcher button,
+      .progress-workspace:has(.history-view) .progress-switcher button {
+        font-size: var(--fs-tiny);
+        padding-block: var(--sp-2);
+      }
+      .progress-workspace:has(.charts-view) .progress-conclusion,
+      .progress-workspace:has(.history-view) .progress-conclusion {
+        font-size: var(--fs-micro);
+        line-height: 1.35;
+      }
+      .progress-workspace > :is(.charts-view, .history-view) > .screen-heading {
+        align-items: center;
+        display: flex;
+        padding: 0;
+      }
+      .progress-workspace > :is(.charts-view, .history-view) > .screen-heading h1 {
+        font-size: var(--fs-lg);
+        line-height: 1.15;
+        margin-top: var(--sp-1);
+      }
+      .progress-workspace > :is(.charts-view, .history-view) > .screen-heading .status-pill {
+        font-size: var(--fs-micro);
+        max-width: 46%;
+        min-height: 0;
+        padding: var(--sp-1) var(--sp-2);
+        text-align: center;
+        white-space: normal;
+      }
+      .charts-view {
+        gap: var(--sp-4);
+      }
+      .charts-view .analysis-lead {
+        align-items: start;
+        display: grid;
+        gap: var(--sp-1);
+        padding-bottom: var(--sp-3);
+      }
+      .charts-view .analysis-lead h2 {
+        font-size: var(--fs-lg);
+        line-height: 1.15;
+      }
+      .charts-view .chart-control-panel {
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        gap: var(--sp-2);
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        padding: 0;
+      }
+      .charts-view .chart-viewing-summary {
+        display: none;
+      }
+      .charts-view .chart-control-field.chart-control-lift,
+      .charts-view .analysis-period-control {
+        grid-column: auto;
+      }
+      .charts-view .chart-control-field > :is(span, label) {
+        font-size: var(--fs-micro);
+      }
+      .charts-view .chart-control-field input,
+      .charts-view .analysis-period-menu > summary {
+        border-radius: var(--r-pill);
+        font-size: var(--fs-micro);
+        min-height: 44px;
+      }
+      .charts-view .chart-control-context {
+        border-top: 1px solid var(--line);
+        font-size: var(--fs-micro);
+        line-height: 1.35;
+        padding-top: var(--sp-2);
+      }
+      .charts-view .primary-analysis-chart {
+        gap: var(--sp-2);
+      }
+      .charts-view .primary-analysis-chart .chart-card {
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        padding: 0;
+      }
+      .charts-view .primary-analysis-chart .chart-svg {
+        background: transparent;
+        border-inline: 0;
+        border-radius: 0;
+        height: 154px;
+      }
+      .charts-view .chart-card header {
+        min-height: 44px;
+      }
+      .charts-view .chart-card header strong {
+        font-size: var(--fs-tiny);
+      }
+      .charts-view .chart-card header .status-pill {
+        font-size: var(--fs-micro);
+        min-height: 0;
+        padding: var(--sp-1) var(--sp-2);
+        white-space: normal;
+      }
+      .charts-view .analysis-score-card {
+        gap: var(--sp-2);
+        padding: var(--sp-3) 0;
+      }
+      .charts-view .analysis-confidence {
+        gap: var(--sp-3);
+        padding: var(--sp-3);
+      }
+      .charts-view .chart-detail {
+        background: var(--surface);
+        gap: var(--sp-3);
+        padding: var(--sp-3);
+      }
+      .charts-view .chart-detail .icon-button {
+        flex-basis: 44px;
+      }
+      .charts-view .chart-detail > .row.split > div {
+        display: grid;
+        gap: var(--sp-1);
+        min-width: 0;
+      }
+      .charts-view .chart-detail > .row.split strong {
+        font-size: var(--fs-lg);
+        line-height: 1.15;
+      }
+      .charts-view .chart-detail > .chip[data-conf="4"] {
+        background: var(--success-dark);
+        border-color: var(--success);
+        color: color-mix(in srgb, var(--success) 35%, var(--text));
+      }
+      .charts-view .chart-point-rollup .ru {
+        padding: var(--sp-2);
+      }
+      .charts-view .chart-point-rollup .ru b {
+        font-size: var(--fs-base);
+      }
+      .charts-view .chart-set-diff .drow {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 58px;
+      }
+      .charts-view .chart-set-diff .drow > * {
+        min-width: 0;
+        padding: var(--sp-2);
+      }
+      .charts-view .chart-set-diff :is(.lbl, .val, .d) {
+        font-size: var(--fs-micro);
+        line-height: 1.3;
+      }
+      .charts-view .chart-set-diff .dlt {
+        align-items: center;
+        border-top: 0;
+      }
+      .charts-view .chart-detail .callout {
+        gap: var(--sp-2);
+        padding: var(--sp-3);
+      }
+
+      .history-view {
+        gap: var(--sp-4);
+      }
+      .history-view .history-rollup {
+        gap: var(--sp-2);
+        margin-bottom: var(--sp-2);
+      }
+      .history-view .history-rollup .ru {
+        gap: var(--sp-1);
+        padding: var(--sp-3) var(--sp-2);
+        text-align: center;
+      }
+      .history-view .history-rollup .ru b {
+        font-size: var(--fs-lg);
+      }
+      .history-view .history-session-groups {
+        gap: var(--sp-4);
+      }
+      .history-view .history-session-groups > section,
+      .history-view .history-session-list {
+        gap: 0;
+      }
+      .history-view .history-session-row {
+        gap: var(--sp-2);
+        min-height: 50px;
+        padding: var(--sp-2) 0;
+      }
+      .history-view .history-session-row .ri-copy b {
+        font-size: var(--fs-tiny);
+      }
+      .history-view .history-session-row .ri-copy span,
+      .history-view .history-session-row :is(.d, .ri-val) {
+        font-size: var(--fs-micro);
+      }
+      .history-view .history-by-exercise {
+        border-top: 1px solid var(--line-strong);
+      }
+      .history-view .history-exercise > summary {
+        padding-block: var(--sp-2);
+      }
+      .history-view .history-exercise > .disclosure-body {
+        gap: var(--sp-3);
+        padding-bottom: var(--sp-4);
+      }
+      .history-view .vol-head,
+      .history-view .vol-row {
+        gap: var(--sp-1);
+        grid-template-columns: 66px minmax(78px, 1fr) 32px 34px 72px 42px;
+        padding: var(--sp-2) 0;
+      }
+      .history-view .vol-head {
+        display: grid;
+      }
+      .history-view .vol-row {
+        font-size: var(--fs-micro);
+        min-height: 44px;
+      }
+      .history-view .vol-row > span:last-child {
+        grid-column: auto;
+      }
+      .history-view .deload-history-chip {
+        font-size: var(--fs-micro);
+        line-height: 1.1;
+        padding: var(--sp-1);
+      }
+      .history-view .exercise-history-diff .drow {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 54px;
+      }
+      .history-view .exercise-history-diff .dhead {
+        display: grid;
+      }
+      .history-view .exercise-history-diff .drow > * {
+        min-width: 0;
+        padding: var(--sp-2);
+      }
+      .history-view .exercise-history-diff :is(.lbl, .val, .d) {
+        font-size: var(--fs-micro);
+      }
+      .history-view .exercise-history-diff .dlt {
+        align-items: center;
+        border-top: 0;
+      }
+
+      @media (max-width: 360px) {
+        .charts-view .chart-control-panel {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .charts-view .chart-set-diff .drow,
+        .history-view .exercise-history-diff .drow {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .charts-view .chart-set-diff .dlt,
+        .history-view .exercise-history-diff .dlt {
+          align-items: flex-start;
+          border-top: 1px solid var(--line);
+        }
+        .history-view .vol-head {
+          display: none;
+        }
+        .history-view .vol-row {
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        }
+        .history-view .vol-row > span:last-child {
+          grid-column: 1 / -1;
+        }
+      }
+      html.large-text-reflow .charts-view .chart-control-panel,
+      html.large-text-reflow .charts-view .chart-set-diff .drow,
+      html.large-text-reflow .history-view .exercise-history-diff .drow,
+      html.large-text-reflow .history-view .vol-row {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      html.large-text-reflow .history-view .vol-head {
+        display: none;
+      }
+      html.large-text-reflow .history-view .vol-row > span:last-child {
+        grid-column: 1;
+      }
+      html.large-text-reflow .charts-view .chart-set-diff .dlt,
+      html.large-text-reflow .history-view .exercise-history-diff .dlt {
+        align-items: flex-start;
+        border-top: 1px solid var(--line);
+      }
+
+      /* M6 settings, data, and system states: retain every control and safety
+         boundary while compressing the surfaces into the mockup's ledger UI. */
+      body:has(.settings-view) .brand-bar,
+      body:has(.destination-error) .brand-bar {
+        display: none;
+      }
+      .settings-view {
+        gap: var(--sp-2);
+      }
+      .settings-view > .screen-heading {
+        padding: 0 0 var(--sp-3);
+      }
+      .settings-view > .screen-heading h1 {
+        font-size: var(--fs-xl);
+        line-height: 1.1;
+        margin-block: var(--sp-1);
+      }
+      .settings-view > .screen-heading p,
+      .settings-view > .settings-note {
+        font-size: var(--fs-micro);
+        line-height: 1.4;
+      }
+      .settings-view .settings-group {
+        overflow: visible;
+      }
+      .settings-view .settings-group > summary {
+        min-height: 50px;
+        padding-block: var(--sp-2);
+      }
+      .settings-view .settings-group > summary::after {
+        background: transparent;
+        border: 0;
+        color: color-mix(in srgb, var(--muted) 30%, var(--text));
+        height: 44px;
+        width: 44px;
+      }
+      .settings-view .settings-group .g-name {
+        font-size: var(--fs-tiny);
+      }
+      .settings-view .settings-group .settings-panel {
+        gap: 0;
+        padding-bottom: var(--sp-3);
+      }
+      .settings-view .field,
+      .settings-view .row-item {
+        gap: var(--sp-2);
+        padding: var(--sp-3) 0;
+      }
+      .settings-view .field .f-top {
+        gap: var(--sp-3);
+      }
+      .settings-view .field :is(.f-name, .f-help),
+      .settings-view .row-item .ri-copy :is(b, span),
+      .settings-view .row-item .ri-val {
+        font-size: var(--fs-micro);
+      }
+      .settings-view .segmented {
+        gap: var(--sp-1);
+      }
+      .settings-view .segmented label > span {
+        min-height: 44px;
+        padding: var(--sp-2);
+      }
+      .settings-view .color-package-picks {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-bottom: var(--sp-2);
+        scrollbar-width: thin;
+      }
+      .settings-view .color-package-picks .pick {
+        flex: 0 0 auto;
+        padding-inline: var(--sp-3);
+      }
+      .settings-view .callout {
+        gap: var(--sp-2);
+        padding: var(--sp-3);
+      }
+      .settings-view .callout span {
+        font-size: var(--fs-micro);
+        line-height: 1.45;
+      }
+      .settings-view .danger-zone .row-item {
+        align-items: stretch;
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .settings-view .danger-zone .row-item > button {
+        justify-self: stretch;
+        width: 100%;
+      }
+
+      .clear-data-sheet {
+        gap: var(--sp-3);
+      }
+      .clear-data-sheet h2 {
+        font-size: var(--fs-xl);
+        line-height: 1.1;
+      }
+      .clear-data-sheet > div:first-child p {
+        font-size: var(--fs-tiny);
+        line-height: 1.4;
+      }
+      .clear-data-sheet .clear-data-diff .drow {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 58px;
+      }
+      .clear-data-sheet .clear-data-diff .dhead {
+        display: grid;
+      }
+      .clear-data-sheet .clear-data-diff .drow > * {
+        min-width: 0;
+        padding: var(--sp-2);
+      }
+      .clear-data-sheet .clear-data-diff :is(.lbl, .val, .d) {
+        font-size: var(--fs-micro);
+        line-height: 1.3;
+      }
+      .clear-data-sheet .clear-data-diff .dlt {
+        align-items: center;
+        border-top: 0;
+      }
+      .clear-data-sheet .callout {
+        gap: var(--sp-2);
+        padding: var(--sp-3);
+      }
+      .clear-data-sheet .callout span,
+      .clear-data-sheet .clear-data-scope span,
+      .clear-data-sheet .toggle-line,
+      .clear-data-sheet .t-hint {
+        font-size: var(--fs-micro);
+        line-height: 1.4;
+      }
+
+      .destination-error {
+        gap: var(--sp-4);
+        grid-template-columns: minmax(0, 1fr);
+        justify-items: center;
+        padding: var(--sp-6);
+        text-align: center;
+      }
+      .destination-error > div {
+        display: grid;
+        gap: var(--sp-2);
+        justify-items: center;
+        min-width: 0;
+      }
+      .destination-error h1 {
+        font-size: var(--fs-xl);
+        line-height: 1.1;
+        margin: 0;
+      }
+      .destination-error p {
+        font-size: var(--fs-tiny);
+        line-height: 1.5;
+        margin: 0;
+        max-width: 42ch;
+      }
+      .destination-error-actions {
+        justify-content: center;
+      }
+
+      @media (max-width: 360px) {
+        .clear-data-sheet .clear-data-diff .drow {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .clear-data-sheet .clear-data-diff .dhead {
+          display: none;
+        }
+        .clear-data-sheet .clear-data-diff .dlt {
+          align-items: flex-start;
+          border-top: 1px solid var(--line);
+        }
+      }
+      html.large-text-reflow .clear-data-sheet .clear-data-diff .drow {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      html.large-text-reflow .clear-data-sheet .clear-data-diff .dhead {
+        display: none;
+      }
+      html.large-text-reflow .clear-data-sheet .clear-data-diff .dlt {
+        align-items: flex-start;
+        border-top: 1px solid var(--line);
+      }
+
+      /* M7–M9 navigation: the active-session dock remains the workout exit,
+         while the four labeled glyphs use accent only for current location. */
+      .bottom-nav .nav-button[aria-current="page"] {
+        background: transparent;
+        border-color: transparent;
+        box-shadow: none;
+      }
+      .bottom-nav .nav-button[aria-current="page"] > :is(.nav-icon, span) {
+        color: color-mix(in srgb, var(--current) 35%, var(--text));
+      }
+      .exercise-grip,
+      .exercise-overflow > summary,
+      .session-overflow > summary {
+        color: var(--text);
+      }
     </style>
   </head>
   <body>

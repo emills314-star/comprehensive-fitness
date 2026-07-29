@@ -64,9 +64,10 @@ assert.match(html, /html\.large-text-reflow \.current-set-inputs,[\s\S]*grid-tem
 assert.match(interactions, /function releaseSetEntryFocusForCompletion\(target\)[\s\S]*active\.matches\("\.workout-view \.set-current-editor input,[\s\S]*active\.blur\(\);/, "Completing a set must release a focused current-set entry field");
 assert.match(interactions, /root\.addEventListener\("pointerdown"[\s\S]*releaseSetEntryFocusForCompletion\(actionTarget \|\| target\);/, "The checkmark must release set-entry focus before its default pointer focus transition");
 assert.match(html, /@media \(max-width: 390px\)[\s\S]*grid-template-columns: 28px minmax\(0, 1\.45fr\) minmax\(0, \.88fr\) minmax\(0, \.72fr\) minmax\(0, \.64fr\) 44px;/, "Narrow set rows must retain all six bounded columns");
-assert.match(html, /\.set-previous \{[^}]*align-self: stretch;[^}]*grid-template-rows: auto minmax\(0, 1fr\) auto;/, "Previous must reserve separate label, active-value, and date rows");
+assert.match(html, /\.set-previous \{[^}]*align-self: stretch;[^}]*grid-template-rows: auto minmax\(0, 1fr\) auto;/, "The base Previous component must reserve separate label, active-value, and date rows");
 assert.match(html, /\.set-previous strong \{[^}]*align-self: center;[^}]*color: var\(--muted\);[^}]*font-size: var\(--fs-micro\);[^}]*margin: 0;[^}]*transform: translateY\(3px\)/, "Previous values must use muted token text centered with active values");
 assert.match(html, /\.set-previous small \{[^}]*align-self: end;[^}]*color: var\(--muted-2\);[^}]*font-size: var\(--fs-data\);[^}]*margin-top: var\(--sp-1\);[^}]*transform: none;/, "Previous dates must retain a separate lower spacing band on the dense-data type step");
+assert.match(html, /\.workout-view \.set-previous \{[^}]*grid-column: 1 \/ -1;[^}]*order: 4;/, "The M1 current editor must place Previous after the three primary entry boxes as a full-width linked strip");
 assert.match(html, /--fs-data: 0\.6875rem;/, "The dense-data type step must stay at 11px so the Previous date remains legible");
 assert.match(html, /--fs-micro: 0\.75rem;/, "The micro type step must floor at 12px for gym-light legibility");
 assert.match(html, /\.exercise-details > summary \{[^}]*min-height: 44px;/, "Exercise details must remain a full keyboard and touch target");

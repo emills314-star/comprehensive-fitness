@@ -48,7 +48,7 @@ assert.doesNotMatch(renderHistory, /History · \$\{totalSessions\}/, "History co
 assert.doesNotMatch(renderCancelWorkoutSheet, /<h2[^>]*>\$\{completedSets\}/, "the cancel heading must not repeat the diff-owned completed-set count");
 assert.match(renderCancelWorkoutSheet, /exerciseIds\.size[\s\S]*draftSets\.length[\s\S]*completedSets/, "destructive copy must enumerate all exercise and set records being removed");
 assert.doesNotMatch(renderSettings, /formatTimer\(Number\(data\.settings\.defaultRestSeconds/, "Settings must not restate default rest in a second format");
-assert.match(renderCompletedSummary, /<h2>Workout analysis<\/h2>/, "the grade mark must be the sole visible grade value");
+assert.match(renderCompletedSummary, /completionHeadline[\s\S]*workout-grade-mark/, "the grade mark must remain the sole visible grade value beside the evidence-backed completion headline");
 assert.doesNotMatch(renderGuidedMesocycle, /<h2>' \+ result\.blockingCount/, "viability counts must be owned by the roll-up");
 assert.match(renderUnifiedPrescriptionDetails, /roleSessionPrescriptionLine\(exercise, fallbackFinalLine\)/, "the prescription claim must project the exact executable row targets");
 assert.match(roleSessionPrescriptionLine, /targetWeight[\s\S]*targetReps[\s\S]*group\.count/, "the prescription claim must retain generated load, repetition target, and role composition");

@@ -19,12 +19,16 @@
         const shellWorkoutSubmitted = activeTab === "today" && completedSummarySessionId === session.id && isSessionSubmitted(session);
         const shellWorkoutDockVisible = shellWorkoutVisible || shellWorkoutSubmitted;
         const shellTitle = activeTab === "today" ? "Today" : activeTab === "plan" ? "Plan" : activeTab === "progress" ? "Progress" : "More";
+        const shellCurrentContext = shellWorkoutDockVisible ? workoutProgress().current : "";
+        const shellContext = shellWorkoutDockVisible
+          ? '<div class="shell-context"><h1>' + escapeHtml(session.title || "Workout") + '</h1><span class="shell-session-state">' + escapeHtml(shellWorkoutSubmitted ? "Workout logged" : "In progress") + '</span><small>' + escapeHtml(shellWorkoutSubmitted ? "Session summary" : shellCurrentContext) + '</small></div>'
+          : '<div class="shell-context"><strong>' + escapeHtml(shellTitle) + '</strong></div>';
         const domStartedAt = performanceNow();
         root.innerHTML = `
           <div class="app-shell">
             <a class="skip-link" href="#main-content" data-action="skip-content" ${modalOpen ? 'tabindex="-1" aria-hidden="true"' : ""}>Skip to main content</a>
-            <header class="brand-bar" ${modalOpen ? 'inert aria-hidden="true"' : ""}>
-              <div class="shell-context"><strong>${escapeHtml(shellTitle)}</strong></div>
+            <header class="brand-bar ${shellWorkoutDockVisible ? "active-session-bar" : ""}" ${modalOpen ? 'inert aria-hidden="true"' : ""}>
+              ${shellContext}
             </header>
             ${renderOfflineBanner()}
             ${renderUpdateBanner()}
@@ -171,12 +175,15 @@
 
       function syncTimerDom() {
         if (!timer) return;
-        const bar = root.querySelector('.timer-bar[data-timer-id="' + CSS.escape(timer.id) + '"]');
+        const bar = root.querySelector('.timer-bar[data-timer-id="' + CSS.escape(timer.id) + '"]') || root.querySelector(".workout-timer-slot > .timer-bar");
         if (!bar) return;
+        bar.dataset.timerId = timer.id;
         const stateLabel = bar.querySelector(".timer-rest-copy > span");
+        const nextLabel = bar.querySelector(".timer-rest-copy > small");
         const context = bar.querySelector(".timer-context");
         const pause = bar.querySelector('[data-action="toggle-timer"]');
         if (stateLabel) stateLabel.textContent = timer.isPaused ? "Paused" : "Rest";
+        if (nextLabel) nextLabel.textContent = timerNextContextLabel(timer);
         bar.toggleAttribute("data-paused", timer.isPaused);
         if (context) context.textContent = timerNextContextLabel(timer) + " · " + timerNotificationStatusLabel(timer);
         if (pause) {
@@ -189,7 +196,8 @@
 
       function removeTimerDom(timerSnapshot) {
         const block = document.getElementById("set-" + (timerSnapshot?.setId || ""));
-        block?.querySelector(".timer-bar")?.remove();
+        const bar = root.querySelector('.timer-bar[data-timer-id="' + CSS.escape(timerSnapshot?.id || "") + '"]') || root.querySelector(".workout-timer-slot > .timer-bar");
+        bar?.remove();
         block?.classList.remove("resting-set");
       }
 
@@ -282,8 +290,17 @@
         const session = activeSession();
         if (!session) return renderLiftHome();
         if (liftHomeIsVisible()) return renderLiftHome();
+        if (completedSummarySessionId === session.id) {
+          return `
+            <section class="view workout-view completed-workout-view">
+              ${renderCompletedWorkoutSummary(session)}
+              ${renderNotificationPrompt()}
+            </section>
+          `;
+        }
         const editingHistory = isEditingHistorySession(session.id);
         const historyReadOnly = isSessionSubmitted(session) && !editingHistory;
+        const activeExecution = session.id === activeWorkoutId && hasActiveWorkout() && !historyReadOnly;
         const addExerciseSafety = guardWorkoutMutation("add-exercise", {}, false);
         if (activeWorkoutId === session.id) ensureActiveSet();
         const progress = workoutProgress();
@@ -292,13 +309,12 @@
         const exerciseHtml = workoutExercises.length ? measurePerformance("lift:exerciseList", () => workoutExercises.map((exercise) => renderExercise(exercise)).join(""), { count: workoutExercises.length }) : "";
         return `
           <section class="view workout-view ${historyReadOnly ? "history-readonly" : ""} ${editingHistory ? "history-editing" : ""}">
-            <section class="active-workout-hero">
-              <div class="workout-heading">
-                <div><div class="section-kicker">Today</div><h1>${escapeHtml(session.title || "Workout")}</h1></div>
-                <span class="status-pill ${isSessionSubmitted(session) ? "good" : session.id === activeWorkoutId && hasActiveWorkout() ? "inside" : "neutral"}">${isSessionSubmitted(session) ? "Logged" : session.id === activeWorkoutId && hasActiveWorkout() ? "In progress" : "Ready"}</span>
-              </div>
-              <div class="coach-focus"><span>Current focus</span><strong>${escapeHtml(progress.current)}</strong><small>${progress.remaining ? progress.remaining + " working set" + (progress.remaining === 1 ? "" : "s") + " remain. Stay with the next useful action." : "Review the session, then submit when it is complete."}</small></div>
+            <section class="active-workout-hero ${activeExecution ? "execution-hero" : ""}">
+              ${activeExecution
+                ? '<div class="current-workout-heading"><div class="section-kicker">Current focus</div><strong>' + escapeHtml(progress.current) + '</strong><small>' + (progress.remaining ? progress.remaining + ' working set' + (progress.remaining === 1 ? '' : 's') + ' remain' : 'Review the session, then submit when it is complete') + '</small></div>'
+                : '<div class="workout-heading"><div><div class="section-kicker">Today</div><h1>' + escapeHtml(session.title || "Workout") + '</h1></div><span class="status-pill ' + (isSessionSubmitted(session) ? 'good' : 'neutral') + '">' + (isSessionSubmitted(session) ? 'Logged' : 'Ready') + '</span></div>'}
             </section>
+            <div class="workout-timer-slot" aria-live="polite">${timer?.workoutId === session.id ? renderTimer(timer.setId) : ""}</div>
             ${renderNotificationPrompt()}
             <div class="workout-layout compact-workout-layout">
               <div class="workout-focus-column">
@@ -341,21 +357,137 @@
               </div>
             </div>
             ${pendingSubmitSessionId === session.id ? renderSubmitConfirmation(session) : ""}
-            ${completedSummarySessionId === session.id ? renderCompletedWorkoutSummary(session) : ""}
             ${canReturnToActiveSession ? '<button class="return-active-session-fab" type="button" data-action="return-to-active-session">Return to active session</button>' : ''}
           </section>
+        `;
+      }
+
+      function todayPlanPreview(template) {
+        if (!template) return null;
+        const readinessContext = { id: "lift-home", date: todayIso(), recovery: defaultRecovery() };
+        const recoveryAdvice = recoveryRecommendationForSession(readinessContext);
+        const advice = cachedTemplateAdvice(template, recoveryAdvice, { recovery: sessionRecovery(readinessContext) });
+        const rows = template.exercises.map((exercise, index) => {
+          const target = advice.items[index]?.target || {};
+          const resistanceType = target.resistanceType || exercise.resistanceType || inferResistanceType(exercise.name, exercise);
+          const prior = getMostRecentWorkoutPerformance(exercise.name, {
+            canonicalExerciseId: canonicalExerciseId(exercise.name),
+            resistanceType,
+            throughDate: todayIso()
+          });
+          const priorSet = prior?.sets?.length ? bestWorkoutSet(prior.sets, resistanceType) : null;
+          const targetLoad = Number(target.weight || target.addedLoad || target.assistanceLoad || 0);
+          const targetReps = Number(target.reps || exercise.reps || 0);
+          const targetLoadText = targetLoad > 0
+            ? formatResistance({
+              weight: targetLoad,
+              weightUnit: target.weightUnit || data.settings.weightUnit,
+              resistanceType,
+              addedLoad: resistanceType === "bodyweight_plus_load" ? targetLoad : 0,
+              assistanceLoad: resistanceType === "assisted_bodyweight" ? targetLoad : 0
+            }, exercise)
+            : resistanceType === "bodyweight" ? "Bodyweight" : "";
+          const targetText = [targetLoadText, targetReps > 0 ? (targetLoadText ? "× " : "") + formatLoadNumber(targetReps) : ""].filter(Boolean).join(" ") || "Target pending";
+          const priorLoad = priorSet ? resistanceLoad(priorSet, resistanceType) : 0;
+          const priorLoadText = priorSet ? formatResistance(priorSet, prior.exercise || exercise) : "";
+          const priorText = priorSet
+            ? [priorLoadText, Number(priorSet.reps || 0) > 0 ? (priorLoadText ? "× " : "") + formatLoadNumber(priorSet.reps) : ""].filter(Boolean).join(" ")
+            : "No comparable set";
+          const loadDelta = priorSet && targetLoad > 0 && priorLoad > 0 ? Number((targetLoad - priorLoad).toFixed(2)) : 0;
+          const repDelta = priorSet && targetReps > 0 ? targetReps - Number(priorSet.reps || 0) : 0;
+          const delta = !priorSet
+            ? { text: "new", tone: "none" }
+            : Math.abs(loadDelta) >= 0.01
+              ? { text: (loadDelta > 0 ? "+" : "−") + formatLoadNumber(Math.abs(loadDelta)), tone: loadDelta > 0 ? "over" : "under" }
+              : repDelta
+                ? { text: (repDelta > 0 ? "+" : "−") + Math.abs(repDelta) + " r", tone: repDelta > 0 ? "over" : "under" }
+                : { text: "hold", tone: "none" };
+          return {
+            confidence: readinessConfidence(target),
+            delta,
+            name: exercise.name,
+            priorDate: prior?.session?.date || "",
+            priorRpe: Number(priorSet?.rpe || 0),
+            priorText,
+            reason: String(target.reason || ""),
+            targetText
+          };
+        });
+        return { advice, held: rows.filter((row) => row.delta.text === "hold"), rows };
+      }
+
+      function todayPlanReason(reason) {
+        const value = String(reason || "").trim();
+        if (!value) return "The available comparison supports repeating the current target.";
+        if (/weekly volume[\s\S]*exceeds the blended operating range/i.test(value)) {
+          return "Current weekly volume is above the operating range, so this target stays put until performance and recovery support more work.";
+        }
+        if (/no qualifying comparable personal evidence/i.test(value)) {
+          return "Comparable personal evidence is still limited, so this target stays put until another stable exposure is available.";
+        }
+        const knownReasons = {
+          unavailable_equipment: "The saved equipment setup does not cover this lift, so its target remains provisional.",
+          insufficient_history: "There is not enough comparable history yet to justify a progression.",
+          no_comparable_history: "There is no comparable prior exposure yet, so the current target stays in place."
+        };
+        if (knownReasons[value]) return knownReasons[value];
+        if (/^[a-z0-9_]+$/.test(value)) {
+          const readable = value.replace(/_+/g, " ");
+          return readable.charAt(0).toUpperCase() + readable.slice(1) + ".";
+        }
+        if (value.length > 220) {
+          const firstSentence = value.match(/^.*?[.!?](?:\s|$)/)?.[0]?.trim();
+          if (firstSentence) return firstSentence;
+        }
+        return value;
+      }
+
+      function renderTodayPlanPreview(template, preview) {
+        if (!template || !preview) return "";
+        const totalSets = Number(preview.advice.totalSets || templateExerciseCount(template));
+        const holdExplanation = preview.held
+          .slice(0, 2)
+          .map((row) => '<strong>' + escapeHtml(row.name) + ':</strong> ' + escapeHtml(todayPlanReason(row.reason)))
+          .join(" ");
+        return `
+          <section class="today-plan-preview" aria-label="${escapeHtml(template.name)} plan compared with last performance">
+            <div class="today-plan-head dhead" aria-hidden="true"><span>Today · confidence</span><span>Last time</span><span>Δ</span></div>
+            <div class="today-plan-rows">
+              ${preview.rows.map((row) => `
+                <div class="today-plan-row drow">
+                  <span class="plan">
+                    <span class="today-plan-name">${escapeHtml(row.name)}</span>
+                    <span class="today-plan-target">${escapeHtml(row.targetText)}</span>
+                    ${row.confidence ? '<span class="meter" data-conf="' + row.confidence.level + '" aria-label="' + escapeHtml(row.confidence.label + ' confidence') + '"><i></i><i></i><i></i><i></i></span>' : ''}
+                  </span>
+                  <span class="act">
+                    <span class="lbl">${row.priorDate ? escapeHtml(formatDate(row.priorDate)) + (row.priorRpe ? " · RPE " + escapeHtml(formatLoadNumber(row.priorRpe)) : "") : "No prior session"}</span>
+                    <span class="val">${escapeHtml(row.priorText)}</span>
+                  </span>
+                  <span class="dlt"><span class="d ${row.delta.tone}">${escapeHtml(row.delta.text)}</span></span>
+                </div>
+              `).join("")}
+            </div>
+          </section>
+          ${preview.held.length ? '<div class="callout provisional today-hold-callout"><b>Why ' + preview.held.length + ' lift' + (preview.held.length === 1 ? '' : 's') + ' hold</b><span>' + holdExplanation + '</span></div>' : ''}
+          <div class="module-action-row today-plan-actions">
+            <button class="primary-action today-primary-action" type="button" data-action="start-next-template" data-template-id="${escapeHtml(template.id)}">Start · ${totalSets} sets</button>
+            <button class="secondary-action" type="button" data-action="open-progress" data-progress-view="overview">Review this week</button>
+          </div>
         `;
       }
 
       function renderLiftHome() {
         const analysis = hypertrophyAnalysis(0, "overall", "");
         const nextTemplate = data.templates[0] || null;
+        const planPreview = nextTemplate ? todayPlanPreview(nextTemplate) : null;
         const nextAction = nextTemplate
-          ? '<button class="primary-action today-primary-action" type="button" data-action="start-next-template" data-template-id="' + escapeHtml(nextTemplate.id) + '">Review readiness and start</button>'
+          ? ''
           : '<button class="primary-action today-primary-action" type="button" data-action="open-templates">Create a workout template</button>';
         return `
           <section class="view lift-home-view">
-            <div class="workout-heading today-heading"><div><div class="section-kicker">${escapeHtml(new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(new Date(todayIso() + "T12:00:00")))}</div><h1>${nextTemplate ? "What the plan asks today." : "Today"}</h1></div><span class="status-pill inside">${nextTemplate ? "Ready" : "Plan needed"}</span></div>
+            <div class="workout-heading today-heading"><div><div class="section-kicker">${escapeHtml(new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(new Date(todayIso() + "T12:00:00")))}${nextTemplate ? " · " + escapeHtml(nextTemplate.name) : ""}</div><h1>${nextTemplate ? "What changed since you last ran this." : "Today"}</h1></div><span class="status-pill inside">${nextTemplate ? "Ready" : "Plan needed"}</span></div>
+            ${nextTemplate ? renderTodayPlanPreview(nextTemplate, planPreview) : ""}
             <section class="coach-lead today-coach">
               <div class="section-kicker">Next action</div>
               <h2>${nextTemplate ? escapeHtml(nextTemplate.name) : "Create your first reusable workout"}</h2>
@@ -881,7 +1013,7 @@
               <section class="sheet-card bottom-sheet dialog-sheet start-flow-sheet" role="dialog" aria-modal="true" aria-labelledby="template-start-title" data-sheet-content>
                 <button class="sheet-close" type="button" data-action="cancel-template-start" aria-label="Close template setup">&times;</button>
                 <div><div class="section-kicker">Start session</div><h2 id="template-start-title">Start ${escapeHtml(template.name)}?</h2><p>${template.exercises.length} lift${template.exercises.length === 1 ? "" : "s"} · ${totalSets} prescribed sets · about ${duration} min</p></div>
-                <div class="callout info readiness-evidence-summary">${readinessMeter(evidence.lowest, true)}<span><b>${evidence.moderateOrHigh} of ${template.exercises.length} lifts have moderate or high prescription confidence</b><span>${lowerConfidence ? lowerConfidence + " lift" + (lowerConfidence === 1 ? " remains" : "s remain") + " conditional, low-confidence, or research-led." : "Every lift clears the moderate-confidence threshold."} ${evidence.lowest ? "The meter shows the least-certain lift: " + evidence.lowest.label.toLowerCase() + "." : "No stored confidence is available for this session."}</span></span></div>
+                <div class="callout info readiness-evidence-summary">${readinessMeter(evidence.lowest, true)}<span><b>${evidence.moderateOrHigh} of ${template.exercises.length} lifts clear the moderate-confidence threshold</b><span>${lowerConfidence ? lowerConfidence + " lift" + (lowerConfidence === 1 ? " is" : "s are") + " still conditional, low-confidence, or research-led." : "Every lift clears the threshold."} ${evidence.lowest ? "Lowest confidence: " + evidence.lowest.label.toLowerCase() + "." : "No stored confidence is available."}</span></span></div>
                 <div class="readiness-choice-copy"><strong>Readiness</strong><span>Your stored baseline is used unless you log today’s metrics. Logging can lower today’s targets without changing the saved template.</span></div>
                 <div class="sheet-actions stacked">
                   <button class="primary-action sheet-btn" type="button" data-action="log-today-readiness">Log today’s readiness</button>
@@ -930,7 +1062,7 @@
               <section class="sheet-card bottom-sheet dialog-sheet readiness-review-sheet" role="dialog" aria-modal="true" aria-labelledby="readiness-review-title" data-sheet-content>
                 <button class="sheet-close" type="button" data-action="cancel-template-start" aria-label="Close readiness review">&times;</button>
                 <div><div class="section-kicker">Today only · step 2 of 2</div><h2 id="readiness-review-title">${changed.length ? changed.length + " lift" + (changed.length === 1 ? " changes" : "s change") + " today." : "The base plan stays intact."}</h2><p>${escapeHtml(preview.label)}. The saved template is not rewritten.</p></div>
-                <div class="callout ${changed.length ? "warn" : "info"}"><b>What triggered this</b><span>${triggerLabels.length ? escapeHtml(triggerLabels.join("; ")) : "No converging adverse readiness signals crossed the adjustment rule. The engine kept the base prescription."}</span></div>
+                <div class="callout ${changed.length ? "warn" : "info"}"><b>What triggered this</b><span>${triggerLabels.length ? escapeHtml(triggerLabels.map((label) => label.replace(/[.;\s]+$/g, "")).join(", ") + ".") : "No converging adverse readiness signals crossed the adjustment rule. The engine kept the base prescription."}</span></div>
                 <div class="readiness-review-label"><strong>Adjustments</strong><span>base plan → today · Δ</span></div>
                 <div class="diff readiness-change-list"><div class="drow dhead"><span class="plan">Base plan</span><span class="act">Today</span><span class="dlt">Δ</span></div>${changes.map(renderReadableReadinessChange).join("")}</div>
                 ${unchanged.length ? '<div class="readiness-unchanged-note"><strong>Why ' + unchanged.length + ' lift' + (unchanged.length === 1 ? ' is' : 's are') + ' untouched</strong><span>The entered signals did not produce an executable target change for ' + escapeHtml(unchanged.map((item) => item.name).join(", ")) + '. Their base prescriptions remain today’s targets.</span></div>' : ''}
@@ -981,7 +1113,7 @@
         return `
           <div class="scrim sheet-backdrop" data-action="keep-workout" role="presentation">
             <section class="sheet-card bottom-sheet dialog-sheet destructive-sheet" role="dialog" aria-modal="true" aria-label="Cancel this workout?" data-sheet-content>
-              <div><div class="section-kicker destructive-kicker">Discard this workout</div><h2 id="cancel-workout-title">This unsubmitted draft will be removed.</h2><p>The scope is limited to this workout draft.</p></div>
+              <div><div class="section-kicker destructive-kicker">Discard this workout</div><h2 id="cancel-workout-title">${completedSets ? completedSets + " logged set" + (completedSets === 1 ? "" : "s") + " will be removed." : "This unsubmitted draft will be removed."}</h2><p>The scope is limited to this workout draft.</p></div>
               <div class="diff cancel-workout-diff"><div class="drow dhead"><span class="plan">Removed</span><span class="act">Kept</span><span class="dlt">Scope</span></div><div class="drow"><span class="plan"><span class="lbl">This draft</span><span class="val">${exerciseIds.size} exercise${exerciseIds.size === 1 ? "" : "s"}, ${draftSets.length} set entr${draftSets.length === 1 ? "y" : "ies"} (${completedSets} completed), notes, and timer state</span></span><span class="act"><span class="lbl">Submitted history</span><span class="val">${historyCount} session${historyCount === 1 ? "" : "s"}</span></span><span class="dlt"><span>unchanged</span></span></div><div class="drow"><span class="plan"><span class="lbl">Today’s readiness</span><span class="val">${hasReadiness ? "this draft’s check-in" : "no entered check-in"}</span></span><span class="act"><span class="lbl">Templates and settings</span><span class="val">${data.templates.length} template${data.templates.length === 1 ? "" : "s"} · unchanged</span></span><span class="dlt"><span>unchanged</span></span></div></div>
               <div class="callout bad"><b>This cannot be undone</b><span>The exercise, set, note, readiness, and timer records in this draft are not recoverable after discard.</span></div>
               <div class="sheet-actions cancel-sheet-actions">
@@ -1573,7 +1705,25 @@
         const optionsHtml = measurePerformance("lift:exerciseOptions", () => renderCustomExerciseSetup(exercise) + (customGuidanceIncomplete ? "" : renderExerciseGuidance(exercise)) + renderStandardWorkloadControls(exercise) + renderExecutionQualityAssessment(exercise) + renderPlateCalculator(exercise, firstWorkSet) + renderMuscleSelectors(exercise) + renderPrescriptionOverrideControls(exercise, resolvedSafetyContext), { exerciseId: exercise.id });
         const exerciseConfidenceKey = String(exercise.recommendationSnapshot?.finalPrescription?.confidence || exercise.recommendationSnapshot?.confidence || "").toLowerCase();
         const exerciseConfidence = ({ research_default: [1, "Research"], low: [2, "Low"], moderate: [3, "Moderate"], high: [4, "High"] })[exerciseConfidenceKey] || null;
-        const confidenceChip = exerciseConfidence ? '<span class="exercise-confidence chip" data-conf="' + exerciseConfidence[0] + '">' + exerciseConfidence[1] + '</span>' : "";
+        const chipSet = exerciseSets.find((set) => isWorkingSet(set, "score") && !set.completed && !set.skipped) || firstWorkSet;
+        const chipResistanceType = chipSet ? resistanceTypeFor(exercise, chipSet) : "";
+        const chipTargetLoad = Number(chipSet?.targetWeight ?? chipSet?.weight ?? 0);
+        const chipLoad = chipSet ? formatResistance({
+          ...chipSet,
+          weight: chipTargetLoad,
+          addedLoad: chipResistanceType === "bodyweight_plus_load" ? chipTargetLoad : chipSet.addedLoad,
+          assistanceLoad: chipResistanceType === "assisted_bodyweight" ? chipTargetLoad : chipSet.assistanceLoad,
+          resistanceType: chipResistanceType
+        }, exercise) : "";
+        const chipTarget = chipSet
+          ? chipResistanceType === "duration" || chipResistanceType === "distance"
+            ? targetRangeText(chipSet.targetRepMin, chipSet.targetRepMax || chipSet.targetReps, chipResistanceType === "duration" ? " sec" : "")
+            : chipLoad + " × " + targetRangeText(chipSet.targetRepMin, chipSet.targetRepMax || chipSet.targetReps) + " @ " + targetRangeText(chipSet.targetRpeMin, chipSet.targetRpeMax || chipSet.targetRpe)
+          : "";
+        const confidenceMeter = exerciseConfidence ? '<span class="meter" data-conf="' + exerciseConfidence[0] + '" aria-hidden="true"><i></i><i></i><i></i><i></i></span>' : "";
+        const confidenceChip = chipTarget
+          ? '<span class="exercise-confidence chip ' + (exerciseConfidence ? "" : "confidence-unavailable") + '"' + (exerciseConfidence ? ' data-conf="' + exerciseConfidence[0] + '"' : '') + ' aria-label="' + escapeHtml(chipTarget + ". " + (exerciseConfidence ? exerciseConfidence[1] + " confidence" : "Confidence unavailable")) + '">' + escapeHtml(chipTarget) + confidenceMeter + '</span>'
+          : "";
         return `
           <article id="exercise-${exercise.id}" class="exercise-card ${isActiveExercise ? "active-exercise" : ""} ${workoutFocusExerciseId === exercise.id ? "context-exercise" : ""}" tabindex="-1" aria-label="Exercise: ${escapeHtml(exercise.name)}">
             <div class="exercise-header">
@@ -1615,6 +1765,12 @@
         if (!set) return "No prior working set found";
         const date = set.priorSessionDate ? " · " + formatDate(set.priorSessionDate) : "";
         return formatSetPerformance(set, exercise) + date;
+      }
+
+      function setCompletionClock(set) {
+        const completedAt = new Date(set?.completedAt || "");
+        if (!Number.isFinite(completedAt.getTime())) return "Actual";
+        return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(completedAt);
       }
 
       function renderSet(set, exercise, context = {}) {
@@ -1671,7 +1827,10 @@
             ? '<label class="set-field"><span>Distance</span><input type="number" min="0" step="0.1" value="' + Number(set.distance || 0) + '" data-action="set-distance" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' distance" /></label>'
             : '<label class="set-field"><span>Reps</span><input type="number" min="0" value="' + set.reps + '" data-action="set-reps" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' reps" /></label>';
         const setLabel = warmupIndex >= 0 ? "WU" + (warmupIndex + 1) : "Set " + set.setNumber;
-        const targetSummary = [targetLoadText, targetRepText, targetRpeText].join(" | ");
+        const compactTargetSummary = targetLoadText + " × " + targetRangeText(set.targetRepMin, set.targetRepMax || set.targetReps) + " @ " + targetRangeText(set.targetRpeMin, set.targetRpeMax || set.targetRpe);
+        const targetSummary = resistanceType === "duration" || resistanceType === "distance"
+          ? [targetLoadText, targetRepText, targetRpeText].join(" | ")
+          : compactTargetSummary;
         const actualLoadText = formatResistance(set, exercise);
         const actualPerformanceText = resistanceType === "duration"
           ? formatLoadNumber(set.durationSeconds || 0) + " sec"
@@ -1680,7 +1839,7 @@
             : String(Number(set.reps || 0)) + " reps";
         const actualSummary = resistanceType === "duration" || resistanceType === "distance"
           ? actualPerformanceText + (Number(set.rpe || 0) > 0 ? " @ RPE " + set.rpe : "")
-          : actualLoadText + " | " + actualPerformanceText + (Number(set.rpe || 0) > 0 ? " @ RPE " + set.rpe : "");
+          : actualLoadText + " × " + Number(set.reps || 0) + (Number(set.rpe || 0) > 0 ? " @ " + Number(set.rpe).toFixed(1) : "");
         const targetRpe = Number(set.targetRpe || set.targetRpeMax || set.targetRpeMin || 0);
         const rpeDelta = Number(set.rpe || 0) - targetRpe;
         const isOnTarget = Boolean(targetRpe && Number(set.rpe || 0) && Math.abs(rpeDelta) < 0.05);
@@ -1688,7 +1847,7 @@
           ? "on"
           : !targetRpe || !Number(set.rpe || 0)
             ? "Logged"
-            : (rpeDelta > 0 ? "+" : "") + formatLoadNumber(rpeDelta) + " RPE";
+            : (rpeDelta > 0 ? "+" : "") + formatLoadNumber(rpeDelta);
         const rpeDeltaClass = !targetRpe || !Number(set.rpe || 0) ? "none" : rpeDelta > 0 ? "out" : rpeDelta < 0 ? "under" : "on";
         const repTone = Number(set.reps || 0) < Number(set.targetRepMin || set.targetReps || 0) ? "under" : Number(set.reps || 0) > Number(set.targetRepMax || set.targetReps || 0) ? "over" : "on";
         const repRangeSignal = rangeBar({ low: Number(set.targetRepMin || set.targetReps || 0), high: Number(set.targetRepMax || set.targetReps || 0), actual: isLoggedMode ? Number(set.reps || 0) : Number(set.targetReps || set.targetRepMin || 0), tone: isLoggedMode ? repTone : "none" });
@@ -1700,10 +1859,10 @@
             ? '<div class="set-field"><span>Load</span><div class="resistance-readout">' + noData("External load does not apply") + '</div></div>'
             : '<label class="set-field"><span>' + (resistanceType === 'bodyweight_plus_load' ? 'Added' : resistanceType === 'assisted_bodyweight' ? 'Assist' : 'Load') + '</span><input type="number" min="0" step="' + (data.settings.weightUnit === 'lb' ? '0.5' : '0.001') + '" value="' + displayLoadNumber(resistanceLoad(set, resistanceType), set.weightUnit || data.settings.weightUnit) + '" data-action="set-weight" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' ' + (resistanceType === 'bodyweight_plus_load' ? 'added load' : resistanceType === 'assisted_bodyweight' ? 'assistance load' : 'load') + '" /></label>';
         const setBody = isLoggedMode
-          ? '<div class="set-logged diff" data-set-mode="logged"><div class="drow"><span class="plan"><span class="lbl">' + escapeHtml(setLabel + ' · ' + executionLabel) + '</span><strong>' + escapeHtml(targetSummary) + '</strong>' + repRangeSignal + '</span><span class="act"><span class="lbl">Actual</span><strong>' + escapeHtml(actualSummary) + '</strong></span><span class="dlt"><span class="lbl">RPE</span><strong class="d ' + rpeDeltaClass + '">' + escapeHtml(rpeDeltaText) + '</strong></span>' + statusButton + '</div></div>'
+          ? '<div class="set-logged diff" data-set-mode="logged"><div class="drow"><span class="plan"><span class="lbl">' + escapeHtml(setLabel + ' · ' + executionLabel) + '</span><strong>' + escapeHtml(targetSummary) + '</strong>' + repRangeSignal + '</span><span class="act"><span class="lbl">' + escapeHtml(setCompletionClock(set)) + '</span><strong>' + escapeHtml(actualSummary) + '</strong></span><span class="dlt"><span class="lbl">RPE</span><strong class="d ' + rpeDeltaClass + '">' + escapeHtml(rpeDeltaText) + '</strong></span>' + statusButton + '</div></div>'
           : isNext || isEditingHistorySession()
-            ? '<div class="set-current-editor claim-card" data-set-mode="current"><div class="set-current-heading"><div><span class="eyebrow">' + escapeHtml(setLabel) + '</span><strong>' + escapeHtml(targetSummary) + '</strong></div>' + statusButton + '</div><div class="current-set-inputs">' + previousField + loadField + performanceField + '<label class="set-field"><span>RPE</span><input type="number" min="0" max="10" step="0.5" value="' + set.rpe + '" data-action="set-rpe" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' RPE" /></label></div></div>'
-            : '<div class="set-pending-line" data-set-mode="pending"><span>' + escapeHtml(setLabel) + '</span><strong>' + escapeHtml(targetSummary) + '</strong>' + repRangeSignal + '</div>';
+            ? '<div class="set-current-editor claim-card" data-set-mode="current"><div class="set-current-heading"><div><span class="eyebrow">' + escapeHtml(setLabel + ' · now') + '</span><strong>' + escapeHtml(resistanceType === "duration" || resistanceType === "distance" ? targetSummary : targetLoadText + " × " + targetRangeText(set.targetRepMin, set.targetRepMax || set.targetReps) + " @ RPE " + targetRangeText(set.targetRpeMin, set.targetRpeMax || set.targetRpe)) + '</strong></div><span class="current-set-count">' + (context.workingSetIds || []).length + ' sets planned</span>' + statusButton + '</div><div class="current-set-inputs">' + previousField + loadField + performanceField + '<label class="set-field"><span>RPE</span><input type="number" min="0" max="10" step="0.5" value="' + (Number(set.rpe || 0) > 0 ? set.rpe : "") + '" placeholder="—" data-action="set-rpe" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' RPE" /></label></div></div>'
+            : '<div class="set-pending-line" data-set-mode="pending"><span class="pending-set-label">' + escapeHtml(setLabel) + '</span><span class="pending-exercise-name">' + escapeHtml(exercise.name) + '</span><strong>' + escapeHtml(targetSummary) + '</strong>' + repRangeSignal + '</div>';
         return `
           <div id="set-${set.id}" data-set-state="${visualState}" class="set-block ${visualState === "completed" ? "completed" : ""} ${isNext ? "next-set" : ""} ${isNext && activeSetAcknowledged ? "acknowledged" : ""} ${visualState === "edited" ? "edited-set" : ""} ${visualState === "skipped" ? "skipped-set" : ""} ${isResting ? "resting-set" : ""}">
             ${isLoggedMode ? "" : `<div class="set-heading">
@@ -1727,7 +1886,6 @@
                 </div>
               </div>
             </details>`}
-            ${renderTimer(set.id)}
           </div>
         `;
       }
@@ -2001,7 +2159,7 @@
           <details class="timer-bar" data-timer-id="${timer.id}" data-disclosure-id="rest-timer" data-phase="${timer.remainingSeconds <= 10 ? "final" : "resting"}" ${timer.isPaused ? 'data-paused="true"' : ""}>
             <summary class="timer-summary" aria-label="${timer.isPaused ? "Paused rest timer" : "Rest timer"}, ${formatTimer(timer.remainingSeconds)} remaining. Open timer controls.">
               <span class="timer-progress" role="progressbar" aria-label="Rest elapsed" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}" style="--timer-progress:${progress}%"><span></span></span>
-              <span class="timer-rest-copy"><span>${timer.isPaused ? "Paused" : "Rest"}</span></span>
+              <span class="timer-rest-copy"><span>${timer.isPaused ? "Paused" : "Rest"}</span><small>${escapeHtml(nextContext)}</small></span>
               <strong data-timer-progress-label>${formatTimer(timer.remainingSeconds)}</strong>
             </summary>
             <div class="timer-controls-panel">
@@ -2032,7 +2190,7 @@
         const nextSet = setById(timerSnapshot?.pendingNextSetId);
         const nextExercise = nextSet ? exerciseById(nextSet.exerciseId) : null;
         return nextSet
-          ? "Next: " + (nextExercise?.name || sourceExercise?.name || "Exercise") + " · " + setExecutionLabel(nextSet)
+          ? "Next: " + (nextExercise?.name || sourceExercise?.name || "Exercise") + " · Set " + Number(nextSet.setNumber || 1)
           : "Final set";
       }
 

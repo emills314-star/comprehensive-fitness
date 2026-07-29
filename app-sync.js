@@ -911,8 +911,9 @@
         if (options.deferRender) {
           measurePerformance("timer:updateDom", () => {
             const block = document.getElementById("set-" + setId);
+            const slot = document.querySelector(".workout-timer-slot");
             block?.classList.add("resting-set");
-            if (block && !block.querySelector(".timer-bar")) block.insertAdjacentHTML("beforeend", renderTimer(setId));
+            if (slot && !slot.querySelector(".timer-bar")) slot.innerHTML = renderTimer(setId);
             updateWorkoutStatusDom();
           });
         } else render();
