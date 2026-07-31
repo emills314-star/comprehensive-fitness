@@ -71,8 +71,8 @@ const previousSets = [
   { id: "backoff", setType: "backoff", setTypeIndex: 0, reps: 15, weight: 90, rpe: 8 }
 ];
 assert.strictEqual(runtime.previousComparableSetForRole(previousSets, "backoff", 0).id, "backoff");
-assert.strictEqual(runtime.previousComparableSetForRole(previousSets, "drop", 0, 0).id, "top", "A missing imported role must fall back to the same ordered working-set position");
-assert.strictEqual(runtime.previousComparableSetForRole(previousSets, "drop", 0, 1).id, "backoff", "Ordered fallback must preserve the current working-set position");
+assert.strictEqual(runtime.previousComparableSetForRole(previousSets, "drop", 0, 0), null, "A missing role must remain unavailable instead of borrowing a non-comparable working set");
+assert.strictEqual(runtime.previousComparableSetForRole(previousSets, "drop", 0, 1), null, "Role-aware matching must never exchange top, back-off, drop, or straight sets");
 
 const baseTarget = { sets: 2, reps: 15, repLow: 10, repHigh: 15, weight: 100, rpe: 8.5, restSeconds: 90, increment: 5, resistanceType: "external" };
 const topPrescription = runtime.setPrescriptionForRole({ templateExercise: { name: "Leg Extension", increment: 5 }, target: baseTarget, setType: { ...extensionTop, type: "top" }, setTypeIndex: 0, previousSets });
@@ -81,10 +81,10 @@ assert.strictEqual(topPrescription.targetLoad, 100);
 assert(backoffPrescription.targetLoad < topPrescription.targetLoad, "A true back-off must reduce load");
 assert.strictEqual(backoffPrescription.targetLoad % 5, 0, "Back-off load must respect equipment increments");
 assert.strictEqual(backoffPrescription.previousComparableSet.id, "backoff-low");
-assert(backoffPrescription.reason.includes("productive volume"));
+assert(backoffPrescription.reason.includes("most recent comparable workout"));
 assert.strictEqual(backoffPrescription.progressionReady, false, "A back-off below its rep gate must not authorize the next load");
 assert.strictEqual(backoffPrescription.targetLoad, 90, "An unqualified back-off must repeat the prior comparable load");
-assert.strictEqual(backoffPrescription.targetReps, 9, "An unqualified back-off must not ask for more reps than prior performance");
+assert.strictEqual(backoffPrescription.targetReps, 9, "Factual prefill must copy the corresponding prior back-off repetitions");
 assert.strictEqual(backoffPrescription.nextLoad, backoffPrescription.targetLoad, "An unqualified back-off must hold its current load");
 const qualifiedBackoff = runtime.setPrescriptionForRole({
   templateExercise: { name: "Leg Extension", increment: 5 },
@@ -103,7 +103,8 @@ const duplicate = runtime.validateGeneratedSetPrescriptions([
   { setType: "top", targetLoad: 100, repMin: 10, repMax: 15, rpeMin: 8, rpeMax: 9 },
   { setType: "backoff", targetLoad: 100, repMin: 10, repMax: 15, rpeMin: 8, rpeMax: 9 }
 ], "external");
-assert.strictEqual(duplicate[1].setType, "straight", "An identical later set is a straight working set, not a back-off");
+assert.strictEqual(duplicate[1].setType, "backoff", "A recorded back-off role must not be relabeled because its current values match another role");
+assert.match(duplicate[1].validationWarning, /preserved back-off role/);
 const noBaseline = runtime.validateGeneratedSetPrescriptions([
   { setType: "top", targetLoad: 0, repMin: 8, repMax: 12, rpeMin: 8, rpeMax: 9 },
   { setType: "backoff", targetLoad: 0, repMin: 10, repMax: 15, rpeMin: 7, rpeMax: 8 }
@@ -117,16 +118,16 @@ assert.strictEqual(straight.targetReps, 9, "Later straight sets keep role-specif
 const unifiedLightTarget = { ...baseTarget, mode: "light", reps: 6, repLow: 6, repHigh: 10, weight: 160, rpe: 7, finalPrescription: { setStructure: "top_set_backoff" } };
 const unifiedTop = runtime.setPrescriptionForRole({ templateExercise: { name: "Bench Press", increment: 5 }, target: unifiedLightTarget, setType: { type: "top", repMin: 6, repMax: 10, rpeMin: 6, rpeMax: 7 }, previousSets: [{ id: "prior-top", setType: "top", setTypeIndex: 0, reps: 4, weight: 175, rpe: 7 }] });
 assert.strictEqual(unifiedTop.targetLoad, 160, "The immutable final prescription load must beat an older comparable load");
-assert.strictEqual(unifiedTop.targetReps, 6, "The immutable final prescription rep target must beat an older comparable rep count");
+assert.strictEqual(unifiedTop.targetReps, 4, "A temporary lower-demand exception may not replace factual prior repetitions");
 assert.strictEqual(unifiedTop.progressionReady, false, "Using today's prescribed target must not falsely authorize the next increment");
 
 const unifiedRepProgression = runtime.setPrescriptionForRole({ templateExercise: { name: "Bench Press", increment: 5 }, target: { ...unifiedLightTarget, mode: "rep-progression", reps: 10, finalPrescription: { setStructure: "straight_sets", progressionAction: "add_one_rep" } }, setType: { type: "straight", repMin: 6, repMax: 10, rpeMin: 7, rpeMax: 8 }, previousSets: [{ id: "prior-straight", setType: "straight", setTypeIndex: 0, reps: 7, weight: 160, rpe: 8 }] });
-assert.strictEqual(unifiedRepProgression.targetReps, 8, "An authoritative unified prescription must add one rep from comparable history instead of copying a generic range target");
+assert.strictEqual(unifiedRepProgression.targetReps, 7, "An exact add-rep engine output must not prefill the set");
 const unifiedLoadProgression = runtime.setPrescriptionForRole({ templateExercise: { name: "Bench Press", increment: 5 }, target: { ...unifiedLightTarget, mode: "load-progression", reps: 10, weight: 165, finalPrescription: { setStructure: "straight_sets", progressionAction: "increase_load" } }, setType: { type: "straight", repMin: 6, repMax: 10, rpeMin: 7, rpeMax: 8 }, previousSets: [{ id: "prior-straight", setType: "straight", setTypeIndex: 0, reps: 10, weight: 160, rpe: 8 }] });
-assert.strictEqual(unifiedLoadProgression.targetLoad, 165);
-assert.strictEqual(unifiedLoadProgression.targetReps, 6, "A load increase must restart at the bottom of that set role's exact range");
+assert.strictEqual(unifiedLoadProgression.targetLoad, 160, "An exact add-load engine output must not replace the comparable prior load");
+assert.strictEqual(unifiedLoadProgression.targetReps, 10, "Normal load progression must retain factual prior repetitions");
 const unifiedReturn = runtime.setPrescriptionForRole({ templateExercise: { name: "Bench Press", increment: 5 }, target: { ...unifiedLightTarget, mode: "return", reps: 10, weight: 145, finalPrescription: { setStructure: "straight_sets", progressionAction: "establish_baseline" } }, setType: { type: "straight", repMin: 6, repMax: 10, rpeMin: 7, rpeMax: 8 }, previousSets: [{ id: "prior-straight", setType: "straight", setTypeIndex: 0, reps: 10, weight: 160, rpe: 8 }] });
-assert.strictEqual(unifiedReturn.targetReps, 9, "A return baseline should step down one rep from comparable history while preserving the role range");
+assert.strictEqual(unifiedReturn.targetReps, 10, "A return exception may lower demand without inventing a different repetition prefill");
 
 const unifiedLightTypes = runtime.resolvedSetTypesForPrescription({ setTypes: [{ type: "top", setCount: 1, countsTowardScore: true }, { type: "backoff", setCount: 1, countsTowardScore: true }] }, unifiedLightTarget);
 assert.deepStrictEqual(unifiedLightTypes.map((item) => item.type), ["top", "backoff"], "A unified top/back-off prescription must not be relabeled as straight work during a light session");

@@ -1344,7 +1344,6 @@
         const empty = (reason = "missing_safety_context", message = "The safety-substitute context is incomplete.") => ({
           allowedSafetySubstituteIds: [],
           exerciseCatalog: [],
-          availableEquipment: [],
           excludedExerciseIds: [],
           preferred: null,
           resolvedValidation: { valid: false, reason, message }
@@ -1357,27 +1356,6 @@
         const mesocycle = referencedMesocycleId ? data.mesocycles.find((item) => item.id === referencedMesocycleId) || null : null;
         const mesocycleReferenceValid = !referencedMesocycleId || Boolean(mesocycle);
         const constraints = mesocycle?.constraints || {};
-        const mesocycleEquipmentSource = Object.prototype.hasOwnProperty.call(mesocycle || {}, "availableEquipment")
-          ? mesocycle.availableEquipment
-          : Object.prototype.hasOwnProperty.call(constraints, "availableEquipment")
-            ? constraints.availableEquipment
-            : undefined;
-        const normalizeEquipment = (source) => Array.isArray(source)
-          ? Array.from(new Set(source.map((item) => String(item || "").trim()).filter(Boolean)))
-          : [];
-        const currentEquipmentSource = data.settings.availableEquipment;
-        const currentEquipment = Array.isArray(currentEquipmentSource) && currentEquipmentSource.length === 0
-          ? ["all"]
-          : normalizeEquipment(currentEquipmentSource);
-        const mesocycleEquipment = mesocycleEquipmentSource === undefined ? null : normalizeEquipment(mesocycleEquipmentSource);
-        const configuredEquipment = mesocycleEquipment === null
-          ? currentEquipment
-          : currentEquipment.includes("all")
-            ? mesocycleEquipment
-            : mesocycleEquipment.includes("all")
-              ? currentEquipment
-              : currentEquipment.filter((item) => mesocycleEquipment.includes(item));
-        const equipmentInputValid = configuredEquipment.length > 0;
         const excludedExerciseIds = new Set([
           ...(Array.isArray(data.settings.excludedExerciseIds) ? data.settings.excludedExerciseIds : []),
           ...(Array.isArray(mesocycle?.excludedExerciseIds) ? mesocycle.excludedExerciseIds : []),
@@ -1402,24 +1380,12 @@
         const substitutionRows = research.substitutionsByExercise.get(originalResearchExerciseId) || [];
         const mappedIds = Array.from(new Set(substitutionRows.map((item) => item.substitute_exercise_id || item.substituteExerciseId).filter(Boolean)));
         const originalIds = new Set([originalExerciseId, originalResearchExerciseId, restriction.auditBaseTargets?.exerciseId, restriction.auditBaseTargets?.researchExerciseId, snapshot.basePrescription?.exerciseId, snapshot.basePrescription?.researchExerciseId].filter(Boolean));
-        const equipmentCompatibleById = new Map();
-        if (mesocycleReferenceValid && equipmentInputValid && scopeValid && muscleGroupId) {
-          mappedIds.forEach((exerciseId) => {
-            const record = research.exerciseById.get(exerciseId);
-            try {
-              equipmentCompatibleById.set(exerciseId, Boolean(record && prescriptionApi.equipmentCompatible(record, configuredEquipment).eligible));
-            } catch {
-              equipmentCompatibleById.set(exerciseId, false);
-            }
-          });
-        }
         const resolvedSubstituteId = restriction.substituteResearchExerciseId || restriction.substituteExerciseId || "";
         const resolved = restriction.status === "resolved_by_confirmed_substitute" && restriction.painFreeConfirmed === true;
         const eligibleSafetySubstituteIds = mappedIds.filter((exerciseId) => (
           research.exerciseById.has(exerciseId)
           && !originalIds.has(exerciseId)
           && !excludedExerciseIds.has(exerciseId)
-          && equipmentCompatibleById.get(exerciseId) === true
         ));
         const allowedSafetySubstituteIds = resolved
           ? eligibleSafetySubstituteIds.filter((exerciseId) => exerciseId !== resolvedSubstituteId)
@@ -1456,17 +1422,15 @@
           if (!mesocycleReferenceValid) resolvedValidation = { valid: false, reason: "missing_mesocycle_context", message: "The saved substitute cannot be revalidated because its workout mesocycle no longer exists." };
           else if (!identityCoherent) resolvedValidation = { valid: false, reason: "substitute_identity_drift", message: "The confirmed substitute no longer retains one coherent current catalog identity." };
           else if (excludedExerciseIds.has(resolvedSubstituteId)) resolvedValidation = { valid: false, reason: "substitute_excluded", message: "The confirmed substitute is now excluded from this workout." };
-          else if (!equipmentInputValid || equipmentCompatibleById.get(resolvedSubstituteId) !== true) resolvedValidation = { valid: false, reason: "unavailable_equipment", message: "The confirmed substitute is not compatible with the currently available equipment." };
           else if (!scopeValid) resolvedValidation = { valid: false, reason: "substitute_out_of_scope", message: "The confirmed substitute no longer satisfies the current mesocycle muscle scope." };
           else if (!mappedIds.includes(resolvedSubstituteId) || !eligibleSafetySubstituteIds.includes(resolvedSubstituteId)) resolvedValidation = { valid: false, reason: "substitute_not_allowed", message: "The confirmed substitute is no longer a valid evidence-linked alternative for the painful original exercise." };
-          else resolvedValidation = { valid: true, reason: "confirmed_pain_free_substitute", message: "The confirmed substitute still satisfies current identity, equipment, exclusion, and program constraints." };
+          else resolvedValidation = { valid: true, reason: "confirmed_pain_free_substitute", message: "The confirmed substitute still satisfies current identity, exclusion, and program constraints." };
         }
         return {
           originalExerciseId,
           originalResearchExerciseId,
           allowedSafetySubstituteIds,
           exerciseCatalog,
-          availableEquipment: configuredEquipment,
           excludedExerciseIds: Array.from(excludedExerciseIds),
           preferred: preferredRecord ? { exerciseId: preferredId, researchExerciseId: preferredId, exerciseName: preferredRecord.exercise_name } : null,
           resolvedValidation
@@ -1491,8 +1455,8 @@
         const safetyListId = `safety-substitutes-${exercise.id}`;
         const safetyOptions = safetyContext?.exerciseCatalog.map((item) => `<option value="${escapeHtml(item.exercise_name)}"></option>`).join("") || "";
         const safetyNote = restriction?.status === "resolved_by_confirmed_substitute"
-          ? "The previously confirmed substitute no longer satisfies current identity, equipment, exclusion, or program constraints. Choose a different current catalog-backed substitute and confirm it is pain-free before continuing."
-          : "The original exercise remains blocked. Only a distinct, catalog-backed substitute allowed by the current equipment and exclusion settings can become executable after you explicitly confirm it is pain-free.";
+          ? "The previously confirmed substitute no longer satisfies current identity, exclusion, or program constraints. Choose a different current catalog-backed substitute and confirm it is pain-free before continuing."
+          : "The original exercise remains blocked. Only a distinct, catalog-backed substitute outside the exclusion list can become executable after you explicitly confirm it is pain-free.";
         return `
           <details class="compact-disclosure prescription-override" data-override-form="${exercise.id}">
             <summary>${safetyLocked ? "Choose a pain-free substitute" : "Override this prescription"} <span>${safetyLocked ? 'Confirmation required' : snapshot.overrideLocked ? 'Locked for workout' : 'Optional'}</span></summary>
@@ -1526,7 +1490,6 @@
         const session = sessionById(exercise.sessionId);
         const template = session?.templateId ? data.templates.find((item) => item.id === session.templateId) : null;
         const templateExercise = template?.exercises?.find((item) => exerciseMatches(item.name, exercise.name));
-        const savedStandard = templateExercise?.standardWorkloadOverride === true;
         const exerciseSets = setsForExercise(exercise.id);
         const warmups = exerciseSets.filter((set) => setTypeSemantics(set).isWarmup);
         const working = exerciseSets.filter((set) => isWorkingSet(set, "progression"));
@@ -1557,9 +1520,9 @@
         const setsBelow = standard ? currentSets < Number(standard.workingSets.min) : false;
         const repsBelow = standard ? repMin < Number(standard.repRange.min) : false;
         const comparison = !standard ? "Fully editable" : setsAbove || repsAbove ? "Above standard" : setsBelow || repsBelow ? "Below standard" : "Within standard";
-        const savedLabel = savedStandard
+        const savedLabel = templateExercise
           ? `${templateExercise.sets} sets · ${templateExercise.repMin || templateExercise.reps}-${templateExercise.repMax || templateExercise.reps} reps`
-          : templateExercise ? "Template uses generated targets" : "Today only";
+          : "Today only";
         const roleOptions = (selected) => [
           ["straight", "Standard set"],
           ["top", "Top set"],
@@ -1857,7 +1820,7 @@
           ? '<div class="set-field"><span>Load</span><div class="resistance-readout">BW</div></div>'
           : resistanceType === "duration" || resistanceType === "distance"
             ? '<div class="set-field"><span>Load</span><div class="resistance-readout">' + noData("External load does not apply") + '</div></div>'
-            : '<label class="set-field"><span>' + (resistanceType === 'bodyweight_plus_load' ? 'Added' : resistanceType === 'assisted_bodyweight' ? 'Assist' : 'Load') + '</span><input type="number" min="0" step="' + (data.settings.weightUnit === 'lb' ? '0.5' : '0.001') + '" value="' + displayLoadNumber(resistanceLoad(set, resistanceType), set.weightUnit || data.settings.weightUnit) + '" data-action="set-weight" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' ' + (resistanceType === 'bodyweight_plus_load' ? 'added load' : resistanceType === 'assisted_bodyweight' ? 'assistance load' : 'load') + '" /></label>';
+            : '<label class="set-field"><span>' + (resistanceType === 'bodyweight_plus_load' ? 'Added' : resistanceType === 'assisted_bodyweight' ? 'Assist' : 'Load') + '</span><input type="number" min="0" step="' + (data.settings.weightUnit === 'lb' ? '0.5' : '0.001') + '" value="' + roundLoadForUnit(resistanceLoad(set, resistanceType), set.weightUnit || data.settings.weightUnit) + '" data-action="set-weight" data-set-id="' + set.id + '" aria-label="Set ' + set.setNumber + ' ' + (resistanceType === 'bodyweight_plus_load' ? 'added load' : resistanceType === 'assisted_bodyweight' ? 'assistance load' : 'load') + '" /></label>';
         const setBody = isLoggedMode
           ? '<div class="set-logged diff" data-set-mode="logged"><div class="drow"><span class="plan"><span class="lbl">' + escapeHtml(setLabel + ' · ' + executionLabel) + '</span><strong>' + escapeHtml(targetSummary) + '</strong>' + repRangeSignal + '</span><span class="act"><span class="lbl">' + escapeHtml(setCompletionClock(set)) + '</span><strong>' + escapeHtml(actualSummary) + '</strong></span><span class="dlt"><span class="lbl">RPE</span><strong class="d ' + rpeDeltaClass + '">' + escapeHtml(rpeDeltaText) + '</strong></span>' + statusButton + '</div></div>'
           : isNext || isEditingHistorySession()
@@ -2091,9 +2054,13 @@
       }
 
       function renderPrescriptionDetails(exercise) {
+        const snapshotReason = exercise.recommendationSnapshot?.finalPrescription?.safetyRestriction?.reason
+          || exercise.recommendationSnapshot?.finalPrescription?.reason;
+        if (snapshotReason === "unavailable_equipment") return "";
         if (exercise.recommendationSnapshot) return renderUnifiedPrescriptionDetails(exercise, exercise.recommendationSnapshot);
         const target = exercise.prescription;
         if (!target) return "";
+        if (target.reason === "unavailable_equipment") return "";
         if (target.executionBlocked === true && target.executable === false) {
           const message = recommendationExplanationForDisplay(target.message || target.reason, "The saved recommendation is not executable.");
           return '<div class="program-warning blocking" role="alert"><strong>Exercise unavailable</strong><span>This exercise cannot be used with the current workout constraints.</span><small>' + escapeHtml(message) + '</small></div>';
@@ -2215,14 +2182,8 @@
         })[type] || type.replaceAll("_", " ");
       }
 
-      const mesocycleEquipmentTaxonomy = Object.freeze([
-        ["all", "All Equipment / Standard Gym"], ["bodyweight", "Bodyweight"], ["bands", "Bands"],
-        ["dumbbell", "Dumbbells"], ["barbell", "Barbell"], ["rack", "Rack"], ["cable_station", "Cable Station"]
-      ]);
-
       function mesocycleEquipmentSelection() {
-        const selected = data.settings.availableEquipment || [];
-        return !selected.length || selected.includes("all") ? ["all"] : selected;
+        return ["all"];
       }
 
       function presentationLabel(value) {
@@ -2681,7 +2642,7 @@
           if (!mesocycleScopeDraft) mesocycleScopeDraft = new Set(muscles);
           const typeChoices = [["primary_progression", "Progression"], ["alternative_exercise", "Variation"], ["lower_fatigue_resensitization", "Lower fatigue"], ["specialization", "Specialization"]];
           const specialization = mesocycleDraftType === "specialization" ? '<div class="field"><div class="f-top"><span class="f-name">Emphasis</span><span class="f-help">raises the target range</span></div><div class="chiprow guided-emphasis-picks"><label class="pick ' + (!mesocycleSpecializationMuscle ? 'on' : '') + '"><input type="radio" name="guided-emphasis" data-action="mesocycle-specialization" value="" ' + (!mesocycleSpecializationMuscle ? 'checked' : '') + '><span>Balanced</span></label>' + muscles.map((muscle) => '<label class="pick ' + (mesocycleSpecializationMuscle === muscle ? 'on' : '') + '"><input type="radio" name="guided-emphasis" data-action="mesocycle-specialization" value="' + muscle + '" ' + (mesocycleSpecializationMuscle === muscle ? 'checked' : '') + '><span>' + escapeHtml(presentationLabel(muscle)) + '</span></label>').join('') + '</div></div>' : '';
-          return '<section class="guided-builder guided-setup-step">' + header(1, 'guided-back-guidelines') + '<div class="section-heading"><div><div class="section-kicker">Shape the block</div><h2>What is this block for?</h2><p>These choices create empty training days and evidence-adjusted targets—not an automatic program.</p></div></div><div class="field"><div class="f-top"><span class="f-name">Objective</span></div><div class="segmented guided-objective-picker">' + typeChoices.map(([value, label]) => '<label><input type="radio" name="guided-objective" data-action="mesocycle-type" value="' + value + '" ' + (mesocycleDraftType === value ? 'checked' : '') + '><span>' + label + '</span></label>').join('') + '</div></div><div class="field"><div class="f-top"><label class="f-name" for="guided-duration">Duration (weeks)</label><span class="f-help">2–12 weeks</span></div><div class="stepper"><button class="sb" type="button" data-action="adjust-guided-setup" data-field="duration" data-delta="-1" aria-label="Reduce mesocycle duration">−</button><input class="sv" id="guided-duration" type="number" min="2" max="12" value="' + escapeHtml(mesocycleDurationDraft || 6) + '" data-action="mesocycle-duration"><button class="sb" type="button" data-action="adjust-guided-setup" data-field="duration" data-delta="1" aria-label="Increase mesocycle duration">+</button></div></div><div class="field"><div class="f-top"><label class="f-name" for="guided-training-days">Training Days per Week</label><span class="f-help">1–7 days</span></div><div class="stepper"><button class="sb" type="button" data-action="adjust-guided-setup" data-field="training-days" data-delta="-1" aria-label="Reduce weekly training days">−</button><input class="sv" id="guided-training-days" type="number" min="1" max="7" value="' + Number(data.settings.trainingDaysPerWeek || 4) + '" data-action="mesocycle-training-days"><button class="sb" type="button" data-action="adjust-guided-setup" data-field="training-days" data-delta="1" aria-label="Increase weekly training days">+</button></div></div><section class="equipment-picker" role="group" aria-label="Available Equipment"><div class="f-top"><span class="f-name">Available Equipment</span></div><div class="chiprow equipment-chips">' + mesocycleEquipmentTaxonomy.map(([value,label]) => '<button class="pick equipment-chip choice-chip ' + (mesocycleEquipmentSelection().includes(value) ? 'on' : '') + '" type="button" data-action="toggle-mesocycle-equipment" data-value="' + value + '" aria-pressed="' + mesocycleEquipmentSelection().includes(value) + '">' + label + '</button>').join('') + '</div></section>' + specialization + '<section class="muscle-scope-panel" role="group" aria-label="Muscle Group Scope"><div class="f-top"><span class="f-name">Muscle Groups and Scope</span><span class="f-help">clear any group intentionally omitted</span></div><div class="chiprow muscle-scope-options">' + muscles.map((muscle) => '<label class="pick muscle-scope-option choice-tile ' + (mesocycleScopeDraft.has(muscle) ? 'on' : '') + '"><input type="checkbox" data-action="mesocycle-muscle-scope" value="' + muscle + '" ' + (mesocycleScopeDraft.has(muscle) ? 'checked' : '') + '><span>' + escapeHtml(presentationLabel(muscle)) + '</span></label>').join('') + '</div></section><button class="primary-action" type="button" data-action="create-guided-draft">Build the days</button></section>';
+          return '<section class="guided-builder guided-setup-step">' + header(1, 'guided-back-guidelines') + '<div class="section-heading"><div><div class="section-kicker">Shape the block</div><h2>What is this block for?</h2><p>These choices create empty training days and evidence-adjusted targets—not an automatic program.</p></div></div><div class="field"><div class="f-top"><span class="f-name">Objective</span></div><div class="segmented guided-objective-picker">' + typeChoices.map(([value, label]) => '<label><input type="radio" name="guided-objective" data-action="mesocycle-type" value="' + value + '" ' + (mesocycleDraftType === value ? 'checked' : '') + '><span>' + label + '</span></label>').join('') + '</div></div><div class="field"><div class="f-top"><label class="f-name" for="guided-duration">Duration (weeks)</label><span class="f-help">2–12 weeks</span></div><div class="stepper"><button class="sb" type="button" data-action="adjust-guided-setup" data-field="duration" data-delta="-1" aria-label="Reduce mesocycle duration">−</button><input class="sv" id="guided-duration" type="number" min="2" max="12" value="' + escapeHtml(mesocycleDurationDraft || 6) + '" data-action="mesocycle-duration"><button class="sb" type="button" data-action="adjust-guided-setup" data-field="duration" data-delta="1" aria-label="Increase mesocycle duration">+</button></div></div><div class="field"><div class="f-top"><label class="f-name" for="guided-training-days">Training Days per Week</label><span class="f-help">1–7 days</span></div><div class="stepper"><button class="sb" type="button" data-action="adjust-guided-setup" data-field="training-days" data-delta="-1" aria-label="Reduce weekly training days">−</button><input class="sv" id="guided-training-days" type="number" min="1" max="7" value="' + Number(data.settings.trainingDaysPerWeek || 4) + '" data-action="mesocycle-training-days"><button class="sb" type="button" data-action="adjust-guided-setup" data-field="training-days" data-delta="1" aria-label="Increase weekly training days">+</button></div></div>' + specialization + '<section class="muscle-scope-panel" role="group" aria-label="Muscle Group Scope"><div class="f-top"><span class="f-name">Muscle Groups and Scope</span><span class="f-help">clear any group intentionally omitted</span></div><div class="chiprow muscle-scope-options">' + muscles.map((muscle) => '<label class="pick muscle-scope-option choice-tile ' + (mesocycleScopeDraft.has(muscle) ? 'on' : '') + '"><input type="checkbox" data-action="mesocycle-muscle-scope" value="' + muscle + '" ' + (mesocycleScopeDraft.has(muscle) ? 'checked' : '') + '><span>' + escapeHtml(presentationLabel(muscle)) + '</span></label>').join('') + '</div></section><button class="primary-action" type="button" data-action="create-guided-draft">Build the days</button></section>';
         }
         if (!draft) return '';
         if (guidedExerciseBrowserDayId) return renderGuidedExerciseWorkspace(draft, header(2, 'close-guided-exercise-browser'));

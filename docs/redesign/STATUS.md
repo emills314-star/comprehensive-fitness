@@ -39,6 +39,7 @@
 - Current-build running-app verification passed at 390 × 844 for long names, large values, uncompleted/completed touch states, and deleted equipment controls; concrete screenshots are under `artifacts/ui-audit/m1/`.
 - Current app-data v3 now has a working backup-v3 export/import path; legacy backup versions remain readable and stored historical grade/version values survive strict import.
 - The required prefilled-RPE interaction was reproduced and corrected: one focused `7.5` entry replaces `7`, persists, and can be completed immediately without a lost touch.
+- M0 is recoverable at local checkpoint `3e24f93` (`chore(redesign): establish preservation baseline`).
 
 ## Current objective
 

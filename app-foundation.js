@@ -39,7 +39,6 @@
         experienceLevel: "",
         returningAfterGap: null,
         trainingDaysPerWeek: 4,
-        availableEquipment: [],
         excludedExerciseIds: [],
         theme: "light",
         colorPackage: "signal-garden",
@@ -363,7 +362,7 @@
       };
 
       function emptyData() {
-        return { appDataVersion: 2, sessions: [], exercises: [], sets: [], templates: [], mesocycles: [], activeMesocycleId: "", recommendationHistory: [], manualOverrides: [], personalEvidencePackage: null, rawImports: [], migrationAudit: [], dataRevision: 0, settings: { ...defaultSettings } };
+        return { appDataVersion: 3, sessions: [], exercises: [], sets: [], templates: [], mesocycles: [], activeMesocycleId: "", recommendationHistory: [], manualOverrides: [], personalEvidencePackage: null, rawImports: [], migrationAudit: [], dataRevision: 0, settings: { ...defaultSettings } };
       }
 
       // DOMAIN_INTEGRITY_ENGINE_START
@@ -830,9 +829,11 @@
         const recovery = context.recovery || {};
         const exercise = context.exercise || null;
         const restriction = exercise?.safetyRestriction || exercise?.finalPrescription?.safetyRestriction || exercise?.recommendationSnapshot?.finalPrescription?.safetyRestriction || null;
-        const blockedBySnapshot = exercise?.executionBlocked === true
+        const snapshotBlockReason = String(restriction?.reason || exercise?.finalPrescription?.reason || exercise?.recommendationSnapshot?.finalPrescription?.reason || "").trim();
+        const equipmentOnlyBlock = snapshotBlockReason === "unavailable_equipment";
+        const blockedBySnapshot = !equipmentOnlyBlock && (exercise?.executionBlocked === true
           || exercise?.finalPrescription?.executionBlocked === true
-          || exercise?.recommendationSnapshot?.finalPrescription?.executionBlocked === true;
+          || exercise?.recommendationSnapshot?.finalPrescription?.executionBlocked === true);
         if (recovery.illness === true) return block("workout", "illness", "Current illness blocks executable workout actions.");
         const affectedMuscle = normalize(recovery.affectedMuscle);
         if (recovery.pain === true && !affectedMuscle) return block("workout", "pain", "Pain without a specified affected area blocks executable workout actions.");
@@ -942,7 +943,106 @@
         return missing;
       }
 
+      function normalizeStableTemplateExercise(exercise = {}) {
+        const profile = typeof progressionProfileForExercise === "function"
+          ? progressionProfileForExercise(exercise.name || "")
+          : { lowerRep: 8, upperRep: 12, increment: 5 };
+        const numeric = (value, fallback) => Number.isFinite(Number(value)) && Number(value) > 0 ? Number(value) : fallback;
+        const legacyRoles = exercise.standardRoleWorkload && typeof exercise.standardRoleWorkload === "object"
+          ? exercise.standardRoleWorkload
+          : null;
+        const legacyRoleTypes = legacyRoles?.topSet
+          ? [
+              {
+                type: "top",
+                setCount: legacyRoles.topSet.count,
+                repMin: legacyRoles.topSet.repRange?.min,
+                repMax: legacyRoles.topSet.repRange?.max
+              },
+              ...(legacyRoles.setStructure === "top_set_backoff" && legacyRoles.backoffSets ? [{
+                type: "backoff",
+                setCount: legacyRoles.backoffSets.count,
+                repMin: legacyRoles.backoffSets.repRange?.min,
+                repMax: legacyRoles.backoffSets.repRange?.max
+              }] : [])
+            ]
+          : [];
+        const sourceTypes = legacyRoleTypes.length
+          ? legacyRoleTypes
+          : Array.isArray(exercise.setTypes) ? exercise.setTypes.filter((item) => item && item.countsTowardScore !== false && !item.isWarmup && normalizeSetTypeCode(item.type || item.setType) !== "warmup") : [];
+        const aggregateSetCount = sourceTypes.reduce((sum, item) => sum + Math.max(0, Number(item.setCount || 0)), 0);
+        const requestedSetCount = Math.max(1, Math.round(numeric(exercise.sets, aggregateSetCount || 3)));
+        const sourceRepMins = sourceTypes.map((item) => Number(item.repMin || 0)).filter((value) => value > 0);
+        const sourceRepMaxes = sourceTypes.map((item) => Number(item.repMax || item.repMin || 0)).filter((value) => value > 0);
+        const stableRepMin = Math.max(1, Math.round(numeric(exercise.repMin, sourceRepMins.length ? Math.min(...sourceRepMins) : numeric(exercise.reps, profile.lowerRep || 8))));
+        const stableRepMax = Math.max(stableRepMin, Math.round(numeric(exercise.repMax, sourceRepMaxes.length ? Math.max(...sourceRepMaxes) : numeric(exercise.reps, profile.upperRep || stableRepMin))));
+        const sourceRpes = sourceTypes.flatMap((item) => [Number(item.rpeMax || item.targetRpe || 0), Number(item.rpeMin || 0)]).filter((value) => value > 0);
+        const stableTargetRpe = Math.max(1, Math.min(10, numeric(exercise.targetRpe, sourceRpes.length ? Math.max(...sourceRpes) : 8)));
+        const stableRestSeconds = Math.max(15, Math.round(numeric(exercise.restSeconds, typeof recommendedRestSeconds === "function" ? recommendedRestSeconds(exercise.name || "", { reps: exercise.reps, rpe: stableTargetRpe }) : 90)));
+        const normalizeType = (item, index) => {
+          const fallback = {
+            id: item.id || `${exercise.id || "exercise"}-stable-${index + 1}`,
+            type: item.type || item.setType || "straight",
+            setCount: Number(item.setCount || 1),
+            repMin: stableRepMin,
+            repMax: stableRepMax,
+            rpeMin: Math.max(1, stableTargetRpe - 1),
+            rpeMax: stableTargetRpe,
+            restSeconds: stableRestSeconds,
+            countsTowardScore: true,
+            countsTowardVolume: true
+          };
+          const normalized = typeof normalizeTargetSetType === "function"
+            ? normalizeTargetSetType(item, fallback)
+            : { ...fallback, ...item };
+          return {
+            ...normalized,
+            id: normalized.id || fallback.id,
+            setCount: Math.max(1, Math.round(Number(normalized.setCount || 1))),
+            repMin: Math.max(1, Math.round(Number(normalized.repMin || stableRepMin))),
+            repMax: Math.max(Math.max(1, Math.round(Number(normalized.repMin || stableRepMin))), Math.round(Number(normalized.repMax || stableRepMax))),
+            rpeMin: Math.max(1, Math.min(10, Number(normalized.rpeMin || Math.max(1, stableTargetRpe - 1)))),
+            rpeMax: Math.max(1, Math.min(10, Number(normalized.rpeMax || stableTargetRpe))),
+            restSeconds: stableRestSeconds,
+            countsTowardScore: true,
+            countsTowardVolume: true,
+            isWarmup: false
+          };
+        };
+        const setTypes = (sourceTypes.length ? sourceTypes : [{
+          id: `${exercise.id || "exercise"}-stable-1`,
+          type: "straight",
+          setCount: requestedSetCount,
+          repMin: stableRepMin,
+          repMax: stableRepMax,
+          rpeMin: Math.max(1, stableTargetRpe - 1),
+          rpeMax: stableTargetRpe,
+          restSeconds: stableRestSeconds,
+          countsTowardScore: true,
+          countsTowardVolume: true
+        }]).map(normalizeType);
+        const stableSetCount = setTypes.reduce((sum, item) => sum + Number(item.setCount || 0), 0);
+        const explicitRoutineReps = numeric(exercise.reps, Math.round((stableRepMin + stableRepMax) / 2));
+        const { standardWorkloadOverride, standardRoleWorkload, ...retained } = exercise;
+        return {
+          ...retained,
+          sets: stableSetCount,
+          reps: Math.max(stableRepMin, Math.min(stableRepMax, Math.round(explicitRoutineReps))),
+          repMin: stableRepMin,
+          repMax: stableRepMax,
+          targetRpe: stableTargetRpe,
+          increment: numeric(exercise.increment, profile.increment || 5),
+          restSeconds: stableRestSeconds,
+          setTypes
+        };
+      }
+
       function normalizeLoadedData(model) {
+        const sourceAppDataVersion = Number(model.appDataVersion || 0);
+        const sourceTemplates = Array.isArray(model.templates) ? model.templates : [];
+        const sourceTemplateExercises = sourceTemplates.flatMap((template) => Array.isArray(template.exercises) ? template.exercises : []);
+        const legacyStableTargetCount = sourceTemplateExercises.filter((exercise) => exercise.standardWorkloadOverride != null || exercise.standardRoleWorkload != null || !Number(exercise.sets) || !Number(exercise.repMin || exercise.reps) || !Number(exercise.repMax || exercise.reps) || !Number(exercise.targetRpe) || !Number(exercise.restSeconds)).length;
+        const legacyEquipmentPreferencePresent = Object.prototype.hasOwnProperty.call(model.settings || {}, "availableEquipment");
         const storedSettings = model.settings || {};
         const legacyGoal = String(storedSettings.goal || "").trim().toLowerCase();
         const legacyTrainingStatus = String(storedSettings.trainingStatus || "").trim().toLowerCase();
@@ -970,7 +1070,6 @@
           experienceLevel,
           returningAfterGap,
           trainingDaysPerWeek: storedSettings.trainingDaysPerWeek,
-          availableEquipment: storedSettings.availableEquipment,
           excludedExerciseIds: storedSettings.excludedExerciseIds,
           theme: storedSettings.theme,
           colorPackage: storedSettings.colorPackage,
@@ -999,6 +1098,7 @@
         model.settings = { ...defaultSettings, ...Object.fromEntries(Object.entries(safeSettings).filter(([, value]) => value != null)), readinessBaseline: cleanReadinessBaseline(storedSettings.readinessBaseline || {}) };
         model.settings.workoutCloudSync = model.settings.cloudWorkoutSyncConsent === true;
         model.settings.workoutCloudSyncConsentVersion = model.settings.cloudWorkoutSyncConsent === true ? 1 : 0;
+        delete model.settings.availableEquipment;
         delete model.settings.goal;
         delete model.settings.trainingStatus;
         model.sessions = (Array.isArray(model.sessions) ? model.sessions : []).map((session) => ({
@@ -1022,7 +1122,19 @@
           const resistanceType = inferResistanceType(exercise.name, { ...exercise, isBodyweight: exercise.isBodyweight ?? legacyBodyweight }, exerciseSets);
           const customExerciseProfile = typeof normalizeCustomExerciseProfile === "function" ? normalizeCustomExerciseProfile(exercise.customExerciseProfile) : null;
           const executionQualityAssessment = typeof executionQualityValues !== "undefined" && executionQualityValues.has(exercise.executionQualityAssessment) ? exercise.executionQualityAssessment : undefined;
-          return { ...exercise, ...(customExerciseProfile ? { customExerciseProfile } : {}), ...(executionQualityAssessment ? { executionQualityAssessment } : {}), resistanceType, isBodyweight: isBodyweightResistance(resistanceType) };
+          const blockReason = String(exercise.safetyRestriction?.reason || exercise.finalPrescription?.safetyRestriction?.reason || exercise.finalPrescription?.reason || exercise.recommendationSnapshot?.finalPrescription?.safetyRestriction?.reason || exercise.recommendationSnapshot?.finalPrescription?.reason || "").trim();
+          const equipmentOnlyBlock = blockReason === "unavailable_equipment";
+          const finalPrescription = equipmentOnlyBlock && exercise.finalPrescription
+            ? { ...exercise.finalPrescription, executionBlocked: false, executable: true, safetyRestriction: null }
+            : exercise.finalPrescription;
+          return {
+            ...exercise,
+            ...(customExerciseProfile ? { customExerciseProfile } : {}),
+            ...(executionQualityAssessment ? { executionQualityAssessment } : {}),
+            ...(equipmentOnlyBlock ? { executionBlocked: false, safetyRestriction: null, finalPrescription } : {}),
+            resistanceType,
+            isBodyweight: isBodyweightResistance(resistanceType)
+          };
         });
         const normalizedExerciseById = new Map(model.exercises.map((exercise) => [exercise.id, exercise]));
         model.sets = model.sets.map((set) => {
@@ -1032,9 +1144,14 @@
         });
         model.templates = (Array.isArray(model.templates) ? model.templates : []).map((template) => ({
           ...template,
-          exercises: (Array.isArray(template.exercises) ? template.exercises : []).map((exercise) => { const resistanceType = inferResistanceType(exercise.name, exercise); const customExerciseProfile = typeof normalizeCustomExerciseProfile === "function" ? normalizeCustomExerciseProfile(exercise.customExerciseProfile) : null; return { ...exercise, ...(customExerciseProfile ? { customExerciseProfile } : {}), resistanceType, isBodyweight: isBodyweightResistance(resistanceType), targetRpe: Number(exercise.targetRpe || 0) || "", increment: Number(exercise.increment || 0) || "", setTypes: Array.isArray(exercise.setTypes) ? exercise.setTypes.map((setType) => normalizeTargetSetType(setType, { restSeconds: exercise.restSeconds, targetRpe: exercise.targetRpe })) : [] }; })
+          exercises: (Array.isArray(template.exercises) ? template.exercises : []).map((exercise) => {
+            const stable = normalizeStableTemplateExercise(exercise);
+            const resistanceType = inferResistanceType(stable.name, stable);
+            const customExerciseProfile = typeof normalizeCustomExerciseProfile === "function" ? normalizeCustomExerciseProfile(stable.customExerciseProfile) : null;
+            return { ...stable, ...(customExerciseProfile ? { customExerciseProfile } : {}), resistanceType, isBodyweight: isBodyweightResistance(resistanceType) };
+          })
         }));
-        model.appDataVersion = Math.max(2, Number(model.appDataVersion || 0));
+        model.appDataVersion = Math.max(3, Number(model.appDataVersion || 0));
         model.mesocycles = (Array.isArray(model.mesocycles) ? model.mesocycles : []).map((mesocycle) => ({
           ...mesocycle,
           status: mesocycle.status === "preview" ? "draft" : mesocycle.status === "loaded" ? "planned" : mesocycle.status,
@@ -1051,7 +1168,21 @@
         model.rawImports = Array.isArray(model.rawImports) ? model.rawImports : [];
         model.migrationAudit = Array.isArray(model.migrationAudit) ? model.migrationAudit : [];
         model.dataRevision = Number(model.dataRevision || 0);
-        return migrateDomainData(model);
+        model = migrateDomainData(model);
+        if (sourceAppDataVersion < 3 && !model.migrationAudit.some((record) => Number(record.version) === 4)) {
+          const migratedAt = isoNow();
+          model.migrationAudit.push({
+            version: 4,
+            startedAt: migratedAt,
+            completedAt: migratedAt,
+            inspected: sourceTemplateExercises.length,
+            changed: legacyStableTargetCount + (legacyEquipmentPreferencePresent ? 1 : 0),
+            explicitRetained: Math.max(0, sourceTemplateExercises.length - legacyStableTargetCount),
+            changes: []
+          });
+          model.dataRevision += 1;
+        }
+        return model;
       }
 
       function persistenceTimestamp(value) {
@@ -1855,9 +1986,6 @@
         const currentWeeklySets = appMuscle ? Number(weeklyMuscleVolume(startOfWeekIso(throughDate)).find((item) => item.muscle === appMuscle)?.sets || 0) : undefined;
         const equipmentIncrement = Number(options.equipmentIncrement || exercise.increment || 0);
         const sessionDurationMinutes = options.sessionDurationMinutes ?? options.timeConstraintMinutes ?? options.maxSessionMinutes ?? options.template?.sessionDurationMinutes ?? mesocycle?.sessionDurationTargetMinutes ?? mesocycle?.constraints?.sessionDurationTargetMinutes;
-        const availableEquipment = Object.prototype.hasOwnProperty.call(options, "availableEquipment")
-          ? options.availableEquipment
-          : mesocycle?.availableEquipment ?? (Array.isArray(appSettings.availableEquipment) && appSettings.availableEquipment.length ? appSettings.availableEquipment : ["all"]);
         const request = {
           exerciseId,
           muscleGroupId,
@@ -1875,7 +2003,6 @@
           sessionDurationMinutes,
           sessionDurationTargetMinutes: sessionDurationMinutes,
           sessionDurationMaximumMinutes: options.sessionDurationMaximumMinutes ?? sessionDurationMinutes,
-          availableEquipment,
           excludedExerciseIds: options.excludedExerciseIds ?? options.exerciseExclusions ?? options.template?.excludedExerciseIds ?? mesocycle?.constraints?.excludedExerciseIds ?? appSettings.excludedExerciseIds,
           includedMuscleGroupIds: options.includedMuscleGroupIds ?? options.muscleScope ?? mesocycle?.includedMuscleGroupIds,
           trainingDays: options.trainingDays ?? mesocycle?.trainingDays ?? appSettings.trainingDaysPerWeek,
@@ -1885,10 +2012,10 @@
           returningAfterGap: options.returningAfterGap ?? appSettings.returningAfterGap,
           createdAt: options.createdAt || `${throughDate}T12:00:00.000Z`
         };
-        ["plannedWorkingSets", "resistanceType", "sessionDurationMinutes", "sessionDurationTargetMinutes", "sessionDurationMaximumMinutes", "availableEquipment", "excludedExerciseIds", "includedMuscleGroupIds", "trainingDays", "trainingGoal", "nutritionPhase", "experienceLevel", "returningAfterGap"].forEach((field) => {
+        ["plannedWorkingSets", "resistanceType", "sessionDurationMinutes", "sessionDurationTargetMinutes", "sessionDurationMaximumMinutes", "excludedExerciseIds", "includedMuscleGroupIds", "trainingDays", "trainingGoal", "nutritionPhase", "experienceLevel", "returningAfterGap"].forEach((field) => {
           if (request[field] === undefined || request[field] === null || request[field] === "") delete request[field];
         });
-        const cacheKey = [analysisRevision, exerciseId, muscleGroupId, throughDate, mesocycle?.id || "", equipmentIncrement, JSON.stringify(readiness), JSON.stringify({ plannedWorkingSets: request.plannedWorkingSets, resistanceType: request.resistanceType, sessionDurationMinutes: request.sessionDurationMinutes, availableEquipment: request.availableEquipment, excludedExerciseIds: request.excludedExerciseIds, includedMuscleGroupIds: request.includedMuscleGroupIds, trainingDays: request.trainingDays, trainingGoal: request.trainingGoal, nutritionPhase: request.nutritionPhase, experienceLevel: request.experienceLevel, returningAfterGap: request.returningAfterGap }), options.historical ? "history" : "current"].join("|");
+        const cacheKey = [analysisRevision, exerciseId, muscleGroupId, throughDate, mesocycle?.id || "", equipmentIncrement, JSON.stringify(readiness), JSON.stringify({ plannedWorkingSets: request.plannedWorkingSets, resistanceType: request.resistanceType, sessionDurationMinutes: request.sessionDurationMinutes, excludedExerciseIds: request.excludedExerciseIds, includedMuscleGroupIds: request.includedMuscleGroupIds, trainingDays: request.trainingDays, trainingGoal: request.trainingGoal, nutritionPhase: request.nutritionPhase, experienceLevel: request.experienceLevel, returningAfterGap: request.returningAfterGap }), options.historical ? "history" : "current"].join("|");
         if (!options.fresh && prescriptionSnapshotCache.has(cacheKey)) return prescriptionSnapshotCache.get(cacheKey);
         try {
           const snapshot = prescriptionEngine.prescribeExercise(request);
@@ -2436,7 +2563,7 @@
           sequence: Number(previous?.sequence ?? previous?.sequenceIndex ?? setNumber),
           setTypeIndex: Number(previous?.setTypeIndex ?? 0),
           sourceTemplateSetId: previous?.sourceTemplateSetId || "",
-          reps: previous?.reps ?? 8,
+          reps: previous?.reps ?? "",
           weight,
           weightUnit: previous?.weightUnit ?? data.settings.weightUnit,
           resistanceType,
@@ -2446,7 +2573,7 @@
           durationSeconds: Number(previous?.durationSeconds || 0),
           distance: Number(previous?.distance || 0),
           distanceUnit: previous?.distanceUnit || "m",
-          rpe: previous?.rpe ?? 8,
+          rpe: previous?.rpe ?? "",
           completed: previous?.completed ?? false,
           isWarmup: previous?.isWarmup ?? false,
           setType: normalizeSetTypeCode(previous?.setType, previous?.isWarmup),
@@ -2921,9 +3048,7 @@
       }
 
       function exerciseMatches(storedName, requestedName) {
-        const stored = String(storedName || "").trim().toLowerCase();
-        const requested = String(requestedName || "").trim().toLowerCase();
-        return stored === requested || exerciseKey(storedName) === exerciseKey(requestedName);
+        return normalizePrescriptionIdentity(storedName) === normalizePrescriptionIdentity(requestedName);
       }
 
       // RESISTANCE_MODEL_START
@@ -3669,19 +3794,22 @@
       }
 
       function prescriptionSnapshotWithTemplateStandard(snapshot, templateExercise = {}, options = {}) {
-        if (!snapshot?.finalPrescription || templateExercise.standardWorkloadOverride !== true || !prescriptionEngine) return snapshot;
+        if (!snapshot?.finalPrescription || !prescriptionEngine) return snapshot;
         const current = snapshot.finalPrescription;
-        const savedRoles = templateExercise.standardRoleWorkload;
-        const setCount = Number(templateExercise.sets || 0);
-        const repMin = Number(templateExercise.repMin || 0);
-        const repMax = Number(templateExercise.repMax || 0);
+        const stable = normalizeStableTemplateExercise(templateExercise);
+        const scoredTypes = stable.setTypes.filter((type) => type.countsTowardScore !== false && !type.isWarmup);
+        const topType = scoredTypes.find((type) => normalizeSetTypeCode(type.type) === "top");
+        const backoffType = scoredTypes.find((type) => normalizeSetTypeCode(type.type) === "backoff");
+        const setCount = Number(stable.sets || 0);
+        const repMin = Number(stable.repMin || 0);
+        const repMax = Number(stable.repMax || 0);
         const override = {};
-        if (savedRoles?.setStructure === current.setStructure && savedRoles?.topSet && ["top_set_backoff", "multiple_top_sets"].includes(current.setStructure)) {
-          const savedTop = { count: Number(savedRoles.topSet.count), repRange: { min: Number(savedRoles.topSet.repRange?.min), max: Number(savedRoles.topSet.repRange?.max) } };
+        if (topType && ["top_set_backoff", "multiple_top_sets"].includes(current.setStructure) && (current.setStructure !== "top_set_backoff" || backoffType)) {
+          const savedTop = { count: Number(topType.setCount), repRange: { min: Number(topType.repMin), max: Number(topType.repMax) } };
           const currentTopRange = current.topSet?.repRange || current.repRange;
           if (savedTop.count !== Number(current.topSet?.count || 0) || savedTop.repRange.min !== Number(currentTopRange.min) || savedTop.repRange.max !== Number(currentTopRange.max)) override.topSet = savedTop;
-          if (current.setStructure === "top_set_backoff" && savedRoles.backoffSets) {
-            const savedBackoff = { count: Number(savedRoles.backoffSets.count), repRange: { min: Number(savedRoles.backoffSets.repRange?.min), max: Number(savedRoles.backoffSets.repRange?.max) } };
+          if (current.setStructure === "top_set_backoff" && backoffType) {
+            const savedBackoff = { count: Number(backoffType.setCount), repRange: { min: Number(backoffType.repMin), max: Number(backoffType.repMax) } };
             const currentBackoffRange = current.backoffSets?.repRange || current.repRange;
             if (savedBackoff.count !== Number(current.backoffSets?.count || 0) || savedBackoff.repRange.min !== Number(currentBackoffRange.min) || savedBackoff.repRange.max !== Number(currentBackoffRange.max)) override.backoffSets = savedBackoff;
           }
@@ -3691,8 +3819,8 @@
         }
         if (!Object.keys(override).length) return snapshot;
         return prescriptionEngine.applyManualOverride(snapshot, override, {
-          workoutId: options.workoutId || options.template?.id || "saved-standard-workload",
-          reason: "Saved standard workload preference",
+          workoutId: options.workoutId || options.template?.id || "stable-variant-target",
+          reason: "Stable exercise-variant target",
           createdAt: options.createdAt || isoNow()
         });
       }
@@ -3909,7 +4037,6 @@
               increment: progressionProfileForExercise(exercise.name).increment,
               restSeconds: exercise.restSeconds || recommendedRestSeconds(exercise.name, { reps: representative?.reps || 8 }),
               setTypes: templateSetTypesFromHistory(workingSets, exercise.restSeconds),
-              standardWorkloadOverride: true,
               warmups: sets.filter((set) => setTypeSemantics(set).isWarmup).map((set) => ({ reps: set.reps, targetRepMin: set.targetRepMin, targetRepMax: set.targetRepMax, targetRpe: set.targetRpe, targetRpeMin: set.targetRpeMin, targetRpeMax: set.targetRpeMax, targetRestSeconds: set.targetRestSeconds, weight: set.weight, weightUnit: set.weightUnit, resistanceType: set.resistanceType, isBodyweight: set.isBodyweight, addedLoad: set.addedLoad, assistanceLoad: set.assistanceLoad, rpe: set.rpe }))
             };
           });

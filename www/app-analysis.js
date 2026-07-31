@@ -416,11 +416,8 @@
       function previousComparableSetForRole(previousSets, setType, setTypeIndex = 0, workingSetIndex = 0) {
         const role = normalizeSetTypeCode(setType);
         const sameRole = (previousSets || []).filter((set) => normalizeSetTypeCode(set.setType, set.isWarmup) === role);
-        const orderedWorkingSets = (previousSets || []).filter((set) => normalizeSetTypeCode(set.setType, set.isWarmup) !== "warmup" && !set.skipped);
         return sameRole.find((set) => Number(set.setTypeIndex || 0) === Number(setTypeIndex || 0))
           || sameRole[Number(setTypeIndex || 0)]
-          || orderedWorkingSets[Number(workingSetIndex || 0)]
-          || orderedWorkingSets[orderedWorkingSets.length - 1]
           || null;
       }
 
@@ -429,7 +426,13 @@
         const contextTypes = (context?.setTypes || []).filter((type) => type.countsTowardScore && !type.isWarmup);
         const savedTypes = (templateExercise.setTypes || []).filter((type) => type.countsTowardScore !== false && !type.isWarmup);
         const scored = contextTypes.length ? contextTypes : savedTypes;
-        const targetCount = Math.max(1, Number(target.sets || templateExercise.sets || scored.reduce((sum, type) => sum + Number(type.setCount || 0), 0) || 1));
+        const stableCount = Math.max(1, Number(templateExercise.sets || scored.reduce((sum, type) => sum + Number(type.setCount || 0), 0) || 1));
+        const temporaryException = target?.adjusted === true
+          || target?.safetyAdjustment === true
+          || target?.isDeload === true
+          || ["deload", "light", "technique", "readiness-adjusted", "return", "stop-modify"].includes(String(target?.mode || ""));
+        const requestedExceptionCount = Math.max(1, Number(target.sets || stableCount));
+        const targetCount = temporaryException ? Math.min(stableCount, requestedExceptionCount) : stableCount;
         if ((!target.finalPrescription || typeof target.finalPrescription !== "object") && ["deload", "light", "technique"].includes(target.mode)) {
           const source = scored.find((type) => type.type === "straight") || scored[0] || {};
           const type = target.mode === "deload" ? "deload" : target.mode === "technique" ? "technique" : "straight";
@@ -460,34 +463,30 @@
         const reduction = (reductionMin + reductionMax) / 2;
         const assisted = resistanceType === "assisted_bodyweight";
         const multiplier = reduction > 0 ? (assisted ? 1 + reduction / 100 : 1 - reduction / 100) : 1;
-        const plannedTargetLoad = roundEquipmentLoad(Number(target.weight || 0) * multiplier, increment);
+        const routineDefaultLoad = Number(setType.defaultLoad ?? setType.targetLoad ?? templateExercise.defaultLoad ?? templateExercise.targetLoad ?? templateExercise.weight ?? 0);
+        const plannedTargetLoad = routineDefaultLoad > 0 ? roundEquipmentLoad(routineDefaultLoad * multiplier, increment) : 0;
         const roleDefaults = setRoleDefaultsForExercise(templateExercise, role, progressionProfileForExercise(templateExercise.name), target.mode || "normal", target.rpe, setType.restSeconds || target.restSeconds);
         const repRange = resolveProgrammedRepRange(setType, roleDefaults);
         const repMin = Number(repRange.repMin || target.repLow || 0);
         const repMax = Number(repRange.repMax || target.repHigh || repMin);
         const previousComparableSet = previousComparableSetForRole(previousSets, role, setTypeIndex, workingSetIndex);
         const previousReps = Number(previousComparableSet?.reps || 0);
-        const comparableRoleSets = previousSets.filter((set) => normalizeSetTypeCode(set.setType, set.isWarmup) === role || (role === 'straight' && normalizeSetTypeCode(set.setType, set.isWarmup) === 'backoff'));
-        const lowestPreviousReps = comparableRoleSets.length ? Math.min(...comparableRoleSets.map((set) => Number(set.reps || 0)).filter((value) => value > 0)) : 0;
-        const repProgression = target.mode === 'rep-progression' || target.finalPrescription?.progressionAction === 'add_one_rep';
-        const progressesThisSet = repProgression && previousReps > 0 && previousReps === lowestPreviousReps && setTypeIndex === comparableRoleSets.findIndex((set) => Number(set.reps || 0) === lowestPreviousReps);
-        const finalPrescriptionIsAuthoritative = Boolean(target.finalPrescription);
-        const progressionAction = target.finalPrescription?.progressionAction || "";
-        const historyBasedAuthoritativeReps = !previousReps
-          ? Number(target.reps || repMax || repMin)
-          : ["increase_load", "increase_top_set_load", "increase_load_first"].includes(progressionAction)
-            ? repMin
-            : progressionAction === "add_one_rep"
-              ? previousReps + 1
-              : progressionAction === "establish_baseline"
-                ? Math.max(repMin, previousReps - 1)
-                : previousReps;
-        const rawTargetReps = finalPrescriptionIsAuthoritative
-          ? historyBasedAuthoritativeReps
-          : target.mode === 'load-progression' ? Number(target.reps || repMin) : progressesThisSet ? previousReps + 1 : previousReps || Number(target.reps || repMax || repMin);
-        const programmedTargetReps = Math.max(repMin, Math.min(repMax, rawTargetReps));
-        const rpeMin = Number(setType.rpeMin || Math.max(1, Number(setType.rpeMax || target.rpe || 0) - 1));
-        const rpeMax = Number(setType.rpeMax || target.rpe || rpeMin);
+        const comparableRoleSets = previousSets.filter((set) => normalizeSetTypeCode(set.setType, set.isWarmup) === role);
+        const routineDefaultReps = Number(setType.defaultReps ?? templateExercise.defaultReps ?? templateExercise.reps ?? 0);
+        const programmedTargetReps = previousReps || routineDefaultReps || 0;
+        const stableRpeMin = Number(setType.rpeMin || Math.max(1, Number(setType.rpeMax || templateExercise.targetRpe || 0) - 1));
+        const stableRpeMax = Number(setType.rpeMax || templateExercise.targetRpe || stableRpeMin);
+        const previousRpe = Number(previousComparableSet?.rpe || 0);
+        const routineDefaultRpe = Number(setType.defaultRpe ?? templateExercise.defaultRpe ?? stableRpeMax);
+        const factualRpe = previousRpe > 0 ? previousRpe : routineDefaultRpe > 0 ? routineDefaultRpe : "";
+        const temporaryException = target?.adjusted === true
+          || target?.safetyAdjustment === true
+          || target?.isDeload === true
+          || ["deload", "light", "technique", "readiness-adjusted", "return", "stop-modify"].includes(String(target?.mode || ""));
+        const exceptionRpe = temporaryException ? Number(target.rpe || 0) : 0;
+        const prefillRpe = exceptionRpe > 0 && Number(factualRpe || 0) > 0 ? Math.min(Number(factualRpe), exceptionRpe) : factualRpe;
+        const rpeMax = exceptionRpe > 0 ? Math.min(stableRpeMax, exceptionRpe) : stableRpeMax;
+        const rpeMin = exceptionRpe > 0 ? Math.min(stableRpeMin, Math.max(1, exceptionRpe - 1)) : stableRpeMin;
         const expectedRoleCount = Math.max(1, Number(setType.setCount || 1));
         const qualifyingComparableSets = comparableRoleSets.length >= expectedRoleCount && comparableRoleSets.every((set) => {
           const reps = Number(set.reps || 0);
@@ -500,26 +499,33 @@
             ? previousComparableSet ? Number(previousComparableSet.reps || 0) >= repMax && Number(previousComparableSet.rpe || 0) > 0 && Number(previousComparableSet.rpe || 0) <= rpeMax : false
             : qualifyingComparableSets;
         const previousLoad = previousComparableSet ? resistanceLoad(previousComparableSet, resistanceType) : 0;
-        const holdPriorLoad = !finalPrescriptionIsAuthoritative && !progressionReady && previousLoad > 0;
-        const targetLoad = holdPriorLoad ? previousLoad : plannedTargetLoad;
-        const targetRepMin = holdPriorLoad && previousReps > 0 ? Math.min(repMin, previousReps) : repMin;
-        const targetRepMax = holdPriorLoad && previousReps > 0 ? Math.min(repMax, previousReps) : repMax;
-        const targetReps = Math.max(targetRepMin, Math.min(targetRepMax, programmedTargetReps));
+        const factualLoad = previousLoad || plannedTargetLoad;
+        const exceptionLoad = temporaryException ? Number(target.weight || 0) : 0;
+        const targetLoad = exceptionLoad > 0
+          ? factualLoad > 0
+            ? resistanceType === "assisted_bodyweight" ? Math.max(factualLoad, exceptionLoad) : Math.min(factualLoad, exceptionLoad)
+            : exceptionLoad
+          : factualLoad;
+        const targetReps = programmedTargetReps;
         const candidateNextLoad = resistanceType === "assisted_bodyweight"
           ? roundEquipmentLoad(Math.max(0, targetLoad - increment), increment)
           : roundEquipmentLoad(targetLoad + increment, increment);
         const nextLoad = progressionReady ? candidateNextLoad : targetLoad;
         const progressionRule = setType.progressionRule || ("Progress after reaching " + repMax + " reps within RPE " + targetRangeText(rpeMin, rpeMax) + " on " + (role === "backoff" ? "the comparable back-off work" : role === "top" ? "the top set" : "the programmed sets") + ".");
         const roleName = setTypeLabels[role] || "Working set";
-        const reason = role === "backoff"
-          ? "Load is reduced " + formatLoadNumber(reductionMin) + "-" + formatLoadNumber(reductionMax) + "% from the top set so you can add productive volume inside " + repMin + "-" + repMax + " reps at RPE " + targetRangeText(rpeMin, rpeMax) + " without repeating top-set demand."
-          : role === "drop"
-            ? "Load is reduced " + formatLoadNumber(reductionMin) + "-" + formatLoadNumber(reductionMax) + "% for the programmed drop-set range while limiting additional fatigue."
-            : role === "top"
-              ? "This is the primary high-demand set. Its load, rep range, and RPE target are resolved from the active program and prior top-set performance."
-              : "This is a straight working set. The programmed range allows normal rep decline across later sets without treating it as failure.";
-        const holdReason = holdPriorLoad ? " Hold the prior comparable load and repeat no more than the prior " + previousReps + " reps until the complete progression gate is met." : "";
-        return { setType: role, sequenceIndex, setTypeIndex, targetLoad, targetReps, repMin, repMax, programmedRepMin: repMin, programmedRepMax: repMax, exactReps: repRange.exactReps, rangeSource: repRange.rangeSource, rpeMin, rpeMax, restSeconds: Number(setType.restSeconds || target.restSeconds || 0), increment, nextLoad, candidateNextLoad, progressionReady, loadRule: setType.loadRule || "", progressionRule, reductionPercent: reduction, previousComparableSet, progressionDelta: previousComparableSet ? { load: Number((targetLoad - resistanceLoad(previousComparableSet, resistanceType)).toFixed(4)), reps: targetReps - previousReps } : null, confidence: progressionReady ? target.confidence || "low" : "conditional", evidenceConfidence: target.confidence || "low", reason: roleName + ": " + reason + holdReason };
+        const prefillSource = previousComparableSet
+          ? "prior_comparable_set"
+          : routineDefaultLoad > 0 || routineDefaultReps > 0
+            ? "routine_default"
+            : temporaryException && exceptionLoad > 0 ? "temporary_exception" : "blank";
+        const reason = prefillSource === "prior_comparable_set"
+          ? "Prefilled from the corresponding " + roleName.toLowerCase() + " in the most recent comparable workout."
+          : prefillSource === "routine_default"
+            ? "Prefilled from the exercise variant's explicit routine default."
+            : prefillSource === "temporary_exception"
+              ? "Prefilled only with the active temporary exception's lower-demand load."
+              : "No comparable prior set or explicit routine default is available, so input remains blank.";
+        return { setType: role, sequenceIndex, setTypeIndex, targetLoad, targetReps, prefillRpe, repMin, repMax, programmedRepMin: repMin, programmedRepMax: repMax, exactReps: repRange.exactReps, rangeSource: repRange.rangeSource, rpeMin, rpeMax, restSeconds: Number(setType.restSeconds || templateExercise.restSeconds || 0), increment, nextLoad, candidateNextLoad, progressionReady, loadRule: setType.loadRule || "", progressionRule, reductionPercent: reduction, previousComparableSet, prefillSource, progressionDelta: previousComparableSet ? { load: Number((targetLoad - resistanceLoad(previousComparableSet, resistanceType)).toFixed(4)), reps: targetReps - previousReps } : null, confidence: previousComparableSet ? "high" : routineDefaultLoad > 0 || routineDefaultReps > 0 ? "high" : "low", evidenceConfidence: target.confidence || "low", reason: roleName + ": " + reason };
       }
 
       function validateGeneratedSetPrescriptions(prescriptions, resistanceType) {
@@ -528,7 +534,7 @@
           if (!top || item.setType !== "backoff") return item;
           if (Number(top.targetLoad || 0) <= 0) return item;
           const identical = item.targetLoad === top.targetLoad && item.repMin === top.repMin && item.repMax === top.repMax && item.rpeMin === top.rpeMin && item.rpeMax === top.rpeMax;
-          if (identical) return { ...item, setType: "straight", reason: "Working set: This set intentionally repeats the same prescription, so it is classified as a straight working set rather than a back-off set." };
+          if (identical) return { ...item, validationWarning: "The preserved back-off role currently has the same factual prefill and stable target as the top set." };
           const demandReduced = resistanceType === "assisted_bodyweight" ? item.targetLoad > top.targetLoad : item.targetLoad < top.targetLoad;
           return demandReduced ? item : { ...item, validationWarning: "Back-off demand was not lower than the top set." };
         });
@@ -588,11 +594,7 @@
         const explicitTypes = Array.isArray(templateExercise.setTypes) ? templateExercise.setTypes : [];
         let setTypes = explicitTypes.map((item) => {
           const defaults = setRoleDefaultsForExercise(templateExercise, item.type || item.setType, profile, sessionType, targetRpe, restSeconds);
-          const strongDerived = /imported from strong/i.test(String(template?.notes || "")) || /strong/i.test(String(item.rangeSource || ""));
-          const sourceItem = strongDerived && !item.userAuthoredTarget && !item.exactReps
-            ? { ...item, repMin: defaults.repMin, repMax: defaults.repMax, rpeMin: defaults.rpeMin, rpeMax: defaults.rpeMax, rangeSource: "strong-history-fallback" }
-            : item;
-          const normalizedTarget = normalizeTargetSetType(sourceItem, defaults);
+          const normalizedTarget = normalizeTargetSetType(item, defaults);
           const normalized = { ...normalizedTarget, progressionRule: item.progressionRule || templateExercise.setRoleProgressionRules?.[normalizedTarget.type] || templateExercise.progressionRule || progressionRuleForTargetSet(normalizedTarget) };
           const needsDemandReduction = ["backoff", "drop"].includes(normalized.type) && Number(normalized.loadReductionMax || normalized.loadReductionMin || 0) <= 0;
           return needsDemandReduction
@@ -1721,12 +1723,13 @@
       }
 
       function renderRecommendation(recommendation) {
+        if (recommendation?.reason === "unavailable_equipment") return "";
         if (recommendation?.executionBlocked === true && recommendation?.executable === false) {
           const reason = String(recommendation.message || recommendation.reason || "The recommendation is unavailable for the current workout constraints.");
           return `
             <article class="recommendation change blocked-recommendation" role="alert">
               <span>Recommendation unavailable</span>
-              <h2>${escapeHtml(recommendation.reason === "unavailable_equipment" ? "Exercise unavailable with current equipment" : "Exercise is not currently executable")}</h2>
+              <h2>Exercise is not currently executable</h2>
               <p>${escapeHtml(reason)}</p>
             </article>
           `;

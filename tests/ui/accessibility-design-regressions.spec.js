@@ -1345,17 +1345,16 @@ test("Dashboard volume evidence expands from and restores focus to its durable o
   await expect.soft(origin, "Collapsing inline evidence must retain focus on its durable trigger").toBeFocused({ timeout: 1_500 });
 });
 
-test("live guided Available Equipment and Muscle Group Scope choices are named groups with 44 CSS-pixel targets", async ({ page }) => {
+test("live guided setup omits the deleted equipment preference and keeps Muscle Group Scope choices accessible", async ({ page }) => {
+  test.setTimeout(90_000);
   await installScenario(page, { activeWorkout: false, includeHistory: false });
   await openPrimaryTab(page, "plan");
   await page.locator('[data-action="begin-guided-mesocycle"]').click();
   await page.locator('[data-action="open-guided-setup"]').click();
 
-  const equipmentSection = page.locator(".guided-builder .equipment-picker");
   const muscleSection = page.locator(".guided-builder .muscle-scope-panel");
-  await expect(equipmentSection, "The test must exercise the live renderGuidedMesocycle setup").toBeVisible();
   await expect(muscleSection, "The test must exercise the live renderGuidedMesocycle setup").toBeVisible();
-  await expect.soft(page.getByRole("group", { name: "Available Equipment", exact: true }), "Available Equipment must expose a named group boundary").toHaveCount(1, { timeout: 1_500 });
+  await expect.soft(page.getByRole("group", { name: "Available Equipment", exact: true }), "The deleted global equipment preference must not remain reachable").toHaveCount(0, { timeout: 1_500 });
   await expect.soft(page.getByRole("group", { name: /Muscle Groups?(?: and| in)? Scope/i }), "Muscle Group Scope must expose a named group boundary").toHaveCount(1, { timeout: 1_500 });
 
   const targets = await page.evaluate(() => {
@@ -1368,13 +1367,11 @@ test("live guided Available Equipment and Muscle Group Scope choices are named g
       };
     };
     return {
-      equipment: [...document.querySelectorAll('.guided-builder [data-action="toggle-mesocycle-equipment"]')].map(describe),
       muscles: [...document.querySelectorAll(".guided-builder .muscle-scope-option")].map(describe)
     };
   });
-  expect(targets.equipment.length, "All live equipment choices must be measured").toBe(7);
   expect(targets.muscles.length, "The canonical live muscle choices must be measured").toBeGreaterThan(0);
-  const undersized = [...targets.equipment, ...targets.muscles].filter((target) => target.height < 44 || target.width < 44);
+  const undersized = targets.muscles.filter((target) => target.height < 44 || target.width < 44);
   expect.soft(undersized, "Every live multi-entry choice must provide a 44 by 44 CSS-pixel target").toEqual([]);
 });
 

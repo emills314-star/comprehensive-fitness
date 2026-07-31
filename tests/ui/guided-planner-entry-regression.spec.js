@@ -20,7 +20,8 @@ test("a clean installation opens guided Setup without a Plan render failure", as
 
   await expect(page.locator(".destination-error")).toHaveCount(0);
   await expect(page.getByText("What is this block for?", { exact: true })).toBeVisible();
-  await expect(page.locator('.guided-builder [role="group"][aria-label="Available Equipment"]')).toBeVisible();
+  await expect(page.locator('.guided-builder [role="group"][aria-label="Available Equipment"]')).toHaveCount(0);
+  await expect(page.locator('[data-action="toggle-mesocycle-equipment"]')).toHaveCount(0);
   await expect(page.locator('.guided-builder [role="group"][aria-label="Muscle Group Scope"]')).toBeVisible();
   await expect(page.locator('[data-action="guided-step"][data-step="setup"]')).toHaveAttribute("aria-current", "step");
   expect(runtimeErrors).toEqual([]);

@@ -587,9 +587,7 @@
                 targetRpe: plan.targetRpeMax,
                 restSeconds: plan.workingRestSeconds,
                 setTypes: workingTypes,
-                warmups: templateWarmups,
-                standardWorkloadOverride: true,
-                standardRoleWorkload: null
+                warmups: templateWarmups
               } : item)
             } : template)
           : data.templates;
@@ -707,12 +705,10 @@
           reps: Math.round((savedRepMin + savedRepMax) / 2),
           repMin: savedRepMin,
           repMax: savedRepMax,
-          ...(roleStandard ? { standardRoleWorkload: {
-            setStructure: current.setStructure,
-            topSet: { count: savedTop.count, repRange: { min: savedTop.repMin, max: savedTop.repMax } },
-            ...(savedBackoff ? { backoffSets: { count: savedBackoff.count, repRange: { min: savedBackoff.repMin, max: savedBackoff.repMax } } } : {})
-          } } : { standardRoleWorkload: null }),
-          standardWorkloadOverride: true
+          ...(roleStandard ? { setTypes: [
+            { type: "top", setCount: savedTop.count, repMin: savedTop.repMin, repMax: savedTop.repMax, rpeMin: Math.max(1, Number(sourceTemplateExercise.targetRpe || 8) - 1), rpeMax: Number(sourceTemplateExercise.targetRpe || 8), restSeconds: Number(sourceTemplateExercise.restSeconds || 90), countsTowardScore: true, countsTowardVolume: true },
+            ...(savedBackoff ? [{ type: "backoff", setCount: savedBackoff.count, repMin: savedBackoff.repMin, repMax: savedBackoff.repMax, rpeMin: Math.max(1, Number(sourceTemplateExercise.targetRpe || 8) - 1), rpeMax: Number(sourceTemplateExercise.targetRpe || 8), restSeconds: Number(sourceTemplateExercise.restSeconds || 90), countsTowardScore: true, countsTowardVolume: true }] : [])
+          ] } : {})
         } : null;
         const templatesWithStandard = () => standardTemplateValues
           ? data.templates.map((template) => template.id === sourceTemplate.id ? {
@@ -722,7 +718,7 @@
             } : template)
           : data.templates;
         if (!Object.keys(override).length) {
-          if (!standardTemplateValues) return showAppToast(options.standardWorkload ? "The evidence-based workload is already active." : "No prescription field changed.");
+          if (!standardTemplateValues) return showAppToast(options.standardWorkload ? "The stable routine target is already active." : "No prescription field changed.");
           commit({ ...data, templates: templatesWithStandard() }, true, { invalidateAnalysis: false, deferPersistence: true });
           showAppToast("Standard workload saved for future sessions.");
           return;
@@ -734,8 +730,7 @@
             reason,
             createdAt: isoNow(),
             allowedSafetySubstituteIds: safetyContext?.allowedSafetySubstituteIds,
-            exerciseCatalog: safetyContext?.exerciseCatalog,
-            availableEquipment: safetyContext?.availableEquipment
+            exerciseCatalog: safetyContext?.exerciseCatalog
           });
         } catch (error) {
           showAppToast(error?.message || "The override could not be applied.");
@@ -846,15 +841,16 @@
         const template = data.templates.find((item) => item.id === templateId);
         const exercise = template?.exercises.find((item) => item.id === exerciseId);
         if (!exercise) return;
+        const identity = typeof exerciseIdentityFields === "function" ? exerciseIdentityFields({ name }) : {};
         if (!shouldRender) {
-          patchTemplateExercise(templateId, exerciseId, { name }, false);
+          patchTemplateExercise(templateId, exerciseId, { name, ...identity }, false);
           return;
         }
         const previousAutoRest = recommendedRestSeconds(exercise.name, { reps: exercise.reps });
         const restSeconds = !exercise.restSeconds || Number(exercise.restSeconds) === previousAutoRest
           ? recommendedRestSeconds(name, { reps: exercise.reps })
           : exercise.restSeconds;
-        patchTemplateExercise(templateId, exerciseId, { name, restSeconds }, shouldRender);
+        patchTemplateExercise(templateId, exerciseId, { name, restSeconds, ...identity }, shouldRender);
       }
 
       function patchSet(setId, patch, shouldRender = true) {
@@ -1091,8 +1087,6 @@
           setStructure: prescription?.setStructure || exercise.appliedTargetContext?.setTypes?.map((item) => item.type).join("+") || templateExercise.setStructure,
           setTypes: templateSetTypesFromHistory(workSets, exercise.restSeconds),
           warmups: setsForExercise(exercise.id).filter((set) => setTypeSemantics(set).isWarmup).map((set) => ({ reps: set.reps, targetRepMin: set.targetRepMin, targetRepMax: set.targetRepMax, targetRpe: set.targetRpe, targetRpeMin: set.targetRpeMin, targetRpeMax: set.targetRpeMax, targetRestSeconds: set.targetRestSeconds, weight: set.weight, weightUnit: set.weightUnit, resistanceType: set.resistanceType, isBodyweight: set.isBodyweight, addedLoad: set.addedLoad, assistanceLoad: set.assistanceLoad, rpe: set.rpe })),
-          standardWorkloadOverride: true,
-          standardRoleWorkload: null,
           recommendationSnapshot: snapshot,
           recommendationId: snapshot?.recommendationId || null,
           recommendationVersion: snapshot?.recommendationVersion || null,
@@ -1191,28 +1185,7 @@
           if (snapshot?.finalPrescription && !snapshot.executionBlocked && !snapshot.hardConstraint) {
             const prescription = snapshot.finalPrescription;
             const target = legacyTargetFromSnapshot(snapshot, { name: exercise.name, resistanceType });
-            const desiredTypes = expandedOverrideSetTypes(prescription);
-            initialSets = desiredTypes.map((role, index) => createSet(exercise.id, index + 1, {
-              resistanceType,
-              sequenceIndex: index,
-              sequence: index,
-              setTypeIndex: desiredTypes.slice(0, index).filter((item) => item.type === role.type).length,
-              setType: role.type,
-              reps: Math.round((Number(role.repRange.min) + Number(role.repRange.max)) / 2),
-              weight: Number(prescription.prescribedLoad?.target || target.weight || 0),
-              rpe: Number(role.rpe),
-              targetReps: Math.round((Number(role.repRange.min) + Number(role.repRange.max)) / 2),
-              targetRepMin: Number(role.repRange.min),
-              targetRepMax: Number(role.repRange.max),
-              targetRpe: Number(role.rpe),
-              targetRpeMin: Math.max(5, Number(role.rpe) - 1),
-              targetRpeMax: Number(role.rpe),
-              targetRestSeconds: Number(prescription.restSeconds.target),
-              prescriptionReason: prescription.progressionRule,
-              prescriptionMode: target.mode,
-              prescriptionConfidence: prescription.confidence
-            }));
-            exercise = { ...exercise, recommendationSnapshot: snapshot, basePrescription: snapshot.basePrescription, finalPrescription: prescription, prescription: target, restSeconds: prescription.restSeconds.target };
+            exercise = { ...exercise, recommendationSnapshot: snapshot, basePrescription: snapshot.basePrescription, finalPrescription: prescription, prescription: target };
           }
         }
         addExerciseDraft = "";
@@ -1228,7 +1201,7 @@
       }
 
       function addTemplate() {
-        const template = { id: id(), name: "New Template", notes: "", exercises: [{ id: id(), name: "Exercise", sets: 3, reps: 8, targetRpe: 8, increment: progressionProfileForExercise("Exercise").increment, restSeconds: recommendedRestSeconds("Exercise"), resistanceType: "external", isBodyweight: false, warmups: [] }], createdAt: isoNow(), updatedAt: isoNow() };
+        const template = { id: id(), name: "New Template", notes: "", exercises: [normalizeStableTemplateExercise({ id: id(), name: "Exercise", sets: 3, reps: 8, repMin: 8, repMax: 8, targetRpe: 8, increment: progressionProfileForExercise("Exercise").increment, restSeconds: recommendedRestSeconds("Exercise"), resistanceType: "external", isBodyweight: false, warmups: [] })], createdAt: isoNow(), updatedAt: isoNow() };
         setActiveTab("plan", { renderNow: false });
         commit({ ...data, templates: [template, ...data.templates] });
       }
@@ -1258,7 +1231,40 @@
         commit({
           ...data,
           templates: data.templates.map((template) => template.id === templateId
-            ? { ...template, exercises: template.exercises.map((exercise) => exercise.id === exerciseId ? { ...exercise, ...patch } : exercise), updatedAt: isoNow() }
+            ? {
+                ...template,
+                exercises: template.exercises.map((exercise) => {
+                  if (exercise.id !== exerciseId) return exercise;
+                  const merged = { ...exercise, ...patch };
+                  const stableFieldsChanged = ["sets", "repMin", "repMax", "targetRpe", "restSeconds"].some((field) => Object.prototype.hasOwnProperty.call(patch, field));
+                  if (!stableFieldsChanged || Object.prototype.hasOwnProperty.call(patch, "setTypes")) return normalizeStableTemplateExercise(merged);
+                  let setTypes = (Array.isArray(exercise.setTypes) && exercise.setTypes.length ? exercise.setTypes : normalizeStableTemplateExercise(exercise).setTypes)
+                    .filter((type) => type.countsTowardScore !== false && !type.isWarmup)
+                    .map((type) => ({ ...type }));
+                  if (Object.prototype.hasOwnProperty.call(patch, "sets")) {
+                    const desiredCount = Math.max(1, Number(patch.sets));
+                    setTypes = setTypes.slice(0, desiredCount);
+                    let remaining = desiredCount;
+                    setTypes = setTypes.map((type, index) => {
+                      const remainingRoles = setTypes.length - index - 1;
+                      const setCount = index === setTypes.length - 1
+                        ? remaining
+                        : Math.max(1, Math.min(Number(type.setCount || 1), remaining - remainingRoles));
+                      remaining -= setCount;
+                      return { ...type, setCount };
+                    });
+                  }
+                  setTypes = setTypes.map((type) => ({
+                    ...type,
+                    ...(Object.prototype.hasOwnProperty.call(patch, "repMin") ? { repMin: Number(patch.repMin) } : {}),
+                    ...(Object.prototype.hasOwnProperty.call(patch, "repMax") ? { repMax: Number(patch.repMax) } : {}),
+                    ...(Object.prototype.hasOwnProperty.call(patch, "targetRpe") ? { rpeMin: Math.max(1, Number(patch.targetRpe) - 1), rpeMax: Number(patch.targetRpe) } : {}),
+                    ...(Object.prototype.hasOwnProperty.call(patch, "restSeconds") ? { restSeconds: Number(patch.restSeconds) } : {})
+                  }));
+                  return normalizeStableTemplateExercise({ ...merged, setTypes });
+                }),
+                updatedAt: isoNow()
+              }
             : template)
         }, shouldRender);
       }
@@ -1267,7 +1273,7 @@
         commit({
           ...data,
           templates: data.templates.map((template) => template.id === templateId
-              ? { ...template, exercises: [...template.exercises, { id: id(), name: "Exercise", sets: 3, reps: 8, targetRpe: 8, increment: progressionProfileForExercise("Exercise").increment, restSeconds: recommendedRestSeconds("Exercise"), resistanceType: "external", isBodyweight: false, warmups: [] }], updatedAt: isoNow() }
+              ? { ...template, exercises: [...template.exercises, normalizeStableTemplateExercise({ id: id(), name: "Exercise", sets: 3, reps: 8, repMin: 8, repMax: 8, targetRpe: 8, increment: progressionProfileForExercise("Exercise").increment, restSeconds: recommendedRestSeconds("Exercise"), resistanceType: "external", isBodyweight: false, warmups: [] })], updatedAt: isoNow() }
             : template)
         });
       }
@@ -1314,8 +1320,9 @@
         const recommendationSnapshots = [];
         let adjustedLiftCount = 0;
         template.exercises.forEach((templateExercise, index) => {
+          templateExercise = normalizeStableTemplateExercise(templateExercise);
           const templateResistanceType = templateExercise.resistanceType || inferResistanceType(templateExercise.name, templateExercise);
-          const historyTarget = { ...coachTargetForTemplateExercise(templateExercise, { excludeSessionId: session.id, template, resistanceType: templateResistanceType, workoutId: session.id }), resistanceType: templateResistanceType, isBodyweight: isBodyweightResistance(templateResistanceType) };
+          const historyTarget = { ...coachTargetForTemplateExercise(templateExercise, { excludeSessionId: session.id, template, resistanceType: templateResistanceType, canonicalExerciseId: templateExercise.performanceExerciseId || canonicalExerciseId(templateExercise), workoutId: session.id }), resistanceType: templateResistanceType, isBodyweight: isBodyweightResistance(templateResistanceType) };
           if (!historyTarget.executionBlocked) {
             historyTarget.sets = Math.max(1, Number(historyTarget.sets || templateExercise.sets || 1));
             historyTarget.reps = Math.max(1, Number(historyTarget.reps || templateExercise.reps || 1));
@@ -1328,20 +1335,24 @@
           const target = { ...adjustedTarget, resistanceType: adjustedTarget.resistanceType || templateResistanceType, isBodyweight: isBodyweightResistance(adjustedTarget.resistanceType || templateResistanceType) };
           const resolvedResistanceType = target.resistanceType || templateResistanceType;
           if (target.adjusted) adjustedLiftCount += 1;
-          const restSeconds = Number(target.restSeconds || historyTarget.restSeconds);
+          const restSeconds = Number(templateExercise.restSeconds);
           const programTargetContext = unifiedTargetContext(historyTarget, template, templateExercise) || exerciseTargetContext(template, templateExercise, { source: "Current workout template", effectiveStartDate: session.date });
           let appliedTargetContext = unifiedTargetContext(target, template, templateExercise) || exerciseTargetContext(template, { ...templateExercise, sets: target.sets }, { sets: target.sets, rpe: target.rpe, restSeconds, source: target.adjusted ? "Readiness-adjusted target" : target.isDeload ? "Deload prescription" : "Saved workout prescription", effectiveStartDate: session.date, effectiveEndDate: session.date, confidence: target.confidence });
-          const savedDefaultTargetContext = templateExercise.standardWorkloadOverride === true && Array.isArray(templateExercise.setTypes) && templateExercise.setTypes.some((type) => type.countsTowardScore !== false && !type.isWarmup)
+          const savedDefaultTargetContext = Array.isArray(templateExercise.setTypes) && templateExercise.setTypes.some((type) => type.countsTowardScore !== false && !type.isWarmup)
             ? exerciseTargetContext(template, templateExercise, { source: "User-saved exercise defaults", effectiveStartDate: session.date, effectiveEndDate: session.date, confidence: "high" })
             : null;
           const baseTargetContext = savedDefaultTargetContext || appliedTargetContext || programTargetContext;
           const rpeShift = Number(target.rpe || 0) && Number(historyTarget.rpe || 0) ? Number(target.rpe) - Number(historyTarget.rpe) : 0;
-          const effectiveRpeShift = ["deload", "light", "technique"].includes(target.mode) ? 0 : rpeShift;
+          const temporaryException = target.adjusted === true
+            || target.safetyAdjustment === true
+            || target.isDeload === true
+            || ["deload", "light", "technique", "readiness-adjusted", "return", "stop-modify"].includes(String(target.mode || ""));
+          const effectiveRpeShift = temporaryException ? Math.min(0, rpeShift) : 0;
           const resolvedTypes = resolvedSetTypesForPrescription(baseTargetContext, target, templateExercise).map((type) => ({
             ...type,
             rpeMin: type.rpeMin ? Math.max(1, type.rpeMin + effectiveRpeShift) : Math.max(1, Number(target.rpe || 0) - 1),
             rpeMax: type.rpeMax ? Math.max(1, type.rpeMax + effectiveRpeShift) : Number(target.rpe || 0),
-            restSeconds: Number(type.restSeconds || target.restSeconds || restSeconds)
+            restSeconds
           }));
           appliedTargetContext = { ...appliedTargetContext, setTypes: [...(appliedTargetContext?.setTypes || []).filter((type) => type.isWarmup), ...resolvedTypes] };
           const exercise = { id: id(), sessionId: session.id, ...(template.source === "strong" ? { source: "strong-template" } : {}), name: templateExercise.name, ...(typeof exerciseIdentityFields === "function" ? exerciseIdentityFields(templateExercise) : {}), primaryMuscle: templateExercise.primaryMuscle || "", secondaryMuscle: templateExercise.secondaryMuscle || "", ...(templateExercise.customExerciseProfile ? { customExerciseProfile: normalizeCustomExerciseProfile(templateExercise.customExerciseProfile) } : {}), executionQualityAssessment: "not_assessed", notes: "", originalPrescription: historyTarget, prescription: target, recommendationSnapshot: target.recommendationSnapshot || historyTarget.recommendationSnapshot || null, basePrescription: target.basePrescription || historyTarget.basePrescription || null, finalPrescription: target.finalPrescription || target.recommendationSnapshot?.finalPrescription || null, recommendationVersion: target.recommendationSnapshot?.recommendationVersion || null, personalDataVersion: target.recommendationSnapshot?.personalDataVersion || null, researchDatabaseVersion: target.recommendationSnapshot?.researchDatabaseVersion || null, programTargetContext, appliedTargetContext, adjustmentReason: target.adjustmentReason || "", manualOverrides: [], order: index, restSeconds, resistanceType: target.resistanceType || templateResistanceType, isBodyweight: isBodyweightResistance(resolvedResistanceType), isDeload: Boolean(target.isDeload), executionBlocked: Boolean(target.executionBlocked), safetyRestriction: target.safetyRestriction || null };
@@ -1352,7 +1363,11 @@
           configuredWarmups.forEach((warmup, warmupIndex) => {
             sets.push(createSet(exercise.id, warmupIndex + 1, { ...warmup, sequenceIndex: warmupIndex, sequence: warmupIndex, setTypeIndex: warmupIndex, sourceTemplateSetId: warmup.id || templateExercise.id + "-warmup-" + warmupIndex, resistanceType: target.resistanceType || templateResistanceType, completed: false, isWarmup: true, setType: "warmup", countsTowardScore: false, countsTowardVolume: false, countsTowardProgression: false }));
           });
-          const previousRoleSets = getMostRecentWorkoutSets(templateExercise.name, { excludeSessionId: session.id, resistanceType: resolvedResistanceType });
+          const previousRoleSets = getMostRecentWorkoutSets(templateExercise.name, {
+            excludeSessionId: session.id,
+            resistanceType: resolvedResistanceType,
+            canonicalExerciseId: templateExercise.performanceExerciseId || canonicalExerciseId(templateExercise)
+          });
           let setNumber = 0;
           let rolePrescriptions = [];
           resolvedTypes.forEach((setType) => {
@@ -1374,11 +1389,11 @@
             const setNumber = prescriptionIndex + 1;
             const setType = resolvedTypes.find((type) => normalizeSetTypeCode(type.type) === prescription.setType) || resolvedTypes.find((type) => normalizeSetTypeCode(type.type) === "backoff" && prescription.setType === "straight") || {};
             const setWeight = prescription.targetLoad;
-            const setRpe = prescription.rpeMax;
-            sets.push(createSet(exercise.id, setNumber, { sequenceIndex: prescription.sequenceIndex, sequence: prescription.sequenceIndex, setTypeIndex: prescription.setTypeIndex, sourceTemplateSetId: setType.id || templateExercise.id + "-" + prescription.setType + "-" + prescription.setTypeIndex, reps: prescription.targetReps, weight: setWeight, weightUnit: target.weightUnit, resistanceType: target.resistanceType || templateResistanceType, isBodyweight: isBodyweightResistance(resolvedResistanceType), addedLoad: target.resistanceType === "bodyweight_plus_load" ? setWeight : target.addedLoad, assistanceLoad: target.resistanceType === "assisted_bodyweight" ? setWeight : target.assistanceLoad, rpe: setRpe, completed: false, isWarmup: false, setType: prescription.setType, countsTowardScore: setType.countsTowardScore !== false, countsTowardVolume: setType.countsTowardVolume !== false, targetReps: prescription.targetReps, targetRepMin: prescription.repMin, targetRepMax: prescription.repMax, targetWeight: setWeight, targetRpe: setRpe, targetRpeMin: prescription.rpeMin, targetRpeMax: prescription.rpeMax, targetRpeTolerance: setType.rpeTolerance, targetRestSeconds: prescription.restSeconds, originalTargetReps: historyTarget.reps, originalTargetWeight: historyTarget.weight, originalTargetRpe: historyTarget.rpe, setPrescription: prescription, previousComparableSet: prescription.previousComparableSet, prescriptionReason: prescription.reason + " " + (target.adjustmentReason || target.reason || ""), prescriptionMode: target.mode, prescriptionConfidence: target.confidence, validationWarning: prescription.validationWarning || "" }));
+            const setRpe = prescription.prefillRpe;
+            sets.push(createSet(exercise.id, setNumber, { sequenceIndex: prescription.sequenceIndex, sequence: prescription.sequenceIndex, setTypeIndex: prescription.setTypeIndex, sourceTemplateSetId: setType.id || templateExercise.id + "-" + prescription.setType + "-" + prescription.setTypeIndex, reps: prescription.targetReps, weight: setWeight, weightUnit: target.weightUnit, resistanceType: target.resistanceType || templateResistanceType, isBodyweight: isBodyweightResistance(resolvedResistanceType), addedLoad: target.resistanceType === "bodyweight_plus_load" ? setWeight : target.addedLoad, assistanceLoad: target.resistanceType === "assisted_bodyweight" ? setWeight : target.assistanceLoad, rpe: setRpe, completed: false, isWarmup: false, setType: prescription.setType, countsTowardScore: setType.countsTowardScore !== false, countsTowardVolume: setType.countsTowardVolume !== false, targetReps: prescription.targetReps, targetRepMin: prescription.repMin, targetRepMax: prescription.repMax, targetWeight: setWeight, targetRpe: prescription.rpeMax, targetRpeMin: prescription.rpeMin, targetRpeMax: prescription.rpeMax, targetRpeTolerance: setType.rpeTolerance, targetRestSeconds: prescription.restSeconds, originalTargetReps: prescription.targetReps, originalTargetWeight: setWeight, originalTargetRpe: prescription.rpeMax, setPrescription: prescription, previousComparableSet: prescription.previousComparableSet, prescriptionReason: prescription.reason + (temporaryException && target.adjustmentReason ? " " + target.adjustmentReason : ""), prescriptionMode: temporaryException ? target.mode : "stable-target", prescriptionConfidence: prescription.confidence, validationWarning: prescription.validationWarning || "" }));
           });
         });
-        session.adjustmentSummary = adjustedLiftCount ? adjustedLiftCount + " lift" + (adjustedLiftCount === 1 ? "" : "s") + " adjusted for recovery." : "No recovery adjustments — normal plan and history-based progression.";
+        session.adjustmentSummary = adjustedLiftCount ? adjustedLiftCount + " lift" + (adjustedLiftCount === 1 ? "" : "s") + " adjusted for recovery." : "No recovery adjustments — stable routine targets are active.";
         session.readinessAdjustments = readinessAdjustments;
         session.usedOriginalTargets = Boolean(options.useOriginal);
         session.mesocycleId = currentMesocycle()?.id || "";

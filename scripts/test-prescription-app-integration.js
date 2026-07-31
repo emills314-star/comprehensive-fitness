@@ -49,10 +49,9 @@ assert.doesNotMatch(html, /It replaces the misleading former/, "Migration termin
 assert.match(html, /Muscle Groups and Scope[\s\S]*mesocycle-muscle-scope/, "Planner must let the user choose every muscle group in scope");
 assert.doesNotMatch(html.slice(html.indexOf("function renderHistoricalMesocycles()"), html.indexOf("function renderTemplates()")), /renderMesocycleCard\(/, "Historical mesocycles must not eagerly render full planner cards");
 assert.match(html, /primary_progression[\s\S]*alternative_exercise[\s\S]*lower_fatigue_resensitization[\s\S]*specialization/, "All four mesocycle types must be available");
-assert.match(html, /What is this block for\?[\s\S]*Available Equipment[\s\S]*Muscle Groups and Scope/, "Guided setup must follow objective/schedule, equipment, then scope dependencies");
-assert.doesNotMatch(html, /Leave all unselected to allow the complete library/, "Equipment access must never depend on an ambiguous empty selection");
+assert.match(html, /What is this block for\?[\s\S]*Muscle Groups and Scope/, "Guided setup must flow from objective and schedule to muscle scope");
+assert.doesNotMatch(html, /data-action="toggle-mesocycle-equipment"|aria-label="Available Equipment"/, "Deleted global equipment setup must not remain reachable");
 assert.doesNotMatch(html, />Unknown</, "Planner cards must not expose meaningless Unknown metadata");
-assert.match(html, /All Equipment \/ Standard Gym[\s\S]*Bodyweight[\s\S]*Bands[\s\S]*Dumbbells[\s\S]*Barbell[\s\S]*Rack[\s\S]*Cable Station/, "Planner equipment choices must use the simplified capability bundles");
 assert.match(html, /candidate\.personalDataConfidence is the categorical evidence[\s\S]*candidate\.scores\.personalDataConfidence is[\s\S]*numeric 0–100/, "The candidate confidence naming collision must remain explicit at the use site");
 assert.match(html, /targetMuscleEffectiveness: Number\(candidate\.scores\?\.targetMuscleEffectiveness\)[\s\S]*evidenceReason: candidate\.scores\?\.weightingReason/, "Candidate cards must preserve the engine effectiveness score and comparable-exposure explanation");
 assert.match(html, /guidedConfidenceMeter\(candidate\.personalDataConfidence, 'candidate'\)[\s\S]*candidate\.scores\?\.weightingReason/, "Candidate evidence meters must use the categorical tier while the evidence line uses the engine reason");

@@ -102,7 +102,7 @@ test("safety substitution catalog identity uses an exact unambiguous public reco
   assert.equal(resolve("camber bar bench press", catalog), null, "Aliases must not resolve a safety-locked UI choice");
   assert.equal(resolve("Barbell Bench Press", [...catalog, { exercise_id: "ex_duplicate", exercise_name: "barbell-bench press" }]), null, "Duplicate normalized catalog names must fail closed");
   const contextSource = functionSource("safetySubstituteContext");
-  assert.match(contextSource, /equipmentCompatible\(record, configuredEquipment\)\.eligible/, "Safety candidate eligibility must evaluate every mapped catalog record against current equipment rather than an arbitrary top-five rank cutoff");
+  assert.doesNotMatch(contextSource, /equipmentCompatible|availableEquipment|configuredEquipment/, "Equipment metadata must not filter or block pain-free substitute logging");
   assert.doesNotMatch(contextSource, /rankExercisePool/, "Safety substitution eligibility must not discard evidence-linked alternatives merely because they fall outside a presentation ranking limit");
 });
 
@@ -289,7 +289,7 @@ function executableMutationActions() {
   return ["add-exercise", "add-set", "add-warmup-set", "duplicate-set", "toggle-set", "toggle-skip-set", "start-timer"];
 }
 
-test("confirmed pain-free substitute stays distinct, catalog-backed, equipment-compatible, and auditable", () => {
+test("confirmed pain-free substitute stays distinct, catalog-backed, and auditable without equipment blocking", () => {
   const engine = prescriptionApi.createPrescriptionEngine({ researchData: publicResearchData() });
   const originalId = "ex_barbell_bench_press";
   const availableEquipment = ["all"];
@@ -315,7 +315,6 @@ test("confirmed pain-free substitute stays distinct, catalog-backed, equipment-c
   const options = {
     allowedSafetySubstituteIds: derived.allowedSafetySubstituteIds,
     exerciseCatalog: [derived.catalogRecord],
-    availableEquipment,
     createdAt: "2026-07-14T12:05:00.000Z"
   };
   const substitute = { exerciseId: substituteId, researchExerciseId: substituteResearchId, reason: "Synthetic pain-free alternative" };
@@ -330,12 +329,6 @@ test("confirmed pain-free substitute stays distinct, catalog-backed, equipment-c
     /allowed|different exercise|painful original/i,
     "The painful original cannot be re-labelled as its own safe alternative"
   );
-  assert.throws(
-    () => engine.applyManualOverride(blocked, { ...substitute, painFreeConfirmed: true }, { ...options, availableEquipment: ["bodyweight"] }),
-    /equipment/i,
-    "An equipment-incompatible alternative must remain blocked"
-  );
-
   const resolved = engine.applyManualOverride(blocked, { ...substitute, painFreeConfirmed: true }, options);
   assert.equal(blocked.finalPrescription.executionBlocked, true, "Resolving an alternative must not mutate the original blocked snapshot");
   assert.equal(blocked.finalPrescription.exerciseId, originalId, "The original blocked identity must remain unchanged");
@@ -350,7 +343,7 @@ test("confirmed pain-free substitute stays distinct, catalog-backed, equipment-c
   collectAssertions([
     ["explicit confirmation", () => assertContains(frontendOverride, /painFreeConfirmed/, "The UI adapter must forward explicit pain-free confirmation")],
     ["engine candidate allowlist", () => assertContains(frontendOverride, /allowedSafetySubstituteIds/, "The UI adapter must pass an engine-validated safety-substitute allowlist")],
-    ["equipment restrictions", () => assertContains(frontendOverride, /availableEquipment/, "The UI adapter must preserve current equipment restrictions")],
+    ["equipment restrictions removed", () => assert.doesNotMatch(frontendOverride, /availableEquipment/, "The UI adapter must not restore deleted equipment blocking")],
     ["catalog identity", () => assertContains(frontendOverride, /researchExerciseId|exerciseCatalog|trustedExerciseCatalog/, "The UI adapter must pass a coherent catalog/research identity")]
   ]);
 });
@@ -423,12 +416,6 @@ test("engine hard-constraint rejections stay typed and never enter legacy target
       options: { excludedExerciseIds: [baseRequest.exerciseId], availableEquipment: ["all"], includedMuscleGroupIds: ["chest"], sessionDurationMinutes: 45 },
       engineProbe: capture(() => engine.prescribeExercise({ ...baseRequest, excludedExerciseIds: [baseRequest.exerciseId] })),
       engineMessage: /excluded/i
-    },
-    {
-      reason: "unavailable_equipment",
-      options: { excludedExerciseIds: [], availableEquipment: ["bodyweight"], includedMuscleGroupIds: ["chest"], sessionDurationMinutes: 45 },
-      engineProbe: capture(() => engine.prescribeExercise({ ...baseRequest, availableEquipment: ["bodyweight"] })),
-      engineMessage: /equipment|compatible/i
     }
   ];
   const failures = [];
@@ -530,7 +517,7 @@ test("unified prescriptions preserve template intent and all hard workout constr
     ["planned working sets", () => assertContains(unified, /\b(?:plannedWorkingSets|plannedSets)\s*:/, "The engine call must receive the guided/template planned set count")],
     ["resistance type", () => assertContains(unified, /\bresistanceType\s*:/, "The engine call must receive the explicit resistance type")],
     ["time constraint", () => assertContains(unified, /\b(?:sessionDurationMinutes|timeConstraintMinutes|maxSessionMinutes)\s*:/, "The engine call must receive the session time constraint")],
-    ["equipment constraint", () => assertContains(unified, /\bavailableEquipment\s*:/, "The engine call must receive available equipment")],
+    ["equipment constraint removed", () => assert.doesNotMatch(unified, /\bavailableEquipment\s*:/, "The normal workout engine call must not receive deleted equipment constraints")],
     ["exercise exclusions", () => assertContains(unified, /\b(?:excludedExerciseIds|exerciseExclusions)\s*:/, "The engine call must receive exercise exclusions")],
     ["muscle scope", () => assertContains(unified, /\b(?:includedMuscleGroupIds|muscleScope)\s*:/, "The engine call must receive the selected muscle scope")],
     ["exercise/set resistance fallback", () => assert.ok(resistanceFallbacks.length >= 2, `Started exercises and generated sets must retain template resistance when an engine target omits it; found ${resistanceFallbacks.length} guarded assignment(s)`)]
@@ -570,6 +557,17 @@ test("template start resolves one resistance type for the exercise, warm-ups, an
     isBodyweightResistance: () => false,
     recommendedRestSeconds: () => 90,
     adjustTargetForRecovery: (target) => ({ ...target, resistanceType: undefined }),
+    normalizeStableTemplateExercise: (exercise) => ({
+      ...exercise,
+      sets: 2,
+      reps: 8,
+      repMin: 6,
+      repMax: 10,
+      targetRpe: 8,
+      restSeconds: 90,
+      setTypes: [{ id: "straight-1", type: "straight", setCount: 2, repMin: 6, repMax: 10, rpeMin: 7, rpeMax: 8, restSeconds: 90, countsTowardScore: true, countsTowardVolume: true }]
+    }),
+    canonicalExerciseId: () => "synthetic_press",
     unifiedTargetContext: () => null,
     exerciseTargetContext: () => ({ setTypes: [] }),
     resolvedSetTypesForPrescription: () => [{
@@ -636,7 +634,6 @@ test("unified prescription invocation forwards canonical profile fields and hard
     plannedWorkingSets: 3,
     resistanceType: "external",
     sessionDurationMinutes: 35,
-    availableEquipment: ["dumbbell", "bench"],
     excludedExerciseIds: ["ex_barbell_bench_press"],
     includedMuscleGroupIds: ["chest"],
     trainingGoal: "hypertrophy",
@@ -647,11 +644,12 @@ test("unified prescription invocation forwards canonical profile fields and hard
   };
   unified({ name: "Bench Press" }, requested);
   for (const field of [
-    "plannedWorkingSets", "resistanceType", "sessionDurationMinutes", "availableEquipment",
+    "plannedWorkingSets", "resistanceType", "sessionDurationMinutes",
     "excludedExerciseIds", "includedMuscleGroupIds", "trainingGoal", "nutritionPhase", "experienceLevel"
   ]) {
     assert.deepEqual(plain(captured?.[field]), plain(requested[field]), `Unified adapter dropped or rewrote ${field}`);
   }
+  assert.equal(captured.availableEquipment, undefined, "Unified adapter must discard legacy equipment constraints");
 });
 
 test("settings use separate canonical training, nutrition, and experience fields with legacy migration", () => {
@@ -702,6 +700,8 @@ test("legacy cut settings migrate at runtime without inheriting the hypertrophy 
     normalizeResistanceSet: (set, resistanceType) => ({ ...set, resistanceType }),
     resistanceTypeValues: ["external", "bodyweight", "cable"],
     normalizeTargetSetType: (value) => value,
+    normalizeStableTemplateExercise: (value) => value,
+    isoNow: () => "2026-07-14T12:00:00.000Z",
     migrateDomainData: (model) => model
   });
   const migrated = plain(normalizeLoadedData(legacyState()));
@@ -1556,7 +1556,7 @@ test("navigation, dialogs, and Lift controls expose complete focus and naming co
     ["dialog trigger captured", () => assertContains(openDialog, /document\.activeElement|returnFocus|focusOrigin|dialogTrigger/i, "Opening a dialog must capture its focus origin")],
     ["dialog close restores focus", () => assertContains(closeDialog, /\.focus\s*\(|restoreFocus/i, "Closing a dialog must restore focus to its trigger")],
     ["contextual Lift action names", () => assert.ok(actionTags.length >= 3 && actionTags.every((tag) => /aria-label=/.test(tag) && /exercise\.name/.test(tag)), `Move/delete controls need exercise-specific accessible names; received ${actionTags.join(" | ")}`)],
-    ["Available Equipment group name", () => assert.ok(equipmentGroups.length && equipmentGroups.every((tag) => /role="group"/.test(tag) && /aria-label="Available Equipment"|aria-labelledby=/.test(tag)), "Every Available Equipment picker must be a named group")],
+    ["Available Equipment removed", () => assert.equal(equipmentGroups.length, 0, "Deleted global equipment controls must not remain reachable")],
     ["Muscle Group Scope group name", () => assert.ok(scopeGroups.length && scopeGroups.every((tag) => /role="group"/.test(tag) && /aria-label="Muscle Group Scope"|aria-labelledby=/.test(tag)), "Every Muscle Group Scope picker must be a named group")]
   ]);
 });

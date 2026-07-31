@@ -5,7 +5,8 @@
 **Status:** IMPLEMENTED LOCALLY  
 **Started:** 2026-07-30  
 **Baseline revision:** `fe85e6665ec6a4896b1f1a5bbe982710358bb1b4`  
-**Branch:** `codex/chromium-ui-repair`  
+**Branch:** `codex/zero-based-redesign`  
+**Checkpoint:** `3e24f93` (`chore(redesign): establish preservation baseline`)  
 **Working tree at start:** Pre-existing untracked `.claude/`, `.vercel/`, `docs/redesign/`, and `redesign/prompts/`; preserve all user work.  
 **Execution runtime:** Node `v24.18.0`, npm `11.16.0`; repository pins Node `22.23.x`, npm `10.9.x`  
 **Visible behavior change:** None authorized
@@ -51,7 +52,7 @@ None beyond M0 schemas and synthetic fixtures. M0 does not introduce a productio
 - Static lint passed across 194 JavaScript and 3,128 JSON files.
 - First sandboxed full run could not complete because the archive-integrity test was denied Git plumbing access; the approved unsandboxed rerun passed. This was an environment constraint, not a product failure.
 - No production runtime consumes the target schemas yet. No current data or active draft was migrated.
-- No `www/` sync or `sw.js` bump was required because M0 changes no served runtime contract.
+- The executable backup contract and its `www/` mirror were synchronized. The shared service-worker cache advances with the immediately following M1 runtime checkpoint.
 
 ### Remaining external gates
 
@@ -66,7 +67,8 @@ None beyond M0 schemas and synthetic fixtures. M0 does not introduce a productio
 **Started:** 2026-07-31  
 **Completed locally:** 2026-07-31  
 **Baseline revision:** `fe85e6665ec6a4896b1f1a5bbe982710358bb1b4`  
-**Branch:** `codex/chromium-ui-repair`  
+**Branch:** `codex/zero-based-redesign`  
+**Checkpoint:** pending the verified M1 local commit  
 **Working tree at start:** Preserved the M0 work plus pre-existing untracked `.claude/`, `.vercel/`, `docs/redesign/`, and `redesign/prompts/`; no user work was overwritten.  
 **Execution runtime:** Node `v24.18.0`, npm `11.16.0`; repository pins Node `22.23.x`, npm `10.9.x`  
 **Visible behavior authority:** Final PRD §§6.1–6.4; feature dispositions C-01–C-12 and D-01–D-16  
@@ -105,4 +107,4 @@ None beyond M0 schemas and synthetic fixtures. M0 does not introduce a productio
 
 - Repeat on repository-pinned Node/npm before review-ready status.
 - Physical-device RPE, notification, safe-area, and human workout acceptance are later gates.
-- No commit, push, deployment, real-data migration, baseline acceptance, or publication is authorized or complete.
+- The authorized local checkpoint is pending. Push, deployment, real-data migration, baseline acceptance, and publication remain unauthorized and incomplete.

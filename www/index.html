@@ -2853,6 +2853,15 @@
       .set-tools-disclosure > summary::-webkit-details-marker { display: none; }
       .set-tools-disclosure > summary:hover, .set-tools-disclosure > summary:focus-visible { background: var(--current-dark); color: var(--current); }
       .set-tools-disclosure[open] > summary { color: var(--current); }
+      .workout-view .set-block.next-set .set-tools-disclosure {
+        min-height: 44px;
+      }
+      .workout-view .set-block.next-set .set-tools-disclosure > summary {
+        margin-left: auto;
+        position: relative;
+        right: auto;
+        top: auto;
+      }
       .set-tools-panel { border-top: 1px solid var(--line); display: grid; }
       .set-progress-disclosure { border-top: 1px solid var(--line); margin: 0 8px; }
       .set-progress-disclosure > summary { align-items: center; cursor: pointer; display: flex; gap: 8px; justify-content: space-between; list-style: none; min-height: 44px; }

@@ -244,7 +244,7 @@ test("a different submitted session rejects stale delegated and direct executabl
   });
 });
 
-test("resolved pain-free substitutions revalidate current equipment and exclusions without inventing unrelated blocks", async ({ page }) => {
+test("resolved pain-free substitutions ignore deleted global equipment state while revalidating identity and exclusions", async ({ page }) => {
   const fixture = safetyWorkoutState({ illness: false, pain: true, affectedMuscle: "Chest" });
   await seedState(page, fixture.state, {
     activeSessionId: fixture.state.sessions[0].id,
@@ -388,16 +388,16 @@ test("resolved pain-free substitutions revalidate current equipment and exclusio
     };
   }, { runtimeExerciseId: fixture.exerciseIds.bench, constraints: seeded });
 
-  expect.soft(results.invalidEquipment.decision.allowed, "A resolved substitute must become non-executable when current equipment cannot support it").toBe(false);
-  expect.soft(results.invalidEquipment.added, "Equipment-invalid resolved substitutes must not add executable sets").toBe(0);
+  expect.soft(results.invalidEquipment.decision.allowed, "Deleted global equipment state must not gate a resolved substitute").toBe(true);
+  expect.soft(results.invalidEquipment.added, "A resolved substitute remains executable despite stale global equipment state").toBe(1);
   expect.soft(results.excludedSubstitute.decision.allowed, "A newly excluded resolved substitute must become non-executable").toBe(false);
   expect.soft(results.excludedSubstitute.added, "Excluded resolved substitutes must not add executable sets").toBe(0);
   expect.soft(results.unrelatedChange.decision.allowed, "An unrelated exclusion must not invalidate a still-eligible resolved substitute").toBe(true);
   expect.soft(results.unrelatedChange.added, "A still-valid confirmed substitute remains executable").toBe(1);
-  expect.soft(results.defaultEquipment.decision.allowed, "The default empty settings array means unrestricted/all equipment").toBe(true);
-  expect.soft(results.defaultEquipment.added, "A valid resolved substitute remains executable under default equipment settings").toBe(1);
-  expect.soft(results.restrictiveMesocycle.decision.allowed, "An explicit restrictive mesocycle must still intersect default equipment settings").toBe(false);
-  expect.soft(results.restrictiveMesocycle.added, "A mesocycle-incompatible substitute must not add executable sets").toBe(0);
+  expect.soft(results.defaultEquipment.decision.allowed, "Stale empty equipment state cannot gate a valid resolved substitute").toBe(true);
+  expect.soft(results.defaultEquipment.added, "A valid resolved substitute remains executable when stale equipment state is empty").toBe(1);
+  expect.soft(results.restrictiveMesocycle.decision.allowed, "Legacy mesocycle equipment metadata must not gate normal logging").toBe(true);
+  expect.soft(results.restrictiveMesocycle.added, "Legacy mesocycle equipment metadata cannot suppress an executable set").toBe(1);
   for (const [label, observed] of [
     ["unresolvable", results.missingObservedIdentity],
     ["different", results.differentObservedIdentity]

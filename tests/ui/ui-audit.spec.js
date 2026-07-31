@@ -107,8 +107,8 @@ test("Templates initial frame stays progressive under large history", async ({ p
   await expect(editor.locator(".disclosure-body")).toHaveCount(0);
 });
 
-test("Mesocycle Planner follows dependencies and enforces restricted equipment", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name === "desktop", "Restricted-equipment interaction is covered at the narrow mobile viewport; desktop runs the complete full-review workflow.");
+test("Mesocycle Planner follows dependencies without exposing a global equipment preference", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === "desktop", "Guided-planner interaction is covered at the narrow mobile viewport; desktop runs the complete full-review workflow.");
   test.setTimeout(120_000);
   await page.locator('.nav-button[data-tab="plan"]').waitFor({ state: "visible", timeout: 90_000 });
   await page.locator('.nav-button[data-tab="plan"]').click();
@@ -121,17 +121,8 @@ test("Mesocycle Planner follows dependencies and enforces restricted equipment",
   await expect(page.locator('[data-action="guided-step"][data-step="guide"]')).toBeEnabled();
   await expect(page.locator('[data-action="guided-step"][data-step="build"]')).toBeDisabled();
 
-  const equipmentLabels = await page.locator('[data-action="toggle-mesocycle-equipment"]').allTextContents();
-  expect(equipmentLabels).toEqual(["All Equipment / Standard Gym", "Bodyweight", "Bands", "Dumbbells", "Barbell", "Rack", "Cable Station"]);
-
-  const allEquipment = page.locator('[data-action="toggle-mesocycle-equipment"][data-value="all"]');
-  const bodyweight = page.locator('[data-action="toggle-mesocycle-equipment"][data-value="bodyweight"]');
-  expect(await allEquipment.count()).toBe(1);
-  expect(await bodyweight.count()).toBe(1);
-  await expect(allEquipment).toHaveAttribute("aria-pressed", "true");
-  await bodyweight.click();
-  await expect(allEquipment).toHaveAttribute("aria-pressed", "false");
-  await expect(bodyweight).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator('[data-action="toggle-mesocycle-equipment"]')).toHaveCount(0);
+  expect(await page.evaluate(() => Object.hasOwn(data.settings, "availableEquipment"))).toBe(false);
 
   const chestScope = page.locator('[data-action="mesocycle-muscle-scope"][value="chest"]');
   expect(await chestScope.count()).toBe(1);
@@ -145,11 +136,10 @@ test("Mesocycle Planner follows dependencies and enforces restricted equipment",
   await expect(page.locator('[data-action="guided-step"][data-step="create"]')).toBeDisabled();
   await page.getByRole("button", { name: "Add Exercise" }).click();
   const candidateNames = await page.evaluate(() => [...document.querySelectorAll(".exercise-browser-card h3")].map((item) => item.textContent.trim()));
-  expect(candidateNames.some((name) => /cable|barbell|dumbbell|machine|leg press/i.test(name))).toBe(false);
+  expect(candidateNames.length).toBeGreaterThan(0);
   expect(await page.getByText("Unknown", { exact: true }).count()).toBe(0);
   await page.locator('[data-action="close-guided-exercise-browser"]').click();
   await page.locator('[data-action="guided-step"][data-step="setup"]').click();
-  await page.getByRole("button", { name: "All Equipment / Standard Gym" }).click();
   await page.getByRole("button", { name: "Build the days" }).click();
   await page.getByRole("button", { name: "Add Exercise" }).click();
   const configureButtons = page.locator('[data-action="select-guided-exercise"]:not([disabled])');

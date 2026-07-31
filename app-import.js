@@ -855,7 +855,7 @@
           throw new Error("Backup dataRevision must be omitted or a non-negative safe integer.");
         }
         const allowedTopLevelFields = new Set(["appDataVersion", "domainMigrationVersion", "sessions", "exercises", "sets", "templates", "mesocycles", "activeMesocycleId", "recommendationHistory", "manualOverrides", "personalEvidencePackage", "rawImports", "migrationAudit", "dataRevision", "settings"]);
-        const allowedSessionFields = new Set(["id", "externalId", "source", "date", "title", "isTravel", "notes", "submitted", "workoutStarted", "workoutState", "completedAt", "submittedAt", "startedAt", "createdAt", "updatedAt", "templateId", "recovery", "prs", "workoutAnalysis", "workoutPrescription", "adjustmentSummary", "deletedAt", "trashed", "canceledAt"]);
+        const allowedSessionFields = new Set(["id", "externalId", "source", "date", "title", "isTravel", "notes", "submitted", "workoutStarted", "workoutState", "completedAt", "submittedAt", "startedAt", "createdAt", "updatedAt", "templateId", "recovery", "prs", "grade", "gradeVersion", "workoutAnalysis", "workoutPrescription", "adjustmentSummary", "deletedAt", "trashed", "canceledAt"]);
         const allowedExerciseFields = new Set(["id", "externalId", "source", "sessionId", "name", "notes", "order", "primaryMuscle", "secondaryMuscle", "restSeconds", "resistanceType", "isBodyweight", "isDeload", "customExerciseProfile", "executionQualityAssessment", "recommendationSnapshot", "basePrescription", "finalPrescription", "coachRecommendation", "executionBlocked", "safetyRestriction", "manualOverrides", "adjusted", "adjustmentReason", "triggerLabels", "canonicalExerciseId", "performanceExerciseId", "researchExerciseId", "identitySource", "identityVersion", "originalPrescription", "prescription", "recommendationVersion", "personalDataVersion", "researchDatabaseVersion", "programTargetContext", "appliedTargetContext", "overrideLocked"]);
         const allowedSetFields = new Set(["id", "exerciseId", "setNumber", "sequenceIndex", "sequence", "setTypeIndex", "setType", "reps", "weight", "weightUnit", "resistanceType", "rpe", "completed", "skipped", "edited", "isWarmup", "countsTowardScore", "countsTowardVolume", "countsTowardProgression", "addedLoad", "assistanceLoad", "durationSeconds", "distance", "distanceUnit", "targetReps", "targetRepMin", "targetRepMax", "targetWeight", "targetRpe", "targetRpeMin", "targetRpeMax", "targetRpeTolerance", "targetRestSeconds", "setPrescription", "previousComparableSet", "prescriptionReason", "prescriptionMode", "prescriptionConfidence", "validationWarning", "classificationSource", "classificationConfidence", "classifierVersion", "manualOverride", "reviewRequired", "classifiedAt", "sourceSetOrder", "originalImportedValue"]);
         const allowedTemplateFields = new Set(["id", "name", "notes", "createdAt", "updatedAt", "exercises", "mesocycleId", "mesocycleRevision", "trainingDayId", "source"]);
@@ -938,7 +938,7 @@
         const unknownTopLevel = Object.keys(imported).find((key) => !allowedTopLevelFields.has(key));
         if (unknownTopLevel) throw new Error(`Backup contains an unknown top-level field: ${unknownTopLevel}.`);
         const appDataVersion = imported.appDataVersion;
-        if (!Number.isInteger(appDataVersion) || ![1, 2].includes(appDataVersion)) throw new Error("Unsupported or malformed appDataVersion; only version 1 legacy migration and version 2 are supported.");
+        if (!Number.isInteger(appDataVersion) || ![1, 2, 3].includes(appDataVersion)) throw new Error("Unsupported or malformed appDataVersion; only versions 1, 2, and 3 are supported.");
         for (const collection of ["sessions", "exercises", "sets", "templates"]) if (!Array.isArray(imported[collection])) throw new Error(`Import must include a ${collection} array.`);
         if (imported.sessions.length > MAX_SESSIONS) throw new Error(`Session count exceeds the ${MAX_SESSIONS} limit.`);
         if (imported.exercises.length > MAX_EXERCISES) throw new Error(`Exercise count exceeds the ${MAX_EXERCISES} limit.`);
@@ -1017,9 +1017,7 @@
               if (exercise[field] == null) return;
               copiedExercise[field] = assertTemplateNumericValue(exercise[field], action, `Template ${index + 1} exercise ${exerciseIndex + 1} ${field}`);
             });
-            if (exercise.standardWorkloadOverride != null && typeof exercise.standardWorkloadOverride !== "boolean") throw new Error(`Template ${index + 1} exercise ${exerciseIndex + 1} standard workload flag must be boolean.`);
             if (exercise.standardRoleWorkload != null) {
-              if (exercise.standardWorkloadOverride !== true) throw new Error(`Template ${index + 1} exercise ${exerciseIndex + 1} role workload requires an enabled standard workload override.`);
               const label = `Template ${index + 1} exercise ${exerciseIndex + 1} standard role workload`;
               const roles = exercise.standardRoleWorkload;
               assertAllowed(roles, new Set(["setStructure", "topSet", "backoffSets"]), label);
@@ -1073,7 +1071,6 @@
         if (settings.theme != null && !["light", "dark"].includes(settings.theme)) throw new Error("Settings theme is invalid.");
         if (settings.colorPackage != null && !["heritage-atlas", "signal-garden", "alpine-ledger", "training-hall", "harbor-pulse", "prairie-electric", "redwood-circuit", "mediterranean-set", "modern-primary", "night-stadium"].includes(settings.colorPackage)) throw new Error("Settings colorPackage is invalid.");
         if (settings.trainingDaysPerWeek != null && (!Number.isInteger(Number(settings.trainingDaysPerWeek)) || Number(settings.trainingDaysPerWeek) < 1 || Number(settings.trainingDaysPerWeek) > 7)) throw new Error("Settings trainingDaysPerWeek must be between 1 and 7.");
-        if (settings.availableEquipment != null && (!Array.isArray(settings.availableEquipment) || settings.availableEquipment.length > 128 || settings.availableEquipment.some((value) => typeof value !== "string" || !value || value.length > 128))) throw new Error("Settings availableEquipment is invalid or exceeds its limit.");
         if (settings.excludedExerciseIds != null && (!Array.isArray(settings.excludedExerciseIds) || settings.excludedExerciseIds.length > MAX_EXERCISES)) throw new Error("Settings excludedExerciseIds is invalid or exceeds its limit.");
         if (Array.isArray(settings.excludedExerciseIds)) settings.excludedExerciseIds.forEach((value, index) => assertId(value, `Excluded exercise ${index + 1}`));
         const booleanSettingFields = ["timerSound", "workoutCompletionSound", "timerVibration", "interactionVibration", "timerNotifications", "inAppRestAlerts", "restCompleteLockScreenNotifications", "restCompleteAutoReturnToWorkout", "autoStartRestTimer", "autoHighlightNextSet", "autoScrollNextSet", "installGuideDismissed", "setupSoundConfirmed", "cloudWorkoutSyncConsent"];

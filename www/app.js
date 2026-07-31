@@ -3,6 +3,39 @@
         return ["set-reps", "set-weight", "set-rpe", "set-duration", "set-distance", "template-exercise-sets", "template-exercise-reps", "template-exercise-rpe", "template-exercise-increment", "template-exercise-rest", "exercise-rest-seconds", "recovery-sleep-hours", "recovery-hrv", "recovery-resting-hr", "template-readiness-sleep-hours", "template-readiness-hrv", "template-readiness-resting-hr", "baseline-sleep-hours", "baseline-sleep-quality", "baseline-hrv", "baseline-resting-hr", "baseline-soreness", "baseline-band"].includes(action);
       }
 
+      function hasActiveRpeReplacement(target) {
+        return target?.dataset?.action === "set-rpe" && Object.prototype.hasOwnProperty.call(target.dataset, "rpeReplacementBuffer");
+      }
+
+      function applyRpeReplacementText(target, insertedText) {
+        if (!hasActiveRpeReplacement(target)) return false;
+        const inserted = String(insertedText || "").replace(/[^\d.]/g, "");
+        if (!inserted) return false;
+        let buffer = target.dataset.replaceOnNextInput === "true" ? "" : String(target.dataset.rpeReplacementBuffer || "");
+        for (const character of inserted) {
+          if (character === "." && buffer.includes(".")) continue;
+          const candidate = buffer + character;
+          if (!/^\d{0,2}(?:\.\d?)?$/.test(candidate)) continue;
+          const numeric = Number(candidate.endsWith(".") ? candidate.slice(0, -1) : candidate);
+          if (Number.isFinite(numeric) && numeric <= 10) buffer = candidate;
+        }
+        target.dataset.rpeReplacementBuffer = buffer;
+        target.dataset.replaceOnNextInput = "false";
+        target.value = buffer.endsWith(".") ? buffer.slice(0, -1) : buffer;
+        target.dispatchEvent(new Event("input", { bubbles: true }));
+        return true;
+      }
+
+      function deleteFromRpeReplacement(target) {
+        if (!hasActiveRpeReplacement(target)) return false;
+        const buffer = String(target.dataset.rpeReplacementBuffer || "").slice(0, -1);
+        target.dataset.rpeReplacementBuffer = buffer;
+        target.dataset.replaceOnNextInput = "false";
+        target.value = buffer.endsWith(".") ? buffer.slice(0, -1) : buffer;
+        target.dispatchEvent(new Event("input", { bubbles: true }));
+        return true;
+      }
+
       let lastInteractionFeedbackAt = 0;
 
       function feedbackLevelForAction(action, target) {
@@ -47,10 +80,11 @@
       }
 
       function releaseSetEntryFocusForCompletion(target) {
-        if (target?.dataset?.action !== "toggle-set") return;
+        if (target?.dataset?.action !== "toggle-set") return false;
         const active = document.activeElement;
-        if (!(active instanceof HTMLElement) || !active.matches(".workout-view .set-current-editor input, .workout-view .set-current-editor select, .workout-view .set-current-editor textarea")) return;
+        if (!(active instanceof HTMLElement) || !active.matches(".workout-view .set-current-editor input, .workout-view .set-current-editor select, .workout-view .set-current-editor textarea")) return false;
         active.blur();
+        return true;
       }
 
       function focusWorkoutExercise(exerciseId) {
@@ -67,7 +101,16 @@
         const target = event.target.closest("button, select, summary[data-action], label.toggle-line, label.alert-setting-field, .volume-card");
         if (!target || target.hasAttribute("disabled")) return;
         const actionTarget = event.target.closest("[data-action]") || target.querySelector?.("[data-action]");
-        releaseSetEntryFocusForCompletion(actionTarget || target);
+        const completionTarget = actionTarget || target;
+        if (releaseSetEntryFocusForCompletion(completionTarget)) {
+          event.preventDefault();
+          const setId = completionTarget.dataset.setId;
+          window.setTimeout(() => {
+            const freshTarget = Array.from(root.querySelectorAll('[data-action="toggle-set"]')).find((candidate) => candidate.dataset.setId === setId);
+            freshTarget?.click();
+          }, 0);
+          return;
+        }
         const level = feedbackLevelForAction(actionTarget?.dataset?.action || target.dataset.action, actionTarget || target);
         target.classList.add("is-pressing", "feedback-" + level);
         window.setTimeout(() => target.isConnected && target.classList.remove("is-pressing", "feedback-" + level), 180);
@@ -234,19 +277,6 @@
           const templateId = target.dataset.templateId;
           if (expandedTemplateEditorIds.has(templateId)) expandedTemplateEditorIds.delete(templateId); else expandedTemplateEditorIds.add(templateId);
           render();
-        }
-        if (action === "toggle-mesocycle-equipment") {
-          const value = target.dataset.value;
-          const current = new Set(mesocycleEquipmentSelection());
-          if (value === "all") {
-            current.clear();
-            current.add("all");
-          } else {
-            current.delete("all");
-            if (current.has(value)) current.delete(value); else current.add(value);
-            if (!current.size) current.add("all");
-          }
-          commit({ ...data, settings: { ...data.settings, availableEquipment: Array.from(current) } });
         }
         if (action === "mesocycle-transition") transitionMesocyclePlan(target.dataset.mesocycleId, target.dataset.mesocycleAction);
         if (action === "request-delete-mesocycle") { pendingDeleteMesocycleId = target.dataset.mesocycleId; render(); }
@@ -588,7 +618,6 @@
           if (target.checked) mesocycleScopeDraft.add(target.value); else mesocycleScopeDraft.delete(target.value);
         }
         if (action === "mesocycle-training-days") commit({ ...data, settings: { ...data.settings, trainingDaysPerWeek: Math.max(1, Math.min(7, Number(target.value || 4))) } });
-        if (action === "mesocycle-equipment") commit({ ...data, settings: { ...data.settings, availableEquipment: String(target.value || "").split(",").map((item) => item.trim()).filter(Boolean) } });
         if (action === "timer-sound") commit({ ...data, settings: { ...data.settings, timerSound: target.checked, setupSoundConfirmed: target.checked ? data.settings.setupSoundConfirmed : false } });
         if (action === "rest-complete-sound") commit({ ...data, settings: { ...data.settings, restCompleteSound: target.value } });
         if (action === "rest-complete-volume") commit({ ...data, settings: { ...data.settings, restCompleteSoundVolume: Math.max(0, Math.min(1, Number(target.value ?? 0.85))) } });
@@ -660,6 +689,7 @@
         if (isNumericEditAction(target.dataset.action)) {
           target.dataset.replaceOnNextInput = "true";
           target.dataset.previousValue = target.value;
+          if (target.dataset.action === "set-rpe") target.dataset.rpeReplacementBuffer = "";
           target.select();
         }
       });
@@ -680,6 +710,7 @@
           return;
         }
         if (!target || target.tagName !== "INPUT" || !isNumericEditAction(target.dataset.action)) return;
+        delete target.dataset.rpeReplacementBuffer;
         if (templateNumericFields[target.dataset.action]) {
           handleTemplateNumericEdit(target);
           return;
@@ -709,6 +740,14 @@
       root.addEventListener("beforeinput", (event) => {
         const target = event.target.closest("[data-action]");
         if (!target || target.tagName !== "INPUT" || !isNumericEditAction(target.dataset.action)) return;
+        if (target.dataset.action === "set-rpe" && event.inputType === "deleteContentBackward" && deleteFromRpeReplacement(target)) {
+          event.preventDefault();
+          return;
+        }
+        if (target.dataset.action === "set-rpe" && event.inputType?.startsWith("insert") && applyRpeReplacementText(target, event.data)) {
+          event.preventDefault();
+          return;
+        }
         if (target.dataset.replaceOnNextInput === "true" && event.inputType && event.inputType.startsWith("insert")) {
           event.preventDefault();
           target.value = event.data || "";
@@ -779,6 +818,14 @@
         }
         if (target?.dataset.action === "show-chart-point" && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); target.dispatchEvent(new MouseEvent("click", { bubbles: true })); return; }
         if (!target || target.tagName !== "INPUT" || !isNumericEditAction(target.dataset.action)) return;
+        if (target.dataset.action === "set-rpe" && event.key === "Backspace" && deleteFromRpeReplacement(target)) {
+          event.preventDefault();
+          return;
+        }
+        if (target.dataset.action === "set-rpe" && /[\d.]/.test(event.key) && applyRpeReplacementText(target, event.key)) {
+          event.preventDefault();
+          return;
+        }
         if (target.dataset.replaceOnNextInput !== "true") return;
         if (event.ctrlKey || event.metaKey || event.altKey || event.key.length !== 1 || !/[\d.]/.test(event.key)) {
           target.dataset.replaceOnNextInput = "false";

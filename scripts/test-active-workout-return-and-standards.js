@@ -44,7 +44,8 @@ assert.match(views, /data-action="apply-standard-workload"/, "Exercise defaults 
 assert.match(views, /data-standard-save-template/, "Template workouts must expose an explicit reusable-default choice");
 assert.match(interactions, /apply-standard-workload[\s\S]*applyExerciseDefaultTargets[\s\S]*saveTemplateStandard/, "The exercise-default action must route through the universal audited target writer");
 assert.match(interactions, /changedControl\.matches\?\.\("\[data-default-field\]"\)[\s\S]*enabled\.value = "false"[\s\S]*changedControl\.matches\?\.\("\[data-set-default-field\]"\)[\s\S]*enabled\.value = "true"/, "The most recently edited shared or individual target surface must become authoritative");
-assert.match(workout, /function applyExerciseDefaultTargets\([\s\S]*action: "exercise_default_targets"[\s\S]*setTypes: workingTypes[\s\S]*warmups: templateWarmups[\s\S]*standardWorkloadOverride: true/, "Applying reusable exercise defaults must persist exact per-set targets and an audit entry");
+assert.match(workout, /function applyExerciseDefaultTargets\([\s\S]*action: "exercise_default_targets"[\s\S]*setTypes: workingTypes[\s\S]*warmups: templateWarmups/, "Applying reusable exercise defaults must persist exact per-set targets and an audit entry");
+assert.doesNotMatch(workout, /standardWorkloadOverride/, "The deleted target-ownership gate must not remain in the active workout writer");
 assert.match(workout, /sessions: data\.sessions\.map\([\s\S]*updatedAt: now[\s\S]*manualOverrides: \[\.\.\.data\.manualOverrides, overrideEntry\]/, "Applying exercise defaults must update the owning active session and its top-level audit ledger");
 assert.match(workout, /targetRpeMin > targetRpeMax[\s\S]*Choose an ordered target RPE range from 1 to 10 in 0\.5 steps/, "Shared defaults must reject reversed or off-step target RPE ranges");
 assert.match(workout, /rowTargetRpeMin > rowTargetRpeMax[\s\S]*needs an ordered target RPE range from 1 to 10 in 0\.5 steps/, "Individual targets must reject reversed or off-step target RPE ranges");
@@ -54,27 +55,28 @@ assert.match(html, /\.individual-set-row \.numeric-stepper \{[^}]*grid-template-
 assert.match(html, /@media \(max-width: 360px\)[\s\S]*\.individual-set-row \.range-steppers \{ grid-template-columns: minmax\(0, 1fr\); \}/, "Very narrow screens must stack individual min/max steppers instead of clipping their values");
 assert.match(html, /:where\(\.compact-disclosure,[\s\S]*\) > summary::after \{[\s\S]*content: "[^"]+";[\s\S]*\}\s*:where\(\.compact-disclosure,[\s\S]*\)\[open\] > summary::after \{[\s\S]*background: var\(--rest-accent\);[\s\S]*transform: rotate\(180deg\);/, "Section disclosures must render one persistent caret that rotates and gains the quiet rest accent when open");
 assert.match(foundation, /savedRepRange[\s\S]*executableRepRange[\s\S]*repMin: savedRepRange \? executableRepRange\.min/, "Future role rows must use the saved standard range even for top/back-off structures");
-assert.match(imports, /"repMin", "repMax", "standardWorkloadOverride", "standardRoleWorkload"/, "Backup validation must preserve shared and role-specific standard workload fields");
-assert.match(imports, /role workload requires an enabled standard workload override[\s\S]*at most 20 total working sets/, "Backup validation must reject orphaned or over-limit role defaults");
+assert.match(imports, /"repMin", "repMax", "standardWorkloadOverride", "standardRoleWorkload"/, "Backup validation must accept legacy shared and role-specific workload fields for migration");
+assert.doesNotMatch(imports, /role workload requires an enabled standard workload override/, "Legacy role targets must migrate without reviving the deleted ownership gate");
 assert.match(imports, /adjustedSnapshot[\s\S]*prescriptionSnapshotWithTemplateStandard\(adjustedSnapshot, templateExercise, \{ template: context\.template, workoutId: context\.workoutId \}\)/, "Readiness recalculation must retain an explicit saved standard on its fresh snapshot");
 assert.match(workout, /adjustTargetForRecovery\(historyTarget, recoveryAdvice, \{ recovery, exerciseName: templateExercise\.name, template, workoutId: session\.id \}\)/, "Workout identity must remain bound while readiness reapplies the standard");
 
 const helperSource = extractFunction(foundation, "prescriptionSnapshotWithTemplateStandard");
 let captured = null;
-const helper = new Function("prescriptionEngine", "isoNow", `${helperSource}; return prescriptionSnapshotWithTemplateStandard;`)({
+const helper = new Function("prescriptionEngine", "isoNow", "normalizeStableTemplateExercise", "normalizeSetTypeCode", `${helperSource}; return prescriptionSnapshotWithTemplateStandard;`)({
   applyManualOverride(snapshot, override, options) {
     captured = { snapshot, override, options };
     return { ...snapshot, applied: true };
   }
-}, () => "2026-07-21T12:00:00.000Z");
+}, () => "2026-07-21T12:00:00.000Z", (exercise) => exercise, (value) => value);
 const snapshot = { finalPrescription: { workingSets: { target: 2 }, repRange: { min: 6, target: 8, max: 10 } } };
-assert.strictEqual(helper(snapshot, { sets: 4, repMin: 8, repMax: 12 }, {}), snapshot, "Evidence remains authoritative until the user explicitly saves a standard");
-const applied = helper(snapshot, { sets: 3, repMin: 8, repMax: 12, standardWorkloadOverride: true }, { workoutId: "workout-1" });
+const stableApplied = helper(snapshot, { sets: 4, repMin: 8, repMax: 12, setTypes: [] }, {});
+assert.equal(stableApplied.applied, true, "Every normalized variant target must be authoritative without a separate ownership flag");
+const applied = helper(snapshot, { sets: 3, repMin: 8, repMax: 12, setTypes: [] }, { workoutId: "workout-1" });
 assert.equal(applied.applied, true);
 assert.deepEqual(captured.override, { setCount: 3, repRange: { min: 8, max: 12 } });
 assert.equal(captured.options.workoutId, "workout-1");
 const roleSnapshot = { finalPrescription: { setStructure: "top_set_backoff", workingSets: { target: 3 }, repRange: { min: 6, target: 8, max: 12 }, topSet: { count: 1, repRange: { min: 6, max: 8 } }, backoffSets: { count: 2, repRange: { min: 9, max: 12 } } } };
-helper(roleSnapshot, { standardWorkloadOverride: true, standardRoleWorkload: { setStructure: "top_set_backoff", topSet: { count: 1, repRange: { min: 5, max: 7 } }, backoffSets: { count: 3, repRange: { min: 8, max: 11 } } } }, { workoutId: "workout-roles" });
+helper(roleSnapshot, { sets: 4, repMin: 5, repMax: 11, setTypes: [{ type: "top", setCount: 1, repMin: 5, repMax: 7 }, { type: "backoff", setCount: 3, repMin: 8, repMax: 11 }] }, { workoutId: "workout-roles" });
 assert.deepEqual(captured.override, { topSet: { count: 1, repRange: { min: 5, max: 7 } }, backoffSets: { count: 3, repRange: { min: 8, max: 11 } } });
 assert.equal(captured.options.workoutId, "workout-roles");
 

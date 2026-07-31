@@ -295,7 +295,7 @@ test("chart evidence segments retain thin weeks without changing scoring, omit d
   await expect(detail).not.toContainText(/that session/i);
 });
 
-test("guided planning honors equipment, muscle scope, partial search, no results, viability, and template creation", async ({ page }) => {
+test("guided planning honors muscle scope, partial search, no results, viability, and template creation without a global equipment preference", async ({ page }) => {
   test.setTimeout(120_000);
   await installFixture(page, buildEmptyAnalyticsSettingsFixture());
   await openPrimaryTab(page, "plan");
@@ -303,15 +303,8 @@ test("guided planning honors equipment, muscle scope, partial search, no results
   await page.getByRole("button", { name: "Start planning" }).click();
 
   await setNumericSetting(page, "mesocycle-training-days", 2);
-  const allEquipment = page.locator('[data-action="toggle-mesocycle-equipment"][data-value="all"]');
-  const dumbbells = page.locator('[data-action="toggle-mesocycle-equipment"][data-value="dumbbell"]');
-  await dumbbells.click();
-  await expect(allEquipment).toHaveAttribute("aria-pressed", "false");
-  await expect(dumbbells).toHaveAttribute("aria-pressed", "true");
-  expect(await page.evaluate(() => data.settings.availableEquipment)).toEqual(["dumbbell"]);
-  await allEquipment.click();
-  await expect(allEquipment).toHaveAttribute("aria-pressed", "true");
-  await expect(dumbbells).toHaveAttribute("aria-pressed", "false");
+  await expect(page.locator('[data-action="toggle-mesocycle-equipment"]')).toHaveCount(0);
+  expect(await page.evaluate(() => Object.hasOwn(data.settings, "availableEquipment"))).toBe(false);
 
   const scopeInputs = page.locator('[data-action="mesocycle-muscle-scope"]');
   const scopeCount = await scopeInputs.count();
