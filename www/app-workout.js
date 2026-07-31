@@ -234,30 +234,6 @@
         commit({ ...data, settings: { ...data.settings, readinessBaseline: { ...readinessBaseline(), ...boundedPatch } } }, shouldRender);
       }
 
-      function exerciseNameForPrescriptionId(exerciseId, fallback) {
-        const personal = prescriptionEngine?.evidence.personal;
-        const research = prescriptionEngine?.evidence.research;
-        const personalRecord = personal?.exerciseScores.find((item) => (item.exercise_id || item.exerciseId) === exerciseId)
-          || personal?.exercisePrescriptions.find((item) => (item.exercise_id || item.exerciseId) === exerciseId)
-          || personal?.exerciseMuscleScores.find((item) => (item.exercise_id || item.exerciseId) === exerciseId);
-        const researchId = personal?.crosswalkByPersonalId.get(exerciseId) || exerciseId;
-        return personalRecord?.exercise_name || personalRecord?.exerciseName || research?.exerciseById.get(researchId)?.exercise_name || fallback;
-      }
-
-      function expandedOverrideSetTypes(prescription, requestedRepRange = null, requestedSetCount = null) {
-        const repRange = requestedRepRange || prescription.repRange;
-        const workingSetCount = Number(requestedSetCount || prescription.workingSets.target || 1);
-        const topSetCount = Math.min(workingSetCount, Number(prescription.topSet?.count || 1));
-        const backoffSetCount = Math.max(0, workingSetCount - topSetCount);
-        if (prescription.setStructure === "top_set_backoff") return [
-          ...Array.from({ length: topSetCount }, () => ({ type: "top", repRange: requestedRepRange || prescription.topSet?.repRange || repRange, rpe: prescription.topSet?.targetRpe || prescription.targetRpe.max, reduction: 0 })),
-          ...Array.from({ length: backoffSetCount }, () => ({ type: "backoff", repRange: requestedRepRange || prescription.backoffSets?.repRange || repRange, rpe: prescription.backoffSets?.targetRpe || prescription.targetRpe.max, reduction: Number(prescription.backoffSets?.loadReductionPercent?.target || 12) }))
-        ];
-        if (prescription.setStructure === "multiple_top_sets") return Array.from({ length: workingSetCount }, () => ({ type: "top", repRange: requestedRepRange || prescription.topSet?.repRange || repRange, rpe: prescription.topSet?.targetRpe || prescription.targetRpe.max, reduction: 0 }));
-        const type = prescription.recommendationType.includes("deload") ? "deload" : "straight";
-        return Array.from({ length: workingSetCount }, () => ({ type, repRange, rpe: prescription.targetRpe.max, reduction: 0 }));
-      }
-
       function completeCustomExerciseSetup(exerciseId, form) {
         const exercise = exerciseById(exerciseId);
         const session = exercise ? sessionById(exercise.sessionId) : null;
@@ -273,7 +249,7 @@
           confirmedAt: isoNow()
         });
         const missing = missingCustomExerciseMetrics(profile);
-        if (missing.length) return showAppToast(`Complete recommendation setup: ${missing.join(", ")}.`);
+        if (missing.length) return showAppToast(`Complete exercise details: ${missing.join(", ")}.`);
         const profiledExercise = {
           ...exercise,
           customExerciseProfile: profile,
@@ -282,60 +258,14 @@
           resistanceType: profile.resistanceType,
           isBodyweight: isBodyweightResistance(profile.resistanceType)
         };
-        let snapshot;
-        try {
-          snapshot = boundedCustomPrescriptionSnapshot(profiledExercise, profile, { fresh: true, throughDate: session.date, excludeSessionId: session.id, recovery: session.recovery || {} });
-        } catch (error) {
-          return showAppToast(error?.message || "Custom guidance could not be generated.");
-        }
-        if (!snapshot?.finalPrescription) return showAppToast("Custom guidance could not be generated.");
-        const prescription = snapshot.finalPrescription;
-        const target = legacyTargetFromSnapshot(snapshot, { name: exercise.name, resistanceType: profile.resistanceType, increment: profile.smallestIncrement });
-        const allSets = setsForExercise(exerciseId);
-        const completedWorking = allSets.filter((set) => isWorkingSet(set, "progression") && set.completed);
-        const incompleteWorking = allSets.filter((set) => isWorkingSet(set, "progression") && !set.completed);
-        const warmups = allSets.filter((set) => setTypeSemantics(set).isWarmup);
-        const desiredTypes = expandedOverrideSetTypes(prescription);
-        const desiredIncomplete = desiredTypes.slice(Math.min(completedWorking.length, desiredTypes.length));
-        const baseLoad = Number(prescription.prescribedLoad?.target || target.weight || 0);
-        const rebuiltIncomplete = desiredIncomplete.map((role, index) => {
-          const existing = incompleteWorking[index] || createSet(exerciseId, completedWorking.length + index + 1, { resistanceType: profile.resistanceType });
-          return {
-            ...existing,
-            setNumber: completedWorking.length + index + 1,
-            sequenceIndex: warmups.length + completedWorking.length + index,
-            sequence: warmups.length + completedWorking.length + index,
-            setTypeIndex: desiredTypes.slice(0, completedWorking.length + index).filter((item) => item.type === role.type).length,
-            setType: role.type,
-            resistanceType: profile.resistanceType,
-            reps: Math.round((Number(role.repRange.min) + Number(role.repRange.max)) / 2),
-            weight: baseLoad,
-            rpe: Number(role.rpe),
-            targetReps: Math.round((Number(role.repRange.min) + Number(role.repRange.max)) / 2),
-            targetRepMin: Number(role.repRange.min),
-            targetRepMax: Number(role.repRange.max),
-            targetWeight: baseLoad,
-            targetRpe: Number(role.rpe),
-            targetRpeMin: Math.max(5, Number(role.rpe) - 1),
-            targetRpeMax: Number(role.rpe),
-            targetRestSeconds: prescription.restSeconds.target,
-            prescriptionReason: "Bounded custom guidance generated after metadata confirmation.",
-            prescriptionMode: target.mode,
-            prescriptionConfidence: prescription.confidence,
-            manualOverride: false,
-            completed: false,
-            skipped: false
-          };
-        });
-        const replacedSetIds = new Set(incompleteWorking.map((set) => set.id));
-        const nextExercise = { ...profiledExercise, recommendationSnapshot: snapshot, basePrescription: snapshot.basePrescription, finalPrescription: prescription, prescription: target, restSeconds: prescription.restSeconds.target, executionBlocked: Boolean(prescription.executionBlocked), safetyRestriction: prescription.safetyRestriction || null };
         commit({
           ...data,
-          exercises: data.exercises.map((item) => item.id === exerciseId ? nextExercise : item),
-          sets: [...data.sets.filter((set) => !replacedSetIds.has(set.id)), ...rebuiltIncomplete],
-          recommendationHistory: [...data.recommendationHistory.filter((item) => item.recommendationId !== snapshot.recommendationId), snapshot]
+          exercises: data.exercises.map((item) => item.id === exerciseId ? profiledExercise : item),
+          sets: data.sets.map((set) => set.exerciseId === exerciseId && !set.completed
+            ? { ...set, resistanceType: profile.resistanceType }
+            : set)
         }, true, { invalidateAnalysis: false, deferPersistence: true });
-        showAppToast("Custom profile complete. Bounded guidance was applied to unfinished work only.");
+        showAppToast("Custom exercise details saved. Log the work you actually perform.");
       }
 
       function readExerciseDefaultPlan(exercise, form) {
@@ -517,7 +447,6 @@
         const nextPlan = [...plan.warmups, ...plan.working].map((target) => ({ type: target.type, repMin: target.repMin, repMax: target.repMax, targetRpe: target.targetRpeMax, targetRpeMin: target.targetRpeMin, targetRpeMax: target.targetRpeMax, restSeconds: target.restSeconds }));
         const overrideEntry = {
           overrideId: id(),
-          recommendationId: exercise.recommendationSnapshot?.recommendationId || "",
           sessionId: exercise.sessionId,
           workoutId: exercise.sessionId,
           exerciseRuntimeId: exercise.id,
@@ -540,7 +469,6 @@
           source: "User-saved exercise defaults",
           effectiveStartDate: sessionById(exercise.sessionId)?.date || todayIso(),
           setTypes: workingTypes,
-          confidence: "high"
         };
         const nextExercise = {
           ...exercise,
@@ -600,211 +528,6 @@
           manualOverrides: [...data.manualOverrides, overrideEntry]
         }, true, { invalidateAnalysis: false, deferPersistence: true });
         showAppToast(sourceTemplateExercise ? "Exercise defaults applied and saved to the template." : "Exercise defaults applied to unfinished sets.");
-      }
-
-      function applyPrescriptionOverride(exerciseId, form, options = {}) {
-        const exercise = exerciseById(exerciseId);
-        if (!exercise?.recommendationSnapshot || !prescriptionEngine || !form) return;
-        const directOverride = typeof form.querySelector === "function" ? null : { ...form };
-        const current = exercise.recommendationSnapshot.finalPrescription;
-        const restriction = current.safetyRestriction || null;
-        const currentSafetyContext = restriction
-          ? safetySubstituteContext(exercise.recommendationSnapshot, { exercise, session: sessionById(exercise.sessionId) })
-          : null;
-        const safetyLocked = current.executionBlocked === true
-          || restriction?.status === "blocked"
-          || (restriction?.status === "resolved_by_confirmed_substitute" && currentSafetyContext?.resolvedValidation?.valid !== true);
-        const safetyContext = safetyLocked ? currentSafetyContext : null;
-        const read = (field) => directOverride ? "" : form.querySelector(`[data-override-field="${field}"]`)?.value ?? "";
-        const override = directOverride || {};
-        const roleStandard = options.standardWorkload && ["top_set_backoff", "multiple_top_sets"].includes(current.setStructure);
-        const roleValue = (prefix) => ({
-          count: Number(read(`${prefix}-sets`)),
-          repMin: Number(read(`${prefix}-rep-min`)),
-          repMax: Number(read(`${prefix}-rep-max`))
-        });
-        const validRoleValue = (value, maximum) => Number.isInteger(value.count) && value.count >= 1 && value.count <= maximum
-          && Number.isInteger(value.repMin) && Number.isInteger(value.repMax) && value.repMin >= 1 && value.repMax <= 50 && value.repMin <= value.repMax;
-        if (options.standardWorkload) {
-          if (roleStandard) {
-            const top = roleValue("top");
-            const backoff = current.setStructure === "top_set_backoff" ? roleValue("backoff") : null;
-            if (!validRoleValue(top, 10)) return showAppToast("Choose 1 to 10 top sets and a valid rep range from 1 to 50.");
-            if (backoff && !validRoleValue(backoff, 19)) return showAppToast("Choose 1 to 19 back-off sets and a valid rep range from 1 to 50.");
-            if (top.count + Number(backoff?.count || 0) > 20) return showAppToast("Choose no more than 20 total working sets.");
-          } else {
-            const standardSets = Number(read("sets"));
-            const standardRepMin = Number(read("rep-min"));
-            const standardRepMax = Number(read("rep-max"));
-            if (!Number.isInteger(standardSets) || standardSets < 1 || standardSets > 12) return showAppToast("Choose between 1 and 12 working sets.");
-            if (!Number.isInteger(standardRepMin) || !Number.isInteger(standardRepMax) || standardRepMin < 1 || standardRepMax > 50 || standardRepMin > standardRepMax) return showAppToast("Choose a valid rep range from 1 to 50.");
-          }
-        }
-        const replacementName = directOverride ? "" : String(read("exercise")).trim();
-        let replacementId = "";
-        if (replacementName) {
-          replacementId = safetyLocked
-            ? exactResearchCatalogIdentity(replacementName, safetyContext.exerciseCatalog) || ""
-            : prescriptionExerciseIdentity(replacementName) || "";
-          if (!replacementId) return showAppToast("That replacement is not in the personal or research exercise database.");
-          if (safetyLocked) {
-            if (!safetyContext.allowedSafetySubstituteIds.includes(replacementId)) return showAppToast("That exercise is not an engine-confirmed substitute under the current equipment and exclusion settings.");
-            const catalogRecord = safetyContext.exerciseCatalog.find((item) => item.exercise_id === replacementId);
-            if (!catalogRecord) return showAppToast("That substitute does not retain a coherent public catalog identity.");
-            override.exerciseId = replacementId;
-            override.researchExerciseId = catalogRecord.exercise_id;
-            override.painFreeConfirmed = form.querySelector('[data-override-field="pain-free-confirmed"]')?.checked === true;
-          } else if (replacementId !== current.exerciseId) override.exerciseId = replacementId;
-        }
-        if (!directOverride && safetyLocked && !replacementName) return showAppToast("Choose a distinct engine-confirmed substitute before resolving this safety restriction.");
-        if (!directOverride && !safetyLocked) {
-          if (roleStandard) {
-            const top = roleValue("top");
-            const currentTopRange = current.topSet?.repRange || current.repRange;
-            if (top.count !== Number(current.topSet?.count || 0) || top.repMin !== Number(currentTopRange.min) || top.repMax !== Number(currentTopRange.max)) override.topSet = { count: top.count, repRange: { min: top.repMin, max: top.repMax } };
-            if (current.setStructure === "top_set_backoff") {
-              const backoff = roleValue("backoff");
-              const currentBackoffRange = current.backoffSets?.repRange || current.repRange;
-              if (backoff.count !== Number(current.backoffSets?.count || 0) || backoff.repMin !== Number(currentBackoffRange.min) || backoff.repMax !== Number(currentBackoffRange.max)) override.backoffSets = { count: backoff.count, repRange: { min: backoff.repMin, max: backoff.repMax } };
-            }
-          } else {
-            const sets = Number(read("sets"));
-            if (sets && sets !== Number(current.workingSets.target)) override.setCount = sets;
-            const repMin = Number(read("rep-min"));
-            const repMax = Number(read("rep-max"));
-            if (repMin && repMax && (repMin !== Number(current.repRange.min) || repMax !== Number(current.repRange.max))) override.repRange = { min: Math.min(repMin, repMax), max: Math.max(repMin, repMax) };
-          }
-          const load = read("load") === "" ? null : Number(read("load"));
-          if (load !== null && load !== Number(current.prescribedLoad?.target ?? 0)) override.load = load;
-          const structure = read("structure");
-          if (structure && structure !== current.setStructure) override.setStructure = structure;
-          const deload = read("deload");
-          if (deload && deload !== "engine") override.deloadRecommendation = deload;
-          const rotation = read("rotation");
-          if (rotation && rotation !== "engine") override.exerciseRotation = rotation;
-          const mesocycleId = read("mesocycle");
-          if (mesocycleId && mesocycleId !== exercise.recommendationSnapshot.mesocycleId) override.mesocycleId = mesocycleId;
-        }
-        const reason = String(options.reason || read("reason")).trim() || (options.standardWorkload ? "Standard workload preference" : "Intentional workout prescription override");
-        if (override.deloadRecommendation && override.deloadRecommendation !== "normal" && !current.recommendationType.includes("deload")) {
-          if (override.setCount === undefined) override.setCount = Math.max(1, Math.ceil(current.workingSets.target * 0.5));
-          if (override.load === undefined && Number(current.prescribedLoad?.target || 0) > 0) override.load = Number((current.prescribedLoad.target * (override.deloadRecommendation === "full_program_deload" ? 0.85 : 0.9)).toFixed(2));
-          override.setStructure = "straight_sets";
-        }
-        const session = sessionById(exercise.sessionId);
-        const sourceTemplate = options.saveTemplateStandard && session?.templateId ? data.templates.find((item) => item.id === session.templateId) : null;
-        const sourceTemplateExercise = sourceTemplate?.exercises?.find((item) => exerciseMatches(item.name, exercise.name)) || null;
-        const savedTop = roleStandard ? roleValue("top") : null;
-        const savedBackoff = roleStandard && current.setStructure === "top_set_backoff" ? roleValue("backoff") : null;
-        const savedRanges = roleStandard ? [savedTop, savedBackoff].filter(Boolean) : [];
-        const savedSetCount = roleStandard ? savedRanges.reduce((sum, role) => sum + role.count, 0) : Number(read("sets"));
-        const savedRepMin = roleStandard ? Math.min(...savedRanges.map((role) => role.repMin)) : Number(read("rep-min"));
-        const savedRepMax = roleStandard ? Math.max(...savedRanges.map((role) => role.repMax)) : Number(read("rep-max"));
-        const standardTemplateValues = options.saveTemplateStandard && sourceTemplateExercise ? {
-          sets: savedSetCount,
-          reps: Math.round((savedRepMin + savedRepMax) / 2),
-          repMin: savedRepMin,
-          repMax: savedRepMax,
-          ...(roleStandard ? { setTypes: [
-            { type: "top", setCount: savedTop.count, repMin: savedTop.repMin, repMax: savedTop.repMax, rpeMin: Math.max(1, Number(sourceTemplateExercise.targetRpe || 8) - 1), rpeMax: Number(sourceTemplateExercise.targetRpe || 8), restSeconds: Number(sourceTemplateExercise.restSeconds || 90), countsTowardScore: true, countsTowardVolume: true },
-            ...(savedBackoff ? [{ type: "backoff", setCount: savedBackoff.count, repMin: savedBackoff.repMin, repMax: savedBackoff.repMax, rpeMin: Math.max(1, Number(sourceTemplateExercise.targetRpe || 8) - 1), rpeMax: Number(sourceTemplateExercise.targetRpe || 8), restSeconds: Number(sourceTemplateExercise.restSeconds || 90), countsTowardScore: true, countsTowardVolume: true }] : [])
-          ] } : {})
-        } : null;
-        const templatesWithStandard = () => standardTemplateValues
-          ? data.templates.map((template) => template.id === sourceTemplate.id ? {
-              ...template,
-              updatedAt: isoNow(),
-              exercises: template.exercises.map((item) => item.id === sourceTemplateExercise.id ? { ...item, ...standardTemplateValues } : item)
-            } : template)
-          : data.templates;
-        if (!Object.keys(override).length) {
-          if (!standardTemplateValues) return showAppToast(options.standardWorkload ? "The stable routine target is already active." : "No prescription field changed.");
-          commit({ ...data, templates: templatesWithStandard() }, true, { invalidateAnalysis: false, deferPersistence: true });
-          showAppToast("Standard workload saved for future sessions.");
-          return;
-        }
-        let snapshot;
-        try {
-          snapshot = prescriptionEngine.applyManualOverride(exercise.recommendationSnapshot, override, {
-            workoutId: exercise.sessionId,
-            reason,
-            createdAt: isoNow(),
-            allowedSafetySubstituteIds: safetyContext?.allowedSafetySubstituteIds,
-            exerciseCatalog: safetyContext?.exerciseCatalog
-          });
-        } catch (error) {
-          showAppToast(error?.message || "The override could not be applied.");
-          return;
-        }
-        const prescription = snapshot.finalPrescription;
-        const target = legacyTargetFromSnapshot(snapshot, { name: replacementName || exercise.name, resistanceType: exercise.resistanceType, increment: exercise.prescription?.increment });
-        const completedWorking = setsForExercise(exerciseId).filter((set) => isWorkingSet(set, "score") && set.completed);
-        const incompleteWorking = setsForExercise(exerciseId).filter((set) => isWorkingSet(set, "score") && !set.completed);
-        const warmups = setsForExercise(exerciseId).filter((set) => setTypeSemantics(set).isWarmup);
-        const desiredTypes = expandedOverrideSetTypes(prescription, override.topSet || override.backoffSets ? null : override.repRange || null, override.topSet || override.backoffSets ? null : override.setCount || null);
-        const desiredIncomplete = desiredTypes.slice(Math.min(completedWorking.length, desiredTypes.length));
-        const baseLoad = Number(prescription.prescribedLoad?.target || target.weight || 0);
-        const rebuiltIncomplete = desiredIncomplete.map((role, index) => {
-          const existing = incompleteWorking[index] || createSet(exerciseId, completedWorking.length + index + 1, {});
-          const targetLoad = role.reduction && baseLoad > 0 ? roundEquipmentLoad(baseLoad * (1 - role.reduction / 100), Number(target.increment || 1), target.resistanceType) : baseLoad;
-          return {
-            ...existing,
-            setNumber: completedWorking.length + index + 1,
-            sequenceIndex: warmups.length + completedWorking.length + index,
-            sequence: warmups.length + completedWorking.length + index,
-            setTypeIndex: desiredTypes.slice(0, completedWorking.length + index).filter((item) => item.type === role.type).length,
-            setType: role.type,
-            isWarmup: false,
-            reps: Math.round((Number(role.repRange.min) + Number(role.repRange.max)) / 2),
-            weight: targetLoad,
-            rpe: Number(role.rpe),
-            targetReps: Math.round((Number(role.repRange.min) + Number(role.repRange.max)) / 2),
-            targetRepMin: Number(role.repRange.min),
-            targetRepMax: Number(role.repRange.max),
-            targetWeight: targetLoad,
-            targetRpe: Number(role.rpe),
-            targetRpeMin: Math.max(5, Number(role.rpe) - 1),
-            targetRpeMax: Number(role.rpe),
-            targetRestSeconds: prescription.restSeconds.target,
-            prescriptionReason: reason,
-            prescriptionMode: target.mode,
-            prescriptionConfidence: prescription.confidence,
-            manualOverride: true,
-            overrideId: snapshot.manualOverrides.at(-1)?.overrideId,
-            edited: true,
-            completed: false,
-            skipped: false
-          };
-        });
-        const replacedSetIds = new Set(incompleteWorking.map((set) => set.id));
-        const nextName = replacementId ? exerciseNameForPrescriptionId(replacementId, replacementName) : exercise.name;
-        const overrideEntry = { ...snapshot.manualOverrides.at(-1), recommendationId: snapshot.recommendationId, exerciseRuntimeId: exercise.id, sessionId: exercise.sessionId };
-        const nextExercise = { ...exercise, name: nextName, recommendationSnapshot: snapshot, basePrescription: snapshot.basePrescription, finalPrescription: prescription, prescription: target, adjustmentReason: target.adjustmentReason || "", isDeload: prescription.recommendationType.includes("deload"), executionBlocked: Boolean(prescription.executionBlocked), safetyRestriction: prescription.safetyRestriction || null, manualOverrides: [...(exercise.manualOverrides || []), overrideEntry], overrideLocked: true, restSeconds: prescription.restSeconds.target, pendingReconcile: options.clearPendingReconcile ? null : exercise.pendingReconcile };
-        const workoutRecommendations = session?.workoutPrescription?.recommendations || [];
-        const workoutPrescription = session?.workoutPrescription ? {
-          ...session.workoutPrescription,
-          mesocycleId: snapshot.mesocycleId,
-          recommendations: workoutRecommendations.some((item) => item.recommendationId === snapshot.recommendationId)
-            ? workoutRecommendations.map((item) => item.recommendationId === snapshot.recommendationId ? snapshot : item)
-            : [...workoutRecommendations, snapshot]
-        } : session?.workoutPrescription;
-        const recommendationHistory = data.recommendationHistory.some((item) => item.recommendationId === snapshot.recommendationId)
-          ? data.recommendationHistory.map((item) => item.recommendationId === snapshot.recommendationId ? snapshot : item)
-          : [...data.recommendationHistory, snapshot];
-        const retainedSets = data.sets.filter((set) => !replacedSetIds.has(set.id)).map((set) =>
-          options.sourceSetId && set.id === options.sourceSetId ? { ...set, ...(options.sourceSetPatch || {}) } : set
-        );
-        commit({
-          ...data,
-          sessions: data.sessions.map((item) => item.id === exercise.sessionId ? { ...item, mesocycleId: snapshot.mesocycleId || item.mesocycleId, workoutPrescription } : item),
-          exercises: data.exercises.map((item) => item.id === exercise.id ? nextExercise : item),
-          sets: [...retainedSets, ...rebuiltIncomplete],
-          templates: templatesWithStandard(),
-          recommendationHistory,
-          manualOverrides: [...data.manualOverrides, overrideEntry]
-        }, true, { invalidateAnalysis: false, deferPersistence: true });
-        showAppToast(options.toast || (options.standardWorkload ? (standardTemplateValues ? "Standard workload applied and saved for future sessions." : "Standard workload applied to this session.") : "Prescription override saved and locked for this workout."));
-        return snapshot;
       }
 
       function patchExercise(exerciseId, patch, shouldRender = true) {
@@ -913,10 +636,10 @@
         if (!exercise || exercise.sessionId !== activeWorkoutId || from === to) return null;
         const entry = {
           overrideId: `runtime_override_${id()}`,
-          recommendationId: exercise.recommendationSnapshot?.recommendationId || null,
           sessionId: exercise.sessionId,
+          workoutId: exercise.sessionId,
           exerciseRuntimeId: exercise.id,
-          exerciseId: exercise.recommendationSnapshot?.exerciseId || prescriptionExerciseIdentity(exercise.name),
+          exerciseId: exercise.performanceExerciseId || exercise.researchExerciseId || canonicalExerciseId(exercise.name),
           field,
           from,
           to,
@@ -981,34 +704,70 @@
         }
         const fields = new Set(pending.fields || []);
         const resistanceType = resistanceTypeFor(exercise, sourceSet);
-        const override = {};
         const sourceSetPatch = { deviationIntent: "accepted" };
+        const targetPatch = {};
         if (fields.has("load")) {
           const load = resistanceLoad(sourceSet, resistanceType);
-          override.load = load;
           sourceSetPatch.targetWeight = load;
+          targetPatch.targetWeight = load;
         }
         if (fields.has("reps")) {
           const reps = Number(sourceSet.reps || 0);
-          override.repRange = { min: reps, max: reps };
           sourceSetPatch.targetReps = reps;
           sourceSetPatch.targetRepMin = reps;
           sourceSetPatch.targetRepMax = reps;
+          targetPatch.targetReps = reps;
+          targetPatch.targetRepMin = reps;
+          targetPatch.targetRepMax = reps;
         }
         if (fields.has("rpe")) {
           const rpe = Number(sourceSet.rpe || 0);
-          override.rpe = rpe;
           sourceSetPatch.targetRpe = rpe;
           sourceSetPatch.targetRpeMin = rpe;
           sourceSetPatch.targetRpeMax = rpe;
+          targetPatch.targetRpe = rpe;
+          targetPatch.targetRpeMin = rpe;
+          targetPatch.targetRpeMax = rpe;
         }
-        applyPrescriptionOverride(exercise.id, override, {
-          reason: "in_session_edit",
-          sourceSetId: sourceSet.id,
-          sourceSetPatch,
-          clearPendingReconcile: true,
-          toast: "Remaining sets updated. Today's grade will use the new targets."
+        const remainingSets = setsForExercise(exercise.id).filter((set) =>
+          set.id !== sourceSet.id && isWorkingSet(set, "score") && !set.completed && !set.skipped
+        );
+        const beforeTargets = remainingSets.map((set) => ({
+          setId: set.id,
+          targetWeight: Number(set.targetWeight || 0),
+          targetRepMin: Number(set.targetRepMin || set.targetReps || 0),
+          targetRepMax: Number(set.targetRepMax || set.targetReps || 0),
+          targetRpeMin: Number(set.targetRpeMin ?? set.targetRpe ?? 0),
+          targetRpeMax: Number(set.targetRpeMax ?? set.targetRpe ?? 0)
+        }));
+        const afterTargets = remainingSets.map((set) => ({ setId: set.id, ...targetPatch }));
+        logWorkoutOverride(exercise, "remainingSetTargets", beforeTargets, afterTargets, {
+          setId: sourceSet.id,
+          reason: "Apply completed set values to remaining targets"
         });
+        const remainingIds = new Set(remainingSets.map((set) => set.id));
+        const sets = data.sets.map((set) => {
+          if (set.id === sourceSet.id) return { ...set, ...sourceSetPatch, manualOverride: true };
+          if (!remainingIds.has(set.id)) return set;
+          const inputPatch = {};
+          if (!set.edited) {
+            if (fields.has("load")) {
+              const load = resistanceLoad(sourceSet, resistanceType);
+              inputPatch.weight = load;
+              if (resistanceType === "bodyweight_plus_load") inputPatch.addedLoad = load;
+              if (resistanceType === "assisted_bodyweight") inputPatch.assistanceLoad = load;
+            }
+            if (fields.has("reps")) inputPatch.reps = Number(sourceSet.reps || 0);
+            if (fields.has("rpe")) inputPatch.rpe = Number(sourceSet.rpe || 0);
+          }
+          return { ...set, ...targetPatch, ...inputPatch, manualOverride: true };
+        });
+        commit({
+          ...data,
+          exercises: data.exercises.map((item) => item.id === exercise.id ? { ...item, pendingReconcile: null } : item),
+          sets
+        }, true, { invalidateAnalysis: false, deferPersistence: true });
+        showAppToast("Remaining set targets updated from the completed set.");
       }
 
       function toggleSetCompletion(setId) {
@@ -1073,27 +832,18 @@
         const workSets = setsForExercise(exercise.id).filter((set) => isWorkingSet(set, "progression") && !set.skipped);
         const representative = workSets[0];
         if (!representative) return;
-        const snapshot = exercise.recommendationSnapshot || null;
-        const prescription = snapshot?.finalPrescription || null;
         const repMins = workSets.map((set) => Number(set.targetRepMin || set.targetReps || set.reps || 0)).filter((value) => value > 0);
         const repMaxes = workSets.map((set) => Number(set.targetRepMax || set.targetReps || set.reps || 0)).filter((value) => value > 0);
         patchTemplateExercise(template.id, templateExercise.id, {
           sets: workSets.length,
           reps: representative.reps,
-          repMin: repMins.length ? Math.min(...repMins) : prescription?.repRange?.min || representative.reps,
-          repMax: repMaxes.length ? Math.max(...repMaxes) : prescription?.repRange?.max || representative.reps,
+          repMin: repMins.length ? Math.min(...repMins) : representative.reps,
+          repMax: repMaxes.length ? Math.max(...repMaxes) : representative.reps,
           targetRpe: Number(representative.targetRpe ?? representative.targetRpeMax) || Number(representative.rpe) || Number(templateExercise.targetRpe) || 8,
           restSeconds: exercise.restSeconds,
-          setStructure: prescription?.setStructure || exercise.appliedTargetContext?.setTypes?.map((item) => item.type).join("+") || templateExercise.setStructure,
+          setStructure: exercise.appliedTargetContext?.setTypes?.map((item) => item.type).join("+") || templateExercise.setStructure,
           setTypes: templateSetTypesFromHistory(workSets, exercise.restSeconds),
           warmups: setsForExercise(exercise.id).filter((set) => setTypeSemantics(set).isWarmup).map((set) => ({ reps: set.reps, targetRepMin: set.targetRepMin, targetRepMax: set.targetRepMax, targetRpe: set.targetRpe, targetRpeMin: set.targetRpeMin, targetRpeMax: set.targetRpeMax, targetRestSeconds: set.targetRestSeconds, weight: set.weight, weightUnit: set.weightUnit, resistanceType: set.resistanceType, isBodyweight: set.isBodyweight, addedLoad: set.addedLoad, assistanceLoad: set.assistanceLoad, rpe: set.rpe })),
-          recommendationSnapshot: snapshot,
-          recommendationId: snapshot?.recommendationId || null,
-          recommendationVersion: snapshot?.recommendationVersion || null,
-          personalDataVersion: snapshot?.personalDataVersion || null,
-          researchDatabaseVersion: snapshot?.researchDatabaseVersion || null,
-          mesocycleId: snapshot?.mesocycleId || session.mesocycleId || null,
-          manualOverrides: snapshot?.manualOverrides || [],
           ...(exercise.customExerciseProfile ? { customExerciseProfile: normalizeCustomExerciseProfile(exercise.customExerciseProfile) } : {})
         });
         activeSetNotice = "Template updated from today’s targets";
@@ -1163,7 +913,7 @@
         const identityFields = recognized
           ? exerciseIdentityFields({ name: name.trim(), researchExerciseId: resolvedIdentity.exerciseId })
           : { performanceExerciseId: `user_custom_${String(runtimeExerciseId).replace(/[^a-zA-Z0-9]+/g, "_")}`, researchExerciseId: "", identitySource: "user_declared_custom", identityVersion: "exercise-identity/2.1.0" };
-        let exercise = {
+        const exercise = {
           id: runtimeExerciseId,
           sessionId: session.id,
           name: name.trim(),
@@ -1179,15 +929,7 @@
           executionQualityAssessment: "not_assessed",
           ...(!recognized ? { customExerciseProfile: normalizeCustomExerciseProfile({ primaryMuscleGroupId: addExercisePrimaryMuscle, secondaryMuscleGroupId: addExerciseSecondaryMuscle }) } : {})
         };
-        let initialSets = [createSet(exercise.id, 1, { resistanceType })];
-        if (recognized) {
-          const snapshot = unifiedPrescriptionSnapshot(exercise, { fresh: true, throughDate: session.date, excludeSessionId: session.id, recovery: session.recovery || {} });
-          if (snapshot?.finalPrescription && !snapshot.executionBlocked && !snapshot.hardConstraint) {
-            const prescription = snapshot.finalPrescription;
-            const target = legacyTargetFromSnapshot(snapshot, { name: exercise.name, resistanceType });
-            exercise = { ...exercise, recommendationSnapshot: snapshot, basePrescription: snapshot.basePrescription, finalPrescription: prescription, prescription: target };
-          }
-        }
+        const initialSets = [createSet(exercise.id, 1, { resistanceType })];
         addExerciseDraft = "";
         addExercisePrimaryMuscle = "";
         addExerciseSecondaryMuscle = "";
@@ -1197,7 +939,7 @@
           session.workoutState = "active";
           if (!session.startedAt) session.startedAt = isoNow();
         }
-        commit({ ...data, sessions: data.sessions.map((item) => item.id === session.id ? { ...session, updatedAt: isoNow() } : item), exercises: [...data.exercises, exercise], sets: [...data.sets, ...initialSets], recommendationHistory: exercise.recommendationSnapshot ? [...data.recommendationHistory, exercise.recommendationSnapshot] : data.recommendationHistory }, true, { invalidateAnalysis: historyCorrection, deferPersistence: !historyCorrection });
+        commit({ ...data, sessions: data.sessions.map((item) => item.id === session.id ? { ...session, updatedAt: isoNow() } : item), exercises: [...data.exercises, exercise], sets: [...data.sets, ...initialSets] }, true, { invalidateAnalysis: historyCorrection, deferPersistence: !historyCorrection });
       }
 
       function addTemplate() {
@@ -1313,16 +1055,17 @@
         session.workoutState = "active";
         session.recovery = cleanRecovery(recovery);
         session.readinessMode = readinessMode;
-        const recoveryAdvice = recoveryRecommendationForSession(session);
+        session.resolvedActions = measurePerformance("workoutStart:exceptionResolver", () => resolveWorkoutExceptions(session, recovery, {
+          useOriginal: options.useOriginal === true,
+          userContinuedWithAction: Boolean(recovery.illness || recovery.pain)
+        }), { templateId: template.id, hasExplicitSafetyInput: Boolean(recovery.illness || recovery.pain) });
         const exercises = [];
         const sets = [];
-        const readinessAdjustments = [];
-        const recommendationSnapshots = [];
         let adjustedLiftCount = 0;
         template.exercises.forEach((templateExercise, index) => {
           templateExercise = normalizeStableTemplateExercise(templateExercise);
           const templateResistanceType = templateExercise.resistanceType || inferResistanceType(templateExercise.name, templateExercise);
-          const historyTarget = { ...coachTargetForTemplateExercise(templateExercise, { excludeSessionId: session.id, template, resistanceType: templateResistanceType, canonicalExerciseId: templateExercise.performanceExerciseId || canonicalExerciseId(templateExercise), workoutId: session.id }), resistanceType: templateResistanceType, isBodyweight: isBodyweightResistance(templateResistanceType) };
+          const historyTarget = { ...stableTargetForTemplateExercise(templateExercise, { excludeSessionId: session.id, template, resistanceType: templateResistanceType, canonicalExerciseId: templateExercise.performanceExerciseId || canonicalExerciseId(templateExercise), workoutId: session.id }), resistanceType: templateResistanceType, isBodyweight: isBodyweightResistance(templateResistanceType) };
           if (!historyTarget.executionBlocked) {
             historyTarget.sets = Math.max(1, Number(historyTarget.sets || templateExercise.sets || 1));
             historyTarget.reps = Math.max(1, Number(historyTarget.reps || templateExercise.reps || 1));
@@ -1330,8 +1073,9 @@
             historyTarget.repHigh = Math.max(historyTarget.repLow, Number(historyTarget.repHigh || historyTarget.reps));
           }
           historyTarget.restSeconds = Number(historyTarget.restSeconds || templateExercise.restSeconds || recommendedRestSeconds(templateExercise.name, { reps: historyTarget.reps, rpe: historyTarget.rpe, excludeSessionId: session.id }));
-          const safetyRestricted = Boolean(recovery.illness || recovery.pain);
-          const adjustedTarget = options.useOriginal && !safetyRestricted ? { ...historyTarget, adjusted: false, adjustmentReason: "", triggerLabels: [] } : adjustTargetForRecovery(historyTarget, recoveryAdvice, { recovery, exerciseName: templateExercise.name, template, workoutId: session.id });
+          const exerciseVariantId = templateExercise.performanceExerciseId || canonicalExerciseId(templateExercise) || templateExercise.id;
+          const resolvedAction = resolvedActionForVariant(session.resolvedActions, exerciseVariantId);
+          const adjustedTarget = applyResolvedActionToStableTarget(historyTarget, resolvedAction);
           const target = { ...adjustedTarget, resistanceType: adjustedTarget.resistanceType || templateResistanceType, isBodyweight: isBodyweightResistance(adjustedTarget.resistanceType || templateResistanceType) };
           const resolvedResistanceType = target.resistanceType || templateResistanceType;
           if (target.adjusted) adjustedLiftCount += 1;
@@ -1355,10 +1099,8 @@
             restSeconds
           }));
           appliedTargetContext = { ...appliedTargetContext, setTypes: [...(appliedTargetContext?.setTypes || []).filter((type) => type.isWarmup), ...resolvedTypes] };
-          const exercise = { id: id(), sessionId: session.id, ...(template.source === "strong" ? { source: "strong-template" } : {}), name: templateExercise.name, ...(typeof exerciseIdentityFields === "function" ? exerciseIdentityFields(templateExercise) : {}), primaryMuscle: templateExercise.primaryMuscle || "", secondaryMuscle: templateExercise.secondaryMuscle || "", ...(templateExercise.customExerciseProfile ? { customExerciseProfile: normalizeCustomExerciseProfile(templateExercise.customExerciseProfile) } : {}), executionQualityAssessment: "not_assessed", notes: "", originalPrescription: historyTarget, prescription: target, recommendationSnapshot: target.recommendationSnapshot || historyTarget.recommendationSnapshot || null, basePrescription: target.basePrescription || historyTarget.basePrescription || null, finalPrescription: target.finalPrescription || target.recommendationSnapshot?.finalPrescription || null, recommendationVersion: target.recommendationSnapshot?.recommendationVersion || null, personalDataVersion: target.recommendationSnapshot?.personalDataVersion || null, researchDatabaseVersion: target.recommendationSnapshot?.researchDatabaseVersion || null, programTargetContext, appliedTargetContext, adjustmentReason: target.adjustmentReason || "", manualOverrides: [], order: index, restSeconds, resistanceType: target.resistanceType || templateResistanceType, isBodyweight: isBodyweightResistance(resolvedResistanceType), isDeload: Boolean(target.isDeload), executionBlocked: Boolean(target.executionBlocked), safetyRestriction: target.safetyRestriction || null };
+          const exercise = { id: id(), sessionId: session.id, ...(template.source === "strong" ? { source: "strong-template" } : {}), name: templateExercise.name, ...(typeof exerciseIdentityFields === "function" ? exerciseIdentityFields(templateExercise) : {}), primaryMuscle: templateExercise.primaryMuscle || "", secondaryMuscle: templateExercise.secondaryMuscle || "", ...(templateExercise.customExerciseProfile ? { customExerciseProfile: normalizeCustomExerciseProfile(templateExercise.customExerciseProfile) } : {}), executionQualityAssessment: "not_assessed", notes: "", stableTargetSnapshot: { sets: historyTarget.sets, repLow: historyTarget.repLow, repHigh: historyTarget.repHigh, rpe: historyTarget.rpe, restSeconds: historyTarget.restSeconds }, resolvedActionId: resolvedAction?.decisionId || null, originalPrescription: historyTarget, prescription: target, programTargetContext, appliedTargetContext, adjustmentReason: target.adjustmentReason || "", manualOverrides: [], order: index, restSeconds, resistanceType: target.resistanceType || templateResistanceType, isBodyweight: isBodyweightResistance(resolvedResistanceType), isDeload: Boolean(target.isDeload), executionBlocked: false, safetyRestriction: null };
           exercises.push(exercise);
-          if (exercise.recommendationSnapshot) recommendationSnapshots.push(exercise.recommendationSnapshot);
-          readinessAdjustments.push({ exerciseId: exercise.id, name: exercise.name, original: historyTarget, adjusted: target, changed: Boolean(target.adjusted), reason: target.adjustmentReason || "No readiness change was required.", triggers: target.triggerLabels || [] });
           const configuredWarmups = target.executionBlocked ? [] : (templateExercise.warmups || []);
           configuredWarmups.forEach((warmup, warmupIndex) => {
             sets.push(createSet(exercise.id, warmupIndex + 1, { ...warmup, sequenceIndex: warmupIndex, sequence: warmupIndex, setTypeIndex: warmupIndex, sourceTemplateSetId: warmup.id || templateExercise.id + "-warmup-" + warmupIndex, resistanceType: target.resistanceType || templateResistanceType, completed: false, isWarmup: true, setType: "warmup", countsTowardScore: false, countsTowardVolume: false, countsTowardProgression: false }));
@@ -1393,20 +1135,11 @@
             sets.push(createSet(exercise.id, setNumber, { sequenceIndex: prescription.sequenceIndex, sequence: prescription.sequenceIndex, setTypeIndex: prescription.setTypeIndex, sourceTemplateSetId: setType.id || templateExercise.id + "-" + prescription.setType + "-" + prescription.setTypeIndex, reps: prescription.targetReps, weight: setWeight, weightUnit: target.weightUnit, resistanceType: target.resistanceType || templateResistanceType, isBodyweight: isBodyweightResistance(resolvedResistanceType), addedLoad: target.resistanceType === "bodyweight_plus_load" ? setWeight : target.addedLoad, assistanceLoad: target.resistanceType === "assisted_bodyweight" ? setWeight : target.assistanceLoad, rpe: setRpe, completed: false, isWarmup: false, setType: prescription.setType, countsTowardScore: setType.countsTowardScore !== false, countsTowardVolume: setType.countsTowardVolume !== false, targetReps: prescription.targetReps, targetRepMin: prescription.repMin, targetRepMax: prescription.repMax, targetWeight: setWeight, targetRpe: prescription.rpeMax, targetRpeMin: prescription.rpeMin, targetRpeMax: prescription.rpeMax, targetRpeTolerance: setType.rpeTolerance, targetRestSeconds: prescription.restSeconds, originalTargetReps: prescription.targetReps, originalTargetWeight: setWeight, originalTargetRpe: prescription.rpeMax, setPrescription: prescription, previousComparableSet: prescription.previousComparableSet, prescriptionReason: prescription.reason + (temporaryException && target.adjustmentReason ? " " + target.adjustmentReason : ""), prescriptionMode: temporaryException ? target.mode : "stable-target", prescriptionConfidence: prescription.confidence, validationWarning: prescription.validationWarning || "" }));
           });
         });
-        session.adjustmentSummary = adjustedLiftCount ? adjustedLiftCount + " lift" + (adjustedLiftCount === 1 ? "" : "s") + " adjusted for recovery." : "No recovery adjustments — stable routine targets are active.";
-        session.readinessAdjustments = readinessAdjustments;
+        session.adjustmentSummary = adjustedLiftCount ? adjustedLiftCount + " lift" + (adjustedLiftCount === 1 ? "" : "s") + " adjusted by the resolved exception action." : "";
         session.usedOriginalTargets = Boolean(options.useOriginal);
         session.mesocycleId = currentMesocycle()?.id || "";
-        session.workoutPrescription = {
-          schemaVersion: "workout-prescription/1.0.0",
-          workoutPrescriptionId: `workout_rx_${session.id}`,
-          createdAt: isoNow(),
-          mesocycleId: session.mesocycleId || null,
-          recommendationVersion: recommendationSnapshots[0]?.recommendationVersion || prescriptionApi?.PRESCRIPTION_SCHEMA_VERSION || "unknown",
-          personalDataVersion: recommendationSnapshots[0]?.personalDataVersion || prescriptionEvidenceStatus.personalVersion,
-          researchDatabaseVersion: recommendationSnapshots[0]?.researchDatabaseVersion || prescriptionEvidenceStatus.researchVersion,
-          recommendations: recommendationSnapshots
-        };
+        delete session.readinessAdjustments;
+        delete session.workoutPrescription;
         session.startedAt = isoNow();
         activeSessionId = session.id;
         activeWorkoutId = session.id;
@@ -1422,11 +1155,10 @@
             ...data,
             sessions: data.sessions.map((item) => item.id === session.id ? session : item),
             exercises: [...data.exercises.filter((exercise) => exercise.sessionId !== session.id), ...exercises],
-            sets: [...data.sets.filter((set) => !oldExerciseIds.has(set.exerciseId)), ...sets],
-            recommendationHistory: [...data.recommendationHistory.filter((snapshot) => !recommendationSnapshots.some((candidate) => candidate.recommendationId === snapshot.recommendationId)), ...recommendationSnapshots]
+            sets: [...data.sets.filter((set) => !oldExerciseIds.has(set.exerciseId)), ...sets]
           }, true, { invalidateAnalysis: false });
         } else {
-          commit({ ...data, sessions: [session, ...data.sessions], exercises: [...data.exercises, ...exercises], sets: [...data.sets, ...sets], recommendationHistory: [...data.recommendationHistory, ...recommendationSnapshots.filter((snapshot) => !data.recommendationHistory.some((existing) => existing.recommendationId === snapshot.recommendationId))] }, true, { invalidateAnalysis: false });
+          commit({ ...data, sessions: [session, ...data.sessions], exercises: [...data.exercises, ...exercises], sets: [...data.sets, ...sets] }, true, { invalidateAnalysis: false });
         }
       }
 

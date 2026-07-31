@@ -13,7 +13,12 @@
     "scope",
     "action",
     "reasonCodes",
-    "sourceReferences"
+    "sourceReferences",
+    "effectiveAt",
+    "expiresAt",
+    "returnCondition",
+    "handling",
+    "supersedesDecisionId"
   ],
   "properties": {
     "contractVersion": { "const": "comprehensive-fitness-resolved-action/1.0.0" },
@@ -33,7 +38,28 @@
       },
       "additionalProperties": false
     },
-    "action": { "type": "object" },
+    "action": {
+      "type": "object",
+      "required": ["code", "parameters"],
+      "properties": {
+        "code": {
+          "enum": [
+            "no_action",
+            "stop_or_skip_work",
+            "skip_exercise",
+            "use_lighter_session",
+            "use_lighter_exercise",
+            "reduce_load",
+            "reduce_sets",
+            "cap_rpe",
+            "time_bounded_deload",
+            "address_plateau"
+          ]
+        },
+        "parameters": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
     "reasonCodes": { "type": "array", "items": { "type": "string" } },
     "sourceReferences": { "type": "array", "items": { "type": "string" } },
     "effectiveAt": { "type": ["string", "null"], "format": "date-time" },

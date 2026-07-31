@@ -113,28 +113,37 @@ const workout = fs.readFileSync(path.join(ROOT, "app-workout.js"), "utf8");
 const foundation = fs.readFileSync(path.join(ROOT, "app-foundation.js"), "utf8");
 const history = fs.readFileSync(path.join(ROOT, "app-history.js"), "utf8");
 const imports = fs.readFileSync(path.join(ROOT, "app-import.js"), "utf8");
+const resolver = fs.readFileSync(path.join(ROOT, "exception-resolver.js"), "utf8");
 
-assert.match(views, /Recommendation setup incomplete/);
-assert.match(views, /customGuidanceIncomplete[\s\S]*customGuidanceIncomplete \? "" : renderExerciseGuidance\(exercise\)/, "incomplete custom exercises must not show fabricated broad guidance");
-assert.match(views, /Primary muscle group[\s\S]*Resistance mode[\s\S]*Exercise style[\s\S]*Progression metric[\s\S]*Smallest available increment/);
-assert.match(views, /Exercise defaults[\s\S]*Research[\s\S]*Saved[\s\S]*Working sets[\s\S]*Rep range[\s\S]*Target RPE range[\s\S]*Working rest[\s\S]*Warm-up rest/);
-for (const label of ["Within standard", "Below standard", "Above standard"]) assert.match(views, new RegExp(label));
-assert.match(views, /function renderStandardWorkloadControls[\s\S]*snapshot\?\.standardGuideline \|\| snapshot\?\.basePrescription[\s\S]*No exercise-specific range/, "every active exercise must render defaults while preserving optional versioned research context");
-assert.match(views, /Individual set targets[\s\S]*Drop sets, different reps, RPE or rest/, "the defaults editor must include the nested individual-set disclosure");
-assert.match(views, /data-set-default-field="type"[\s\S]*field: "rep-min"[\s\S]*field: "target-rpe-min"[\s\S]*field: "target-rpe-max"[\s\S]*field: "rest"[\s\S]*setField: true/, "the nested editor must expose per-set type, rep, RPE range, and rest controls");
-assert.match(foundation, /guidance-benchmark-strip[\s\S]*Program benchmark[\s\S]*Informational · not an input/, "broad guidance must not resemble editable inputs");
-assert.doesNotMatch(views, /data-standard-save-template checked/, "future-template saving must be unchecked by default");
-assert.match(workout, /function applyExerciseDefaultTargets[\s\S]*completedWorking[\s\S]*incompleteWorking[\s\S]*targetRpeMin[\s\S]*targetRpeMax[\s\S]*targetRestSeconds[\s\S]*User-saved exercise defaults/);
-assert.match(workout, /templateSetTypesFromHistory\(workSets, exercise\.restSeconds\)/, "template updates must preserve individual set targets");
-assert.match(workout, /user_custom_[\s\S]*user_declared_custom/);
-assert.match(foundation, /exposure_id: `app:\$\{session\.id\}:\$\{exercise\.id\}`/);
-const unifiedSnapshotSource = foundation.match(/function unifiedPrescriptionSnapshot[\s\S]*?function recommendationLabel/)[0];
-assert.match(unifiedSnapshotSource, /customProfile\?\.status === "complete" && exercise\.identitySource === "user_declared_custom"[\s\S]*boundedCustomPrescriptionSnapshot\(exercise, customProfile, options\)/, "fresh custom previews must regenerate through the bounded custom engine path");
-assert.doesNotMatch(foundation.match(/function unifiedTargetContext[\s\S]*?function cancelPendingDataSave/)[0], /customProfile|boundedCustomPrescriptionSnapshot|engineFailure/, "custom regeneration belongs only to snapshot creation, not target projection");
-assert.doesNotMatch(foundation.match(/function appPrescriptionHistory[\s\S]*?function prescriptionHistoryForExercise/)[0], /summarizeExerciseByWeek/);
-assert.match(history, /Did execution stay controlled\?/);
-assert.match(history, /Base next exposure/);
+const stableTargetSource = foundation.match(/function stableTargetForTemplateExercise[\s\S]*?\n\s*function sessionTypeForTemplate/)?.[0] || "";
+assert.match(stableTargetSource, /decision: "stable_target"[\s\S]*mode: "stable-target"/, "the app must derive ordinary workout targets from the saved exercise variant");
+assert.match(stableTargetSource, /adjusted: false[\s\S]*stableTarget: true/, "ordinary targets must remain stable until a canonical exception is applied");
+
+const exceptionBoundarySource = foundation.match(/function resolveWorkoutExceptions[\s\S]*?\n\s*function resolvedActionForVariant/)?.[0] || "";
+assert.match(exceptionBoundarySource, /exceptionResolverApi\.resolveExceptionCandidates/, "the app must use the canonical exception resolver");
+assert.match(exceptionBoundarySource, /priorDecisions: Array\.isArray\(session\.resolvedActions\)/, "persisted canonical decisions must be supplied for handling and supersession");
+assert.match(exceptionBoundarySource, /explicitSafetyObservation/, "explicit pain or illness must cross the canonical safety boundary");
+
+assert.match(workout, /session\.resolvedActions = measurePerformance\("workoutStart:exceptionResolver"/, "workout start must persist the canonical resolver result");
+assert.match(workout, /stableTargetForTemplateExercise\(templateExercise[\s\S]*resolvedActionForVariant\(session\.resolvedActions, exerciseVariantId\)[\s\S]*applyResolvedActionToStableTarget\(historyTarget, resolvedAction\)/, "only a resolved action may temporarily adapt a stable workout target");
+assert.match(workout, /stableTargetSnapshot:[\s\S]*resolvedActionId:[\s\S]*executionBlocked: false/, "a safety action must remain advisory and logging must stay available");
+assert.match(views, /function renderResolvedAction[\s\S]*resolvedAction\.outcome !== "action"\) return ""/, "ordinary sessions must remain visually quiet");
+assert.match(views, /renderResolvedAction\(resolvedActionForScope\(session, "session"\)/, "the workout surface must render only its persisted canonical session action");
+assert.match(views, /renderResolvedAction\(resolvedActionForScope\(owningSession, "exercise", exercise\)/, "exercise surfaces must render only the matching persisted canonical action");
+assert.match(views, /data-action="set-rpe"/, "canonical actions must not remove the normal RPE logging control");
+assert.match(history, /Array\.isArray\(session\?\.resolvedActions\)/, "grading must consume persisted canonical actions");
+assert.match(imports, /assertResolvedAction[\s\S]*record\.resolvedActions/, "imports must validate persisted canonical actions");
+assert.match(resolver, /function validateResolvedAction/, "the canonical action boundary must expose runtime validation");
+
+for (const legacyName of [
+  "unifiedPrescriptionSnapshot",
+  "legacyTargetFromSnapshot",
+  "boundedCustomPrescriptionSnapshot",
+  "renderRecommendation"
+]) {
+  assert.doesNotMatch(`${foundation}\n${workout}\n${views}`, new RegExp(`function ${legacyName}\\b`), `${legacyName} must not remain as an application target or rendering path`);
+}
 assert.match(imports, /customExerciseProfile/);
 assert.match(imports, /executionQualityAssessment/);
 
-console.log("Progression feedback, custom guidance, exact-exposure, and editable-guideline contracts passed.");
+console.log("Progression evidence and canonical resolved-action application contracts passed.");

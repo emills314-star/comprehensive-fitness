@@ -399,6 +399,14 @@ Do not call offline Fitbit export analysis “Fitbit sync,” the nutrition adeq
 
 All concepts must expose empty, loading, offline, failure, destructive-confirmation, conflicting-data, and update states. Spatial or gesture-first concepts require visible, keyboard-operable, and screen-reader-equivalent controls. Reduced motion, forced colors, 200% text, focus order, and 320/390/768/1280 layouts are migration gates. Existing route names and component styling remain authoritative only for the legacy shell until cutover.
 
+## Zero-based redesign implementation status
+
+- **IMPLEMENTED (M2):** Ordinary Today shows the expected workout, stable targets, and factual prior performance without a recommendation, confidence, or evidence card.
+- **IMPLEMENTED:** An active exception renders from the persisted canonical action as one plain session action plus at most one materially stricter exercise action. Direct pain/illness copy does not diagnose or claim safety, and the logger remains fully usable when the user continues.
+- **REMOVED:** Today Program pulse, visible Progress score/expectation coaching, legacy recommendation renderers, confidence/evidence presentation, and prospective completion coaching.
+- **VERIFIED:** Mobile 390 × 844 scenarios cover ordinary silence and continued logging after pain entry, including long names, large loads, decimal RPE, stable targets, prior performance, reload recovery, and no horizontal overflow.
+- **PLANNED:** M3 removes guided planning; M4 removes remaining dashboard/research clutter; M5–M7 install the final two-destination shell, simplified logger, and concise actual-work completion/Progress experience.
+
 ### Focused five-direction session mockups
 
 **IMPLEMENTED:** The non-production lab defaults to a five-up screen comparison. A five-tab control changes all five phones together between Inside workout, Change reps & sets, Pick template, Recommendations, and Warning flags. The shortlist is Dual Track, Weekline, Mission Control, Editorial Performance, and Coach Thread; Body Atlas is excluded from this decision set.

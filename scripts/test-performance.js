@@ -66,7 +66,7 @@ assert.doesNotMatch(setCompletion, /data\.sets\.map/, "Completing one set must n
 assert.match(html, /function invalidateCompletedAnalysis\(\)[\s\S]*exerciseWeekCache\.clear\(\)[\s\S]*weeklyVolumeCache\.clear\(\)/, "Completed-history caches need one invalidation boundary");
 assert.match(html, /function hypertrophyAnalysis[\s\S]*hypertrophyScoreCache\.has\(key\)[\s\S]*hypertrophyScoreCache\.set\(key, result\)/, "Hypertrophy analyses must be keyed and reusable");
 assert.match(html, /function weeklyMuscleVolume[\s\S]*weeklyVolumeCache\.has\(cacheKey\)/, "Weekly volume must not be recomputed during every dashboard render");
-assert.match(html, /function fatigueFlags[\s\S]*fatigueFlagCache\.has\(cacheKey\)/, "Fatigue flags must not be recomputed during every dashboard render");
+assert.doesNotMatch(html, /function fatigueFlags\(/, "Legacy numeric fatigue thresholds must not remain in the application");
 
 assert.equal((templateRenderer.match(/id="active-workout-template-notice"/g) || []).length, 1, "Templates should show one active-workout notice");
 assert.match(templateRenderer, /Return to Active Workout/, "The compact notice must resume the canonical workout");

@@ -10,7 +10,39 @@
       "submitted": true,
       "workoutState": "completed",
       "grade": "A-",
-      "gradeVersion": "actual-work-grade/2.0.0"
+      "gradeVersion": "actual-work-grade/2.0.0",
+      "resolvedActions": [
+        {
+          "contractVersion": "comprehensive-fitness-resolved-action/1.0.0",
+          "resolverVersion": "comprehensive-fitness-exception-resolver/1.0.0",
+          "decisionId": "decision-synthetic-current",
+          "evaluatedAt": "2026-01-15T12:00:00.000Z",
+          "outcome": "action",
+          "category": "pain_or_illness",
+          "scope": {
+            "type": "session"
+          },
+          "action": {
+            "code": "stop_or_skip_work",
+            "parameters": {
+              "mode": "stop_or_skip"
+            }
+          },
+          "reasonCodes": [
+            "explicit_pain_or_injury"
+          ],
+          "sourceReferences": [
+            "session:synthetic-current-session:recovery.pain"
+          ],
+          "effectiveAt": "2026-01-15T12:00:00.000Z",
+          "expiresAt": null,
+          "returnCondition": {
+            "type": "user_decision"
+          },
+          "handling": "overridden",
+          "supersedesDecisionId": null
+        }
+      ]
     }
   ],
   "exercises": [

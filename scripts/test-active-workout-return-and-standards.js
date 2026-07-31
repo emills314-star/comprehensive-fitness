@@ -32,13 +32,14 @@ assert.match(views, /data-action="open-session"[\s\S]*data-exercise-id="[\s\S]*d
 assert.match(interactions, /action === "return-to-active-session"[\s\S]*activeSessionId = activeWorkoutId;[\s\S]*viewingHistorySessionId = "";[\s\S]*workoutFocusExerciseId = returnExerciseId;[\s\S]*focusWorkoutExercise\(returnExerciseId\)/, "Returning must restore the canonical active workout and its originating exercise");
 assert.match(html, /\.return-active-session-fab \{[^}]*bottom: calc\(86px \+ env\(safe-area-inset-bottom\)\);[^}]*position: fixed;[^}]*z-index: 18;/, "The return affordance must float above navigation and safe-area insets");
 
-assert.match(views, /function renderStandardWorkloadControls\([\s\S]*recommendationSnapshotForDisplay\(exercise\.recommendationSnapshot\)[\s\S]*numericStepper\(\{ field: "sets"[\s\S]*numericStepper\(\{ field: "rep-min"[\s\S]*numericStepper\(\{ field: "rep-max"/, "Every exercise default editor must expose shared set and rep targets even when research guidance is absent");
+assert.match(views, /function renderStandardWorkloadControls\([\s\S]*numericStepper\(\{ field: "sets"[\s\S]*numericStepper\(\{ field: "rep-min"[\s\S]*numericStepper\(\{ field: "rep-max"/, "Every exercise default editor must expose the variant-owned set and rep targets");
+assert.doesNotMatch(extractFunction(views, "renderStandardWorkloadControls"), /recommendationSnapshotForDisplay|unifiedPrescriptionSnapshot|renderRecommendation/, "Editing stable exercise targets must not revive a recommendation snapshot or renderer");
 assert.match(views, /numericStepper\(\{ field: "target-rpe-min"[\s\S]*numericStepper\(\{ field: "target-rpe-max"[\s\S]*numericStepper\(\{ field: "working-rest"/, "Shared defaults must expose an exact target RPE range beside the dose and rest targets");
 assert.match(views, /numericStepper\(\{ field: "working-rest"[\s\S]*numericStepper\(\{ field: "warmup-rest"/, "Shared defaults must distinguish warm-up and working-set rest");
 assert.match(views, /data-individual-set-disclosure[\s\S]*Drop sets, different reps, RPE or rest/, "The per-set targets must stay behind a nested disclosure");
 assert.match(views, /data-set-default-field="type"[\s\S]*field: "rep-min"[\s\S]*field: "target-rpe-min"[\s\S]*field: "target-rpe-max"[\s\S]*field: "rest"[\s\S]*setField: true/, "The nested editor must expose independent type, rep range, RPE range, and rest targets per set");
 assert.match(views, /data-numeric-stepper[\s\S]*data-action="adjust-exercise-default"[\s\S]*Decrease[\s\S]*Increase/, "Exercise defaults must use the bounded down/value/up stepper pattern");
-assert.match(foundation, /guidance-benchmark-strip[\s\S]*Program benchmark[\s\S]*Informational · not an input[\s\S]*guidance-benchmark-values/, "Broad guidance must render as a clearly read-only benchmark strip");
+assert.doesNotMatch(views, /Program benchmark|Broad exercise guidance|guidance-benchmark-strip/, "The normal workout editor must not retain a research benchmark card");
 assert.match(interactions, /action === "adjust-exercise-default"[\s\S]*data-numeric-stepper[\s\S]*dispatchEvent\(new Event\("input"/, "Stepper buttons must update the native numeric input and its existing delegated behavior");
 assert.match(views, /data-action="apply-standard-workload"/, "Exercise defaults must expose an explicit apply action");
 assert.match(views, /data-standard-save-template/, "Template workouts must expose an explicit reusable-default choice");
@@ -57,27 +58,14 @@ assert.match(html, /:where\(\.compact-disclosure,[\s\S]*\) > summary::after \{[\
 assert.match(foundation, /savedRepRange[\s\S]*executableRepRange[\s\S]*repMin: savedRepRange \? executableRepRange\.min/, "Future role rows must use the saved standard range even for top/back-off structures");
 assert.match(imports, /"repMin", "repMax", "standardWorkloadOverride", "standardRoleWorkload"/, "Backup validation must accept legacy shared and role-specific workload fields for migration");
 assert.doesNotMatch(imports, /role workload requires an enabled standard workload override/, "Legacy role targets must migrate without reviving the deleted ownership gate");
-assert.match(imports, /adjustedSnapshot[\s\S]*prescriptionSnapshotWithTemplateStandard\(adjustedSnapshot, templateExercise, \{ template: context\.template, workoutId: context\.workoutId \}\)/, "Readiness recalculation must retain an explicit saved standard on its fresh snapshot");
-assert.match(workout, /adjustTargetForRecovery\(historyTarget, recoveryAdvice, \{ recovery, exerciseName: templateExercise\.name, template, workoutId: session\.id \}\)/, "Workout identity must remain bound while readiness reapplies the standard");
-
-const helperSource = extractFunction(foundation, "prescriptionSnapshotWithTemplateStandard");
-let captured = null;
-const helper = new Function("prescriptionEngine", "isoNow", "normalizeStableTemplateExercise", "normalizeSetTypeCode", `${helperSource}; return prescriptionSnapshotWithTemplateStandard;`)({
-  applyManualOverride(snapshot, override, options) {
-    captured = { snapshot, override, options };
-    return { ...snapshot, applied: true };
-  }
-}, () => "2026-07-21T12:00:00.000Z", (exercise) => exercise, (value) => value);
-const snapshot = { finalPrescription: { workingSets: { target: 2 }, repRange: { min: 6, target: 8, max: 10 } } };
-const stableApplied = helper(snapshot, { sets: 4, repMin: 8, repMax: 12, setTypes: [] }, {});
-assert.equal(stableApplied.applied, true, "Every normalized variant target must be authoritative without a separate ownership flag");
-const applied = helper(snapshot, { sets: 3, repMin: 8, repMax: 12, setTypes: [] }, { workoutId: "workout-1" });
-assert.equal(applied.applied, true);
-assert.deepEqual(captured.override, { setCount: 3, repRange: { min: 8, max: 12 } });
-assert.equal(captured.options.workoutId, "workout-1");
-const roleSnapshot = { finalPrescription: { setStructure: "top_set_backoff", workingSets: { target: 3 }, repRange: { min: 6, target: 8, max: 12 }, topSet: { count: 1, repRange: { min: 6, max: 8 } }, backoffSets: { count: 2, repRange: { min: 9, max: 12 } } } };
-helper(roleSnapshot, { sets: 4, repMin: 5, repMax: 11, setTypes: [{ type: "top", setCount: 1, repMin: 5, repMax: 7 }, { type: "backoff", setCount: 3, repMin: 8, repMax: 11 }] }, { workoutId: "workout-roles" });
-assert.deepEqual(captured.override, { topSet: { count: 1, repRange: { min: 5, max: 7 } }, backoffSets: { count: 3, repRange: { min: 8, max: 11 } } });
-assert.equal(captured.options.workoutId, "workout-roles");
+const startTemplate = extractFunction(workout, "startTemplate");
+assert.match(startTemplate, /stableTargetForTemplateExercise\(templateExercise,/, "Workout start must construct each exercise from its stable variant target");
+assert.match(startTemplate, /session\.resolvedActions = [\s\S]{0,160}resolveWorkoutExceptions\(/, "Workout start must persist the canonical exception result before projecting exercises");
+assert.match(startTemplate, /resolvedActionForVariant\(session\.resolvedActions, exerciseVariantId\)[\s\S]*applyResolvedActionToStableTarget\(historyTarget, resolvedAction\)/, "Only a canonical resolved action may prospectively reduce the stable target");
+assert.match(startTemplate, /stableTargetSnapshot:[\s\S]*resolvedActionId:/, "The started exercise must preserve both its stable facts and canonical exception identity");
+assert.doesNotMatch(startTemplate, /coachTargetForTemplateExercise|adjustTargetForRecovery|unifiedPrescriptionSnapshot|prescriptionSnapshotWithTemplateStandard/, "Workout start must not invoke the legacy recommendation or readiness-target pipeline");
+assert.doesNotMatch(startTemplate, /recommendationHistory|recommendationSnapshot:\s*target|applyManualOverride/, "Workout start must not create recommendation snapshots or engine manual overrides");
+assert.match(startTemplate, /delete session\.workoutPrescription/, "Starting a current workout must remove any replaceable draft prescription payload");
+assert.match(foundation, /function resolveWorkoutExceptions\([\s\S]*applyDecisionHandling\(decision, handling\)/, "Explicit user handling of a resolved safety action must remain auditable");
 
 console.log("Active-workout return and standard-workload contracts passed.");

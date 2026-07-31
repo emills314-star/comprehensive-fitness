@@ -1,0 +1,69 @@
+{
+  "evaluatedAt": "2030-01-15T12:00:00.000Z",
+  "candidates": [
+    {
+      "candidateVersion": "comprehensive-fitness-exception-candidate/1.0.0",
+      "candidateId": "candidate-session-deload",
+      "detector": { "id": "detector-deload", "version": "1.0.0", "ruleVersion": "rule-deload/1.0.0" },
+      "evaluatedAt": "2030-01-15T11:55:00.000Z",
+      "effectiveAt": "2030-01-15T11:55:00.000Z",
+      "expiresAt": "2030-01-22T12:00:00.000Z",
+      "category": "deload",
+      "scope": { "type": "session" },
+      "action": { "code": "time_bounded_deload", "parameters": { "setReductionCount": 1 } },
+      "reasonCodes": ["deload-rule-qualified"],
+      "sourceReferences": ["observation-d1"],
+      "inputDigest": "fixture-digest-deload",
+      "evidence": [{ "sourceReference": "observation-d1", "provenance": "inferred", "required": true }],
+      "qualification": { "identityIntegrity": true, "sourceIntegrity": true, "comparability": true, "sufficiency": true, "freshness": true, "materiality": true, "calibration": true, "actionability": true, "nonDuplication": true, "auditability": true }
+    },
+    {
+      "candidateVersion": "comprehensive-fitness-exception-candidate/1.0.0",
+      "candidateId": "candidate-session-readiness",
+      "detector": { "id": "detector-readiness", "version": "1.0.0", "ruleVersion": "rule-readiness/1.0.0" },
+      "evaluatedAt": "2030-01-15T11:58:00.000Z",
+      "effectiveAt": "2030-01-15T11:58:00.000Z",
+      "expiresAt": "2030-01-16T12:00:00.000Z",
+      "category": "readiness",
+      "scope": { "type": "session" },
+      "action": { "code": "stop_or_skip_work", "parameters": { "mode": "skip" } },
+      "reasonCodes": ["readiness-rule-qualified"],
+      "sourceReferences": ["observation-r1"],
+      "inputDigest": "fixture-digest-readiness",
+      "evidence": [{ "sourceReference": "observation-r1", "provenance": "recorded", "required": true }],
+      "qualification": { "identityIntegrity": true, "sourceIntegrity": true, "comparability": true, "sufficiency": true, "freshness": true, "materiality": true, "calibration": true, "actionability": true, "nonDuplication": true, "auditability": true }
+    },
+    {
+      "candidateVersion": "comprehensive-fitness-exception-candidate/1.0.0",
+      "candidateId": "candidate-exercise-fatigue",
+      "detector": { "id": "detector-fatigue", "version": "1.0.0", "ruleVersion": "rule-fatigue/1.0.0" },
+      "evaluatedAt": "2030-01-15T11:57:00.000Z",
+      "effectiveAt": "2030-01-15T11:57:00.000Z",
+      "expiresAt": "2030-01-16T12:00:00.000Z",
+      "category": "fatigue",
+      "scope": { "type": "exercise", "exerciseVariantId": "variant-alpha" },
+      "action": { "code": "stop_or_skip_work", "parameters": { "mode": "stop" } },
+      "reasonCodes": ["fatigue-rule-qualified"],
+      "sourceReferences": ["observation-f1"],
+      "inputDigest": "fixture-digest-fatigue",
+      "evidence": [{ "sourceReference": "observation-f1", "provenance": "inferred", "required": true }],
+      "qualification": { "identityIntegrity": true, "sourceIntegrity": true, "comparability": true, "sufficiency": true, "freshness": true, "materiality": true, "calibration": true, "actionability": true, "nonDuplication": true, "auditability": true }
+    },
+    {
+      "candidateVersion": "comprehensive-fitness-exception-candidate/1.0.0",
+      "candidateId": "candidate-exercise-plateau",
+      "detector": { "id": "detector-plateau", "version": "1.0.0", "ruleVersion": "rule-plateau/1.0.0" },
+      "evaluatedAt": "2030-01-15T11:56:00.000Z",
+      "effectiveAt": "2030-01-15T11:56:00.000Z",
+      "expiresAt": "2030-01-29T12:00:00.000Z",
+      "category": "plateau",
+      "scope": { "type": "exercise", "exerciseVariantId": "variant-beta" },
+      "action": { "code": "address_plateau", "parameters": { "strategy": "change_exercise" } },
+      "reasonCodes": ["plateau-rule-qualified"],
+      "sourceReferences": ["observation-p1"],
+      "inputDigest": "fixture-digest-plateau",
+      "evidence": [{ "sourceReference": "observation-p1", "provenance": "inferred", "required": true }],
+      "qualification": { "identityIntegrity": true, "sourceIntegrity": true, "comparability": true, "sufficiency": true, "freshness": true, "materiality": true, "calibration": true, "actionability": true, "nonDuplication": true, "auditability": true }
+    }
+  ]
+}

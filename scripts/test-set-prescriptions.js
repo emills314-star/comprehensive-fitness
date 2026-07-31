@@ -46,8 +46,7 @@ const runtime = new Function(`
   ${extractFunction("resolvedSetTypesForPrescription")}
   ${extractFunction("setPrescriptionForRole")}
   ${extractFunction("validateGeneratedSetPrescriptions")}
-  ${extractFunction("isUsableWorkoutPrescriptionSnapshot")}
-  return { progressionProfileForExercise, resolveProgrammedRepRange, normalizeTargetSetType, setRoleDefaultsForExercise, roundEquipmentLoad, previousComparableSetForRole, resolvedSetTypesForPrescription, setPrescriptionForRole, validateGeneratedSetPrescriptions, isUsableWorkoutPrescriptionSnapshot };
+  return { progressionProfileForExercise, resolveProgrammedRepRange, normalizeTargetSetType, setRoleDefaultsForExercise, roundEquipmentLoad, previousComparableSetForRole, resolvedSetTypesForPrescription, setPrescriptionForRole, validateGeneratedSetPrescriptions };
 `)();
 
 const legPress = runtime.progressionProfileForExercise("Leg Press");
@@ -140,9 +139,6 @@ const importedFallbackTypes = runtime.resolvedSetTypesForPrescription({ setTypes
 assert.strictEqual(importedFallbackTypes.reduce((sum, item) => sum + item.setCount, 0), 4, "An empty engine context must retain the imported template set count");
 const customFallbackTypes = runtime.resolvedSetTypesForPrescription({ setTypes: [] }, { mode: "maintenance", sets: 0, rpe: 8 }, { name: "Tricep Pushdown - Dongles", sets: 2, setTypes: [] });
 assert.deepStrictEqual(customFallbackTypes.map((item) => [item.type, item.setCount]), [["straight", 2]], "A custom exercise without research roles must still create its saved working sets");
-assert.strictEqual(runtime.isUsableWorkoutPrescriptionSnapshot({ finalPrescription: { workingSets: { target: 0 }, repRange: { min: 10, max: 15 } } }), false);
-assert.strictEqual(runtime.isUsableWorkoutPrescriptionSnapshot({ finalPrescription: { workingSets: { target: 3 }, repRange: { min: 10, max: 15 } } }), true);
-
 assert(html.includes('class="set-type-badge type-${escapeHtml(role)}"'));
 assert(html.includes("escapeHtml(executionLabel.toUpperCase())"));
 assert(html.includes("pointer-events: none"), "Informational set badges must not behave like buttons");
@@ -152,17 +148,14 @@ assert(html.includes("getMostRecentWorkoutPerformance"), "All prior-set consumer
 assert(html.includes('class="set-field set-previous set-previous-link"'), "Comparable history must remain one compact linked Previous strip within the current editor");
 assert(html.includes('previousSummaryText'), "The Previous column must combine load, reps, and RPE without losing resistance semantics");
 assert(html.includes('data-session-id="\' + escapeHtml(previous.priorSessionId)'), "The Previous link must preserve the exact source session ID");
-assert(html.includes("Broad exercise guidance"));
-assert(html.includes("Program benchmark"));
-assert(html.includes("Informational · not an input"));
-assert(html.includes("these values are already set by the saved prescription."));
-assert(html.includes("function roleSessionPrescriptionLine("), "The recommendation claim must project the same generated rows that prepopulate the workout");
-assert(html.includes("roleSessionPrescriptionLine(exercise, fallbackFinalLine)"), "The recommendation claim must use the exact live-row load, repetition target, and role composition when available");
-assert(html.includes("targetWeight") && html.includes("targetReps"), "The shared row projection must retain the generated load and repetition target");
-assert(html.includes("loadAvailable") && html.includes('details ? ": " + details : ""'), "The shared row projection must omit genuinely absent target values instead of fabricating zero load or reps");
-assert(html.includes("group.count + 'x '"), "Role evidence headings must retain their live set counts");
-assert(html.includes(">Last performed<") && html.includes(">Next increment<"), "Role evidence must retain historical and progression context without restoring a separate target claim");
-assert(html.includes("History and high watermark:"), "The expanded recommendation must explain its historical load anchor");
-assert(html.includes("exercise.recommendationSnapshot || unifiedPrescriptionSnapshot(exercise)"), "Broad guidance must reuse the unified prescription instead of hard-coded sets or reps");
+assert(!html.includes("Broad exercise guidance"), "The active logger must not restore a normal recommendation card around factual set targets");
+assert(!html.includes("Program benchmark"), "The active logger must not expose research/program benchmark copy as a second target source");
+assert(!html.includes("Informational · not an input"), "The deleted benchmark strip must not survive as informational clutter");
+assert(!html.includes("function roleSessionPrescriptionLine("), "The deleted recommendation projection must not be retained under its former renderer");
+assert(!html.includes("exercise.recommendationSnapshot || unifiedPrescriptionSnapshot(exercise)"), "The active logger must not render legacy prescription snapshots");
+assert(html.includes("function renderResolvedAction("), "The active logger must expose exception copy only through the canonical resolved-action renderer");
+assert(html.includes("Array.isArray(session?.resolvedActions)"), "Visible exception selection must read the persisted session action boundary");
+assert(html.includes("stableTargetSnapshot"), "Started exercises must retain the immutable stable-target facts used to interpret actual work");
+assert(html.includes("resolvedActionId"), "An exception-adjusted exercise must retain the canonical decision identity without replacing its stable target");
 
-console.log("Set prescription tests passed (roles, ranges, history, equipment, labels, and reduced sessions).");
+console.log("Set prescription tests passed (roles, stable targets, factual history, and canonical exception linkage).");

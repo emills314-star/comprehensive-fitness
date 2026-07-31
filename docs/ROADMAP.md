@@ -82,15 +82,17 @@ All user-facing work now has a mandatory hosted-site browser-verification gate. 
 
 ## In progress
 
-### Zero-based redesign implementation — M0 and M1 complete locally; M2 next
+### Zero-based redesign implementation — M0 through M2 complete locally; M3 next
 
 **IMPLEMENTED LOCALLY (M0):** The final redesign package under `docs/redesign/final/` is now the product authority, with sequencing owned by `docs/redesign/implementation/IMPLEMENTATION_EXECPLAN.md`. M0 added target contract schemas plus privacy-safe synthetic legacy/current backup, historical-snapshot, set-role, and active-draft fixtures. Current app-data v3 exports/imports through backup schema v3; backup v2 remains the isolated v1/v2 compatibility envelope, and stored historical grade values/versions survive strict import.
 
 **IMPLEMENTED LOCALLY (M1):** Named exercise variants now own explicit stable set count/roles, rep ranges, target-RPE bands, and rest. Normal exact engine outputs no longer mutate or prefill those fields. Prefill uses the corresponding prior same-variant/same-role set, explicit routine defaults, then blank. A prefilled RPE `7` accepts and saves `7.5` in one focused edit, including immediate set completion. The global equipment preference UI/state/logging gate is removed; legacy values decode and discard. Workout history, active drafts, snapshots, IDs, variants, roles, and legacy planner records remain preserved. Public scripts, lint, production/PWA packaging, affected UI regressions, and focused 390 × 844 running-app evidence pass.
 
-**NEXT — NOT STARTED:** M2 is the canonical exception resolver. Current recommendation/evidence presentation and guided planner remain only until their assigned deletion milestones.
+**IMPLEMENTED LOCALLY (M2):** `exception-resolver.js` is the sole current exception-action authority. Ordinary cases are silent. Direct recorded pain/injury or illness is the only approved live rule and produces one advisory action without blocking logging; stable targets remain unchanged and explicit continuation is persisted. Direct detector UI consumers, target-mutating fallbacks, legacy recommendation writers/renderers, visible confidence/evidence paths, Today Program pulse, Progress score/expectation output, and completion coaching are removed. The scoped independent recommendation gate, 59/59 public scripts, lint, typecheck, build, 41-file web sync, 40-asset PWA verification, privacy check, and 2/2 mobile runtime scenarios pass.
 
-**NEEDS REVIEW:** No complete private export/replay, independent migration review, repository-pinned runtime rerun, physical-device acceptance, or five-workout field test has occurred. Commit, push, deployment, visual-baseline acceptance, and publication remain unauthorized.
+**NEXT — NOT STARTED:** M3 removes guided planning and mesocycle lifecycle across UI, requests, active state, engine surfaces, schemas for new records, tests, and current-intent documentation while preserving historical workout/routine facts through the compatibility reader.
+
+**NEEDS REVIEW:** No complete private export/replay, independent migration review, repository-pinned runtime rerun, physical-device acceptance, or five-workout field test has occurred. Push, deployment, visual-baseline acceptance, and publication remain unauthorized.
 
 The following table is the canonical Evidence & Change phase status. Branch names, dated work logs, and revision-specific test counts do not override it.
 

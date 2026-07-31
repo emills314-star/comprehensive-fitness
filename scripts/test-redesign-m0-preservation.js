@@ -64,6 +64,11 @@ assert.equal(
   "actual-work-grade/2.0.0",
   "Current versioned grades must survive export"
 );
+assert.deepEqual(
+  canonical(backupContract.createBackupExport(currentV3).sessions[0].resolvedActions),
+  canonical(currentV3.sessions[0].resolvedActions),
+  "Canonical resolved actions and explicit user handling must survive backup round-trip"
+);
 
 const legacyV1RoundTrip = backupContract.createBackupExport(legacyV1);
 assert.deepEqual(
@@ -87,6 +92,7 @@ assert.equal(draftClone.sets.find((set) => !set.completed).rpe, "7.5", "Incomple
 assert.equal(draftClone.session.activeExerciseId, "synthetic-active-exercise-2");
 assert.deepEqual(draftClone.exercises.map((exercise) => exercise.order), [0, 1]);
 assert.equal(draftClone.timer.state, "running");
+assert.equal(draftClone.resolvedActions[0].handling, "overridden", "Active draft recovery must preserve canonical action handling");
 
 const roles = readJson(path.join(fixtureRoot, "set-role-ambiguity.json"));
 assert.equal(roles.sets.find((set) => set.id === "synthetic-role-ambiguous").reviewRequired, true);

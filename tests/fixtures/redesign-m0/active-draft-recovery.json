@@ -56,5 +56,36 @@
     "startedAt": "2026-07-30T19:58:00.000Z",
     "state": "running"
   },
-  "resolvedActions": []
+  "resolvedActions": [
+    {
+      "contractVersion": "comprehensive-fitness-resolved-action/1.0.0",
+      "resolverVersion": "comprehensive-fitness-exception-resolver/1.0.0",
+      "decisionId": "decision-synthetic-draft",
+      "evaluatedAt": "2026-07-30T19:30:00.000Z",
+      "outcome": "action",
+      "category": "pain_or_illness",
+      "scope": {
+        "type": "session"
+      },
+      "action": {
+        "code": "stop_or_skip_work",
+        "parameters": {
+          "mode": "stop_or_skip"
+        }
+      },
+      "reasonCodes": [
+        "explicit_pain_or_injury"
+      ],
+      "sourceReferences": [
+        "session:synthetic-active-session:recovery.pain"
+      ],
+      "effectiveAt": "2026-07-30T19:30:00.000Z",
+      "expiresAt": null,
+      "returnCondition": {
+        "type": "user_decision"
+      },
+      "handling": "overridden",
+      "supersedesDecisionId": null
+    }
+  ]
 }

@@ -24,9 +24,12 @@ const templateCard = section(analysis, "function renderTemplateCard(", "function
 const exerciseResult = section(history, "function renderWorkoutExerciseResult(", "const workoutAchievementAssets");
 const summary = section(history, "function renderCompletedWorkoutSummary(", "\n      }");
 
-assert.match(today, /What changed since you last ran this|Build the plan before chasing the outcome/, "Today must lead with one current decision");
+assert.match(today, /<h1>Today<\/h1>[\s\S]*Next action/, "Today must identify the expected workout and retain one current action");
+assert.doesNotMatch(today, /What changed since you last ran this|readiness can adjust today|targets and evidence stay together/i, "ordinary Today must not lead with legacy recommendation or evidence messaging");
 assert.match(today, /todayPlanPreview\(nextTemplate\)[\s\S]*renderTodayPlanPreview\(nextTemplate, planPreview\)/, "Today must derive and render its plan-versus-last-performance preview");
 assert.match(todayPlan, /data-action="start-next-template"/, "Today must expose one primary next-template action");
+assert.match(todayPlan, /Stable target[\s\S]*Last time[\s\S]*Effort/, "Today must show stable routine targets beside factual prior performance");
+assert.doesNotMatch(todayPlan, /confidence|evidence|recommendation/i, "ordinary Today must keep internal recommendation machinery invisible");
 assert.strictEqual((views.match(/data-action="start-next-template"/g) || []).length, 1, "Today must render exactly one next-template action");
 assert.match(today, /data-action="open-progress"/, "Today must retain the weekly-review action");
 assert.match(quickStarts, /today-template-strip[\s\S]*today-template-card/, "Today quick starts must use the Phase 3 presentation");
@@ -43,7 +46,7 @@ assert.match(templates, /Choose the repeatable workout that fits today/, "Plan m
 assert.doesNotMatch(templates, /canonical historical completion contract|completion rate is intentionally absent/i, "Plan must not expose implementation rationale");
 assert.match(templateCard, /plan-template-card ex-block/, "Template cards must use the Phase 3 plan structure");
 assert.doesNotMatch(templateCard, /completion rate|completionRate/i, "Plan must not invent a template completion metric");
-assert.match(templates, /const volumeFlags = \[\]/, "Phase 3 must not silently revive the dead Plan volume path");
+assert.doesNotMatch(templates, /volumeFlags|plan-volume-alerts|open-plan-volume-warning/, "Plan must not retain the deleted recommendation-era volume warning path");
 assert.match(templateCard, /const advice = null/, "Phase 3 must not silently revive template advice");
 
 assert.match(exerciseResult, /summary-diff-result[\s\S]*class="diff"[\s\S]*class="plan"[\s\S]*class="act"[\s\S]*class="dlt"/, "Completed exercise results must expose plan, actual, and judgment slots");

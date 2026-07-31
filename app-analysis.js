@@ -1,16 +1,7 @@
 
       function renderTemplates() {
-        // Weekly fatigue analysis belongs to Dashboard and workout-start coaching. Keeping
-        // it off this navigation path prevents the template library from recalculating
-        // completed history merely to display its first frame.
-        const volumeFlags = [];
         const running = activeWorkoutSession();
         if (guidedMesocycleView !== "closed") return `<section class="view templates-view">${renderMesocyclePlanner()}</section>`;
-        if (planVolumeDetailId) {
-          const selectedFlag = volumeFlags.find((flag) => flag.id === planVolumeDetailId);
-          if (selectedFlag) return renderWeeklyVolumeWarningDetail(selectedFlag, { backAction: "close-plan-volume-detail", sessionAction: "open-session" });
-          planVolumeDetailId = "";
-        }
         return `
           <section class="view templates-view">
             <div class="screen-heading plan-heading">
@@ -19,7 +10,6 @@
             </div>
             <section class="coach-lead templates-coach"><div class="section-kicker">Planning principle</div><h2>The sheet is stable; today can still adapt.</h2><p>Choose the repeatable workout that fits today. Readiness can adjust the session without rewriting the template.</p></section>
             ${running ? '<section class="active-workout-notice" id="active-workout-template-notice" role="status"><div><div class="section-kicker">Workout in progress</div><strong>' + escapeHtml(running.title || 'Active workout') + '</strong><span>Finish or cancel your current workout before starting another template.</span></div><div><button class="primary-action" type="button" data-action="return-active-workout">Return to Active Workout</button><button class="text-danger-action" type="button" data-action="request-cancel-workout-from-template">Manage Active Workout</button></div></section>' : ''}
-            ${volumeFlags.length ? '<section class="plan-volume-alerts"><div class="section-heading"><div><h2>Weekly volume checks</h2><p>Review these before adding more work.</p></div></div><div class="drilldown-list">' + volumeFlags.map((flag) => '<button class="drilldown-item fatigue-' + flag.concern + '" type="button" data-action="open-plan-volume-warning" data-flag-id="' + escapeHtml(flag.id) + '"><strong>' + escapeHtml(flag.name + ': ' + flag.reason) + '</strong><span class="fatigue-severity ' + flag.concern + '">' + escapeHtml(flag.concern.charAt(0).toUpperCase() + flag.concern.slice(1)) + ' concern</span><small>' + escapeHtml(flag.evidence[0]) + ' · Tap for exact contributors</small><span class="drilldown-chevron" aria-hidden="true">' + icon.right + '</span></button>').join('') + '</div></section>' : ''}
             <div class="template-library">${data.templates.length ? data.templates.map((template) => renderTemplateCard(template, running)).join("") : '<div class="empty-state">Create a leg day, push day, pull day, or any repeatable workout. Templates store exercises, sets, and target reps; you fill in weights during the workout.</div>'}</div>
             <button class="secondary-action full-width" type="button" data-action="save-template">Save current workout as a template</button>
             ${renderMesocyclePlanner()}
@@ -500,7 +490,11 @@
             : qualifyingComparableSets;
         const previousLoad = previousComparableSet ? resistanceLoad(previousComparableSet, resistanceType) : 0;
         const factualLoad = previousLoad || plannedTargetLoad;
-        const exceptionLoad = temporaryException ? Number(target.weight || 0) : 0;
+        const loadReductionPercent = temporaryException ? Math.max(0, Math.min(100, Number(target.loadReductionPercent || 0))) : 0;
+        const reducedFactualLoad = factualLoad > 0 && loadReductionPercent > 0
+          ? roundEquipmentLoad(factualLoad * (resistanceType === "assisted_bodyweight" ? 1 + loadReductionPercent / 100 : 1 - loadReductionPercent / 100), increment)
+          : 0;
+        const exceptionLoad = temporaryException ? Number(reducedFactualLoad || target.weight || 0) : 0;
         const targetLoad = exceptionLoad > 0
           ? factualLoad > 0
             ? resistanceType === "assisted_bodyweight" ? Math.max(factualLoad, exceptionLoad) : Math.min(factualLoad, exceptionLoad)
@@ -525,7 +519,7 @@
             : prefillSource === "temporary_exception"
               ? "Prefilled only with the active temporary exception's lower-demand load."
               : "No comparable prior set or explicit routine default is available, so input remains blank.";
-        return { setType: role, sequenceIndex, setTypeIndex, targetLoad, targetReps, prefillRpe, repMin, repMax, programmedRepMin: repMin, programmedRepMax: repMax, exactReps: repRange.exactReps, rangeSource: repRange.rangeSource, rpeMin, rpeMax, restSeconds: Number(setType.restSeconds || templateExercise.restSeconds || 0), increment, nextLoad, candidateNextLoad, progressionReady, loadRule: setType.loadRule || "", progressionRule, reductionPercent: reduction, previousComparableSet, prefillSource, progressionDelta: previousComparableSet ? { load: Number((targetLoad - resistanceLoad(previousComparableSet, resistanceType)).toFixed(4)), reps: targetReps - previousReps } : null, confidence: previousComparableSet ? "high" : routineDefaultLoad > 0 || routineDefaultReps > 0 ? "high" : "low", evidenceConfidence: target.confidence || "low", reason: roleName + ": " + reason };
+        return { setType: role, sequenceIndex, setTypeIndex, targetLoad, targetReps, prefillRpe, repMin, repMax, programmedRepMin: repMin, programmedRepMax: repMax, exactReps: repRange.exactReps, rangeSource: repRange.rangeSource, rpeMin, rpeMax, restSeconds: Number(setType.restSeconds || templateExercise.restSeconds || 0), increment, nextLoad, candidateNextLoad, progressionReady, loadRule: setType.loadRule || "", progressionRule, reductionPercent: Math.max(reduction, loadReductionPercent), previousComparableSet, prefillSource, progressionDelta: previousComparableSet ? { load: Number((targetLoad - resistanceLoad(previousComparableSet, resistanceType)).toFixed(4)), reps: targetReps - previousReps } : null, confidence: previousComparableSet ? "high" : routineDefaultLoad > 0 || routineDefaultReps > 0 ? "high" : "low", evidenceConfidence: target.confidence || "low", reason: roleName + ": " + reason };
       }
 
       function validateGeneratedSetPrescriptions(prescriptions, resistanceType) {
@@ -1640,7 +1634,7 @@
         }
         const pendingExercise = selectedExerciseRecord();
         if (hypertrophyScoreLoading && catalog.length) {
-          return `<section class="view charts-view" aria-busy="true"><div class="screen-heading"><div><div class="section-kicker">Charts</div><h1>${escapeHtml(pendingExercise?.name || 'Exercise analysis')}</h1></div></div><div class="chart-control-panel"><div class="chart-viewing-summary"><div><span>Viewing</span><strong>${escapeHtml(pendingExercise?.name || 'Selected exercise')}</strong><span>Exercise analysis · recalculating every dependent value</span></div><span class="status-pill inside">Loading</span></div></div><div class="chart-recalculating" role="status"><strong>Recalculating analysis</strong><span>Charts, score, rationale, expectations, actual versus expected, recommendations, and selected-point details are cleared until the new scope is ready.</span></div></section>`;
+          return `<section class="view charts-view" aria-busy="true"><div class="screen-heading"><div><div class="section-kicker">Charts</div><h1>${escapeHtml(pendingExercise?.name || 'Exercise analysis')}</h1></div></div><div class="chart-control-panel"><div class="chart-viewing-summary"><div><span>Viewing</span><strong>${escapeHtml(pendingExercise?.name || 'Selected exercise')}</strong><span>Exercise analysis · recalculating history</span></div><span class="status-pill inside">Loading</span></div></div><div class="chart-recalculating" role="status"><strong>Recalculating analysis</strong><span>Charts and selected-point details are cleared until the new scope is ready.</span></div></section>`;
         }
         const analysis = measurePerformance("charts:hypertrophyAnalysis", () => hypertrophyAnalysis(hypertrophyWindowOffset, "exercise", selectedExerciseId), { exerciseId: selectedExerciseId, windowOffset: hypertrophyWindowOffset });
         const exercise = selectedExerciseRecord();
@@ -1662,7 +1656,6 @@
           }));
         const progress = selectedName ? measurePerformance("charts:exerciseProgressSeries", () => exerciseProgressSeries(selectedName, { ...analysisOptions, qualifyingWeekIds: analysis.qualifyingWeekIds, weekClassifications: chartWeekClassifications, resistanceType: exercise?.resistanceType }), { exerciseId: selectedExerciseId }) : { e1rm: [], volume: [], primaryTitle: "Estimated 1RM", secondaryTitle: "Volume load", latestPrimary: "Latest e1RM", latestSecondary: "Latest volume", resistanceType: "external" };
         const latestReviewWeek = weeks[0]?.weekStart || "";
-        const recommendation = selectedName && latestReviewWeek ? coachRecommendationForExercise(selectedName, { ...analysisOptions, weekStart: latestReviewWeek, historical: hypertrophyWindowOffset > 0 }) : null;
         if (catalog.length === 0) {
           return '<section class="view charts-view"><div class="screen-heading"><div><div class="section-kicker">Charts</div><h1>Lift progress</h1></div></div><div class="empty-state">Log an exercise, then this screen will show progression charts and next-step guidance.</div></section>';
         }
@@ -1688,18 +1681,14 @@
               <div class="chart-viewing-summary"><div><span>Viewing</span><strong>${escapeHtml(selectedName)}</strong><span>Exercise analysis · ${formatDate(analysis.windowStart)} – ${formatDate(analysis.windowEnd)}</span></div><span class="status-pill inside">${analysis.included.length} qualifying · ${analysis.skippedDeloadWeeks.length} deload skipped</span></div>
               <div class="chart-control-field chart-control-lift"><label for="chart-exercise-search">Chart lift</label><div class="chart-search-input"><input id="chart-exercise-search" type="search" data-action="review-exercise-input" role="combobox" aria-autocomplete="list" aria-controls="chart-exercise-suggestions" aria-expanded="${chartExerciseSearchOpen ? 'true' : 'false'}" aria-label="Search or select exercise" autocomplete="off" value="${escapeHtml(chartExerciseDraft || selectedName)}" /><button class="chart-search-clear" type="button" data-action="clear-chart-exercise-search" aria-label="Clear exercise search">×</button></div><div id="chart-exercise-suggestions" class="exercise-suggestions" role="listbox" ${chartExerciseSearchOpen ? '' : 'hidden'}>${renderExerciseSuggestions()}</div><small class="exercise-search-error" role="status" ${chartExerciseSearchError ? '' : 'hidden'}>${escapeHtml(chartExerciseSearchError)}</small></div>
               <div class="chart-control-field analysis-period-control"><span>Analysis period</span><details class="analysis-period-menu"><summary>${escapeHtml((hypertrophyWindowOffset === 0 ? 'Latest qualifying period' : 'Historical period ' + hypertrophyWindowOffset) + ' · ' + hypertrophyWindowLabel(analysis))}<span aria-hidden="true">⌄</span></summary><div class="analysis-period-options">${analysis.windowOptions.length ? analysis.windowOptions.map((option, index) => '<button type="button" data-action="select-chart-period" data-period-offset="' + option.offset + '" aria-pressed="' + (option.offset === hypertrophyWindowOffset) + '"><strong>' + escapeHtml(index === 0 ? 'Latest 6 qualifying weeks' : 'Previous qualifying period ' + index) + '</strong><br><small>' + escapeHtml(hypertrophyWindowLabel(option.selection)) + '</small></button>').join('') : '<button type="button" aria-pressed="true">Latest qualifying period</button>'}</div></details></div>
-              <p class="chart-control-context">Score, rationale, weeks, charts, and coaching use only submitted ${escapeHtml(selectedName)} history. Equipment and named variations remain separate.</p>
+              <p class="chart-control-context">Charts use only submitted ${escapeHtml(selectedName)} history. Named variations remain separate.</p>
             </div>
             <section class="screen-section primary-analysis-chart">
               <div class="m-label"><span>Primary trend</span><span>solid evidenced · dashed provisional</span></div>
               ${renderChart("e1rm", progress.primaryTitle, progress.e1rm, "No comparable completed sets yet.", chartPointScope)}
             </section>
-            ${renderHypertrophyScore(analysis, { deferDetail: true })}
-            ${renderExerciseExpectations(selectedExerciseId, analysis)}
-            ${hypertrophyScoreExpanded ? renderHypertrophyScoreDetail(analysis) : ""}
             <div class="chart-metric-row"><div><span>${escapeHtml(progress.latestPrimary)}</span><strong>${latestOneRm ? latestOneRm.value : "-"}</strong>${sparkline(progress.e1rm.map((point) => Number(point.value || 0)), { label: progress.latestPrimary + " trend" })}<span class="d ${progress.e1rm.length > 1 && Number(progress.e1rm.at(-1).value) >= Number(progress.e1rm.at(-2).value) ? "over" : "under"}">${progress.e1rm.length > 1 ? formatLoadNumber(Number(progress.e1rm.at(-1).value) - Number(progress.e1rm.at(-2).value)) : "—"}</span></div><div><span>${escapeHtml(progress.latestSecondary)}</span><strong>${latestVolume ? latestVolume.value : "-"}</strong>${sparkline(progress.volume.map((point) => Number(point.value || 0)), { label: progress.latestSecondary + " trend" })}<span class="d ${progress.volume.length > 1 && Number(progress.volume.at(-1).value) >= Number(progress.volume.at(-2).value) ? "over" : "under"}">${progress.volume.length > 1 ? formatLoadNumber(Number(progress.volume.at(-1).value) - Number(progress.volume.at(-2).value)) : "—"}</span></div><div><span>Data points</span><strong>${analysis.dataPointCount}</strong>${pips(Math.min(analysis.dataPointCount, 6), 6, analysis.dataPointCount + " data points")}</div></div>
             ${latestReviewWeek && progress.resistanceType === 'external' ? renderLiftProgressSummary(weeks, latestReviewWeek) : ''}
-            ${recommendation ? '<section class="coach-recommendation-wrap"><div class="section-kicker">' + (hypertrophyWindowOffset > 0 ? 'Coach recommendation at the end of this period' : 'Coach Recommendation') + '</div>' + renderRecommendation(recommendation) + '</section>' : ""}
             <section class="screen-section">
               <div class="section-heading"><div><h2>Supporting volume</h2><p>Activate a point to inspect the selected date and its contributing sets.</p></div></div>
               <div class="chart-list supporting-chart-list">
@@ -1719,57 +1708,6 @@
               `).join("")}
             </div></section>
           </section>
-        `;
-      }
-
-      function renderRecommendation(recommendation) {
-        if (recommendation?.reason === "unavailable_equipment") return "";
-        if (recommendation?.executionBlocked === true && recommendation?.executable === false) {
-          const reason = String(recommendation.message || recommendation.reason || "The recommendation is unavailable for the current workout constraints.");
-          return `
-            <article class="recommendation change blocked-recommendation" role="alert">
-              <span>Recommendation unavailable</span>
-              <h2>Exercise is not currently executable</h2>
-              <p>${escapeHtml(reason)}</p>
-            </article>
-          `;
-        }
-        if (recommendation.recommendationSnapshot) {
-          const snapshot = recommendationSnapshotForDisplay(recommendation.recommendationSnapshot);
-          if (!snapshot) {
-            return '<article class="recommendation change blocked-recommendation" role="alert"><span>Recommendation unavailable</span><h2>Saved recommendation needs to be rebuilt</h2><p>The lift history remains available, but this recommendation cannot be displayed safely.</p></article>';
-          }
-          const prescription = snapshot.finalPrescription;
-          const tone = prescription.recommendationType.includes("deload") ? "deload" : ["substitute", "rotate_exercise"].includes(prescription.recommendationType) ? "change" : prescription.recommendationType === "progress" ? "progress" : "hold";
-          return `
-            <article class="recommendation unified-recommendation recommendation-card-v2 ${tone}">
-              ${renderRecommendationHead(snapshot)}
-              ${renderUnifiedEvidence(snapshot, { idPrefix: "analysis-" + (recommendation.affectedExerciseName || prescription.exerciseId) })}
-            </article>
-          `;
-        }
-        const interventionLabels = { normal: recommendation.label || "Normal session", light: "Perform a Light Session", deload: "Deload", stop_modify: "Stop or Modify" };
-        const intervention = recommendation.interventionType || (recommendation.decision === "deload" ? "deload" : "normal");
-        const execution = [];
-        if (recommendation.progressionAction === "increase_load" && Number(recommendation.targetLoad || 0) > 0) execution.push("Next resistance " + formatResistance({ weight: recommendation.targetLoad, addedLoad: recommendation.resistanceType === "bodyweight_plus_load" ? recommendation.targetLoad : 0, assistanceLoad: recommendation.resistanceType === "assisted_bodyweight" ? recommendation.targetLoad : 0, resistanceType: recommendation.resistanceType, weightUnit: data.settings.weightUnit }, { name: recommendation.affectedExerciseName, resistanceType: recommendation.resistanceType }));
-        if (recommendation.progressionAction === "increase_reps" && Number(recommendation.targetReps || 0) > 0) execution.push("Next target " + recommendation.targetReps + " reps at the current resistance");
-        if (recommendation.loadAdjustment) execution.push("Load " + Math.abs(Math.round(recommendation.loadAdjustment * 100)) + "% " + (recommendation.loadAdjustment < 0 ? "lower" : "higher"));
-        if (recommendation.setAdjustment) execution.push(recommendation.setAdjustment < 0 && Math.abs(recommendation.setAdjustment) < 1 ? "Working sets reduced about " + Math.round(Math.abs(recommendation.setAdjustment) * 100) + "%" : "Working sets " + (recommendation.setAdjustment > 0 ? "+" : "") + recommendation.setAdjustment);
-        if (recommendation.rpeTarget) execution.push("Target RPE " + recommendation.rpeTarget);
-        if (recommendation.restAdjustment) execution.push("Rest +" + recommendation.restAdjustment + " sec");
-        if (recommendation.removeIntensificationTechniques) execution.push("No drop sets or intensification work");
-        return `
-          <article class="recommendation ${intervention === 'deload' ? 'deload' : intervention === 'stop_modify' ? 'change' : intervention === 'light' ? 'hold' : recommendation.decision}">
-            <span>${escapeHtml(intervention.replace('_', ' '))} · ${recommendation.confidence} confidence</span>
-            <h2>${escapeHtml(interventionLabels[intervention] || recommendation.label)}</h2>
-            <p><strong>${escapeHtml(recommendation.affectedExerciseName || '')}</strong></p>
-            <p>${escapeHtml(recommendation.reason)}</p>
-            <strong>${escapeHtml(recommendation.action)}</strong>
-            ${execution.length ? '<div class="recommendation-execution"><b>Execution changes</b>' + execution.map((item) => '<span>' + escapeHtml(item) + '</span>').join('') + '</div>' : ''}
-            ${recommendation.durationInSessions ? '<p><b>Duration:</b> ' + recommendation.durationInSessions + ' session' + (recommendation.durationInSessions === 1 ? '' : 's') + '.</p>' : ''}
-            ${recommendation.returnToNormalCriteria ? '<p><b>Return to normal:</b> ' + escapeHtml(recommendation.returnToNormalCriteria) + '</p>' : ''}
-            <ul>${(Array.isArray(recommendation.evidence) ? recommendation.evidence : []).map((item) => "<li>" + escapeHtml(item) + "</li>").join("")}</ul>
-          </article>
         `;
       }
 
@@ -1913,7 +1851,6 @@
           <div class="recoverability-list"><div class="m-label"><span>Recoverability</span><span>verified facts</span></div>${renderStoragePersistenceFact()}<div class="row-item"><span class="ri-copy"><b>Recoverable copy</b><span>The app does not record when you last exported. Create and retain a downloaded export yourself.</span></span><span class="ri-val">Export only</span></div></div>
           ${syncMessage ? '<p class="settings-note">' + escapeHtml(syncMessage) + '</p>' : ''}
           <div class="research-basis"><div class="m-label"><span>Research basis</span><span>public database</span></div><div class="row-item"><span class="ri-copy"><b>${sourceCount ? sourceCount + " research source records" : "Public research database"}</b><span>${prescriptionEngine?.evidence?.research?.exerciseDatabase?.length || 0} exercises · ${prescriptionEngine?.evidence?.research?.muscleGroupRecommendations?.length || 0} muscle prescriptions · ${prescriptionEngine?.evidence?.research?.progressionRules?.length || 0} progression rules · ${prescriptionEngine?.evidence?.research?.nutritionStrategies?.length || 0} nutrition strategies</span></span><span class="ri-val">${escapeHtml(prescriptionEvidenceStatus.researchVersion)}</span></div></div>
-          <div class="row-item"><span class="ri-copy"><b>Unified prescription evidence · ${escapeHtml(prescriptionEvidenceStatus.state)}</b><span>${escapeHtml(prescriptionEvidenceStatus.message)} Engine ${escapeHtml(prescriptionApi?.ENGINE_VERSION || 'unavailable')} · personal ${escapeHtml(prescriptionEvidenceStatus.personalVersion)} · ${data.recommendationHistory.length} recommendation snapshots · ${data.manualOverrides.length} override events.</span></span></div>
           <label class="import-button">${icon.upload} private personal evidence package<input type="file" accept=".json,application/json" data-action="import-personal-evidence" /></label>
           <p class="settings-note">The imported aggregate evidence package stays in this device's IndexedDB and in exported app backups. Protected source files are never part of the public deployment.</p>
           ${importAttempt ? '<p role="status" aria-live="polite" data-import-status data-import-state="' + escapeHtml(importStatus.state) + '" data-import-attempt="' + importAttempt + '">' + escapeHtml(importStatus.message) + '</p>' : ''}

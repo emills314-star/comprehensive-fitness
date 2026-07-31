@@ -148,10 +148,18 @@ assert.equal(missing.hasRpeTarget, false, "Missing RPE targets must be labeled a
 const weighted = engine.exerciseTargetContext({ id: "core", name: "Core" }, { id: "side-plank", name: "Side Plank Dip", sets: 3, reps: 12, targetRpe: 8, resistanceType: "bodyweight_plus_load" });
 assert.equal(weighted.resistanceType, "bodyweight_plus_load", "Weighted bodyweight expectations must preserve resistance meaning");
 
-assert.match(html, /function renderExerciseExpectations\(exerciseId, analysis\)/, "Charts must render Exercise Expectations");
-assert.match(html, /renderHypertrophyScore\(analysis, \{ deferDetail: true \}\)[\s\S]*renderExerciseExpectations\(selectedExerciseId, analysis\)[\s\S]*renderHypertrophyScoreDetail/, "Expectations must appear between the score and expanded category analysis");
-assert.match(html, /Targets changed during this window/, "Historical target changes must be disclosed");
-assert.match(html, /No active program target|Historical targets only/, "Missing or historical-only targets must have an explicit state");
-assert.match(html, /Excluded from hypertrophy score, hard-set volume, and PR calculations/, "Warm-up exclusions must be visible");
+const liftProgressSource = html.match(/function renderLiftProgress\(\)[\s\S]*?(?=\n\s*function restAlertState\()/)?.[0] || "";
+assert.ok(liftProgressSource, "The factual lift-progress orchestration source must remain inspectable");
+assert.match(
+  liftProgressSource,
+  /exerciseProgressSeries\(selectedName,[\s\S]*qualifyingWeekIds: analysis\.qualifyingWeekIds[\s\S]*weekClassifications: chartWeekClassifications/,
+  "Charts must retain their qualifying historical target classifications"
+);
+assert.match(liftProgressSource, /Named variations remain separate/, "The visible chart contract must preserve distinct exercise variants");
+assert.doesNotMatch(
+  liftProgressSource,
+  /renderExerciseExpectations|renderHypertrophyScore|renderHypertrophyScoreDetail|coachRecommendationForExercise/,
+  "Factual progress charts must not restore score, target-compliance, or recommendation panels"
+);
 
-console.log("Exercise expectation tests passed (set types, contexts, history, missing targets, and scoring alignment).");
+console.log("Exercise expectation tests passed (set types, contexts, historical target integrity, warm-up protection, and factual chart separation).");

@@ -244,6 +244,14 @@ Guardrails:
 - Manual overrides are append-only, explained, locked for the workout, and evaluable afterward.
 - Historical snapshots retain engine/schema/personal/research versions and are not silently recomputed.
 
+## Zero-based exception engine
+
+- **IMPLEMENTED (M2):** One versioned resolver owns current exception actions. It enforces qualification, freshness, category precedence, scope, output caps, expiry/return boundaries, deterministic attribution, handling, and supersession.
+- **APPROVED LIVE RULE:** Directly recorded current pain/injury or illness produces one session-scoped `stop_or_skip_work` action. It is advisory; continuing is recorded as an override and does not block actual-work logging.
+- **OUT OF SCOPE / NOT APPROVED:** Every numeric fatigue, readiness, plateau, deload, grade, evidence, and confidence threshold. These cannot create current visible/stored actions until privacy-safe calibration and independent review approve a versioned rule.
+- **IMPLEMENTED:** Grade/completion consume the persisted canonical action rather than raw detectors. Prospective completion coaching was removed; the full actual-work grade replacement remains M7.
+- **PLANNED DELETION:** Hidden hypertrophy/fatigue analysis and legacy prescription/planner machinery remain bounded M3/M4/M7 debt and are not current recommendation sources.
+
 ## Planned and review items
 
 - **PLANNED / NEEDS REVIEW:** Direct wearable ingestion; no thresholds should be designed until source cadence, consent, and missing-data behavior are specified.

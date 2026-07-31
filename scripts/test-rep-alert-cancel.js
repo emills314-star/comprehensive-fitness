@@ -123,10 +123,14 @@ assert.match(html, /data-action="toggle-rest-notifications"/, "Lift exposes the 
 assert.match(html, /inAppRestAlerts/, "In-app alerts are persisted in the canonical settings object");
 assert.match(html, /timerCompleteNotice = data\.settings\.inAppRestAlerts !== false/, "In-app completion behavior follows the canonical setting");
 assert.match(html, /Foreground completion sound confirmed/, "Sound testing produces a visible confirmed state");
-const roleDetailsSource = extractFunction("renderRolePrescriptionDetails");
-assert.match(roleDetailsSource, />Last performed<[\s\S]*>Next increment<[\s\S]*Progress when:/, "Role details must retain historical context and the progression gate");
-assert.doesNotMatch(roleDetailsSource, /role-confidence-label|role-prescription-claim|Today\\?'s target/, "Role details must not repeat exercise-level confidence or the set-row-owned target");
-assert.match(html, /class="set-progress-disclosure"[\s\S]*<summary><span>Progress when<\/span>/, "Set rows keep progression rules in a compact native disclosure");
+const resolvedActionSource = extractFunction("renderResolvedAction");
+const setRendererSource = extractFunction("renderSet");
+assert.match(resolvedActionSource, /if \(!resolvedAction \|\| resolvedAction\.outcome !== "action"\) return ""/, "The exception renderer remains silent when the canonical resolver produced no action");
+assert.match(resolvedActionSource, /resolvedAction\.action\?\.code[\s\S]*resolvedAction\.reasonCodes/, "Visible exception guidance must come from the canonical resolved action");
+assert.doesNotMatch(resolvedActionSource, /confidence|evidence|matrix|qualification/i, "Visible exception guidance must not expose legacy confidence or evidence details");
+assert.doesNotMatch(html, /function renderRolePrescriptionDetails\(/, "The deleted role-level prescription evidence renderer must not return");
+assert.doesNotMatch(setRendererSource, /set-progress-disclosure|Progress when/, "Normal set rows must not expose recommendation-era progression rationale");
+assert.match(setRendererSource, /class="set-tools-disclosure"/, "Secondary set controls remain available through one compact native disclosure");
 assert.match(html, /class="discard-workout-button"[^>]*>Discard Workout</, "Cancellation uses the polished concise destructive action");
 assert.match(html, /class="diff cancel-workout-diff"[\s\S]*>Removed<[\s\S]*>Kept<[\s\S]*This draft[\s\S]*exerciseIds\.size[\s\S]*draftSets\.length[\s\S]*completedSets[\s\S]*notes, and timer state[\s\S]*Submitted history[\s\S]*Templates and settings/, "Cancellation must explain the exercise and set records removed and distinguish submitted history, templates, and settings that remain");
 assert.match(html, /data-action="keep-workout"/, "The safe cancellation action remains available");

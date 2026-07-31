@@ -41,24 +41,30 @@
 - The required prefilled-RPE interaction was reproduced and corrected: one focused `7.5` entry replaces `7`, persists, and can be completed immediately without a lost touch.
 - M0 is recoverable at local checkpoint `3e24f93` (`chore(redesign): establish preservation baseline`).
 - M1 is recoverable at local checkpoint `2101e19` (`feat(redesign): stabilize workout targets and logging`).
+- M2 establishes one versioned canonical exception resolver and persists resolved actions plus user handling through active drafts, imports, and submitted workouts.
+- Ordinary sessions are silent. Direct recorded pain/injury or illness is the only independently approved live rule; it produces one advisory session action and never blocks actual-work logging.
+- Numeric fatigue, readiness, plateau, deload, grade, evidence, and confidence thresholds remain out of scope and cannot create a current action.
+- Direct detector UI consumers, legacy recommendation renderers/writers, target-mutating fallbacks, visible confidence/evidence paths, Today Program pulse, Progress score/expectation output, and completion coaching were removed.
+- M2 focused contracts, 59/59 public scripts, lint, typecheck, production build, 41-file web sync, 40-asset PWA verification, privacy scan, and 2/2 mobile Playwright scenarios passed. Independent recommendation review approved the scoped M2 gate.
 
 ## Current objective
 
-M0 and M1 are complete locally and recoverable. M2 has not started; the next application change is the canonical exception resolver.
+M0 and M1 are complete and recoverable. M2 has passed its objective exit gate and awaits its local checkpoint hash. M3 planner/mesocycle deletion is next.
 
 ## Next actions
 
-1. Begin M2 at the canonical candidate/resolver boundary without reopening M1 product decisions.
-2. Continue through M2–M8 with code, tests, living docs, and deletion evidence integrated per milestone.
-3. Automated, privacy, migration, independent, target-device, and five-workout human acceptance gates precede any separately authorized publication.
+1. Create and record the authorized local M2 checkpoint.
+2. Begin M3 planner/mesocycle deletion without reactivating legacy recommendation paths.
+3. Continue through M3–M8 with code, tests, living docs, and deletion evidence integrated per milestone.
+4. Automated, privacy, migration, independent, target-device, and five-workout human acceptance gates precede any separately authorized publication.
 
 ## Open issues
 
 - Target-device RPE replacement/completion behavior is **NEEDS REVIEW**; source code intent does not resolve Erik's reported device experience.
-- Current fatigue, readiness, plateau, deload, evidence, confidence, and grade thresholds/formulas are not approved by the final contract and require evaluation during an authorized implementation.
+- Current numeric fatigue, readiness, plateau, deload, evidence, confidence, and grade thresholds/formulas are not approved. M2 prevents them from producing current actions; M4/M7 remove remaining hidden analysis and legacy grade debt.
 - Target migration contracts and synthetic baselines exist; M1 runtime normalization is implemented, but a complete real-data export/replay and independent migration verification remain unperformed.
 - Focused browser/PWA/accessibility verification passed for M1; physical-device, notification, performance, privacy, independent-review, pinned-runtime, and five-workout acceptance gates remain unverified.
-- M2–M8 product behavior remains unimplemented; current recommendation/evidence UI and guided planner persist only until their assigned deletion milestones.
+- M3–M8 product behavior remains incomplete. Guided planner/mesocycle systems persist only until M3; hidden analytics/research and legacy grade/UI debt remain assigned to M4/M7.
 - Pre-existing uncommitted `.claude/`, `.vercel/`, `docs/redesign/`, and `redesign/prompts/` paths must remain preserved.
 - Current code and living docs differ materially from final product intent. They remain accurate as current-state evidence until an authorized implementation updates behavior and documentation together.
 - Local implementation is authorized. Commit, push, merge, deployment, real-data migration, baseline acceptance, and publication are not authorized or completed.

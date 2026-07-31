@@ -1739,11 +1739,17 @@ test("unavailable-muscle fallback plans expose complete zeroed volume fields", (
   assert.equal(plan.taxonomyVersion, evidence.research.version, "fallback muscle plans must retain taxonomy provenance");
 });
 
-test("legacy target conversion is contractually required to honor executionBlocked", () => {
+test("application recommendations cross only the canonical resolved-action boundary", () => {
   const source = readApplicationContractSource(ROOT);
-  const converter = source.match(/function legacyTargetFromSnapshot\([\s\S]*?\n\s*function unifiedTargetContext\(/)?.[0];
-  assert.ok(converter, "legacyTargetFromSnapshot must remain discoverable for the app contract");
-  assert.match(converter, /executionBlocked/, "index integration required: legacyTargetFromSnapshot must return a non-executable target whenever finalPrescription.executionBlocked is true");
+  assert.match(source, /function stableTargetForTemplateExercise\(/, "ordinary workout targets must come from the saved exercise variant");
+  assert.match(source, /exceptionResolverApi\.resolveExceptionCandidates/, "exception candidates must cross the canonical resolver");
+  assert.match(source, /session\.resolvedActions = measurePerformance\("workoutStart:exceptionResolver"/, "workout start must persist the canonical resolver decision");
+  assert.match(source, /applyResolvedActionToStableTarget\(historyTarget, resolvedAction\)/, "only a resolved action may temporarily adapt a stable target");
+  assert.match(source, /renderResolvedAction\(resolvedActionForScope\(session, "session"\)/, "the workout view must consume the persisted session action");
+  assert.match(source, /executionBlocked: false/, "an intervention must not block the workout logger");
+  assert.doesNotMatch(source, /function legacyTargetFromSnapshot\(/, "legacy prescription snapshots must not be converted into live targets");
+  assert.doesNotMatch(source, /function unifiedPrescriptionSnapshot\(/, "the application must not rebuild competing recommendation snapshots");
+  assert.doesNotMatch(source, /function renderRecommendation\w*\(/, "legacy recommendation renderers must remain absent");
 });
 
 test("recommendation IDs distinguish different readiness contexts", () => {

@@ -126,3 +126,10 @@ Record decisions here only after reviewing relevant product evidence, repository
 **Decision:** Backup schema v3 is the export contract for current app-data v3; backup schema v2 remains an isolated compatibility envelope for app-data v1/v2 imports. Stored historical grade values and versions are source observations and remain importable.  
 **Rationale:** M1 normalized active state to app-data v3 while the old executable backup contract accepted only v1/v2, which would prevent the required complete pre-migration export and could drop legacy grade attribution at strict import.  
 **Consequence:** Backup/app-data version pairings are validated, current v3 round-trips are covered by a synthetic fixture, and later deletion cannot remove the legacy reader until the migration acceptance gate passes.
+
+## D-019 - M2 approves only direct recorded pain or illness as a live rule
+
+**Status:** Accepted
+**Decision:** The only live M2 exception rule is a directly recorded current pain/injury or illness observation resolving to one advisory session-scoped `stop_or_skip_work` action. Every numeric fatigue, readiness, plateau, deload, grade, evidence, and confidence threshold remains out of scope until calibration and independent review explicitly approve it.
+**Rationale:** The final contract requires evaluated, material, singular intervention and ordinary silence. Repository thresholds were implemented-state evidence, not settled product decisions. Independent recommendation review approved the direct Boolean safety rule and rejected treating any numeric legacy threshold as approved.
+**Consequence:** `exception-resolver.js` is the single current action authority; stable targets remain immutable; logging remains usable after a warning; continuing is recorded as explicit handling. Legacy detector, planner, score, and grade code may survive only within the bounded compatibility/deletion windows assigned to M3, M4, and M7 and cannot feed current action output.

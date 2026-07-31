@@ -115,7 +115,7 @@ const equipmentSnapshot = {
   recommendationSnapshot: { finalPrescription: { executionBlocked: true, reason: "unavailable_equipment" } }
 };
 assert.equal(runtime.workoutMutationSafetyDecision("add-set", { exercise: equipmentSnapshot, recovery: {} }).allowed, true, "Legacy equipment state must not block logging");
-assert.equal(runtime.workoutMutationSafetyDecision("add-set", { exercise: {}, recovery: { illness: true } }).allowed, false, "M1 must not preempt the M2 pain/illness boundary");
+assert.equal(runtime.workoutMutationSafetyDecision("add-set", { exercise: {}, recovery: { illness: true } }).allowed, true, "M2 must record pain or illness without blocking actual-work logging");
 
 assert.match(foundation, /appDataVersion:\s*3/);
 assert.match(foundation, /delete model\.settings\.availableEquipment/);

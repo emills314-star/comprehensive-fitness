@@ -282,7 +282,6 @@
         if (action === "request-delete-mesocycle") { pendingDeleteMesocycleId = target.dataset.mesocycleId; render(); }
         if (action === "cancel-delete-mesocycle") { pendingDeleteMesocycleId = ""; render(); }
         if (action === "confirm-delete-mesocycle") deleteMesocycleDraft(target.dataset.mesocycleId);
-        if (action === "apply-prescription-override") applyPrescriptionOverride(target.dataset.exerciseId, target.closest("[data-override-form]"));
         if (action === "reconcile-apply") reconcileCompletedSet(target.dataset.exerciseId, true);
         if (action === "reconcile-dismiss") reconcileCompletedSet(target.dataset.exerciseId, false);
         if (action === "adjust-exercise-default") {
@@ -544,15 +543,7 @@
         if (action === "exercise-secondary-muscle") patchExercise(target.dataset.exerciseId, { secondaryMuscle: target.value });
         if (action === "exercise-execution-quality") patchExercise(target.dataset.exerciseId, { executionQualityAssessment: executionQualityValues.has(target.value) ? target.value : "not_assessed" });
         if (action === "exercise-deload") {
-          const exercise = exerciseById(target.dataset.exerciseId);
-          const form = root.querySelector(`[data-override-form="${CSS.escape(target.dataset.exerciseId)}"]`);
-          if (exercise?.recommendationSnapshot && form && exercise.sessionId === activeWorkoutId) {
-            const deloadSelect = form.querySelector('[data-override-field="deload"]');
-            const reasonInput = form.querySelector('[data-override-field="reason"]');
-            if (deloadSelect) deloadSelect.value = target.checked ? "exercise_deload" : "normal";
-            if (reasonInput) reasonInput.value = target.checked ? "Manual exercise-specific deload" : "Manual decision to resume normal exercise loading";
-            applyPrescriptionOverride(exercise.id, form);
-          } else patchExercise(target.dataset.exerciseId, { isDeload: target.checked });
+          patchExercise(target.dataset.exerciseId, { isDeload: target.checked });
         }
         if (action === "exercise-resistance-type") {
           const resistanceType = resistanceTypeValues.includes(target.value) ? target.value : "external";

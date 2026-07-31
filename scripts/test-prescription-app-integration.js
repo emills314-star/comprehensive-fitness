@@ -10,6 +10,12 @@ const { readApplicationContractSource } = require("./read-application-contract-s
 const root = path.resolve(__dirname, "..");
 const publicCheckout = process.env.CF_PUBLIC_CHECKOUT === "1";
 const html = readApplicationContractSource(root);
+const indexHtml = fs.readFileSync(path.join(root, "index.html"), "utf8");
+const foundation = fs.readFileSync(path.join(root, "app-foundation.js"), "utf8");
+const workout = fs.readFileSync(path.join(root, "app-workout.js"), "utf8");
+const views = fs.readFileSync(path.join(root, "app-views.js"), "utf8");
+const analysis = fs.readFileSync(path.join(root, "app-analysis.js"), "utf8");
+const imports = fs.readFileSync(path.join(root, "app-import.js"), "utf8");
 const privacy = fs.readFileSync(path.join(root, "privacy.html"), "utf8");
 const support = fs.readFileSync(path.join(root, "support.html"), "utf8");
 const secondaryPageCss = fs.readFileSync(path.join(root, "resources", "secondary-page.css"), "utf8");
@@ -17,24 +23,26 @@ const secondaryPageCss = fs.readFileSync(path.join(root, "resources", "secondary
 // Compile the application contract view before checking integration contracts.
 [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].forEach((match) => new Function(match[1]));
 
-assert.match(html, /<script src="\.\/programming-family-ledger\.js"><\/script>[\s\S]*<script src="\.\/prescription-engine\.js"><\/script>[\s\S]*<script src="\.\/guided-mesocycle\.js"><\/script>/, "The browser must load the shared family ledger before both consumers and the app");
+assert.match(indexHtml, /<script src="\.\/programming-family-ledger\.js"><\/script>[\s\S]*<script src="\.\/prescription-engine\.js"><\/script>[\s\S]*<script src="\.\/exception-resolver\.js"><\/script>[\s\S]*<script src="\.\/guided-mesocycle\.js"><\/script>[\s\S]*<script src="\.\/app-foundation\.js"><\/script>/, "The browser must load the canonical exception resolver before application runtime consumers");
 assert.match(html, /familyProjectionStatus: familyProjection\.familyProjectionStatus/, "Weekly analytics must expose fail-closed family projection status");
 assert.match(html, /familyTotals: familyProjection\.familyTotals/, "Weekly analytics must expose recommendation-family dose");
 assert.match(html, /activeSessionIds\.has\(entry\.session\.id\)/, "Historical family projection must use submitted active history only");
-assert.match(html, /async function initializePrescriptionEvidence\(\)/, "App startup must load personal and research evidence");
-assert.match(html, /await initializePrescriptionEvidence\(\)/, "Boot must wait for the evidence layer before rendering");
-assert.match(html, /function unifiedPrescriptionSnapshot\(/, "All surfaces need one snapshot factory");
-assert.match(html, /coachRecommendationForExercise[\s\S]*unifiedPrescriptionSnapshot/, "Chart/coach recommendations must use the unified snapshot");
-assert.match(html, /coachTargetForTemplateExercise[\s\S]*unifiedPrescriptionSnapshot/, "Template targets must use the unified snapshot");
-const coachTargetSource = html.slice(html.indexOf("function coachTargetForTemplateExercise("), html.indexOf("function sessionTypeForTemplate("));
-assert.match(coachTargetSource, /isUsableWorkoutPrescriptionSnapshot\(snapshot\)[\s\S]*prescriptionSnapshotWithTemplateStandard\(snapshot, templateExercise, options\)[\s\S]*return legacyTargetFromSnapshot\(executableSnapshot, templateExercise\);/, "Workout construction must convert the executable final prescription, including an explicit saved standard, from the unified snapshot");
-assert.doesNotMatch(coachTargetSource, /legacyTargetFromSnapshot\(snapshot, templateExercise, \{ useBase: true \}\)/, "Workout construction must not prescribe the base dosage while displaying the final dosage");
-assert.match(html, /recommendationSnapshot: target\.recommendationSnapshot/, "Workout exercises must persist the exact generated snapshot");
-assert.match(html, /session\.workoutPrescription = \{/, "Workout start must persist a versioned workout prescription");
-assert.match(html, /recommendationHistory:/, "App data must preserve immutable recommendation history");
+const startTemplateSource = workout.slice(workout.indexOf("function startTemplate("), workout.indexOf("function addSet(", workout.indexOf("function startTemplate(")));
+assert.match(foundation, /const exceptionResolverApi = window\.FitnessExceptionResolver \|\| null/, "Application runtime must own one explicit canonical resolver dependency");
+assert.match(foundation, /function stableTargetForTemplateExercise\(/, "Stable variant targets must have a dedicated construction boundary");
+assert.match(startTemplateSource, /stableTargetForTemplateExercise\(templateExercise,/, "Workout start must use the stable variant target rather than a normal recommendation");
+assert.match(startTemplateSource, /session\.resolvedActions = [\s\S]{0,160}resolveWorkoutExceptions\(/, "Workout start must persist canonical resolved actions");
+assert.match(startTemplateSource, /applyResolvedActionToStableTarget\(historyTarget, resolvedAction\)/, "Only a resolved action may prospectively reduce a stable target");
+assert.match(startTemplateSource, /stableTargetSnapshot:[\s\S]*resolvedActionId:/, "Workout exercises must persist stable facts and the canonical decision identity");
+assert.match(startTemplateSource, /delete session\.workoutPrescription/, "Current workout start must discard a replaceable legacy draft prescription");
+assert.doesNotMatch(startTemplateSource, /coachTargetForTemplateExercise|unifiedPrescriptionSnapshot|recommendationSnapshot:\s*target|recommendationHistory|applyManualOverride/, "The current start path must not generate recommendation snapshots, duplicate history, or engine manual overrides");
+assert.match(imports, /"resolvedActions"/, "Strict import must preserve canonical resolved actions");
+assert.match(foundation, /resolvedActions:\s*Array\.isArray\(session\.resolvedActions\)/, "The active draft must preserve the action visible during logging");
+assert.match(views, /function renderResolvedAction\(/, "Visible exception copy must derive from one structural renderer");
+assert.doesNotMatch(views, /renderRecommendationHead|renderUnifiedPrescriptionDetails|renderPrescriptionDetails|renderUnifiedEvidence/, "Today and active-workout surfaces must not retain normal recommendation, confidence, or evidence renderers");
+assert.doesNotMatch(analysis, /function renderRecommendation\(|renderRecommendationHead|renderUnifiedEvidence/, "Progress must not become a second recommendation source");
+assert.doesNotMatch(html, /function applyPrescriptionOverride\(/, "The deleted frontend engine-override adapter must not remain reachable");
 assert.match(html, /manualOverrides:/, "App data must retain manual override events");
-assert.match(html, /applyPrescriptionOverride\(/, "Live workouts must support explicit prescription overrides");
-assert.match(html, /evaluateWorkoutOverrideOutcomes\(/, "Completed workouts must evaluate override outcomes");
 assert.match(html, /renderMesocyclePlanner\(/, "Plan must expose the mesocycle lifecycle");
 assert.match(html, /guided-build-step[\s\S]*Check viability[\s\S]*Full weekly review/, "The reachable planner must expose the guided build and viability flow");
 assert.match(html, /Templates to create[\s\S]*Create mesocycle templates/, "Guided creation must review every generated template before persistence");
@@ -66,16 +74,11 @@ assert.doesNotMatch(html.slice(guidedPlanComparisonStart, guidedPlanComparisonEn
 for (const requiredClass of ["steps", "step-label", "day-card", "assign", "chiprow", "pick"]) {
   assert.match(html, new RegExp(`\\.${requiredClass}\\s*\\{`), `Guided production CSS must define .${requiredClass}`);
 }
-const unifiedPrescriptionStart = html.indexOf("function renderUnifiedPrescriptionDetails(");
-const unifiedPrescriptionEnd = html.indexOf("function renderPrescriptionDetails(", unifiedPrescriptionStart);
-assert(unifiedPrescriptionStart >= 0 && unifiedPrescriptionEnd > unifiedPrescriptionStart, "Unified prescription rendering must remain independently inspectable");
-const unifiedPrescriptionSource = html.slice(unifiedPrescriptionStart, unifiedPrescriptionEnd);
-assert.match(html, /function renderRecommendationHead\(snapshot, options = \{\}\)[\s\S]*const adjustedInSession = Boolean\(options\.exercise\?\.overrideLocked && options\.exercise\?\.manualOverrides\?\.length\);[\s\S]*const title = adjustedInSession \? "Adjusted in session" : changed \? "Today only" : recommendationActionLabel\(prescription\);[\s\S]*class="cc-title">' \+ escapeHtml\(title\)/, "An audited in-session override must own the compact claim title, while an otherwise readiness-adjusted target must still render Today only");
-assert.match(html, /adjustedInSession \? '<span class="cc-why">locked for this workout<\/span>' : ''/, "An audited in-session override must disclose that its targets are locked for this workout");
-assert.match(unifiedPrescriptionSource, /const baseComparison = changed \? '<div class="prescription-base"><span>Base prescription<\/span><strong>' \+ escapeHtml\(baseLine\)/, "The unadjusted base must render in its distinct prescription-base comparison markup");
+assert.doesNotMatch(views, /function renderUnifiedPrescriptionDetails\(|function renderPrescriptionDetails\(|function renderRecommendationHead\(/, "The normal interface must not retain a hidden legacy recommendation detail stack");
+assert.doesNotMatch(analysis, /Research confidence|Unified prescription evidence|recommendation snapshots/, "Visible analysis/settings surfaces must not expose recommendation confidence, evidence status, or snapshot counts");
 assert.match(html, /field: "nutritionStatus", label: "Nutrition today", action: "template-readiness-nutrition"[\s\S]*field: "proteinStatus", label: "Protein target", action: "template-readiness-protein"/, "The shared segmented readiness renderer must collect current nutrition and protein context in distinct fields");
 assert.match(html, /if \(action === "template-readiness-nutrition"\) patchTemplateStartDraft\(\{ nutritionStatus: target\.value \}, false\);[\s\S]*if \(action === "template-readiness-protein"\) patchTemplateStartDraft\(\{ proteinStatus: target\.value \}, false\);/, "Nutrition and protein readiness choices must remain independently delegated into the draft");
-assert.match(html, /nutritionAdequate:[\s\S]*proteinAdequate:[\s\S]*energyAvailabilityLow:/, "Current nutrition must reach the unified readiness evaluation");
+assert.match(foundation, /function explicitSafetyCandidate\([\s\S]*category:\s*"pain_or_illness"[\s\S]*explicitSafetyInput:\s*true/, "Only explicit recorded safety input is currently approved to create a runtime exception candidate");
 assert.match(html, /private personal evidence package/, "Hosted devices need a privacy-safe local evidence import");
 assert.match(html, /id="support-guidance"/, "Settings support section needs a stable return anchor");
 for (const [name, page, label] of [["privacy", privacy, "Close Privacy Policy"], ["support", support, "Close Support"]]) {
@@ -123,8 +126,7 @@ assert.equal(oneDayStatus.overallStatus, "needs_frequency", "missing frequency m
 assert.match(html, /Volume vs target/, "the Build UI must expose the plan-to-target comparison");
 assert.match(html, /No unresolved muscle-group requirements/, "the Build UI must distinguish a fully covered plan from unresolved volume");
 assert.match(html, /Mesocycle completed/, "successful creation must have a persistent completion state");
-assert.match(html, /Prescription detail[\s\S]*Research confidence[\s\S]*<span>Evidence<\/span>/, "recommendation explanations must expose the standardized prescription, confidence, and evidence sections");
-assert.doesNotMatch(html, /Why\? \/ Evidence|Why This Recommendation/, "superseded undivided recommendation labels must not leak into the compact section vocabulary");
+assert.doesNotMatch(views, /Prescription detail|Research confidence|Why\? \/ Evidence|Why This Recommendation/, "Normal surfaces must not expose the deleted recommendation/evidence vocabulary");
 assert.match(html, /intentionalReduction/, "prescribed light work must be marked so fatigue flags do not misclassify it as weakness");
 assert.match(html, /roundLoadForUnit/, "all displayed and edited loads must use the shared precision boundary");
 
@@ -144,22 +146,34 @@ represented.forEach((muscle) => {
 });
 
 const personal = evidence.personal.exerciseScores.find((item) => Number(item.comparable_session_count || 0) >= 5 && evidence.personal.historyFor(item.exercise_id).length >= 3);
-let privateAssertionsSkipped = 0;
+let privateAssertionsSkipped = publicCheckout ? 1 : 0;
 let exerciseId;
 let muscle;
-if (publicCheckout) {
-  privateAssertionsSkipped = 1;
-  muscle = represented.find((muscleId) => pools[muscleId]?.candidates?.length);
-  exerciseId = pools[muscle].candidates[0].exerciseId;
-} else {
-  assert(personal, "Real personal evidence needs at least one prescribable exercise");
+const prescriptionCandidates = [];
+if (!publicCheckout) {
+  assert(personal, "Real personal evidence needs at least one candidate for the isolated engine boundary");
   const muscleRecord = evidence.personal.muscleScoresFor(personal.exercise_id)[0];
-  muscle = muscleRecord?.muscle_group || evidence.personal.prescriptionsFor(personal.exercise_id)[0]?.muscle_group_id;
-  assert(muscle, "Personal exercise needs a represented muscle group");
-  exerciseId = personal.exercise_id;
+  const personalMuscle = muscleRecord?.muscle_group || evidence.personal.prescriptionsFor(personal.exercise_id)[0]?.muscle_group_id;
+  if (personalMuscle) prescriptionCandidates.push({ exerciseId: personal.exercise_id, muscle: personalMuscle, private: true });
 }
-assert(muscle && exerciseId, "A public research or authorized private candidate is required for integration coverage");
-const snapshot = engine.prescribeExercise({ exerciseId, muscleGroupId: muscle, createdAt: "2026-07-11T12:00:00.000Z" });
+for (const muscleId of represented) {
+  for (const candidate of pools[muscleId]?.candidates || []) {
+    prescriptionCandidates.push({ exerciseId: candidate.exerciseId, muscle: muscleId, private: false });
+  }
+}
+let snapshot = null;
+for (const candidate of prescriptionCandidates) {
+  try {
+    snapshot = engine.prescribeExercise({ exerciseId: candidate.exerciseId, muscleGroupId: candidate.muscle, availableEquipment: ["all"], createdAt: "2026-07-11T12:00:00.000Z" });
+    exerciseId = candidate.exerciseId;
+    muscle = candidate.muscle;
+    if (!candidate.private) privateAssertionsSkipped = 1;
+    break;
+  } catch {
+    // A legacy engine candidate can remain non-executable; current logging does not consume this path.
+  }
+}
+assert(snapshot && muscle && exerciseId, "The isolated legacy engine boundary needs one deterministic executable synthetic/public candidate");
 const surfaces = ["coach", "template", "chart", "workout_start", "live_workout", "deload", "mesocycle"].map((surface) => engine.forSurface(snapshot, surface));
 surfaces.forEach((surface) => {
   assert.equal(surface.recommendationId, snapshot.recommendationId);
@@ -181,4 +195,4 @@ const overridden = engine.applyManualOverride(snapshot, { setCount: snapshot.fin
 assert.equal(overridden.overrideLocked, true);
 assert.equal(engine.reconcileRecommendation(overridden, snapshot).checksum, overridden.checksum, "An intentional workout override must not be undone in the same workout");
 
-console.log(`Prescription app integration passed (${represented.length} public muscle pools; all app surfaces share ${snapshot.recommendationId}; ${privateAssertionsSkipped} truly private fixture assertion skipped).`);
+console.log(`Prescription app integration passed (canonical resolved-action frontend; ${represented.length} public muscle pools retained as isolated engine evidence; ${privateAssertionsSkipped} truly private fixture assertion skipped).`);

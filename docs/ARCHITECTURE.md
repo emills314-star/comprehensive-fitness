@@ -270,6 +270,14 @@ Mesocycle candidate detail remains progressively rendered: Templates defers the 
 - **PARTIALLY IMPLEMENTED:** Public CI includes Playwright, axe, responsive/overflow, console, approved-screenshot checks, and the implemented accessibility/design contract for route focus, modal focus, Dashboard restoration, target sizing, reduced motion, forced colors, and exact 320 px/200% reflow. Dedicated protected Lift/Dashboard behavior and intentionally refreshed Quiet Modular Navy baselines cover mobile, tablet, desktop, dark, and zoom-equivalent reference states. Ordinary five-view mobile/desktop goldens were refreshed in the same reviewed redesign. Physical native-device CI remains absent.
 - **NEEDS REVIEW:** External production, Upstash region/status, and physical iPhone acceptance claims in operational docs require human re-verification.
 
+## Zero-based redesign runtime boundary
+
+- **IMPLEMENTED (M2):** `exception-resolver.js` is the sole current exception-action authority and loads before the application modules. New decisions are stored on their owning workout as versioned `resolvedActions`; active-draft restore and strict import validate them through the runtime semantic validator.
+- **IMPLEMENTED:** Stable routine targets are computed independently of advice. Canonical actions may apply a temporary prospective adjustment but cannot mutate routine defaults. Mutation authorization protects exact active/history targets and does not turn pain/illness advice into a logging block.
+- **IMPLEMENTED compatibility:** Historical recommendation snapshots, prescription fields, and stored grades remain readable and immutable. No new current writer populates legacy `recommendationHistory` or `workoutPrescription`.
+- **PACKAGE:** Root and `www/` include the resolver through `scripts/sync-web.ps1`; the sync copies 41 public files and service-worker cache v96 verifies 40 precached application assets.
+- **PLANNED:** M3/M4 remove planner and hidden analytics/research execution debt. M7 replaces the temporary legacy grade bridge while preserving stored historical values/versions.
+
 ## Planned React presentation boundary
 
 **IMPLEMENTED specification / PLANNED production integration:** `redesign/src/contract.ts` establishes a typed seam between the future Dual Track shell and the existing application. UI read models cover next action, readiness, active workout, plan, progress, and system/data status. Discriminated commands cover start/resume, readiness, set/rest mutation, overrides, explicit submission/cancel, template/mesocycle mutation, history editing, settings, backup, consent, and conflicts. Effect ports isolate persistence, caching, notifications, sync, wake lock, audio, and haptics.

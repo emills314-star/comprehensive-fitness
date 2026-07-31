@@ -6,7 +6,7 @@ const html = readApplicationContractSource();
 const match = html.match(/\/\/ HYPERTROPHY_SCORE_ENGINE_START([\s\S]*?)\/\/ HYPERTROPHY_SCORE_ENGINE_END/);
 assert.ok(match, "Hypertrophy score engine markers were not found in index.html");
 const hypertrophyAnalysisSource = html.match(/function hypertrophyAnalysis\([\s\S]*?(?=\n\s*function exerciseProgressSeries\()/)?.[0] || "";
-const renderLiftProgressSource = html.match(/function renderLiftProgress\(\)[\s\S]*?(?=\n\s*function renderRecommendation\()/)?.[0] || "";
+const renderLiftProgressSource = html.match(/function renderLiftProgress\(\)[\s\S]*?(?=\n\s*function restAlertState\()/)?.[0] || "";
 assert.ok(hypertrophyAnalysisSource, "The hypertrophy-analysis orchestration source must remain inspectable");
 assert.ok(renderLiftProgressSource, "The Lift-progress orchestration source must remain inspectable");
 assert.doesNotMatch(
@@ -17,7 +17,12 @@ assert.doesNotMatch(
 assert.match(
   renderLiftProgressSource,
   /const analysis = [\s\S]*?hypertrophyAnalysis\([\s\S]*?exerciseProgressSeries\([\s\S]*?qualifyingWeekIds: analysis\.qualifyingWeekIds[\s\S]*?weekClassifications: chartWeekClassifications/,
-  "Lift progress must compute scoring first, then pass its qualifying-week classification into the chart series"
+  "Lift progress must characterize qualifying history before passing that classification into the factual chart series"
+);
+assert.doesNotMatch(
+  renderLiftProgressSource,
+  /renderHypertrophyScore|renderHypertrophyScoreDetail|renderExerciseExpectations|coachRecommendationForExercise/,
+  "Lift progress must not restore the deleted visible score, expectation, or coaching surfaces"
 );
 const engine = new Function(match[1] + "; return { selectHypertrophyWeeks, calculateHypertrophyScore }; ")();
 const { selectHypertrophyWeeks, calculateHypertrophyScore } = engine;

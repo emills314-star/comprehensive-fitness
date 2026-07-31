@@ -111,7 +111,7 @@ None beyond M0 schemas and synthetic fixtures. M0 does not introduce a productio
 
 ## M2 — Canonical exception resolver
 
-**Status:** IN PROGRESS  
+**Status:** IMPLEMENTED LOCALLY — EXIT GATE PASSED
 **Started:** 2026-07-31  
 **Baseline checkpoint:** `2101e19`  
 **Branch:** `codex/zero-based-redesign`  
@@ -137,3 +137,42 @@ None beyond M0 schemas and synthetic fixtures. M0 does not introduce a productio
 ### Authority/conflict review
 
 No material contradiction was found in the final documents. Existing fatigue, readiness, plateau, and deload thresholds are implemented-state evidence only and are not automatically approved. M2 will not expose or retain a threshold merely because a legacy test passes.
+
+### Exit record
+
+- Added `exception-resolver.js` as the sole current resolved-action authority, with versioned candidate, resolver, and action contracts; deterministic IDs/digests; qualification, freshness, scope, precedence, strictness, supersession, expiry/return, and handling semantics.
+- The only approved live rule is direct recorded current pain/injury or illness, which resolves to one session-scoped `stop_or_skip_work` action. All numeric fatigue, readiness, plateau, deload, grade, evidence, and confidence thresholds remain out of scope and cannot create a current action.
+- Stable routine targets remain authoritative. Canonical actions are applied prospectively and cannot mutate the named variant's normal sets, rep range, RPE, rest, or routine defaults.
+- Pain/illness is advisory, not a logging lock. Continuing records `handling: "overridden"` while add exercise/set, completion/skip, and rest controls remain usable.
+- Active drafts, imports, and submitted workouts validate and retain versioned resolved actions. Existing historical recommendation snapshots, grades, and legacy fields remain readable without silent recomputation.
+- Today, active workout, completion, and prospective grade consume persisted canonical actions only. Direct detector consumers, target-mutating fallbacks, legacy/modern recommendation renderers, duplicate current recommendation writers, visible confidence/evidence paths, and completion coaching were removed.
+- The interim Today Program pulse and Progress score/expectation renderers were removed because they exposed an unapproved competing recommendation path. Their now-hidden analysis implementation is deletion debt assigned to M4.
+- Independent recommendation-logic review approved the scoped M2 gate and explicitly marked every numeric candidate threshold out of scope.
+
+### Files changed
+
+- Runtime/package: `exception-resolver.js`, `app-foundation.js`, `app-workout.js`, `app-views.js`, `app-analysis.js`, `app-history.js`, `app-import.js`, `app.js`, `index.html`, `sw.js`, `scripts/sync-web.ps1`, and synchronized `www/` counterparts.
+- Contract: `schemas/redesign-resolved-action.v1.schema.json`.
+- Focused evidence: `scripts/test-redesign-m2-exception-resolver.js`, `scripts/test-redesign-m2-grade-bridge.js`, `scripts/test-redesign-m2-workout-writers.js`, `scripts/test-redesign-m2-app-integration.js`, `tests/fixtures/redesign-m2/`, and `tests/ui/redesign-m2-exception-resolver.spec.js`.
+- Existing public contracts were modernized only where they required deleted M2 producers, renderers, confidence/evidence UI, or logging blocks.
+
+### Verification
+
+- Focused M0, M1, M2, backup, persistence, grade, safety, set-prescription, performance, and 38/38 application-integration contracts passed.
+- Full public gate passed 59/59 selected scripts (60 discovered; one private-only harness excluded).
+- Static lint passed for 203 JavaScript and 3,135 JSON files.
+- TypeScript check and production Vite build passed.
+- `sync:web` copied 41 public files, including the resolver; PWA/native public-only package verification passed for the 40 precached application assets. Service-worker cache is `comprehensive-fitness-pwa-v96`.
+- Public privacy guard passed across 640 tracked Git or archive project files.
+- Mobile Playwright passed 2/2 at 390 × 844. It verified ordinary silence, one pain action, stable 5–7 targets, exact prior performance, large loads, decimal RPE, continued logging, active-draft reload, and no horizontal overflow. Screenshots are under ignored `artifacts/ui-audit/m2/`.
+- Root and packaged resolver hashes match after `sync:web`.
+
+### Decisions, assumptions, and remaining gates
+
+- The standalone schema remains structurally broader than the runtime semantic validator. No external schema-only action producer is authorized; align them before introducing one.
+- Same-family action strictness is not parameter-aware. No numeric rule is live, so this is not an M2 defect; it must be resolved before any numeric action can be approved.
+- Hidden hypertrophy/fatigue computation remains M4 deletion debt and has no visible, grade, workout, or resolver consumer.
+- The temporary legacy grade bridge remains until M7; stored historical grade values/versions are preserved.
+- Verification used Node 24.18.0/npm 11.16.0 rather than the repository-pinned Node 22.23.x/npm 10.9.x.
+- Real private-history replay, physical-device/notification validation, desktop/native acceptance, Erik's five-workout field test, deployment, push, merge, and publication remain unperformed.
+- **Checkpoint:** pending the immediately following authorized local milestone commit; record its hash before M3 begins.

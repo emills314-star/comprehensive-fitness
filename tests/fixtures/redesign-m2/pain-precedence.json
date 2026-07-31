@@ -1,0 +1,38 @@
+{
+  "evaluatedAt": "2030-01-15T12:00:00.000Z",
+  "candidates": [
+    {
+      "candidateVersion": "comprehensive-fitness-exception-candidate/1.0.0",
+      "candidateId": "candidate-pain-explicit",
+      "detector": { "id": "detector-safety", "version": "1.0.0", "ruleVersion": "rule-safety/1.0.0" },
+      "evaluatedAt": "2030-01-15T11:59:00.000Z",
+      "effectiveAt": "2030-01-15T11:59:00.000Z",
+      "returnCondition": { "type": "user_decision" },
+      "category": "pain_or_illness",
+      "scope": { "type": "session" },
+      "action": { "code": "stop_or_skip_work", "parameters": { "mode": "stop_or_skip" } },
+      "reasonCodes": ["explicit-pain-input"],
+      "sourceReferences": ["observation-s1"],
+      "inputDigest": "fixture-digest-safety",
+      "explicitSafetyInput": true,
+      "evidence": [{ "sourceReference": "observation-s1", "provenance": "recorded", "required": true }],
+      "qualification": { "identityIntegrity": true, "sourceIntegrity": true, "comparability": true, "sufficiency": true, "freshness": true, "materiality": true, "calibration": true, "actionability": true, "nonDuplication": true, "auditability": true }
+    },
+    {
+      "candidateVersion": "comprehensive-fitness-exception-candidate/1.0.0",
+      "candidateId": "candidate-pain-plateau",
+      "detector": { "id": "detector-plateau", "version": "1.0.0", "ruleVersion": "rule-plateau/1.0.0" },
+      "evaluatedAt": "2030-01-15T11:58:00.000Z",
+      "effectiveAt": "2030-01-15T11:58:00.000Z",
+      "expiresAt": "2030-01-29T12:00:00.000Z",
+      "category": "plateau",
+      "scope": { "type": "exercise", "exerciseVariantId": "variant-alpha" },
+      "action": { "code": "address_plateau", "parameters": { "strategy": "change_exercise" } },
+      "reasonCodes": ["plateau-rule-qualified"],
+      "sourceReferences": ["observation-p2"],
+      "inputDigest": "fixture-digest-pain-plateau",
+      "evidence": [{ "sourceReference": "observation-p2", "provenance": "inferred", "required": true }],
+      "qualification": { "identityIntegrity": true, "sourceIntegrity": true, "comparability": true, "sufficiency": true, "freshness": true, "materiality": true, "calibration": true, "actionability": true, "nonDuplication": true, "auditability": true }
+    }
+  ]
+}

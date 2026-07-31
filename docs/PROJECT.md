@@ -119,6 +119,12 @@ Do not treat the optional Redis backend as the personal evidence database. It st
 - **NEEDS REVIEW:** Live deployment and physical-device status cannot be proven from repository state alone; dated operational observations must be reverified before release claims.
 - **NEEDS REVIEW:** Research scope is male-specific; desired inclusivity/population expansion is not documented.
 
+## Zero-based redesign implementation status
+
+- **IMPLEMENTED (M0–M2):** The final redesign package is now the product authority. Stable named-variant targets, factual same-variant/same-role prefills, unrestricted actual-work logging, and one versioned canonical exception-action pipeline are live locally.
+- **IMPLEMENTED (M2):** Ordinary sessions are silent. Direct recorded pain/injury or illness is the only approved live exception rule; it presents one advisory action while preserving logging. Numeric legacy thresholds cannot create a current action.
+- **PLANNED (M3–M8):** Planner/mesocycle, analytics/research clutter, old navigation, active-logger clutter, and legacy completion/grade surfaces remain scheduled for sequential deletion or replacement. The older Dual Track comparison lab is historical design evidence and does not override the final PRD.
+
 ## Blank-slate UI reinvention
 
 - **IMPLEMENTED:** A separate synthetic-data React/TypeScript comparison lab defines and renders 15 structurally distinct phone-first design systems without using the production UI as a visual reference (`redesign/`, `docs/design/COMPLETE_REDESIGN_CONCEPTS.md`).

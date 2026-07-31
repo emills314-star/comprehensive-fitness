@@ -287,262 +287,8 @@
         return result;
       }
 
-      function unifiedSnapshotForFatigueFlag(flag, weekStart) {
-        if (!prescriptionEngine || !["Lift", "Muscle"].includes(flag.scope)) return null;
-        const weekEnd = new Date(`${weekStart}T12:00:00`);
-        weekEnd.setDate(weekEnd.getDate() + 6);
-        const throughDate = localDateIso(weekEnd) > todayIso() ? todayIso() : localDateIso(weekEnd);
-        const names = flag.scope === "Lift"
-          ? [flag.name]
-          : getExerciseNames().filter((name) => musclesForExercise({ name }).some((item) => item.muscle === flag.name)).slice(0, 8);
-        if (!names.length) return null;
-        const template = { id: `fatigue-${flag.id}`, exercises: names.map((name) => ({ name })) };
-        const priority = { full_program_deload: 9, muscle_group_deload: 8, exercise_deload: 7, rotate_exercise: 6, substitute: 6, reduce_volume: 5, light_session: 4, hold: 3, normal: 2, progress: 1 };
-        const snapshots = names.map((name) => unifiedPrescriptionSnapshot({ name }, { throughDate, historical: true, template, mesocycle: null, fresh: true }));
-        const engineFailure = snapshots.find((snapshot) => (snapshot?.type || snapshot?.kind) === "engine_failure");
-        if (engineFailure) return engineFailure;
-        return snapshots.filter((snapshot) => snapshot?.finalPrescription
-          && snapshot.hardConstraint !== true
-          && snapshot.type !== "hard_constraint_rejection"
-          && snapshot.kind !== "hard_constraint_rejection")
-          .sort((a, b) => Number(priority[b.finalPrescription.recommendationType] || 0) - Number(priority[a.finalPrescription.recommendationType] || 0))[0] || null;
-      }
-
-      function fatigueFlags(weekStart = startOfWeekIso(todayIso())) {
-        const cacheKey = analysisRevision + "|" + weekStart;
-        if (fatigueFlagCache.has(cacheKey)) return fatigueFlagCache.get(cacheKey);
-        const flags = [];
-        getExerciseNames().forEach((name) => {
-          const weeks = summarizeExerciseByWeek(name);
-          const current = weeks.find((week) => week.weekStart === weekStart);
-          const previous = weeks.find((week) => week.weekStart < weekStart && !week.isLikelyDeload && !week.intentionalReduction);
-          if (!current) return;
-          const drop = previous && current.bestEstimatedOneRepMax > 0 && current.bestEstimatedOneRepMax < previous.bestEstimatedOneRepMax * 0.93;
-          if (current.failedSets >= 2) flags.push({ id: "lift-" + exerciseKey(name) + "-misses", scope: "Lift", name, level: "over", concern: "high", triggeredAt: current.weekStart, reason: "Two or more planned sets were missed or left incomplete.", evidence: [current.failedSets + " missed sets this week", current.completedSets + " completed sets", current.averageRpe ? "Average completed-set RPE " + current.averageRpe.toFixed(1) : "No reliable RPE average"], rule: "The lift flag activates at 2 or more missed working sets in the selected week.", recommendation: "Hold load or reduce it 5-10%, complete the programmed reps with clean technique, and avoid adding sets this week.", resolution: "Complete a comparable session with fewer than 2 misses and without another performance decline." });
-          else if (current.averageRpe >= 9.2 && current.completedSets >= 2) flags.push({ id: "lift-" + exerciseKey(name) + "-rpe", scope: "Lift", name, level: "caution", concern: "moderate", triggeredAt: current.weekStart, reason: "Target effort was exceeded repeatedly.", evidence: ["Average RPE " + current.averageRpe.toFixed(1), current.completedSets + " completed working sets", "Caution threshold: average RPE 9.2"], rule: "The lift flag activates when at least 2 completed sets average RPE 9.2 or higher.", recommendation: "Repeat the load and stop 1-2 reps earlier, or reduce the next load increment if the equipment jump is large.", resolution: "Log a comparable session averaging below RPE 9.2 with stable reps and no repeated misses." });
-          else if (drop && !current.intentionalReduction) {
-            const change = ((current.bestEstimatedOneRepMax / previous.bestEstimatedOneRepMax - 1) * 100).toFixed(1);
-            flags.push({ id: "lift-" + exerciseKey(name) + "-performance", scope: "Lift", name, level: "caution", concern: "moderate", triggeredAt: current.weekStart, reason: "Estimated performance declined versus the prior comparable week.", evidence: ["Estimated 1RM change " + change + "%", "Current " + current.bestEstimatedOneRepMax.toFixed(1) + " vs prior " + previous.bestEstimatedOneRepMax.toFixed(1) + " " + data.settings.weightUnit, "Deload weeks are excluded from the comparison"], rule: "The lift flag activates after a greater than 7% estimated 1RM decline versus the prior non-deload week.", recommendation: "Hold the prior successful load, check technique and recovery, and use a smaller progression only after reps stabilize.", resolution: "Return within 7% of the prior comparable estimated performance without high-RPE or missed-set warnings." });
-          }
-        });
-        weeklyMuscleVolume(weekStart).forEach((bucket) => {
-          if (bucket.sets > bucket.targetHigh) flags.push({ id: "muscle-" + bucket.muscle.toLowerCase() + "-volume", scope: "Muscle", name: bucket.muscle, level: "over", concern: bucket.sets > bucket.targetHigh * 1.2 ? "high" : "moderate", triggeredAt: weekStart, reason: "Weekly volume exceeded the planned range.", evidence: [bucket.sets.toFixed(bucket.sets % 1 ? 1 : 0) + " weighted sets logged", "Target range " + bucket.targetLow + "-" + bucket.targetHigh + " sets", bucket.directSets.toFixed(bucket.directSets % 1 ? 1 : 0) + " direct and " + bucket.indirectSets.toFixed(bucket.indirectSets % 1 ? 1 : 0) + " indirect sets"], rule: "The flag uses the Monday-Sunday calendar week and activates when completed weighted sets exceed the configured upper target. Direct sets count as 1; mapped secondary work counts fractionally. Only submitted workouts are included, and explicitly marked deload exercises are excluded.", recommendation: "Do not add more volume this week. Keep remaining work easy or move it to the next training week.", resolution: "Return weekly volume to the target range and avoid a simultaneous decline in reps or recovery.", detailType: "weekly-volume", volumeDetail: { muscle: bucket.muscle, weekStart, targetLow: bucket.targetLow, targetHigh: bucket.targetHigh, actual: bucket.sets, exceededBy: bucket.sets - bucket.targetHigh, directSets: bucket.directSets, indirectSets: bucket.indirectSets, contributions: bucket.details, sessionGroups: bucket.sessionGroups, sessions: bucket.sessions, excludedDeloadSessions: bucket.excludedDeloadSessions } });
-          else if (bucket.highRpeSets >= 4) flags.push({ id: "muscle-" + bucket.muscle.toLowerCase() + "-rpe", scope: "Muscle", name: bucket.muscle, level: "caution", concern: "moderate", triggeredAt: weekStart, reason: "Several sets for this muscle were performed at RPE 9 or higher.", evidence: [bucket.highRpeSets.toFixed(bucket.highRpeSets % 1 ? 1 : 0) + " high-RPE weighted sets", bucket.sets.toFixed(bucket.sets % 1 ? 1 : 0) + " total weighted sets", "Caution threshold: 4 high-RPE sets"], rule: "The muscle flag activates at 4 or more weighted sets logged at RPE 9+ in one week.", recommendation: "Keep the next exposure 1-2 reps in reserve and avoid increasing both load and volume.", resolution: "Complete the next week with fewer than 4 high-RPE sets and stable performance." });
-          else if (bucket.failedSets >= 2) flags.push({ id: "muscle-" + bucket.muscle.toLowerCase() + "-misses", scope: "Muscle", name: bucket.muscle, level: "caution", concern: "moderate", triggeredAt: weekStart, reason: "Multiple planned sets for this muscle were not completed.", evidence: [bucket.failedSets.toFixed(bucket.failedSets % 1 ? 1 : 0) + " weighted missed sets", bucket.sets.toFixed(bucket.sets % 1 ? 1 : 0) + " completed weighted sets", "Caution threshold: 2 missed sets"], rule: "The muscle flag activates at 2 or more weighted missed sets in the selected week.", recommendation: "Hold or reduce volume for this muscle and repeat the last successful loading pattern.", resolution: "Complete the next exposure with fewer than 2 misses and no further rep decline." });
-        });
-        const recoveryAlerts = dashboardSessionsForWeek(weekStart).map((session) => ({ session, advice: recoveryRecommendationForSession(session) })).filter((item) => ["rest", "deload", "light_session"].includes(item.advice.decision));
-        if (recoveryAlerts.length) {
-          const highest = recoveryAlerts.find((item) => item.advice.decision === "rest") || recoveryAlerts[0];
-          flags.push({ id: "recovery-" + weekStart, scope: "Recovery", name: "Readiness", level: highest.advice.decision === "rest" ? "over" : "caution", concern: highest.advice.decision === "rest" ? "high" : "moderate", triggeredAt: highest.session.date, reason: recoveryAlerts.length + " session" + (recoveryAlerts.length === 1 ? "" : "s") + " started outside the normal low-readiness band.", evidence: recoveryAlerts.slice(0, 4).map((item) => formatDate(item.session.date) + ": " + item.advice.label), rule: "Recovery flags use the personal readiness baseline and band; low out-of-band days that call for deload or rest are included.", recommendation: highest.advice.action, resolution: "Return inside the personal readiness band or record a clear note explaining a temporary outside-band result." });
-        }
-        const unifiedFlags = flags.map((flag) => {
-          const snapshot = unifiedSnapshotForFatigueFlag(flag, weekStart);
-          if (!snapshot) return flag;
-          if ((snapshot.type || snapshot.kind) === "engine_failure") {
-            const unavailableMessage = "Recommendation guidance is unavailable because the prescription engine could not generate a recommendation.";
-            return {
-              ...flag,
-              recommendation: unavailableMessage,
-              recommendationUnavailable: true,
-              recommendationStatus: "unavailable",
-              recommendationType: "engine_failure",
-              recommendationId: null,
-              engineFailure: { type: "engine_failure", code: snapshot.code || "PRESCRIPTION_ENGINE_FAILURE", status: "unavailable", message: unavailableMessage },
-              evidence: [...flag.evidence, "Unified prescription guidance was unavailable for this retrospective flag."],
-              rule: `${flag.rule} The retrospective flag remains visible, but no executable recommendation was generated.`
-            };
-          }
-          const prescription = snapshot.finalPrescription;
-          return {
-            ...flag,
-            recommendation: prescription.progressionRule,
-            recommendationType: prescription.recommendationType,
-            recommendationId: snapshot.recommendationId,
-            prescriptionConfidence: prescription.confidence,
-            evidence: [...flag.evidence, ...prescription.evidenceSummary.slice(0, 2)],
-            rule: `${flag.rule} This flag is retrospective evidence; the action above comes from unified prescription ${snapshot.recommendationId}.`,
-            resolution: prescription.holdRule
-          };
-        });
-        fatigueFlagCache.set(cacheKey, unifiedFlags);
-        return unifiedFlags;
-      }
-
       function readinessBaseline() {
         return cleanReadinessBaseline(data.settings.readinessBaseline || {});
-      }
-
-      function recoveryRecommendationForSession(session) {
-        const recovery = sessionRecovery(session);
-        if (recovery.illness) {
-          return { decision: "rest", label: "Rest recommended", action: "Current illness blocks the whole workout. Resume only after the acute restriction resolves; seek qualified guidance for severe, unexplained, or persistent symptoms.", score: 0, evidence: ["Current illness was explicitly reported."], evaluation: null };
-        }
-        if (recovery.pain) {
-          const affected = recovery.affectedMuscle ? ` affecting ${recovery.affectedMuscle}` : " without a specified affected area";
-          return { decision: "rest", label: "Stop affected work", action: "Do not test a painful movement at a lower load. Use only a distinct, explicitly confirmed pain-free alternative, or stop the affected work and seek qualified evaluation when pain is severe, unexplained, or persistent.", score: 0, evidence: [`Pain or injury was explicitly reported${affected}.`], evaluation: null };
-        }
-        if (prescriptionEngine) {
-          const evaluation = prescriptionEngine.evaluateReadiness(prescriptionReadiness(recovery, []));
-          const evidence = evaluation.signals.map((signal) => signal.explanation);
-          if (!evaluation.signals.length) evidence.push("No independent adverse readiness domain was detected; use the base prescription.");
-          if (evaluation.signalCount < 2) {
-            if (evaluation.signalCount === 1) evidence.push("One isolated HRV, resting-heart-rate, sleep, soreness, or nutrition marker is monitored but cannot trigger a deload by itself.");
-            return { decision: "hold", label: evaluation.signalCount ? "Monitor one readiness marker" : "Go as planned", action: "Use the base prescription. Adjust only if another independent marker, warm-up performance, pain, or comparable-set regression also worsens.", score: evaluation.severity, evidence, evaluation };
-          }
-          return { decision: "light_session", label: "Temporary readiness adjustment", action: "Use today's adjusted prescription with fewer sets and/or lower load and effort. This does not rewrite the mesocycle or count as an exercise deload.", score: evaluation.severity, evidence, evaluation };
-        }
-        return { decision: "hold", label: "Go as planned", action: "The readiness engine is unavailable, so keep the base prescription and use warm-ups, pain, and technique to decide whether to stop or modify work.", score: 0, evidence: ["Readiness engine unavailable; no automatic adjustment was applied."], evaluation: null };
-      }
-
-      function enteredReadinessTriggers(recoveryInput) {
-        const recovery = cleanRecovery(recoveryInput);
-        const baseline = readinessBaseline();
-        const triggers = [];
-        if (recovery.sleepHours !== "" && Number(recovery.sleepHours) <= Number(baseline.sleepHours) - 1) triggers.push({ key: "sleep", label: "Sleep " + recovery.sleepHours + "h vs " + baseline.sleepHours + "h baseline", systemic: true });
-        if (recovery.sleepQuality !== "" && Number(recovery.sleepQuality) <= Number(baseline.sleepQuality) - 1) triggers.push({ key: "sleep-quality", label: "Sleep quality " + recovery.sleepQuality + "/5 vs " + baseline.sleepQuality + "/5 baseline", systemic: true });
-        if (recovery.hrv !== "" && Number(baseline.hrv) > 0 && Number(recovery.hrv) < Number(baseline.hrv) * 0.85) triggers.push({ key: "hrv", label: "HRV " + recovery.hrv + " vs " + baseline.hrv + " baseline", systemic: true });
-        if (recovery.restingHr !== "" && Number(baseline.restingHr) > 0 && Number(recovery.restingHr) >= Number(baseline.restingHr) + 5) triggers.push({ key: "resting-hr", label: "Resting HR " + recovery.restingHr + " vs " + baseline.restingHr + " baseline", systemic: true });
-        if (recovery.soreness !== "" && Number(recovery.soreness) >= 4) triggers.push({ key: "soreness", label: "Soreness " + recovery.soreness + "/5" + (recovery.affectedMuscle ? " in " + recovery.affectedMuscle : " across the body"), systemic: !recovery.affectedMuscle, muscle: recovery.affectedMuscle });
-        if (recovery.illness) triggers.push({ key: "illness", label: "Current illness", systemic: true });
-        if (recovery.pain) triggers.push({ key: "pain", label: recovery.affectedMuscle ? "Pain or injury affecting " + recovery.affectedMuscle : "Pain or injury with no affected area specified", systemic: !recovery.affectedMuscle, muscle: recovery.affectedMuscle });
-        return triggers;
-      }
-
-      function triggerAppliesToExercise(trigger, exerciseName) {
-        if (trigger.systemic || !trigger.muscle) return true;
-        return musclesForExercise(exerciseName).some((item) => normalizePrescriptionIdentity(item.muscle) === normalizePrescriptionIdentity(trigger.muscle));
-      }
-
-      function targetWasAdjusted(original, adjusted) {
-        return ["sets", "reps", "weight", "rpe", "restSeconds"].some((key) => Number(original[key] || 0) !== Number(adjusted[key] || 0));
-      }
-
-      function describeReadinessTargetChanges(original, adjusted) {
-        const changes = [];
-        if (Number(original.weight || 0) !== Number(adjusted.weight || 0)) changes.push("resistance changed from " + formatResistance(original) + " to " + formatResistance(adjusted));
-        if (Number(original.sets || 0) !== Number(adjusted.sets || 0)) changes.push("working sets changed from " + original.sets + " to " + adjusted.sets);
-        if (Number(original.reps || 0) !== Number(adjusted.reps || 0)) changes.push("reps changed from " + original.reps + " to " + adjusted.reps);
-        if (Number(original.rpe || 0) !== Number(adjusted.rpe || 0)) changes.push("target RPE changed from " + original.rpe + " to " + adjusted.rpe);
-        if (Number(original.restSeconds || 0) !== Number(adjusted.restSeconds || 0)) changes.push("rest changed from " + original.restSeconds + "s to " + adjusted.restSeconds + "s");
-        const description = changes.length ? changes.join(", ") : "the original target was preserved";
-        return description.charAt(0).toUpperCase() + description.slice(1);
-      }
-
-      function explainReadinessAdjustmentChoice(original, adjusted, triggers) {
-        const explanations = [];
-        const systemic = triggers.some((trigger) => trigger.systemic && ["sleep", "sleep-quality", "hrv", "resting-hr", "illness", "pain"].includes(trigger.key));
-        const local = triggers.some((trigger) => !trigger.systemic && ["soreness", "pain"].includes(trigger.key));
-        if (Number(adjusted.weight || 0) < Number(original.weight || 0)) {
-          explanations.push("Load was reduced before changing the rep target so the exercise can stay in its programmed hypertrophy range with less risk of overshooting effort or missing later reps.");
-        } else if (!(original.weight > 0) && Number(adjusted.sets || 0) < Number(original.sets || 0)) {
-          explanations.push("This movement has no adjustable external load, so the rule reduces total sets instead of inventing a lighter resistance target.");
-        }
-        if (Number(adjusted.reps || 0) < Number(original.reps || 0)) {
-          explanations.push("Reps were lowered because preserving the original rep count at the adjusted effort would still create too much fatigue; the new target remains inside the programmed range.");
-        } else if (Number(adjusted.reps || 0) === Number(original.reps || 0)) {
-          explanations.push("Reps were preserved because they remain inside the intended range; recovery is managed through load, sets, effort, and rest instead of removing useful practice reps.");
-        }
-        if (Number(adjusted.sets || 0) < Number(original.sets || 0)) explanations.push("Working sets were reduced to lower total fatigue exposure while retaining enough quality work to practice the lift.");
-        if (Number(adjusted.rpe || 0) < Number(original.rpe || 0)) explanations.push("Target RPE was lowered to leave more repetitions in reserve, matching the reduced recovery capacity indicated by today's markers.");
-        if (Number(adjusted.restSeconds || 0) > Number(original.restSeconds || 0)) explanations.push("Rest was increased to protect performance quality between the remaining sets.");
-        if (local) explanations.push("The soreness or pain marker is local, so this adjustment applies only to exercises that train the affected muscle group.");
-        else if (systemic) explanations.push("Sleep, HRV, resting heart rate, illness, and pain without a specified area are systemic markers, so the rule can adjust all applicable exercises rather than one muscle group.");
-        return explanations.join(" ");
-      }
-
-      function adjustTargetForRecovery(target, recoveryAdvice, context = {}) {
-        const recovery = cleanRecovery(context.recovery || {});
-        if (target?.recommendationSnapshot && typeof unifiedPrescriptionSnapshot === "function") {
-          const sourceSnapshot = target.recommendationSnapshot;
-          const adjustedSnapshot = unifiedPrescriptionSnapshot({ name: context.exerciseName || sourceSnapshot.exerciseId }, {
-            exerciseId: sourceSnapshot.exerciseId,
-            muscleGroupId: sourceSnapshot.muscleGroupId,
-            throughDate: String(sourceSnapshot.createdAt || todayIso()).slice(0, 10),
-            recovery,
-            template: context.template,
-            mesocycle: currentMesocycle(),
-            createdAt: sourceSnapshot.createdAt
-          });
-          if (adjustedSnapshot) {
-            const templateExercise = context.template?.exercises?.find((item) => exerciseMatches(item.name, context.exerciseName || sourceSnapshot.exerciseId)) || {};
-            const executableSnapshot = prescriptionSnapshotWithTemplateStandard(adjustedSnapshot, templateExercise, { template: context.template, workoutId: context.workoutId });
-            return legacyTargetFromSnapshot(executableSnapshot, { name: context.exerciseName || sourceSnapshot.exerciseId, resistanceType: target.resistanceType, increment: target.increment });
-          }
-        }
-        const applicableTriggers = enteredReadinessTriggers(recovery).filter((trigger) => triggerAppliesToExercise(trigger, context.exerciseName || ""));
-        const targetedConcern = applicableTriggers.some((trigger) => ["soreness", "pain"].includes(trigger.key));
-        const severeConcern = applicableTriggers.some((trigger) => ["illness", "pain"].includes(trigger.key));
-        const reducedWeight = (multiplier) => {
-          if (!(target.weight > 0)) return 0;
-          const increment = Number(target.increment || (data.settings.weightUnit === "kg" ? 2.5 : 5));
-          if (target.resistanceType === "assisted_bodyweight") return roundToIncrement(target.weight * (2 - multiplier), increment);
-          return Math.min(target.weight, roundToIncrement(target.weight * multiplier, increment));
-        };
-        if (!applicableTriggers.length || (!["rest", "deload"].includes(recoveryAdvice.decision) && !targetedConcern)) {
-          if (recoveryAdvice.decision === "progress") {
-            const reason = "High readiness did not add work beyond the conservative progression supported by your lift history.";
-            return { ...target, reason, adjusted: false, adjustmentReason: "", triggerLabels: [], text: targetText(target, reason) };
-          }
-          return { ...target, adjusted: false, adjustmentReason: "", triggerLabels: [], text: target.text || targetText(target, "Inside your normal band: use the normal plan and planned progression.") };
-        }
-        const triggerText = applicableTriggers.map((trigger) => trigger.label).join("; ");
-        if (severeConcern) {
-          const illness = applicableTriggers.some((trigger) => trigger.key === "illness");
-          const reason = (context.exerciseName ? context.exerciseName + " is blocked because " : "Blocked because ") + triggerText + ". " + (illness ? "This restriction applies to the whole workout." : "Do not test the affected movement at a lower load; use only a distinct, explicitly confirmed pain-free alternative or stop that work.");
-          const blocked = {
-            ...target,
-            decision: illness ? "hold" : "substitute",
-            mode: "stop-modify",
-            interventionType: "stop_modify",
-            executionBlocked: true,
-            safetyAdjustment: true,
-            sets: 0,
-            reps: 0,
-            repLow: 0,
-            repHigh: 0,
-            weight: 0,
-            addedLoad: 0,
-            assistanceLoad: 0,
-            rpe: 0,
-            restSeconds: 0,
-            warmups: [],
-            executableActions: [],
-            safetyRestriction: {
-              schemaVersion: "hard-safety/1.0.0",
-              status: "blocked",
-              scope: illness ? "workout" : "exercise",
-              reason: illness ? "illness" : "pain",
-              resumeCriteria: illness ? "Resume only after the acute illness restriction resolves." : "Resume the affected movement only when it is pain-free."
-            },
-            adjusted: true,
-            adjustmentReason: reason,
-            triggerLabels: applicableTriggers.map((trigger) => trigger.label)
-          };
-          return { ...blocked, reason, text: targetText(blocked, reason) };
-        }
-        if (recoveryAdvice.decision === "rest") {
-          const weight = reducedWeight(0.85);
-          const adjusted = { ...target, mode: "stop-modify", interventionType: "stop_modify", safetyAdjustment: true, baseInterventionType: target.coachRecommendation?.interventionType || target.mode || "normal", sets: Math.max(1, Math.ceil(target.sets * 0.5)), weight, addedLoad: target.resistanceType === "bodyweight_plus_load" ? weight : 0, assistanceLoad: target.resistanceType === "assisted_bodyweight" ? weight : 0, rpe: 6, restSeconds: Math.max(Number(target.restSeconds || 0), Number(target.restSeconds || 0) + 15), isDeload: Boolean(target.isDeload) };
-          const reason = (context.exerciseName ? context.exerciseName + " was adjusted because " : "Adjusted because ") + triggerText + ". " + describeReadinessTargetChanges(target, adjusted) + ". Why these levers: " + explainReadinessAdjustmentChoice(target, adjusted, applicableTriggers);
-          return { ...adjusted, reason, adjusted: targetWasAdjusted(target, adjusted), adjustmentReason: reason, triggerLabels: applicableTriggers.map((trigger) => trigger.label), text: targetText(adjusted, reason) };
-        }
-        if (recoveryAdvice.decision === "deload" || targetedConcern) {
-          const weight = reducedWeight(0.9);
-          const adjusted = { ...target, mode: targetedConcern ? "readiness-adjusted" : "deload", interventionType: target.isDeload ? "deload" : targetedConcern ? "readiness_adjusted" : "deload", baseInterventionType: target.coachRecommendation?.interventionType || target.mode || "normal", sets: Math.max(1, Math.ceil(target.sets * 0.65)), weight, addedLoad: target.resistanceType === "bodyweight_plus_load" ? weight : 0, assistanceLoad: target.resistanceType === "assisted_bodyweight" ? weight : 0, rpe: 6.5, restSeconds: Math.max(Number(target.restSeconds || 0), Number(target.restSeconds || 0) + 15), isDeload: Boolean(target.isDeload || (recoveryAdvice.decision === "deload" && !targetedConcern)) };
-          const reason = (context.exerciseName ? context.exerciseName + " was adjusted because " : "Adjusted because ") + triggerText + ". " + describeReadinessTargetChanges(target, adjusted) + ". Why these levers: " + explainReadinessAdjustmentChoice(target, adjusted, applicableTriggers);
-          return { ...adjusted, reason, adjusted: targetWasAdjusted(target, adjusted), adjustmentReason: reason, triggerLabels: applicableTriggers.map((trigger) => trigger.label), text: targetText(adjusted, reason) };
-        }
-        return { ...target, adjusted: false, adjustmentReason: "", triggerLabels: [], text: target.text || targetText(target, "Use the normal plan.") };
-      }
-
-      function templateReadinessPreview(template, recovery) {
-        const advice = recoveryRecommendationForSession({ id: "readiness-preview", date: todayIso(), recovery });
-        return template.exercises.map((templateExercise) => {
-          const resistanceType = templateExercise.resistanceType || inferResistanceType(templateExercise.name, templateExercise);
-          const original = { ...coachTargetForTemplateExercise(templateExercise, { template }), resistanceType, isBodyweight: isBodyweightResistance(resistanceType), restSeconds: Number(templateExercise.restSeconds || recommendedRestSeconds(templateExercise.name)) };
-          const adjusted = adjustTargetForRecovery(original, advice, { recovery, exerciseName: templateExercise.name, template });
-          return { name: templateExercise.name, original, adjusted, changed: Boolean(adjusted.adjusted), reason: adjusted.adjustmentReason || "No readiness change was required.", triggers: adjusted.triggerLabels || [] };
-        });
       }
 
       function createTemplatesFromStrongSessions(importedSessions, importedExercises, importedSets) {
@@ -608,11 +354,11 @@
           && Number(exercise.reps || 0) >= 1
           && ((exercise.setTypes || []).length > 0 || Number(exercise.sets || 0) > 0)).length;
         const startable = (templates || []).flatMap((template) => (template.exercises || []).map((exercise) => ({ template, exercise }))).filter(({ template, exercise }) => {
-          const target = coachTargetForTemplateExercise(exercise, {
+          const target = stableTargetForTemplateExercise(exercise, {
             template,
             resistanceType: exercise.resistanceType || inferResistanceType(exercise.name, exercise)
           });
-          return target?.executionBlocked !== true && Number(target?.sets || 0) >= 1 && Number(target?.reps || 0) >= 1;
+          return Number(target?.sets || 0) >= 1 && Number(target?.reps || 0) >= 1;
         }).length;
         return { total: exercises.length, withHistory, withUsableStructure, startable };
       }
@@ -855,7 +601,7 @@
           throw new Error("Backup dataRevision must be omitted or a non-negative safe integer.");
         }
         const allowedTopLevelFields = new Set(["appDataVersion", "domainMigrationVersion", "sessions", "exercises", "sets", "templates", "mesocycles", "activeMesocycleId", "recommendationHistory", "manualOverrides", "personalEvidencePackage", "rawImports", "migrationAudit", "dataRevision", "settings"]);
-        const allowedSessionFields = new Set(["id", "externalId", "source", "date", "title", "isTravel", "notes", "submitted", "workoutStarted", "workoutState", "completedAt", "submittedAt", "startedAt", "createdAt", "updatedAt", "templateId", "recovery", "prs", "grade", "gradeVersion", "workoutAnalysis", "workoutPrescription", "adjustmentSummary", "deletedAt", "trashed", "canceledAt"]);
+        const allowedSessionFields = new Set(["id", "externalId", "source", "date", "title", "isTravel", "notes", "submitted", "workoutStarted", "workoutState", "completedAt", "submittedAt", "startedAt", "createdAt", "updatedAt", "templateId", "recovery", "readinessMode", "readinessAdjustments", "usedOriginalTargets", "mesocycleId", "resolvedActions", "prs", "grade", "gradeVersion", "workoutAnalysis", "workoutPrescription", "adjustmentSummary", "deletedAt", "trashed", "canceledAt"]);
         const allowedExerciseFields = new Set(["id", "externalId", "source", "sessionId", "name", "notes", "order", "primaryMuscle", "secondaryMuscle", "restSeconds", "resistanceType", "isBodyweight", "isDeload", "customExerciseProfile", "executionQualityAssessment", "recommendationSnapshot", "basePrescription", "finalPrescription", "coachRecommendation", "executionBlocked", "safetyRestriction", "manualOverrides", "adjusted", "adjustmentReason", "triggerLabels", "canonicalExerciseId", "performanceExerciseId", "researchExerciseId", "identitySource", "identityVersion", "originalPrescription", "prescription", "recommendationVersion", "personalDataVersion", "researchDatabaseVersion", "programTargetContext", "appliedTargetContext", "overrideLocked"]);
         const allowedSetFields = new Set(["id", "exerciseId", "setNumber", "sequenceIndex", "sequence", "setTypeIndex", "setType", "reps", "weight", "weightUnit", "resistanceType", "rpe", "completed", "skipped", "edited", "isWarmup", "countsTowardScore", "countsTowardVolume", "countsTowardProgression", "addedLoad", "assistanceLoad", "durationSeconds", "distance", "distanceUnit", "targetReps", "targetRepMin", "targetRepMax", "targetWeight", "targetRpe", "targetRpeMin", "targetRpeMax", "targetRpeTolerance", "targetRestSeconds", "setPrescription", "previousComparableSet", "prescriptionReason", "prescriptionMode", "prescriptionConfidence", "validationWarning", "classificationSource", "classificationConfidence", "classifierVersion", "manualOverride", "reviewRequired", "classifiedAt", "sourceSetOrder", "originalImportedValue"]);
         const allowedTemplateFields = new Set(["id", "name", "notes", "createdAt", "updatedAt", "exercises", "mesocycleId", "mesocycleRevision", "trainingDayId", "source"]);
@@ -894,6 +640,25 @@
           return value;
         };
         const copyAllowed = (record, allowedFields) => Object.fromEntries(Object.entries(record).filter(([key]) => allowedFields.has(key)).map(([key, value]) => [key, cloneJsonValue(value)]));
+        const assertResolvedAction = (action, label) => {
+          if (window.FitnessExceptionResolver?.validateResolvedAction) {
+            const validation = window.FitnessExceptionResolver.validateResolvedAction(action);
+            if (!validation?.valid) throw new Error(`${label} is invalid: ${validation?.reason || "resolved action contract violation"}.`);
+            return;
+          }
+          const allowedCategories = new Set(["none", "pain_or_illness", "deload", "readiness", "fatigue", "plateau"]);
+          const allowedHandling = new Set(["pending", "accepted", "modified", "ignored", "overridden"]);
+          if (!action || typeof action !== "object" || Array.isArray(action)) throw new Error(`${label} must be an object.`);
+          if (action.contractVersion !== "comprehensive-fitness-resolved-action/1.0.0") throw new Error(`${label} contractVersion is unsupported.`);
+          assertId(action.decisionId, `${label} decision id`);
+          if (!["no_action", "action"].includes(action.outcome)) throw new Error(`${label} outcome is invalid.`);
+          if (!allowedCategories.has(action.category)) throw new Error(`${label} category is invalid.`);
+          if (!action.scope || !["session", "exercise"].includes(action.scope.type)) throw new Error(`${label} scope is invalid.`);
+          if (action.scope.type === "exercise") assertId(action.scope.exerciseVariantId, `${label} exercise variant`);
+          if (!action.action || typeof action.action !== "object" || Array.isArray(action.action)) throw new Error(`${label} action must be an object.`);
+          if (!Array.isArray(action.reasonCodes) || !Array.isArray(action.sourceReferences)) throw new Error(`${label} reason/source references must be arrays.`);
+          if (action.handling != null && !allowedHandling.has(action.handling)) throw new Error(`${label} handling is invalid.`);
+        };
         const assertTemplateNumericValue = (value, action, label) => {
           const config = templateNumericDomain[action];
           const numeric = Number(value);
@@ -959,6 +724,10 @@
           assertName(record.title, `Session ${index + 1}`);
           assertText(record.notes, `Session ${index + 1} notes`);
           for (const field of ["submitted", "workoutStarted", "isTravel", "trashed"]) if (record[field] != null && typeof record[field] !== "boolean") throw new Error(`Session ${index + 1} ${field} must be boolean.`);
+          if (record.resolvedActions != null) {
+            if (!Array.isArray(record.resolvedActions) || record.resolvedActions.length > 64) throw new Error(`Session ${index + 1} resolvedActions is invalid or exceeds its limit.`);
+            record.resolvedActions.forEach((action, actionIndex) => assertResolvedAction(action, `Session ${index + 1} resolved action ${actionIndex + 1}`));
+          }
           return copyAllowed(record, allowedSessionFields);
         });
         const exercises = imported.exercises.map((record, index) => {

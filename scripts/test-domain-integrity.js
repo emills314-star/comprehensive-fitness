@@ -75,38 +75,12 @@ assert.equal(migrationModel.sets[0].originalImportedValue.setOrder, "W", "Origin
 engine.migrateDomainData(migrationModel);
 assert.equal(migrationModel.migrationAudit.length, auditCount, "Migration must be idempotent");
 
-const coachMatch = html.match(/\/\/ COACH_RECOMMENDATION_ENGINE_START([\s\S]*?)\/\/ COACH_RECOMMENDATION_ENGINE_END/);
-assert.ok(coachMatch, "Coach recommendation engine markers were not found");
-const coachFactory = new Function("weeks", "base", `
-  const summarizeExerciseByWeek = () => weeks;
-  const recommendForExerciseWeek = () => base;
-  const canonicalExerciseId = (name) => name.toLowerCase();
-  const getExerciseSets = (name) => ({ exercises: [{ name, resistanceType: "external" }] });
-  const resistanceTypeFor = (exercise) => exercise.resistanceType;
-  const progressionProfileForExercise = () => ({ lowerRep: 6, upperRep: 12, increment: 5 });
-  const roundToIncrement = (value, increment) => Math.round(value / increment) * increment;
-  const nextLoadForExercise = (name, load) => load + 5;
-  const todayIso = () => "2026-07-10";
-  ${coachMatch[1]}
-  return coachRecommendationForExercise;
-`);
-const deload = coachFactory([{ weekStart: "2026-07-06", failedSets: 2, averageRpe: 9.5, bestEstimatedOneRepMax: 90 }], { decision: "deload", label: "Deload", reason: "Repeated misses", action: "Reduce", evidence: [], confidence: "high" })("Bench Press");
-assert.equal(deload.interventionType, "deload");
-assert.equal(deload.loadAdjustment, -0.1);
-assert.equal(deload.removeIntensificationTechniques, true);
-const light = coachFactory([{ weekStart: "2026-07-06", failedSets: 1, averageRpe: 9.1, bestEstimatedOneRepMax: 100 }], { decision: "hold", label: "Hold", reason: "One miss", action: "Repeat", evidence: [], confidence: "medium" })("Bench Press");
-assert.equal(light.interventionType, "light");
-assert.equal(light.rpeTarget, 7);
-const normal = coachFactory([{ weekStart: "2026-07-06", failedSets: 0, averageRpe: 8, bestEstimatedOneRepMax: 100 }], { decision: "hold", label: "Hold", reason: "Stable", action: "Repeat", evidence: [], confidence: "high" })("Bench Press");
-assert.equal(normal.interventionType, "normal");
-const modify = coachFactory([{ weekStart: "2026-07-06", failedSets: 0, averageRpe: 8, bestEstimatedOneRepMax: 100 }], { decision: "change", label: "Change variation", reason: "Stalled", action: "Substitute", evidence: [], confidence: "medium" })("Bench Press");
-assert.equal(modify.interventionType, "stop_modify");
-
 assert.match(html, /function completedAnalysisIndex\(\)[\s\S]*const sessions = activeHistorySessions\(\);[\s\S]*sessionById/, "Charts and scoring must use the indexed canonical active history");
 assert.match(html, /qualifyingWeekIds: analysis\.qualifyingWeekIds/, "Chart points must use the selected qualifying weeks");
-assert.match(html, /coachRecommendationForExercise\(templateExercise\.name/, "Template prescriptions must use the shared recommendation source");
-assert.match(html, /coachRecommendationForExercise\(selectedName/, "Charts must use the shared recommendation source");
-assert.match(html, /Historical snapshot through/, "Historical recommendations must be visibly separated from current guidance");
+assert.doesNotMatch(html, /\/\/ COACH_RECOMMENDATION_ENGINE_START|function coachRecommendationForExercise\(/, "The removed coach recommendation source must not remain live");
+assert.doesNotMatch(html, /coachRecommendationForExercise\(templateExercise\.name|coachRecommendationForExercise\(selectedName/, "Routine targets and factual charts must not consume the deleted coach recommendation source");
+assert.match(html, /Historical snapshot through/, "Historical chart periods must remain visibly separated from current progress");
+assert.match(html, /function renderLiftProgress\(\)[\s\S]*exerciseProgressSeries\(selectedName,[\s\S]*qualifyingWeekIds: analysis\.qualifyingWeekIds/, "Factual lift charts must retain their qualifying-history source");
 assert.match(html, /data-action="set-type-override"/, "History editing must expose manual set-type correction");
 assert.match(html, /function getMostRecentWorkoutPerformance\(exerciseName, options = \{\}\)/, "All prior workout consumers must use one canonical resolver");
 assert.match(html, /requestedResistanceType[\s\S]*resistanceTypeFor\(entry\.exercise, entry\.set\) === requestedResistanceType/, "Prior workout resolution must preserve resistance-type identity");
@@ -115,7 +89,8 @@ assert.match(html, /function getMostRecentWorkoutPerformance[\s\S]*submittedPerf
 assert.match(html, /function createTemplatesFromStrongSessions[\s\S]*exerciseIdentityFields\(exercise\)/, "Strong-derived templates must preserve imported exercise identity fields");
 assert.match(html, /function auditImportedTemplateHistory\(templates\)/, "Strong imports must audit history coverage across every generated template exercise");
 assert.match(html, /source: "strong"/, "Strong-derived templates must retain import provenance");
-assert.match(html, /function strongHistoryFallbackForTemplateExercise[\s\S]*performance\.session\?\.source !== "strong"[\s\S]*history_fallback/, "Unmapped Strong identities must use exact submitted history without weakening the research identity boundary");
-assert.match(html, /fallbackReasons = new Set\(\["unknown_exercise_identity", "invalid_muscle_identity", "no_dynamic_direct_target"\]\)/, "Safe Strong-history fallback must cover every audited non-safety identity/target gap");
+assert.match(html, /function auditImportedTemplateHistory\(templates\)[\s\S]*getMostRecentWorkoutPerformance\(exercise\.name,[\s\S]*canonicalExerciseId:[\s\S]*resistanceType:/, "Strong template audits must verify exact identity-preserving submitted history");
+assert.match(html, /function auditImportedTemplateHistory\(templates\)[\s\S]*stableTargetForTemplateExercise\(exercise,[\s\S]*Number\(target\?\.sets \|\| 0\) >= 1/, "Strong template audits must verify startability from stable saved routine targets");
+assert.doesNotMatch(html, /function strongHistoryFallbackForTemplateExercise|fallbackReasons = new Set\(\["unknown_exercise_identity"/, "Deleted recommendation fallback branches must not remain as a second target source");
 
-console.log("Domain integrity tests passed (retention, classification, migration, snapshots, and coaching source).");
+console.log("Domain integrity tests passed (retention, classification, migration, history resolution, and factual charts).");

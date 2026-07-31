@@ -33,7 +33,8 @@ assert.match(html, /\.session-dock-finish \{[^}]*background: var\(--action\);[^}
 assert.doesNotMatch(html, /\.session-dock-finish \{[^}]*background: var\(--text\);[^}]*color: var\(--bg\);/, "Finish must not reuse the inverse transient-notification treatment");
 assert.doesNotMatch(workout, /adjustmentSummary|renderRecoveryPanel|renderActiveWorkoutAdvice/, "Today must not append recovery adjustments below the logger");
 assert.match(workout, /const session = activeSession\(\);\s*if \(!session\) return renderLiftHome\(\);\s*if \(liftHomeIsVisible\(\)\)/, "Today must fail safely before reading fields from a missing session");
-assert.match(exercise, /class="exercise-header"[\s\S]*exercise-grip[\s\S]*exercise-name-field[\s\S]*confidenceChip[\s\S]*exercise-overflow/, "Exercise chrome must collapse to grip, name, confidence, and overflow in one header");
+assert.match(exercise, /class="exercise-header"[\s\S]*exercise-grip[\s\S]*exercise-name-field[\s\S]*targetChip[\s\S]*exercise-overflow/, "Exercise chrome must collapse to grip, name, stable target, and overflow in one header");
+assert.doesNotMatch(exercise, /confidenceChip|confidence|evidence/, "The active exercise header must not expose legacy recommendation confidence or evidence");
 assert.doesNotMatch(exercise, /class="exercise-meta-row"|class="exercise-set-actions"|restSummary/, "Retained resistance, load-state, rest, and set-action chrome must not surround the V3 set states");
 assert.match(exercise, /class="exercise-details"[\s\S]*resistance-type-control[\s\S]*deload-toggle[\s\S]*exercise-management-actions/, "Secondary exercise settings and set management must remain reachable in one disclosure");
 assert.match(setRenderer, /class="set-field set-previous set-previous-link"[\s\S]*data-action="open-session"/, "Comparable history must link to its exact submitted session");
@@ -50,11 +51,11 @@ for (const action of ["toggle-set", "set-weight", "set-reps", "set-rpe", "set-du
   assert.match(foundation, new RegExp(`"${action}"`), `${action} must remain eligible for focus restoration after a structural set swap`);
 }
 assert.match(foundation, /"setId"/, "Set focus descriptors must include the stable set identifier");
-assert.match(setRenderer, /class="set-progress-disclosure"/, "Progress When must be collapsed behind a native disclosure");
+assert.doesNotMatch(setRenderer, /class="set-progress-disclosure"|Progress when/, "Normal set rows must not expose recommendation-era progression rationale");
 assert.doesNotMatch(setRenderer, /set-prescription-context/, "The removed block-level prescription grid must not return");
 assert.match(html, /\.compact-workout-layout \{[^}]*grid-template-columns: minmax\(0, 1fr\) !important;/, "The compact logger must not reserve an empty Workout Board column");
 assert.match(html, /\.exercise-management-actions \{[^}]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/, "Set management must remain compact and responsive inside Exercise details");
-assert.match(html, /\.set-progress-disclosure > summary \{[^}]*min-height: 44px;/, "Collapsed progression rows must retain a 44 px touch target");
+assert.match(html, /\.set-tools-disclosure > summary \{[^}]*height: 44px;[^}]*min-height: 44px;/, "The retained set-tools disclosure must keep a 44 px touch target");
 assert.match(html, /\.set-tools-disclosure:not\(\[open\]\) \{[^}]*height: 0;/, "A collapsed set must not reserve vertical space for secondary controls");
 assert.match(html, /\.workout-view \.set-actions \.mini-button \{[^}]*min-height: 44px;/, "Compact set actions must retain a 44 px touch target");
 assert.match(html, /\.current-set-inputs input \{[^}]*font-size: max\(16px, 1rem\)/, "Mobile set-entry fields must retain the 16 px Safari anti-zoom floor");
