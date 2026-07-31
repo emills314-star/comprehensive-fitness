@@ -56,14 +56,13 @@
 
 ## Current objective
 
-M0 through M4 are complete locally. M2 is checkpointed at `243ed81`; M3 is checkpointed at `3e102e2`; the M4 checkpoint is pending. M5 two-destination shell and direct Start is next.
+M0 through M4 are complete and recoverable locally. M2 is checkpointed at `243ed81`; M3 is checkpointed at `3e102e2`; M4 is checkpointed at `576f582`. M5 two-destination shell and direct Start is next.
 
 ## Next actions
 
-1. Create and record the recoverable M4 checkpoint.
-2. Begin M5 two-destination shell and direct Start without reactivating planner, dashboard, or duplicate recommendation paths.
-3. Continue sequential milestone gates through M8.
-4. Automated, privacy, migration, independent, target-device, and five-workout human acceptance gates precede any separately authorized publication.
+1. Begin M5 two-destination shell and direct Start without reactivating planner, dashboard, or duplicate recommendation paths.
+2. Continue sequential milestone gates through M8.
+3. Automated, privacy, migration, independent, target-device, and five-workout human acceptance gates precede any separately authorized publication.
 
 ## Open issues
 

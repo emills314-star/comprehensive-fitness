@@ -352,7 +352,7 @@ No final-document contradiction was found. Existing calculation effort, research
 - Factual PR/achievement history remains until M7 because M7 owns the versioned actual-work grade and completion migration; M4 removed the separate analytical chart/product family without reordering that dependency.
 - Verification used Node 24.18.0/npm 11.16.0 instead of the repository-pinned Node 22.23.x/npm 10.9.x.
 - Physical-device/background-notification testing, real private-history replay, independent migration verification, full browser matrix, five-workout field testing, deployment, push, merge, and publication remain later gates.
-- **Checkpoint:** pending local M4 commit.
+- **Checkpoint:** `576f582` (`feat(redesign): remove analytical product surfaces`).
 
 ### Objective completion
 
