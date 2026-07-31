@@ -68,14 +68,13 @@
 
 ## Current objective
 
-M0 through M6 are complete locally. M2 is checkpointed at `243ed81`; M3 is checkpointed at `3e102e2`; M4 is checkpointed at `576f582`; M5 is checkpointed at `ef71085`; the M6 checkpoint is being recorded after documentation closeout.
+M0 through M6 are complete locally. M2 is checkpointed at `243ed81`; M3 is checkpointed at `3e102e2`; M4 is checkpointed at `576f582`; M5 is checkpointed at `ef71085`; M6 is checkpointed at `441b6cb`.
 
 ## Next actions
 
-1. Create and record the recoverable M6 checkpoint.
-2. Re-read the M7 authoritative grade, completion, and progress scope against the M6 implementation state.
-3. Implement only M7 without reactivating deleted scoring, adherence, planner, dashboard, or recommendation paths.
-4. Automated, privacy, migration, independent, target-device, and five-workout human acceptance gates precede any separately authorized publication.
+1. Re-read the M7 authoritative grade, completion, and progress scope against the M6 implementation state.
+2. Implement only M7 without reactivating deleted scoring, adherence, planner, dashboard, or recommendation paths.
+3. Automated, privacy, migration, independent, target-device, and five-workout human acceptance gates precede any separately authorized publication.
 
 ## Open issues
 

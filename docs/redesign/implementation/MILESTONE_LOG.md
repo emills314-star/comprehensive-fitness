@@ -538,7 +538,7 @@ No final-document contradiction was found. The current four-tab shell and `confi
 
 ### Recoverable checkpoint
 
-- Local milestone commit: pending creation after this documentation closeout.
+- Local milestone commit: `441b6cb` (`feat(redesign): simplify active workout logging`).
 
 ### Objective completion
 

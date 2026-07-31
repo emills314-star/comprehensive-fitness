@@ -195,7 +195,7 @@ Exit evidence is recorded in `MILESTONE_LOG.md`: 61/61 public scripts, 38/38 int
 
 No M6 transition flag was introduced. Physical-device RPE keyboard behavior, OS suspension, and notification delivery remain explicit external target-device gates; browser/mobile/PWA behavior is locally proven.
 
-The recoverable M6 implementation checkpoint will be recorded immediately after this documentation closeout.
+The recoverable M6 implementation checkpoint is `441b6cb`.
 
 ## 5. Temporary structure ledger
 
