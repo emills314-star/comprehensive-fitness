@@ -146,7 +146,6 @@ const polishVisualStates = [
   ["caret-closed", '<details class="compact-disclosure"><summary>Section disclosure</summary></details>'],
   ["caret-open", '<details class="compact-disclosure" open><summary>Section disclosure</summary><div class="disclosure-body">Visible detail</div></details>'],
   ["range-bar-tones", '<div class="range-tone-specimen">' + ["on", "under", "over", "out", "none"].map((tone, index) => '<label>' + tone + '<span class="range-bar" data-tone="' + tone + '" style="--band-start:30%;--band-end:70%;--actual:' + (25 + index * 13) + '%"><i class="rb-band"></i><i class="rb-mark"></i></span></label>').join("") + '</div>'],
-  ["plate-diagram", '<div class="plate-calculator"><strong>Plate calculator · 225 lb</strong><svg class="plate-diagram" viewBox="0 0 180 86"><line x1="8" y1="42" x2="170" y2="42"></line><rect class="plate-sleeve" x="18" y="36" width="24" height="12" rx="2"></rect><g class="plate plate-0"><rect x="42" y="15" width="10" height="54" rx="2"></rect></g><g class="plate plate-1"><rect x="54" y="21" width="8" height="42" rx="2"></rect></g></svg><span>Each side: 2 × 45</span></div>']
 ];
 
 for (const [name, markup] of polishVisualStates) {

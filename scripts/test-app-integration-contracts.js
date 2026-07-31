@@ -92,7 +92,7 @@ function publicResearchData() {
   };
 }
 
-test("safety substitution catalog identity uses an exact unambiguous public record", () => {
+test("ordinary substitution identity uses an exact unambiguous public record without hidden exclusion state", () => {
   const resolve = evaluateFunction("exactResearchCatalogIdentity", {
     normalizePrescriptionIdentity: (value) => String(value || "").toLowerCase().replace(/^ex_/, "").replace(/[^a-z0-9]+/g, " ").trim()
   });
@@ -103,9 +103,7 @@ test("safety substitution catalog identity uses an exact unambiguous public reco
   assert.equal(resolve("Cambered Barbell Bench Press", catalog), "ex_cambered_barbell_bench_press", "Exact catalog names must not collapse through broader aliases");
   assert.equal(resolve("camber bar bench press", catalog), null, "Aliases must not resolve a safety-locked UI choice");
   assert.equal(resolve("Barbell Bench Press", [...catalog, { exercise_id: "ex_duplicate", exercise_name: "barbell-bench press" }]), null, "Duplicate normalized catalog names must fail closed");
-  const contextSource = functionSource("safetySubstituteContext");
-  assert.doesNotMatch(contextSource, /equipmentCompatible|availableEquipment|configuredEquipment/, "Equipment metadata must not filter or block pain-free substitute logging");
-  assert.doesNotMatch(contextSource, /rankExercisePool/, "Safety substitution eligibility must not discard evidence-linked alternatives merely because they fall outside a presentation ranking limit");
+  assert.doesNotMatch(html, /function safetySubstituteContext|data\.settings\.excludedExerciseIds/, "Deleted global exercise exclusions must not remain as a hidden logging constraint");
 });
 
 function deriveEngineSafetySubstitute(engine, blockedSnapshot, muscleGroupId, availableEquipment) {
@@ -522,6 +520,7 @@ test("legacy cut settings migrate at runtime without inheriting the hypertrophy 
     },
     cleanReadinessBaseline: (value) => value || {},
     cleanRecovery: (value) => value || {},
+    isSessionSubmitted: (session) => session?.submitted === true || session?.workoutState === "completed",
     isBodyweightExerciseName: () => false,
     inferResistanceType: (_name, source) => source?.resistanceType || "external",
     isBodyweightResistance: () => false,
@@ -581,6 +580,7 @@ test("frontend identity resolution prefers the public alias registry and namespa
   context.normalizePrescriptionIdentity = evaluateFunction("normalizePrescriptionIdentity", context);
   context.personalExerciseRecordForName = evaluateFunction("personalExerciseRecordForName", context);
   context.resolvePrescriptionExerciseIdentity = evaluateFunction("resolvePrescriptionExerciseIdentity", context);
+  context.stableCustomPerformanceExerciseId = evaluateFunction("stableCustomPerformanceExerciseId", context);
   context.resolveExerciseIdentityProfile = evaluateFunction("resolveExerciseIdentityProfile", context);
   const bench = plain(context.resolveExerciseIdentityProfile("Bench Press"));
   const custom = plain(context.resolveExerciseIdentityProfile("My Garage Press"));
@@ -622,6 +622,7 @@ test("exact personal variations retain performance history identity while sharin
   context.normalizePrescriptionIdentity = evaluateFunction("normalizePrescriptionIdentity", context);
   context.personalExerciseRecordForName = evaluateFunction("personalExerciseRecordForName", context);
   context.resolvePrescriptionExerciseIdentity = evaluateFunction("resolvePrescriptionExerciseIdentity", context);
+  context.stableCustomPerformanceExerciseId = evaluateFunction("stableCustomPerformanceExerciseId", context);
   context.resolveExerciseIdentityProfile = evaluateFunction("resolveExerciseIdentityProfile", context);
   const canonicalExerciseId = evaluateFunction("canonicalExerciseId", context);
 

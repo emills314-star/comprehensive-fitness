@@ -36,9 +36,11 @@ assert.match(html, /localStorage\.setItem\(ACTIVE_DRAFT_KEY, JSON\.stringify\(sn
 assert.match(html, /visibilityState === "hidden" && hasActiveWorkout\(\)\) persistActiveWorkoutDraft\(\)/, "Suspending the PWA must persist the latest draft");
 
 assert.doesNotMatch(inputHandler, /hypertrophyAnalysis|weeklyMuscleVolume|fatigueFlags|calculateWorkoutAnalysis/, "Input handlers must not run completed-history analysis");
-assert.match(inputHandler, /patchSetValue\(target\.dataset\.setId, "reps", target\.value, false\)/, "Visible rep input must update locally without a full render");
-assert.match(inputHandler, /patchSetValue\(target\.dataset\.setId, "weight", target\.value, false\)/, "Visible load input must update locally without a full render");
-assert.match(inputHandler, /patchSetValue\(target\.dataset\.setId, "rpe", target\.value, false\)/, "Visible RPE input must update locally without a full render");
+assert.match(inputHandler, /const writeSetInput[\s\S]*patchSetValue\(target\.dataset\.setId, field, target\.value, false\)/, "Visible set input must update locally through the validated mutation boundary without a full render");
+assert.match(inputHandler, /action === "set-reps"\) writeSetInput\("reps"\)/, "Visible rep input must use the local validated writer");
+assert.match(inputHandler, /action === "set-weight"\) writeSetInput\("weight"\)/, "Visible load input must use the local validated writer");
+assert.match(inputHandler, /action === "set-rpe"\) writeSetInput\("rpe"\)/, "Visible RPE input must use the local validated writer");
+assert.match(inputHandler, /accepted === false[\s\S]*target\.value = String\(setById/, "Rejected set input must restore the persisted visible value without a full render");
 assert.match(inputHandler, /inserted\.length === 1 && replacement === previousValue \+ inserted/, "Numeric replacement must only strip a proven single-character append");
 assert.doesNotMatch(inputHandler, /replacement\.startsWith\(previousValue\)/, "Multi-character values such as 8.5 must not be mistaken for appended input");
 assert.match(setCompletion, /patchSet\(set\.id, \{ completed: true, skipped: false \}, false\)[\s\S]*startTimer/, "Completing a set must update locally before timer work");

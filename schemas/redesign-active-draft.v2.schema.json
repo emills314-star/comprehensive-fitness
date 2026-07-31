@@ -5,14 +5,21 @@
   "type": "object",
   "required": [
     "contractVersion",
+    "version",
+    "workoutId",
     "savedAt",
+    "dataRevision",
     "session",
     "exercises",
     "sets"
   ],
   "properties": {
     "contractVersion": { "const": "comprehensive-fitness-active-draft/2.0.0" },
+    "version": { "const": 2 },
+    "workoutId": { "type": "string", "minLength": 1, "maxLength": 128 },
     "savedAt": { "type": "string", "format": "date-time" },
+    "dataRevision": { "type": "integer", "minimum": 0 },
+    "draftSequence": { "type": "integer", "minimum": 0 },
     "session": { "type": "object" },
     "exercises": { "type": "array", "items": { "type": "object" } },
     "sets": { "type": "array", "items": { "type": "object" } },

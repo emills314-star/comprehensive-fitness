@@ -348,43 +348,6 @@
         return disablePushNotifications({ renderNow: false });
       }
 
-      async function scheduleRestPush(timerSnapshot) {
-        if (!data.settings.timerNotifications || !pushIdentity?.token || Notification.permission !== "granted" || !navigator.onLine) return false;
-        const session = sessionById(timerSnapshot.workoutId) || activeWorkoutSession();
-        const exercise = exerciseById(timerSnapshot.exerciseId);
-        const upcoming = setById(timerSnapshot.pendingNextSetId);
-        try {
-          const result = await pushApi("/api/push/schedule", {
-            installationId: pushIdentity.installationId,
-            notificationId: timerSnapshot.id,
-            workoutId: timerSnapshot.workoutId || session?.id,
-            exerciseId: upcoming?.exerciseId || timerSnapshot.exerciseId,
-            setId: timerSnapshot.setId,
-            upcomingSetId: upcoming?.id || "",
-            upcomingSetNumber: upcoming?.isWarmup ? "WU" : upcoming?.setNumber || "",
-            upcomingSetLabel: upcoming ? setExecutionLabel(upcoming) : "",
-            timerVersion: Number(timerSnapshot.version || 1),
-            exerciseName: exerciseById(upcoming?.exerciseId)?.name || exercise?.name || "Workout",
-            messageDetail: data.settings.notificationMessageDetail,
-            restEndTime: timerSnapshot.endsAt
-          });
-          if (timer?.id === timerSnapshot.id) {
-            timer.notificationStatus = result.status;
-            timer.serverNotificationId = result.notificationId;
-            saveRuntime();
-            syncTimerDom();
-          }
-          return true;
-        } catch (error) {
-          if (timer?.id === timerSnapshot.id) {
-            timer.notificationStatus = navigator.onLine ? "error" : "pending";
-            saveRuntime();
-            syncTimerDom();
-          }
-          return false;
-        }
-      }
-
       function rememberCanceledRestSchedule(timerId, timerVersion = 1, now = Date.now()) {
         const key = restTimerScheduleKey(timerId, timerVersion);
         if (!key) return "";
@@ -864,7 +827,7 @@
           activeSetNotice = "Workout sets complete";
           pendingSubmitSessionId = workout.id;
         }
-        setActiveTab("today", { replace: true, renderNow: false });
+        setActiveTab("workout", { replace: true, renderNow: false });
         saveRuntime();
         render();
         if (!options.silent) showAppToast(next ? setExecutionLabel(next) + " is ready." : "All sets are complete.");
@@ -903,6 +866,8 @@
           endsAt: Date.now() + seconds * 1000,
           isActive: true,
           isPaused: false,
+          isOvertime: false,
+          overtimeSeconds: 0,
           notificationStatus: data.settings.timerNotifications ? "pending" : "disabled"
         };
         setRestNavigationState(timer, "active", next);
@@ -924,6 +889,12 @@
         window.clearInterval(timerInterval);
         timerInterval = window.setInterval(() => {
           if (!timer || timer.isPaused || !timer.isActive) return;
+          if (timer.isOvertime) {
+            timer.remainingSeconds = 0;
+            timer.overtimeSeconds = Math.max(0, Math.floor((Date.now() - Number(timer.endsAt || Date.now())) / 1000));
+            updateTimerDisplay();
+            return;
+          }
           timer.remainingSeconds = Math.max(0, Math.ceil((timer.endsAt - Date.now()) / 1000));
           if (timer.remainingSeconds === 0) {
             completeTimer();
@@ -945,13 +916,19 @@
         const progress = bar.querySelector(".timer-progress");
         const summary = bar.querySelector(".timer-summary");
         const stateLabel = bar.querySelector(".timer-rest-copy > span");
-        const elapsed = Math.max(0, timer.durationSeconds - timer.remainingSeconds);
+        const overtimeSeconds = timer.isOvertime
+          ? Math.max(0, Math.floor((Date.now() - Number(timer.endsAt || Date.now())) / 1000))
+          : 0;
+        timer.overtimeSeconds = overtimeSeconds;
+        const elapsed = timer.isOvertime ? timer.durationSeconds + overtimeSeconds : Math.max(0, timer.durationSeconds - timer.remainingSeconds);
         const percent = timer.durationSeconds > 0 ? Math.min(100, Math.round((elapsed / timer.durationSeconds) * 100)) : 100;
         if (countdown) countdown.textContent = formatTimer(timer.remainingSeconds);
-        if (progressLabel) progressLabel.textContent = formatTimer(timer.remainingSeconds);
-        if (stateLabel) stateLabel.textContent = timer.isPaused ? "Paused" : "Rest";
-        if (summary) summary.setAttribute("aria-label", (timer.isPaused ? "Paused rest timer" : "Rest timer") + ", " + formatTimer(timer.remainingSeconds) + " remaining. Open timer controls.");
-        bar.dataset.phase = timer.remainingSeconds <= 10 ? "final" : "resting";
+        if (progressLabel) progressLabel.textContent = timer.isOvertime ? "+" + formatOvertime(overtimeSeconds) : formatTimer(timer.remainingSeconds);
+        if (stateLabel) stateLabel.textContent = timer.isOvertime ? "Rest complete" : timer.isPaused ? "Paused" : "Rest";
+        if (summary) summary.setAttribute("aria-label", timer.isOvertime
+          ? "Rest target passed by " + formatOvertime(overtimeSeconds) + ". Open timer controls."
+          : (timer.isPaused ? "Paused rest timer" : "Rest timer") + ", " + formatTimer(timer.remainingSeconds) + " remaining. Open timer controls.");
+        bar.dataset.phase = timer.isOvertime ? "overtime" : timer.remainingSeconds <= 10 ? "final" : "resting";
         bar.toggleAttribute("data-paused", timer.isPaused);
         if (progress) {
           progress.setAttribute("aria-valuenow", String(percent));
@@ -960,7 +937,7 @@
       }
 
       function toggleTimer() {
-        if (!timer || timer.remainingSeconds === 0) return;
+        if (!timer || timer.isOvertime || timer.remainingSeconds === 0) return;
         timer.isPaused = !timer.isPaused;
         if (timer.isPaused) {
           timer.remainingSeconds = Math.max(1, Math.ceil((timer.endsAt - Date.now()) / 1000));
@@ -985,7 +962,7 @@
 
       function adjustTimer(secondsDelta) {
         const interactionStartedAt = performanceNow();
-        if (!timer || timer.isPaused) return;
+        if (!timer || timer.isPaused || timer.isOvertime) return;
         const previous = { ...timer };
         const remaining = Math.max(5, Math.ceil((timer.endsAt - Date.now()) / 1000) + Number(secondsDelta));
         cancelRestPush(previous, "adjusted");
@@ -1029,7 +1006,7 @@
       }
 
       function completeTimer(options = {}) {
-        if (!timer || timer.remainingSeconds > 0 || !timer.isActive) return;
+        if (!timer || timer.isOvertime || timer.remainingSeconds > 0 || !timer.isActive) return;
         const completedTimer = { ...timer };
         window.clearInterval(timerInterval);
         timerInterval = 0;
@@ -1042,7 +1019,14 @@
         if (data.settings.autoHighlightNextSet !== false) setActiveSet(next?.id || "", readyText, false);
         else setActiveSet("", readyText, true);
         const navigation = setRestNavigationState(completedTimer, "completed", next);
-        timer = null;
+        timer = {
+          ...completedTimer,
+          remainingSeconds: 0,
+          isPaused: false,
+          isOvertime: true,
+          overtimeSeconds: Math.max(0, Math.floor((Date.now() - Number(completedTimer.endsAt || Date.now())) / 1000)),
+          notificationStatus: "completed"
+        };
         const completionNotice = { title: "Rest complete", exerciseName: nextExercise?.name || exercise?.name || "Workout", setNumber: next?.setNumber || "", setLabel: next ? setExecutionLabel(next) : "", message: next ? readyText : "Time to finish the workout", payload: navigation };
         const systemSignalAlreadyDelivered = Boolean(options.systemSignalAlreadyDelivered || (completedTimer.backgroundedAt && completedTimer.endsAt <= Date.now() && completedTimer.notificationStatus === "scheduled"));
         if (restCompletionController) {
@@ -1061,6 +1045,7 @@
         }
         if (completedTimer.notificationStatus === "scheduled") cancelRestPush(completedTimer, "foreground-completed");
         saveRuntime();
+        startTimerInterval();
         render();
       }
 

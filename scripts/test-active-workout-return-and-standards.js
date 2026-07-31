@@ -42,10 +42,15 @@ assert.match(views, /data-numeric-stepper[\s\S]*data-action="adjust-exercise-def
 assert.doesNotMatch(views, /Program benchmark|Broad exercise guidance|guidance-benchmark-strip/, "The normal workout editor must not retain a research benchmark card");
 assert.match(interactions, /action === "adjust-exercise-default"[\s\S]*data-numeric-stepper[\s\S]*dispatchEvent\(new Event\("input"/, "Stepper buttons must update the native numeric input and its existing delegated behavior");
 assert.match(views, /data-action="apply-standard-workload"/, "Exercise defaults must expose an explicit apply action");
-assert.match(views, /data-standard-save-template/, "Template workouts must expose an explicit reusable-default choice");
-assert.match(interactions, /apply-standard-workload[\s\S]*applyExerciseDefaultTargets[\s\S]*saveTemplateStandard/, "The exercise-default action must route through the universal audited target writer");
+assert.doesNotMatch(views, /data-standard-save-template/, "Applying workout targets must not retain an inline routine-mutation toggle");
+assert.match(views, /data-action="update-template-exercise"[\s\S]*Save today’s targets to routine[\s\S]*only action here that changes the routine/, "Template workouts must expose a separate explicit routine-save action");
+assert.match(interactions, /action === "apply-standard-workload"[\s\S]*applyExerciseDefaultTargets/, "The exercise-default action must route through the workout-only audited target writer");
 assert.match(interactions, /changedControl\.matches\?\.\("\[data-default-field\]"\)[\s\S]*enabled\.value = "false"[\s\S]*changedControl\.matches\?\.\("\[data-set-default-field\]"\)[\s\S]*enabled\.value = "true"/, "The most recently edited shared or individual target surface must become authoritative");
-assert.match(workout, /function applyExerciseDefaultTargets\([\s\S]*action: "exercise_default_targets"[\s\S]*setTypes: workingTypes[\s\S]*warmups: templateWarmups/, "Applying reusable exercise defaults must persist exact per-set targets and an audit entry");
+const applyExerciseDefaultTargetsSource = extractFunction(workout, "applyExerciseDefaultTargets");
+assert.match(applyExerciseDefaultTargetsSource, /completedWorking[\s\S]*desiredIncompletePlan/, "Applying exercise defaults must preserve completed work and rebuild only unfinished rows");
+assert.match(applyExerciseDefaultTargetsSource, /action: "exercise_default_targets"/, "Applying exercise defaults must append the audited workout-only action");
+assert.doesNotMatch(applyExerciseDefaultTargetsSource, /patchTemplateExercise|setTypes:|warmups:/, "Applying current-workout defaults must not silently mutate the source routine");
+assert.match(workout, /function updateTemplateFromExercise\([\s\S]*patchTemplateExercise\([\s\S]*setTypes: templateSetTypesFromHistory[\s\S]*warmups:/, "The separate explicit routine-save action must persist exact working and warm-up targets");
 assert.doesNotMatch(workout, /standardWorkloadOverride/, "The deleted target-ownership gate must not remain in the active workout writer");
 assert.match(workout, /sessions: data\.sessions\.map\([\s\S]*updatedAt: now[\s\S]*manualOverrides: \[\.\.\.data\.manualOverrides, overrideEntry\]/, "Applying exercise defaults must update the owning active session and its top-level audit ledger");
 assert.match(workout, /targetRpeMin > targetRpeMax[\s\S]*Choose an ordered target RPE range from 1 to 10 in 0\.5 steps/, "Shared defaults must reject reversed or off-step target RPE ranges");

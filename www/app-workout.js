@@ -193,10 +193,20 @@
 
       function patchSession(patch, shouldRender = true) {
         const session = activeSession();
+        if (Object.prototype.hasOwnProperty.call(patch, "title")
+          && (typeof patch.title !== "string" || patch.title.length > 256)) {
+          showAppToast("Workout titles must be 256 characters or fewer.");
+          return false;
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, "notes")
+          && (typeof patch.notes !== "string" || patch.notes.length > 4096)) {
+          showAppToast("Workout notes must be 4,096 characters or fewer.");
+          return false;
+        }
         if (shouldRender) {
           const draftMutation = session.id === activeWorkoutId && !isSessionSubmitted(session) && !isEditingHistorySession();
           commit({ ...data, sessions: data.sessions.map((item) => item.id === session.id ? { ...item, ...patch, updatedAt: isoNow() } : item) }, true, { invalidateAnalysis: !draftMutation, deferPersistence: draftMutation });
-          return;
+          return true;
         }
         const index = dataEntityIndex().sessionIndexById.get(session.id) ?? -1;
         if (index >= 0) {
@@ -204,6 +214,7 @@
           if (isEditingHistorySession()) historyEditFlow.dirty = true;
           else scheduleSave();
         }
+        return index >= 0;
       }
 
       function patchRecovery(patch, shouldRender = true) {
@@ -252,40 +263,6 @@
           return [field, String(numeric)];
         }));
         commit({ ...data, settings: { ...data.settings, readinessBaseline: { ...readinessBaseline(), ...boundedPatch } } }, shouldRender);
-      }
-
-      function completeCustomExerciseSetup(exerciseId, form) {
-        const exercise = exerciseById(exerciseId);
-        const session = exercise ? sessionById(exercise.sessionId) : null;
-        if (!exercise || !session || !form || exercise.identitySource !== "user_declared_custom") return;
-        const value = (field) => form.querySelector(`[data-custom-profile-field="${field}"]`)?.value ?? "";
-        const profile = normalizeCustomExerciseProfile({
-          primaryMuscleGroupId: value("primary-muscle"),
-          secondaryMuscleGroupId: value("secondary-muscle"),
-          resistanceType: value("resistance-type"),
-          exerciseStyle: value("exercise-style"),
-          progressionMetric: value("progression-metric"),
-          smallestIncrement: value("smallest-increment"),
-          confirmedAt: isoNow()
-        });
-        const missing = missingCustomExerciseMetrics(profile);
-        if (missing.length) return showAppToast(`Complete exercise details: ${missing.join(", ")}.`);
-        const profiledExercise = {
-          ...exercise,
-          customExerciseProfile: profile,
-          primaryMuscle: appMuscleFromCustomGroup(profile.primaryMuscleGroupId),
-          secondaryMuscle: profile.secondaryMuscleGroupId ? appMuscleFromCustomGroup(profile.secondaryMuscleGroupId) : "",
-          resistanceType: profile.resistanceType,
-          isBodyweight: isBodyweightResistance(profile.resistanceType)
-        };
-        commit({
-          ...data,
-          exercises: data.exercises.map((item) => item.id === exerciseId ? profiledExercise : item),
-          sets: data.sets.map((set) => set.exerciseId === exerciseId && !set.completed
-            ? { ...set, resistanceType: profile.resistanceType }
-            : set)
-        }, true, { invalidateAnalysis: false, deferPersistence: true });
-        showAppToast("Custom exercise details saved. Log the work you actually perform.");
       }
 
       function readExerciseDefaultPlan(exercise, form) {
@@ -367,7 +344,7 @@
         };
       }
 
-      function applyExerciseDefaultTargets(exerciseId, form, options = {}) {
+      function applyExerciseDefaultTargets(exerciseId, form) {
         const exercise = exerciseById(exerciseId);
         const session = exercise ? sessionById(exercise.sessionId) : null;
         if (!exercise || !form || !session || exercise.sessionId !== activeWorkoutId || isSessionSubmitted(session)) return;
@@ -429,20 +406,6 @@
           );
         });
         const replacedSetIds = new Set([...warmups.filter((set) => !set.completed), ...incompleteWorking].map((set) => set.id));
-        const workingTypes = plan.working.map((target, index) => normalizeTargetSetType({
-          id: target.sourceTargetId || `user-default-${exercise.id}-${index + 1}`,
-          type: target.type,
-          setCount: 1,
-          repMin: target.repMin,
-          repMax: target.repMax,
-          rpeMin: target.targetRpeMin,
-          rpeMax: target.targetRpeMax,
-          restSeconds: target.restSeconds,
-          loadReductionMin: target.type === "drop" ? 20 : target.type === "backoff" ? 8 : 0,
-          loadReductionMax: target.type === "drop" ? 25 : target.type === "backoff" ? 15 : 0,
-          countsTowardScore: true,
-          countsTowardVolume: true
-        }));
         const now = isoNow();
         const previousPlan = allSets.map((set) => ({
           type: normalizeSetTypeCode(set.setType, set.isWarmup),
@@ -470,8 +433,6 @@
           changes: { setPlan: { from: previousPlan, to: nextPlan } },
           action: "exercise_default_targets"
         };
-        const aggregateRepMin = Math.min(...plan.working.map((target) => target.repMin));
-        const aggregateRepMax = Math.max(...plan.working.map((target) => target.repMax));
         const nextExercise = {
           ...exercise,
           restSeconds: plan.workingRestSeconds,
@@ -479,52 +440,27 @@
           overrideLocked: true
         };
 
-        const sourceTemplate = options.saveTemplateStandard && session?.templateId ? data.templates.find((item) => item.id === session.templateId) : null;
-        const sourceTemplateExercise = sourceTemplate?.exercises?.find((item) => exerciseMatches(item.name, exercise.name)) || null;
-        const templateWarmups = plan.warmups.map((target, index) => ({
-          ...(sourceTemplateExercise?.warmups?.[index] || {}),
-          reps: Math.round((target.repMin + target.repMax) / 2),
-          targetRepMin: target.repMin,
-          targetRepMax: target.repMax,
-          targetRpe: target.targetRpeMax,
-          targetRpeMin: target.targetRpeMin,
-          targetRpeMax: target.targetRpeMax,
-          targetRestSeconds: target.restSeconds
-        }));
-        const templates = sourceTemplateExercise
-          ? data.templates.map((template) => template.id === sourceTemplate.id ? {
-              ...template,
-              updatedAt: now,
-              exercises: template.exercises.map((item) => item.id === sourceTemplateExercise.id ? {
-                ...item,
-                sets: plan.working.length,
-                reps: Math.round((aggregateRepMin + aggregateRepMax) / 2),
-                repMin: aggregateRepMin,
-                repMax: aggregateRepMax,
-                targetRpe: plan.targetRpeMax,
-                restSeconds: plan.workingRestSeconds,
-                setTypes: workingTypes,
-                warmups: templateWarmups
-              } : item)
-            } : template)
-          : data.templates;
         commit({
           ...data,
           sessions: data.sessions.map((item) => item.id === session.id ? { ...item, updatedAt: now } : item),
           exercises: data.exercises.map((item) => item.id === exercise.id ? nextExercise : item),
           sets: [...data.sets.filter((set) => !replacedSetIds.has(set.id)), ...nextWarmups.filter((set) => !set.completed), ...nextIncomplete],
-          templates,
           manualOverrides: [...data.manualOverrides, overrideEntry]
         }, true, { invalidateAnalysis: false, deferPersistence: true });
-        showAppToast(sourceTemplateExercise ? "Exercise defaults applied and saved to the template." : "Exercise defaults applied to unfinished sets.");
+        showAppToast("Exercise targets applied to unfinished sets in this workout.");
       }
 
       function patchExercise(exerciseId, patch, shouldRender = true) {
+        if (Object.prototype.hasOwnProperty.call(patch, "notes")
+          && (typeof patch.notes !== "string" || patch.notes.length > 4096)) {
+          showAppToast("Exercise notes must be 4,096 characters or fewer.");
+          return false;
+        }
         if (shouldRender) {
           const exercise = exerciseById(exerciseId);
           const draftMutation = exercise?.sessionId === activeWorkoutId && !isEditingHistorySession();
           commit({ ...data, exercises: data.exercises.map((item) => item.id === exerciseId ? { ...item, ...patch } : item) }, true, { invalidateAnalysis: !draftMutation, deferPersistence: draftMutation });
-          return;
+          return true;
         }
         const index = dataEntityIndex().exerciseIndexById.get(exerciseId) ?? -1;
         if (index >= 0) {
@@ -532,37 +468,212 @@
           if (isEditingHistorySession()) historyEditFlow.dirty = true;
           else scheduleSave();
         }
+        return index >= 0;
       }
 
-      function patchExerciseName(exerciseId, name, shouldRender = true) {
+      function userSelectedExerciseIdentity(name) {
+        const resolved = resolvePrescriptionExerciseIdentity({ name });
+        if (resolved.status === "resolved" && !resolved.custom) {
+          return exerciseIdentityFields({ name, researchExerciseId: resolved.exerciseId });
+        }
+        const exactVariantKey = String(name || "").normalize("NFKC").trim().toLowerCase();
+        const existingCustom = [
+          ...data.exercises,
+          ...data.templates.flatMap((template) => template.exercises || [])
+        ].find((exercise) => exercise.identitySource === "user_declared_custom"
+          && String(exercise.name || "").normalize("NFKC").trim().toLowerCase() === exactVariantKey
+          && String(exercise.performanceExerciseId || "").trim());
+        if (existingCustom) return {
+          performanceExerciseId: existingCustom.performanceExerciseId,
+          researchExerciseId: "",
+          identitySource: "user_declared_custom",
+          identityVersion: existingCustom.identityVersion || "exercise-identity/2.1.0"
+        };
+        const performanceExerciseId = stableCustomPerformanceExerciseId(name);
+        return {
+          performanceExerciseId,
+          researchExerciseId: "",
+          identitySource: "user_declared_custom",
+          identityVersion: "exercise-identity/2.1.0"
+        };
+      }
+
+      function applyExerciseSubstitution(exerciseId, requestedName) {
         const exercise = exerciseById(exerciseId);
-        if (!exercise) return;
-        if (!shouldRender) {
-          patchExercise(exerciseId, { name }, false);
+        const session = exercise ? sessionById(exercise.sessionId) : null;
+        const name = String(requestedName || "").trim();
+        if (!exercise || !session || exercise.sessionId !== activeWorkoutId || isSessionSubmitted(session)) return;
+        if (!name) {
+          showAppToast("Enter the substitute or variant name.");
           return;
         }
-        const firstSet = setsForExercise(exerciseId).find((set) => isWorkingSet(set, "score"));
-        const previousAutoRest = recommendedRestSeconds(exercise.name, { reps: firstSet?.reps, rpe: firstSet?.rpe, excludeSessionId: exercise.sessionId });
-        const restSeconds = !exercise.restSeconds || Number(exercise.restSeconds) === previousAutoRest
-          ? recommendedRestSeconds(name, { reps: firstSet?.reps, rpe: firstSet?.rpe, excludeSessionId: exercise.sessionId })
-          : exercise.restSeconds;
-        patchExercise(exerciseId, { name, restSeconds }, shouldRender);
+        if (name.length > 256) {
+          showAppToast("Exercise names must be 256 characters or fewer.");
+          return;
+        }
+        if (name === exercise.name) {
+          showAppToast("This exercise is already selected.");
+          return;
+        }
+
+        const identity = userSelectedExerciseIdentity(name);
+        const resistanceType = inferResistanceType(name);
+        const now = isoNow();
+        const overrideEntry = {
+          overrideId: `runtime_override_${id()}`,
+          sessionId: session.id,
+          workoutId: session.id,
+          exerciseRuntimeId: exercise.id,
+          exerciseId: exercise.performanceExerciseId || exercise.researchExerciseId || canonicalExerciseId(exercise.name),
+          field: "exerciseVariant",
+          from: {
+            name: exercise.name,
+            performanceExerciseId: exercise.performanceExerciseId || "",
+            researchExerciseId: exercise.researchExerciseId || "",
+            identitySource: exercise.identitySource || ""
+          },
+          to: {
+            name,
+            performanceExerciseId: identity.performanceExerciseId || "",
+            researchExerciseId: identity.researchExerciseId || "",
+            identitySource: identity.identitySource || ""
+          },
+          createdAt: now,
+          actor: "user",
+          action: "substitute_exercise",
+          reason: "Current-workout exercise substitution or named variant",
+          lockedForWorkout: true
+        };
+        const exerciseSets = setsForExercise(exercise.id);
+        const hasRecordedWork = exerciseSets.some((set) => set.completed && !set.skipped);
+        const incompleteIds = new Set(exerciseSets.filter((set) => !set.completed && !set.skipped).map((set) => set.id));
+        const stableSource = exerciseSets.find((set) => isWorkingSet(set, "progression") && !set.completed)
+          || exerciseSets.find((set) => isWorkingSet(set, "progression"));
+        const baseReplacement = {
+          ...exercise,
+          name,
+          ...identity,
+          resistanceType,
+          isBodyweight: isBodyweightResistance(resistanceType),
+          customExerciseProfile: undefined,
+          pendingReconcile: null,
+          stableTargetSnapshot: stableSource ? {
+            sets: exerciseSets.filter((set) => isWorkingSet(set, "progression") && !set.skipped).length,
+            repLow: Number(stableSource.targetRepMin || stableSource.targetReps || 0),
+            repHigh: Number(stableSource.targetRepMax || stableSource.targetReps || 0),
+            rpe: Number(stableSource.targetRpeMax ?? stableSource.targetRpe ?? 0),
+            restSeconds: Number(stableSource.targetRestSeconds || exercise.restSeconds || data.settings.defaultRestSeconds || 90)
+          } : exercise.stableTargetSnapshot,
+          manualOverrides: [...(exercise.manualOverrides || []), overrideEntry],
+          overrideLocked: true
+        };
+
+        let exercises;
+        let sets;
+        if (!hasRecordedWork) {
+          exercises = data.exercises.map((item) => item.id === exercise.id ? baseReplacement : item);
+          sets = data.sets.map((set) => {
+            if (set.exerciseId !== exercise.id) return set;
+            const { previousComparableSet, ...current } = set;
+            return { ...current, resistanceType, isBodyweight: isBodyweightResistance(resistanceType) };
+          });
+        } else {
+          const replacementId = id();
+          overrideEntry.replacementExerciseRuntimeId = replacementId;
+          const replacement = { ...baseReplacement, id: replacementId, notes: "", order: Number(exercise.order || 0) + 0.5 };
+          const sessionExercises = [...data.exercises.filter((item) => item.sessionId === session.id), replacement]
+            .sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
+          const orderById = new Map(sessionExercises.map((item, index) => [item.id, index]));
+          exercises = [
+            ...data.exercises.filter((item) => item.sessionId !== session.id),
+            ...sessionExercises.map((item) => ({ ...item, order: orderById.get(item.id) }))
+          ];
+          sets = data.sets.map((set) => {
+            if (!incompleteIds.has(set.id)) return set;
+            const { previousComparableSet, ...current } = set;
+            return { ...current, exerciseId: replacementId, resistanceType, isBodyweight: isBodyweightResistance(resistanceType) };
+          });
+          if (!incompleteIds.size) {
+            const stable = exercise.stableTargetSnapshot || {};
+            const source = stableSource || {
+              setType: "straight",
+              targetRepMin: stable.repLow,
+              targetRepMax: stable.repHigh,
+              targetReps: stable.repLow,
+              targetRpe: stable.rpe,
+              targetRpeMin: stable.rpe,
+              targetRpeMax: stable.rpe,
+              targetRestSeconds: stable.restSeconds || exercise.restSeconds
+            };
+            sets = [...sets, createSet(replacementId, 1, {
+              setNumber: 1,
+              sequenceIndex: 0,
+              sequence: 0,
+              setTypeIndex: 0,
+              setType: normalizeSetTypeCode(source.setType, false) === "warmup" ? "straight" : normalizeSetTypeCode(source.setType, false),
+              isWarmup: false,
+              countsTowardScore: true,
+              countsTowardVolume: true,
+              countsTowardProgression: true,
+              reps: source.targetReps ?? "",
+              weight: source.targetWeight ?? 0,
+              rpe: source.targetRpe ?? "",
+              targetReps: source.targetReps,
+              targetRepMin: source.targetRepMin,
+              targetRepMax: source.targetRepMax,
+              targetWeight: source.targetWeight,
+              targetRpe: source.targetRpe,
+              targetRpeMin: source.targetRpeMin,
+              targetRpeMax: source.targetRpeMax,
+              targetRpeTolerance: source.targetRpeTolerance,
+              targetRestSeconds: source.targetRestSeconds || exercise.restSeconds,
+              originalTargetReps: source.originalTargetReps ?? source.targetReps,
+              originalTargetWeight: source.originalTargetWeight ?? source.targetWeight,
+              originalTargetRpe: source.originalTargetRpe ?? source.targetRpe,
+              completed: false,
+              skipped: false,
+              edited: false,
+              resistanceType,
+              isBodyweight: isBodyweightResistance(resistanceType)
+            })];
+          }
+        }
+
+        entityStructureRevision += 1;
+        entityIndexCache = null;
+        commit({
+          ...data,
+          sessions: data.sessions.map((item) => item.id === session.id ? { ...item, updatedAt: now } : item),
+          exercises,
+          sets,
+          manualOverrides: [...data.manualOverrides, overrideEntry]
+        }, true, { invalidateAnalysis: false, deferPersistence: true });
+        showAppToast(hasRecordedWork
+          ? `${name} added next; completed work remains under ${exercise.name}.`
+          : `${name} will be logged for this workout. The routine is unchanged.`);
       }
 
       function patchTemplateExerciseName(templateId, exerciseId, name, shouldRender = true) {
         const template = data.templates.find((item) => item.id === templateId);
         const exercise = template?.exercises.find((item) => item.id === exerciseId);
         if (!exercise) return;
-        const identity = typeof exerciseIdentityFields === "function" ? exerciseIdentityFields({ name }) : {};
+        const normalizedName = String(name || "").trim();
+        if (!normalizedName || normalizedName.length > 256) {
+          if (shouldRender) showAppToast("Exercise names must be between 1 and 256 characters.");
+          return;
+        }
+        const identity = exercise.identitySource === "user_declared_custom" && String(exercise.performanceExerciseId || "").trim()
+          ? exerciseIdentityFields({ ...exercise, name: normalizedName })
+          : userSelectedExerciseIdentity(normalizedName);
         if (!shouldRender) {
-          patchTemplateExercise(templateId, exerciseId, { name, ...identity }, false);
+          patchTemplateExercise(templateId, exerciseId, { name: normalizedName, ...identity }, false);
           return;
         }
         const previousAutoRest = recommendedRestSeconds(exercise.name, { reps: exercise.reps });
         const restSeconds = !exercise.restSeconds || Number(exercise.restSeconds) === previousAutoRest
-          ? recommendedRestSeconds(name, { reps: exercise.reps })
+          ? recommendedRestSeconds(normalizedName, { reps: exercise.reps })
           : exercise.restSeconds;
-        patchTemplateExercise(templateId, exerciseId, { name, restSeconds, ...identity }, shouldRender);
+        patchTemplateExercise(templateId, exerciseId, { name: normalizedName, restSeconds, ...identity }, shouldRender);
       }
 
       function patchSet(setId, patch, shouldRender = true) {
@@ -644,11 +755,33 @@
 
       function patchSetValue(setId, field, value, shouldRender = true) {
         const editingHistory = isEditingHistorySession();
-        if (!editingHistory) acknowledgeActiveSet(setId);
         const set = setById(setId);
         const exercise = set ? exerciseById(set.exerciseId) : null;
+        if (!set || !exercise) return false;
         const resistanceType = resistanceTypeFor(exercise, set);
         const numeric = Number(value);
+        const domains = {
+          reps: { min: 0, integer: true, label: "Reps" },
+          weight: { min: 0, label: "Load" },
+          rpe: { min: 0, max: 10, step: 0.5, label: "RPE" },
+          durationSeconds: { min: 0, integer: true, label: "Duration" },
+          distance: { min: 0, label: "Distance" }
+        };
+        const domain = domains[field];
+        const steps = domain?.step == null ? 0 : (numeric - domain.min) / domain.step;
+        const invalid = !domain
+          || !Number.isFinite(numeric)
+          || numeric < domain.min
+          || (domain.max != null && numeric > domain.max)
+          || (domain.integer && !Number.isInteger(numeric))
+          || (domain.step != null && Math.abs(steps - Math.round(steps)) > 1e-9);
+        if (invalid) {
+          const range = domain?.max == null ? `${domain?.min ?? 0} or greater` : `${domain.min} to ${domain.max}`;
+          const increment = domain?.step == null ? "" : ` in ${domain.step} increments`;
+          showAppToast(`${domain?.label || "Set value"} must be ${range}${increment}.`);
+          return false;
+        }
+        if (!editingHistory) acknowledgeActiveSet(setId);
         if (editingHistory && Number(set?.[field]) === numeric) return;
         if (editingHistory) shouldRender = false;
         if (shouldRender) logWorkoutOverride(exercise, field === "weight" ? "load" : field, set?.[`target${field.charAt(0).toUpperCase() + field.slice(1)}`] ?? set?.[field], numeric, { setId });
@@ -656,6 +789,7 @@
         if (field === "weight" && resistanceType === "bodyweight_plus_load") patch.addedLoad = numeric;
         if (field === "weight" && resistanceType === "assisted_bodyweight") patch.assistanceLoad = numeric;
         patchSet(setId, patch, shouldRender);
+        return true;
       }
 
       function completedSetReconcileState(set, exercise) {
@@ -815,25 +949,48 @@
         const exercise = data.exercises.find((item) => item.id === exerciseId);
         const template = data.templates.find((item) => item.id === session?.templateId);
         if (!session || !exercise || !template) return;
-        const templateExercise = template.exercises.find((item) => exerciseMatches(item.name, exercise.name));
-        if (!templateExercise) return;
-        const workSets = setsForExercise(exercise.id).filter((set) => isWorkingSet(set, "progression") && !set.skipped);
+        const substitutions = (exercise.manualOverrides || []).filter((entry) => entry.field === "exerciseVariant" && entry.action === "substitute_exercise");
+        const routineSourceSubstitution = substitutions[0];
+        const sourceName = routineSourceSubstitution?.from?.name || "";
+        const sourcePerformanceId = routineSourceSubstitution?.from?.performanceExerciseId || routineSourceSubstitution?.from?.researchExerciseId || "";
+        const templateExercise = sourcePerformanceId
+          ? template.exercises.find((item) => (item.performanceExerciseId || item.researchExerciseId || canonicalExerciseId(item)) === sourcePerformanceId)
+            || (sourceName ? template.exercises.find((item) => exerciseMatches(item.name, sourceName)) : null)
+          : template.exercises.find((item) => (item.performanceExerciseId || canonicalExerciseId(item)) === (exercise.performanceExerciseId || canonicalExerciseId(exercise)))
+            || template.exercises.find((item) => exerciseMatches(item.name, exercise.name));
+        if (!templateExercise) {
+          showAppToast("The matching routine exercise could not be found; the workout remains unchanged.");
+          return;
+        }
+        const structureExerciseIds = new Set([
+          exercise.id,
+          ...substitutions.map((entry) => entry.exerciseRuntimeId || "")
+        ].filter(Boolean));
+        const structureSets = data.sets
+          .filter((set) => structureExerciseIds.has(set.exerciseId))
+          .sort((left, right) => Number(left.sequenceIndex ?? left.sequence ?? left.setNumber ?? 0) - Number(right.sequenceIndex ?? right.sequence ?? right.setNumber ?? 0));
+        const workSets = structureSets.filter((set) => isWorkingSet(set, "progression"));
+        const warmupSets = structureSets.filter((set) => setTypeSemantics(set).isWarmup);
         const representative = workSets[0];
         if (!representative) return;
         const repMins = workSets.map((set) => Number(set.targetRepMin || set.targetReps || set.reps || 0)).filter((value) => value > 0);
         const repMaxes = workSets.map((set) => Number(set.targetRepMax || set.targetReps || set.reps || 0)).filter((value) => value > 0);
+        const repMin = repMins.length ? Math.min(...repMins) : Number(representative.targetRepMin || representative.targetReps || representative.reps || 1);
+        const repMax = repMaxes.length ? Math.max(...repMaxes) : Number(representative.targetRepMax || representative.targetReps || representative.reps || repMin);
         patchTemplateExercise(template.id, templateExercise.id, {
+          name: exercise.name,
+          ...exerciseIdentityFields(exercise),
           sets: workSets.length,
-          reps: representative.reps,
-          repMin: repMins.length ? Math.min(...repMins) : representative.reps,
-          repMax: repMaxes.length ? Math.max(...repMaxes) : representative.reps,
+          reps: Math.round((repMin + repMax) / 2),
+          repMin,
+          repMax,
           targetRpe: Number(representative.targetRpe ?? representative.targetRpeMax) || Number(representative.rpe) || Number(templateExercise.targetRpe) || 8,
           restSeconds: exercise.restSeconds,
           setTypes: templateSetTypesFromHistory(workSets, exercise.restSeconds),
-          warmups: setsForExercise(exercise.id).filter((set) => setTypeSemantics(set).isWarmup).map((set) => ({ reps: set.reps, targetRepMin: set.targetRepMin, targetRepMax: set.targetRepMax, targetRpe: set.targetRpe, targetRpeMin: set.targetRpeMin, targetRpeMax: set.targetRpeMax, targetRestSeconds: set.targetRestSeconds, weight: set.weight, weightUnit: set.weightUnit, resistanceType: set.resistanceType, isBodyweight: set.isBodyweight, addedLoad: set.addedLoad, assistanceLoad: set.assistanceLoad, rpe: set.rpe })),
-          ...(exercise.customExerciseProfile ? { customExerciseProfile: normalizeCustomExerciseProfile(exercise.customExerciseProfile) } : {})
+          warmups: warmupSets.map((set) => ({ reps: set.reps, targetRepMin: set.targetRepMin, targetRepMax: set.targetRepMax, targetRpe: set.targetRpe, targetRpeMin: set.targetRpeMin, targetRpeMax: set.targetRpeMax, targetRestSeconds: set.targetRestSeconds, weight: set.weight, weightUnit: set.weightUnit, resistanceType: set.resistanceType, isBodyweight: set.isBodyweight, addedLoad: set.addedLoad, assistanceLoad: set.assistanceLoad, rpe: set.rpe })),
+          customExerciseProfile: exercise.customExerciseProfile ? normalizeCustomExerciseProfile(exercise.customExerciseProfile) : undefined
         });
-        activeSetNotice = "Template updated from today’s targets";
+        activeSetNotice = "Routine updated from today’s exercise targets";
       }
 
       function addSession() {
@@ -858,8 +1015,24 @@
       }
 
       function addExercise() {
-        const name = addExerciseDraft;
-        if (!name || !name.trim()) return;
+        const name = String(addExerciseDraft || "").trim();
+        if (!name) return;
+        if (name.length > 256) {
+          showAppToast("Exercise names must be 256 characters or fewer.");
+          return;
+        }
+        const setCount = Number(addExerciseSetCount);
+        const repMin = Number(addExerciseRepMin);
+        const repMax = Number(addExerciseRepMax);
+        const targetRpe = Number(addExerciseTargetRpe);
+        const restSeconds = Number(addExerciseRestSeconds || data.settings.defaultRestSeconds || 90);
+        if (!Number.isInteger(setCount) || setCount < 1 || setCount > 20
+          || !Number.isInteger(repMin) || !Number.isInteger(repMax) || repMin < 1 || repMax > 100 || repMin > repMax
+          || !Number.isFinite(targetRpe) || targetRpe < 1 || targetRpe > 10 || Math.abs(targetRpe * 2 - Math.round(targetRpe * 2)) > 1e-9
+          || !Number.isInteger(restSeconds) || restSeconds < 0 || restSeconds > 3600) {
+          showAppToast("Choose 1–20 sets, an ordered 1–100 rep range, RPE in 0.5 steps, and 0–3600 rest seconds.");
+          return;
+        }
         const authorization = guardWorkoutMutation("add-exercise");
         if (!authorization.allowed) return;
         const session = authorization.target.session;
@@ -875,33 +1048,50 @@
           render();
           return;
         }
-        const resistanceType = inferResistanceType(name.trim());
+        const resistanceType = inferResistanceType(name);
         const runtimeExerciseId = id();
-        const resolvedIdentity = resolvePrescriptionExerciseIdentity({ name: name.trim() });
-        const recognized = resolvedIdentity.status === "resolved" && !resolvedIdentity.custom;
-        const identityFields = recognized
-          ? exerciseIdentityFields({ name: name.trim(), researchExerciseId: resolvedIdentity.exerciseId })
-          : { performanceExerciseId: `user_custom_${String(runtimeExerciseId).replace(/[^a-zA-Z0-9]+/g, "_")}`, researchExerciseId: "", identitySource: "user_declared_custom", identityVersion: "exercise-identity/2.1.0" };
+        const identityFields = userSelectedExerciseIdentity(name);
         const exercise = {
           id: runtimeExerciseId,
           sessionId: session.id,
-          name: name.trim(),
+          name,
           ...identityFields,
           primaryMuscle: addExercisePrimaryMuscle,
           secondaryMuscle: addExerciseSecondaryMuscle,
           notes: "",
           order: data.exercises.filter((item) => item.sessionId === session.id).length,
-          restSeconds: recommendedRestSeconds(name.trim()),
+          stableTargetSnapshot: { sets: setCount, repLow: repMin, repHigh: repMax, rpe: targetRpe, restSeconds },
+          restSeconds,
           resistanceType,
           isBodyweight: isBodyweightResistance(resistanceType),
-          isDeload: false,
-          executionQualityAssessment: "not_assessed",
-          ...(!recognized ? { customExerciseProfile: normalizeCustomExerciseProfile({ primaryMuscleGroupId: addExercisePrimaryMuscle, secondaryMuscleGroupId: addExerciseSecondaryMuscle }) } : {})
+          isDeload: false
         };
-        const initialSets = [createSet(exercise.id, 1, { resistanceType })];
+        const initialSets = Array.from({ length: setCount }, (_, index) => createSet(exercise.id, index + 1, {
+          sequenceIndex: index,
+          sequence: index,
+          setTypeIndex: index,
+          setType: "straight",
+          reps: "",
+          rpe: "",
+          resistanceType,
+          targetReps: Math.round((repMin + repMax) / 2),
+          targetRepMin: repMin,
+          targetRepMax: repMax,
+          targetRpe,
+          targetRpeMin: targetRpe,
+          targetRpeMax: targetRpe,
+          targetRestSeconds: restSeconds,
+          completed: false,
+          skipped: false
+        }));
         addExerciseDraft = "";
         addExercisePrimaryMuscle = "";
         addExerciseSecondaryMuscle = "";
+        addExerciseSetCount = 1;
+        addExerciseRepMin = 8;
+        addExerciseRepMax = 12;
+        addExerciseTargetRpe = 8;
+        addExerciseRestSeconds = 0;
         if (!historyCorrection) {
           activeWorkoutId = session.id;
           session.workoutStarted = true;
@@ -918,7 +1108,18 @@
       }
 
       function patchTemplate(templateId, patch, shouldRender = true) {
+        if (Object.prototype.hasOwnProperty.call(patch, "name")
+          && (typeof patch.name !== "string" || patch.name.length > 256)) {
+          showAppToast("Routine names must be 256 characters or fewer.");
+          return false;
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, "notes")
+          && (typeof patch.notes !== "string" || patch.notes.length > 4096)) {
+          showAppToast("Routine notes must be 4,096 characters or fewer.");
+          return false;
+        }
         commit({ ...data, templates: data.templates.map((template) => template.id === templateId ? { ...template, ...patch, updatedAt: isoNow() } : template) }, shouldRender);
+        return true;
       }
 
       function assertTemplateExerciseNumericDomain(patch) {
@@ -1128,12 +1329,10 @@
           templateExercise = normalizeStableTemplateExercise(templateExercise);
           const templateResistanceType = templateExercise.resistanceType || inferResistanceType(templateExercise.name, templateExercise);
           const historyTarget = { ...stableTargetForTemplateExercise(templateExercise, { excludeSessionId: session.id, template, resistanceType: templateResistanceType, canonicalExerciseId: templateExercise.performanceExerciseId || canonicalExerciseId(templateExercise), workoutId: session.id }), resistanceType: templateResistanceType, isBodyweight: isBodyweightResistance(templateResistanceType) };
-          if (!historyTarget.executionBlocked) {
-            historyTarget.sets = Math.max(1, Number(historyTarget.sets || templateExercise.sets || 1));
-            historyTarget.reps = Math.max(1, Number(historyTarget.reps || templateExercise.reps || 1));
-            historyTarget.repLow = Math.max(1, Number(historyTarget.repLow || historyTarget.reps));
-            historyTarget.repHigh = Math.max(historyTarget.repLow, Number(historyTarget.repHigh || historyTarget.reps));
-          }
+          historyTarget.sets = Math.max(1, Number(historyTarget.sets || templateExercise.sets || 1));
+          historyTarget.reps = Math.max(1, Number(historyTarget.reps || templateExercise.reps || 1));
+          historyTarget.repLow = Math.max(1, Number(historyTarget.repLow || historyTarget.reps));
+          historyTarget.repHigh = Math.max(historyTarget.repLow, Number(historyTarget.repHigh || historyTarget.reps));
           historyTarget.restSeconds = Number(historyTarget.restSeconds || templateExercise.restSeconds || data.settings.defaultRestSeconds || 90);
           const exerciseVariantId = templateExercise.performanceExerciseId || canonicalExerciseId(templateExercise) || templateExercise.id;
           const resolvedAction = resolvedActionForVariant(session.resolvedActions, exerciseVariantId);
@@ -1143,9 +1342,9 @@
           if (target.adjusted) adjustedLiftCount += 1;
           const restSeconds = Number(templateExercise.restSeconds);
           const resolvedTypes = stableSetTypesForWorkoutStart(templateExercise, target);
-          const exercise = { id: id(), sessionId: session.id, ...(template.source === "strong" ? { source: "strong-template" } : {}), name: templateExercise.name, ...(typeof exerciseIdentityFields === "function" ? exerciseIdentityFields(templateExercise) : {}), primaryMuscle: templateExercise.primaryMuscle || "", secondaryMuscle: templateExercise.secondaryMuscle || "", ...(templateExercise.customExerciseProfile ? { customExerciseProfile: normalizeCustomExerciseProfile(templateExercise.customExerciseProfile) } : {}), executionQualityAssessment: "not_assessed", notes: "", stableTargetSnapshot: { sets: historyTarget.sets, repLow: historyTarget.repLow, repHigh: historyTarget.repHigh, rpe: historyTarget.rpe, restSeconds: historyTarget.restSeconds }, resolvedActionId: resolvedAction?.decisionId || null, adjustmentReason: target.adjustmentReason || "", manualOverrides: [], order: index, restSeconds, resistanceType: target.resistanceType || templateResistanceType, isBodyweight: isBodyweightResistance(resolvedResistanceType), isDeload: Boolean(target.isDeload), executionBlocked: false, safetyRestriction: null };
+          const exercise = { id: id(), sessionId: session.id, ...(template.source === "strong" ? { source: "strong-template" } : {}), name: templateExercise.name, ...(typeof exerciseIdentityFields === "function" ? exerciseIdentityFields(templateExercise) : {}), primaryMuscle: templateExercise.primaryMuscle || "", secondaryMuscle: templateExercise.secondaryMuscle || "", ...(templateExercise.customExerciseProfile ? { customExerciseProfile: normalizeCustomExerciseProfile(templateExercise.customExerciseProfile) } : {}), notes: "", stableTargetSnapshot: { sets: historyTarget.sets, repLow: historyTarget.repLow, repHigh: historyTarget.repHigh, rpe: historyTarget.rpe, restSeconds: historyTarget.restSeconds }, resolvedActionId: resolvedAction?.decisionId || null, adjustmentReason: target.adjustmentReason || "", manualOverrides: [], order: index, restSeconds, resistanceType: target.resistanceType || templateResistanceType, isBodyweight: isBodyweightResistance(resolvedResistanceType), isDeload: Boolean(target.isDeload) };
           exercises.push(exercise);
-          const configuredWarmups = target.executionBlocked ? [] : (templateExercise.warmups || []);
+          const configuredWarmups = templateExercise.warmups || [];
           configuredWarmups.forEach((warmup, warmupIndex) => {
             sets.push(createSet(exercise.id, warmupIndex + 1, { ...warmup, sequenceIndex: warmupIndex, sequence: warmupIndex, setTypeIndex: warmupIndex, sourceTemplateSetId: warmup.id || templateExercise.id + "-warmup-" + warmupIndex, resistanceType: target.resistanceType || templateResistanceType, completed: false, isWarmup: true, setType: "warmup", countsTowardScore: false, countsTowardVolume: false, countsTowardProgression: false }));
           });
@@ -1202,7 +1401,12 @@
         const exercise = authorization.target.exercise;
         const targetExerciseId = exercise.id;
         const sets = setsForExercise(targetExerciseId);
-        logWorkoutOverride(exercise, "setCount", sets.filter((set) => isWorkingSet(set, "score")).length, sets.filter((set) => isWorkingSet(set, "score")).length + 1, { action: duplicate ? "duplicate_set" : "add_set" });
+        const workingSetCount = sets.filter((set) => isWorkingSet(set, "score")).length;
+        if (workingSetCount >= 100) {
+          showAppToast("An exercise can contain at most 100 working sets.");
+          return;
+        }
+        logWorkoutOverride(exercise, "setCount", workingSetCount, workingSetCount + 1, { action: duplicate ? "duplicate_set" : "add_set" });
         const sequenceIndex = sets.length ? Math.max(...sets.map(canonicalSetSequence)) + 1 : 0;
         const previous = duplicate ? sets[sets.length - 1] : undefined;
         commit({ ...data, sets: [...data.sets, createSet(targetExerciseId, sets.filter((set) => !setTypeSemantics(set).isWarmup).length + 1, { ...(previous || {}), sequenceIndex, sequence: sequenceIndex, completed: false, skipped: false, edited: false })] }, true, { invalidateAnalysis: authorization.target.authorizationMode === "history_edit", deferPersistence: authorization.target.authorizationMode !== "history_edit" });
@@ -1214,6 +1418,10 @@
         const targetExerciseId = authorization.target.exercise.id;
         const sets = setsForExercise(targetExerciseId);
         const warmups = sets.filter((set) => setTypeSemantics(set).isWarmup);
+        if (warmups.length >= 100) {
+          showAppToast("An exercise can contain at most 100 warm-up sets.");
+          return;
+        }
         const sequenceIndex = warmups.length;
         const priorWarmup = warmups.at(-1);
         const shifted = data.sets.map((set) => set.exerciseId === targetExerciseId && canonicalSetSequence(set) >= sequenceIndex ? { ...set, sequenceIndex: canonicalSetSequence(set) + 1, sequence: canonicalSetSequence(set) + 1 } : set);

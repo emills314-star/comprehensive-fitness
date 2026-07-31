@@ -127,8 +127,8 @@
           <article class="template-card compact-template plan-template-card ex-block ${isActiveTemplate ? "active-template" : ""}">
             <div class="template-topline">
               <div class="template-title">${usesLargeTextReflow()
-                ? '<textarea class="exercise-name autosize-title-field" rows="1" data-action="template-name" data-template-id="' + template.id + '" aria-label="Template name">' + escapeHtml(template.name) + '</textarea>'
-                : '<input class="exercise-name" value="' + escapeHtml(template.name) + '" data-action="template-name" data-template-id="' + template.id + '" aria-label="Template name" />'}<small>${template.exercises.length} lifts · ${prescribedSets} prescribed sets · ~${duration} min</small></div>
+                ? '<textarea class="exercise-name autosize-title-field" rows="1" maxlength="256" data-action="template-name" data-template-id="' + template.id + '" aria-label="Template name">' + escapeHtml(template.name) + '</textarea>'
+                : '<input class="exercise-name" value="' + escapeHtml(template.name) + '" maxlength="256" data-action="template-name" data-template-id="' + template.id + '" aria-label="Template name" />'}<small>${template.exercises.length} lifts · ${prescribedSets} prescribed sets · ~${duration} min</small></div>
               <div class="template-card-actions">${isActiveTemplate ? '<button class="primary-action template-start" type="button" data-action="resume-active-workout">Resume</button>' : '<button class="primary-action template-start" type="button" data-action="start-template" data-template-id="' + template.id + '" ' + startDisabledAttributes + '>Start</button>'}${isActiveTemplate
                 ? '<button class="template-delete-button danger" type="button" disabled title="Finish or cancel the active workout before deleting this template" aria-label="Delete unavailable during active workout">' + icon.delete + '</button>'
                 : confirmingDelete
@@ -145,7 +145,7 @@
                 <ul class="template-list">
                   ${template.exercises.map((exercise) => `
                     <li>
-                      <input value="${escapeHtml(exercise.name)}" data-action="template-exercise-name" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" aria-label="Template exercise name" />
+                      <input value="${escapeHtml(exercise.name)}" data-action="template-exercise-name" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" aria-label="Template exercise name" maxlength="256" />
                       <div class="grid two">
                         <label class="template-meta">Sets${renderTemplateNumericInput(template, exercise, "template-exercise-sets", exercise.sets, "Template exercise sets")}</label>
                         <label class="template-meta">Reps${renderTemplateNumericInput(template, exercise, "template-exercise-reps", exercise.reps, "Template exercise repetitions")}</label>
@@ -330,7 +330,6 @@
       }
 
       function resolvedSetTypesForPrescription(context, target, templateExercise = {}) {
-        if (target?.executionBlocked === true || target?.finalPrescription?.executionBlocked === true || context?.executionBlocked === true) return [];
         const contextTypes = (context?.setTypes || []).filter((type) => type.countsTowardScore && !type.isWarmup);
         const savedTypes = (templateExercise.setTypes || []).filter((type) => type.countsTowardScore !== false && !type.isWarmup);
         const scored = contextTypes.length ? contextTypes : savedTypes;

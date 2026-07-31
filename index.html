@@ -668,14 +668,9 @@
       .set-row.pending { border-left: 3px solid transparent; }
       .set-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px 8px 43px; }
       .set-actions .mini-button { min-height: 32px; padding: 5px 9px; }
-      .set-rest-button { border-color: color-mix(in srgb, var(--amber) 58%, var(--line)); color: var(--amber); }
       .session-submitted, .summary-muted { border: 1px solid var(--line); color: var(--muted); padding: 12px; }
       .submit-confirmation { background: var(--surface-strong); border: 1px solid var(--green); display: grid; gap: 10px; padding: 16px; }
       .submit-confirmation span { color: var(--muted); margin: 0; }
-      .submit-quality { border-top: 1px solid var(--line); display: grid; gap: 7px; padding-top: 10px; }
-      .submit-quality small { color: var(--muted); font-size: var(--fs-micro); line-height: 1.4; }
-      .submit-quality label { align-items: center; display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr) minmax(120px, .7fr); }
-      .submit-quality label span { color: var(--text); font-size: var(--fs-micro); font-weight: 800; }
       .completed-summary { --grade-color: var(--current); animation: workout-grade-reveal .34s ease-out both; background: var(--surface-strong); border: 1px solid color-mix(in srgb, var(--grade-color) 50%, var(--line)); border-left: 4px solid var(--grade-color); border-right: 4px solid var(--grade-color); display: grid; gap: 16px; padding: 16px 14px; }
       .completed-summary.score-excellent, .grade-tone.score-excellent { --grade-color: var(--current); }
       .completed-summary.score-very-good, .grade-tone.score-very-good { --grade-color: var(--success); }
@@ -1320,6 +1315,9 @@
       .timer-summary > strong { color: var(--text); font-size: var(--fs-lg); font-variant-numeric: tabular-nums; justify-self: end; position: relative; }
       .timer-bar[data-phase="final"] .timer-progress > span { background: color-mix(in srgb, var(--current) 16%, transparent); border-right-color: var(--current); }
       .timer-bar[data-phase="final"] .timer-rest-copy > span, .timer-bar[data-phase="final"] .timer-summary > strong { color: var(--current); }
+      .timer-bar[data-phase="overtime"] { border-color: color-mix(in srgb, var(--success) 58%, var(--line)); }
+      .timer-bar[data-phase="overtime"] .timer-progress > span { background: color-mix(in srgb, var(--success) 14%, transparent); border-right-color: var(--success); width: 0; }
+      .timer-bar[data-phase="overtime"] .timer-rest-copy > span, .timer-bar[data-phase="overtime"] .timer-summary > strong { color: var(--success); }
       .timer-context { color: var(--muted); font-size: var(--fs-micro); grid-column: 1 / -1; line-height: 1.35; }
       .timer-controls-panel { border-top: 1px solid color-mix(in srgb, var(--current) 36%, var(--line)); display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr) auto; padding: 9px; }
       .timer-control { border-radius: 8px; font-size: 1rem; font-weight: 1000; min-height: 40px; min-width: 40px; padding: 0; justify-content: center; }
@@ -1344,19 +1342,6 @@
       .timer-complete-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
       @media (max-width: 520px) { .timer-complete-toast { grid-template-columns: 36px minmax(0, 1fr); } .timer-complete-actions { grid-column: 1 / -1; } .timer-complete-actions button:first-child { flex: 1; } }
       .set-block.resting-set { border-left-color: var(--line) !important; border-right-color: var(--line) !important; }
-      .plate-calculator { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; display: grid; gap: 5px; padding: 10px; }
-      .plate-calculator strong { font-size: .78rem; }
-      .plate-calculator span { color: var(--muted); font-size: var(--fs-micro); line-height: 1.4; }
-      .plate-diagram { color: var(--line-strong); display: block; height: auto; max-width: 100%; width: 100%; }
-      .plate-diagram line { stroke: currentColor; stroke-width: 4; }
-      .plate-diagram .plate-sleeve { fill: color-mix(in srgb, var(--line-strong) 70%, var(--surface)); }
-      .plate-diagram .plate rect { stroke: color-mix(in srgb, var(--text) 32%, transparent); stroke-width: 1; }
-      .plate-diagram .plate-0 rect { fill: color-mix(in srgb, var(--current) 72%, var(--surface)); }
-      .plate-diagram .plate-1 rect { fill: color-mix(in srgb, var(--success) 72%, var(--surface)); }
-      .plate-diagram .plate-2 rect { fill: color-mix(in srgb, var(--amber) 72%, var(--surface)); }
-      .plate-diagram .plate-3 rect { fill: color-mix(in srgb, var(--rest-accent) 72%, var(--surface)); }
-      .plate-diagram .plate-4 rect { fill: color-mix(in srgb, var(--red) 72%, var(--surface)); }
-      .plate-diagram text { fill: var(--text); font-size: var(--fs-micro); font-weight: 850; }
       .set-block { position: relative; transition: background 180ms ease, border-color 180ms ease, box-shadow 180ms ease; }
       .set-block.next-set { background: var(--current-dark); border-left-color: var(--current); border-right-color: var(--current); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--current) 60%, transparent); }
       .set-block.next-set:not(.acknowledged) { animation: next-set-pulse 1.2s ease-out 2; }
@@ -1676,7 +1661,6 @@
       .workout-view.history-readonly .recovery-panel textarea,
       .workout-view.history-readonly .recovery-panel .toggle-line { opacity: .68; pointer-events: none; }
       .workout-view.history-readonly .exercise-card summary[data-action] { pointer-events: auto; }
-      .workout-view.history-editing .set-rest-button { display: none; }
       .destructive-warning { background: color-mix(in srgb, var(--red) 8%, var(--surface)); border-left: 3px solid var(--red); display: grid; gap: 6px; padding: 10px; }
       .destructive-warning span, .destructive-warning small, .clear-data-scope span { color: var(--muted); font-size: var(--fs-micro); line-height: 1.45; }
       .clear-data-scope { display: grid; gap: var(--sp-2); }
@@ -2024,13 +2008,9 @@
       .guideline-context-row > div + div { border-left: 1px solid var(--line); }
       .guideline-context-row span { color: var(--muted); font-size: var(--fs-micro); font-weight: 900; letter-spacing: .05em; text-transform: uppercase; }
       .guideline-context-row strong { font-size: var(--fs-micro); line-height: 1.35; overflow-wrap: anywhere; }
-      .custom-exercise-setup { background: color-mix(in srgb, var(--amber) 7%, var(--surface)); border: 1px solid color-mix(in srgb, var(--amber) 32%, var(--line)); border-radius: 12px; display: grid; gap: 10px; padding: 12px; }
-      .custom-exercise-setup.complete { background: color-mix(in srgb, var(--current) 6%, var(--surface)); border-color: color-mix(in srgb, var(--current) 28%, var(--line)); }
-      .custom-exercise-setup > p { color: var(--muted); font-size: var(--fs-micro); line-height: 1.45; margin: 0; }
-      .custom-profile-grid { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .custom-profile-grid label, .execution-quality-control { color: var(--muted); display: grid; font-size: var(--fs-micro); font-weight: 850; gap: 5px; }
-      .execution-quality-control { background: var(--surface-strong); padding: 10px; }
-      .execution-quality-control small { font-size: var(--fs-micro); font-weight: 600; line-height: 1.4; }
+      .exercise-substitution-control { background: var(--surface-strong); border: 1px solid var(--line); border-radius: var(--r-sm); display: grid; gap: 8px; padding: 10px; }
+      .exercise-substitution-control label { color: var(--muted); display: grid; font-size: var(--fs-micro); font-weight: 850; gap: 5px; }
+      .exercise-substitution-control small { color: var(--muted); font-size: var(--fs-micro); line-height: 1.4; }
       .default-target-grid { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .default-target-grid > label, .individual-set-row label { color: var(--muted); display: grid; font-size: var(--fs-micro); font-weight: 850; gap: 5px; letter-spacing: .04em; min-width: 0; text-transform: uppercase; }
       .default-target-grid label > span > small, .individual-set-row label > span > small { font-size: var(--fs-micro); letter-spacing: 0; text-transform: none; }
@@ -2774,6 +2754,17 @@
       }
 
       .workout-timer-slot:empty { display: none; }
+      .workout-rest-starter {
+        align-items: center;
+        display: grid;
+        gap: var(--sp-3);
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        min-height: 52px;
+        padding: var(--sp-3) var(--sp-4);
+        width: 100%;
+      }
+      .workout-rest-starter span { justify-self: start; }
+      .workout-rest-starter strong { color: var(--rest-text); font-variant-numeric: tabular-nums; }
       .workout-timer-slot .timer-bar {
         background: color-mix(in srgb, var(--rest-accent) 12%, var(--surface));
         border-color: color-mix(in srgb, var(--rest-accent) 65%, var(--line));
@@ -2847,10 +2838,40 @@
       }
       .workout-view .exercise-header {
         border-bottom: 1px solid var(--line);
+        grid-template-columns: 28px minmax(0, 1fr) 44px;
         min-height: 54px;
         padding: var(--sp-2) 0;
       }
-      .workout-view .exercise-grip { color: var(--muted-2); }
+      .workout-view .exercise-grip {
+        color: var(--muted-2);
+        grid-column: 1;
+        grid-row: 1 / 3;
+      }
+      .workout-view .exercise-name-full {
+        align-self: center;
+        color: var(--text);
+        font-size: var(--fs-base);
+        grid-column: 2;
+        grid-row: 1;
+        line-height: 1.25;
+        margin: 0;
+        min-width: 0;
+        overflow-wrap: anywhere;
+        padding: var(--sp-2) 0;
+        white-space: normal;
+      }
+      .workout-view .exercise-target {
+        grid-column: 2;
+        grid-row: 2;
+        justify-self: start;
+        max-width: 100%;
+        overflow-wrap: normal;
+        white-space: normal;
+      }
+      .workout-view .exercise-overflow {
+        grid-column: 3;
+        grid-row: 1 / 3;
+      }
       .workout-view .exercise-name-field {
         background: transparent;
         border: 0;
@@ -3164,6 +3185,8 @@
       }
        html.large-text-reflow .workout-view .exercise-grip,
        html.large-text-reflow .workout-view .exercise-name-field,
+       html.large-text-reflow .workout-view .exercise-name-full,
+       html.large-text-reflow .workout-view .exercise-target,
        html.large-text-reflow .workout-view .exercise-overflow {
         grid-column: 1;
         grid-row: auto;

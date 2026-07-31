@@ -375,14 +375,15 @@
         }
         const allowedTopLevelFields = new Set(["appDataVersion", "domainMigrationVersion", "sessions", "exercises", "sets", "templates", "recommendationHistory", "manualOverrides", "personalEvidencePackage", "rawImports", "migrationAudit", "dataRevision", "settings"]);
         const allowedSessionFields = new Set(["id", "externalId", "source", "date", "title", "isTravel", "notes", "submitted", "workoutStarted", "workoutState", "completedAt", "submittedAt", "startedAt", "createdAt", "updatedAt", "durationSeconds", "templateId", "recovery", "readinessMode", "readinessAdjustments", "usedOriginalTargets", "resolvedActions", "prs", "grade", "gradeVersion", "workoutAnalysis", "workoutPrescription", "adjustmentSummary", "exerciseQualityAnswers", "deletedAt", "trashed", "canceledAt"]);
-        const allowedExerciseFields = new Set(["id", "externalId", "source", "sessionId", "name", "notes", "order", "primaryMuscle", "secondaryMuscle", "restSeconds", "resistanceType", "isBodyweight", "isDeload", "customExerciseProfile", "executionQualityAssessment", "recommendationSnapshot", "basePrescription", "finalPrescription", "coachRecommendation", "executionBlocked", "safetyRestriction", "manualOverrides", "adjusted", "adjustmentReason", "triggerLabels", "canonicalExerciseId", "performanceExerciseId", "researchExerciseId", "identitySource", "identityVersion", "originalPrescription", "prescription", "recommendationVersion", "personalDataVersion", "researchDatabaseVersion", "programTargetContext", "appliedTargetContext", "overrideLocked"]);
-        const allowedSetFields = new Set(["id", "exerciseId", "setNumber", "sequenceIndex", "sequence", "setTypeIndex", "setType", "reps", "weight", "weightUnit", "resistanceType", "rpe", "completed", "skipped", "edited", "isWarmup", "countsTowardScore", "countsTowardVolume", "countsTowardProgression", "addedLoad", "assistanceLoad", "durationSeconds", "distance", "distanceUnit", "targetReps", "targetRepMin", "targetRepMax", "targetWeight", "targetRpe", "targetRpeMin", "targetRpeMax", "targetRpeTolerance", "targetRestSeconds", "setPrescription", "previousComparableSet", "prescriptionReason", "prescriptionMode", "prescriptionConfidence", "validationWarning", "classificationSource", "classificationConfidence", "classifierVersion", "manualOverride", "reviewRequired", "classifiedAt", "sourceSetOrder", "originalImportedValue"]);
+        const allowedExerciseFields = new Set(["id", "externalId", "source", "sessionId", "name", "notes", "order", "primaryMuscle", "secondaryMuscle", "restSeconds", "resistanceType", "isBodyweight", "isDeload", "customExerciseProfile", "executionQualityAssessment", "recommendationSnapshot", "basePrescription", "finalPrescription", "coachRecommendation", "executionBlocked", "safetyRestriction", "manualOverrides", "adjusted", "adjustmentReason", "triggerLabels", "canonicalExerciseId", "performanceExerciseId", "researchExerciseId", "identitySource", "identityVersion", "originalPrescription", "prescription", "recommendationVersion", "personalDataVersion", "researchDatabaseVersion", "programTargetContext", "appliedTargetContext", "overrideLocked", "stableTargetSnapshot", "resolvedActionId", "pendingReconcile"]);
+        const allowedSetFields = new Set(["id", "exerciseId", "setNumber", "sequenceIndex", "sequence", "setTypeIndex", "setType", "sourceTemplateSetId", "reps", "weight", "weightUnit", "resistanceType", "isBodyweight", "rpe", "completed", "skipped", "edited", "isWarmup", "countsTowardScore", "countsTowardVolume", "countsTowardProgression", "addedLoad", "assistanceLoad", "durationSeconds", "distance", "distanceUnit", "targetReps", "targetRepMin", "targetRepMax", "targetWeight", "targetRpe", "targetRpeMin", "targetRpeMax", "targetRpeTolerance", "targetRestSeconds", "originalTargetReps", "originalTargetWeight", "originalTargetRpe", "setPrescription", "previousComparableSet", "prescriptionReason", "prescriptionMode", "prescriptionConfidence", "validationWarning", "classificationSource", "classificationConfidence", "classifierVersion", "manualOverride", "reviewRequired", "classifiedAt", "classificationUndo", "sourceSetOrder", "originalImportedValue"]);
+        const allowedClassificationUndoFields = new Set(["setType", "isWarmup", "countsTowardScore", "countsTowardVolume", "countsTowardProgression", "classificationSource", "classificationConfidence", "manualOverride", "reviewRequired"]);
         const allowedTemplateFields = new Set(["id", "name", "notes", "createdAt", "updatedAt", "exercises", "source"]);
         const allowedTemplateExerciseFields = new Set(["id", "name", "notes", "sets", "reps", "repMin", "repMax", "standardWorkloadOverride", "standardRoleWorkload", "targetRpe", "increment", "restSeconds", "resistanceType", "isBodyweight", "primaryMuscle", "secondaryMuscle", "customExerciseProfile", "warmups", "setTypes", "canonicalExerciseId", "performanceExerciseId", "researchExerciseId", "identitySource", "identityVersion", "recommendationSnapshot"]);
         const allowedSettingsFields = new Set(["weightUnit", "theme", "colorPackage", "timerSound", "workoutCompletionSound", "timerVibration", "interactionVibration", "timerNotifications", "inAppRestAlerts", "restCompleteSound", "restCompleteSoundVolume", "restCompleteAutoDismissMs", "restCompleteLockScreenNotifications", "restCompleteAutoReturnToWorkout", "defaultRestSeconds", "notificationMessageDetail", "autoStartRestTimer", "autoHighlightNextSet", "autoScrollNextSet", "installGuideDismissed", "setupSoundConfirmed", "cloudWorkoutSyncConsent", "workoutCloudSync", "workoutCloudSyncConsentVersion", "readinessBaseline"]);
         const allowedRecommendationFields = new Set(["recommendationId", "schemaVersion", "recommendationVersion", "engineVersion", "personalDataVersion", "researchDatabaseVersion", "exerciseId", "muscleGroupId", "exerciseScore", "muscleSpecificScore", "personalEvidenceWeight", "researchEvidenceWeight", "standardGuideline", "readinessAdjustment", "basePrescription", "finalPrescription", "explanation", "evidenceSummary", "confidence", "createdAt", "manualOverrides", "overrideLocked", "checksum", "request", "scores", "versions"]);
         const allowedCustomProfileFields = new Set(["schemaVersion", "status", "primaryMuscleGroupId", "secondaryMuscleGroupId", "resistanceType", "exerciseStyle", "progressionMetric", "smallestIncrement", "confirmedAt"]);
-        const allowedOverrideFields = new Set(["overrideId", "recommendationId", "sessionId", "workoutId", "exerciseRuntimeId", "exerciseId", "setId", "field", "from", "to", "createdAt", "actor", "reason", "lockedForWorkout", "changes", "previousFinalPrescription", "outcome", "outcomeEvaluation", "action"]);
+        const allowedOverrideFields = new Set(["overrideId", "recommendationId", "sessionId", "workoutId", "exerciseRuntimeId", "replacementExerciseRuntimeId", "exerciseId", "setId", "field", "from", "to", "createdAt", "actor", "reason", "lockedForWorkout", "changes", "previousFinalPrescription", "outcome", "outcomeEvaluation", "action"]);
         const allowedRawImportFields = new Set(["id", "source", "importedAt", "originalText", "weightUnit", "sessionExternalIds"]);
         const allowedMigrationFields = new Set(["version", "startedAt", "completedAt", "inspected", "changed", "explicitRetained", "manualOverridesPreserved", "warmups", "topSets", "backoffSets", "dropSets", "ambiguous", "templatesReseeded", "changes"]);
         const allowedMigrationChangeFields = new Set(["setId", "exerciseId", "from", "to", "reason", "confidence"]);
@@ -471,6 +472,107 @@
           if (profile.smallestIncrement != null && (!Number.isFinite(Number(profile.smallestIncrement)) || Number(profile.smallestIncrement) <= 0 || Number(profile.smallestIncrement) > 10000)) throw new Error(`${label} smallest increment is invalid.`);
           if (profile.confirmedAt != null && (typeof profile.confirmedAt !== "string" || profile.confirmedAt.length > 64)) throw new Error(`${label} confirmedAt is invalid.`);
         };
+        const assertStableTargetSnapshot = (snapshot, label) => {
+          if (snapshot == null) return;
+          const fields = new Set(["sets", "repLow", "repHigh", "rpe", "restSeconds"]);
+          assertAllowed(snapshot, fields, label);
+          assertNumericDomain(snapshot.sets, { min: 0, max: 100, integer: true }, `${label} sets`);
+          assertNumericDomain(snapshot.repLow, { min: 0, max: 1000, integer: true }, `${label} repLow`);
+          assertNumericDomain(snapshot.repHigh, { min: 0, max: 1000, integer: true }, `${label} repHigh`);
+          assertNumericDomain(snapshot.rpe, { min: 0, max: 10, step: 0.5 }, `${label} rpe`);
+          assertNumericDomain(snapshot.restSeconds, { min: 0, max: 3600, integer: true }, `${label} restSeconds`);
+          if (snapshot.repLow != null && snapshot.repHigh != null && Number(snapshot.repLow) > Number(snapshot.repHigh)) throw new Error(`${label} repLow must not exceed repHigh.`);
+        };
+        const assertPendingReconcile = (pending, label) => {
+          if (pending == null) return;
+          assertAllowed(pending, new Set(["setId", "fields", "remainingSetCount"]), label);
+          assertId(pending.setId, `${label} set reference`);
+          if (!Array.isArray(pending.fields) || pending.fields.length > 3 || pending.fields.some((field) => !["load", "reps", "rpe"].includes(field))) throw new Error(`${label} fields are invalid.`);
+          assertNumericDomain(pending.remainingSetCount, { min: 0, max: 100, integer: true }, `${label} remainingSetCount`);
+        };
+        const validateTemplateWarmups = (warmups, label) => {
+          if (warmups == null) return [];
+          if (!Array.isArray(warmups) || warmups.length > 100) throw new Error(`${label} must contain at most 100 warm-up sets.`);
+          const allowedFields = new Set(["id", "reps", "targetRepMin", "targetRepMax", "targetRpe", "targetRpeMin", "targetRpeMax", "targetRestSeconds", "weight", "weightUnit", "resistanceType", "isBodyweight", "addedLoad", "assistanceLoad", "rpe"]);
+          const numericDomains = {
+            reps: { min: 0, max: 1000, integer: true },
+            targetRepMin: { min: 0, max: 1000, integer: true },
+            targetRepMax: { min: 0, max: 1000, integer: true },
+            targetRpe: { min: 0, max: 10, step: 0.5 },
+            targetRpeMin: { min: 0, max: 10, step: 0.5 },
+            targetRpeMax: { min: 0, max: 10, step: 0.5 },
+            targetRestSeconds: { min: 0, max: 3600, integer: true },
+            weight: { min: 0 },
+            addedLoad: { min: 0 },
+            assistanceLoad: { min: 0 },
+            rpe: { min: 0, max: 10, step: 0.5 }
+          };
+          return warmups.map((warmup, index) => {
+            const itemLabel = `${label} ${index + 1}`;
+            assertAllowed(warmup, allowedFields, itemLabel);
+            if (warmup.id != null && warmup.id !== "") assertId(warmup.id, `${itemLabel} id`);
+            Object.entries(numericDomains).forEach(([field, config]) => assertNumericDomain(warmup[field], config, `${itemLabel} ${field}`));
+            if (warmup.targetRepMin != null && warmup.targetRepMax != null && Number(warmup.targetRepMin) > Number(warmup.targetRepMax)) throw new Error(`${itemLabel} target rep minimum must not exceed its maximum.`);
+            if (warmup.targetRpeMin != null && warmup.targetRpeMax != null && Number(warmup.targetRpeMin) > Number(warmup.targetRpeMax)) throw new Error(`${itemLabel} target RPE minimum must not exceed its maximum.`);
+            if (warmup.weightUnit != null && !["lb", "kg"].includes(warmup.weightUnit)) throw new Error(`${itemLabel} weightUnit is invalid.`);
+            if (warmup.resistanceType != null && !["external", "bodyweight", "bodyweight_plus_load", "assisted_bodyweight", "duration", "distance"].includes(warmup.resistanceType)) throw new Error(`${itemLabel} resistanceType is invalid.`);
+            if (warmup.isBodyweight != null && typeof warmup.isBodyweight !== "boolean") throw new Error(`${itemLabel} isBodyweight must be boolean.`);
+            return copyAllowed(warmup, allowedFields);
+          });
+        };
+        const validateTemplateSetTypes = (setTypes, label) => {
+          if (setTypes == null) return [];
+          if (!Array.isArray(setTypes) || setTypes.length > 100) throw new Error(`${label} must contain at most 100 set-role records.`);
+          const allowedFields = new Set(["id", "type", "setType", "label", "setCount", "count", "sets", "repMin", "repMax", "exactReps", "rangeSource", "rangeAdjusted", "rpeMin", "rpeMax", "targetRpe", "rpe", "rpeTolerance", "loadRule", "progressionRule", "increment", "loadReductionMin", "loadReductionMax", "dropPercentMin", "dropPercentMax", "restSeconds", "countsTowardVolume", "countsTowardScore", "isWarmup", "historySampleSize"]);
+          const validTypes = new Set(["straight", "top", "backoff", "drop", "failure", "amrap", "technique", "deload", "unknown"]);
+          const numericDomains = {
+            setCount: { min: 0, max: 100, integer: true },
+            count: { min: 0, max: 100, integer: true },
+            sets: { min: 0, max: 100, integer: true },
+            repMin: { min: 0, max: 1000, integer: true },
+            repMax: { min: 0, max: 1000, integer: true },
+            rpeMin: { min: 0, max: 10, step: 0.5 },
+            rpeMax: { min: 0, max: 10, step: 0.5 },
+            targetRpe: { min: 0, max: 10, step: 0.5 },
+            rpe: { min: 0, max: 10, step: 0.5 },
+            rpeTolerance: { min: 0, max: 10, step: 0.5 },
+            increment: { min: 0, max: 10000 },
+            loadReductionMin: { min: 0, max: 100 },
+            loadReductionMax: { min: 0, max: 100 },
+            dropPercentMin: { min: 0, max: 100 },
+            dropPercentMax: { min: 0, max: 100 },
+            restSeconds: { min: 0, max: 3600, integer: true },
+            historySampleSize: { min: 0, max: 100000, integer: true }
+          };
+          let totalSetCount = 0;
+          const validated = setTypes.map((setType, index) => {
+            const itemLabel = `${label} ${index + 1}`;
+            assertAllowed(setType, allowedFields, itemLabel);
+            if (setType.id != null && setType.id !== "") assertId(setType.id, `${itemLabel} id`);
+            Object.entries(numericDomains).forEach(([field, config]) => assertNumericDomain(setType[field], config, `${itemLabel} ${field}`));
+            const rawType = String(setType.type || setType.setType || "straight");
+            const normalizedType = rawType === "working" ? "straight" : rawType;
+            if (!validTypes.has(normalizedType)) throw new Error(`${itemLabel} type is invalid.`);
+            if (setType.repMin != null && setType.repMax != null && Number(setType.repMin) > Number(setType.repMax)) throw new Error(`${itemLabel} rep minimum must not exceed its maximum.`);
+            if (setType.rpeMin != null && setType.rpeMax != null && Number(setType.rpeMin) > Number(setType.rpeMax)) throw new Error(`${itemLabel} RPE minimum must not exceed its maximum.`);
+            if (setType.loadReductionMin != null && setType.loadReductionMax != null && Number(setType.loadReductionMin) > Number(setType.loadReductionMax)) throw new Error(`${itemLabel} load reduction minimum must not exceed its maximum.`);
+            for (const field of ["exactReps", "rangeAdjusted", "countsTowardVolume", "countsTowardScore", "isWarmup"]) {
+              if (setType[field] != null && typeof setType[field] !== "boolean") throw new Error(`${itemLabel} ${field} must be boolean.`);
+            }
+            for (const field of ["label", "rangeSource", "loadRule", "progressionRule"]) assertText(setType[field], `${itemLabel} ${field}`);
+            const count = Number(setType.setCount ?? setType.count ?? setType.sets ?? 0);
+            totalSetCount += count;
+            const copied = copyAllowed(setType, allowedFields);
+            delete copied.count;
+            delete copied.sets;
+            if (copied.setCount == null && count > 0) copied.setCount = count;
+            if (copied.type != null) copied.type = normalizedType;
+            if (copied.setType != null) copied.setType = normalizedType;
+            return copied;
+          });
+          if (totalSetCount > 100) throw new Error(`${label} may describe at most 100 total sets.`);
+          return validated;
+        };
 
         const unknownTopLevel = Object.keys(imported).find((key) => !allowedTopLevelFields.has(key));
         if (unknownTopLevel) throw new Error(`Backup contains an unknown top-level field: ${unknownTopLevel}.`);
@@ -519,10 +621,14 @@
           if (record.restSeconds != null && (!Number.isFinite(Number(record.restSeconds)) || Number(record.restSeconds) < 0 || Number(record.restSeconds) > 3600)) throw new Error(`Exercise ${index + 1} restSeconds is invalid.`);
           for (const field of ["isBodyweight", "isDeload", "executionBlocked", "adjusted", "overrideLocked"]) if (record[field] != null && typeof record[field] !== "boolean") throw new Error(`Exercise ${index + 1} ${field} must be boolean.`);
           if (record.executionQualityAssessment != null && !["controlled", "breakdown", "not_assessed"].includes(record.executionQualityAssessment)) throw new Error(`Exercise ${index + 1} execution quality is invalid.`);
+          if (record.resolvedActionId != null) assertId(record.resolvedActionId, `Exercise ${index + 1} resolved action`);
+          assertStableTargetSnapshot(record.stableTargetSnapshot, `Exercise ${index + 1} stable target snapshot`);
+          assertPendingReconcile(record.pendingReconcile, `Exercise ${index + 1} pending reconcile`);
           assertCustomExerciseProfile(record.customExerciseProfile, `Exercise ${index + 1} custom exercise profile`);
           return copyAllowed(record, allowedExerciseFields);
         });
-        const sets = imported.sets.map((record, index) => {
+        const sets = imported.sets.map((sourceRecord, index) => {
+          const record = { ...sourceRecord, setType: sourceRecord.setType === "working" ? "straight" : sourceRecord.setType };
           assertAllowed(record, allowedSetFields, `Set ${index + 1}`);
           assertId(record.exerciseId, `Set ${index + 1} exercise reference`);
           const setNumericDomains = {
@@ -530,20 +636,39 @@
             reps: { min: 0, integer: true }, weight: { min: 0 }, rpe: { min: 0, max: 10, step: 0.5 }, addedLoad: { min: 0 }, assistanceLoad: { min: 0 },
             durationSeconds: { min: 0, integer: true }, distance: { min: 0 }, targetReps: { min: 0, integer: true }, targetRepMin: { min: 0, integer: true }, targetRepMax: { min: 0, integer: true },
             targetWeight: { min: 0 }, targetRpe: { min: 0, max: 10, step: 0.5 }, targetRpeMin: { min: 0, max: 10, step: 0.5 }, targetRpeMax: { min: 0, max: 10, step: 0.5 },
+            originalTargetReps: { min: 0, integer: true }, originalTargetWeight: { min: 0 }, originalTargetRpe: { min: 0, max: 10, step: 0.5 },
             targetRpeTolerance: { min: 0, max: 10, step: 0.5 }, targetRestSeconds: { min: 0, max: 3600, integer: true }, classificationConfidence: { min: 0, max: 1 }, classifierVersion: { min: 1, integer: true }
           };
           Object.entries(setNumericDomains).forEach(([field, config]) => assertNumericDomain(record[field], config, `Set ${index + 1} ${field}`));
+          const validSetTypes = new Set(["warmup", "straight", "top", "backoff", "drop", "failure", "amrap", "technique", "deload", "unknown"]);
+          const validClassificationSources = new Set(["manual", "app-explicit", "strong-explicit", "inferred", "recorded"]);
+          if (record.setType != null && !validSetTypes.has(record.setType)) throw new Error(`Set ${index + 1} setType is invalid.`);
+          if (record.classificationSource != null && !validClassificationSources.has(record.classificationSource)) throw new Error(`Set ${index + 1} classificationSource is invalid.`);
           if (record.targetRepMin != null && record.targetRepMax != null && Number(record.targetRepMin) > Number(record.targetRepMax)) throw new Error(`Set ${index + 1} target rep minimum must not exceed its maximum.`);
           if (record.targetRpeMin != null && record.targetRpeMax != null && Number(record.targetRpeMin) > Number(record.targetRpeMax)) throw new Error(`Set ${index + 1} target RPE minimum must not exceed its maximum.`);
-          for (const field of ["completed", "skipped", "edited", "isWarmup", "countsTowardScore", "countsTowardVolume", "countsTowardProgression", "manualOverride", "reviewRequired"]) if (record[field] != null && typeof record[field] !== "boolean") throw new Error(`Set ${index + 1} ${field} must be boolean.`);
+          if (record.sourceTemplateSetId != null && record.sourceTemplateSetId !== "") assertId(record.sourceTemplateSetId, `Set ${index + 1} source template set`);
+          for (const field of ["completed", "skipped", "edited", "isWarmup", "isBodyweight", "countsTowardScore", "countsTowardVolume", "countsTowardProgression", "manualOverride", "reviewRequired"]) if (record[field] != null && typeof record[field] !== "boolean") throw new Error(`Set ${index + 1} ${field} must be boolean.`);
+          if (record.classificationUndo != null) {
+            assertAllowed(record.classificationUndo, allowedClassificationUndoFields, `Set ${index + 1} classificationUndo`);
+            for (const field of ["isWarmup", "countsTowardScore", "countsTowardVolume", "countsTowardProgression", "manualOverride", "reviewRequired"]) {
+              if (record.classificationUndo[field] != null && typeof record.classificationUndo[field] !== "boolean") throw new Error(`Set ${index + 1} classificationUndo ${field} must be boolean.`);
+            }
+            if (record.classificationUndo.setType === "working") record.classificationUndo = { ...record.classificationUndo, setType: "straight" };
+            if (record.classificationUndo.setType != null && !validSetTypes.has(record.classificationUndo.setType)) throw new Error(`Set ${index + 1} classificationUndo setType is invalid.`);
+            if (record.classificationUndo.classificationSource != null && !validClassificationSources.has(record.classificationUndo.classificationSource)) throw new Error(`Set ${index + 1} classificationUndo classificationSource is invalid.`);
+            assertNumericDomain(record.classificationUndo.classificationConfidence, { min: 0, max: 1 }, `Set ${index + 1} classificationUndo classificationConfidence`);
+          }
           return copyAllowed(record, allowedSetFields);
         });
         const templateExerciseIds = new Set();
+        let templateExerciseCount = 0;
         const templates = imported.templates.map((record, index) => {
           assertAllowed(record, allowedTemplateFields, `Template ${index + 1}`);
           assertName(record.name, `Template ${index + 1}`);
           assertText(record.notes, `Template ${index + 1} notes`);
           if (!Array.isArray(record.exercises)) throw new Error(`Template ${index + 1} must contain an exercises array.`);
+          templateExerciseCount += record.exercises.length;
+          if (templateExerciseCount > MAX_EXERCISES) throw new Error(`Template exercise count exceeds the ${MAX_EXERCISES} limit.`);
           const template = copyAllowed(record, allowedTemplateFields);
           template.exercises = record.exercises.map((exercise, exerciseIndex) => {
             assertAllowed(exercise, allowedTemplateExerciseFields, `Template ${index + 1} exercise ${exerciseIndex + 1}`);
@@ -566,6 +691,8 @@
               if (exercise[field] == null) return;
               copiedExercise[field] = assertTemplateNumericValue(exercise[field], action, `Template ${index + 1} exercise ${exerciseIndex + 1} ${field}`);
             });
+            copiedExercise.warmups = validateTemplateWarmups(exercise.warmups, `Template ${index + 1} exercise ${exerciseIndex + 1} warm-up`);
+            copiedExercise.setTypes = validateTemplateSetTypes(exercise.setTypes, `Template ${index + 1} exercise ${exerciseIndex + 1} set role`);
             if (exercise.standardRoleWorkload != null) {
               const label = `Template ${index + 1} exercise ${exerciseIndex + 1} standard role workload`;
               const roles = exercise.standardRoleWorkload;
@@ -593,10 +720,16 @@
         });
         const sessionIds = seenIds(sessions, "session");
         const exerciseIds = seenIds(exercises, "exercise");
-        seenIds(sets, "set");
+        const setIds = seenIds(sets, "set");
         const templateIds = seenIds(templates, "template");
         exercises.forEach((exercise) => { if (!sessionIds.has(exercise.sessionId)) throw new Error(`Orphan exercise reference: ${exercise.id} -> ${exercise.sessionId}.`); });
         sets.forEach((set) => { if (!exerciseIds.has(set.exerciseId)) throw new Error(`Orphan set reference: ${set.id} -> ${set.exerciseId}.`); });
+        exercises.forEach((exercise) => {
+          if (!exercise.pendingReconcile) return;
+          if (!setIds.has(exercise.pendingReconcile.setId)) throw new Error(`Orphan pending reconcile set reference: ${exercise.id} -> ${exercise.pendingReconcile.setId}.`);
+          const referencedSet = sets.find((set) => set.id === exercise.pendingReconcile.setId);
+          if (referencedSet?.exerciseId !== exercise.id) throw new Error(`Pending reconcile set belongs to another exercise: ${exercise.id} -> ${exercise.pendingReconcile.setId}.`);
+        });
         sessions.forEach((session) => { if (session.templateId && !templateIds.has(session.templateId)) throw new Error(`Orphan template reference: ${session.templateId}.`); });
         const settings = imported.settings == null ? {} : imported.settings;
         assertAllowed(settings, allowedSettingsFields, "Settings");

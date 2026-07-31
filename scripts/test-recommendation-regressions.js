@@ -1683,7 +1683,8 @@ test("application recommendations cross only the canonical resolved-action bound
   assert.match(source, /session\.resolvedActions = measurePerformance\("workoutStart:exceptionResolver"/, "workout start must persist the canonical resolver decision");
   assert.match(source, /applyResolvedActionToStableTarget\(historyTarget, resolvedAction\)/, "only a resolved action may temporarily adapt a stable target");
   assert.match(source, /renderResolvedAction\(resolvedActionForScope\(session, "session"\)/, "the workout view must consume the persisted session action");
-  assert.match(source, /executionBlocked: false/, "an intervention must not block the workout logger");
+  assert.match(source, /recorded_safety_action_is_advisory/, "an intervention must remain advisory while the workout logger stays authorized");
+  assert.doesNotMatch(source.match(/function startTemplate\([\s\S]*?\n\s*function requestSubmitWorkout/)?.[0] || "", /executionBlocked/, "current workout construction must not write a hidden blocker");
   assert.doesNotMatch(source, /function legacyTargetFromSnapshot\(/, "legacy prescription snapshots must not be converted into live targets");
   assert.doesNotMatch(source, /function unifiedPrescriptionSnapshot\(/, "the application must not rebuild competing recommendation snapshots");
   assert.doesNotMatch(source, /function renderRecommendation\w*\(/, "legacy recommendation renderers must remain absent");

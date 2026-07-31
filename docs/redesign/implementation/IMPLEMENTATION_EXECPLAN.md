@@ -179,6 +179,24 @@ M5 is implemented locally. It is not published or independently accepted: pinned
 
 The recoverable M5 implementation checkpoint is `ef71085`.
 
+## M6 completion record — Simplified active workout
+
+**Status:** IMPLEMENTED LOCALLY
+
+The full-screen logger now centers each complete exercise/variant name, one stable target summary, comparable prior facts, and fast load/repetitions/RPE entry. Prior performance is restricted to the same stable performance identity and comparable set role. Current, completed, pending, and skipped set states remain explicit, and warm-ups remain excluded from progression-qualifying comparisons.
+
+Normal substitution and named custom variants preserve independent identities, completed source facts, unfinished set order, and auditable multi-hop provenance. New exercise entry requires the approved stable targets. All workout edits remain workout-only by default; routine mutation is a separate explicit action. The completed workout, rather than the original prescription, remains the factual source of truth.
+
+Rest now has one shared starter that appears only after a completed non-skipped set and one recoverable timer surface with remaining time, adjustment, Skip/Finish, overtime, reload recovery, and notification-permission fallback. Timer authorization independently rejects incomplete/skipped sources. Active drafts and imports use strict, atomic runtime validation for their nested numeric, text, enumeration, role, and count domains.
+
+The plate calculator, live/completion execution-quality questionnaire and writers, controlled-execution badge, duplicate timer starters, active equipment/exclusion logging blocks, and obsolete generic execution-block transient are gone. Submitted historical execution-quality and equipment/exclusion snapshot facts remain immutable compatibility data only.
+
+Exit evidence is recorded in `MILESTONE_LOG.md`: 61/61 public scripts, 38/38 integration contracts, focused M6 static checks, 13/13 mobile Playwright cases at 390 x 844, lint, typecheck, workflows, a 24-module production build, 33-asset PWA verification, a 644-file privacy scan, public research/archive integrity, root/`www` parity, three inspected screenshots, and the post-correction independent gate passed. No private or production data was migrated or mutated.
+
+No M6 transition flag was introduced. Physical-device RPE keyboard behavior, OS suspension, and notification delivery remain explicit external target-device gates; browser/mobile/PWA behavior is locally proven.
+
+The recoverable M6 implementation checkpoint will be recorded immediately after this documentation closeout.
+
 ## 5. Temporary structure ledger
 
 | Artifact | Introduced | Purpose | Delete gate |
@@ -190,7 +208,7 @@ The recoverable M5 implementation checkpoint is `ef71085`.
 | M3 legacy mesocycle decoder | M3 | Import old backups without active mesocycle state | Retain isolated decoder while supported legacy backups require it |
 | M4 removed-compute instrumentation | M4 | Prove Today/Start work is gone | Delete at M4 exit |
 | M5 legacy route redirects | M5 | Bounded navigation compatibility | Delete after documented redirect window, no later than M8 |
-| M6 UI migration flag | M6 | Safe active-logger transition if required | Delete at M6 exit |
+| M6 UI migration flag | M6 | Not introduced; the active logger migrated atomically | Satisfied at M6 exit |
 | M7 grade comparison | M7 | Verify prospective grade change | Delete at M7 exit |
 
 No unnamed or ownerless feature flag is allowed.

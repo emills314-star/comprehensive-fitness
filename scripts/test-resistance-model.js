@@ -55,7 +55,7 @@ assert.match(html, /toggle-unit"\) commit\(convertAppWeightUnit/, "Header unit c
 assert.match(html, /weight-unit"\) commit\(convertAppWeightUnit/, "Settings unit control must use the same atomic conversion boundary");
 
 assert.doesNotMatch(html, /templateExercise\.isBodyweight[\s\S]{0,160}weight:\s*0/, "Starting a template must not silently erase added load");
-assert.match(html, /createSet\(exercise\.id, 1, \{ resistanceType \}\)/, "A newly added bodyweight exercise must give its first set the inferred resistance type");
+assert.match(html, /Array\.from\(\{ length: setCount \}[\s\S]*createSet\(exercise\.id, index \+ 1,[\s\S]*resistanceType,[\s\S]*targetRepMin: repMin[\s\S]*targetRepMax: repMax/, "A newly added bodyweight exercise must give every target-complete set the inferred resistance type");
 assert.match(html, /function factualSetPrefillForWorkoutStart\([\s\S]*const resistanceType = target\.resistanceType \|\| templateExercise\.resistanceType[\s\S]*const priorLoad = previousComparableSet \? resistanceLoad\(previousComparableSet, resistanceType\)[\s\S]*const factualLoad = previousComparableSet \? priorLoad : routineLoad/, "Workout start must preserve resistance semantics while choosing factual same-role prior load or the stable routine load");
 assert.match(html, /addedLoad:\s*target\.resistanceType\s*===\s*"bodyweight_plus_load"\s*\?\s*prefill\.weight\s*:\s*target\.addedLoad/, "A weighted bodyweight set must store its factual prefill as added load");
 assert.match(html, /assistanceLoad:\s*target\.resistanceType\s*===\s*"assisted_bodyweight"\s*\?\s*prefill\.weight\s*:\s*target\.assistanceLoad/, "An assisted bodyweight set must store its factual prefill as assistance load");

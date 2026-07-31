@@ -126,7 +126,9 @@ assert.match(exceptionBoundarySource, /explicitSafetyObservation/, "explicit pai
 
 assert.match(workout, /session\.resolvedActions = measurePerformance\("workoutStart:exceptionResolver"/, "workout start must persist the canonical resolver result");
 assert.match(workout, /stableTargetForTemplateExercise\(templateExercise[\s\S]*resolvedActionForVariant\(session\.resolvedActions, exerciseVariantId\)[\s\S]*applyResolvedActionToStableTarget\(historyTarget, resolvedAction\)/, "only a resolved action may temporarily adapt a stable workout target");
-assert.match(workout, /stableTargetSnapshot:[\s\S]*resolvedActionId:[\s\S]*executionBlocked: false/, "a safety action must remain advisory and logging must stay available");
+assert.match(workout, /stableTargetSnapshot:[\s\S]*resolvedActionId:/, "a started exercise must retain stable facts and the canonical advisory action identity");
+assert.doesNotMatch(workout, /stableTargetSnapshot:[\s\S]{0,600}executionBlocked/, "current workout construction must not write a hidden logging blocker");
+assert.match(foundation, /recorded_safety_action_is_advisory/, "recorded pain or illness must remain advisory while logging stays available");
 assert.match(views, /function renderResolvedAction[\s\S]*resolvedAction\.outcome !== "action"\) return ""/, "ordinary sessions must remain visually quiet");
 assert.match(views, /renderResolvedAction\(resolvedActionForScope\(session, "session"\)/, "the workout surface must render only its persisted canonical session action");
 assert.match(views, /renderResolvedAction\(resolvedActionForScope\(owningSession, "exercise", exercise\)/, "exercise surfaces must render only the matching persisted canonical action");

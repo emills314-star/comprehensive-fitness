@@ -453,3 +453,93 @@ No final-document contradiction was found. The current four-tab shell and `confi
 ### Objective completion
 
 **PASS.** The M5 behavior and listed automated/visual gates pass, with no data migration or mutation. The recoverable checkpoint is recorded, so M6 may begin.
+
+## M6 — Simplify the active workout
+
+**Status:** IMPLEMENTED LOCALLY
+**Started:** 2026-07-31
+**Baseline checkpoint:** `36f3a4b`
+**Authority:** Final PRD section 6, dispositions D-01 through D-30 and E-01/E-02, recommendation-contract input and reevaluation boundaries, and migration plan M6.
+
+### Exact scope before implementation
+
+- Present stable variant targets and full variant names without silently rewriting routine facts.
+- Keep load, reps, and decimal RPE fast to replace and edit; make completed, current, pending, and skipped set states clear with predictable advancement.
+- Show compact prior facts only from the same variant and comparable set role, with unavailable or uncertain history stated truthfully.
+- Keep actual-work controls for add/remove/skip/reorder, substitution, named/custom variants, exercise/session notes, and explicit role correction.
+- Keep every active-workout edit scoped to the current workout by default. Routine mutation remains a separate explicit action.
+- Consolidate rest into one recoverable timer surface with remaining, adjustment, Skip, elapsed-over-target, notification-permission, and navigation/reload/background behavior.
+- Preserve active-draft order, entered fields, notes, timer context, provenance, and original target/reference data across supported recovery.
+- Delete the plate calculator, live/completion execution-quality questionnaire and writers, duplicate timer controls, superseded input workarounds, equipment-blocking remnants, and any M6-only transition flag.
+
+### Affected user data and migration safety
+
+- Completed workouts and historical `executionQualityAssessment` values remain readable; M6 must stop creating or changing that field.
+- Active drafts contain the mutable set facts, roles/provenance, order, notes, stable-target snapshots, manual overrides, and timer state that must round-trip without loss.
+- Routine/template targets are read-only reference facts during normal logging unless the user invokes the existing explicit routine-update action.
+- Exercise and variant identity, role separation, warm-up protection, substitutions, skipped/added sets, and comparable prior facts must remain unchanged by UI deletion.
+- M6 uses synthetic fixtures and local browser state only. No production or private fitness data is authorized for migration or mutation.
+
+### Authority check
+
+- No material contradiction is identified. The migration plan explicitly allows historical execution-quality fields to remain readable while requiring live/completion UI and new writers to be removed.
+- The final documents require target-device RPE and timer/notification evidence. Browser and emulated mobile verification will be completed locally; any physical-device-only result that cannot be proven will be recorded as an external acceptance gate rather than approximated in product behavior.
+
+### Exit record
+
+- The active logger presents each full exercise/variant name with one stable target summary and compact prior comparable facts. Prior facts are restricted to the same performance identity and comparable set role.
+- Load, repetitions, and RPE remain directly editable. Invalid, non-finite, negative, fractional-repetition, and non-half-step RPE inputs are rejected before acknowledgment or mutation; a prefilled RPE of 7 still supports a one-edit replacement with 7.5.
+- Completed, current, pending, and skipped set states are explicit. Warm-up classifications remain excluded from progression-qualifying comparisons.
+- Normal substitution preserves a stable replacement identity, original source identity, multi-hop provenance, unfinished set position, and prior completed facts. Named custom variants retain independent targets and histories.
+- Adding an exercise requires a name, working-set count, rep range, target RPE, and rest. Active-workout changes are workout-only by default; saving a substitution or target change back to the routine requires a separate explicit action.
+- The completed workout remains the factual source of truth for added, removed, moved, skipped, substituted, and custom work.
+- Rest uses one shared starter, shown only after a completed non-skipped set, and one timer surface. Timer authorization independently rejects incomplete/skipped sources. It persists deadline/elapsed context through reload, displays overtime, supports adjustment and Skip/Finish, and keeps the workout usable when notification permission is unavailable.
+- Active-draft recovery and current imports validate strict numeric, text, enumeration, count, and nested template boundaries atomically. Invalid candidates do not partially mutate durable or in-memory state.
+- Plate-calculator UI/state, live and completion execution-quality questionnaires/writers/badge, duplicate rest starters, global equipment/exclusion logging blocks, and the obsolete generic execution-block transient were removed.
+- Submitted historical execution-quality and equipment/exclusion snapshot bytes remain readable as immutable compatibility evidence. No current writer, normal renderer, ranking consumer, or prescription consumer remains.
+- No production or private data was migrated or mutated.
+
+### Files changed
+
+- Runtime and presentation: `app-analysis.js`, `app-foundation.js`, `app-history.js`, `app-import.js`, `app-sync.js`, `app-views.js`, `app-workout.js`, `app.js`, `index.html`, `sw.js`, and synchronized `www/` mirrors.
+- Data contract: `docs/redesign/implementation/schemas/active-workout-draft-v2.schema.json`.
+- Focused contracts: `scripts/test-redesign-m6-active-workout.js`, plus updated persistence, performance, resistance-model, integration, RPE/rest, history, safety, and package tests under `scripts/`.
+- Running-app verification: `tests/ui/redesign-m6-active-workout.spec.js`, plus updated active-workout, history, lifecycle, accessibility, safety, and target specs under `tests/ui/`.
+- Deleted packaged presentation asset: the controlled-execution badge image from root and `www/`.
+- Living documentation: `docs/PROJECT.md`, `docs/ARCHITECTURE.md`, `docs/DECISION_ENGINE.md`, `docs/UI_UX.md`, `docs/ROADMAP.md`, and the redesign implementation/governance records.
+
+### Verification record
+
+- Focused M6 static contract: PASS.
+- Focused M6 mobile Playwright suite: 13/13 PASS at 390 x 844, including long names, large values, exact decimal RPE, completed/skipped states, normal and custom substitutions, multi-hop provenance, routine-save choice, corrupt draft/import rejection, rest overtime, and reload recovery.
+- Public suite: 61/61 selected scripts PASS (62 discovered; one private-only harness excluded).
+- App integration: 38/38 PASS.
+- Static lint: PASS (204 JavaScript files, 3,118 JSON files, 0 inline-script violations).
+- Type check: PASS.
+- Workflow validation: PASS.
+- Production Vite build: PASS with 24 modules.
+- PWA/native public package verification: 33 assets PASS.
+- Tracked-file privacy scan: PASS across 644 files.
+- Public research archive integrity: 57 hashes PASS; workbook determinism: 19 sheets PASS.
+- Root/`www` parity passed for the audited runtime payloads.
+- Independent M6 review initially found that the shared rest starter appeared before a set was complete. The renderer, authorization boundary, static contract, and running-app regression were corrected; the scoped independent re-review passed with no remaining local code blocker.
+- Three M6 screenshots were captured and visually inspected at exactly 390 x 844:
+  - `artifacts/ui-audit/m6/active-workout-stable-targets-390x844.png`
+  - `artifacts/ui-audit/m6/custom-substitution-identity-390x844.png`
+  - `artifacts/ui-audit/m6/overtime-reload-recovery-390x844.png`
+
+### Decisions, assumptions, and deviations
+
+- No M6 transition flag was needed or introduced.
+- Runtime validation, rather than the intentionally declarative JSON schema alone, is the executable authority for atomic active-draft and import acceptance.
+- Historical submitted execution-quality data is preserved without preserving the deleted product surface. Active drafts and new submitted workouts cannot create that field.
+- The repository-pinned Node 22.23.x/npm 10.9.x gate was unavailable; verification used Node 24.18.0/npm 11.16.0.
+- Physical-device RPE keyboard behavior, true OS background suspension, and notification-permission delivery remain external target-device acceptance gates. Browser/mobile/PWA recovery is locally proven and no product behavior was approximated to claim the physical result.
+
+### Recoverable checkpoint
+
+- Local milestone commit: pending creation after this documentation closeout.
+
+### Objective completion
+
+**PASS.** Every locally executable M6 acceptance criterion passes. Active logging is materially simpler, factual history and variant separation remain protected, deleted M6 features are absent from current product paths, and no private or production data was changed. The physical-device-only checks remain explicitly unproven external gates and do not block the recoverable local M6 checkpoint.

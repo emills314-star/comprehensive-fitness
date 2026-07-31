@@ -34,7 +34,7 @@ assert.match(html, /\.session-dock-finish \{[^}]*background: var\(--action\);[^}
 assert.doesNotMatch(html, /\.session-dock-finish \{[^}]*background: var\(--text\);[^}]*color: var\(--bg\);/, "Finish must not reuse the inverse transient-notification treatment");
 assert.doesNotMatch(workout, /adjustmentSummary|renderRecoveryPanel|renderActiveWorkoutAdvice/, "Today must not append recovery adjustments below the logger");
 assert.match(workout, /const session = activeSession\(\);\s*if \(!session\) return renderLiftHome\(\);\s*if \(liftHomeIsVisible\(\)\)/, "Today must fail safely before reading fields from a missing session");
-assert.match(exercise, /class="exercise-header"[\s\S]*exercise-grip[\s\S]*exercise-name-field[\s\S]*targetChip[\s\S]*exercise-overflow/, "Exercise chrome must collapse to grip, name, stable target, and overflow in one header");
+assert.match(exercise, /class="exercise-header"[\s\S]*exercise-grip[\s\S]*exercise-name exercise-name-full[\s\S]*targetChip[\s\S]*exercise-overflow/, "Exercise chrome must retain grip, the full variant name, stable target, and overflow in one header");
 assert.doesNotMatch(exercise, /confidenceChip|confidence|evidence/, "The active exercise header must not expose legacy recommendation confidence or evidence");
 assert.doesNotMatch(exercise, /class="exercise-meta-row"|class="exercise-set-actions"|restSummary/, "Retained resistance, load-state, rest, and set-action chrome must not surround the V3 set states");
 assert.match(exercise, /class="exercise-details"[\s\S]*resistance-type-control[\s\S]*deload-toggle[\s\S]*exercise-management-actions/, "Secondary exercise settings and set management must remain reachable in one disclosure");

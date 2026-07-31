@@ -133,17 +133,20 @@
         root.querySelectorAll("[data-session-dock-track] .seg").forEach((segment, index) => segment.classList.toggle("filled", index < Math.round((progress.completed / Math.max(1, progress.total)) * 10)));
       }
 
-      function renderSetContext(exercise, substituteValidation = null) {
+      function renderSetContext(exercise) {
         const exerciseSets = setsForExercise(exercise.id);
         const restSeconds = Number(exercise.restSeconds || data.settings.defaultRestSeconds || 90);
         return {
           restSeconds,
           previousSets: exerciseSets.some((set) => isWorkingSet(set, "progression"))
-            ? measurePerformance("lift:previousPerformance", () => getMostRecentWorkoutSets(exercise.name, { excludeSessionId: exercise.sessionId, resistanceType: resistanceTypeFor(exercise) }), { exerciseId: exercise.id })
+            ? measurePerformance("lift:previousPerformance", () => getMostRecentWorkoutSets(exercise.name, {
+                excludeSessionId: exercise.sessionId,
+                resistanceType: resistanceTypeFor(exercise),
+                canonicalExerciseId: exercise.performanceExerciseId || canonicalExerciseId(exercise)
+              }), { exerciseId: exercise.id })
             : [],
           warmupIds: exerciseSets.filter((set) => setTypeSemantics(set).isWarmup).map((set) => set.id),
-          workingSetIds: exerciseSets.filter((set) => isWorkingSet(set, "progression")).map((set) => set.id),
-          substituteValidation
+          workingSetIds: exerciseSets.filter((set) => isWorkingSet(set, "progression")).map((set) => set.id)
         };
       }
 
@@ -290,6 +293,21 @@
         return activeTab === "today";
       }
 
+      function renderSharedRestStarter(session) {
+        if (!session || session.id !== activeWorkoutId || isSessionSubmitted(session)) return "";
+        const exerciseIds = new Set(data.exercises.filter((exercise) => exercise.sessionId === session.id).map((exercise) => exercise.id));
+        const sessionSets = data.sets.filter((set) => exerciseIds.has(set.exerciseId));
+        const completed = sessionSets
+          .filter((set) => set.completed && !set.skipped)
+          .sort((a, b) => String(a.completedAt || "").localeCompare(String(b.completedAt || "")) || canonicalSetSequence(a) - canonicalSetSequence(b));
+        const sourceSet = completed.at(-1);
+        const exercise = sourceSet ? exerciseById(sourceSet.exerciseId) : null;
+        if (!sourceSet || !exercise) return "";
+        const safety = guardWorkoutMutation("start-timer", { exercise, set: sourceSet }, false);
+        const seconds = Number(sourceSet.targetRestSeconds || exercise.restSeconds || data.settings.defaultRestSeconds || 90);
+        return `<button class="workout-rest-starter secondary-action" type="button" data-action="start-timer" data-exercise-id="${exercise.id}" data-set-id="${sourceSet.id}"${workoutSafetyDisabledAttributes(safety)}>${icon.clock}<span>Start rest</span><strong>${formatTimer(seconds)}</strong></button>`;
+      }
+
       function renderWorkout() {
         const session = activeSession();
         if (!session) return renderLiftHome();
@@ -319,7 +337,7 @@
                 : '<div class="workout-heading"><div><div class="section-kicker">Today</div><h1>' + escapeHtml(session.title || "Workout") + '</h1></div><span class="status-pill ' + (isSessionSubmitted(session) ? 'good' : 'neutral') + '">' + (isSessionSubmitted(session) ? 'Logged' : 'Ready') + '</span></div>'}
             </section>
             ${renderResolvedAction(resolvedActionForScope(session, "session"), { session })}
-            <div class="workout-timer-slot" aria-live="polite">${timer?.workoutId === session.id ? renderTimer(timer.setId) : ""}</div>
+            <div class="workout-timer-slot" aria-live="polite">${timer?.workoutId === session.id ? renderTimer(timer.setId) : renderSharedRestStarter(session)}</div>
             ${renderNotificationPrompt()}
             <div class="workout-layout compact-workout-layout">
               <div class="workout-focus-column">
@@ -329,8 +347,15 @@
               <summary>Add exercise <span>${icon.add}</span></summary>
               <div class="disclosure-body">
                 <div class="row">
-                  <input value="${escapeHtml(addExerciseDraft)}" data-action="add-exercise-draft" placeholder="Exercise name" aria-label="New exercise name" />
+                  <input value="${escapeHtml(addExerciseDraft)}" data-action="add-exercise-draft" placeholder="Exercise name" aria-label="New exercise name" maxlength="256" />
                   <button class="icon-button" type="button" data-action="add-exercise" title="Add exercise"${workoutSafetyDisabledAttributes(addExerciseSafety)}>${icon.add}</button>
+                </div>
+                <div class="grid two add-exercise-targets" aria-label="Stable targets for new exercise">
+                  <label>Working sets<input type="number" min="1" max="20" step="1" value="${addExerciseSetCount}" data-action="add-exercise-set-count" aria-label="Working sets for new exercise" /></label>
+                  <label>Target RPE<input type="number" min="1" max="10" step="0.5" value="${addExerciseTargetRpe}" data-action="add-exercise-target-rpe" aria-label="Target RPE for new exercise" /></label>
+                  <label>Rep minimum<input type="number" min="1" max="100" step="1" value="${addExerciseRepMin}" data-action="add-exercise-rep-min" aria-label="Minimum repetitions for new exercise" /></label>
+                  <label>Rep maximum<input type="number" min="1" max="100" step="1" value="${addExerciseRepMax}" data-action="add-exercise-rep-max" aria-label="Maximum repetitions for new exercise" /></label>
+                  <label>Rest seconds<input type="number" min="0" max="3600" step="1" value="${addExerciseRestSeconds || data.settings.defaultRestSeconds || 90}" data-action="add-exercise-rest-seconds" aria-label="Rest seconds for new exercise" /></label>
                 </div>
                 <div class="muscle-select-grid">
                   <label>Primary muscle<select data-action="add-exercise-primary" aria-label="Primary muscle for new exercise">${muscleOptions(addExercisePrimaryMuscle, true, "Auto classify")}</select></label>
@@ -348,12 +373,12 @@
               </div>
               <div class="grid two">
                 ${usesLargeTextReflow()
-                  ? '<textarea class="autosize-title-field" rows="1" data-action="session-title" aria-label="Workout title">' + escapeHtml(session.title) + '</textarea>'
-                  : '<input value="' + escapeHtml(session.title) + '" data-action="session-title" aria-label="Workout title" />'}
+                  ? '<textarea class="autosize-title-field" rows="1" maxlength="256" data-action="session-title" aria-label="Workout title">' + escapeHtml(session.title) + '</textarea>'
+                  : '<input value="' + escapeHtml(session.title) + '" maxlength="256" data-action="session-title" aria-label="Workout title" />'}
                 <input type="date" value="${session.date}" data-action="session-date" aria-label="Workout date" />
               </div>
               <label class="toggle-line"><input type="checkbox" data-action="session-travel" ${session.isTravel ? "checked" : ""} />Travel session</label>
-              <textarea data-action="session-notes" placeholder="Session notes" aria-label="Session notes">${escapeHtml(session.notes)}</textarea>
+              <textarea data-action="session-notes" maxlength="4096" placeholder="Session notes" aria-label="Session notes">${escapeHtml(session.notes)}</textarea>
               </div>
             </details>
             ${editingHistory ? '<section class="history-edit-bar"><div><strong>Editing logged workout</strong><span>Changes remain temporary until you confirm Save Edits. The workout grade will be recalculated from the revised sets.</span></div><div class="history-edit-actions"><button class="primary-action" type="button" data-action="request-save-history-edits">Save Edits</button><button class="secondary-action" type="button" data-action="request-cancel-history-edits">Cancel Edits</button></div></section>' : ''}
@@ -1010,6 +1035,11 @@
         addExerciseDraft = "";
         addExercisePrimaryMuscle = "";
         addExerciseSecondaryMuscle = "";
+        addExerciseSetCount = 1;
+        addExerciseRepMin = 8;
+        addExerciseRepMax = 12;
+        addExerciseTargetRpe = 8;
+        addExerciseRestSeconds = 0;
         pendingSubmitSessionId = "";
         completedSummarySessionId = "";
         cancelWorkoutFlow = null;
@@ -1025,90 +1055,6 @@
         setActiveTab("today", { replace: true, renderNow: false });
         showAppToast("Workout canceled.");
         commit({ ...data, sessions: remainingSessions, exercises: data.exercises.filter((exercise) => exercise.sessionId !== session.id), sets: data.sets.filter((set) => !exerciseIds.has(set.exerciseId)) });
-      }
-
-      function safetySubstituteContext(snapshot, options = {}) {
-        const research = prescriptionEngine?.evidence?.research;
-        const prescription = snapshot?.finalPrescription;
-        const restriction = prescription?.safetyRestriction || null;
-        const empty = (reason = "missing_safety_context", message = "The safety-substitute context is incomplete.") => ({
-          allowedSafetySubstituteIds: [],
-          exerciseCatalog: [],
-          excludedExerciseIds: [],
-          preferred: null,
-          resolvedValidation: { valid: false, reason, message }
-        });
-        if (!research?.substitutionsByExercise || !research?.exerciseById || !prescription || !restriction) return empty();
-
-        const exercise = options.exercise || null;
-        const excludedExerciseIds = new Set([
-          ...(Array.isArray(data.settings.excludedExerciseIds) ? data.settings.excludedExerciseIds : [])
-        ].map((item) => String(item || "").trim()).filter(Boolean));
-
-        const originalExerciseId = restriction.originalExerciseId
-          || restriction.auditBaseTargets?.exerciseId
-          || snapshot.basePrescription?.exerciseId
-          || prescription.exerciseId;
-        const originalResearchExerciseId = restriction.auditBaseTargets?.researchExerciseId
-          || snapshot.basePrescription?.researchExerciseId
-          || (research.exerciseById.has(originalExerciseId) ? originalExerciseId : "")
-          || originalExerciseId;
-        const substitutionRows = research.substitutionsByExercise.get(originalResearchExerciseId) || [];
-        const mappedIds = Array.from(new Set(substitutionRows.map((item) => item.substitute_exercise_id || item.substituteExerciseId).filter(Boolean)));
-        const originalIds = new Set([originalExerciseId, originalResearchExerciseId, restriction.auditBaseTargets?.exerciseId, restriction.auditBaseTargets?.researchExerciseId, snapshot.basePrescription?.exerciseId, snapshot.basePrescription?.researchExerciseId].filter(Boolean));
-        const resolvedSubstituteId = restriction.substituteResearchExerciseId || restriction.substituteExerciseId || "";
-        const resolved = restriction.status === "resolved_by_confirmed_substitute" && restriction.painFreeConfirmed === true;
-        const eligibleSafetySubstituteIds = mappedIds.filter((exerciseId) => (
-          research.exerciseById.has(exerciseId)
-          && !originalIds.has(exerciseId)
-          && !excludedExerciseIds.has(exerciseId)
-        ));
-        const allowedSafetySubstituteIds = resolved
-          ? eligibleSafetySubstituteIds.filter((exerciseId) => exerciseId !== resolvedSubstituteId)
-          : eligibleSafetySubstituteIds;
-        const exerciseCatalog = allowedSafetySubstituteIds.map((exerciseId) => research.exerciseById.get(exerciseId)).filter(Boolean);
-        const preferredId = allowedSafetySubstituteIds.includes(prescription.preferredReplacementExerciseId)
-          ? prescription.preferredReplacementExerciseId
-          : allowedSafetySubstituteIds[0] || "";
-        const preferredRecord = preferredId ? research.exerciseById.get(preferredId) : null;
-
-        const observedExerciseId = exercise?.name
-          ? exactResearchCatalogIdentity(exercise.name, research.exerciseDatabase) || ""
-          : "";
-        const declaredResolvedIds = [
-          restriction.substituteExerciseId,
-          restriction.substituteResearchExerciseId,
-          prescription.exerciseId,
-          prescription.researchExerciseId
-        ].filter(Boolean).map((exerciseId) => {
-          if (research.exerciseById.has(exerciseId)) return exerciseId;
-          const reconciled = prescriptionEngine?.evidence?.personal?.reconciledIdentityByExerciseId?.get(exerciseId);
-          return reconciled?.invalid ? "" : reconciled?.researchExerciseId || exerciseId;
-        });
-        const observedIdentityCoherent = !exercise
-          || (Boolean(observedExerciseId) && observedExerciseId === resolvedSubstituteId);
-        const identityCoherent = Boolean(resolvedSubstituteId)
-          && declaredResolvedIds.length > 0
-          && declaredResolvedIds.every((exerciseId) => exerciseId === resolvedSubstituteId)
-          && observedIdentityCoherent
-          && research.exerciseById.has(resolvedSubstituteId)
-          && !originalIds.has(resolvedSubstituteId);
-        let resolvedValidation = { valid: false, reason: "unresolved_safety_restriction", message: "The painful original exercise remains blocked until a distinct pain-free substitute is confirmed." };
-        if (resolved) {
-          if (!identityCoherent) resolvedValidation = { valid: false, reason: "substitute_identity_drift", message: "The confirmed substitute no longer retains one coherent current catalog identity." };
-          else if (excludedExerciseIds.has(resolvedSubstituteId)) resolvedValidation = { valid: false, reason: "substitute_excluded", message: "The confirmed substitute is now excluded from this workout." };
-          else if (!mappedIds.includes(resolvedSubstituteId) || !eligibleSafetySubstituteIds.includes(resolvedSubstituteId)) resolvedValidation = { valid: false, reason: "substitute_not_allowed", message: "The confirmed substitute is no longer a valid evidence-linked alternative for the painful original exercise." };
-          else resolvedValidation = { valid: true, reason: "confirmed_pain_free_substitute", message: "The confirmed substitute still satisfies current identity, exclusion, and program constraints." };
-        }
-        return {
-          originalExerciseId,
-          originalResearchExerciseId,
-          allowedSafetySubstituteIds,
-          exerciseCatalog,
-          excludedExerciseIds: Array.from(excludedExerciseIds),
-          preferred: preferredRecord ? { exerciseId: preferredId, researchExerciseId: preferredId, exerciseName: preferredRecord.exercise_name } : null,
-          resolvedValidation
-        };
       }
 
       function renderStandardWorkloadControls(exercise) {
@@ -1199,38 +1145,10 @@
                 <button class="text-action" type="button" data-action="use-shared-set-targets">Use one target for every set</button>
               </div>
             </details>
-            ${templateExercise ? '<label class="standard-workload-save"><input type="checkbox" data-standard-save-template /> Use these as the default next time this template starts</label>' : '<p class="standard-workload-note">These defaults stay with today’s exercise and carry into a template if you save this workout.</p>'}
-            <button class="primary-action standard-workload-apply" type="button" data-action="apply-standard-workload" data-exercise-id="${exercise.id}">Apply exercise defaults</button>
+            <p class="standard-workload-note">These changes apply only to unfinished sets in this workout. Saving them to the routine is a separate action.</p>
+            <button class="primary-action standard-workload-apply" type="button" data-action="apply-standard-workload" data-exercise-id="${exercise.id}">Apply to this workout</button>
           </section>
         `;
-      }
-
-      function renderCustomExerciseSetup(exercise) {
-        const owningSession = sessionById(exercise.sessionId);
-        if (exercise.identitySource !== "user_declared_custom" || exercise.sessionId !== activeWorkoutId || !owningSession || isSessionSubmitted(owningSession)) return "";
-        const profile = normalizeCustomExerciseProfile(exercise.customExerciseProfile) || {};
-        const missing = missingCustomExerciseMetrics(profile);
-        const resistance = profile.resistanceType || exercise.resistanceType || "external";
-        return `
-          <section class="custom-exercise-setup ${missing.length ? "incomplete" : "complete"}" data-custom-exercise-form="${exercise.id}">
-            <div class="standard-workload-heading"><div><span>${missing.length ? "Exercise setup incomplete" : "Custom exercise profile"}</span><strong>${missing.length ? "Complete the required fields" : "Profile confirmed"}</strong></div></div>
-            ${missing.length ? `<p>Missing: <strong>${escapeHtml(missing.join(", "))}</strong>.</p>` : "<p>This profile keeps the custom exercise’s resistance and logging behavior consistent.</p>"}
-            <div class="custom-profile-grid">
-              <label>Primary muscle group<select data-custom-profile-field="primary-muscle"><option value="">Choose…</option>${muscleOptions(appMuscleFromCustomGroup(profile.primaryMuscleGroupId) || exercise.primaryMuscle || "")}</select></label>
-              <label>Secondary muscle (optional)<select data-custom-profile-field="secondary-muscle">${muscleOptions(appMuscleFromCustomGroup(profile.secondaryMuscleGroupId) || exercise.secondaryMuscle || "", true, "None")}</select></label>
-              <label>Resistance mode<select data-custom-profile-field="resistance-type">${resistanceTypeOptions(resistance)}</select></label>
-              <label>Exercise style<select data-custom-profile-field="exercise-style"><option value="">Choose…</option>${[["multi_joint","Multi-joint"],["single_joint","Single-joint"],["isometric","Isometric"],["carry_locomotion","Carry / locomotion"]].map(([value,label]) => `<option value="${value}" ${profile.exerciseStyle === value ? "selected" : ""}>${label}</option>`).join("")}</select></label>
-              <label>Progression metric<select data-custom-profile-field="progression-metric"><option value="">Choose…</option>${[["load_and_reps","Load and reps"],["reps_only","Reps only"],["assistance","Assistance"],["duration","Duration"],["distance","Distance"]].map(([value,label]) => `<option value="${value}" ${profile.progressionMetric === value ? "selected" : ""}>${label}</option>`).join("")}</select></label>
-              <label>Smallest available increment<input type="number" min="0.01" step="0.01" value="${profile.smallestIncrement || ""}" data-custom-profile-field="smallest-increment" placeholder="Required for load / assistance" /></label>
-            </div>
-            <button class="secondary-action" type="button" data-action="complete-custom-exercise-setup" data-exercise-id="${exercise.id}">${missing.length ? "Complete setup and generate guidance" : "Update profile and regenerate unfinished work"}</button>
-          </section>
-        `;
-      }
-
-      function renderExecutionQualityAssessment(exercise) {
-        const value = executionQualityValues.has(exercise.executionQualityAssessment) ? exercise.executionQualityAssessment : "not_assessed";
-        return `<div class="execution-quality-control"><span>Did execution stay controlled?</span><div class="segmented" role="group" aria-label="Execution quality">${[["not_assessed","Not assessed"],["controlled","Controlled"],["breakdown","Breakdown"]].map(([option, label]) => '<button type="button" value="' + option + '" data-action="exercise-execution-quality" data-exercise-id="' + exercise.id + '" aria-pressed="' + (value === option) + '">' + label + '</button>').join('')}</div><small>Only a controlled, complete, pain-free exposure inside target effort can confirm progression.</small></div>`;
       }
 
       function renderReconcilePrompt(exercise) {
@@ -1275,21 +1193,15 @@
         const firstWorkSet = exerciseSets.find((set) => isWorkingSet(set, "score")) || exerciseSets[0];
         const renderContext = renderSetContext(exercise);
         const setHtml = measurePerformance("lift:setRows", () => exerciseSets.map((set) => renderSet(set, exercise, renderContext)).join(""), { exerciseId: exercise.id, count: exerciseSets.length });
-        const optionsHtml = measurePerformance("lift:exerciseOptions", () => renderCustomExerciseSetup(exercise) + renderStandardWorkloadControls(exercise) + renderExecutionQualityAssessment(exercise) + renderPlateCalculator(exercise, firstWorkSet) + renderMuscleSelectors(exercise), { exerciseId: exercise.id });
+        const optionsHtml = measurePerformance("lift:exerciseOptions", () => renderStandardWorkloadControls(exercise) + renderMuscleSelectors(exercise), { exerciseId: exercise.id });
         const chipSet = exerciseSets.find((set) => isWorkingSet(set, "score") && !set.completed && !set.skipped) || firstWorkSet;
-        const chipResistanceType = chipSet ? resistanceTypeFor(exercise, chipSet) : "";
-        const chipTargetLoad = Number(chipSet?.targetWeight ?? chipSet?.weight ?? 0);
-        const chipLoad = chipSet ? formatResistance({
-          ...chipSet,
-          weight: chipTargetLoad,
-          addedLoad: chipResistanceType === "bodyweight_plus_load" ? chipTargetLoad : chipSet.addedLoad,
-          assistanceLoad: chipResistanceType === "assisted_bodyweight" ? chipTargetLoad : chipSet.assistanceLoad,
-          resistanceType: chipResistanceType
-        }, exercise) : "";
+        const plannedWorkingSets = exerciseSets.filter((set) => isWorkingSet(set, "score")).length;
+        const chipRestSeconds = Number(chipSet?.targetRestSeconds || exercise.restSeconds || data.settings.defaultRestSeconds || 90);
         const chipTarget = chipSet
-          ? chipResistanceType === "duration" || chipResistanceType === "distance"
-            ? targetRangeText(chipSet.targetRepMin, chipSet.targetRepMax || chipSet.targetReps, chipResistanceType === "duration" ? " sec" : "")
-            : chipLoad + " × " + targetRangeText(chipSet.targetRepMin, chipSet.targetRepMax || chipSet.targetReps) + " @ " + targetRangeText(chipSet.targetRpeMin, chipSet.targetRpeMax || chipSet.targetRpe)
+          ? plannedWorkingSets + " set" + (plannedWorkingSets === 1 ? "" : "s")
+            + " · " + targetRangeText(chipSet.targetRepMin, chipSet.targetRepMax || chipSet.targetReps) + " reps"
+            + " · RPE " + targetRangeText(chipSet.targetRpeMin, chipSet.targetRpeMax || chipSet.targetRpe)
+            + " · " + formatTimer(chipRestSeconds) + " rest"
           : "";
         const targetChip = chipTarget
           ? '<span class="exercise-target chip" aria-label="' + escapeHtml("Stable target: " + chipTarget) + '">' + escapeHtml(chipTarget) + '</span>'
@@ -1299,7 +1211,7 @@
           <article id="exercise-${exercise.id}" class="exercise-card ${isActiveExercise ? "active-exercise" : ""} ${workoutFocusExerciseId === exercise.id ? "context-exercise" : ""}" tabindex="-1" aria-label="Exercise: ${escapeHtml(exercise.name)}">
             <div class="exercise-header">
               <span class="exercise-grip" aria-hidden="true">${icon.grip}</span>
-              <textarea class="exercise-name exercise-name-field" rows="1" data-action="exercise-name" data-exercise-id="${exercise.id}" aria-label="Exercise name: ${escapeHtml(exercise.name)}" title="${escapeHtml(exercise.name)}">${escapeHtml(exercise.name)}</textarea>
+              <h2 class="exercise-name exercise-name-full" title="${escapeHtml(exercise.name)}">${escapeHtml(exercise.name)}</h2>
               ${targetChip}
               <details class="exercise-overflow"><summary class="icon-button" aria-label="Exercise menu">${icon.more}</summary><div class="exercise-overflow-menu">
                 <button type="button" data-action="move-exercise" data-direction="-1" data-exercise-id="${exercise.id}" aria-label="Move ${escapeHtml(exercise.name)} up">${icon.up}<span>Move up</span></button>
@@ -1317,14 +1229,19 @@
                   <label class="resistance-type-control"><span>Resistance type</span><select data-action="exercise-resistance-type" data-exercise-id="${exercise.id}" aria-label="Resistance type for ${escapeHtml(exercise.name)}">${resistanceTypeOptions(resistanceTypeFor(exercise))}</select></label>
                   <label class="deload-toggle ${exercise.isDeload ? "active" : ""}"><input type="checkbox" data-action="exercise-deload" data-exercise-id="${exercise.id}" ${exercise.isDeload ? "checked" : ""} /><span>${exercise.isDeload ? "Deload" : "Normal load"}</span></label>
                 </div>
+                <div class="exercise-substitution-control">
+                  <label><span>Substitute or name a variant</span><input value="${escapeHtml(exercise.name)}" data-action="exercise-substitute-name" data-exercise-id="${exercise.id}" aria-label="Substitute or variant name for ${escapeHtml(exercise.name)}" maxlength="256" /></label>
+                  <button type="button" data-action="apply-exercise-substitution" data-exercise-id="${exercise.id}">Use for this workout</button>
+                  <small>The routine stays unchanged. Full names such as Heavy or Light keep separate history.</small>
+                </div>
                 <div class="exercise-management-actions" aria-label="Set actions for ${escapeHtml(exercise.name)}">
                   <button type="button" data-action="add-set" data-exercise-id="${exercise.id}" aria-label="Add working set to ${escapeHtml(exercise.name)}"${workoutSafetyDisabledAttributes(addSetSafety)}>Add set</button>
                   <button type="button" data-action="add-warmup-set" data-exercise-id="${exercise.id}" aria-label="Add warm-up set to ${escapeHtml(exercise.name)}"${workoutSafetyDisabledAttributes(addWarmupSafety)}>Add warm-up</button>
                   <button type="button" data-action="duplicate-set" data-exercise-id="${exercise.id}" aria-label="Copy the last set for ${escapeHtml(exercise.name)}"${workoutSafetyDisabledAttributes(duplicateSetSafety)}>Copy last set</button>
                 </div>
                 ${optionsHtml}
-                ${activeSession()?.templateId ? '<button type="button" data-action="update-template-exercise" data-exercise-id="' + exercise.id + '">Update template from today</button><p class="settings-note">Edits stay in today’s workout unless you choose this button. Completed results—not the original target—drive future recommendations.</p>' : ""}
-                <textarea data-action="exercise-notes" data-exercise-id="${exercise.id}" placeholder="Exercise notes" aria-label="Exercise notes">${escapeHtml(exercise.notes)}</textarea>
+                ${activeSession()?.templateId ? '<button type="button" data-action="update-template-exercise" data-exercise-id="' + exercise.id + '">Save today’s targets to routine</button><p class="settings-note">This is the only action here that changes the routine. The completed workout remains the historical record.</p>' : ""}
+                <textarea data-action="exercise-notes" data-exercise-id="${exercise.id}" maxlength="4096" placeholder="Exercise notes" aria-label="Exercise notes">${escapeHtml(exercise.notes)}</textarea>
               </div>
             </details>
           </article>
@@ -1345,10 +1262,9 @@
 
       function renderSet(set, exercise, context = {}) {
         const restSeconds = Number(set.targetRestSeconds || context.restSeconds || exercise.restSeconds || data.settings.defaultRestSeconds || 90);
-        const completionSafety = guardWorkoutMutation("toggle-set", { exercise, set, substituteValidation: context.substituteValidation }, false);
-        const skipSafety = guardWorkoutMutation("toggle-skip-set", { exercise, set, substituteValidation: context.substituteValidation }, false);
-        const timerSafety = guardWorkoutMutation("start-timer", { exercise, set, substituteValidation: context.substituteValidation }, false);
-        const addWarmupSafety = guardWorkoutMutation("add-warmup-set", { exercise, set, substituteValidation: context.substituteValidation }, false);
+        const completionSafety = guardWorkoutMutation("toggle-set", { exercise, set }, false);
+        const skipSafety = guardWorkoutMutation("toggle-skip-set", { exercise, set }, false);
+        const addWarmupSafety = guardWorkoutMutation("add-warmup-set", { exercise, set }, false);
         const resistanceType = resistanceTypeFor(exercise, set);
         const visualState = setVisualState(set);
         const isLoggedMode = visualState === "completed" && !isEditingHistorySession();
@@ -1437,8 +1353,7 @@
               <summary aria-label="Set options"><span aria-hidden="true">•••</span></summary>
               <div class="set-tools-panel">
                 <div class="set-actions">
-                  <button class="mini-button set-rest-button" type="button" data-action="start-timer" data-exercise-id="${exercise.id}" data-set-id="${set.id}"${workoutSafetyDisabledAttributes(timerSafety)}>${icon.clock} ${formatTimer(restSeconds)}</button>
-                  <label class="set-type-editor"><span>Set type</span><select data-action="set-type-override" data-set-id="${set.id}">${['warmup','straight','top','backoff','drop'].map((type) => '<option value="' + type + '" ' + (normalizeSetTypeCode(set.setType, set.isWarmup) === type ? 'selected' : '') + '>' + escapeHtml(setTypeLabels[type]) + '</option>').join('')}</select></label>
+                  <label class="set-type-editor"><span>Set type</span><select data-action="set-type-override" data-set-id="${set.id}">${['warmup','straight','top','backoff','drop','failure','amrap','technique','deload','unknown'].map((type) => '<option value="' + type + '" ' + (normalizeSetTypeCode(set.setType, set.isWarmup) === type ? 'selected' : '') + '>' + escapeHtml(setTypeLabels[type]) + '</option>').join('')}</select></label>
                   ${set.manualOverride && set.classificationUndo ? '<button class="mini-button" type="button" data-action="undo-set-type-override" data-set-id="' + set.id + '">Undo type change</button>' : ''}
                   <button class="mini-button" type="button" data-action="add-warmup-set" data-exercise-id="${exercise.id}" aria-label="Insert warm-up above ${escapeHtml(exercise.name)} set ${set.setNumber}"${workoutSafetyDisabledAttributes(addWarmupSafety)}>Insert warm-up above</button>
                   <button class="mini-button set-skip-button ${set.skipped ? "active" : ""}" type="button" data-action="toggle-skip-set" data-set-id="${set.id}"${workoutSafetyDisabledAttributes(skipSafety)}>${set.skipped ? "Skipped" : "Skip"}</button>
@@ -1451,62 +1366,37 @@
         `;
       }
 
-      function renderPlateCalculator(exercise, set) {
-        if (!set || resistanceTypeFor(exercise, set) !== "external" || !isBarbellExercise(exercise.name)) return "";
-        const total = Number(set.weight || 0);
-        const unit = set.weightUnit || data.settings.weightUnit;
-        const bar = unit === "kg" ? 20 : 45;
-        if (total <= 0) return '<div class="plate-calculator"><strong>Plate calculator</strong><span>Enter the total bar weight to see plates per side.</span></div>';
-        if (total < bar) return '<div class="plate-calculator"><strong>Plate calculator</strong><span>Total load is below the standard ' + bar + ' ' + unit + ' bar.</span></div>';
-        const available = unit === "kg" ? [25, 20, 15, 10, 5, 2.5, 1.25] : [45, 35, 25, 10, 5, 2.5];
-        let remaining = Math.max(0, (total - bar) / 2);
-        const plates = [];
-        available.forEach((plate) => {
-          const count = Math.floor((remaining + 0.001) / plate);
-          if (count > 0) {
-            plates.push({ count, plate });
-            remaining = Math.round((remaining - count * plate) * 100) / 100;
-          }
-        });
-        let x = 42;
-        const maxPlate = available[0];
-        const plateSvg = plates.flatMap(({ count, plate }, plateIndex) => Array.from({ length: count }, (_, index) => {
-          const height = Math.round(22 + (plate / maxPlate) * 32);
-          const width = Math.max(5, Math.round(5 + (plate / maxPlate) * 5));
-          const node = '<g class="plate plate-' + (plateIndex % 5) + '"><rect x="' + x + '" y="' + (42 - height / 2) + '" width="' + width + '" height="' + height + '" rx="2"/>' + (index === 0 ? '<text x="' + (x + width / 2) + '" y="79" text-anchor="middle">' + plate + '</text>' : '') + '</g>';
-          x += width + 2;
-          return node;
-        })).join('');
-        const summary = plates.length ? plates.map(({ count, plate }) => count + ' × ' + plate).join(' + ') : 'empty bar';
-        const remainder = remaining > 0.01 ? '<span class="d out">' + remaining + ' ' + unit + ' per side cannot be made</span>' : '';
-        return '<div class="plate-calculator"><strong>Plate calculator · ' + total + ' ' + unit + '</strong><svg class="plate-diagram" viewBox="0 0 180 86" role="img" aria-label="Each side: ' + escapeHtml(summary) + '"><line x1="8" y1="42" x2="170" y2="42"/><rect class="plate-sleeve" x="18" y="36" width="24" height="12" rx="2"/>' + plateSvg + '</svg><span>Each side: ' + escapeHtml(summary) + '</span>' + remainder + '</div>';
-      }
-
-      function isBarbellExercise(name) {
-        const value = String(name || "").toLowerCase();
-        return /barbell|bench press|back squat|front squat|deadlift|good morning|hip thrust/.test(value) && !/dumbbell|machine|cable|smith/.test(value);
-      }
-
       function renderTimer(setId) {
         if (!timer || timer.setId !== setId) return "";
-        const elapsed = Math.max(0, timer.durationSeconds - timer.remainingSeconds);
+        const overtimeSeconds = timer.isOvertime
+          ? Math.max(0, Number(timer.overtimeSeconds || Math.floor((Date.now() - Number(timer.endsAt || Date.now())) / 1000)))
+          : 0;
+        const elapsed = timer.isOvertime
+          ? Number(timer.durationSeconds || 0) + overtimeSeconds
+          : Math.max(0, timer.durationSeconds - timer.remainingSeconds);
         const progress = timer.durationSeconds > 0 ? Math.min(100, Math.round((elapsed / timer.durationSeconds) * 100)) : 100;
         const nextContext = timerNextContextLabel(timer);
         const notificationStatus = timerNotificationStatusLabel(timer);
+        const timerLabel = timer.isOvertime ? "+" + formatOvertime(overtimeSeconds) : formatTimer(timer.remainingSeconds);
+        const ariaState = timer.isOvertime
+          ? "Rest target passed by " + formatOvertime(overtimeSeconds)
+          : (timer.isPaused ? "Paused rest timer" : "Rest timer") + ", " + formatTimer(timer.remainingSeconds) + " remaining";
         return `
-          <details class="timer-bar" data-timer-id="${timer.id}" data-disclosure-id="rest-timer" data-phase="${timer.remainingSeconds <= 10 ? "final" : "resting"}" ${timer.isPaused ? 'data-paused="true"' : ""}>
-            <summary class="timer-summary" aria-label="${timer.isPaused ? "Paused rest timer" : "Rest timer"}, ${formatTimer(timer.remainingSeconds)} remaining. Open timer controls.">
+          <details class="timer-bar" data-timer-id="${timer.id}" data-disclosure-id="rest-timer" data-phase="${timer.isOvertime ? "overtime" : timer.remainingSeconds <= 10 ? "final" : "resting"}" ${timer.isPaused ? 'data-paused="true"' : ""} ${timer.isOvertime ? "open" : ""}>
+            <summary class="timer-summary" aria-label="${ariaState}. Open timer controls.">
               <span class="timer-progress" role="progressbar" aria-label="Rest elapsed" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}" style="--timer-progress:${progress}%"><span></span></span>
-              <span class="timer-rest-copy"><span>${timer.isPaused ? "Paused" : "Rest"}</span><small>${escapeHtml(nextContext)}</small></span>
-              <strong data-timer-progress-label>${formatTimer(timer.remainingSeconds)}</strong>
+              <span class="timer-rest-copy"><span>${timer.isOvertime ? "Rest complete" : timer.isPaused ? "Paused" : "Rest"}</span><small>${escapeHtml(nextContext)}</small></span>
+              <strong data-timer-progress-label>${timerLabel}</strong>
             </summary>
             <div class="timer-controls-panel">
-              <div class="timer-primary-controls" aria-label="Rest timer adjustments">
-                <button class="timer-adjust" type="button" data-action="adjust-timer" data-seconds="-15" title="Reduce rest by 15 seconds" aria-label="Reduce rest by 15 seconds">− 15 sec</button>
-                <button class="timer-adjust" type="button" data-action="adjust-timer" data-seconds="15" title="Add 15 seconds" aria-label="Add 15 seconds">+ 15 sec</button>
-                <button class="timer-skip" type="button" data-action="skip-timer" title="Skip remaining rest">Skip rest</button>
-              </div>
-              <div class="timer-secondary-controls"><button class="timer-control timer-pause" type="button" data-action="toggle-timer" title="${timer.isPaused ? "Resume timer" : "Pause timer"}" aria-label="${timer.isPaused ? "Resume timer" : "Pause timer"}">${timer.isPaused ? icon.play : icon.pause}</button><button class="timer-control timer-cancel" type="button" data-action="clear-timer" title="Cancel timer" aria-label="Cancel timer">${icon.delete}</button></div>
+              ${timer.isOvertime
+                ? '<button class="timer-skip" type="button" data-action="clear-timer">Finish rest</button>'
+                : `<div class="timer-primary-controls" aria-label="Rest timer adjustments">
+                    <button class="timer-adjust" type="button" data-action="adjust-timer" data-seconds="-15" title="Reduce rest by 15 seconds" aria-label="Reduce rest by 15 seconds">− 15 sec</button>
+                    <button class="timer-adjust" type="button" data-action="adjust-timer" data-seconds="15" title="Add 15 seconds" aria-label="Add 15 seconds">+ 15 sec</button>
+                    <button class="timer-skip" type="button" data-action="skip-timer" title="Skip remaining rest">Skip rest</button>
+                  </div>
+                  <div class="timer-secondary-controls"><button class="timer-control timer-pause" type="button" data-action="toggle-timer" title="${timer.isPaused ? "Resume timer" : "Pause timer"}" aria-label="${timer.isPaused ? "Resume timer" : "Pause timer"}">${timer.isPaused ? icon.play : icon.pause}</button><button class="timer-control timer-cancel" type="button" data-action="clear-timer" title="Cancel timer" aria-label="Cancel timer">${icon.delete}</button></div>`}
               <div class="timer-context">${escapeHtml(nextContext + " · " + notificationStatus)}</div>
             </div>
           </details>
@@ -1514,7 +1404,9 @@
       }
 
       function timerNotificationStatusLabel(timerSnapshot) {
-        return timerSnapshot?.notificationStatus === "scheduled"
+        return timerSnapshot?.isOvertime
+          ? "Target reached"
+          : timerSnapshot?.notificationStatus === "scheduled"
           ? "Lock-screen alert scheduled"
           : timerSnapshot?.notificationStatus === "error"
             ? "Foreground alert only"

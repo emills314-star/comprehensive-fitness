@@ -185,17 +185,16 @@ test("workout completion renders the full earned achievement strip from verified
     "progression",
     "plan_complete",
     "target_precision",
-    "controlled_execution",
     "smart_training"
   ]);
   const strip = page.locator(".workout-achievements");
   await expect(strip).toBeVisible();
-  await expect(strip).toContainText("8 earned");
+  await expect(strip).toContainText("7 earned");
   const badges = strip.locator(".workout-achievement");
-  await expect(badges).toHaveCount(8);
-  await expect(strip.locator("img")).toHaveCount(8);
+  await expect(badges).toHaveCount(7);
+  await expect(strip.locator("img")).toHaveCount(7);
   const interactiveBadges = strip.locator('[data-action="toggle-achievement-detail"]');
-  await expect(interactiveBadges).toHaveCount(7);
+  await expect(interactiveBadges).toHaveCount(6);
   const planComplete = strip.locator(".workout-achievement.static", { hasText: "Plan Complete" });
   await expect(planComplete).toHaveCount(1);
   await expect(planComplete).not.toContainText("View exercise details");

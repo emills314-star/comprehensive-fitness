@@ -3,7 +3,7 @@
 **Product:** Comprehensive Fitness  
 **Primary owner:** Codex  
 **Adversarial reviewer:** Claude Code  
-**Current phase:** Implementation active on `codex/zero-based-redesign`; M0–M5 gates complete locally
+**Current phase:** Implementation active on `codex/zero-based-redesign`; M0–M6 gates complete locally
 **Implementation authorized:** Yes — local implementation only
 
 ## Completed
@@ -60,24 +60,30 @@
 - M5 retained exact legacy routine `reps`; it has no visible writer for removed settings. Obsolete planner settings, including training goal, nutrition phase, and experience level, remain decode/discard-only before active import or current export.
 - A bounded identity-only boot correction keeps normal boot to the identity catalog and reserves the relationship map for import validation.
 - M5 focused mobile checks passed 5/5, identity/compatibility mobile checks passed 65/65 plus 13/13, desktop compatibility checks passed 2/2, strict target regressions passed 2/2, readiness dismissal and custom-exercise rendering regressions passed 2/2, and one clean approved public-suite run passed 60/60. Lint, typecheck, 33 PWA checks, approved 24-module Vite build, 646-file privacy scan, and nine screenshot inspections passed.
+- M6 simplified the active logger around full variant names, stable targets, role-comparable prior facts, fast load/repetitions/RPE entry, explicit set states, workout-only overrides, and one recoverable rest surface.
+- Normal and custom substitutions retain independent performance identities, completed source facts, unfinished order, and multi-hop provenance. Saving a current-workout change to the routine is a separate explicit action.
+- Plate-calculator UI/state, live/completion execution-quality UI and writers, the controlled-execution badge, duplicate rest starters, and active equipment/exclusion logging blocks were removed. Historical submitted compatibility facts remain readable and immutable.
+- Active-draft and import validation is strict and atomic at runtime. Invalid candidates cannot partially mutate durable or in-memory state.
+- M6 focused static checks, 61/61 public scripts, 38/38 integration contracts, 13/13 mobile Playwright scenarios, lint, typecheck, workflows, a 24-module production build, 33-asset PWA verification, a 644-file privacy scan, public archive/workbook integrity, root/`www` parity, three inspected 390 x 844 screenshots, and the post-correction independent review passed.
 
 ## Current objective
 
-M0 through M5 are complete locally. M2 is checkpointed at `243ed81`; M3 is checkpointed at `3e102e2`; M4 is checkpointed at `576f582`; M5 is checkpointed at `ef71085`.
+M0 through M6 are complete locally. M2 is checkpointed at `243ed81`; M3 is checkpointed at `3e102e2`; M4 is checkpointed at `576f582`; M5 is checkpointed at `ef71085`; the M6 checkpoint is being recorded after documentation closeout.
 
 ## Next actions
 
-1. Re-read the M6 authoritative scope and current implementation state.
-2. Record the exact M6 scope, then implement it without reactivating planner, dashboard, or duplicate recommendation paths.
-3. Automated, privacy, migration, independent, target-device, and five-workout human acceptance gates precede any separately authorized publication.
+1. Create and record the recoverable M6 checkpoint.
+2. Re-read the M7 authoritative grade, completion, and progress scope against the M6 implementation state.
+3. Implement only M7 without reactivating deleted scoring, adherence, planner, dashboard, or recommendation paths.
+4. Automated, privacy, migration, independent, target-device, and five-workout human acceptance gates precede any separately authorized publication.
 
 ## Open issues
 
-- Target-device RPE replacement/completion behavior is **NEEDS REVIEW**; source code intent does not resolve Erik's reported device experience.
+- Target-device RPE replacement/completion behavior remains **NEEDS REVIEW**. Browser/mobile automation proves one-edit 7-to-7.5 replacement and immediate completion, but physical-device keyboard behavior is not locally provable.
 - Current numeric fatigue, readiness, plateau, deload, evidence, confidence, and grade thresholds/formulas are not approved. M2 prevents them from producing current actions; M4 removed the normal analytical product paths, while M7 owns remaining legacy grade debt.
 - Target migration contracts and synthetic baselines exist; M1 runtime normalization is implemented, but a complete real-data export/replay and independent migration verification remain unperformed.
-- Focused browser/PWA/accessibility verification passed for M1; physical-device, notification, performance, privacy, independent-review, pinned-runtime, and five-workout acceptance gates remain unverified.
-- M6–M8 product behavior remains incomplete; legacy grade/completion/UI debt remains assigned to M6–M7.
+- Focused browser/PWA/accessibility verification passed through M6; physical-device notification delivery, true OS suspension, pinned-runtime, full independent migration review, and five-workout acceptance remain unverified.
+- M7–M8 product behavior remains incomplete; legacy grade/completion debt remains assigned to M7.
 - Two broader Strong-history browser assertions disagree with current shared-runtime copy/prior-row resolution; they were not caused by M3 planner-field deletion and remain separately reproducible.
 - Pre-existing uncommitted `.claude/`, `.vercel/`, and `redesign/prompts/` paths must remain preserved.
 - Current code and living docs differ materially from final product intent. They remain accurate as current-state evidence until an authorized implementation updates behavior and documentation together.
@@ -85,4 +91,4 @@ M0 through M5 are complete locally. M2 is checkpointed at `243ed81`; M3 is check
 
 ## Last verification
 
-M5 completed locally on 2026-07-31: focused mobile 5/5; identity/compatibility mobile 65/65 plus 13/13; desktop compatibility 2/2; strict targets 2/2; readiness-dismissal/custom-exercise regressions 2/2; clean public suite 60/60; lint, typecheck, 33 PWA checks, approved Vite build, 646-file privacy, and nine inspected screenshots passed. No private personal fitness/health data, production-data migration, deployment, or publication occurred.
+M6 completed locally on 2026-07-31: focused M6 mobile 13/13 at 390 x 844; public suite 61/61; app integration 38/38; lint, typecheck, workflows, 33 PWA checks, approved 24-module Vite build, 644-file privacy scan, archive/workbook integrity, runtime-package parity, and three screenshot inspections passed. Physical-device RPE/background/notification behavior remains an external gate. No private personal fitness/health data, production-data migration, deployment, or publication occurred.

@@ -29,12 +29,11 @@ assert.doesNotMatch(interactions, /apply-prescription-override|applyPrescription
 
 const addExerciseSource = extractFunction(workout, "addExercise");
 assert.doesNotMatch(addExerciseSource, /recommendationSnapshot|basePrescription|finalPrescription|recommendationHistory|unifiedPrescriptionSnapshot/, "A newly added exercise must be an identity-preserving actual-work row without recommendation state");
-assert.match(addExerciseSource, /performanceExerciseId:[\s\S]*identitySource: "user_declared_custom"/, "A custom added exercise must retain a distinct performance identity");
-assert.match(addExerciseSource, /const initialSets = \[createSet\(exercise\.id, 1, \{ resistanceType \}\)\]/, "A newly added exercise must remain immediately loggable");
+assert.match(addExerciseSource, /const identityFields = userSelectedExerciseIdentity\(name\)[\s\S]*\.\.\.identityFields/, "A custom added exercise must receive its distinct performance identity through the shared identity boundary");
+assert.match(addExerciseSource, /stableTargetSnapshot:[\s\S]*setCount[\s\S]*repLow: repMin[\s\S]*repHigh: repMax[\s\S]*rpe: targetRpe[\s\S]*restSeconds/, "A newly added custom exercise must own explicit stable targets");
+assert.match(addExerciseSource, /Array\.from\(\{ length: setCount \}[\s\S]*targetRepMin: repMin[\s\S]*targetRepMax: repMax[\s\S]*targetRpe[\s\S]*targetRestSeconds: restSeconds/, "A newly added exercise must be immediately loggable with target-complete working rows");
 
-const customSetupSource = extractFunction(workout, "completeCustomExerciseSetup");
-assert.doesNotMatch(customSetupSource, /prescriptionEngine|recommendationSnapshot|finalPrescription|unifiedPrescriptionSnapshot|boundedCustomPrescriptionSnapshot/, "Custom exercise setup must remain metadata-only");
-assert.match(customSetupSource, /customExerciseProfile: profile[\s\S]*resistanceType: profile\.resistanceType/, "Custom setup must persist only identity and logging metadata");
+assert.doesNotMatch(workout, /function completeCustomExerciseSetup\(/, "The deleted recommendation-oriented custom-exercise setup writer must not return");
 
 const updateTemplateSource = extractFunction(workout, "updateTemplateFromExercise");
 assert.doesNotMatch(updateTemplateSource, /recommendationSnapshot|recommendationId|recommendationVersion|researchDatabaseVersion|mesocycleId/, "Saving actual targets to a routine must not copy legacy recommendation or mesocycle state");

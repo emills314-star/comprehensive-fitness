@@ -108,9 +108,8 @@
       }
 
       function priorComparableWorkoutSets(session, exercise, resistanceType) {
-        const canonicalId = canonicalExerciseId(exercise.name);
         const priorSessionIds = new Set(activeHistorySessions({ throughDate: session.date }).filter((candidate) => candidate.id !== session.id && sessionComesBefore(candidate, session)).map((candidate) => candidate.id));
-        const priorExerciseIds = new Set(data.exercises.filter((candidate) => priorSessionIds.has(candidate.sessionId) && !candidate.isDeload && canonicalExerciseId(candidate.name) === canonicalId && resistanceTypeFor(candidate) === resistanceType).map((candidate) => candidate.id));
+        const priorExerciseIds = new Set(data.exercises.filter((candidate) => priorSessionIds.has(candidate.sessionId) && !candidate.isDeload && samePerformanceExercise(candidate, exercise) && resistanceTypeFor(candidate) === resistanceType).map((candidate) => candidate.id));
         return data.sets.filter((set) => priorExerciseIds.has(set.exerciseId) && set.completed && isWorkingSet(set, "progression") && !set.skipped);
       }
 
@@ -186,7 +185,8 @@
         const isDeload = resolvedAction?.category === "deload";
         const intentional = isReadinessAdjusted || isDeload || ["light", "technique", "return", "return-from-deload"].includes(prescription.mode);
         const statusRatio = actionWasHandled ? 0.9 : intentional && planExecutionRatio >= 0.8 ? 0.95 : ({ progress: 1, stable: 0.9, baseline: 0.82, regression: 0.55, incomplete: 0.25 })[comparison.status] || 0.7;
-        const exercisePrs = prs.filter((pr) => canonicalExerciseId(pr.exercise) === canonicalExerciseId(exercise.name));
+        const exerciseIdentity = canonicalExerciseId(exercise);
+        const exercisePrs = prs.filter((pr) => (pr.performanceExerciseId || canonicalExerciseId(pr.exercise)) === exerciseIdentity);
         const averageRpe = averageWorkoutMetric(loggedRpeSets.map((set) => Number(set.rpe)), 0);
         const targetRpe = averageWorkoutMetric(completedSets.map((set) => Number(set.targetRpe || prescription.rpe || 0)).filter(Boolean), Number(prescription.rpe || 0));
         const fatigueWarning = repDropRatio > 0.3 && rpeRise >= 1
@@ -379,17 +379,25 @@
         return minutes + ":" + String(seconds % 60).padStart(2, "0");
       }
 
+      function formatOvertime(seconds) {
+        const safeSeconds = Math.max(0, Math.floor(Number(seconds) || 0));
+        const minutes = Math.floor(safeSeconds / 60);
+        return String(minutes).padStart(2, "0") + ":" + String(safeSeconds % 60).padStart(2, "0");
+      }
+
       function submitWorkoutPrs(session) {
         const sessionExercises = data.exercises.filter((exercise) => exercise.sessionId === session.id);
-        const priorSessionIds = new Set(activeHistorySessions({ throughDate: session.date }).filter((item) => item.id !== session.id).map((item) => item.id));
+        const priorSessionIds = new Set(data.sessions.filter((item) => item.id !== session.id && isSessionSubmitted(item) && sessionComesBefore(item, session)).map((item) => item.id));
         const prs = [];
         sessionExercises.forEach((exercise) => {
+          const prStart = prs.length;
+          const performanceExerciseId = canonicalExerciseId(exercise);
           const resistanceType = resistanceTypeFor(exercise);
           const currentSets = setsForExercise(exercise.id).filter((set) => set.completed && isWorkingSet(set, "pr") && set.reps > 0);
           if (!currentSets.length) return;
           const priorSets = data.sets.filter((set) => {
             const priorExercise = data.exercises.find((item) => item.id === set.exerciseId);
-            return set.completed && isWorkingSet(set, "pr") && priorExercise && priorSessionIds.has(priorExercise.sessionId) && exerciseMatches(priorExercise.name, exercise.name) && resistanceTypeFor(priorExercise, set) === resistanceType;
+            return set.completed && isWorkingSet(set, "pr") && priorExercise && priorSessionIds.has(priorExercise.sessionId) && samePerformanceExercise(priorExercise, exercise) && resistanceTypeFor(priorExercise, set) === resistanceType;
           });
           if (["external", "bodyweight_plus_load"].includes(resistanceType)) {
             const maxWeight = Math.max(...currentSets.map((set) => resistanceLoad(set, resistanceType)));
@@ -414,8 +422,9 @@
             const previousE1rm = Math.max(0, ...priorSets.map(estimatedOneRepMax));
             if (currentE1rm > previousE1rm && currentE1rm > 0) prs.push({ exercise: exercise.name, type: "Best estimated performance", value: currentE1rm.toFixed(1) + " e1RM" });
           }
+          for (let index = prStart; index < prs.length; index += 1) prs[index].performanceExerciseId = performanceExerciseId;
         });
-        return prs.filter((pr, index, all) => all.findIndex((other) => other.exercise === pr.exercise && other.type === pr.type) === index);
+        return prs.filter((pr, index, all) => all.findIndex((other) => other.performanceExerciseId === pr.performanceExerciseId && other.type === pr.type) === index);
       }
 
       function workoutSubmissionIsAccepted(sessionId) {
@@ -454,11 +463,7 @@
           const exercise = data.exercises.find((item) => item.id === set.exerciseId);
           return exercise?.sessionId === session.id && set.completed && isWorkingSet(set, "score");
         }).length;
-        const qualityControls = data.exercises.filter((exercise) => exercise.sessionId === session.id && setsForExercise(exercise.id).some((set) => isWorkingSet(set, "progression"))).map((exercise) => {
-          const value = executionQualityValues.has(exercise.executionQualityAssessment) ? exercise.executionQualityAssessment : "not_assessed";
-          return '<label><span>' + escapeHtml(exercise.name) + '</span><select data-action="exercise-execution-quality" data-exercise-id="' + exercise.id + '"><option value="not_assessed" ' + (value === "not_assessed" ? "selected" : "") + '>Not assessed</option><option value="controlled" ' + (value === "controlled" ? "selected" : "") + '>Controlled</option><option value="breakdown" ' + (value === "breakdown" ? "selected" : "") + '>Breakdown</option></select></label>';
-        }).join('');
-        return '<section class="submit-confirmation"><strong>Log this workout as completed?</strong><span>' + completed + ' completed working sets will update history, the performance chart, and PRs.</span><div class="submit-quality"><b>Did execution stay controlled?</b><small>Submission is allowed without an assessment, but an unassessed exposure cannot confirm progression.</small>' + qualityControls + '</div><div class="row"><button class="primary-action" type="button" data-action="confirm-submit-workout">Log workout</button><button type="button" data-action="cancel-submit-workout">Keep editing</button></div></section>';
+        return '<section class="submit-confirmation"><strong>Log this workout as completed?</strong><span>' + completed + ' completed working sets will update history, the performance chart, and PRs.</span><div class="row"><button class="primary-action" type="button" data-action="confirm-submit-workout">Log workout</button><button type="button" data-action="cancel-submit-workout">Keep editing</button></div></section>';
       }
 
       function renderWorkoutExerciseResult(result) {
@@ -482,8 +487,7 @@
         plan_complete: "/resources/achievements/badge-plan-complete.png",
         target_precision: "/resources/achievements/badge-target-precision.png",
         smart_training: "/resources/achievements/badge-smart-training.png",
-        progression: "/resources/achievements/badge-progression.png",
-        controlled_execution: "/resources/achievements/badge-controlled-execution.png"
+        progression: "/resources/achievements/badge-progression.png"
       });
 
       function workoutExerciseVolumeLoad(exercise) {
@@ -502,16 +506,16 @@
       function priorExerciseVolumeHighWater(session, exercise) {
         const priorSessions = activeHistorySessions({ throughDate: session.date }).filter((candidate) => candidate.id !== session.id && sessionComesBefore(candidate, session));
         return Math.max(0, ...priorSessions.map((candidate) => data.exercises
-          .filter((item) => item.sessionId === candidate.id && canonicalExerciseId(item.name) === canonicalExerciseId(exercise.name))
+          .filter((item) => item.sessionId === candidate.id && samePerformanceExercise(item, exercise))
           .reduce((total, item) => total + workoutExerciseVolumeLoad(item), 0)));
       }
 
       function priorWorkoutPrSets(session, exercise, resistanceType) {
-        const priorSessionIds = new Set(activeHistorySessions({ throughDate: session.date })
-          .filter((candidate) => candidate.id !== session.id && sessionComesBefore(candidate, session))
+        const priorSessionIds = new Set(data.sessions
+          .filter((candidate) => candidate.id !== session.id && isSessionSubmitted(candidate) && sessionComesBefore(candidate, session))
           .map((candidate) => candidate.id));
         const priorExerciseIds = new Set(data.exercises
-          .filter((candidate) => priorSessionIds.has(candidate.sessionId) && exerciseMatches(candidate.name, exercise.name) && resistanceTypeFor(candidate) === resistanceType)
+          .filter((candidate) => priorSessionIds.has(candidate.sessionId) && samePerformanceExercise(candidate, exercise) && resistanceTypeFor(candidate) === resistanceType)
           .map((candidate) => candidate.id));
         return data.sets.filter((set) => priorExerciseIds.has(set.exerciseId) && set.completed && !set.skipped && isWorkingSet(set, "pr"));
       }
@@ -552,8 +556,7 @@
         const prs = Array.isArray(session.prs) ? session.prs : Array.isArray(analysis.prs) ? analysis.prs : [];
         const results = Array.isArray(analysis.exerciseResults) ? analysis.exerciseResults : [];
         const sessionExercises = data.exercises.filter((exercise) => exercise.sessionId === session.id);
-        const exerciseForName = (name) => sessionExercises.find((exercise) => canonicalExerciseId(exercise.name) === canonicalExerciseId(name));
-        const resultForName = (name) => results.find((result) => canonicalExerciseId(result.name) === canonicalExerciseId(name));
+        const exerciseForPr = (pr) => sessionExercises.find((exercise) => canonicalExerciseId(exercise) === (pr.performanceExerciseId || canonicalExerciseId(pr.exercise)));
         const performanceItem = (result, current = result?.bestSet?.text || "Completed work", metric = "Performance") => ({
           name: result?.name || "Exercise",
           metric,
@@ -568,7 +571,7 @@
           "New e1RM Peak",
           e1rmPrs.length === 1 ? e1rmPrs[0].exercise + " reached " + e1rmPrs[0].value + "." : "New estimated strength peaks on " + e1rmPrs.length + " exercises.",
           e1rmPrs.map((pr) => {
-            const exercise = exerciseForName(pr.exercise);
+            const exercise = exerciseForPr(pr);
             return { name: pr.exercise, metric: pr.type, current: pr.value, previous: workoutPrPreviousHighWater(session, exercise, pr) };
           })
         );
@@ -577,7 +580,7 @@
           "Personal Record",
           otherPrs.length + " record" + (otherPrs.length === 1 ? "" : "s") + " earned across " + uniquePrExercises + " exercise" + (uniquePrExercises === 1 ? "" : "s") + ".",
           otherPrs.map((pr) => {
-            const exercise = exerciseForName(pr.exercise);
+            const exercise = exerciseForPr(pr);
             return { name: pr.exercise, metric: pr.type, current: pr.value, previous: workoutPrPreviousHighWater(session, exercise, pr) };
           })
         );
@@ -620,16 +623,6 @@
           )));
         }
 
-        const assessedExercises = data.exercises.filter((exercise) =>
-          exercise.sessionId === session.id
-          && setsForExercise(exercise.id).some((set) => set.completed && !set.skipped && isWorkingSet(set, "progression"))
-        );
-        if (assessedExercises.length && assessedExercises.every((exercise) => exercise.executionQualityAssessment === "controlled")) {
-          add("controlled_execution", "Controlled Execution", "Controlled execution was confirmed for every trained exercise.", assessedExercises.map((exercise) => {
-            const result = resultForName(exercise.name);
-            return performanceItem(result || { name: exercise.name }, result?.bestSet?.text ? "Controlled · " + result.bestSet.text : "Controlled", "Execution quality");
-          }));
-        }
         const readinessAdherence = Number(analysis.readinessContext?.adherence || 0);
         if ((Number(analysis.readinessContext?.adjustments || 0) > 0 || analysis.deloadContext?.isDeload) && readinessAdherence >= 0.9) {
           const adjustedResults = results.filter((result) => result.isReadinessAdjusted || result.isDeload);

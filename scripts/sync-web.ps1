@@ -78,7 +78,6 @@ $publicFiles = @(
   @{ Source = "resources\achievements\badge-target-precision.png"; Destination = "resources\achievements\badge-target-precision.png" },
   @{ Source = "resources\achievements\badge-smart-training.png"; Destination = "resources\achievements\badge-smart-training.png" },
   @{ Source = "resources\achievements\badge-progression.png"; Destination = "resources\achievements\badge-progression.png" },
-  @{ Source = "resources\achievements\badge-controlled-execution.png"; Destination = "resources\achievements\badge-controlled-execution.png" },
   @{ Source = "research_database\exports\json\exercise_database.json"; Destination = "research_database\exports\json\exercise_database.json" },
   @{ Source = "research_database\exports\json\exercise_muscle_map.json"; Destination = "research_database\exports\json\exercise_muscle_map.json" }
 )

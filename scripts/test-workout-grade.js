@@ -148,7 +148,8 @@ assert.match(html, /calculateWorkoutAnalysis\(updatedSession, \{ prs \}\)/, "Sav
 assert.match(html, /workoutAnalysisForSession\(session\)/, "Saved history must render the same analysis");
 assert.match(html, /highlightedExercises\.has/, "Related PR and progression labels must be grouped instead of double counted");
 assert.doesNotMatch(html.match(/function renderCompletedWorkoutSummary[\s\S]*?\n      }/)[0], /internalScore\}\s*\/\s*100|internalScore\s*\+\s*['"] \/ 100/, "The overall workout result must not expose its internal numerical score");
-assert.match(html, /const workoutAchievementAssets = Object\.freeze\(\{[\s\S]*personal_record:[\s\S]*e1rm_peak:[\s\S]*volume_record:[\s\S]*plan_complete:[\s\S]*target_precision:[\s\S]*smart_training:[\s\S]*progression:[\s\S]*controlled_execution:/, "The completion summary must retain the full positive-outcome badge artwork map");
+assert.match(html, /const workoutAchievementAssets = Object\.freeze\(\{[\s\S]*personal_record:[\s\S]*e1rm_peak:[\s\S]*volume_record:[\s\S]*plan_complete:[\s\S]*target_precision:[\s\S]*smart_training:[\s\S]*progression:/, "The completion summary must retain the approved positive-outcome badge artwork map");
+assert.doesNotMatch(html, /controlled_execution|badge-controlled-execution/, "The deleted execution-quality questionnaire must not survive as a completion badge");
 assert.match(html, /<section class="workout-achievements"[\s\S]*Earned this workout[\s\S]*Achievement badges[\s\S]*workout-achievement-grid/, "Earned badges must render as a dedicated completion-summary strip");
 // The earned strip must keep a guaranteed contrast floor across all ten color
 // packages, so it may not derive its colors from the selected package accent.
@@ -189,7 +190,7 @@ const achievementData = {
 };
 const achievementFactory = new Function(
   "data", "workoutAchievementAssets", "canonicalExerciseId", "activeHistorySessions", "sessionComesBefore",
-  "isWorkingSet", "resistanceTypeFor", "resistanceLoad", "setsForExercise", "exerciseMatches",
+  "isWorkingSet", "resistanceTypeFor", "resistanceLoad", "setsForExercise", "exerciseMatches", "samePerformanceExercise",
   "estimatedOneRepMax", "formatLoadNumber", "formatSetPerformance", "bestWorkoutSet",
   `${extractFunction(html, "workoutExerciseVolumeLoad")}
    ${extractFunction(html, "workoutSessionVolumeLoad")}
@@ -203,7 +204,7 @@ const achievementBadges = achievementFactory(
   achievementData,
   {
     personal_record: "pr.png", e1rm_peak: "e1rm.png", volume_record: "volume.png", plan_complete: "complete.png",
-    target_precision: "precision.png", smart_training: "smart.png", progression: "progress.png", controlled_execution: "control.png"
+    target_precision: "precision.png", smart_training: "smart.png", progression: "progress.png"
   },
   (value) => String(value || "").toLowerCase().replace(/\W+/g, "-"),
   () => achievementData.sessions,
@@ -213,6 +214,7 @@ const achievementBadges = achievementFactory(
   (set) => set.load,
   (exerciseId) => achievementData.sets.filter((set) => set.exerciseId === exerciseId),
   (left, right) => String(left).toLowerCase() === String(right).toLowerCase(),
+  (left, right) => String(left?.name || left).toLowerCase() === String(right?.name || right).toLowerCase(),
   (set) => set.load * (1 + set.reps / 30),
   (value) => String(value),
   (set) => set.load + " lb × " + set.reps,
@@ -245,7 +247,7 @@ const earnedBadges = achievementBadges(achievementData.sessions[1], {
 const earnedKeys = earnedBadges.map((badge) => badge.key);
 assert.deepEqual(
   earnedKeys,
-  ["e1rm_peak", "personal_record", "volume_record", "progression", "plan_complete", "target_precision", "controlled_execution", "smart_training"],
+  ["e1rm_peak", "personal_record", "volume_record", "progression", "plan_complete", "target_precision", "smart_training"],
   "A benchmark workout should earn each distinct positive-outcome badge exactly once"
 );
 earnedBadges.filter((badge) => badge.key !== "plan_complete").forEach((badge) => {

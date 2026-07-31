@@ -58,7 +58,7 @@
         return [
           "add-exercise", "move-exercise", "delete-exercise", "add-set", "add-warmup-set", "duplicate-set", "delete-set", "toggle-set", "toggle-skip-set", "start-timer",
           "session-title", "session-date", "session-travel", "session-notes",
-          "exercise-name", "exercise-notes", "exercise-primary-muscle", "exercise-secondary-muscle", "exercise-execution-quality", "exercise-deload", "exercise-resistance-type", "exercise-bodyweight", "exercise-rest-seconds",
+          "exercise-notes", "exercise-primary-muscle", "exercise-secondary-muscle", "exercise-deload", "exercise-resistance-type", "exercise-bodyweight", "exercise-rest-seconds",
           "set-reps", "set-weight", "set-rpe", "set-duration", "set-distance", "set-warmup",
           "recovery-sleep-hours", "recovery-sleep-quality", "recovery-hrv", "recovery-resting-hr", "recovery-soreness", "recovery-nutrition", "recovery-protein", "recovery-illness", "recovery-pain", "recovery-affected-muscle", "recovery-outside-note"
         ].includes(action);
@@ -245,7 +245,12 @@
         }
         if (action === "apply-standard-workload") {
           const form = target.closest("[data-standard-workload-form]");
-          applyExerciseDefaultTargets(target.dataset.exerciseId, form, { saveTemplateStandard: form?.querySelector("[data-standard-save-template]")?.checked === true });
+          applyExerciseDefaultTargets(target.dataset.exerciseId, form);
+        }
+        if (action === "apply-exercise-substitution") {
+          const control = target.closest(".exercise-substitution-control");
+          const name = control?.querySelector('[data-action="exercise-substitute-name"]')?.value || "";
+          applyExerciseSubstitution(target.dataset.exerciseId, name);
         }
         if (action === "use-shared-set-targets") {
           const disclosure = target.closest("[data-individual-set-disclosure]");
@@ -253,7 +258,6 @@
           if (enabled) enabled.value = "false";
           if (disclosure) disclosure.open = false;
         }
-        if (action === "complete-custom-exercise-setup") completeCustomExerciseSetup(target.dataset.exerciseId, target.closest("[data-custom-exercise-form]"));
         if (action === "save-template") saveActiveSessionAsTemplate();
         if (action === "log-template-readiness") openOptionalReadiness(target.dataset.templateId);
         if (action === "log-workout-readiness") openOptionalReadiness("", activeWorkoutId);
@@ -359,6 +363,10 @@
         if (action === "add-template-warmup") {
           const template = data.templates.find((item) => item.id === target.dataset.templateId);
           const exercise = template?.exercises.find((item) => item.id === target.dataset.templateExerciseId);
+          if ((exercise?.warmups || []).length >= 100) {
+            showAppToast("A routine exercise can contain at most 100 warm-up sets.");
+            return;
+          }
           const resistanceType = exercise?.resistanceType || inferResistanceType(exercise?.name || "", exercise || {});
           const warmups = [...(exercise?.warmups || []), { reps: 10, weight: 0, weightUnit: data.settings.weightUnit, resistanceType, isBodyweight: isBodyweightResistance(resistanceType), addedLoad: 0, assistanceLoad: 0, rpe: 5 }];
           patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { warmups });
@@ -467,7 +475,6 @@
         if (action === "add-exercise-secondary") addExerciseSecondaryMuscle = target.value;
         if (action === "exercise-primary-muscle") patchExercise(target.dataset.exerciseId, { primaryMuscle: target.value });
         if (action === "exercise-secondary-muscle") patchExercise(target.dataset.exerciseId, { secondaryMuscle: target.value });
-        if (action === "exercise-execution-quality") patchExercise(target.dataset.exerciseId, { executionQualityAssessment: executionQualityValues.has(target.value) ? target.value : "not_assessed" });
         if (action === "exercise-deload") {
           patchExercise(target.dataset.exerciseId, { isDeload: target.checked });
         }
@@ -767,6 +774,11 @@
             else addButton.dataset.safetyReason = safety.message || "Blocked by the current workout safety restriction";
           }
         }
+        if (action === "add-exercise-set-count") addExerciseSetCount = target.value;
+        if (action === "add-exercise-rep-min") addExerciseRepMin = target.value;
+        if (action === "add-exercise-rep-max") addExerciseRepMax = target.value;
+        if (action === "add-exercise-target-rpe") addExerciseTargetRpe = target.value;
+        if (action === "add-exercise-rest-seconds") addExerciseRestSeconds = target.value;
         if (action === "review-exercise-input") {
           chartExerciseDraft = target.value;
           chartExerciseSearchOpen = true;
@@ -778,13 +790,16 @@
         }
         if (action === "session-title") patchSession({ title: target.value }, false);
         if (action === "session-notes") patchSession({ notes: target.value }, false);
-        if (action === "exercise-name") { target.style.height = "auto"; target.style.height = Math.max(38, target.scrollHeight) + "px"; patchExerciseName(target.dataset.exerciseId, target.value, false); }
         if (action === "exercise-notes") patchExercise(target.dataset.exerciseId, { notes: target.value }, false);
-        if (action === "set-reps") patchSetValue(target.dataset.setId, "reps", target.value, false);
-        if (action === "set-weight") patchSetValue(target.dataset.setId, "weight", target.value, false);
-        if (action === "set-rpe") patchSetValue(target.dataset.setId, "rpe", target.value, false);
-        if (action === "set-duration") patchSetValue(target.dataset.setId, "durationSeconds", target.value, false);
-        if (action === "set-distance") patchSetValue(target.dataset.setId, "distance", target.value, false);
+        const writeSetInput = (field) => {
+          const accepted = patchSetValue(target.dataset.setId, field, target.value, false);
+          if (accepted === false) target.value = String(setById(target.dataset.setId)?.[field] ?? "");
+        };
+        if (action === "set-reps") writeSetInput("reps");
+        if (action === "set-weight") writeSetInput("weight");
+        if (action === "set-rpe") writeSetInput("rpe");
+        if (action === "set-duration") writeSetInput("durationSeconds");
+        if (action === "set-distance") writeSetInput("distance");
         if (action === "exercise-rest-seconds") patchExercise(target.dataset.exerciseId, { restSeconds: Number(target.value) }, false);
         if (action === "default-working-set-count") {
           const form = target.closest("[data-standard-workload-form]");
@@ -977,6 +992,13 @@
         if (document.visibilityState === "hidden" && hasActiveWorkout()) persistActiveWorkoutDraft();
         if (document.visibilityState === "visible") restCompletionController?.sync();
         if (!timer || timer.isPaused || !timer.isActive) return;
+        if (timer.isOvertime) {
+          timer.remainingSeconds = 0;
+          timer.overtimeSeconds = Math.max(0, Math.floor((Date.now() - Number(timer.endsAt || Date.now())) / 1000));
+          saveRuntime();
+          if (document.visibilityState === "visible") render();
+          return;
+        }
         if (document.visibilityState === "hidden") timer.backgroundedAt = Date.now();
         timer.remainingSeconds = Math.max(0, Math.ceil((timer.endsAt - Date.now()) / 1000));
         if (timer.remainingSeconds === 0) completeTimer();
@@ -994,6 +1016,6 @@
         flushWorkoutSyncQueue();
         flushPendingPushOperations();
         if (pushIdentity?.token && (pushIdentity.status === "deleting" || pushIdentity.deletion?.retryable === true)) deleteRemoteInstallationData({ automatic: true });
-        if (timer?.isActive && !timer.isPaused && timer.endsAt > Date.now() && timer.notificationStatus !== "scheduled") scheduleRestPush({ ...timer });
+        if (timer?.isActive && !timer.isPaused && !timer.isOvertime && timer.endsAt > Date.now() && timer.notificationStatus !== "scheduled") scheduleRestPush({ ...timer });
       });
       window.addEventListener("offline", () => render());
