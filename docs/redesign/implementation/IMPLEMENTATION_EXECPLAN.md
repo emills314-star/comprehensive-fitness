@@ -177,6 +177,8 @@ Focused M5 mobile evidence passed 5/5. Identity/compatibility coverage passed 65
 
 M5 is implemented locally. It is not published or independently accepted: pinned-runtime/device and human acceptance, independent migration verification, and all publication gates remain outside this local record.
 
+The recoverable M5 implementation checkpoint is `ef71085`.
+
 ## 5. Temporary structure ledger
 
 | Artifact | Introduced | Purpose | Delete gate |

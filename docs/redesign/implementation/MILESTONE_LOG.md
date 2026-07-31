@@ -448,8 +448,8 @@ No final-document contradiction was found. The current four-tab shell and `confi
 
 ### Recoverable checkpoint
 
-- Local milestone commit: pending creation after this evidence record and final staged privacy review.
+- Local milestone commit: `ef71085` (`Implement M5 two-destination shell and direct start`).
 
 ### Objective completion
 
-**PASS.** The M5 behavior and listed automated/visual gates pass, with no data migration or mutation. M6 may begin after the recoverable M5 checkpoint is recorded.
+**PASS.** The M5 behavior and listed automated/visual gates pass, with no data migration or mutation. The recoverable checkpoint is recorded, so M6 may begin.

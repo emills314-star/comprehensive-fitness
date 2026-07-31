@@ -63,12 +63,12 @@
 
 ## Current objective
 
-M0 through M5 are complete locally. M2 is checkpointed at `243ed81`; M3 is checkpointed at `3e102e2`; M4 is checkpointed at `576f582`. M5's checkpoint hash is recorded after its recoverable local commit.
+M0 through M5 are complete locally. M2 is checkpointed at `243ed81`; M3 is checkpointed at `3e102e2`; M4 is checkpointed at `576f582`; M5 is checkpointed at `ef71085`.
 
 ## Next actions
 
-1. Create and record the recoverable M5 checkpoint.
-2. Begin M6 only after re-reading its authoritative scope, without reactivating planner, dashboard, or duplicate recommendation paths.
+1. Re-read the M6 authoritative scope and current implementation state.
+2. Record the exact M6 scope, then implement it without reactivating planner, dashboard, or duplicate recommendation paths.
 3. Automated, privacy, migration, independent, target-device, and five-workout human acceptance gates precede any separately authorized publication.
 
 ## Open issues
