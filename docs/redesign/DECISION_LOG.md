@@ -140,3 +140,10 @@ Record decisions here only after reviewing relevant product evidence, repository
 **Decision:** M3 retains one versioned compatibility reader for obsolete planner keys. It preserves workout/session/set/routine observations and immutable embedded historical snapshots, then discards planner collections, selection/linkage, planning settings, and planner-only recommendation history before data enters active state or a current export.
 **Rationale:** Old backups must recover trustworthy workout and routine facts, but preserving a removed relationship as active state would recreate the deleted product and a second source of truth.
 **Consequence:** Current writers, schemas, requests, runtime state, routes, engine APIs, and overrides cannot create mesocycle linkage. Historical snapshot validators may accept optional legacy fields only for read/replay integrity. Orphaned obsolete active-plan references cannot block recovery of otherwise valid history.
+
+## D-021 - Source history is retained without an analytical product
+
+**Status:** Accepted
+**Decision:** M4 deletes normal Today/Start/Progress consumers and producers for hypertrophy, weekly/fractional volume, program scores, research/evidence/confidence status, and duplicate recommendations. Completed workout/set/variant observations and bounded identity/import/snapshot compatibility remain; derived analytical state receives no current writer or route.
+**Rationale:** The approved M2 live resolver consumes direct pain/illness observations and requires no analytical exposure input. Preserving trustworthy source history therefore does not require preserving the dashboard, the programming-family projection ledger, or a hidden renamed analytics subsystem.
+**Consequence:** Progress may derive only factual, inspectable performance points from comparable recorded sets. Stable named-variant targets and factual prior prefills remain. Stored legacy analytical fields are immutable compatibility facts until their sequenced migration gate, not authority for current UI, recomputation, or product scope.

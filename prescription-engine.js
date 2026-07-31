@@ -7,14 +7,11 @@
  * the static browser app and to Node-based validation scripts.
  */
 (function prescriptionEngineUmd(root, factory) {
-  const familyLedger = typeof module === "object" && module.exports ? require("./programming-family-ledger") : root.ComprehensiveFitnessProgrammingFamilyLedger;
-  const api = factory(familyLedger);
+  const api = factory();
   if (typeof module === "object" && module.exports) module.exports = api;
   if (root) root.ComprehensiveFitnessPrescriptionEngine = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function prescriptionEngineFactory(familyLedger) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function prescriptionEngineFactory() {
   "use strict";
-
-  if (!familyLedger) throw new Error("Programming family ledger is required.");
 
   const ENGINE_VERSION = "3.4.1";
   const PRESCRIPTION_SCHEMA_VERSION = "2.4.0";
@@ -1563,69 +1560,6 @@
   function taxonomyContributionFor(research, exerciseOrId, muscleGroupId) {
     const matches = taxonomyRelationshipsFor(research, exerciseOrId).filter((mapping) => researchMuscleMatch(research, muscleGroupId, mapping.muscle_group_id || mapping.muscleGroupId));
     return matches.sort((a, b) => number(b.fractional_set_credit, 0) - number(a.fractional_set_credit, 0))[0] || null;
-  }
-
-  function calculateExerciseMuscleContributions(researchInput, exerciseOrId, workingSets = 1) {
-    const research = researchInput?.kind === "research_evidence_adapter" ? researchInput : createResearchDataAdapter(researchInput || {});
-    return taxonomyRelationshipsFor(research, exerciseOrId).map((mapping) => {
-      const setCredit = number(mapping.fractional_set_credit, 0);
-      return {
-        exerciseId: typeof exerciseOrId === "string" ? exerciseOrId : firstPresent(exerciseOrId?.researchExerciseId, exerciseOrId?.exerciseId),
-        muscleGroupId: mapping.muscle_group_id || mapping.muscleGroupId,
-        relationshipType: mapping.relationship_type,
-        loadingRole: mapping.loading_role || "unknown",
-        directSets: mapping.relationship_type === "direct_load" ? workingSets * setCredit : 0,
-        fractionalSets: mapping.relationship_type === "meaningful_fractional_load" ? workingSets * setCredit : 0,
-        weightedHypertrophySets: workingSets * setCredit,
-        isometricExposure: mapping.relationship_type === "isometric_stabilizing_load" ? workingSets * number(mapping.local_fatigue_weight, 0) : 0,
-        taxonomyVersion: String(firstPresent(mapping.taxonomy_version, mapping.taxonomyVersion) || "").trim() || null,
-        confidence: mapping.confidence_rating,
-        evidenceNotes: mapping.evidence_notes
-      };
-    });
-  }
-
-  function recalculateHistoricalMuscleVolume(evidenceInput, records = []) {
-    const evidence = evidenceInput?.research ? evidenceInput : normalizeEvidenceBundle(evidenceInput || {});
-    const snapshot = deepClone(records);
-    const totals = new Map();
-    const taxonomyVersions = new Set();
-    let missingTaxonomyProvenance = snapshot.length === 0;
-    snapshot.forEach((record) => {
-      const canonicalId = firstPresent(record.researchExerciseId, evidence.research.exerciseIdByAlias.get(normalizeText(record.exerciseName)), record.exerciseId);
-      const contributions = calculateExerciseMuscleContributions(evidence.research, canonicalId, number(record.workingSets, record.sets || 0));
-      if (!contributions.length) missingTaxonomyProvenance = true;
-      contributions.forEach((entry) => {
-        if (entry.taxonomyVersion) taxonomyVersions.add(entry.taxonomyVersion);
-        else missingTaxonomyProvenance = true;
-        if (!totals.has(entry.muscleGroupId)) totals.set(entry.muscleGroupId, { muscleGroupId: entry.muscleGroupId, directSets: 0, fractionalSets: 0, weightedHypertrophySets: 0, isometricExposure: 0, contributions: [] });
-        const total = totals.get(entry.muscleGroupId);
-        total.directSets += entry.directSets;
-        total.fractionalSets += entry.fractionalSets;
-        total.weightedHypertrophySets += entry.weightedHypertrophySets;
-        total.isometricExposure += entry.isometricExposure;
-        total.contributions.push(entry);
-      });
-    });
-    const taxonomyVersion = taxonomyVersions.size === 0
-      ? "unknown"
-      : missingTaxonomyProvenance || taxonomyVersions.size > 1
-        ? "mixed"
-        : [...taxonomyVersions][0];
-    const familyProjection = familyLedger.projectHistoricalVolume(snapshot, (record) => {
-      const canonicalId = firstPresent(record.researchExerciseId, evidence.research.exerciseIdByAlias.get(normalizeText(record.exerciseName)), record.exerciseId);
-      return taxonomyRelationshipsFor(evidence.research, canonicalId);
-    });
-    return {
-      taxonomyVersion,
-      ledgerVersion: familyProjection.ledgerVersion,
-      programmingFamilyVersion: familyProjection.programmingFamilyVersion,
-      familyProjectionStatus: familyProjection.projectionStatus,
-      rollbackContract: familyProjection.rollbackContract,
-      sourceRecords: snapshot,
-      muscleTotals: [...totals.values()].map((item) => ({ ...item, directSets: round(item.directSets, 2), fractionalSets: round(item.fractionalSets, 2), weightedHypertrophySets: round(item.weightedHypertrophySets, 2), isometricExposure: round(item.isometricExposure, 2) })),
-      familyTotals: familyProjection.familyTotals
-    };
   }
 
   function aggregateMuscleResearchDefaults(research, muscleGroupId) {
@@ -5385,8 +5319,6 @@
     representedMuscleGroups,
     muscleFamily,
     buildAllCandidatePools,
-    calculateExerciseMuscleContributions,
-    recalculateHistoricalMuscleVolume,
     createExercisePrescriptionSnapshot,
     createWorkoutPrescription,
     recommendationForSurface,

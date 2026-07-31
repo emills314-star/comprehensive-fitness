@@ -74,11 +74,10 @@ async function waitForPersisted(page, predicate, message, timeout = 20_000) {
   return persistedData(page);
 }
 
-async function openProgressView(page, view) {
+async function openProgress(page) {
   const progressTab = page.locator('[data-action="set-tab"][data-tab="progress"]');
   if (await progressTab.getAttribute("aria-current") !== "page") await progressTab.click();
-  await page.locator(`[data-action="set-progress-view"][data-progress-view="${view}"]`).click();
-  await expect(page.locator(`[data-action="set-progress-view"][data-progress-view="${view}"]`)).toHaveAttribute("aria-current", "page");
+  await expect(progressTab).toHaveAttribute("aria-current", "page");
 }
 
 test("workout completion renders the full earned achievement strip from verified outcomes", async ({ page }) => {
@@ -321,8 +320,8 @@ test("critical workout lifecycle remains coherent through submission, progress, 
   await expect(firstWorkingSet.locator('[data-set-mode="current"]')).toHaveCount(0);
   await expect(firstWorkingSet.locator('[data-set-mode="logged"]')).toHaveCount(1);
   await expect(completion).toBeFocused();
-  await expect(page.locator('[data-session-dock-progress]')).toHaveText("1 of 3 sets");
-  await expect(page.locator('[data-workout-rollup]')).not.toContainText("1/3");
+  await expect(page.locator('[data-session-dock-progress]')).toHaveText("1 of 2 sets");
+  await expect(page.locator('[data-workout-rollup]')).not.toContainText("1/2");
   const timer = page.locator(".workout-timer-slot > .timer-bar");
   await expect(timer, "completing an eligible set must start its rest timer").toBeVisible();
   await expect(firstWorkingSet.locator(".timer-bar"), "the M1 rest strip must not be nested inside a logged set").toHaveCount(0);
@@ -354,24 +353,19 @@ test("critical workout lifecycle remains coherent through submission, progress, 
   await expect(page.locator(".session-dock")).toHaveCount(0);
   await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible();
 
-  await openProgressView(page, "history");
+  await openProgress(page);
   const submittedCard = page.locator(`[data-action="open-session"][data-session-id="${activeSession.id}"]`);
   await expect(submittedCard).toHaveCount(1);
   await expect(submittedCard).toContainText(TEMPLATE_NAME);
 
-  await openProgressView(page, "overview");
-  await expect(page.locator(".dashboard-view")).toBeVisible();
-  await expect(page.locator(".progress-switcher")).toBeVisible();
-  await expect(page.locator(".progress-conclusion")).toContainText("volume and fatigue signals");
-
-  await openProgressView(page, "lifts");
   await expect(page.getByRole("combobox", { name: "Search or select exercise" })).toHaveValue(EXERCISE_NAME, { timeout: 45_000 });
-  await expect(page.locator(".charts-view h1")).toHaveText(EXERCISE_NAME);
+  await expect(page.locator(".charts-view h1")).toHaveText("Training history");
+  await expect(page.locator('.chart-card[data-chart-key="performance"]')).toBeVisible();
+  await expect(page.locator(".progress-switcher, .dashboard-view")).toHaveCount(0);
 
   await page.reload();
   await expect(page.locator("main.app-main")).toBeVisible({ timeout: 45_000 });
-  await expect.poll(() => page.evaluate(() => String(prescriptionEvidenceStatus?.state || "loading")), { timeout: 45_000 }).toBe("ready");
-  await openProgressView(page, "history");
+  await openProgress(page);
   await expect(page.locator(`[data-action="open-session"][data-session-id="${activeSession.id}"]`), "the submitted session must survive reload").toHaveCount(1);
 
   const beforeUnitChange = await persistedData(page);
@@ -389,7 +383,7 @@ test("critical workout lifecycle remains coherent through submission, progress, 
   expect(pounds.sets.find((set) => set.id === originalSet.id).weight).toBeCloseTo(originalSet.weight, 1);
   await page.reload();
   await expect(page.locator('[data-action="weight-unit"][value="lb"]')).toBeChecked({ timeout: 45_000 });
-  await openProgressView(page, "history");
+  await openProgress(page);
   await expect(page.locator(`[data-action="open-session"][data-session-id="${activeSession.id}"]`)).toHaveCount(1);
   expect(browserErrors, "the complete critical lifecycle must not emit browser errors").toEqual([]);
 });

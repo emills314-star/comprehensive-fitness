@@ -25,18 +25,17 @@ const renderUpdateBanner = functionSource(views, "renderUpdateBanner", "renderOf
 const readinessMetricDelta = functionSource(views, "readinessMetricDelta", "readinessMetricField");
 const renderTemplateStartSheet = functionSource(views, "renderTemplateStartSheet", "prescriptionLine");
 const renderCancelWorkoutSheet = functionSource(views, "renderCancelWorkoutSheet", "closeCancelWorkout");
-const renderResolvedAction = functionSource(views, "renderResolvedAction", "todayPlanPreview");
-const renderTodayPlanPreview = functionSource(views, "renderTodayPlanPreview", "renderLiftHome");
-const renderHistory = functionSource(analysis, "renderHistory", "exerciseDeloadPresentation");
-const chartPointComparison = functionSource(analysis, "chartPointSetComparison", "renderChartPointSetGroups");
+const renderResolvedAction = functionSource(views, "renderResolvedAction", "renderLiftHome");
+const renderLiftHome = functionSource(views, "renderLiftHome", "workoutProgress");
+const renderHistory = functionSource(analysis, "renderHistory", "normalizeSetTypeCode");
+const renderChartPointDetail = functionSource(analysis, "renderChartPointDetail", "renderLiftProgress");
 const renderStoragePersistenceFact = functionSource(analysis, "renderStoragePersistenceFact", "renderSettings");
 const renderSettings = functionSource(analysis, "renderSettings");
 const renderCompletedSummary = functionSource(history, "renderCompletedWorkoutSummary");
 
 assert.doesNotMatch(renderTemplateStartSheet, /Nothing is lost either way/, "destructive conflict copy must not promise zero loss");
 assert.match(renderTemplateStartSheet, /Discarding permanently removes this draft/, "destructive conflict copy must name permanent draft loss");
-assert.doesNotMatch(renderHistory, /do not affect charts, coaching, PRs, templates, or weekly volume/, "retention copy must not deny live archive consumers");
-assert.match(renderHistory, /full submitted archive[\s\S]*fallback coaching evidence/, "retention copy must disclose the full archive and fallback use");
+assert.match(renderHistory, /isSessionSubmitted\(session\)[\s\S]*sessionCompletionDate[\s\S]*Every submitted workout remains available/, "Progress must retain the full submitted archive in chronological order");
 assert.match(renderUpdateBanner, /wait while an active workout remains open/, "update copy must describe the real active-workout gate");
 
 assert.doesNotMatch(renderRoot, /shellProgress/, "the shell must not repeat workout progress owned by the workout and dock");
@@ -45,18 +44,16 @@ assert.doesNotMatch(renderHistory, /History · \$\{totalSessions\}/, "History co
 assert.doesNotMatch(renderCancelWorkoutSheet, /<h2[^>]*>\$\{completedSets\}/, "the cancel heading must not repeat the diff-owned completed-set count");
 assert.match(renderCancelWorkoutSheet, /exerciseIds\.size[\s\S]*draftSets\.length[\s\S]*completedSets/, "destructive copy must enumerate all exercise and set records being removed");
 assert.doesNotMatch(renderSettings, /formatTimer\(Number\(data\.settings\.defaultRestSeconds/, "Settings must not restate default rest in a second format");
-assert.match(renderCompletedSummary, /completionHeadline[\s\S]*workout-grade-mark/, "the grade mark must remain the sole visible grade value beside the evidence-backed completion headline");
-assert.match(renderTodayPlanPreview, /Stable target[\s\S]*Last time[\s\S]*Effort/, "Today must present the stable routine target beside factual prior performance");
-assert.doesNotMatch(renderTodayPlanPreview, /confidence|evidence|recommendation/i, "the ordinary Today preview must remain silent about internal recommendation evidence");
+assert.match(renderCompletedSummary, /completionHeadline[\s\S]*workout-grade-mark/, "the grade mark must remain the sole visible grade value beside the completion headline");
+assert.match(renderLiftHome, /Expected workout[\s\S]*data-action="start-next-template"/, "Today must present the expected workout and one primary Start action");
+assert.doesNotMatch(renderLiftHome, /Stable target|Last time|weekly volume|hypertrophy|confidence|evidence/i, "Today must not restore the deleted analysis preview");
 assert.match(renderResolvedAction, /if \(!resolvedAction \|\| resolvedAction\.outcome !== "action"\) return ""/, "the exception renderer must remain silent unless the canonical resolver produced an action");
 assert.match(renderResolvedAction, /resolvedAction\.action\?\.code[\s\S]*resolvedAction\.category[\s\S]*resolvedAction\.reasonCodes/, "the exception renderer must consume the canonical resolved action rather than recomputing a recommendation");
 assert.doesNotMatch(renderResolvedAction, /confidence|evidence|matrix|training window|qualification/i, "the concise exception card must not expose internal confidence or evidence machinery");
 assert.doesNotMatch(views, /function renderRolePrescriptionDetails\(|function renderUnifiedPrescriptionDetails\(/, "deleted prescription-evidence renderers must not return");
 
 assert.match(renderWorkoutRollup, /rollup\.drift > 0 \? "out" : "under"/, "RPE drift below target must use under, not over");
-assert.match(chartPointComparison, /actualReps < repLow\) delta = \{ tone: "under"/, "reps below target must use under");
-assert.match(chartPointComparison, /actualReps > repHigh\) delta = \{ tone: "out"/, "reps above a ceiling must use out");
-assert.match(chartPointComparison, /actualRpe < rpeLow\) delta = \{ tone: "under"/, "RPE below target must use under");
+assert.match(renderChartPointDetail, /Selected session[\s\S]*chart-point-rollup[\s\S]*load[\s\S]*reps[\s\S]*RPE[\s\S]*role[\s\S]*Recorded sets/, "A selected factual chart point must expose date, load, reps, RPE, role, and source sets");
 assert.match(readinessMetricDelta, /tone: "none"/, "raw readiness differences must remain neutral facts");
 assert.doesNotMatch(readinessMetricDelta, /tone: desirable|stronglyAdverse/, "raw readiness differences must not invent a semantic judgement");
 assert.doesNotMatch(renderStoragePersistenceFact, /class="ri-val d |tone:/, "storage-persistence facts must remain plain ink");
@@ -81,5 +78,6 @@ const directHexDeclarations = style.split(/\r?\n/).filter((line) => {
 });
 assert.deepEqual(directHexDeclarations, [], "component declarations must consume color tokens instead of raw hex values");
 assert.doesNotMatch(style, /workout-session-board|session-board-module|session-exercise-rail|session-exercise-index|session-exercise-state|support-drawer/, "replaced Workout Board chrome must not remain in production CSS");
+assert.doesNotMatch(style, /hypertrophy-score|volume-table|volume-exercise-row|progress-switcher/, "deleted score, weekly-volume, and persistent Progress-subview styles must not remain");
 
 console.log("Design-system integrity contract passed.");

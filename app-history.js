@@ -233,7 +233,7 @@
         if (exerciseResults.some((result) => result.isReadinessAdjusted)) return "Readiness-adjusted training";
         const template = data.templates.find((item) => item.id === session.templateId) || { name: session.title || "" };
         const type = sessionTypeForTemplate(template);
-        return ({ heavy: "Heavy training", light: "Light training", technique: "Technique-focused training", deload: "Planned deload", normal: "Standard hypertrophy training" })[type] || "Standard hypertrophy training";
+        return ({ heavy: "Heavy training", light: "Light training", technique: "Technique-focused training", deload: "Planned deload", normal: "Standard training" })[type] || "Standard training";
       }
 
       function scoreWorkoutGradeMetrics(metrics) {
@@ -458,26 +458,7 @@
           const value = executionQualityValues.has(exercise.executionQualityAssessment) ? exercise.executionQualityAssessment : "not_assessed";
           return '<label><span>' + escapeHtml(exercise.name) + '</span><select data-action="exercise-execution-quality" data-exercise-id="' + exercise.id + '"><option value="not_assessed" ' + (value === "not_assessed" ? "selected" : "") + '>Not assessed</option><option value="controlled" ' + (value === "controlled" ? "selected" : "") + '>Controlled</option><option value="breakdown" ' + (value === "breakdown" ? "selected" : "") + '>Breakdown</option></select></label>';
         }).join('');
-        return '<section class="submit-confirmation"><strong>Log this workout as completed?</strong><span>' + completed + ' completed working sets will update history, charts, volume, and PRs.</span><div class="submit-quality"><b>Did execution stay controlled?</b><small>Submission is allowed without an assessment, but an unassessed exposure cannot confirm progression.</small>' + qualityControls + '</div><div class="row"><button class="primary-action" type="button" data-action="confirm-submit-workout">Log workout</button><button type="button" data-action="cancel-submit-workout">Keep editing</button></div></section>';
-      }
-
-      function renderBaseNextExposurePreview(session, result) {
-        const exercise = data.exercises.find((item) => item.id === result.exerciseId && item.sessionId === session.id);
-        if (!exercise) return "";
-        const stable = exercise.stableTargetSnapshot || exercise.originalPrescription || exercise.prescription || {};
-        const exerciseSets = setsForExercise(exercise.id).filter((set) => isWorkingSet(set, "score"));
-        const firstSet = exerciseSets[0] || {};
-        const setCount = Number(stable.sets || exerciseSets.length || 0);
-        const repMin = Number(stable.repLow || stable.repMin || firstSet.targetRepMin || firstSet.targetReps || 0);
-        const repMax = Number(stable.repHigh || stable.repMax || firstSet.targetRepMax || firstSet.targetReps || repMin);
-        const targetRpe = Number(stable.rpe || firstSet.targetRpeMax || firstSet.targetRpe || 0);
-        const parts = [
-          setCount > 0 ? setCount + " set" + (setCount === 1 ? "" : "s") : "",
-          repMin > 0 ? (repMax > repMin ? repMin + "-" + repMax : repMin) + " reps" : "",
-          targetRpe > 0 ? "RPE " + formatLoadNumber(targetRpe) : ""
-        ].filter(Boolean);
-        if (!parts.length) return "";
-        return '<div class="next-exposure-preview"><span>Routine target</span><strong>' + escapeHtml(parts.join(" · ")) + '</strong></div>';
+        return '<section class="submit-confirmation"><strong>Log this workout as completed?</strong><span>' + completed + ' completed working sets will update history, the performance chart, and PRs.</span><div class="submit-quality"><b>Did execution stay controlled?</b><small>Submission is allowed without an assessment, but an unassessed exposure cannot confirm progression.</small>' + qualityControls + '</div><div class="row"><button class="primary-action" type="button" data-action="confirm-submit-workout">Log workout</button><button type="button" data-action="cancel-submit-workout">Keep editing</button></div></section>';
       }
 
       function renderWorkoutExerciseResult(result) {
@@ -671,7 +652,6 @@
         if (!analysis) return '<section class="completed-summary score-critical"><div class="section-kicker">Workout logged</div><div class="summary-muted">Not enough completed or prescribed working-set data was available to assign a defensible workout grade.</div>' + (options.history ? '' : '<button type="button" data-action="close-completed-summary">Return to Lift Home</button>') + '</section>';
         const tone = workoutGradeScoreTone(analysis.internalScore);
         const gradeSegments = Math.max(0, Math.min(10, Math.round(Number(analysis.internalScore || 0) / 10)));
-        const confidenceLevel = analysis.confidence === "high" ? 4 : analysis.confidence === "moderate" ? 3 : analysis.confidence === "low" ? 2 : 1;
         const achievements = workoutAchievementBadges(session, analysis);
         const achievementSection = achievements.length
           ? '<section class="workout-achievements" aria-labelledby="workout-achievements-title"><div class="workout-achievements-heading"><div><span class="section-kicker">Earned this workout</span><h3 id="workout-achievements-title">Achievement badges</h3></div><strong>' + achievements.length + ' earned</strong></div><div class="workout-achievement-grid" role="list">' + achievements.map(renderWorkoutAchievement).join('') + '</div></section>'
@@ -688,16 +668,13 @@
         const completionHeadline = plannedSets > 0
           ? completedSets + ' of ' + plannedSets + (completedSets === plannedSets && analysis.improvements.length === 0 ? ', inside the bands.' : ' prescribed sets completed.')
           : analysis.interpretation;
-        const confidence = '<div class="workout-confidence"><span class="meter lg" data-conf="' + confidenceLevel + '" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span><strong>' + escapeHtml(analysis.confidence.charAt(0).toUpperCase() + analysis.confidence.slice(1)) + ' confidence in this grade.</strong> Based on ' + completedSets + ' completed working sets, ' + Math.round(analysis.metrics.rpeLoggedRatio * 100) + '% RPE coverage, and available prior comparable sessions. Warm-ups were excluded.</span></div>';
-        const exerciseResults = '<section class="workout-summary-section primary-exercise-results"><div class="summary-section-label"><h3>The session, diffed</h3><span>Plan → actual</span></div><div class="workout-exercise-list">' + analysis.exerciseResults.map((result) => renderWorkoutExerciseResult(result) + (options.history ? '' : renderBaseNextExposurePreview(session, result))).join('') + '</div></section>';
+        const exerciseResults = '<section class="workout-summary-section primary-exercise-results"><div class="summary-section-label"><h3>The session, diffed</h3><span>Plan → actual</span></div><div class="workout-exercise-list">' + analysis.exerciseResults.map(renderWorkoutExerciseResult).join('') + '</div></section>';
         return '<section class="completed-summary ' + tone + '" aria-label="Post-workout grade and analysis">'
           + (options.history ? '' : '<div class="summary-toolbar"><span class="section-kicker">Session logged</span><button class="primary-action" type="button" data-action="close-completed-summary">Done</button></div>')
           + (options.history ? '' : renderResolvedAction(resolvedActionForScope(session, "session"), { session }))
-          + '<div class="workout-grade-hero"><div class="workout-grade-copy"><div class="section-kicker">' + escapeHtml(session.title || (options.history ? 'Saved workout review' : 'Workout logged')) + (facts.durationMinutes ? ' · ' + facts.durationMinutes + ' min' : '') + '</div><h2>' + escapeHtml(completionHeadline) + '</h2><span class="workout-grade-intent">' + escapeHtml(analysis.intent) + '</span><p>' + escapeHtml(analysis.interpretation) + '. ' + escapeHtml(analysis.rationale) + '</p><span class="track" aria-label="Workout grade strength">' + Array.from({ length: 10 }, (_, index) => '<i class="seg ' + (index < gradeSegments ? 'filled' : '') + '"></i>').join('') + '</span></div><div class="workout-grade-mark" role="img" aria-label="Workout grade ' + escapeHtml(hypertrophyGradeLabel(analysis.grade)) + '">' + escapeHtml(analysis.grade) + '</div></div>'
-          + confidence
+          + '<div class="workout-grade-hero"><div class="workout-grade-copy"><div class="section-kicker">' + escapeHtml(session.title || (options.history ? 'Saved workout review' : 'Workout logged')) + (facts.durationMinutes ? ' · ' + facts.durationMinutes + ' min' : '') + '</div><h2>' + escapeHtml(completionHeadline) + '</h2><span class="workout-grade-intent">' + escapeHtml(analysis.intent) + '</span><p>' + escapeHtml(analysis.interpretation) + '. ' + escapeHtml(analysis.rationale) + '</p><span class="track" aria-label="Workout grade strength">' + Array.from({ length: 10 }, (_, index) => '<i class="seg ' + (index < gradeSegments ? 'filled' : '') + '"></i>').join('') + '</span></div><div class="workout-grade-mark" role="img" aria-label="Workout grade ' + escapeHtml(analysis.grade) + '">' + escapeHtml(analysis.grade) + '</div></div>'
           + exerciseResults
           + achievementSection
-          + '<section class="workout-summary-section"><h3>Category breakdown</h3><div class="workout-category-list">' + analysis.categoryScores.map((category) => '<div class="workout-category weight-' + category.possible + '"><strong>' + escapeHtml(category.label) + '</strong><b>' + category.earned + ' / ' + category.possible + '</b><span class="category-bar" aria-hidden="true"><i class="category-fill fill-' + Math.round((category.earned / Math.max(1, category.possible)) * 10) + '"></i></span><span>' + escapeHtml(category.reason) + '</span></div>').join('') + '</div></section>'
           + '<section class="workout-summary-section"><h3>Workout Highlights</h3><div class="workout-highlight-list">' + highlights + '</div></section>'
           + '<section class="workout-summary-section"><h3>Retrospective Session Review</h3><p class="settings-note">These observations describe the completed work and its recorded data quality.</p><div class="workout-improvement-list">' + improvements + '</div></section>'
           + '</section>';

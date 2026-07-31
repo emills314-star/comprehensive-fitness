@@ -18,7 +18,6 @@ const {
   evaluateReadiness,
   equipmentRequirementOptions,
   equipmentCompatible,
-  recalculateHistoricalMuscleVolume,
   recommendationForSurface,
   serializeRecommendationSnapshot,
   deserializeRecommendationSnapshot,
@@ -668,27 +667,6 @@ test("compound taxonomy distinguishes dynamic, fractional, incidental, and isome
   assert(deadlift.some((row) => row.muscle_group_id === "mg_quadriceps" && row.relationship_type === "meaningful_fractional_load"));
   assert(deadlift.some((row) => row.muscle_group_id === "mg_spinal_erectors" && row.relationship_type === "isometric_stabilizing_load" && row.fractional_set_credit === 0));
   assert(deadlift.some((row) => row.muscle_group_id === "mg_forearms" && row.local_fatigue_weight > 0 && row.fractional_set_credit === 0));
-});
-
-test("weighted taxonomy volume is traceable, deterministic, and leaves logged records unchanged", () => {
-  const evidence = loadEvidenceFromFiles(path.resolve(__dirname, ".."), { includeSessionMetrics: false, includeWeeklyVolume: false });
-  const logged = [{ exerciseName: "Conventional Deadlift", workingSets: 4, weight: 405, reps: 5, rpe: 8, date: "2026-07-01" }];
-  const before = JSON.stringify(logged);
-  const first = recalculateHistoricalMuscleVolume(evidence, logged);
-  const second = recalculateHistoricalMuscleVolume(evidence, logged);
-  assert.strictEqual(JSON.stringify(logged), before, "Historical logged performance must remain immutable");
-  assert.deepStrictEqual(first, second, "Recalculation must be deterministic");
-  const relationshipTaxonomyVersions = [...new Set((evidence.research.muscleMapsByExercise.get("ex_deadlift") || []).map((row) => row.taxonomy_version).filter(Boolean))];
-  assert.strictEqual(relationshipTaxonomyVersions.length, 1, "The deadlift fixture must use exactly one relationship taxonomy version");
-  assert.strictEqual(first.taxonomyVersion, relationshipTaxonomyVersions[0], "Historical recalculation must report relationship taxonomy provenance rather than the overall research database version");
-  const glutes = first.muscleTotals.find((row) => row.muscleGroupId === "mg_glutes_max");
-  const quads = first.muscleTotals.find((row) => row.muscleGroupId === "mg_quadriceps");
-  const erectors = first.muscleTotals.find((row) => row.muscleGroupId === "mg_spinal_erectors");
-  assert.strictEqual(glutes.directSets, 4);
-  assert.strictEqual(quads.fractionalSets, 2);
-  assert.strictEqual(erectors.weightedHypertrophySets, 0);
-  assert(erectors.isometricExposure > 0);
-  assert.strictEqual(glutes.contributions.reduce((sum, row) => sum + row.weightedHypertrophySets, 0), glutes.weightedHypertrophySets);
 });
 
 test("straight-set load progression requires a top first set and acceptable later-set rep loss", () => {

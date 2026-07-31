@@ -258,3 +258,102 @@ No final-document contradiction was found. The current planner's validation, equ
 - Verification used Node 24.18.0/npm 11.16.0 instead of the repository-pinned Node 22.23.x/npm 10.9.x.
 - Real private-history replay, physical-device/notification validation, full browser matrix, independent migration verification, five-workout field testing, deployment, push, merge, and publication remain unperformed.
 - **Checkpoint:** `3e102e2` (`feat(redesign): remove planner and mesocycle product`).
+
+## M4 — Remove analytical and research clutter from execution paths
+
+**Status:** IMPLEMENTED LOCALLY
+**Started:** 2026-07-31
+**Baseline checkpoint:** `3e102e2`
+**Branch:** `codex/zero-based-redesign`
+**Authority:** Final dispositions B-13, B-15, B-17, F-05, F-09 through F-16, X-07, and X-10; migration plan M4.
+
+### Exact milestone scope
+
+- Stop Today and workout Start from computing hypertrophy, weekly volume, research status, program scores, or normal plan previews.
+- Delete dashboard/scorecard, hypertrophy, volume, fractional-set, “reps at weight,” research/evidence/count/version, confidence, and duplicate recommendation renderers, routes, state, styles, tests, consumers, and background producers.
+- Remove the persistent Progress route/switcher for deleted analysis families while preserving source workout/set/readiness/rest/history facts and approved factual exercise history.
+- Reduce internal exposure/relationship calculations to the minimum still exercised by retained recommendation evaluation; do not approve or add a numeric rule.
+- Prove Today/Start removed-compute absence, Progress route absence, retained source-history integrity, and recommendation-evaluation compatibility.
+
+### Affected data and migration safety
+
+- Completed workouts, exercises, sets, variant identity, load/reps/RPE/role, duration, readiness/rest facts, notes, imports, stored historical grades, and immutable historical snapshots remain source observations.
+- Derived hypertrophy, fractional-volume, program-score, confidence, evidence-status, and chart-view state are not source history and receive no new writer.
+- No production/private personal data will be used or mutated. Synthetic fixtures and current public contracts provide deletion evidence.
+
+### Authority/conflict review
+
+No final-document contradiction was found. Existing calculation effort, research data, stored historical snapshots, and current UI tests do not authorize visible analysis or computation on Today/Start. Research/taxonomy inputs may remain only where a retained evaluated engine path or historical decoder demonstrably requires them.
+
+### Implementation summary
+
+- Today now presents the expected workout, one direct Start action, and compact alternate workouts without a normal plan comparison, score, weekly-volume link, or research status.
+- Workout Start constructs stable named-variant targets and factual same-role prior prefills without generating a normal analytical prescription, confidence value, or mutable program-target context.
+- Progress is one coherent destination containing a single factual per-variant performance chart, inspectable source facts, and chronological workout history.
+- Dashboard, weekly/fractional volume, hypertrophy score/window/qualification, program scorecard, research/evidence/confidence presentation, persistent Progress subviews, duplicate recommendation presentation, and their state/actions/styles/tests were removed.
+- The programming-family ledger and unused historical fractional-volume projection APIs were deleted from the runtime and package boundary.
+- Web/native public assets were synchronized atomically; the stale ledger payload was pruned and the service-worker cache advanced to v98.
+
+### Files changed
+
+- Runtime/UI: `app-analysis.js`, `app-foundation.js`, `app-history.js`, `app-import.js`, `app-views.js`, `app-workout.js`, `app.js`, `index.html`, `prescription-engine.js`.
+- Package boundary: `package.json`, `sw.js`, `scripts/sync-web.ps1`, `scripts/verify-pwa.ps1`, generated `www/` mirrors.
+- Deleted runtime/test artifacts: `programming-family-ledger.js`, `www/programming-family-ledger.js`, `scripts/test-exercise-expectations.js`, `scripts/test-hypertrophy-score.js`, and `scripts/test-taxonomy-family-projection.js`.
+- Tests: M4 removal/factual-Progress contract plus affected public and Playwright contract suites.
+- Documentation: governing product, architecture, decision-engine, UI/UX, roadmap, training-prescription, redesign status, execution-plan, decision-log, and milestone-log records were reviewed and updated where current behavior changed.
+
+### Data changes and migration safety
+
+- No stored app-data schema or production/private data migration was performed.
+- Completed workouts, exercise and variant identity, order, sets, load/reps/RPE/role, duration, readiness/rest, notes, imports, historical grades, PR-relevant source facts, and immutable legacy snapshots remain readable and unchanged.
+- Historical compatibility fields remain accepted only at bounded read/import boundaries; current M4 writers do not create analytical prescription, confidence, hypertrophy, fractional-volume, program-score, research-status, or Progress-subview state.
+- The canonical M2 live resolver requires no analytical exposure input. Its only approved live producer remains direct current pain/injury or illness.
+
+### Features removed
+
+- Today plan-versus-last and normal workout-plan preview.
+- Dashboard/scorecard and weekly muscle-volume drilldowns.
+- Direct/secondary/fractional-set presentation and the programming-family projection ledger.
+- Program-wide and per-lift hypertrophy scores, qualification windows, and analysis caches.
+- Research count/version/status, evidence, and confidence presentation.
+- Persistent Progress modes/routes and duplicate recommendation surfaces.
+- Separate “reps at weight” chart/test family and obsolete analytical test harnesses.
+
+### Capabilities retained internally
+
+- Stable routine targets and exact exercise-variant identity.
+- Factual same-role prior-performance prefills.
+- Chronological source history and one factual inspectable performance chart.
+- Canonical pain/illness exception resolution and persisted handling.
+- Narrow identity, import, historical-snapshot, and schema compatibility needed to preserve supported existing data.
+- Stored historical grades and factual PR/achievement records remain for the sequenced M7 grade/completion migration.
+
+### Verification evidence
+
+- Focused M4 contract: `node scripts/test-redesign-m4-analytics-removal.js` — PASS.
+- Full public gate: 58/58 selected scripts — PASS. Two research archive/workbook tests initially hit sandbox `spawnSync git EPERM`; both passed unchanged when rerun with read-only Git subprocess permission.
+- App integration: 38/38 contracts — PASS.
+- Static lint: PASS (199 JavaScript files, 3,133 JSON files).
+- Type check: `npm.cmd run redesign:typecheck` — PASS.
+- Production build: `npm.cmd run redesign:build` — PASS (24 modules; 262.07 kB JavaScript / 78.73 kB gzip).
+- Web/PWA packaging: 39 public assets synchronized; 38-asset root/native verification PASS; service-worker cache v98.
+- Privacy: PASS for 649 tracked/archive project files. The sandboxed first attempt could not invoke Git and therefore fell back to walking ignored private data; the unchanged gate passed when allowed to enumerate tracked files as designed.
+- Focused Playwright: `tests/ui/redesign-m4-factual-progress.spec.js` — 2/2 PASS at 390 × 844.
+- Visual evidence: `artifacts/ui-audit/m4/m4-mobile-factual-progress-point.png` and `artifacts/ui-audit/m4/m4-mobile-progress-empty.png`.
+- Rendered states inspected: populated and empty Progress, long exercise/variant name, 1,234.5 load, 8.5 RPE, two-point date labels, chart-point detail, chronological source facts, and touch-sized mobile controls.
+- The first populated-state run exposed a removed-helper `ReferenceError`; direct source-history selection fixed it. Visual inspection then exposed a narrow two-column layout and duplicate two-point date label; both were corrected before the final passing run.
+- `git diff --check` and deleted-surface residue checks — PASS before checkpoint.
+
+### Decisions, assumptions, and deviations
+
+- M4 does not approve any numeric fatigue, readiness, plateau, deload, evidence, confidence, or grade threshold.
+- Research/taxonomy and legacy recommendation schemas remain only where current identity/import/history compatibility tests prove a preservation need; they have no normal Today, Start, or Progress presentation.
+- Stored historical `workoutAnalysis.confidence` is preserved as an immutable legacy fact rather than rewritten. No visible confidence meter or new normal prescription-confidence writer remains.
+- Factual PR/achievement history remains until M7 because M7 owns the versioned actual-work grade and completion migration; M4 removed the separate analytical chart/product family without reordering that dependency.
+- Verification used Node 24.18.0/npm 11.16.0 instead of the repository-pinned Node 22.23.x/npm 10.9.x.
+- Physical-device/background-notification testing, real private-history replay, independent migration verification, full browser matrix, five-workout field testing, deployment, push, merge, and publication remain later gates.
+- **Checkpoint:** pending local M4 commit.
+
+### Objective completion
+
+**PASS.** Today and Start perform none of the deleted analytical work; Progress exposes no deleted route or persistent switcher; retained source history and exact variants remain intact; current recommendation output still crosses only the canonical M2 resolver; public, packaging, build, privacy, and mobile visual gates pass. M5 may begin after the recoverable M4 checkpoint is recorded.

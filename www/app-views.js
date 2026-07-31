@@ -271,15 +271,7 @@
       }
 
       function renderProgress() {
-        const content = progressView === "lifts" ? renderLiftProgress() : progressView === "history" ? renderHistory(false) : renderProgressOverview();
-        const conclusion = progressView === "lifts"
-          ? "Your lift history shows where performance is changing."
-          : progressView === "history"
-            ? "Submitted sessions are the durable record behind every trend."
-            : "This week’s logged work and recent history remain available for review.";
-        return `<section class="progress-workspace"><header class="progress-workspace-header"><nav class="progress-switcher" aria-label="Progress views">${[
-          ["overview", "Overview"], ["lifts", "Lifts"], ["history", "History"]
-        ].map(([value, label]) => `<button type="button" data-action="set-progress-view" data-progress-view="${value}" ${progressView === value ? 'aria-current="page"' : ""}>${label}</button>`).join("")}</nav><p class="progress-conclusion">${escapeHtml(conclusion)}</p></header>${content}</section>`;
+        return renderLiftProgress();
       }
 
       function liftHomeIsVisible() {
@@ -441,82 +433,26 @@
         return '<article class="recommendation resolved-action-card ' + escapeHtml(category || "change") + '" role="status"><span>' + escapeHtml(scope) + '</span><h2>' + escapeHtml(titles[code] || categoryFallbacks[category] || "Adjust today’s workout") + '</h2><p>' + escapeHtml(reason) + '</p></article>';
       }
 
-      function todayPlanPreview(template) {
-        if (!template) return null;
-        const rows = template.exercises.map((exercise) => {
-          const target = stableTargetForTemplateExercise(exercise, { template });
-          const resistanceType = target.resistanceType || exercise.resistanceType || inferResistanceType(exercise.name, exercise);
-          const prior = getMostRecentWorkoutPerformance(exercise.name, {
-            canonicalExerciseId: exercise.performanceExerciseId || canonicalExerciseId(exercise.name),
-            resistanceType,
-            throughDate: todayIso()
-          });
-          const priorSet = prior?.sets?.length ? bestWorkoutSet(prior.sets, resistanceType) : null;
-          const priorLoadText = priorSet ? formatResistance(priorSet, prior.exercise || exercise) : "";
-          const priorText = priorSet
-            ? [priorLoadText, Number(priorSet.reps || 0) > 0 ? (priorLoadText ? "× " : "") + formatLoadNumber(priorSet.reps) : ""].filter(Boolean).join(" ")
-            : "No comparable set";
-          const repRange = target.repLow === target.repHigh ? String(target.repLow) : target.repLow + "–" + target.repHigh;
-          return {
-            name: exercise.name,
-            priorDate: prior?.session?.date || "",
-            priorRpe: Number(priorSet?.rpe || 0),
-            priorText,
-            sets: Number(target.sets || 0),
-            targetText: target.sets + " set" + (target.sets === 1 ? "" : "s") + " · " + repRange + " reps · RPE " + formatLoadNumber(target.rpe)
-          };
-        });
-        return { rows, totalSets: rows.reduce((sum, row) => sum + row.sets, 0) };
-      }
-
-      function renderTodayPlanPreview(template, preview) {
-        if (!template || !preview) return "";
-        const totalSets = Number(preview.totalSets || templateExerciseCount(template));
-        return `
-          <section class="today-plan-preview" aria-label="${escapeHtml(template.name)} plan compared with last performance">
-            <div class="today-plan-head dhead" aria-hidden="true"><span>Stable target</span><span>Last time</span><span>Effort</span></div>
-            <div class="today-plan-rows">
-              ${preview.rows.map((row) => `
-                <div class="today-plan-row drow">
-                  <span class="plan">
-                    <span class="today-plan-name">${escapeHtml(row.name)}</span>
-                    <span class="today-plan-target">${escapeHtml(row.targetText)}</span>
-                  </span>
-                  <span class="act">
-                    <span class="lbl">${row.priorDate ? escapeHtml(formatDate(row.priorDate)) + (row.priorRpe ? " · RPE " + escapeHtml(formatLoadNumber(row.priorRpe)) : "") : "No prior session"}</span>
-                    <span class="val">${escapeHtml(row.priorText)}</span>
-                  </span>
-                  <span class="dlt"><span class="d none">${row.priorRpe ? "RPE " + escapeHtml(formatLoadNumber(row.priorRpe)) : "—"}</span></span>
-                </div>
-              `).join("")}
-            </div>
-          </section>
-          <div class="module-action-row today-plan-actions">
-            <button class="primary-action today-primary-action" type="button" data-action="start-next-template" data-template-id="${escapeHtml(template.id)}">Start · ${totalSets} sets</button>
-            <button class="secondary-action" type="button" data-action="open-progress" data-progress-view="overview">Review this week</button>
-          </div>
-        `;
-      }
-
       function renderLiftHome() {
         const nextTemplate = data.templates[0] || null;
-        const planPreview = nextTemplate ? todayPlanPreview(nextTemplate) : null;
         const running = activeWorkoutSession();
-        const nextAction = nextTemplate
-          ? ''
-          : '<button class="primary-action today-primary-action" type="button" data-action="open-templates">Create a workout template</button>';
+        const previewNames = nextTemplate?.exercises?.map((exercise) => String(exercise.name || "").trim()).filter(Boolean) || [];
+        const previewText = previewNames.length
+          ? previewNames.slice(0, 4).join(" · ") + (previewNames.length > 4 ? " · +" + (previewNames.length - 4) + " more" : "")
+          : "No exercises have been added yet.";
         return `
           <section class="view lift-home-view">
             <div class="workout-heading today-heading"><div><div class="section-kicker">${escapeHtml(new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(new Date(todayIso() + "T12:00:00")))}${nextTemplate ? " · " + escapeHtml(nextTemplate.name) : ""}</div><h1>Today</h1></div><span class="status-pill inside">${nextTemplate ? "Ready" : "Plan needed"}</span></div>
             ${renderResolvedAction(resolvedActionForScope(running, "session"), { session: running })}
-            ${nextTemplate ? renderTodayPlanPreview(nextTemplate, planPreview) : ""}
             <section class="coach-lead today-coach">
-              <div class="section-kicker">Next action</div>
+              <div class="section-kicker">${nextTemplate ? "Expected workout" : "Next action"}</div>
               <h2>${nextTemplate ? escapeHtml(nextTemplate.name) : "Create your first reusable workout"}</h2>
-              <p>${nextTemplate ? "Use the saved targets and prior performance as your starting point." : "Once a template exists, Today will identify the expected workout."}</p>
-              <div class="module-action-row">${nextAction}<button class="secondary-action" type="button" data-action="open-progress" data-progress-view="overview">Review this week</button></div>
+              <p>${nextTemplate ? escapeHtml(previewText) : "Once a template exists, Today will identify the expected workout."}</p>
+              <div class="module-action-row">${nextTemplate
+                ? '<button class="primary-action today-primary-action" type="button" data-action="start-next-template" data-template-id="' + escapeHtml(nextTemplate.id) + '">Start</button>'
+                : '<button class="primary-action today-primary-action" type="button" data-action="open-templates">Create a workout template</button>'}</div>
             </section>
-            ${renderQuickStartTemplates()}
+            ${renderQuickStartTemplates(nextTemplate?.id || "")}
           </section>`;
       }
 
@@ -611,179 +547,25 @@
         return '<div class="notification-prompt rest-alert-control ' + (alerts.lockScreenReady ? 'selected' : '') + ' ' + (denied ? 'denied' : '') + '"><div><strong>Rest notifications</strong><span>' + escapeHtml(detail) + '</span></div><button class="alert-toggle-button ' + (alerts.lockScreenReady ? 'selected-control' : '') + '" type="button" data-action="toggle-rest-notifications" ' + (denied ? 'aria-label="Rest notification permission denied"' : '') + '>' + (alerts.lockScreenReady ? '&#10003; Enabled' : denied ? 'Permission denied' : alerts.notificationsEnabled ? 'Finish setup' : 'Enable') + '</button></div>';
       }
 
-      function renderProgressOverview() {
-        if (dashboardDetail) return renderDashboardDetail();
-        const volumes = measurePerformance("dashboard:weeklyMuscleVolume", () => weeklyMuscleVolume(dashboardWeekStart), { weekStart: dashboardWeekStart });
-        const trained = volumes.filter((bucket) => bucket.sets > 0);
-        const untrained = volumes.filter((bucket) => bucket.sets === 0);
-        const currentWeek = startOfWeekIso(todayIso());
-        const renderBucket = (bucket, quiet = false) => {
-          const label = bucket.status === "low" ? "below target" : bucket.status === "over" ? "above target" : "in range";
-          const delta = bucket.status === "low"
-            ? bucket.sets - bucket.targetLow
-            : bucket.status === "over"
-              ? bucket.sets - bucket.targetHigh
-              : 0;
-          const deltaClass = bucket.status === "low" ? "under" : bucket.status === "over" ? "out" : "on";
-          const deltaText = delta === 0 ? "on" : (delta > 0 ? "+" : "−") + Math.abs(delta).toFixed(Math.abs(delta) % 1 ? 1 : 0);
-          const expanded = expandedVolumeMuscle === bucket.muscle;
-          return `
-            <div class="volume-table-entry ${quiet ? "quiet-volume" : ""} ${expanded ? "expanded" : ""}">
-              <button class="volume-card-toggle volume-table-row" type="button" data-action="toggle-volume-muscle" data-muscle="${escapeHtml(bucket.muscle)}" aria-expanded="${expanded ? "true" : "false"}">
-                <span class="plan volume-muscle-cell"><span class="volume-muscle-heading"><strong>${escapeHtml(bucket.muscle)}</strong><span class="status-pill ${bucket.status}">${label}</span></span><span class="val">${bucket.targetLow}-${bucket.targetHigh}</span>${rangeBar({ low: bucket.targetLow, high: bucket.targetHigh, actual: bucket.sets, tone: deltaClass })}<small>${bucket.exerciseCount || 0} contributing lift${bucket.exerciseCount === 1 ? "" : "s"}</small></span>
-                <span class="act"><span class="val">${bucket.sets.toFixed(bucket.sets % 1 ? 1 : 0)}</span></span>
-                <span class="dlt"><span class="d ${deltaClass}">${deltaText}</span></span>
-              </button>
-              ${expanded ? renderVolumeDetails(bucket) : ""}
-            </div>
-          `;
-        };
-        return `
-          <section class="view dashboard-view">
-            <div class="screen-heading">
-              <div><div class="section-kicker">Progress</div><h1>Logged volume and history</h1></div>
-              <div class="dashboard-period" aria-label="Dashboard week">
-                <button type="button" data-action="dashboard-week" data-direction="-1" aria-label="Previous dashboard week">${icon.left}</button>
-                <strong>${formatDate(dashboardWeekStart)}</strong>
-                <button type="button" data-action="dashboard-week" data-direction="1" aria-label="Next dashboard week" ${dashboardWeekStart >= currentWeek ? "disabled" : ""}>${icon.right}</button>
-              </div>
-            </div>
-            <section class="screen-section">
-              <div class="section-heading"><div><h2>Weekly muscle volume</h2><p>Tap a muscle to see the contributing lifts.</p></div></div>
-              <div class="volume-table diff" aria-label="Weekly muscle volume plan, actual, and delta">
-                <div class="volume-table-head" aria-hidden="true">
-                  <span>Muscle / planned range</span>
-                  <span>Logged</span>
-                  <span>Delta</span>
-                </div>
-                ${trained.length ? trained.map((bucket) => renderBucket(bucket)).join("") : '<div class="empty-state actionable"><span class="glyph" aria-hidden="true">' + icon.workout + '</span><strong>No weekly volume yet</strong><span>Log a working set to start the plan-versus-actual view.</span><button type="button" data-action="set-tab" data-tab="today">Go to Today</button></div>'}
-                ${untrained.length ? '<details class="volume-untrained compact-disclosure"><summary>All muscles <span>' + untrained.length + ' untouched</span></summary><div class="volume-untrained-rows">' + untrained.map((bucket) => renderBucket(bucket, true)).join("") + '</div></details>' : ""}
-              </div>
-            </section>
-            <section class="screen-section">
-              <div class="section-heading"><div><h2>Recent history</h2><p>Your latest completed sessions.</p></div><button class="text-button" type="button" data-action="open-history">View all</button></div>
-              ${renderRecentSessions()}
-            </section>
-          </section>
-        `;
-      }
-
-      function dashboardWeekEnd(weekStart) {
-        const end = new Date(weekStart + "T00:00:00");
-        end.setDate(end.getDate() + 7);
-        return localDateIso(end);
-      }
-
-      function dashboardSessionsForWeek(weekStart) {
-        const end = dashboardWeekEnd(weekStart);
-        return activeHistorySessions()
-          .filter((session) => session.date >= weekStart && session.date < end)
-          .sort((a, b) => b.date.localeCompare(a.date) || String(b.submittedAt || "").localeCompare(String(a.submittedAt || "")));
-      }
-
       function sessionWorkoutFacts(session) {
         const exercises = data.exercises.filter((exercise) => exercise.sessionId === session.id).sort((a, b) => a.order - b.order);
         const exerciseIds = new Set(exercises.map((exercise) => exercise.id));
         const sets = data.sets.filter((set) => exerciseIds.has(set.exerciseId));
-        const completed = sets.filter((set) => set.completed && isWorkingSet(set, "score"));
+        const completed = sets.filter((set) => set.completed && !set.skipped);
         const started = new Date(session.startedAt || session.createdAt || "").getTime();
         const ended = new Date(session.submittedAt || session.updatedAt || "").getTime();
         const measured = Number.isFinite(started) && Number.isFinite(ended) && ended > started ? Math.round((ended - started) / 60000) : 0;
-        const durationMinutes = measured > 0 && measured < 720 ? measured : Math.max(1, Math.round(completed.length * 2.5));
-        return { exercises, sets, completed, durationMinutes, estimatedDuration: !(measured > 0 && measured < 720), prs: session.prs || [] };
+        const durationMinutes = measured > 0 && measured < 720 ? measured : null;
+        return { exercises, sets, completed, durationMinutes, prs: session.prs || [] };
       }
 
-      function renderDashboardDetailHeader(title, subtitle, nested = false, backAction = "") {
-        return '<div class="dashboard-detail-header"><button type="button" data-action="' + (backAction || (nested ? 'dashboard-detail-parent' : 'close-dashboard-detail')) + '" aria-label="Back">' + icon.left + '</button><div><h1>' + escapeHtml(title) + '</h1><p>' + escapeHtml(subtitle) + '</p></div></div>';
-      }
-
-      function renderDashboardDetail() {
-        const volumes = weeklyMuscleVolume(dashboardWeekStart);
-        const sessions = dashboardSessionsForWeek(dashboardWeekStart);
-        const period = formatWeek(dashboardWeekStart);
-        if (dashboardDetail.type === "history") return renderHistory(true);
-        if (dashboardDetail.type === "session") {
-          const session = data.sessions.find((item) => item.id === dashboardDetail.id);
-          if (!session) { dashboardDetail = { type: "sessions" }; return renderDashboardDetail(); }
-          const facts = sessionWorkoutFacts(session);
-          return `<section class="view dashboard-detail-view">${renderDashboardDetailHeader(session.title || "Workout", formatDate(session.date), true)}
-            <div class="dashboard-summary-row"><div><strong>${facts.durationMinutes}m</strong><span>${facts.estimatedDuration ? "estimated duration" : "duration"}</span></div><div><strong>${facts.exercises.length}</strong><span>exercises</span></div><div><strong>${facts.completed.length}</strong><span>completed sets</span></div></div>
-            ${renderCompletedWorkoutSummary(session, { history: true })}
-            ${session.notes ? '<div class="inline-panel"><strong>Session notes</strong><p class="settings-note">' + escapeHtml(session.notes) + '</p></div>' : ''}
-          </section>`;
-        }
-        if (dashboardDetail.type === "sessions") {
-          return `<section class="view dashboard-detail-view">${renderDashboardDetailHeader("Logged sessions", period)}<div class="drilldown-list">${sessions.length ? sessions.map((session) => { const facts = sessionWorkoutFacts(session); return '<button class="drilldown-item" type="button" data-action="open-dashboard-session" data-session-id="' + session.id + '"><strong>' + escapeHtml(session.title || 'Workout') + '</strong><span>' + formatDate(session.date) + ' · ' + facts.durationMinutes + ' min' + (facts.estimatedDuration ? ' est.' : '') + ' · ' + facts.exercises.length + ' exercises</span><small>' + facts.completed.length + ' completed sets' + (facts.prs.length ? ' · ' + facts.prs.length + ' PR' + (facts.prs.length === 1 ? '' : 's') : '') + '</small><span class="drilldown-chevron" aria-hidden="true">' + icon.right + '</span></button>'; }).join('') : '<div class="empty-state">No submitted workouts in this period.</div>'}</div></section>`;
-        }
-        if (dashboardDetail.type === "muscles") {
-          const trained = volumes.filter((bucket) => bucket.sets > 0);
-          return `<section class="view dashboard-detail-view">${renderDashboardDetailHeader("Trained muscles", period)}<div class="detail-facts">${trained.length ? trained.map((bucket) => { const sessionsCount = new Set(bucket.details.flatMap((detail) => detail.sessions.map((session) => session.title + session.date))).size; return '<div class="detail-fact"><strong>' + escapeHtml(bucket.muscle) + ' · ' + bucket.sets.toFixed(bucket.sets % 1 ? 1 : 0) + ' sets</strong><span>' + sessionsCount + ' session' + (sessionsCount === 1 ? '' : 's') + ' · ' + bucket.directSets.toFixed(bucket.directSets % 1 ? 1 : 0) + ' direct sets · ' + bucket.indirectSets.toFixed(bucket.indirectSets % 1 ? 1 : 0) + ' fractional secondary sets</span><span>' + escapeHtml(bucket.details.map((detail) => detail.name + ' (' + detail.sets.toFixed(detail.sets % 1 ? 1 : 0) + ')').join(', ')) + '</span></div>'; }).join('') : '<div class="empty-state">No muscle volume was logged in this period.</div>'}</div></section>`;
-        }
-        return `<section class="view dashboard-detail-view">${renderDashboardDetailHeader("Progress", period)}<div class="empty-state">This detail is no longer available.</div></section>`;
-      }
-
-      function renderVolumeDetails(bucket) {
-        if (!bucket.details.length) return '<div class="volume-detail empty">No completed sets mapped to this muscle this week.</div>';
-        const formatSets = (value) => Number(value || 0).toFixed(Number(value || 0) % 1 ? 1 : 0);
-        return `
-          <div class="volume-detail">
-            <p class="volume-period-note">Monday-Sunday calendar week beginning ${formatDate(dashboardWeekStart)}. Submitted workouts only; explicitly marked deload work is excluded.</p>
-            <div class="volume-session-groups">${bucket.sessionGroups.map((session) => `
-              <section class="volume-session-group">
-                <button class="volume-session-heading" type="button" data-action="open-volume-session" data-session-id="${session.id}"><span><strong>${escapeHtml(session.title)}</strong><small>${formatDate(session.date)}</small></span><span>${formatSets(session.sets)} sets &rsaquo;</span></button>
-                <div class="volume-exercise-rows">${session.exercises.map((exercise) => '<button class="volume-exercise-row" type="button" data-action="open-volume-exercise" data-exercise-name="' + escapeHtml(exercise.name) + '"><span><strong>' + escapeHtml(exercise.name) + '</strong><small>' + (exercise.volumeLoad > 0 ? Math.round(exercise.volumeLoad) + ' ' + data.settings.weightUnit + ' volume load' : 'Rep and effort contribution') + '</small></span><span class="volume-set-breakdown"><b>' + formatSets(exercise.sets) + ' sets</b><small>' + (exercise.directSets ? formatSets(exercise.directSets) + ' direct' : '') + (exercise.directSets && exercise.indirectSets ? ' · ' : '') + (exercise.indirectSets ? formatSets(exercise.indirectSets) + ' indirect' : '') + '</small></span></button>').join('')}</div>
-              </section>`).join('')}</div>
-          </div>
-        `;
-      }
-
-      function recentHistoryCardModel(session) {
-        const workoutName = String(session?.title || "").trim() || "Workout";
-        const rawCompletedDate = sessionCompletionDate(session);
-        const parsedCompletedDate = /^\d{4}-\d{2}-\d{2}$/.test(rawCompletedDate) ? new Date(rawCompletedDate + "T00:00:00") : null;
-        const hasValidDate = Boolean(parsedCompletedDate && !Number.isNaN(parsedCompletedDate.getTime()));
-        if (!hasValidDate && performanceDebugEnabled && !recentHistoryDataIssueIds.has(session?.id || "unknown")) {
-          recentHistoryDataIssueIds.add(session?.id || "unknown");
-          console.warn("[CF data] Recent History session has no valid completion date.", { sessionId: session?.id || "unknown" });
-        }
-        const analysis = session?.workoutAnalysis?.version === 1 ? session.workoutAnalysis : null;
-        const supportedGrades = new Set(WORKOUT_GRADE_THRESHOLDS.map((threshold) => threshold.grade));
-        const workoutGrade = supportedGrades.has(analysis?.grade) ? analysis.grade : "";
-        const fallbackScore = WORKOUT_GRADE_THRESHOLDS.find((threshold) => threshold.grade === workoutGrade)?.minimum;
-        const hasStoredScore = analysis?.internalScore != null && analysis.internalScore !== "" && Number.isFinite(Number(analysis.internalScore));
-        const gradeScore = hasStoredScore ? Number(analysis.internalScore) : fallbackScore;
-        return {
-          workoutName,
-          completedDate: hasValidDate ? rawCompletedDate : "",
-          completedDateLabel: hasValidDate ? formatDate(rawCompletedDate) : "Date unavailable",
-          workoutGrade,
-          gradeTone: workoutGrade && Number.isFinite(gradeScore) ? workoutGradeScoreTone(gradeScore) : "score-unavailable"
-        };
-      }
-      if (performanceDebugEnabled) window.__CF_TEST__ = { ...(window.__CF_TEST__ || {}), recentHistoryCardModel };
-
-      function renderRecentSessions() {
-        const sessions = activeHistorySessions().slice().sort((a, b) => sessionCompletionDate(b).localeCompare(sessionCompletionDate(a))).slice(0, 5);
-        if (!sessions.length) return '<div class="empty-state actionable"><span class="glyph" aria-hidden="true">' + icon.review + '</span><strong>No saved workouts yet</strong><span>Submit a workout to create durable history and trend evidence.</span><button type="button" data-action="set-tab" data-tab="today">Start from Today</button></div>';
-        return '<div class="recent-history-list">' + sessions.map((session) => {
-          const record = recentHistoryCardModel(session);
-          const dateMarkup = record.completedDate
-            ? '<time class="recent-history-date" datetime="' + escapeHtml(record.completedDate) + '">' + escapeHtml(record.completedDateLabel) + '</time>'
-            : '<span class="recent-history-date">' + escapeHtml(record.completedDateLabel) + '</span>';
-          const gradeLabel = record.workoutGrade ? "workout grade " + record.workoutGrade : "workout grade unavailable";
-          const gradeMarkup = record.workoutGrade ? escapeHtml(record.workoutGrade) : "&mdash;";
-          const accessibleLabel = "Open " + record.workoutName + ", " + record.completedDateLabel + ", " + gradeLabel;
-          return '<button class="recent-history-card" type="button" data-action="open-session" data-session-id="' + escapeHtml(session.id) + '" aria-label="' + escapeHtml(accessibleLabel) + '"><span class="recent-history-title">' + escapeHtml(record.workoutName) + '</span><span class="recent-history-meta">' + dateMarkup + '<span class="recent-history-grade grade-tone ' + record.gradeTone + '" aria-hidden="true">' + gradeMarkup + '</span></span></button>';
-        }).join("") + '</div>';
-      }
-
-      function renderQuickStartTemplates() {
-        if (!data.templates.length) return "";
-        const templates = data.templates;
+      function renderQuickStartTemplates(expectedTemplateId = "") {
+        const templates = data.templates.filter((template) => template.id !== expectedTemplateId);
+        if (!templates.length) return "";
         const running = activeWorkoutSession();
         return `
           <section class="quick-template-strip today-template-strip" aria-label="Quick-start templates">
-            <div class="section-kicker">Choose today’s sheet</div>
+            <div class="section-kicker">Choose another workout</div>
             <div class="quick-template-list">
               ${templates.map((template) => {
                 const isActiveTemplate = running?.templateId === template.id;
@@ -1132,7 +914,7 @@
           <div class="sheet-backdrop" data-action="keep-history-editing" role="presentation">
             <section class="bottom-sheet dialog-sheet ${saving ? "" : "destructive-sheet"}" role="dialog" aria-modal="true" aria-labelledby="history-edit-confirm-title" data-sheet-content>
               <button class="sheet-close" type="button" data-action="keep-history-editing" aria-label="Close edit confirmation">&times;</button>
-              <div class="cancel-hero ${saving ? "save" : ""}"><span class="cancel-visual" aria-hidden="true">${saving ? "&#10003;" : "!"}</span><div><div class="section-kicker">Logged workout</div><h2 id="history-edit-confirm-title">${saving ? "Save these history edits?" : "Cancel these edits?"}</h2><p>${saving ? "The revised workout will replace the saved version and recalculate charts, volume, fatigue, and coaching history." : "The original logged workout will be restored. None of the temporary changes will be saved."}</p></div></div>
+              <div class="cancel-hero ${saving ? "save" : ""}"><span class="cancel-visual" aria-hidden="true">${saving ? "&#10003;" : "!"}</span><div><div class="section-kicker">Logged workout</div><h2 id="history-edit-confirm-title">${saving ? "Save these history edits?" : "Cancel these edits?"}</h2><p>${saving ? "The revised workout will replace the saved version and update its grade and performance history." : "The original logged workout will be restored. None of the temporary changes will be saved."}</p></div></div>
               <div class="sheet-actions stacked">
                 <button class="primary-action" type="button" data-action="keep-history-editing">Keep Editing</button>
                 <button class="${saving ? "secondary-action" : "danger-button"}" type="button" data-action="${saving ? "confirm-save-history-edits" : "confirm-cancel-history-edits"}">${saving ? "Save Edits" : "Discard Edits"}</button>
@@ -1164,7 +946,6 @@
         pendingSubmitSessionId = "";
         completedSummarySessionId = "";
         historyEditConfirm = "";
-        hypertrophyScoreExpanded = false;
         setActiveTab("today", { replace: true, renderNow: false });
         saveData();
         if (message) showAppToast(message);

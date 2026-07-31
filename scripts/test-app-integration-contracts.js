@@ -402,7 +402,7 @@ test("template start resolves one resistance type for the exercise, warm-ups, an
           warmups: [{ id: "warmup-1", reps: 10, weight: 10 }]
         }]
       }],
-      sessions: [], exercises: [], sets: [], mesocycles: [], settings: { weightUnit: "lb" }
+      sessions: [], exercises: [], sets: [], settings: { weightUnit: "lb", defaultRestSeconds: 90 }
     },
     defaultRecovery: () => ({}),
     hasActiveWorkout: () => false,
@@ -416,8 +416,7 @@ test("template start resolves one resistance type for the exercise, warm-ups, an
     inferResistanceType: () => "cable",
     stableTargetForTemplateExercise: () => ({
       sets: 2, reps: 8, repLow: 6, repHigh: 10, weight: 40, weightUnit: "lb", rpe: 8,
-      restSeconds: 90, mode: "stable-target", confidence: "medium", reason: "Synthetic target",
-      adjusted: false, triggerLabels: [], recommendationSnapshot: null
+      restSeconds: 90, mode: "stable-target", adjusted: false
     }),
     isBodyweightResistance: () => false,
     recommendedRestSeconds: () => 90,
@@ -434,26 +433,21 @@ test("template start resolves one resistance type for the exercise, warm-ups, an
       setTypes: [{ id: "straight-1", type: "straight", setCount: 2, repMin: 6, repMax: 10, rpeMin: 7, rpeMax: 8, restSeconds: 90, countsTowardScore: true, countsTowardVolume: true }]
     }),
     canonicalExerciseId: () => "synthetic_press",
-    unifiedTargetContext: () => null,
-    exerciseTargetContext: () => ({ setTypes: [] }),
-    resolvedSetTypesForPrescription: () => [{
+    exerciseIdentityFields: () => ({ performanceExerciseId: "synthetic_press" }),
+    stableSetTypesForWorkoutStart: () => [{
       id: "straight-1", type: "straight", setCount: 2, repMin: 6, repMax: 10,
       rpeMin: 7, rpeMax: 8, restSeconds: 90, countsTowardScore: true, countsTowardVolume: true
     }],
     id: () => `generated-${++nextId}`,
     getMostRecentWorkoutSets: () => [],
-    setPrescriptionForRole: ({ setType, setTypeIndex, sequenceIndex }) => ({
-      setType: "straight", setTypeIndex, sequenceIndex, targetReps: 8, targetLoad: 40,
+    factualSetPrefillForWorkoutStart: (_exercise, _target, setType, setTypeIndex, sequenceIndex) => ({
+      setType: "straight", setTypeIndex, sequenceIndex, reps: 8, weight: 40, rpe: 8,
       repMin: 6, repMax: 10, rpeMin: 7, rpeMax: 8, restSeconds: setType.restSeconds,
-      reason: "Synthetic role", previousComparableSet: null
+      previousComparableSet: null
     }),
-    validateGeneratedSetPrescriptions: (items) => items,
     normalizeSetTypeCode: (value) => value || "straight",
     setTypeLabels: { straight: "Working set" },
     createSet: (exerciseId, setNumber, source) => ({ id: `set-${setNumber}-${nextId}`, exerciseId, setNumber, ...source }),
-    currentMesocycle: () => null,
-    prescriptionApi: { PRESCRIPTION_SCHEMA_VERSION: "exercise-prescription/2.0.0" },
-    prescriptionEvidenceStatus: { personalVersion: "synthetic", researchVersion: "synthetic" },
     isoNow: () => "2026-07-14T12:00:00.000Z",
     setActiveTab: () => {},
     canonicalSetSequence: (set) => Number(set.sequenceIndex || 0),
@@ -549,7 +543,7 @@ test("legacy cut settings migrate at runtime without inheriting the hypertrophy 
   ]);
 });
 
-test("canonical exercise and taxonomy resolution are registry-first and exhaustive", () => {
+test("canonical exercise identity resolution is registry-first and exhaustive", () => {
   const evidence = prescriptionApi.normalizeEvidenceBundle({ researchData: publicResearchData() });
   const unresolved = [];
   for (const exercise of publicExercises) {
@@ -562,11 +556,9 @@ test("canonical exercise and taxonomy resolution are registry-first and exhausti
   assert.deepEqual(unresolved, [], `Public canonical names/aliases failed resolution:\n${unresolved.join("\n")}`);
 
   const canonical = functionSource("canonicalExerciseId");
-  const muscles = functionSource("musclesForExercise");
   collectAssertions([
     ["no regex-only canonical fallback", () => assert.doesNotMatch(canonical, /return\s+researchId\s*\|\|\s*normalized/, "Known public exercises must resolve through a canonical registry instead of becoming regex-normalized pseudo IDs")],
-    ["canonical identity gates analytics", () => assertContains(muscles, /canonicalExerciseId\s*\(/, "Analytics must identify canonical exercises before considering a custom-exercise regex fallback")],
-    ["regex fallback is custom-only", () => assertContains(muscles, /(?:custom|uncatalogued|unmapped)[\s\S]{0,240}automaticMusclesForName|automaticMusclesForName[\s\S]{0,240}(?:custom|uncatalogued|unmapped)/i, "Regex muscle inference must be explicitly limited to custom or unmapped exercises")]
+    ["no deleted analytics coupling", () => assert.doesNotMatch(canonical, /weeklyMuscleVolume|hypertrophyAnalysis|calculateExerciseMuscleContributions/, "Canonical identity must remain independent from deleted volume and hypertrophy analysis")]
   ]);
 });
 
@@ -1300,11 +1292,13 @@ test("quick-start cards retain native button semantics", () => {
   assert.doesNotMatch(source, /class="quick-template-card[^>]*\srole="listitem"/, "A native quick-template button must retain its computed button role");
 });
 
-test("four-destination architecture contains no superseded five-tab UI contract", () => {
+test("four-destination architecture uses one factual Progress surface", () => {
   collectAssertions([
     ["four destination IDs", () => assertContains(html, /const primaryTabIds = \["today", "plan", "progress", "more"\]/, "Primary navigation must use the four-destination contract")],
     ["four navigation buttons", () => assert.equal((functionSource("render").match(/navButton\(/g) || []).length, 4, "The shell must render exactly four primary navigation buttons")],
-    ["progress workspace", () => assertContains(html, /function renderProgress\([\s\S]*progressView === "lifts"[\s\S]*progressView === "history"/, "Dashboard, lift trends, and history must share the Progress workspace")],
+    ["single progress renderer", () => assertContains(functionSource("renderProgress"), /return renderLiftProgress\(\)/, "Progress must delegate to the single factual history and performance surface")],
+    ["no persistent progress subview", () => assert.doesNotMatch(html, /\bprogressView\b|set-progress-view|progress-switcher/, "Progress must not retain dashboard, lifts, or history subview state")],
+    ["factual progress content", () => assertContains(functionSource("renderLiftProgress"), /Performance trend[\s\S]*renderChart\("performance"[\s\S]*renderHistory\(\)/, "Progress must combine one factual chart with chronological submitted history")],
     ["removed top-level renderers", () => assert.doesNotMatch(html, /function renderDashboard\(|function renderReview\(/, "Superseded Dashboard and Charts top-level renderers must be removed")],
     ["removed reskin selectors", () => assert.doesNotMatch(html, /quiet-coach-hero|app-module/, "The previous reskin component selectors must not remain in source")],
     ["legacy hashes only", () => assertContains(functionSource("tabFromLocation"), /dashboard[\s\S]*charts[\s\S]*return "progress"/, "Legacy route names may remain only as four-destination redirects")]
@@ -1417,10 +1411,10 @@ test("loaded-data normalization uses an indexed set lookup", () => {
   ]);
 });
 
-test("evidence startup fetches public research at most once", () => {
+test("identity compatibility initialization performs at most one public catalog load", () => {
   const source = functionSource("initializePrescriptionEvidence");
   const researchLoads = source.match(/loadEvidenceFromUrls\s*\(\s*\{\s*researchBaseUrl/g) || [];
-  assert.ok(researchLoads.length <= 1, `initializePrescriptionEvidence performs ${researchLoads.length} full research loads; optional personal-source probing must reuse one public research bundle`);
+  assert.ok(researchLoads.length <= 1, `initializePrescriptionEvidence performs ${researchLoads.length} full catalog loads; identity/import compatibility must reuse one public bundle`);
 });
 
 (async function run() {

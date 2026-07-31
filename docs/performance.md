@@ -28,8 +28,7 @@ These values are deterministic development benchmarks, not network round-trip ti
 - Active set edits use indexed entity lookup and mutate only the relevant draft record.
 - Compact active-workout snapshots persist after a short debounce; full history persistence is batched and idle-scheduled.
 - Completed-history analysis is separated from draft state and invalidates only when completed source data changes.
-- Six-month history, weekly volume, fatigue, hypertrophy, chart, recommendation, and previous-performance queries share revision-keyed caches.
-- The latest hypertrophy window uses a lightweight qualifying-week pass and performs the expensive target-aware aggregation once.
+- **SUPERSEDED (M4):** the former six-month volume/fatigue/hypertrophy/recommendation caches and qualifying-week aggregation were deleted with those product systems. Factual per-variant Progress and previous-performance lookup remain revision-keyed.
 - Set completion and timer adjustment update the relevant DOM nodes instead of rebuilding the application shell.
 - Templates skip coaching calculations while an active workout locks their Start actions.
 - Templates now use progressive disclosure: the initial frame skips completed-history fatigue analysis and per-template prescription work, does not construct collapsed exercise editors, renders the current mesocycle as a summary until requested, and keeps historical mesocycles compact. Muscle-scope checkbox taps update local draft state without a full application render. The previous 71 ms cold / 5.4 ms cached Templates figures predate this planner disclosure boundary and should not be used as the post-change benchmark.
@@ -43,4 +42,4 @@ The 2026-07-15 baseline at source commit `afe7a6c` was a **1,111,567-byte raw si
 
 ## Remaining watch item
 
-**SUPERSEDED (M3):** The former planner/template benchmark notes above are historical measurements only; planner runtime no longer exists. **PLANNED (M4):** remeasure Today/Start after analytical and research computation is removed. Do not infer that M4 performance work is complete from M3 removal.
+**SUPERSEDED (M3–M4):** The former planner/template, Dashboard, weekly-volume, hypertrophy, research-status, and recommendation benchmark notes above are historical measurements only; those runtime paths no longer exist. M4 removed their current producers and left one factual per-variant Progress chart. Fresh Today/Start/Progress timings remain **NEEDS REVIEW**; deletion completion is proven by runtime/source contracts, not by reusing the older benchmark numbers.

@@ -4,7 +4,7 @@ This document is the durable map for future recommendation-engine iterations. It
 
 ## Exercise–muscle taxonomy 2.1
 
-The canonical relationship source is `research_database/source/exercise-muscle-taxonomy.js`; generated `exercise_muscle_map` and `exercise_taxonomy_review_queue` artifacts are the runtime/data-contract outputs. Every mapped row includes classification, loading/ROM role, hypertrophy credit, local-fatigue weight, confidence, evidence notes/IDs, review state/date, and taxonomy version. The 23 canonical anatomical IDs project into 20 programming families for guided-plan accounting; relationships and history keep their canonical IDs. One shared versioned family ledger now governs guided and historical/recommendation projection: it coalesces qualifying relationships within an exercise/family, retains additive local fatigue, and rounds only final exposed aggregates. See `research_database/EXERCISE_MUSCLE_TAXONOMY.md`. Legacy binary mappings are compatibility-only.
+The canonical relationship source is `research_database/source/exercise-muscle-taxonomy.js`; generated `exercise_muscle_map` and `exercise_taxonomy_review_queue` artifacts remain source/data-contract outputs for identity, import validation, and historical compatibility. M4 deletes the programming-family ledger and all live guided/historical volume projection. Relationships and submitted workout history retain their canonical IDs; no current Progress or exception action aggregates them into family, fractional-volume, hypertrophy, fatigue, evidence, or confidence output.
 
 ## Current versions
 
@@ -14,7 +14,7 @@ The canonical relationship source is `research_database/source/exercise-muscle-t
 | Personal analysis methodology | `1.1.0` | 2026-07-11 | `personal_fitness_data/reports/analysis_metadata.json` |
 | Exercise-science database / muscle taxonomy | `3.0.0` / `2.1.0` | 2026-07-12 | `research_database/source/database.js` and `research_database/source/exercise-muscle-taxonomy.js` |
 | Unified prescription engine | `3.4.1` | 2026-07-22 | `prescription-engine.js` |
-| Historical family-volume ledger | `historical-family-volume/1.0.0` | 2026-07-18 | `programming-family-ledger.js` |
+| Historical family-volume ledger | **Deleted in M4** | 2026-07-31 | Historical compatibility fields only; no runtime module |
 | App prescription / recommendation snapshot schemas | `2.4.0` / `1.4.0` | 2026-07-21 | `prescription-engine.js` and the app prescription JSON Schemas |
 | Push/sync backend contract | Unversioned endpoints | code-reviewed 2026-07-13; external status **NEEDS REVIEW** | `docs/push-backend.md` and `api/` |
 
@@ -108,7 +108,7 @@ Personal weight is constrained by comparable exposure count, observation span, v
 
 ## App integration contract
 
-M3 removes mesocycle/planner fields from current requests, active records, and new schemas. Current routine/template and workout facts retain named-variant targets, set structure, immutable historical snapshots where present, and source provenance. A versioned legacy backup decoder may read obsolete planning keys solely to preserve associated workout/routine-template facts; it cannot create active planner state, a writer, route, renderer, or future record.
+M3 removes mesocycle/planner fields from current requests, active records, and new schemas. M4 removes live analytical recommendation/volume/hypertrophy/fatigue/research-status/evidence/confidence producers and presentation. Current routine/template and workout facts retain named-variant targets, exact variant identity, set structure, source observations, and immutable historical snapshots where present. Versioned legacy decoding and strict import allowlists may read obsolete fields solely to preserve those facts; they cannot create current planner or analytical state, writers, routes, renderers, or future records.
 
 ## Prescription contract schema inventory
 
@@ -132,14 +132,15 @@ Keep this list synchronized with the code so future iterations do not create a s
 
 | Runtime concern | Canonical implementation |
 | --- | --- |
-| Evidence adapters, retained exception logic, snapshots, and legacy compatibility decoding | `prescription-engine.js` and import boundary |
+| Sole current exception-action authority | `exception-resolver.js` |
+| Evidence/taxonomy adapters, snapshots, and legacy compatibility decoding | `prescription-engine.js` and import boundary; not a normal recommendation or Progress producer |
 | App ingestion, IndexedDB persistence, routine/template, start/live/history adapters, and retained override compatibility | Ordered `app-foundation.js` through `app.js` runtime segments (copied with `index.html` to `www/` by `npm run sync:web`) |
 | Rest-complete lifecycle, absolute five-second dismissal deadline, one-shot sound/haptic/notification receipts, preview, and background reconciliation | `rest-completion-controller.js` |
 | Exercise and immutable historical snapshot contracts | `schemas/exercise-prescription.v2.schema.json` and `schemas/recommendation-snapshot.v1.schema.json`; no active mesocycle schema |
 | Private aggregate package builder | `scripts/build-app-personal-evidence.js` |
 | Decision, contract, app integration, and rest lifecycle tests | `scripts/test-prescription-engine.js`, `scripts/test-prescription-schema-contracts.js`, `scripts/test-prescription-app-integration.js`, and `scripts/test-rest-completion-controller.js` |
 
-The app data object contains no active mesocycle collection or active-mesocycle selection. Full backup replacement uses versioned allowlists and an isolated legacy decoder for obsolete planning keys; it preserves workout/routine-template facts without recreating planner state. Embedded personal evidence is validated before replacement; rejected imports cannot partially replace history or evidence. Historical prescription/snapshot fields remain immutable compatibility material rather than current planner inputs.
+The app data object contains no active mesocycle collection, active-mesocycle selection, dashboard analytics state, or Progress subview state. Full backup replacement uses versioned allowlists and an isolated legacy decoder for obsolete planning/analytical keys; it preserves workout/routine-template/history facts without recreating planner or analytical state. Embedded personal evidence is validated before replacement; rejected imports cannot partially replace history or evidence. Historical prescription/snapshot and analytical fields remain immutable compatibility material rather than current recommendation or Progress inputs.
 
 `progressionAction` records the measurable action behind the recommendation label (for example `increase_load`, `add_one_rep`, or `hold`). Straight-set load progression requires the first set at the rep ceiling and later sets inside the allowed drop-off before the smallest equipment increment is applied to all working sets. Planned readiness/fatigue reductions are retained on the exposure as prescribed-reduction provenance and excluded from weakness/regression comparisons. This prevents a deliberately lower biceps/triceps light-session prescription from creating a false performance-decline flag. User-facing pounds are normalized to 0.5-lb increments; source evidence and raw imports remain immutable in their declared units.
 

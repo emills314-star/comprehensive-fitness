@@ -1612,8 +1612,8 @@ test("primary navigation exposes a skip target and moves focus into the selected
 
   const progress = page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: /Progress$/ });
   await progress.click();
-  await expect(page.locator(".dashboard-view")).toBeVisible();
-  await expect(page.locator('[data-action="set-progress-view"][data-progress-view="overview"]')).toHaveAttribute("aria-current", "page");
+  await expect(page.locator(".charts-view")).toBeVisible();
+  await expect(page.locator(".progress-switcher, [data-action='set-progress-view']")).toHaveCount(0);
   const focusIsInView = await page.evaluate(() => {
     const active = document.activeElement;
     const main = document.querySelector("#main-content");
@@ -1638,7 +1638,7 @@ test("closing the template-start dialog restores focus to its quick-start button
   await expect(quickStart).toBeFocused();
 });
 
-test("Progress overview muscle expansion restores focus to the originating row", async ({ page }) => {
+test("closing a factual Progress chart point restores focus to the originating point", async ({ page }) => {
   await page.evaluate((model) => {
     data = model;
     entityStructureRevision += 1;
@@ -1653,16 +1653,12 @@ test("Progress overview muscle expansion restores focus to the originating row",
   }, validFullState());
   const navigation = page.getByRole("navigation", { name: "Main navigation" });
   await navigation.getByRole("button", { name: /Progress$/ }).click();
-  const untrained = page.locator("details.volume-untrained");
-  if (await untrained.count() && !await untrained.evaluate((node) => node.open)) await untrained.locator(":scope > summary").click();
-  const origin = page.locator('[data-action="toggle-volume-muscle"]').first();
+  const origin = page.locator('.chart-card[data-chart-key="performance"] [data-action="show-chart-point"]').first();
   await expect(origin).toBeVisible();
   await origin.focus();
-  await origin.click();
-  await expect(origin).toHaveAttribute("aria-expanded", "true");
-  await expect(origin).toBeFocused();
-  await origin.click();
-  await expect(origin).toHaveAttribute("aria-expanded", "false");
+  await origin.press("Enter");
+  await expect(page.locator(".chart-detail")).toBeVisible();
+  await page.getByRole("button", { name: "Close chart detail" }).click();
   await expect(origin).toBeFocused();
 });
 

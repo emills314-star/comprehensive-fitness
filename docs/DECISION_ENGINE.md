@@ -4,8 +4,8 @@
 
 - **Purpose:** Catalog of implemented and intended logic that turns history, research, and readiness into guidance
 - **Last verified:** 2026-07-31
-- **Repository:** design-system sweep remediation (engine `3.4.1` unchanged)
-- **Verification status:** VERIFIED against `prescription-engine.js`, presentation adapters, schemas, data pipelines, and tests; this sweep changed display ownership and delta grammar only
+- **Repository:** zero-based redesign M4 analytical product removal
+- **Verification status:** VERIFIED locally against the sole current resolver, retained compatibility engine/import boundaries, factual Progress projection, and focused/public tests
 - **Related:** [Project](PROJECT.md), [architecture](ARCHITECTURE.md), [UI/UX](UI_UX.md), [training data map](training-prescription-data.md), [research methodology](../research_database/METHODOLOGY.md)
 
 ## Living-document rule
@@ -14,7 +14,7 @@ Read this document before changing readiness, recovery, progression, volume, PR,
 
 ## Zero-based redesign M1 decision boundary — IMPLEMENTED LOCALLY
 
-The named exercise variant, not the normal recommendation engine, now owns the ordinary set count/roles, rep range, target-RPE band, rest default, and increment. Normal engine snapshots may still be calculated and retained for historical audit or later milestone comparison, but their exact set/load/rep actions do not rewrite stable routine targets and are not editable-field prefill sources.
+The named exercise variant, not the normal recommendation engine, now owns the ordinary set count/roles, rep range, target-RPE band, rest default, and increment. Historical engine snapshots remain immutable compatibility material, but their exact set/load/rep actions do not rewrite stable routine targets and are not editable-field prefill sources. M4 removes the normal current snapshot/plan-preview producers.
 
 Normal prefill is factual and ordered:
 
@@ -22,7 +22,7 @@ Normal prefill is factual and ordered:
 2. an explicit routine load/repetition/RPE default for that role;
 3. blank.
 
-Top, back-off, straight, drop, and warm-up records are not substituted for one another. Prior same-role RPE is an actual-input prefill and remains distinct from the stable target-RPE band. Progression-ready and candidate-next-load calculations may remain internal pending later deletion/evaluation, but they do not change the M1 prefill. A temporary readiness/deload/safety exception may only reduce demand and cannot silently widen or replace the stable rep range; the canonical exception resolver remains M2 work.
+Top, back-off, straight, drop, and warm-up records are not substituted for one another. Prior same-role RPE is an actual-input prefill and remains distinct from the stable target-RPE band. Internal edit helpers cannot change the M1 prefill or create a visible recommendation. The canonical exception resolver is implemented and cannot silently widen or replace the stable rep range.
 
 Global equipment preference is no longer an engine input for normal workout projection or mutation authorization. Old equipment fields and equipment-only blocked snapshots are compatibility/history inputs and cannot prevent an exercise from being logged. Canonical identity, explicit exercise exclusions, pain, and illness safety remain separate constraints.
 
@@ -31,6 +31,12 @@ Global equipment preference is no longer an engine input for normal workout proj
 ### Planner/mesocycle removal — IMPLEMENTED LOCALLY (M3)
 
 Guided planning rules, candidate selection, viability scoring, lifecycle evaluation, and mesocycle generation are not current engine behavior. M3 removes their active runtime branches, schemas, requests, state, writers, and tests. The only permitted compatibility behavior is an isolated versioned legacy backup decoder that accepts obsolete planning keys to preserve workout and routine/template facts; it does not revive a planner engine path or active domain.
+
+### Analytical recommendation removal — IMPLEMENTED LOCALLY (M4)
+
+The M2 `exception-resolver.js` is the sole current recommendation/action authority. It needs no hypertrophy, weekly/fractional volume, fatigue-window, research-status, evidence-confidence, or program-score analytical input. Direct recorded pain/injury or illness remains the only approved live rule. Ordinary sessions are silent.
+
+The former recommendation, readiness-score, fatigue, plateau, light-work, deload, family-volume, hypertrophy-score, research-evidence, and confidence calculations below are retained only where explicitly needed for immutable historical decoding, import validation, taxonomy identity, or later deletion sequencing. They are not current user-facing actions, Progress analytics, or normal workout-target writers.
 
 ### Superseded guided-planning record — HISTORICAL
 
@@ -61,7 +67,7 @@ Implemented precedence is tested as:
 
 Fewer than three comparable exposures remain research-led (`DEFAULT_POLICY.minimumComparableExposures`, `scripts/test-prescription-engine.js`). Confidence considers exposure count/span, variation consistency, RPE, recovery, nutrition completeness, data completeness, and confounding (`derivePersonalEvidenceMetrics`, `calculateEvidenceWeight`). Exact IDs/aliases are preferred; unresolved variants remain separate.
 
-### Prescription confidence presentation mapping — IMPLEMENTED LOCALLY
+### Prescription confidence presentation mapping — SUPERSEDED HISTORICAL RECORD (M4)
 
 `calculateEvidenceWeight` already returns one categorical string in `confidence`; this is the confidence contract used by the Evidence & Change prescription UI. It is exactly four categories, not a numeric level supplied by the view:
 
@@ -102,7 +108,7 @@ Submitted historical snapshots are immutable. The frontend returns a snapshot at
 | Research database | **IMPLEMENTED** | Version 3.0.0 exercise defaults, muscle recommendations, progression rules, substitutions, nutrition strategies, verified PubMed/PMC provenance, rule-to-conclusion mappings, and explicit authority/enforcement/disclosure semantics. |
 | Technique, velocity, pain series | **PARTIALLY IMPLEMENTED** | Rules can account for flags/notes, but complete longitudinal technique, velocity, and pain data are not generally present. |
 
-## Readiness and recovery
+## Readiness and recovery — SUPERSEDED ANALYTICAL RECORD (M4)
 
 Engine-level `evaluateReadiness`/`readinessAdjustmentFor` is the canonical scoring path. `recoveryRecommendationForSession` adapts its result into UI labels; it does not calculate a second readiness score. If the engine is unavailable, the app holds the base plan rather than inventing a score. Illness/pain remains an immediate rest/modify guardrail.
 
@@ -209,7 +215,9 @@ Implemented policy defaults remain 75-minute target/100-minute maximum sessions,
 
 Mesocycle lifecycle states are `draft`, `planned`, `active`, `completed`, `reviewed`, `abandoned`, and `archived`. Draft/planned/abandoned plans that were never activated may be deleted with confirmation. Completed plans are protected and may be archived/reviewed, not destructively deleted. Productive, tolerated exercises remain across objective changes; elapsed time alone never forces rotation. Readiness can adjust a started workout but never silently rewrites this base mesocycle.
 
-## PRs, volume, grades, and analytics
+## PRs, volume, grades, and analytics — PARTLY SUPERSEDED (M4)
+
+Submission-time PR and legacy grade behavior remain only until their approved later milestones. All weekly/fractional volume, fatigue, hypertrophy-score, research/evidence/confidence, and analytical chart paragraphs in this section are **SUPERSEDED HISTORICAL RECORDS (M4)**. Current Progress uses only factual submitted set observations for the exact exercise variant.
 
 ### Mesocycle slot and session-density refinement
 
@@ -254,7 +262,7 @@ Guardrails:
 - **APPROVED LIVE RULE:** Directly recorded current pain/injury or illness produces one session-scoped `stop_or_skip_work` action. It is advisory; continuing is recorded as an override and does not block actual-work logging.
 - **OUT OF SCOPE / NOT APPROVED:** Every numeric fatigue, readiness, plateau, deload, grade, evidence, and confidence threshold. These cannot create current visible/stored actions until privacy-safe calibration and independent review approve a versioned rule.
 - **IMPLEMENTED:** Grade/completion consume the persisted canonical action rather than raw detectors. Prospective completion coaching was removed; the full actual-work grade replacement remains M7.
-- **PLANNED DELETION:** Hidden hypertrophy/fatigue analysis and legacy prescription/planner machinery remain bounded M3/M4/M7 debt and are not current recommendation sources.
+- **IMPLEMENTED (M4):** Hypertrophy/fatigue/family-volume analysis, normal plan previews, evidence/confidence presentation, and their current producers are deleted. Historical compatibility material remains read-only; the legacy grade bridge remains bounded M7 work.
 
 ## Planned and review items
 

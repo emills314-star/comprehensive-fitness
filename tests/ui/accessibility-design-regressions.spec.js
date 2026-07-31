@@ -14,7 +14,7 @@ const { buildAnalyticsEvidenceFixture } = require("./fixtures/analytics-settings
 const PRIMARY_TABS = [
   { id: "today", view: ".workout-view" },
   { id: "plan", view: ".templates-view" },
-  { id: "progress", view: ".dashboard-view" },
+  { id: "progress", view: ".charts-view" },
   { id: "more", view: ".settings-view" }
 ];
 
@@ -192,11 +192,6 @@ async function openPrimaryTab(page, tabId) {
     target = primaryTab(page, destination);
   }
   if (destination !== "today" || await target.count()) await expect(target).toHaveAttribute("aria-current", "page");
-  if (tabId === "charts" || tabId === "dashboard") {
-    const view = page.locator(`[data-action="set-progress-view"][data-progress-view="${tabId === "charts" ? "lifts" : "overview"}"]`);
-    await view.click();
-    await expect(view).toHaveAttribute("aria-current", "page");
-  }
   return target;
 }
 
@@ -1332,20 +1327,7 @@ test("revisionless legacy divergence is wrapped and preserved without destructiv
   expect((await readPersistedAppData(page)).templates.find((template) => template.id === templateId)?.name).toBe("Revisionless IndexedDB copy");
 });
 
-test("Dashboard volume evidence expands from and restores focus to its durable originating control", async ({ page }) => {
-  await installScenario(page);
-  await openPrimaryTab(page, "dashboard");
-  const origin = page.locator('[data-action="toggle-volume-muscle"]').first();
-  await expect(origin).toHaveCount(1);
-  await origin.click();
-  await expect(origin).toHaveAttribute("aria-expanded", "true");
-  await expect.soft(origin, "Expanding inline evidence must retain focus on its durable trigger").toBeFocused({ timeout: 1_500 });
-  await origin.click();
-  await expect(origin).toHaveAttribute("aria-expanded", "false");
-  await expect.soft(origin, "Collapsing inline evidence must retain focus on its durable trigger").toBeFocused({ timeout: 1_500 });
-});
-
-test("lift analysis and history retain contrast across every package and theme", async ({ page }, testInfo) => {
+test("unified progress chart and history retain contrast across every package and theme", async ({ page }, testInfo) => {
   test.setTimeout(240_000);
   test.skip(testInfo.project.name !== "desktop", "One deterministic Chromium project owns the complete analysis color-package matrix.");
   await installScenario(page, {
@@ -1360,7 +1342,8 @@ test("lift analysis and history retain contrast across every package and theme",
   await search.fill("Dumbbell Bench Press");
   await search.press("Enter");
   await expect(page.locator(".chart-recalculating")).toHaveCount(0, { timeout: 15_000 });
-  await expect(page.locator('.chart-line[data-evidence="provisional"]').first()).toBeVisible();
+  await expect(page.locator('.chart-card[data-chart-key="performance"]')).toBeVisible();
+  await expect(page.locator(".history-view")).toBeVisible();
 
   const colorPackages = [
     "heritage-atlas", "signal-garden", "alpine-ledger", "training-hall", "harbor-pulse",
@@ -1394,12 +1377,7 @@ test("lift analysis and history retain contrast across every package and theme",
     }
   };
 
-  await auditCurrentSurface("lift analysis", ".charts-view");
-  await page.locator('[data-action="set-progress-view"][data-progress-view="history"]').click();
-  await expect(page.locator(".history-view")).toBeVisible();
-  await page.locator(".history-by-exercise > summary").click();
-  await page.locator(".history-exercise > summary").first().click();
-  await auditCurrentSurface("history", ".history-view");
+  await auditCurrentSurface("unified progress", ".charts-view");
   const failureSummary = Array.from(failures.reduce((summary, failure) => {
     failure.targets.forEach((target) => {
       const key = `${failure.surface} · ${target.selector}`;
@@ -1412,10 +1390,10 @@ test("lift analysis and history retain contrast across every package and theme",
     ...entry,
     variants: Array.from(new Set(entry.variants))
   }));
-  expect(failureSummary, "analysis and history must clear WCAG text contrast in every package and theme").toEqual([]);
+  expect(failureSummary, "the factual chart and chronological history must clear WCAG text contrast in every package and theme").toEqual([]);
 });
 
-test("lift analysis and history reflow without clipping and retain 44 CSS-pixel actions at 320 pixels and 200 percent text", async ({ page }, testInfo) => {
+test("unified progress reflows without clipping and retains 44 CSS-pixel actions at 320 pixels and 200 percent text", async ({ page }, testInfo) => {
   test.setTimeout(120_000);
   test.skip(testInfo.project.name !== "desktop", "One deterministic Chromium project owns exact analysis increased-text geometry.");
   await installScenario(page, {
@@ -1470,12 +1448,9 @@ test("lift analysis and history reflow without clipping and retain 44 CSS-pixel 
     ).toEqual([]);
   };
 
-  assertGeometry(await measure("lift analysis", ".charts-view"));
-  await page.locator('[data-action="set-progress-view"][data-progress-view="history"]').click();
+  await expect(page.locator('.chart-card[data-chart-key="performance"]')).toBeVisible();
   await expect(page.locator(".history-view")).toBeVisible();
-  await page.locator(".history-by-exercise > summary").click();
-  await page.locator(".history-exercise > summary").first().click();
-  assertGeometry(await measure("history", ".history-view"));
+  assertGeometry(await measure("unified progress", ".charts-view"));
 });
 
 test("repeated Lift move, delete, add-set, warm-up, and copy-set controls include their exercise context", async ({ page }) => {
@@ -1574,9 +1549,9 @@ test("set transitions preserve manual scroll and the retired workout-board jump 
 
 test("forced-colors mode retains a visible non-shadow focus indicator on navigation and content controls", async ({ page }) => {
   test.setTimeout(90_000);
-  await installScenario(page, { forcedColors: "active", includeHistory: false });
+  await installScenario(page, { forcedColors: "active" });
   await openPrimaryTab(page, "dashboard");
-  const targets = [primaryTab(page, "progress"), page.locator('[data-action="set-progress-view"][data-progress-view="overview"]')];
+  const targets = [primaryTab(page, "progress"), page.getByRole("combobox", { name: "Search or select exercise" })];
   expect(await page.evaluate(() => matchMedia("(forced-colors: active)").matches)).toBe(true);
 
   await page.keyboard.press("Tab");

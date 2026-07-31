@@ -3,7 +3,7 @@
 **Product:** Comprehensive Fitness  
 **Primary owner:** Codex  
 **Adversarial reviewer:** Claude Code  
-**Current phase:** Implementation active on `codex/zero-based-redesign`; M0–M3 gates complete locally
+**Current phase:** Implementation active on `codex/zero-based-redesign`; M0–M4 gates complete locally
 **Implementation authorized:** Yes — local implementation only
 
 ## Completed
@@ -49,24 +49,29 @@
 - M3 deleted the guided planner and mesocycle product across routes/UI/state, requests, engine branches, schemas for new records, writers, CSS, tests, service-worker/package entries, and current-intent documentation.
 - A versioned legacy decoder now accepts obsolete planning keys, preserves workout/session/set/routine facts and immutable embedded snapshots, and discards planner-only state before active import or current export.
 - M3 focused preservation/deletion tests, 60/60 public scripts, lint, typecheck, production build, 40-file web sync, 39-asset PWA verification, privacy scan, dependency search, and mobile running-app verification at 390 × 844 passed.
+- M4 removed Today/Start hypertrophy, weekly/fractional volume, program score, research/evidence/confidence, normal plan-preview, and duplicate-recommendation execution paths.
+- Progress is one factual destination with one inspectable per-variant performance chart and chronological workout history; dashboard/scorecard routes and persistent Progress subviews are gone.
+- The programming-family ledger, historical fractional-volume projection APIs, obsolete analytical renderers/state/actions/styles, and obsolete analytical tests were deleted without changing stored workout history.
+- M4 focused removal and 390 × 844 populated/empty Progress tests, 58/58 public scripts, 38/38 app-integration contracts, lint, typecheck, production build, 39-file web sync, 38-asset PWA verification, tracked-file privacy scan, and visual inspection passed.
 
 ## Current objective
 
-M0 through M3 are complete and recoverable. M2 is checkpointed at `243ed81`; M3 is checkpointed at `3e102e2`. M4 analytical/research-clutter deletion is next.
+M0 through M4 are complete locally. M2 is checkpointed at `243ed81`; M3 is checkpointed at `3e102e2`; the M4 checkpoint is pending. M5 two-destination shell and direct Start is next.
 
 ## Next actions
 
-1. Begin M4 analytical/research-clutter deletion without reactivating planner or duplicate recommendation paths.
-2. Continue sequential milestone gates through M8.
-3. Automated, privacy, migration, independent, target-device, and five-workout human acceptance gates precede any separately authorized publication.
+1. Create and record the recoverable M4 checkpoint.
+2. Begin M5 two-destination shell and direct Start without reactivating planner, dashboard, or duplicate recommendation paths.
+3. Continue sequential milestone gates through M8.
+4. Automated, privacy, migration, independent, target-device, and five-workout human acceptance gates precede any separately authorized publication.
 
 ## Open issues
 
 - Target-device RPE replacement/completion behavior is **NEEDS REVIEW**; source code intent does not resolve Erik's reported device experience.
-- Current numeric fatigue, readiness, plateau, deload, evidence, confidence, and grade thresholds/formulas are not approved. M2 prevents them from producing current actions; M4/M7 remove remaining hidden analysis and legacy grade debt.
+- Current numeric fatigue, readiness, plateau, deload, evidence, confidence, and grade thresholds/formulas are not approved. M2 prevents them from producing current actions; M4 removed the normal analytical product paths, while M7 owns remaining legacy grade debt.
 - Target migration contracts and synthetic baselines exist; M1 runtime normalization is implemented, but a complete real-data export/replay and independent migration verification remain unperformed.
 - Focused browser/PWA/accessibility verification passed for M1; physical-device, notification, performance, privacy, independent-review, pinned-runtime, and five-workout acceptance gates remain unverified.
-- M4–M8 product behavior remains incomplete. Hidden analytics/research and legacy grade/UI debt remain assigned to M4/M7.
+- M5–M8 product behavior remains incomplete. Two-destination navigation/direct Start and legacy grade/completion/UI debt remain assigned to M5–M7.
 - Two broader Strong-history browser assertions disagree with current shared-runtime copy/prior-row resolution; they were not caused by M3 planner-field deletion and remain separately reproducible.
 - Pre-existing uncommitted `.claude/`, `.vercel/`, and `redesign/prompts/` paths must remain preserved.
 - Current code and living docs differ materially from final product intent. They remain accurate as current-state evidence until an authorized implementation updates behavior and documentation together.
@@ -74,4 +79,4 @@ M0 through M3 are complete and recoverable. M2 is checkpointed at `243ed81`; M3 
 
 ## Last verification
 
-M3 completed locally by Codex on 2026-07-31. All 60 selected public scripts passed; lint, typecheck, production build, PWA/native packaging, privacy, dependency, and focused 390 × 844 running-app verification passed. Service-worker cache v97 was produced. No dependency, `AGENTS.md`, `CLAUDE.md`, private personal fitness/health data, deployment, or publication change occurred.
+M4 completed locally by Codex on 2026-07-31. All 58 selected public scripts passed; lint, typecheck, production build, PWA/native packaging, tracked-file privacy, dependency/residue, and focused populated/empty 390 × 844 running-app verification passed. Service-worker cache v98 was produced. No dependency, `AGENTS.md`, `CLAUDE.md`, private personal fitness/health data, deployment, or publication change occurred.

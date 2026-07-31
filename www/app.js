@@ -50,7 +50,7 @@
         }
         if (["start-timer", "skip-timer", "start-template", "start-next-template", "start-template-with-metrics", "use-usual-readiness", "request-submit-workout", "request-save-history-edits", "begin-history-edit", "save-template", "update-template-exercise", "add-set", "add-warmup-set", "duplicate-set", "reconcile-apply"].includes(action)) return "medium";
         if (["request-delete-template", "request-cancel-workout", "request-cancel-workout-from-template", "request-cancel-history-edits", "clear-data", "toggle-skip-set"].includes(action)) return "warning";
-        if (["set-tab", "adjust-timer", "select-chart-exercise", "show-chart-point", "toggle-achievement-detail", "toggle-prescription-rationale", "open-fatigue-flag", "open-plan-volume-warning", "exercise-deload", "exercise-resistance-type", "exercise-bodyweight", "set-warmup", "timer-sound", "timer-vibration", "workout-completion-sound", "interaction-vibration", "timer-notifications", "in-app-rest-alerts", "toggle-rest-notifications", "preview-rest-complete-sound", "rest-complete-auto-return"].includes(action)) return "light";
+        if (["set-tab", "adjust-timer", "select-chart-exercise", "show-chart-point", "toggle-achievement-detail", "exercise-deload", "exercise-resistance-type", "exercise-bodyweight", "set-warmup", "timer-sound", "timer-vibration", "workout-completion-sound", "interaction-vibration", "timer-notifications", "in-app-rest-alerts", "toggle-rest-notifications", "preview-rest-complete-sound", "rest-complete-auto-return"].includes(action)) return "light";
         return "none";
       }
 
@@ -98,7 +98,7 @@
       }
 
       root.addEventListener("pointerdown", (event) => {
-        const target = event.target.closest("button, select, summary[data-action], label.toggle-line, label.alert-setting-field, .volume-card");
+        const target = event.target.closest("button, select, summary[data-action], label.toggle-line, label.alert-setting-field");
         if (!target || target.hasAttribute("disabled")) return;
         const actionTarget = event.target.closest("[data-action]") || target.querySelector?.("[data-action]");
         const completionTarget = actionTarget || target;
@@ -156,15 +156,14 @@
           setActiveTab(target.dataset.tab);
         }
         if (action === "open-templates") setActiveTab("plan");
-        if (action === "open-progress") setProgressView(target.dataset.progressView || "overview");
-        if (action === "set-progress-view") setProgressView(target.dataset.progressView || "overview");
+        if (action === "open-progress") setActiveTab("progress");
         if (action === "retry-view-render") { viewRenderError = null; render(); }
         if (action === "focus-workout-exercise") {
           workoutFocusExerciseId = target.dataset.exerciseId || "";
           render();
           focusWorkoutExercise(workoutFocusExerciseId);
         }
-        if (action === "open-history") setProgressView("history");
+        if (action === "open-history") setActiveTab("progress");
         if (action === "toggle-theme") commit({ ...data, settings: { ...data.settings, theme: data.settings.theme === "light" ? "dark" : "light" } });
         if (action === "toggle-unit") commit(convertAppWeightUnit(data, data.settings.weightUnit === "lb" ? "kg" : "lb"));
         if (action === "request-notifications") enablePushNotifications();
@@ -202,14 +201,11 @@
           const activation = /^cp_\d+_\d+$/.test(activationKey) ? chartPointActivations.get(activationKey) : null;
           const stillCurrent = activation
             && activation.exerciseId === selectedExerciseId
-            && Number(activation.windowOffset || 0) === Number(hypertrophyWindowOffset || 0);
+            && activation.chartKey === "performance";
           chartDetailPoint = stillCurrent ? {
             ...activation.point,
             chartKey: activation.chartKey,
             exerciseId: activation.exerciseId,
-            windowOffset: activation.windowOffset,
-            throughDate: activation.throughDate,
-            qualifyingWeekIds: activation.qualifyingWeekIds,
             resistanceType: activation.resistanceType,
             date: activation.point.date || activation.point.label
           } : null;
@@ -220,15 +216,6 @@
           chartDetailPoint = null;
           if (returnPoint) queuePostRenderFocus(actionFocusDescriptor("show-chart-point", returnPoint));
           render();
-        }
-        if (action === "toggle-hypertrophy-score") { hypertrophyScoreExpanded = !hypertrophyScoreExpanded; render(); }
-        if (action === "select-chart-period") {
-          hypertrophyWindowOffset = Math.max(0, Number(target.dataset.periodOffset || 0));
-          hypertrophyScoreExpanded = false;
-          chartDetailPoint = null;
-          hypertrophyScoreLoading = true;
-          render();
-          window.setTimeout(() => { hypertrophyScoreLoading = false; render(); }, 80);
         }
         if (action === "new-session") addSession();
         if (action === "new-template") addTemplate();
@@ -291,37 +278,6 @@
         if (action === "start-adjusted-workout" && templateStartFlow) startTemplate(templateStartFlow.templateId, templateStartFlow.draft, "daily");
         if (action === "start-original-workout" && templateStartFlow) startTemplate(templateStartFlow.templateId, templateStartFlow.draft, "daily-original", { useOriginal: true });
         if (action === "add-template-exercise") addTemplateExercise(target.dataset.templateId);
-        if (action === "toggle-volume-muscle") {
-          queuePostRenderFocus(focusDescriptorForElement(target));
-          expandedVolumeMuscle = expandedVolumeMuscle === target.dataset.muscle ? "" : target.dataset.muscle;
-          render();
-        }
-        if (action === "dashboard-week") {
-          const date = new Date(dashboardWeekStart + "T00:00:00");
-          date.setDate(date.getDate() + Number(target.dataset.direction || 0) * 7);
-          dashboardWeekStart = localDateIso(date) > startOfWeekIso(todayIso()) ? startOfWeekIso(todayIso()) : localDateIso(date);
-          dashboardDetail = null;
-          dashboardFocusStack.length = 0;
-          expandedVolumeMuscle = "";
-          render();
-        }
-        if (action === "open-dashboard-detail") {
-          openDashboardDetailView({ type: target.dataset.detail }, target);
-        }
-        if (action === "close-dashboard-detail") closeDashboardDetailView();
-        if (action === "open-dashboard-session") openDashboardDetailView({ type: "session", id: target.dataset.sessionId }, target);
-        if (action === "open-volume-session") openDashboardDetailView({ type: "session", id: target.dataset.sessionId, parent: "volume" }, target);
-        if (action === "open-volume-exercise") {
-          const exerciseId = canonicalExerciseId(target.dataset.exerciseName);
-          if (exerciseCatalog().some((item) => item.id === exerciseId)) selectChartExercise(exerciseId);
-          setProgressView("lifts");
-        }
-        if (action === "open-fatigue-flag") openDashboardDetailView({ type: "fatigue-flag", id: target.dataset.flagId }, target);
-        if (action === "open-plan-volume-warning") { planVolumeDetailId = target.dataset.flagId; render(); window.scrollTo({ top: 0, behavior: preferredScrollBehavior() }); }
-        if (action === "close-plan-volume-detail") { planVolumeDetailId = ""; render(); window.scrollTo({ top: 0, behavior: preferredScrollBehavior() }); }
-        if (action === "dashboard-detail-parent") {
-          closeDashboardDetailView();
-        }
         if (action === "request-delete-template") {
           pendingDeleteTemplateId = target.dataset.templateId;
           render();
@@ -426,7 +382,6 @@
           viewingHistorySessionId = isSessionSubmitted(requestedSession) ? requestedSession.id : "";
           historyReturnExerciseId = target.dataset.returnExerciseId || "";
           workoutFocusExerciseId = target.dataset.exerciseId || "";
-          planVolumeDetailId = "";
           setActiveTab("today", { force: true });
           focusWorkoutExercise(workoutFocusExerciseId);
         }
@@ -506,9 +461,7 @@
             ...data,
             exercises: data.exercises.map((exercise) => {
               if (exercise.id !== target.dataset.exerciseId) return exercise;
-              const prescriptionWeight = ["bodyweight", "duration", "distance"].includes(resistanceType) ? 0 : Number(exercise.prescription?.weight || 0);
-              const prescription = exercise.prescription ? { ...exercise.prescription, resistanceType, isBodyweight: isBodyweightResistance(resistanceType), weight: prescriptionWeight, addedLoad: resistanceType === "bodyweight_plus_load" ? prescriptionWeight : 0, assistanceLoad: resistanceType === "assisted_bodyweight" ? prescriptionWeight : 0 } : exercise.prescription;
-              return { ...exercise, resistanceType, isBodyweight: isBodyweightResistance(resistanceType), prescription };
+              return { ...exercise, resistanceType, isBodyweight: isBodyweightResistance(resistanceType) };
             }),
             sets: data.sets.map((set) => set.exerciseId === target.dataset.exerciseId ? normalizeResistanceSet({ ...set, weight: ["bodyweight", "duration", "distance"].includes(resistanceType) ? 0 : set.weight }, resistanceType) : set)
           });
@@ -531,14 +484,6 @@
           form?.querySelectorAll('[data-set-default-row][data-set-scope="working"]').forEach((row, index) => { row.hidden = index >= count; });
         }
         if (action === "template-exercise-resistance") { const resistanceType = resistanceTypeValues.includes(target.value) ? target.value : "external"; patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { resistanceType, isBodyweight: isBodyweightResistance(resistanceType) }); }
-        if (action === "hypertrophy-window") {
-          hypertrophyWindowOffset = Math.max(0, Number(target.value || 0));
-          hypertrophyScoreExpanded = false;
-          chartDetailPoint = null;
-          hypertrophyScoreLoading = true;
-          render();
-          window.setTimeout(() => { hypertrophyScoreLoading = false; render(); }, 60);
-        }
         if (action === "weight-unit") commit(convertAppWeightUnit(data, target.value));
         if (action === "theme-mode") commit({ ...data, settings: { ...data.settings, theme: target.value } });
         if (action === "color-package") commit({ ...data, settings: { ...data.settings, colorPackage: target.value } });
@@ -965,7 +910,7 @@
         storagePersistenceStatus = await readStoragePersistenceStatus();
         installDevelopmentPerformanceFixture();
         await applyWorkoutDeepLink();
-        if (!["today", "plan", "more", "progress-overview", "progress-lifts", "progress-history"].includes(window.location.hash.replace(/^#/, ""))) window.history.replaceState({ ...(window.history.state || {}), tab: activeTab }, "", tabUrl(activeTab));
+        if (!["today", "plan", "more", "progress"].includes(window.location.hash.replace(/^#/, ""))) window.history.replaceState({ ...(window.history.state || {}), tab: activeTab }, "", tabUrl(activeTab));
         render();
         scheduleSave();
         registerPwaServiceWorker();
@@ -994,24 +939,13 @@
       window.addEventListener("beforeunload", persistBeforeSuspend);
       window.addEventListener("popstate", () => {
         const nextTab = tabFromLocation();
-        const previousProgressView = progressView;
-        progressView = progressViewFromLocation();
         if (historyEditFlow && nextTab !== "today") {
           activeTab = "today";
           window.history.pushState({ ...(window.history.state || {}), tab: "today" }, "", tabUrl("today"));
           requestHistoryEditConfirmation("cancel", { preserveOrigin: true });
           return;
         }
-        if (nextTab === activeTab) {
-          if (activeTab === "progress" && progressView !== previousProgressView) {
-            dashboardDetail = null;
-            dashboardFocusStack.length = 0;
-            viewRenderError = null;
-            queuePostRenderFocus({ kind: "main" });
-            render();
-          }
-          return;
-        }
+        if (nextTab === activeTab) return;
         tabScrollPositions.set(activeTab, window.scrollY);
         activeTab = nextTab;
         queuePostRenderFocus({ kind: "main" });

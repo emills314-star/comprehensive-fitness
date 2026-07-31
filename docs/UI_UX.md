@@ -4,8 +4,8 @@
 
 - **Purpose:** Verified user experience, interaction contracts, and intended UX gaps
 - **Last verified:** 2026-07-31
-- **Repository:** M-series raster-fidelity presentation pass
-- **Verification status:** VERIFIED locally for M1–M9 fidelity and preserved behavior: public gate 53/53; 11/11 mockup-fidelity cases; 41/41 affected lifecycle cases across the completed run and focused stale-copy rerun; 40 accessibility/reflow/protected-surface cases with 33 intentional project/private-data skips; lint; PWA/native packaging; and privacy guard. Ten-package/two-theme contrast and 320 px/200%-text reflow remain protected. Replacement baselines remain intentionally unaccepted; hosted and physical-device verification remain unverified
+- **Repository:** zero-based redesign M4 analytical product removal
+- **Verification status:** VERIFIED locally for factual Progress populated/empty states at 390 × 844, long exact variant names, large load/decimal RPE values, tappable point detail, and removal of dashboard/volume/hypertrophy/research/evidence/confidence surfaces. Hosted and physical-device verification remain unverified
 - **Related:** [Project](PROJECT.md), [architecture](ARCHITECTURE.md), [decision engine](DECISION_ENGINE.md), [roadmap](ROADMAP.md)
 
 ## Living-document rule
@@ -18,9 +18,15 @@ Read this document before changing navigation, screens, labels, visual hierarchy
 
 Starting a routine now renders the named exercise variant's stable set roles/count, rep range, target-RPE band, and rest without a normal engine rewrite. Load, reps, and RPE use factual same-variant/same-role prior performance, explicit routine defaults, then blank. Full variant names remain present, including meaningful suffixes. Large numeric values remain valid editable number-input values; visual grouping separators are display-only.
 
-Global equipment preference controls are absent and equipment state cannot disable normal workout logging. M3 has removed the planner; Plan now owns routines/templates only until M5. M4 and M6 remain future work.
+Global equipment preference controls are absent and equipment state cannot disable normal workout logging. M3 has removed the planner; Plan now owns routines/templates only until M5. M4 is implemented locally; M6 remains future work.
 
 Focused mobile verification at 390 × 844 covers long canonical names, a 1,234.5-lb prior-performance prefill, current/pending/completed states, ordinary completion touch, one-edit replacement of prefilled RPE `7` with `7.5`, and the removed equipment group. RPE replacement does not require a duplicate first digit or manual clear. Completion immediately after entry persists the decimal even when blur rerenders the set row. The current-set options disclosure occupies its own touch row so it cannot intercept the 44 CSS-pixel completion control. Screenshots are stored under `artifacts/ui-audit/m1/`; no replacement visual baseline was accepted.
+
+### Zero-based redesign M4 quiet Today and factual Progress — IMPLEMENTED LOCALLY
+
+Today shows the expected workout, its start action, and alternate routines without hypertrophy, weekly/fractional volume, research status, evidence, confidence, program score, or normal plan-preview cards. Progress is one screen: select an exact exercise variant, inspect its factual submitted-performance chart, tap a point for date/load/reps/RPE/set role/source session, and continue into chronological submitted-workout history. The empty state asks for a completed workout; it does not substitute a score or recommendation.
+
+The factual Progress view was inspected at 390 × 844 with a long variant name, `1,234.5` load, decimal RPE, populated point detail, and empty history. Distinct variants remain separate. The four-destination shell remains temporarily until M5 installs the final two-destination navigation.
 
 ## Experience principles
 
@@ -50,7 +56,7 @@ Build separates unresolved **Needs Attention** items from a collapsed **Complete
 
 Interaction principles evidenced in code: one canonical active workout; explicit destructive/final actions; immediate visible set updates; preserved drafts; conservative empty states; full recommendation detail on demand; accessible labels/live regions/inert modal backgrounds; and user-controlled overrides with reasons.
 
-### Evidence & Change target design — IMPLEMENTED LOCALLY / REVIEW REQUIRED
+### Evidence & Change target design — SUPERSEDED HISTORICAL RECORD (M4)
 
 **TARGET:** Lift and Dashboard follow the Evidence & Change composition in `design-concepts/m2-core.html`; the active workout follows only the owner-selected `design-concepts/m1-workout-variants.html` screen `v3-progressive`. The rejected `v1-spine` and `v2-card` variants are not blended into the target.
 
@@ -75,7 +81,7 @@ The production surfaces now use the visual hierarchy, spacing, flat ledger rows,
 
 **NEEDS REVIEW:** exact literal equivalence is intentionally not claimed where a raster omits production capability or assumes unavailable data. M2 would require merging Progress subviews and adding unsupported template-completion attribution; M3 would require weakening or omitting safer conflict/cancel facts; M4 would require merging the canonical 18-muscle taxonomy into six broad display groups; M5 would require a new standalone per-exercise History route and removal of retained controls; M6 would require a new system-theme setting, direct first-run workout creation, fabricated suggested-load data, or weaker clear-data safeguards. These are functional, data-contract, or safety changes and were not implemented.
 
-### Evidence & Change structural consolidation — IMPLEMENTED LOCALLY / REVIEW REQUIRED
+### Evidence & Change structural consolidation — SUPERSEDED HISTORICAL RECORD (M4)
 
 Progress weekly volume is one continuous plan | actual | delta table with one shared header and one row per muscle. The muscle name, planned range, logged volume, truthful delta, status pill, and contributing-lift count occur once in that row. Expanding the row reveals only contributing sessions and lifts plus the calendar-window note; the superseded muscle / weekly-target / status hero is removed because it duplicated the row.
 
@@ -97,7 +103,7 @@ At viewports no wider than 380 CSS pixels, active-workout controls reserve nativ
 
 Grip and exercise/session overflow glyphs use `--text` rather than quieter contextual ink so their 22 px forms retain AA contrast against their surfaces across every color package and theme.
 
-Progress uses a plain Overview/Lifts/History tab strip followed by one view-specific conclusion. The former workspace hero paragraph, pill-style switcher, coaching hero, and zero-stat summary tiles are retired; detailed volume, fatigue, lift, and submitted-session evidence remains in the content below.
+**SUPERSEDED (M4):** Progress formerly used an Overview/Lifts/History strip. Current Progress has no subview switcher, dashboard, volume, fatigue, score, or recommendation layer; it presents one factual exact-variant chart and chronological history.
 
 Pain-blocked exercise options list only current catalog-backed substitutes. Applying the explicit pain-free confirmation resolves the selected display name against that exact catalog set; an alias collision or duplicate normalized name is rejected instead of silently choosing another exercise.
 
@@ -349,7 +355,7 @@ Readiness capture includes sleep, quality, HRV, resting HR, soreness, illness, a
 | Confirmation before final submission | **IMPLEMENTED** | `renderSubmitConfirmation`; cancellation returns to active workout. |
 | Post-workout completed lifts and PRs | **IMPLEMENTED** | `renderCompletedWorkoutSummary` leads with the grade and earned achievement strip, then category, highlight, review, and exercise-result detail. Badge titles and descriptions remain visible text; decorative badge images use empty alternative text to avoid duplicate announcements. Interactive badge summaries use native disclosure semantics, include an explicit “View exercise details” cue, and expand in place without navigating away from the saved summary. |
 | History only after confirmed submission | **IMPLEMENTED** | Canonical history filters submitted/completed states; safety/domain tests. Imported Strong workouts are normalized as submitted history, retain exact performance identity and provenance in generated templates, and are audited across every generated template exercise for dated history, usable set structure, and startable targets. Unmapped Strong-only identities use the explicit non-research history fallback. |
-| Interactive progress charts with session detail | **IMPLEMENTED** | Point selection and detail view. |
+| Factual progress chart with source detail | **IMPLEMENTED LOCALLY (M4)** | One exact-variant chart with point selection and date/load/reps/RPE/set-role/source-session detail, followed by chronological submitted-workout history. No analytical score, target band, confidence, evidence matrix, or weekly volume view remains. |
 | Full visibility for long exercise names | **PARTIALLY IMPLEMENTED** | Wrapping/overflow styles and performance fixture cover long workout names; broad physical-device exercise-name audit is absent. |
 | Functional lb/kg controls | **IMPLEMENTED** | Header and Settings use the same atomic converter; sets, targets, template increments, overrides, and snapshots preserve physical meaning and explicit unit provenance. Strong CSV import separately requires the source Weight-column unit, labels imported sets with it, retains it with the immutable raw text, and leaves the display unit unchanged. Same-unit duplicate files are no-ops; conflicting reinterpretation is rejected. Private/raw source packages remain immutable. |
 | Motivating, clean experience | **PARTIALLY IMPLEMENTED** | Score/grade colors, a theme-aware achievement strip with explicit contrast-guaranteed tokens, cohesive earned badge artwork, cards, responsive layouts, and light/dark themes exist. Explicit design scales and a presentation-only reward layer now give set completion, rest, and earned badges visible acknowledgement, and Today carries no text below 12 px. Remaining: the type-scale migration across roughly 370 legacy declarations, dedicated Plan/Progress/planner passes, chart typography, and subjective/physical-device polish. |
@@ -358,7 +364,7 @@ Readiness capture includes sleep, quality, HRV, resting HR, soreness, illness, a
 
 Privacy/Support return queries and notification/workout deep-link fields are one-shot routing inputs. Once consumed, canonical Today, Plan, Progress, or More navigation removes those fields while retaining unrelated deployment-verification parameters, so reload cannot reopen a stale destination or action.
 
-- **Empty:** Controlled “not enough data,” no-template/history/chart messages explain qualifying data needed; analytics do not substitute unrelated scores.
+- **Empty:** Controlled no-template/history/chart messages state which factual record is absent; no analytical score or unrelated recommendation is substituted.
 - **Loading:** Initial persistence/evidence loading occurs before primary use; imports expose attempt-scoped progress/error feedback and remote deletion exposes its continuation state. **IMPLEMENTED LOCALLY — REVIEW REQUIRED:** chart recalculation and import progress now share the layout-preserving `.skeleton` vocabulary; remaining operation-specific loading states have not been migrated wholesale.
 - **Error:** Toasts, accessible import validation, retryable/non-retryable remote-deletion status, API status, persistence fallback, and setup errors are surfaced without exposing secrets. When both persistence layers reject an ordinary change, Settings rerenders the recovery guidance immediately while retaining the in-memory setting.
 - **Success:** Live-region toast and import status, completed controls, timer-complete notice, notification tests, remote-deletion confirmation, submission summary, PR/grade feedback.
@@ -410,7 +416,8 @@ All concepts must expose empty, loading, offline, failure, destructive-confirmat
 - **REMOVED:** Today Program pulse, visible Progress score/expectation coaching, legacy recommendation renderers, confidence/evidence presentation, and prospective completion coaching.
 - **VERIFIED:** Mobile 390 × 844 scenarios cover ordinary silence and continued logging after pain entry, including long names, large loads, decimal RPE, stable targets, prior performance, reload recovery, and no horizontal overflow.
 - **IMPLEMENTED LOCALLY (M3):** Guided planning and mesocycle UI/state are removed; Plan owns routines/templates only.
-- **PLANNED:** M4 removes remaining dashboard/research clutter; M5–M7 install the final two-destination shell, simplified logger, and concise actual-work completion/Progress experience.
+- **IMPLEMENTED LOCALLY (M4):** Remaining dashboard/research, weekly/fractional volume, hypertrophy, score, evidence/confidence, normal plan-preview, and duplicate recommendation surfaces are removed. Progress is factual per-variant performance plus chronological history.
+- **NEXT:** M5 installs the final two-destination shell; M6–M7 simplify the logger and completion/grade experience.
 
 ### Focused five-direction session mockups
 

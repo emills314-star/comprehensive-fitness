@@ -75,12 +75,14 @@ assert.equal(migrationModel.sets[0].originalImportedValue.setOrder, "W", "Origin
 engine.migrateDomainData(migrationModel);
 assert.equal(migrationModel.migrationAudit.length, auditCount, "Migration must be idempotent");
 
-assert.match(html, /function completedAnalysisIndex\(\)[\s\S]*const sessions = activeHistorySessions\(\);[\s\S]*sessionById/, "Charts and scoring must use the indexed canonical active history");
-assert.match(html, /qualifyingWeekIds: analysis\.qualifyingWeekIds/, "Chart points must use the selected qualifying weeks");
+assert.match(html, /function completedAnalysisIndex\(\)[\s\S]*const sessions = activeHistorySessions\(\);[\s\S]*sessionById/, "The canonical active-history index must retain completed source records without deleting the archive");
 assert.doesNotMatch(html, /\/\/ COACH_RECOMMENDATION_ENGINE_START|function coachRecommendationForExercise\(/, "The removed coach recommendation source must not remain live");
 assert.doesNotMatch(html, /coachRecommendationForExercise\(templateExercise\.name|coachRecommendationForExercise\(selectedName/, "Routine targets and factual charts must not consume the deleted coach recommendation source");
-assert.match(html, /Historical snapshot through/, "Historical chart periods must remain visibly separated from current progress");
-assert.match(html, /function renderLiftProgress\(\)[\s\S]*exerciseProgressSeries\(selectedName,[\s\S]*qualifyingWeekIds: analysis\.qualifyingWeekIds/, "Factual lift charts must retain their qualifying-history source");
+assert.match(html, /function exercisePerformanceSeries\([\s\S]*data\.sessions\.filter\(\(session\) => isSessionSubmitted\(session\)\)[\s\S]*isWorkingSet\(set, "progression"\)[\s\S]*bestSet: best\.set/, "The factual performance chart must use submitted same-variant working-set history rather than hypertrophy-qualified weeks");
+const progressRenderer = html.match(/function renderLiftProgress\(\)[\s\S]*?(?=\n\s*function restAlertState\()/)?.[0] || "";
+assert.ok(progressRenderer, "The unified Progress renderer must remain available");
+assert.match(progressRenderer, /exercisePerformanceSeries\(selectedName,[\s\S]*renderChart\("performance"[\s\S]*renderHistory\(\)/, "Progress must retain one factual performance chart together with chronological workout history");
+assert.doesNotMatch(progressRenderer, /qualifyingWeekIds|hypertrophy|fractional|weekly volume/i, "The normal Progress renderer must not restore analytical qualification or volume surfaces");
 assert.match(html, /data-action="set-type-override"/, "History editing must expose manual set-type correction");
 assert.match(html, /function getMostRecentWorkoutPerformance\(exerciseName, options = \{\}\)/, "All prior workout consumers must use one canonical resolver");
 assert.match(html, /requestedResistanceType[\s\S]*resistanceTypeFor\(entry\.exercise, entry\.set\) === requestedResistanceType/, "Prior workout resolution must preserve resistance-type identity");

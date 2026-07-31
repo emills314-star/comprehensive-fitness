@@ -288,9 +288,9 @@ test("m2 core views retain their functional destinations while using the shared 
   await installFixture(page, buildM2CoreFixture());
 
   await expect(page.locator(".lift-home-view")).toBeVisible();
-  await expect(page.getByRole("button", { name: /^Start · \d+ sets$/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Review this week" })).toBeVisible();
-  await expect(page.locator('[data-action="start-template"]')).toHaveCount(4);
+  await expect(page.locator('[data-action="start-next-template"]')).toHaveText("Start");
+  await expect(page.locator(".today-coach")).toContainText("Expected workout");
+  await expect(page.locator('[data-action="start-template"]')).toHaveCount(3);
   if (process.env.CF_MOCKUP_REVIEW_DIR) {
     fs.mkdirSync(process.env.CF_MOCKUP_REVIEW_DIR, { recursive: true });
     await page.screenshot({
@@ -314,9 +314,10 @@ test("m2 core views retain their functional destinations while using the shared 
   }
 
   await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: /Progress$/ }).click();
-  await expect(page.locator(".dashboard-view")).toBeVisible();
-  await expect(page.locator(".volume-table")).toBeVisible();
-  expect(await page.locator('[data-action="open-fatigue-flag"]').count()).toBeGreaterThan(0);
+  await expect(page.locator(".charts-view")).toBeVisible();
+  await expect(page.locator('.chart-card[data-chart-key="performance"]')).toBeVisible();
+  await expect(page.locator(".history-view")).toBeVisible();
+  await expect(page.locator('[data-action="set-progress-view"]')).toHaveCount(0);
   if (process.env.CF_MOCKUP_REVIEW_DIR) {
     await page.screenshot({
       path: path.join(process.env.CF_MOCKUP_REVIEW_DIR, "m2-core-progress-candidate-full.png"),
@@ -327,27 +328,18 @@ test("m2 core views retain their functional destinations while using the shared 
   }
 });
 
-test("m2 evidence and summary presentations preserve their existing disclosure and completion behavior", async ({ page }, testInfo) => {
+test("m2 normal workout stays quiet and completion remains directly reachable", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile", "The m2 references are phone compositions.");
   await page.setViewportSize({ width: 390, height: 844 });
   await installFixture(page, buildM1ProgressiveFixture());
-  await page.evaluate((exerciseId) => {
-    const exercise = data.exercises.find((item) => item.id === exerciseId);
-    exercise.recommendationSnapshot = unifiedPrescriptionSnapshot(exercise, {
-      fresh: true,
-      throughDate: activeSession().date,
-      recovery: activeSession().recovery || {}
-    });
-    render();
-  }, IDS.activeBenchExercise);
-  const recommendation = page.locator(".recommendation-card-v2").first();
-  await expect(recommendation).toBeVisible();
-  for (const disclosure of await recommendation.locator("details").all()) await disclosure.evaluate((node) => { node.open = true; });
+  await expect(page.locator(".resolved-action-card")).toHaveCount(0);
+  await expect(page.locator(".recommendation-card-v2")).toHaveCount(0);
   if (process.env.CF_MOCKUP_REVIEW_DIR) {
-    await recommendation.screenshot({
-      path: path.join(process.env.CF_MOCKUP_REVIEW_DIR, "m2-core-evidence-candidate.png"),
+    await page.screenshot({
+      path: path.join(process.env.CF_MOCKUP_REVIEW_DIR, "m2-core-quiet-workout-candidate.png"),
       animations: "disabled",
-      caret: "hide"
+      caret: "hide",
+      fullPage: true
     });
   }
 
@@ -377,11 +369,11 @@ test("m3 start and readiness flow keeps its two-step behavior in the mockup hier
   test.skip(testInfo.project.name !== "mobile", "The m3 references are phone compositions.");
   await page.setViewportSize({ width: 390, height: 844 });
   await installFixture(page, buildM2CoreFixture());
-  await page.getByRole("button", { name: /^Start · \d+ sets$/ }).click();
+  await page.locator('[data-action="start-next-template"]').click();
 
   const confirm = page.getByRole("dialog", { name: /Start Upper A — Push Focus\?/ });
   await expect(confirm).toBeVisible();
-  await expect(confirm.locator(".readiness-evidence-summary")).toBeVisible();
+  await expect(confirm).toContainText("Readiness is optional");
   if (process.env.CF_MOCKUP_REVIEW_DIR) {
     await page.screenshot({
       path: path.join(process.env.CF_MOCKUP_REVIEW_DIR, "m3-start-confirm-candidate.png"),
@@ -409,8 +401,8 @@ test("m3 start and readiness flow keeps its two-step behavior in the mockup hier
   await readiness.getByRole("button", { name: "See what this changes", exact: true }).evaluate((button) => button.click());
   const review = page.locator(".readiness-review-sheet");
   await expect(review).toBeVisible();
-  await expect(review.locator(".readiness-change-entry")).toHaveCount(5);
-  await expect(review.getByRole("button", { name: /Start (adjusted|planned) workout/ })).toBeVisible();
+  await expect(review).toContainText("Readiness recorded.");
+  await expect(review.getByRole("button", { name: "Start workout", exact: true })).toBeVisible();
   if (process.env.CF_MOCKUP_REVIEW_DIR) {
     await page.screenshot({
       path: path.join(process.env.CF_MOCKUP_REVIEW_DIR, "m3-readiness-review-candidate.png"),
@@ -452,26 +444,26 @@ test("m3 conflict and discard sheets preserve the safe exit choices", async ({ p
   }
 });
 
-test("m5 analysis and history retain evidence detail in the mockup hierarchy", async ({ page }, testInfo) => {
+test("m5 unified progress retains factual chart detail and chronological history", async ({ page }, testInfo) => {
   test.setTimeout(120_000);
   test.skip(testInfo.project.name !== "mobile", "The m5 references are phone compositions.");
   await page.setViewportSize({ width: 390, height: 844 });
   await installFixture(page, buildAnalyticsEvidenceFixture());
 
   await page.locator('[data-action="set-tab"][data-tab="progress"]').click();
-  await page.locator('[data-action="set-progress-view"][data-progress-view="lifts"]').click();
   await expect(page.locator(".chart-recalculating")).toHaveCount(0, { timeout: 15_000 });
   await expect(page.locator(".charts-view")).toBeVisible();
+  await expect(page.locator('[data-action="set-progress-view"]')).toHaveCount(0);
   await page.evaluate(() => window.scrollTo(0, 0));
   if (process.env.CF_MOCKUP_REVIEW_DIR) {
     await page.screenshot({
-      path: path.join(process.env.CF_MOCKUP_REVIEW_DIR, "m5-lift-analysis-candidate.png"),
+      path: path.join(process.env.CF_MOCKUP_REVIEW_DIR, "m5-unified-progress-candidate.png"),
       animations: "disabled",
       caret: "hide"
     });
   }
 
-  const chart = page.locator('.chart-card[data-chart-key="e1rm"]');
+  const chart = page.locator('.chart-card[data-chart-key="performance"]');
   const chartPoint = chart.locator('[data-action="show-chart-point"]').last();
   await chartPoint.evaluate((point) => point.dispatchEvent(new MouseEvent("click", { bubbles: true })));
   await expect(chart.locator(".chart-detail")).toBeVisible();
@@ -485,25 +477,22 @@ test("m5 analysis and history retain evidence detail in the mockup hierarchy", a
   }
 
   await chart.getByRole("button", { name: "Close chart detail" }).click();
-  await page.locator('[data-action="set-progress-view"][data-progress-view="history"]').click();
   await expect(page.locator(".history-view")).toBeVisible();
   await page.evaluate(() => window.scrollTo(0, 0));
   if (process.env.CF_MOCKUP_REVIEW_DIR) {
     await page.screenshot({
-      path: path.join(process.env.CF_MOCKUP_REVIEW_DIR, "m5-history-sessions-candidate.png"),
+      path: path.join(process.env.CF_MOCKUP_REVIEW_DIR, "m5-completed-history-candidate.png"),
       animations: "disabled",
       caret: "hide"
     });
   }
 
-  const exerciseHistory = page.locator("details.history-by-exercise");
-  await exerciseHistory.locator(":scope > summary").click();
-  const firstExercise = exerciseHistory.locator("details.history-exercise").first();
-  await firstExercise.locator(":scope > summary").click();
-  await firstExercise.scrollIntoViewIfNeeded();
+  const firstSession = page.locator('.history-view [data-action="open-session"]').first();
+  await expect(firstSession).toBeVisible();
+  await firstSession.scrollIntoViewIfNeeded();
   if (process.env.CF_MOCKUP_REVIEW_DIR) {
-    await page.screenshot({
-      path: path.join(process.env.CF_MOCKUP_REVIEW_DIR, "m5-history-exercise-candidate.png"),
+    await firstSession.screenshot({
+      path: path.join(process.env.CF_MOCKUP_REVIEW_DIR, "m5-history-session-candidate.png"),
       animations: "disabled",
       caret: "hide"
     });

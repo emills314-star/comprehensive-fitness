@@ -153,6 +153,16 @@ Legacy planning data survives only at a versioned input boundary. `backup-contra
 
 Exit evidence is recorded in `MILESTONE_LOG.md`: the focused decoder/deletion suite, 60/60 public scripts, 38/38 app-integration contracts, retained engine/recommendation suites, lint, typecheck, production build, 40-file web sync, 39-asset PWA verification, privacy scan, dependency search, and focused mobile Playwright verification at 390 × 844 passed. The service-worker cache is v97. No private or production data was mutated. M3 is recoverable at local checkpoint `3e102e2`.
 
+## M4 completion record — Analytical and research-clutter deletion
+
+**Status:** IMPLEMENTED LOCALLY on 2026-07-31; M5 is next.
+
+Today and workout Start no longer compute or display hypertrophy analysis, weekly/fractional volume, program scores, research/evidence/confidence status, normal plan previews, or a duplicate recommendation. Stable named-variant targets and factual same-role prior prefills remain authoritative.
+
+Progress is now one coherent factual destination: one per-variant performance chart with inspectable source facts plus chronological workout history. Dashboard/scorecard routes, persistent Progress modes, analytical renderers/state/actions/styles, the programming-family ledger, historical fractional-volume projection APIs, and obsolete analytical tests were deleted. Supported source history and bounded legacy identity/import/snapshot compatibility remain unchanged.
+
+Exit evidence is recorded in `MILESTONE_LOG.md`: 58/58 public scripts, 38/38 app-integration contracts, focused M4 removal and mobile factual-Progress tests, lint, typecheck, production build, 39-file web sync, 38-asset PWA verification, tracked-file privacy scan, residue/diff checks, and populated/empty 390 × 844 visual verification passed. The service-worker cache is v98. No private or production data was mutated. The local M4 checkpoint is pending.
+
 ## 5. Temporary structure ledger
 
 | Artifact | Introduced | Purpose | Delete gate |

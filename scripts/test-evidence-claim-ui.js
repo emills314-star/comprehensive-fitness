@@ -63,7 +63,7 @@ assert.match(resolvedActionForScopeSource, /exerciseVariantId/, "Exercise action
 assert.match(renderLiftHomeSource, /renderResolvedAction\(resolvedActionForScope\(running, "session"\)/, "Today may show only the canonical session action");
 assert.match(renderWorkoutSource, /renderResolvedAction\(resolvedActionForScope\(session, "session"\)/, "The active workout may show only the canonical session action");
 assert.match(views, /renderResolvedAction\(resolvedActionForScope\(owningSession, "exercise", exercise\)/, "The active exercise may show only its canonical exercise action");
-assert.doesNotMatch(renderLiftHomeSource, /renderHypertrophyScore|renderRecommendation|recommendationConfidence|renderUnifiedEvidence/, "The ordinary Today surface must not restore score or recommendation-evidence presentation");
+assert.doesNotMatch(renderLiftHomeSource, /renderHypertrophyScore|renderRecommendation|recommendationConfidence|renderUnifiedEvidence|todayPlanPreview|weeklyMuscleVolume/, "The ordinary Today surface must not restore score, plan-analysis, or recommendation-evidence presentation");
 
 for (const legacyRenderer of [
   "renderRecommendationHead",
@@ -74,7 +74,9 @@ for (const legacyRenderer of [
 ]) {
   assert.doesNotMatch(views, new RegExp(`function ${legacyRenderer}\\(`), `${legacyRenderer} must remain deleted from normal workout presentation`);
 }
-assert.doesNotMatch(analysis, /function renderRecommendation\(|coachRecommendationForExercise\(/, "Factual progress charts must not become a second recommendation surface");
+assert.doesNotMatch(analysis, /function renderRecommendation\(|coachRecommendationForExercise\(|function hypertrophyAnalysis\(|function weeklyMuscleVolume\(/, "Factual progress charts must not become a second recommendation or hidden analysis surface");
+assert.match(analysis, /renderChart\("performance"[\s\S]*renderHistory\(\)/, "Progress must retain one factual chart and chronological workout history");
+assert.doesNotMatch(analysis, /research exercises|research version|prescription evidence status/i, "Settings and Progress must not expose research/evidence status");
 
 const focusAllowlist = foundation.match(/const focusActionAllowlist = new Set\(\[([\s\S]*?)\]\);/)?.[1] || "";
 assert.ok(focusAllowlist, "The focus restoration action allowlist must remain discoverable");

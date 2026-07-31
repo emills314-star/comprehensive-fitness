@@ -15,27 +15,8 @@ const section = (start, end) => {
 
 const inputHandler = section('root.addEventListener("input"', "async function applyWorkoutDeepLink");
 const templateRenderer = section("function renderTemplates()", "function renderHistory(");
-const historyRenderer = section("function renderHistory(", "function renderExerciseHistory(");
-const recentHistoryRenderer = section("function renderRecentSessions(", "function renderQuickStartTemplates(");
-const recentHistoryModelSource = section("function recentHistoryCardModel(", "if (performanceDebugEnabled) window.__CF_TEST__");
+const historyRenderer = section("function renderHistory()", "function normalizeSetTypeCode(");
 const setCompletion = section("function toggleSetCompletion(setId)", "function toggleSetSkipped(setId)");
-
-const recentHistoryCardModel = new Function(
-  "sessionCompletionDate",
-  "performanceDebugEnabled",
-  "recentHistoryDataIssueIds",
-  "WORKOUT_GRADE_THRESHOLDS",
-  "workoutGradeScoreTone",
-  "formatDate",
-  recentHistoryModelSource + "; return recentHistoryCardModel;"
-)(
-  (session) => String(session?.completedAt || session?.submittedAt || session?.date || "").slice(0, 10),
-  false,
-  new Set(),
-  [{ minimum: 97, grade: "A+" }, { minimum: 87, grade: "B+" }, { minimum: 0, grade: "F" }],
-  (score) => score >= 90 ? "score-excellent" : score >= 80 ? "score-very-good" : "score-critical",
-  (date) => date === "2026-07-10" ? "July 10" : "Date unavailable"
-);
 
 assert.match(html, /performanceDebugEnabled = \["127\.0\.0\.1", "localhost"\][\s\S]*has\("perf"\)/, "Performance diagnostics must remain development-only");
 assert.match(html, /window\.__CF_PERF__ = performanceEvents/, "Development profiling should expose bounded timing events");
@@ -63,9 +44,9 @@ assert.doesNotMatch(inputHandler, /replacement\.startsWith\(previousValue\)/, "M
 assert.match(setCompletion, /patchSet\(set\.id, \{ completed: true, skipped: false \}, false\)[\s\S]*startTimer/, "Completing a set must update locally before timer work");
 assert.doesNotMatch(setCompletion, /data\.sets\.map/, "Completing one set must not clone the full set history");
 
-assert.match(html, /function invalidateCompletedAnalysis\(\)[\s\S]*exerciseWeekCache\.clear\(\)[\s\S]*weeklyVolumeCache\.clear\(\)/, "Completed-history caches need one invalidation boundary");
-assert.match(html, /function hypertrophyAnalysis[\s\S]*hypertrophyScoreCache\.has\(key\)[\s\S]*hypertrophyScoreCache\.set\(key, result\)/, "Hypertrophy analyses must be keyed and reusable");
-assert.match(html, /function weeklyMuscleVolume[\s\S]*weeklyVolumeCache\.has\(cacheKey\)/, "Weekly volume must not be recomputed during every dashboard render");
+assert.match(html, /function invalidateCompletedAnalysis\(\)[\s\S]*previousPerformanceCache\.clear\(\)[\s\S]*submittedPerformanceIndexCache\.clear\(\)[\s\S]*exerciseProgressCache\.clear\(\)/, "Factual history and performance caches need one invalidation boundary");
+assert.doesNotMatch(html, /hypertrophyScoreCache|weeklyVolumeCache|exerciseWeekCache/, "Deleted analytical caches must not remain in the application");
+assert.doesNotMatch(html, /function hypertrophyAnalysis|function weeklyMuscleVolume/, "Deleted hypertrophy and weekly-volume producers must not remain in the application");
 assert.doesNotMatch(html, /function fatigueFlags\(/, "Legacy numeric fatigue thresholds must not remain in the application");
 
 assert.equal((templateRenderer.match(/id="active-workout-template-notice"/g) || []).length, 1, "Templates should show one active-workout notice");
@@ -77,38 +58,11 @@ assert.doesNotMatch(templateRenderer, /fatigueFlags\(/, "Opening Templates must 
 assert.match(templateRenderer, /const advice = null;/, "Template-list rendering must defer readiness coaching to the start flow");
 assert.match(templateRenderer, /const editorExpanded = expandedTemplateEditorIds\.has\(template\.id\)/, "Template editors must be expanded explicitly");
 assert.match(templateRenderer, /\$\{editorExpanded \? `<div class="disclosure-body">/, "Collapsed template editors must not generate their exercise controls");
-assert.match(recentHistoryRenderer, /class="recent-history-card"/, "Recent History needs a structured mobile card");
-assert.match(recentHistoryModelSource, /session\?\.workoutAnalysis\?\.version === 1/, "Recent History must reuse stored workout grades");
-assert.doesNotMatch(recentHistoryModelSource, /workoutAnalysisForSession/, "Recent History must not recalculate grades while rendering rows");
-assert.doesNotMatch(recentHistoryRenderer, /["']Grade\s/, "Recent History must display only the letter grade");
 assert.doesNotMatch(historyRenderer, /Grade ['"]?\s*\+|Grade \$\{/, "Progress History must not prefix the visible grade with the word Grade");
 assert.match(historyRenderer, /class="ri-copy"><b>[\s\S]*session\.title/, "Progress History session names must remain the primary row copy");
-assert.match(historyRenderer, /class="ri-val" aria-label="' \+ \(grade \? 'Workout grade '/, "Progress History grades must remain separately labelled facts");
-assert.match(recentHistoryModelSource, /workoutName[\s\S]*completedDate[\s\S]*workoutGrade/, "Recent History must model title, date, and grade as separate fields");
-assert.match(recentHistoryRenderer, /class="recent-history-title"[\s\S]*class="recent-history-meta"/, "The full-width title must render before the metadata row");
-assert.match(recentHistoryRenderer, /class="recent-history-date"[\s\S]*dateMarkup \+ '<span class="recent-history-grade/, "Date and grade must render as separate metadata values");
-assert.match(recentHistoryRenderer, /aria-label="' \+ escapeHtml\(accessibleLabel\)/, "The entire card must expose an accessible workout, date, and grade label");
-assert.match(recentHistoryModelSource, /Date unavailable/, "Missing dates need a controlled fallback");
-assert.match(recentHistoryRenderer, /&mdash;/, "Missing grades need a neutral fixed-area placeholder");
-assert.match(html, /\.recent-history-title \{[^}]*overflow-wrap: anywhere;[^}]*white-space: normal;/, "Long workout names must wrap without touching metadata");
-assert.match(html, /\.recent-history-title \{[^}]*color: var\(--current\);/, "Recent workout names must use the blue action color");
+assert.match(historyRenderer, /class="ri-val" aria-label="Stored workout grade/, "Progress History grades must remain separately labelled stored facts");
 assert.match(html, /\.row-item \.ri-copy b \{[^}]*font-size: var\(--fs-tiny\);[^}]*font-weight: 850;/, "Progress History session names must retain the shared strong row hierarchy");
-assert.match(html, /\.recent-history-card \{[^}]*grid-template-columns: minmax\(0, 1fr\);/, "Workout titles need a dedicated full-width card row");
-assert.match(html, /\.recent-history-meta \{[^}]*grid-template-columns: minmax\(0, 1fr\) 44px;/, "Date and grade need separate metadata tracks");
-assert.match(html, /\.recent-history-grade \{[^}]*width: 44px;[^}]*white-space: nowrap;/, "Plus and minus grades must stay in a fixed non-wrapping area");
-assert.doesNotMatch(html, /\.recent-history-row\s*\{|\.recent-history-copy\s*\{/, "Conflicting legacy Recent History row styles must be removed");
 assert.match(html, /\.grade-tone\.score-excellent \{ --grade-color: var\(--current\); \}/, "Recent History and summaries must share the grade color system");
-assert.match(html, /Friday Neck Day[\s\S]*Tuesday \\u2014 Heavy Push \+ Calves \+ Light Quads[\s\S]*Monday Neck Day/, "The mobile fixture must retain the previously failing workout names");
+assert.match(historyRenderer, /sessions\.length[\s\S]*Completed workouts will appear here/, "Progress History must retain a bounded empty-state render");
 
-const missingHistoryRecord = recentHistoryCardModel({ id: "missing" });
-assert.equal(missingHistoryRecord.workoutName, "Workout", "Missing workout names need a controlled fallback");
-assert.equal(missingHistoryRecord.completedDateLabel, "Date unavailable", "Missing dates need a controlled fallback");
-assert.equal(missingHistoryRecord.workoutGrade, "", "Missing grades must remain semantically empty");
-assert.equal(missingHistoryRecord.gradeTone, "score-unavailable", "Missing grades need the neutral centralized tone");
-
-const gradeWithoutStoredScore = recentHistoryCardModel({ id: "grade", title: "Friday Neck Day", date: "2026-07-10", workoutAnalysis: { version: 1, grade: "B+", internalScore: null } });
-assert.equal(gradeWithoutStoredScore.completedDateLabel, "July 10", "Valid dates must retain the shared display format");
-assert.equal(gradeWithoutStoredScore.workoutGrade, "B+", "A valid stored letter grade must remain intact");
-assert.equal(gradeWithoutStoredScore.gradeTone, "score-very-good", "Letter-grade fallback styling must use the centralized score mapping");
-
-console.log("Performance architecture tests passed (input path, persistence, caches, templates, and Recent History).");
+console.log("Performance architecture tests passed (input path, persistence, factual caches, templates, and history).");

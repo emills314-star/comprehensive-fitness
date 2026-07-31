@@ -139,10 +139,6 @@ const polishVisualStates = [
   ["rest-rail-final-10s", '<details class="timer-bar" data-phase="final"><summary class="timer-summary"><span class="timer-progress" style="--timer-progress:92%"><span></span></span><span class="timer-rest-copy"><span>Rest</span></span><strong>0:08</strong></summary></details>'],
   ["rest-rail-paused", '<details class="timer-bar" data-phase="resting" data-paused="true"><summary class="timer-summary"><span class="timer-progress" style="--timer-progress:48%"><span></span></span><span class="timer-rest-copy"><span>Paused</span></span><strong>0:47</strong></summary></details>'],
   ["reconcile-strip", '<div class="reconcile-strip" data-tone="over"><span class="reconcile-copy"><strong>195 lb × 8 logged</strong><small>10 lb above target · 2 sets remain</small></span><span class="reconcile-actions"><button class="primary-action">Apply to remaining</button><button class="mini-button">Just this set</button></span></div>'],
-  ["recommendation-closed", '<section class="recommendation-card-v2"><div class="claim-card recommendation-head" data-conf="3"><div class="cc-row"><span class="cc-title">Hold</span><span class="meter lg" data-conf="3"><i></i><i></i><i></i><i></i></span></div><strong class="cc-value">2 working · 110 lb × 8 reps · RPE 8</strong></div><details class="recommendation-section"><summary>Prescription detail</summary></details><details class="recommendation-section"><summary>Research confidence</summary></details><details class="recommendation-section"><summary><span>Evidence</span><span class="cnt">3</span></summary></details></section>'],
-  ["recommendation-prescription-open", '<section class="recommendation-card-v2"><details class="recommendation-section" open><summary>Prescription detail</summary><div class="recommendation-section-body"><div class="unified-recommendation-grid"><div><span>Sets</span><strong>2</strong></div><div><span>Reps</span><strong>8–10</strong></div><div><span>Effort</span><strong>RPE 7–9</strong></div><div><span>Rest</span><strong>120 sec</strong></div></div></div></details></section>'],
-  ["recommendation-confidence-open", '<section class="recommendation-card-v2"><details class="recommendation-section" open><summary>Research confidence</summary><div class="recommendation-section-body"><div class="rationale-heading" data-conf="3"><span class="meter lg" data-conf="3"><i></i><i></i><i></i><i></i></span><div><strong>Moderate confidence</strong><span>personal 62% · research 38%</span></div></div></div></details></section>'],
-  ["recommendation-evidence-open", '<section class="recommendation-card-v2"><details class="recommendation-section" open><summary><span>Evidence</span><span class="cnt">3</span></summary><div class="recommendation-section-body"><ul><li>Three comparable exposures</li><li>Load held inside the progression gate</li><li>RPE coverage is complete</li></ul></div></details></section>'],
   ["caret-closed", '<details class="compact-disclosure"><summary>Section disclosure</summary></details>'],
   ["caret-open", '<details class="compact-disclosure" open><summary>Section disclosure</summary><div class="disclosure-body">Visible detail</div></details>'],
   ["range-bar-tones", '<div class="range-tone-specimen">' + ["on", "under", "over", "out", "none"].map((tone, index) => '<label>' + tone + '<span class="range-bar" data-tone="' + tone + '" style="--band-start:30%;--band-end:70%;--actual:' + (25 + index * 13) + '%"><i class="rb-band"></i><i class="rb-mark"></i></span></label>').join("") + '</div>'],
@@ -162,123 +158,6 @@ for (const [name, markup] of polishVisualStates) {
     await expect(page.locator("#polish-specimen")).toHaveScreenshot(`polish-${name}.png`, { animations: "disabled" });
   });
 }
-
-test("all confidence text retains contrast in every color package and theme", async ({ page }) => {
-  const colorPackages = [
-    "heritage-atlas",
-    "signal-garden",
-    "alpine-ledger",
-    "training-hall",
-    "harbor-pulse",
-    "prairie-electric",
-    "redwood-circuit",
-    "mediterranean-set",
-    "modern-primary",
-    "night-stadium"
-  ];
-  const results = await page.evaluate(({ colorPackages }) => {
-    const probeHost = document.createElement("div");
-    probeHost.innerHTML = [1, 2, 3, 4].map((level) => (
-      `<section data-contrast-level="${level}">
-        <span class="chip" data-conf="${level}" data-contrast-name="chip">Confidence ${level}</span>
-        <div class="claim-card" data-conf="${level}">
-          <span class="cc-title" data-contrast-name="cc-title">Today's target</span>
-          <strong class="cc-value" data-contrast-name="cc-value">145 lb × 8 reps</strong>
-          <span class="cc-why" data-contrast-name="cc-why">Confidence and evidence summary</span>
-          <div class="claim-projection-grid">
-            <div>
-              <span class="claim-projection-label" data-contrast-name="claim-projection-label">Rest</span>
-              <strong class="claim-projection-value" data-contrast-name="claim-projection-value">120 sec</strong>
-            </div>
-          </div>
-          <div class="claim-projection-rule">
-            <span data-contrast-name="claim-projection-rule-label">Next action</span>
-            <strong data-contrast-name="claim-projection-rule-value">Progress after the completed range</strong>
-          </div>
-          <div class="prescription-base">
-            <span data-contrast-name="prescription-base-label">Base prescription</span>
-            <strong data-contrast-name="prescription-base-value">3 sets · 8 reps</strong>
-          </div>
-        </div>
-        <article class="role-prescription">
-          <p class="role-evidence-copy" data-contrast-name="role-evidence-copy">Stored evidence for this role.</p>
-        </article>
-        <div class="rationale-heading" data-conf="${level}">
-          <div>
-            <strong class="evidence-confidence-label" data-contrast-name="evidence-confidence-label">Confidence ${level}</strong>
-            <span class="evidence-confidence-copy" data-contrast-name="evidence-confidence-copy">Personal and research evidence</span>
-          </div>
-        </div>
-      </section>`
-    )).join("");
-    document.body.append(probeHost);
-    const parseColor = (value) => {
-      const normalized = String(value);
-      const channels = (normalized.match(/[\d.]+/g) || []).map(Number);
-      const srgb = normalized.startsWith("color(srgb");
-      return {
-        red: (channels[0] || 0) * (srgb ? 255 : 1),
-        green: (channels[1] || 0) * (srgb ? 255 : 1),
-        blue: (channels[2] || 0) * (srgb ? 255 : 1),
-        alpha: channels[3] ?? 1
-      };
-    };
-    const composite = (foreground, background) => ({
-      red: foreground.red * foreground.alpha + background.red * (1 - foreground.alpha),
-      green: foreground.green * foreground.alpha + background.green * (1 - foreground.alpha),
-      blue: foreground.blue * foreground.alpha + background.blue * (1 - foreground.alpha),
-      alpha: 1
-    });
-    const effectiveBackground = (element) => {
-      const layers = [];
-      for (let node = element; node && node !== document.body; node = node.parentElement) {
-        layers.push(parseColor(getComputedStyle(node).backgroundColor));
-      }
-      let background = parseColor(getComputedStyle(document.body).backgroundColor);
-      for (const layer of layers.reverse()) background = composite(layer, background);
-      return background;
-    };
-    const luminance = (rgb) => rgb.reduce((sum, channel, index) => {
-      const value = channel / 255;
-      const linear = value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-      return sum + linear * [0.2126, 0.7152, 0.0722][index];
-    }, 0);
-    const contrast = (foreground, background) => {
-      const foregroundLuminance = luminance([foreground.red, foreground.green, foreground.blue]);
-      const backgroundLuminance = luminance([background.red, background.green, background.blue]);
-      return (Math.max(foregroundLuminance, backgroundLuminance) + 0.05)
-        / (Math.min(foregroundLuminance, backgroundLuminance) + 0.05);
-    };
-    const measurements = [];
-    for (const theme of ["dark", "light"]) {
-      document.documentElement.dataset.theme = theme;
-      for (const colorPackage of colorPackages) {
-        document.documentElement.dataset.colorPackage = colorPackage;
-        for (const element of probeHost.querySelectorAll("[data-contrast-name]")) {
-          const background = effectiveBackground(element);
-          const foreground = composite(parseColor(getComputedStyle(element).color), background);
-          const levelHost = element.closest("[data-contrast-level]");
-          measurements.push({
-            theme,
-            colorPackage,
-            level: Number(levelHost.dataset.contrastLevel),
-            selector: element.dataset.contrastName,
-            ratio: contrast(foreground, background)
-          });
-        }
-      }
-    }
-    probeHost.remove();
-    return measurements;
-  }, { colorPackages });
-
-  for (const result of results) {
-    expect(
-      result.ratio,
-      `${result.theme}/${result.colorPackage} confidence level ${result.level} ${result.selector} contrast`
-    ).toBeGreaterThanOrEqual(4.5);
-  }
-});
 
 test("the authoritative UI documentation remains present", async () => {
   const documentation = fs.readFileSync(path.join(__dirname, "..", "..", "docs", "UI_UX.md"), "utf8");

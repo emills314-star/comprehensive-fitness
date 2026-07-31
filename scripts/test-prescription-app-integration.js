@@ -22,11 +22,10 @@ const secondaryPageCss = fs.readFileSync(path.join(root, "resources", "secondary
 // Compile the application contract view before checking integration contracts.
 [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].forEach((match) => new Function(match[1]));
 
-assert.match(indexHtml, /<script src="\.\/programming-family-ledger\.js"><\/script>[\s\S]*<script src="\.\/prescription-engine\.js"><\/script>[\s\S]*<script src="\.\/exception-resolver\.js"><\/script>[\s\S]*<script src="\.\/app-foundation\.js"><\/script>/, "The browser must load the canonical exception resolver before application runtime consumers");
+assert.match(indexHtml, /<script src="\.\/prescription-engine\.js"><\/script>[\s\S]*<script src="\.\/exception-resolver\.js"><\/script>[\s\S]*<script src="\.\/app-foundation\.js"><\/script>/, "The browser must load the canonical exception resolver before application runtime consumers");
 assert.doesNotMatch(indexHtml, /guided-mesocycle\.js/, "The deleted guided-planner runtime must not be loaded");
-assert.match(html, /familyProjectionStatus: familyProjection\.familyProjectionStatus/, "Weekly analytics must expose fail-closed family projection status");
-assert.match(html, /familyTotals: familyProjection\.familyTotals/, "Weekly analytics must expose recommendation-family dose");
-assert.match(html, /activeSessionIds\.has\(entry\.session\.id\)/, "Historical family projection must use submitted active history only");
+assert.doesNotMatch(foundation + workout + views + analysis, /familyProjectionStatus|familyTotals|weeklyMuscleVolume/, "Deleted weekly/fractional-volume analytics must not remain in current application state, workout, or rendering paths");
+assert.match(imports, /weeklyMuscleVolumeResponse/, "Strict import compatibility must continue to recognize legacy evidence fields without rendering or recomputing them");
 const startTemplateSource = workout.slice(workout.indexOf("function startTemplate("), workout.indexOf("function addSet(", workout.indexOf("function startTemplate(")));
 assert.match(foundation, /const exceptionResolverApi = window\.FitnessExceptionResolver \|\| null/, "Application runtime must own one explicit canonical resolver dependency");
 assert.match(foundation, /function stableTargetForTemplateExercise\(/, "Stable variant targets must have a dedicated construction boundary");
@@ -44,8 +43,9 @@ assert.doesNotMatch(analysis, /function renderRecommendation\(|renderRecommendat
 assert.doesNotMatch(html, /function applyPrescriptionOverride\(/, "The deleted frontend engine-override adapter must not remain reachable");
 assert.match(html, /manualOverrides:/, "App data must retain manual override events");
 assert.match(html, /Base Session Intent[\s\S]*Today’s readiness may modify/, "Templates must distinguish stable intent from readiness changes");
-assert.match(html, /analysis-period-menu[\s\S]*select-chart-period/, "Charts period selection must use the custom control surface");
-assert.doesNotMatch(html, /<select data-action="hypertrophy-window"/, "Charts must not retain the browser-default period dropdown");
+assert.match(analysis, /chartKey:\s*"performance"/, "Progress must retain one factual primary performance chart");
+assert.match(analysis, /load<\/span>[\s\S]*reps<\/span>[\s\S]*RPE<\/span>[\s\S]*role<\/span>/, "The factual chart detail must retain load, reps, RPE, and set role");
+assert.doesNotMatch(html, /select-chart-period|hypertrophy-window/, "Progress must not retain deleted analytical period controls");
 assert.doesNotMatch(views, /function renderUnifiedPrescriptionDetails\(|function renderPrescriptionDetails\(|function renderRecommendationHead\(/, "The normal interface must not retain a hidden legacy recommendation detail stack");
 assert.doesNotMatch(analysis, /Research confidence|Unified prescription evidence|recommendation snapshots/, "Visible analysis/settings surfaces must not expose recommendation confidence, evidence status, or snapshot counts");
 assert.match(html, /field: "nutritionStatus", label: "Nutrition today", action: "template-readiness-nutrition"[\s\S]*field: "proteinStatus", label: "Protein target", action: "template-readiness-protein"/, "The shared segmented readiness renderer must collect current nutrition and protein context in distinct fields");
@@ -67,7 +67,6 @@ assert.match(html, /data-action="return-to-rest-workout"/, "Rest overlay must in
 assert.match(html, /data-action="preview-rest-complete-sound"/, "Settings must preview the selected rest sound");
 
 assert.doesNotMatch(views, /Prescription detail|Research confidence|Why\? \/ Evidence|Why This Recommendation/, "Normal surfaces must not expose the deleted recommendation/evidence vocabulary");
-assert.match(html, /intentionalReduction/, "prescribed light work must be marked so fatigue flags do not misclassify it as weakness");
 assert.match(html, /roundLoadForUnit/, "all displayed and edited loads must use the shared precision boundary");
 
 const evidence = engineApi.loadEvidenceFromFiles(root);

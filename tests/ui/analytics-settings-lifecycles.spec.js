@@ -2,10 +2,8 @@
 
 const { test, expect } = require("@playwright/test");
 const {
-  ANALYTICS_EXPECTATIONS,
   FIXED_NOW,
   STORAGE_KEY,
-  buildAnalyticsEvidenceFixture,
   buildAnalyticsSettingsFixture,
   buildEmptyAnalyticsSettingsFixture
 } = require("./fixtures/analytics-settings.fixture");
@@ -49,11 +47,6 @@ async function openPrimaryTab(page, tabId) {
   const target = primaryTab(page, destination);
   await target.click();
   await expect(target).toHaveAttribute("aria-current", "page");
-  if (tabId === "charts" || tabId === "dashboard") {
-    const view = page.locator(`[data-action="set-progress-view"][data-progress-view="${tabId === "charts" ? "lifts" : "overview"}"]`);
-    await view.click();
-    await expect(view).toHaveAttribute("aria-current", "page");
-  }
 }
 
 async function waitForCharts(page) {
@@ -78,14 +71,13 @@ async function persistedAppData(page) {
   return page.evaluate(async () => readIndexedValue("app-data"));
 }
 
-test("Charts empty state explains the qualifying action without rendering invented analytics", async ({ page }) => {
+test("Progress empty state asks for a completed workout without rendering invented history", async ({ page }) => {
   await installFixture(page, buildEmptyAnalyticsSettingsFixture());
   await openPrimaryTab(page, "charts");
 
-  const empty = page.locator(".charts-view .empty-state");
-  await expect(empty).toContainText("Log an exercise");
-  await expect(empty).toContainText("progression charts and next-step guidance");
-  await expect(page.locator(".charts-view .chart-control-panel, .charts-view .chart-card, .charts-view .chart-metric-row")).toHaveCount(0);
+  const empty = page.getByText("Complete a workout to add exercise history.", { exact: true });
+  await expect(empty).toContainText("Complete a workout");
+  await expect(page.locator(".charts-view .chart-control-panel, .charts-view .chart-card")).toHaveCount(0);
   expect(await page.evaluate(() => exerciseCatalog().length)).toBe(0);
 });
 
@@ -149,7 +141,7 @@ test("partial chart search ranks all matches and promotes the most recently sele
   await expect(suggestions.first().locator("strong")).toHaveText("Dumbbell Bench Press");
 });
 
-test("Charts changes six-week windows with exact dates and metrics, then opens and closes the selected point", async ({ page }) => {
+test("Progress renders one factual performance chart and exposes recorded point details", async ({ page }) => {
   await installFixture(page);
   await openPrimaryTab(page, "charts");
   await waitForCharts(page);
@@ -159,140 +151,31 @@ test("Charts changes six-week windows with exact dates and metrics, then opens a
   await input.press("Enter");
   await waitForCharts(page);
 
-  const summary = page.locator(".chart-viewing-summary");
-  await expect(summary).toContainText(new RegExp(`${ANALYTICS_EXPECTATIONS.latestWindow.start}.*${ANALYTICS_EXPECTATIONS.latestWindow.end}`));
-  await expect(summary).toContainText(`${ANALYTICS_EXPECTATIONS.latestWindow.qualifyingWeeks} qualifying`);
-  const metrics = page.locator(".chart-metric-row > div");
-  await expect(metrics.nth(0).locator("strong")).toHaveText(ANALYTICS_EXPECTATIONS.dumbbellLatest.e1rm);
-  await expect(metrics.nth(1).locator("strong")).toHaveText(ANALYTICS_EXPECTATIONS.dumbbellLatest.volume);
-  await expect(metrics.nth(2).locator("strong")).toHaveText(String(ANALYTICS_EXPECTATIONS.latestWindow.setCount));
+  await expect(page.locator(".chart-viewing-summary")).toContainText("Dumbbell Bench Press");
+  await expect(page.locator(".primary-analysis-chart")).toContainText("Performance trend");
+  await expect(page.locator('[data-chart-key="e1rm"], [data-chart-key="volume"]')).toHaveCount(0);
 
-  await page.locator(".analysis-period-menu summary").click();
-  const priorPeriod = page.locator('[data-action="select-chart-period"]').nth(1);
-  await expect(priorPeriod).toContainText("Previous qualifying period 1");
-  await priorPeriod.click();
-  await waitForCharts(page);
-
-  await expect(summary).toContainText(new RegExp(`${ANALYTICS_EXPECTATIONS.previousWindow.start}.*${ANALYTICS_EXPECTATIONS.previousWindow.end}`));
-  await expect(metrics.nth(0).locator("strong")).toHaveText(ANALYTICS_EXPECTATIONS.dumbbellPrevious.e1rm);
-  await expect(metrics.nth(1).locator("strong")).toHaveText(ANALYTICS_EXPECTATIONS.dumbbellPrevious.volume);
-  await expect(metrics.nth(2).locator("strong")).toHaveText(String(ANALYTICS_EXPECTATIONS.previousWindow.setCount));
-
-  const e1rmChart = page.locator('.chart-card[data-chart-key="e1rm"]');
-  const points = e1rmChart.locator('[data-action="show-chart-point"]');
-  await expect(points).toHaveCount(6);
-  await expect(points.last()).toHaveAttribute("aria-label", new RegExp(ANALYTICS_EXPECTATIONS.dumbbellPrevious.pointDate));
+  const chart = page.locator('.chart-card[data-chart-key="performance"]');
+  await expect(chart).toBeVisible();
+  await expect(chart.locator("header strong")).toContainText("Best completed");
+  const points = chart.locator('[data-action="show-chart-point"]');
+  expect(await points.count()).toBeGreaterThan(0);
+  await expect(points.last()).toHaveAttribute("aria-label", /Dumbbell Bench Press|Best completed/i);
   await points.last().click();
-  const detail = e1rmChart.locator(".chart-detail");
-  await expect.soft(detail, "The opened point must use the date represented by the activated historical SVG point").toContainText(ANALYTICS_EXPECTATIONS.dumbbellPrevious.pointDate);
+  const detail = chart.locator(".chart-detail");
   await expect(detail).toContainText("Dumbbell Bench Press");
+  await expect(detail).toContainText("load");
+  await expect(detail).toContainText("reps");
+  await expect(detail).toContainText("RPE");
+  await expect(detail).toContainText("role");
+  await expect(detail.locator(".chart-session-group")).toHaveCount(1);
   await detail.getByRole("button", { name: "Close chart detail" }).click();
-  await expect(e1rmChart.locator(".chart-detail")).toHaveCount(0);
-});
-
-test("chart evidence segments retain thin weeks without changing scoring, omit deloads, and group same-date sessions", async ({ page }) => {
-  await installFixture(page, buildAnalyticsEvidenceFixture());
-  await openPrimaryTab(page, "charts");
-  await waitForCharts(page);
-
-  const input = page.getByRole("combobox", { name: "Search or select exercise" });
-  await input.fill("Dumbbell Bench Press");
-  await input.press("Enter");
-  await waitForCharts(page);
-
-  const contract = await page.evaluate(() => {
-    const analysis = hypertrophyAnalysis(hypertrophyWindowOffset, "exercise", selectedExerciseId);
-    const scoringContract = (value) => ({
-      included: value.included.map((week) => ({ weekStart: week.weekStart, completedSets: week.completedSets })),
-      skippedDeloadWeeks: value.skippedDeloadWeeks.map((week) => ({ weekStart: week.weekStart, completedSets: week.completedSets })),
-      incompleteWeeks: value.incompleteWeeks.map((week) => ({ weekStart: week.weekStart, completedSets: week.completedSets })),
-      dataPointCount: value.dataPointCount,
-      confidence: value.confidence
-    });
-    const scoringBeforeSeries = scoringContract(analysis);
-    const includedStarts = analysis.included.map((week) => week.weekStart).sort();
-    const classifications = analysis.allWeeks
-      .filter((week) => week.weekStart >= includedStarts[0] && week.weekStart <= includedStarts.at(-1))
-      .map((week) => ({
-        weekStart: week.weekStart,
-        completedSets: week.completedSets,
-        qualifies: week.qualifies,
-        isDeload: week.isDeload
-      }));
-    const progress = exerciseProgressSeries(selectedExerciseName(), {
-      canonicalExerciseId: selectedExerciseId,
-      throughDate: analysis.windowEnd,
-      retentionAsOfDate: todayIso(),
-      qualifyingWeekIds: analysis.qualifyingWeekIds,
-      weekClassifications: classifications,
-      resistanceType: selectedExerciseRecord()?.resistanceType
-    });
-    return {
-      classifications,
-      points: progress.e1rm.map((point) => ({
-        completedSets: point.completedSets,
-        date: point.date,
-        isDeload: point.isDeload,
-        qualifies: point.qualifies,
-        sessionIds: Array.from(new Set(point.details.map((set) => set.sessionId)))
-      })),
-      scoringAfterSeries: scoringContract(hypertrophyAnalysis(hypertrophyWindowOffset, "exercise", selectedExerciseId)),
-      scoringBeforeSeries,
-      seriesConstructed: Array.isArray(progress.e1rm) && Array.isArray(progress.volume)
-    };
-  });
-
-  expect(contract.seriesConstructed, "The guard must construct both chart series before comparing scoring outputs").toBe(true);
-  expect(
-    contract.scoringAfterSeries,
-    "included, skippedDeloadWeeks, incompleteWeeks, dataPointCount, and confidence must be identical after constructing a mixed-evidence chart series"
-  ).toEqual(contract.scoringBeforeSeries);
-  const thinWeeks = contract.classifications.filter((week) => !week.qualifies && !week.isDeload);
-  const deloadWeeks = contract.classifications.filter((week) => week.isDeload);
-  expect(thinWeeks.length).toBeGreaterThan(0);
-  expect(deloadWeeks.length).toBeGreaterThan(0);
-  expect(contract.points.some((point) => !point.qualifies && !point.isDeload)).toBe(true);
-  expect(contract.points.some((point) => point.isDeload)).toBe(false);
-  expect(contract.scoringBeforeSeries.included.some((week) => thinWeeks.some((thin) => thin.weekStart === week.weekStart))).toBe(false);
-  expect(contract.scoringBeforeSeries.incompleteWeeks.some((week) => thinWeeks.some((thin) => thin.weekStart === week.weekStart))).toBe(true);
-  expect(contract.scoringBeforeSeries.skippedDeloadWeeks.some((week) => deloadWeeks.some((deload) => deload.weekStart === week.weekStart))).toBe(true);
-  expect(await page.evaluate(() => ({
-    explicit: exerciseDeloadPresentation({ isDeload: true, isLikelyDeload: true }),
-    inferred: exerciseDeloadPresentation({ isDeload: false, isLikelyDeload: true })
-  }))).toEqual({
-    explicit: { confidence: 4, label: "Recorded deload", note: "Explicitly marked and excluded from scoring." },
-    inferred: { confidence: 2, label: "Possible deload", note: "Inferred from the available history; not presented as a recorded fact." }
-  });
-
-  const chart = page.locator('.chart-card[data-chart-key="e1rm"]');
-  expect(await chart.locator('.chart-line[data-evidence="provisional"]').count()).toBeGreaterThan(0);
-  await expect(chart.locator(".chart-key")).toContainText("evidenced");
-  await expect(chart.locator(".chart-key")).toContainText("provisional week");
-  await expect(chart.locator("header .status-pill")).toContainText(/evidenced point/);
-  await expect(chart.locator("header .status-pill")).toContainText(/provisional point/);
-  const pointTargets = chart.locator('[data-action="show-chart-point"]');
-  await expect(pointTargets.first().locator(".hit-area")).toHaveCount(1);
-  await expect(pointTargets.first().locator(".selected-ring")).toHaveCount(1);
-  await expect(pointTargets.first().locator(".visible-point")).toHaveCount(1);
-  await expect(pointTargets.first()).toHaveAttribute("role", "button");
-  await expect(pointTargets.first()).toHaveAttribute("tabindex", "0");
-  await expect(pointTargets.first()).toHaveAttribute("aria-pressed", "false");
-  await pointTargets.first().focus();
-  await pointTargets.first().press("Enter");
+  await expect(chart.locator(".chart-detail")).toHaveCount(0);
+  await points.last().focus();
+  await points.last().press("Enter");
   await expect(chart.locator(".chart-detail")).toBeVisible();
   await chart.getByRole("button", { name: "Close chart detail" }).click();
-  await expect(pointTargets.first()).toBeFocused();
-
-  const sameDatePoint = contract.points.find((point) => point.sessionIds.length > 1);
-  expect(sameDatePoint).toBeTruthy();
-  expect(sameDatePoint.date).toBe(contract.points.at(-1).date);
-  await pointTargets.last().click();
-  const detail = chart.locator(".chart-detail");
-  await expect(detail).toContainText("2 sessions contributed on this date");
-  await expect(detail.locator(".chart-session-group")).toHaveCount(2);
-  await expect(detail).toContainText("Public Synthetic Analytics Session 01");
-  await expect(detail).toContainText("Public Synthetic Second Same-Date Session");
-  await expect(detail).not.toContainText(/that session/i);
+  await expect(points.last()).toBeFocused();
 });
 
 test("Settings converts real loads and persists profile, timer, readiness, unit, theme, and color-package changes across reload", async ({ page }) => {
@@ -637,7 +520,6 @@ test("Settings states the verified privacy and recoverability boundaries without
   await expect(dataGroup).toContainText("every associated exercise and set object");
   await expect(dataGroup).toContainText("Cloud copy is not a backup");
   await expect(dataGroup).toContainText("no cloud-history or restore endpoint");
-  await expect(dataGroup).toContainText("48 research source records");
   await expect(dataGroup).toContainText("Granted by this browser");
   await expect(dataGroup).not.toContainText(/Jul \d|days ago|sessions since|MB/i);
 
