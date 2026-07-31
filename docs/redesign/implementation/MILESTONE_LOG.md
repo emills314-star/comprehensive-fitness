@@ -68,7 +68,7 @@ None beyond M0 schemas and synthetic fixtures. M0 does not introduce a productio
 **Completed locally:** 2026-07-31  
 **Baseline revision:** `fe85e6665ec6a4896b1f1a5bbe982710358bb1b4`  
 **Branch:** `codex/zero-based-redesign`  
-**Checkpoint:** pending the verified M1 local commit  
+**Checkpoint:** `2101e19` (`feat(redesign): stabilize workout targets and logging`)  
 **Working tree at start:** Preserved the M0 work plus pre-existing untracked `.claude/`, `.vercel/`, `docs/redesign/`, and `redesign/prompts/`; no user work was overwritten.  
 **Execution runtime:** Node `v24.18.0`, npm `11.16.0`; repository pins Node `22.23.x`, npm `10.9.x`  
 **Visible behavior authority:** Final PRD §§6.1–6.4; feature dispositions C-01–C-12 and D-01–D-16  
@@ -107,4 +107,33 @@ None beyond M0 schemas and synthetic fixtures. M0 does not introduce a productio
 
 - Repeat on repository-pinned Node/npm before review-ready status.
 - Physical-device RPE, notification, safe-area, and human workout acceptance are later gates.
-- The authorized local checkpoint is pending. Push, deployment, real-data migration, baseline acceptance, and publication remain unauthorized and incomplete.
+- The authorized local checkpoint is `2101e19`. Push, deployment, real-data migration, baseline acceptance, and publication remain unauthorized and incomplete.
+
+## M2 — Canonical exception resolver
+
+**Status:** IN PROGRESS  
+**Started:** 2026-07-31  
+**Baseline checkpoint:** `2101e19`  
+**Branch:** `codex/zero-based-redesign`  
+**Visible behavior authority:** Final PRD §§7–8; feature dispositions B-01–B-18, C-03–C-12, H-18, X-06–X-08; recommendation engine contract §§2–15  
+**Primary exit gate:** One versioned resolver is the only source of visible or stored current exception actions; ordinary cases are silent; safety precedence, scope, persistence, failure isolation, and stable-target invariants are proven.
+
+### Exact milestone scope
+
+- Normalize candidate input for only `pain_or_illness`, `deload`, `readiness`, `fatigue`, and `plateau`.
+- Implement deterministic precedence, strictness, scope arbitration, expiry/return boundaries, supersession, and user handling.
+- Persist resolved actions in current app data, active drafts, and submitted workout snapshots without rewriting historical snapshots.
+- Route Today, active workout, completion, and grade through resolved actions only.
+- Delete direct detector consumers, target-mutating fallbacks, duplicate recommendation stores/renderers, and visible evidence/confidence presentation assigned to M2.
+- Evaluate surviving thresholds with privacy-safe ordinary, boundary, sparse, ambiguous, failure, conflict, variant, role, and nuisance fixtures; suppress any rule that does not pass calibration and independent recommendation review.
+
+### Affected data and migration safety
+
+- Existing `recommendationHistory`, `manualOverrides`, `workoutPrescription`, per-exercise recommendation snapshots, readiness observations, historical grades, and legacy imported fields remain readable and immutable.
+- New current decisions use the versioned resolved-action contract and do not replace or recompute old records.
+- Active drafts must preserve the action visible at evaluation time and the later `accepted`, `modified`, `ignored`, or `overridden` handling.
+- Resolver or detector failure must produce no target mutation and must leave the logger usable; explicit pain/illness alone may use the canonical safety fallback.
+
+### Authority/conflict review
+
+No material contradiction was found in the final documents. Existing fatigue, readiness, plateau, and deload thresholds are implemented-state evidence only and are not automatically approved. M2 will not expose or retain a threshold merely because a legacy test passes.

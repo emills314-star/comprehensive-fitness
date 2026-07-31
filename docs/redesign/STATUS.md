@@ -40,17 +40,17 @@
 - Current app-data v3 now has a working backup-v3 export/import path; legacy backup versions remain readable and stored historical grade/version values survive strict import.
 - The required prefilled-RPE interaction was reproduced and corrected: one focused `7.5` entry replaces `7`, persists, and can be completed immediately without a lost touch.
 - M0 is recoverable at local checkpoint `3e24f93` (`chore(redesign): establish preservation baseline`).
+- M1 is recoverable at local checkpoint `2101e19` (`feat(redesign): stabilize workout targets and logging`).
 
 ## Current objective
 
-M0 and M1 are complete locally and checkpoint preparation is active. M2 has not started; the next application change is the canonical exception resolver after the M0/M1 checkpoints are recorded.
+M0 and M1 are complete locally and recoverable. M2 has not started; the next application change is the canonical exception resolver.
 
 ## Next actions
 
-1. Record recoverable M0 and M1 local checkpoints on `codex/zero-based-redesign`.
-2. Begin M2 at the canonical candidate/resolver boundary without reopening M1 product decisions.
-3. Continue through M2–M8 with code, tests, living docs, and deletion evidence integrated per milestone.
-4. Automated, privacy, migration, independent, target-device, and five-workout human acceptance gates precede any separately authorized publication.
+1. Begin M2 at the canonical candidate/resolver boundary without reopening M1 product decisions.
+2. Continue through M2–M8 with code, tests, living docs, and deletion evidence integrated per milestone.
+3. Automated, privacy, migration, independent, target-device, and five-workout human acceptance gates precede any separately authorized publication.
 
 ## Open issues
 
