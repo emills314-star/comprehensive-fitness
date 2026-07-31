@@ -29,6 +29,8 @@ const {
 } = require("../fixtures/synthetic-personal-evidence");
 
 const PRIVATE_EVIDENCE_PATH = /^\/(?:private-personal-data|personal_fitness_data)\//;
+const IDENTITY_CATALOG_PATH = "/research_database/exports/json/exercise_database.json";
+const IMPORT_VALIDATION_MAP_PATH = "/research_database/exports/json/exercise_muscle_map.json";
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -79,13 +81,17 @@ async function proxyHostedOriginToSource(page, hostedOrigin, sourceOrigin) {
 async function navigateWithEvidenceFetchAudit(page, url) {
   await page.goto(url);
   await page.waitForLoadState("load");
-  await expect.poll(() => page.evaluate(() => String(prescriptionEvidenceStatus?.state || "missing")), {
-    message: `${url} must reach a terminal evidence-startup state`,
+  await expect.poll(() => page.evaluate(() => Boolean(
+    prescriptionEngine?.evidence?.research?.exerciseById?.has("ex_barbell_bench_press")
+  )), {
+    message: `${url} must initialize the exercise identity catalog`,
     timeout: 30_000
-  }).not.toBe("loading");
+  }).toBe(true);
   return page.evaluate(() => ({
     pageOrigin: globalThis.location.origin,
-    evidenceState: String(prescriptionEvidenceStatus?.state || "missing"),
+    identityReady: Boolean(
+      prescriptionEngine?.evidence?.research?.exerciseById?.has("ex_barbell_bench_press")
+    ),
     fetches: (globalThis.__PERSONAL_EVIDENCE_FETCH_AUDIT__ || []).map((entry) => ({ ...entry }))
   }));
 }
@@ -100,9 +106,19 @@ async function installPersonalEvidenceBuildFault(page) {
         const realCreatePrescriptionEngine = api.createPrescriptionEngine;
         const RealPrescriptionEngine = api.PrescriptionEngine;
         const shouldFail = (input) => {
+          const requestedVersion = String(globalThis.__FAIL_PERSONAL_EVIDENCE_BUILD_VERSION__ || "");
+          if (!requestedVersion) return false;
           const metadata = input?.personal?.metadata || input?.personalData?.metadata || {};
-          const version = String(metadata.methodology_version || metadata.pipeline_version || "");
-          return globalThis.__FAIL_PERSONAL_EVIDENCE_BUILD_VERSION__ === version;
+          const personal = input?.personal || input?.personalData || {};
+          const versions = [
+            metadata.methodology_version,
+            metadata.pipeline_version,
+            personal.exercisePrescriptions?.[0]?.methodology_version,
+            personal.exercisePrescriptions?.[0]?.pipeline_version,
+            personal.exerciseScores?.[0]?.methodology_version,
+            personal.exerciseScores?.[0]?.pipeline_version
+          ].map((value) => String(value || "")).filter(Boolean);
+          return versions.includes(requestedVersion);
         };
         class FaultInjectablePrescriptionEngine extends RealPrescriptionEngine {
           constructor(input = {}) {
@@ -131,20 +147,15 @@ async function installPersonalEvidenceBuildFault(page) {
 async function personalEvidenceRuntimeState(page) {
   return page.evaluate(() => {
     const identityMap = prescriptionEngine?.evidence?.personal?.reconciledIdentityByExerciseId;
-    const hasReconciledIdentityMap = identityMap instanceof Map;
+    const research = prescriptionEngine?.evidence?.research;
+    const knownIdentity = prescriptionEngine?.resolveExerciseIdentity?.("Barbell Bench Press");
     return {
       package: data.personalEvidencePackage ? JSON.parse(JSON.stringify(data.personalEvidencePackage)) : null,
       packageJson: JSON.stringify(data.personalEvidencePackage || null),
-      engineHasReconciledIdentityMap: hasReconciledIdentityMap,
-      enginePersonalVersion: String(prescriptionEngine?.evidence?.versions?.personal || prescriptionEngine?.evidence?.personal?.version || "unknown"),
-      enginePersonalIds: hasReconciledIdentityMap ? [...identityMap.keys()].sort() : [],
-      status: {
-        state: prescriptionEvidenceStatus?.state,
-        source: prescriptionEvidenceStatus?.source,
-        personalRecords: prescriptionEvidenceStatus?.personalRecords,
-        personalVersion: prescriptionEvidenceStatus?.personalVersion,
-        researchVersion: prescriptionEvidenceStatus?.researchVersion
-      }
+      engineHasIdentityCatalog: research?.exerciseById instanceof Map,
+      engineCatalogSize: Number(research?.exerciseById?.size || 0),
+      engineKnownIdentity: knownIdentity?.status === "resolved" ? knownIdentity.exerciseId : "",
+      enginePersonalIds: identityMap instanceof Map ? [...identityMap.keys()].sort() : []
     };
   });
 }
@@ -205,19 +216,26 @@ async function executePersonalEvidenceShapeValidator(page, value) {
   }, { candidate: value, limits: PERSONAL_EVIDENCE_BOUNDARIES });
 }
 
-async function waitForEvidenceTerminal(page) {
-  await expect.poll(() => page.evaluate(() => String(prescriptionEvidenceStatus?.state || "missing")), {
-    message: "Personal evidence startup must reach a terminal state",
+async function waitForIdentityCatalog(page) {
+  await expect.poll(() => page.evaluate(() => Boolean(
+    prescriptionEngine?.evidence?.research?.exerciseById?.has("ex_barbell_bench_press")
+  )), {
+    message: "The exercise identity catalog must initialize",
     timeout: 30_000
-  }).not.toBe("loading");
+  }).toBe(true);
 }
 
-async function personalEvidenceInput(page) {
-  const navigation = page.getByRole("navigation", { name: "Main navigation" });
-  await navigation.getByRole("button", { name: /More$/ }).click();
+async function expectPersonalEvidenceUiAbsent(page) {
+  const settingsTrigger = page.locator('[data-action="open-settings"]');
+  if (await settingsTrigger.count()) await settingsTrigger.click();
+  else await page.goto("/#settings");
+  await expect(page).toHaveURL(/#settings$/);
   const group = page.locator("details.settings-group").filter({ has: page.locator("summary", { hasText: "Data and backup" }) });
   if (!(await group.evaluate((element) => element.open))) await group.locator("summary").click();
-  return group.locator('[data-action="import-personal-evidence"]');
+  await expect(
+    group.locator('[data-action="import-personal-evidence"]'),
+    "Settings must not expose the deleted private analytical-evidence importer"
+  ).toHaveCount(0);
 }
 
 async function armPersonalEvidenceImportObserver(page, name, failBuildVersion = "", expectedShapeJson = "") {
@@ -363,8 +381,7 @@ async function armPersonalEvidenceImportObserver(page, name, failBuildVersion = 
   }, { fileName: name, failureVersion: failBuildVersion, expectedJson: expectedShapeJson });
 }
 
-async function importPersonalEvidenceThroughUi(page, packageOrRaw, name, options = {}) {
-  const input = await personalEvidenceInput(page);
+async function importPersonalEvidenceThroughCompatibilityBoundary(page, packageOrRaw, name, options = {}) {
   const buffer = Buffer.isBuffer(packageOrRaw)
     ? packageOrRaw
     : Buffer.from(typeof packageOrRaw === "string" ? packageOrRaw : JSON.stringify(packageOrRaw), "utf8");
@@ -375,7 +392,13 @@ async function importPersonalEvidenceThroughUi(page, packageOrRaw, name, options
     // Malformed JSON is intentionally exercised by rejection cases.
   }
   const auditKey = await armPersonalEvidenceImportObserver(page, name, options.failBuildVersion || "", expectedShapeJson);
-  await input.setInputFiles({ name, mimeType: "application/json", buffer });
+  await page.evaluate(({ fileName, base64 }) => {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+    const file = new File([bytes], fileName, { type: "application/json" });
+    return importPersonalEvidenceFile(file);
+  }, { fileName: name, base64: buffer.toString("base64") });
   const auditField = (field) => page.evaluate(({ key, property }) => (
     globalThis.__PERSONAL_EVIDENCE_IMPORT_AUDIT__?.[key]?.[property]
   ), { key: auditKey, property: field });
@@ -420,7 +443,7 @@ async function waitForPersistedPersonalEvidence(page, expectedExerciseId) {
 async function reloadPersonalEvidenceState(page) {
   await page.reload();
   await page.waitForLoadState("load");
-  await waitForEvidenceTerminal(page);
+  await waitForIdentityCatalog(page);
   return {
     runtime: await personalEvidenceRuntimeState(page),
     persisted: await persistedPersonalEvidenceState(page)
@@ -429,14 +452,18 @@ async function reloadPersonalEvidenceState(page) {
 
 async function seedPersistedPersonalEvidencePackage(page, packageValue, name = "synthetic-prior-personal-evidence.json") {
   const expectedExerciseId = primaryPackageExerciseId(packageValue);
-  const audit = await importPersonalEvidenceThroughUi(page, packageValue, name);
+  const audit = await importPersonalEvidenceThroughCompatibilityBoundary(page, packageValue, name);
   expect.soft(personalEvidenceReadOperations(audit), `${name} must be consumed through a production File or Blob read API`).toBeGreaterThan(0);
+  expect(
+    audit.persistenceWrites,
+    `${name} must persist through the compatibility boundary before reload; boundary result: ${audit.thrown || audit.settingsMessage || "no terminal message"}`
+  ).toBeGreaterThan(0);
   await waitForPersistedPersonalEvidence(page, expectedExerciseId);
   const reloaded = await reloadPersonalEvidenceState(page);
   expect.soft(reloaded.persisted.error).toBe("");
   expect.soft(packageContainsExerciseId(reloaded.runtime.package, expectedExerciseId), `${name} must survive reload in application state`).toBe(true);
   expect.soft(packageContainsExerciseId(reloaded.persisted.package, expectedExerciseId), `${name} must survive reload in IndexedDB`).toBe(true);
-  expect.soft(reloaded.runtime.status.state).toBe("ready");
+  expectIdentityOnlyRuntime(reloaded.runtime, `${name} reloaded identity engine`);
   return { ...reloaded.runtime, persistedPackageJson: reloaded.persisted.packageJson };
 }
 
@@ -468,15 +495,16 @@ function expectCanonicalPersonalEvidenceWriteSnapshot(actual, expected, expected
   expect.soft(Object.values(actual?.lastIds || {}), `${label} must include the expected reconciled identity`).toContain(expectedExerciseId);
 }
 
-function expectReconciledPersonalIdentity(state, expectedExerciseId, label, excludedExerciseId = "") {
-  expect.soft(state.engineHasReconciledIdentityMap, `${label} must expose the real reconciled identity Map`).toBe(true);
-  expect.soft(state.enginePersonalIds, `${label} must contain the canonical imported identity`).toContain(expectedExerciseId);
-  if (excludedExerciseId) expect.soft(state.enginePersonalIds, `${label} must replace, not merge, the prior identity`).not.toContain(excludedExerciseId);
+function expectIdentityOnlyRuntime(state, label) {
+  expect.soft(state.engineHasIdentityCatalog, `${label} must retain the public identity catalog`).toBe(true);
+  expect.soft(state.engineCatalogSize, `${label} must retain public exercise identities`).toBeGreaterThan(0);
+  expect.soft(state.engineKnownIdentity, `${label} must resolve a known public exercise`).toBe("ex_barbell_bench_press");
+  expect.soft(state.enginePersonalIds, `${label} must not install imported personal aggregates into the global engine`).toEqual([]);
 }
 
 async function expectAcceptedPersonalEvidenceImport(page, packageValue, raw, name, options = {}) {
   const expectedExerciseId = options.expectedExerciseId || primaryPackageExerciseId(packageValue);
-  const audit = await importPersonalEvidenceThroughUi(page, raw ?? packageValue, name);
+  const audit = await importPersonalEvidenceThroughCompatibilityBoundary(page, raw ?? packageValue, name);
   expect.soft(personalEvidenceReadOperations(audit), `${name} must be consumed through a production File or Blob read API`).toBeGreaterThan(0);
   expect.soft(audit.shapeValidationCalls, `${name} must execute the dedicated production JSON-shape validator`).toBeGreaterThan(0);
   expect.soft(audit.shapeValidatedImportedPayload, `${name} must pass the actual parsed import payload to the JSON-shape validator`).toBe(true);
@@ -492,29 +520,27 @@ async function expectAcceptedPersonalEvidenceImport(page, packageValue, raw, nam
     expectedExerciseId,
     `${name} captured production persistence write`
   );
-  expectReconciledPersonalIdentity(immediate, expectedExerciseId, `${name} immediate engine`, options.excludedExerciseId || "");
+  expectIdentityOnlyRuntime(immediate, `${name} immediate identity engine`);
 
   const reloaded = await reloadPersonalEvidenceState(page);
   expectCanonicalPersonalEvidencePackage(reloaded.runtime.package, packageValue, `${name} reloaded state`);
   expectCanonicalPersonalEvidencePackage(reloaded.persisted.package, packageValue, `${name} reloaded IndexedDB state`);
-  expectReconciledPersonalIdentity(reloaded.runtime, expectedExerciseId, `${name} reloaded engine`, options.excludedExerciseId || "");
-  expect.soft(reloaded.runtime.status.state).toBe("ready");
-  expect.soft(reloaded.runtime.status.personalVersion).toBe(packageValue.personalDataVersion);
+  expectIdentityOnlyRuntime(reloaded.runtime, `${name} reloaded identity engine`);
   return reloaded;
 }
 
 function expectPreservedPersonalEvidenceState(actual, before, label) {
   expect.soft(actual.packageJson === before.packageJson, `${label} must preserve the prior canonical package byte-for-byte`).toBe(true);
-  expect.soft(actual.engineHasReconciledIdentityMap, `${label} must retain the reconciled identity Map`).toBe(true);
-  expect.soft(actual.enginePersonalVersion, `${label} must preserve the prior real-engine version`).toBe(before.enginePersonalVersion);
-  expect.soft(JSON.stringify(actual.enginePersonalIds) === JSON.stringify(before.enginePersonalIds), `${label} must preserve the prior reconciled identities`).toBe(true);
-  expect.soft(actual.status, `${label} must preserve the prior evidence status`).toEqual(before.status);
+  expect.soft(actual.engineHasIdentityCatalog, `${label} must retain the public identity catalog`).toBe(true);
+  expect.soft(actual.engineCatalogSize, `${label} must preserve the identity catalog size`).toBe(before.engineCatalogSize);
+  expect.soft(actual.engineKnownIdentity, `${label} must preserve known identity resolution`).toBe(before.engineKnownIdentity);
+  expect.soft(actual.enginePersonalIds, `${label} must remain free of imported personal aggregates`).toEqual([]);
 }
 
 async function expectRejectedPersonalEvidenceImport(page, priorPackage, raw, name, options = {}) {
   const before = await seedPersistedPersonalEvidencePackage(page, priorPackage, `prior-${name}`);
-  expect.soft(before.engineHasReconciledIdentityMap, `${name} setup must use the real reconciled identity Map`).toBe(true);
-  const audit = await importPersonalEvidenceThroughUi(page, raw, name, { failBuildVersion: options.failBuildVersion || "" });
+  expectIdentityOnlyRuntime(before, `${name} setup identity engine`);
+  const audit = await importPersonalEvidenceThroughCompatibilityBoundary(page, raw, name, { failBuildVersion: options.failBuildVersion || "" });
   const readOperations = personalEvidenceReadOperations(audit);
   if (options.expectUnread) {
     expect.soft(readOperations, `${name} must be rejected before any File, Blob, stream, or FileReader consumption`).toBe(0);
@@ -545,7 +571,7 @@ async function expectRejectedPersonalEvidenceImport(page, priorPackage, raw, nam
   expect.soft(reloaded.persisted.packageJson === before.persistedPackageJson, `${name} must not resurrect rejected input after reload`).toBe(true);
 }
 
-test("optional private evidence discovery is local-only, same-origin, and never cacheable", async ({ page }) => {
+test("cold boot loads only the public identity catalog and never probes private or analytical evidence", async ({ page }) => {
   test.setTimeout(90_000);
   const sourceUrl = page.url();
   const sourceOrigin = new URL(sourceUrl).origin;
@@ -554,24 +580,43 @@ test("optional private evidence discovery is local-only, same-origin, and never 
   for (const hostedOrigin of hostedOrigins) await proxyHostedOriginToSource(page, hostedOrigin, sourceOrigin);
 
   const privateFetches = (audit) => audit.fetches.filter((entry) => PRIVATE_EVIDENCE_PATH.test(entry.pathname));
+  const researchFetches = (audit) => audit.fetches.filter((entry) => entry.pathname.startsWith("/research_database/exports/json/"));
+  const expectIdentityOnlyBoot = (audit, label) => {
+    expect.soft(audit.identityReady, `${label} must initialize public identity resolution`).toBe(true);
+    expect.soft(privateFetches(audit), `${label} must not probe optional private paths`).toEqual([]);
+    expect.soft(researchFetches(audit).map((entry) => entry.pathname), `${label} startup must fetch only the identity catalog`).toEqual([
+      IDENTITY_CATALOG_PATH
+    ]);
+    expect.soft(
+      researchFetches(audit).some((entry) => entry.pathname === IMPORT_VALIDATION_MAP_PATH),
+      `${label} must defer the legacy snapshot validation map until an import needs it`
+    ).toBe(false);
+  };
   for (const hostedOrigin of hostedOrigins) {
     const audit = await navigateWithEvidenceFetchAudit(page, `${hostedOrigin}/`);
-    expect.soft(audit.evidenceState, `${hostedOrigin} must still load public research evidence`).toBe("ready");
-    expect.soft(privateFetches(audit).length, `${hostedOrigin} must not probe optional private paths`).toBe(0);
+    expectIdentityOnlyBoot(audit, hostedOrigin);
   }
 
   const localAudit = await navigateWithEvidenceFetchAudit(page, sourceUrl);
   const nativeAudit = await navigateWithEvidenceFetchAudit(page, `${hostedOrigins[0]}/?__simulate_native_evidence__=1`);
   for (const [label, audit] of [["loopback", localAudit], ["native", nativeAudit]]) {
-    const fetches = privateFetches(audit);
-    expect.soft(fetches.length, `${label} startup must explicitly permit optional local aggregate discovery`).toBeGreaterThan(0);
-    expect.soft(fetches.filter((entry) => entry.origin !== audit.pageOrigin).length, `${label} private discovery must remain on the active app origin`).toBe(0);
-    expect.soft(fetches.filter((entry) => entry.credentials !== "same-origin").length, `${label} private discovery must use same-origin credentials`).toBe(0);
-    expect.soft(fetches.filter((entry) => entry.cache !== "no-store").length, `${label} private aggregate fetches must all use cache=no-store`).toBe(0);
+    expectIdentityOnlyBoot(audit, label);
+    expect.soft(
+      researchFetches(audit).filter((entry) => entry.origin !== audit.pageOrigin),
+      `${label} identity loading must remain on the active app origin`
+    ).toEqual([]);
+    expect.soft(
+      researchFetches(audit).filter((entry) => entry.credentials !== "same-origin"),
+      `${label} identity loading must use same-origin credentials`
+    ).toEqual([]);
   }
 });
 
-test("personal evidence import canonically persists valid replacement and atomically preserves prior state on failure", async ({ page }) => {
+test("Settings omits the deleted private analytical-evidence importer", async ({ page }) => {
+  await expectPersonalEvidenceUiAbsent(page);
+});
+
+test("the retained personal-evidence compatibility boundary persists valid replacement and atomically preserves prior state on failure", async ({ page }) => {
   test.skip(test.info().project.name === "mobile", "IndexedDB transaction semantics are viewport-independent and run once in desktop Chromium.");
   test.setTimeout(420_000);
   await installPersonalEvidenceBuildFault(page);
@@ -672,7 +717,7 @@ test("personal evidence import canonically persists valid replacement and atomic
   }
 });
 
-test("personal evidence import enforces exact reachable file, collection, shape, ID, and text boundaries", async ({ page }) => {
+test("the retained personal-evidence compatibility boundary enforces file, collection, shape, ID, and text boundaries", async ({ page }) => {
   test.skip(test.info().project.name === "mobile", "Import resource boundaries are viewport-independent and run once in desktop Chromium.");
   test.setTimeout(600_000);
   const priorPackage = syntheticPersonalEvidencePackage({
@@ -794,6 +839,8 @@ async function seedApplicationState(page, state) {
     completedSummarySessionId = "";
     activeSetId = model.sets[0]?.id || "";
     timer = null;
+    activeTab = "workout";
+    history.replaceState(history.state, "", "#workout");
     render();
     return {
       activeSessionId,
@@ -811,11 +858,27 @@ async function seedApplicationState(page, state) {
   await expect(page.getByRole("heading", { name: "Synthetic Safety Workout" })).toBeVisible();
 }
 
+async function installExplicitRecommendationFixture(page) {
+  await waitForIdentityCatalog(page);
+  await page.evaluate(async () => {
+    const evidence = await prescriptionApi.loadEvidenceFromUrls({
+      researchBaseUrl: "./research_database/exports/json",
+      personalData: {}
+    });
+    prescriptionEngine = prescriptionApi.createPrescriptionEngine(evidence);
+  });
+  await expect.poll(() => page.evaluate(() => Boolean(
+    prescriptionEngine?.evidence?.research?.substitutionsByExercise?.size
+      && prescriptionEngine?.evidence?.research?.exerciseMuscleMap?.length
+  )), {
+    message: "The recommendation-only test fixture must explicitly load the research tables it exercises",
+    timeout: 30_000
+  }).toBe(true);
+}
+
 async function seedBlockedSafetyRecommendation(page, fixture, request) {
   await seedApplicationState(page, fixture.state);
-  await expect.poll(() => page.evaluate(() => Boolean(prescriptionEngine?.evidence?.research?.exerciseById?.has("ex_barbell_bench_press"))), {
-    message: "The page prescription engine must finish loading public research before seeding a safety recommendation"
-  }).toBe(true);
+  await installExplicitRecommendationFixture(page);
   return page.evaluate(({ exerciseRuntimeId, engineRequest }) => {
     const blocked = prescriptionEngine.prescribeExercise(engineRequest);
     const originalExerciseId = blocked.finalPrescription?.safetyRestriction?.originalExerciseId
@@ -947,22 +1010,15 @@ async function dispatchForgedWorkoutAction(page, action, identifiers = {}) {
   return attempt;
 }
 
-async function expectMutationControlsBlocked(scope, message) {
-  const actions = ["add-set", "add-warmup-set", "duplicate-set", "toggle-set", "toggle-skip-set", "start-timer"];
-  for (const action of actions) {
-    const controls = scope.locator(`[data-action="${action}"]`);
-    const allBlocked = await controls.evaluateAll((nodes) => nodes.every((node) => (
-      node.hasAttribute("disabled") || node.getAttribute("aria-disabled") === "true"
-    )));
-    expect.soft(allBlocked, `${message}: ${action} must be omitted or disabled`).toBe(true);
-  }
-}
-
 async function openBackupSettings(page) {
-  const navigation = page.getByRole("navigation", { name: "Main navigation" });
-  await navigation.getByRole("button", { name: /More$/ }).click();
+  if (!(await page.locator(".settings-view").isVisible().catch(() => false))) {
+    const settingsTrigger = page.locator('[data-action="open-settings"]');
+    if (await settingsTrigger.count()) await settingsTrigger.click();
+    else await page.goto("/#settings");
+  }
+  await expect(page).toHaveURL(/#settings$/);
   const group = page.locator("details.settings-group").filter({ has: page.locator("summary", { hasText: "Data and backup" }) });
-  await group.locator("summary").click();
+  if (!(await group.evaluate((element) => element.open))) await group.locator("summary").click();
   return group;
 }
 
@@ -1061,12 +1117,6 @@ async function armBackupImportAtomicityObserver(page) {
     const key = `backup-atomicity-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const productionImport = importDataFile;
     const productionWrite = writeIndexedValue;
-    const muscleCacheKey = `${key}-muscle`;
-    const prescriptionCacheKey = `${key}-prescription`;
-    const muscleSentinel = Object.freeze({ kind: "muscle", key });
-    const prescriptionSentinel = Object.freeze({ kind: "prescription", key });
-    muscleAssignmentCache.set(muscleCacheKey, muscleSentinel);
-    prescriptionSnapshotCache.set(prescriptionCacheKey, prescriptionSentinel);
     const persisted = await readIndexedValue("app-data");
     const state = {
       productionImport,
@@ -1074,19 +1124,14 @@ async function armBackupImportAtomicityObserver(page) {
       beforeData: data,
       beforePackage: data.personalEvidencePackage,
       beforeEngine: prescriptionEngine,
-      beforeStatus: prescriptionEvidenceStatus,
       beforeDataJson: JSON.stringify(data),
       beforePackageJson: JSON.stringify(data.personalEvidencePackage || null),
-      beforeStatusJson: JSON.stringify(prescriptionEvidenceStatus || null),
       beforePersistedJson: JSON.stringify(persisted),
       beforeDataRevision: Number(data.dataRevision || 0),
       beforeAnalysisRevision: analysisRevision,
-      beforeEnginePersonalVersion: String(prescriptionEngine?.evidence?.versions?.personal || prescriptionEngine?.evidence?.personal?.version || "unknown"),
+      beforeEngineCatalogSize: Number(prescriptionEngine?.evidence?.research?.exerciseById?.size || 0),
+      beforeEngineKnownIdentity: prescriptionEngine?.resolveExerciseIdentity?.("Barbell Bench Press")?.exerciseId || "",
       beforeEnginePersonalIds: [...(prescriptionEngine?.evidence?.personal?.reconciledIdentityByExerciseId?.keys?.() || [])].sort(),
-      muscleCacheKey,
-      prescriptionCacheKey,
-      muscleSentinel,
-      prescriptionSentinel,
       importCalls: 0,
       importCompleted: false,
       observedName: "",
@@ -1135,21 +1180,17 @@ async function collectBackupImportAtomicityAudit(page, key, options = {}) {
       packageReferenceUnchanged: data.personalEvidencePackage === state.beforePackage,
       packageJsonUnchanged: JSON.stringify(data.personalEvidencePackage || null) === state.beforePackageJson,
       engineReferenceUnchanged: prescriptionEngine === state.beforeEngine,
-      statusReferenceUnchanged: prescriptionEvidenceStatus === state.beforeStatus,
-      statusJsonUnchanged: JSON.stringify(prescriptionEvidenceStatus || null) === state.beforeStatusJson,
       dataRevisionUnchanged: Number(data.dataRevision || 0) === state.beforeDataRevision,
       analysisRevisionUnchanged: analysisRevision === state.beforeAnalysisRevision,
-      muscleCacheSentinelRetained: muscleAssignmentCache.get(state.muscleCacheKey) === state.muscleSentinel,
-      prescriptionCacheSentinelRetained: prescriptionSnapshotCache.get(state.prescriptionCacheKey) === state.prescriptionSentinel,
       persistedJsonUnchanged: JSON.stringify(persisted) === state.beforePersistedJson,
       beforeDataJson: state.beforeDataJson,
       beforePackageJson: state.beforePackageJson,
       beforePersistedJson: state.beforePersistedJson,
       beforeDataRevision: state.beforeDataRevision,
       beforeAnalysisRevision: state.beforeAnalysisRevision,
-      beforeEnginePersonalVersion: state.beforeEnginePersonalVersion,
-      beforeEnginePersonalIds: state.beforeEnginePersonalIds,
-      beforeStatusJson: state.beforeStatusJson
+      beforeEngineCatalogSize: state.beforeEngineCatalogSize,
+      beforeEngineKnownIdentity: state.beforeEngineKnownIdentity,
+      beforeEnginePersonalIds: state.beforeEnginePersonalIds
     };
     if (restore) {
       writeIndexedValue = state.productionWrite;
@@ -1169,9 +1210,9 @@ async function backupRuntimePersistenceFingerprint(page) {
       persistedJson: JSON.stringify(persisted),
       dataRevision: Number(data.dataRevision || 0),
       analysisRevision,
-      enginePersonalVersion: String(prescriptionEngine?.evidence?.versions?.personal || prescriptionEngine?.evidence?.personal?.version || "unknown"),
-      enginePersonalIds: [...(prescriptionEngine?.evidence?.personal?.reconciledIdentityByExerciseId?.keys?.() || [])].sort(),
-      statusJson: JSON.stringify(prescriptionEvidenceStatus || null)
+      engineCatalogSize: Number(prescriptionEngine?.evidence?.research?.exerciseById?.size || 0),
+      engineKnownIdentity: prescriptionEngine?.resolveExerciseIdentity?.("Barbell Bench Press")?.exerciseId || "",
+      enginePersonalIds: [...(prescriptionEngine?.evidence?.personal?.reconciledIdentityByExerciseId?.keys?.() || [])].sort()
     };
   });
 }
@@ -1210,59 +1251,50 @@ async function exportedBackup(group) {
   return JSON.parse(await group.getByLabel("Exported backup JSON").inputValue());
 }
 
-test("hard-safety UI and delegated handlers refuse illness, unsited pain, matching pain, and unknown taxonomy", async ({ page }) => {
+test("pain, illness, and unresolved taxonomy never prevent recording actual work", async ({ page }) => {
   test.setTimeout(90_000);
-  const actions = ["add-exercise", "add-set", "add-warmup-set", "duplicate-set", "toggle-set", "toggle-skip-set", "start-timer"];
 
-  await test.step("illness blocks every mutation across the workout", async () => {
+  await test.step("illness leaves the logger writable", async () => {
     const fixture = safetyWorkoutState({ illness: true, pain: false, affectedMuscle: "" });
     await seedApplicationState(page, fixture.state);
-    const addExerciseControls = page.locator('[data-action="add-exercise"]');
-    expect.soft(await addExerciseControls.evaluateAll((nodes) => nodes.every((node) => node.disabled || node.getAttribute("aria-disabled") === "true")), "Illness must omit or disable Add Exercise").toBe(true);
-    await expectMutationControlsBlocked(page.locator("#main-content"), "Illness whole-workout restriction");
-    const before = await runtimeWorkoutState(page);
-    for (const action of actions) {
-      await dispatchForgedWorkoutAction(page, action, {
-        exerciseId: fixture.exerciseIds.bench,
-        setId: IDS.set
-      });
-    }
-    expect(await runtimeWorkoutState(page), "Forged illness mutations must leave exercises, sets, and timer unchanged").toEqual(before);
-  });
-
-  await test.step("pain without an affected area blocks the whole workout", async () => {
-    const fixture = safetyWorkoutState({ illness: false, pain: true, affectedMuscle: "" });
-    await seedApplicationState(page, fixture.state);
-    await expectMutationControlsBlocked(page.locator("#main-content"), "Unsited pain whole-workout restriction");
-    const before = await runtimeWorkoutState(page);
-    await dispatchForgedWorkoutAction(page, "add-set", { exerciseId: fixture.exerciseIds.legPress });
-    expect(await runtimeWorkoutState(page), "Unsited pain must refuse even a nonmatching exercise mutation").toEqual(before);
-  });
-
-  await test.step("localized pain blocks matches and unknowns but permits a known nonmatch", async () => {
-    const fixture = safetyWorkoutState({ illness: false, pain: true, affectedMuscle: "Chest" });
-    await seedApplicationState(page, fixture.state);
-    const card = (id) => page.locator(`.exercise-card:has([data-exercise-id="${id}"])`).first();
-    await expectMutationControlsBlocked(card(fixture.exerciseIds.bench), "Localized matching exercise");
-    await expectMutationControlsBlocked(card(fixture.exerciseIds.unknown), "Unresolved taxonomy exercise");
-    const legAddSet = card(fixture.exerciseIds.legPress).locator('[data-action="add-set"]');
-    await expect.soft(legAddSet, "A known nonmatching exercise must stay actionable").toBeEnabled();
-
     const before = await runtimeWorkoutState(page);
     await dispatchForgedWorkoutAction(page, "add-set", { exerciseId: fixture.exerciseIds.bench });
-    await dispatchForgedWorkoutAction(page, "add-set", { exerciseId: fixture.exerciseIds.unknown });
-    const afterBlockedAttempts = await runtimeWorkoutState(page);
-    expect(afterBlockedAttempts.sets, "Matching and unresolved exercise mutations must fail closed").toEqual(before.sets);
+    const after = await runtimeWorkoutState(page);
+    expect(
+      after.sets.filter((item) => item.exerciseId === fixture.exerciseIds.bench),
+      "An illness warning must not block a set that the user actually records"
+    ).toHaveLength(before.sets.filter((item) => item.exerciseId === fixture.exerciseIds.bench).length + 1);
+  });
 
+  await test.step("pain without an affected area leaves the logger writable", async () => {
+    const fixture = safetyWorkoutState({ illness: false, pain: true, affectedMuscle: "" });
+    await seedApplicationState(page, fixture.state);
+    const before = await runtimeWorkoutState(page);
     await dispatchForgedWorkoutAction(page, "add-set", { exerciseId: fixture.exerciseIds.legPress });
-    const afterAllowed = await runtimeWorkoutState(page);
-    expect(afterAllowed.sets.filter((item) => item.exerciseId === fixture.exerciseIds.legPress)).toHaveLength(
+    const after = await runtimeWorkoutState(page);
+    expect(after.sets.filter((item) => item.exerciseId === fixture.exerciseIds.legPress)).toHaveLength(
       before.sets.filter((item) => item.exerciseId === fixture.exerciseIds.legPress).length + 1
     );
   });
+
+  await test.step("localized pain and unresolved identity still preserve explicit logging choice", async () => {
+    const fixture = safetyWorkoutState({ illness: false, pain: true, affectedMuscle: "Chest" });
+    await seedApplicationState(page, fixture.state);
+    const before = await runtimeWorkoutState(page);
+    await dispatchForgedWorkoutAction(page, "add-set", { exerciseId: fixture.exerciseIds.bench });
+    await dispatchForgedWorkoutAction(page, "add-set", { exerciseId: fixture.exerciseIds.unknown });
+    await dispatchForgedWorkoutAction(page, "add-set", { exerciseId: fixture.exerciseIds.legPress });
+    const afterAllowed = await runtimeWorkoutState(page);
+    for (const exerciseId of [fixture.exerciseIds.bench, fixture.exerciseIds.unknown, fixture.exerciseIds.legPress]) {
+      expect(
+        afterAllowed.sets.filter((item) => item.exerciseId === exerciseId),
+        `The explicit logging path must remain usable for ${exerciseId}`
+      ).toHaveLength(before.sets.filter((item) => item.exerciseId === exerciseId).length + 1);
+    }
+  });
 });
 
-test("confirmed pain-free substitution uses an explicit catalog-backed UI flow and preserves the original block", async ({ page }) => {
+test("an explicit pain warning preserves its immutable source record while actual logging remains available", async ({ page }) => {
   const originalId = "ex_barbell_bench_press";
   const availableEquipment = ["all"];
   const request = {
@@ -1278,10 +1310,6 @@ test("confirmed pain-free substitution uses an explicit catalog-backed UI flow a
   const fixture = safetyWorkoutState({ illness: false, pain: true, affectedMuscle: "Chest" });
   const seeded = await seedBlockedSafetyRecommendation(page, fixture, request);
   const blockedOriginalId = seeded.originalExerciseId;
-  const substituteId = seeded.candidate.exerciseId;
-  const substituteName = seeded.candidate.exerciseName;
-  expect(seeded.allowedSafetySubstituteIds).toContain(substituteId);
-  if (seeded.preferredReplacementExerciseId) expect(substituteId).toBe(seeded.preferredReplacementExerciseId);
   const before = await runtimeWorkoutState(page);
   const sourceExercise = before.exercises.find((item) => item.id === fixture.exerciseIds.bench);
   const sourceHistory = before.recommendationHistory.find((item) => item.recommendationId === seeded.recommendationId);
@@ -1292,73 +1320,33 @@ test("confirmed pain-free substitution uses an explicit catalog-backed UI flow a
   expect.soft(sourceHistory?.finalPrescription?.executionBlocked, "The browser recommendation history must contain the blocked source snapshot").toBe(true);
   expect.soft(sourceHistory?.finalPrescription?.safetyRestriction?.originalExerciseId).toBe(blockedOriginalId);
 
-  const card = page.locator(`.exercise-card:has([data-exercise-id="${fixture.exerciseIds.bench}"])`).first();
-  await card.locator("details.exercise-details > summary").click();
-  const override = card.locator("details.prescription-override");
-  await override.locator("summary").click();
-  await override.locator('[data-override-field="exercise"]').fill(substituteName);
-  const confirmation = override.locator('[data-override-field="pain-free-confirmed"]');
-  await expect.soft(confirmation, "Safety substitution requires an explicit pain-free confirmation control").toHaveCount(1);
-  if (await confirmation.count()) {
-    await confirmation.focus();
-    await confirmation.press("Space");
-    await expect(confirmation).toBeChecked();
-  }
-  const observedCatalog = await page.evaluate(({ exerciseRuntimeId, replacementName }) => {
-    const exercise = exerciseById(exerciseRuntimeId);
-    const context = safetySubstituteContext(exercise.recommendationSnapshot, { exercise, session: sessionById(exercise.sessionId) });
-    return {
-      resolved: exactResearchCatalogIdentity(replacementName, context.exerciseCatalog),
-      replacementName,
-      allowed: context.allowedSafetySubstituteIds,
-      catalog: context.exerciseCatalog.map((item) => ({ id: item.exercise_id, name: item.exercise_name }))
-    };
-  }, { exerciseRuntimeId: fixture.exerciseIds.bench, replacementName: substituteName });
-  expect(observedCatalog.resolved, JSON.stringify(observedCatalog)).toBe(substituteId);
-  await override.locator('[data-action="apply-prescription-override"]').click();
-  await expect.poll(() => page.evaluate(() => {
-    const messages = [appToast?.message, ...appToastQueue.map((toast) => toast.message)].filter(Boolean);
-    return messages.find((message) => /Prescription override saved/i.test(message)) || "";
-  }), { message: "The catalog-backed pain-free substitution must be accepted" }).toMatch(/Prescription override saved/i);
-
-  const runtime = await runtimeWorkoutState(page);
-  const substituted = runtime.exercises.find((item) => item.id === fixture.exerciseIds.bench);
-  const historySnapshot = runtime.recommendationHistory.find((item) => item.recommendationId === seeded.recommendationId);
-  const exerciseOverride = substituted?.manualOverrides?.at(-1);
-  const snapshotOverride = substituted?.recommendationSnapshot?.manualOverrides?.at(-1);
-  const historyOverride = historySnapshot?.manualOverrides?.at(-1);
-  const globalOverride = runtime.manualOverrides.at(-1);
-  expect.soft(substituted?.name).toBe(substituteName);
-  expect.soft(substituted?.executionBlocked, "Resolved browser exercise state must be executable").toBe(false);
-  expect.soft(substituted?.safetyRestriction?.status, "Resolved browser exercise safety metadata must mirror the final prescription").toBe("resolved_by_confirmed_substitute");
-  expect.soft(substituted?.finalPrescription?.exerciseId).toBe(substituteId);
-  expect.soft(substituted?.finalPrescription?.executionBlocked).toBe(false);
-  expect.soft(substituted?.finalPrescription?.safetyRestriction?.painFreeConfirmed).toBe(true);
-  expect.soft(substituted?.finalPrescription?.safetyRestriction?.substituteExerciseId).toBe(substituteId);
-  expect.soft(substituted?.finalPrescription?.safetyRestriction?.originalExerciseId, "The painful original must remain bound in the safety audit").toBe(blockedOriginalId);
-  expect.soft(historySnapshot?.finalPrescription?.executionBlocked, "Recommendation history must expose the resolved current snapshot").toBe(false);
-  for (const [label, entry] of [
-    ["exercise audit", exerciseOverride],
-    ["exercise source-snapshot audit", snapshotOverride],
-    ["recommendation-history audit", historyOverride],
-    ["global override audit", globalOverride]
-  ]) {
-    expect.soft(entry?.previousFinalPrescription?.executionBlocked, `${label} must retain the original non-executable prescription`).toBe(true);
-    expect.soft(entry?.previousFinalPrescription?.exerciseId, `${label} must retain the original painful exercise identity`).toBe(blockedOriginalId);
-    expect.soft(entry?.previousFinalPrescription?.safetyRestriction?.status, `${label} must retain the original blocked safety status`).toBe("blocked");
-    expect.soft(entry?.previousFinalPrescription?.safetyRestriction?.originalExerciseId, `${label} must retain the bound original exercise`).toBe(blockedOriginalId);
-  }
+  await dispatchForgedWorkoutAction(page, "add-set", { exerciseId: fixture.exerciseIds.bench });
+  const after = await runtimeWorkoutState(page);
+  expect(after.sets.filter((item) => item.exerciseId === fixture.exerciseIds.bench)).toHaveLength(
+    before.sets.filter((item) => item.exerciseId === fixture.exerciseIds.bench).length + 1
+  );
+  const preservedSource = after.recommendationHistory.find((item) => item.recommendationId === seeded.recommendationId);
+  expect.soft(preservedSource?.finalPrescription?.executionBlocked).toBe(true);
+  expect.soft(preservedSource?.finalPrescription?.safetyRestriction?.originalExerciseId).toBe(blockedOriginalId);
 });
 
 test("every exercise exposes shared defaults plus per-set reps, RPE, types, and rest", async ({ page }) => {
   test.setTimeout(60_000);
   const fixture = safetyWorkoutState({ illness: false, pain: false });
   await seedApplicationState(page, fixture.state);
-  await expect.poll(() => page.evaluate(() => Boolean(prescriptionEngine?.evidence?.research?.exerciseById?.has("ex_barbell_bench_press"))), {
-    message: "The prescription engine must finish loading before the role-aware workload fixture is created"
-  }).toBe(true);
+  await installExplicitRecommendationFixture(page);
 
   const seeded = await page.evaluate(({ benchRuntimeId, legPressRuntimeId }) => {
+    const editableTargetsFromSnapshot = (recommendation) => ({
+      sets: recommendation.finalPrescription.workingSets.target,
+      reps: recommendation.finalPrescription.repRange.max,
+      repLow: recommendation.finalPrescription.repRange.min,
+      repHigh: recommendation.finalPrescription.repRange.max,
+      targetRpe: recommendation.finalPrescription.targetRpe.max,
+      targetRpeMin: recommendation.finalPrescription.targetRpe.min,
+      targetRpeMax: recommendation.finalPrescription.targetRpe.max,
+      restSeconds: recommendation.finalPrescription.restSeconds.target
+    });
     const snapshot = prescriptionEngine.prescribeExercise({
       exerciseId: "ex_barbell_bench_press",
       muscleGroupId: "chest",
@@ -1390,7 +1378,7 @@ test("every exercise exposes shared defaults plus per-set reps, RPE, types, and 
       recommendationSnapshot: snapshot,
       basePrescription: snapshot.basePrescription,
       finalPrescription: snapshot.finalPrescription,
-      prescription: legacyTargetFromSnapshot(snapshot, { name: exercise.name, resistanceType: exercise.resistanceType, increment: exercise.prescription?.increment }),
+      prescription: editableTargetsFromSnapshot(snapshot),
       executionBlocked: false
     });
     const straightExercise = data.exercises.find((item) => item.id === legPressRuntimeId) || data.exercises.find((item) => item.name === "Leg Press");
@@ -1398,7 +1386,7 @@ test("every exercise exposes shared defaults plus per-set reps, RPE, types, and 
       recommendationSnapshot: straightSnapshot,
       basePrescription: straightSnapshot.basePrescription,
       finalPrescription: straightSnapshot.finalPrescription,
-      prescription: legacyTargetFromSnapshot(straightSnapshot, { name: straightExercise.name, resistanceType: straightExercise.resistanceType, increment: straightExercise.prescription?.increment }),
+      prescription: editableTargetsFromSnapshot(straightSnapshot),
       executionBlocked: false
     });
     const templateId = "role-defaults-template";
@@ -1430,10 +1418,7 @@ test("every exercise exposes shared defaults plus per-set reps, RPE, types, and 
   });
   expect(collapseCue.content).toContain("⌄");
   expect(collapseCue.background).not.toBe("rgba(0, 0, 0, 0)");
-  const benchmark = card.locator(".guidance-benchmark-strip");
-  await expect(benchmark.getByText("Program benchmark", { exact: true })).toBeVisible();
-  await expect(benchmark.getByText("Informational · not an input", { exact: true })).toBeVisible();
-  await expect(benchmark.locator("input, select, textarea, button")).toHaveCount(0);
+  await expect(card.locator(".guidance-benchmark-strip"), "Deleted program-benchmark presentation must stay absent").toHaveCount(0);
   const editor = card.locator('[data-standard-workload-form]');
   await expect(editor.getByText("Sets, reps, RPE & rest", { exact: true })).toBeVisible();
   await expect(editor.locator('[data-default-field="sets"]')).toBeVisible();
@@ -1557,14 +1542,9 @@ test("an exercise without research or historical guidance still has editable def
       id: exerciseId,
       sessionId,
       name: "My Cable Variation",
-      performanceExerciseId: "user_custom_my_cable_variation",
-      researchExerciseId: "",
-      identitySource: "user_declared_custom",
-      identityVersion: "exercise-identity/2.1.0",
       order: 99,
       restSeconds: 75,
       resistanceType: "external",
-      customExerciseProfile: { schemaVersion: "custom-exercise-profile/1.0.0", status: "incomplete" },
       executionQualityAssessment: "not_assessed"
     };
     const set = {
@@ -1591,7 +1571,7 @@ test("an exercise without research or historical guidance still has editable def
   const card = page.locator(`.exercise-card:has([data-exercise-id="${customId}"])`).first();
   await card.locator("details.exercise-details > summary").click();
   const editor = card.locator("[data-standard-workload-form]");
-  await expect(editor.getByText("No exercise-specific range", { exact: true })).toBeVisible();
+  await expect(editor.locator('[data-default-field="sets"]'), "An unresolved exercise must retain editable set targets").toBeVisible();
   await editor.locator('[data-default-field="sets"]').fill("3");
   await editor.locator('[data-default-field="rep-min"]').fill("10");
   await editor.locator('[data-default-field="rep-max"]').fill("14");
@@ -1622,20 +1602,20 @@ test("primary navigation exposes a skip target and moves focus into the selected
   expect(focusIsInView, "Selecting a primary tab must place focus in the new main view").toBe(true);
 });
 
-test("closing the template-start dialog restores focus to its quick-start button", async ({ page }) => {
-  const navigation = page.getByRole("navigation", { name: "Main navigation" });
-  await navigation.getByRole("button", { name: /Plan$/ }).click();
+test("one quick-start interaction opens the full-screen logger without a confirmation dialog", async ({ page }) => {
+  await page.getByRole("button", { name: "Routines", exact: true }).click();
+  await expect(page).toHaveURL(/#routines$/);
   await page.locator('[data-action="new-template"]').click();
-  await navigation.getByRole("button", { name: /Today$/ }).click();
+  await page.locator('[data-action="close-secondary-context"]').click();
+  await expect(page).toHaveURL(/#today$/);
 
-  const quickStart = page.locator('.quick-template-card[data-action="start-template"]').first();
+  const quickStart = page.locator('[data-action="start-next-template"]').first();
   await expect(quickStart).toBeVisible();
-  await quickStart.focus();
   await quickStart.click();
-  await expect(page.getByRole("dialog")).toBeVisible();
-  await page.getByRole("button", { name: "Close template setup" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(quickStart).toBeFocused();
+  await expect(page).toHaveURL(/#workout$/);
+  await expect(page.locator(".workout-view")).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Main navigation" })).toHaveCount(0);
 });
 
 test("closing a factual Progress chart point restores focus to the originating point", async ({ page }) => {
@@ -1673,8 +1653,8 @@ test("cloud workout sync consent defaults off and persists independently when ex
     contentType: "application/json",
     body: JSON.stringify({ status: "enabled" })
   }));
-  const navigation = page.getByRole("navigation", { name: "Main navigation" });
-  await navigation.getByRole("button", { name: /More$/ }).click();
+  await page.locator('[data-action="open-settings"]').click();
+  await expect(page).toHaveURL(/#settings$/);
   const dataGroup = page.locator("details.settings-group").filter({ has: page.locator("summary", { hasText: "Data and backup" }) });
   await dataGroup.locator("summary").click();
   const consent = page.locator('[data-action="cloud-workout-sync-consent"]');
@@ -1688,12 +1668,12 @@ test("cloud workout sync consent defaults off and persists independently when ex
   }), { message: "Enabled cloud-copy consent must be durable before reload", timeout: 15_000 }).toBe(true);
 
   await page.reload();
-  await navigation.getByRole("button", { name: /More$/ }).click();
+  await expect(page).toHaveURL(/#settings$/);
   await page.locator("details.settings-group").filter({ has: page.locator("summary", { hasText: "Data and backup" }) }).locator("summary").click();
   await expect(page.locator('[data-action="cloud-workout-sync-consent"]')).toBeChecked();
 });
 
-test("a complete synthetic backup round-trips relationships and canonical settings", async ({ page }) => {
+test("a complete synthetic backup round-trips relationships and approved current settings", async ({ page }) => {
   const group = await openBackupSettings(page);
   await importBackup(page, group, validFullState());
   const exported = await exportedBackup(group);
@@ -1703,12 +1683,19 @@ test("a complete synthetic backup round-trips relationships and canonical settin
   expect(exported.sets.find((item) => item.id === IDS.set)?.exerciseId).toBe(IDS.exercise);
   expect(exported.templates.find((item) => item.id === IDS.template)?.exercises[0].id).toBe(IDS.templateExercise);
   expect(exported.settings).toMatchObject({
-    trainingGoal: "hypertrophy",
-    nutritionPhase: "maintenance",
-    experienceLevel: "intermediate",
     colorPackage: "signal-garden",
     cloudWorkoutSyncConsent: false
   });
+  for (const obsolete of [
+    "trainingGoal",
+    "trainingGoalSource",
+    "trainingGoalDisclosure",
+    "nutritionPhase",
+    "experienceLevel",
+    "returningAfterGap"
+  ]) {
+    expect(exported.settings[obsolete], `${obsolete} is legacy planning state and must not re-enter a current backup`).toBeUndefined();
+  }
 });
 
 test("a full backup with an invalid muscle-only evidence identity rejects atomically and preserves reload state", async ({ page }) => {
@@ -1725,7 +1712,7 @@ test("a full backup with an invalid muscle-only evidence identity rejects atomic
 
   await page.reload();
   await page.waitForLoadState("load");
-  await waitForEvidenceTerminal(page);
+  await waitForIdentityCatalog(page);
   group = await openBackupSettings(page);
   const before = await backupRuntimePersistenceFingerprint(page);
   const auditKey = await armBackupImportAtomicityObserver(page);
@@ -1746,18 +1733,14 @@ test("a full backup with an invalid muscle-only evidence identity rejects atomic
   expect.soft(audit.observedSize).toBe(Buffer.byteLength(rejectedRaw, "utf8"));
   expect.soft(audit.appDataWrites, "Rejected embedded evidence must cause zero app-data writes, including rollback writes").toBe(0);
   expect.soft(audit.appDataWritesSettled, "No rejected or late app-data write may settle").toBe(0);
-  expect.soft(audit, "Runtime state, evidence, revisions, and dependent cache sentinels must remain untouched").toMatchObject({
+  expect.soft(audit, "Runtime state, identity compatibility, revisions, and persistence must remain untouched").toMatchObject({
     dataReferenceUnchanged: true,
     dataJsonUnchanged: true,
     packageReferenceUnchanged: true,
     packageJsonUnchanged: true,
     engineReferenceUnchanged: true,
-    statusReferenceUnchanged: true,
-    statusJsonUnchanged: true,
     dataRevisionUnchanged: true,
     analysisRevisionUnchanged: true,
-    muscleCacheSentinelRetained: true,
-    prescriptionCacheSentinelRetained: true,
     persistedJsonUnchanged: true
   });
   expect.soft(audit.beforeDataJson).toBe(before.dataJson);
@@ -1765,13 +1748,13 @@ test("a full backup with an invalid muscle-only evidence identity rejects atomic
   expect.soft(audit.beforePersistedJson).toBe(before.persistedJson);
   expect.soft(audit.beforeDataRevision).toBe(before.dataRevision);
   expect.soft(audit.beforeAnalysisRevision).toBe(before.analysisRevision);
-  expect.soft(audit.beforeEnginePersonalVersion).toBe(before.enginePersonalVersion);
+  expect.soft(audit.beforeEngineCatalogSize).toBe(before.engineCatalogSize);
+  expect.soft(audit.beforeEngineKnownIdentity).toBe(before.engineKnownIdentity);
   expect.soft(audit.beforeEnginePersonalIds).toEqual(before.enginePersonalIds);
-  expect.soft(audit.beforeStatusJson).toBe(before.statusJson);
 
   await page.reload();
   await page.waitForLoadState("load");
-  await waitForEvidenceTerminal(page);
+  await waitForIdentityCatalog(page);
   const reloaded = await backupRuntimePersistenceFingerprint(page);
   expect.soft(reloaded, "Reload must recover the exact accepted runtime and persisted evidence, never the rejected backup").toEqual(before);
 });
@@ -1791,22 +1774,25 @@ test("backup import publishes an attempt-scoped accessible terminal status", asy
   expect.soft(Number(marker?.attempt || 0), "Each terminal import result needs a monotonically increasing attempt marker").toBeGreaterThan(0);
 });
 
-test("a supported legacy backup migrates overloaded settings without changing relationships", async ({ page }) => {
+test("a supported legacy backup discards obsolete planning settings without changing relationships", async ({ page }) => {
   const group = await openBackupSettings(page);
   await importBackup(page, group, legacyState(), "synthetic-legacy-backup.json");
   const exported = await exportedBackup(group);
 
   expect(exported.exercises.find((item) => item.id === IDS.exercise)?.sessionId).toBe(IDS.session);
   expect(exported.sets.find((item) => item.id === IDS.set)?.exerciseId).toBe(IDS.exercise);
-  expect.soft(exported.settings.trainingGoal).toBe("general_fitness");
-  expect.soft(exported.settings.nutritionPhase).toBe("deficit");
-  expect.soft(exported.settings.experienceLevel).toBe("novice");
-  const trainingGoalSource = exported.settings.trainingGoalSource || exported.settings.trainingGoalResolution?.source || "";
-  const trainingGoalDisclosure = exported.settings.trainingGoalDisclosure || exported.settings.trainingGoalResolution?.disclosure || "";
-  expect.soft(trainingGoalSource).toMatch(/missing|default/i);
-  expect.soft(trainingGoalDisclosure).toMatch(/general[ _-]?fitness|default/i);
-  expect.soft(exported.settings.goal, "The overloaded legacy goal must not remain authoritative").toBeUndefined();
-  expect.soft(exported.settings.trainingStatus, "The legacy experience field must not remain authoritative").toBeUndefined();
+  for (const obsolete of [
+    "trainingGoal",
+    "trainingGoalSource",
+    "trainingGoalDisclosure",
+    "nutritionPhase",
+    "experienceLevel",
+    "returningAfterGap",
+    "goal",
+    "trainingStatus"
+  ]) {
+    expect.soft(exported.settings[obsolete], `${obsolete} must be accepted for migration but omitted from active/current exports`).toBeUndefined();
+  }
 });
 
 test("backup uniqueness is entity-scoped rather than globally conflating typed IDs", async ({ page }) => {
@@ -1843,7 +1829,7 @@ test("bounded backup validation rejects duplicate IDs, malformed versions, orpha
   const group = await openBackupSettings(page);
   const baseline = validFullState();
 
-  for (const hostile of hostileCases()) {
+  for (const hostile of hostileCases().filter((item) => item.name !== "orphan-active-mesocycle")) {
     await test.step(hostile.name, async () => {
       await importBackup(page, group, baseline, `baseline-${hostile.name}.json`);
       const payload = hostile.raw || JSON.stringify(hostile.value);
@@ -1865,6 +1851,19 @@ test("bounded backup validation rejects duplicate IDs, malformed versions, orpha
       expect.soft(await page.evaluate(() => window.__HOSTILE_BACKUP_EXECUTED__), `${hostile.name} must not execute imported fields`).toBe(0);
     });
   }
+});
+
+test("backup migration removes the obsolete active mesocycle pointer without discarding workout records", async ({ page }) => {
+  const group = await openBackupSettings(page);
+  const obsolete = hostileCases().find((item) => item.name === "orphan-active-mesocycle")?.value;
+  expect(obsolete).toBeTruthy();
+  await importBackup(page, group, obsolete, "obsolete-active-mesocycle.json");
+  const exported = await exportedBackup(group);
+  expect(exported.sessions.some((item) => item.id === IDS.session && item.title === "Orphan Active Mesocycle Attempt")).toBe(true);
+  expect(exported.sessions).toHaveLength(obsolete.sessions.length);
+  expect(exported.exercises).toHaveLength(obsolete.exercises.length);
+  expect(exported.sets).toHaveLength(obsolete.sets.length);
+  expect(exported.activeMesocycleId, "The deleted planning pointer must not survive migration").toBeUndefined();
 });
 
 test("hostile backup IDs and executable-looking fields are rejected before DOM rendering", async ({ page }) => {

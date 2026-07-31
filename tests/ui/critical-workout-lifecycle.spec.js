@@ -39,10 +39,12 @@ async function installCleanSyntheticContext(page) {
   }, { fixedNow: FIXED_NOW, storageKey: STORAGE_KEY, storedFixture: fixture });
   await page.goto("/");
   await expect(page.locator("main.app-main")).toBeVisible({ timeout: 45_000 });
-  await expect.poll(() => page.evaluate(() => String(prescriptionEvidenceStatus?.state || "loading")), {
-    message: "public prescription evidence must be ready before the critical lifecycle starts",
+  await expect.poll(() => page.evaluate(() => Boolean(
+    prescriptionEngine?.evidence?.research?.exerciseById?.has("ex_barbell_bench_press")
+  )), {
+    message: "the identity compatibility catalog must be ready before the critical lifecycle starts",
     timeout: 45_000
-  }).toBe("ready");
+  }).toBe(true);
 }
 
 async function readIndexedData(page) {
@@ -272,8 +274,8 @@ test("critical workout lifecycle remains coherent through submission, progress, 
   const browserErrors = collectBrowserErrors(page);
   await installCleanSyntheticContext(page);
 
-  await page.locator('[data-action="set-tab"][data-tab="plan"]').click();
-  await expect(page.getByRole("heading", { name: "Your plan", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Routines", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Routines", exact: true })).toBeVisible();
   await expect(page.locator(".template-card")).toHaveCount(0);
   await page.locator('[data-action="new-template"]').click();
 
@@ -298,8 +300,7 @@ test("critical workout lifecycle remains coherent through submission, progress, 
   }, "the UI-created synthetic template must persist before it starts");
 
   await templateCard.locator(`[data-action="start-template"][data-template-id="${templateId}"]`).click();
-  await expect(page.getByRole("dialog", { name: `Start ${TEMPLATE_NAME}?` })).toBeVisible();
-  await page.locator('[data-action="use-usual-readiness"]').click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: TEMPLATE_NAME, exact: true })).toBeVisible({ timeout: 45_000 });
   await expect(page.getByText("In progress", { exact: true })).toBeVisible();
   await expect(page.locator(".exercise-card")).toHaveCount(1);
@@ -371,7 +372,8 @@ test("critical workout lifecycle remains coherent through submission, progress, 
   const beforeUnitChange = await persistedData(page);
   const originalSet = beforeUnitChange.sets.find((set) => set.exerciseId === activeExercise.id && set.completed);
   expect(originalSet.weightUnit).toBe("lb");
-  await page.locator('[data-action="set-tab"][data-tab="more"]').click();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "App settings.", exact: true })).toBeVisible();
   await page.locator('[data-action="weight-unit"][value="kg"]').check();
   const kilograms = await waitForPersisted(page, (stored) => stored?.settings?.weightUnit === "kg" && stored.sets.find((set) => set.id === originalSet.id)?.weightUnit === "kg", "lb to kg conversion must persist coherently");
   const kilogramSet = kilograms.sets.find((set) => set.id === originalSet.id);

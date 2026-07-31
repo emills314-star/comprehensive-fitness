@@ -32,19 +32,27 @@ async function installFixture(page, fixture = buildAnalyticsSettingsFixture()) {
   }, { fixedNow: FIXED_NOW, marker: FIXTURE_MARKER, storageKey: STORAGE_KEY, storedFixture: fixture });
   await page.goto("/");
   await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible({ timeout: 45_000 });
-  await expect.poll(() => page.evaluate(() => String(prescriptionEvidenceStatus?.state || "loading")), {
+  await expect.poll(() => page.evaluate(() => Boolean(
+    prescriptionEngine?.evidence?.research?.exerciseById?.has("ex_barbell_bench_press")
+  )), {
+    message: "the identity compatibility catalog must be ready before lifecycle checks run",
     timeout: 45_000
-  }).not.toBe("loading");
+  }).toBe(true);
   return fixture;
 }
 
-function primaryTab(page, tabId) {
-  return page.locator(`[data-action="set-tab"][data-tab="${tabId}"]`);
-}
-
 async function openPrimaryTab(page, tabId) {
-  const destination = ({ lift: "today", dashboard: "progress", charts: "progress", data: "more" })[tabId] || tabId;
-  const target = primaryTab(page, destination);
+  if (tabId === "data") {
+    if (await page.locator(".settings-view").isVisible().catch(() => false)) return;
+    const settingsTrigger = page.locator('[data-action="open-settings"]');
+    if (await settingsTrigger.count()) await settingsTrigger.click();
+    else await page.goto("/#settings");
+    await expect(page).toHaveURL(/#settings$/);
+    await expect(page.locator(".settings-view")).toBeVisible();
+    return;
+  }
+  const destination = ({ lift: "today", dashboard: "progress", charts: "progress" })[tabId] || tabId;
+  const target = page.locator(`[data-action="set-tab"][data-tab="${destination}"]`);
   await target.click();
   await expect(target).toHaveAttribute("aria-current", "page");
 }
@@ -178,21 +186,23 @@ test("Progress renders one factual performance chart and exposes recorded point 
   await expect(points.last()).toBeFocused();
 });
 
-test("Settings converts real loads and persists profile, timer, readiness, unit, theme, and color-package changes across reload", async ({ page }) => {
+test("Settings converts real loads and persists approved timer, readiness, unit, theme, and color controls without exposing legacy program defaults", async ({ page }) => {
   await installFixture(page);
   await openPrimaryTab(page, "data");
 
+  const internalCompatibilityDefaults = await page.evaluate(() => ({
+    trainingGoal: data.settings.trainingGoal,
+    nutritionPhase: data.settings.nutritionPhase,
+    experienceLevel: data.settings.experienceLevel,
+    returningAfterGap: data.settings.returningAfterGap
+  }));
+  await expect(page.getByText("Training defaults", { exact: true })).toHaveCount(0);
+  for (const action of ["training-goal", "nutrition-phase", "experience-level", "returning-after-gap"]) {
+    await expect(page.locator(`[data-action="${action}"]`), `${action} must remain absent from the approved Settings surface`).toHaveCount(0);
+  }
   await page.locator('[data-action="theme-mode"][value="dark"]').check();
   await page.locator('[data-action="color-package"][value="heritage-atlas"]').check();
   await page.locator('[data-action="weight-unit"][value="kg"]').check();
-  await openSettingsGroup(page, "Training defaults");
-  await page.locator('[data-action="training-goal"]').selectOption("strength");
-  await openSettingsGroup(page, "Training defaults");
-  await page.locator('[data-action="nutrition-phase"]').selectOption("surplus");
-  await openSettingsGroup(page, "Training defaults");
-  await page.locator('[data-action="experience-level"]').selectOption("advanced");
-  await openSettingsGroup(page, "Training defaults");
-  await page.locator('[data-action="returning-after-gap"]').selectOption("true");
   await openSettingsGroup(page, "Rest timer and alerts");
   await setNumericSetting(page, "default-rest-seconds", 150);
   await openSettingsGroup(page, "Readiness baseline");
@@ -216,13 +226,15 @@ test("Settings converts real loads and persists profile, timer, readiness, unit,
     theme: "dark",
     colorPackage: "heritage-atlas",
     weightUnit: "kg",
-    trainingGoal: "strength",
-    nutritionPhase: "surplus",
-    experienceLevel: "advanced",
-    returningAfterGap: true,
     defaultRestSeconds: 150,
     readinessBaseline: { sleepHours: "8", sleepQuality: "5", hrv: "62", restingHr: "55", soreness: "1", band: "10" }
   });
+  expect({
+    trainingGoal: inMemory.settings.trainingGoal,
+    nutritionPhase: inMemory.settings.nutritionPhase,
+    experienceLevel: inMemory.settings.experienceLevel,
+    returningAfterGap: inMemory.settings.returningAfterGap
+  }, "approved Settings changes must not mutate internal compatibility defaults or present legacy writers").toEqual(internalCompatibilityDefaults);
   expect(inMemory.firstSet).toMatchObject({ weight: 99.79, weightUnit: "kg", targetWeight: 99.79 });
 
   await expect.poll(async () => (await persistedAppData(page))?.settings?.readinessBaseline?.band, { timeout: 10_000 }).toBe("10");
@@ -235,12 +247,13 @@ test("Settings converts real loads and persists profile, timer, readiness, unit,
   await expect(page.locator('[data-action="theme-mode"][value="dark"]')).toBeChecked();
   await expect(page.locator('[data-action="color-package"][value="heritage-atlas"]')).toBeChecked();
   await expect(page.locator('[data-action="weight-unit"][value="kg"]')).toBeChecked();
+  await expect(page.getByText("Training defaults", { exact: true })).toHaveCount(0);
   const restored = await page.evaluate(() => ({ settings: structuredClone(data.settings), firstSet: structuredClone(data.sets[0]) }));
   expect(restored.settings).toMatchObject(inMemory.settings);
   expect(restored.firstSet).toMatchObject({ weight: 99.79, weightUnit: "kg", targetWeight: 99.79 });
 });
 
-test("More numeric settings enforce their import-safe domains and survive reload", async ({ page }) => {
+test("contextual Settings numeric controls enforce their import-safe domains and survive reload", async ({ page }) => {
   await installFixture(page);
   await openPrimaryTab(page, "data");
   await openSettingsGroup(page, "Rest timer and alerts");

@@ -14,7 +14,7 @@ Read this document before changing readiness, recovery, progression, volume, PR,
 
 ## Zero-based redesign M1 decision boundary — IMPLEMENTED LOCALLY
 
-The named exercise variant, not the normal recommendation engine, now owns the ordinary set count/roles, rep range, target-RPE band, rest default, and increment. Historical engine snapshots remain immutable compatibility material, but their exact set/load/rep actions do not rewrite stable routine targets and are not editable-field prefill sources. M4 removes the normal current snapshot/plan-preview producers.
+The named exercise variant, not the normal recommendation engine, now owns the ordinary set count/roles, rep range, target-RPE band, rest default, and increment. Historical engine snapshots remain immutable compatibility material, but their exact set/load/rep actions do not rewrite stable routine targets and are not editable-field prefill sources. M4 removes the normal current snapshot/plan-preview producers. **IMPLEMENTED (M5):** a legacy exact rep target remains exact; one reps edit synchronizes that set's lower and upper rep bounds to the same value rather than widening or silently replacing the target range.
 
 Normal prefill is factual and ordered:
 
@@ -37,6 +37,12 @@ Guided planning rules, candidate selection, viability scoring, lifecycle evaluat
 The M2 `exception-resolver.js` is the sole current recommendation/action authority. It needs no hypertrophy, weekly/fractional volume, fatigue-window, research-status, evidence-confidence, or program-score analytical input. Direct recorded pain/injury or illness remains the only approved live rule. Ordinary sessions are silent.
 
 The former recommendation, readiness-score, fatigue, plateau, light-work, deload, family-volume, hypertrophy-score, research-evidence, and confidence calculations below are retained only where explicitly needed for immutable historical decoding, import validation, taxonomy identity, or later deletion sequencing. They are not current user-facing actions, Progress analytics, or normal workout-target writers.
+
+### M5 runtime decision boundary — IMPLEMENTED LOCALLY
+
+M5 changes shell and interaction flow, not the ordinary target authority: Start uses usual readiness directly; optional readiness is independently recordable before or during the workout and only refreshes the existing canonical exception action. It cannot require confirmation, widen stable targets, or create normal coaching.
+
+Normal boot needs only minimum catalog identity compatibility for exact variant/history matching. Research/personal-evidence analytics and UI are not boot-time decision inputs. Bounded legacy backup decoding preserves workout/session/template facts and immutable historical snapshots; obsolete planner settings are discarded before active import and current export.
 
 ### Superseded guided-planning record — HISTORICAL
 

@@ -81,7 +81,7 @@ All user-facing work now has a mandatory hosted-site browser-verification gate. 
 
 ## In progress
 
-### Zero-based redesign implementation — M0 through M4 complete locally; M5 next
+### Zero-based redesign implementation — M0 through M5 complete locally; M6 next
 
 **IMPLEMENTED LOCALLY (M0):** The final redesign package under `docs/redesign/final/` is now the product authority, with sequencing owned by `docs/redesign/implementation/IMPLEMENTATION_EXECPLAN.md`. M0 added target contract schemas plus privacy-safe synthetic legacy/current backup, historical-snapshot, set-role, and active-draft fixtures. Current app-data v3 exports/imports through backup schema v3; backup v2 remains the isolated v1/v2 compatibility envelope, and stored historical grade values/versions survive strict import.
 
@@ -89,11 +89,13 @@ All user-facing work now has a mandatory hosted-site browser-verification gate. 
 
 **IMPLEMENTED LOCALLY (M2):** `exception-resolver.js` is the sole current exception-action authority. Ordinary cases are silent. Direct recorded pain/injury or illness is the only approved live rule and produces one advisory action without blocking logging; stable targets remain unchanged and explicit continuation is persisted. Direct detector UI consumers, target-mutating fallbacks, legacy recommendation writers/renderers, visible confidence/evidence paths, Today Program pulse, Progress score/expectation output, and completion coaching are removed. The scoped independent recommendation gate, 59/59 public scripts, lint, typecheck, build, 41-file web sync, 40-asset PWA verification, privacy check, and 2/2 mobile runtime scenarios pass.
 
-**IMPLEMENTED LOCALLY (M3):** Guided planning and mesocycle lifecycle are removed across UI, requests, active state, engine surfaces, schemas for new records, service-worker entries, and current-intent documentation. The isolated versioned legacy backup decoder accepts obsolete planning keys only to preserve workout and routine/template facts; it creates no active state, writer, route, renderer, or new record. Plan now owns routines/templates only until the later shell milestone.
+**IMPLEMENTED LOCALLY (M3):** Guided planning and mesocycle lifecycle are removed across UI, requests, active state, engine surfaces, schemas for new records, service-worker entries, and current-intent documentation. The isolated versioned legacy backup decoder accepts obsolete planning keys only to preserve workout and routine/template facts; it creates no active state, writer, route, renderer, or new record. The former Plan ownership is superseded by M5 contextual Routines.
 
 **IMPLEMENTED LOCALLY (M4):** Today/start no longer compute or present hypertrophy, weekly/fractional volume, research status/evidence/confidence, program scores, or normal plan previews. Dashboard/scorecard/volume/fatigue/hypertrophy/research and duplicate recommendation surfaces and their derived producers are deleted. Progress is one factual exact-variant chart with point detail plus chronological submitted-workout history. Historical source records and inert compatibility fields remain preserved.
 
-**NEXT — NOT STARTED:** M5 installs the approved two-destination shell.
+**IMPLEMENTED LOCALLY (M5):** Persistent navigation contains exactly Today and Progress. Routines and Settings are contextual; the active workout is full-screen. Today Start opens directly with usual readiness, while readiness remains optional before or during the workout. A protected existing draft offers only Resume, Finish, or confirmed Discard. Normal boot retains only catalog identity compatibility and does not load analytics/research-evidence surfaces; direct research/personal-evidence UI is removed while bounded legacy workout/session/template and immutable historical snapshot compatibility remains.
+
+**NEXT — NOT STARTED:** M6 simplifies the active logger without changing M5 navigation, direct-Start, readiness, or single-draft protection.
 
 **NEEDS REVIEW:** No complete private export/replay, independent migration review, repository-pinned runtime rerun, physical-device acceptance, or five-workout field test has occurred. Push, deployment, visual-baseline acceptance, and publication remain unauthorized.
 

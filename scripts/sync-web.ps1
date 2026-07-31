@@ -14,6 +14,13 @@ $sensitiveRelativeRoots = @(
   "backups",
   "exports"
 )
+$obsoleteAnalyticalJson = @(
+  "research_database\exports\json\exercise_substitution_map.json",
+  "research_database\exports\json\muscle_group_recommendations.json",
+  "research_database\exports\json\progression_rules.json",
+  "research_database\exports\json\nutrition_strategies.json",
+  "research_database\exports\json\manifest.json"
+)
 
 New-Item -ItemType Directory -Force -Path $www | Out-Null
 
@@ -28,6 +35,14 @@ foreach ($publicRoot in $nativePublicRoots) {
       throw "Refusing to prune a path outside the intended public payload root: $resolvedCandidate"
     }
     if (Test-Path -LiteralPath $resolvedCandidate) { Remove-Item -LiteralPath $resolvedCandidate -Recurse -Force }
+  }
+  foreach ($relative in $obsoleteAnalyticalJson) {
+    $candidate = Join-Path $publicRoot $relative
+    $resolvedCandidate = [IO.Path]::GetFullPath($candidate)
+    if (-not $resolvedCandidate.StartsWith($resolvedPublicRoot, [StringComparison]::OrdinalIgnoreCase)) {
+      throw "Refusing to prune a path outside the intended public payload root: $resolvedCandidate"
+    }
+    if (Test-Path -LiteralPath $resolvedCandidate -PathType Leaf) { Remove-Item -LiteralPath $resolvedCandidate -Force }
   }
 }
 
@@ -65,12 +80,7 @@ $publicFiles = @(
   @{ Source = "resources\achievements\badge-progression.png"; Destination = "resources\achievements\badge-progression.png" },
   @{ Source = "resources\achievements\badge-controlled-execution.png"; Destination = "resources\achievements\badge-controlled-execution.png" },
   @{ Source = "research_database\exports\json\exercise_database.json"; Destination = "research_database\exports\json\exercise_database.json" },
-  @{ Source = "research_database\exports\json\exercise_muscle_map.json"; Destination = "research_database\exports\json\exercise_muscle_map.json" },
-  @{ Source = "research_database\exports\json\exercise_substitution_map.json"; Destination = "research_database\exports\json\exercise_substitution_map.json" },
-  @{ Source = "research_database\exports\json\muscle_group_recommendations.json"; Destination = "research_database\exports\json\muscle_group_recommendations.json" },
-  @{ Source = "research_database\exports\json\progression_rules.json"; Destination = "research_database\exports\json\progression_rules.json" },
-  @{ Source = "research_database\exports\json\nutrition_strategies.json"; Destination = "research_database\exports\json\nutrition_strategies.json" },
-  @{ Source = "research_database\exports\json\manifest.json"; Destination = "research_database\exports\json\manifest.json" }
+  @{ Source = "research_database\exports\json\exercise_muscle_map.json"; Destination = "research_database\exports\json\exercise_muscle_map.json" }
 )
 
 foreach ($file in $publicFiles) {

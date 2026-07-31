@@ -131,8 +131,8 @@ assert.doesNotMatch(resolvedActionSource, /confidence|evidence|matrix|qualificat
 assert.doesNotMatch(html, /function renderRolePrescriptionDetails\(/, "The deleted role-level prescription evidence renderer must not return");
 assert.doesNotMatch(setRendererSource, /set-progress-disclosure|Progress when/, "Normal set rows must not expose recommendation-era progression rationale");
 assert.match(setRendererSource, /class="set-tools-disclosure"/, "Secondary set controls remain available through one compact native disclosure");
-assert.match(html, /class="discard-workout-button"[^>]*>Discard Workout</, "Cancellation uses the polished concise destructive action");
-assert.match(html, /class="diff cancel-workout-diff"[\s\S]*>Removed<[\s\S]*>Kept<[\s\S]*This draft[\s\S]*exerciseIds\.size[\s\S]*draftSets\.length[\s\S]*completedSets[\s\S]*notes, and timer state[\s\S]*Submitted history[\s\S]*Templates and settings/, "Cancellation must explain the exercise and set records removed and distinguish submitted history, templates, and settings that remain");
+assert.match(html, /class="discard-workout-button"[^>]*>Discard workout</, "Cancellation uses the polished concise destructive action");
+assert.match(html, /unsubmitted draft will be permanently removed[\s\S]*Submitted history and routines stay intact/, "Cancellation must name permanent draft loss and distinguish submitted history and routines that remain");
 assert.match(html, /data-action="keep-workout"/, "The safe cancellation action remains available");
 assert.doesNotMatch(html, /data-action="keep-workout" autofocus/, "The cancellation sheet must open at the warning instead of auto-scrolling to its actions");
 assert.match(html, /cancelRestPush\(previousTimer, "workout-canceled"\)/, "Discarding a workout still cancels scheduled rest alerts");

@@ -34,7 +34,9 @@ const renderSettings = functionSource(analysis, "renderSettings");
 const renderCompletedSummary = functionSource(history, "renderCompletedWorkoutSummary");
 
 assert.doesNotMatch(renderTemplateStartSheet, /Nothing is lost either way/, "destructive conflict copy must not promise zero loss");
-assert.match(renderTemplateStartSheet, /Discarding permanently removes this draft/, "destructive conflict copy must name permanent draft loss");
+assert.match(renderTemplateStartSheet, /data-action="discard-active-workout"/, "the active-draft conflict must offer an explicit Discard action");
+assert.match(renderCancelWorkoutSheet, /permanently remove|permanently removed/i, "the destructive confirmation must name permanent draft loss");
+assert.doesNotMatch(renderTemplateStartSheet, /step === ["'](?:confirm|review)["']|review-template-readiness|start-original-workout/, "the start sheet must not retain confirmation or prescription-review states");
 assert.match(renderHistory, /isSessionSubmitted\(session\)[\s\S]*sessionCompletionDate[\s\S]*Every submitted workout remains available/, "Progress must retain the full submitted archive in chronological order");
 assert.match(renderUpdateBanner, /wait while an active workout remains open/, "update copy must describe the real active-workout gate");
 
@@ -42,7 +44,7 @@ assert.doesNotMatch(renderRoot, /shellProgress/, "the shell must not repeat work
 assert.doesNotMatch(renderWorkout, /workout-status-strip/, "the active hero must not repeat its current-focus fact");
 assert.doesNotMatch(renderHistory, /History · \$\{totalSessions\}/, "History count must be owned by the roll-up");
 assert.doesNotMatch(renderCancelWorkoutSheet, /<h2[^>]*>\$\{completedSets\}/, "the cancel heading must not repeat the diff-owned completed-set count");
-assert.match(renderCancelWorkoutSheet, /exerciseIds\.size[\s\S]*draftSets\.length[\s\S]*completedSets/, "destructive copy must enumerate all exercise and set records being removed");
+assert.match(renderCancelWorkoutSheet, /completedSets[\s\S]*unsubmitted draft will be permanently removed[\s\S]*Submitted history and routines stay intact/, "destructive copy must concisely distinguish draft loss from preserved records");
 assert.doesNotMatch(renderSettings, /formatTimer\(Number\(data\.settings\.defaultRestSeconds/, "Settings must not restate default rest in a second format");
 assert.match(renderCompletedSummary, /completionHeadline[\s\S]*workout-grade-mark/, "the grade mark must remain the sole visible grade value beside the completion headline");
 assert.match(renderLiftHome, /Expected workout[\s\S]*data-action="start-next-template"/, "Today must present the expected workout and one primary Start action");

@@ -40,9 +40,12 @@ async function installBlankApp(page) {
 async function waitForApp(page) {
   await page.goto("/");
   await expect(page.locator("main.app-main")).toBeVisible({ timeout: 45_000 });
-  await expect.poll(() => page.evaluate(() => String(prescriptionEvidenceStatus?.state || "loading")), {
+  await expect.poll(() => page.evaluate(() => {
+    const identity = prescriptionEngine?.resolveExerciseIdentity?.("Barbell Bench Press");
+    return identity?.status === "resolved" ? identity.exerciseId : "";
+  }), {
     timeout: 45_000
-  }).toBe("ready");
+  }).toBe("ex_barbell_bench_press");
 }
 
 test("Strong CSV unit choice is explicit, durable per record, and duplicate-safe", async ({ page }) => {
@@ -129,8 +132,7 @@ test("all configured research-mapped Strong labels resolve through the browser's
     recordedName,
     exerciseId,
     identity: prescriptionEngine.resolveExerciseIdentity(recordedName),
-    profile: resolveExerciseIdentityProfile({ name: recordedName }),
-    target: prescriptionEngine.resolveDefaultPrescriptionTarget(recordedName)
+    profile: resolveExerciseIdentityProfile({ name: recordedName })
   })), Object.entries(expected));
 
   for (const result of audit) {
@@ -142,7 +144,6 @@ test("all configured research-mapped Strong labels resolve through the browser's
     } else {
       expect(result.profile.performanceExerciseId).not.toBe(result.exerciseId);
     }
-    expect(result.target).toMatchObject({ status: "resolved", exerciseId: result.exerciseId });
   }
 });
 
@@ -167,20 +168,18 @@ test("Strong-only history starts an editable workout without inventing a researc
   expect(audit.researchExerciseId).toBe("");
   expect(audit.message).toContain("Verified dated prior workout history and startable set structure for all 2 template exercises");
 
-  await page.locator('[data-action="set-tab"][data-tab="plan"]').click();
-  await page.locator(`[data-action="start-template"][data-template-id="${audit.templateId}"]`).click();
-  await page.locator('[data-action="use-usual-readiness"]').click();
+  await page.getByRole("button", { name: "Routines", exact: true }).click();
+  await page.locator(`[data-template-id="${audit.templateId}"][data-action="start-next-template"], [data-template-id="${audit.templateId}"][data-action="start-template"]`).first().click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 
   await expect(page.getByRole("heading", { name: STRONG_TEMPLATE, exact: true })).toBeVisible({ timeout: 45_000 });
   const activeExerciseId = await page.evaluate((name) => data.exercises.find((exercise) => exercise.sessionId === activeWorkoutId && exercise.name === name)?.id || "", STRONG_EXERCISE);
   const card = page.locator(`.exercise-card:has([data-exercise-id="${activeExerciseId}"])`);
   await expect(card).toHaveCount(1);
-  await expect(card).toContainText("Using your latest imported Strong performance");
   await expect(card).not.toContainText("unknown_exercise_identity");
   await expect(card.locator('[data-action="add-set"]')).toBeEnabled();
   const pallofExerciseId = await page.evaluate((name) => data.exercises.find((exercise) => exercise.sessionId === activeWorkoutId && exercise.name === name)?.id || "", STATIC_RESEARCH_EXERCISE);
   const pallofCard = page.locator(`.exercise-card:has([data-exercise-id="${pallofExerciseId}"])`);
-  await expect(pallofCard).toContainText("Using your latest imported Strong performance");
   await expect(pallofCard).not.toContainText("no_dynamic_direct_target");
   await expect(pallofCard.locator('[data-action="add-set"]')).toBeEnabled();
 
@@ -218,7 +217,7 @@ test("Strong-only history starts an editable workout without inventing a researc
   await expect.poll(() => page.evaluate((exerciseId) => data.sets.filter((set) => set.exerciseId === exerciseId && !set.isWarmup).length, activeExerciseId)).toBe(beforeCount);
 });
 
-test("Last time searches the full submitted Strong archive and tolerates performance-ID drift", async ({ page }) => {
+test("Last time keeps a distinct performance identity separate from the Strong archive", async ({ page }) => {
   test.setTimeout(120_000);
   await installBlankApp(page);
   const templateId = await page.evaluate(({ csv, exerciseName, templateName }) => {
@@ -252,17 +251,17 @@ test("Last time searches the full submitted Strong archive and tolerates perform
     return template.id;
   }, { csv: ARCHIVED_STRONG_CSV, exerciseName: OLD_STRONG_EXERCISE, templateName: OLD_STRONG_TEMPLATE });
 
-  await page.locator('[data-action="set-tab"][data-tab="plan"]').click();
-  await page.locator(`[data-action="start-template"][data-template-id="${templateId}"]`).click();
-  await page.locator('[data-action="use-usual-readiness"]').click();
+  await page.getByRole("button", { name: "Routines", exact: true }).click();
+  await page.locator(`[data-template-id="${templateId}"][data-action="start-next-template"], [data-template-id="${templateId}"][data-action="start-template"]`).first().click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: OLD_STRONG_TEMPLATE, exact: true })).toBeVisible({ timeout: 45_000 });
 
   const activeExerciseId = await page.evaluate((name) => data.exercises.find((exercise) => exercise.sessionId === activeWorkoutId && exercise.name === name)?.id || "", OLD_STRONG_EXERCISE);
   const card = page.locator(`.exercise-card:has([data-exercise-id="${activeExerciseId}"])`);
   const lastTime = card.locator(".set-previous");
   await expect(lastTime).toHaveCount(1);
-  expect((await lastTime.allTextContents()).every((text) => text.includes("January 12") && !text.includes("No prior working set found"))).toBe(true);
-  await expect(lastTime.first()).toContainText("80");
-  await expect(lastTime.first()).toContainText("10");
+  await expect(lastTime.first()).toContainText("No history");
+  await expect(lastTime.first()).not.toContainText("January 12");
+  await expect(lastTime.first()).not.toContainText("80");
   await expect(card.locator('[data-action="add-set"]')).toBeEnabled();
 });

@@ -231,16 +231,24 @@ async function installFixture(page, fixture) {
   }, { fixedNow: FIXED_NOW, storageKey: STORAGE_KEY, storedFixture: fixture });
   await page.goto("/");
   await expect(page.locator("main.app-main")).toBeVisible({ timeout: 45_000 });
-  await expect.poll(() => page.evaluate(() => String(prescriptionEvidenceStatus?.state || "loading")), {
-    message: "the public recommendation bundle must finish loading before fidelity checks run",
+  await expect.poll(() => page.evaluate(() => Boolean(
+    prescriptionEngine?.evidence?.research?.exerciseById?.has("ex_barbell_bench_press")
+  )), {
+    message: "the identity compatibility catalog must finish loading before fidelity checks run",
     timeout: 45_000
-  }).toBe("ready");
+  }).toBe(true);
+}
+
+async function openActiveWorkout(page) {
+  await page.locator('[data-action="resume-active-workout"]').first().click();
+  await expect(page.locator(".workout-view")).toBeVisible();
 }
 
 test("m1 V3 progressive workout retains every functional control in the compact hierarchy", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile", "The m1 reference is a phone composition.");
   await page.setViewportSize({ width: 390, height: 844 });
   await installFixture(page, buildM1ProgressiveFixture());
+  await openActiveWorkout(page);
   await page.evaluate(({ exerciseId, restingSetId, nextSetId }) => {
     startTimer(exerciseId, restingSetId, {
       pendingNextSetId: nextSetId,
@@ -264,6 +272,7 @@ test("m1 V3 progressive workout retains every functional control in the compact 
   await expect(page.locator(`[data-action="set-weight"][data-set-id="${VISUAL_SET_3_ID}"]`)).toHaveValue("185");
   await expect(page.locator(`[data-action="set-reps"][data-set-id="${VISUAL_SET_3_ID}"]`)).toHaveValue("8");
   await expect(page.locator(".set-tools-disclosure")).toHaveCount(4);
+  await expect(page.getByRole("navigation", { name: "Main navigation" })).toHaveCount(0);
 
   if (process.env.CF_MOCKUP_REVIEW_DIR) {
     fs.mkdirSync(process.env.CF_MOCKUP_REVIEW_DIR, { recursive: true });
@@ -282,7 +291,7 @@ test("m1 V3 progressive workout retains every functional control in the compact 
   }
 });
 
-test("m2 core views retain their functional destinations while using the shared visual hierarchy", async ({ page }, testInfo) => {
+test("m2 core views keep Today and Progress persistent while routines remain contextual", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile", "The m2 references are phone compositions.");
   await page.setViewportSize({ width: 390, height: 844 });
   await installFixture(page, buildM2CoreFixture());
@@ -291,6 +300,12 @@ test("m2 core views retain their functional destinations while using the shared 
   await expect(page.locator('[data-action="start-next-template"]')).toHaveText("Start");
   await expect(page.locator(".today-coach")).toContainText("Expected workout");
   await expect(page.locator('[data-action="start-template"]')).toHaveCount(3);
+  const navigation = page.getByRole("navigation", { name: "Main navigation" });
+  await expect(navigation.locator(".nav-button")).toHaveCount(2);
+  await expect(navigation.getByRole("button", { name: /Today$/ })).toBeVisible();
+  await expect(navigation.getByRole("button", { name: /Progress$/ })).toBeVisible();
+  await expect(navigation.getByRole("button", { name: /Plan$/ })).toHaveCount(0);
+  await expect(navigation.getByRole("button", { name: /More$/ })).toHaveCount(0);
   if (process.env.CF_MOCKUP_REVIEW_DIR) {
     fs.mkdirSync(process.env.CF_MOCKUP_REVIEW_DIR, { recursive: true });
     await page.screenshot({
@@ -301,9 +316,10 @@ test("m2 core views retain their functional destinations while using the shared 
     });
   }
 
-  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: /Plan$/ }).click();
+  await page.getByRole("button", { name: "Routines", exact: true }).click();
   await expect(page.locator(".templates-view")).toBeVisible();
   await expect(page.locator(".plan-template-card")).toHaveCount(4);
+  await expect(page.getByRole("button", { name: "Back to Today", exact: true })).toBeVisible();
   if (process.env.CF_MOCKUP_REVIEW_DIR) {
     await page.screenshot({
       path: path.join(process.env.CF_MOCKUP_REVIEW_DIR, "m2-core-plan-candidate-full.png"),
@@ -313,6 +329,7 @@ test("m2 core views retain their functional destinations while using the shared 
     });
   }
 
+  await page.getByRole("button", { name: "Back to Today", exact: true }).click();
   await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: /Progress$/ }).click();
   await expect(page.locator(".charts-view")).toBeVisible();
   await expect(page.locator('.chart-card[data-chart-key="performance"]')).toBeVisible();
@@ -332,6 +349,7 @@ test("m2 normal workout stays quiet and completion remains directly reachable", 
   test.skip(testInfo.project.name !== "mobile", "The m2 references are phone compositions.");
   await page.setViewportSize({ width: 390, height: 844 });
   await installFixture(page, buildM1ProgressiveFixture());
+  await openActiveWorkout(page);
   await expect(page.locator(".resolved-action-card")).toHaveCount(0);
   await expect(page.locator(".recommendation-card-v2")).toHaveCount(0);
   if (process.env.CF_MOCKUP_REVIEW_DIR) {
@@ -346,7 +364,7 @@ test("m2 normal workout stays quiet and completion remains directly reachable", 
   await page.evaluate((fixture) => {
     data = normalizeLoadedData(fixture);
     invalidateCompletedAnalysis();
-    activeTab = "today";
+    activeTab = "workout";
     activeWorkoutId = "";
     viewingHistorySessionId = "";
     activeSessionId = fixture.sessions[0].id;
@@ -365,31 +383,16 @@ test("m2 normal workout stays quiet and completion remains directly reachable", 
   }
 });
 
-test("m3 start and readiness flow keeps its two-step behavior in the mockup hierarchy", async ({ page }, testInfo) => {
+test("m3 start is direct while readiness remains an explicit optional path", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile", "The m3 references are phone compositions.");
   await page.setViewportSize({ width: 390, height: 844 });
   await installFixture(page, buildM2CoreFixture());
-  await page.locator('[data-action="start-next-template"]').click();
+  await expect(page.locator('[data-action="start-next-template"]')).toHaveText("Start");
+  await page.locator('[data-action="log-template-readiness"]').click();
 
-  const confirm = page.getByRole("dialog", { name: /Start Upper A — Push Focus\?/ });
-  await expect(confirm).toBeVisible();
-  await expect(confirm).toContainText("Readiness is optional");
-  if (process.env.CF_MOCKUP_REVIEW_DIR) {
-    await page.screenshot({
-      path: path.join(process.env.CF_MOCKUP_REVIEW_DIR, "m3-start-confirm-candidate.png"),
-      animations: "disabled",
-      caret: "hide"
-    });
-  }
-
-  await confirm.getByRole("button", { name: "Log today’s readiness", exact: true }).click();
-  const readiness = page.getByRole("dialog", { name: "How did you arrive?", exact: true });
+  await expect(page.locator(".start-flow-sheet")).toHaveCount(0);
+  const readiness = page.getByRole("dialog", { name: "What is different today?", exact: true });
   await expect(readiness).toBeVisible();
-  await readiness.getByRole("spinbutton", { name: "Sleep", exact: true }).fill("6");
-  await readiness.getByRole("radiogroup", { name: "Sleep quality", exact: true }).getByRole("radio", { name: "2", exact: true }).check();
-  await readiness.getByRole("radiogroup", { name: "Soreness", exact: true }).getByRole("radio", { name: "4", exact: true }).check();
-  await readiness.getByRole("spinbutton", { name: "HRV", exact: true }).fill("51");
-  await readiness.getByRole("spinbutton", { name: "Resting heart rate", exact: true }).fill("58");
   if (process.env.CF_MOCKUP_REVIEW_DIR) {
     await page.screenshot({
       path: path.join(process.env.CF_MOCKUP_REVIEW_DIR, "m3-readiness-log-candidate.png"),
@@ -398,29 +401,36 @@ test("m3 start and readiness flow keeps its two-step behavior in the mockup hier
     });
   }
 
-  await readiness.getByRole("button", { name: "See what this changes", exact: true }).evaluate((button) => button.click());
-  const review = page.locator(".readiness-review-sheet");
-  await expect(review).toBeVisible();
-  await expect(review).toContainText("Readiness recorded.");
-  await expect(review.getByRole("button", { name: "Start workout", exact: true })).toBeVisible();
+  await readiness.getByRole("spinbutton", { name: "Sleep", exact: true }).fill("6");
+  await readiness.getByRole("radiogroup", { name: "Sleep quality", exact: true }).getByRole("radio", { name: "2", exact: true }).check();
+  await readiness.getByRole("radiogroup", { name: "Soreness", exact: true }).getByRole("radio", { name: "4", exact: true }).check();
+  await readiness.getByRole("spinbutton", { name: "HRV", exact: true }).fill("51");
+  await readiness.getByRole("spinbutton", { name: "Resting heart rate", exact: true }).fill("58");
+  await expect(readiness.getByRole("button", { name: "Start workout", exact: true })).toBeVisible();
   if (process.env.CF_MOCKUP_REVIEW_DIR) {
     await page.screenshot({
-      path: path.join(process.env.CF_MOCKUP_REVIEW_DIR, "m3-readiness-review-candidate.png"),
+      path: path.join(process.env.CF_MOCKUP_REVIEW_DIR, "m3-readiness-complete-candidate.png"),
       animations: "disabled",
       caret: "hide"
     });
   }
+  await readiness.getByRole("button", { name: "Start workout", exact: true }).evaluate((button) => button.click());
+  await expect(page.locator(".workout-view")).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Main navigation" })).toHaveCount(0);
 });
 
-test("m3 conflict and discard sheets preserve the safe exit choices", async ({ page }, testInfo) => {
+test("m3 active-draft conflict exposes Resume, Finish, and Discard before destructive confirmation", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile", "The m3 references are phone compositions.");
   await page.setViewportSize({ width: 390, height: 844 });
   await installFixture(page, buildActiveWorkoutLifecycleFixture());
-  await page.evaluate((templateId) => openTemplateStart(templateId), IDS.controlTemplate);
+  await page.evaluate((templateId) => startTemplate(templateId, defaultRecovery(), "usual"), IDS.controlTemplate);
 
   const conflict = page.getByRole("dialog", { name: /Public Synthetic Active Upper Session/ });
   await expect(conflict).toBeVisible();
-  await expect(conflict.getByRole("button", { name: /Return to Public Synthetic Active Upper Session/ })).toBeVisible();
+  await expect(conflict.locator('[data-action="resume-active-workout"]')).toHaveText("Resume");
+  await expect(conflict.locator('[data-action="finish-active-workout"]')).toHaveText("Finish");
+  await expect(conflict.locator('[data-action="discard-active-workout"]')).toHaveText("Discard");
+  await expect(conflict.locator(".sheet-actions button")).toHaveCount(3);
   if (process.env.CF_MOCKUP_REVIEW_DIR) {
     await page.screenshot({
       path: path.join(process.env.CF_MOCKUP_REVIEW_DIR, "m3-start-conflict-candidate.png"),
@@ -429,12 +439,11 @@ test("m3 conflict and discard sheets preserve the safe exit choices", async ({ p
     });
   }
 
-  await page.evaluate(() => closeTemplateStart());
-  await page.evaluate((sessionId) => requestCancelWorkout("workout", sessionId), IDS.activeSession);
+  await conflict.locator('[data-action="discard-active-workout"]').click();
   const cancel = page.getByRole("dialog", { name: "Cancel this workout?", exact: true });
   await expect(cancel).toBeVisible();
-  await expect(cancel.getByRole("button", { name: "Keep Workout", exact: true })).toBeVisible();
-  await expect(cancel.getByRole("button", { name: "Discard Workout", exact: true })).toBeVisible();
+  await expect(cancel.getByRole("button", { name: "Keep workout", exact: true })).toBeVisible();
+  await expect(cancel.getByRole("button", { name: "Discard workout", exact: true })).toBeVisible();
   if (process.env.CF_MOCKUP_REVIEW_DIR) {
     await page.screenshot({
       path: path.join(process.env.CF_MOCKUP_REVIEW_DIR, "m3-cancel-workout-candidate.png"),
@@ -504,8 +513,9 @@ test("m6 settings, data, and destructive confirmation keep their existing safegu
   test.skip(testInfo.project.name !== "mobile", "The m6 references are phone compositions.");
   await page.setViewportSize({ width: 390, height: 844 });
   await installFixture(page, buildAnalyticsEvidenceFixture());
-  await page.locator('[data-action="set-tab"][data-tab="more"]').click();
+  await page.locator('[data-action="open-settings"]').click();
   await expect(page.locator(".settings-view")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Back to Today", exact: true })).toBeVisible();
   await page.evaluate(() => window.scrollTo(0, 0));
   if (process.env.CF_MOCKUP_REVIEW_DIR) {
     await page.screenshot({
@@ -586,8 +596,10 @@ test("m7 workout exit stays in the persistent session dock", async ({ page }, te
   test.skip(testInfo.project.name !== "mobile", "The m7 references are phone compositions.");
   await page.setViewportSize({ width: 390, height: 844 });
   await installFixture(page, buildM1ProgressiveFixture());
+  await openActiveWorkout(page);
   const dock = page.locator(".session-dock");
   await expect(dock).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Main navigation" })).toHaveCount(0);
   await expect(dock.getByRole("button", { name: "Finish", exact: true })).toBeVisible();
   await dock.locator(".session-dock-overflow > summary").click();
   await expect(dock.getByRole("button", { name: /Save as template/ })).toBeVisible();
@@ -601,14 +613,18 @@ test("m7 workout exit stays in the persistent session dock", async ({ page }, te
   }
 });
 
-test("m8 and m9 navigation keeps literal labeled glyphs with current-only color", async ({ page }, testInfo) => {
+test("m8 and m9 navigation keeps only Today and Progress persistent with contextual utilities", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "mobile", "The m8 and m9 references are phone compositions.");
   await page.setViewportSize({ width: 390, height: 844 });
   await installFixture(page, buildM2CoreFixture());
   const nav = page.getByRole("navigation", { name: "Main navigation" });
-  await expect(nav.locator(".nav-button")).toHaveCount(4);
-  await expect(nav.locator(".nav-button .ui-icon")).toHaveCount(4);
+  await expect(nav.locator(".nav-button")).toHaveCount(2);
+  await expect(nav.locator(".nav-button .ui-icon")).toHaveCount(2);
   await expect(nav.locator('[aria-current="page"]')).toHaveCount(1);
+  await expect(nav.getByRole("button", { name: /Today$/ })).toBeVisible();
+  await expect(nav.getByRole("button", { name: /Progress$/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Routines", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Settings", exact: true })).toBeVisible();
   if (process.env.CF_MOCKUP_REVIEW_DIR) {
     await page.screenshot({
       path: path.join(process.env.CF_MOCKUP_REVIEW_DIR, "m9-navigation-candidate.png"),

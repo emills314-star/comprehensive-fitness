@@ -22,8 +22,9 @@ assert.match(foundation, /"request-submit-workout"/, "The dock Finish action mus
 assert.match(foundation, /const svgIcon =[\s\S]*<svg class="ui-icon"[\s\S]*stroke="currentColor"/, "The shell icon vocabulary must use inline currentColor stroked SVG");
 assert.doesNotMatch(foundation.slice(foundation.indexOf("const icon ="), foundation.indexOf("function emptyData")), /workout: "Now"|templates: "Map"|review: "Trend"|settings: "Menu"|clock: "Rest"|duplicate: "Copy"|download: "Export"|upload: "Import"/, "Literal text icon labels must not return");
 assert.match(foundation, /workout: svgIcon\('<path d="M4 9\.5v5M7\.5 5\.5v13M16\.5 5\.5v13M20 9\.5v5M7\.5 12h9"\/>'\)/, "Today navigation must use the optically balanced barbell glyph");
-assert.match(foundation, /templates: svgIcon\('<rect x="3" y="5" width="18" height="16" rx="2"\/><path d="M8 3v4M16 3v4M3 10h18"\/>'\)/, "Plan navigation must use the calendar glyph");
+assert.match(foundation, /review: svgIcon\(/, "Progress navigation must use the shared factual-trend glyph");
 assert.match(views, /function navButton\(tab, label, iconKey\)[\s\S]*<span class="nav-icon"[^>]*>['"]? \+ icon\[iconKey\][\s\S]*<span>['"]? \+ label \+ ['"]?<\/span>/, "Every navigation item must retain its visible text label beneath its glyph");
+assert.equal((views.slice(views.indexOf("function render()"), views.indexOf("function resizeExerciseNameFields")).match(/\$\{navButton\(/g) || []).length, 2, "The persistent shell must contain only Today and Progress");
 assert.match(html, /\.bottom-nav \.nav-button \{[^}]*flex-direction: column;[^}]*font-size: var\(--fs-tiny\);[^}]*font-weight: 850;[^}]*justify-content: center;/, "Navigation must use the approved stacked Option A label treatment");
 assert.match(html, /\.bottom-nav \.nav-button \{[^}]*color: color-mix\(in srgb, var\(--muted-2\) 55%, var\(--text\)\);/, "Inactive navigation must use contrast-safe subordinate ink");
 assert.match(html, /\.bottom-nav \.nav-button\[aria-current="page"\] \{[^}]*background: transparent;[^}]*color: color-mix\(in srgb, var\(--current\) 35%, var\(--text\)\);[^}]*font-weight: 900;/, "Only the active navigation tab may spend contrast-adjusted current-state color");
@@ -72,6 +73,6 @@ assert.match(html, /\.workout-view \.set-previous \{[^}]*grid-column: 1 \/ -1;[^
 assert.match(html, /--fs-data: 0\.6875rem;/, "The dense-data type step must stay at 11px so the Previous date remains legible");
 assert.match(html, /--fs-micro: 0\.75rem;/, "The micro type step must floor at 12px for gym-light legibility");
 assert.match(html, /\.exercise-details > summary \{[^}]*min-height: 44px;/, "Exercise details must remain a full keyboard and touch target");
-assert.match(interactions, /if \(action === "open-session"\)[\s\S]*event\.preventDefault\(\);[\s\S]*setActiveTab\("today", \{ force: true \}\);/, "A Previous link must force-render its exact submitted session even while Today already owns the active destination");
+assert.match(interactions, /if \(action === "open-session"\)[\s\S]*event\.preventDefault\(\);[\s\S]*setActiveTab\("workout", \{ force: true \}\);/, "A Previous link must force-render its exact submitted session in the contextual workout destination");
 
 console.log("Compact workout-page presentation contract passed.");

@@ -357,3 +357,99 @@ No final-document contradiction was found. Existing calculation effort, research
 ### Objective completion
 
 **PASS.** Today and Start perform none of the deleted analytical work; Progress exposes no deleted route or persistent switcher; retained source history and exact variants remain intact; current recommendation output still crosses only the canonical M2 resolver; public, packaging, build, privacy, and mobile visual gates pass. M5 may begin after the recoverable M4 checkpoint is recorded.
+
+## M5 — Install the two-destination shell and direct Start
+
+**Status:** IMPLEMENTED LOCALLY
+**Started:** 2026-07-31
+**Baseline checkpoint:** `5da37dc`
+**Branch:** `codex/zero-based-redesign`
+**Authority:** Final dispositions A-01 through A-11 and migration plan M5.
+
+### Exact milestone scope
+
+- Make Today and Progress the only persistent destinations.
+- Move routine management and Settings to contextual secondary routes; neither may appear as a persistent tab or a graveyard for deleted features.
+- Make the expected-workout Start action open the active logger directly, without confirmation, mandatory-readiness, or review steps.
+- Keep readiness entry optional, brief, secondary, and non-blocking before or during a workout.
+- Preserve one active draft. If another workout is requested, offer only Resume, Finish, or Discard; require concise destructive confirmation before Discard and never create or replace a draft silently.
+- Keep the active logger full-screen and make browser Back/close behavior coherent from active, secondary, workout-detail, and exercise-detail contexts.
+- Retain only bounded old-route redirects needed to land supported links on Today, Progress, Settings, routine, workout, or exercise context.
+
+### Affected data and migration safety
+
+- Navigation/tab/secondary-route state and transient Start/conflict dialog state are not source workout history.
+- The one active draft, its exercises/sets/notes/readiness/rest/timer state, and all submitted history remain protected.
+- Routine/template records and Settings remain supported data; this milestone changes access hierarchy, not their stored content.
+- No production/private data migration is required. Destructive-discard verification uses synthetic active drafts only.
+
+### Authority/conflict review
+
+No final-document contradiction was found. The current four-tab shell and `confirm`/`readiness`/`review` Start states are implemented-state evidence and must not be retained. The current active-draft guard is safety-critical but its choices and copy must be simplified without weakening draft preservation.
+
+### Exit record
+
+- The persistent shell now exposes exactly two destinations: Today and Progress. Routine management and Settings are contextual routes with an explicit return to Today, not persistent destinations or holders for removed product surfaces.
+- The expected-workout Start action opens the full-screen active logger directly. It does not interpose confirmation, mandatory readiness, or review.
+- Readiness remains an optional, single-step secondary entry before a workout and is available from the active logger; recording it refreshes the canonical resolved action without blocking logging.
+- A second start request preserves the one active draft and offers exactly Resume, Finish, or Discard. Discard reaches a concise destructive confirmation, deletes only the selected draft after confirmation, and does not silently start or replace it.
+- Browser Back from the active logger returns to Today with the draft intact and Resume available. Secondary Settings/routine routes and workout/detail contexts retain contextual return behavior; supported legacy links redirect only to retained contexts.
+- The M5 shell correction retained legacy routine records' exact stored `reps` values. No visible writer remains for removed legacy settings. Obsolete planner settings, including training-goal/nutrition/experience fields, continue to be decoded then discarded before active import or current export; they are not preserved as active or current backup settings.
+- A M4 boot-boundary correction discovered during M5 keeps normal boot identity-only: it loads the exercise identity catalog needed for compatibility, while the relationship map remains import-validation-only. This does not restore evidence, analytics, or a second recommendation authority.
+- No production or private data migration/mutation occurred. M5 destructive-flow evidence uses synthetic active drafts only.
+
+### Files changed
+
+- Runtime and presentation: `app-analysis.js`, `app-foundation.js`, `app-import.js`, `app-views.js`, `app-workout.js`, `app.js`, `index.html`, `sw.js`, and synchronized `www/` mirrors.
+- Packaged public boundary: `scripts/sync-web.ps1`, `scripts/verify-pwa.ps1`, service-worker cache v99, and removal of five no-longer-packaged analytical research JSON files from `www/`.
+- Static contracts: the M5 shell contract plus affected integration, design, performance, safety, density, evidence-presentation, prescription-integration, and RPE/rest contracts under `scripts/`.
+- Browser verification: the M5 navigation/draft suite and affected accessibility, lifecycle, Settings, Progress, history, target, safety, and compatibility specs under `tests/ui/`.
+- Documentation: `docs/PROJECT.md`, `docs/ARCHITECTURE.md`, `docs/DECISION_ENGINE.md`, `docs/UI_UX.md`, `docs/ROADMAP.md`, `docs/training-prescription-data.md`, and the four redesign implementation/governance records.
+
+### Features removed
+
+- Persistent Plan/Routines and More/Settings destinations.
+- Ordinary Start confirmation, mandatory-readiness, and prescription-review steps.
+- Visible training-goal, nutrition-phase, experience-level, and returning-after-gap writers.
+- Direct personal/research evidence import/status presentation and normal analytical evidence boot.
+- Packaged analytical research JSON assets not needed by identity-only normal startup.
+
+### Capabilities retained internally
+
+- Exact exercise/variant identity compatibility, including Strong aliases, with the minimum catalog-only normal boot.
+- On-demand relationship-map validation for supported backup/evidence compatibility imports.
+- One active draft, submitted workout history, routine/template facts, exact rep targets, readiness observations, rest state, and immutable historical snapshots.
+- The versioned legacy decoder that accepts obsolete planner keys, preserves approved workout/routine/history facts, and discards deleted planning-only settings before active import/current export.
+
+### Decisions, assumptions, and deviations
+
+- No authoritative contradiction was found. The final PRD and M3 migration decision govern the legacy settings boundary: workout/routine/history facts survive, but deleted planner settings do not become current active data or backup output.
+- M5 exposed and corrected four narrow implementation defects rather than changing scope: exact legacy reps widening, a compatibility reps edit not updating its range, pointer-close blur rerendering the readiness dialog, and a custom-exercise renderer referencing a deleted prescription helper.
+- The identity-only boot correction is recorded as M4 debt discovered and closed during M5. It is a boundary correction, not a new M5 product feature.
+- `docs/PERFORMANCE.md` was reviewed; its current superseded-benchmark record required no M5 text change.
+
+### Verification record
+
+- Focused M5 mobile Playwright suite: 5/5 PASS at 390 × 844, including two-destination navigation, direct/full-screen Start, optional readiness, exact active-draft conflict actions, and confirmed discard/restart behavior.
+- Strict target regressions: 2/2 PASS.
+- Identity/compatibility UI: 65/65 mobile tests plus a separate 13/13 mobile suite passed; two desktop-only compatibility/rollback boundaries passed 2/2.
+- Readiness dismissal and custom-exercise rendering regressions: 2/2 PASS after eliminating the numeric-blur rerender race and the deleted prescription-mapping reference.
+- Public suite: one clean approved run passed 60/60 selected scripts.
+- Static lint: PASS (202 JavaScript files, 3,118 JSON files, 0 inline violations).
+- Type check: PASS.
+- PWA verification: 33 checks PASS.
+- Production Vite build: PASS with 24 modules on the approved build run.
+- Privacy scan: PASS across 646 files.
+- Nine M5 mobile screenshots were captured and inspected, including contextual Routines/Settings, two-destination Today, direct logger, Today Resume, optional readiness, active-draft conflict, discard confirmation, and the post-discard requested workout.
+
+### Remaining external gates
+
+- Pinned Node/npm, physical-device/back/close and timer/notification behavior, independent migration verification, real private-history replay, full browser matrix, five-workout field acceptance, commit, push, merge, deployment, and publication remain outside this local M5 checkpoint.
+
+### Recoverable checkpoint
+
+- Local milestone commit: pending creation after this evidence record and final staged privacy review.
+
+### Objective completion
+
+**PASS.** The M5 behavior and listed automated/visual gates pass, with no data migration or mutation. M6 may begin after the recoverable M5 checkpoint is recorded.

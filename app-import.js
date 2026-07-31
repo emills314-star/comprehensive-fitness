@@ -755,9 +755,10 @@
         return canonicalPackage;
       }
 
-      function personalEvidenceBundleForImport(personalData) {
-        if (!prescriptionApi || !prescriptionEngine?.evidence?.research) throw new Error("The research engine is unavailable; personal evidence was not imported.");
-        const bundle = prescriptionApi.normalizeEvidenceBundle({ personalData, research: prescriptionEngine.evidence.research });
+      async function personalEvidenceBundleForImport(personalData) {
+        if (!prescriptionApi) throw new Error("The identity compatibility engine is unavailable; personal evidence was not imported.");
+        const researchData = await loadImportValidationResearch();
+        const bundle = prescriptionApi.normalizeEvidenceBundle({ personalData, researchData });
         const invalidIdentities = [...(bundle.personal.reconciledIdentityByExerciseId || new Map()).entries()].filter(([, identity]) => identity?.invalid);
         if (invalidIdentities.length) throw new Error(`Personal evidence identity reconciliation conflict for ${invalidIdentities.map(([exerciseId]) => exerciseId).join(", ")}.`);
         const expectedCounts = [personalData.exercisePrescriptions.length, personalData.exerciseScores.length, personalData.exerciseMuscleScores.length];
@@ -765,30 +766,17 @@
         if (expectedCounts.some((count, index) => count !== normalizedCounts[index])) throw new Error("Personal evidence engine validation rejected one or more aggregate rows.");
         const engine = prescriptionApi.createPrescriptionEngine(bundle);
         if (!(engine?.evidence?.personal?.reconciledIdentityByExerciseId instanceof Map)) throw new Error("Personal evidence engine construction did not preserve canonical identity reconciliation.");
-        return { bundle, engine };
+        const identityEngine = prescriptionApi.createPrescriptionEngine({ personalData: {}, researchData: { exerciseDatabase: researchData.exerciseDatabase } });
+        return { bundle, engine, identityEngine, exerciseDatabase: researchData.exerciseDatabase };
       }
 
-      function researchOnlyBundleForImport() {
-        if (!prescriptionApi || !prescriptionEngine?.evidence?.research) throw new Error("The research engine is unavailable; the backup was not imported.");
-        const bundle = prescriptionApi.normalizeEvidenceBundle({ personalData: {}, research: prescriptionEngine.evidence.research });
-        return { bundle, engine: prescriptionApi.createPrescriptionEngine(bundle) };
-      }
-
-      function installPreparedEvidence(prepared, sourceLabel) {
-        prescriptionEngine = prepared.engine;
-        const personalRecords = prepared.bundle.personal.exercisePrescriptions.length + prepared.bundle.personal.exerciseScores.length + prepared.bundle.personal.exerciseMuscleScores.length;
-        prescriptionEvidenceStatus = {
-          state: prepared.bundle.research.exerciseDatabase.length ? "ready" : "research_unavailable",
-          source: sourceLabel,
-          personalRecords,
-          researchExercises: prepared.bundle.research.exerciseDatabase.length,
-          personalVersion: prepared.bundle.versions.personal,
-          researchVersion: prepared.bundle.versions.research,
-          message: personalRecords
-            ? `Unified engine loaded ${personalRecords} personal prescription/score records and ${prepared.bundle.research.exerciseDatabase.length} research exercises from ${sourceLabel}.`
-            : `Unified engine loaded ${prepared.bundle.research.exerciseDatabase.length} research exercises. Import the private personal evidence package to add local aggregates.`
-        };
-        return personalRecords;
+      async function researchOnlyBundleForImport() {
+        if (!prescriptionApi) throw new Error("The identity compatibility engine is unavailable; the backup was not imported.");
+        const researchData = await loadImportValidationResearch();
+        const bundle = prescriptionApi.normalizeEvidenceBundle({ personalData: {}, researchData });
+        const engine = prescriptionApi.createPrescriptionEngine(bundle);
+        const identityEngine = prescriptionApi.createPrescriptionEngine({ personalData: {}, researchData: { exerciseDatabase: researchData.exerciseDatabase } });
+        return { bundle, engine, identityEngine, exerciseDatabase: researchData.exerciseDatabase };
       }
 
       function validateExecutableRecommendationSnapshot(snapshot, engine, hostExercise, label) {
@@ -915,9 +903,9 @@
           if (validated.personalEvidencePackage) {
             const importedPackage = validated.personalEvidencePackage;
             validated.personalEvidencePackage = { ...validatePersonalEvidencePackage(importedPackage), importedAt: importedPackage.importedAt || isoNow() };
-            preparedEvidence = personalEvidenceBundleForImport(validated.personalEvidencePackage.personalData);
+            preparedEvidence = await personalEvidenceBundleForImport(validated.personalEvidencePackage.personalData);
           } else {
-            preparedEvidence = researchOnlyBundleForImport();
+            preparedEvidence = await researchOnlyBundleForImport();
           }
           const candidate = normalizeLoadedData(validated);
           candidate.dataRevision = nextMonotonicImportRevision();
@@ -926,7 +914,7 @@
           try { localStorage.removeItem(STORAGE_KEY); } catch { /* The imported IndexedDB copy has the higher monotonic revision. */ }
           data = candidate;
           templateNumericDrafts.clear();
-          installPreparedEvidence(preparedEvidence, candidate.personalEvidencePackage ? "imported backup evidence" : "research defaults");
+          installExerciseIdentityCompatibility(preparedEvidence.exerciseDatabase, preparedEvidence.identityEngine);
           entityStructureRevision += 1;
           entityIndexCache = null;
           invalidateCompletedAnalysis();
@@ -956,14 +944,15 @@
           try { parsed = JSON.parse(text); }
           catch { throw new Error("Personal evidence file is not valid JSON."); }
           const validated = validatePersonalEvidencePackage(parsed);
-          const prepared = personalEvidenceBundleForImport(validated.personalData);
+          const prepared = await personalEvidenceBundleForImport(validated.personalData);
           const canonicalPackage = { ...validated, importedAt: isoNow() };
           const candidateData = { ...data, personalEvidencePackage: canonicalPackage, dataRevision: Number(data.dataRevision || 0) + 1 };
           await writeIndexedValue("app-data", candidateData);
           data = candidateData;
-          const personalRecords = installPreparedEvidence(prepared, "imported local evidence");
+          installExerciseIdentityCompatibility(prepared.exerciseDatabase, prepared.identityEngine);
+          const personalRecords = prepared.bundle.personal.exercisePrescriptions.length + prepared.bundle.personal.exerciseScores.length + prepared.bundle.personal.exerciseMuscleScores.length;
           invalidateCompletedAnalysis();
-          settingsMessage = `Private evidence imported: ${personalRecords} aggregate records, personal version ${prescriptionEvidenceStatus.personalVersion}.`;
+          settingsMessage = `Private evidence imported: ${personalRecords} aggregate records, personal version ${validated.personalDataVersion}.`;
           render();
         } catch (error) {
           settingsMessage = error?.message || "The personal evidence package could not be imported.";

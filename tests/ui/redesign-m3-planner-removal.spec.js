@@ -52,7 +52,7 @@ test.beforeAll(() => {
   fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
 });
 
-test("M3 Plan renders routines only and removed planner paths stay unreachable at 390 by 844", async ({ page }) => {
+test("legacy Plan redirects to contextual Routines and removed planner paths stay unreachable at 390 by 844", async ({ page }) => {
   test.setTimeout(120_000);
   const consoleErrors = [];
   page.on("console", (message) => {
@@ -62,11 +62,13 @@ test("M3 Plan renders routines only and removed planner paths stay unreachable a
 
   await page.setViewportSize({ width: 390, height: 844 });
   await installFixture(page);
-  await page.goto("/#mesocycle");
+  await page.goto("/#plan");
   await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible({ timeout: 45_000 });
 
-  await page.locator('[data-action="set-tab"][data-tab="plan"]').click();
-  await expect(page.locator('[data-action="set-tab"][data-tab="plan"]')).toHaveAttribute("aria-current", "page");
+  await expect(page).toHaveURL(/#routines$/);
+  await expect(page.locator(".templates-view")).toBeVisible();
+  await expect(page.locator('[data-action="set-tab"][data-tab="plan"], [data-action="set-tab"][data-tab="more"]')).toHaveCount(0);
+  await expect(page.getByRole("navigation", { name: "Main navigation" }).getByRole("button")).toHaveCount(2);
   await expect(page.locator('[data-action="start-template"][data-template-id="public-synthetic-m3-routine"]')).toBeVisible();
 
   await expect(page.getByText(/plan your mesocycle|guided planner|mesocycle completed/i)).toHaveCount(0);
@@ -83,7 +85,7 @@ test("M3 Plan renders routines only and removed planner paths stay unreachable a
   expect(consoleErrors.filter((message) => !/Failed to load resource: the server responded with a status of 404/i.test(message))).toEqual([]);
 
   await page.screenshot({
-    path: path.join(ARTIFACT_DIR, "m3-mobile-plan-routines-only.png"),
+    path: path.join(ARTIFACT_DIR, "m5-mobile-contextual-routines-only.png"),
     fullPage: true
   });
 });

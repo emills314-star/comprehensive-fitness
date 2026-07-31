@@ -34,7 +34,9 @@ $publicFiles = @(
   "resources\achievements\badge-progression.png",
   "resources\achievements\badge-controlled-execution.png",
   "research_database\exports\json\exercise_database.json",
-  "research_database\exports\json\exercise_muscle_map.json",
+  "research_database\exports\json\exercise_muscle_map.json"
+)
+$obsoleteAnalyticalJson = @(
   "research_database\exports\json\exercise_substitution_map.json",
   "research_database\exports\json\muscle_group_recommendations.json",
   "research_database\exports\json\progression_rules.json",
@@ -50,6 +52,10 @@ foreach ($relative in $publicFiles) {
   if ((Get-FileHash -Algorithm SHA256 -LiteralPath $source).Hash -ne (Get-FileHash -Algorithm SHA256 -LiteralPath $packaged).Hash) {
     throw "Packaged public file differs from its source: $relative"
   }
+}
+foreach ($relative in $obsoleteAnalyticalJson) {
+  $packaged = Join-Path (Join-Path $root "www") $relative
+  if (Test-Path -LiteralPath $packaged) { throw "Obsolete analytical runtime asset remains packaged: www\$relative" }
 }
 
 $index = Get-Content -LiteralPath (Join-Path $root "index.html") -Raw

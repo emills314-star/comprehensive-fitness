@@ -883,8 +883,8 @@ test("visible exception presentation consumes only the canonical resolved-action
 });
 
 test("conflict-mode and rejected executable imports perform zero writes while accepted imports rebase once", async () => {
-  const makeContext = ({ conflict = false, snapshotError = null } = {}) => {
-    const events = { writes: [], removals: [], renders: 0, snapshotChecks: 0, evidenceInstalls: 0, invalidations: 0, runtimeSaves: 0 };
+  const makeContext = ({ conflict = false, loaderError = null, snapshotError = null } = {}) => {
+    const events = { writes: [], removals: [], renders: 0, snapshotChecks: 0, identityInstalls: 0, invalidations: 0, runtimeSaves: 0 };
     const engineSentinel = { id: "engine-sentinel" };
     const cacheSentinel = { id: "cache-sentinel" };
     const context = {
@@ -904,7 +904,10 @@ test("conflict-mode and rejected executable imports perform zero writes while ac
         }
       },
       validateImportedAppData: () => ({ appDataVersion: 2, sessions: [], exercises: [], sets: [], templates: [], settings: {}, personalEvidencePackage: null, dataRevision: 0 }),
-      researchOnlyBundleForImport: () => ({ bundle: { personal: {} }, engine: { id: "prepared-engine" } }),
+      researchOnlyBundleForImport: async () => {
+        if (loaderError) throw new Error(loaderError);
+        return { bundle: { personal: {} }, engine: { id: "prepared-engine" }, exerciseDatabase: [] };
+      },
       normalizeLoadedData: (value) => structuredClone(value),
       nextMonotonicImportRevision: () => 42,
       validateImportedExecutableRecommendationSnapshots: () => {
@@ -917,9 +920,8 @@ test("conflict-mode and rejected executable imports perform zero writes while ac
       data: { dataRevision: 41, sessions: [{ id: "runtime-session-sentinel" }], evidenceSentinel: "unchanged" },
       templateNumericDrafts: new Map(),
       prescriptionEngine: engineSentinel,
-      prescriptionEvidenceStatus: { state: "ready", personalVersion: "evidence-sentinel" },
       prescriptionSnapshotCache: new Map([["sentinel", cacheSentinel]]),
-      installPreparedEvidence: () => { events.evidenceInstalls += 1; context.prescriptionEngine = { id: "installed-engine" }; return 0; },
+      installExerciseIdentityCompatibility: () => { events.identityInstalls += 1; context.prescriptionEngine = { id: "installed-engine" }; return true; },
       entityStructureRevision: 7,
       entityIndexCache: { id: "entity-cache-sentinel" },
       invalidateCompletedAnalysis: () => { events.invalidations += 1; },
@@ -940,12 +942,23 @@ test("conflict-mode and rejected executable imports perform zero writes while ac
   assert.equal(conflict.events.writes.length, 0, "Conflict-mode import must not write either store");
   assert.match(conflict.context.settingsMessage, /selected copy|alternate is excluded|Clear All/i);
 
+  const unavailable = makeContext({ loaderError: "Synthetic compatibility catalog unavailable" });
+  const unavailableData = unavailable.context.data;
+  const unavailableEngine = unavailable.context.prescriptionEngine;
+  await unavailable.run(file);
+  assert.equal(unavailable.events.snapshotChecks, 0, "Snapshot evaluation must wait for the compatibility catalog");
+  assert.equal(unavailable.events.writes.length, 0, "A missing compatibility catalog must reject before IndexedDB write");
+  assert.equal(unavailable.events.removals.length, 0, "A missing compatibility catalog must preserve the durable fallback");
+  assert.equal(unavailable.events.identityInstalls, 0, "A missing compatibility catalog must preserve the current identity engine");
+  assert.strictEqual(unavailable.context.data, unavailableData);
+  assert.strictEqual(unavailable.context.prescriptionEngine, unavailableEngine);
+  assert.match(unavailable.context.settingsMessage, /compatibility catalog unavailable/i);
+
   const invalid = makeContext({ snapshotError: "Synthetic invalid executable snapshot" });
   const invalidBefore = {
     data: invalid.context.data,
     bytes: JSON.stringify(invalid.context.data),
     engine: invalid.context.prescriptionEngine,
-    evidenceStatus: invalid.context.prescriptionEvidenceStatus,
     cacheValue: invalid.context.prescriptionSnapshotCache.get("sentinel"),
     entityStructureRevision: invalid.context.entityStructureRevision,
     entityIndexCache: invalid.context.entityIndexCache,
@@ -956,13 +969,12 @@ test("conflict-mode and rejected executable imports perform zero writes while ac
   assert.equal(invalid.events.snapshotChecks, 1);
   assert.equal(invalid.events.writes.length, 0, "An invalid active/template snapshot must reject atomically before IndexedDB write");
   assert.equal(invalid.events.removals.length, 0, "Rejected snapshot import must leave the durable fallback untouched");
-  assert.equal(invalid.events.evidenceInstalls, 0, "Rejected snapshot import must not replace the active evidence engine");
+  assert.equal(invalid.events.identityInstalls, 0, "Rejected snapshot import must not replace the active identity engine");
   assert.equal(invalid.events.invalidations, 0, "Rejected snapshot import must not invalidate accepted-state caches");
   assert.equal(invalid.events.runtimeSaves, 0, "Rejected snapshot import must not persist altered runtime state");
   assert.strictEqual(invalid.context.data, invalidBefore.data);
   assert.equal(JSON.stringify(invalid.context.data), invalidBefore.bytes);
   assert.strictEqual(invalid.context.prescriptionEngine, invalidBefore.engine);
-  assert.strictEqual(invalid.context.prescriptionEvidenceStatus, invalidBefore.evidenceStatus);
   assert.strictEqual(invalid.context.prescriptionSnapshotCache.get("sentinel"), invalidBefore.cacheValue);
   assert.equal(invalid.context.entityStructureRevision, invalidBefore.entityStructureRevision);
   assert.strictEqual(invalid.context.entityIndexCache, invalidBefore.entityIndexCache);
@@ -976,6 +988,7 @@ test("conflict-mode and rejected executable imports perform zero writes while ac
   assert.equal(accepted.events.writes.length, 1, "A validated backup must perform one IndexedDB app-data write");
   assert.equal(accepted.events.writes[0].value.dataRevision, 42, "Imported revision metadata must be replaced by the next local monotonic revision");
   assert.equal(accepted.context.data.dataRevision, 42);
+  assert.equal(accepted.events.identityInstalls, 1, "An accepted backup must rebuild the identity-only runtime engine");
   assert.deepEqual(accepted.events.removals, ["comprehensive-fitness-data"], "The shadowing fallback must be removed only after the accepted IndexedDB write");
 
   const importSource = functionSource("importDataFile");
@@ -1292,16 +1305,19 @@ test("quick-start cards retain native button semantics", () => {
   assert.doesNotMatch(source, /class="quick-template-card[^>]*\srole="listitem"/, "A native quick-template button must retain its computed button role");
 });
 
-test("four-destination architecture uses one factual Progress surface", () => {
+test("two-destination architecture uses one factual Progress surface", () => {
   collectAssertions([
-    ["four destination IDs", () => assertContains(html, /const primaryTabIds = \["today", "plan", "progress", "more"\]/, "Primary navigation must use the four-destination contract")],
-    ["four navigation buttons", () => assert.equal((functionSource("render").match(/navButton\(/g) || []).length, 4, "The shell must render exactly four primary navigation buttons")],
+    ["two destination IDs", () => assertContains(html, /const primaryTabIds = \["today", "progress"\]/, "Primary navigation must contain only Today and Progress")],
+    ["two navigation buttons", () => assert.equal((functionSource("render").match(/navButton\(/g) || []).length, 2, "The persistent shell must render exactly two primary navigation buttons")],
     ["single progress renderer", () => assertContains(functionSource("renderProgress"), /return renderLiftProgress\(\)/, "Progress must delegate to the single factual history and performance surface")],
     ["no persistent progress subview", () => assert.doesNotMatch(html, /\bprogressView\b|set-progress-view|progress-switcher/, "Progress must not retain dashboard, lifts, or history subview state")],
     ["factual progress content", () => assertContains(functionSource("renderLiftProgress"), /Performance trend[\s\S]*renderChart\("performance"[\s\S]*renderHistory\(\)/, "Progress must combine one factual chart with chronological submitted history")],
     ["removed top-level renderers", () => assert.doesNotMatch(html, /function renderDashboard\(|function renderReview\(/, "Superseded Dashboard and Charts top-level renderers must be removed")],
     ["removed reskin selectors", () => assert.doesNotMatch(html, /quiet-coach-hero|app-module/, "The previous reskin component selectors must not remain in source")],
-    ["legacy hashes only", () => assertContains(functionSource("tabFromLocation"), /dashboard[\s\S]*charts[\s\S]*return "progress"/, "Legacy route names may remain only as four-destination redirects")]
+    ["secondary contexts are not primary", () => assert.doesNotMatch(functionSource("render"), /navButton\("(?:routines|settings|plan|more)"/, "Routines and Settings must remain contextual, not persistent destinations")],
+    ["legacy Plan redirect", () => assertContains(functionSource("normalizedDestination"), /\["plan", "routines"\][\s\S]*return "routines"/, "Legacy Plan may remain only as a bounded redirect to routine management")],
+    ["legacy More redirect", () => assertContains(functionSource("normalizedDestination"), /\["data", "settings", "more"\][\s\S]*return "settings"/, "Legacy More/Data may remain only as bounded redirects to Settings")],
+    ["legacy analysis redirects", () => assertContains(functionSource("normalizedDestination"), /\["dashboard", "charts", "progress"\][\s\S]*return "progress"/, "Legacy analysis routes may remain only as bounded redirects to factual Progress")]
   ]);
 });
 
@@ -1342,8 +1358,8 @@ test("guided planning contains no unreachable automatic-planner contract", () =>
 
 test("navigation, dialogs, and Lift controls expose complete focus and naming contracts", () => {
   const setTab = functionSource("setActiveTab");
-  const openDialog = functionSource("openTemplateStart");
-  const closeDialog = functionSource("closeTemplateStart");
+  const openDialog = functionSource("requestCancelWorkout");
+  const closeDialog = functionSource("closeCancelWorkout");
   const exercise = functionSource("renderExercise");
   const actionTags = [...exercise.matchAll(/<button[^>]*data-action="(?:move-exercise|delete-exercise)"[^>]*>/g)].map((match) => match[0]);
   const equipmentGroups = [...html.matchAll(/<section\s+class="equipment-picker"[^>]*>/g)].map((match) => match[0]);
@@ -1352,8 +1368,8 @@ test("navigation, dialogs, and Lift controls expose complete focus and naming co
     ["skip link", () => assertContains(html, /<a[^>]+href=["']#main-content["'][^>]*>[^<]*(?:skip|content)/i, "Provide a keyboard-visible skip link to main content")],
     ["main target", () => assertContains(html, /<main[^>]+id=["']main-content["'][^>]*tabindex=["']-1["']|<main[^>]+tabindex=["']-1["'][^>]*id=["']main-content["']/, "The main content target must be programmatically focusable")],
     ["primary-tab focus", () => assertContains(setTab, /\.focus\s*\(/, "Primary-tab navigation must move focus to the new view heading or main region")],
-    ["dialog trigger captured", () => assertContains(openDialog, /document\.activeElement|returnFocus|focusOrigin|dialogTrigger/i, "Opening a dialog must capture its focus origin")],
-    ["dialog close restores focus", () => assertContains(closeDialog, /\.focus\s*\(|restoreFocus/i, "Closing a dialog must restore focus to its trigger")],
+    ["dialog trigger captured", () => assertContains(openDialog, /document\.activeElement|returnFocus|focusOrigin|dialogTrigger/i, "Opening the destructive confirmation must capture its focus origin")],
+    ["dialog close restores focus", () => assertContains(closeDialog, /\.focus\s*\(|restoreFocus/i, "Closing the destructive confirmation must restore focus to its trigger")],
     ["contextual Lift action names", () => assert.ok(actionTags.length >= 3 && actionTags.every((tag) => /aria-label=/.test(tag) && /exercise\.name/.test(tag)), `Move/delete controls need exercise-specific accessible names; received ${actionTags.join(" | ")}`)],
     ["Available Equipment removed", () => assert.equal(equipmentGroups.length, 0, "Deleted global equipment controls must not remain reachable")],
     ["Muscle Group Scope removed", () => assert.equal(scopeGroups.length, 0, "Deleted planner scope controls must not remain reachable")]
@@ -1411,10 +1427,17 @@ test("loaded-data normalization uses an indexed set lookup", () => {
   ]);
 });
 
-test("identity compatibility initialization performs at most one public catalog load", () => {
-  const source = functionSource("initializePrescriptionEvidence");
-  const researchLoads = source.match(/loadEvidenceFromUrls\s*\(\s*\{\s*researchBaseUrl/g) || [];
-  assert.ok(researchLoads.length <= 1, `initializePrescriptionEvidence performs ${researchLoads.length} full catalog loads; identity/import compatibility must reuse one public bundle`);
+test("normal startup installs identity compatibility without analytical evidence initialization", () => {
+  const startup = functionSource("initializeExerciseIdentityCompatibility");
+  const catalog = functionSource("loadExerciseIdentityCatalog");
+  const importValidation = functionSource("loadImportValidationResearch");
+  collectAssertions([
+    ["identity-only boot call", () => assertContains(html, /await\s+initializeExerciseIdentityCompatibility\s*\(\s*\)/, "Startup must await the identity-only compatibility boundary")],
+    ["single boot asset", () => assertContains(catalog, /exercise_database\.json/, "Normal boot must load the public exercise identity catalog")],
+    ["no import map at boot", () => assert.doesNotMatch(catalog + startup, /exercise_muscle_map|loadEvidenceFromUrls/, "Normal boot must not load analytical evidence or the import-only relationship map")],
+    ["lazy import map", () => assertContains(importValidation, /loadExerciseIdentityCatalog\(\)[\s\S]*exercise_muscle_map\.json/, "Import validation must reuse the identity catalog and lazily add only the relationship map")],
+    ["removed evidence status", () => assert.doesNotMatch(html, /prescriptionEvidenceStatus|initializePrescriptionEvidence|loadPrescriptionEvidence/, "The current runtime must not retain the deleted evidence initialization/status path")]
+  ]);
 });
 
 (async function run() {

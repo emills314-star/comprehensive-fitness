@@ -24,9 +24,12 @@ test.beforeEach(async ({ page }) => {
   });
   await page.goto("/");
   await page.waitForLoadState("load");
-  await expect.poll(() => page.evaluate(() => prescriptionEvidenceStatus.state), {
-    message: "The production prescription engine must finish loading before safety-integrity tests run"
-  }).toBe("ready");
+  await expect.poll(() => page.evaluate(() => {
+    const identity = prescriptionEngine?.resolveExerciseIdentity?.("Barbell Bench Press");
+    return identity?.status === "resolved" ? identity.exerciseId : "";
+  }), {
+    message: "The identity compatibility catalog must resolve a known exercise before safety-integrity tests run"
+  }).toBe("ex_barbell_bench_press");
 });
 
 function crossSessionState() {
@@ -126,7 +129,6 @@ async function seedState(page, model, options = {}) {
     historyEditFlow = requested.historyEditSessionId
       ? { sessionId: requested.historyEditSessionId, originalData: cloneAppData(nextData), dirty: false }
       : null;
-    dashboardDetail = null;
     render();
     return {
       activeSessionId,
@@ -318,106 +320,37 @@ test("historical equipment metadata remains immutable and cannot block workout l
   expect.soft(result.metadataAfter, "Logging must not rewrite the historical recommendation or its equipment facts").toEqual(result.metadataBefore);
 });
 
-test("unexpected engine faults stay distinct, non-executable, and visible instead of reviving legacy Dashboard advice", async ({ page }) => {
-  const history = failedHistoryState();
-  await seedState(page, history, {
-    activeSessionId: history.sessions[0].id,
-    activeWorkoutId: ""
-  });
-
+test("normal startup loads only the identity catalog and exposes no analytical evidence state", async ({ page }) => {
   const result = await page.evaluate(() => {
-    const exerciseName = "Barbell Bench Press";
-    const legacyAdvice = "Hold load or reduce it 5-10%, complete the programmed reps with clean technique, and avoid adding sets this week.";
-    const throughDate = todayIso();
-    const weekStart = startOfWeekIso(throughDate);
-    data.sessions[0].date = throughDate;
-    data.sessions[0].completedAt = `${throughDate}T13:00:00.000Z`;
-    invalidateCompletedAnalysis();
-    const baseline = unifiedPrescriptionSnapshot({ name: exerciseName, primaryMuscle: "Chest" }, {
-      exerciseId: "ex_barbell_bench_press",
-      muscleGroupId: "chest",
-      history: [],
-      mesocycle: null,
-      throughDate,
-      fresh: true
-    });
-    if (!baseline?.finalPrescription) throw new Error("The real engine baseline must succeed before its boundary is fault-injected");
-    const baselineFlags = fatigueFlags(weekStart);
-    if (!baselineFlags.some((flag) => flag.scope === "Lift" && flag.name === exerciseName)) {
-      throw new Error("The production Dashboard pipeline did not produce the synthetic failed-set Lift flag");
-    }
-
-    const originalPrescribeExercise = prescriptionEngine.prescribeExercise;
-    prescriptionEngine.prescribeExercise = () => {
-      throw new TypeError("Available equipment input is malformed after a synthetic internal prescription adapter fault");
+    const researchJsonRequests = performance.getEntriesByType("resource")
+      .map((entry) => new URL(entry.name, location.href).pathname)
+      .filter((pathname) => pathname.includes("/research_database/exports/json/"));
+    const personal = prescriptionEngine?.evidence?.personal;
+    return {
+      knownIdentity: prescriptionEngine.resolveExerciseIdentity("Barbell Bench Press"),
+      researchJsonRequests,
+      identityRows: prescriptionEngine?.evidence?.research?.exerciseDatabase?.length || 0,
+      personalRows: [
+        personal?.exercisePrescriptions,
+        personal?.exerciseScores,
+        personal?.exerciseMuscleScores
+      ].reduce((count, rows) => count + (Array.isArray(rows) ? rows.length : 0), 0),
+      removedEvidenceStatusAbsent: typeof prescriptionEvidenceStatus === "undefined",
+      visibleText: root.innerText
     };
-    try {
-      invalidateCompletedAnalysis();
-      const failure = unifiedPrescriptionSnapshot({ name: exerciseName, primaryMuscle: "Chest" }, {
-        exerciseId: "ex_barbell_bench_press",
-        muscleGroupId: "chest",
-        history: [],
-        mesocycle: null,
-        throughDate,
-        fresh: true
-      });
-      let legacyAdapter;
-      try {
-        legacyAdapter = legacyRecommendationFromSnapshot(failure, exerciseName);
-      } catch (error) {
-        legacyAdapter = { threw: true, name: error?.name, message: error?.message };
-      }
-      let coachTarget;
-      try {
-        coachTarget = coachTargetForTemplateExercise({ name: exerciseName, role: "primary_progression_lift", sets: 3, reps: 8 }, {
-          throughDate,
-          historical: true,
-          template: { id: "synthetic-engine-fault", exercises: [{ name: exerciseName }] }
-        });
-      } catch (error) {
-        coachTarget = { threw: true, name: error?.name, message: error?.message };
-      }
-      invalidateCompletedAnalysis();
-      const flags = fatigueFlags(weekStart);
-      const flag = flags.find((item) => item.scope === "Lift" && item.name === exerciseName) || null;
-      dashboardDetail = flag ? { type: "fatigue-flag", id: flag.id } : { type: "fatigue" };
-      progressView = "overview";
-      activeTab = "progress";
-      render();
-      const uiText = root.innerText;
-      return { baselineRecommendationId: baseline.recommendationId, failure, legacyAdapter, coachTarget, flag, uiText, legacyAdvice };
-    } finally {
-      prescriptionEngine.prescribeExercise = originalPrescribeExercise;
-      dashboardDetail = null;
-      invalidateCompletedAnalysis();
-    }
   });
 
-  const failureType = result.failure?.type || result.failure?.kind;
-  expect.soft(failureType, "Unexpected TypeError faults require their own engine_failure contract").toBe("engine_failure");
-  expect.soft(result.failure?.hardConstraint, "Internal faults are not user hard-constraint violations").not.toBe(true);
-  expect.soft(result.failure?.executionBlocked, "Internal faults must fail non-executable").toBe(true);
-  expect.soft(result.failure?.executable, "Internal faults cannot expose executable guidance").toBe(false);
-
-  for (const [surface, value] of [["legacy adapter", result.legacyAdapter], ["coach target", result.coachTarget]]) {
-    expect.soft(value?.threw, `${surface} must consume an engine_failure without throwing`).not.toBe(true);
-    expect.soft(value?.type || value?.kind, `${surface} must preserve the distinct engine_failure result`).toBe("engine_failure");
-    expect.soft(value?.executable, `${surface} must not revive executable legacy guidance`).toBe(false);
-  }
-
-  expect.soft(result.flag, "The synthetic failed-set Dashboard flag must remain present").not.toBeNull();
-  expect.soft(result.flag?.recommendation, "Dashboard must not silently retain its legacy recommendation after unified-engine failure").not.toBe(result.legacyAdvice);
-  const unavailableState = result.flag?.recommendationUnavailable === true
-    || result.flag?.recommendationStatus === "unavailable"
-    || result.flag?.engineFailure?.type === "engine_failure"
-    || /(?:recommendation|guidance|prescription).{0,30}unavailable|could not generate.{0,30}(?:recommendation|guidance)/i.test(String(result.flag?.recommendation || ""));
-  expect.soft(unavailableState, "Dashboard analytics must explicitly retain an unavailable recommendation state").toBe(true);
-  expect.soft(result.uiText).not.toContain(result.legacyAdvice);
-  expect.soft(result.uiText, "Dashboard UI must explain that recommendation guidance is unavailable").toMatch(/(?:recommendation|guidance|prescription).{0,40}unavailable|could not generate.{0,40}(?:recommendation|guidance)/i);
+  expect.soft(result.knownIdentity).toMatchObject({ status: "resolved", exerciseId: "ex_barbell_bench_press" });
+  expect.soft(result.identityRows, "The normal runtime needs a non-empty identity catalog").toBeGreaterThan(0);
+  expect.soft(result.researchJsonRequests.filter((pathname) => pathname.endsWith("/exercise_database.json"))).toHaveLength(1);
+  expect.soft(result.researchJsonRequests.filter((pathname) => !pathname.endsWith("/exercise_database.json")), "Normal startup must not fetch analytical or snapshot-validation JSON").toEqual([]);
+  expect.soft(result.personalRows, "Normal startup must not activate personal analytical rows").toBe(0);
+  expect.soft(result.removedEvidenceStatusAbsent, "The removed research-status state must not survive under a hidden name").toBe(true);
+  expect.soft(result.visibleText).not.toMatch(/research status|evidence records|confidence score/i);
 });
 
-test("canonical exercise analytics reject reconciler-built invalid identities while preserving valid trusted custom identities", async ({ page }) => {
-  const result = await page.evaluate(() => {
+test("on-demand import validation quarantines an invalid crosswalk without enriching the identity-only runtime", async ({ page }) => {
+  const result = await page.evaluate(async () => {
     const invalidId = "custom_synthetic_invalid_identity_press";
     const invalidName = "Synthetic Invalid Identity Press";
     const validId = "custom_synthetic_valid_identity_press";
@@ -446,145 +379,47 @@ test("canonical exercise analytics reject reconciler-built invalid identities wh
       }],
       metadata: { methodology_version: "synthetic-canonical-identity-regression/1.0.0" }
     };
-    const customEngine = prescriptionApi.createPrescriptionEngine({
-      personalData,
-      research: prescriptionEngine.evidence.research
-    });
+    const runtimeEngine = prescriptionEngine;
+    const knownIdentityBefore = runtimeEngine.resolveExerciseIdentity("Barbell Bench Press");
+    const researchData = await loadImportValidationResearch();
+    const bundle = prescriptionApi.normalizeEvidenceBundle({ personalData, researchData });
+    const customEngine = prescriptionApi.createPrescriptionEngine(bundle);
     const invalidProfile = customEngine.evidence.personal.reconciledIdentityByExerciseId.get(invalidId);
     const validProfile = customEngine.evidence.personal.reconciledIdentityByExerciseId.get(validId);
-    const originalEngine = prescriptionEngine;
-    const originalData = data;
-    const originalActiveSessionId = activeSessionId;
-    const originalActiveWorkoutId = activeWorkoutId;
-    prescriptionEngine = customEngine;
-    prescriptionSnapshotCache.clear();
-    muscleAssignmentCache.clear();
-    try {
-      const invalidMuscles = musclesForExercise({ name: invalidName, primaryMuscle: "Chest" });
-      const validMuscles = musclesForExercise({ name: validName, primaryMuscle: "Chest" });
-      const invalidLookup = personalExerciseRecordForName(invalidName);
-      const sessionId = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
-      const invalidRuntimeId = "ffffffff-ffff-4fff-8fff-ffffffffffff";
-      const validRuntimeId = "12121212-1212-4212-8212-121212121212";
-      const completedAt = `${todayIso()}T13:00:00.000Z`;
-      data = emptyData();
-      data.sessions = [{
-        id: sessionId,
-        date: todayIso(),
-        title: "Synthetic Identity Analytics",
-        submitted: true,
-        workoutStarted: false,
-        workoutState: "completed",
-        completedAt,
-        recovery: { illness: false, pain: false, affectedMuscle: "" }
-      }];
-      data.exercises = [{
-        id: invalidRuntimeId,
-        sessionId,
-        name: invalidName,
-        primaryMuscle: "Chest",
-        secondaryMuscle: "",
-        order: 0,
-        resistanceType: "external"
-      }, {
-        id: validRuntimeId,
-        sessionId,
-        name: validName,
-        primaryMuscle: "Chest",
-        secondaryMuscle: "",
-        order: 1,
-        resistanceType: "external"
-      }];
-      data.sets = [{
-        id: "13131313-1313-4313-8313-131313131313",
-        exerciseId: invalidRuntimeId,
-        setNumber: 1,
-        sequenceIndex: 0,
-        setType: "straight",
-        reps: 8,
-        weight: 100,
-        weightUnit: "lb",
-        resistanceType: "external",
-        rpe: 8,
-        completed: true,
-        skipped: false,
-        isWarmup: false,
-        countsTowardScore: true,
-        countsTowardVolume: true,
-        countsTowardProgression: true
-      }, {
-        id: "14141414-1414-4414-8414-141414141414",
-        exerciseId: validRuntimeId,
-        setNumber: 1,
-        sequenceIndex: 0,
-        setType: "straight",
-        reps: 8,
-        weight: 100,
-        weightUnit: "lb",
-        resistanceType: "external",
-        rpe: 8,
-        completed: true,
-        skipped: false,
-        isWarmup: false,
-        countsTowardScore: true,
-        countsTowardVolume: true,
-        countsTowardProgression: true
-      }];
-      activeSessionId = sessionId;
-      activeWorkoutId = "";
-      entityStructureRevision += 1;
-      entityIndexCache = null;
-      invalidateCompletedAnalysis();
-      const analytics = completedAnalysisIndex();
-      const invalidGrouped = [...analytics.exercisesByCanonical.entries()].some(([, exercises]) => exercises.some((exercise) => exercise.id === invalidRuntimeId));
-      const validGrouped = (analytics.exercisesByCanonical.get(validId) || []).some((exercise) => exercise.id === validRuntimeId);
-      return {
-        invalidProfile: { invalid: invalidProfile?.invalid, invalidReason: invalidProfile?.invalidReason },
-        validProfile: { invalid: validProfile?.invalid, researchExerciseId: validProfile?.researchExerciseId },
-        invalidCanonicalId: canonicalExerciseId(invalidName),
-        invalidPrescriptionId: prescriptionExerciseIdentity(invalidName),
-        invalidLookupId: invalidLookup?.exercise_id || invalidLookup?.exerciseId || "",
-        validCanonicalId: canonicalExerciseId(validName),
-        validPrescriptionId: prescriptionExerciseIdentity(validName),
-        invalidMuscles,
-        validMuscles,
-        invalidAnalyticsIndexed: analytics.canonicalByExerciseId.has(invalidRuntimeId),
-        invalidAnalyticsCanonicalId: analytics.canonicalByExerciseId.get(invalidRuntimeId),
-        invalidGrouped,
-        validAnalyticsCanonicalId: analytics.canonicalByExerciseId.get(validRuntimeId),
-        validGrouped
-      };
-    } finally {
-      prescriptionEngine = originalEngine;
-      data = originalData;
-      activeSessionId = originalActiveSessionId;
-      activeWorkoutId = originalActiveWorkoutId;
-      entityStructureRevision += 1;
-      entityIndexCache = null;
-      invalidateCompletedAnalysis();
-      prescriptionSnapshotCache.clear();
-      muscleAssignmentCache.clear();
-    }
+    const invalidLookup = personalExerciseRecordForName(invalidName, customEngine.evidence);
+    const validLookup = personalExerciseRecordForName(validName, customEngine.evidence);
+    return {
+      invalidProfile: { invalid: invalidProfile?.invalid, invalidReason: invalidProfile?.invalidReason },
+      validProfile: { invalid: validProfile?.invalid, researchExerciseId: validProfile?.researchExerciseId },
+      invalidLookupId: invalidLookup?.exercise_id || invalidLookup?.exerciseId || "",
+      validLookupId: validLookup?.exercise_id || validLookup?.exerciseId || "",
+      invalidCustomResolution: customEngine.resolveExerciseIdentity(invalidName),
+      runtimeEngineUnchanged: prescriptionEngine === runtimeEngine,
+      runtimeInvalidLookup: personalExerciseRecordForName(invalidName),
+      runtimeValidLookup: personalExerciseRecordForName(validName),
+      knownIdentityStable: JSON.stringify(prescriptionEngine.resolveExerciseIdentity("Barbell Bench Press")) === JSON.stringify(knownIdentityBefore),
+      runtimePersonalRows: [
+        prescriptionEngine?.evidence?.personal?.exercisePrescriptions,
+        prescriptionEngine?.evidence?.personal?.exerciseScores,
+        prescriptionEngine?.evidence?.personal?.exerciseMuscleScores
+      ].reduce((count, rows) => count + (Array.isArray(rows) ? rows.length : 0), 0)
+    };
   });
 
   expect.soft(result.invalidProfile.invalid, "The test identity must be invalidated by the real reconciler").toBe(true);
   expect.soft(result.invalidProfile.invalidReason).toMatch(/unknown research exercise/i);
-  expect.soft(result.invalidLookupId, "The runtime lookup must discover an invalid identity supplied only by exercise-muscle evidence").toBe("custom_synthetic_invalid_identity_press");
-  expect.soft(result.invalidPrescriptionId, "The prescription resolver already fails the reconciled invalid identity closed").toBeNull();
-  expect.soft(result.invalidCanonicalId, "Canonical analytics must honor the same reconciled-invalid state").toBeNull();
-  expect.soft(result.invalidMuscles, "An invalid reconciled identity must not re-enter analytics through manual or regex muscle inference").toEqual([]);
-  expect.soft(result.invalidAnalyticsIndexed, "Completed-history analytics must omit the invalid exercise from canonical indexing").toBe(false);
-  expect.soft(result.invalidAnalyticsCanonicalId, "Completed-history analytics must not group an invalid identity under a null/empty canonical key").toBeUndefined();
-  expect.soft(result.invalidGrouped, "No canonical analytics bucket may contain the invalid reconciled exercise").toBe(false);
+  expect.soft(result.invalidLookupId, "The temporary validation bundle must retain the invalid source row for an exact audit result").toBe("custom_synthetic_invalid_identity_press");
+  expect.soft(result.invalidCustomResolution?.status, "The temporary validation engine must not resolve an invalid crosswalk").not.toBe("resolved");
   expect.soft(result.validProfile.invalid, "The positive-control custom identity must remain trusted").not.toBe(true);
-  expect.soft(result.validCanonicalId, "Valid trusted custom analytics identity must remain supported").toBe("custom_synthetic_valid_identity_press");
-  expect.soft(result.validPrescriptionId, "Valid trusted custom prescription identity must remain supported").toBe("custom_synthetic_valid_identity_press");
-  expect.soft(result.validMuscles.some((item) => item.muscle === "Chest"), "Valid trusted custom manual taxonomy remains supported").toBe(true);
-  expect.soft(result.validAnalyticsCanonicalId, "Valid trusted custom history retains its canonical grouping").toBe("custom_synthetic_valid_identity_press");
-  expect.soft(result.validGrouped, "Valid trusted custom history remains present in its canonical analytics bucket").toBe(true);
+  expect.soft(result.validLookupId).toBe("custom_synthetic_valid_identity_press");
+  expect.soft(result.runtimeEngineUnchanged, "On-demand validation must not replace the normal identity engine").toBe(true);
+  expect.soft(result.runtimeInvalidLookup).toBeNull();
+  expect.soft(result.runtimeValidLookup).toBeNull();
+  expect.soft(result.knownIdentityStable).toBe(true);
+  expect.soft(result.runtimePersonalRows, "On-demand validation must not activate personal analytical rows globally").toBe(0);
 });
 
-test("valid three-source evidence replacement invalidates caches while an invalid new identity rejects atomically", async ({ page }) => {
+test("valid legacy personal evidence is preserved but stays inert while an invalid identity rejects atomically", async ({ page }) => {
   const acceptedPackage = threeSourcePersonalEvidencePackage({ version: "1.0.6" });
   const invalidPackage = invalidMuscleScoreOnlyPersonalEvidencePackage({ version: "1.0.6" });
   const expectedInvalidPackage = structuredClone(acceptedPackage);
@@ -606,70 +441,22 @@ test("valid three-source evidence replacement invalidates caches while an invali
   };
   const result = await page.evaluate(async ({ accepted, invalid, expectedIdentities }) => {
     const originalEngine = prescriptionEngine;
-    const originalStatus = prescriptionEvidenceStatus;
     const originalData = data;
+    const originalPersisted = await readIndexedValue("app-data");
     const originalActiveSessionId = activeSessionId;
     const originalActiveWorkoutId = activeWorkoutId;
     const originalActiveTab = activeTab;
-    const sessionId = "16161616-1616-4616-8616-161616161616";
-    const runtimeExerciseId = "17171717-1717-4717-8717-171717171717";
     try {
       data = emptyData();
-      data.sessions = [{
-        id: sessionId,
-        date: todayIso(),
-        title: "Synthetic runtime evidence cache",
-        submitted: true,
-        workoutStarted: false,
-        workoutState: "completed",
-        completedAt: `${todayIso()}T13:00:00.000Z`,
-        recovery: { illness: false, pain: false, affectedMuscle: "" }
-      }];
-      data.exercises = [{
-        id: runtimeExerciseId,
-        sessionId,
-        name: expectedIdentities.muscle.name,
-        primaryMuscle: "Chest",
-        secondaryMuscle: "",
-        order: 0,
-        resistanceType: "external"
-      }];
-      data.sets = [{
-        id: "18181818-1818-4818-8818-181818181818",
-        exerciseId: runtimeExerciseId,
-        setNumber: 1,
-        sequenceIndex: 0,
-        setType: "straight",
-        reps: 8,
-        weight: 100,
-        weightUnit: "lb",
-        resistanceType: "external",
-        rpe: 8,
-        completed: true,
-        skipped: false,
-        isWarmup: false,
-        countsTowardScore: true,
-        countsTowardVolume: true,
-        countsTowardProgression: true
-      }];
-      activeSessionId = sessionId;
+      activeSessionId = "";
       activeWorkoutId = "";
       activeTab = "settings";
       entityStructureRevision += 1;
       entityIndexCache = null;
       invalidateCompletedAnalysis();
 
-      const exercise = data.exercises[0];
-      const beforeMuscles = musclesForExercise(exercise);
-      const beforeAnalytics = completedAnalysisIndex();
-      const weekStart = startOfWeekIso(todayIso());
-      const beforeVolume = weeklyMuscleVolume(weekStart);
-      const beforeCanonicalId = canonicalExerciseId(expectedIdentities.muscle.name);
       const revisionBeforeImport = analysisRevision;
-      const successfulMuscleSentinelKey = "synthetic-success-muscle-cache-sentinel";
-      const successfulPrescriptionSentinelKey = "synthetic-success-prescription-cache-sentinel";
-      muscleAssignmentCache.set(successfulMuscleSentinelKey, Object.freeze({ stale: true }));
-      prescriptionSnapshotCache.set(successfulPrescriptionSentinelKey, Object.freeze({ stale: true }));
+      const knownIdentityBefore = prescriptionEngine.resolveExerciseIdentity("Barbell Bench Press");
 
       await importPersonalEvidenceFile(new File(
         [JSON.stringify(accepted)],
@@ -677,21 +464,15 @@ test("valid three-source evidence replacement invalidates caches while an invali
         { type: "application/json" }
       ));
 
-      const lookup = (name) => personalExerciseRecordForName(name);
-      const afterAnalytics = completedAnalysisIndex();
       const successfulData = data;
       const successfulDataJson = JSON.stringify(data);
       const successfulPackage = data.personalEvidencePackage;
       const successfulEngine = prescriptionEngine;
-      const successfulStatus = prescriptionEvidenceStatus;
+      const successfulIdentityCatalog = prescriptionEngine?.evidence?.research?.exerciseDatabase;
+      const knownIdentityAfter = prescriptionEngine.resolveExerciseIdentity("Barbell Bench Press");
+      const persistedAfterSuccess = await readIndexedValue("app-data");
       const revisionAfterSuccess = analysisRevision;
       const dataRevisionAfterSuccess = data.dataRevision;
-      const rejectedMuscleSentinelKey = "synthetic-rejected-muscle-cache-sentinel";
-      const rejectedPrescriptionSentinelKey = "synthetic-rejected-prescription-cache-sentinel";
-      const rejectedMuscleSentinel = Object.freeze({ retained: "muscle" });
-      const rejectedPrescriptionSentinel = Object.freeze({ retained: "prescription" });
-      muscleAssignmentCache.set(rejectedMuscleSentinelKey, rejectedMuscleSentinel);
-      prescriptionSnapshotCache.set(rejectedPrescriptionSentinelKey, rejectedPrescriptionSentinel);
 
       await importPersonalEvidenceFile(new File(
         [JSON.stringify(invalid)],
@@ -700,42 +481,41 @@ test("valid three-source evidence replacement invalidates caches while an invali
       ));
 
       return {
-        beforeMuscles,
-        beforeAnalyticsCanonicalId: beforeAnalytics.canonicalByExerciseId.get(runtimeExerciseId),
-        beforeVolume,
-        beforeCanonicalId,
         revisionBeforeImport,
         revisionAfterSuccess,
-        lookupIds: {
-          score: lookup(expectedIdentities.score.name)?.exercise_id || lookup(expectedIdentities.score.name)?.exerciseId,
-          prescription: lookup(expectedIdentities.prescription.name)?.exercise_id || lookup(expectedIdentities.prescription.name)?.exerciseId,
-          muscle: lookup(expectedIdentities.muscle.name)?.exercise_id || lookup(expectedIdentities.muscle.name)?.exerciseId
+        engineReplacedWithIdentityOnlyRuntime: successfulEngine !== originalEngine,
+        knownIdentityStable: JSON.stringify(knownIdentityAfter) === JSON.stringify(knownIdentityBefore),
+        identityEnginePersonalRows: [
+          successfulEngine?.evidence?.personal?.exercisePrescriptions,
+          successfulEngine?.evidence?.personal?.exerciseScores,
+          successfulEngine?.evidence?.personal?.exerciseMuscleScores
+        ].reduce((count, rows) => count + (Array.isArray(rows) ? rows.length : 0), 0),
+        importedCounts: {
+          score: successfulPackage?.personalData?.exerciseScores?.length || 0,
+          prescription: successfulPackage?.personalData?.exercisePrescriptions?.length || 0,
+          muscle: successfulPackage?.personalData?.exerciseMuscleScores?.length || 0
         },
-        afterCanonicalId: canonicalExerciseId(expectedIdentities.muscle.name),
-        afterPrescriptionId: prescriptionExerciseIdentity(expectedIdentities.muscle.name),
-        afterAnalyticsCanonicalId: afterAnalytics.canonicalByExerciseId.get(runtimeExerciseId),
-        afterAnalyticsGrouped: (afterAnalytics.exercisesByCanonical.get(expectedIdentities.muscle.id) || []).some((item) => item.id === runtimeExerciseId),
-        importedRecords: successfulStatus.personalRecords,
-        successCachesCleared: {
-          muscle: !muscleAssignmentCache.has(successfulMuscleSentinelKey),
-          prescription: !prescriptionSnapshotCache.has(successfulPrescriptionSentinelKey)
-        },
+        persistedPackageUnchanged: JSON.stringify(persistedAfterSuccess?.personalEvidencePackage) === JSON.stringify(successfulPackage),
+        importedNamesRemainInert: Object.values(expectedIdentities).every(({ name }) => (
+          personalExerciseRecordForName(name) == null
+          && prescriptionEngine.resolveExerciseIdentity(name)?.status !== "resolved"
+        )),
         rejectedState: {
           engineUnchanged: prescriptionEngine === successfulEngine,
-          statusUnchanged: prescriptionEvidenceStatus === successfulStatus,
+          identityCatalogUnchanged: prescriptionEngine?.evidence?.research?.exerciseDatabase === successfulIdentityCatalog,
+          identityResolutionUnchanged: JSON.stringify(prescriptionEngine.resolveExerciseIdentity("Barbell Bench Press")) === JSON.stringify(knownIdentityAfter),
           packageUnchanged: data.personalEvidencePackage === successfulPackage,
           dataUnchanged: data === successfulData && JSON.stringify(data) === successfulDataJson,
           revisionUnchanged: analysisRevision === revisionAfterSuccess,
           dataRevisionUnchanged: data.dataRevision === dataRevisionAfterSuccess,
-          muscleCacheSentinelRetained: muscleAssignmentCache.get(rejectedMuscleSentinelKey) === rejectedMuscleSentinel,
-          prescriptionCacheSentinelRetained: prescriptionSnapshotCache.get(rejectedPrescriptionSentinelKey) === rejectedPrescriptionSentinel,
+          persistedUnchanged: JSON.stringify(await readIndexedValue("app-data")) === JSON.stringify(persistedAfterSuccess),
           message: String(settingsMessage || "")
         }
       };
     } finally {
       prescriptionEngine = originalEngine;
-      prescriptionEvidenceStatus = originalStatus;
       data = originalData;
+      if (originalPersisted) await writeIndexedValue("app-data", originalPersisted);
       activeSessionId = originalActiveSessionId;
       activeWorkoutId = originalActiveWorkoutId;
       activeTab = originalActiveTab;
@@ -745,37 +525,27 @@ test("valid three-source evidence replacement invalidates caches while an invali
     }
   }, { accepted: acceptedPackage, invalid: invalidPackage, expectedIdentities: identities });
 
-  expect.soft(result.beforeMuscles.some((item) => item.muscle === "Chest"), "The stale-cache reproduction must start with the manual Chest assignment cached").toBe(true);
-  expect.soft(result.beforeVolume.some((item) => item.muscle === "Chest" && item.sets > 0), "The stale-cache reproduction must start with completed Chest analytics").toBe(true);
-  expect.soft(result.beforeCanonicalId, "The pre-import runtime name must begin under its fallback slug").toBe("custom_synthetic_muscle_source_press");
-  expect.soft(result.beforeAnalyticsCanonicalId).toBe(result.beforeCanonicalId);
-  expect.soft(result.lookupIds).toEqual({
-    score: identities.score.id,
-    prescription: identities.prescription.id,
-    muscle: identities.muscle.id
-  });
-  expect.soft(identities.muscle.id, "The explicit muscle-source identity must differ from name-based fallback").not.toBe(result.beforeCanonicalId);
-  expect.soft(result.afterCanonicalId).toBe(identities.muscle.id);
-  expect.soft(result.afterPrescriptionId).toBe(identities.muscle.id);
-  expect.soft(result.afterAnalyticsCanonicalId).toBe(identities.muscle.id);
-  expect.soft(result.afterAnalyticsGrouped).toBe(true);
-  expect.soft(result.revisionAfterSuccess, "Successful replacement must invalidate revisioned analysis caches").toBeGreaterThan(result.revisionBeforeImport);
-  expect.soft(result.successCachesCleared).toEqual({ muscle: true, prescription: true });
-  expect.soft(result.importedRecords, "All three valid personal identity sources must survive runtime normalization").toBe(3);
-  expect.soft(result.rejectedState, "An invalid new identity must leave the accepted engine, package, revisions, and caches unchanged").toMatchObject({
+  expect.soft(result.engineReplacedWithIdentityOnlyRuntime, "Accepted imports must rebuild, not enrich, the identity-only runtime engine").toBe(true);
+  expect.soft(result.knownIdentityStable, "Accepted legacy evidence must not alter a known public identity").toBe(true);
+  expect.soft(result.identityEnginePersonalRows, "Normal runtime must not activate analytical personal rows").toBe(0);
+  expect.soft(result.importedCounts, "All three valid legacy collections must remain preserved in app data").toEqual({ score: 1, prescription: 1, muscle: 1 });
+  expect.soft(result.persistedPackageUnchanged, "The accepted package must be durable byte-for-byte").toBe(true);
+  expect.soft(result.importedNamesRemainInert, "Stored legacy evidence names must not become a second identity source of truth").toBe(true);
+  expect.soft(result.revisionAfterSuccess, "Successful import must invalidate revisioned derived state").toBeGreaterThan(result.revisionBeforeImport);
+  expect.soft(result.rejectedState, "An invalid new identity must leave the accepted identity engine, package, revisions, and storage unchanged").toMatchObject({
     engineUnchanged: true,
-    statusUnchanged: true,
+    identityCatalogUnchanged: true,
+    identityResolutionUnchanged: true,
     packageUnchanged: true,
     dataUnchanged: true,
     revisionUnchanged: true,
     dataRevisionUnchanged: true,
-    muscleCacheSentinelRetained: true,
-    prescriptionCacheSentinelRetained: true
+    persistedUnchanged: true
   });
   expect.soft(result.rejectedState.message).toMatch(/identity|conflict|reconcil/i);
 });
 
-test("persisted legacy invalid muscle evidence survives startup only as quarantined non-executable data", async ({ page }) => {
+test("persisted legacy invalid muscle evidence survives startup as inert preserved data", async ({ page }) => {
   const legacyPackage = invalidMuscleScoreOnlyPersonalEvidencePackage({ version: "legacy-invalid/1.0.0" });
   const invalidRow = legacyPackage.personalData.exerciseMuscleScores[0];
   const runtimeIds = {
@@ -834,30 +604,31 @@ test("persisted legacy invalid muscle evidence survives startup only as quaranti
 
   await page.reload();
   await page.waitForLoadState("load");
-  await expect.poll(() => page.evaluate(() => prescriptionEvidenceStatus?.state || "loading"), {
-    message: "Persisted legacy evidence must finish normalization without traversing the import UI"
-  }).toBe("ready");
+  await expect.poll(() => page.evaluate(() => {
+    const identity = prescriptionEngine?.resolveExerciseIdentity?.("Barbell Bench Press");
+    return identity?.status === "resolved" ? identity.exerciseId : "";
+  }), {
+    message: "Identity-only startup must complete without activating persisted legacy evidence"
+  }).toBe("ex_barbell_bench_press");
 
   const result = await page.evaluate(async ({ invalidId, invalidName, invalidResearchId, runtimeExerciseId }) => {
-    const profile = prescriptionEngine.evidence.personal.reconciledIdentityByExerciseId.get(invalidId);
     const lookup = personalExerciseRecordForName(invalidName);
-    const exercise = exerciseById(runtimeExerciseId);
-    const analytics = completedAnalysisIndex();
-    const volume = weeklyMuscleVolume(startOfWeekIso(todayIso()));
+    const identity = prescriptionEngine.resolveExerciseIdentity(invalidName);
+    const profile = resolveExerciseIdentityProfile(exerciseById(runtimeExerciseId));
     const persisted = await readIndexedValue("app-data");
     return {
       runtimeMarker: data.personalEvidencePackage?.personalData?.exerciseMuscleScores?.[0]?.research_exercise_id || "",
       persistedMarker: persisted?.personalEvidencePackage?.personalData?.exerciseMuscleScores?.[0]?.research_exercise_id || "",
-      profile: { invalid: profile?.invalid, invalidReason: profile?.invalidReason },
       lookupId: lookup?.exercise_id || lookup?.exerciseId || "",
+      identity,
+      profile,
       canonicalId: canonicalExerciseId(invalidName),
-      prescriptionId: prescriptionExerciseIdentity(invalidName),
-      muscles: musclesForExercise(exercise),
-      analyticsIndexed: analytics.canonicalByExerciseId.has(runtimeExerciseId),
-      analyticsGrouped: [...analytics.exercisesByCanonical.values()].some((items) => items.some((item) => item.id === runtimeExerciseId)),
-      positiveChestVolume: volume.some((item) => item.muscle === "Chest" && item.sets > 0),
-      evidenceState: prescriptionEvidenceStatus.state,
-      personalRecords: prescriptionEvidenceStatus.personalRecords,
+      identityEnginePersonalRows: [
+        prescriptionEngine?.evidence?.personal?.exercisePrescriptions,
+        prescriptionEngine?.evidence?.personal?.exerciseScores,
+        prescriptionEngine?.evidence?.personal?.exerciseMuscleScores
+      ].reduce((count, rows) => count + (Array.isArray(rows) ? rows.length : 0), 0),
+      knownIdentity: prescriptionEngine.resolveExerciseIdentity("Barbell Bench Press"),
       invalidResearchId
     };
   }, {
@@ -869,15 +640,16 @@ test("persisted legacy invalid muscle evidence survives startup only as quaranti
 
   expect.soft(result.runtimeMarker, "The legacy package must remain available for audit instead of being silently rewritten").toBe(result.invalidResearchId);
   expect.soft(result.persistedMarker, "Startup normalization must preserve the persisted invalid marker").toBe(result.invalidResearchId);
-  expect.soft(result.profile.invalid).toBe(true);
-  expect.soft(result.profile.invalidReason).toMatch(/unknown research exercise/i);
-  expect.soft(result.lookupId, "The three-source lookup must see the quarantined muscle-only row").toBe(invalidRow.exercise_id);
-  expect.soft(result.canonicalId).toBeNull();
-  expect.soft(result.prescriptionId).toBeNull();
-  expect.soft(result.muscles).toEqual([]);
-  expect.soft(result.analyticsIndexed).toBe(false);
-  expect.soft(result.analyticsGrouped).toBe(false);
-  expect.soft(result.positiveChestVolume).toBe(false);
-  expect.soft(result.evidenceState).toBe("ready");
-  expect.soft(result.personalRecords).toBe(3);
+  expect.soft(result.identityEnginePersonalRows, "Startup must not activate persisted analytical personal rows").toBe(0);
+  expect.soft(result.lookupId, "The identity-only engine must not index the persisted legacy row").toBe("");
+  expect.soft(result.identity, "The persisted name must remain unresolved by the public identity catalog").toMatchObject({
+    status: "unresolved"
+  });
+  expect.soft(result.profile, "The historical exercise may retain a reporting identity but it must not become executable").toMatchObject({
+    status: "resolved",
+    identitySource: "reporting_fallback",
+    executable: false
+  });
+  expect.soft(result.canonicalId, "Historical grouping must use a stable reporting fallback without trusting the invalid research crosswalk").toBe("custom_synthetic_muscle_source_press");
+  expect.soft(result.knownIdentity).toMatchObject({ status: "resolved", exerciseId: "ex_barbell_bench_press" });
 });

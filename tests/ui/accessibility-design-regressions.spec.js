@@ -12,10 +12,8 @@ const {
 const { buildAnalyticsEvidenceFixture } = require("./fixtures/analytics-settings.fixture");
 
 const PRIMARY_TABS = [
-  { id: "today", view: ".workout-view" },
-  { id: "plan", view: ".templates-view" },
-  { id: "progress", view: ".charts-view" },
-  { id: "more", view: ".settings-view" }
+  { id: "today", view: ".lift-home-view" },
+  { id: "progress", view: ".charts-view" }
 ];
 
 function focusedFixture({ activeWorkout = true, includeHistory = true } = {}) {
@@ -176,11 +174,30 @@ function primaryTab(page, tabId) {
 }
 
 async function openPrimaryTab(page, tabId) {
-  const destination = ({ lift: "today", dashboard: "progress", charts: "progress", data: "more" })[tabId] || tabId;
+  const destination = ({ lift: "workout", dashboard: "progress", charts: "progress", data: "settings", more: "settings", plan: "routines" })[tabId] || tabId;
+  if (destination === "routines" || destination === "settings") {
+    const action = destination === "routines" ? "open-routines" : "open-settings";
+    const opener = page.locator(`[data-action="${action}"]`);
+    if (!(await opener.count())) {
+      const closeWorkout = page.locator('[data-action="close-workout-context"]');
+      if (await closeWorkout.count()) await closeWorkout.click();
+      else await page.locator('[data-action="set-tab"][data-tab="today"]').click();
+    }
+    await page.locator(`[data-action="${action}"]`).click();
+    await expect(page.locator(destination === "routines" ? ".templates-view" : ".settings-view")).toBeVisible();
+    return page.locator(`[data-action="${action}"]`);
+  }
   let target = primaryTab(page, destination);
   if (await target.count()) {
     await target.click();
   } else if (destination === "today") {
+    const closeWorkout = page.locator('[data-action="close-workout-context"]');
+    if (await closeWorkout.count()) await closeWorkout.click();
+    await expect(page.locator(".lift-home-view")).toBeVisible();
+    await page.locator("#main-content").focus();
+  } else if (destination === "workout") {
+    const resume = page.locator('[data-action="resume-active-workout"]').first();
+    if (await resume.count()) await resume.click();
     await expect(page.locator(".workout-view")).toBeVisible();
     await page.locator("#main-content").focus();
   } else {
@@ -191,25 +208,40 @@ async function openPrimaryTab(page, tabId) {
     }, destination);
     target = primaryTab(page, destination);
   }
-  if (destination !== "today" || await target.count()) await expect(target).toHaveAttribute("aria-current", "page");
+  if ((destination === "today" || destination === "progress") && await target.count()) await expect(target).toHaveAttribute("aria-current", "page");
   return target;
 }
 
 async function expectDialogTrap(page, dialog, expectedInitialFocus) {
   await expect(dialog).toBeVisible();
   await expect.soft(expectedInitialFocus, "A dialog must place initial focus on its safe primary action").toBeFocused({ timeout: 1_500 });
-  const focusable = dialog.locator("button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])");
-  const count = await focusable.count();
-  expect(count, "The reachable dialog must contain at least two focusable controls").toBeGreaterThanOrEqual(2);
-  const first = focusable.nth(0);
-  const last = focusable.nth(count - 1);
+  const focusable = dialog.locator(":is(button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]))");
+  const sequentialIndexes = await focusable.evaluateAll((elements) => elements
+    .map((element, index) => ({ element, index }))
+    .filter(({ element }) => {
+      const style = getComputedStyle(element);
+      return element.tabIndex >= 0
+        && !element.closest('[inert], [hidden], [aria-hidden="true"]')
+        && style.display !== "none"
+        && style.visibility !== "hidden"
+        && style.visibility !== "collapse"
+        && element.getClientRects().length > 0;
+    })
+    .map(({ index }) => index));
+  expect(sequentialIndexes.length, "The reachable dialog must contain at least two focusable controls").toBeGreaterThanOrEqual(2);
+  const first = focusable.nth(sequentialIndexes[0]);
+  const last = focusable.nth(sequentialIndexes[sequentialIndexes.length - 1]);
 
-  await last.focus();
-  await page.keyboard.press("Tab");
-  await expect(first, "Tab from the final dialog control must wrap to the first").toBeFocused();
-
+  // Leaving a numeric readiness field intentionally rerenders its validated
+  // draft. Move to the stable close button, then verify both trap boundaries.
+  await first.focus();
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+  await first.focus();
+  await expect(first, "The first sequential dialog control must accept stable focus").toBeFocused();
   await page.keyboard.press("Shift+Tab");
   await expect(last, "Shift+Tab from the first dialog control must wrap to the final control").toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(first, "Tab from the final dialog control must wrap to the first").toBeFocused();
 }
 
 async function activeFocusState(page) {
@@ -749,7 +781,7 @@ test("focus-indicator evidence distinguishes exterior, inset, filtered, and forc
 });
 
 test("keyboard-visible skip link activates and focuses the canonical main-content target", async ({ page }) => {
-  await installScenario(page);
+  await installScenario(page, { activeWorkout: false });
   const skipLink = page.getByRole("link", { name: /skip.*content/i });
   const main = page.locator("#main-content");
   await expect(skipLink, "A skip link must be present before the application header controls").toHaveCount(1);
@@ -777,8 +809,8 @@ test("keyboard-visible skip link activates and focuses the canonical main-conten
   await expect(main, "Activating the skip link must move focus, not only update the URL fragment").toBeFocused();
 });
 
-test("explicit navigation across all four primary destinations moves focus into the new view without stealing focus on load", async ({ page }) => {
-  await installScenario(page, { includeHistory: false });
+test("explicit navigation across both primary destinations moves focus into the new view without stealing focus on load", async ({ page }) => {
+  await installScenario(page, { activeWorkout: false, includeHistory: false });
   const loadFocus = await activeFocusState(page);
   expect(loadFocus.activeTag, "Initial render must not move focus without a user action").toBe("BODY");
 
@@ -793,7 +825,8 @@ test("explicit navigation across all four primary destinations moves focus into 
 
 test("quick-template cards retain their native computed button role", async ({ page }) => {
   await installScenario(page, { activeWorkout: false, includeHistory: false });
-  const card = page.getByRole("button", { name: /Public Synthetic Upper Strength/i });
+  await page.getByText("Choose another workout", { exact: true }).click();
+  const card = page.getByRole("button", { name: /Public Synthetic Lower Technique/i });
   await expect(card, "The quick-template card must be discoverable by its native computed button role").toHaveCount(1);
   await expect(card).toHaveClass(/quick-template-card/);
   await expect(page.locator(".quick-template-list"), "The visual carousel must not override its native button children with list semantics").not.toHaveAttribute("role");
@@ -801,47 +834,47 @@ test("quick-template cards retain their native computed button role", async ({ p
   expect(await card.ariaSnapshot()).toMatch(/^- ['"]?button\b/);
 });
 
-test("template-start dialog owns initial focus, traps both directions, and restores its durable trigger after every dismissal path", async ({ page }) => {
+test("optional-readiness dialog owns initial focus, traps both directions, and restores its durable trigger after every dismissal path", async ({ page }) => {
   await installScenario(page, { activeWorkout: false, includeHistory: false });
-  const trigger = page.locator('[data-action="start-template"][data-template-id="public-synthetic-template-upper"]');
+  const trigger = page.locator('[data-action="log-template-readiness"][data-template-id="public-synthetic-template-upper"]');
   await expect(trigger).toHaveCount(1);
 
   await trigger.click();
-  let dialog = page.getByRole("dialog", { name: /Start .*Public Synthetic Upper Strength/i });
-  await expect.soft(page.locator(".brand-bar"), "Opening template setup must make the shell header inert").toHaveAttribute("inert", "");
-  await expect.soft(page.locator("#main-content"), "Opening template setup must make application content inert").toHaveAttribute("inert", "");
-  await expect.soft(page.locator(".bottom-nav"), "Opening template setup must make tab navigation inert").toHaveAttribute("inert", "");
-  await expectDialogTrap(page, dialog, dialog.getByRole("button", { name: "Log today’s readiness", exact: true }));
+  let dialog = page.getByRole("dialog", { name: "What is different today?", exact: true });
+  await expect.soft(page.locator(".brand-bar"), "Opening optional readiness must make the shell header inert").toHaveAttribute("inert", "");
+  await expect.soft(page.locator("#main-content"), "Opening optional readiness must make application content inert").toHaveAttribute("inert", "");
+  await expect.soft(page.locator(".bottom-nav"), "Opening optional readiness must make tab navigation inert").toHaveAttribute("inert", "");
+  await expectDialogTrap(page, dialog, dialog.getByRole("spinbutton", { name: "Sleep", exact: true }));
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
-  await expect.soft(trigger, "Escape must restore focus to the newly rendered template trigger").toBeFocused({ timeout: 1_500 });
+  await expect.soft(trigger, "Escape must restore focus to the optional readiness trigger").toBeFocused({ timeout: 1_500 });
 
   await trigger.click();
-  dialog = page.getByRole("dialog", { name: /Start .*Public Synthetic Upper Strength/i });
+  dialog = page.getByRole("dialog", { name: "What is different today?", exact: true });
   await expect(dialog).toBeVisible();
-  await dialog.getByRole("button", { name: "Close template setup", exact: true }).click();
+  await dialog.getByRole("button", { name: "Close daily readiness", exact: true }).click();
   await expect(dialog).toHaveCount(0);
-  await expect.soft(trigger, "The close button must restore focus to the newly rendered template trigger").toBeFocused({ timeout: 1_500 });
+  await expect.soft(trigger, "The close button must restore focus to the optional readiness trigger").toBeFocused({ timeout: 1_500 });
 
   await trigger.click();
-  dialog = page.getByRole("dialog", { name: /Start .*Public Synthetic Upper Strength/i });
+  dialog = page.getByRole("dialog", { name: "What is different today?", exact: true });
   await expect(dialog).toBeVisible();
   const backdrop = page.locator('.sheet-backdrop[data-action="cancel-template-start"]');
   await backdrop.click({ position: { x: 6, y: 6 } });
   await expect(dialog).toHaveCount(0);
-  await expect.soft(trigger, "Backdrop dismissal must restore focus to the newly rendered template trigger").toBeFocused({ timeout: 1_500 });
+  await expect.soft(trigger, "Backdrop dismissal must restore focus to the optional readiness trigger").toBeFocused({ timeout: 1_500 });
 });
 
 test("dialog initial focus falls back to the first visible enabled control when the preferred action is hidden", async ({ page }) => {
   await installScenario(page, { activeWorkout: false, includeHistory: false });
-  await page.addStyleTag({ content: '[data-action="log-today-readiness"] { display: none !important; }' });
-  const trigger = page.locator('[data-action="start-template"][data-template-id="public-synthetic-template-upper"]');
+  await page.addStyleTag({ content: '[data-action="template-readiness-sleep-hours"] { display: none !important; }' });
+  const trigger = page.locator('[data-action="log-template-readiness"][data-template-id="public-synthetic-template-upper"]');
   await trigger.click();
 
-  const dialog = page.getByRole("dialog", { name: /Start .*Public Synthetic Upper Strength/i });
-  const preferred = dialog.locator('[data-action="log-today-readiness"]');
-  const fallback = dialog.getByRole("button", { name: "Close template setup", exact: true });
-  const finalVisibleControl = dialog.getByRole("button", { name: "Cancel", exact: true });
+  const dialog = page.getByRole("dialog", { name: "What is different today?", exact: true });
+  const preferred = dialog.locator('[data-action="template-readiness-sleep-hours"]');
+  const fallback = dialog.getByRole("button", { name: "Close daily readiness", exact: true });
+  const finalVisibleControl = dialog.getByRole("button", { name: "Start workout", exact: true });
   await expect(dialog).toBeVisible();
   await expect(preferred, "The nominal initial action must remain present but be genuinely hidden for this fixture").toBeHidden();
   await expect(fallback, "Focus must fall back to the first visible enabled dialog control").toBeFocused({ timeout: 1_500 });
@@ -850,12 +883,12 @@ test("dialog initial focus falls back to the first visible enabled control when 
   await expect(finalVisibleControl, "The Tab trap must use the same visible/enabled filtering and skip the hidden nominal action").toBeFocused();
 });
 
-test("start and readiness sheets retain contrast across every package and theme", async ({ page }, testInfo) => {
+test("optional readiness retains contrast across every package and theme", async ({ page }, testInfo) => {
   test.setTimeout(180_000);
   test.skip(testInfo.project.name !== "desktop", "One deterministic Chromium project owns the complete readiness color-package matrix.");
   await installScenario(page, { activeWorkout: false, includeHistory: false, viewport: { width: 390, height: 844 } });
   await page.addScriptTag({ content: AxeBuilder.source });
-  await page.locator('[data-action="start-template"][data-template-id="public-synthetic-template-upper"]').click();
+  await page.locator('[data-action="log-template-readiness"][data-template-id="public-synthetic-template-upper"]').click();
   const colorPackages = [
     "heritage-atlas", "signal-garden", "alpine-ledger", "training-hall", "harbor-pulse",
     "prairie-electric", "redwood-circuit", "mediterranean-set", "modern-primary", "night-stadium"
@@ -885,10 +918,8 @@ test("start and readiness sheets retain contrast across every package and theme"
     }
   };
 
-  await auditSheet("confirm");
-  await page.getByRole("button", { name: "Log today’s readiness", exact: true }).click();
   await auditSheet("readiness");
-  expect(failures, "the complete confirm/readiness sheet matrix must clear WCAG text contrast").toEqual([]);
+  expect(failures, "the optional readiness sheet matrix must clear WCAG text contrast").toEqual([]);
 });
 
 test("readiness form targets reflow without clipping at 320 CSS pixels and 200 percent text", async ({ page }, testInfo) => {
@@ -896,9 +927,8 @@ test("readiness form targets reflow without clipping at 320 CSS pixels and 200 p
   test.skip(testInfo.project.name !== "desktop", "One deterministic Chromium project owns the exact readiness reflow geometry.");
   await installScenario(page, { activeWorkout: false, includeHistory: false, viewport: { width: 320, height: 720 } });
   await page.addStyleTag({ content: "html { font-size: 200% !important; }" });
-  await page.locator('[data-action="start-template"][data-template-id="public-synthetic-template-upper"]').click();
-  await page.getByRole("button", { name: "Log today’s readiness", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "How did you arrive?", exact: true });
+  await page.locator('[data-action="log-template-readiness"][data-template-id="public-synthetic-template-upper"]').click();
+  const dialog = page.getByRole("dialog", { name: "What is different today?", exact: true });
   await expect(dialog).toBeVisible();
 
   const geometry = await dialog.evaluate((sheet) => {
@@ -934,6 +964,7 @@ test("readiness form targets reflow without clipping at 320 CSS pixels and 200 p
 
 test("cancel-workout dialog owns safe focus, traps both directions, and restores its trigger after Escape, close, and backdrop", async ({ page }) => {
   await installScenario(page);
+  await openPrimaryTab(page, "lift");
   const trigger = page.locator(`[data-action="request-cancel-workout"][data-session-id="${ACTIVE_SESSION_ID}"]`);
   const menu = page.locator('[data-action="session-menu"]');
   await expect(trigger).toHaveCount(1);
@@ -945,7 +976,7 @@ test("cancel-workout dialog owns safe focus, traps both directions, and restores
   await expect.soft(page.locator("#main-content"), "A destructive sheet must make workout content inert").toHaveAttribute("inert", "");
   await expect.soft(page.locator(".session-dock"), "A destructive sheet must overlay and make the persistent session dock inert").toHaveAttribute("inert", "");
   await expect.soft(page.locator(".session-dock")).toHaveAttribute("aria-hidden", "true");
-  await expectDialogTrap(page, dialog, dialog.getByRole("button", { name: "Keep Workout", exact: true }));
+  await expectDialogTrap(page, dialog, dialog.getByRole("button", { name: "Keep workout", exact: true }));
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
   await expect.soft(menu, "Escape must restore focus to the durable Workout menu trigger").toBeFocused({ timeout: 1_500 });
@@ -954,7 +985,7 @@ test("cancel-workout dialog owns safe focus, traps both directions, and restores
   await trigger.click();
   dialog = page.getByRole("dialog", { name: "Cancel this workout?", exact: true });
   await expect(dialog).toBeVisible();
-  await dialog.getByRole("button", { name: "Keep Workout", exact: true }).click();
+  await dialog.getByRole("button", { name: "Keep workout", exact: true }).click();
   await expect(dialog).toHaveCount(0);
   await expect.soft(menu, "The safe close action must restore focus to the durable Workout menu trigger").toBeFocused({ timeout: 1_500 });
 
@@ -971,7 +1002,7 @@ test("cancel-workout dialog owns safe focus, traps both directions, and restores
   }));
   expect.soft(backdropOutcome, "Backdrop dismissal must close the dialog and restore its durable trigger").toEqual({ closed: true, triggerFocused: true });
   if (!backdropOutcome.closed) {
-    await dialog.getByRole("button", { name: "Keep Workout", exact: true }).click();
+    await dialog.getByRole("button", { name: "Keep workout", exact: true }).click();
     await expect(dialog).toHaveCount(0);
   }
 });
@@ -993,7 +1024,7 @@ test("browser Back guards dirty history edits and reload cannot persist the temp
   const historyEntry = page.locator(`[data-action="open-session"][data-session-id="${originalSession.id}"]`).first();
   await expect(historyEntry, "Dashboard history must provide the deterministic entry used to create a browser history record").toBeVisible();
   await historyEntry.click();
-  await expect(page).toHaveURL(/#today$/);
+  await expect(page).toHaveURL(/#workout$/);
   await page.getByRole("button", { name: "Edit History", exact: true }).click();
   await page.locator("summary").filter({ hasText: "Workout details" }).click();
 
@@ -1005,13 +1036,13 @@ test("browser Back guards dirty history edits and reload cannot persist the temp
 
   const dialog = page.getByRole("dialog", { name: "Cancel these edits?", exact: true });
   await expect(dialog, "Browser Back must invoke the same cancel-edit confirmation as explicit navigation").toBeVisible();
-  await expect(page, "A blocked browser Back must restore the canonical Today URL for the submitted workout").toHaveURL(/#today$/);
+  await expect(page, "A blocked browser Back must restore the canonical workout-context URL for the submitted workout").toHaveURL(/#workout$/);
   await expect(page.locator('[data-action="session-title"]'), "The guarded edit must remain visible and temporary beneath the dialog").toHaveValue(temporaryTitle);
   await dialog.getByRole("button", { name: "Keep Editing", exact: true }).click();
   await expect(page.locator('[data-action="session-title"]')).toHaveValue(temporaryTitle);
-  await primaryTab(page, "progress").click();
-  await expect(dialog, "Explicit tab navigation must retain the same established cancel-edit guard").toBeVisible();
-  await expect(page).toHaveURL(/#today$/);
+  await page.locator('[data-action="close-workout-context"]').click();
+  await expect(dialog, "Explicit contextual navigation must retain the same established cancel-edit guard").toBeVisible();
+  await expect(page).toHaveURL(/#workout$/);
   await expect(page.locator('[data-action="session-title"]')).toHaveValue(temporaryTitle);
   await dialog.getByRole("button", { name: "Keep Editing", exact: true }).click();
   const persistedDuringEdit = await readPersistedAppData(page);
@@ -1517,6 +1548,7 @@ test("set transitions preserve manual scroll and the retired workout-board jump 
     };
   });
   await installScenario(page, { reducedMotion: "reduce", viewport: { width: 320, height: 360 } });
+  await openPrimaryTab(page, "lift");
   const setTwo = page.locator('[data-action="toggle-set"][data-set-id="public-synthetic-active-exercise-1-set-2"]');
   const setTwoReps = page.locator('[data-action="set-reps"][data-set-id="public-synthetic-active-exercise-1-set-2"]');
   await expect(setTwo).toHaveAttribute("aria-pressed", "false");
@@ -1528,7 +1560,7 @@ test("set transitions preserve manual scroll and the retired workout-board jump 
   await expect(setTwoReps).toBeFocused();
   await setTwo.dispatchEvent("pointerdown", { bubbles: true, isPrimary: true, pointerType: "touch" });
   expect(
-    await setTwoReps.evaluate((element) => document.activeElement === element),
+    await page.evaluate(() => document.activeElement?.dataset?.action === "set-reps"),
     "Touching the completion checkmark must release the focused set-entry field before completion"
   ).toBe(false);
   await page.evaluate(() => { globalThis.__SCROLL_INTO_VIEW_AUDIT__ = []; });
@@ -1572,7 +1604,7 @@ test("forced-colors mode retains a visible non-shadow focus indicator on navigat
 test("all primary views reflow at 320 CSS pixels with 200 percent text and no document overflow", async ({ page }, testInfo) => {
   test.setTimeout(90_000);
   test.skip(testInfo.project.name !== "desktop", "One deterministic Chromium project owns the exact 320 CSS-pixel increased-text matrix.");
-  await installScenario(page, { includeHistory: false, viewport: { width: 320, height: 720 } });
+  await installScenario(page, { activeWorkout: false, includeHistory: false, viewport: { width: 320, height: 720 } });
   const rootBaseline = await page.evaluate(() => Number.parseFloat(getComputedStyle(document.documentElement).fontSize));
   const textBaselines = new Map();
 

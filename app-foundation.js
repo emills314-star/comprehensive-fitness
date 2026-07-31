@@ -65,14 +65,15 @@
         readinessBaseline: { ...defaultReadinessBaseline }
       };
       let data = emptyData();
-      const primaryTabIds = ["today", "plan", "progress", "more"];
+      const primaryTabIds = ["today", "progress"];
       const focusActionAllowlist = new Set([
         "set-tab", "start-template", "start-next-template", "toggle-set", "set-weight", "set-reps", "set-rpe", "set-duration", "set-distance", "reconcile-apply", "reconcile-dismiss", "session-menu", "request-submit-workout", "request-cancel-workout", "request-save-history-edits", "request-cancel-history-edits", "clear-data",
-        "return-active-workout", "use-usual-readiness", "review-template-readiness", "start-adjusted-workout",
+        "resume-active-workout", "finish-active-workout", "discard-active-workout", "log-template-readiness", "log-workout-readiness", "start-workout-with-readiness", "save-workout-readiness",
+        "open-routines", "open-settings", "close-secondary-context", "close-workout-context",
         "keep-workout", "keep-history-editing", "cancel-clear-data",
         "open-history", "open-progress", "retry-view-render", "focus-workout-exercise",
         "show-chart-point", "close-chart-point",
-        "cancel-template-start", "log-today-readiness", "edit-readiness-metrics", "start-original-workout", "adjust-template-readiness",
+        "cancel-template-start", "adjust-template-readiness",
         "template-readiness-sleep-hours", "template-readiness-sleep-quality", "template-readiness-hrv", "template-readiness-resting-hr",
         "template-readiness-soreness", "template-readiness-nutrition", "template-readiness-protein", "template-readiness-illness",
         "template-readiness-pain", "template-readiness-affected-muscle", "template-readiness-note",
@@ -194,7 +195,7 @@
       let interactionRenderFrame = 0;
       let pendingFocusDescriptor = null;
       let renderedDialogKey = "";
-      const dialogFocusOrigins = { template: null, cancel: null, history: null, clear: null };
+      const dialogFocusOrigins = { template: null, readiness: null, cancel: null, history: null, clear: null };
       const performanceDebugEnabled = ["127.0.0.1", "localhost"].includes(window.location.hostname) && new URLSearchParams(window.location.search).has("perf");
       const performanceFixtureEnabled = performanceDebugEnabled && new URLSearchParams(window.location.search).get("perfFixture") === "large";
       const performanceEvents = [];
@@ -287,10 +288,12 @@
       });
       const recentHistoryDataIssueIds = new Set();
       let templateStartFlow = null;
+      let optionalReadinessFlow = null;
       const prescriptionApi = window.ComprehensiveFitnessPrescriptionEngine || null;
       const exceptionResolverApi = window.FitnessExceptionResolver || null;
       let prescriptionEngine = prescriptionApi?.createPrescriptionEngine({}) || null;
-      let prescriptionEvidenceStatus = { state: "loading", personalRecords: 0, researchExercises: 0, personalVersion: "unknown", researchVersion: "unknown", message: "Loading training evidence." };
+      let exerciseIdentityCatalogPromise = null;
+      let importValidationResearchPromise = null;
       const expandedTemplateEditorIds = new Set();
 
       const svgIcon = (paths, viewBox = "0 0 24 24") => '<svg class="ui-icon" viewBox="' + viewBox + '" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + paths + '</svg>';
@@ -937,6 +940,11 @@
         })[key] || key;
       }
 
+      function appMuscleFromCustomGroup(value) {
+        const canonical = canonicalCustomMuscleGroup(value);
+        return muscleGroups.find((muscle) => canonicalCustomMuscleGroup(muscle) === canonical) || "";
+      }
+
       function normalizeCustomExerciseProfile(profile) {
         if (!profile || typeof profile !== "object" || Array.isArray(profile)) return null;
         const primaryMuscleGroupId = canonicalCustomMuscleGroup(profile.primaryMuscleGroupId);
@@ -1002,6 +1010,10 @@
         const requestedSetCount = Math.max(1, Math.round(numeric(exercise.sets, aggregateSetCount || 3)));
         const sourceRepMins = sourceTypes.map((item) => Number(item.repMin || 0)).filter((value) => value > 0);
         const sourceRepMaxes = sourceTypes.map((item) => Number(item.repMax || item.repMin || 0)).filter((value) => value > 0);
+        const legacyExactReps = sourceTypes.length === 0
+          && Number(exercise.reps) > 0
+          && !Object.prototype.hasOwnProperty.call(exercise, "repMin")
+          && !Object.prototype.hasOwnProperty.call(exercise, "repMax");
         const stableRepMin = Math.max(1, Math.round(numeric(exercise.repMin, sourceRepMins.length ? Math.min(...sourceRepMins) : numeric(exercise.reps, profile.lowerRep || 8))));
         const stableRepMax = Math.max(stableRepMin, Math.round(numeric(exercise.repMax, sourceRepMaxes.length ? Math.max(...sourceRepMaxes) : numeric(exercise.reps, profile.upperRep || stableRepMin))));
         const sourceRpes = sourceTypes.flatMap((item) => [Number(item.rpeMax || item.targetRpe || 0), Number(item.rpeMin || 0)]).filter((value) => value > 0);
@@ -1043,6 +1055,8 @@
           setCount: requestedSetCount,
           repMin: stableRepMin,
           repMax: stableRepMax,
+          exactReps: legacyExactReps,
+          rangeSource: legacyExactReps ? "legacy-exact" : "program",
           rpeMin: Math.max(1, stableTargetRpe - 1),
           rpeMax: stableTargetRpe,
           restSeconds: stableRestSeconds,
@@ -1405,52 +1419,58 @@
         }
       }
 
-      async function loadPrescriptionEvidence(options = {}) {
-        if (!prescriptionApi) {
-          prescriptionEvidenceStatus = { state: "unavailable", personalRecords: 0, researchExercises: 0, personalVersion: "unknown", researchVersion: "unknown", message: "The unified prescription module did not load." };
-          return false;
-        }
-        const researchBaseUrl = "./research_database/exports/json";
-        const personalEvidencePackage = Object.prototype.hasOwnProperty.call(options, "personalEvidencePackage")
-          ? options.personalEvidencePackage
-          : data.personalEvidencePackage;
-        const persistedPersonalData = personalEvidencePackage?.personalData || null;
-        let bundle = null;
-        let sourceLabel = persistedPersonalData ? "imported local evidence" : "research defaults";
-        try {
-          const researchBundle = await prescriptionApi.loadEvidenceFromUrls({ researchBaseUrl, personalData: {} });
-          bundle = persistedPersonalData
-            ? prescriptionApi.normalizeEvidenceBundle({ personalData: persistedPersonalData, research: researchBundle.research })
-            : researchBundle;
-          if (!bundle) bundle = researchBundle;
-          const nextPrescriptionEngine = prescriptionApi.createPrescriptionEngine(bundle);
-          const personalRecords = bundle.personal.exercisePrescriptions.length + bundle.personal.exerciseScores.length + bundle.personal.exerciseMuscleScores.length;
-          const nextPrescriptionEvidenceStatus = {
-            state: bundle.research.exerciseDatabase.length ? "ready" : "research_unavailable",
-            source: sourceLabel,
-            personalRecords,
-            researchExercises: bundle.research.exerciseDatabase.length,
-            personalVersion: bundle.versions.personal,
-            researchVersion: bundle.versions.research,
-            message: personalRecords
-              ? `Unified engine loaded ${personalRecords} personal prescription/score records and ${bundle.research.exerciseDatabase.length} research exercises from ${sourceLabel}.`
-              : `Unified engine loaded ${bundle.research.exerciseDatabase.length} research exercises. Import the private personal evidence package on devices that cannot access the protected local files.`
-          };
-          prescriptionEngine = nextPrescriptionEngine;
-          prescriptionEvidenceStatus = nextPrescriptionEvidenceStatus;
-          invalidateCompletedAnalysis();
-          return true;
-        } catch (error) {
-          if (options.preserveCurrentOnFailure === true) return false;
-          prescriptionEngine = prescriptionApi.createPrescriptionEngine({});
-          prescriptionEvidenceStatus = { state: "error", personalRecords: 0, researchExercises: 0, personalVersion: "unknown", researchVersion: "unknown", message: `Prescription evidence could not be loaded: ${error?.message || error}` };
-          invalidateCompletedAnalysis();
-          return false;
-        }
+      async function fetchIdentityCompatibilityRecords(url, label) {
+        const response = await fetch(url, { credentials: "same-origin" });
+        if (!response.ok) throw new Error(`Unable to load ${label} (${response.status}).`);
+        const records = await response.json();
+        if (!Array.isArray(records)) throw new Error(`${label} must be an array.`);
+        return records;
       }
 
-      async function initializePrescriptionEvidence() {
-        return loadPrescriptionEvidence();
+      function loadExerciseIdentityCatalog() {
+        if (!exerciseIdentityCatalogPromise) {
+          exerciseIdentityCatalogPromise = fetchIdentityCompatibilityRecords(
+            "./research_database/exports/json/exercise_database.json",
+            "the exercise identity catalog"
+          ).catch((error) => {
+            exerciseIdentityCatalogPromise = null;
+            throw error;
+          });
+        }
+        return exerciseIdentityCatalogPromise;
+      }
+
+      function loadImportValidationResearch() {
+        if (!importValidationResearchPromise) {
+          importValidationResearchPromise = Promise.all([
+            loadExerciseIdentityCatalog(),
+            fetchIdentityCompatibilityRecords(
+              "./research_database/exports/json/exercise_muscle_map.json",
+              "the legacy snapshot validation map"
+            )
+          ]).then(([exerciseDatabase, exerciseMuscleMap]) => ({ exerciseDatabase, exerciseMuscleMap }))
+            .catch((error) => {
+              importValidationResearchPromise = null;
+              throw error;
+            });
+        }
+        return importValidationResearchPromise;
+      }
+
+      function installExerciseIdentityCompatibility(exerciseDatabase, preparedEngine = null) {
+        if (!prescriptionApi || !Array.isArray(exerciseDatabase)) return false;
+        prescriptionEngine = preparedEngine || prescriptionApi.createPrescriptionEngine({ personalData: {}, researchData: { exerciseDatabase } });
+        return true;
+      }
+
+      async function initializeExerciseIdentityCompatibility() {
+        if (!prescriptionApi) return false;
+        try {
+          return installExerciseIdentityCompatibility(await loadExerciseIdentityCatalog());
+        } catch {
+          prescriptionEngine = prescriptionApi.createPrescriptionEngine({});
+          return false;
+        }
       }
 
       function normalizePrescriptionIdentity(value) {
@@ -2619,11 +2639,12 @@
       function tabFromLocation() {
         const hash = window.location.hash.replace(/^#/, "").toLowerCase();
         if (["progress-overview", "progress-lifts", "progress-history", "dashboard", "charts"].includes(hash)) return "progress";
-        if (["lift", "workout"].includes(hash)) return "today";
-        if (["data", "settings"].includes(hash)) return "more";
+        if (["lift", "workout"].includes(hash)) return "workout";
+        if (["plan", "routines"].includes(hash)) return "routines";
+        if (["more", "data", "settings"].includes(hash)) return "settings";
         if (primaryTabIds?.includes(hash)) return hash;
         const legacyView = new URLSearchParams(window.location.search).get("view");
-        return legacyView === "settings" ? "more" : "today";
+        return legacyView === "settings" ? "settings" : "today";
       }
 
       function tabUrl(tab) {
@@ -2634,10 +2655,12 @@
       }
 
       function normalizedDestination(tab) {
-        if (["lift", "workout", "today"].includes(tab)) return "today";
+        if (["lift", "workout"].includes(tab)) return "workout";
+        if (tab === "today") return "today";
         if (["dashboard", "charts", "progress"].includes(tab)) return "progress";
-        if (["data", "settings", "more"].includes(tab)) return "more";
-        return tab === "plan" ? "plan" : "today";
+        if (["plan", "routines"].includes(tab)) return "routines";
+        if (["data", "settings", "more"].includes(tab)) return "settings";
+        return "today";
       }
 
       function actionFocusDescriptor(action, dataValues = {}, ordinal = 0) {
@@ -2734,6 +2757,7 @@
 
       function activeDialogKey() {
         if (templateStartFlow) return `template:${templateStartFlow.templateId}:${templateStartFlow.step}`;
+        if (optionalReadinessFlow) return `readiness:${optionalReadinessFlow.templateId || optionalReadinessFlow.sessionId}`;
         if (cancelWorkoutFlow) return `cancel:${cancelWorkoutFlow.sessionId}`;
         if (historyEditConfirm) return `history:${historyEditConfirm}`;
         if (clearDataFlow?.open) return "clear";
@@ -2742,14 +2766,9 @@
 
       function activeDialogInitialFocusDescriptor() {
         if (templateStartFlow) {
-          const action = ({
-            "active-conflict": "return-active-workout",
-            confirm: "log-today-readiness",
-            readiness: "template-readiness-sleep-hours",
-            review: "start-adjusted-workout"
-          })[templateStartFlow.step] || "log-today-readiness";
-          return actionFocusDescriptor(action);
+          return actionFocusDescriptor("resume-active-workout");
         }
+        if (optionalReadinessFlow) return actionFocusDescriptor("template-readiness-sleep-hours");
         if (cancelWorkoutFlow) return actionFocusDescriptor("keep-workout");
         if (historyEditConfirm) return actionFocusDescriptor("keep-history-editing");
         if (clearDataFlow?.open) return actionFocusDescriptor("cancel-clear-data");
@@ -2767,7 +2786,7 @@
 
       function setActiveTab(nextTab, options = {}) {
         const next = normalizedDestination(nextTab);
-        if (historyEditFlow && next !== "today" && !options.allowHistoryExit) {
+        if (historyEditFlow && next !== "workout" && !options.allowHistoryExit) {
           requestHistoryEditConfirmation("cancel", { preserveOrigin: true });
           return;
         }

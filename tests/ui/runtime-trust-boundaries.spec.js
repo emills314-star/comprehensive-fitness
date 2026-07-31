@@ -44,10 +44,13 @@ async function createFixturePage(browser, baseURL, fixture) {
   const page = await context.newPage();
   await page.goto("/");
   await expect(page.locator("main.app-main")).toBeVisible({ timeout: 45_000 });
-  await expect.poll(() => page.evaluate(() => String(prescriptionEvidenceStatus?.state || "loading")), {
-    message: "the public recommendation bundle must reach a terminal state",
+  await expect.poll(() => page.evaluate(() => {
+    const identity = prescriptionEngine?.resolveExerciseIdentity?.("Barbell Bench Press");
+    return identity?.status === "resolved" ? identity.exerciseId : "";
+  }), {
+    message: "the identity compatibility catalog must resolve a known exercise before trust-boundary actions run",
     timeout: 45_000
-  }).not.toBe("loading");
+  }).toBe("ex_barbell_bench_press");
   return { context, page };
 }
 
@@ -85,11 +88,22 @@ async function writePersistedRecord(page, value, updatedAt) {
 }
 
 async function openPrimaryTab(page, tabId) {
-  const destination = ({ lift: "today", dashboard: "progress", charts: "progress", data: "more" })[tabId] || tabId;
+  if (tabId === "data") {
+    if (await page.locator(".settings-view").isVisible().catch(() => false)) return;
+    await page.locator('[data-action="open-settings"]').click();
+    await expect(page).toHaveURL(/#settings$/);
+    return;
+  }
+  if (tabId === "plan") {
+    if (await page.locator(".templates-view").isVisible().catch(() => false)) return;
+    await page.locator('[data-action="open-routines"]').click();
+    await expect(page).toHaveURL(/#routines$/);
+    return;
+  }
+  const destination = ({ lift: "today", dashboard: "progress", charts: "progress" })[tabId] || tabId;
   const tab = page.locator(`[data-action="set-tab"][data-tab="${destination}"]`);
   await tab.click();
   await expect(tab).toHaveAttribute("aria-current", "page");
-  if (tabId === "charts" || tabId === "dashboard") await page.locator(`[data-action="set-progress-view"][data-progress-view="${tabId === "charts" ? "lifts" : "overview"}"]`).click();
 }
 
 async function openBackupGroup(page) {
@@ -109,12 +123,6 @@ async function armImportAudit(page) {
     const realWrite = writeIndexedValue;
     const realImport = importDataFile;
     const realScheduleSave = scheduleSave;
-    const muscleCacheKey = `runtime-trust-muscle-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const prescriptionCacheKey = `runtime-trust-prescription-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const muscleSentinel = Object.freeze({ kind: "muscle", key: muscleCacheKey });
-    const prescriptionSentinel = Object.freeze({ kind: "prescription", key: prescriptionCacheKey });
-    muscleAssignmentCache.set(muscleCacheKey, muscleSentinel);
-    prescriptionSnapshotCache.set(prescriptionCacheKey, prescriptionSentinel);
     const state = globalThis.__CF_RUNTIME_IMPORT_AUDIT__ = {
       beforeData: data,
       beforeDataJson: JSON.stringify(data),
@@ -122,12 +130,8 @@ async function armImportAudit(page) {
       beforeRevision: Number(data.dataRevision || 0),
       beforeAnalysisRevision: analysisRevision,
       beforeEngine: prescriptionEngine,
-      beforeEvidenceStatus: prescriptionEvidenceStatus,
-      beforeEvidenceStatusJson: JSON.stringify(prescriptionEvidenceStatus || null),
-      muscleCacheKey,
-      prescriptionCacheKey,
-      muscleSentinel,
-      prescriptionSentinel,
+      beforeIdentityCatalog: prescriptionEngine?.evidence?.research?.exerciseDatabase,
+      beforeIdentityJson: JSON.stringify(prescriptionEngine?.resolveExerciseIdentity?.("Barbell Bench Press") || null),
       writesStarted: 0,
       writesSettled: 0,
       importsStarted: 0,
@@ -170,10 +174,13 @@ async function collectImportAudit(page) {
       persistedJsonUnchanged: JSON.stringify(persisted) === state.beforePersistedJson,
       analysisRevisionUnchanged: analysisRevision === state.beforeAnalysisRevision,
       engineReferenceUnchanged: prescriptionEngine === state.beforeEngine,
-      evidenceStatusReferenceUnchanged: prescriptionEvidenceStatus === state.beforeEvidenceStatus,
-      evidenceStatusJsonUnchanged: JSON.stringify(prescriptionEvidenceStatus || null) === state.beforeEvidenceStatusJson,
-      muscleCacheSentinelRetained: muscleAssignmentCache.get(state.muscleCacheKey) === state.muscleSentinel,
-      prescriptionCacheSentinelRetained: prescriptionSnapshotCache.get(state.prescriptionCacheKey) === state.prescriptionSentinel,
+      identityCatalogReferenceUnchanged: prescriptionEngine?.evidence?.research?.exerciseDatabase === state.beforeIdentityCatalog,
+      identityResolutionUnchanged: JSON.stringify(prescriptionEngine?.resolveExerciseIdentity?.("Barbell Bench Press") || null) === state.beforeIdentityJson,
+      identityEnginePersonalRows: [
+        prescriptionEngine?.evidence?.personal?.exercisePrescriptions,
+        prescriptionEngine?.evidence?.personal?.exerciseScores,
+        prescriptionEngine?.evidence?.personal?.exerciseMuscleScores
+      ].reduce((count, rows) => count + (Array.isArray(rows) ? rows.length : 0), 0),
       currentRevision: Number(data.dataRevision),
       currentRevisionIsSafe: Number.isSafeInteger(data.dataRevision) && data.dataRevision >= 0,
       persistedRevision: Number(persisted?.dataRevision),
@@ -466,17 +473,19 @@ function activeBackupWithSnapshot(snapshot, options = {}) {
 }
 
 async function generateRealSnapshotFixtures(page) {
-  return page.evaluate(() => {
+  return page.evaluate(async () => {
     const api = globalThis.ComprehensiveFitnessPrescriptionEngine;
     if (!api?.deserializeRecommendationSnapshot || !api?.refreshRecommendationChecksum) {
       throw new Error("The real recommendation serializer API is unavailable.");
     }
-    const identity = prescriptionEngine.resolveExerciseIdentity("Barbell Bench Press");
-    const target = prescriptionEngine.resolveDefaultPrescriptionTarget("Barbell Bench Press");
+    const researchData = await loadImportValidationResearch();
+    const validationEngine = api.createPrescriptionEngine({ personalData: {}, researchData });
+    const identity = validationEngine.resolveExerciseIdentity("Barbell Bench Press");
+    const target = validationEngine.resolveDefaultPrescriptionTarget("Barbell Bench Press");
     if (identity?.status !== "resolved" || target?.status !== "resolved") {
       throw new Error(`The public Bench Press identity/target fixture did not resolve: ${JSON.stringify({ identity, target })}`);
     }
-    const valid = prescriptionEngine.prescribeExercise({
+    const valid = validationEngine.prescribeExercise({
       exerciseId: identity.exerciseId,
       muscleGroupId: target.muscleGroupId,
       history: [],
@@ -523,20 +532,15 @@ test("stored snapshots preserve immutable history but validate every executable 
   try {
     snapshots = await generateRealSnapshotFixtures(generator.page);
     const templateControl = await generator.page.evaluate((validSnapshot) => {
-      const templateExercise = data.templates[0].exercises[0];
-      const executableTemplateRecord = { ...templateExercise, recommendationSnapshot: validSnapshot };
       const beforeBytes = JSON.stringify(validSnapshot);
-      const result = unifiedPrescriptionSnapshot(executableTemplateRecord);
-      const restored = globalThis.ComprehensiveFitnessPrescriptionEngine.deserializeRecommendationSnapshot(result);
+      const restored = globalThis.ComprehensiveFitnessPrescriptionEngine.deserializeRecommendationSnapshot(validSnapshot);
       return {
-        sameReference: result === executableTemplateRecord.recommendationSnapshot,
         beforeBytes,
-        afterBytes: JSON.stringify(result),
+        afterBytes: JSON.stringify(validSnapshot),
         checksum: restored.checksum
       };
     }, snapshots.valid);
-    expect.soft(templateControl.sameReference, "a checksum-valid executable template snapshot may be reused without regeneration").toBe(true);
-    expect.soft(templateControl.afterBytes, "valid executable template reuse must preserve exact bytes").toBe(templateControl.beforeBytes);
+    expect.soft(templateControl.afterBytes, "on-demand validation must not mutate a checksum-valid legacy snapshot").toBe(templateControl.beforeBytes);
     expect.soft(templateControl.checksum, "the template control must use a real engine checksum").toMatch(/^[0-9a-f]{8}$/);
   } finally {
     await generator.context.close();
@@ -569,18 +573,20 @@ test("stored snapshots preserve immutable history but validate every executable 
       const lifecycle = await importBackup(page, group, candidate, "public-synthetic-immutable-history.json");
       const observed = await page.evaluate((exerciseId) => {
         const exercise = data.exercises.find((item) => item.id === exerciseId);
-        const calls = { identity: 0, target: 0, prescribe: 0 };
-        prescriptionEngine.resolveExerciseIdentity = function () { calls.identity += 1; throw new Error("immutable history must not resolve identity"); };
-        prescriptionEngine.resolveDefaultPrescriptionTarget = function () { calls.target += 1; throw new Error("immutable history must not resolve target"); };
-        prescriptionEngine.prescribeExercise = function () { calls.prescribe += 1; throw new Error("immutable history must not regenerate"); };
-        const beforeBytes = JSON.stringify(exercise.recommendationSnapshot);
-        const result = unifiedPrescriptionSnapshot(exercise);
-        return { calls, sameReference: result === exercise.recommendationSnapshot, beforeBytes, afterBytes: JSON.stringify(result) };
+        return {
+          exerciseBytes: JSON.stringify(exercise.recommendationSnapshot),
+          historyBytes: JSON.stringify(data.recommendationHistory[0]),
+          identityEnginePersonalRows: [
+            prescriptionEngine?.evidence?.personal?.exercisePrescriptions,
+            prescriptionEngine?.evidence?.personal?.exerciseScores,
+            prescriptionEngine?.evidence?.personal?.exerciseMuscleScores
+          ].reduce((count, rows) => count + (Array.isArray(rows) ? rows.length : 0), 0)
+        };
       }, candidate.exercises[0].id);
       expect.soft(lifecycle.state, "submitted historical snapshots remain importable as immutable evidence").toBe("accepted");
-      expect.soft(observed.calls).toEqual({ identity: 0, target: 0, prescribe: 0 });
-      expect.soft(observed.sameReference).toBe(true);
-      expect.soft(observed.afterBytes).toBe(observed.beforeBytes);
+      expect.soft(observed.exerciseBytes).toBe(JSON.stringify(historical));
+      expect.soft(observed.historyBytes).toBe(JSON.stringify(historical));
+      expect.soft(observed.identityEnginePersonalRows, "Historical evidence must not enrich the normal identity-only runtime").toBe(0);
     } finally {
       await context.close();
     }
@@ -630,10 +636,9 @@ test("stored snapshots preserve immutable history but validate every executable 
           expect.soft(audit.persistedJsonUnchanged, `${scenario.name} must preserve durable bytes`).toBe(true);
           expect.soft(audit.analysisRevisionUnchanged, `${scenario.name} must preserve the analysis revision`).toBe(true);
           expect.soft(audit.engineReferenceUnchanged, `${scenario.name} must preserve the engine`).toBe(true);
-          expect.soft(audit.evidenceStatusReferenceUnchanged, `${scenario.name} must preserve evidence status identity`).toBe(true);
-          expect.soft(audit.evidenceStatusJsonUnchanged, `${scenario.name} must preserve evidence status bytes`).toBe(true);
-          expect.soft(audit.muscleCacheSentinelRetained, `${scenario.name} must retain muscle cache entries`).toBe(true);
-          expect.soft(audit.prescriptionCacheSentinelRetained, `${scenario.name} must retain prescription cache entries`).toBe(true);
+          expect.soft(audit.identityCatalogReferenceUnchanged, `${scenario.name} must preserve the identity catalog reference`).toBe(true);
+          expect.soft(audit.identityResolutionUnchanged, `${scenario.name} must preserve known identity resolution`).toBe(true);
+          expect.soft(audit.identityEnginePersonalRows, `${scenario.name} must not activate embedded analytical evidence in the normal runtime`).toBe(0);
         }
       } finally {
         await context.close();
@@ -641,39 +646,6 @@ test("stored snapshots preserve immutable history but validate every executable 
     });
   }
 
-  await test.step("a corrupt in-memory executable snapshot hard-rejects without regeneration", async () => {
-    const active = activeBackupWithSnapshot(snapshots.valid);
-    const { context, page } = await createFixturePage(browser, baseURL, active);
-    try {
-      const result = await page.evaluate((staleSnapshot) => {
-        const exercise = data.exercises[0];
-        exercise.recommendationSnapshot = staleSnapshot;
-        let prescribeCalls = 0;
-        const realPrescribe = prescriptionEngine.prescribeExercise;
-        prescriptionEngine.prescribeExercise = function (...args) {
-          prescribeCalls += 1;
-          return Reflect.apply(realPrescribe, this, args);
-        };
-        const resolved = unifiedPrescriptionSnapshot(exercise);
-        return { prescribeCalls, resolved };
-      }, snapshots.staleChecksum);
-      expect.soft(result.prescribeCalls, "corrupt stored executable evidence must never trigger silent regeneration").toBe(0);
-      expect.soft(result.resolved, "corrupt executable evidence must use the deterministic zero-execution contract").toMatchObject({
-        type: "hard_constraint_rejection",
-        kind: "hard_constraint_rejection",
-        hardConstraint: true,
-        executionBlocked: true,
-        executable: false,
-        reason: "invalid_stored_recommendation_snapshot",
-        sets: 0,
-        reps: 0,
-        weight: 0,
-        executableActions: []
-      });
-    } finally {
-      await context.close();
-    }
-  });
 });
 
 async function openTemplateEditor(page) {
@@ -879,6 +851,9 @@ test("template numeric values share one fail-closed draft, model, import, and de
 });
 
 async function prepareSubmissionFixture(page) {
+  const resume = page.locator('[data-action="resume-active-workout"]').first();
+  if (await resume.isVisible().catch(() => false)) await resume.click();
+  await expect(page.locator(".workout-view")).toBeVisible();
   const completed = page.locator(`[data-action="toggle-set"][data-set-id="${IDS.activeBenchSet1}"]`);
   await completed.click();
   await page.locator(`#set-${IDS.activeRowSet2} .set-tools-disclosure > summary`).click();
@@ -899,7 +874,6 @@ async function installFullSubmissionProbe(page) {
       submitWorkout,
       submitWorkoutPrs,
       calculateWorkoutAnalysis,
-      evaluateWorkoutOverrideOutcomes,
       writeIndexedValue,
       queueActiveWorkoutSync,
       playWorkoutCompletionSound,
@@ -910,7 +884,6 @@ async function installFullSubmissionProbe(page) {
       attempts: [],
       prCalls: [],
       analysisCalls: [],
-      overrideCalls: [],
       writesStarted: 0,
       writesSettled: 0,
       syncCalls: 0,
@@ -928,10 +901,6 @@ async function installFullSubmissionProbe(page) {
     calculateWorkoutAnalysis = function (...args) {
       probe.analysisCalls.push(String(args[0]?.id || ""));
       return Reflect.apply(real.calculateWorkoutAnalysis, this, args);
-    };
-    evaluateWorkoutOverrideOutcomes = function (...args) {
-      probe.overrideCalls.push(String(args[0]?.id || ""));
-      return Reflect.apply(real.evaluateWorkoutOverrideOutcomes, this, args);
     };
     writeIndexedValue = async function (...args) {
       const appData = args[0] === "app-data";
@@ -1015,7 +984,6 @@ test("direct reentry and rapid duplicate UI confirmation produce one complete su
         expect.soft(result.probe.attempts, `${scenario.name} must exercise two real submit entry attempts`).toEqual([[IDS.activeSession], [IDS.activeSession]]);
         expect.soft(result.probe.prCalls, `${scenario.name} must calculate PRs once`).toEqual([IDS.activeSession]);
         expect.soft(result.probe.analysisCalls, `${scenario.name} must calculate analysis once`).toEqual([IDS.activeSession]);
-        expect.soft(result.probe.overrideCalls, `${scenario.name} must evaluate overrides once`).toEqual([IDS.activeSession]);
         expect.soft(result.probe.writesStarted, `${scenario.name} must enqueue one app-data write`).toBe(1);
         expect.soft(result.probe.writesSettled, `${scenario.name} must settle one app-data write`).toBe(1);
         expect.soft(result.probe.syncCalls, `${scenario.name} must enqueue cloud-sync evaluation once`).toBe(1);

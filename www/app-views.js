@@ -7,22 +7,33 @@
           root.innerHTML = '<section class="state loading-state" role="status" aria-live="polite"><div class="state-skeleton" aria-hidden="true"><span class="skeleton skeleton-kicker"></span><span class="skeleton skeleton-title"></span><span class="skeleton skeleton-panel"></span></div><span class="visually-hidden">Loading your training log...</span></section>';
           return;
         }
+        if (activeTab === "workout" && !hasActiveWorkout() && !viewingHistorySessionId && !completedSummarySessionId) {
+          activeTab = "today";
+          window.history.replaceState({ ...(window.history.state || {}), tab: "today" }, "", tabUrl("today"));
+        }
         if (templateStartFlow && !data.templates.some((template) => template.id === templateStartFlow.templateId)) templateStartFlow = null;
+        if (optionalReadinessFlow?.templateId && !data.templates.some((template) => template.id === optionalReadinessFlow.templateId)) optionalReadinessFlow = null;
+        if (optionalReadinessFlow?.sessionId && !data.sessions.some((item) => item.id === optionalReadinessFlow.sessionId)) optionalReadinessFlow = null;
         if (cancelWorkoutFlow && !sessionCanBeDiscarded(data.sessions.find((item) => item.id === cancelWorkoutFlow.sessionId))) cancelWorkoutFlow = null;
         if (historyEditConfirm && !isEditingHistorySession()) historyEditConfirm = "";
-        const modalOpen = Boolean(templateStartFlow || cancelWorkoutFlow || historyEditConfirm || clearDataFlow?.open);
+        const modalOpen = Boolean(templateStartFlow || optionalReadinessFlow || cancelWorkoutFlow || historyEditConfirm || clearDataFlow?.open);
         const dialogKey = activeDialogKey();
         const sameDialogFocus = dialogKey && dialogKey === renderedDialogKey ? focusDescriptorForElement(document.activeElement) : null;
         document.body.classList.toggle("modal-open", modalOpen);
         const viewHtml = measurePerformance("renderView:" + activeTab, renderViewSafely, { tab: activeTab, sessions: data.sessions.length, exercises: data.exercises.length, sets: data.sets.length });
-        const shellWorkoutVisible = activeTab === "today" && hasActiveWorkout() && activeWorkoutId === session.id && !viewingHistorySessionId && !completedSummarySessionId;
-        const shellWorkoutSubmitted = activeTab === "today" && completedSummarySessionId === session.id && isSessionSubmitted(session);
+        const shellWorkoutVisible = activeTab === "workout" && hasActiveWorkout() && activeWorkoutId === session.id && !viewingHistorySessionId && !completedSummarySessionId;
+        const shellWorkoutSubmitted = activeTab === "workout" && completedSummarySessionId === session.id && isSessionSubmitted(session);
         const shellWorkoutDockVisible = shellWorkoutVisible || shellWorkoutSubmitted;
-        const shellTitle = activeTab === "today" ? "Today" : activeTab === "plan" ? "Plan" : activeTab === "progress" ? "Progress" : "More";
+        const shellTitle = ({ today: "Today", progress: "Progress", routines: "Routines", settings: "Settings", workout: "Workout" })[activeTab] || "Today";
         const shellCurrentContext = shellWorkoutDockVisible ? workoutProgress().current : "";
+        const shellActions = activeTab === "routines" || activeTab === "settings"
+          ? '<button class="shell-context-action" type="button" data-action="close-secondary-context">Back to Today</button>'
+          : activeTab === "workout"
+            ? '<button class="shell-context-action" type="button" data-action="close-workout-context">Back to Today</button>'
+            : '<div class="shell-context-actions"><button type="button" data-action="open-routines">Routines</button><button type="button" data-action="open-settings">Settings</button></div>';
         const shellContext = shellWorkoutDockVisible
-          ? '<div class="shell-context"><h1>' + escapeHtml(session.title || "Workout") + '</h1><span class="shell-session-state">' + escapeHtml(shellWorkoutSubmitted ? "Workout logged" : "In progress") + '</span><small>' + escapeHtml(shellWorkoutSubmitted ? "Session summary" : shellCurrentContext) + '</small></div>'
-          : '<div class="shell-context"><strong>' + escapeHtml(shellTitle) + '</strong></div>';
+          ? '<div class="shell-context"><h1>' + escapeHtml(session.title || "Workout") + '</h1><span class="shell-session-state">' + escapeHtml(shellWorkoutSubmitted ? "Workout logged" : "In progress") + '</span><small>' + escapeHtml(shellWorkoutSubmitted ? "Session summary" : shellCurrentContext) + '</small></div>' + shellActions
+          : '<div class="shell-context"><strong>' + escapeHtml(shellTitle) + '</strong></div>' + shellActions;
         const domStartedAt = performanceNow();
         root.innerHTML = `
           <div class="app-shell">
@@ -34,13 +45,12 @@
             ${renderUpdateBanner()}
             ${appToast ? '<div class="app-toast" data-severity="' + escapeHtml(appToast.severity) + '" role="status" aria-live="polite"><span class="app-toast-icon" aria-hidden="true">' + ({ success: icon.done, warn: icon.warning, error: icon.delete, info: icon.info }[appToast.severity] || icon.info) + '</span><span>' + escapeHtml(appToast.message) + '</span>' + (appToast.action ? '<button type="button" data-action="' + escapeHtml(appToast.action) + '"' + (appToast.setId ? ' data-set-id="' + escapeHtml(appToast.setId) + '"' : '') + '>' + escapeHtml(appToast.actionLabel || "Undo") + '</button>' : '') + '</div>' : ''}
             <main class="app-main" id="main-content" tabindex="-1" ${modalOpen ? 'inert aria-hidden="true"' : ""}>${viewHtml}</main>
-            ${shellWorkoutDockVisible ? renderSessionDock(session, workoutProgress(), { submitted: shellWorkoutSubmitted, inert: modalOpen }) : `<nav class="bottom-nav" aria-label="Main navigation" ${modalOpen ? 'inert aria-hidden="true"' : ""}>
+            ${shellWorkoutDockVisible ? renderSessionDock(session, workoutProgress(), { submitted: shellWorkoutSubmitted, inert: modalOpen }) : activeTab === "workout" ? "" : `<nav class="bottom-nav" aria-label="Main navigation" ${modalOpen ? 'inert aria-hidden="true"' : ""}>
               ${navButton("today", "Today", "workout")}
-              ${navButton("plan", "Plan", "templates")}
               ${navButton("progress", "Progress", "review")}
-              ${navButton("more", "More", "settings")}
             </nav>`}
             ${renderTemplateStartSheet()}
+            ${renderOptionalReadinessSheet()}
             ${renderCancelWorkoutSheet()}
             ${renderHistoryEditConfirmSheet()}
             ${renderClearDataSheet()}
@@ -228,8 +238,9 @@
 
       function renderView() {
         if (activeTab === "progress") return renderProgress();
-        if (activeTab === "plan") return renderTemplates();
-        if (activeTab === "more") return renderSettings();
+        if (activeTab === "routines") return renderTemplates();
+        if (activeTab === "settings") return renderSettings();
+        if (activeTab === "today") return renderLiftHome();
         return renderWorkout();
       }
 
@@ -264,6 +275,7 @@
             ? '<span class="session-dock-submitted" role="status">Workout logged</span>'
             : '<button class="primary-action session-dock-finish" type="button" data-action="request-submit-workout">Finish</button>'}
           <details class="session-overflow session-dock-overflow"><summary class="icon-button" data-action="session-menu" aria-label="Workout menu">${icon.more}</summary><div class="session-overflow-menu">
+            ${submitted ? "" : '<button type="button" data-action="log-workout-readiness">' + icon.info + '<span>Log readiness</span></button>'}
             <button type="button" data-action="save-template">${icon.templates}<span>Save as template</span></button>
             ${sessionCanBeDiscarded(session) ? '<button class="danger" type="button" data-action="request-cancel-workout" data-session-id="' + session.id + '">' + icon.delete + '<span>Cancel workout</span></button>' : ''}
           </div></details>
@@ -275,7 +287,7 @@
       }
 
       function liftHomeIsVisible() {
-        return activeTab === "today" && !hasActiveWorkout() && !viewingHistorySessionId && !completedSummarySessionId;
+        return activeTab === "today";
       }
 
       function renderWorkout() {
@@ -436,6 +448,22 @@
       function renderLiftHome() {
         const nextTemplate = data.templates[0] || null;
         const running = activeWorkoutSession();
+        if (running) {
+          const exerciseIds = new Set(data.exercises.filter((exercise) => exercise.sessionId === running.id).map((exercise) => exercise.id));
+          const workSets = data.sets.filter((set) => exerciseIds.has(set.exerciseId) && isWorkingSet(set, "score"));
+          const completed = workSets.filter((set) => set.completed && !set.skipped).length;
+          return `
+            <section class="view lift-home-view">
+              <div class="workout-heading today-heading"><div><div class="section-kicker">${escapeHtml(new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(new Date(todayIso() + "T12:00:00")))}</div><h1>Today</h1></div><span class="status-pill inside">In progress</span></div>
+              <section class="coach-lead today-coach">
+                <div class="section-kicker">Workout in progress</div>
+                <h2>${escapeHtml(running.title || "Current workout")}</h2>
+                <p>${completed} of ${workSets.length} working sets logged. Your draft is saved on this device.</p>
+                <div class="module-action-row"><button class="primary-action today-primary-action" type="button" data-action="resume-active-workout">Resume</button></div>
+              </section>
+              ${renderQuickStartTemplates(running.templateId || "")}
+            </section>`;
+        }
         const previewNames = nextTemplate?.exercises?.map((exercise) => String(exercise.name || "").trim()).filter(Boolean) || [];
         const previewText = previewNames.length
           ? previewNames.slice(0, 4).join(" · ") + (previewNames.length > 4 ? " · +" + (previewNames.length - 4) + " more" : "")
@@ -449,8 +477,8 @@
               <h2>${nextTemplate ? escapeHtml(nextTemplate.name) : "Create your first reusable workout"}</h2>
               <p>${nextTemplate ? escapeHtml(previewText) : "Once a template exists, Today will identify the expected workout."}</p>
               <div class="module-action-row">${nextTemplate
-                ? '<button class="primary-action today-primary-action" type="button" data-action="start-next-template" data-template-id="' + escapeHtml(nextTemplate.id) + '">Start</button>'
-                : '<button class="primary-action today-primary-action" type="button" data-action="open-templates">Create a workout template</button>'}</div>
+                ? '<button class="primary-action today-primary-action" type="button" data-action="start-next-template" data-template-id="' + escapeHtml(nextTemplate.id) + '">Start</button><button class="secondary-action" type="button" data-action="log-template-readiness" data-template-id="' + escapeHtml(nextTemplate.id) + '">Log readiness</button>'
+                : '<button class="primary-action today-primary-action" type="button" data-action="open-routines">Create a workout routine</button>'}</div>
             </section>
             ${renderQuickStartTemplates(nextTemplate?.id || "")}
           </section>`;
@@ -564,53 +592,52 @@
         if (!templates.length) return "";
         const running = activeWorkoutSession();
         return `
-          <section class="quick-template-strip today-template-strip" aria-label="Quick-start templates">
-            <div class="section-kicker">Choose another workout</div>
+          <details class="quick-template-strip today-template-strip">
+            <summary class="secondary-action choose-workout-action">Choose another workout</summary>
             <div class="quick-template-list">
               ${templates.map((template) => {
                 const isActiveTemplate = running?.templateId === template.id;
-                const locked = Boolean(running && !isActiveTemplate);
                 return `
-                  <button class="quick-template-card today-template-card ${isActiveTemplate ? "active-template" : locked ? "locked-template" : ""}" type="button" data-action="${isActiveTemplate ? "return-active-workout" : "start-template"}" data-template-id="${template.id}" ${locked ? 'disabled title="Finish or cancel your active workout first"' : ''}>
+                  <button class="quick-template-card today-template-card ${isActiveTemplate ? "active-template" : ""}" type="button" data-action="${isActiveTemplate ? "resume-active-workout" : "start-template"}" data-template-id="${template.id}">
                     <strong>${escapeHtml(template.name)}</strong>
                     <small>${template.exercises.length} lifts · ${templateExerciseCount(template)} working sets</small>
-                    <span>${isActiveTemplate ? "Resume workout" : locked ? "Start unavailable" : "Start workout"}</span>
+                    <span>${isActiveTemplate ? "Resume workout" : "Start workout"}</span>
                   </button>
                 `;
               }).join("")}
             </div>
-          </section>
+          </details>
         `;
       }
 
-      function openTemplateStart(templateId) {
+      function openOptionalReadiness(templateId = "", sessionId = "") {
         const template = data.templates.find((item) => item.id === templateId);
-        if (!template) return;
-        if (!Array.isArray(template.exercises) || template.exercises.length === 0) {
-          templateStartFlow = null;
+        const session = data.sessions.find((item) => item.id === sessionId);
+        if (!template && !session) return;
+        if (template && (!Array.isArray(template.exercises) || template.exercises.length === 0)) {
+          optionalReadinessFlow = null;
           showAppToast("Add at least one exercise before starting this template.");
           render();
           return;
         }
-        captureDialogFocusOrigin("template");
-        if (hasActiveWorkout()) {
-          templateStartFlow = { templateId, step: "active-conflict", draft: defaultRecovery() };
-          render();
-          return;
-        }
-        templateStartFlow = { templateId, step: "confirm", draft: defaultRecovery() };
+        captureDialogFocusOrigin("readiness");
+        optionalReadinessFlow = {
+          templateId: template?.id || "",
+          sessionId: session?.id || "",
+          draft: session ? cleanRecovery(sessionRecovery(session)) : defaultRecovery()
+        };
         render();
       }
 
-      function closeTemplateStart() {
-        templateStartFlow = null;
-        restoreFocusAfterDialog("template");
+      function closeOptionalReadiness() {
+        optionalReadinessFlow = null;
+        restoreFocusAfterDialog("readiness");
         render();
       }
 
       function patchTemplateStartDraft(patch, shouldRender = true) {
-        if (!templateStartFlow) return;
-        templateStartFlow = { ...templateStartFlow, draft: cleanRecovery({ ...templateStartFlow.draft, ...patch }) };
+        if (!optionalReadinessFlow) return;
+        optionalReadinessFlow = { ...optionalReadinessFlow, draft: cleanRecovery({ ...optionalReadinessFlow.draft, ...patch }) };
         if (shouldRender) render();
         else syncTemplateReadinessDeltas();
       }
@@ -674,23 +701,23 @@
       }
 
       function syncTemplateReadinessDeltas() {
-        if (!templateStartFlow) return;
+        if (!optionalReadinessFlow) return;
         const baseline = readinessBaseline();
         ["sleepHours", "sleepQuality", "hrv", "restingHr", "soreness"].forEach((field) => {
           const node = root.querySelector('[data-readiness-delta="' + field + '"]');
           if (!node) return;
-          const delta = readinessMetricDelta(field, templateStartFlow.draft[field], baseline);
+          const delta = readinessMetricDelta(field, optionalReadinessFlow.draft[field], baseline);
           node.className = "d " + delta.tone;
           node.textContent = delta.text;
         });
       }
 
       function adjustTemplateReadinessMetric(field, step) {
-        if (!templateStartFlow) return;
+        if (!optionalReadinessFlow) return;
         const domains = { sleepHours: { min: 0, max: 14 }, hrv: { min: 0, max: 400 }, restingHr: { min: 0, max: 240 } };
         const domain = domains[field];
         if (!domain) return;
-        const current = Number(templateStartFlow.draft[field] === "" ? readinessBaseline()[field] || domain.min : templateStartFlow.draft[field]);
+        const current = Number(optionalReadinessFlow.draft[field] === "" ? readinessBaseline()[field] || domain.min : optionalReadinessFlow.draft[field]);
         const next = Math.max(domain.min, Math.min(domain.max, Number((current + Number(step || 0)).toFixed(field === "sleepHours" ? 2 : 0))));
         patchTemplateStartDraft({ [field]: String(next) }, false);
         const action = field === "sleepHours" ? "template-readiness-sleep-hours" : field === "restingHr" ? "template-readiness-resting-hr" : "template-readiness-hrv";
@@ -704,53 +731,32 @@
         if (!template) return "";
         if (templateStartFlow.step === "active-conflict") {
           const active = activeWorkoutSession();
-          const rollup = workoutSessionRollup();
-          const rpe = rollup.meanRpe === null ? "—" : rollup.meanRpe.toFixed(1);
-          const drift = rollup.drift === null ? "No RPE drift" : (rollup.drift > 0 ? "+" : rollup.drift < 0 ? "−" : "") + Math.abs(rollup.drift).toFixed(1) + " vs " + rollup.targetMeanRpe.toFixed(1);
-          const driftTone = rollup.drift === null ? "none" : Math.abs(rollup.drift) < 0.05 ? "on" : rollup.drift > 0 ? "out" : "under";
-          const adherence = rollup.adherence === null ? "—" : Math.round(rollup.adherence * 100) + "%";
           return `
-            <div class="scrim sheet-backdrop" data-action="cancel-template-start" role="presentation">
+            <div class="scrim sheet-backdrop" role="presentation">
               <section class="sheet-card bottom-sheet dialog-sheet start-flow-sheet" role="dialog" aria-modal="true" aria-labelledby="active-workout-title" data-sheet-content>
-                <button class="sheet-close" type="button" data-action="cancel-template-start" aria-label="Close workout dialog">&times;</button>
-                <div><div class="section-kicker">A session is already running</div><h2 id="active-workout-title">${escapeHtml(active?.title || "Your current workout")}</h2><p>Choose whether to return to this draft or explicitly discard it before starting ${escapeHtml(template.name)}.</p></div>
-                <div class="rollup start-conflict-rollup" aria-label="Active session summary without dock-owned progress"><span class="ru"><b>${escapeHtml(rpe)}</b><span class="d ${driftTone}">${escapeHtml(drift)}</span></span><span class="ru"><b>${escapeHtml(adherence)}</b><span>adherence</span></span><span class="ru"><b>Draft</b><span>not submitted</span></span></div>
-                <div class="callout bad"><b>Discarding permanently removes this draft</b><span>Returning resumes the current draft. Discarding removes its exercises, sets, notes, readiness check-in, and timer state. Submitted history and templates stay intact.</span></div>
+                <div><div class="section-kicker">Workout in progress</div><h2 id="active-workout-title">${escapeHtml(active?.title || "Current workout")}</h2><p>Finish or discard this draft before starting ${escapeHtml(template.name)}.</p></div>
                 <div class="sheet-actions stacked">
-                  <button class="primary-action sheet-btn" type="button" data-action="return-active-workout">Return to ${escapeHtml(active?.title || "active workout")}</button>
-                  <button class="sheet-btn danger-button" type="button" data-action="request-cancel-workout-from-template">Discard it and start ${escapeHtml(template.name)}</button>
-                  <button class="mini-button" type="button" data-action="cancel-template-start">Keep browsing templates</button>
+                  <button class="primary-action sheet-btn" type="button" data-action="resume-active-workout">Resume</button>
+                  <button class="sheet-btn" type="button" data-action="finish-active-workout">Finish</button>
+                  <button class="sheet-btn danger-button" type="button" data-action="discard-active-workout">Discard</button>
                 </div>
               </section>
             </div>`;
         }
-        if (templateStartFlow.step === "confirm") {
-          const totalSets = templateExerciseCount(template);
-          const duration = Math.max(15, Math.round(totalSets * 2.5));
-          return `
-            <div class="scrim sheet-backdrop" data-action="cancel-template-start" role="presentation">
-              <section class="sheet-card bottom-sheet dialog-sheet start-flow-sheet" role="dialog" aria-modal="true" aria-labelledby="template-start-title" data-sheet-content>
-                <button class="sheet-close" type="button" data-action="cancel-template-start" aria-label="Close template setup">&times;</button>
-                <div><div class="section-kicker">Start session</div><h2 id="template-start-title">Start ${escapeHtml(template.name)}?</h2><p>${template.exercises.length} lift${template.exercises.length === 1 ? "" : "s"} · ${totalSets} prescribed sets · about ${duration} min</p></div>
-                <div class="readiness-choice-copy"><strong>Readiness is optional</strong><span>Log a brief change only when today is meaningfully different from usual. The saved template remains unchanged.</span></div>
-                <div class="sheet-actions stacked">
-                  <button class="primary-action sheet-btn" type="button" data-action="log-today-readiness">Log today’s readiness</button>
-                  <button class="sheet-btn" type="button" data-action="use-usual-readiness">Use my usual baseline</button>
-                  <button class="mini-button" type="button" data-action="cancel-template-start">Cancel</button>
-                </div>
-              </section>
-            </div>
-          `;
-        }
-        if (templateStartFlow.step === "readiness") {
-          const recovery = templateStartFlow.draft;
+        return "";
+      }
+
+      function renderOptionalReadinessSheet() {
+        if (!optionalReadinessFlow) return "";
+        const recovery = optionalReadinessFlow.draft;
+        const editingWorkout = Boolean(optionalReadinessFlow.sessionId);
           const sleepQualityDelta = readinessMetricDelta("sleepQuality", recovery.sleepQuality);
           const sorenessDelta = readinessMetricDelta("soreness", recovery.soreness);
           return `
             <div class="scrim sheet-backdrop" data-action="cancel-template-start" role="presentation">
               <section class="sheet-card bottom-sheet dialog-sheet readiness-log-sheet" role="dialog" aria-modal="true" aria-labelledby="daily-readiness-title" data-sheet-content>
                 <button class="sheet-close" type="button" data-action="cancel-template-start" aria-label="Close daily readiness">&times;</button>
-                <div><div class="section-kicker">Today’s readiness · step 1 of 2</div><h2 id="daily-readiness-title">How did you arrive?</h2><p>Each entered value is compared with your stored usual value. Blank metrics remain missing and do not count as zero.</p></div>
+                <div><div class="section-kicker">Optional readiness</div><h2 id="daily-readiness-title">What is different today?</h2><p>Enter only what matters. Blank values remain missing and the saved routine stays unchanged.</p></div>
                 <div class="readiness-draft">
                   ${readinessMetricField({ field: "sleepHours", label: "Sleep", action: "template-readiness-sleep-hours", value: recovery.sleepHours, min: 0, max: 14, step: 0.25, unit: " h" })}
                   ${readinessSegmentedField({ field: "sleepQuality", label: "Sleep quality", action: "template-readiness-sleep-quality", value: recovery.sleepQuality, options: [["", "Not entered"], [1, "1"], [2, "2"], [3, "3"], [4, "4"], [5, "5"]] })}<span class="d ${sleepQualityDelta.tone}" data-readiness-delta="sleepQuality">${escapeHtml(sleepQualityDelta.text)}</span>
@@ -763,33 +769,10 @@
                   <div class="field readiness-field"><label class="f-name" for="template-readiness-area">Affected area</label><select id="template-readiness-area" data-action="template-readiness-affected-muscle"><option value="">Not specified</option>${muscleGroups.map((muscle) => '<option value="' + muscle + '" ' + (recovery.affectedMuscle === muscle ? 'selected' : '') + '>' + muscle + '</option>').join('')}</select></div>
                   <div class="field readiness-field"><label class="f-name" for="template-readiness-note">Optional context</label><textarea id="template-readiness-note" data-action="template-readiness-note" placeholder="Anything outside your normal band">${escapeHtml(recovery.outsideBandNote)}</textarea></div>
                 </div>
-                <div class="sheet-actions stacked"><button class="primary-action sheet-btn" type="button" data-action="review-template-readiness">See what this changes</button><button class="mini-button" type="button" data-action="cancel-template-start">Cancel</button></div>
+                <div class="sheet-actions stacked"><button class="primary-action sheet-btn" type="button" data-action="${editingWorkout ? "save-workout-readiness" : "start-workout-with-readiness"}">${editingWorkout ? "Save readiness" : "Start workout"}</button></div>
               </section>
             </div>
           `;
-        }
-        const recovery = templateStartFlow.draft;
-        if (templateStartFlow.step === "review") {
-          const safetyRecorded = Boolean(recovery.illness || recovery.pain);
-          const readinessEntries = [
-            recovery.sleepHours !== "" ? "sleep" : "",
-            recovery.sleepQuality !== "" ? "sleep quality" : "",
-            recovery.hrv !== "" ? "HRV" : "",
-            recovery.restingHr !== "" ? "resting heart rate" : "",
-            recovery.soreness !== "" ? "soreness" : "",
-            safetyRecorded ? "pain or illness" : ""
-          ].filter(Boolean);
-          return `
-            <div class="scrim sheet-backdrop" data-action="cancel-template-start" role="presentation">
-              <section class="sheet-card bottom-sheet dialog-sheet readiness-review-sheet" role="dialog" aria-modal="true" aria-labelledby="readiness-review-title" data-sheet-content>
-                <button class="sheet-close" type="button" data-action="cancel-template-start" aria-label="Close readiness review">&times;</button>
-                <div><div class="section-kicker">Today only · step 2 of 2</div><h2 id="readiness-review-title">Readiness recorded.</h2><p>${readinessEntries.length ? escapeHtml("Recorded: " + readinessEntries.join(", ") + ".") : "No optional readiness values were entered."} The saved template is not rewritten.</p></div>
-                ${safetyRecorded ? '<div class="callout warn"><b>Pain or illness recorded</b><span>The workout will surface one plain safety action when it starts. You can still record what you actually do.</span></div>' : ''}
-                <div class="sheet-actions stacked"><button class="primary-action sheet-btn" type="button" data-action="start-adjusted-workout">Start workout</button><button class="mini-button" type="button" data-action="edit-readiness-metrics">Back to readiness</button><button class="mini-button" type="button" data-action="cancel-template-start">Cancel</button></div>
-              </section>
-            </div>`;
-        }
-        return "";
       }
 
       function prescriptionLine(target) {
@@ -820,18 +803,13 @@
         const exerciseIds = new Set(data.exercises.filter((item) => item.sessionId === session.id).map((item) => item.id));
         const draftSets = data.sets.filter((item) => exerciseIds.has(item.exerciseId));
         const completedSets = draftSets.filter((item) => item.completed && !item.skipped).length;
-        const recovery = sessionRecovery(session);
-        const hasReadiness = Object.entries(recovery).some(([key, value]) => key !== "affectedMuscle" ? value !== "" && value !== false : Boolean(value));
-        const historyCount = activeHistorySessions().length;
         return `
           <div class="scrim sheet-backdrop" data-action="keep-workout" role="presentation">
             <section class="sheet-card bottom-sheet dialog-sheet destructive-sheet" role="dialog" aria-modal="true" aria-label="Cancel this workout?" data-sheet-content>
-              <div><div class="section-kicker destructive-kicker">Discard this workout</div><h2 id="cancel-workout-title">${completedSets ? completedSets + " logged set" + (completedSets === 1 ? "" : "s") + " will be removed." : "This unsubmitted draft will be removed."}</h2><p>The scope is limited to this workout draft.</p></div>
-              <div class="diff cancel-workout-diff"><div class="drow dhead"><span class="plan">Removed</span><span class="act">Kept</span><span class="dlt">Scope</span></div><div class="drow"><span class="plan"><span class="lbl">This draft</span><span class="val">${exerciseIds.size} exercise${exerciseIds.size === 1 ? "" : "s"}, ${draftSets.length} set entr${draftSets.length === 1 ? "y" : "ies"} (${completedSets} completed), notes, and timer state</span></span><span class="act"><span class="lbl">Submitted history</span><span class="val">${historyCount} session${historyCount === 1 ? "" : "s"}</span></span><span class="dlt"><span>unchanged</span></span></div><div class="drow"><span class="plan"><span class="lbl">Today’s readiness</span><span class="val">${hasReadiness ? "this draft’s check-in" : "no entered check-in"}</span></span><span class="act"><span class="lbl">Templates and settings</span><span class="val">${data.templates.length} template${data.templates.length === 1 ? "" : "s"} · unchanged</span></span><span class="dlt"><span>unchanged</span></span></div></div>
-              <div class="callout bad"><b>This cannot be undone</b><span>The exercise, set, note, readiness, and timer records in this draft are not recoverable after discard.</span></div>
+              <div><div class="section-kicker destructive-kicker">Discard workout?</div><h2 id="cancel-workout-title">${escapeHtml(session.title || "Current workout")}</h2><p>${completedSets ? completedSets + " logged set" + (completedSets === 1 ? "" : "s") + " and " : "The "}unsubmitted draft will be permanently removed. Submitted history and routines stay intact.</p></div>
               <div class="sheet-actions cancel-sheet-actions">
-                <button class="primary-action" type="button" data-action="keep-workout">Keep Workout</button>
-                <button class="discard-workout-button" type="button" data-action="confirm-cancel-workout">Discard Workout</button>
+                <button class="primary-action" type="button" data-action="keep-workout">Keep workout</button>
+                <button class="discard-workout-button" type="button" data-action="confirm-cancel-workout">Discard workout</button>
               </div>
             </section>
           </div>`;
@@ -1238,8 +1216,8 @@
             <div class="standard-workload-heading"><div><span>${missing.length ? "Exercise setup incomplete" : "Custom exercise profile"}</span><strong>${missing.length ? "Complete the required fields" : "Profile confirmed"}</strong></div></div>
             ${missing.length ? `<p>Missing: <strong>${escapeHtml(missing.join(", "))}</strong>.</p>` : "<p>This profile keeps the custom exercise’s resistance and logging behavior consistent.</p>"}
             <div class="custom-profile-grid">
-              <label>Primary muscle group<select data-custom-profile-field="primary-muscle"><option value="">Choose…</option>${muscleOptions(appMuscleFromPrescriptionGroup(profile.primaryMuscleGroupId) || exercise.primaryMuscle || "")}</select></label>
-              <label>Secondary muscle (optional)<select data-custom-profile-field="secondary-muscle">${muscleOptions(appMuscleFromPrescriptionGroup(profile.secondaryMuscleGroupId) || exercise.secondaryMuscle || "", true, "None")}</select></label>
+              <label>Primary muscle group<select data-custom-profile-field="primary-muscle"><option value="">Choose…</option>${muscleOptions(appMuscleFromCustomGroup(profile.primaryMuscleGroupId) || exercise.primaryMuscle || "")}</select></label>
+              <label>Secondary muscle (optional)<select data-custom-profile-field="secondary-muscle">${muscleOptions(appMuscleFromCustomGroup(profile.secondaryMuscleGroupId) || exercise.secondaryMuscle || "", true, "None")}</select></label>
               <label>Resistance mode<select data-custom-profile-field="resistance-type">${resistanceTypeOptions(resistance)}</select></label>
               <label>Exercise style<select data-custom-profile-field="exercise-style"><option value="">Choose…</option>${[["multi_joint","Multi-joint"],["single_joint","Single-joint"],["isometric","Isometric"],["carry_locomotion","Carry / locomotion"]].map(([value,label]) => `<option value="${value}" ${profile.exerciseStyle === value ? "selected" : ""}>${label}</option>`).join("")}</select></label>
               <label>Progression metric<select data-custom-profile-field="progression-metric"><option value="">Choose…</option>${[["load_and_reps","Load and reps"],["reps_only","Reps only"],["assistance","Assistance"],["duration","Duration"],["distance","Distance"]].map(([value,label]) => `<option value="${value}" ${profile.progressionMetric === value ? "selected" : ""}>${label}</option>`).join("")}</select></label>

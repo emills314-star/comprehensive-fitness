@@ -153,14 +153,19 @@ async function installFixture(page, fixture = m1Fixture()) {
   }, { fixedNow: FIXED_NOW, storageKey: STORAGE_KEY, storedFixture: fixture });
   await page.goto("/");
   await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible({ timeout: 45_000 });
-  await expect.poll(() => page.evaluate(() => String(prescriptionEvidenceStatus?.state || "loading")), {
+  await expect.poll(() => page.evaluate(() => Boolean(
+    prescriptionEngine?.evidence?.research?.exerciseById?.has("ex_barbell_bench_press")
+  )), {
+    message: "the identity compatibility catalog must be ready before stable-target checks run",
     timeout: 45_000
-  }).toBe("ready");
+  }).toBe(true);
 }
 
-async function openPlan(page) {
-  await page.locator('[data-action="set-tab"][data-tab="plan"]').click();
-  await expect(page.locator('[data-action="set-tab"][data-tab="plan"]')).toHaveAttribute("aria-current", "page");
+async function startExpectedWorkout(page) {
+  const start = page.locator(`[data-action="start-next-template"][data-template-id="${TEMPLATE_ID}"]`);
+  await expect(start).toBeVisible();
+  await start.click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 }
 
 test.beforeAll(() => {
@@ -171,10 +176,7 @@ test("M1 starts stable variant targets with factual same-role prefills at 390 by
   test.setTimeout(120_000);
   await page.setViewportSize({ width: 390, height: 844 });
   await installFixture(page);
-  await openPlan(page);
-
-  await page.locator(`[data-action="start-template"][data-template-id="${TEMPLATE_ID}"]`).click();
-  await page.locator('[data-action="use-usual-readiness"]').click();
+  await startExpectedWorkout(page);
   await expect(page.getByRole("heading", { name: TEMPLATE_NAME, exact: true })).toBeVisible({ timeout: 45_000 });
 
   const exercise = page.locator(".exercise-card").filter({ hasText: EXERCISE_NAME });
@@ -207,10 +209,7 @@ test("M1 replaces a prefilled RPE 7 with 7.5 in one focused edit", async ({ page
   const fixture = m1Fixture();
   fixture.sets.find((set) => set.id === "public-synthetic-m1-history-top").rpe = 7;
   await installFixture(page, fixture);
-  await openPlan(page);
-
-  await page.locator(`[data-action="start-template"][data-template-id="${TEMPLATE_ID}"]`).click();
-  await page.locator('[data-action="use-usual-readiness"]').click();
+  await startExpectedWorkout(page);
   const exercise = page.locator(".exercise-card").filter({ hasText: EXERCISE_NAME });
   const rpe = exercise.getByRole("spinbutton", { name: "Set 1 RPE" });
   const setId = await rpe.getAttribute("data-set-id");

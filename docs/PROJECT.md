@@ -18,21 +18,29 @@ Read this document before changing product scope, capabilities, target users, wo
 
 Named exercise variants now own the normal working-set count/roles, rep ranges, target-RPE bands, rest defaults, and increments used when a routine starts. Normal recommendation output cannot rewrite those stable targets or supply exact add-load/add-rep prefills. Editable set fields use the corresponding prior set for the same variant and role, an explicit routine default, then blank. A prefilled RPE can be replaced with a decimal value in one focused edit and completed immediately without losing the entry. Global equipment preference state is no longer a product setting or a logging constraint; legacy values are accepted only so old data can be decoded and discarded. Current app-data v3 exports through backup schema v3, while isolated v1/v2 compatibility remains available.
 
-This is the M1 implementation boundary, not the completed redesign. M2 through M4 are now implemented locally. The four-destination shell remains until M5, and the broad active-workout simplification remains M6 work.
+This is the M1 implementation boundary, not the completed redesign. M2 through M5 are now implemented locally. M6 remains the broad active-workout simplification milestone.
 
 ### Planner/mesocycle removal — IMPLEMENTED LOCALLY (M3)
 
-Guided planning, mesocycle lifecycle, candidate pools, portfolios, planner validation, and related active state are removed from the current product. A versioned legacy backup decoder may accept obsolete planning keys only to preserve workout and routine/template facts; it creates no active mesocycle state, writer, route, renderer, or new record. Until M5 changes the shell, **Plan** owns routine/template management only.
+Guided planning, mesocycle lifecycle, candidate pools, portfolios, planner validation, and related active state are removed from the current product. A versioned legacy backup decoder may accept obsolete planning keys only to preserve workout and routine/template facts; it creates no active mesocycle state, writer, route, renderer, or new record. **Routines** is contextual secondary UI, not a persistent destination.
 
 ### Analytical product removal — IMPLEMENTED LOCALLY (M4)
 
 Today and routine start now identify the expected workout and expose the start action without hypertrophy, weekly/fractional volume, research-status, evidence, confidence, program-score, or normal plan-preview cards. Progress is one factual, per-variant performance chart with point detail plus chronological submitted-workout history. The former dashboard, scorecards, volume/fatigue/hypertrophy views, research/evidence surfaces, duplicate recommendation views, and their current derived producers are removed. Historical source workout records, exact variant identities, stable targets, prior-performance facts, and allowlisted compatibility fields remain untouched or read-only.
 
+### Two-destination shell and direct Start — IMPLEMENTED LOCALLY (M5)
+
+The persistent shell now contains exactly **Today** and **Progress**. Routines and Settings are contextual secondary screens; legacy destination hashes resolve only to their bounded current context. An active workout owns the full screen and hides persistent navigation; Today returns to it through **Resume**.
+
+Today starts the expected workout directly with usual readiness. Optional readiness is a separate, skippable action before starting or while the workout is active; it is not a confirmation or capability gate. A second start request cannot replace the sole active draft: the only conflict choices are Resume, Finish, or Discard, and Discard requires a concise destructive confirmation.
+
+Normal boot loads only the catalog identity compatibility needed to retain exact exercise/variant matching. It does not load analytics or research-evidence surfaces. Direct research and personal-evidence UI is removed; legacy backup material preserves only workout, session, template, and immutable historical snapshot facts under bounded compatibility rules.
+
 Comprehensive Fitness is a local-first strength-training workout logger with a quiet spotter. It prioritizes starting the expected workout, seeing prior performance, recording load/reps/RPE, managing rest, preserving trustworthy history, and showing a concise exception only when the approved resolver produces one.
 
 The verified target user is a single strength/hypertrophy trainee using a phone during training. The research package is explicitly scoped to male hypertrophy and related strength, recovery, and nutrition questions (`research_database/README.md`, `research_database/METHODOLOGY.md`). Broader population support is not established.
 
-The verified current shell has four destinations: Today, Plan (routines/templates only), Progress, and More. M5 is still required to install the final two-destination shell. The active workout renders every exercise and set in program order as one scrollable document on phone and wider screens; completion updates the current-set highlight without moving the viewport.
+The verified current shell has two persistent destinations: Today and Progress. Routines and Settings are contextual. The active workout renders every exercise and set in program order as one scrollable document on phone and wider screens; completion updates the current-set highlight without moving the viewport.
 
 ## Problems and principles
 
@@ -52,15 +60,15 @@ Product principles evidenced in the repository:
 
 | Capability | Status | Verified scope |
 | --- | --- | --- |
-| Workout templates and quick start | **IMPLEMENTED** | Create/use templates, template-specific set roles, rest targets, readiness preview, and active-workout locking in `index.html` (`renderTemplates`, `openTemplateStart`, `startTemplate`). |
+| Workout templates and quick start | **IMPLEMENTED (M5)** | Today directly starts the expected routine with usual readiness; optional readiness is independently available before starting. An existing active draft resolves only through Resume, Finish, or confirmed Discard. Routines are contextual. |
 | Active workout logging | **IMPLEMENTED** | Exercises, warm-ups/working sets, load/reps/RPE, completion/skipping, timers, notes, travel state, draft restoration, and cancel flow. A set’s Previous link opens the exact matching exercise in its source session, and returning restores the originating exercise in the active workout. |
 | Progression feedback and editable exercise defaults | **IMPLEMENTED** | Actual repetitions, logged RPE, and added sets remain outcome data without rewriting the recommendation. Every active exercise—catalog, Strong-derived, historical, or new custom—has a compact default editor for working-set count, rep range, target RPE range, working rest, and warm-up rest, independent of whether research guidance exists. Every numeric target uses a bounded down/value/up stepper whose center remains directly editable. A nested individual-set editor can assign Top, Back-off, Drop, or Standard type plus a separate rep range, target RPE range, and rest timer to each set. The most recently edited shared or individual surface becomes authoritative; applying changes updates and audits the owning active session while rebuilding unfinished rows only. Saving to a source template is explicit. Broad guidance is a read-only benchmark strip rather than field-like controls, keeping research standards and custom-exercise recommendation limits separate from user-owned execution defaults. |
 | Submission, history, summaries, and editing | **IMPLEMENTED** | Confirmed submission, PR calculation, grade/summary, submitted-only history, and explicit history-edit save/cancel (`submitWorkout`, `renderSubmitConfirmation`, `renderCompletedWorkoutSummary`). The completion summary derives an earned benchmark strip from verified session outcomes: estimated-performance peaks, other PRs, session external-load volume records, comparable progression, full plan completion, rep/RPE precision, controlled execution, and successful readiness-adjusted or deload execution. Every badge except Plan Complete opens an exercise-evidence disclosure showing the current result and the exact prior record or prior comparable performance high; the volume record lists each contributing exercise against its prior per-exercise volume high. |
 | Progress and history | **IMPLEMENTED LOCALLY (M4)** | One factual per-variant performance chart with tappable date/load/reps/RPE/set-role/session detail, plus chronological submitted-workout history. Weekly/fractional volume, fatigue, hypertrophy, scorecard, research, evidence, confidence, and duplicate recommendation views are removed. |
-| Recovery readiness | **IMPLEMENTED** | User-entered sleep, HRV, resting heart rate, soreness, illness, nutrition/protein status, personal baseline, readiness band, and conservative adjustment guidance. |
+| Recovery readiness | **IMPLEMENTED (M5)** | User-entered readiness remains optional and independent before or during the active workout; skipping it does not block Start or logging. |
 | Routine/template facts and exception engine | **IMPLEMENTED / M1–M4 NARROWED** | Named-variant targets, factual same-variant/same-role prepopulation, immutable historical snapshots, and the sole M2 exception resolver remain. Planner/mesocycle and analytical recommendation producers are deleted. Legacy backups decode obsolete fields solely to preserve workout/routine-template/history facts. |
-| Exercise-science database | **IMPLEMENTED** | Version 3.0.0 publishes source-provenance identifiers, rule-to-conclusion traceability, explicit evidence/product-policy/safety authority, advisory versus allowlisted hard-blocker enforcement, deterministic CSV/JSON/XLSX/SQL/schema outputs, bibliography, build, and validation under `research_database/`. |
-| Private personal evidence pipeline | **IMPLEMENTED** | Local normalization/analysis of workout, Fitbit/Google Health, nutrition, and body-composition sources; aggregates can be packaged/imported without public deployment. Import is size/shape/schema bounded, builds a reconciled engine before one atomic replacement, and leaves prior state unchanged on rejection (`scripts/personal-fitness/`, `scripts/build-app-personal-evidence.js`, `index.html`). |
+| Exercise-science database | **IMPLEMENTED / COMPATIBILITY ONLY AT NORMAL BOOT** | Version 3.0.0 remains repository data with source-provenance and validation contracts. M5 normal boot retains only minimum identity compatibility; it does not expose research/evidence UI or analytics surfaces. |
+| Private personal evidence pipeline | **IMPLEMENTED / COMPATIBILITY ONLY AT NORMAL BOOT** | Local normalization and aggregate-package validation remain repository capabilities. Direct personal-evidence UI is removed; legacy backups preserve only workout/session/template and immutable historical snapshot facts. |
 | Nutrition tracking | **PARTIALLY IMPLEMENTED** | Research strategies, historical analysis pipeline, and daily adequacy inputs influence context. There is no verified in-app meal/food/macronutrient logger. |
 | Fitbit integration | **PARTIALLY IMPLEMENTED** | Exported Fitbit/Google Health data is normalized by the private pipeline. No OAuth, live sync, or direct wearable connection is implemented. |
 | Optional push and workout cloud copy | **PARTIALLY IMPLEMENTED** | The Vercel/Upstash backend implements installation-scoped authorization, scoped timer identities and versions, delivery claims, revocation tombstones, bounded resumable deletion, allowed Web Push origins, retention limits, and write-only workout mutation sync. After separate default-off consent, the frontend may upload the complete active, unsubmitted session plus every associated exercise and set object; payloads expire after 90 days and cannot be read or restored by the app. Background notification scheduling separately sends timer/workout/exercise/set identifiers, exercise name, upcoming-set detail, and completion time; Private detail changes only the visible notification body. The frontend reconciles cancel/delivery races, deletes retained workout copies when consent is disabled, and fails closed during local clearing until remote installation deletion and active-timer cancellation are confirmed. **NEEDS REVIEW:** notification-disable orchestration and the irreducible already-dispatched Web Push boundary remain qualified, and there is no cross-device restore UI or account-backed cloud history. |
@@ -69,12 +77,12 @@ Product principles evidenced in the repository:
 
 ## Major workflows
 
-1. Configure unit, goals, training status, readiness baseline, and notification preferences.
-2. Identify the expected routine on Today, optionally choose an alternate, and explicitly start.
+1. Configure unit, readiness baseline, and notification preferences in contextual Settings.
+2. Identify the expected routine on Today, optionally choose an alternate, and start directly; optional readiness can be recorded before starting or during the workout.
 3. Review factual prior performance and stable targets; log warm-up and working-set load, reps, and RPE; complete or skip sets; and use the exact completed set’s rest timer.
 4. Request submission, review confirmation, submit, and review the retained completion facts pending the M7 concise-completion replacement.
 5. Use Progress to inspect the exact variant’s factual performance chart and chronological submitted-workout history.
-6. Optionally import Strong CSV history and a locally built private evidence package.
+6. Optionally import Strong CSV history and compatibility-preserved backup data; direct research/personal-evidence UI is not a current product surface.
 7. Optionally install the PWA and enable backend-assisted rest notifications.
 8. Separately opt in to installation-authorized workout-mutation upload; notifications alone do not enable it. Remote installation records can be revoked and deleted from the Settings Danger Zone without clearing local workouts.
 
@@ -83,7 +91,7 @@ Product principles evidenced in the repository:
 - **Working set:** A set eligible for performance, progression, volume, and PR logic unless explicitly classified otherwise.
 - **Warm-up set:** Preparation work excluded from working-set scoring, volume, progression, and PR calculations.
 - **RPE/RIR:** Effort measures; RPE is logged in the workout UI, while prescriptions can expose both.
-- **Readiness:** A same-day, multi-domain comparison against a user baseline; it may affect today without rewriting routine targets.
+- **Readiness:** An optional same-day, multi-domain record against a user baseline. It may affect today without rewriting routine targets and is never required to start or log a workout.
 - **Prescription:** Versioned exercise targets and decision rules derived from personal and research evidence.
 - **Recommendation snapshot:** Immutable record of the base and readiness-adjusted prescription used for a workout.
 - **Standard guideline:** The versioned goal-aware set/rep/RPE/RIR/rest comparison range captured before a user override or same-day readiness adjustment.
@@ -96,7 +104,7 @@ Product principles evidenced in the repository:
 
 ## Data sources and privacy
 
-Public/runtime sources include submitted app workouts and the research JSON exports cached by `sw.js`. Private local sources can include Strong exports, Fitbit/Google Health exports, nutrition exports, body-composition records, and generated aggregates. Raw and generated personal data are excluded from public deployment by `.gitignore`/`.vercelignore`; the app imports only a user-provided aggregate evidence package into local IndexedDB. Hosted pages never probe private-evidence paths; automatic discovery is restricted to exact loopback origins or a native Capacitor runtime and rejects cross-origin candidates.
+Public/runtime sources include submitted app workouts and the minimum catalog identity compatibility required for exact exercise/variant matching. M5 normal boot does not load analytics or research-evidence surfaces. Private local sources can include Strong exports, Fitbit/Google Health exports, nutrition exports, body-composition records, and generated aggregates; direct personal-evidence UI is removed. Raw and generated personal data are excluded from public deployment by `.gitignore`/`.vercelignore`; legacy backup material is preserved only for workout, session, template, and immutable historical snapshot compatibility.
 
 Do not treat the optional Redis backend as the personal evidence database. It stores installation/push/timer records and, only after separate explicit consent, serialized workout mutations (`api/`, `docs/push-backend.md`). A consented mutation is the complete selected session graph, including an active session plus its exercises and sets. A scheduled notification record retains navigation identifiers, the exercise name, set detail, and completion time even when Private visible-body wording is selected. Record hashes use documented rolling TTLs; the global installation registry persists until completed deletion. Disabling workout-cloud consent stops local uploads and deletes retained workout copies. Confirmed local clearing performs terminal remote installation deletion before discarding its bearer, and pauses offline or on incomplete cleanup. A retained tombstone prevents credential reuse. An already-dispatched Web Push network request cannot be recalled. No raw personal values or credentials belong in public documentation.
 
@@ -118,9 +126,9 @@ Do not treat the optional Redis backend as the personal evidence database. It st
 
 ## Zero-based redesign implementation status
 
-- **IMPLEMENTED (M0–M4):** The final redesign package is now the product authority. Stable named-variant targets, factual same-variant/same-role prefills, unrestricted actual-work logging, one versioned canonical exception-action pipeline, planner/mesocycle removal, analytical producer deletion, and factual per-variant Progress are live locally.
+- **IMPLEMENTED (M0–M5):** The final redesign package is now the product authority. Stable named-variant targets, factual same-variant/same-role prefills, unrestricted actual-work logging, one versioned canonical exception-action pipeline, planner/mesocycle removal, analytical producer deletion, factual per-variant Progress, and the two-destination shell are live locally.
 - **IMPLEMENTED (M2):** Ordinary sessions are silent. Direct recorded pain/injury or illness is the only approved live exception rule; it presents one advisory action while preserving logging. Numeric legacy thresholds cannot create a current action.
-- **NEXT (M5):** Install the approved two-destination shell. M6–M8 then simplify the active logger, replace completion/grade behavior, and perform final integration. The older Dual Track comparison lab is historical design evidence and does not override the final PRD.
+- **IMPLEMENTED (M5):** Today and Progress are the only persistent destinations; Routines and Settings are contextual. Start is direct, readiness is optional before/during, and a sole active draft is protected by Resume/Finish/confirmed Discard conflict handling. M6–M8 remain to simplify the active logger, replace completion/grade behavior, and perform final integration. The older Dual Track comparison lab is historical design evidence and does not override the final PRD.
 
 ## Blank-slate UI reinvention
 

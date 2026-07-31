@@ -4,11 +4,10 @@
         return `
           <section class="view templates-view">
             <div class="screen-heading plan-heading">
-              <div><div class="section-kicker">Reusable training sheets</div><h1>Your plan</h1><p>Choose a template, then let readiness shape only today’s execution.</p></div>
+              <div><div class="section-kicker">Reusable workouts</div><h1>Routines</h1><p>Edit the workouts you return to. Starting one never replaces an existing draft.</p></div>
               <button class="icon-button" type="button" data-action="new-template" title="New template">${icon.add}</button>
             </div>
-            <section class="coach-lead templates-coach"><div class="section-kicker">Planning principle</div><h2>The sheet is stable; today can still adapt.</h2><p>Choose the repeatable workout that fits today. Readiness can adjust the session without rewriting the template.</p></section>
-            ${running ? '<section class="active-workout-notice" id="active-workout-template-notice" role="status"><div><div class="section-kicker">Workout in progress</div><strong>' + escapeHtml(running.title || 'Active workout') + '</strong><span>Finish or cancel your current workout before starting another template.</span></div><div><button class="primary-action" type="button" data-action="return-active-workout">Return to Active Workout</button><button class="text-danger-action" type="button" data-action="request-cancel-workout-from-template">Manage Active Workout</button></div></section>' : ''}
+            ${running ? '<section class="active-workout-notice" id="active-workout-template-notice" role="status"><div><div class="section-kicker">Workout in progress</div><strong>' + escapeHtml(running.title || 'Active workout') + '</strong><span>Your draft is saved. Starting another routine will ask whether to resume, finish, or discard it.</span></div><div><button class="primary-action" type="button" data-action="resume-active-workout">Resume</button></div></section>' : ''}
             <div class="template-library">${data.templates.length ? data.templates.map((template) => renderTemplateCard(template, running)).join("") : '<div class="empty-state">Create a leg day, push day, pull day, or any repeatable workout. Templates store exercises, sets, and target reps; you fill in weights during the workout.</div>'}</div>
             <button class="secondary-action full-width" type="button" data-action="save-template">Save current workout as a template</button>
           </section>
@@ -104,18 +103,18 @@
         const numeric = Number(raw);
         const current = data.templates.find((template) => template.id === templateId)?.exercises.find((exercise) => exercise.id === exerciseId)?.[config.field];
         if (Number(current) === numeric) return true;
-        patchTemplateExercise(templateId, exerciseId, { [config.field]: numeric }, false);
+        const patch = config.field === "reps"
+          ? { reps: numeric, repMin: numeric, repMax: numeric }
+          : { [config.field]: numeric };
+        patchTemplateExercise(templateId, exerciseId, patch, false);
         return true;
       }
 
       function renderTemplateCard(template, running = activeWorkoutSession()) {
         const isActiveTemplate = running?.templateId === template.id;
-        const locked = Boolean(running && !isActiveTemplate);
         const emptyTemplate = !Array.isArray(template.exercises) || template.exercises.length === 0;
         const emptyTemplateDescriptionId = "empty-template-" + template.id;
-        const startDisabledAttributes = locked
-          ? 'disabled aria-describedby="active-workout-template-notice" title="Finish or cancel your active workout first"'
-          : emptyTemplate
+        const startDisabledAttributes = emptyTemplate
             ? 'disabled aria-describedby="' + escapeHtml(emptyTemplateDescriptionId) + '" title="Add at least one exercise before starting this template"'
             : '';
         const advice = null;
@@ -125,12 +124,12 @@
         const duration = Math.max(15, Math.round(prescribedSets * 2.5));
         const coachLine = advice ? advice.detail.split(". ").slice(0, 2).join(". ") : "";
         return `
-          <article class="template-card compact-template plan-template-card ex-block ${isActiveTemplate ? "active-template" : locked ? "locked-template" : ""}">
+          <article class="template-card compact-template plan-template-card ex-block ${isActiveTemplate ? "active-template" : ""}">
             <div class="template-topline">
               <div class="template-title">${usesLargeTextReflow()
                 ? '<textarea class="exercise-name autosize-title-field" rows="1" data-action="template-name" data-template-id="' + template.id + '" aria-label="Template name">' + escapeHtml(template.name) + '</textarea>'
                 : '<input class="exercise-name" value="' + escapeHtml(template.name) + '" data-action="template-name" data-template-id="' + template.id + '" aria-label="Template name" />'}<small>${template.exercises.length} lifts · ${prescribedSets} prescribed sets · ~${duration} min</small></div>
-              <div class="template-card-actions">${isActiveTemplate ? '<button class="primary-action template-start" type="button" data-action="return-active-workout">Resume Workout</button>' : '<button class="primary-action template-start" type="button" data-action="start-template" data-template-id="' + template.id + '" ' + startDisabledAttributes + '>Start</button>'}${isActiveTemplate
+              <div class="template-card-actions">${isActiveTemplate ? '<button class="primary-action template-start" type="button" data-action="resume-active-workout">Resume</button>' : '<button class="primary-action template-start" type="button" data-action="start-template" data-template-id="' + template.id + '" ' + startDisabledAttributes + '>Start</button>'}${isActiveTemplate
                 ? '<button class="template-delete-button danger" type="button" disabled title="Finish or cancel the active workout before deleting this template" aria-label="Delete unavailable during active workout">' + icon.delete + '</button>'
                 : confirmingDelete
                 ? '<span class="template-delete-confirm"><button class="danger" type="button" data-action="confirm-delete-template" data-template-id="' + template.id + '">Delete</button><button type="button" data-action="cancel-delete-template">Cancel</button></span>'
@@ -852,12 +851,6 @@
           <div class="field"><div class="f-top"><span class="f-name">Weight unit</span><span class="f-help">Converts load-bearing app data</span></div>${renderSegmentedSetting("weight-unit", "settings-weight-unit", data.settings.weightUnit, [["lb", "Pounds"], ["kg", "Kilograms"]])}</div>
           <div class="field"><div class="f-top"><span class="f-name">Theme</span><span class="f-help">Display only</span></div>${renderSegmentedSetting("theme-mode", "settings-theme", data.settings.theme, [["light", "Light"], ["dark", "Dark"]])}</div>
           <div class="field"><div class="f-top"><span class="f-name">Colour package</span><span class="f-help">10 available</span></div><div class="chiprow color-package-picks">${colorPackages.map(([value, label]) => '<label class="pick" data-color-package="' + value + '"><input type="radio" name="settings-color-package" value="' + value + '" data-action="color-package" ' + (data.settings.colorPackage === value ? 'checked' : '') + ' /><span class="package-swatches" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>' + label + '</span></label>').join('')}</div><span class="f-help">Changes semantic surfaces and state colours without changing training logic.</span></div>`;
-        const training = `
-          <label class="field"><span class="f-top"><span class="f-name">Training goal</span><span class="f-help">Sets the disclosed programming objective</span></span><select data-action="training-goal"><option value="" ${!data.settings.trainingGoal ? "selected" : ""}>Not specified (balanced default)</option><option value="strength" ${data.settings.trainingGoal === "strength" ? "selected" : ""}>Strength</option><option value="hypertrophy" ${data.settings.trainingGoal === "hypertrophy" ? "selected" : ""}>Hypertrophy</option><option value="muscular_endurance" ${data.settings.trainingGoal === "muscular_endurance" ? "selected" : ""}>Muscular endurance</option><option value="general_fitness" ${data.settings.trainingGoal === "general_fitness" ? "selected" : ""}>General fitness</option></select></label>
-          <label class="field"><span class="f-top"><span class="f-name">Nutrition phase</span><span class="f-help">Context, not a fabricated goal</span></span><select data-action="nutrition-phase"><option value="" ${!data.settings.nutritionPhase ? "selected" : ""}>Not specified</option><option value="deficit" ${data.settings.nutritionPhase === "deficit" ? "selected" : ""}>Energy deficit</option><option value="maintenance" ${data.settings.nutritionPhase === "maintenance" ? "selected" : ""}>Maintenance</option><option value="surplus" ${data.settings.nutritionPhase === "surplus" ? "selected" : ""}>Energy surplus</option><option value="recomposition" ${data.settings.nutritionPhase === "recomposition" ? "selected" : ""}>Body recomposition</option></select></label>
-          <label class="field"><span class="f-top"><span class="f-name">Training experience</span></span><select data-action="experience-level"><option value="" ${!data.settings.experienceLevel ? "selected" : ""}>Not specified</option><option value="novice" ${data.settings.experienceLevel === "novice" ? "selected" : ""}>Novice</option><option value="intermediate" ${data.settings.experienceLevel === "intermediate" ? "selected" : ""}>Intermediate</option><option value="advanced" ${data.settings.experienceLevel === "advanced" ? "selected" : ""}>Advanced</option></select></label>
-          <label class="field"><span class="f-top"><span class="f-name">Returning after a training gap</span></span><select data-action="returning-after-gap"><option value="" ${data.settings.returningAfterGap == null ? "selected" : ""}>Not specified</option><option value="true" ${data.settings.returningAfterGap === true ? "selected" : ""}>Yes</option><option value="false" ${data.settings.returningAfterGap === false ? "selected" : ""}>No</option></select></label>
-          <p class="settings-note">Missing profile values remain disclosed as defaults. Nutrition phase never invents a training goal or changes dose without qualifying recovery or performance evidence.</p>`;
         const alerts = `
           <div class="alert-settings-list">
             ${renderAlertSetting("timer-notifications", "Lock-screen rest notifications", "Requires permission and an installed Home Screen app.", pushStatus.notificationsEnabled, { stateLabel: pushStatus.permissionStatus === "denied" ? "Permission denied" : pushStatus.lockScreenReady ? "Enabled" : "Needs setup" })}
@@ -895,8 +888,6 @@
           <div class="callout bad cloud-not-backup"><b>Cloud copy is not a backup</b><span>There is no cloud-history or restore endpoint. A downloaded app-data export is the only implemented copy that can be imported to recover these records. ${cloudEnabled ? "Cloud copy is currently enabled, but it still cannot restore this app." : "Cloud copy is currently off."}</span></div>
           <div class="recoverability-list"><div class="m-label"><span>Recoverability</span><span>verified facts</span></div>${renderStoragePersistenceFact()}<div class="row-item"><span class="ri-copy"><b>Recoverable copy</b><span>The app does not record when you last exported. Create and retain a downloaded export yourself.</span></span><span class="ri-val">Export only</span></div></div>
           ${syncMessage ? '<p class="settings-note">' + escapeHtml(syncMessage) + '</p>' : ''}
-          <label class="import-button">${icon.upload} private personal evidence package<input type="file" accept=".json,application/json" data-action="import-personal-evidence" /></label>
-          <p class="settings-note">The imported aggregate evidence package stays in this device's IndexedDB and in exported app backups. Protected source files are never part of the public deployment.</p>
           ${importAttempt ? '<p role="status" aria-live="polite" data-import-status data-import-state="' + escapeHtml(importStatus.state) + '" data-import-attempt="' + importAttempt + '">' + escapeHtml(importStatus.message) + '</p>' : ''}
           ${importInProgress ? '<div class="state-skeleton import-skeleton" role="status" aria-live="polite"><span class="skeleton skeleton-kicker" aria-hidden="true"></span><span class="skeleton skeleton-title" aria-hidden="true"></span><span class="skeleton skeleton-panel" aria-hidden="true"></span><span class="visually-hidden">Importing workout history. Navigation will recover automatically when it finishes.</span></div>' : ""}
           <button class="primary-action" type="button" data-action="export-data">${icon.download} Export all app data</button>
@@ -915,11 +906,10 @@
           <div class="m-label"><span>Support</span><span>guidance</span></div><p class="settings-note">Progression guidance is informational fitness guidance, not medical advice. Stop if something hurts and use your own judgment.</p><p class="settings-links"><a href="./privacy.html">Privacy Policy</a><a href="./support.html">Support</a></p>`;
         return `
           <section class="view settings-view">
-            <div class="screen-heading"><div><div class="section-kicker">Settings</div><h1>Training setup.</h1><p>Six groups contain every current app setting, data action and destructive control.</p></div></div>
+            <div class="screen-heading"><div><div class="section-kicker">Settings</div><h1>App settings.</h1><p>Timer behavior, readiness defaults, privacy, and data controls.</p></div><button type="button" data-action="open-routines">Routines</button></div>
             ${appDataPersistenceConflict ? '<p class="settings-note persistence-conflict-note" role="status">' + escapeHtml(appDataPersistenceConflict.message) + '</p>' : ""}
             ${settingsMessage ? '<p class="settings-note persistence-status-note" role="status">' + escapeHtml(settingsMessage) + '</p>' : ""}
             ${renderSettingsGroup("Appearance and units", "Display", appearance, { open: true })}
-            ${renderSettingsGroup("Training defaults", "Goal and context", training)}
             ${renderSettingsGroup("Rest timer and alerts", pushStatus.label, alerts)}
             ${renderSettingsGroup("Readiness baseline", "Your usual", readiness)}
             ${renderSettingsGroup("Data and backup", "Privacy and recovery", dataAndBackup)}

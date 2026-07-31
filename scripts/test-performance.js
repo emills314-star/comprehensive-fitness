@@ -49,13 +49,15 @@ assert.doesNotMatch(html, /hypertrophyScoreCache|weeklyVolumeCache|exerciseWeekC
 assert.doesNotMatch(html, /function hypertrophyAnalysis|function weeklyMuscleVolume/, "Deleted hypertrophy and weekly-volume producers must not remain in the application");
 assert.doesNotMatch(html, /function fatigueFlags\(/, "Legacy numeric fatigue thresholds must not remain in the application");
 
-assert.equal((templateRenderer.match(/id="active-workout-template-notice"/g) || []).length, 1, "Templates should show one active-workout notice");
-assert.match(templateRenderer, /Return to Active Workout/, "The compact notice must resume the canonical workout");
-assert.match(templateRenderer, /const startDisabledAttributes = locked[\s\S]*disabled aria-describedby="active-workout-template-notice"/, "Other template Start buttons must be truly disabled while a workout is active");
-assert.match(templateRenderer, /: emptyTemplate[\s\S]*disabled aria-describedby="' \+ escapeHtml\(emptyTemplateDescriptionId\)/, "Empty-template Start buttons must be truly disabled with an accessible explanation");
+assert.equal((templateRenderer.match(/id="active-workout-template-notice"/g) || []).length, 1, "Routine management may show one concise active-draft notice");
+assert.match(templateRenderer, /Starting another routine will ask whether to resume, finish, or discard/, "The routine notice must explain the shared draft guard");
+assert.match(templateRenderer, /data-action="resume-active-workout">Resume/, "The routine notice must provide Resume");
+assert.doesNotMatch(templateRenderer, /const startDisabledAttributes = locked|disabled aria-describedby="active-workout-template-notice"/, "Other routine Start controls must remain operable so the shared Resume/Finish/Discard conflict can explain the protected draft");
+assert.match(templateRenderer, /data-action="start-template"/, "Routine management must retain a Start action that delegates to the shared active-draft guard");
+assert.match(templateRenderer, /const startDisabledAttributes = emptyTemplate[\s\S]*disabled aria-describedby="' \+ escapeHtml\(emptyTemplateDescriptionId\)/, "Empty-template Start buttons must be truly disabled with an accessible explanation");
 assert.doesNotMatch(templateRenderer, /Submit or cancel .* before starting another template/, "Template cards must not repeat the restriction on every row");
 assert.doesNotMatch(templateRenderer, /fatigueFlags\(/, "Opening Templates must not recalculate completed-history fatigue analysis");
-assert.match(templateRenderer, /const advice = null;/, "Template-list rendering must defer readiness coaching to the start flow");
+assert.match(templateRenderer, /const advice = null;/, "Routine-list rendering must remain free of normal recommendation advice");
 assert.match(templateRenderer, /const editorExpanded = expandedTemplateEditorIds\.has\(template\.id\)/, "Template editors must be expanded explicitly");
 assert.match(templateRenderer, /\$\{editorExpanded \? `<div class="disclosure-body">/, "Collapsed template editors must not generate their exercise controls");
 assert.doesNotMatch(historyRenderer, /Grade ['"]?\s*\+|Grade \$\{/, "Progress History must not prefix the visible grade with the word Grade");

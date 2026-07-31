@@ -3,7 +3,7 @@
 **Product:** Comprehensive Fitness  
 **Primary owner:** Codex  
 **Adversarial reviewer:** Claude Code  
-**Current phase:** Implementation active on `codex/zero-based-redesign`; M0–M4 gates complete locally
+**Current phase:** Implementation active on `codex/zero-based-redesign`; M0–M5 gates complete locally
 **Implementation authorized:** Yes — local implementation only
 
 ## Completed
@@ -54,14 +54,21 @@
 - The programming-family ledger, historical fractional-volume projection APIs, obsolete analytical renderers/state/actions/styles, and obsolete analytical tests were deleted without changing stored workout history.
 - M4 focused removal and 390 × 844 populated/empty Progress tests, 58/58 public scripts, 38/38 app-integration contracts, lint, typecheck, production build, 39-file web sync, 38-asset PWA verification, tracked-file privacy scan, and visual inspection passed.
 
+- M5 installed exactly two persistent destinations, Today and Progress; Routines and Settings are contextual routes with explicit return behavior.
+- Expected-workout Start now opens the full-screen logger directly. Readiness is optional and independently available before or during a workout.
+- A competing start request offers exactly Resume, Finish, or Discard. Discard requires confirmation and never silently replaces or starts over an active draft.
+- M5 retained exact legacy routine `reps`; it has no visible writer for removed settings. Obsolete planner settings, including training goal, nutrition phase, and experience level, remain decode/discard-only before active import or current export.
+- A bounded identity-only boot correction keeps normal boot to the identity catalog and reserves the relationship map for import validation.
+- M5 focused mobile checks passed 5/5, identity/compatibility mobile checks passed 65/65 plus 13/13, desktop compatibility checks passed 2/2, strict target regressions passed 2/2, readiness dismissal and custom-exercise rendering regressions passed 2/2, and one clean approved public-suite run passed 60/60. Lint, typecheck, 33 PWA checks, approved 24-module Vite build, 646-file privacy scan, and nine screenshot inspections passed.
+
 ## Current objective
 
-M0 through M4 are complete and recoverable locally. M2 is checkpointed at `243ed81`; M3 is checkpointed at `3e102e2`; M4 is checkpointed at `576f582`. M5 two-destination shell and direct Start is next.
+M0 through M5 are complete locally. M2 is checkpointed at `243ed81`; M3 is checkpointed at `3e102e2`; M4 is checkpointed at `576f582`. M5's checkpoint hash is recorded after its recoverable local commit.
 
 ## Next actions
 
-1. Begin M5 two-destination shell and direct Start without reactivating planner, dashboard, or duplicate recommendation paths.
-2. Continue sequential milestone gates through M8.
+1. Create and record the recoverable M5 checkpoint.
+2. Begin M6 only after re-reading its authoritative scope, without reactivating planner, dashboard, or duplicate recommendation paths.
 3. Automated, privacy, migration, independent, target-device, and five-workout human acceptance gates precede any separately authorized publication.
 
 ## Open issues
@@ -70,7 +77,7 @@ M0 through M4 are complete and recoverable locally. M2 is checkpointed at `243ed
 - Current numeric fatigue, readiness, plateau, deload, evidence, confidence, and grade thresholds/formulas are not approved. M2 prevents them from producing current actions; M4 removed the normal analytical product paths, while M7 owns remaining legacy grade debt.
 - Target migration contracts and synthetic baselines exist; M1 runtime normalization is implemented, but a complete real-data export/replay and independent migration verification remain unperformed.
 - Focused browser/PWA/accessibility verification passed for M1; physical-device, notification, performance, privacy, independent-review, pinned-runtime, and five-workout acceptance gates remain unverified.
-- M5–M8 product behavior remains incomplete. Two-destination navigation/direct Start and legacy grade/completion/UI debt remain assigned to M5–M7.
+- M6–M8 product behavior remains incomplete; legacy grade/completion/UI debt remains assigned to M6–M7.
 - Two broader Strong-history browser assertions disagree with current shared-runtime copy/prior-row resolution; they were not caused by M3 planner-field deletion and remain separately reproducible.
 - Pre-existing uncommitted `.claude/`, `.vercel/`, and `redesign/prompts/` paths must remain preserved.
 - Current code and living docs differ materially from final product intent. They remain accurate as current-state evidence until an authorized implementation updates behavior and documentation together.
@@ -78,4 +85,4 @@ M0 through M4 are complete and recoverable locally. M2 is checkpointed at `243ed
 
 ## Last verification
 
-M4 completed locally by Codex on 2026-07-31. All 58 selected public scripts passed; lint, typecheck, production build, PWA/native packaging, tracked-file privacy, dependency/residue, and focused populated/empty 390 × 844 running-app verification passed. Service-worker cache v98 was produced. No dependency, `AGENTS.md`, `CLAUDE.md`, private personal fitness/health data, deployment, or publication change occurred.
+M5 completed locally on 2026-07-31: focused mobile 5/5; identity/compatibility mobile 65/65 plus 13/13; desktop compatibility 2/2; strict targets 2/2; readiness-dismissal/custom-exercise regressions 2/2; clean public suite 60/60; lint, typecheck, 33 PWA checks, approved Vite build, 646-file privacy, and nine inspected screenshots passed. No private personal fitness/health data, production-data migration, deployment, or publication occurred.

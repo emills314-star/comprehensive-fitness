@@ -163,6 +163,20 @@ Progress is now one coherent factual destination: one per-variant performance ch
 
 Exit evidence is recorded in `MILESTONE_LOG.md`: 58/58 public scripts, 38/38 app-integration contracts, focused M4 removal and mobile factual-Progress tests, lint, typecheck, production build, 39-file web sync, 38-asset PWA verification, tracked-file privacy scan, residue/diff checks, and populated/empty 390 × 844 visual verification passed. The service-worker cache is v98. No private or production data was mutated. M4 is recoverable at local checkpoint `576f582`.
 
+## M5 completion record — Two-destination shell and direct Start
+
+**Status:** IMPLEMENTED LOCALLY
+
+Today and Progress are now the only persistent destinations. Routines and Settings are contextual secondary routes with coherent return behavior. Expected-workout Start opens the active logger directly and the logger is full-screen; readiness is optional, brief, and independently available before or during a workout.
+
+The active-draft safety boundary remains one draft. A competing start request presents exactly Resume, Finish, and Discard; Discard requires concise confirmation, removes only the confirmed draft, and never silently begins the previously requested workout. Browser Back returns from the logger to Today without losing the draft, where Resume remains available. Bounded legacy routes land only on retained Today, Progress, Settings, routine, workout, or exercise contexts.
+
+M5 retains exact legacy routine `reps` values. It removes visible writers for obsolete settings; legacy planner settings such as training goal, nutrition phase, and experience level continue to decode then discard before active import or current export and are not preserved as current backup settings. The M4 identity-only boot correction found during M5 means normal boot requests only the exercise identity catalog; the relationship map remains import-validation-only. Neither correction restores analytics, evidence UI, or a second recommendation authority.
+
+Focused M5 mobile evidence passed 5/5. Identity/compatibility coverage passed 65/65 and 13/13 on mobile plus 2/2 desktop compatibility boundaries. Strict target regressions passed 2/2, and the readiness-dismissal/custom-exercise-render regressions passed 2/2 after their production fixes. One clean approved public-suite run passed 60/60. Lint (202 JavaScript/3,118 JSON/0 inline), typecheck, 33-check PWA verification, 24-module approved Vite build, 646-file privacy check, and nine inspected screenshots passed. No production/private data migration or mutation occurred.
+
+M5 is implemented locally. It is not published or independently accepted: pinned-runtime/device and human acceptance, independent migration verification, and all publication gates remain outside this local record.
+
 ## 5. Temporary structure ledger
 
 | Artifact | Introduced | Purpose | Delete gate |

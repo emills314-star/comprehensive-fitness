@@ -81,7 +81,7 @@ assert.doesNotMatch(analysis, /research exercises|research version|prescription 
 const focusAllowlist = foundation.match(/const focusActionAllowlist = new Set\(\[([\s\S]*?)\]\);/)?.[1] || "";
 assert.ok(focusAllowlist, "The focus restoration action allowlist must remain discoverable");
 assert.doesNotMatch(focusAllowlist, /toggle-prescription-rationale/, "The deleted recommendation disclosure cannot remain a restorable focus target");
-for (const action of ["set-tab", "start-template", "request-cancel-workout", "return-active-workout", "open-history"]) {
+for (const action of ["set-tab", "start-template", "request-cancel-workout", "resume-active-workout", "log-template-readiness", "open-history"]) {
   assert.match(focusAllowlist, new RegExp(`"${action}"`), `${action} must remain available to focus restoration`);
 }
 

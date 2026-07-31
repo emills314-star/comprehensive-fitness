@@ -4,7 +4,7 @@
 
 - **Purpose:** Verified user experience, interaction contracts, and intended UX gaps
 - **Last verified:** 2026-07-31
-- **Repository:** zero-based redesign M4 analytical product removal
+- **Repository:** zero-based redesign M5 two-destination shell
 - **Verification status:** VERIFIED locally for factual Progress populated/empty states at 390 × 844, long exact variant names, large load/decimal RPE values, tappable point detail, and removal of dashboard/volume/hypertrophy/research/evidence/confidence surfaces. Hosted and physical-device verification remain unverified
 - **Related:** [Project](PROJECT.md), [architecture](ARCHITECTURE.md), [decision engine](DECISION_ENGINE.md), [roadmap](ROADMAP.md)
 
@@ -18,7 +18,7 @@ Read this document before changing navigation, screens, labels, visual hierarchy
 
 Starting a routine now renders the named exercise variant's stable set roles/count, rep range, target-RPE band, and rest without a normal engine rewrite. Load, reps, and RPE use factual same-variant/same-role prior performance, explicit routine defaults, then blank. Full variant names remain present, including meaningful suffixes. Large numeric values remain valid editable number-input values; visual grouping separators are display-only.
 
-Global equipment preference controls are absent and equipment state cannot disable normal workout logging. M3 has removed the planner; Plan now owns routines/templates only until M5. M4 is implemented locally; M6 remains future work.
+Global equipment preference controls are absent and equipment state cannot disable normal workout logging. M3 removed the planner; the former Plan ownership is superseded by M5 contextual Routines. M4 and M5 are implemented locally; M6 remains future work.
 
 Focused mobile verification at 390 × 844 covers long canonical names, a 1,234.5-lb prior-performance prefill, current/pending/completed states, ordinary completion touch, one-edit replacement of prefilled RPE `7` with `7.5`, and the removed equipment group. RPE replacement does not require a duplicate first digit or manual clear. Completion immediately after entry persists the decimal even when blur rerenders the set row. The current-set options disclosure occupies its own touch row so it cannot intercept the 44 CSS-pixel completion control. Screenshots are stored under `artifacts/ui-audit/m1/`; no replacement visual baseline was accepted.
 
@@ -26,9 +26,15 @@ Focused mobile verification at 390 × 844 covers long canonical names, a 1,234.5
 
 Today shows the expected workout, its start action, and alternate routines without hypertrophy, weekly/fractional volume, research status, evidence, confidence, program score, or normal plan-preview cards. Progress is one screen: select an exact exercise variant, inspect its factual submitted-performance chart, tap a point for date/load/reps/RPE/set role/source session, and continue into chronological submitted-workout history. The empty state asks for a completed workout; it does not substitute a score or recommendation.
 
-The factual Progress view was inspected at 390 × 844 with a long variant name, `1,234.5` load, decimal RPE, populated point detail, and empty history. Distinct variants remain separate. The four-destination shell remains temporarily until M5 installs the final two-destination navigation.
+The factual Progress view was inspected at 390 × 844 with a long variant name, `1,234.5` load, decimal RPE, populated point detail, and empty history. Distinct variants remain separate. **SUPERSEDED (M5):** the temporary four-destination shell was replaced by the final two-destination navigation.
 
 ## Experience principles
+
+### Two-destination navigation and direct Start — IMPLEMENTED LOCALLY (M5)
+
+Persistent bottom navigation exposes exactly Today and Progress. Routines and Settings are contextual screens with **Back to Today** behavior; legacy destinations normalize to those current contexts without becoming tabs. The active workout is full-screen, hides persistent navigation, and exposes a contextual **Back to Today** route. Today shows **Resume** whenever a draft exists.
+
+The normal Today Start action opens the active logger directly with usual readiness: there is no confirmation, readiness ritual, or prescription-review sheet. **Log readiness** is optional and separate before Start, and remains available from the active workout. A competing start request presents exactly Resume, Finish, and Discard; Discard opens a distinct concise destructive confirmation and never starts the requested workout automatically.
 
 ### Guided mesocycle workflow — SUPERSEDED HISTORICAL RECORD (M3)
 
@@ -215,6 +221,8 @@ The splash composes the rounded mark over `background_color` with the product na
 
 ## Navigation and screen inventory
 
+**SUPERSEDED HISTORICAL RECORD (M5):** The following four-destination inventory is retained as migration evidence only. Current persistent navigation contains exactly Today and Progress; Routines and Settings are contextual, and the active workout is full-screen without persistent navigation.
+
 Outside an active or just-submitted session, the persistent bottom navigation has four destinations (`primaryTabIds`, `render`). During the active session it is replaced in the same fixed slot by the session dock:
 
 | Tab | Purpose and major screens |
@@ -397,7 +405,7 @@ The deterministic mobile/desktop lifecycle now covers UI-created template persis
 
 **SUPERSEDED TERMINOLOGY:** the pre-migration five-tab shell used “Workout,” “Dashboard,” “Templates,” “Charts,” and “Settings.” It is retained here as historical copy context and must not name the current primary navigation.
 
-Use **Today**, **Plan**, **Progress**, and **More** for current primary navigation. Use “working set” versus “warm-up set” precisely. “Today’s readiness” is same-day context; “Today’s plan” is the base/adjusted work. “Go as planned” permits planned progression only when warm-ups support it. “Deload” must state scope. “History” means confirmed submitted workouts. Use lb/kg consistently and show the active unit.
+Use **Today** and **Progress** for current persistent navigation. Use **Routines** and **Settings** only as contextual secondary screens. Use “working set” versus “warm-up set” precisely. “Today’s readiness” is optional same-day context; it is never a Start requirement. “History” means confirmed submitted workouts. Use lb/kg consistently and show the active unit.
 
 Do not call offline Fitbit export analysis “Fitbit sync,” the nutrition adequacy selector “nutrition tracking,” or installation authorization a user login.
 
@@ -415,9 +423,10 @@ All concepts must expose empty, loading, offline, failure, destructive-confirmat
 - **IMPLEMENTED:** An active exception renders from the persisted canonical action as one plain session action plus at most one materially stricter exercise action. Direct pain/illness copy does not diagnose or claim safety, and the logger remains fully usable when the user continues.
 - **REMOVED:** Today Program pulse, visible Progress score/expectation coaching, legacy recommendation renderers, confidence/evidence presentation, and prospective completion coaching.
 - **VERIFIED:** Mobile 390 × 844 scenarios cover ordinary silence and continued logging after pain entry, including long names, large loads, decimal RPE, stable targets, prior performance, reload recovery, and no horizontal overflow.
-- **IMPLEMENTED LOCALLY (M3):** Guided planning and mesocycle UI/state are removed; Plan owns routines/templates only.
+- **IMPLEMENTED LOCALLY (M3):** Guided planning and mesocycle UI/state are removed; the former Plan ownership is superseded by M5 contextual Routines.
 - **IMPLEMENTED LOCALLY (M4):** Remaining dashboard/research, weekly/fractional volume, hypertrophy, score, evidence/confidence, normal plan-preview, and duplicate recommendation surfaces are removed. Progress is factual per-variant performance plus chronological history.
-- **NEXT:** M5 installs the final two-destination shell; M6–M7 simplify the logger and completion/grade experience.
+- **IMPLEMENTED LOCALLY (M5):** Today and Progress are the sole persistent destinations. Routines and Settings are contextual; Start is direct; readiness is optional before/during; and an existing draft can only Resume, Finish, or enter confirmed Discard.
+- **NEXT:** M6–M7 simplify the logger and completion/grade experience.
 
 ### Focused five-direction session mockups
 

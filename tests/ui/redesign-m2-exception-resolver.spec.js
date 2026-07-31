@@ -206,18 +206,21 @@ async function installFixture(page) {
   await page.goto("/");
   await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible({ timeout: 45_000 });
   await expect.poll(
-    () => page.evaluate(() => String(prescriptionEvidenceStatus?.state || "loading")),
-    { timeout: 45_000 }
-  ).toBe("ready");
-}
-
-async function openPlan(page) {
-  await page.locator('[data-action="set-tab"][data-tab="plan"]').click();
-  await expect(page.locator('[data-action="set-tab"][data-tab="plan"]')).toHaveAttribute("aria-current", "page");
+    () => page.evaluate(() => Boolean(
+      prescriptionEngine?.evidence?.research?.exerciseById?.has("ex_barbell_bench_press")
+    )),
+    {
+      message: "the identity compatibility catalog must be ready before exception-resolver checks run",
+      timeout: 45_000
+    }
+  ).toBe(true);
 }
 
 async function beginTemplate(page) {
-  await page.locator(`[data-action="start-template"][data-template-id="${TEMPLATE_ID}"]`).click();
+  const start = page.locator(`[data-action="start-next-template"][data-template-id="${TEMPLATE_ID}"]`);
+  await expect(start).toBeVisible();
+  await start.click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 }
 
 function activeExercise(page) {
@@ -263,9 +266,7 @@ test("ordinary M2 start is silent while stable target, prior fact, and logging r
   await page.setViewportSize({ width: 390, height: 844 });
   const browserErrors = collectBrowserErrors(page);
   await installFixture(page);
-  await openPlan(page);
   await beginTemplate(page);
-  await page.locator('[data-action="use-usual-readiness"]').click();
   await expect(page.getByRole("heading", { name: TEMPLATE_NAME, exact: true })).toBeVisible({ timeout: 45_000 });
 
   const exercise = activeExercise(page);
@@ -300,21 +301,14 @@ test("pain or injury entry yields one canonical continued-action card without re
   await page.setViewportSize({ width: 390, height: 844 });
   const browserErrors = collectBrowserErrors(page);
   await installFixture(page);
-  await openPlan(page);
-  await beginTemplate(page);
 
-  await page.getByRole("button", { name: "Log today’s readiness", exact: true }).click();
-  const readiness = page.getByRole("dialog", { name: "How did you arrive?", exact: true });
+  await page.locator(`[data-action="log-template-readiness"][data-template-id="${TEMPLATE_ID}"]`).click();
+  const readiness = page.getByRole("dialog", { name: "What is different today?", exact: true });
   await expect(readiness).toBeVisible();
   await readiness.getByRole("checkbox", { name: "Pain or injury", exact: true }).check();
   await readiness.getByLabel("Affected area", { exact: true }).selectOption({ label: "Back" });
   await readiness.getByLabel("Optional context", { exact: true }).fill("Synthetic non-diagnostic test context.");
-  await readiness.getByRole("button", { name: "See what this changes", exact: true }).click();
-
-  const review = page.getByRole("dialog", { name: "Readiness recorded.", exact: true });
-  await expect(review).toContainText("Pain or illness recorded");
-  await expect(review).toContainText("one plain safety action");
-  await review.getByRole("button", { name: "Start workout", exact: true }).click();
+  await readiness.locator('[data-action="start-workout-with-readiness"]').click();
   await expect(page.getByRole("heading", { name: TEMPLATE_NAME, exact: true })).toBeVisible({ timeout: 45_000 });
 
   const workout = page.locator(".workout-view");

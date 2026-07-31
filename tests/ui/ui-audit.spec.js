@@ -3,7 +3,7 @@ const AxeBuilder = require("axe-core");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const tabs = ["Today", "Plan", "Progress", "More"];
+const tabs = ["Today", "Progress"];
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -25,6 +25,8 @@ for (const tabName of tabs) {
     await page.waitForLoadState("load");
 
     const nav = page.getByRole("navigation", { name: "Main navigation" });
+    await expect(nav.getByRole("button")).toHaveCount(2);
+    await expect(nav.getByRole("button", { name: /Plan$|More$/ })).toHaveCount(0);
     const target = nav.getByRole("button", { name: new RegExp(`${tabName}$`) });
     await target.click();
     await expect(target).toHaveAttribute("aria-current", "page");
@@ -80,21 +82,23 @@ for (const tabName of tabs) {
   });
 }
 
-test("Templates initial frame stays progressive under large history", async ({ page }, testInfo) => {
-  await page.goto("/?perf=1&perfFixture=large");
+test("contextual Routines initial frame stays progressive under large history", async ({ page }, testInfo) => {
+  await page.goto("/?perf=1&perfFixture=large#routines");
   await page.waitForLoadState("load");
-  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: /Plan$/ }).click();
-  await expect(page.getByRole("heading", { name: "Your plan", exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/#routines$/);
+  await expect(page.getByRole("navigation", { name: "Main navigation" }).getByRole("button")).toHaveCount(2);
+  await expect(page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: /Plan$|More$/ })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Routines", exact: true })).toBeVisible();
 
   const result = await page.evaluate(() => {
-    const events = (window.__CF_PERF__ || []).filter((event) => event.label === "renderTotal:plan");
+    const events = (window.__CF_PERF__ || []).filter((event) => event.label === "renderTotal:routines");
     return {
       duration: events.at(-1)?.duration ?? Number.POSITIVE_INFINITY,
       hiddenEditorBodies: document.querySelectorAll(".template-editor .disclosure-body").length
     };
   });
 
-  console.log(`${testInfo.project.name} Templates large-fixture render: ${result.duration.toFixed(1)} ms`);
+  console.log(`${testInfo.project.name} contextual Routines large-fixture render: ${result.duration.toFixed(1)} ms`);
   expect(result.duration).toBeLessThan(250);
   expect(result.hiddenEditorBodies).toBe(0);
 

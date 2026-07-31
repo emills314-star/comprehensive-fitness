@@ -208,7 +208,28 @@
 
       function patchRecovery(patch, shouldRender = true) {
         const session = activeSession();
-        patchSession({ recovery: { ...sessionRecovery(session), ...patch } }, shouldRender);
+        if (!session) return;
+        const recovery = cleanRecovery({ ...sessionRecovery(session), ...patch });
+        const activeDraft = session.id === activeWorkoutId && !isSessionSubmitted(session);
+        const nextSession = {
+          ...session,
+          recovery,
+          ...(activeDraft ? {
+            resolvedActions: measurePerformance("workoutUpdate:exceptionResolver", () => resolveWorkoutExceptions({ ...session, recovery }, recovery, {
+              userContinuedWithAction: Boolean(recovery.illness || recovery.pain)
+            }), { workoutId: session.id, hasExplicitSafetyInput: Boolean(recovery.illness || recovery.pain) })
+          } : {}),
+          updatedAt: isoNow()
+        };
+        if (shouldRender) {
+          commit({ ...data, sessions: data.sessions.map((item) => item.id === session.id ? nextSession : item) }, true, { invalidateAnalysis: !activeDraft, deferPersistence: activeDraft });
+          return;
+        }
+        const index = dataEntityIndex().sessionIndexById.get(session.id) ?? -1;
+        if (index < 0) return;
+        data.sessions[index] = nextSession;
+        if (isEditingHistorySession()) historyEditFlow.dirty = true;
+        else scheduleSave();
       }
 
       function patchReadinessBaseline(patch, shouldRender = true) {
@@ -252,8 +273,8 @@
         const profiledExercise = {
           ...exercise,
           customExerciseProfile: profile,
-          primaryMuscle: appMuscleFromPrescriptionGroup(profile.primaryMuscleGroupId),
-          secondaryMuscle: profile.secondaryMuscleGroupId ? appMuscleFromPrescriptionGroup(profile.secondaryMuscleGroupId) : "",
+          primaryMuscle: appMuscleFromCustomGroup(profile.primaryMuscleGroupId),
+          secondaryMuscle: profile.secondaryMuscleGroupId ? appMuscleFromCustomGroup(profile.secondaryMuscleGroupId) : "",
           resistanceType: profile.resistanceType,
           isBodyweight: isBodyweightResistance(profile.resistanceType)
         };
@@ -818,7 +839,7 @@
       function addSession() {
         if (hasActiveWorkout()) {
           activeSessionId = activeWorkoutId;
-          setActiveTab("today", { replace: true, renderNow: false });
+          setActiveTab("workout", { replace: true, renderNow: false });
           showAppToast("You already have an active workout. Resume or cancel it before starting another.");
           render();
           return;
@@ -832,7 +853,7 @@
         activeSetNotice = "";
         window.clearInterval(timerInterval);
         timer = null;
-        setActiveTab("today", { replace: true, renderNow: false });
+        setActiveTab("workout", { replace: true, renderNow: false });
         commit({ ...data, sessions: [session, ...data.sessions] });
       }
 
@@ -849,7 +870,7 @@
         }
         if (!historyCorrection && hasActiveWorkout() && session.id !== activeWorkoutId) {
           activeSessionId = activeWorkoutId;
-          setActiveTab("today", { replace: true, renderNow: false });
+          setActiveTab("workout", { replace: true, renderNow: false });
           showAppToast("You already have an active workout. Resume or cancel it before adding another.");
           render();
           return;
@@ -892,7 +913,7 @@
 
       function addTemplate() {
         const template = { id: id(), name: "New Template", notes: "", exercises: [normalizeStableTemplateExercise({ id: id(), name: "Exercise", sets: 3, reps: 8, repMin: 8, repMax: 8, targetRpe: 8, increment: progressionProfileForExercise("Exercise").increment, restSeconds: recommendedRestSeconds("Exercise"), resistanceType: "external", isBodyweight: false, warmups: [] })], createdAt: isoNow(), updatedAt: isoNow() };
-        setActiveTab("plan", { renderNow: false });
+        setActiveTab("routines", { renderNow: false });
         commit({ ...data, templates: [template, ...data.templates] });
       }
 
@@ -948,6 +969,11 @@
                     ...type,
                     ...(Object.prototype.hasOwnProperty.call(patch, "repMin") ? { repMin: Number(patch.repMin) } : {}),
                     ...(Object.prototype.hasOwnProperty.call(patch, "repMax") ? { repMax: Number(patch.repMax) } : {}),
+                    ...(Object.prototype.hasOwnProperty.call(patch, "repMin")
+                      && Object.prototype.hasOwnProperty.call(patch, "repMax")
+                      && Number(patch.repMin) === Number(patch.repMax)
+                      ? { exactReps: true, rangeSource: "routine-exact" }
+                      : {}),
                     ...(Object.prototype.hasOwnProperty.call(patch, "targetRpe") ? { rpeMin: Math.max(1, Number(patch.targetRpe) - 1), rpeMax: Number(patch.targetRpe) } : {}),
                     ...(Object.prototype.hasOwnProperty.call(patch, "restSeconds") ? { restSeconds: Number(patch.restSeconds) } : {})
                   }));
@@ -971,11 +997,11 @@
       function saveActiveSessionAsTemplate() {
         const template = createTemplateFromSession(activeSessionId);
         if (!template || template.exercises.length === 0) {
-          setActiveTab("plan", { renderNow: false });
+          setActiveTab("routines", { renderNow: false });
           addTemplate();
           return;
         }
-        setActiveTab("plan", { renderNow: false });
+        setActiveTab("routines", { renderNow: false });
         commit({ ...data, templates: [template, ...data.templates] });
       }
 
@@ -1070,11 +1096,13 @@
         if (!template) return;
         if (!Array.isArray(template.exercises) || template.exercises.length === 0) {
           templateStartFlow = null;
+          optionalReadinessFlow = null;
           showAppToast("Add at least one exercise before starting this template.");
           render();
           return;
         }
         if (hasActiveWorkout()) {
+          captureDialogFocusOrigin("template");
           templateStartFlow = { templateId, step: "active-conflict", draft: cleanRecovery(recovery) };
           render();
           return;
@@ -1148,8 +1176,9 @@
         activeSessionId = session.id;
         activeWorkoutId = session.id;
         viewingHistorySessionId = "";
-        setActiveTab("today", { renderNow: false });
+        setActiveTab("workout", { renderNow: false });
         templateStartFlow = null;
+        optionalReadinessFlow = null;
         activeSetId = [...sets].sort((a, b) => canonicalSetSequence(a) - canonicalSetSequence(b)).find((set) => !set.completed && !set.skipped)?.id || "";
         activeSetAcknowledged = false;
         activeSetNotice = activeSetId ? "First set is ready" : "";

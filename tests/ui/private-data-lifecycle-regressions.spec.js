@@ -14,13 +14,29 @@ test.beforeEach(async ({ page }) => {
   });
   await page.goto("/");
   await page.waitForLoadState("load");
-  await expect.poll(() => page.evaluate(() => String(prescriptionEvidenceStatus?.state || "loading")), {
+  await expect.poll(() => page.evaluate(() => {
+    const identity = prescriptionEngine?.resolveExerciseIdentity?.("Barbell Bench Press");
+    return identity?.status === "resolved" ? identity.exerciseId : "";
+  }), {
     timeout: 30_000
-  }).not.toBe("loading");
+  }).toBe("ex_barbell_bench_press");
 });
 
 test("migration audit import fields are typed and every rendered value is escaped", async ({ page }) => {
   const state = validFullState();
+  delete state.mesocycles;
+  delete state.activeMesocycleId;
+  const importableSettings = new Set([
+    "weightUnit", "theme", "colorPackage", "timerSound", "workoutCompletionSound",
+    "timerVibration", "interactionVibration", "timerNotifications", "inAppRestAlerts",
+    "restCompleteSound", "restCompleteSoundVolume", "restCompleteAutoDismissMs",
+    "restCompleteLockScreenNotifications", "restCompleteAutoReturnToWorkout",
+    "defaultRestSeconds", "notificationMessageDetail", "autoStartRestTimer",
+    "autoHighlightNextSet", "autoScrollNextSet", "installGuideDismissed",
+    "setupSoundConfirmed", "cloudWorkoutSyncConsent", "workoutCloudSync",
+    "workoutCloudSyncConsentVersion", "readinessBaseline"
+  ]);
+  state.settings = Object.fromEntries(Object.entries(state.settings).filter(([key]) => importableSettings.has(key)));
   const result = await page.evaluate(({ model, ids }) => {
     const validAudit = {
       version: 2,
@@ -72,7 +88,7 @@ test("migration audit import fields are typed and every rendered value is escape
       templatesReseeded: payload,
       changes: []
     }];
-    activeTab = "more";
+    activeTab = "settings";
     render();
     return { validation, payload };
   }, { model: state, ids: IDS });

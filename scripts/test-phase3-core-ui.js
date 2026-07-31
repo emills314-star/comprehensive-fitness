@@ -6,6 +6,7 @@ const root = path.join(__dirname, "..");
 const views = fs.readFileSync(path.join(root, "app-views.js"), "utf8");
 const analysis = fs.readFileSync(path.join(root, "app-analysis.js"), "utf8");
 const history = fs.readFileSync(path.join(root, "app-history.js"), "utf8");
+const interactions = fs.readFileSync(path.join(root, "app.js"), "utf8");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 
 function section(source, start, end) {
@@ -16,7 +17,7 @@ function section(source, start, end) {
 }
 
 const today = section(views, "function renderLiftHome()", "function workoutProgress()");
-const quickStarts = section(views, "function renderQuickStartTemplates(", "function openTemplateStart(");
+const quickStarts = section(views, "function renderQuickStartTemplates(", "function openOptionalReadiness(");
 const progress = section(analysis, "function renderLiftProgress()", "function restAlertState()");
 const completedHistory = section(analysis, "function renderHistory()", "// EXERCISE_TARGET_ENGINE_START");
 const templates = section(analysis, "function renderTemplates()", "function templateNumericDraftKey(");
@@ -29,7 +30,7 @@ assert.match(today, /previewNames[\s\S]*nextTemplate\?\.exercises/, "Today may s
 assert.doesNotMatch(today, /todayPlanPreview|renderTodayPlanPreview|Stable target|Last time|weeklyMuscleVolume|hypertrophy|open-progress/i, "Today must not retain plan comparisons or analytical review links");
 assert.strictEqual((views.match(/data-action="start-next-template"/g) || []).length, 1, "Today must render exactly one primary expected-workout action");
 assert.match(quickStarts, /today-template-strip[\s\S]*today-template-card/, "Alternate routines must remain secondary to the expected workout");
-assert.match(quickStarts, /"return-active-workout" : "start-template"/, "Alternate routines must retain start and resume actions");
+assert.match(quickStarts, /"resume-active-workout" : "start-template"/, "Alternate routines must retain start and resume actions");
 
 assert.match(progress, /exercisePerformanceSeries\([\s\S]*renderChart\("performance"[\s\S]*renderHistory\(\)/, "Progress must combine one factual exercise chart with chronological workout history");
 assert.match(progress, /Exercise or variant[\s\S]*Named variants remain separate/, "Progress must retain exact exercise-variant selection");
@@ -38,11 +39,14 @@ assert.doesNotMatch(progress, /hypertrophy|weekly volume|fractional|reps at weig
 assert.match(completedHistory, /isSessionSubmitted\(session\)[\s\S]*sessionCompletionDate[\s\S]*Completed workouts will appear here/, "Progress history must be chronological, submitted, and empty-state safe");
 assert.match(completedHistory, /session\.workoutAnalysis\?\.grade[\s\S]*Stored workout grade/, "Stored historical grades must remain factual history");
 
-assert.match(templates, /Choose the repeatable workout that fits today/, "Plan must use product-facing routine guidance");
-assert.doesNotMatch(templates, /canonical historical completion contract|completion rate is intentionally absent/i, "Plan must not expose implementation rationale");
+assert.match(templates, /<h1>Routines<\/h1>[\s\S]*Edit the workouts you return to[\s\S]*Starting one never replaces an existing draft/, "Contextual routine management must use product-facing guidance and state the draft-safety boundary");
+assert.doesNotMatch(templates, /canonical historical completion contract|completion rate is intentionally absent/i, "Routine management must not expose implementation rationale");
 assert.match(templateCard, /plan-template-card ex-block/, "Routine cards must retain the compact editor structure");
 assert.doesNotMatch(templateCard, /completion rate|completionRate|confidence|evidence|hypertrophy|weekly volume/i, "Routine cards must not invent analytics or internal recommendation claims");
 assert.match(templateCard, /const advice = null/, "Routine cards must not silently revive recommendation advice");
+const directStartHandler = interactions.match(/if \(action === "start-template" \|\| action === "start-next-template"\)[^\r\n]*/)?.[0] || "";
+assert.match(directStartHandler, /startTemplate\([^;]*defaultRecovery\(\), "usual"\)/, "Expected and alternate workout Start actions must open the logger directly");
+assert.doesNotMatch(directStartHandler, /openTemplateStart|templateStartFlow/, "Direct Start must not open an intermediate confirmation or readiness sheet");
 
 assert.match(exerciseResult, /summary-diff-result[\s\S]*class="diff"[\s\S]*class="plan"[\s\S]*class="act"[\s\S]*class="dlt"/, "Completed exercise results must preserve factual plan, actual, and comparison slots");
 assert.match(summary, /completionHeadline[\s\S]*workout-grade-mark[\s\S]*exerciseResults/, "Completed summary must retain one stored grade owner and factual exercise results");
