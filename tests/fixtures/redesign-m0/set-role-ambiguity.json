@@ -1,0 +1,36 @@
+{
+  "exerciseVariantId": "synthetic-press-heavy",
+  "source": "synthetic-import",
+  "sets": [
+    {
+      "id": "synthetic-role-recorded",
+      "setNumber": 1,
+      "setType": "warmup",
+      "classificationSource": "recorded",
+      "reviewRequired": false,
+      "originalImportedValue": {
+        "setOrder": "W"
+      }
+    },
+    {
+      "id": "synthetic-role-inferred",
+      "setNumber": 2,
+      "setType": "top",
+      "classificationSource": "inferred",
+      "reviewRequired": false,
+      "originalImportedValue": {
+        "setOrder": "1"
+      }
+    },
+    {
+      "id": "synthetic-role-ambiguous",
+      "setNumber": 3,
+      "setType": "unknown",
+      "classificationSource": "inferred",
+      "reviewRequired": true,
+      "originalImportedValue": {
+        "setOrder": "?"
+      }
+    }
+  ]
+}

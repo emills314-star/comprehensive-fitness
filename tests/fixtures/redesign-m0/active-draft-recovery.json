@@ -1,0 +1,60 @@
+{
+  "contractVersion": "comprehensive-fitness-active-draft/2.0.0",
+  "savedAt": "2026-07-30T20:00:00.000Z",
+  "session": {
+    "id": "synthetic-active-session",
+    "title": "Synthetic Active Workout",
+    "workoutState": "active",
+    "startedAt": "2026-07-30T19:30:00.000Z",
+    "activeExerciseId": "synthetic-active-exercise-2"
+  },
+  "exercises": [
+    {
+      "id": "synthetic-active-exercise-1",
+      "sessionId": "synthetic-active-session",
+      "name": "Synthetic Row — Heavy",
+      "performanceExerciseId": "synthetic-row-heavy",
+      "order": 0,
+      "notes": "Synthetic completed exercise"
+    },
+    {
+      "id": "synthetic-active-exercise-2",
+      "sessionId": "synthetic-active-session",
+      "name": "Synthetic Curl — Light",
+      "performanceExerciseId": "synthetic-curl-light",
+      "order": 1,
+      "notes": "Incomplete values must survive"
+    }
+  ],
+  "sets": [
+    {
+      "id": "synthetic-active-set-1",
+      "exerciseId": "synthetic-active-exercise-1",
+      "setNumber": 1,
+      "weight": 120,
+      "reps": 8,
+      "rpe": 8,
+      "setType": "top",
+      "completed": true
+    },
+    {
+      "id": "synthetic-active-set-2",
+      "exerciseId": "synthetic-active-exercise-2",
+      "setNumber": 1,
+      "weight": "35",
+      "reps": "11",
+      "rpe": "7.5",
+      "setType": "straight",
+      "completed": false
+    }
+  ],
+  "timer": {
+    "timerId": "synthetic-timer",
+    "exerciseId": "synthetic-active-exercise-1",
+    "setId": "synthetic-active-set-1",
+    "targetSeconds": 120,
+    "startedAt": "2026-07-30T19:58:00.000Z",
+    "state": "running"
+  },
+  "resolvedActions": []
+}

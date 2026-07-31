@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://comprehensive-fitness.local/schemas/redesign-active-draft.v2.schema.json",
+  "title": "Comprehensive Fitness Active Workout Draft",
+  "type": "object",
+  "required": [
+    "contractVersion",
+    "savedAt",
+    "session",
+    "exercises",
+    "sets"
+  ],
+  "properties": {
+    "contractVersion": { "const": "comprehensive-fitness-active-draft/2.0.0" },
+    "savedAt": { "type": "string", "format": "date-time" },
+    "session": { "type": "object" },
+    "exercises": { "type": "array", "items": { "type": "object" } },
+    "sets": { "type": "array", "items": { "type": "object" } },
+    "timer": { "type": ["object", "null"] },
+    "resolvedActions": { "type": "array", "items": { "type": "object" } }
+  },
+  "additionalProperties": true,
+  "x-contract-version": "comprehensive-fitness-active-draft/2.0.0",
+  "x-preservation": "Entered incomplete values, identity, order, notes, and timer context are recoverable."
+}

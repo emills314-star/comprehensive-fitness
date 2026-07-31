@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://comprehensive-fitness.local/schemas/redesign-backup.v3.schema.json",
+  "title": "Comprehensive Fitness Redesign Backup",
+  "type": "object",
+  "required": [
+    "backupSchemaVersion",
+    "appDataVersion",
+    "sessions",
+    "exercises",
+    "sets",
+    "templates",
+    "dataRevision",
+    "settings"
+  ],
+  "properties": {
+    "backupSchemaVersion": { "const": "comprehensive-fitness-backup/3.0.0" },
+    "appDataVersion": { "const": 3 },
+    "sessions": { "type": "array", "items": { "type": "object" } },
+    "exercises": { "type": "array", "items": { "type": "object" } },
+    "sets": { "type": "array", "items": { "type": "object" } },
+    "templates": { "type": "array", "items": { "type": "object" } },
+    "dataRevision": { "type": "integer", "minimum": 0 },
+    "settings": { "type": "object" }
+  },
+  "additionalProperties": true,
+  "x-contract-version": "comprehensive-fitness-backup/3.0.0",
+  "x-legacy-reader": "Versions 1 and 2 remain importable through an isolated compatibility path."
+}

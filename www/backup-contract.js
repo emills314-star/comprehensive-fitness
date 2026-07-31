@@ -5,8 +5,10 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const BACKUP_SCHEMA_VERSION = "comprehensive-fitness-backup/2.0.0";
-  const SUPPORTED_APP_DATA_VERSIONS = new Set([1, 2]);
+  const BACKUP_SCHEMA_VERSION = "comprehensive-fitness-backup/3.0.0";
+  const LEGACY_BACKUP_SCHEMA_VERSION = "comprehensive-fitness-backup/2.0.0";
+  const SUPPORTED_BACKUP_SCHEMA_VERSIONS = new Set([LEGACY_BACKUP_SCHEMA_VERSION, BACKUP_SCHEMA_VERSION]);
+  const SUPPORTED_APP_DATA_VERSIONS = new Set([1, 2, 3]);
   const MAX_BACKUP_BYTES = 50 * 1024 * 1024;
   const MAX_COLLECTION_ITEMS = 100000;
   const MAX_DEPTH = 24;
@@ -107,16 +109,24 @@
     }
   }
 
+  function backupSchemaVersionFor(appDataVersion) {
+    return appDataVersion >= 3 ? BACKUP_SCHEMA_VERSION : LEGACY_BACKUP_SCHEMA_VERSION;
+  }
+
   function validateAndSanitizeBackup(input, options = {}) {
     const byteLength = Number(options.byteLength || 0);
     if (byteLength > MAX_BACKUP_BYTES) fail("file exceeds the 50 MiB import limit.");
     if (!isPlainObject(input)) fail("the root must be an object.");
-    if (input.backupSchemaVersion != null && input.backupSchemaVersion !== BACKUP_SCHEMA_VERSION) {
+    if (input.backupSchemaVersion != null && !SUPPORTED_BACKUP_SCHEMA_VERSIONS.has(input.backupSchemaVersion)) {
       fail("unsupported backup schema version.");
     }
     const appDataVersion = Number(input.appDataVersion);
     if (!SUPPORTED_APP_DATA_VERSIONS.has(appDataVersion)) {
-      fail("appDataVersion must be 1 or 2.");
+      fail("appDataVersion must be 1, 2, or 3.");
+    }
+    const expectedBackupSchemaVersion = backupSchemaVersionFor(appDataVersion);
+    if (input.backupSchemaVersion != null && input.backupSchemaVersion !== expectedBackupSchemaVersion) {
+      fail("backup schema version is incompatible with appDataVersion.");
     }
     const selected = Object.create(null);
     Object.keys(input).forEach((key) => {
@@ -130,15 +140,16 @@
       requireEntityArray(backup, key);
     });
     if (!isPlainObject(backup.settings)) fail("settings must be an object.");
-    backup.backupSchemaVersion = BACKUP_SCHEMA_VERSION;
+    backup.backupSchemaVersion = expectedBackupSchemaVersion;
     backup.appDataVersion = appDataVersion;
     validateRelationships(backup);
     return backup;
   }
 
   function createBackupExport(data) {
-    return validateAndSanitizeBackup({ ...data, backupSchemaVersion: BACKUP_SCHEMA_VERSION });
+    const appDataVersion = Number(data?.appDataVersion);
+    return validateAndSanitizeBackup({ ...data, backupSchemaVersion: backupSchemaVersionFor(appDataVersion) });
   }
 
-  return { BACKUP_SCHEMA_VERSION, MAX_BACKUP_BYTES, validateAndSanitizeBackup, createBackupExport };
+  return { BACKUP_SCHEMA_VERSION, LEGACY_BACKUP_SCHEMA_VERSION, MAX_BACKUP_BYTES, validateAndSanitizeBackup, createBackupExport };
 });

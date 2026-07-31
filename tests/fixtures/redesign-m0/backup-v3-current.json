@@ -1,0 +1,80 @@
+{
+  "backupSchemaVersion": "comprehensive-fitness-backup/3.0.0",
+  "appDataVersion": 3,
+  "domainMigrationVersion": 3,
+  "sessions": [
+    {
+      "id": "synthetic-current-session",
+      "date": "2026-01-15",
+      "title": "Synthetic Current Workout",
+      "submitted": true,
+      "workoutState": "completed",
+      "grade": "A-",
+      "gradeVersion": "actual-work-grade/2.0.0"
+    }
+  ],
+  "exercises": [
+    {
+      "id": "synthetic-current-exercise",
+      "sessionId": "synthetic-current-session",
+      "name": "Synthetic Press — Heavy",
+      "order": 0,
+      "performanceExerciseId": "synthetic_press_heavy",
+      "identitySource": "recorded"
+    }
+  ],
+  "sets": [
+    {
+      "id": "synthetic-current-set",
+      "exerciseId": "synthetic-current-exercise",
+      "setNumber": 1,
+      "setType": "working",
+      "weight": 100,
+      "reps": 6,
+      "rpe": 7.5,
+      "completed": true,
+      "classificationSource": "recorded",
+      "originalImportedValue": {
+        "setType": "working"
+      }
+    }
+  ],
+  "templates": [
+    {
+      "id": "synthetic-current-template",
+      "name": "Synthetic Current Routine",
+      "exercises": [
+        {
+          "id": "synthetic-current-template-exercise",
+          "name": "Synthetic Press — Heavy",
+          "sets": 1,
+          "repMin": 5,
+          "repMax": 7,
+          "targetRpe": 8,
+          "restSeconds": 180,
+          "setTypes": [
+            {
+              "setType": "working",
+              "count": 1,
+              "repMin": 5,
+              "repMax": 7,
+              "targetRpe": 8,
+              "restSeconds": 180
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "mesocycles": [],
+  "activeMesocycleId": "",
+  "recommendationHistory": [],
+  "manualOverrides": [],
+  "rawImports": [],
+  "migrationAudit": [],
+  "dataRevision": 12,
+  "settings": {
+    "weightUnit": "lb",
+    "theme": "dark"
+  }
+}

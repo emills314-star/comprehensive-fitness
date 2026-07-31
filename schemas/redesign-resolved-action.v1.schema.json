@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://comprehensive-fitness.local/schemas/redesign-resolved-action.v1.schema.json",
+  "title": "Comprehensive Fitness Resolved Exception Action",
+  "type": "object",
+  "required": [
+    "contractVersion",
+    "resolverVersion",
+    "decisionId",
+    "evaluatedAt",
+    "outcome",
+    "category",
+    "scope",
+    "action",
+    "reasonCodes",
+    "sourceReferences"
+  ],
+  "properties": {
+    "contractVersion": { "const": "comprehensive-fitness-resolved-action/1.0.0" },
+    "resolverVersion": { "type": "string", "minLength": 1 },
+    "decisionId": { "type": "string", "minLength": 1 },
+    "evaluatedAt": { "type": "string", "format": "date-time" },
+    "outcome": { "enum": ["no_action", "action"] },
+    "category": {
+      "enum": ["none", "pain_or_illness", "deload", "readiness", "fatigue", "plateau"]
+    },
+    "scope": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["session", "exercise"] },
+        "exerciseVariantId": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "action": { "type": "object" },
+    "reasonCodes": { "type": "array", "items": { "type": "string" } },
+    "sourceReferences": { "type": "array", "items": { "type": "string" } },
+    "effectiveAt": { "type": ["string", "null"], "format": "date-time" },
+    "expiresAt": { "type": ["string", "null"], "format": "date-time" },
+    "returnCondition": { "type": ["object", "null"] },
+    "handling": {
+      "enum": ["pending", "accepted", "modified", "ignored", "overridden"]
+    },
+    "supersedesDecisionId": { "type": ["string", "null"] }
+  },
+  "additionalProperties": false,
+  "x-contract-version": "comprehensive-fitness-resolved-action/1.0.0"
+}

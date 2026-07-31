@@ -1,0 +1,67 @@
+{
+  "appDataVersion": 1,
+  "sessions": [
+    {
+      "id": "synthetic-session-v1",
+      "title": "Synthetic Push",
+      "date": "2025-01-15",
+      "submitted": true,
+      "durationSeconds": 2700,
+      "notes": "Synthetic fixture only"
+    }
+  ],
+  "exercises": [
+    {
+      "id": "synthetic-exercise-v1",
+      "sessionId": "synthetic-session-v1",
+      "name": "Synthetic Press — Heavy",
+      "order": 0,
+      "executionQualityAssessment": "controlled",
+      "recommendationSnapshot": {
+        "recommendationId": "legacy-recommendation-v1",
+        "recommendationVersion": "legacy/1",
+        "confidence": "high",
+        "evidenceSummary": ["Synthetic historical evidence"]
+      }
+    }
+  ],
+  "sets": [
+    {
+      "id": "synthetic-set-v1",
+      "exerciseId": "synthetic-exercise-v1",
+      "setNumber": 1,
+      "weight": 100,
+      "reps": 8,
+      "rpe": 8,
+      "setType": "top",
+      "completed": true
+    }
+  ],
+  "templates": [
+    {
+      "id": "synthetic-template-v1",
+      "name": "Synthetic Push Day",
+      "exercises": [
+        {
+          "id": "synthetic-template-exercise-v1",
+          "name": "Synthetic Press — Heavy",
+          "sets": 3,
+          "repMin": 6,
+          "repMax": 8,
+          "targetRpe": 8,
+          "restSeconds": 180
+        }
+      ]
+    }
+  ],
+  "mesocycles": [],
+  "activeMesocycleId": "",
+  "recommendationHistory": [],
+  "manualOverrides": [],
+  "rawImports": [],
+  "migrationAudit": [],
+  "dataRevision": 4,
+  "settings": {
+    "theme": "dark"
+  }
+}

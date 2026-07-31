@@ -1,0 +1,114 @@
+{
+  "backupSchemaVersion": "comprehensive-fitness-backup/2.0.0",
+  "appDataVersion": 2,
+  "domainMigrationVersion": 3,
+  "sessions": [
+    {
+      "id": "synthetic-session-v2",
+      "title": "Synthetic Lower",
+      "date": "2026-06-10",
+      "submitted": true,
+      "grade": "B+",
+      "gradeVersion": "legacy-grade/1",
+      "durationSeconds": 3300,
+      "exerciseQualityAnswers": {
+        "synthetic-exercise-v2": "not_assessed"
+      }
+    }
+  ],
+  "exercises": [
+    {
+      "id": "synthetic-exercise-v2",
+      "sessionId": "synthetic-session-v2",
+      "name": "Synthetic Extension — Light",
+      "performanceExerciseId": "synthetic-extension-light",
+      "researchExerciseId": "leg_extension",
+      "identitySource": "synthetic",
+      "identityVersion": "exercise-identity/2.0.0",
+      "order": 0,
+      "executionQualityAssessment": "not_assessed",
+      "recommendationSnapshot": {
+        "recommendationId": "legacy-recommendation-v2",
+        "recommendationVersion": "prescription/legacy",
+        "confidence": {
+          "level": "moderate",
+          "score": 0.7
+        },
+        "evidenceSummary": [
+          {
+            "type": "synthetic",
+            "detail": "Historical fixture evidence"
+          }
+        ],
+        "basePrescription": {
+          "repRange": {
+            "minimum": 12,
+            "maximum": 15
+          }
+        },
+        "finalPrescription": {
+          "recommendationType": "normal"
+        }
+      }
+    }
+  ],
+  "sets": [
+    {
+      "id": "synthetic-set-v2",
+      "exerciseId": "synthetic-exercise-v2",
+      "setNumber": 1,
+      "weight": 60,
+      "reps": 14,
+      "rpe": 7.5,
+      "setType": "straight",
+      "classificationSource": "manual",
+      "completed": true,
+      "originalImportedValue": {
+        "setOrder": "1",
+        "weight": "60",
+        "reps": "14",
+        "rpe": "7.5"
+      }
+    }
+  ],
+  "templates": [
+    {
+      "id": "synthetic-template-v2",
+      "name": "Synthetic Lower Day",
+      "mesocycleId": "synthetic-mesocycle",
+      "exercises": [
+        {
+          "id": "synthetic-template-exercise-v2",
+          "name": "Synthetic Extension — Light",
+          "performanceExerciseId": "synthetic-extension-light",
+          "researchExerciseId": "leg_extension",
+          "sets": 3,
+          "repMin": 12,
+          "repMax": 15,
+          "targetRpe": 7.5,
+          "restSeconds": 90
+        }
+      ]
+    }
+  ],
+  "mesocycles": [
+    {
+      "id": "synthetic-mesocycle",
+      "schemaVersion": "synthetic-legacy/1",
+      "name": "Synthetic Legacy Block",
+      "status": "active",
+      "availableEquipment": ["machine"],
+      "linkedTemplateIds": ["synthetic-template-v2"]
+    }
+  ],
+  "activeMesocycleId": "synthetic-mesocycle",
+  "recommendationHistory": [],
+  "manualOverrides": [],
+  "rawImports": [],
+  "migrationAudit": [],
+  "dataRevision": 9,
+  "settings": {
+    "theme": "light",
+    "availableEquipment": ["machine"]
+  }
+}
