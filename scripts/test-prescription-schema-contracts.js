@@ -7,7 +7,6 @@ const path = require("node:path");
 const ROOT = path.resolve(__dirname, "..");
 const SCHEMA_FILES = [
   "schemas/exercise-prescription.v2.schema.json",
-  "schemas/mesocycle-plan.v1.schema.json",
   "schemas/recommendation-snapshot.v1.schema.json"
 ];
 const cache = new Map();
@@ -180,13 +179,6 @@ function walkSchema(node, currentFile, location = "#") {
   Object.entries(node).forEach(([key, child]) => walkSchema(child, currentFile, `${location}/${key}`));
 }
 
-function propertyAt(schema, ...keys) {
-  return keys.reduce((value, key) => {
-    assert.ok(value && Object.prototype.hasOwnProperty.call(value, key), `Missing schema path: ${keys.join(".")}`);
-    return value[key];
-  }, schema);
-}
-
 function assertIncludesAll(actual, expected, label) {
   expected.forEach((value) => assert.ok(actual.includes(value), `${label} is missing ${value}`));
 }
@@ -215,8 +207,7 @@ SCHEMA_FILES.forEach((file) => {
 });
 
 const exercise = load(SCHEMA_FILES[0]).schema;
-const mesocycle = load(SCHEMA_FILES[1]).schema;
-const snapshot = load(SCHEMA_FILES[2]).schema;
+const snapshot = load(SCHEMA_FILES[1]).schema;
 const engineSource = fs.readFileSync(path.resolve(ROOT, "prescription-engine.js"), "utf8");
 
 assert.equal(exercise.properties.schemaVersion.const, "2.4.0");
@@ -232,8 +223,12 @@ assertIncludesAll(exercise.required, [
   "frequencyPerWeek", "volume", "progressionMethod", "progressionRule", "holdRule",
   "regressionRule", "deloadRule", "personalEvidenceWeight", "researchEvidenceWeight",
   "confidence", "evidenceSummary", "userExplanation", "exerciseScore", "muscleSpecificScore",
-  "staleness", "deloadStatus", "mesocycleId", "executionBlocked"
+  "staleness", "deloadStatus", "executionBlocked"
 ], "ExercisePrescription.required");
+assert.equal(exercise.required.includes("mesocycleId"), false, "ExercisePrescription current emission must not require a planner identity");
+assert.equal(exercise.$defs.readinessAdjustment.required.includes("affectsMesocycle"), false, "Current readiness adjustments must not require planner coupling");
+assert.ok(exercise.properties.mesocycleId, "ExercisePrescription must continue accepting an optional legacy mesocycleId");
+assert.ok(exercise.$defs.readinessAdjustment.properties.affectsMesocycle, "Readiness adjustments must continue accepting optional legacy planner coupling");
 assert.ok(exercise.properties.safetyRestriction, "ExercisePrescription must define versioned hard-safety metadata");
 assert.equal(exercise.$defs.hardSafetyRestriction.properties.schemaVersion.const, "hard-safety/1.0.0");
 assertExactEnum(exercise.$defs.recommendationType.enum, extractFrozenArray(engineSource, "RECOMMENDATION_TYPES"), "recommendationType");
@@ -251,26 +246,6 @@ assert.match(conditionalText, /top_set_backoff/);
 assert.match(conditionalText, /backoffSets/);
 assert.match(conditionalText, /multiple_top_sets/);
 
-assert(mesocycle.properties.schemaVersion.enum.includes("mesocycle/2.0.0"));
-assert(mesocycle.properties.schemaVersion.enum.includes("mesocycle/2.5.0"));
-assert(mesocycle.properties.schemaVersion.enum.includes("mesocycle/2.6.0"));
-assert.equal(mesocycle.additionalProperties, false);
-assertExactEnum(mesocycle.$defs.mesocycleType.enum, extractFrozenObjectValues(engineSource, "MESOCYCLE_TYPES"), "mesocycleType");
-assertIncludesAll(mesocycle.$defs.mesocycleStatus.enum, ["draft", "planned", "active", "completed", "abandoned", "archived"]);
-assert.equal(mesocycle.properties.durationWeeks.minimum, 2);
-assert.equal(mesocycle.properties.durationWeeks.maximum, 12);
-assert.equal(propertyAt(mesocycle, "$defs", "candidatePool", "properties", "candidates", "maxItems"), 5);
-assertIncludesAll(mesocycle.required, ["programSlots", "selectedPortfolio", "sessions", "programReview", "planningStep"], "MesocyclePlan.required");
-assertIncludesAll(mesocycle.$defs.candidateCore.required, [
-  "rank", "rawScoreRank", "exerciseId", "intendedRole", "primaryMuscles", "secondaryMuscles",
-  "recommendedSetStructure", "recommendedSetRange", "recommendedRepRange", "recommendedRestSeconds", "recommendedRpe",
-  "recommendedRir", "recommendedFrequency", "programmingContext", "progressionConfirmation", "scientificProvenance", "progressionMethod", "deloadTrigger", "rotationTrigger",
-  "preferredReplacementExerciseId", "reasonForMesocycle", "personalDataConfidence",
-  "researchDataConfidence", "scores", "diversitySignature"
-], "candidate.required");
-assert.equal(mesocycle.$defs.candidate.unevaluatedProperties, false);
-assert.equal(mesocycle.$defs.activeExercise.unevaluatedProperties, false);
-
 assert.equal(snapshot.properties.schemaVersion.const, "1.4.0");
 assert.deepEqual(snapshot["x-runtimeReadCompatibility"].prescriptionPairBySnapshot, {
   "1.0.0": "2.0.0",
@@ -282,16 +257,19 @@ assert.deepEqual(snapshot["x-runtimeReadCompatibility"].prescriptionPairBySnapsh
 assert.equal(snapshot.additionalProperties, false);
 assertIncludesAll(snapshot.required, [
   "recommendationId", "recommendationVersion", "engineVersion", "personalDataVersion",
-  "researchDatabaseVersion", "mesocycleId", "exerciseScore", "muscleSpecificScore",
+  "researchDatabaseVersion", "exerciseScore", "muscleSpecificScore",
   "standardGuideline",
   "readinessAdjustment", "basePrescription", "finalPrescription", "explanation", "evidenceSummary",
   "confidence", "createdAt", "manualOverrides", "overrideLocked", "checksum"
 ], "RecommendationSnapshot.required");
+assert.equal(snapshot.required.includes("mesocycleId"), false, "RecommendationSnapshot current emission must not require a planner identity");
+assert.ok(snapshot.properties.mesocycleId, "RecommendationSnapshot must continue accepting an optional legacy mesocycleId");
 assert.equal(snapshot.properties.checksum.pattern, "^[0-9a-f]{8}$", "RecommendationSnapshot.checksum must accept only the engine's current checksum format");
 assertIncludesAll(Object.keys(snapshot.$defs.overrideChanges.properties), [
-  "exerciseId", "setCount", "repRange", "load", "setStructure", "deloadRecommendation",
-  "exerciseRotation", "mesocycleId", "safetyConfirmation"
+  "exerciseId", "setCount", "repRange", "load", "targetRpe", "setStructure", "deloadRecommendation",
+  "exerciseRotation", "safetyConfirmation"
 ], "overrideChanges.properties");
+assert.equal(Object.prototype.hasOwnProperty.call(snapshot.$defs.overrideChanges.properties, "mesocycleId"), false, "Current manual overrides must not support planner identity changes");
 assertIncludesAll(snapshot.$defs.manualOverride.required, [
   "overrideId", "createdAt", "actor", "reason", "workoutId", "changes", "previousFinalPrescription"
 ], "manualOverride.required");
@@ -312,32 +290,31 @@ assert.ok(muscleGroupId, "The evidence adapters did not expose a represented mus
 const generatedAt = "2026-07-11T12:00:00.000Z";
 const pool = engine.rankExercisePool(evidence, muscleGroupId, { generatedAt });
 assert.ok(pool.candidates.length > 0, `No viable exercise candidate exists for ${muscleGroupId}`);
-assertValidInstance(pool, mesocycle.$defs.candidatePool, SCHEMA_FILES[1], "Generated candidate pool");
-
-const generatedMesocycle = engine.createMesocyclePlan(evidence, {
-  type: engine.MESOCYCLE_TYPES.PRIMARY,
-  muscleGroupIds: [muscleGroupId],
-  trainingDays: 3,
-  createdAt: generatedAt
-});
-assertValidInstance(generatedMesocycle, mesocycle, SCHEMA_FILES[1], "Generated mesocycle");
 
 const generatedSnapshot = engine.createExercisePrescriptionSnapshot(evidence, {
   exerciseId: pool.candidates[0].exerciseId,
   muscleGroupId,
-  mesocycle: generatedMesocycle,
   createdAt: generatedAt
 });
-assertValidInstance(generatedSnapshot, snapshot, SCHEMA_FILES[2], "Generated recommendation snapshot");
+assertValidInstance(generatedSnapshot, snapshot, SCHEMA_FILES[1], "Generated recommendation snapshot");
+assert.equal(Object.prototype.hasOwnProperty.call(generatedSnapshot, "mesocycleId"), false, "Current snapshot writer must omit planner identity");
+assert.equal(Object.prototype.hasOwnProperty.call(generatedSnapshot.basePrescription, "mesocycleId"), false, "Current prescription writer must omit planner identity");
+assert.equal(Object.prototype.hasOwnProperty.call(generatedSnapshot.readinessAdjustment, "affectsMesocycle"), false, "Current readiness writer must omit planner coupling");
+
+const legacyPlannerSnapshot = JSON.parse(JSON.stringify(generatedSnapshot));
+legacyPlannerSnapshot.mesocycleId = "legacy_mesocycle";
+legacyPlannerSnapshot.basePrescription.mesocycleId = "legacy_mesocycle";
+legacyPlannerSnapshot.finalPrescription.mesocycleId = "legacy_mesocycle";
+legacyPlannerSnapshot.readinessAdjustment.affectsMesocycle = false;
+assertValidInstance(legacyPlannerSnapshot, snapshot, SCHEMA_FILES[1], "Legacy snapshot with optional planner fields");
 
 const blockedSnapshot = engine.createExercisePrescriptionSnapshot(evidence, {
   exerciseId: pool.candidates[0].exerciseId,
   muscleGroupId,
-  mesocycle: generatedMesocycle,
   readiness: { pain: true, affectedMuscle: muscleGroupId },
   createdAt: generatedAt
 });
-assertValidInstance(blockedSnapshot, snapshot, SCHEMA_FILES[2], "Hard-safety recommendation snapshot");
+assertValidInstance(blockedSnapshot, snapshot, SCHEMA_FILES[1], "Hard-safety recommendation snapshot");
 assert.equal(blockedSnapshot.finalPrescription.executionBlocked, true);
 assert.deepEqual(blockedSnapshot.finalPrescription.workingSets, { min: 0, target: 0, max: 0 });
 const safeAlternative = pool.candidates.find((candidate) => candidate.exerciseId !== blockedSnapshot.exerciseId
@@ -356,7 +333,7 @@ const substitutedSnapshot = engine.applyManualOverride(blockedSnapshot, {
   availableEquipment: ["all"],
   createdAt: "2026-07-11T12:02:00.000Z"
 });
-assertValidInstance(substitutedSnapshot, snapshot, SCHEMA_FILES[2], "Confirmed pain-free substitute snapshot");
+assertValidInstance(substitutedSnapshot, snapshot, SCHEMA_FILES[1], "Confirmed pain-free substitute snapshot");
 assert.equal(substitutedSnapshot.finalPrescription.executionBlocked, false);
 assert.equal(substitutedSnapshot.finalPrescription.prescribedLoad, undefined);
 assert.equal(substitutedSnapshot.manualOverrides.at(-1).changes.safetyConfirmation.painFreeConfirmed, true);
@@ -364,12 +341,13 @@ assert.equal(substitutedSnapshot.manualOverrides.at(-1).changes.safetyConfirmati
 const overriddenSnapshot = engine.applyManualOverride(generatedSnapshot, {
   setCount: Math.max(2, generatedSnapshot.finalPrescription.workingSets.target),
   setStructure: "top_set_backoff",
-  load: (generatedSnapshot.finalPrescription.prescribedLoad?.target || 1) + 1
+  load: (generatedSnapshot.finalPrescription.prescribedLoad?.target || 1) + 1,
+  rpe: 7.5
 }, {
   createdAt: "2026-07-11T12:05:00.000Z",
   workoutId: "schema_contract_workout"
 });
-assertValidInstance(overriddenSnapshot, snapshot, SCHEMA_FILES[2], "Overridden recommendation snapshot");
+assertValidInstance(overriddenSnapshot, snapshot, SCHEMA_FILES[1], "Overridden recommendation snapshot");
 const evaluatedOverride = engine.evaluateManualOverrideOutcome(overriddenSnapshot, {
   progressed: true,
   progressionPercent: 2,
@@ -378,6 +356,6 @@ const evaluatedOverride = engine.evaluateManualOverrideOutcome(overriddenSnapsho
   completed: true,
   adherence: 1
 }, { evaluatedAt: "2026-07-12T12:00:00.000Z" });
-assertValidInstance(evaluatedOverride, snapshot, SCHEMA_FILES[2], "Outcome-evaluated recommendation snapshot");
+assertValidInstance(evaluatedOverride, snapshot, SCHEMA_FILES[1], "Outcome-evaluated recommendation snapshot");
 
 console.log(`Prescription schema contracts passed (${SCHEMA_FILES.length} schemas; engine enums and generated records synchronized).`);

@@ -3,7 +3,7 @@
 ## Metadata
 
 - **Purpose:** Catalog of implemented and intended logic that turns history, research, and readiness into guidance
-- **Last verified:** 2026-07-27
+- **Last verified:** 2026-07-31
 - **Repository:** design-system sweep remediation (engine `3.4.1` unchanged)
 - **Verification status:** VERIFIED against `prescription-engine.js`, presentation adapters, schemas, data pipelines, and tests; this sweep changed display ownership and delta grammar only
 - **Related:** [Project](PROJECT.md), [architecture](ARCHITECTURE.md), [UI/UX](UI_UX.md), [training data map](training-prescription-data.md), [research methodology](../research_database/METHODOLOGY.md)
@@ -28,7 +28,11 @@ Global equipment preference is no longer an engine input for normal workout proj
 
 ## Purpose and evidence hierarchy
 
-### Guided planning rules — IMPLEMENTED
+### Planner/mesocycle removal — IMPLEMENTED LOCALLY (M3)
+
+Guided planning rules, candidate selection, viability scoring, lifecycle evaluation, and mesocycle generation are not current engine behavior. M3 removes their active runtime branches, schemas, requests, state, writers, and tests. The only permitted compatibility behavior is an isolated versioned legacy backup decoder that accepts obsolete planning keys to preserve workout and routine/template facts; it does not revive a planner engine path or active domain.
+
+### Superseded guided-planning record — HISTORICAL
 
 The introductory guide and viability evaluator consume the same exported `PLANNING_RULES` object. Normal sessions should remain at or below 18 working sets; more than two direct exercises for one muscle in one day is a strong warning; normal/priority muscles default to two meaningful weekly exposures, maintenance to one, and specialization to at least two. Direct sets, exercise-specific fractional contribution, weighted stimulus, and isometric exposure remain separate.
 
@@ -181,13 +185,13 @@ Pain blocks automatic progression and can support substitution/rotation; medical
 
 A pain-blocked exercise becomes executable only after the user selects and confirms a distinct evidence-linked substitute whose observed workout name resolves to the same current catalog identity recorded by the prescription and safety audit. Safety-locked selection and revalidation use an exact normalized catalog name or ID with one unique match; broader exercise aliases cannot collapse one substitute onto another, and ambiguity fails closed. Every evidence-mapped substitute is evaluated directly against exclusions, scope, and substitution evidence; the five-item recommendation presentation rank is not a safety eligibility boundary. Global equipment preference is not a logging constraint. The app revalidates the same identity/exclusion conditions whenever it renders or executes the workout. Identity drift or a newly incompatible explicit exclusion restores the block and asks for a new explicit pain-free confirmation; it never silently falls back to the original exercise.
 
-## Full-program mesocycle planning and candidate scoring
+## Full-program mesocycle planning and candidate scoring — SUPERSEDED HISTORICAL RECORD (M3)
 
 This is the authoritative program-planning section. The planner uses a two-stage process: first choose one program-wide exercise portfolio, then distribute that portfolio across sessions. A `Program Slot` is a muscle-group coverage and exercise-role requirement inside the complete plan; it replaces the former ambiguous “Prescription Block” term. Each slot states its required selection count, weekly sets/exposures, selected exercise, candidate alternatives, planned sessions, and rationale. Five candidates means up to five alternatives for a slot, never five mandatory weekly exercises.
 
 Candidate discovery evaluates the entire compatible research exercise library plus traceable personal/current sources. `Current Program Exercises` means exercises in templates attached to the active mesocycle. `Recent Exercises` means submitted exercise exposures within the last 56 days. `Previously Successful Exercises` requires adequate comparable personal history. `Eligible Exercise Library` is the compatible canonical research library after equipment and restriction filters. Every displayed candidate carries a source trace; equipment exclusions are retained with an inspectable reason. Aliases must normalize to one canonical research ID. Camber Bar Bench Press, Cambered Bench Press, and Cambered Barbell Bench Press resolve to `ex_cambered_barbell_bench_press`.
 
-The standalone planner engine still contains explicit equipment-requirement alternatives for compatibility tests and non-application callers. Each alternative is an AND-list and alternatives are OR paths. M1 removes the seven-bundle UI and all application-level equipment preference state; the current app supplies unrestricted `all`, so equipment metadata cannot narrow the generated draft or block later logging. This planner-only compatibility capability and its schemas/tests are scheduled for M3 deletion.
+**SUPERSEDED HISTORICAL RECORD (M3):** The former planner equipment alternatives and their schemas/tests were deleted with the planner. Legacy backup decoding is isolated and does not expose this compatibility capability to runtime callers.
 
 `Predicted Program Effectiveness` estimates usefulness for the proposed slot and plan; it does not guarantee hypertrophy. The implemented score is 72% isolated target-muscle recommendation strength and 28% full-program fit. The isolated score already blends personal hypertrophy/progression/recovery/repeatability/tolerance evidence with muscle specificity, lengthened loading, stability, progression ease, fatigue cost, research support, and personal confidence. Full-program fit then adjusts for redundant patterns, local/systemic fatigue, spinal load, grip demand, joint stress, equipment, current portfolio, and lower-fatigue role value. Candidate ordering is recomputed after selection. Confidence separately describes evidence quality; Evidence identifies the sources. Positive and limiting factors explain the score.
 

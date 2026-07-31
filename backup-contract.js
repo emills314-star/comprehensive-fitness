@@ -19,6 +19,15 @@
     "templates", "mesocycles", "activeMesocycleId", "recommendationHistory", "manualOverrides",
     "personalEvidencePackage", "rawImports", "migrationAudit", "dataRevision", "settings"
   ]);
+  const LEGACY_PLANNING_SESSION_KEYS = new Set(["mesocycleId"]);
+  const LEGACY_PLANNING_TEMPLATE_KEYS = new Set(["mesocycleId", "mesocycleRevision", "trainingDayId"]);
+  const LEGACY_PLANNING_TEMPLATE_EXERCISE_KEYS = new Set(["mesocycleSlotId", "assignmentId"]);
+  const LEGACY_PLANNING_RECOMMENDATION_KEYS = new Set(["mesocycleId"]);
+  const LEGACY_PLANNING_SETTINGS_KEYS = new Set([
+    "trainingGoal", "trainingGoalSource", "trainingGoalDisclosure", "nutritionPhase",
+    "experienceLevel", "returningAfterGap", "trainingDaysPerWeek", "availableEquipment",
+    "excludedExerciseIds", "goal", "trainingStatus"
+  ]);
   const SAFE_ID = /^[^\s<>"'&`=]{1,160}$/;
 
   function fail(message) {
@@ -82,7 +91,6 @@
     const exerciseIds = uniqueIdSet(backup.exercises, "exercises");
     uniqueIdSet(backup.sets, "sets");
     uniqueIdSet(backup.templates, "templates");
-    if (backup.mesocycles.length) uniqueIdSet(backup.mesocycles, "mesocycles");
 
     backup.exercises.forEach((exercise, index) => {
       if (exercise.sessionId != null && exercise.sessionId !== "") {
@@ -103,10 +111,30 @@
         nestedIds.add(id);
       });
     });
-    if (backup.activeMesocycleId) {
-      validateId(backup.activeMesocycleId, "activeMesocycleId");
-      if (!backup.mesocycles.some((item) => item.id === backup.activeMesocycleId)) fail("activeMesocycleId references an unknown mesocycle.");
-    }
+  }
+
+  function omitKeys(record, keys) {
+    if (!isPlainObject(record)) return record;
+    const output = Object.create(null);
+    Object.keys(record).forEach((key) => {
+      if (!keys.has(key)) output[key] = cloneSafe(record[key], key);
+    });
+    return output;
+  }
+
+  function stripLegacyPlanningState(validatedBackup) {
+    const decoded = cloneSafe(validatedBackup);
+    delete decoded.mesocycles;
+    delete decoded.activeMesocycleId;
+    decoded.sessions = decoded.sessions.map((session) => omitKeys(session, LEGACY_PLANNING_SESSION_KEYS));
+    decoded.recommendationHistory = decoded.recommendationHistory.map((record) => omitKeys(record, LEGACY_PLANNING_RECOMMENDATION_KEYS));
+    decoded.templates = decoded.templates.map((template) => {
+      const preserved = omitKeys(template, LEGACY_PLANNING_TEMPLATE_KEYS);
+      preserved.exercises = preserved.exercises.map((exercise) => omitKeys(exercise, LEGACY_PLANNING_TEMPLATE_EXERCISE_KEYS));
+      return preserved;
+    });
+    decoded.settings = omitKeys(decoded.settings, LEGACY_PLANNING_SETTINGS_KEYS);
+    return decoded;
   }
 
   function backupSchemaVersionFor(appDataVersion) {
@@ -135,10 +163,11 @@
     });
     const backup = cloneSafe(selected);
     ["sessions", "exercises", "sets", "templates"].forEach((key) => requireEntityArray(backup, key));
-    ["mesocycles", "recommendationHistory", "manualOverrides", "rawImports", "migrationAudit"].forEach((key) => {
+    ["recommendationHistory", "manualOverrides", "rawImports", "migrationAudit"].forEach((key) => {
       if (backup[key] == null) backup[key] = [];
       requireEntityArray(backup, key);
     });
+    if (backup.mesocycles != null) requireEntityArray(backup, "mesocycles");
     if (!isPlainObject(backup.settings)) fail("settings must be an object.");
     backup.backupSchemaVersion = expectedBackupSchemaVersion;
     backup.appDataVersion = appDataVersion;
@@ -148,8 +177,53 @@
 
   function createBackupExport(data) {
     const appDataVersion = Number(data?.appDataVersion);
-    return validateAndSanitizeBackup({ ...data, backupSchemaVersion: backupSchemaVersionFor(appDataVersion) });
+    const validated = validateAndSanitizeBackup({ ...data, backupSchemaVersion: backupSchemaVersionFor(appDataVersion) });
+    return stripLegacyPlanningState(validated);
   }
 
-  return { BACKUP_SCHEMA_VERSION, LEGACY_BACKUP_SCHEMA_VERSION, MAX_BACKUP_BYTES, validateAndSanitizeBackup, createBackupExport };
+  function decodeLegacyBackup(input, options = {}) {
+    return stripLegacyPlanningState(validateAndSanitizeBackup(input, options));
+  }
+
+  function discardObsoletePlanningState(input) {
+    if (!isPlainObject(input)) fail("the planning-state input must be an object.");
+    const decoded = Object.assign(Object.create(null), input);
+    delete decoded.mesocycles;
+    delete decoded.activeMesocycleId;
+    const omitTrustedKeys = (record, keys) => {
+      if (!isPlainObject(record)) return record;
+      const output = Object.create(null);
+      Object.keys(record).forEach((key) => {
+        if (!keys.has(key)) output[key] = record[key];
+      });
+      return output;
+    };
+    if (Array.isArray(input.sessions)) {
+      decoded.sessions = input.sessions.map((session) => omitTrustedKeys(session, LEGACY_PLANNING_SESSION_KEYS));
+    }
+    if (Array.isArray(input.recommendationHistory)) {
+      decoded.recommendationHistory = input.recommendationHistory.map((record) => omitTrustedKeys(record, LEGACY_PLANNING_RECOMMENDATION_KEYS));
+    }
+    if (Array.isArray(input.templates)) {
+      decoded.templates = input.templates.map((template) => {
+        const preserved = omitTrustedKeys(template, LEGACY_PLANNING_TEMPLATE_KEYS);
+        if (Array.isArray(template?.exercises)) {
+          preserved.exercises = template.exercises.map((exercise) => omitTrustedKeys(exercise, LEGACY_PLANNING_TEMPLATE_EXERCISE_KEYS));
+        }
+        return preserved;
+      });
+    }
+    if (isPlainObject(input.settings)) decoded.settings = omitTrustedKeys(input.settings, LEGACY_PLANNING_SETTINGS_KEYS);
+    return decoded;
+  }
+
+  return {
+    BACKUP_SCHEMA_VERSION,
+    LEGACY_BACKUP_SCHEMA_VERSION,
+    MAX_BACKUP_BYTES,
+    validateAndSanitizeBackup,
+    decodeLegacyBackup,
+    discardObsoletePlanningState,
+    createBackupExport
+  };
 });

@@ -1723,22 +1723,6 @@ test("stale history is wired through scoring and snapshots by default", () => {
   assert.equal(snapshot.finalPrescription.recommendationType, "hold");
 });
 
-test("unavailable-muscle fallback plans expose complete zeroed volume fields", () => {
-  const mesocycle = engine.createMesocycle({
-    trainingDays: 4,
-    includedMuscleGroupIds: ["chest"],
-    availableEquipment: ["synthetic_unavailable_equipment"]
-  });
-  const plan = mesocycle.programReview.musclePlans.find((item) => item.muscleGroupId === "chest");
-  assert.ok(plan, "equipment-blocked muscle requires a fallback plan");
-  assert.equal(plan.directSets, 0);
-  assert.equal(plan.secondarySets, 0);
-  assert.equal(plan.indirectSets, 0);
-  assert.equal(plan.incidentalSets, 0);
-  assert.equal(plan.isometricExposure, 0);
-  assert.equal(plan.taxonomyVersion, evidence.research.version, "fallback muscle plans must retain taxonomy provenance");
-});
-
 test("application recommendations cross only the canonical resolved-action boundary", () => {
   const source = readApplicationContractSource(ROOT);
   assert.match(source, /function stableTargetForTemplateExercise\(/, "ordinary workout targets must come from the saved exercise variant");

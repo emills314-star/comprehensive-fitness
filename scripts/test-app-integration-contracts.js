@@ -14,6 +14,7 @@ const html = readApplicationContractSource(APP_ROOT);
 const publicExercises = require(path.join(APP_ROOT, "research_database", "exports", "json", "exercise_database.json"));
 const prescriptionApi = require(path.join(APP_ROOT, "prescription-engine.js"));
 const exceptionApi = require(path.join(APP_ROOT, "exception-resolver.js"));
+const backupContract = require(path.join(APP_ROOT, "backup-contract.js"));
 const {
   BACKUP_BOUNDARIES,
   buildEntityCollectionCase,
@@ -904,7 +905,12 @@ test("conflict-mode and rejected executable imports perform zero writes while ac
       BACKUP_IMPORT_LIMITS: { maxFileBytes: BACKUP_BOUNDARIES.fileBytes },
       Error,
       TextEncoder,
-      window: { FitnessBackupContract: { validateAndSanitizeBackup: (value) => value } },
+      window: {
+        FitnessBackupContract: {
+          validateAndSanitizeBackup: (value) => value,
+          decodeLegacyBackup: (value) => value
+        }
+      },
       validateImportedAppData: () => ({ appDataVersion: 2, sessions: [], exercises: [], sets: [], templates: [], settings: {}, personalEvidencePackage: null, dataRevision: 0 }),
       researchOnlyBundleForImport: () => ({ bundle: { personal: {} }, engine: { id: "prepared-engine" } }),
       normalizeLoadedData: (value) => structuredClone(value),
@@ -1099,7 +1105,7 @@ test("strict backup validation accepts every exact entity boundary and rejects b
     validateBackupJsonShape: () => true
   });
   for (const descriptor of entityCollectionCases()) {
-    const fixture = buildEntityCollectionCase(descriptor);
+    const fixture = backupContract.discardObsoletePlanningState(buildEntityCollectionCase(descriptor));
     let result;
     let error = null;
     try {
@@ -1319,7 +1325,8 @@ test("guided planning contains no unreachable automatic-planner contract", () =>
     "addOmittedMuscleAndRebuild",
     "selectMesocycleCandidate",
     "renderMesocycleCandidate",
-    "renderMesocycleCard"
+    "renderMesocycleCard",
+    "renderMesocyclePlanner"
   ];
   const removedActions = [
     "preview-mesocycle",
@@ -1335,11 +1342,7 @@ test("guided planning contains no unreachable automatic-planner contract", () =>
   ];
   collectAssertions([
     ...removedFunctions.map((name) => [name, () => assert.doesNotMatch(html, new RegExp(`function\\s+${name}\\s*\\(`), `${name} is a retired, unreachable compatibility renderer/controller`)]),
-    ...removedActions.map((action) => [action, () => assert.doesNotMatch(html, new RegExp(`data-action=["']${action}["']|action\\s*===\\s*["']${action}["']`), `${action} is a retired automatic-planner action`)]),
-    ["unreachable code after planner entry", () => {
-      const planner = functionSource("renderMesocyclePlanner");
-      assert.doesNotMatch(planner, /Full-program design|Build full-program draft|Open Planner Review/, "The guided planner entry must not retain code after its unconditional return");
-    }]
+    ...removedActions.map((action) => [action, () => assert.doesNotMatch(html, new RegExp(`data-action=["']${action}["']|action\\s*===\\s*["']${action}["']`), `${action} is a retired automatic-planner action`)])
   ]);
 });
 
@@ -1359,7 +1362,7 @@ test("navigation, dialogs, and Lift controls expose complete focus and naming co
     ["dialog close restores focus", () => assertContains(closeDialog, /\.focus\s*\(|restoreFocus/i, "Closing a dialog must restore focus to its trigger")],
     ["contextual Lift action names", () => assert.ok(actionTags.length >= 3 && actionTags.every((tag) => /aria-label=/.test(tag) && /exercise\.name/.test(tag)), `Move/delete controls need exercise-specific accessible names; received ${actionTags.join(" | ")}`)],
     ["Available Equipment removed", () => assert.equal(equipmentGroups.length, 0, "Deleted global equipment controls must not remain reachable")],
-    ["Muscle Group Scope group name", () => assert.ok(scopeGroups.length && scopeGroups.every((tag) => /role="group"/.test(tag) && /aria-label="Muscle Group Scope"|aria-labelledby=/.test(tag)), "Every Muscle Group Scope picker must be a named group")]
+    ["Muscle Group Scope removed", () => assert.equal(scopeGroups.length, 0, "Deleted planner scope controls must not remain reachable")]
   ]);
 });
 

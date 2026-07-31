@@ -133,3 +133,10 @@ Record decisions here only after reviewing relevant product evidence, repository
 **Decision:** The only live M2 exception rule is a directly recorded current pain/injury or illness observation resolving to one advisory session-scoped `stop_or_skip_work` action. Every numeric fatigue, readiness, plateau, deload, grade, evidence, and confidence threshold remains out of scope until calibration and independent review explicitly approve it.
 **Rationale:** The final contract requires evaluated, material, singular intervention and ordinary silence. Repository thresholds were implemented-state evidence, not settled product decisions. Independent recommendation review approved the direct Boolean safety rule and rejected treating any numeric legacy threshold as approved.
 **Consequence:** `exception-resolver.js` is the single current action authority; stable targets remain immutable; logging remains usable after a warning; continuing is recorded as explicit handling. Legacy detector, planner, score, and grade code may survive only within the bounded compatibility/deletion windows assigned to M3, M4, and M7 and cannot feed current action output.
+
+## D-020 - Legacy planner data is decoded, not reactivated
+
+**Status:** Accepted
+**Decision:** M3 retains one versioned compatibility reader for obsolete planner keys. It preserves workout/session/set/routine observations and immutable embedded historical snapshots, then discards planner collections, selection/linkage, planning settings, and planner-only recommendation history before data enters active state or a current export.
+**Rationale:** Old backups must recover trustworthy workout and routine facts, but preserving a removed relationship as active state would recreate the deleted product and a second source of truth.
+**Consequence:** Current writers, schemas, requests, runtime state, routes, engine APIs, and overrides cannot create mesocycle linkage. Historical snapshot validators may accept optional legacy fields only for read/replay integrity. Orphaned obsolete active-plan references cannot block recovery of otherwise valid history.

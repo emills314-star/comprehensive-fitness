@@ -295,98 +295,6 @@ test("chart evidence segments retain thin weeks without changing scoring, omit d
   await expect(detail).not.toContainText(/that session/i);
 });
 
-test("guided planning honors muscle scope, partial search, no results, viability, and template creation without a global equipment preference", async ({ page }) => {
-  test.setTimeout(120_000);
-  await installFixture(page, buildEmptyAnalyticsSettingsFixture());
-  await openPrimaryTab(page, "plan");
-  await page.getByRole("button", { name: "Plan Your Mesocycle" }).click();
-  await page.getByRole("button", { name: "Start planning" }).click();
-
-  await setNumericSetting(page, "mesocycle-training-days", 2);
-  await expect(page.locator('[data-action="toggle-mesocycle-equipment"]')).toHaveCount(0);
-  expect(await page.evaluate(() => Object.hasOwn(data.settings, "availableEquipment"))).toBe(false);
-
-  const scopeInputs = page.locator('[data-action="mesocycle-muscle-scope"]');
-  const scopeCount = await scopeInputs.count();
-  expect(scopeCount).toBeGreaterThan(1);
-  for (let index = 0; index < scopeCount; index += 1) {
-    const scope = scopeInputs.nth(index);
-    if (await scope.getAttribute("value") !== "chest") await scope.uncheck();
-  }
-  await expect(page.locator('[data-action="mesocycle-muscle-scope"][value="chest"]')).toBeChecked();
-  await page.locator('[data-action="create-guided-draft"]').click();
-  await expect(page.locator(".guided-day")).toHaveCount(2);
-
-  async function addFiveBenchPressSets(dayIndex) {
-    const days = page.locator(".guided-day");
-    const day = days.nth(dayIndex);
-    if (!await day.locator('[data-action="open-guided-exercise-browser"]').isVisible()) {
-      await day.locator('[data-action="toggle-guided-day"]').click();
-    }
-    await day.locator('[data-action="open-guided-exercise-browser"]').click();
-    const search = page.locator('[data-action="guided-exercise-search"]');
-    await search.fill("no such public synthetic exercise");
-    await search.dispatchEvent("change");
-    await expect(page.locator(".exercise-browser-card")).toHaveCount(0);
-    await search.fill("bEnCh");
-    await search.dispatchEvent("change");
-    const cards = page.locator(".exercise-browser-card");
-    expect(await cards.count()).toBeGreaterThan(0);
-    const names = await cards.locator("h3").allTextContents();
-    expect(names.every((name) => /bench/i.test(name))).toBe(true);
-    if (dayIndex === 0) {
-      const evidenceContract = await page.evaluate(() => {
-        const card = document.querySelector(".exercise-browser-card");
-        const exerciseName = card?.querySelector("h3")?.textContent?.trim();
-        const candidate = guidedCandidatePool(guidedExerciseMuscleFilter).find((item) => item.exerciseName === exerciseName);
-        const draft = guidedDraft();
-        return {
-          assignments: draft.guidedDays.reduce((sum, item) => sum + item.assignments.length, 0),
-          categoricalConfidence: candidate.personalDataConfidence,
-          numericEvidenceQuality: candidate.scores.personalDataConfidence,
-          reason: candidate.scores.weightingReason,
-          renderedLevel: Number(card.querySelector(".meter")?.dataset.conf),
-          renderedReason: card.querySelector(".ex-why")?.textContent?.trim(),
-          renderedScore: card.querySelector(".guided-effectiveness-score")?.textContent?.trim(),
-          score: candidate.scores.targetMuscleEffectiveness
-        };
-      });
-      expect(evidenceContract.renderedScore).toBe(`${Math.round(evidenceContract.score)} / 100`);
-      expect(evidenceContract.renderedReason).toBe(evidenceContract.reason);
-      expect(evidenceContract.renderedLevel).toBe(({ research_default: 1, low: 2, moderate: 3, high: 4 })[evidenceContract.categoricalConfidence]);
-      expect(typeof evidenceContract.numericEvidenceQuality).toBe("number");
-      expect(await page.evaluate(() => guidedDraft().guidedDays.reduce((sum, item) => sum + item.assignments.length, 0))).toBe(evidenceContract.assignments);
-      await expect(cards.first().locator(".guided-gap-projection"), "Rendering an exact temporary projection must not require committing the candidate").toBeVisible();
-    }
-    await cards.first().locator('[data-action="select-guided-exercise"]:not([disabled])').click();
-    const pending = page.locator("[data-guided-configuration]");
-    await expect(pending).toBeVisible();
-    const output = pending.locator("output");
-    while (Number((await output.textContent()).match(/\d+/)?.[0] || 0) < 5) {
-      await pending.getByRole("button", { name: "Add one planned working set" }).click();
-    }
-    await pending.locator('[data-action="confirm-guided-exercise"]').click();
-    await expect(page.locator("[data-guided-configuration]")).toHaveCount(0);
-    await page.locator('[data-action="close-guided-exercise-browser"]').click();
-  }
-
-  await addFiveBenchPressSets(0);
-  await addFiveBenchPressSets(1);
-  await page.locator('[data-action="check-guided-viability"]').click();
-  await expect(page.locator(".guided-check-step")).toBeVisible();
-  await expect(page.locator(".finding.blocking")).toHaveCount(0);
-  const reviewCreation = page.locator('[data-action="open-guided-generation-review"]');
-  await expect(reviewCreation).toBeEnabled();
-  await reviewCreation.click();
-  await expect(page.locator(".guided-create-step")).toContainText("2 templates, 6 weeks.");
-  await expect(page.locator(".guided-create-step")).toContainText("No comparable earlier plan is stored.");
-  await expect(page.locator(".guided-create-step")).not.toContainText(/\b(actual|achieved|logged|performed)\b/i);
-  await page.locator('[data-action="create-guided-templates"]').click();
-  await expect(page.getByText("Mesocycle completed", { exact: true })).toBeVisible();
-  await expect(page.locator('[data-action="start-first-mesocycle-template"]')).toBeEnabled();
-  expect(await page.evaluate(() => data.templates.length)).toBe(2);
-});
-
 test("Settings converts real loads and persists profile, timer, readiness, unit, theme, and color-package changes across reload", async ({ page }) => {
   await installFixture(page);
   await openPrimaryTab(page, "data");
@@ -615,7 +523,6 @@ test("Clear All Local App Data supports cancel, exact dual confirmation, default
     exercises: 0,
     sets: 0,
     templates: 0,
-    mesocycles: 0,
     theme: "light",
     weightUnit: "lb",
     trainingGoal: "",
@@ -630,7 +537,6 @@ test("Clear All Local App Data supports cancel, exact dual confirmation, default
     exercises: data.exercises.length,
     sets: data.sets.length,
     templates: data.templates.length,
-    mesocycles: data.mesocycles.length,
     theme: data.settings.theme,
     weightUnit: data.settings.weightUnit,
     trainingGoal: data.settings.trainingGoal,
@@ -649,7 +555,6 @@ test("Clear All Local App Data supports cancel, exact dual confirmation, default
     exercises: data.exercises.length,
     sets: data.sets.length,
     templates: data.templates.length,
-    mesocycles: data.mesocycles.length,
     theme: data.settings.theme,
     weightUnit: data.settings.weightUnit,
     trainingGoal: data.settings.trainingGoal,

@@ -11,6 +11,7 @@ const foundation = fs.readFileSync(path.join(root, "app-foundation.js"), "utf8")
 const interactions = fs.readFileSync(path.join(root, "app.js"), "utf8");
 const views = fs.readFileSync(path.join(root, "app-views.js"), "utf8");
 const imports = fs.readFileSync(path.join(root, "app-import.js"), "utf8");
+const backupContract = fs.readFileSync(path.join(root, "backup-contract.js"), "utf8");
 const fixture = JSON.parse(fs.readFileSync(path.join(root, "tests", "fixtures", "redesign-m1", "stable-target-migration.json"), "utf8"));
 
 function extractFunction(name) {
@@ -118,10 +119,11 @@ assert.equal(runtime.workoutMutationSafetyDecision("add-set", { exercise: equipm
 assert.equal(runtime.workoutMutationSafetyDecision("add-set", { exercise: {}, recovery: { illness: true } }).allowed, true, "M2 must record pain or illness without blocking actual-work logging");
 
 assert.match(foundation, /appDataVersion:\s*3/);
-assert.match(foundation, /delete model\.settings\.availableEquipment/);
+assert.match(foundation, /discardObsoletePlanningState/, "Loaded legacy settings must cross the isolated discard boundary");
 assert.doesNotMatch(interactions, /settings:\s*\{[^}]*availableEquipment/);
 assert.doesNotMatch(views, /data-action="toggle-mesocycle-equipment"|aria-label="Available Equipment"/);
-assert.match(imports, /allowedSettingsFields[\s\S]*"availableEquipment"/, "Legacy backup input must still be accepted for discard");
+assert.doesNotMatch(imports, /allowedSettingsFields[\s\S]*"availableEquipment"/, "Active app-data import must not recreate the legacy equipment setting");
+assert.match(backupContract, /LEGACY_PLANNING_SETTINGS_KEYS[\s\S]*"availableEquipment"[\s\S]*decodeLegacyBackup/, "The isolated legacy decoder must accept and discard the obsolete equipment setting");
 assert.match(imports, /\[1, 2, 3\]/, "The active v3 data contract must be importable");
 
 const fixtureText = JSON.stringify(fixture);

@@ -45,7 +45,6 @@
         const risk = unsynced.workoutCount || unsynced.setChanges || unsynced.queueCount;
         const sourceCount = Number(prescriptionEngine?.evidence?.research?.manifest?.tables?.research_library?.record_count || 0);
         const sessionCount = data.sessions.filter((session) => isSessionSubmitted(session) || data.exercises.some((exercise) => exercise.sessionId === session.id)).length;
-        const mesocycleCount = data.mesocycles?.length || 0;
         const personalEvidenceCount = data.personalEvidencePackage ? 1 : 0;
         return `
           <div class="scrim sheet-backdrop" data-action="cancel-clear-data" role="presentation">
@@ -54,7 +53,7 @@
               <div class="diff clear-data-diff">
                 <div class="drow dhead"><span class="plan">Erased</span><span class="act">Outside local storage</span><span class="dlt">Scope</span></div>
                 <div class="drow"><span class="plan"><span class="lbl">Workout records</span><span class="val">${sessionCount} session${sessionCount === 1 ? '' : 's'}, exercises, sets, notes and active timers</span></span><span class="act"><span class="lbl">Downloaded exports</span><span class="val">Files already saved outside this app are not deleted</span></span><span class="dlt"><span class="d none">local</span></span></div>
-                <div class="drow"><span class="plan"><span class="lbl">Plans</span><span class="val">${data.templates.length} template${data.templates.length === 1 ? '' : 's'} and ${mesocycleCount} mesocycle${mesocycleCount === 1 ? '' : 's'}</span></span><span class="act"><span class="lbl">Public research database</span><span class="val">${sourceCount ? sourceCount + ' source records reload with the app' : 'Reloads with the app'}</span></span><span class="dlt"><span class="d none">public</span></span></div>
+                <div class="drow"><span class="plan"><span class="lbl">Routines</span><span class="val">${data.templates.length} routine${data.templates.length === 1 ? '' : 's'}</span></span><span class="act"><span class="lbl">Public research database</span><span class="val">${sourceCount ? sourceCount + ' source records reload with the app' : 'Reloads with the app'}</span></span><span class="dlt"><span class="d none">public</span></span></div>
                 <div class="drow"><span class="plan"><span class="lbl">Personal setup</span><span class="val">Settings, readiness baseline, imports${personalEvidenceCount ? ' and imported personal evidence' : ''}</span></span><span class="act"><span class="lbl">Remote workout copies</span><span class="val">Deleted first; write-only and not recoverable here</span></span><span class="dlt"><span class="d out">erased</span></span></div>
               </div>
               ${blockedMessage ? '<div class="callout bad" role="status"><b>Local clearing is paused</b><span>' + escapeHtml(blockedMessage) + '</span></div>' : ''}
@@ -1137,7 +1136,6 @@
         });
         session.adjustmentSummary = adjustedLiftCount ? adjustedLiftCount + " lift" + (adjustedLiftCount === 1 ? "" : "s") + " adjusted by the resolved exception action." : "";
         session.usedOriginalTargets = Boolean(options.useOriginal);
-        session.mesocycleId = currentMesocycle()?.id || "";
         delete session.readinessAdjustments;
         delete session.workoutPrescription;
         session.startedAt = isoNow();

@@ -100,8 +100,6 @@ function failedHistoryState() {
   ];
   state.settings = {
     ...state.settings,
-    availableEquipment: ["all"],
-    excludedExerciseIds: [],
     interactionVibration: false,
     timerNotifications: false
   };
@@ -244,169 +242,80 @@ test("a different submitted session rejects stale delegated and direct executabl
   });
 });
 
-test("resolved pain-free substitutions ignore deleted global equipment state while revalidating identity and exclusions", async ({ page }) => {
+test("historical equipment metadata remains immutable and cannot block workout logging", async ({ page }) => {
   const fixture = safetyWorkoutState({ illness: false, pain: true, affectedMuscle: "Chest" });
   await seedState(page, fixture.state, {
     activeSessionId: fixture.state.sessions[0].id,
     activeWorkoutId: fixture.state.sessions[0].id
   });
 
-  const seeded = await page.evaluate(({ runtimeExerciseId }) => {
-    const originalExerciseId = "ex_barbell_bench_press";
-    const muscleGroupId = "chest";
-    const allEquipment = ["all"];
-    const blocked = prescriptionEngine.prescribeExercise({
-      exerciseId: originalExerciseId,
-      muscleGroupId,
-      readiness: { pain: true, affectedMuscle: "chest" },
-      availableEquipment: allEquipment,
-      trainingGoal: "hypertrophy",
-      experienceLevel: "intermediate",
-      nutritionPhase: "maintenance",
+  const result = await page.evaluate(({ runtimeExerciseId }) => {
+    const historicalSnapshot = {
+      recommendationId: "public-synthetic-equipment-history",
+      schemaVersion: "historical-recommendation/1.0.0",
+      request: {
+        exerciseId: "ex_barbell_bench_press",
+        equipmentContext: {
+          requirementAlternatives: [["barbell", "bench"]],
+          observed: ["bodyweight"]
+        }
+      },
+      finalPrescription: {
+        exerciseId: "ex_barbell_bench_press",
+        executable: false,
+        executionBlocked: true,
+        reason: "unavailable_equipment",
+        safetyRestriction: {
+          status: "blocked",
+          reason: "unavailable_equipment",
+          requiredEquipment: ["barbell", "bench"],
+          observedEquipment: ["bodyweight"]
+        }
+      },
       createdAt: "2026-07-14T12:00:00.000Z"
-    });
-    if (blocked.finalPrescription?.executionBlocked !== true) throw new Error("The real engine did not create the required painful blocked source prescription");
-    const research = prescriptionEngine.evidence.research;
-    const originalResearchId = blocked.finalPrescription.safetyRestriction?.auditBaseTargets?.researchExerciseId
-      || blocked.finalPrescription.researchExerciseId
-      || originalExerciseId;
-    const mappedIds = [...new Set((research.substitutionsByExercise.get(originalResearchId) || [])
-      .map((row) => row.substitute_exercise_id || row.substituteExerciseId)
-      .filter(Boolean))];
-    const eligibleIds = mappedIds.filter((id) => {
-      const catalogRecord = research.exerciseById.get(id);
-      return Boolean(catalogRecord && prescriptionApi.equipmentCompatible(catalogRecord, allEquipment).eligible === true);
-    });
-    const capabilities = ["bodyweight", "bands", "dumbbell", "barbell", "rack", "cable_station"];
-    let selected = null;
-    for (const exerciseId of eligibleIds) {
-      const catalogRecord = research.exerciseById.get(exerciseId);
-      const invalidEquipment = capabilities.find((capability) => prescriptionApi.equipmentCompatible(catalogRecord, [capability]).eligible !== true);
-      if (invalidEquipment) {
-        selected = { exerciseId, invalidEquipment };
-        break;
-      }
-    }
-    if (!selected) throw new Error("Public substitution evidence did not supply a candidate with a provably incompatible equipment capability");
-    const catalog = eligibleIds.map((id) => research.exerciseById.get(id)).filter(Boolean);
-    const catalogRecord = research.exerciseById.get(selected.exerciseId);
-    const resolved = prescriptionEngine.applyManualOverride(blocked, {
-      exerciseId: selected.exerciseId,
-      researchExerciseId: selected.exerciseId,
-      painFreeConfirmed: true
-    }, {
-      allowedSafetySubstituteIds: eligibleIds,
-      exerciseCatalog: catalog,
-      availableEquipment: allEquipment,
-      reason: "Synthetic pain-free safety-integrity regression",
-      createdAt: "2026-07-14T12:05:00.000Z"
-    });
-    if (resolved.finalPrescription?.safetyRestriction?.status !== "resolved_by_confirmed_substitute") {
-      throw new Error("The real engine did not preserve resolved confirmed-substitute lineage");
-    }
+    };
     const exercise = exerciseById(runtimeExerciseId);
     Object.assign(exercise, {
-      name: catalogRecord.exercise_name,
-      recommendationSnapshot: resolved,
-      basePrescription: resolved.basePrescription,
-      finalPrescription: resolved.finalPrescription,
-      executionBlocked: resolved.finalPrescription.executionBlocked,
-      safetyRestriction: resolved.finalPrescription.safetyRestriction
+      recommendationSnapshot: historicalSnapshot,
+      finalPrescription: historicalSnapshot.finalPrescription,
+      executionBlocked: true,
+      safetyRestriction: historicalSnapshot.finalPrescription.safetyRestriction
     });
-    data.recommendationHistory = [resolved];
-    data.settings = { ...data.settings, availableEquipment: allEquipment, excludedExerciseIds: [] };
+    data.recommendationHistory = [historicalSnapshot];
     entityStructureRevision += 1;
     entityIndexCache = null;
     invalidateCompletedAnalysis();
     render();
+
+    const metadataBefore = structuredClone({
+      recommendationSnapshot: exercise.recommendationSnapshot,
+      finalPrescription: exercise.finalPrescription,
+      executionBlocked: exercise.executionBlocked,
+      safetyRestriction: exercise.safetyRestriction
+    });
+    const before = setsForExercise(runtimeExerciseId).length;
+    const decision = guardWorkoutMutation("add-set", { exerciseId: runtimeExerciseId }, false);
+    addSet(runtimeExerciseId, false);
+    render();
+    const addSetControl = root.querySelector(`[data-action="add-set"][data-exercise-id="${runtimeExerciseId}"]`);
     return {
-      substituteExerciseId: selected.exerciseId,
-      invalidEquipment: selected.invalidEquipment,
-      unrelatedExcludedExerciseId: "ex_leg_press",
-      substituteExerciseName: catalogRecord.exercise_name,
-      differentObservedExerciseName: [...research.exerciseById.entries()]
-        .find(([id]) => id !== selected.exerciseId && id !== originalResearchId)?.[1]?.exercise_name || "Leg Press"
+      decision,
+      added: setsForExercise(runtimeExerciseId).length - before,
+      addSetDisabled: addSetControl?.disabled === true,
+      metadataBefore,
+      metadataAfter: {
+        recommendationSnapshot: exercise.recommendationSnapshot,
+        finalPrescription: exercise.finalPrescription,
+        executionBlocked: exercise.executionBlocked,
+        safetyRestriction: exercise.safetyRestriction
+      }
     };
   }, { runtimeExerciseId: fixture.exerciseIds.bench });
 
-  const results = await page.evaluate(({ runtimeExerciseId, constraints }) => {
-    const originalSets = structuredClone(data.sets);
-    activeTab = "lift";
-    const run = ({ availableEquipment, excludedExerciseIds, mesocycleEquipment, observedExerciseName = constraints.substituteExerciseName }) => {
-      data.sets = structuredClone(originalSets);
-      const exercise = exerciseById(runtimeExerciseId);
-      const session = sessionById(exercise.sessionId);
-      exercise.name = observedExerciseName;
-      data.settings = { ...data.settings, availableEquipment, excludedExerciseIds };
-      if (mesocycleEquipment === undefined) {
-        data.mesocycles = [];
-        session.mesocycleId = "";
-      } else {
-        const mesocycleId = "15151515-1515-4515-8515-151515151515";
-        data.mesocycles = [{
-          id: mesocycleId,
-          name: "Synthetic restrictive substitute mesocycle",
-          status: "active",
-          type: "primary_progression",
-          availableEquipment: mesocycleEquipment
-        }];
-        session.mesocycleId = mesocycleId;
-      }
-      entityStructureRevision += 1;
-      entityIndexCache = null;
-      invalidateCompletedAnalysis();
-      const before = setsForExercise(runtimeExerciseId).length;
-      const decision = guardWorkoutMutation("add-set", { exerciseId: runtimeExerciseId }, false);
-      addSet(runtimeExerciseId, false);
-      render();
-      const addSetControl = root.querySelector(`[data-action="add-set"][data-exercise-id="${runtimeExerciseId}"]`);
-      const recoveryControl = root.querySelector(`[data-safety-substitute-recovery="${runtimeExerciseId}"]`)
-        || root.querySelector(`[data-override-form="${runtimeExerciseId}"]`);
-      return {
-        decision,
-        added: setsForExercise(runtimeExerciseId).length - before,
-        addSetDisabled: addSetControl?.disabled === true,
-        recoveryText: recoveryControl?.innerText || ""
-      };
-    };
-    return {
-      invalidEquipment: run({ availableEquipment: [constraints.invalidEquipment], excludedExerciseIds: [] }),
-      excludedSubstitute: run({ availableEquipment: ["all"], excludedExerciseIds: [constraints.substituteExerciseId] }),
-      unrelatedChange: run({ availableEquipment: ["all"], excludedExerciseIds: [constraints.unrelatedExcludedExerciseId] }),
-      defaultEquipment: run({ availableEquipment: [], excludedExerciseIds: [] }),
-      restrictiveMesocycle: run({ availableEquipment: [], excludedExerciseIds: [], mesocycleEquipment: [constraints.invalidEquipment] }),
-      missingObservedIdentity: run({
-        availableEquipment: ["all"],
-        excludedExerciseIds: [],
-        observedExerciseName: "Synthetic Unresolvable Substitute Name"
-      }),
-      differentObservedIdentity: run({
-        availableEquipment: ["all"],
-        excludedExerciseIds: [],
-        observedExerciseName: constraints.differentObservedExerciseName
-      })
-    };
-  }, { runtimeExerciseId: fixture.exerciseIds.bench, constraints: seeded });
-
-  expect.soft(results.invalidEquipment.decision.allowed, "Deleted global equipment state must not gate a resolved substitute").toBe(true);
-  expect.soft(results.invalidEquipment.added, "A resolved substitute remains executable despite stale global equipment state").toBe(1);
-  expect.soft(results.excludedSubstitute.decision.allowed, "A newly excluded resolved substitute must become non-executable").toBe(false);
-  expect.soft(results.excludedSubstitute.added, "Excluded resolved substitutes must not add executable sets").toBe(0);
-  expect.soft(results.unrelatedChange.decision.allowed, "An unrelated exclusion must not invalidate a still-eligible resolved substitute").toBe(true);
-  expect.soft(results.unrelatedChange.added, "A still-valid confirmed substitute remains executable").toBe(1);
-  expect.soft(results.defaultEquipment.decision.allowed, "Stale empty equipment state cannot gate a valid resolved substitute").toBe(true);
-  expect.soft(results.defaultEquipment.added, "A valid resolved substitute remains executable when stale equipment state is empty").toBe(1);
-  expect.soft(results.restrictiveMesocycle.decision.allowed, "Legacy mesocycle equipment metadata must not gate normal logging").toBe(true);
-  expect.soft(results.restrictiveMesocycle.added, "Legacy mesocycle equipment metadata cannot suppress an executable set").toBe(1);
-  for (const [label, observed] of [
-    ["unresolvable", results.missingObservedIdentity],
-    ["different", results.differentObservedIdentity]
-  ]) {
-    expect.soft(observed.decision.allowed, `A ${label} observed substitute identity must fail closed`).toBe(false);
-    expect.soft(observed.added, `A ${label} observed substitute identity must not add executable sets`).toBe(0);
-    expect.soft(observed.addSetDisabled, `A ${label} observed substitute identity must render disabled workout controls`).toBe(true);
-    expect.soft(observed.recoveryText, `A ${label} observed substitute identity must render substitute recovery UI`).toMatch(/choose a pain-free substitute|confirmation required/i);
-  }
+  expect.soft(result.decision.allowed, "Equipment metadata from an immutable historical recommendation cannot authorize a logging block").toBe(true);
+  expect.soft(result.added, "The active exercise must accept an actual set despite historical equipment metadata").toBe(1);
+  expect.soft(result.addSetDisabled, "The active logging control must remain enabled").toBe(false);
+  expect.soft(result.metadataAfter, "Logging must not rewrite the historical recommendation or its equipment facts").toEqual(result.metadataBefore);
 });
 
 test("unexpected engine faults stay distinct, non-executable, and visible instead of reviving legacy Dashboard advice", async ({ page }) => {

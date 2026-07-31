@@ -4,7 +4,6 @@ const assert = require("assert");
 const path = require("path");
 const {
   ENGINE_VERSION,
-  MESOCYCLE_TYPES,
   STALENESS,
   createPrescriptionEngine,
   normalizeEvidenceBundle,
@@ -19,8 +18,6 @@ const {
   evaluateReadiness,
   equipmentRequirementOptions,
   equipmentCompatible,
-  candidateProgramFit,
-  mechanicalRedundancyScore,
   recalculateHistoricalMuscleVolume,
   recommendationForSurface,
   serializeRecommendationSnapshot,
@@ -30,9 +27,7 @@ const {
   applyManualOverride,
   reconcileRecommendation,
   refreshRecommendationChecksum,
-  evaluateManualOverrideOutcome,
-  transitionMesocycle,
-  canDeleteMesocycle
+  evaluateManualOverrideOutcome
 } = require("../prescription-engine");
 
 const tests = [];
@@ -311,14 +306,14 @@ test("ranking returns a diversified five-exercise candidate pool", () => {
   assert(new Set(pool.candidates.map((item) => item.diversitySignature.movement)).size >= 3);
   pool.candidates.forEach((item, index) => {
     assert.strictEqual(item.rank, index + 1);
-    assert(item.reasonForMesocycle && item.preferredReplacementExerciseId);
+    assert(item.preferredReplacementExerciseId);
     assert(item.scores.overallRecommendationStrength >= 0);
   });
 });
 
-test("a productive lift remains productive despite many exposures or a new block", () => {
+test("a productive lift remains productive despite many exposures", () => {
   const longProductive = Array.from({ length: 14 }, (_, index) => exposure(index ? "improved" : "baseline", 100 + index * 2, 8, { day: index + 1 }));
-  const result = assessExerciseStaleness(longProductive, { currentMesocycleExposures: 14 });
+  const result = assessExerciseStaleness(longProductive);
   assert.strictEqual(result.classification, STALENESS.PRODUCTIVE);
   assert.strictEqual(result.rotationRecommended, false);
 });
@@ -478,15 +473,13 @@ test("nutrition is one readiness domain and needs an independent signal to chang
   assert.strictEqual(snapshot.finalPrescription.readinessAdjustment.temporary, true);
 });
 
-test("low readiness changes today without rewriting the base or mesocycle", () => {
+test("low readiness changes today without rewriting the base prescription", () => {
   const engine = createPrescriptionEngine(fixture());
   const snapshot = engine.prescribeExercise({
     exerciseId: "personal_press", muscleGroupId: "chest", history: improvingHistory,
     readiness: { hrvRatio: 0.82, sleepHours: 5.5, baselineSleepHours: 8, previousExposureRegressed: true },
-    mesocycleId: "meso_fixed", createdAt: "2026-07-11T12:00:00.000Z"
+    createdAt: "2026-07-11T12:00:00.000Z"
   });
-  assert.strictEqual(snapshot.basePrescription.mesocycleId, "meso_fixed");
-  assert.strictEqual(snapshot.finalPrescription.mesocycleId, "meso_fixed");
   assert(
     snapshot.finalPrescription.workingSets.target < snapshot.basePrescription.workingSets.target
       || snapshot.finalPrescription.targetRpe.max < snapshot.basePrescription.targetRpe.max
@@ -494,30 +487,6 @@ test("low readiness changes today without rewriting the base or mesocycle", () =
     "low readiness must produce a truthful temporary set, effort, or load reduction"
   );
   assert.strictEqual(snapshot.finalPrescription.readinessAdjustment.temporary, true);
-  assert.strictEqual(snapshot.finalPrescription.readinessAdjustment.affectsMesocycle, false);
-});
-
-test("all four mesocycle types create five-candidate pools and lifecycle states", () => {
-  const engine = createPrescriptionEngine(fixture());
-  Object.values(MESOCYCLE_TYPES).forEach((type) => {
-    const mesocycle = engine.createMesocycle({
-      type, muscleGroupIds: ["chest"], histories: { personal_press: improvingHistory },
-      currentExerciseIds: ["personal_press"], specializationMuscleGroups: ["chest"], maximumReturnGapDays: 365, createdAt: "2026-07-11T12:00:00.000Z"
-    });
-    assert(mesocycle.durationWeeks >= 2 && mesocycle.durationWeeks <= 12);
-    assert.strictEqual(mesocycle.pools.chest.candidates.length, 5);
-    assert.strictEqual(mesocycle.status, "draft");
-    assert(mesocycle.programSlots.length >= 1);
-    assert(mesocycle.selectedPortfolio.length >= 1);
-    assert(mesocycle.sessions.length >= 1);
-    assert(Array.isArray(mesocycle.programReview.warnings));
-    assert(mesocycle.preservedProductiveExerciseIds.includes("personal_press"), `${type} should preserve a progressing lift`);
-    const planned = transitionMesocycle(mesocycle, "plan", { at: "2026-07-12T11:00:00.000Z" });
-    const active = transitionMesocycle(planned, "start", { at: "2026-07-12T12:00:00.000Z" });
-    const completed = transitionMesocycle(active, "complete", { at: "2026-08-20T12:00:00.000Z", outcome: { progressed: true } });
-    const reviewed = transitionMesocycle(completed, "review", { at: "2026-08-21T12:00:00.000Z", review: { retain: ["personal_press"] } });
-    assert.strictEqual(reviewed.status, "reviewed");
-  });
 });
 
 test("coach, template, chart, and live workout share one stored recommendation", () => {
@@ -562,7 +531,7 @@ test("manual overrides are audited and locked for the workout", () => {
   const snapshot = engine.prescribeExercise({ exerciseId: "personal_press", muscleGroupId: "chest", history: improvingHistory, createdAt: "2026-07-11T12:00:00.000Z" });
   const overridden = applyManualOverride(snapshot, {
     setCount: 4, repRange: { min: 8, max: 12 }, load: 112.5, rpe: 8.5, setStructure: "straight_sets",
-    deloadRecommendation: false, mesocycleId: "meso_user_choice"
+    deloadRecommendation: false
   }, { workoutId: "workout_1", reason: "Good warm-ups", createdAt: "2026-07-11T12:05:00.000Z" });
   assert.strictEqual(overridden.finalPrescription.workingSets.target, 4);
   assert.strictEqual(overridden.finalPrescription.prescribedLoad.target, 112.5);
@@ -585,130 +554,6 @@ privateTest("file adapters load the real private aggregates locally without embe
   assert(evidence.personal.exercisePrescriptions.length >= 100);
   assert(evidence.research.exerciseDatabase.length >= 50);
   assert.strictEqual(evidence.versions.research, "3.0.0");
-});
-
-test("full-program portfolio scoring and lifecycle protections are explicit", () => {
-  const evidence = loadEvidenceFromFiles(path.resolve(__dirname, ".."), { includeSessionMetrics: false, includeWeeklyVolume: false });
-  const engine = createPrescriptionEngine(evidence);
-  const mesocycle = engine.createMesocycle({ trainingDays: 4, includedMuscleGroupIds: ["chest", "upper_back", "quads", "hamstrings", "glutes", "abs"], currentProgramExerciseIds: ["ex_barbell_bench_press"], availableEquipment: ["all"] });
-  assert(mesocycle.programSlots.every((slot) => slot.selectionRequired >= 1 && slot.selectedExerciseIds.length >= 1));
-  assert(mesocycle.selectedPortfolio.every((candidate) => Number.isFinite(candidate.scores.predictedProgramEffectiveness) && Number.isFinite(candidate.scores.fullProgramFit)));
-  assert(mesocycle.sessions.every((session) => session.baseSessionIntent && Number.isFinite(session.spinalLoad) && Number.isFinite(session.estimatedDurationMinutes)));
-  mesocycle.programReview.warnings.forEach((warning) => {
-    assert(warning.conflict && warning.why && warning.recommendation);
-    assert(Array.isArray(warning.exerciseIds));
-  });
-  assert.strictEqual(canDeleteMesocycle(mesocycle), true);
-  const planned = transitionMesocycle({ ...mesocycle, scopeConfirmed: true }, "plan");
-  const active = transitionMesocycle(planned, "start");
-  assert.strictEqual(canDeleteMesocycle(active), false);
-  const completed = transitionMesocycle(active, "complete");
-  assert.strictEqual(canDeleteMesocycle(completed), false);
-});
-
-test("mesocycle volume and frequency are balanced across coherent sessions", () => {
-  const evidence = loadEvidenceFromFiles(path.resolve(__dirname, ".."), { includeSessionMetrics: false, includeWeeklyVolume: false });
-  const engine = createPrescriptionEngine(evidence);
-  const practicalScope = ["chest", "upper_back", "lats", "quads", "hamstrings", "glutes", "side_delts", "biceps", "triceps", "calves"];
-  [3, 4, 5].forEach((trainingDays) => {
-    const mesocycle = engine.createMesocycle({ trainingDays, includedMuscleGroupIds: practicalScope, availableEquipment: ["all"] });
-    const chest = mesocycle.programReview.musclePlans.find((plan) => plan.muscleGroupId === "chest");
-    assert(chest && chest.effectiveSets >= chest.weeklyTargetRange.min, "Chest must meet its evidence-adjusted minimum");
-    mesocycle.programReview.musclePlans.forEach((plan) => assert(plan.plannedFrequency >= plan.targetFrequency, `${plan.muscleGroupId} must meet planned frequency`));
-    mesocycle.selectedPortfolio.filter((exercise) => exercise.scores.highFatigueCompound).forEach((exercise) => {
-      const days = mesocycle.sessions.filter((session) => session.exercises.some((item) => item.exerciseId === exercise.exerciseId)).map((session) => session.dayIndex).sort((a, b) => a - b);
-      assert(!days.some((day, index) => index && day - days[index - 1] <= 1), `${exercise.exerciseName} cannot repeat on consecutive days`);
-    });
-    assert(mesocycle.sessions.every((session) => session.primaryPurpose), "Every session needs a coherent named purpose");
-  });
-});
-
-test("four-day broad scope is constructed within hard daily limits", () => {
-  const evidence = loadEvidenceFromFiles(path.resolve(__dirname, ".."), { includeSessionMetrics: false, includeWeeklyVolume: false });
-  const engine = createPrescriptionEngine(evidence);
-  const seed = engine.createMesocycle({ trainingDays: 4, availableEquipment: ["all"] });
-  const scope = seed.availableMuscleGroupIds.filter((muscle) => !["abs", "neck"].includes(muscle));
-  const mesocycle = engine.createMesocycle({ trainingDays: 4, includedMuscleGroupIds: scope, availableEquipment: ["all"] });
-  mesocycle.sessions.forEach((session) => {
-    const workingSets = session.exercises.reduce((total, exercise) => total + Number(exercise.plannedSets || 0), 0);
-    assert(workingSets <= 18, `${session.name} exceeded 18 working sets`);
-    const counts = new Map();
-    session.exercises.forEach((exercise) => exercise.targetMuscleGroupIds.forEach((muscle) => counts.set(muscle, (counts.get(muscle) || 0) + 1)));
-    counts.forEach((count, muscle) => assert(count <= 2, `${session.name} assigned ${count} exercises to ${muscle}`));
-    assert(session.exercises.length <= 10, `${session.name} is not practical at ${session.exercises.length} exercises`);
-  });
-  ["chest", "upper_back", "lats", "quads", "hamstrings", "glutes"].forEach((muscle) => {
-    const plan = mesocycle.programReview.musclePlans.find((item) => item.muscleGroupId === muscle);
-    assert(plan && plan.directSets >= Math.min(plan.weeklyTargetRange.min, plan.weeklyTargetVolume), `${muscle} should receive direct work before supplemental muscles`);
-  });
-  mesocycle.programReview.musclePlans.forEach((plan) => {
-    assert(Number.isFinite(plan.directSets) && Number.isFinite(plan.secondarySets) && Number.isFinite(plan.incidentalSets));
-    assert.strictEqual(plan.incidentalSets, 0, "incidental stabilization must not count as hypertrophy volume");
-  });
-});
-
-test("limited schedule reports capacity instead of forcing oversized sessions", () => {
-  const evidence = loadEvidenceFromFiles(path.resolve(__dirname, ".."), { includeSessionMetrics: false, includeWeeklyVolume: false });
-  const engine = createPrescriptionEngine(evidence);
-  const mesocycle = engine.createMesocycle({ trainingDays: 1, availableEquipment: ["all"] });
-  assert(mesocycle.sessions.every((session) => session.workingSetCount <= 18));
-  const capacity = mesocycle.programReview.warnings.find((warning) => warning.type === "schedule_capacity");
-  assert(capacity && capacity.severity === "blocking");
-  assert.deepStrictEqual(capacity.resolutionOptions, ["increase_training_days", "reduce_scope", "reduce_direct_volume", "maintenance_volume", "change_objective"]);
-  const regenerated = engine.refreshMesocycle(mesocycle, { autoFix: true });
-  assert(regenerated.sessions.every((session) => session.workingSetCount <= 18), "regeneration must retain the hard daily cap");
-});
-
-test("secondary contribution remains fractional and cannot become hidden direct volume", () => {
-  const evidence = loadEvidenceFromFiles(path.resolve(__dirname, ".."), { includeSessionMetrics: false, includeWeeklyVolume: false });
-  const engine = createPrescriptionEngine(evidence);
-  const mesocycle = engine.createMesocycle({ trainingDays: 4, includedMuscleGroupIds: ["chest", "triceps", "front_delts", "quads", "glutes", "adductors"], availableEquipment: ["all"] });
-  mesocycle.programReview.musclePlans.forEach((plan) => {
-    assert.strictEqual(plan.effectiveSets, Number((plan.directSets + plan.secondarySets).toFixed(1)));
-    assert(plan.secondarySets <= mesocycle.sessions.flatMap((session) => session.exercises).reduce((total, exercise) => total + Number(exercise.plannedSets || 0), 0) * 0.35);
-  });
-  const adductors = mesocycle.programReview.musclePlans.find((plan) => plan.muscleGroupId === "adductors");
-  assert(adductors && adductors.directSets >= 0 && adductors.secondarySets >= 0);
-});
-
-test("blocking validation prevents an under-prescribed program from being treated as confirmable", () => {
-  const evidence = loadEvidenceFromFiles(path.resolve(__dirname, ".."), { includeSessionMetrics: false, includeWeeklyVolume: false });
-  const engine = createPrescriptionEngine(evidence);
-  const mesocycle = engine.createMesocycle({ trainingDays: 4 });
-  const chestSlot = mesocycle.programSlots.find((slot) => slot.muscleGroupId === "chest");
-  const sessions = mesocycle.sessions.map((session) => ({ ...session, exercises: session.exercises.filter((exercise) => !exercise.programSlotIds.includes(chestSlot.id)) }));
-  const review = require("../prescription-engine").reviewFullProgram(mesocycle.selectedPortfolio, sessions, mesocycle.programSlots, engine.evidence);
-  assert(review.blockingIssueCount > 0);
-  assert(review.warnings.some((warning) => warning.type === "volume_below_target" && warning.severity === "blocking"));
-});
-
-test("session sustainability guardrails flag excessive exercise and working-set counts", () => {
-  const evidence = loadEvidenceFromFiles(path.resolve(__dirname, ".."), { includeSessionMetrics: false, includeWeeklyVolume: false });
-  const engine = createPrescriptionEngine(evidence);
-  const mesocycle = engine.createMesocycle({ trainingDays: 4 });
-  const overloadedExercise = { ...mesocycle.selectedPortfolio[0], plannedSets: 3 };
-  const overloaded = { ...mesocycle.sessions[0], exercises: Array.from({ length: 11 }, (_, index) => ({ ...overloadedExercise, exerciseId: `${overloadedExercise.exerciseId}_${index}` })) };
-  const review = require("../prescription-engine").reviewFullProgram(mesocycle.selectedPortfolio, [overloaded, ...mesocycle.sessions.slice(1)], mesocycle.programSlots, engine.evidence);
-  assert(review.warnings.some((warning) => warning.type === "exercise_count" && warning.severity === "blocking"));
-  assert(review.warnings.some((warning) => warning.type === "working_set_count" && warning.severity === "blocking"));
-  assert.strictEqual(overloaded.exerciseCount, 11);
-  assert.strictEqual(overloaded.workingSetCount, 33);
-});
-
-test("user-defined muscle scope is respected and omissions require explicit confirmation", () => {
-  const evidence = loadEvidenceFromFiles(path.resolve(__dirname, ".."), { includeSessionMetrics: false, includeWeeklyVolume: false });
-  const engine = createPrescriptionEngine(evidence);
-  const included = ["chest", "upper_back", "quads", "hamstrings", "glutes", "abs"];
-  const mesocycle = engine.createMesocycle({ trainingDays: 4, includedMuscleGroupIds: included });
-  assert.deepStrictEqual(mesocycle.includedMuscleGroupIds.slice().sort(), included.slice().sort());
-  assert(mesocycle.programSlots.every((slot) => included.includes(slot.muscleGroupId)));
-  assert(mesocycle.omittedMuscleGroups.some((item) => item.muscleGroupId === "lats" && item.importance === "major" && item.explanation.length > 60));
-  assert(mesocycle.omittedMuscleGroups.some((item) => item.importance === "smaller"));
-  assert(mesocycle.omittedMuscleGroups.every((item) => item.reasonCode && item.explanation.length > 40));
-  assert.strictEqual(mesocycle.scopeConfirmed, false);
-  assert.throws(() => transitionMesocycle(mesocycle, "plan"), /omitted muscle groups/i);
-  const confirmed = { ...mesocycle, scopeConfirmed: true };
-  assert.strictEqual(transitionMesocycle(confirmed, "plan").status, "planned");
 });
 
 test("cambered bench aliases resolve through the canonical eligible library", () => {
@@ -791,33 +636,6 @@ test("bodyweight, dumbbell, barbell-rack, commercial, and mixed-home pools never
       assert.strictEqual(equipmentCompatible(source, availableEquipment).eligible, true, `${label} leaked ${candidate.exerciseName}`);
     });
   });
-  const bodyweightPlan = engine.createMesocycle({ availableEquipment: ["bodyweight"], trainingDays: 3 });
-  bodyweightPlan.selectedPortfolio.forEach((candidate) => {
-    const source = evidence.research.exerciseById.get(candidate.researchExerciseId) || {};
-    assert.strictEqual(equipmentCompatible(source, ["bodyweight"]).eligible, true, `bodyweight plan leaked ${candidate.exerciseName}`);
-  });
-  assert(bodyweightPlan.programReview.warnings.some((warning) => warning.type === "equipment_blocks_muscle"), "restricted equipment must visibly block unsupported in-scope muscles rather than silently dropping them");
-});
-
-test("redundancy requires shared mechanics and primary target, not generic compound overlap", () => {
-  const baseScores = { overallRecommendationStrength: 80, recoveryEfficiency: 75, easeOfProgression: 80, personalEvidenceWeight: 0.6, spinalLoad: 75, gripDemand: 75, systemicFatigue: 75, jointStress: 40 };
-  const candidate = { exerciseId: "deadlift", exerciseName: "Deadlift", primaryMuscles: ["mg_spinal_erectors"], jointActions: ["hip_extension"], diversitySignature: { movement: "hinge", equipment: "barbell" }, scores: baseScores };
-  const unrelated = [
-    { exerciseId: "bench", exerciseName: "Bench Press", primaryMuscles: ["mg_chest_sternal"], jointActions: ["shoulder_horizontal_adduction"], diversitySignature: { movement: "horizontal_push", equipment: "barbell" }, scores: baseScores },
-    { exerciseId: "chin", exerciseName: "Chin-Up", primaryMuscles: ["mg_lats"], jointActions: ["shoulder_adduction"], diversitySignature: { movement: "vertical_pull", equipment: "bodyweight" }, scores: baseScores },
-    { exerciseId: "fly", exerciseName: "Cable Fly", primaryMuscles: ["mg_chest_sternal"], jointActions: ["shoulder_horizontal_adduction"], diversitySignature: { movement: "horizontal_push", equipment: "cable" }, scores: baseScores }
-  ];
-  const clean = candidateProgramFit(candidate, unrelated);
-  assert(!clean.limitingFactors.some((reason) => /redundant/i.test(reason)), "deadlift must not be redundant with bench, chin-up, or fly");
-  const hinges = ["Romanian Deadlift", "Stiff-Leg Deadlift"].map((name, index) => ({ exerciseId: `hinge_${index}`, exerciseName: name, primaryMuscles: ["mg_spinal_erectors"], jointActions: ["hip_extension"], diversitySignature: { movement: "hinge", equipment: "barbell" }, scores: baseScores }));
-  assert(candidateProgramFit(candidate, hinges).limitingFactors.some((reason) => /mechanically redundant/i.test(reason)), "multiple same-target hinges should trigger redundancy review");
-  assert(mechanicalRedundancyScore(candidate, hinges[0]) >= 0.72, "same-target hinges should be mechanically similar");
-  assert.strictEqual(mechanicalRedundancyScore(candidate, unrelated[0]), 0, "different target muscles and mechanics are not redundant");
-  const unknown = { ...hinges[0], diversitySignature: { movement: "unknown", equipment: "barbell" } };
-  assert.strictEqual(mechanicalRedundancyScore(candidate, unknown), 0, "unknown movement metadata must never establish redundancy");
-  const press = { exerciseId: "press", exerciseName: "Bench Press", primaryMuscles: ["mg_chest_sternal"], jointActions: ["shoulder_horizontal_adduction", "elbow_extension"], diversitySignature: { movement: "horizontal_push", equipment: "barbell", loading: "heavy", stability: "stable" }, role: "primary_progression_lift", scores: baseScores };
-  const fly = { exerciseId: "fly", exerciseName: "Cable Fly", primaryMuscles: ["mg_chest_sternal"], jointActions: ["shoulder_horizontal_adduction"], diversitySignature: { movement: "horizontal_push", equipment: "cable", loading: "moderate", stability: "stable" }, role: "secondary_hypertrophy_lift", scores: baseScores };
-  assert(mechanicalRedundancyScore(press, fly) < 0.72, "same-muscle exercises with different joint actions, loading, and roles should remain complementary");
 });
 
 test("URL loader tolerates unavailable protected personal sources and still loads research", async () => {
@@ -839,23 +657,6 @@ test("URL loader tolerates unavailable protected personal sources and still load
   const evidence = await loadEvidenceFromUrls({ fetch: mockFetch, researchBaseUrl: "/research", personalBaseUrl: "/protected-personal", includeSessionMetrics: true });
   assert.strictEqual(evidence.personal.exerciseScores.length, 0);
   assert.strictEqual(evidence.research.exerciseDatabase.length, data.exerciseDatabase.length);
-});
-
-test("generated mesocycles use each canonical exercise on only one day", () => {
-  const evidence = loadEvidenceFromFiles(path.resolve(__dirname, ".."), { includeSessionMetrics: false, includeWeeklyVolume: false });
-  const engine = createPrescriptionEngine(evidence);
-  const plan = engine.createMesocycle({ trainingDays: 5, includedMuscleGroupIds: ["chest", "upper_back", "lats", "quads", "hamstrings", "glutes", "side_delts", "biceps", "triceps"], availableEquipment: ["all"] });
-  const canonicalDays = new Map();
-  plan.sessions.forEach((session) => session.exercises.forEach((exercise) => {
-    const canonical = exercise.researchExerciseId || exercise.exerciseId;
-    if (!canonicalDays.has(canonical)) canonicalDays.set(canonical, new Set());
-    canonicalDays.get(canonical).add(session.id);
-  }));
-  canonicalDays.forEach((days, canonical) => assert.strictEqual(days.size, 1, `${canonical} repeated across days`));
-  const regenerated = engine.refreshMesocycle(plan, { trainingDays: 5 });
-  const regeneratedIds = regenerated.sessions.flatMap((session) => session.exercises.map((exercise) => exercise.researchExerciseId || exercise.exerciseId));
-  assert.strictEqual(regeneratedIds.length, new Set(regeneratedIds).size, "Regeneration must preserve canonical uniqueness");
-  assert.strictEqual(evidence.research.exerciseIdByAlias.get("camber bar bench press"), evidence.research.exerciseIdByAlias.get("cambered bench press"));
 });
 
 test("compound taxonomy distinguishes dynamic, fractional, incidental, and isometric loading", () => {

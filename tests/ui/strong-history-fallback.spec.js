@@ -29,7 +29,7 @@ async function installBlankApp(page) {
     localStorage.clear();
     sessionStorage.clear();
     localStorage.setItem("comprehensive-fitness-data-v1", JSON.stringify({
-      appDataVersion: 2, sessions: [], exercises: [], sets: [], templates: [], mesocycles: [], activeMesocycleId: "",
+      appDataVersion: 2, sessions: [], exercises: [], sets: [], templates: [],
       recommendationHistory: [], manualOverrides: [], personalEvidencePackage: null, rawImports: [], migrationAudit: [], dataRevision: 0,
       settings: { weightUnit: "lb" }
     }));

@@ -23,12 +23,20 @@ function canonical(value) {
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonical(value[key])]));
 }
 
+function withoutKeys(record, keys) {
+  return Object.fromEntries(Object.entries(record).filter(([key]) => !keys.includes(key)));
+}
+
 function preservationProjection(backup) {
   return canonical({
-    sessions: backup.sessions,
+    sessions: backup.sessions.map((session) => withoutKeys(session, ["mesocycleId"])),
     exercises: backup.exercises,
     sets: backup.sets,
-    templates: backup.templates
+    templates: backup.templates.map((template) => {
+      const preserved = withoutKeys(template, ["mesocycleId", "mesocycleRevision", "trainingDayId"]);
+      preserved.exercises = preserved.exercises.map((exercise) => withoutKeys(exercise, ["mesocycleSlotId", "assignmentId"]));
+      return preserved;
+    })
   });
 }
 
@@ -79,11 +87,13 @@ assert.deepEqual(
 assert.equal(legacyV1RoundTrip.exercises[0].executionQualityAssessment, "controlled");
 
 const legacyV2RoundTrip = backupContract.createBackupExport(legacyV2);
-assert.deepEqual(canonical(legacyV2RoundTrip.mesocycles), canonical(legacyV2.mesocycles), "M0 baseline must retain legacy planner fields for later migration comparison");
-assert.deepEqual(canonical(legacyV2RoundTrip.settings.availableEquipment), ["machine"], "M0 baseline must retain the legacy equipment blocker for later removal evidence");
+assert.equal("mesocycles" in legacyV2RoundTrip, false, "New exports must not recreate obsolete planner collections");
+assert.equal("activeMesocycleId" in legacyV2RoundTrip, false, "New exports must not recreate active planner selection");
+assert.equal("availableEquipment" in legacyV2RoundTrip.settings, false, "New exports must not recreate the legacy equipment blocker");
 assert.equal(legacyV2RoundTrip.sessions[0].grade, "B+");
 assert.equal(legacyV2RoundTrip.sessions[0].gradeVersion, "legacy-grade/1");
 assert.deepEqual(canonical(legacyV2RoundTrip.sets[0].originalImportedValue), canonical(legacyV2.sets[0].originalImportedValue));
+assert.deepEqual(canonical(legacyV2RoundTrip.sessions[0].workoutPrescription), canonical(legacyV2.sessions[0].workoutPrescription), "Historical workout/routine snapshots must survive planner-state removal");
 
 const draft = readJson(path.join(fixtureRoot, "active-draft-recovery.json"));
 const draftClone = JSON.parse(JSON.stringify(draft));

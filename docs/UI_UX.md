@@ -3,7 +3,7 @@
 ## Metadata
 
 - **Purpose:** Verified user experience, interaction contracts, and intended UX gaps
-- **Last verified:** 2026-07-28
+- **Last verified:** 2026-07-31
 - **Repository:** M-series raster-fidelity presentation pass
 - **Verification status:** VERIFIED locally for M1–M9 fidelity and preserved behavior: public gate 53/53; 11/11 mockup-fidelity cases; 41/41 affected lifecycle cases across the completed run and focused stale-copy rerun; 40 accessibility/reflow/protected-surface cases with 33 intentional project/private-data skips; lint; PWA/native packaging; and privacy guard. Ten-package/two-theme contrast and 320 px/200%-text reflow remain protected. Replacement baselines remain intentionally unaccepted; hosted and physical-device verification remain unverified
 - **Related:** [Project](PROJECT.md), [architecture](ARCHITECTURE.md), [decision engine](DECISION_ENGINE.md), [roadmap](ROADMAP.md)
@@ -18,13 +18,15 @@ Read this document before changing navigation, screens, labels, visual hierarchy
 
 Starting a routine now renders the named exercise variant's stable set roles/count, rep range, target-RPE band, and rest without a normal engine rewrite. Load, reps, and RPE use factual same-variant/same-role prior performance, explicit routine defaults, then blank. Full variant names remain present, including meaningful suffixes. Large numeric values remain valid editable number-input values; visual grouping separators are display-only.
 
-Global equipment preference controls are absent from the guided setup and equipment state cannot disable normal workout logging. The planner itself remains visible until M3, current recommendation/evidence disclosures remain until M2/M4, and the larger logger composition remains M6 work.
+Global equipment preference controls are absent and equipment state cannot disable normal workout logging. M3 has removed the planner; Plan now owns routines/templates only until M5. M4 and M6 remain future work.
 
 Focused mobile verification at 390 × 844 covers long canonical names, a 1,234.5-lb prior-performance prefill, current/pending/completed states, ordinary completion touch, one-edit replacement of prefilled RPE `7` with `7.5`, and the removed equipment group. RPE replacement does not require a duplicate first digit or manual clear. Completion immediately after entry persists the decimal even when blur rerenders the set row. The current-set options disclosure occupies its own touch row so it cannot intercept the 44 CSS-pixel completion control. Screenshots are stored under `artifacts/ui-audit/m1/`; no replacement visual baseline was accepted.
 
 ## Experience principles
 
-### Guided mesocycle workflow — IMPLEMENTED LOCALLY / REVIEW REQUIRED
+### Guided mesocycle workflow — SUPERSEDED HISTORICAL RECORD (M3)
+
+M3 removes the guided workflow, lifecycle views, candidate workspace, planning controls, and mesocycle history from the live UI. The isolated versioned legacy decoder preserves associated workout/routine-template facts without a route, renderer, writer, or active state. The following text is retained solely as historical design/audit evidence.
 
 **IMPLEMENTED — SUPERSEDED PRESENTATION:** the pre-migration guided builder used pill-like step buttons, independent bordered need cards, and a generic final template review. It already enforced the five dependency-ordered steps, one open day, working-set/move/remove controls, muscle scope, live volume accounting, viability, exception acceptance, and linked-template persistence. The former global equipment preference and its logging constraint were removed in zero-based redesign M1. The remaining planner capabilities and pure planning contract stay active only until the M3 deletion milestone.
 
@@ -212,7 +214,7 @@ Outside an active or just-submitted session, the persistent bottom navigation ha
 | Tab | Purpose and major screens |
 | --- | --- |
 | Today | Quiet Coach next action, quick starts, a single-column active exercise/set logger, timer, submit confirmation, and completion summary. Readiness is captured before workout start rather than repeated in a bottom-of-workout adjustment panel. |
-| Plan | Full template list, template cards, mesocycle planner/candidate pools, and readiness start sheet. |
+| Plan | Routine/template list and template cards only; M3 removes mesocycle planner/candidate pools. |
 | Progress | Overview for weekly volume/fatigue, Lifts for charts/recommendations, and History for submitted sessions and editing. |
 | More | Units, goals/profile, readiness baseline, timers/notifications, PWA setup, workout-upload consent, bounded imports/export, remote deletion, and clear-local-data flow. |
 
@@ -298,11 +300,13 @@ The Charts scope controls form one rounded panel. It shows the canonical selecte
 
 Charts now live under **Progress → Lifts**. A shared destination-level render boundary covers both Today and Progress. It clears only derived entity/analysis caches and retries once before recording a bounded destination/error code and rendering the error surface. Retry repeats that non-mutating rebuild. Recommendation presentation is independently bounded before that destination fallback: current-equipment or other hard rejections render as an in-context unavailable card, while older partial saved snapshots receive a display-only compatibility projection. The projection supplies safe labels and absent optional metrics without rewriting the stored audit snapshot. Legacy prescriptions may also store their explanation as a structured object; Today extracts bounded display text before rationale string operations and retains the resistance-aware prior-set formatter used by the expanded role rows. A malformed historical exercise label is excluded from the chart catalog instead of failing the whole Progress view. When an installed update is waiting, the error surface and banner expose **Update app/Update now** even during an open workout; the existing persistence gate saves the stable workout snapshot before reload and refuses activation if neither local store succeeds. Today additionally returns to its normal home screen when a stale route/runtime pointer has no valid session, before any session fields are read. Legacy `#charts`, `#dashboard`, and `#lift` links are compatibility redirects into Progress or Today; they are not primary destinations.
 
-### Mesocycle planner
+### Mesocycle planner — SUPERSEDED HISTORICAL RECORD (M3)
+
+Plan currently owns routine/template management only. No guided planner, mesocycle route, lifecycle control, candidate pool, portfolio, validation view, or persistent planning state is part of current UI intent. The following record is historical evidence only.
 
 Mesocycles intentionally remain inside Plan with templates instead of becoming another destination. The guided workflow uses five dependency-ordered steps: Guide, Setup, Build, Check, and Create. The former eight-stage automatic planner and Program Slot UI are legacy historical-plan behavior, not the new-plan workflow.
 
-Templates are progressively disclosed for responsiveness. The initial tab shows compact template rows, a compact current-mesocycle summary, and compact history. “Edit template” constructs that template's exercise controls only while open; “Open Planner Review” constructs the candidate, portfolio, session, and validation detail only while requested. Weekly fatigue warnings remain available on Dashboard, and readiness-adjusted coaching is calculated when starting a workout rather than repeated across every template row. Muscle-scope checkboxes update their local draft immediately without rebuilding the full tab after each tap.
+**SUPERSEDED HISTORICAL RECORD (M3):** The former current-mesocycle summary, Planner Review, candidate/portfolio/session validation detail, and muscle-scope draft controls no longer exist. Plan retains routine/template rows and explicit template editing only.
 
 The Muscle Groups in Scope control lists every consolidated available group and defaults to all selected. Unselected controls use a light/transparent neutral surface rather than a heavy filled state. The user may exclude any major or smaller group. The draft confirmation identifies every omission, offers Add to Mesocycle, and requires Keep These Exclusions and Continue before saving the draft as planned. `Why Train This Muscle Group?` uses the research database's anatomical functions plus muscle-family-specific training consequences; it does not repeat a generic omission explanation. Major groups retain a stronger badge, but the UI does not coerce the user after confirmation.
 
@@ -318,11 +322,11 @@ An imported Strong exercise with exact submitted history remains usable when res
 
 ### Recovery and nutrition
 
-### Legacy automatic mesocycle history
+### Legacy automatic mesocycle history — SUPERSEDED HISTORICAL RECORD (M3)
 
-Legacy automatically generated plans remain readable through the compact Historical Mesocycles list and retain lifecycle actions that are valid for their saved status. The unreachable former eight-step automatic-planner review, candidate comparison, regeneration, and scope-confirmation UI has been removed. New guided plans do not automatically generate a portfolio or distribute sessions.
+Legacy planning keys may be decoded only to preserve workout/routine-template facts. They have no active UI surface or lifecycle action.
 
-The former **Available Equipment** group and its seven capability choices are removed. Guided setup proceeds from schedule to Muscle Groups and Scope, and no hidden global equipment preference may narrow candidates or later block logging. Detailed equipment metadata remains internal compatibility data until M3 deletes planner-only paths. Omitted muscle groups use collapsed `Why Train This Muscle Group?` education. Portfolio entries prioritize exercise name, target muscle, program role, and primary/secondary designation without repeating generic boilerplate. Primary, secondary, and destructive lifecycle actions are visually separated.
+**SUPERSEDED HISTORICAL RECORD (M3):** There is no Historical Mesocycles list, lifecycle action, guided setup, scope control, candidate, or portfolio UI. Legacy keys are decoder-only migration input; they cannot render an active or historical planner surface.
 
 Exercise Assignments provides compact jump navigation and a distinct container explaining where each selected exercise contributes. Selected exercises render first; alternates remain collapsed until requested. Static tags are neutral; blue is reserved for selected or interactive controls. Candidate `Why the Score?` reports real objective, muscle, equipment, evidence, progression, fatigue, redundancy, and stability inputs. Full Program Review renders separate session cards whose headers show exercise and working-set totals. The normal review shows only unresolved Blocking Issues, Recommended Changes, Warnings, and useful Optional Suggestions. Passed checks, unknown-metadata notices, and non-actionable redundancy observations are hidden. Actionable findings expose `Regenerate with Practical Limits`, which reruns the same 18-set, two-exercise-per-muscle, priority, and recovery constraints.
 
@@ -405,7 +409,8 @@ All concepts must expose empty, loading, offline, failure, destructive-confirmat
 - **IMPLEMENTED:** An active exception renders from the persisted canonical action as one plain session action plus at most one materially stricter exercise action. Direct pain/illness copy does not diagnose or claim safety, and the logger remains fully usable when the user continues.
 - **REMOVED:** Today Program pulse, visible Progress score/expectation coaching, legacy recommendation renderers, confidence/evidence presentation, and prospective completion coaching.
 - **VERIFIED:** Mobile 390 × 844 scenarios cover ordinary silence and continued logging after pain entry, including long names, large loads, decimal RPE, stable targets, prior performance, reload recovery, and no horizontal overflow.
-- **PLANNED:** M3 removes guided planning; M4 removes remaining dashboard/research clutter; M5–M7 install the final two-destination shell, simplified logger, and concise actual-work completion/Progress experience.
+- **IMPLEMENTED LOCALLY (M3):** Guided planning and mesocycle UI/state are removed; Plan owns routines/templates only.
+- **PLANNED:** M4 removes remaining dashboard/research clutter; M5–M7 install the final two-destination shell, simplified logger, and concise actual-work completion/Progress experience.
 
 ### Focused five-direction session mockups
 

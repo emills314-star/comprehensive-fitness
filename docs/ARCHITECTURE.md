@@ -3,7 +3,7 @@
 ## Metadata
 
 - **Purpose:** Verified technical architecture, data flows, and operational boundaries
-- **Last verified:** 2026-07-28
+- **Last verified:** 2026-07-31
 - **Repository:** M-series raster-fidelity presentation pass
 - **Verification status:** VERIFIED locally for the presentation ownership/source-contract boundary, 53/53 public scripts, lint, root/`www` synchronization, and 40-asset PWA/native packaging at service-worker v93; no schema, persistence, engine, route, or mutation architecture changed. Hosted and physical-device status remains externally unverified
 - **Related:** [Project](PROJECT.md), [decision engine](DECISION_ENGINE.md), [UI/UX](UI_UX.md), [roadmap](ROADMAP.md), [push backend](push-backend.md)
@@ -32,11 +32,9 @@ RPE entry uses a bounded replacement buffer so a focused prefilled `7` accepts `
 
 Root runtime assets remain source and `www/` remains generated. M1 synchronizes all 40 public assets and advances the installed-service-worker cache to `comprehensive-fitness-pwa-v95`.
 
-### Guided mesocycle layer — IMPLEMENTED
+### Planner/mesocycle removal boundary — IMPLEMENTED LOCALLY (M3)
 
-`guided-mesocycle.js` is the versioned, pure planning layer (`guided-mesocycle/1.1.0`; rules `planning-rules/1.1.0`). Its persistence contract is `schemas/guided-mesocycle.v1.schema.json`. It owns draft construction, day assignments, working-set edits, moves, direct/fractional volume ledgers, combined muscle status, viability findings, and readiness-to-generate state. `index.html` supplies persistence and UI integration; `prescription-engine.js` remains authoritative for taxonomy, equipment eligibility, candidate ranking, and research-backed prescriptions.
-
-Guided drafts persist in `data.mesocycles` with `builderMode: "guided"`, `guidedDays`, `planningProgress`, accepted exceptions, a versioned viability result, revision, linked template IDs, and an auditable `creationResult`. `planningProgress` stores the highest unlocked step, completed steps, and setup/build/viability/create revisions. Build edits retain compatible assignments while staling viability and relocking Create. Candidate selection uses transient `guidedPendingAssignment` state until Add to Day commits it. Generated templates use deterministic day-based IDs and store mesocycle, revision, training-day, and assignment identities, so retry updates instead of duplicating. A successful request persists created/updated counts and enters a durable completion view; only a named blocking finding returns the user to its affected day. Legacy automatically generated mesocycles remain readable; new creation uses the guided path. The guided draft is the structural source of truth and linked templates are derived outputs.
+`guided-mesocycle.js`, planner-only schemas, active `data.mesocycles`/`activeMesocycleId` state, planner requests, writers, routes, service-worker references, and current runtime tests are removed. The migration boundary contains an isolated, versioned legacy backup decoder: it accepts obsolete planning keys and maps only the workout/routine-template facts needed for historical understanding. It does not recreate an active planner domain, route, writer, renderer, engine branch, or new-record schema. Plan currently owns routine/template management only; M5 still owns the final shell change.
 
 This is a dependency-light static PWA with Capacitor wrappers, not a bundled component-framework application.
 
@@ -57,7 +55,7 @@ This is a dependency-light static PWA with Capacitor wrappers, not a bundled com
 
 `npm run sync:web` is the canonical copy step from root web assets into `www/`. Root files are the editable source; duplicated `www/` files are packaging outputs.
 
-Any cross-file runtime contract change (for example, `index.html` consuming a new `guided-mesocycle.js` field) must advance `CACHE_NAME` in `sw.js`. This retires the previous app shell and module assets together; otherwise an installed PWA can pair a new UI with an older cached engine.
+Any cross-file runtime contract change must advance `CACHE_NAME` in `sw.js`. This retires the previous app shell and module assets together; otherwise an installed PWA can pair a new UI with older cached assets.
 
 The service-worker cache version is also the installed-PWA update signal. Every published runtime change must advance it so `registration.updatefound` can surface the in-app update action; changing only a cached shell asset is insufficient. An active worker serves its allowlisted document and runtime assets cache-first without background replacement. The installing worker fills a separate versioned cache, preventing a controlled page from combining JavaScript modules from different releases.
 
@@ -155,7 +153,7 @@ The active workout remains one continuous scroll document. Set/rest state transi
 - An **exercise** belongs to a session and references its sets; it holds muscle/resistance metadata, prescription/snapshot, notes, deload/override state, optional `customExerciseProfile`, and optional `executionQualityAssessment`. A user-declared custom exercise receives a stable namespaced performance identity that survives name edits and never implies a public research crosswalk.
 - A **set** belongs to an exercise and has sequence/type, targets, actual load/reps/RPE, completion/skip/edit flags, resistance semantics, and inclusion flags for score/volume/progression.
 - A **template** owns exercise targets and set-role definitions but does not become history until a started workout is submitted.
-- A **mesocycle** holds type, dates/lifecycle, constraints, per-muscle candidate pools, program slots, a selected full-program portfolio, distributed sessions, muscle plans, and an interaction review. `activeExercises` remains a compatibility projection of the selected portfolio for older persisted plans.
+- **SUPERSEDED HISTORICAL RECORD (M3):** The following mesocycle model description applies only to obsolete backup input. The isolated decoder may preserve associated workout/routine-template facts but cannot recreate this model as active state.
 - A **recommendation snapshot** records engine/schema/evidence versions, a versioned `standardGuideline`, base/final prescription, readiness adjustment, evidence, checksum, and append-only overrides (`schemas/recommendation-snapshot.v1.schema.json`). Snapshot `1.4.0` pairs with prescription `2.4.0`; readers retain all repository-known earlier pairs without backfill.
 
 The root JSON Schemas are application decision contracts. `personal_fitness_data/schemas/` describe private pipeline artifacts; `research_database/schema/` describes public research tables. These are distinct layers.
@@ -177,7 +175,7 @@ flowchart TD
   Snapshot --> Surfaces[template / live / chart / coach / history]
 ```
 
-The retained legacy automatic engine is portfolio-first and priority-ordered; it remains available as a public compatibility surface and for engine tests, not for creating new guided plans. The former automatic-planner renderer and controller graph was unreachable behind the guided entry and has been removed. Saved legacy plans remain readable through the compact historical list and valid lifecycle actions. New guided construction is user-directed. It uses the same taxonomy-defined direct sets, 0.5/0.25 fractional contribution, zero-credit incidental/unknown relationships, separate isometric fatigue, frequency, and capacity rules as live feedback and viability validation.
+**SUPERSEDED HISTORICAL RECORD (M3):** The former automatic/guided planner engine, renderer, controller graph, lifecycle list, and planner tests are removed. Legacy backup input is decoded only to preserve associated workout/routine-template facts; no planner compatibility surface or lifecycle action remains.
 
 `research_database/source/exercise-muscle-taxonomy.js` is the single exercise–muscle relationship authority. Taxonomy 2.1.0 covers 62 canonical exercises with 151 exercise-muscle relationships and retains all 23 canonical anatomical muscle IDs. A complete projection maps them into 20 programming families; only the sternal/clavicular chest, gastrocnemius/soleus calf, and flexor/extensor neck pairs coalesce. The browser engine, planner, weekly/historical analytics, and private personal-evidence config adapter consume the mappings. Legacy name rules and personal mappings are fallback-only for custom exercises without a canonical research crosswalk.
 
@@ -257,7 +255,7 @@ Repository publication follows `AGENTS.md`: verified source, tests, schemas, pub
 
 ## Decisions, risks, and debt
 
-Mesocycle candidate detail remains progressively rendered: Templates defers the full planner review, the review renders one selected Program Slot, and unselected alternates return no markup until explicitly expanded. M1 removes the application-level equipment setting and supplies unrestricted `all` to the still-present planner compatibility boundary. The standalone engine can still evaluate explicit equipment requirement alternatives for non-application callers and historical tests, but the current app neither persists nor derives a user equipment restriction. Planner-only equipment code is scheduled for M3 deletion.
+**SUPERSEDED HISTORICAL RECORD (M3):** Planner candidate rendering, equipment compatibility branches, and planner-only engine/test surfaces are deleted. There is no current planner review or application equipment constraint; the decoder-only legacy path has no runtime UI or writer.
 
 - **Decision:** Local-first static app minimizes infrastructure and account requirements.
 - **Decision:** One prescription snapshot feeds every app surface; tests enforce this.
@@ -276,7 +274,8 @@ Mesocycle candidate detail remains progressively rendered: Templates defers the 
 - **IMPLEMENTED:** Stable routine targets are computed independently of advice. Canonical actions may apply a temporary prospective adjustment but cannot mutate routine defaults. Mutation authorization protects exact active/history targets and does not turn pain/illness advice into a logging block.
 - **IMPLEMENTED compatibility:** Historical recommendation snapshots, prescription fields, and stored grades remain readable and immutable. No new current writer populates legacy `recommendationHistory` or `workoutPrescription`.
 - **PACKAGE:** Root and `www/` include the resolver through `scripts/sync-web.ps1`; the sync copies 41 public files and service-worker cache v96 verifies 40 precached application assets.
-- **PLANNED:** M3/M4 remove planner and hidden analytics/research execution debt. M7 replaces the temporary legacy grade bridge while preserving stored historical values/versions.
+- **IMPLEMENTED LOCALLY (M3):** Planner/mesocycle runtime and active-domain coupling is removed; only the isolated legacy decoder preserves workout/routine-template facts.
+- **PLANNED:** M4 removes hidden analytics/research execution debt. M7 replaces the temporary legacy grade bridge while preserving stored historical values/versions.
 
 ## Planned React presentation boundary
 

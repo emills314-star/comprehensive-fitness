@@ -3,7 +3,7 @@
 **Product:** Comprehensive Fitness  
 **Primary owner:** Codex  
 **Adversarial reviewer:** Claude Code  
-**Current phase:** Implementation active on `codex/zero-based-redesign`; M0 preservation and M1 stable-target/logging-integrity gates complete locally  
+**Current phase:** Implementation active on `codex/zero-based-redesign`; M0–M3 gates complete locally
 **Implementation authorized:** Yes — local implementation only
 
 ## Completed
@@ -46,15 +46,18 @@
 - Numeric fatigue, readiness, plateau, deload, grade, evidence, and confidence thresholds remain out of scope and cannot create a current action.
 - Direct detector UI consumers, legacy recommendation renderers/writers, target-mutating fallbacks, visible confidence/evidence paths, Today Program pulse, Progress score/expectation output, and completion coaching were removed.
 - M2 focused contracts, 59/59 public scripts, lint, typecheck, production build, 41-file web sync, 40-asset PWA verification, privacy scan, and 2/2 mobile Playwright scenarios passed. Independent recommendation review approved the scoped M2 gate.
+- M3 deleted the guided planner and mesocycle product across routes/UI/state, requests, engine branches, schemas for new records, writers, CSS, tests, service-worker/package entries, and current-intent documentation.
+- A versioned legacy decoder now accepts obsolete planning keys, preserves workout/session/set/routine facts and immutable embedded snapshots, and discards planner-only state before active import or current export.
+- M3 focused preservation/deletion tests, 60/60 public scripts, lint, typecheck, production build, 40-file web sync, 39-asset PWA verification, privacy scan, dependency search, and mobile running-app verification at 390 × 844 passed.
 
 ## Current objective
 
-M0 through M2 are complete and recoverable. M2 is checkpointed at `243ed81`. M3 planner/mesocycle deletion is next.
+M0 through M3 are complete locally. M2 is checkpointed at `243ed81`; the M3 checkpoint is pending creation after final diff/privacy review. M4 analytical/research-clutter deletion is next.
 
 ## Next actions
 
-1. Begin M3 planner/mesocycle deletion without reactivating legacy recommendation paths.
-2. Continue through M3–M8 with code, tests, living docs, and deletion evidence integrated per milestone.
+1. Create the recoverable M3 local checkpoint.
+2. Begin M4 analytical/research-clutter deletion without reactivating planner or duplicate recommendation paths.
 3. Automated, privacy, migration, independent, target-device, and five-workout human acceptance gates precede any separately authorized publication.
 
 ## Open issues
@@ -63,11 +66,12 @@ M0 through M2 are complete and recoverable. M2 is checkpointed at `243ed81`. M3 
 - Current numeric fatigue, readiness, plateau, deload, evidence, confidence, and grade thresholds/formulas are not approved. M2 prevents them from producing current actions; M4/M7 remove remaining hidden analysis and legacy grade debt.
 - Target migration contracts and synthetic baselines exist; M1 runtime normalization is implemented, but a complete real-data export/replay and independent migration verification remain unperformed.
 - Focused browser/PWA/accessibility verification passed for M1; physical-device, notification, performance, privacy, independent-review, pinned-runtime, and five-workout acceptance gates remain unverified.
-- M3–M8 product behavior remains incomplete. Guided planner/mesocycle systems persist only until M3; hidden analytics/research and legacy grade/UI debt remain assigned to M4/M7.
-- Pre-existing uncommitted `.claude/`, `.vercel/`, `docs/redesign/`, and `redesign/prompts/` paths must remain preserved.
+- M4–M8 product behavior remains incomplete. Hidden analytics/research and legacy grade/UI debt remain assigned to M4/M7.
+- Two broader Strong-history browser assertions disagree with current shared-runtime copy/prior-row resolution; they were not caused by M3 planner-field deletion and remain separately reproducible.
+- Pre-existing uncommitted `.claude/`, `.vercel/`, and `redesign/prompts/` paths must remain preserved.
 - Current code and living docs differ materially from final product intent. They remain accurate as current-state evidence until an authorized implementation updates behavior and documentation together.
 - Local implementation is authorized. Commit, push, merge, deployment, real-data migration, baseline acceptance, and publication are not authorized or completed.
 
 ## Last verification
 
-M1 completed locally by Codex on 2026-07-31. All 55 selected public scripts passed; lint, typecheck, production build, PWA/native packaging, and focused 390 × 844 visual/touch verification passed. Checkpoint review then closed current-v3 backup compatibility and the required one-edit decimal RPE path; the focused suite passed 3/3 and service-worker cache v95 was produced. No dependency, `AGENTS.md`, `CLAUDE.md`, private personal fitness/health data, deployment, or publication change occurred.
+M3 completed locally by Codex on 2026-07-31. All 60 selected public scripts passed; lint, typecheck, production build, PWA/native packaging, privacy, dependency, and focused 390 × 844 running-app verification passed. Service-worker cache v97 was produced. No dependency, `AGENTS.md`, `CLAUDE.md`, private personal fitness/health data, deployment, or publication change occurred.

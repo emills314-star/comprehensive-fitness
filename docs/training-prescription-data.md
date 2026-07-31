@@ -108,11 +108,7 @@ Personal weight is constrained by comparable exposure count, observation span, v
 
 ## App integration contract
 
-All app surfaces consume the same immutable exercise-prescription snapshot. The canonical prescription includes exercise and muscle IDs, action type, mesocycle role, set structure, working-set/rep/RPE/RIR/rest/frequency ranges, top and back-off details, progression/hold/regression/deload/substitution rules, readiness adjustment, evidence weights, confidence, evidence summary, and user explanation.
-
-Workout snapshots preserve the engine, schema, personal-data, and research-data versions plus the base prescription, today's adjusted prescription, scores, mesocycle ID, evidence, creation time, and manual overrides. Historical workouts render this stored snapshot and are never silently recomputed after an engine update.
-
-Mesocycles are decision contexts, not time-only rotation commands. Supported types are primary progression, alternative exercise, lower-fatigue/resensitization, and specialization. Productive, tolerated exercises stay available across transitions; regression, rising effort/fatigue, pain, redundancy, completed block objectives, or a supported variation goal can trigger rotation.
+M3 removes mesocycle/planner fields from current requests, active records, and new schemas. Current routine/template and workout facts retain named-variant targets, set structure, immutable historical snapshots where present, and source provenance. A versioned legacy backup decoder may read obsolete planning keys solely to preserve associated workout/routine-template facts; it cannot create active planner state, a writer, route, renderer, or future record.
 
 ## Prescription contract schema inventory
 
@@ -121,8 +117,8 @@ The app-facing contracts are intentionally separate from the personal-analysis s
 | Contract | Version | Canonical file | What it records |
 | --- | --- | --- | --- |
 | Exercise prescription | `2.0.0` | `schemas/exercise-prescription.v2.schema.json` | Exercise and muscle IDs; normal/progress/hold/light/deload/rotation action; role; set structure; working sets; reps; RPE/RIR; top and back-off details; rest; frequency; three-level volume; progression/hold/regression/deload/substitution rules; readiness; full score breakdown; staleness; deload scope; evidence weights; confidence; explanation |
-| Mesocycle plan and candidate pools | `mesocycle/2.4.0` | `schemas/mesocycle-plan.v1.schema.json` | User-selected scope; normalized equipment/joint actions; evidence-derived targets; major-muscle-first portfolio; hard 18-working-set and two-exercises-per-muscle daily caps; direct/0.35 secondary/zero incidental volume; capacity conflicts; constrained regeneration; actionable review; outcome and lifecycle |
-| Recommendation snapshot and overrides | `1.0.0` | `schemas/recommendation-snapshot.v1.schema.json` | Recommendation/engine/personal/research versions; mesocycle; exercise and muscle scores; base and readiness-adjusted final prescriptions; explanation/evidence; checksum; append-only manual override entries; prior final prescription; override outcomes and later comparison |
+| Legacy planning keys | legacy decoder only | No active schema | Accepted by the versioned backup decoder to preserve workout/routine-template facts; never normalized into an active planning record. |
+| Recommendation snapshot and overrides | legacy compatibility where historically embedded | `schemas/recommendation-snapshot.v1.schema.json` | Immutable historical source material may be decoded without recreating planner state or a live planning renderer. |
 
 Candidate score objects expose the distinct dimensions used by ranking: personal hypertrophy support, progression quality, recovery efficiency, repeatability, muscle specificity, lengthened-position loading, stability, ease of progression, joint tolerance, fatigue cost, research support, personal-data confidence, and overall recommendation strength. Pool rank is deliberately separate from raw score rank because movement pattern, equipment, regional emphasis, stability, loading range, recovery cost, and redundancy can change the diversified order.
 
@@ -136,14 +132,14 @@ Keep this list synchronized with the code so future iterations do not create a s
 
 | Runtime concern | Canonical implementation |
 | --- | --- |
-| Evidence adapters, weighting, scoring, diversified pools, staleness, volume, progression, deload scope, readiness, mesocycles, snapshots, and overrides | `prescription-engine.js` |
-| App ingestion, IndexedDB persistence, recommendation cards, chart/template/coach/start/live/history adapters, mesocycle UI, and override UI | Ordered `app-foundation.js` through `app.js` runtime segments (copied with `index.html` to `www/` by `npm run sync:web`) |
+| Evidence adapters, retained exception logic, snapshots, and legacy compatibility decoding | `prescription-engine.js` and import boundary |
+| App ingestion, IndexedDB persistence, routine/template, start/live/history adapters, and retained override compatibility | Ordered `app-foundation.js` through `app.js` runtime segments (copied with `index.html` to `www/` by `npm run sync:web`) |
 | Rest-complete lifecycle, absolute five-second dismissal deadline, one-shot sound/haptic/notification receipts, preview, and background reconciliation | `rest-completion-controller.js` |
-| Exercise, mesocycle, and immutable snapshot contracts | `schemas/exercise-prescription.v2.schema.json`, `schemas/mesocycle-plan.v1.schema.json`, and `schemas/recommendation-snapshot.v1.schema.json` |
+| Exercise and immutable historical snapshot contracts | `schemas/exercise-prescription.v2.schema.json` and `schemas/recommendation-snapshot.v1.schema.json`; no active mesocycle schema |
 | Private aggregate package builder | `scripts/build-app-personal-evidence.js` |
 | Decision, contract, app integration, and rest lifecycle tests | `scripts/test-prescription-engine.js`, `scripts/test-prescription-schema-contracts.js`, `scripts/test-prescription-app-integration.js`, and `scripts/test-rest-completion-controller.js` |
 
-The app data object is versioned and now includes `mesocycles`, `activeMesocycleId`, `recommendationHistory`, `manualOverrides`, and an optional locally imported `personalEvidencePackage`. Full backup replacement uses the same 8 MiB/shape gate plus versioned top-level and entity allowlists, bounded identifiers/text/collections, duplicate rejection, and referential-integrity checks. Embedded personal evidence is validated and its engine is prepared before the single app-data replacement; rejected imports cannot partially replace history or evidence. A started workout stores a `workoutPrescription`; each exercise stores the matching immutable recommendation snapshot, base prescription, readiness-adjusted final prescription, evidence versions, and override records. Volume records include an explicit `adjustmentType`, three-level volume ranges, current prescribed volume, observed recoverable volume, deload volume, and research fallback range. The daily check-in passes sleep, HRV, resting heart rate, soreness, pain/illness, nutrition adequacy, and protein adequacy to the engine; nutrition/protein remain one independent readiness domain and cannot trigger a deload by themselves.
+The app data object contains no active mesocycle collection or active-mesocycle selection. Full backup replacement uses versioned allowlists and an isolated legacy decoder for obsolete planning keys; it preserves workout/routine-template facts without recreating planner state. Embedded personal evidence is validated before replacement; rejected imports cannot partially replace history or evidence. Historical prescription/snapshot fields remain immutable compatibility material rather than current planner inputs.
 
 `progressionAction` records the measurable action behind the recommendation label (for example `increase_load`, `add_one_rep`, or `hold`). Straight-set load progression requires the first set at the rep ceiling and later sets inside the allowed drop-off before the smallest equipment increment is applied to all working sets. Planned readiness/fatigue reductions are retained on the exposure as prescribed-reduction provenance and excluded from weakness/regression comparisons. This prevents a deliberately lower biceps/triceps light-session prescription from creating a false performance-decline flag. User-facing pounds are normalized to 0.5-lb increments; source evidence and raw imports remain immutable in their declared units.
 

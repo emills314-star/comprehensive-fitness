@@ -43,4 +43,4 @@ The 2026-07-15 baseline at source commit `afe7a6c` was a **1,111,567-byte raw si
 
 ## Remaining watch item
 
-The cold overall-program score is still the heaviest first-view calculation at about 233 ms for the dense fixture. It is outside active set entry and is cached after the first result. If retained histories or program breadth grow materially beyond the six-calendar-month boundary, the next useful step is chunked or worker-based score aggregation rather than broader component memoization.
+**SUPERSEDED (M3):** The former planner/template benchmark notes above are historical measurements only; planner runtime no longer exists. **PLANNED (M4):** remeasure Today/Start after analytical and research computation is removed. Do not infer that M4 performance work is complete from M3 removal.

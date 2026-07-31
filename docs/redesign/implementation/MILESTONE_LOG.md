@@ -176,3 +176,85 @@ No material contradiction was found in the final documents. Existing fatigue, re
 - Verification used Node 24.18.0/npm 11.16.0 rather than the repository-pinned Node 22.23.x/npm 10.9.x.
 - Real private-history replay, physical-device/notification validation, desktop/native acceptance, Erik's five-workout field test, deployment, push, merge, and publication remain unperformed.
 - **Checkpoint:** `243ed81` (`feat(redesign): establish canonical exception resolver`).
+
+## M3 — Remove mesocycle and planner coupling
+
+**Status:** COMPLETE — IMPLEMENTED LOCALLY
+**Started:** 2026-07-31
+**Baseline checkpoint:** `243ed81`
+**Branch:** `codex/zero-based-redesign`
+**Authority:** Final feature dispositions F-17 and G-04 through G-18; migration plan M3.
+
+### Exact milestone scope
+
+- Delete guided planner routes, views, guide/setup/build/check/create state, candidate pools, portfolios, equipment/scope/frequency setup, validation/status presentation, recommendations, lifecycle actions, and deep links.
+- Remove `currentMesocycle`, mesocycle request coupling, `data.mesocycles`, `activeMesocycleId`, selection state, and all new planner writers from the normal runtime.
+- Delete `guided-mesocycle.js`, planner-only engine branches, schemas, package/cache entries, and tests.
+- Preserve workout/session/template facts and historical snapshots; keep only a versioned legacy backup decoder that accepts/discards obsolete planner keys without recreating active state.
+- Prove by dependency search, migration fixtures, public tests, and runtime coverage that planner code is deleted rather than hidden.
+
+### Affected data and migration safety
+
+- Legacy backups may contain mesocycle records and relationships. They are input-only compatibility evidence, not active domain state.
+- Completed workouts, session/template labels, exercise order/identity, set facts, embedded historical snapshots, and import provenance must survive import unchanged.
+- No migration may delete or rewrite completed workout history. Planner-only keys are discarded only after their required workout/routine facts are represented on the preserved records.
+- No production or irreplaceable personal data will be used or mutated; committed fixtures remain synthetic.
+
+### Authority/conflict review
+
+No final-document contradiction was found. The current planner's validation, equipment, research, confidence, quality-score, and lifecycle behavior is explicitly deleted product scope. Existing implementation effort and tests are migration evidence only and cannot justify a hidden planner subsystem.
+
+### Implementation summary
+
+- Deleted the guided planner module, both planner schemas, every guide/setup/build/check/create renderer and handler, planner CSS, lifecycle/storage APIs, planner cache/sync entries, and planner-only tests.
+- Removed `mesocycles`, `activeMesocycleId`, `currentMesocycle`, planning draft state, training-day/equipment/scope settings, planner request inputs, and new planner linkage writers from the active runtime.
+- Removed planner construction, distribution, review, lifecycle, scoring, and override paths from `prescription-engine.js`. Current recommendation and workout-prescription writers emit no mesocycle fields.
+- Added one isolated legacy decoder in `backup-contract.js`. It accepts v1/v2/v3 envelopes containing obsolete planner keys, preserves workout/session/set/routine facts and immutable embedded snapshots, then discards planner-only state before strict active-data import or current export.
+- Current schemas no longer require `mesocycleId` or `affectsMesocycle`; optional historical fields remain readable. Current manual overrides cannot create mesocycle changes.
+- Plan now renders routines/templates only. A legacy `#mesocycle` hash has no planner destination or action graph.
+- Synced the public package and advanced the service-worker cache from v96 to v97.
+
+### Files changed
+
+- Runtime and compatibility: `app-analysis.js`, `app-foundation.js`, `app-import.js`, `app-views.js`, `app-workout.js`, `app.js`, `backup-contract.js`, `index.html`, `prescription-engine.js`, `sw.js`, and synchronized `www/` copies.
+- Deleted: `guided-mesocycle.js`, `schemas/guided-mesocycle.v1.schema.json`, `schemas/mesocycle-plan.v1.schema.json`, and `tests/ui/guided-planner-entry-regression.spec.js`.
+- Contracts and package: `schemas/exercise-prescription.v2.schema.json`, `schemas/recommendation-snapshot.v1.schema.json`, `scripts/sync-web.ps1`, `scripts/verify-pwa.ps1`, and affected security/schema/package tests.
+- Preservation evidence: `scripts/test-redesign-m3-planner-removal.js`, the M0 legacy fixture, and backup/import/persistence regression suites.
+- Planner-only assertions were removed from engine, integration, performance, design-system, fuzz, taxonomy, and browser suites while unrelated recommendation, safety, identity, history, and deterministic-failure coverage was retained.
+- Running-app evidence: `tests/ui/redesign-m3-planner-removal.spec.js`.
+- Living documentation: `docs/PROJECT.md`, `docs/ARCHITECTURE.md`, `docs/DECISION_ENGINE.md`, `docs/UI_UX.md`, `docs/ROADMAP.md`, `docs/training-prescription-data.md`, `docs/performance.md`, and `docs/iphone-pwa-personal-coach-setup.md`.
+
+### Data and migration result
+
+- Synthetic legacy backups preserve record counts and workout/session/exercise/set/routine facts, including variant identity, order, load, reps, RPE, set role, duration, notes, execution-quality history, stored grade/version, and immutable embedded snapshots.
+- Obsolete planner collections, active selection, nested relationship IDs, and planner/equipment settings are discarded idempotently and are not recreated by current exports.
+- Orphaned obsolete active-plan IDs cannot block recovery of otherwise valid workout history.
+- No production, private, or irreplaceable personal data was read, rewritten, or migrated.
+
+### Verification
+
+- Focused M3 decoder/deletion contract: PASS.
+- Backup contract, M0 preservation, M1 stable targets, all focused M2 suites, application integration (38/38), schema contracts, security/platform, and all retained recommendation/engine suites: PASS.
+- Full public gate: PASS, 60/60 selected scripts (61 discovered; one private-only harness excluded).
+- Static lint: PASS, 202 JavaScript and 3,133 JSON files.
+- TypeScript: PASS (`npm.cmd run redesign:typecheck`).
+- Production Vite build: PASS (`npm.cmd run redesign:build`).
+- Public package sync: PASS, 40 public-only assets; PWA/native verification: PASS, 39 cached assets; cache v97.
+- Public privacy guard: PASS, 652 tracked Git/archive project files.
+- Mobile running-app verification: PASS at 390 × 844. The rendered Plan state showed only routines/templates, a long routine name remained usable, a legacy planner hash did not expose a route, planner actions/scripts/state were absent, touch targets rendered, no error overlay appeared, and the inspected screenshot is `artifacts/ui-audit/m3/m3-mobile-plan-routines-only.png`.
+- Dependency/residue search: no normal runtime planner/mesocycle reference; only the isolated compatibility decoder and historical snapshot read/validation fields remain.
+- `git diff --check`: PASS apart from Git's expected CRLF notices.
+
+### Decisions and assumptions
+
+- Immutable embedded historical recommendation/workout snapshots remain byte-meaningful evidence even when they contain old planner labels; they are never current state or a source for new writes.
+- Legacy top-level recommendation-history planner linkage is discarded because it is planning state, not an observed workout fact.
+- Planner engine effort, schemas, and tests were deleted instead of retained behind navigation or a feature flag.
+- The agent-browser CLI required by the optional verification skill was not installed and could not be fetched in offline-cache mode. Existing Playwright/Chromium automation performed the equivalent load, content, overlay, state, route, interaction, and screenshot checks.
+
+### Remaining known issues and gates
+
+- Two broader Strong-history Playwright assertions currently disagree with the shared runtime's recommendation copy/prior-row resolution. They were not caused by planner-field removal and remain separately reproducible; M3-specific Strong fixture normalization itself is planner-free.
+- Verification used Node 24.18.0/npm 11.16.0 instead of the repository-pinned Node 22.23.x/npm 10.9.x.
+- Real private-history replay, physical-device/notification validation, full browser matrix, independent migration verification, five-workout field testing, deployment, push, merge, and publication remain unperformed.
+- **Checkpoint:** pending local M3 commit.

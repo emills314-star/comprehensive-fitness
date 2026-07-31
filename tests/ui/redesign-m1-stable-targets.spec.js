@@ -17,7 +17,6 @@ const ARTIFACT_DIR = path.resolve(__dirname, "..", "..", "artifacts", "ui-audit"
 function m1Fixture() {
   const fixture = buildTemplateLifecycleFixture();
   fixture.appDataVersion = 2;
-  fixture.settings.availableEquipment = ["bodyweight"];
   fixture.settings.autoStartRestTimer = false;
   fixture.templates = [{
     id: TEMPLATE_ID,
@@ -184,16 +183,14 @@ test("M1 starts stable variant targets with factual same-role prefills at 390 by
   await expect(exercise.locator(".set-current-editor")).toContainText("3 sets planned");
   await expect(exercise).toContainText("Top Set is ready");
   await expect(exercise).toContainText("5-7 reps");
-  await expect(exercise).toContainText("7.5-8.5 RPE");
+  await expect(exercise).toContainText(/RPE 7\.5-8\.5/);
   await expect(exercise.getByRole("spinbutton", { name: "Set 1 load" })).toHaveValue("1234.5");
   await expect(exercise.getByRole("spinbutton", { name: "Set 1 reps" })).toHaveValue("6");
   await expect(exercise.getByRole("spinbutton", { name: "Set 1 RPE" })).toHaveValue("8.5");
 
   const normalized = await page.evaluate(() => ({
-    settingsHasEquipment: Object.hasOwn(data.settings, "availableEquipment"),
     template: data.templates.find((item) => item.id === "public-synthetic-control-template")
   }));
-  expect(normalized.settingsHasEquipment).toBe(false);
   expect(normalized.template.exercises[0].standardWorkloadOverride).toBeUndefined();
   expect(normalized.template.exercises[0].standardRoleWorkload).toBeUndefined();
   expect(normalized.template.exercises[0].setTypes.map((item) => item.type)).toEqual(["top", "backoff"]);
@@ -202,20 +199,6 @@ test("M1 starts stable variant targets with factual same-role prefills at 390 by
   await exercise.getByRole("button", { name: "Mark set complete", exact: true }).click();
   await expect(exercise.getByRole("button", { name: "Set completed", exact: true })).toBeVisible();
   await page.screenshot({ path: path.join(ARTIFACT_DIR, "m1-mobile-stable-target-completed.png"), fullPage: true });
-});
-
-test("M1 removes the global equipment preference from the live guided setup", async ({ page }) => {
-  test.setTimeout(90_000);
-  await page.setViewportSize({ width: 390, height: 844 });
-  await installFixture(page);
-  await openPlan(page);
-
-  await page.locator('[data-action="begin-guided-mesocycle"]').click();
-  await page.locator('[data-action="open-guided-setup"]').click();
-  await expect(page.getByRole("group", { name: "Available Equipment", exact: true })).toHaveCount(0);
-  await expect(page.locator('[data-action="toggle-mesocycle-equipment"]')).toHaveCount(0);
-  await expect(page.getByRole("group", { name: "Muscle Group Scope", exact: true })).toBeVisible();
-  await page.screenshot({ path: path.join(ARTIFACT_DIR, "m1-mobile-equipment-preference-removed.png"), fullPage: true });
 });
 
 test("M1 replaces a prefilled RPE 7 with 7.5 in one focused edit", async ({ page }) => {

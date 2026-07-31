@@ -27,8 +27,6 @@ const renderTemplateStartSheet = functionSource(views, "renderTemplateStartSheet
 const renderCancelWorkoutSheet = functionSource(views, "renderCancelWorkoutSheet", "closeCancelWorkout");
 const renderResolvedAction = functionSource(views, "renderResolvedAction", "todayPlanPreview");
 const renderTodayPlanPreview = functionSource(views, "renderTodayPlanPreview", "renderLiftHome");
-const renderGuidedPriority = functionSource(views, "renderGuidedMusclePrioritySummary", "renderGuidedExerciseWorkspace");
-const renderGuidedMesocycle = functionSource(views, "renderGuidedMesocycle", "renderMesocyclePlanner");
 const renderHistory = functionSource(analysis, "renderHistory", "exerciseDeloadPresentation");
 const chartPointComparison = functionSource(analysis, "chartPointSetComparison", "renderChartPointSetGroups");
 const renderStoragePersistenceFact = functionSource(analysis, "renderStoragePersistenceFact", "renderSettings");
@@ -48,7 +46,6 @@ assert.doesNotMatch(renderCancelWorkoutSheet, /<h2[^>]*>\$\{completedSets\}/, "t
 assert.match(renderCancelWorkoutSheet, /exerciseIds\.size[\s\S]*draftSets\.length[\s\S]*completedSets/, "destructive copy must enumerate all exercise and set records being removed");
 assert.doesNotMatch(renderSettings, /formatTimer\(Number\(data\.settings\.defaultRestSeconds/, "Settings must not restate default rest in a second format");
 assert.match(renderCompletedSummary, /completionHeadline[\s\S]*workout-grade-mark/, "the grade mark must remain the sole visible grade value beside the evidence-backed completion headline");
-assert.doesNotMatch(renderGuidedMesocycle, /<h2>' \+ result\.blockingCount/, "viability counts must be owned by the roll-up");
 assert.match(renderTodayPlanPreview, /Stable target[\s\S]*Last time[\s\S]*Effort/, "Today must present the stable routine target beside factual prior performance");
 assert.doesNotMatch(renderTodayPlanPreview, /confidence|evidence|recommendation/i, "the ordinary Today preview must remain silent about internal recommendation evidence");
 assert.match(renderResolvedAction, /if \(!resolvedAction \|\| resolvedAction\.outcome !== "action"\) return ""/, "the exception renderer must remain silent unless the canonical resolver produced an action");
@@ -63,8 +60,6 @@ assert.match(chartPointComparison, /actualRpe < rpeLow\) delta = \{ tone: "under
 assert.match(readinessMetricDelta, /tone: "none"/, "raw readiness differences must remain neutral facts");
 assert.doesNotMatch(readinessMetricDelta, /tone: desirable|stronglyAdverse/, "raw readiness differences must not invent a semantic judgement");
 assert.doesNotMatch(renderStoragePersistenceFact, /class="ri-val d |tone:/, "storage-persistence facts must remain plain ink");
-assert.match(renderGuidedPriority, /item\.overallStatus === 'needs_frequency'[\s\S]*tone: 'under'/, "frequency shortfalls must agree with their warning pill");
-assert.match(renderGuidedPriority, /item\.overallStatus === 'needs_distribution'[\s\S]*tone: 'under'/, "distribution shortfalls must agree with their warning pill");
 
 const subFloorRem = [...style.matchAll(/font-size:\s*(0?\.\d+)rem/g)]
   .filter((match) => Number(match[1]) < 0.75)

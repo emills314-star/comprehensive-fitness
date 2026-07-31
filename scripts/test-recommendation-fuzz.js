@@ -9,7 +9,7 @@ const SEED = 0x5eedc0de;
 const CREATED_AT = "2026-07-14T12:34:56.000Z";
 const CASES_PER_GROUP = 128;
 const ASSERTIONS_PER_CASE = 10;
-const GROUP_COUNT = 8;
+const GROUP_COUNT = 7;
 const EXPECTED_CASES = CASES_PER_GROUP * GROUP_COUNT;
 const EXPECTED_ASSERTIONS = EXPECTED_CASES * ASSERTIONS_PER_CASE;
 const MAX_RUNTIME_MS = 120_000;
@@ -209,9 +209,6 @@ positiveMappings.forEach((row) => {
 });
 const validPairs = shuffle([...positivePairMap.values()]);
 const families = shuffle(unique(validPairs.map((row) => row.muscleGroupId)));
-const planFamilies = shuffle(unique(researchData.muscleGroupRecommendations.map((row) => (
-  P.muscleFamily(row.muscle_group || row.muscle_group_id)
-))));
 const canonicalGoals = ["strength", "hypertrophy", "muscular_endurance", "general_fitness"];
 const canonicalExperiences = [undefined, "novice", "intermediate", "advanced"];
 const nutritionPhases = [undefined, "deficit", "maintenance", "recomposition", "surplus"];
@@ -432,127 +429,7 @@ for (let index = 0; index < CASES_PER_GROUP; index += 1) {
   });
 }
 
-// 3. Mesocycles: scope, time, goal propagation, de-duplication, and locality.
-for (let index = 0; index < CASES_PER_GROUP; index += 1) {
-  runCase("mesocycle_constraints", index, () => {
-    const trainingDays = 1 + index % 7;
-    const goal = canonicalGoals[index % canonicalGoals.length];
-    const experienceLevel = ["novice", "intermediate", "advanced"][index % 3];
-    const requestedScope = index % 8 === 0
-      ? undefined
-      : unique([pick(planFamilies), pick(planFamilies), pick(planFamilies)]).slice(0, 1 + index % 3);
-    const targetMinutes = 12 + index % 9;
-    const maximumMinutes = targetMinutes + 5 + index % 11;
-    const common = {
-      trainingDays,
-      trainingGoal: goal,
-      experienceLevel,
-      availableEquipment: ["all"],
-      ...(requestedScope === undefined ? {} : { includedMuscleGroupIds: requestedScope }),
-      createdAt: CREATED_AT
-    };
-    const short = capture(() => engine.createMesocycle({
-      ...common,
-      sessionDurationTargetMinutes: targetMinutes,
-      sessionDurationMaximumMinutes: maximumMinutes
-    }));
-    const roomy = capture(() => engine.createMesocycle({
-      ...common,
-      sessionDurationTargetMinutes: 70,
-      sessionDurationMaximumMinutes: 100
-    }));
-    const plan = short.value;
-    const allPools = Object.values(plan?.pools || {});
-    const selectedIds = new Set(plan?.selectedPortfolio?.map((candidate) => candidate.exerciseId));
-    const scheduled = plan?.sessions?.flatMap((session) => session.exercises) || [];
-    const shortIds = new Set(scheduled.map((exercise) => exercise.exerciseId));
-    const roomyPortfolio = new Set(roomy.value?.selectedPortfolio?.map((candidate) => candidate.exerciseId));
-    check(!short.error && !roomy.error, "mesocycle_supported_constraints_do_not_throw", { index, common, targetMinutes, maximumMinutes }, [short.error?.message, roomy.error?.message]);
-    check(
-      plan?.trainingDays === trainingDays && plan?.sessions?.length === trainingDays
-        && plan?.constraints?.trainingDays === trainingDays
-        && plan?.constraints?.sessionDurationTargetMinutes === targetMinutes
-        && plan?.constraints?.sessionDurationMaximumMinutes === maximumMinutes,
-      "mesocycle_schedule_and_duration_constraints_are_exact",
-      { index, common, targetMinutes, maximumMinutes },
-      { trainingDays: plan?.trainingDays, sessions: plan?.sessions?.length, constraints: plan?.constraints }
-    );
-    check(
-      requestedScope === undefined
-        ? plan?.includedMuscleGroupIds?.length > 0
-        : json([...(plan?.includedMuscleGroupIds || [])].sort()) === json([...requestedScope].sort()),
-      "mesocycle_scope_is_explicit_or_transparently_defaulted",
-      { index, requestedScope },
-      plan?.includedMuscleGroupIds
-    );
-    check(
-      plan?.programmingContext?.goal?.resolvedValue === goal
-        && allPools.every((pool) => pool.programmingContext?.goal?.resolvedValue === goal)
-        && plan?.programSlots?.every((slot) => slot.programmingContext?.goal?.resolvedValue === goal)
-        && plan?.sessions?.every((session) => session.programmingContext?.goal?.resolvedValue === goal),
-      "one_goal_profile_propagates_through_the_complete_plan",
-      { index, goal },
-      { plan: plan?.programmingContext?.goal, pools: allPools.map((pool) => pool.programmingContext?.goal?.resolvedValue), slots: plan?.programSlots?.map((slot) => slot.programmingContext?.goal?.resolvedValue), sessions: plan?.sessions?.map((session) => session.programmingContext?.goal?.resolvedValue) }
-    );
-    check(
-      plan?.createdAt === CREATED_AT && allPools.every((pool) => pool.generatedAt === CREATED_AT),
-      "mesocycle_fixed_timestamp_propagates_to_nested_pools",
-      { index },
-      { plan: plan?.createdAt, pools: allPools.map((pool) => pool.generatedAt) }
-    );
-    check(
-      plan?.sessions?.every((session) => finiteNumber(session.estimatedDurationMinutes) && session.estimatedDurationMinutes >= 0 && session.estimatedDurationMinutes <= maximumMinutes),
-      "mesocycle_never_exceeds_hard_duration_maximum",
-      { index, maximumMinutes },
-      plan?.sessions?.map((session) => session.estimatedDurationMinutes)
-    );
-    check(
-      new Set(plan?.programSlots?.map((slot) => slot.id)).size === plan?.programSlots?.length
-        && plan?.programSlots?.every((slot) => new Set(slot.selectedExerciseIds).size === slot.selectedExerciseIds.length),
-      "mesocycle_has_no_duplicate_slots_or_slot_selections",
-      { index },
-      plan?.programSlots?.map((slot) => ({ id: slot.id, selected: slot.selectedExerciseIds }))
-    );
-    check(
-      plan?.sessions?.every((session) => new Set(session.exercises.map((exercise) => exercise.exerciseId)).size === session.exercises.length)
-        && scheduled.every((exercise) => validRange(exercise.recommendedSetRange, { positive: true })
-          && validRange(exercise.recommendedRepRange, { positive: true })
-          && validRange(exercise.recommendedRestSeconds, { positive: true })),
-      "scheduled_exercises_are_unique_per_session_and_have_valid_dose",
-      { index },
-      plan?.sessions?.map((session) => ({ id: session.id, exercises: session.exercises.map((exercise) => exercise.exerciseId) }))
-    );
-    check(
-      scheduled.every((exercise) => selectedIds.has(exercise.exerciseId))
-        && [...shortIds].every((exerciseId) => roomyPortfolio.has(exerciseId)),
-      "time_constrained_schedule_is_drawn_from_the_selected_roomy_portfolio",
-      { index },
-      { scheduled: [...shortIds], selected: [...selectedIds], roomy: [...roomyPortfolio] }
-    );
-    const constraintProjection = (value) => ({
-      trainingDays: value?.constraints?.trainingDays,
-      split: value?.constraints?.split,
-      availableEquipment: value?.constraints?.availableEquipment,
-      excludedExerciseIds: value?.constraints?.excludedExerciseIds,
-      goal: value?.constraints?.goal,
-      experienceLevel: value?.constraints?.experienceLevel,
-      nutritionPhase: value?.constraints?.nutritionPhase,
-      returningAfterGap: value?.constraints?.returningAfterGap
-    });
-    check(
-      json(constraintProjection(plan)) === json(constraintProjection(roomy.value))
-        && ([...shortIds].every((exerciseId) => roomyPortfolio.has(exerciseId)))
-        && (shortIds.size === roomyPortfolio.size || plan?.programReview?.warnings?.some((warning) => warning.type === "schedule_capacity")),
-      "time_counterfactual_changes_capacity_without_unrelated_constraints",
-      { index, common, targetMinutes, maximumMinutes },
-      { shortConstraints: constraintProjection(plan), roomyConstraints: constraintProjection(roomy.value), shortIds: [...shortIds], roomyIds: [...roomyPortfolio], warnings: plan?.programReview?.warnings }
-    );
-  });
-}
-
-// 4. Fail-closed validation: malformed profile, scope, schedule, and equipment inputs.
-const invalidDays = [0, -1, 1.5, 8, 99, "3", "three", null];
-const invalidScopes = [[], [""], ["   "], {}, "", ["not_a_muscle"], [null], 7];
+// 3. Fail-closed validation: malformed profile, identity, target, and equipment inputs.
 const invalidGoals = ["powerlifting", "weight_loss", "endurance-ish", "", 7, null];
 const invalidExperiences = ["expert", "elite", "beginner-ish", "", 4, null];
 const invalidNutrition = ["cut", "bulk", "diet", "", "   ", null, 7];
@@ -560,8 +437,8 @@ const invalidReturn = ["true", "false", 1, 0, {}, []];
 for (let index = 0; index < CASES_PER_GROUP; index += 1) {
   runCase("fail_closed_validation", index, () => {
     const pair = validPairs[index % validPairs.length];
-    expectThrow(() => engine.createMesocycle({ trainingDays: invalidDays[index % invalidDays.length], createdAt: CREATED_AT }), /trainingDays|training days/i, "invalid_training_days_fail_closed", { index, value: invalidDays[index % invalidDays.length] });
-    expectThrow(() => engine.createMesocycle({ trainingDays: 2, includedMuscleGroupIds: invalidScopes[index % invalidScopes.length], createdAt: CREATED_AT }), /scope|includedMuscleGroupIds|muscle/i, "empty_or_malformed_scope_fails_closed", { index, value: invalidScopes[index % invalidScopes.length] });
+    expectThrow(() => engine.prescribeExercise({ exerciseId: "not_a_real_exercise", muscleGroupId: pair.muscleGroupId, createdAt: CREATED_AT }), /identity|unknown|resolve/i, "unknown_exercise_identity_fails_closed", { index });
+    expectThrow(() => engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "not_a_muscle", createdAt: CREATED_AT }), /taxonomy|target|muscle/i, "invalid_target_muscle_fails_closed", { index });
     expectThrow(() => engine.prescribeExercise({ exerciseId: pair.exerciseId, muscleGroupId: pair.muscleGroupId, trainingGoal: invalidGoals[index % invalidGoals.length], createdAt: CREATED_AT }), /goal/i, "invalid_training_goal_fails_closed", { index, value: invalidGoals[index % invalidGoals.length] });
     expectThrow(() => engine.prescribeExercise({ exerciseId: pair.exerciseId, muscleGroupId: pair.muscleGroupId, goal: "strength", createdAt: CREATED_AT }), /legacy.*goal|trainingGoal/i, "unprovenanced_legacy_goal_fails_closed", { index });
     expectThrow(() => engine.prescribeExercise({ exerciseId: pair.exerciseId, muscleGroupId: pair.muscleGroupId, trainingGoal: "strength", goal: "endurance", legacyGoalSemantics: "training_goal", createdAt: CREATED_AT }), /conflicting.*goal/i, "conflicting_goal_fields_fail_closed", { index });
@@ -573,7 +450,7 @@ for (let index = 0; index < CASES_PER_GROUP; index += 1) {
   });
 }
 
-// 5. Workout assembly: canonical and slot de-duplication with bounded prescriptions.
+// 4. Workout assembly: canonical and slot de-duplication with bounded prescriptions.
 for (let index = 0; index < CASES_PER_GROUP; index += 1) {
   runCase("workout_assembly", index, () => {
     const profile = profileOptions(index);

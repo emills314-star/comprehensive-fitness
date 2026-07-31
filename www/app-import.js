@@ -600,15 +600,14 @@
           && (!Number.isSafeInteger(imported.dataRevision) || imported.dataRevision < 0)) {
           throw new Error("Backup dataRevision must be omitted or a non-negative safe integer.");
         }
-        const allowedTopLevelFields = new Set(["appDataVersion", "domainMigrationVersion", "sessions", "exercises", "sets", "templates", "mesocycles", "activeMesocycleId", "recommendationHistory", "manualOverrides", "personalEvidencePackage", "rawImports", "migrationAudit", "dataRevision", "settings"]);
-        const allowedSessionFields = new Set(["id", "externalId", "source", "date", "title", "isTravel", "notes", "submitted", "workoutStarted", "workoutState", "completedAt", "submittedAt", "startedAt", "createdAt", "updatedAt", "templateId", "recovery", "readinessMode", "readinessAdjustments", "usedOriginalTargets", "mesocycleId", "resolvedActions", "prs", "grade", "gradeVersion", "workoutAnalysis", "workoutPrescription", "adjustmentSummary", "deletedAt", "trashed", "canceledAt"]);
+        const allowedTopLevelFields = new Set(["appDataVersion", "domainMigrationVersion", "sessions", "exercises", "sets", "templates", "recommendationHistory", "manualOverrides", "personalEvidencePackage", "rawImports", "migrationAudit", "dataRevision", "settings"]);
+        const allowedSessionFields = new Set(["id", "externalId", "source", "date", "title", "isTravel", "notes", "submitted", "workoutStarted", "workoutState", "completedAt", "submittedAt", "startedAt", "createdAt", "updatedAt", "durationSeconds", "templateId", "recovery", "readinessMode", "readinessAdjustments", "usedOriginalTargets", "resolvedActions", "prs", "grade", "gradeVersion", "workoutAnalysis", "workoutPrescription", "adjustmentSummary", "exerciseQualityAnswers", "deletedAt", "trashed", "canceledAt"]);
         const allowedExerciseFields = new Set(["id", "externalId", "source", "sessionId", "name", "notes", "order", "primaryMuscle", "secondaryMuscle", "restSeconds", "resistanceType", "isBodyweight", "isDeload", "customExerciseProfile", "executionQualityAssessment", "recommendationSnapshot", "basePrescription", "finalPrescription", "coachRecommendation", "executionBlocked", "safetyRestriction", "manualOverrides", "adjusted", "adjustmentReason", "triggerLabels", "canonicalExerciseId", "performanceExerciseId", "researchExerciseId", "identitySource", "identityVersion", "originalPrescription", "prescription", "recommendationVersion", "personalDataVersion", "researchDatabaseVersion", "programTargetContext", "appliedTargetContext", "overrideLocked"]);
         const allowedSetFields = new Set(["id", "exerciseId", "setNumber", "sequenceIndex", "sequence", "setTypeIndex", "setType", "reps", "weight", "weightUnit", "resistanceType", "rpe", "completed", "skipped", "edited", "isWarmup", "countsTowardScore", "countsTowardVolume", "countsTowardProgression", "addedLoad", "assistanceLoad", "durationSeconds", "distance", "distanceUnit", "targetReps", "targetRepMin", "targetRepMax", "targetWeight", "targetRpe", "targetRpeMin", "targetRpeMax", "targetRpeTolerance", "targetRestSeconds", "setPrescription", "previousComparableSet", "prescriptionReason", "prescriptionMode", "prescriptionConfidence", "validationWarning", "classificationSource", "classificationConfidence", "classifierVersion", "manualOverride", "reviewRequired", "classifiedAt", "sourceSetOrder", "originalImportedValue"]);
-        const allowedTemplateFields = new Set(["id", "name", "notes", "createdAt", "updatedAt", "exercises", "mesocycleId", "mesocycleRevision", "trainingDayId", "source"]);
-        const allowedTemplateExerciseFields = new Set(["id", "name", "notes", "sets", "reps", "repMin", "repMax", "standardWorkloadOverride", "standardRoleWorkload", "targetRpe", "increment", "restSeconds", "resistanceType", "isBodyweight", "primaryMuscle", "secondaryMuscle", "customExerciseProfile", "warmups", "setTypes", "canonicalExerciseId", "performanceExerciseId", "researchExerciseId", "identitySource", "identityVersion", "mesocycleSlotId", "assignmentId", "recommendationSnapshot"]);
-        const allowedSettingsFields = new Set(["weightUnit", "trainingGoal", "trainingGoalSource", "trainingGoalDisclosure", "nutritionPhase", "experienceLevel", "returningAfterGap", "trainingDaysPerWeek", "availableEquipment", "excludedExerciseIds", "theme", "colorPackage", "timerSound", "workoutCompletionSound", "timerVibration", "interactionVibration", "timerNotifications", "inAppRestAlerts", "restCompleteSound", "restCompleteSoundVolume", "restCompleteAutoDismissMs", "restCompleteLockScreenNotifications", "restCompleteAutoReturnToWorkout", "defaultRestSeconds", "notificationMessageDetail", "autoStartRestTimer", "autoHighlightNextSet", "autoScrollNextSet", "installGuideDismissed", "setupSoundConfirmed", "cloudWorkoutSyncConsent", "workoutCloudSync", "workoutCloudSyncConsentVersion", "readinessBaseline", "goal", "trainingStatus"]);
-        const allowedMesocycleFields = new Set(["id", "schemaVersion", "builderMode", "rulesVersion", "type", "name", "status", "createdAt", "updatedAt", "durationWeeks", "durationBasis", "specializationMuscleGroups", "trainingDays", "split", "availableEquipment", "constraints", "exclusionResolution", "programmingContext", "planningStep", "availableMuscleGroupIds", "includedMuscleGroupIds", "equipmentUnavailableMuscleGroupIds", "omittedMuscleGroups", "scopeConfirmed", "currentProgramExerciseIds", "recentExerciseWindowDays", "pools", "activeExercises", "selectedPortfolio", "programSlots", "sessions", "programReview", "preservedProductiveExerciseIds", "versions", "lifecycle", "startedAt", "completedAt", "outcome", "reviewedAt", "review", "musclePriorities", "planningProgress", "guidedDays", "acceptedExceptions", "viabilityResult", "viabilityStale", "linkedTemplateIds", "creationResult", "revision"]);
-        const allowedRecommendationFields = new Set(["recommendationId", "schemaVersion", "recommendationVersion", "engineVersion", "personalDataVersion", "researchDatabaseVersion", "mesocycleId", "exerciseId", "muscleGroupId", "exerciseScore", "muscleSpecificScore", "personalEvidenceWeight", "researchEvidenceWeight", "standardGuideline", "readinessAdjustment", "basePrescription", "finalPrescription", "explanation", "evidenceSummary", "confidence", "createdAt", "manualOverrides", "overrideLocked", "checksum", "request", "scores", "versions"]);
+        const allowedTemplateFields = new Set(["id", "name", "notes", "createdAt", "updatedAt", "exercises", "source"]);
+        const allowedTemplateExerciseFields = new Set(["id", "name", "notes", "sets", "reps", "repMin", "repMax", "standardWorkloadOverride", "standardRoleWorkload", "targetRpe", "increment", "restSeconds", "resistanceType", "isBodyweight", "primaryMuscle", "secondaryMuscle", "customExerciseProfile", "warmups", "setTypes", "canonicalExerciseId", "performanceExerciseId", "researchExerciseId", "identitySource", "identityVersion", "recommendationSnapshot"]);
+        const allowedSettingsFields = new Set(["weightUnit", "theme", "colorPackage", "timerSound", "workoutCompletionSound", "timerVibration", "interactionVibration", "timerNotifications", "inAppRestAlerts", "restCompleteSound", "restCompleteSoundVolume", "restCompleteAutoDismissMs", "restCompleteLockScreenNotifications", "restCompleteAutoReturnToWorkout", "defaultRestSeconds", "notificationMessageDetail", "autoStartRestTimer", "autoHighlightNextSet", "autoScrollNextSet", "installGuideDismissed", "setupSoundConfirmed", "cloudWorkoutSyncConsent", "workoutCloudSync", "workoutCloudSyncConsentVersion", "readinessBaseline"]);
+        const allowedRecommendationFields = new Set(["recommendationId", "schemaVersion", "recommendationVersion", "engineVersion", "personalDataVersion", "researchDatabaseVersion", "exerciseId", "muscleGroupId", "exerciseScore", "muscleSpecificScore", "personalEvidenceWeight", "researchEvidenceWeight", "standardGuideline", "readinessAdjustment", "basePrescription", "finalPrescription", "explanation", "evidenceSummary", "confidence", "createdAt", "manualOverrides", "overrideLocked", "checksum", "request", "scores", "versions"]);
         const allowedCustomProfileFields = new Set(["schemaVersion", "status", "primaryMuscleGroupId", "secondaryMuscleGroupId", "resistanceType", "exerciseStyle", "progressionMetric", "smallestIncrement", "confirmedAt"]);
         const allowedOverrideFields = new Set(["overrideId", "recommendationId", "sessionId", "workoutId", "exerciseRuntimeId", "exerciseId", "setId", "field", "from", "to", "createdAt", "actor", "reason", "lockedForWorkout", "changes", "previousFinalPrescription", "outcome", "outcomeEvaluation", "action"]);
         const allowedRawImportFields = new Set(["id", "source", "importedAt", "originalText", "weightUnit", "sessionExternalIds"]);
@@ -724,6 +723,14 @@
           assertName(record.title, `Session ${index + 1}`);
           assertText(record.notes, `Session ${index + 1} notes`);
           for (const field of ["submitted", "workoutStarted", "isTravel", "trashed"]) if (record[field] != null && typeof record[field] !== "boolean") throw new Error(`Session ${index + 1} ${field} must be boolean.`);
+          assertNumericDomain(record.durationSeconds, { min: 0, integer: true }, `Session ${index + 1} durationSeconds`);
+          if (record.exerciseQualityAnswers != null) {
+            if (!record.exerciseQualityAnswers || typeof record.exerciseQualityAnswers !== "object" || Array.isArray(record.exerciseQualityAnswers)) throw new Error(`Session ${index + 1} exerciseQualityAnswers must be an object.`);
+            Object.entries(record.exerciseQualityAnswers).forEach(([exerciseId, answer]) => {
+              assertId(exerciseId, `Session ${index + 1} execution-quality exercise`);
+              if (!["controlled", "breakdown", "not_assessed"].includes(answer)) throw new Error(`Session ${index + 1} execution-quality answer is invalid.`);
+            });
+          }
           if (record.resolvedActions != null) {
             if (!Array.isArray(record.resolvedActions) || record.resolvedActions.length > 64) throw new Error(`Session ${index + 1} resolvedActions is invalid or exceeds its limit.`);
             record.resolvedActions.forEach((action, actionIndex) => assertResolvedAction(action, `Session ${index + 1} resolved action ${actionIndex + 1}`));
@@ -818,33 +825,13 @@
         exercises.forEach((exercise) => { if (!sessionIds.has(exercise.sessionId)) throw new Error(`Orphan exercise reference: ${exercise.id} -> ${exercise.sessionId}.`); });
         sets.forEach((set) => { if (!exerciseIds.has(set.exerciseId)) throw new Error(`Orphan set reference: ${set.id} -> ${set.exerciseId}.`); });
         sessions.forEach((session) => { if (session.templateId && !templateIds.has(session.templateId)) throw new Error(`Orphan template reference: ${session.templateId}.`); });
-        if (imported.mesocycles != null && !Array.isArray(imported.mesocycles)) throw new Error("Mesocycles must be an array.");
-        const mesocycles = (imported.mesocycles || []).map((record, index) => {
-          assertAllowed(record, allowedMesocycleFields, `Mesocycle ${index + 1}`);
-          assertName(record.name, `Mesocycle ${index + 1}`);
-          return copyAllowed(record, allowedMesocycleFields);
-        });
-        if (mesocycles.length > MAX_TEMPLATES) throw new Error(`Mesocycle count exceeds the ${MAX_TEMPLATES} limit.`);
-        const mesocycleIds = seenIds(mesocycles, "mesocycle");
-        const activeMesocycleId = imported.activeMesocycleId || "";
-        if (activeMesocycleId) {
-          assertId(activeMesocycleId, "Active mesocycle reference");
-          if (!mesocycleIds.has(activeMesocycleId)) throw new Error(`Orphan active mesocycle reference: ${activeMesocycleId}.`);
-        }
         const settings = imported.settings == null ? {} : imported.settings;
         assertAllowed(settings, allowedSettingsFields, "Settings");
         if (settings.weightUnit != null && !["lb", "kg"].includes(settings.weightUnit)) throw new Error("Settings weightUnit must be lb or kg.");
-        if (settings.trainingGoal != null && !["", "strength", "hypertrophy", "muscular_endurance", "general_fitness"].includes(settings.trainingGoal)) throw new Error("Settings trainingGoal is invalid.");
-        if (settings.nutritionPhase != null && !["", "deficit", "maintenance", "surplus", "recomposition"].includes(settings.nutritionPhase)) throw new Error("Settings nutritionPhase is invalid.");
-        if (settings.experienceLevel != null && !["", "novice", "intermediate", "advanced"].includes(settings.experienceLevel)) throw new Error("Settings experienceLevel is invalid.");
         if (settings.theme != null && !["light", "dark"].includes(settings.theme)) throw new Error("Settings theme is invalid.");
         if (settings.colorPackage != null && !["heritage-atlas", "signal-garden", "alpine-ledger", "training-hall", "harbor-pulse", "prairie-electric", "redwood-circuit", "mediterranean-set", "modern-primary", "night-stadium"].includes(settings.colorPackage)) throw new Error("Settings colorPackage is invalid.");
-        if (settings.trainingDaysPerWeek != null && (!Number.isInteger(Number(settings.trainingDaysPerWeek)) || Number(settings.trainingDaysPerWeek) < 1 || Number(settings.trainingDaysPerWeek) > 7)) throw new Error("Settings trainingDaysPerWeek must be between 1 and 7.");
-        if (settings.excludedExerciseIds != null && (!Array.isArray(settings.excludedExerciseIds) || settings.excludedExerciseIds.length > MAX_EXERCISES)) throw new Error("Settings excludedExerciseIds is invalid or exceeds its limit.");
-        if (Array.isArray(settings.excludedExerciseIds)) settings.excludedExerciseIds.forEach((value, index) => assertId(value, `Excluded exercise ${index + 1}`));
         const booleanSettingFields = ["timerSound", "workoutCompletionSound", "timerVibration", "interactionVibration", "timerNotifications", "inAppRestAlerts", "restCompleteLockScreenNotifications", "restCompleteAutoReturnToWorkout", "autoStartRestTimer", "autoHighlightNextSet", "autoScrollNextSet", "installGuideDismissed", "setupSoundConfirmed", "cloudWorkoutSyncConsent"];
         booleanSettingFields.forEach((field) => { if (settings[field] != null && typeof settings[field] !== "boolean") throw new Error(`Settings ${field} must be boolean.`); });
-        if (settings.returningAfterGap != null && typeof settings.returningAfterGap !== "boolean") throw new Error("Settings returningAfterGap must be boolean or null.");
         if (settings.restCompleteSoundVolume != null && (!Number.isFinite(Number(settings.restCompleteSoundVolume)) || Number(settings.restCompleteSoundVolume) < 0 || Number(settings.restCompleteSoundVolume) > 1)) throw new Error("Settings restCompleteSoundVolume must be between 0 and 1.");
         if (settings.restCompleteAutoDismissMs != null && (!Number.isFinite(Number(settings.restCompleteAutoDismissMs)) || Number(settings.restCompleteAutoDismissMs) < 1000 || Number(settings.restCompleteAutoDismissMs) > 60000)) throw new Error("Settings restCompleteAutoDismissMs must be between 1000 and 60000.");
         if (settings.defaultRestSeconds != null && (!Number.isFinite(Number(settings.defaultRestSeconds)) || Number(settings.defaultRestSeconds) < 15 || Number(settings.defaultRestSeconds) > 900)) throw new Error("Settings defaultRestSeconds must be between 15 and 900.");
@@ -910,8 +897,6 @@
           exercises,
           sets,
           templates,
-          mesocycles,
-          activeMesocycleId,
           recommendationHistory,
           manualOverrides,
           personalEvidencePackage: imported.personalEvidencePackage == null ? null : cloneJsonValue(imported.personalEvidencePackage),
@@ -1150,7 +1135,8 @@
           try { parsed = JSON.parse(text); }
           catch { throw new Error("Backup is not valid JSON."); }
           const envelope = window.FitnessBackupContract.validateAndSanitizeBackup(parsed, { byteLength: new TextEncoder().encode(text).byteLength });
-          const { backupSchemaVersion: _validatedBackupSchemaVersion, ...imported } = envelope;
+          const decodedEnvelope = window.FitnessBackupContract.decodeLegacyBackup(envelope);
+          const { backupSchemaVersion: _validatedBackupSchemaVersion, ...imported } = decodedEnvelope;
           const validated = validateImportedAppData(imported, BACKUP_IMPORT_LIMITS);
           let preparedEvidence;
           if (validated.personalEvidencePackage) {

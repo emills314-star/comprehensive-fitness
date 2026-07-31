@@ -42,7 +42,6 @@
     "muscleSpecificScore",
     "staleness",
     "deloadStatus",
-    "mesocycleId",
     "executionBlocked",
     "programmingContext",
     "historyResolution",
@@ -952,7 +951,6 @@
       "required": [
         "changed",
         "temporary",
-        "affectsMesocycle",
         "setChange",
         "loadChangePercent",
         "repTargetChange",

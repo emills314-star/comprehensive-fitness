@@ -4,7 +4,6 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const engineApi = require("../prescription-engine");
-const guidedApi = require("../guided-mesocycle");
 const { readApplicationContractSource } = require("./read-application-contract-source");
 
 const root = path.resolve(__dirname, "..");
@@ -23,7 +22,8 @@ const secondaryPageCss = fs.readFileSync(path.join(root, "resources", "secondary
 // Compile the application contract view before checking integration contracts.
 [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].forEach((match) => new Function(match[1]));
 
-assert.match(indexHtml, /<script src="\.\/programming-family-ledger\.js"><\/script>[\s\S]*<script src="\.\/prescription-engine\.js"><\/script>[\s\S]*<script src="\.\/exception-resolver\.js"><\/script>[\s\S]*<script src="\.\/guided-mesocycle\.js"><\/script>[\s\S]*<script src="\.\/app-foundation\.js"><\/script>/, "The browser must load the canonical exception resolver before application runtime consumers");
+assert.match(indexHtml, /<script src="\.\/programming-family-ledger\.js"><\/script>[\s\S]*<script src="\.\/prescription-engine\.js"><\/script>[\s\S]*<script src="\.\/exception-resolver\.js"><\/script>[\s\S]*<script src="\.\/app-foundation\.js"><\/script>/, "The browser must load the canonical exception resolver before application runtime consumers");
+assert.doesNotMatch(indexHtml, /guided-mesocycle\.js/, "The deleted guided-planner runtime must not be loaded");
 assert.match(html, /familyProjectionStatus: familyProjection\.familyProjectionStatus/, "Weekly analytics must expose fail-closed family projection status");
 assert.match(html, /familyTotals: familyProjection\.familyTotals/, "Weekly analytics must expose recommendation-family dose");
 assert.match(html, /activeSessionIds\.has\(entry\.session\.id\)/, "Historical family projection must use submitted active history only");
@@ -43,37 +43,9 @@ assert.doesNotMatch(views, /renderRecommendationHead|renderUnifiedPrescriptionDe
 assert.doesNotMatch(analysis, /function renderRecommendation\(|renderRecommendationHead|renderUnifiedEvidence/, "Progress must not become a second recommendation source");
 assert.doesNotMatch(html, /function applyPrescriptionOverride\(/, "The deleted frontend engine-override adapter must not remain reachable");
 assert.match(html, /manualOverrides:/, "App data must retain manual override events");
-assert.match(html, /renderMesocyclePlanner\(/, "Plan must expose the mesocycle lifecycle");
-assert.match(html, /guided-build-step[\s\S]*Check viability[\s\S]*Full weekly review/, "The reachable planner must expose the guided build and viability flow");
-assert.match(html, /Templates to create[\s\S]*Create mesocycle templates/, "Guided creation must review every generated template before persistence");
-assert.doesNotMatch(html, /function renderMesocycleCard\(|function renderMesocycleCandidate\(|Build full-program draft|Open Planner Review/, "The unreachable automatic-planner review must remain removed");
 assert.match(html, /Base Session Intent[\s\S]*Today’s readiness may modify/, "Templates must distinguish stable intent from readiness changes");
 assert.match(html, /analysis-period-menu[\s\S]*select-chart-period/, "Charts period selection must use the custom control surface");
 assert.doesNotMatch(html, /<select data-action="hypertrophy-window"/, "Charts must not retain the browser-default period dropdown");
-assert(html.indexOf('${renderMesocyclePlanner()}') < html.indexOf('class="template-library"'), "Plan Your Mesocycle must appear near the beginning of Templates");
-assert(html.indexOf('${renderMesocyclePlanner()}') < html.indexOf('${renderHistoricalMesocycles()}'), "Historical Mesocycles must render after the planner");
-assert.match(html, /function presentationLabel\(/, "Planner UI must use one centralized presentation-label adapter");
-assert.doesNotMatch(html, /It replaces the misleading former/, "Migration terminology must not reach users");
-assert.match(html, /Muscle Groups and Scope[\s\S]*mesocycle-muscle-scope/, "Planner must let the user choose every muscle group in scope");
-assert.doesNotMatch(html.slice(html.indexOf("function renderHistoricalMesocycles()"), html.indexOf("function renderTemplates()")), /renderMesocycleCard\(/, "Historical mesocycles must not eagerly render full planner cards");
-assert.match(html, /primary_progression[\s\S]*alternative_exercise[\s\S]*lower_fatigue_resensitization[\s\S]*specialization/, "All four mesocycle types must be available");
-assert.match(html, /What is this block for\?[\s\S]*Muscle Groups and Scope/, "Guided setup must flow from objective and schedule to muscle scope");
-assert.doesNotMatch(html, /data-action="toggle-mesocycle-equipment"|aria-label="Available Equipment"/, "Deleted global equipment setup must not remain reachable");
-assert.doesNotMatch(html, />Unknown</, "Planner cards must not expose meaningless Unknown metadata");
-assert.match(html, /candidate\.personalDataConfidence is the categorical evidence[\s\S]*candidate\.scores\.personalDataConfidence is[\s\S]*numeric 0–100/, "The candidate confidence naming collision must remain explicit at the use site");
-assert.match(html, /targetMuscleEffectiveness: Number\(candidate\.scores\?\.targetMuscleEffectiveness\)[\s\S]*evidenceReason: candidate\.scores\?\.weightingReason/, "Candidate cards must preserve the engine effectiveness score and comparable-exposure explanation");
-assert.match(html, /guidedConfidenceMeter\(candidate\.personalDataConfidence, 'candidate'\)[\s\S]*candidate\.scores\?\.weightingReason/, "Candidate evidence meters must use the categorical tier while the evidence line uses the engine reason");
-assert.match(html, /guidedMesocycleApi\.addExercise\(draft,[\s\S]*guided-projection-[\s\S]*guidedMesocycleApi\.volumeLedger\(temporaryDraft[\s\S]*guidedMesocycleApi\.muscleTargetStatuses\(temporaryDraft/, "Candidate gap previews must use the pure addExercise-to-ledger-to-status projection path");
-assert.match(html, /evidenceFallback: true, confidence: "research_default"[\s\S]*data-conf="1" aria-label="Research-default weekly target range"/, "A dormant weekly-range fallback must render as a level-one provisional claim");
-assert.match(html, /result\.readyToGenerate[\s\S]*!finalResult\?\.readyToGenerate/, "Only the viability engine readyToGenerate gate may unlock creation");
-assert.match(html, /const currentLabel = draft\.name \+ " plan"[\s\S]*const priorLabel = prior\.name \+ " plan"/, "Plan comparison columns must label both blocks explicitly as plans");
-const guidedPlanComparisonStart = html.indexOf("function renderGuidedPlanComparison(");
-const guidedPlanComparisonEnd = html.indexOf("function renderGuidedTemplateReview(", guidedPlanComparisonStart);
-assert(guidedPlanComparisonStart >= 0 && guidedPlanComparisonEnd > guidedPlanComparisonStart, "Guided plan comparison must remain independently inspectable");
-assert.doesNotMatch(html.slice(guidedPlanComparisonStart, guidedPlanComparisonEnd), /\b(actual|achieved|logged|performed)\b/i, "Create comparison copy must not imply execution data");
-for (const requiredClass of ["steps", "step-label", "day-card", "assign", "chiprow", "pick"]) {
-  assert.match(html, new RegExp(`\\.${requiredClass}\\s*\\{`), `Guided production CSS must define .${requiredClass}`);
-}
 assert.doesNotMatch(views, /function renderUnifiedPrescriptionDetails\(|function renderPrescriptionDetails\(|function renderRecommendationHead\(/, "The normal interface must not retain a hidden legacy recommendation detail stack");
 assert.doesNotMatch(analysis, /Research confidence|Unified prescription evidence|recommendation snapshots/, "Visible analysis/settings surfaces must not expose recommendation confidence, evidence status, or snapshot counts");
 assert.match(html, /field: "nutritionStatus", label: "Nutrition today", action: "template-readiness-nutrition"[\s\S]*field: "proteinStatus", label: "Protein target", action: "template-readiness-protein"/, "The shared segmented readiness renderer must collect current nutrition and protein context in distinct fields");
@@ -94,38 +66,6 @@ assert.match(html, /restCompleteAutoDismissMs: 5000/, "Rest overlay must default
 assert.match(html, /data-action="return-to-rest-workout"/, "Rest overlay must include Return to Workout");
 assert.match(html, /data-action="preview-rest-complete-sound"/, "Settings must preview the selected rest sound");
 
-const guided = guidedApi.createDraft({ trainingDays: 2, includedMuscleGroupIds: ["chest"] });
-const bench = { exerciseId: "bench", name: "Bench Press", workingSets: 3, muscleRelationships: [{ muscle_group_id: "chest", relationship_type: "direct_load", fractional_set_credit: 1 }] };
-const repeated = guidedApi.addExercise(guidedApi.addExercise(guided, guided.guidedDays[0].id, bench), guided.guidedDays[1].id, bench);
-const repeatedLedger = guidedApi.volumeLedger(repeated, (assignment) => assignment.muscleRelationships.map((item) => ({ muscleGroupId: item.muscle_group_id, relationshipType: item.relationship_type, setContribution: item.fractional_set_credit })));
-const repeatedCheck = guidedApi.viability(repeated, { ledger: repeatedLedger, targetFor: () => ({ min: 4, target: 6, max: 10 }) });
-assert.equal(repeatedLedger.muscleTotals[0].directSets, 6, "guided volume must update across days");
-assert(!repeatedCheck.findings.some((item) => /repeat|duplicate|same exercise/i.test(item.title)), "the same exercise may be used on multiple days without a warning");
-assert.equal(guidedApi.PLANNING_RULES.maxWorkingSetsPerDay, 18, "guide and viability must share the 18-set rule");
-const unlocked = guidedApi.unlockStep(guidedApi.unlockStep(guided, "setup", "guide"), "build", "setup");
-assert.equal(unlocked.planningProgress.highestUnlockedStep, "build", "completed steps must unlock progressively");
-assert.deepEqual(unlocked.planningProgress.completedSteps, ["guide", "setup"], "completed step state must persist in the draft");
-const sameDayDuplicate = guidedApi.addExercise(guidedApi.addExercise(guided, guided.guidedDays[0].id, bench), guided.guidedDays[0].id, { ...bench, exerciseId: "bench-alias", researchExerciseId: "bench" });
-assert.equal(sameDayDuplicate.assignmentError.reason, "already_added_to_day", "canonical aliases must not duplicate an exercise within one day");
-const statusRows = guidedApi.muscleTargetStatuses(repeated, repeatedLedger, () => ({ min: 8, target: 10, max: 12 }));
-assert.equal(statusRows[0].setsRemaining, 2, "sets remaining must use total effective sets");
-assert.equal(statusRows[0].frequencyRemaining, 0, "two programmed exposures must satisfy normal frequency");
-const fractionalDraft = guidedApi.createDraft({ trainingDays: 2, includedMuscleGroupIds: ["triceps"] });
-const fractionalExercise = { exerciseId: "press", name: "Press", workingSets: 4, muscleRelationships: [{ muscle_group_id: "triceps", relationship_type: "meaningful_fractional_load", fractional_set_credit: 0.5 }] };
-const fractionalBothDays = guidedApi.addExercise(guidedApi.addExercise(fractionalDraft, fractionalDraft.guidedDays[0].id, fractionalExercise), fractionalDraft.guidedDays[1].id, fractionalExercise);
-const fractionalLedger = guidedApi.volumeLedger(fractionalBothDays, (assignment) => assignment.muscleRelationships.map((item) => ({ muscleGroupId: item.muscle_group_id, relationshipType: item.relationship_type, setContribution: item.fractional_set_credit })));
-const fractionalStatus = guidedApi.muscleTargetStatuses(fractionalBothDays, fractionalLedger, () => ({ min: 2, target: 6, max: 12 }))[0];
-assert.equal(fractionalStatus.directSets, 0, "fractional volume must remain transparent");
-assert.equal(fractionalStatus.totalEffectiveSets, 4, "credited fractional work must count toward total effective volume");
-assert.equal(fractionalStatus.overallStatus, "within", "sufficient effective volume plus frequency must satisfy the muscle target");
-const oneDayFractional = guidedApi.addExercise(fractionalDraft, fractionalDraft.guidedDays[0].id, fractionalExercise);
-const oneDayLedger = guidedApi.volumeLedger(oneDayFractional, (assignment) => assignment.muscleRelationships.map((item) => ({ muscleGroupId: item.muscle_group_id, relationshipType: item.relationship_type, setContribution: item.fractional_set_credit })));
-const oneDayStatus = guidedApi.muscleTargetStatuses(oneDayFractional, oneDayLedger, () => ({ min: 2, target: 6, max: 12 }))[0];
-assert.equal(oneDayStatus.volumeStatus, "within", "volume must be independently satisfied by fractional work");
-assert.equal(oneDayStatus.overallStatus, "needs_frequency", "missing frequency must override a successful volume badge");
-assert.match(html, /Volume vs target/, "the Build UI must expose the plan-to-target comparison");
-assert.match(html, /No unresolved muscle-group requirements/, "the Build UI must distinguish a fully covered plan from unresolved volume");
-assert.match(html, /Mesocycle completed/, "successful creation must have a persistent completion state");
 assert.doesNotMatch(views, /Prescription detail|Research confidence|Why\? \/ Evidence|Why This Recommendation/, "Normal surfaces must not expose the deleted recommendation/evidence vocabulary");
 assert.match(html, /intentionalReduction/, "prescribed light work must be marked so fatigue flags do not misclassify it as weakness");
 assert.match(html, /roundLoadForUnit/, "all displayed and edited loads must use the shared precision boundary");
@@ -174,22 +114,12 @@ for (const candidate of prescriptionCandidates) {
   }
 }
 assert(snapshot && muscle && exerciseId, "The isolated legacy engine boundary needs one deterministic executable synthetic/public candidate");
-const surfaces = ["coach", "template", "chart", "workout_start", "live_workout", "deload", "mesocycle"].map((surface) => engine.forSurface(snapshot, surface));
+const surfaces = ["coach", "template", "chart", "workout_start", "live_workout", "deload"].map((surface) => engine.forSurface(snapshot, surface));
 surfaces.forEach((surface) => {
   assert.equal(surface.recommendationId, snapshot.recommendationId);
   assert.deepEqual(surface.basePrescription, snapshot.basePrescription);
   assert.deepEqual(surface.finalPrescription, snapshot.finalPrescription);
 });
-
-for (const type of Object.values(engineApi.MESOCYCLE_TYPES)) {
-  const mesocycle = engine.createMesocycle({ type, trainingDays: 4, specializationMuscleGroups: type === engineApi.MESOCYCLE_TYPES.SPECIALIZATION ? [muscle] : [] });
-  assert.equal(mesocycle.type, type);
-  assert.equal(mesocycle.status, "draft");
-  assert(Object.keys(mesocycle.pools).length <= represented.length, "Research subdivisions should consolidate into user-facing muscle-family pools");
-  assert(mesocycle.programSlots.length === Object.keys(mesocycle.pools).length);
-  assert(mesocycle.sessions.length === 4);
-  assert(mesocycle.selectedPortfolio.length > 0);
-}
 
 const overridden = engine.applyManualOverride(snapshot, { setCount: snapshot.finalPrescription.workingSets.target + 1, setStructure: "straight_sets" }, { workoutId: "integration-workout", reason: "Integration override" });
 assert.equal(overridden.overrideLocked, true);

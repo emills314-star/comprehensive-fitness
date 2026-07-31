@@ -143,6 +143,16 @@ Direct detector UI consumers, target-mutating fallbacks, duplicate recommendatio
 
 Exit evidence is recorded in `MILESTONE_LOG.md`: 59/59 public scripts, focused M2 contracts, lint, typecheck, production build, 41-file web sync, 40-asset PWA verification, privacy scan, 2/2 mobile Playwright scenarios at 390 × 844, and independent recommendation-logic approval passed. The service-worker cache is v96. M2 is recoverable at local checkpoint `243ed81`; M3 may begin.
 
+## M3 completion record — Planner and mesocycle deletion
+
+**Status:** IMPLEMENTED LOCALLY on 2026-07-31; M4 is next.
+
+The active application no longer contains a guided planner or mesocycle product. Routes/deep links, UI/state, lifecycle and storage writers, request coupling, engine construction/review/scoring branches, planner schemas, package/cache entries, CSS, and planner-only tests were deleted. Plan temporarily contains routines/templates only until the M5 shell migration.
+
+Legacy planning data survives only at a versioned input boundary. `backup-contract.js` accepts obsolete keys, preserves workout/session/set/routine observations and immutable embedded history, and discards planner collections/linkage/settings before active import or current export. Current recommendation and workout writers emit no planner linkage, and current schemas treat historical planner fields as optional read compatibility rather than required output.
+
+Exit evidence is recorded in `MILESTONE_LOG.md`: the focused decoder/deletion suite, 60/60 public scripts, 38/38 app-integration contracts, retained engine/recommendation suites, lint, typecheck, production build, 40-file web sync, 39-asset PWA verification, privacy scan, dependency search, and focused mobile Playwright verification at 390 × 844 passed. The service-worker cache is v97. No private or production data was mutated.
+
 ## 5. Temporary structure ledger
 
 | Artifact | Introduced | Purpose | Delete gate |

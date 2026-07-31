@@ -232,56 +232,11 @@
         }
         if (action === "new-session") addSession();
         if (action === "new-template") addTemplate();
-        if (action === "begin-guided-mesocycle") beginGuidedMesocycle();
-        if (action === "guided-step") setGuidedStep(target.dataset.step);
-        if (action === "close-guided-mesocycle") { guidedMesocycleView = "closed"; guidedExerciseBrowserDayId = ""; guidedWeeklySummaryOpen = false; render(); }
-        if (action === "open-guided-guidelines" || action === "guided-back-guidelines") { guidedMesocycleView = "guidelines"; guidedExerciseBrowserDayId = ""; guidedWeeklySummaryOpen = false; render(); }
-        if (action === "open-guided-setup") setGuidedStep("setup");
-        if (action === "adjust-guided-setup") {
-          queuePostRenderFocus(focusDescriptorForElement(target));
-          const delta = Number(target.dataset.delta || 0);
-          if (target.dataset.field === "duration") {
-            mesocycleDurationDraft = String(Math.max(2, Math.min(12, Number(mesocycleDurationDraft || 6) + delta)));
-            render();
-          }
-          if (target.dataset.field === "training-days") {
-            const trainingDaysPerWeek = Math.max(1, Math.min(7, Number(data.settings.trainingDaysPerWeek || 4) + delta));
-            commit({ ...data, settings: { ...data.settings, trainingDaysPerWeek } });
-          }
-        }
-        if (action === "create-guided-draft") createGuidedMesocycleDraft();
-        if (action === "toggle-guided-day") { guidedSelectedDayId = target.dataset.dayId; render(); }
-        if (action === "open-guided-exercise-browser") { guidedExerciseBrowserDayId = target.dataset.dayId; guidedExerciseSearch = ""; guidedPendingAssignment = null; render(); }
-        if (action === "close-guided-exercise-browser") { guidedExerciseBrowserDayId = ""; guidedPendingAssignment = null; render(); }
-        if (action === "choose-guided-muscle") { guidedExerciseMuscleFilter = target.dataset.muscleGroupId; if (!guidedExerciseBrowserDayId) guidedExerciseBrowserDayId = guidedSelectedDayId || guidedDraft()?.guidedDays?.[0]?.id || ""; guidedPendingAssignment = null; render(); }
-        if (action === "select-guided-exercise") selectGuidedExercise(target.dataset.dayId, target.dataset.exerciseId, target.dataset.muscleGroupId);
-        if (action === "guided-pending-set-change") { if (guidedPendingAssignment) { guidedPendingAssignment = { ...guidedPendingAssignment, workingSets: Math.max(1, Math.min(10, Number(guidedPendingAssignment.workingSets) + Number(target.dataset.delta))) }; render(); } }
-        if (action === "cancel-guided-pending") { guidedPendingAssignment = null; render(); }
-        if (action === "confirm-guided-exercise") confirmGuidedExercise();
-        if (action === "guided-set-change") { const draft = guidedDraft(); const day = draft?.guidedDays.find((item) => item.id === target.dataset.dayId); const assignment = day?.assignments.find((item) => item.id === target.dataset.assignmentId); if (draft && assignment) updateGuidedDraft(guidedMesocycleApi.patchAssignment(draft, day.id, assignment.id, { workingSets: Math.max(1, Math.min(10, Number(assignment.workingSets) + Number(target.dataset.delta))) })); }
-        if (action === "remove-guided-exercise") { const draft = guidedDraft(); if (draft) updateGuidedDraft(guidedMesocycleApi.removeAssignment(draft, target.dataset.dayId, target.dataset.assignmentId)); }
-        if (action === "open-guided-weekly") { guidedWeeklySummaryOpen = true; render(); }
-        if (action === "close-guided-weekly") { guidedWeeklySummaryOpen = false; render(); }
-        if (action === "check-guided-viability") { guidedWeeklySummaryOpen = false; checkGuidedViability(); }
-        if (action === "return-guided-builder") { guidedMesocycleView = "builder"; render(); }
-        if (action === "accept-guided-finding") { const draft = guidedDraft(); if (draft) { const acceptedExceptions = Array.from(new Set([...(draft.acceptedExceptions || []), target.dataset.findingId])); const viabilityResult = { ...draft.viabilityResult, findings: draft.viabilityResult.findings.map((item) => item.id === target.dataset.findingId ? { ...item, accepted: true } : item) }; viabilityResult.blockingCount = viabilityResult.findings.filter((item) => !item.accepted && item.severity === 'blocking').length; updateGuidedDraft({ ...draft, acceptedExceptions, viabilityResult, viabilityStale: false, updatedAt: isoNow() }); } }
-        if (action === "edit-guided-finding") { guidedSelectedDayId = target.dataset.dayId; guidedMesocycleView = "builder"; guidedGenerationReviewOpen = false; render(); }
-        if (action === "open-guided-generation-review") { if (guidedStepUnlocked(guidedDraft(), "create")) { guidedGenerationReviewOpen = true; render(); } }
-        if (action === "close-guided-generation-review") { guidedGenerationReviewOpen = false; render(); }
-        if (action === "create-guided-templates") createGuidedTemplates();
-        if (action === "edit-guided-day-from-review") { guidedSelectedDayId = target.dataset.dayId; guidedGenerationReviewOpen = false; guidedMesocycleView = "builder"; render(); }
-        if (action === "view-created-templates") { guidedMesocycleView = "closed"; setActiveTab("plan"); }
-        if (action === "view-completed-mesocycle") { guidedMesocycleView = "completion"; render(); }
-        if (action === "start-first-mesocycle-template") { const draft = guidedDraft(); const templateId = draft?.creationResult?.templateIds?.[0] || draft?.linkedTemplateIds?.[0]; if (templateId) openTemplateStart(templateId); }
         if (action === "toggle-template-editor") {
           const templateId = target.dataset.templateId;
           if (expandedTemplateEditorIds.has(templateId)) expandedTemplateEditorIds.delete(templateId); else expandedTemplateEditorIds.add(templateId);
           render();
         }
-        if (action === "mesocycle-transition") transitionMesocyclePlan(target.dataset.mesocycleId, target.dataset.mesocycleAction);
-        if (action === "request-delete-mesocycle") { pendingDeleteMesocycleId = target.dataset.mesocycleId; render(); }
-        if (action === "cancel-delete-mesocycle") { pendingDeleteMesocycleId = ""; render(); }
-        if (action === "confirm-delete-mesocycle") deleteMesocycleDraft(target.dataset.mesocycleId);
         if (action === "reconcile-apply") reconcileCompletedSet(target.dataset.exerciseId, true);
         if (action === "reconcile-dismiss") reconcileCompletedSet(target.dataset.exerciseId, false);
         if (action === "adjust-exercise-default") {
@@ -598,17 +553,6 @@
           target.setAttribute("aria-busy", "true");
           await setCloudWorkoutSyncConsent(requestedConsent);
         }
-        if (action === "mesocycle-type") { mesocycleDraftType = target.value; render(); }
-        if (action === "mesocycle-specialization") { mesocycleSpecializationMuscle = target.value; render(); }
-        if (action === "guided-exercise-muscle") { guidedExerciseMuscleFilter = target.value; guidedPendingAssignment = null; render(); }
-        if (action === "guided-exercise-search") { guidedExerciseSearch = target.value; render(); }
-        if (action === "move-guided-exercise") { const draft = guidedDraft(); if (draft) { const updated = guidedMesocycleApi.moveAssignment(draft, target.dataset.dayId, target.value, target.dataset.assignmentId); if (updated.assignmentError) { target.value = target.dataset.dayId; showAppToast("That exercise is already assigned to the selected day. Merge sets with the existing assignment instead."); } else updateGuidedDraft(updated); } }
-        if (action === "mesocycle-muscle-scope") {
-          const available = prescriptionEngine ? Array.from(new Set(prescriptionApi.representedMuscleGroups(prescriptionEngine.evidence).map(prescriptionApi.muscleFamily))) : [];
-          if (!mesocycleScopeDraft) mesocycleScopeDraft = new Set(available);
-          if (target.checked) mesocycleScopeDraft.add(target.value); else mesocycleScopeDraft.delete(target.value);
-        }
-        if (action === "mesocycle-training-days") commit({ ...data, settings: { ...data.settings, trainingDaysPerWeek: Math.max(1, Math.min(7, Number(target.value || 4))) } });
         if (action === "timer-sound") commit({ ...data, settings: { ...data.settings, timerSound: target.checked, setupSoundConfirmed: target.checked ? data.settings.setupSoundConfirmed : false } });
         if (action === "rest-complete-sound") commit({ ...data, settings: { ...data.settings, restCompleteSound: target.value } });
         if (action === "rest-complete-volume") commit({ ...data, settings: { ...data.settings, restCompleteSoundVolume: Math.max(0, Math.min(1, Number(target.value ?? 0.85))) } });
@@ -857,7 +801,6 @@
             else addButton.dataset.safetyReason = safety.message || "Blocked by the current workout safety restriction";
           }
         }
-        if (action === "mesocycle-duration") mesocycleDurationDraft = target.value;
         if (action === "review-exercise-input") {
           chartExerciseDraft = target.value;
           chartExerciseSearchOpen = true;

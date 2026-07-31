@@ -3,7 +3,7 @@
 ## Metadata
 
 - **Purpose:** Product vision, verified scope, and boundary between current and intended behavior
-- **Last verified:** 2026-07-25
+- **Last verified:** 2026-07-31
 - **Repository:** `main` working tree (active exercise context and exercise-options session updates)
 - **Verification status:** VERIFIED from application code, tests, schemas, configuration, and existing docs; open conflicts are labeled
 - **Related:** [Architecture](ARCHITECTURE.md), [Decision engine](DECISION_ENGINE.md), [UI/UX](UI_UX.md), [Roadmap](ROADMAP.md), [documentation inventory](DOCUMENTATION_INVENTORY.md)
@@ -18,23 +18,17 @@ Read this document before changing product scope, capabilities, target users, wo
 
 Named exercise variants now own the normal working-set count/roles, rep ranges, target-RPE bands, rest defaults, and increments used when a routine starts. Normal recommendation output cannot rewrite those stable targets or supply exact add-load/add-rep prefills. Editable set fields use the corresponding prior set for the same variant and role, an explicit routine default, then blank. A prefilled RPE can be replaced with a decimal value in one focused edit and completed immediately without losing the entry. Global equipment preference state is no longer a product setting or a logging constraint; legacy values are accepted only so old data can be decoded and discarded. Current app-data v3 exports through backup schema v3, while isolated v1/v2 compatibility remains available.
 
-This is the M1 implementation boundary, not the completed redesign. Recommendation/evidence presentation remains until M2/M4, the guided mesocycle system remains until M3, the four-destination shell remains until M5, and the broad active-workout simplification remains M6 work.
+This is the M1 implementation boundary, not the completed redesign. M2 and M3 are now implemented locally; M4 is next. The four-destination shell remains until M5, and the broad active-workout simplification remains M6 work.
 
-### Guided mesocycle planning — IMPLEMENTED
+### Planner/mesocycle removal — IMPLEMENTED LOCALLY (M3)
 
-New mesocycles are built in a guided manual workspace rather than assembled automatically. **Plan Your Mesocycle** appears before the ordinary template library. Users review concise planning rules, configure objective, schedule, and scope, create empty training days, select and arrange exercises, adjust working sets with immediate volume feedback, run a viability check, acknowledge non-blocking exceptions, and create linked workout templates. Guide, Setup, Build, Check, and Create use persisted progressive unlocking: completed steps remain available, locked steps cannot bypass validation, and Build edits invalidate Check/Create without deleting compatible work. The former global equipment preference was removed in zero-based redesign M1; planner-internal compatibility code is scheduled for M3 deletion.
-
-The same exercise may intentionally appear on multiple training days. Cross-day exercise reuse is not an error or warning. Same-day mechanical redundancy may still be surfaced when it creates a material programming problem.
-
-During Build, selected muscles are ranked by direct-set deficit, missing exposure/frequency, priority, and remaining-day feasibility. Candidate eligibility is controlled by the canonical exercise–muscle taxonomy: direct and positive-credit fractional dynamic relationships qualify; incidental, isometric-only, unknown, and zero-credit relationships do not. Candidate cards display effectiveness for the selected target muscle separately from confidence and general exercise quality.
-
-Total effective sets—not direct sets alone—determine whether a target range is satisfied. Frequency and distribution remain independent requirements, so a muscle cannot appear complete while an exposure is still missing. Final review exposes every training day before an idempotent create/update operation; successful creation ends on a persistent completion summary with routes to the linked templates.
+Guided planning, mesocycle lifecycle, candidate pools, portfolios, planner validation, and related active state are removed from the current product. A versioned legacy backup decoder may accept obsolete planning keys only to preserve workout and routine/template facts; it creates no active mesocycle state, writer, route, renderer, or new record. Until M5 changes the shell, **Plan** owns routine/template management only.
 
 Comprehensive Fitness is a local-first strength-training application that logs workouts and turns workout history, optional private personal evidence, recovery check-ins, and a versioned exercise-science database into transparent training guidance. It is trying to become a personal fitness decision system without hiding uncertainty or rewriting historical recommendations after engine updates.
 
 The verified target user is a single strength/hypertrophy trainee using a phone during training. The research package is explicitly scoped to male hypertrophy and related strength, recovery, and nutrition questions (`research_database/README.md`, `research_database/METHODOLOGY.md`). Broader population support is not established.
 
-The verified product navigation has four destinations: Today for the next action and continuous workout execution, Plan for templates and mesocycle construction, Progress for overview/lift/history analysis, and More for setup and data controls. The active workout renders every exercise and set in program order as one scrollable document on phone and wider screens; completion updates the current-set highlight without moving the viewport.
+The verified current shell has four destinations: Today, Plan (routines/templates only), Progress, and More. M5 is still required to install the final two-destination shell. The active workout renders every exercise and set in program order as one scrollable document on phone and wider screens; completion updates the current-set highlight without moving the viewport.
 
 ## Problems and principles
 
@@ -60,7 +54,7 @@ Product principles evidenced in the repository:
 | Submission, history, summaries, and editing | **IMPLEMENTED** | Confirmed submission, PR calculation, grade/summary, submitted-only history, and explicit history-edit save/cancel (`submitWorkout`, `renderSubmitConfirmation`, `renderCompletedWorkoutSummary`). The completion summary derives an earned benchmark strip from verified session outcomes: estimated-performance peaks, other PRs, session external-load volume records, comparable progression, full plan completion, rep/RPE precision, controlled execution, and successful readiness-adjusted or deload execution. Every badge except Plan Complete opens an exercise-evidence disclosure showing the current result and the exact prior record or prior comparable performance high; the volume record lists each contributing exercise against its prior per-exercise volume high. |
 | Progress and volume analytics | **IMPLEMENTED** | Interactive exercise charts, session detail, weekly weighted muscle volume, fatigue flags, hypertrophy scoring, and recent/all history. |
 | Recovery readiness | **IMPLEMENTED** | User-entered sleep, HRV, resting heart rate, soreness, illness, nutrition/protein status, personal baseline, readiness band, and conservative adjustment guidance. |
-| Prescription and mesocycle engine | **IMPLEMENTED / M1 NARROWED** | User-defined muscle scope with explicit omission confirmation, versioned goal-aware progression and confirmation rules, traceable candidate pools, evidence-derived weekly set/frequency slots, portfolio-first compatibility construction, guided user-directed planning, split-aware session allocation, blocking validation, progression/hold/deload/rotation decisions, confidence, snapshots, factual same-variant/same-role session-row prepopulation, and audited overrides in `prescription-engine.js` and the application adapters. Normal exact engine load/rep output is no longer a prefill source, and global equipment state cannot block logging. |
+| Routine/template facts and exception engine | **IMPLEMENTED / M1–M3 NARROWED** | Named-variant targets, factual same-variant/same-role prepopulation, immutable historical snapshots, and the M2 exception boundary remain. Planner/mesocycle generation, lifecycle, candidate pools, portfolios, validation, and active planner schemas/state are deleted. Legacy backups decode obsolete planning keys solely to preserve workout and routine/template facts. |
 | Exercise-science database | **IMPLEMENTED** | Version 3.0.0 publishes source-provenance identifiers, rule-to-conclusion traceability, explicit evidence/product-policy/safety authority, advisory versus allowlisted hard-blocker enforcement, deterministic CSV/JSON/XLSX/SQL/schema outputs, bibliography, build, and validation under `research_database/`. |
 | Private personal evidence pipeline | **IMPLEMENTED** | Local normalization/analysis of workout, Fitbit/Google Health, nutrition, and body-composition sources; aggregates can be packaged/imported without public deployment. Import is size/shape/schema bounded, builds a reconciled engine before one atomic replacement, and leaves prior state unchanged on rejection (`scripts/personal-fitness/`, `scripts/build-app-personal-evidence.js`, `index.html`). |
 | Nutrition tracking | **PARTIALLY IMPLEMENTED** | Research strategies, historical analysis pipeline, and daily adequacy inputs influence context. There is no verified in-app meal/food/macronutrient logger. |
@@ -85,12 +79,12 @@ Product principles evidenced in the repository:
 - **Working set:** A set eligible for performance, progression, volume, and PR logic unless explicitly classified otherwise.
 - **Warm-up set:** Preparation work excluded from working-set scoring, volume, progression, and PR calculations.
 - **RPE/RIR:** Effort measures; RPE is logged in the workout UI, while prescriptions can expose both.
-- **Readiness:** A same-day, multi-domain comparison against a user baseline; it modifies today, not the base mesocycle.
+- **Readiness:** A same-day, multi-domain comparison against a user baseline; it may affect today without rewriting routine targets.
 - **Prescription:** Versioned exercise targets and decision rules derived from personal and research evidence.
 - **Recommendation snapshot:** Immutable record of the base and readiness-adjusted prescription used for a workout.
 - **Standard guideline:** The versioned goal-aware set/rep/RPE/RIR/rest comparison range captured before a user override or same-day readiness adjustment.
 - **Custom exercise profile:** User-confirmed primary muscle, resistance mode, exercise style, progression metric, and applicable smallest increment attached to a stable non-canonical performance identity.
-- **Mesocycle:** A decision context (primary, alternative, lower-fatigue, or specialization), not an automatic calendar rotation.
+- **Legacy mesocycle:** Obsolete planning data accepted only by the isolated versioned backup decoder to preserve associated workout/routine facts; not current product state.
 - **PR:** A submitted-workout performance record under implemented comparison semantics; see `docs/DECISION_ENGINE.md`.
 - **Weighted muscle volume:** Versioned canonical relationships count direct dynamic sets fully, meaningful fractional dynamic work at its configured weight, and incidental/unknown/isometric work at zero hypertrophy credit while retaining fatigue exposure separately.
 - **Programming family:** A derived accounting projection from 23 stable anatomical muscle IDs into 20 practical families. It prevents paired subdivisions from double-counting program volume without rewriting exercise relationships, filters, history, or canonical IDs.
@@ -121,9 +115,9 @@ Do not treat the optional Redis backend as the personal evidence database. It st
 
 ## Zero-based redesign implementation status
 
-- **IMPLEMENTED (M0–M2):** The final redesign package is now the product authority. Stable named-variant targets, factual same-variant/same-role prefills, unrestricted actual-work logging, and one versioned canonical exception-action pipeline are live locally.
+- **IMPLEMENTED (M0–M3):** The final redesign package is now the product authority. Stable named-variant targets, factual same-variant/same-role prefills, unrestricted actual-work logging, one versioned canonical exception-action pipeline, and M3 planner/mesocycle removal are live locally.
 - **IMPLEMENTED (M2):** Ordinary sessions are silent. Direct recorded pain/injury or illness is the only approved live exception rule; it presents one advisory action while preserving logging. Numeric legacy thresholds cannot create a current action.
-- **PLANNED (M3–M8):** Planner/mesocycle, analytics/research clutter, old navigation, active-logger clutter, and legacy completion/grade surfaces remain scheduled for sequential deletion or replacement. The older Dual Track comparison lab is historical design evidence and does not override the final PRD.
+- **PLANNED (M4–M8):** Analytics/research clutter, old navigation, active-logger clutter, and legacy completion/grade surfaces remain scheduled for sequential deletion or replacement. The older Dual Track comparison lab is historical design evidence and does not override the final PRD.
 
 ## Blank-slate UI reinvention
 

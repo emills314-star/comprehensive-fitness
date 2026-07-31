@@ -69,7 +69,7 @@ function historyRow(exerciseId, date, load, reps, rpe) {
   };
 }
 
-test("1 exclusions canonicalize custom IDs, research IDs, and research aliases across ranking and planning", () => {
+test("1 exclusions canonicalize custom IDs, research IDs, and research aliases across ranking", () => {
   const customEngine = engineWithCustomBenchAlias();
   for (const excluded of ["custom_press", "ex_barbell_bench_press", "bench press"]) {
     const pool = customEngine.rankExercisePool("chest", {
@@ -83,16 +83,6 @@ test("1 exclusions canonicalize custom IDs, research IDs, and research aliases a
     assert.ok(!pool.candidates.some((candidate) => candidate.preferredReplacementExerciseId === "custom_press" || candidate.preferredReplacementExerciseId === "ex_barbell_bench_press"), `${excluded} leaked through substitution`);
     assert.ok(pool.excludedCandidates.some((candidate) => candidate.reasonCode === "user_exclusion" && candidate.canonicalResearchExerciseId === "ex_barbell_bench_press"), `${excluded} lacks reportable exclusion provenance`);
   }
-  const plan = customEngine.createMesocycle({
-    trainingDays: 2,
-    includedMuscleGroupIds: ["chest"],
-    excludedExerciseIds: ["bench press"],
-    availableEquipment: ["all"],
-    createdAt: CREATED_AT
-  });
-  assert.ok(!plan.selectedPortfolio.some((candidate) => candidate.researchExerciseId === "ex_barbell_bench_press"));
-  assert.ok(plan.exclusionResolution.excludedResearchExerciseIds.includes("ex_barbell_bench_press"));
-
   const deduplicated = customEngine.rankExercisePool("chest", {
     excludedExerciseIds: [" custom_press ", "custom_press", "bench press", "ex_barbell_bench_press"],
     availableEquipment: ["all"],
@@ -109,62 +99,7 @@ test("1 exclusions canonicalize custom IDs, research IDs, and research aliases a
   );
 });
 
-test("2 explicit session target and maximum are validated and enforced as hard construction caps", () => {
-  assert.throws(() => engine.createMesocycle({
-    trainingDays: 1,
-    includedMuscleGroupIds: ["chest"],
-    sessionDurationTargetMinutes: 30,
-    sessionDurationMaximumMinutes: 20,
-    createdAt: CREATED_AT
-  }), /duration.*target|target.*maximum/i);
-  const plan = engine.createMesocycle({
-    trainingDays: 1,
-    includedMuscleGroupIds: ["chest", "upper_back", "quads"],
-    availableEquipment: ["all"],
-    sessionDurationTargetMinutes: 4,
-    sessionDurationMaximumMinutes: 5,
-    createdAt: CREATED_AT
-  });
-  assert.ok(plan.sessions.every((session) => session.estimatedDurationMinutes <= 5), JSON.stringify(plan.sessions.map((session) => session.estimatedDurationMinutes)));
-  assert.equal(plan.constraints.sessionDurationTargetMinutes, 4);
-  assert.equal(plan.constraints.sessionDurationMaximumMinutes, 5);
-  assert.ok(plan.programReview.warnings.some((warning) => warning.type === "schedule_capacity" && /duration/i.test(warning.why)), "impossible work was not reported as a duration capacity result");
-  const shortened = engine.createMesocycle({
-    trainingDays: 1,
-    includedMuscleGroupIds: ["chest", "upper_back", "quads"],
-    availableEquipment: ["all"],
-    sessionDurationTargetMinutes: 15,
-    sessionDurationMaximumMinutes: 20,
-    createdAt: CREATED_AT
-  });
-  assert.ok(shortened.sessions[0].exercises.length > 0, "coherent shortening discarded every exercise");
-  assert.equal(shortened.sessions[0].exercises[0].intendedRole, "primary_progression_lift", "coherent shortening discarded priority work before lower-priority work");
-  assert.ok(shortened.sessions[0].estimatedDurationMinutes <= 20);
-});
-
-test("3 omitted scope defaults while explicit empty, blank, and malformed scope fail closed", () => {
-  assert.ok(engine.createMesocycle({ trainingDays: 2, createdAt: CREATED_AT }).includedMuscleGroupIds.length > 0, "omitted scope should use the documented population default");
-  for (const scope of [[], [""], ["   "], {}, ""]) {
-    assert.throws(
-      () => engine.createMesocycle({ trainingDays: 2, includedMuscleGroupIds: scope, createdAt: CREATED_AT }),
-      /scope|includedMuscleGroupIds/i,
-      `explicit scope ${JSON.stringify(scope)} must fail closed`
-    );
-  }
-  assert.throws(() => engine.createMesocycle({ trainingDays: 2, includedMuscleGroupIds: ["not_a_muscle"], createdAt: CREATED_AT }), /scope|muscle/i);
-});
-
-test("4 trainingDays is validated once as a supported integer", () => {
-  for (const trainingDays of [0, -2, 1.5, 8, 100, "three", null]) {
-    assert.throws(() => engine.createMesocycle({ trainingDays, createdAt: CREATED_AT }), /trainingDays|training days/i, `${JSON.stringify(trainingDays)} was silently canonicalized`);
-  }
-  const plan = engine.createMesocycle({ trainingDays: 3, includedMuscleGroupIds: ["chest"], createdAt: CREATED_AT });
-  assert.equal(plan.trainingDays, 3);
-  assert.equal(plan.constraints.trainingDays, 3);
-  assert.equal(plan.sessions.length, 3);
-});
-
-test("5 explicit history is filtered to selected exercise and research identity", () => {
+test("2 explicit history is filtered to selected exercise and research identity", () => {
   const bench = historyRow("ex_barbell_bench_press", "2026-07-01", 100, 7, 9.5);
   const unrelated = [
     historyRow("ex_back_squat", "2026-07-03", 900, 12, 7),
@@ -180,7 +115,7 @@ test("5 explicit history is filtered to selected exercise and research identity"
   assert.equal(mixed.basePrescription.historyResolution.ignoredUnrelatedRowCount, 3);
 });
 
-test("6 direct prescription enforces explicit equipment restrictions", () => {
+test("3 direct prescription enforces explicit equipment restrictions", () => {
   assert.throws(() => engine.prescribeExercise({
     exerciseId: "ex_barbell_bench_press",
     muscleGroupId: "chest",
@@ -195,7 +130,7 @@ test("6 direct prescription enforces explicit equipment restrictions", () => {
   }));
 });
 
-test("7 direct prescription requires a positive taxonomy relationship to the requested target", () => {
+test("4 direct prescription requires a positive taxonomy relationship to the requested target", () => {
   assert.throws(() => engine.prescribeExercise({
     exerciseId: "ex_barbell_bench_press",
     muscleGroupId: "calves",
@@ -208,7 +143,7 @@ test("7 direct prescription requires a positive taxonomy relationship to the req
   }));
 });
 
-test("8 workout assembly deterministically deduplicates canonical identities and recommendation slots", () => {
+test("5 workout assembly deterministically deduplicates canonical identities and recommendation slots", () => {
   const workout = engine.prescribeWorkout({
     createdAt: CREATED_AT,
     exercises: [
@@ -223,7 +158,7 @@ test("8 workout assembly deterministically deduplicates canonical identities and
   assert.deepEqual(workout.deduplication.removed.map((item) => item.reason), ["duplicate_canonical_exercise", "duplicate_recommendation_slot"]);
 });
 
-test("9 absent personal evidence is disclosed as a population research default with missing data", () => {
+test("6 absent personal evidence is disclosed as a population research default with missing data", () => {
   const snapshot = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", createdAt: CREATED_AT });
   assert.equal(snapshot.basePrescription.programmingContext.personalization.personalEvidenceAvailable, false);
   assert.match(snapshot.finalPrescription.userExplanation, /population|research default/i);
@@ -232,20 +167,12 @@ test("9 absent personal evidence is disclosed as a population research default w
   assert.doesNotMatch(snapshot.finalPrescription.volume.reason, /blends? the personal/i);
 });
 
-test("10 caller timestamp propagates to every persisted nested candidate pool", () => {
-  const plan = engine.createMesocycle({
-    trainingDays: 2,
-    includedMuscleGroupIds: ["chest", "upper_back"],
-    createdAt: CREATED_AT
-  });
-  assert.equal(plan.createdAt, CREATED_AT);
-  assert.ok(Object.values(plan.pools).length > 0);
-  assert.ok(Object.values(plan.pools).every((pool) => pool.generatedAt === CREATED_AT), JSON.stringify(Object.values(plan.pools).map((pool) => pool.generatedAt)));
+test("7 caller timestamp propagates to ranked candidate pools", () => {
   const ranked = engine.rankExercisePool("chest", { generatedAt: CREATED_AT });
   assert.equal(ranked.generatedAt, CREATED_AT);
 });
 
-test("11 goal is validated, persisted, explained, and directionally changes programming", () => {
+test("8 goal is validated, persisted, explained, and directionally changes programming", () => {
   const strength = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", trainingGoal: "strength", createdAt: CREATED_AT });
   const endurance = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", trainingGoal: "muscular_endurance", createdAt: CREATED_AT });
   assert.equal(strength.basePrescription.programmingContext.goal.value, "strength");
@@ -275,7 +202,7 @@ test("11 goal is validated, persisted, explained, and directionally changes prog
   assert.throws(() => engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", goal: "cut", legacyGoalSemantics: "training_goal", nutritionPhase: "deficit", createdAt: CREATED_AT }), /goal/i, "nutrition phase was accepted as a training goal");
 });
 
-test("12 experience is validated, persisted, explained, and changes complexity conservatively", () => {
+test("9 experience is validated, persisted, explained, and changes complexity conservatively", () => {
   const novice = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", trainingGoal: "hypertrophy", experienceLevel: "novice", createdAt: CREATED_AT });
   const advanced = engine.prescribeExercise({ exerciseId: "ex_barbell_bench_press", muscleGroupId: "chest", trainingGoal: "hypertrophy", experienceLevel: "advanced", createdAt: CREATED_AT });
   assert.equal(novice.basePrescription.programmingContext.experience.value, "novice");

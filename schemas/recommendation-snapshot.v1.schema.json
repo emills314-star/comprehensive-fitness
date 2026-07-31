@@ -23,7 +23,6 @@
     "engineVersion",
     "personalDataVersion",
     "researchDatabaseVersion",
-    "mesocycleId",
     "exerciseId",
     "muscleGroupId",
     "exerciseScore",
@@ -292,6 +291,22 @@
         }
       }
     },
+    "targetRpeChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "from",
+        "to"
+      ],
+      "properties": {
+        "from": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/rpeRange"
+        },
+        "to": {
+          "$ref": "exercise-prescription.v2.schema.json#/$defs/rpeRange"
+        }
+      }
+    },
     "setStructureChange": {
       "type": "object",
       "additionalProperties": false,
@@ -328,22 +343,6 @@
         },
         "to": {
           "$ref": "exercise-prescription.v2.schema.json#/$defs/recommendationType"
-        }
-      }
-    },
-    "mesocycleIdChange": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "from",
-        "to"
-      ],
-      "properties": {
-        "from": {
-          "$ref": "exercise-prescription.v2.schema.json#/$defs/nullableId"
-        },
-        "to": {
-          "$ref": "exercise-prescription.v2.schema.json#/$defs/id"
         }
       }
     },
@@ -391,6 +390,9 @@
         "load": {
           "$ref": "#/$defs/loadChange"
         },
+        "targetRpe": {
+          "$ref": "#/$defs/targetRpeChange"
+        },
         "setStructure": {
           "$ref": "#/$defs/setStructureChange"
         },
@@ -399,9 +401,6 @@
         },
         "exerciseRotation": {
           "$ref": "#/$defs/recommendationTypeChange"
-        },
-        "mesocycleId": {
-          "$ref": "#/$defs/mesocycleIdChange"
         },
         "safetyConfirmation": {
           "$ref": "#/$defs/safetyConfirmation"

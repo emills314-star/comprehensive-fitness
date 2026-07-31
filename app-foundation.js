@@ -38,7 +38,6 @@
         nutritionPhase: "",
         experienceLevel: "",
         returningAfterGap: null,
-        trainingDaysPerWeek: 4,
         excludedExerciseIds: [],
         theme: "light",
         colorPackage: "signal-garden",
@@ -77,7 +76,7 @@
         "template-readiness-sleep-hours", "template-readiness-sleep-quality", "template-readiness-hrv", "template-readiness-resting-hr",
         "template-readiness-soreness", "template-readiness-nutrition", "template-readiness-protein", "template-readiness-illness",
         "template-readiness-pain", "template-readiness-affected-muscle", "template-readiness-note",
-        "adjust-guided-setup", "adjust-default-rest",
+        "adjust-default-rest",
         "clear-data-ack", "clear-data-phrase", "sync-before-clear", "export-data", "export-before-clear", "confirm-clear-data", "confirm-cancel-workout",
         "confirm-save-history-edits", "confirm-cancel-history-edits"
       ]);
@@ -314,23 +313,6 @@
       const programmingFamilyApi = window.ComprehensiveFitnessProgrammingFamilyLedger || null;
       let prescriptionEngine = prescriptionApi?.createPrescriptionEngine({}) || null;
       let prescriptionEvidenceStatus = { state: "loading", personalRecords: 0, researchExercises: 0, personalVersion: "unknown", researchVersion: "unknown", message: "Loading training evidence." };
-      let mesocycleDraftType = "primary_progression";
-      let mesocycleSpecializationMuscle = "";
-      let mesocycleDurationDraft = "";
-      let mesocycleScopeDraft = null;
-      let pendingDeleteMesocycleId = "";
-      const guidedMesocycleApi = window.ComprehensiveFitnessGuidedMesocycle || null;
-      let guidedMesocycleView = "closed";
-      let guidedMesocycleDraftId = "";
-      let guidedSelectedDayId = "";
-      let guidedExerciseBrowserDayId = "";
-      let guidedExerciseMuscleFilter = "";
-      let guidedExerciseSearch = "";
-      let guidedPendingAssignment = null;
-      let guidedReturnFocusToPicker = false;
-      let guidedWeeklySummaryOpen = false;
-      let guidedGenerationReviewOpen = false;
-      let guidedCreationPending = false;
       const expandedTemplateEditorIds = new Set();
 
       const svgIcon = (paths, viewBox = "0 0 24 24") => '<svg class="ui-icon" viewBox="' + viewBox + '" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + paths + '</svg>';
@@ -360,7 +342,7 @@
       };
 
       function emptyData() {
-        return { appDataVersion: 3, sessions: [], exercises: [], sets: [], templates: [], mesocycles: [], activeMesocycleId: "", recommendationHistory: [], manualOverrides: [], personalEvidencePackage: null, rawImports: [], migrationAudit: [], dataRevision: 0, settings: { ...defaultSettings } };
+        return { appDataVersion: 3, sessions: [], exercises: [], sets: [], templates: [], recommendationHistory: [], manualOverrides: [], personalEvidencePackage: null, rawImports: [], migrationAudit: [], dataRevision: 0, settings: { ...defaultSettings } };
       }
 
       // DOMAIN_INTEGRITY_ENGINE_START
@@ -1140,7 +1122,6 @@
           nutritionPhase,
           experienceLevel,
           returningAfterGap,
-          trainingDaysPerWeek: storedSettings.trainingDaysPerWeek,
           excludedExerciseIds: storedSettings.excludedExerciseIds,
           theme: storedSettings.theme,
           colorPackage: storedSettings.colorPackage,
@@ -1232,16 +1213,6 @@
           })
         }));
         model.appDataVersion = Math.max(3, Number(model.appDataVersion || 0));
-        model.mesocycles = (Array.isArray(model.mesocycles) ? model.mesocycles : []).map((mesocycle) => ({
-          ...mesocycle,
-          status: mesocycle.status === "preview" ? "draft" : mesocycle.status === "loaded" ? "planned" : mesocycle.status,
-          planningStep: Number(mesocycle.planningStep || 5),
-          programSlots: Array.isArray(mesocycle.programSlots) ? mesocycle.programSlots : [],
-          selectedPortfolio: Array.isArray(mesocycle.selectedPortfolio) ? mesocycle.selectedPortfolio : (Array.isArray(mesocycle.activeExercises) ? mesocycle.activeExercises : []),
-          sessions: Array.isArray(mesocycle.sessions) ? mesocycle.sessions : [],
-          programReview: mesocycle.programReview || { warnings: [], seriousWarningCount: 0, musclePlans: [], explanation: ["Legacy mesocycle: rebuild the draft to receive full-program interaction analysis."] }
-        }));
-        model.activeMesocycleId = model.mesocycles.some((mesocycle) => mesocycle.id === model.activeMesocycleId && mesocycle.status === "active") ? model.activeMesocycleId : "";
         model.recommendationHistory = Array.isArray(model.recommendationHistory) ? model.recommendationHistory : [];
         model.manualOverrides = Array.isArray(model.manualOverrides) ? model.manualOverrides : [];
         model.personalEvidencePackage = model.personalEvidencePackage && typeof model.personalEvidencePackage === "object" ? model.personalEvidencePackage : null;
@@ -1316,7 +1287,7 @@
         if (!Number.isSafeInteger(revision) || revision < 0) return null;
         const requiredCollectionKeys = ["sessions", "exercises", "sets", "templates"];
         if (requiredCollectionKeys.some((key) => !Array.isArray(value[key]))) return null;
-        const collectionKeys = ["sessions", "exercises", "sets", "templates", "mesocycles", "recommendationHistory", "manualOverrides", "rawImports", "migrationAudit"];
+        const collectionKeys = ["sessions", "exercises", "sets", "templates", "recommendationHistory", "manualOverrides", "rawImports", "migrationAudit"];
         if (collectionKeys.some((key) => Object.prototype.hasOwnProperty.call(value, key) && !Array.isArray(value[key]))) return null;
         if (Object.prototype.hasOwnProperty.call(value, "settings") && (!value.settings || typeof value.settings !== "object" || Array.isArray(value.settings))) return null;
         return { source, value, revision, canonicalContent: null, updatedAt: metadata.updatedAt || null, timestamp: persistenceTimestamp(metadata.updatedAt) };
@@ -1399,7 +1370,9 @@
             replaceConflictPreserved: true
           });
         }
-        const stored = selectedCandidate?.value || null;
+        const stored = selectedCandidate?.value
+          ? window.FitnessBackupContract?.discardObsoletePlanningState?.(selectedCandidate.value) || selectedCandidate.value
+          : null;
         const invalidStoredSource = Boolean((indexedStored !== null && !indexedCandidate) || (localStoragePresent && !localCandidate));
         data = stored ? { ...emptyData(), ...stored, settings: { ...defaultSettings, ...stored.settings } } : emptyData();
         const needsDomainRecalculation = Number(data.domainMigrationVersion || 0) < DOMAIN_MIGRATION_VERSION;
@@ -1671,10 +1644,6 @@
           identitySource: profile.identitySource,
           identityVersion: profile.identityVersion
         } : {};
-      }
-
-      function currentMesocycle() {
-        return data.mesocycles.find((mesocycle) => mesocycle.id === data.activeMesocycleId && mesocycle.status === "active") || null;
       }
 
       function unifiedTargetContext(target, template, templateExercise) {

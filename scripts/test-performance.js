@@ -77,11 +77,6 @@ assert.doesNotMatch(templateRenderer, /fatigueFlags\(/, "Opening Templates must 
 assert.match(templateRenderer, /const advice = null;/, "Template-list rendering must defer readiness coaching to the start flow");
 assert.match(templateRenderer, /const editorExpanded = expandedTemplateEditorIds\.has\(template\.id\)/, "Template editors must be expanded explicitly");
 assert.match(templateRenderer, /\$\{editorExpanded \? `<div class="disclosure-body">/, "Collapsed template editors must not generate their exercise controls");
-const historicalRenderer = section("function renderHistoricalMesocycles()", "function renderTemplates()");
-assert.match(historicalRenderer, /historical\.map\(\(mesocycle\) => '<article class="mesocycle-card mesocycle-history-summary/, "Historical mesocycles must use compact summaries");
-assert.doesNotMatch(historicalRenderer, /renderMesocycleCard\(/, "History must not eagerly render full candidate and program reviews");
-assert.match(html, /if \(action === "mesocycle-muscle-scope"\)[\s\S]*mesocycleScopeDraft\.delete\(target\.value\);\s*\}/, "Muscle-scope toggles must update local draft state without rebuilding the Templates tab");
-
 assert.match(recentHistoryRenderer, /class="recent-history-card"/, "Recent History needs a structured mobile card");
 assert.match(recentHistoryModelSource, /session\?\.workoutAnalysis\?\.version === 1/, "Recent History must reuse stored workout grades");
 assert.doesNotMatch(recentHistoryModelSource, /workoutAnalysisForSession/, "Recent History must not recalculate grades while rendering rows");

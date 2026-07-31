@@ -142,12 +142,10 @@ Settings > **Danger Zone > Delete Remote Installation Data** revokes the backend
 
 ### Evidence and coaching
 
-1. Open a recommendation's **Why/Evidence** section and confirm personal and research weights appear.
-2. Preview and start a primary-progression mesocycle.
-3. Confirm candidate pools contain up to five diverse options per represented muscle.
-4. Enter one poor HRV value; confirm it does not cause a full deload.
-5. Enter two converging domains, such as poor sleep plus suppressed HRV or poor nutrition; confirm Today's prescription changes while Base prescription remains visible and unchanged.
-6. Compare the coach, chart, template, and live workout for one exercise; confirm the action and prescription agree.
+1. Choose a routine/template from Plan and confirm no planner or mesocycle lifecycle surface is available.
+2. Import a synthetic legacy backup only in the supported verification environment and confirm workout/routine-template facts survive without recreated planner state.
+3. Enter direct pain/injury or illness and confirm the single advisory action preserves logging.
+4. Confirm ordinary sessions remain quiet; M4 analytical/research-removal acceptance remains outstanding.
 
 ### Rest completion
 

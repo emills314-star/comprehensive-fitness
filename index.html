@@ -843,224 +843,6 @@
       }
 
       .template-card { text-align: left; }
-      .mesocycle-planner { display: grid; gap: 14px; }
-      .guided-entry { margin: 14px 0 20px; padding: 18px; border: 1px solid color-mix(in srgb, var(--current) 24%, var(--line)); border-radius: 20px; background: linear-gradient(145deg, color-mix(in srgb, var(--current) 10%, var(--surface)), var(--surface)); display: grid; gap: 12px; }
-      .guided-entry h2, .guided-builder h2, .guided-builder h3 { margin: 0; }
-      .guided-entry p, .guided-builder p { margin: 0; }
-      .guided-builder { display: grid; gap: 14px; padding-bottom: 90px; }
-      .guided-builder-header { position: sticky; top: 0; z-index: 8; margin: 0 -16px; padding: 10px 16px; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
-      .guided-progress { display: flex; gap: 6px; overflow-x: auto; padding: 4px 0; scrollbar-width: none; }
-      .guided-progress button { min-height: 44px; flex: 0 0 auto; padding: 6px 10px; border-radius: var(--r-pill); border: 1px solid var(--line); color: var(--muted); background: var(--surface); font-size: 12px; font-weight: 800; }
-      .guided-progress .current { background: var(--current); color: white; border-color: var(--current); }
-      .guided-progress .completed, .guided-progress .unlocked { background: color-mix(in srgb, var(--current) 11%, var(--surface)); color: var(--current); border-color: color-mix(in srgb, var(--current) 34%, var(--line)); }
-      .guided-progress .locked { background: transparent; color: var(--muted-2); opacity: .58; }
-      .guideline-grid { display: grid; gap: 9px; }
-      .guideline-card { border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); overflow: hidden; }
-      .guideline-card summary { min-height: 52px; padding: 12px; cursor: pointer; list-style: none; display: grid; gap: 3px; }
-      .guideline-card summary::-webkit-details-marker { display: none; }
-      .guideline-card p { padding: 0 12px 12px; color: var(--muted); }
-      .guided-setup-grid, .guided-day-list { display: grid; gap: 12px; }
-      .guided-setup-grid label { border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); padding: 10px 12px; display: grid; gap: 7px; font-weight: 800; }
-      .guided-setup-grid select, .guided-setup-grid input { min-height: 44px; border-radius: var(--r-md); background: color-mix(in srgb, var(--current) 5%, var(--surface)); font-weight: 800; }
-      .guided-day { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); overflow: hidden; box-shadow: var(--shadow); }
-      .guided-day-header { padding: 14px; display: grid; gap: 8px; background: color-mix(in srgb, var(--surface) 88%, var(--bg)); }
-      .guided-day-header button { text-align: left; }
-      .guided-day-body { padding: 12px; display: grid; gap: 10px; border-top: 1px solid var(--line); }
-      .guided-exercise { border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px; display: grid; gap: 9px; }
-      .guided-exercise-title { display: grid; gap: 4px; }
-      .metadata-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-      .metadata-tag { border: 1px solid var(--line); border-radius: var(--r-pill); padding: 4px 8px; background: var(--surface); color: var(--muted); font-size: 12px; }
-      .set-stepper { display: grid; grid-template-columns: 48px minmax(72px, 1fr) 48px; align-items: center; gap: 8px; }
-      .set-stepper button { min-width: 48px; }
-      .set-stepper output { text-align: center; font-weight: 800; }
-      .guided-summary-button { position: sticky; bottom: calc(72px + env(safe-area-inset-bottom)); z-index: 7; width: 100%; box-shadow: var(--shadow); }
-      .guided-volume-grid { display: grid; gap: 8px; }
-      .guided-volume-row { display: grid; grid-template-columns: minmax(110px, 1fr) repeat(3, auto); gap: 8px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
-      .guided-volume-row strong { min-width: 0; }
-      .guided-volume-row small { color: var(--muted); }
-      .exercise-browser-results { display: grid; gap: 10px; }
-      .exercise-browser-card { border: 1px solid var(--line); background: var(--surface); border-radius: 15px; padding: 13px; display: grid; gap: 8px; }
-      .guided-priority-summary { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); padding: 12px; display: grid; gap: 10px; }
-      .guided-priority-list { display: grid; gap: 6px; }
-      .guided-priority-row { min-height: 58px; width: 100%; display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; gap: 8px; text-align: left; background: transparent; border: 1px solid var(--line); border-radius: 12px; padding: 9px; }
-      .guided-priority-row > span:first-child { display: grid; min-width: 0; }
-      .guided-priority-row small { color: var(--muted); }
-      .guided-priority-row.below, .guided-priority-row.needs_frequency, .guided-priority-row.needs_distribution { border-color: color-mix(in srgb, var(--amber) 42%, var(--line)); }
-      .guided-priority-row.within { border-color: color-mix(in srgb, var(--success) 35%, var(--line)); }
-      .guided-priority-row.above { border-color: color-mix(in srgb, var(--red) 38%, var(--line)); }
-      .guided-active-config { scroll-margin-block: 120px; border: 2px solid var(--current); border-radius: var(--r-lg); background: color-mix(in srgb, var(--current) 7%, var(--surface-strong)); padding: 15px; display: grid; gap: 12px; outline: none; }
-      .guided-active-config:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--current) 28%, transparent); }
-      .viability-score { display: flex; align-items: baseline; gap: 8px; }
-      .viability-score strong { font-size: 34px; }
-      .finding { border-left: 4px solid var(--amber); background: color-mix(in srgb, var(--amber) 9%, var(--surface)); border-radius: var(--r-md); padding: 12px; display: grid; gap: 6px; }
-      .finding.blocking { border-left-color: var(--red); background: color-mix(in srgb, var(--red) 8%, var(--surface)); }
-      .finding.accepted { opacity: .65; }
-      .guided-completed-summary { border-top: 1px solid var(--line); padding-top: 8px; }
-      .guided-completed-summary summary { cursor: pointer; color: var(--muted); font-weight: 800; min-height: 44px; display: flex; align-items: center; }
-      .guided-review-day summary { cursor: pointer; list-style: none; min-height: 64px; padding: 14px; display: flex; justify-content: space-between; gap: 12px; align-items: center; }
-      .guided-review-day summary span:first-child { display: grid; gap: 3px; }
-      .guided-review-exercises { margin: 0; padding-left: 22px; display: grid; gap: 12px; }
-      .guided-review-exercises li { padding-bottom: 10px; border-bottom: 1px solid var(--line); display: grid; gap: 4px; }
-      .guided-day-volume { display: flex; flex-wrap: wrap; gap: 6px; }
-      .guided-day-volume span { border: 1px solid var(--line); border-radius: var(--r-pill); padding: 5px 8px; color: var(--muted); font-size: 12px; }
-      .guided-completion { text-align: left; border: 1px solid color-mix(in srgb, var(--success) 45%, var(--line)); border-radius: 20px; padding: 16px; background: color-mix(in srgb, var(--success) 7%, var(--surface)); }
-      .completion-mark { width: 58px; height: 58px; display: grid; place-items: center; border-radius: 50%; background: var(--success); color: white; font-size: 30px; font-weight: 900; }
-      @media (min-width: 760px) { .guided-setup-grid { grid-template-columns: repeat(2, 1fr); } .guided-day-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } .exercise-browser-results { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-      @media (max-width: 520px) { .guided-priority-row { grid-template-columns: minmax(0,1fr) auto; } .guided-priority-row .status-pill { grid-column: 1 / -1; justify-self: start; } }
-      .planner-steps { display: grid; gap: 6px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
-      .planner-step { align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); color: var(--muted); display: flex; font-size: var(--fs-micro); font-weight: 800; gap: 6px; min-height: 42px; padding: 7px; }
-      .planner-step b { align-items: center; background: var(--surface-strong); border-radius: var(--r-pill); display: inline-flex; height: 21px; justify-content: center; width: 21px; }
-      .planner-step.current { border-color: var(--current); color: var(--text); box-shadow: inset 0 -3px 0 var(--current); }
-      .planner-step.complete b { background: var(--success-dark); color: var(--success); }
-      .mesocycle-builder { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 14px; }
-      .planner-section-heading { border-bottom: 1px solid var(--line); display: grid; gap: 4px; grid-column: 1 / -1; padding-bottom: 10px; }
-      .planner-section-heading h3, .planner-section-heading p { margin: 0; }
-      .planner-section-heading p { color: var(--muted); font-size: var(--fs-micro); }
-      .planner-field, .mesocycle-builder > label, .candidate-muscle-select { color: var(--text); display: grid; font-size: var(--fs-micro); font-weight: 900; gap: 7px; letter-spacing: .01em; }
-      .planner-field input, .planner-field select, .mesocycle-builder > label input, .mesocycle-builder > label select, .candidate-muscle-select select { background: var(--input-bg); border: 1px solid var(--line-strong); border-radius: var(--r-md); color: var(--text); min-height: 48px; padding: 10px 12px; }
-      .planner-field input:focus, .planner-field select:focus, .candidate-muscle-select select:focus { border-color: var(--current); box-shadow: 0 0 0 3px color-mix(in srgb, var(--current) 24%, transparent); }
-      .planner-field input:disabled, .planner-field select:disabled { background: var(--surface); color: var(--muted-2); opacity: .72; }
-      .muscle-scope-panel { background: var(--surface-strong); border: 1px solid var(--line); border-radius: 12px; display: grid; gap: 10px; grid-column: 1 / -1; padding: 12px; }
-      .muscle-scope-options { display: grid; gap: 8px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-      .muscle-scope-option, .choice-tile { align-items: center; background: color-mix(in srgb, var(--surface-strong) 44%, transparent); border: 1px solid var(--line); border-radius: var(--r-md); color: var(--muted); cursor: pointer; display: flex; font-size: var(--fs-micro); font-weight: 850; gap: 8px; min-height: 46px; padding: 8px 10px; transition: border-color .15s ease, background .15s ease, color .15s ease; }
-      .muscle-scope-option:hover, .choice-tile:hover { border-color: var(--line-strong); color: var(--text); }
-      .muscle-scope-option:focus-within, .choice-tile:focus-within { border-color: var(--current); box-shadow: 0 0 0 3px color-mix(in srgb, var(--current) 20%, transparent); }
-      .muscle-scope-option:has(input:checked), .choice-tile:has(input:checked) { background: var(--current-dark); border-color: var(--current); color: var(--text); }
-      .muscle-scope-option input, .choice-tile input { accent-color: var(--current); height: 20px; min-height: 20px; width: 20px; }
-      .scope-confirmation { background: color-mix(in srgb, var(--amber) 9%, var(--surface)); border: 1px solid var(--amber); border-radius: 11px; display: grid; gap: 9px; padding: 12px; }
-      .scope-confirmation.major { border-left-width: 4px; }
-      .mesocycle-type-picker { display: grid; gap: 7px; grid-column: 1 / -1; grid-template-columns: repeat(4, minmax(0, 1fr)); }
-      .mesocycle-type-option { align-items: flex-start; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); display: grid; gap: 3px; min-height: 52px; padding: 8px 10px; text-align: left; }
-      .mesocycle-type-option span { font-size: var(--fs-micro); font-weight: 900; }
-      .mesocycle-type-option small { color: var(--muted); font-size: var(--fs-micro); line-height: 1.3; }
-      .mesocycle-type-option[aria-pressed="true"] { background: var(--current-dark); border-color: var(--current); box-shadow: inset 3px 0 0 var(--current); color: var(--current); }
-      .planner-compact-fields { align-items: end; display: flex; flex-wrap: wrap; gap: 10px; grid-column: 1 / -1; }
-      .planner-compact-field { display: grid; flex: 0 0 132px; font-size: var(--fs-micro); font-weight: 850; gap: 5px; }
-      .planner-compact-field input { min-height: 40px; padding: 6px 9px; }
-      .equipment-picker { border-bottom: 1px solid var(--line); display: grid; gap: 9px; grid-column: 1 / -1; padding-bottom: 12px; }
-      .equipment-picker > div:first-child { display: grid; gap: 4px; }
-      .equipment-picker > strong { font-size: var(--fs-micro); }
-      .equipment-chips, .portfolio-badges, .session-tags, .action-group { display: flex; flex-wrap: wrap; gap: 6px; }
-      .equipment-chip, .choice-chip { background: var(--surface); border-radius: var(--r-pill); font-size: var(--fs-micro); min-height: 44px; min-width: 44px; padding: 5px 11px; }
-      .equipment-chip[aria-pressed="true"], .choice-chip[aria-pressed="true"] { background: var(--current); border-color: var(--current); color: white; }
-      .mesocycle-summary-grid { display: grid; gap: 7px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
-      .mesocycle-summary-item { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); display: grid; gap: 3px; padding: 9px; }
-      .mesocycle-summary-item span { color: var(--muted); font-size: var(--fs-micro); font-weight: 900; letter-spacing: .05em; text-transform: uppercase; }
-      .mesocycle-summary-item strong { font-size: var(--fs-micro); line-height: 1.3; }
-      .omitted-muscle { background: var(--surface); border-radius: var(--r-sm); display: grid; gap: 6px; padding: 9px; }
-      .omitted-muscle details summary { color: var(--current); font-size: var(--fs-micro); font-weight: 850; min-height: 34px; }
-      .omitted-muscle details p { font-size: var(--fs-micro); }
-      .omitted-muscle .mini-button { justify-self: start; }
-      .score-explanation { background: var(--surface-strong); border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; }
-      .score-explanation summary { color: var(--current); cursor: pointer; font-size: var(--fs-micro); font-weight: 900; min-height: 44px; padding: 10px 12px; }
-      .score-explanation-body { border-top: 1px solid var(--line); display: grid; gap: 10px; padding: 11px; }
-      .score-explanation-grid { display: grid; gap: 7px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .score-explanation-grid > div { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; display: grid; gap: 3px; padding: 8px; }
-      .score-explanation-grid span { color: var(--muted); font-size: var(--fs-micro); font-weight: 900; text-transform: uppercase; }
-      .score-explanation-grid strong { font-size: var(--fs-micro); line-height: 1.35; }
-      .portfolio-list { display: grid; gap: 7px; list-style: none; margin: 0; padding: 0; }
-      .portfolio-item { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); display: grid; gap: 6px; padding: 10px; }
-      .portfolio-item > strong { font-size: .82rem; }
-      .metadata-badge { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-pill); color: var(--muted); font-size: var(--fs-micro); font-weight: 850; padding: 4px 7px; }
-      .metadata-badge.neutral { background: var(--surface); color: var(--muted); }
-      .metadata-badge.selected, button.metadata-badge[aria-pressed="true"] { background: var(--current); border-color: var(--current); color: white; }
-      .mesocycle-actions { align-items: center; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 8px; padding-top: 10px; }
-      .mesocycle-actions .destructive-actions { margin-left: auto; }
-      .program-slot-nav { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 0; }
-      .program-slot-nav summary { font-size: var(--fs-micro); font-weight: 900; min-height: 42px; padding: 9px 11px; }
-      .program-slot-nav-panel { display: grid; gap: 6px; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 0 9px 9px; }
-      .program-slot-jump { justify-content: space-between; min-height: 40px; text-align: left; }
-      .program-slot-jump[aria-current="true"] { background: var(--current-dark); border-color: var(--current); color: var(--current); }
-      .exercise-assignment-section { background: color-mix(in srgb, var(--surface-strong) 58%, transparent); border: 1px solid var(--line-strong); border-radius: var(--r-md); display: grid; gap: 11px; padding: 13px; }
-      .exercise-assignment-section > .section-heading { margin: 0; }
-      .alternates-toggle { justify-self: start; }
-      .program-review-stage { border-top: 5px solid var(--bg-soft); margin-top: 10px; padding-top: 18px; }
-      .mesocycle-card > .program-review-grid { display: none; }
-      .program-review-stage > .section-heading, .mesocycle-card > .program-review-grid > .section-heading { background: var(--current-dark); border: 1px solid var(--line-strong); border-radius: 12px; padding: 12px; }
-      .session-heading { display: grid; gap: 4px; }
-      .session-day { color: var(--current); font-size: var(--fs-micro); font-weight: 950; letter-spacing: .07em; text-transform: uppercase; }
-      .session-metrics { display: grid; gap: 5px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
-      .session-metrics span { background: var(--surface-strong); border-radius: 6px; font-size: var(--fs-micro); padding: 5px; text-align: center; }
-      .mesocycle-builder .primary-action { grid-column: 1 / -1; }
-      .mesocycle-card { background: var(--surface-strong); border: 1px solid var(--line-strong); border-radius: var(--r-md); display: grid; gap: 10px; padding: 12px; }
-      .mesocycle-card.active-mesocycle { border-color: var(--current); box-shadow: inset 3px 0 0 var(--current); }
-      .mesocycle-card h2, .mesocycle-card p { margin: 0; }
-      .mesocycle-card > p, .mesocycle-candidate p { color: var(--muted); font-size: var(--fs-micro); line-height: 1.45; }
-      .mesocycle-pool { display: grid; gap: 7px; }
-      .mesocycle-candidate { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; display: grid; gap: 11px; padding: 13px; }
-      .mesocycle-candidate.top-candidate { border-color: color-mix(in srgb, var(--current) 58%, var(--line)); }
-      .mesocycle-candidate.selected { border-color: var(--current); box-shadow: inset 4px 0 0 var(--current); }
-      .candidate-score { align-items: baseline; display: flex; gap: 4px; }
-      .candidate-score strong { color: var(--current); font-size: 1.42rem; line-height: 1; }
-      .candidate-score span { color: var(--muted); font-size: var(--fs-micro); font-weight: 800; }
-      .candidate-score small { color: var(--muted); font-size: var(--fs-micro); font-weight: 800; grid-column: 1 / -1; max-width: 92px; }
-      .candidate-heading { display: grid; gap: 5px; min-width: 0; }
-      .candidate-heading strong { font-size: 1rem; line-height: 1.25; overflow-wrap: anywhere; }
-      .candidate-heading small { color: var(--muted); font-size: var(--fs-micro); font-weight: 800; }
-      .candidate-actions { display: flex; flex-wrap: wrap; gap: 7px; }
-      .candidate-actions button[aria-pressed="true"] { background: var(--current); border-color: var(--current); color: white; }
-      .program-slot-summary { background: color-mix(in srgb, var(--current-dark) 36%, var(--surface)); border: 1px solid var(--line); border-radius: 13px; display: grid; gap: 10px; padding: 13px; }
-      .slot-summary-header { align-items: start; display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; }
-      .slot-summary-header h3 { font-size: 1rem; margin: 0; }
-      .slot-selection-grid { display: grid; gap: 10px; grid-template-columns: minmax(0, 1.4fr) minmax(180px, .8fr); }
-      .slot-selection-group { display: grid; gap: 6px; }
-      .slot-selection-group > span { color: var(--muted); font-size: var(--fs-micro); font-weight: 900; letter-spacing: .05em; text-transform: uppercase; }
-      .exercise-chip-list, .session-badge-list { display: flex; flex-wrap: wrap; gap: 6px; }
-      .exercise-chip, .session-badge { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-pill); color: var(--text); font-size: var(--fs-micro); font-weight: 800; padding: 6px 9px; }
-      .session-badge { background: var(--surface); color: var(--muted); }
-      .program-review-grid, .session-plan-grid, .candidate-comparison { display: grid; gap: 9px; }
-      .session-exercise-list { display: grid; gap: 7px; list-style: none; margin: 0; padding: 0; }
-      .session-exercise-row { align-items: center; border-top: 1px solid var(--line); display: grid; gap: 8px; grid-template-columns: minmax(150px, 1.4fr) minmax(120px, 1fr) auto; padding-top: 8px; }
-      .session-exercise-row:first-child { border-top: 0; padding-top: 0; }
-      .session-exercise-row > div { display: grid; gap: 3px; }
-      .session-exercise-row small { color: var(--muted); }
-      .program-session .score-factor-list { display: grid; gap: 6px; list-style: none; padding: 0; }
-      .program-session .score-factor-list li { background: var(--surface-strong); border-radius: var(--r-xs); padding: 7px 9px; }
-      .program-review-grid > .session-plan-grid .muscle-plan { display: none; }
-      .muscle-volume-review { display: grid; gap: 9px; }
-      .muscle-volume-number { color: var(--current); font-size: 1.35rem; font-weight: 950; line-height: 1; }
-      .muscle-plan-metrics { display: grid; gap: 6px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
-      .muscle-plan-metrics > div { background: var(--surface-strong); border-radius: var(--r-xs); display: grid; gap: 3px; padding: 7px; }
-      .muscle-plan-metrics span { color: var(--muted); font-size: var(--fs-micro); font-weight: 850; text-transform: uppercase; }
-      .program-session, .muscle-plan, .program-warning, .comparison-card { background: var(--surface); border: 1px solid var(--line); border-radius: 11px; display: grid; gap: 7px; padding: 11px; }
-      .compact-program-review { border-top: 5px solid var(--bg-soft); display: grid; gap: 14px; margin-top: 10px; padding-top: 18px; }
-      .compact-program-review > .section-heading { background: var(--current-dark); border: 1px solid var(--line-strong); border-radius: 12px; padding: 12px; }
-      .review-session-grid { display: grid; gap: 14px; }
-      .review-session-card { background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--r-md); display: grid; gap: 11px; overflow: hidden; padding: 0 12px 12px; }
-      .review-session-header { align-items: center; background: var(--surface-strong); border-bottom: 1px solid var(--line); display: flex; gap: 10px; justify-content: space-between; margin: 0 -12px; padding: 11px 12px; }
-      .review-session-title { display: grid; gap: 2px; }
-      .review-session-title strong { font-size: .9rem; }
-      .review-session-title span { color: var(--muted); font-size: var(--fs-micro); font-weight: 800; }
-      .review-session-exercises { display: grid; gap: 0; list-style: none; margin: 0; padding: 0; }
-      .review-session-exercises li { align-items: center; border-top: 1px solid var(--line); display: grid; gap: 8px; grid-template-columns: minmax(130px, 1.4fr) minmax(110px, 1fr) auto; padding: 9px 0; }
-      .review-session-exercises li:first-child { border-top: 0; }
-      .review-session-exercises li > div { display: grid; gap: 2px; }
-      .review-session-exercises small { color: var(--muted); }
-      .review-groups { display: grid; gap: 8px; }
-      .review-group { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; }
-      .review-group summary { align-items: center; display: flex; font-size: var(--fs-micro); font-weight: 900; justify-content: space-between; min-height: 44px; padding: 9px 11px; }
-      .review-group.blocking { border-color: var(--red); }
-      .review-group.recommended { border-color: var(--amber); }
-      .review-group-body { border-top: 1px solid var(--line); display: grid; gap: 8px; padding: 10px; }
-      .review-finding { display: grid; gap: 3px; }
-      .review-finding span, .review-finding small { color: var(--muted); }
-      .passed-checks { background: var(--success-dark); border: 1px solid color-mix(in srgb, var(--success) 45%, var(--line)); border-radius: var(--r-md); color: var(--success); font-size: var(--fs-micro); font-weight: 850; padding: 10px 11px; }
-      .program-warning.serious { border-color: var(--red); box-shadow: inset 3px 0 0 var(--red); }
-      .program-warning.blocking { border-color: var(--red); box-shadow: inset 4px 0 0 var(--red); }
-      .program-warning.review { border-color: var(--amber); box-shadow: inset 3px 0 0 var(--amber); }
-      .score-factor-list { color: var(--muted); font-size: var(--fs-micro); line-height: 1.45; margin: 0; padding-left: 18px; }
-      .mesocycle-history-meta { display: grid; gap: 4px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .mesocycle-candidate summary { align-items: center; cursor: pointer; display: grid; gap: 8px; grid-template-columns: 24px minmax(0, 1fr) auto; list-style: none; min-height: 54px; }
-      .mesocycle-candidate summary::-webkit-details-marker { display: none; }
-      .mesocycle-candidate summary div { display: grid; gap: 2px; min-width: 0; }
-      .mesocycle-candidate summary small { color: var(--muted); font-size: var(--fs-micro); }
-      .candidate-rank { align-items: center; background: var(--current-dark); border-radius: var(--r-pill); color: var(--current); display: flex; font-size: var(--fs-micro); font-weight: 950; height: 24px; justify-content: center; width: 24px; }
-      .candidate-detail-grid { display: grid; gap: 1px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .candidate-detail-grid > div { background: var(--surface-strong); display: grid; gap: 3px; padding: 7px; }
-      .candidate-detail-grid span { color: var(--muted); font-size: var(--fs-micro); font-weight: 900; text-transform: uppercase; }
-      .candidate-detail-grid strong { font-size: var(--fs-micro); overflow-wrap: anywhere; }
-      @media (max-width: 520px) { .mesocycle-builder { grid-template-columns: 1fr; } .mesocycle-builder .primary-action { grid-column: auto; } .planner-steps { grid-template-columns: 1fr 1fr; } .planner-step { min-height: 38px; } .mesocycle-history-meta, .mesocycle-summary-grid { grid-template-columns: 1fr 1fr; } .candidate-detail-grid, .slot-selection-grid, .score-explanation-grid { grid-template-columns: 1fr; } .mesocycle-candidate > .row.split { align-items: flex-start; } .muscle-scope-options, .program-slot-nav-panel { grid-template-columns: 1fr 1fr; } .mesocycle-type-picker { grid-template-columns: 1fr 1fr; } .session-metrics, .muscle-plan-metrics { grid-template-columns: 1fr 1fr; } .session-exercise-row, .review-session-exercises li { align-items: start; grid-template-columns: 1fr; } .mesocycle-actions .destructive-actions { margin-left: 0; width: 100%; } }
-
       .template-card h2,
       .workout-advice h2,
       .inline-panel h2 {
@@ -1360,9 +1142,9 @@
       .rollup .ru b { font-size: var(--fs-lg); font-variant-numeric: tabular-nums; font-weight: 900; letter-spacing: -0.03em; }
       .rollup .ru span { color: var(--muted-2); font-size: var(--fs-micro); font-weight: 800; letter-spacing: 0.04em; }
       .rollup .ru .d { font-size: var(--fs-micro); }
-      :where(.stat-tile, .rollup .ru, .chart-metric-row > div, .dashboard-summary-row > div, .dashboard-summary-row > button, .volume-warning-numbers > div, .expectation-grid > div, .unified-recommendation-grid > div, .candidate-detail-grid > div) { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); display: grid; gap: var(--sp-2); min-width: 0; padding: var(--sp-4); }
-      :where(.stat-tile, .rollup .ru, .chart-metric-row > div, .dashboard-summary-row > div, .dashboard-summary-row > button, .volume-warning-numbers > div, .expectation-grid > div, .unified-recommendation-grid > div, .candidate-detail-grid > div) > span:first-child { color: var(--muted); font-size: var(--fs-micro); font-weight: 800; }
-      :where(.stat-tile, .rollup .ru, .chart-metric-row > div, .dashboard-summary-row > div, .dashboard-summary-row > button, .volume-warning-numbers > div, .expectation-grid > div, .unified-recommendation-grid > div, .candidate-detail-grid > div) > :is(strong, b) { font-variant-numeric: tabular-nums; }
+      :where(.stat-tile, .rollup .ru, .chart-metric-row > div, .dashboard-summary-row > div, .dashboard-summary-row > button, .volume-warning-numbers > div, .expectation-grid > div, .unified-recommendation-grid > div) { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); display: grid; gap: var(--sp-2); min-width: 0; padding: var(--sp-4); }
+      :where(.stat-tile, .rollup .ru, .chart-metric-row > div, .dashboard-summary-row > div, .dashboard-summary-row > button, .volume-warning-numbers > div, .expectation-grid > div, .unified-recommendation-grid > div) > span:first-child { color: var(--muted); font-size: var(--fs-micro); font-weight: 800; }
+      :where(.stat-tile, .rollup .ru, .chart-metric-row > div, .dashboard-summary-row > div, .dashboard-summary-row > button, .volume-warning-numbers > div, .expectation-grid > div, .unified-recommendation-grid > div) > :is(strong, b) { font-variant-numeric: tabular-nums; }
       :where(.section-kicker, .eyebrow, .m-head .eyebrow, .m-label) { font-size: var(--fs-micro); font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
       :where(.section-heading, .m-head) { align-items: end; display: flex; gap: var(--sp-5); justify-content: space-between; }
       .empty-state.actionable { align-items: start; border: 1px dashed var(--line-strong); border-radius: var(--r-md); display: grid; gap: var(--sp-3); justify-items: start; padding: var(--sp-6); }
@@ -2426,7 +2208,7 @@
       .compact-disclosure summary::-webkit-details-marker, .history-section summary::-webkit-details-marker, .settings-group summary::-webkit-details-marker, .exercise-options summary::-webkit-details-marker { display: none; }
       .compact-disclosure summary span, .history-section summary span, .settings-group summary span, .exercise-options summary span { color: var(--muted); font-size: var(--fs-micro); font-weight: 700; }
       details:not([open]) > :not(summary) { display: none; }
-      :where(.compact-disclosure, .history-section, .settings-group, .exercise-options, .individual-set-disclosure, .module-disclosure, .review-group, .score-category, .guided-review-day, .guided-completed-summary, .guideline-card, .expectation-advanced, .exercise-details, .set-progress-disclosure, .resistance-type-disclosure, .recommendation-section, .workout-achievement.interactive) > summary::after {
+      :where(.compact-disclosure, .history-section, .settings-group, .exercise-options, .individual-set-disclosure, .module-disclosure, .score-category, .expectation-advanced, .exercise-details, .set-progress-disclosure, .resistance-type-disclosure, .recommendation-section, .workout-achievement.interactive) > summary::after {
         align-items: center;
         align-self: center;
         background: transparent;
@@ -2443,7 +2225,7 @@
         line-height: 1;
         transition: transform var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
       }
-      :where(.compact-disclosure, .history-section, .settings-group, .exercise-options, .individual-set-disclosure, .module-disclosure, .review-group, .score-category, .guided-review-day, .guided-completed-summary, .guideline-card, .expectation-advanced, .exercise-details, .set-progress-disclosure, .resistance-type-disclosure, .recommendation-section, .workout-achievement.interactive)[open] > summary::after {
+      :where(.compact-disclosure, .history-section, .settings-group, .exercise-options, .individual-set-disclosure, .module-disclosure, .score-category, .expectation-advanced, .exercise-details, .set-progress-disclosure, .resistance-type-disclosure, .recommendation-section, .workout-achievement.interactive)[open] > summary::after {
         background: var(--rest-accent);
         border-color: color-mix(in srgb, var(--rest-accent) 72%, var(--line-strong));
         color: var(--bg);
@@ -3067,111 +2849,7 @@
       .settings-view button[data-action="clear-data"] { border-color: color-mix(in srgb, var(--red) 45%, var(--line)); }
       .readiness-log-sheet .d.none { color: color-mix(in srgb, var(--muted) 20%, var(--text)); }
 
-      /* Evidence & Change: guided mesocycle builder */
       .sr-only { border: 0; clip: rect(0 0 0 0); clip-path: inset(50%); height: 1px; margin: -1px; overflow: hidden; padding: 0; position: absolute; white-space: nowrap; width: 1px; }
-      .guided-builder { gap: var(--sp-6); padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
-      .guided-builder-header { background: color-mix(in srgb, var(--bg) 94%, transparent); border-bottom-color: var(--line); display: grid; gap: var(--sp-2); padding-block: var(--sp-2); }
-      .guided-builder-header > .row button { min-height: 44px; }
-      .guided-builder button:not(.primary-action) { color: var(--text); }
-      .guided-builder .primary-action { background: var(--text); border-color: var(--text); color: var(--bg); }
-      .guided-builder .section-kicker { color: color-mix(in srgb, var(--current) 25%, var(--text)); }
-      .guided-builder .lbl, .guided-builder .rollup .ru span { color: color-mix(in srgb, var(--muted) 20%, var(--text)); }
-      .guided-builder .d.on { color: color-mix(in srgb, var(--success) 30%, var(--text)); }
-      .guided-builder .d.under { color: color-mix(in srgb, var(--amber) 30%, var(--text)); }
-      .guided-builder .d.over { color: color-mix(in srgb, var(--current) 30%, var(--text)); }
-      .guided-builder .d.out { color: color-mix(in srgb, var(--red) 32%, var(--text)); }
-      .guided-progress { display: grid; gap: var(--sp-2); overflow: visible; padding: 0; }
-      .steps { display: grid; gap: var(--sp-2); grid-template-columns: repeat(5, minmax(44px, 1fr)); }
-      .guided-progress .steps button { align-items: center; background: transparent; border: 0; border-radius: 0; display: flex; justify-content: center; min-height: 44px; min-width: 44px; padding: 0; position: relative; }
-      .guided-progress .steps button::before { background: color-mix(in srgb, var(--text) 16%, transparent); border-radius: var(--r-pill); content: ""; height: 4px; width: 100%; }
-      .guided-progress .steps button.on::before { background: color-mix(in srgb, var(--current) 38%, var(--text)); height: 6px; }
-      .guided-progress .steps button.done::before { background: color-mix(in srgb, var(--success) 38%, var(--text)); }
-      .guided-progress .steps button.unlocked::before { background: color-mix(in srgb, var(--current) 18%, var(--text)); }
-      .guided-progress .steps button.locked::before { background: color-mix(in srgb, var(--text) 10%, transparent); }
-      .guided-progress .steps button:disabled { opacity: 1; }
-      .guided-progress .steps button:focus-visible { outline: 2px solid var(--current); outline-offset: 2px; }
-      .step-label { align-items: baseline; display: flex; gap: var(--sp-3); justify-content: space-between; }
-      .step-label b { font-size: var(--fs-tiny); font-weight: 900; }
-      .step-label span { color: color-mix(in srgb, var(--muted) 30%, var(--text)); font-size: var(--fs-micro); font-variant-numeric: tabular-nums; font-weight: 800; }
-      .guided-builder .section-heading p, .guided-builder .f-help, .guided-builder .guided-plan-scope-note { color: color-mix(in srgb, var(--muted) 30%, var(--text)); }
-
-      .chiprow { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
-      .pick { align-items: center; background: transparent; border: 1px solid var(--line-strong); border-radius: var(--r-pill); color: var(--text); cursor: pointer; display: inline-flex; font-size: var(--fs-micro); font-weight: 850; justify-content: center; min-height: 44px; min-width: 44px; padding: var(--sp-2) var(--sp-4); position: relative; }
-      .pick input { height: 1px; opacity: 0; position: absolute; width: 1px; }
-      .pick.on, .pick:has(input:checked), .pick[aria-pressed="true"] { background: color-mix(in srgb, var(--current) 16%, transparent); border-color: color-mix(in srgb, var(--current) 35%, var(--text)); font-weight: 900; }
-      .pick:focus-visible, .pick:focus-within { outline: 2px solid var(--current); outline-offset: 2px; }
-      .color-package-picks .pick { gap: var(--sp-2); }
-      .package-swatches { display: inline-flex; gap: var(--sp-1); }
-      .package-swatches i { border: 1px solid color-mix(in srgb, var(--text) 24%, transparent); border-radius: var(--r-pill); height: var(--sp-4); width: var(--sp-4); }
-      .package-swatches i:nth-child(1) { background: var(--current); }
-      .package-swatches i:nth-child(2) { background: var(--success); }
-      .package-swatches i:nth-child(3) { background: var(--amber); }
-      .package-swatches i:nth-child(4) { background: var(--rest-accent); }
-      .guided-builder .equipment-picker, .guided-builder .muscle-scope-panel { background: transparent; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding: var(--sp-4) 0; }
-      .guided-builder :is(.equipment-picker, .muscle-scope-panel) .f-top { align-items: baseline; display: flex; gap: var(--sp-4); justify-content: space-between; }
-      .guided-builder :is(.equipment-picker, .muscle-scope-panel) .f-name { color: var(--text); font-size: var(--fs-tiny); font-weight: 850; }
-      .guided-builder .equipment-chips, .guided-builder .muscle-scope-options { display: flex; flex-wrap: wrap; gap: var(--sp-2); grid-template-columns: none; }
-      .guided-builder .equipment-chip, .guided-builder .muscle-scope-option { color: var(--text); font-size: var(--fs-micro); min-height: 44px; }
-      .guided-builder .equipment-chip[aria-pressed="true"], .guided-builder .choice-chip[aria-pressed="true"] { background: color-mix(in srgb, var(--current) 16%, transparent); border-color: color-mix(in srgb, var(--current) 35%, var(--text)); color: var(--text); }
-      .guided-objective-picker { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-
-      .day-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: none; overflow: hidden; }
-      .day-card .dc-top { align-items: center; background: transparent; border: 0; display: flex; gap: var(--sp-4); justify-content: space-between; min-height: 56px; padding: var(--sp-4); width: 100%; }
-      .day-card .dc-top > span:first-child { display: grid; gap: var(--sp-1); min-width: 0; }
-      .day-card .dc-top span, .day-card .dc-top small { color: color-mix(in srgb, var(--muted) 25%, var(--text)); font-size: var(--fs-micro); }
-      .day-card.open { border-color: var(--line-strong); }
-      .guided-day-list, .guided-review-days { display: grid; gap: var(--sp-3); }
-      .guided-day-header { background: transparent; padding: 0; }
-      .guided-day-body { gap: 0; padding: 0 var(--sp-4) var(--sp-4); }
-      .assign { align-items: center; background: transparent; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; display: grid; gap: var(--sp-3); grid-template-columns: minmax(0, 1fr) auto; min-height: 60px; padding: var(--sp-3) 0; }
-      .assign .as-name { display: grid; gap: var(--sp-1); min-width: 0; }
-      .assign .as-name em, .assign .as-name small { color: color-mix(in srgb, var(--muted) 25%, var(--text)); font-size: var(--fs-micro); font-style: normal; line-height: 1.4; }
-      .assign-controls { align-items: end; display: grid; gap: var(--sp-2); grid-column: 1 / -1; grid-template-columns: minmax(0, 1fr) minmax(140px, .7fr) auto; }
-      .assign-controls label { color: var(--text); display: grid; font-size: var(--fs-micro); font-weight: 850; gap: var(--sp-1); }
-      .assign-controls select, .assign-controls button { min-height: 44px; min-width: 44px; }
-      .guided-set-stepper { grid-template-columns: 44px minmax(72px, 1fr) 44px; }
-      .guided-add-exercise { color: var(--text); grid-template-columns: minmax(0, 1fr); text-align: left; width: 100%; }
-      .guided-build-actions { display: grid; gap: var(--sp-3); grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-      .guided-build-actions button { min-height: 48px; }
-
-      .guided-priority-summary { background: transparent; border: 0; border-radius: 0; gap: var(--sp-3); padding: 0; }
-      .guided-volume-diff, .guided-plan-diff { border-block: 1px solid var(--line-strong); }
-      .guided-volume-diff .drow, .guided-plan-diff .drow { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(96px, .7fr); }
-      .guided-priority-row { border: 0; border-radius: 0; min-height: 72px; padding: 0; }
-      .guided-muscle-link { align-items: start; background: transparent; border: 0; display: grid; gap: var(--sp-1); min-height: 44px; min-width: 44px; padding: 0; text-align: left; }
-      .guided-muscle-link .lbl { color: var(--text); }
-      .guided-priority-row small { color: color-mix(in srgb, var(--muted) 25%, var(--text)); font-size: var(--fs-micro); line-height: 1.4; }
-      .guided-target-claim[data-conf="1"] { border: 1px dashed color-mix(in srgb, var(--muted-2) 40%, var(--text)); margin: var(--sp-2); padding: var(--sp-2); }
-      .guided-completed-summary summary { color: var(--text); }
-
-      .guided-workspace-gap { border-block: 1px solid var(--line); padding-block: var(--sp-4); }
-      .guided-picker-controls { display: grid; gap: var(--sp-3); grid-template-columns: minmax(160px, .7fr) minmax(0, 1fr); }
-      .guided-picker-controls .f-top { grid-column: 1 / -1; }
-      .guided-picker-controls label { color: var(--text); display: grid; font-size: var(--fs-micro); font-weight: 850; gap: var(--sp-1); }
-      .guided-picker-controls select, .guided-picker-controls input { min-height: 44px; }
-      .exercise-browser-card { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; gap: var(--sp-3); padding: var(--sp-4) 0; }
-      .guided-effectiveness-score { background: transparent; border-color: var(--line-strong); color: var(--text); }
-      .guided-candidate-confidence { align-items: center; display: flex; gap: var(--sp-3); }
-      .guided-candidate-confidence strong, .guided-confidence-unavailable, .guided-builder .ex-why { color: color-mix(in srgb, var(--muted) 25%, var(--text)); font-size: var(--fs-micro); }
-      .guided-gap-projection { background: transparent; border-block: 1px solid var(--line); }
-      .guided-active-config { background: transparent; border-color: var(--current); }
-
-      .viability-group, .guided-plan-comparison { display: grid; gap: var(--sp-3); }
-      .guided-builder .finding { background: transparent; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; display: grid; gap: var(--sp-3); grid-template-columns: 5px minmax(0, 1fr); padding: var(--sp-4) 0; }
-      .guided-builder .finding .bar { background: color-mix(in srgb, var(--amber) 45%, var(--text)); border-radius: var(--r-pill); }
-      .guided-builder .finding .bar.bad { background: color-mix(in srgb, var(--red) 45%, var(--text)); }
-      .guided-builder .finding .bar.info { background: color-mix(in srgb, var(--current) 35%, var(--text)); }
-      .guided-builder .finding .f-copy { display: grid; gap: var(--sp-2); min-width: 0; }
-      .guided-builder .finding .f-copy > span, .guided-builder .finding small { color: color-mix(in srgb, var(--muted) 25%, var(--text)); font-size: var(--fs-micro); line-height: 1.5; }
-      .guided-builder .finding button { min-height: 44px; }
-      .guided-plan-comparison .guided-current-plan { border-block: 1px solid var(--line-strong); }
-      .guided-current-plan-heading { color: var(--text); font-size: var(--fs-tiny); font-weight: 900; padding: var(--sp-3) 0; }
-      .guided-plan-comparison .row-item { background: transparent; border-top: 1px solid var(--line); }
-      .guided-plan-scope-note { font-size: var(--fs-micro); line-height: 1.5; }
-      .guided-review-exercises { list-style: none; padding: 0; }
-      .guided-review-exercises .assign { grid-template-columns: minmax(0, 1fr); }
-      .guided-completion { background: transparent; border-color: var(--line-strong); }
-      .guided-completion .completion-mark { background: color-mix(in srgb, var(--success) 35%, var(--text)); color: var(--bg); }
 
       /* Evidence & Change: analysis/history and missing prototype primitives. */
       .m-head .eyebrow, .eyebrow {
@@ -3285,28 +2963,12 @@
       .vol-head, .vol-row { align-items: center; display: grid; gap: var(--sp-2); grid-template-columns: minmax(76px, 1fr) minmax(84px, 1.1fr) minmax(44px, .55fr) minmax(44px, .55fr) minmax(110px, auto) minmax(64px, .8fr); min-width: 0; padding: var(--sp-3) 0; }
       .delta-chip-row { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
       .delta-chip-row .d { font-size: var(--fs-micro); }
-      .mesocycle-timeline { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); position: relative; }
-      .mesocycle-timeline::before { background: var(--line-strong); content: ""; height: 2px; left: var(--sp-5); position: absolute; right: var(--sp-5); top: var(--sp-2); }
-      .timeline-node { align-items: center; display: grid; gap: var(--sp-1); justify-items: center; min-width: 0; position: relative; text-align: center; }
-      .timeline-node i { background: var(--surface); border: 2px solid var(--line-strong); border-radius: var(--r-pill); height: var(--sp-5); width: var(--sp-5); z-index: 1; }
-      .timeline-node.complete i { background: var(--current); border-color: color-mix(in srgb, var(--current) 35%, var(--text)); }
-      .timeline-node b { font-size: var(--fs-micro); }
-      .timeline-node small { color: var(--muted); font-size: var(--fs-micro); overflow-wrap: anywhere; }
       .vol-head { color: color-mix(in srgb, var(--muted-2) 70%, var(--text)); font-size: var(--fs-micro); font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
       .vol-row { border-top: 1px solid var(--line); font-size: var(--fs-micro); font-variant-numeric: tabular-nums; }
       .vol-row > span { min-width: 0; overflow-wrap: anywhere; }
       .deload-history-chip { font-size: var(--fs-micro); white-space: normal; }
 
-      @media (min-width: 760px) {
-        .guided-day-list, .exercise-browser-results { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      }
       @media (max-width: 480px) {
-        .guided-objective-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .guided-picker-controls, .guided-build-actions, .assign-controls { grid-template-columns: minmax(0, 1fr); }
-        .guided-volume-diff .drow, .guided-plan-diff .drow { grid-template-columns: minmax(0, 1fr); }
-        .guided-volume-diff .dhead, .guided-plan-diff .dhead { display: none; }
-        .guided-volume-diff .dlt, .guided-plan-diff .dlt { align-items: flex-start; border-top: 1px solid var(--line); }
-        .day-card .dc-top { align-items: flex-start; flex-direction: column; }
         .chart-set-diff .drow, .expectation-role-diff .drow, .exercise-history-diff .drow { grid-template-columns: minmax(0, 1fr); }
         .chart-set-diff .dhead, .expectation-role-diff .dhead, .exercise-history-diff .dhead { display: none; }
         .chart-set-diff .dlt, .expectation-role-diff .dlt, .exercise-history-diff .dlt { align-items: flex-start; border-top: 1px solid var(--line); }
@@ -3314,11 +2976,6 @@
         .vol-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
         .vol-row > span:last-child { grid-column: 1 / -1; }
       }
-      html.large-text-reflow .guided-objective-picker, html.large-text-reflow .guided-picker-controls, html.large-text-reflow .guided-build-actions, html.large-text-reflow .assign-controls { grid-template-columns: minmax(0, 1fr); }
-      html.large-text-reflow .guided-volume-diff .drow, html.large-text-reflow .guided-plan-diff .drow { grid-template-columns: minmax(0, 1fr); }
-      html.large-text-reflow .guided-volume-diff .dhead, html.large-text-reflow .guided-plan-diff .dhead { display: none; }
-      html.large-text-reflow .guided-volume-diff .dlt, html.large-text-reflow .guided-plan-diff .dlt { align-items: flex-start; border-top: 1px solid var(--line); }
-      html.large-text-reflow .day-card .dc-top { align-items: flex-start; flex-direction: column; }
       html.large-text-reflow .chart-set-diff .drow, html.large-text-reflow .expectation-role-diff .drow, html.large-text-reflow .exercise-history-diff .drow { grid-template-columns: minmax(0, 1fr); }
       html.large-text-reflow .chart-set-diff .dhead, html.large-text-reflow .expectation-role-diff .dhead, html.large-text-reflow .exercise-history-diff .dhead { display: none; }
       html.large-text-reflow .chart-set-diff .dlt, html.large-text-reflow .expectation-role-diff .dlt, html.large-text-reflow .exercise-history-diff .dlt { align-items: flex-start; border-top: 1px solid var(--line); }
@@ -3982,8 +3639,6 @@
       .templates-view > .template-library { order: 3; }
       .templates-view > .templates-coach { order: 4; }
       .templates-view > [data-action="save-template"] { order: 5; }
-      .templates-view > .mesocycle-planner { order: 6; }
-      .templates-view > .mesocycle-history { order: 7; }
       .templates-view .plan-heading {
         border-bottom: 1px solid var(--line);
         padding-bottom: var(--sp-5);
@@ -4021,12 +3676,6 @@
         border-top-color: var(--line);
         padding-inline: 0;
       }
-      .templates-view > .mesocycle-planner {
-        border-top: 1px solid var(--line);
-        margin-top: var(--sp-5);
-        padding-top: var(--sp-7);
-      }
-
       .progress-workspace {
         gap: var(--sp-6);
       }
@@ -4510,185 +4159,6 @@
       }
       html.large-text-reflow .readiness-review-sheet .readiness-change-entry .dlt,
       html.large-text-reflow .destructive-sheet .cancel-workout-diff .dlt {
-        align-items: flex-start;
-        border-top: 1px solid var(--line);
-      }
-
-      /* M4 guided mesocycle: keep the five-stage planner and its canonical
-         muscle scope, while applying the mockup's denser ledger treatment. */
-      body:has(.guided-builder) .brand-bar {
-        display: none;
-      }
-      .guided-builder {
-        gap: var(--sp-4);
-      }
-      .guided-builder-header {
-        margin-inline: calc(0px - var(--sp-6));
-        padding: var(--sp-2) var(--sp-6);
-        top: 0;
-      }
-      .guided-builder-header > .row button {
-        background: transparent;
-        border: 0;
-        font-size: var(--fs-tiny);
-        min-height: 44px;
-        padding-inline: 0;
-        width: auto;
-      }
-      .guided-builder-header > .row button:last-child {
-        border: 1px solid var(--line);
-        border-radius: var(--r-pill);
-        padding-inline: var(--sp-4);
-      }
-      .guided-builder .primary-action {
-        background: var(--action);
-        border-color: var(--action);
-        color: var(--on-action);
-      }
-      .guided-builder .section-heading {
-        gap: var(--sp-2);
-      }
-      .guided-builder .section-heading h2 {
-        font-size: var(--fs-xl);
-        letter-spacing: -.03em;
-        line-height: 1.12;
-      }
-      .guided-builder .section-heading p {
-        font-size: var(--fs-tiny);
-        line-height: 1.45;
-      }
-      .guided-builder .field {
-        gap: var(--sp-2);
-        padding: var(--sp-3) 0;
-      }
-      .guided-builder .stepper {
-        gap: var(--sp-2);
-        grid-template-columns: 44px minmax(64px, 1fr) 44px;
-      }
-      .guided-builder .stepper .d {
-        grid-column: auto;
-      }
-      .guided-builder .guided-objective-picker {
-        gap: var(--sp-2);
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-      }
-      .guided-builder .guided-objective-picker label > span {
-        font-size: var(--fs-micro);
-        padding-inline: var(--sp-2);
-      }
-      .guided-builder :is(.equipment-picker, .muscle-scope-panel) {
-        padding: var(--sp-3) 0;
-      }
-      .guided-builder .guided-priority-summary {
-        gap: var(--sp-2);
-      }
-      .guided-builder .guided-priority-row {
-        min-height: 62px;
-      }
-      .guided-builder .guided-volume-diff .drow,
-      .guided-builder .guided-plan-diff .drow {
-        grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr) 104px;
-      }
-      .guided-builder .guided-volume-diff .dhead,
-      .guided-builder .guided-plan-diff .dhead {
-        display: grid;
-      }
-      .guided-builder .guided-volume-diff :is(.plan, .act, .dlt),
-      .guided-builder .guided-plan-diff :is(.plan, .act, .dlt) {
-        min-width: 0;
-        padding: var(--sp-2) var(--sp-3);
-      }
-      .guided-builder .guided-volume-diff :is(.lbl, .val, .d),
-      .guided-builder .guided-plan-diff :is(.lbl, .val, .d) {
-        font-size: var(--fs-micro);
-        line-height: 1.25;
-      }
-      .guided-builder .guided-volume-diff .dlt,
-      .guided-builder .guided-plan-diff .dlt {
-        align-items: center;
-        border-top: 0;
-        overflow: hidden;
-      }
-      .guided-builder .guided-volume-diff .dlt .status-pill,
-      .guided-builder .guided-plan-diff .dlt .status-pill {
-        font-size: var(--fs-micro);
-        line-height: 1.1;
-        max-width: 100%;
-        min-height: 0;
-        padding: var(--sp-1) var(--sp-2);
-        text-align: center;
-        white-space: normal;
-      }
-      .guided-builder .guided-target-claim[data-conf="1"] {
-        margin: 0;
-        padding: var(--sp-2) var(--sp-3);
-      }
-      .guided-builder .day-card .dc-top {
-        min-height: 52px;
-        padding: var(--sp-3);
-      }
-      .guided-builder .exercise-browser-results {
-        gap: 0;
-      }
-      .guided-builder .exercise-browser-card {
-        gap: var(--sp-2);
-        padding: var(--sp-3) 0;
-      }
-      .guided-builder .exercise-browser-card h3 {
-        font-size: var(--fs-base);
-      }
-      .guided-builder .exercise-browser-card .primary-action {
-        font-size: var(--fs-micro);
-        min-height: 44px;
-      }
-      .guided-builder .finding {
-        gap: var(--sp-2);
-        padding: var(--sp-3) 0;
-      }
-      .guided-builder .finding .f-copy {
-        gap: var(--sp-1);
-      }
-      .guided-builder .finding .f-copy > strong {
-        font-size: var(--fs-tiny);
-        line-height: 1.3;
-      }
-      .guided-builder .guided-plan-comparison .row-item {
-        min-height: 48px;
-        padding: var(--sp-3) 0;
-      }
-      .guided-builder .guided-plan-comparison .row-item :is(b, span, .ri-val) {
-        font-size: var(--fs-micro);
-      }
-
-      @media (max-width: 360px) {
-        .guided-builder .guided-objective-picker {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-        .guided-builder .guided-volume-diff .drow,
-        .guided-builder .guided-plan-diff .drow {
-          grid-template-columns: minmax(0, 1fr);
-        }
-        .guided-builder .guided-volume-diff .dhead,
-        .guided-builder .guided-plan-diff .dhead {
-          display: none;
-        }
-        .guided-builder .guided-volume-diff .dlt,
-        .guided-builder .guided-plan-diff .dlt {
-          align-items: flex-start;
-          border-top: 1px solid var(--line);
-        }
-      }
-      html.large-text-reflow .guided-builder .guided-objective-picker,
-      html.large-text-reflow .guided-builder .guided-volume-diff .drow,
-      html.large-text-reflow .guided-builder .guided-plan-diff .drow {
-        grid-template-columns: minmax(0, 1fr);
-      }
-      html.large-text-reflow .guided-builder .guided-volume-diff .dhead,
-      html.large-text-reflow .guided-builder .guided-plan-diff .dhead {
-        display: none;
-      }
-      html.large-text-reflow .guided-builder .guided-volume-diff .dlt,
-      html.large-text-reflow .guided-builder .guided-plan-diff .dlt {
         align-items: flex-start;
         border-top: 1px solid var(--line);
       }
@@ -5194,7 +4664,6 @@
     <script src="./programming-family-ledger.js"></script>
     <script src="./prescription-engine.js"></script>
     <script src="./exception-resolver.js"></script>
-    <script src="./guided-mesocycle.js"></script>
     <script src="./rest-completion-controller.js"></script>
     <script src="./backup-contract.js"></script>
     <script src="./app-foundation.js"></script>

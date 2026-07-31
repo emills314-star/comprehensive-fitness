@@ -273,47 +273,6 @@ test("qualifying productive personal dose overrides missing-data goal set caps",
   assert.match(`${snapshot.basePrescription.volume.reason} ${snapshot.finalPrescription.userExplanation}`, /personal.*(precedence|preserv|productive)|productive.*personal/i);
 });
 
-test("one resolved profile propagates through goal-specific full mesocycles", () => {
-  const create = (trainingGoal) => engine.createMesocycle({
-    trainingGoal,
-    experienceLevel: "novice",
-    trainingDays: 2,
-    includedMuscleGroupIds: ["chest"],
-    sessionDurationTargetMinutes: 60,
-    sessionDurationMaximumMinutes: 80,
-    createdAt: CREATED_AT
-  });
-  const plans = ["strength", "muscular_endurance", "general_fitness"].map(create);
-  plans.forEach((plan, index) => {
-    const goal = ["strength", "muscular_endurance", "general_fitness"][index];
-    assert.equal(plan.programmingContext.goal.resolvedValue, goal);
-    assert.equal(plan.programmingContext.profileVersion, "training-profile/1.1.0");
-    assert.match(plan.name, new RegExp(goal.replaceAll("_", " "), "i"));
-    Object.values(plan.pools).forEach((pool) => {
-      assert.equal(pool.programmingContext.goal.resolvedValue, goal);
-      pool.candidates.forEach((candidate) => assert.equal(candidate.programmingContext.goal.resolvedValue, goal));
-    });
-    plan.programSlots.forEach((slot) => assert.equal(slot.programmingContext.goal.resolvedValue, goal));
-    plan.sessions.forEach((session) => {
-      assert.equal(session.programmingContext.goal.resolvedValue, goal);
-      assert.doesNotMatch(session.baseSessionIntent, /hypertrophy/i);
-      assert.match(session.baseSessionIntent, new RegExp(goal.replaceAll("_", " "), "i"));
-      assert.ok(session.estimatedDurationMinutes <= plan.constraints.sessionDurationMaximumMinutes);
-    });
-    assert.match(plan.programReview.explanation.join(" "), new RegExp(goal.replaceAll("_", " "), "i"));
-  });
-  assert.deepEqual(plans[0].constraints, plans[1].constraints);
-  assert.deepEqual(plans[1].constraints, plans[2].constraints);
-  const vectors = plans.map((plan) => JSON.stringify(
-    Object.values(plan.pools).flatMap((pool) => pool.candidates.map((candidate) => ({
-      reps: candidate.recommendedRepRange,
-      rest: candidate.recommendedRestSeconds,
-      progression: candidate.progressionMethod
-    })))
-  ));
-  assert.equal(new Set(vectors).size, 3, "strength, endurance, and general mesocycles did not materially differ");
-});
-
 test("no-overlap goal policy is visible and recommends or reviews a compatible alternative", () => {
   const direct = engine.prescribeExercise({
     exerciseId: "ex_deadlift",
@@ -330,20 +289,14 @@ test("no-overlap goal policy is visible and recommends or reviews a compatible a
   assert.match(direct.finalPrescription.userExplanation, /conflict|outside|does not overlap/i);
   assert.ok(direct.finalPrescription.goalPolicyConflict.alternativeExerciseId, "a catalog-compatible endurance alternative was not suggested");
 
-  const plan = engine.createMesocycle({
+  const pool = engine.rankExercisePool("glutes", {
     trainingGoal: "muscular_endurance",
     experienceLevel: "advanced",
-    trainingDays: 2,
-    includedMuscleGroupIds: ["glutes"],
     availableEquipment: ["all"],
-    createdAt: CREATED_AT
+    generatedAt: CREATED_AT
   });
-  const pool = plan.pools.glutes;
   assert.ok(pool.candidates.some((candidate) => !candidate.goalPolicyConflict), "fixture has no compatible alternative to adjudicate");
-  plan.selectedPortfolio.filter((candidate) => candidate.goalPolicyConflict).forEach((candidate) => {
-    assert.ok(plan.programReview.warnings.some((warning) => warning.type === "goal_policy_conflict" && warning.exerciseIds.includes(candidate.exerciseId)));
-  });
-  assert.ok(!plan.selectedPortfolio[0]?.goalPolicyConflict, "a conflicting candidate outranked an available compatible alternative");
+  assert.ok(!pool.candidates[0]?.goalPolicyConflict, "a conflicting candidate outranked an available compatible alternative");
 });
 
 test("material recommendation fields carry structured, referentially valid scientific provenance", () => {
@@ -416,11 +369,6 @@ test("material contract versions are coherent, deterministic, and retain reposit
   mismatched.schemaVersion = "1.0.0";
   assert.throws(() => deserializeRecommendationSnapshot(refreshRecommendationChecksum(mismatched)), /version pair|requires/i);
 
-  const planA = engine.createMesocycle({ trainingGoal: "strength", trainingDays: 2, includedMuscleGroupIds: ["chest"], createdAt: CREATED_AT });
-  const planB = engine.createMesocycle({ trainingGoal: "strength", trainingDays: 2, includedMuscleGroupIds: ["chest"], createdAt: CREATED_AT });
-  assert.equal(planA.schemaVersion, "mesocycle/2.6.0");
-  assert.equal(planA.id, planB.id);
-  assert.deepEqual(planA, planB);
 });
 
 (async function run() {

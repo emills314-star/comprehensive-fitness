@@ -1,7 +1,6 @@
 
       function renderTemplates() {
         const running = activeWorkoutSession();
-        if (guidedMesocycleView !== "closed") return `<section class="view templates-view">${renderMesocyclePlanner()}</section>`;
         return `
           <section class="view templates-view">
             <div class="screen-heading plan-heading">
@@ -12,8 +11,6 @@
             ${running ? '<section class="active-workout-notice" id="active-workout-template-notice" role="status"><div><div class="section-kicker">Workout in progress</div><strong>' + escapeHtml(running.title || 'Active workout') + '</strong><span>Finish or cancel your current workout before starting another template.</span></div><div><button class="primary-action" type="button" data-action="return-active-workout">Return to Active Workout</button><button class="text-danger-action" type="button" data-action="request-cancel-workout-from-template">Manage Active Workout</button></div></section>' : ''}
             <div class="template-library">${data.templates.length ? data.templates.map((template) => renderTemplateCard(template, running)).join("") : '<div class="empty-state">Create a leg day, push day, pull day, or any repeatable workout. Templates store exercises, sets, and target reps; you fill in weights during the workout.</div>'}</div>
             <button class="secondary-action full-width" type="button" data-action="save-template">Save current workout as a template</button>
-            ${renderMesocyclePlanner()}
-            ${renderHistoricalMesocycles()}
           </section>
         `;
       }
@@ -1845,7 +1842,7 @@
             <label class="field"><span class="f-name">Band tolerance</span><input type="number" min="3" max="20" step="1" value="${escapeHtml(baseline.band)}" data-action="baseline-band" /></label>
           </div>`;
         const dataAndBackup = `
-          <div class="callout info privacy-boundary"><b>Local by default</b><span>Workout history, templates, mesocycles, settings, readiness and imported personal evidence stay in this browser unless you explicitly export them or enable the workout cloud copy. Public research files ship with the app.</span></div>
+          <div class="callout info privacy-boundary"><b>Local by default</b><span>Workout history, templates, settings, readiness and imported personal evidence stay in this browser unless you explicitly export them or enable the workout cloud copy. Public research files ship with the app.</span></div>
           ${renderAlertSetting("cloud-workout-sync-consent", "Optional workout cloud copy", "Default off. When enabled, the app may transmit the full current session—including an active, unsubmitted workout—and every associated exercise and set object. Server copies expire after 90 days, are write-only, and cannot be restored in the app.", cloudEnabled, { stateLabel: cloudEnabled ? "Enabled" : "Local only" })}
           <div class="callout bad cloud-not-backup"><b>Cloud copy is not a backup</b><span>There is no cloud-history or restore endpoint. A downloaded app-data export is the only implemented copy that can be imported to recover these records. ${cloudEnabled ? "Cloud copy is currently enabled, but it still cannot restore this app." : "Cloud copy is currently off."}</span></div>
           <div class="recoverability-list"><div class="m-label"><span>Recoverability</span><span>verified facts</span></div>${renderStoragePersistenceFact()}<div class="row-item"><span class="ri-copy"><b>Recoverable copy</b><span>The app does not record when you last exported. Create and retain a downloaded export yourself.</span></span><span class="ri-val">Export only</span></div></div>
