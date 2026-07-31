@@ -141,7 +141,7 @@ The application now has one versioned current exception-action pipeline. Ordinar
 
 Direct detector UI consumers, target-mutating fallbacks, duplicate recommendation writers, legacy/modern recommendation renderers, visible confidence/evidence output, Today Program pulse, Progress score/expectation output, and prospective completion coaching were removed. Legacy snapshots remain compatibility-only. Numeric fatigue, readiness, plateau, deload, grade, evidence, and confidence thresholds are not approved and cannot produce a current action.
 
-Exit evidence is recorded in `MILESTONE_LOG.md`: 59/59 public scripts, focused M2 contracts, lint, typecheck, production build, 41-file web sync, 40-asset PWA verification, privacy scan, 2/2 mobile Playwright scenarios at 390 × 844, and independent recommendation-logic approval passed. The service-worker cache is v96. M3 may begin only after the M2 local checkpoint hash is recorded.
+Exit evidence is recorded in `MILESTONE_LOG.md`: 59/59 public scripts, focused M2 contracts, lint, typecheck, production build, 41-file web sync, 40-asset PWA verification, privacy scan, 2/2 mobile Playwright scenarios at 390 × 844, and independent recommendation-logic approval passed. The service-worker cache is v96. M2 is recoverable at local checkpoint `243ed81`; M3 may begin.
 
 ## 5. Temporary structure ledger
 

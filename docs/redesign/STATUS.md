@@ -49,14 +49,13 @@
 
 ## Current objective
 
-M0 and M1 are complete and recoverable. M2 has passed its objective exit gate and awaits its local checkpoint hash. M3 planner/mesocycle deletion is next.
+M0 through M2 are complete and recoverable. M2 is checkpointed at `243ed81`. M3 planner/mesocycle deletion is next.
 
 ## Next actions
 
-1. Create and record the authorized local M2 checkpoint.
-2. Begin M3 planner/mesocycle deletion without reactivating legacy recommendation paths.
-3. Continue through M3–M8 with code, tests, living docs, and deletion evidence integrated per milestone.
-4. Automated, privacy, migration, independent, target-device, and five-workout human acceptance gates precede any separately authorized publication.
+1. Begin M3 planner/mesocycle deletion without reactivating legacy recommendation paths.
+2. Continue through M3–M8 with code, tests, living docs, and deletion evidence integrated per milestone.
+3. Automated, privacy, migration, independent, target-device, and five-workout human acceptance gates precede any separately authorized publication.
 
 ## Open issues
 

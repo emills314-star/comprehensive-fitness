@@ -175,4 +175,4 @@ No material contradiction was found in the final documents. Existing fatigue, re
 - The temporary legacy grade bridge remains until M7; stored historical grade values/versions are preserved.
 - Verification used Node 24.18.0/npm 11.16.0 rather than the repository-pinned Node 22.23.x/npm 10.9.x.
 - Real private-history replay, physical-device/notification validation, desktop/native acceptance, Erik's five-workout field test, deployment, push, merge, and publication remain unperformed.
-- **Checkpoint:** pending the immediately following authorized local milestone commit; record its hash before M3 begins.
+- **Checkpoint:** `243ed81` (`feat(redesign): establish canonical exception resolver`).
