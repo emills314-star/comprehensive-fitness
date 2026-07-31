@@ -257,4 +257,4 @@ No final-document contradiction was found. The current planner's validation, equ
 - Two broader Strong-history Playwright assertions currently disagree with the shared runtime's recommendation copy/prior-row resolution. They were not caused by planner-field removal and remain separately reproducible; M3-specific Strong fixture normalization itself is planner-free.
 - Verification used Node 24.18.0/npm 11.16.0 instead of the repository-pinned Node 22.23.x/npm 10.9.x.
 - Real private-history replay, physical-device/notification validation, full browser matrix, independent migration verification, five-workout field testing, deployment, push, merge, and publication remain unperformed.
-- **Checkpoint:** pending local M3 commit.
+- **Checkpoint:** `3e102e2` (`feat(redesign): remove planner and mesocycle product`).

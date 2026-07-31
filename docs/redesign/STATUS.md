@@ -52,12 +52,12 @@
 
 ## Current objective
 
-M0 through M3 are complete locally. M2 is checkpointed at `243ed81`; the M3 checkpoint is pending creation after final diff/privacy review. M4 analytical/research-clutter deletion is next.
+M0 through M3 are complete and recoverable. M2 is checkpointed at `243ed81`; M3 is checkpointed at `3e102e2`. M4 analytical/research-clutter deletion is next.
 
 ## Next actions
 
-1. Create the recoverable M3 local checkpoint.
-2. Begin M4 analytical/research-clutter deletion without reactivating planner or duplicate recommendation paths.
+1. Begin M4 analytical/research-clutter deletion without reactivating planner or duplicate recommendation paths.
+2. Continue sequential milestone gates through M8.
 3. Automated, privacy, migration, independent, target-device, and five-workout human acceptance gates precede any separately authorized publication.
 
 ## Open issues

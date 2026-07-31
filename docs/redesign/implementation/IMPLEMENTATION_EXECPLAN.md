@@ -151,7 +151,7 @@ The active application no longer contains a guided planner or mesocycle product.
 
 Legacy planning data survives only at a versioned input boundary. `backup-contract.js` accepts obsolete keys, preserves workout/session/set/routine observations and immutable embedded history, and discards planner collections/linkage/settings before active import or current export. Current recommendation and workout writers emit no planner linkage, and current schemas treat historical planner fields as optional read compatibility rather than required output.
 
-Exit evidence is recorded in `MILESTONE_LOG.md`: the focused decoder/deletion suite, 60/60 public scripts, 38/38 app-integration contracts, retained engine/recommendation suites, lint, typecheck, production build, 40-file web sync, 39-asset PWA verification, privacy scan, dependency search, and focused mobile Playwright verification at 390 × 844 passed. The service-worker cache is v97. No private or production data was mutated.
+Exit evidence is recorded in `MILESTONE_LOG.md`: the focused decoder/deletion suite, 60/60 public scripts, 38/38 app-integration contracts, retained engine/recommendation suites, lint, typecheck, production build, 40-file web sync, 39-asset PWA verification, privacy scan, dependency search, and focused mobile Playwright verification at 390 × 844 passed. The service-worker cache is v97. No private or production data was mutated. M3 is recoverable at local checkpoint `3e102e2`.
 
 ## 5. Temporary structure ledger
 
