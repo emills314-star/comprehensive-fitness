@@ -4,7 +4,7 @@
 
 - **Purpose:** Evidence-based status, priorities, defects, debt, and open product/research questions
 - **Last verified:** 2026-07-31
-- **Repository:** zero-based redesign through M7, pending the recoverable M7 checkpoint
+- **Repository:** zero-based redesign through M7 at checkpoint `0223b36`
 - **Verification status:** VERIFIED locally through M7, including static/public/build/package/privacy gates, mobile/desktop running-app coverage, visual inspection, and independent review. Hosted/native/physical-device verification has not occurred
 - **Related:** [Project](PROJECT.md), [architecture](ARCHITECTURE.md), [decision engine](DECISION_ENGINE.md), [UI/UX](UI_UX.md)
 
@@ -97,7 +97,7 @@ All user-facing work now has a mandatory hosted-site browser-verification gate. 
 
 **IMPLEMENTED LOCALLY (M6):** The active logger shows full variant names, stable-target headers, role-aware prior facts, direct load/reps/RPE entry, clear set states, ordinary substitution/custom variants, and one consolidated rest lifecycle with overtime and recovery. Workout changes remain local unless routine saving is explicit. Plate-calculator, live execution-quality, duplicate-timer, equipment-blocking, and app-level exclusion paths are removed; legacy submitted fields remain bounded read-only compatibility data.
 
-**IMPLEMENTED LOCALLY (M7):** New submissions use one prospective actual-work A–F grade while legacy grades remain immutable. Completion is concise, and Progress uses exact variant/resistance/role source facts plus all chronological history. Focused/public/build/package/privacy gates, 4/4 mobile and 4/4 desktop M7 scenarios, 8/8 affected mobile regressions, fresh screenshot inspection, and independent review pass. The recoverable M7 checkpoint is the next repository action; M8 has not begun.
+**IMPLEMENTED LOCALLY (M7):** New submissions use one prospective actual-work A–F grade while legacy grades remain immutable. Completion is concise, and Progress uses exact variant/resistance/role source facts plus all chronological history. Focused/public/build/package/privacy gates, 4/4 mobile and 4/4 desktop M7 scenarios, 8/8 affected mobile regressions, fresh screenshot inspection, and independent review pass. Checkpoint `0223b36` is recoverable; M8 has not begun.
 
 **NEEDS REVIEW:** No complete private export/replay, independent migration review, repository-pinned runtime rerun, physical-device acceptance, or five-workout field test has occurred. Push, deployment, visual-baseline acceptance, and publication remain unauthorized.
 

@@ -68,15 +68,14 @@
 
 ## Current objective
 
-M0 through M7 are complete locally. M2 is checkpointed at `243ed81`; M3 is checkpointed at `3e102e2`; M4 is checkpointed at `576f582`; M5 is checkpointed at `ef71085`; M6 is checkpointed at `441b6cb`. The M7 checkpoint is the exact next repository action.
+M0 through M7 are complete locally. M2 is checkpointed at `243ed81`; M3 is checkpointed at `3e102e2`; M4 is checkpointed at `576f582`; M5 is checkpointed at `ef71085`; M6 is checkpointed at `441b6cb`; M7 is checkpointed at `0223b36`.
 
 M7 implements the prospective actual-work grade, immutable legacy-grade reader, concise completion, factual highlights, contextual Progress, exact role/variant/resistance charting, normalized display units with raw source facts, and all-history exercise selection. Focused contracts, effective 62/62 public checks, build/package/privacy gates, 4/4 mobile and 4/4 desktop M7 scenarios, 8/8 affected mobile regressions, visual inspection, and final independent review pass.
 
 ## Next actions
 
-1. Create the recoverable M7 implementation checkpoint and record its commit.
-2. Re-read the M8 authority and temporary-structure ledger.
-3. Begin only M8 dead-structure deletion and packaging closure.
+1. Re-read the M8 authority and temporary-structure ledger.
+2. Begin only M8 dead-structure deletion and packaging closure.
 
 ## Open issues
 
@@ -87,7 +86,7 @@ M7 implements the prospective actual-work grade, immutable legacy-grade reader, 
 - M7 dependency audit could not reach the external npm registry under environment policy. M7 changed no package metadata, and its local dependency/build/runtime evidence passed. M8 has not begun.
 - Two broader Strong-history browser assertions disagree with current shared-runtime copy/prior-row resolution; they were not caused by M3 planner-field deletion and remain separately reproducible.
 - Pre-existing uncommitted `.claude/`, `.vercel/`, and `redesign/prompts/` paths must remain preserved.
-- The M7 implementation and living documents agree. Its checkpoint is pending only so the verified candidate can be recorded as one recoverable milestone revision.
+- The M7 implementation and living documents agree at checkpoint `0223b36`.
 - Local implementation is authorized. Commit, push, merge, deployment, real-data migration, baseline acceptance, and publication are not authorized or completed.
 
 ## Last verification

@@ -610,4 +610,4 @@ No final-document contradiction was found. The current four-tab shell and `confi
 
 **PASS.** New submissions have one versioned actual-work grade; legacy grades remain immutable; completion is concise; exact variants, resistance types, working-set roles, units, provenance, and old history remain trustworthy and inspectable; deleted completion/analytics surfaces are absent; static, public, build, package, privacy, running-app, visual, and independent-review gates pass. M8 may begin after the recoverable M7 checkpoint is recorded.
 
-**Checkpoint:** pending local M7 checkpoint commit.
+**Checkpoint:** `0223b36` (`feat(redesign): finalize grade and factual progress`).

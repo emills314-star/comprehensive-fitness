@@ -4,7 +4,7 @@
 
 - **Purpose:** Verified user experience, interaction contracts, and intended UX gaps
 - **Last verified:** 2026-07-31
-- **Repository:** zero-based redesign through M7, pending the recoverable M7 checkpoint
+- **Repository:** zero-based redesign through M7 at checkpoint `0223b36`
 - **Verification status:** VERIFIED locally through M7, including 390 × 844 completion/Progress states, desktop coverage, affected-flow regression, visual inspection, and independent review. Hosted and physical-device verification remain unverified
 - **Related:** [Project](PROJECT.md), [architecture](ARCHITECTURE.md), [decision engine](DECISION_ENGINE.md), [roadmap](ROADMAP.md)
 

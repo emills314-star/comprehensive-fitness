@@ -205,7 +205,7 @@ The implementation replaces the live adherence/plan grade with one prospective A
 
 Focused contracts, the effective 62/62 public gate, lint, typecheck, production build, workflow/privacy/package verification, root/`www` parity, 4/4 mobile M7, 4/4 desktop M7, and the consolidated 8/8 affected mobile regression gate pass. Fresh 390 × 844 screenshots were inspected. Independent review found and verified corrections for action-handling semantics, exact action scope, mixed units, same-name resistance variants, source provenance, high-repetition estimate bounds, semantic heading structure, and no-highlight Progress context.
 
-The external dependency audit could not reach the npm registry under the environment policy; M7 changes no package metadata and local package/build/runtime gates pass. Pinned Node 22.23.x/npm 10.9.x and physical-device acceptance remain unverified external gates. M8 may begin only after the recoverable M7 checkpoint is recorded.
+The external dependency audit could not reach the npm registry under the environment policy; M7 changes no package metadata and local package/build/runtime gates pass. Pinned Node 22.23.x/npm 10.9.x and physical-device acceptance remain unverified external gates. The recoverable M7 implementation checkpoint is `0223b36`.
 
 ## 5. Temporary structure ledger
 
