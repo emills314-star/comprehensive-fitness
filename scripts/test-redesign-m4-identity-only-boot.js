@@ -74,17 +74,17 @@ installFunctions(context, foundation, [
     "./research_database/exports/json/exercise_muscle_map.json"
   ], "Import validation must reuse the boot catalog and fetch only the relationship map");
 
-  const personalHelper = functionSource(imports, "personalEvidenceBundleForImport");
   const researchHelper = functionSource(imports, "researchOnlyBundleForImport");
   const backupImport = functionSource(imports, "importDataFile");
-  const personalImport = functionSource(imports, "importPersonalEvidenceFile");
-  assert.match(personalHelper, /await\s+loadImportValidationResearch\s*\(\s*\)/);
+  const applyPendingImport = functionSource(imports, "applyPendingImport");
   assert.match(researchHelper, /await\s+loadImportValidationResearch\s*\(\s*\)/);
-  assert.match(backupImport, /preparedEvidence\s*=\s*await\s+personalEvidenceBundleForImport/);
   assert.match(backupImport, /preparedEvidence\s*=\s*await\s+researchOnlyBundleForImport/);
-  assert.ok(backupImport.indexOf("validateImportedExecutableRecommendationSnapshots") < backupImport.indexOf('writeIndexedValue("app-data"'), "Executable compatibility validation must finish before the imported backup is written");
-  assert.match(personalImport, /const prepared = await personalEvidenceBundleForImport/);
-  assert.ok(personalImport.indexOf("personalEvidenceBundleForImport") < personalImport.indexOf('writeIndexedValue("app-data"'), "Personal evidence validation must finish before its package is written");
+  const executableValidationIndex = backupImport.indexOf("validateImportedExecutableRecommendationSnapshots");
+  const previewStagingIndex = backupImport.indexOf("pendingImport = {");
+  assert.ok(executableValidationIndex !== -1 && previewStagingIndex !== -1 && executableValidationIndex < previewStagingIndex, "Executable compatibility validation must finish before the imported backup is staged for apply");
+  assert.doesNotMatch(backupImport, /writeIndexedValuesAtomically|writeIndexedValue\s*\(\s*["']app-data["']/, "Selecting a backup file must stage a validated preview without a durable write");
+  assert.match(applyPendingImport, /const\s+operation\s*=\s*pendingImport[\s\S]*writeIndexedValuesAtomically\s*\(\s*writes\s*\)/, "Only explicit Apply may atomically persist the staged import candidate");
+  assert.doesNotMatch(imports, /personalEvidenceBundleForImport|importPersonalEvidenceFile/, "The removed personal-evidence import path must not survive as dormant runtime code");
   assert.doesNotMatch(imports, /prescriptionEngine\s*=\s*prepared\.engine/, "Import-only analytical evidence must not become a second runtime source of truth");
 
   const researchShellAssets = APP_SHELL.filter((asset) => asset.startsWith("/research_database/exports/json/"));

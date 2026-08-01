@@ -221,15 +221,12 @@ function activeEntities() {
 function baseData() {
   const history = historyEntities();
   return {
-    appDataVersion: 2,
+    appDataVersion: 3,
     domainMigrationVersion: 3,
     sessions: history.sessions,
     exercises: history.exercises,
     sets: history.sets,
     templates: [controlTemplate()],
-    recommendationHistory: [],
-    manualOverrides: [],
-    personalEvidencePackage: null,
     rawImports: [],
     migrationAudit: [],
     dataRevision: 10,

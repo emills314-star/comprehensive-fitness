@@ -34,6 +34,9 @@ const M0_BACKUPS = M0_BACKUP_NAMES.map((name) => ({
   name,
   value: JSON.parse(fs.readFileSync(path.resolve(__dirname, "../fixtures/redesign-m0", name), "utf8"))
 }));
+const M0_ACTIVE_DRAFT = JSON.parse(
+  fs.readFileSync(path.resolve(__dirname, "../fixtures/redesign-m0/active-draft-recovery.json"), "utf8")
+);
 
 async function captureAuditScreenshot(page, name) {
   fs.mkdirSync(AUDIT_DIR, { recursive: true });
@@ -186,11 +189,63 @@ async function activeState(page) {
       exercises,
       sets: data.sets.filter((item) => exerciseIds.has(item.exerciseId)),
       timer: timer ? structuredClone(timer) : null,
-      manualOverrides: structuredClone(data.manualOverrides),
       template: structuredClone(data.templates.find((item) => item.id === session.templateId))
     };
   });
 }
+
+test("committed M0 v2 draft restores the workout, elapsed time, timer, sets, and action handling", async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(({ draft }) => {
+    localStorage.clear();
+    sessionStorage.clear();
+    localStorage.setItem("comprehensive-fitness-active-draft-v1", JSON.stringify(draft));
+  }, { draft: M0_ACTIVE_DRAFT });
+  await page.goto("/#workout");
+  await expect(page.locator(".workout-view")).toBeVisible({ timeout: 45_000 });
+
+  const restored = await page.evaluate(() => {
+    const session = data.sessions.find((item) => item.id === "synthetic-active-session");
+    const exerciseIds = new Set(data.exercises.filter((item) => item.sessionId === session?.id).map((item) => item.id));
+    return {
+      activeWorkoutId,
+      activeSessionId,
+      session,
+      exercises: data.exercises.filter((item) => exerciseIds.has(item.id)),
+      sets: data.sets.filter((item) => exerciseIds.has(item.exerciseId)),
+      timer: timer ? structuredClone(timer) : null
+    };
+  });
+
+  expect(restored.activeWorkoutId).toBe("synthetic-active-session");
+  expect(restored.activeSessionId).toBe("synthetic-active-session");
+  expect(restored.exercises.map((exercise) => exercise.id)).toEqual([
+    "synthetic-active-exercise-1",
+    "synthetic-active-exercise-2"
+  ]);
+  expect(restored.sets.map((set) => set.id)).toEqual([
+    "synthetic-active-set-1",
+    "synthetic-active-set-2"
+  ]);
+  expect(restored.sets.find((set) => set.id === "synthetic-active-set-2")).toMatchObject({
+    reps: "11",
+    rpe: "7.5",
+    completed: false
+  });
+  expect(restored.session.activeDurationMs).toBe(30 * 60 * 1000);
+  expect(restored.session.resolvedActions[0]).toMatchObject({
+    decisionId: "decision-synthetic-draft",
+    handling: "overridden"
+  });
+  expect(restored.timer).toMatchObject({
+    id: "synthetic-timer",
+    workoutId: "synthetic-active-session",
+    setId: "synthetic-active-set-1",
+    pendingNextSetId: "synthetic-active-set-2",
+    durationSeconds: 120
+  });
+});
 
 test("M6 shows stable full variant targets and preserves historical execution quality without live UI", async ({ page }) => {
   test.setTimeout(120_000);
@@ -730,15 +785,11 @@ test("M6 routine rename accepts 256 characters, rejects 257 atomically, and star
     const accepted = structuredClone(data.templates
       .find((template) => template.id === templateId)
       .exercises.find((exercise) => exercise.id === templateExerciseId));
-    const existingCustomId = "custom_public_synthetic_existing_row_12345678";
     const existingCustomName = "Public Synthetic Existing Custom Row";
     const renamedCustomName = "Public Synthetic Existing Custom Row Renamed";
     patchTemplateExercise(templateId, rowTemplateExerciseId, {
       name: existingCustomName,
-      performanceExerciseId: existingCustomId,
-      researchExerciseId: "",
-      identitySource: "user_declared_custom",
-      identityVersion: "exercise-identity/2.1.0"
+      researchExerciseId: ""
     }, false);
     patchTemplateExerciseName(templateId, rowTemplateExerciseId, renamedCustomName, false);
     const renamedExistingCustom = structuredClone(data.templates
@@ -769,7 +820,6 @@ test("M6 routine rename accepts 256 characters, rejects 257 atomically, and star
     return {
       priorPerformanceExerciseId,
       accepted,
-      existingCustomId,
       renamedExistingCustom,
       overlongWasAtomic,
       startedSessionId: startedSession?.id,
@@ -792,12 +842,10 @@ test("M6 routine rename accepts 256 characters, rejects 257 atomically, and star
   expect(result.accepted.performanceExerciseId).not.toBe(result.priorPerformanceExerciseId);
   expect(result.accepted.performanceExerciseId).toMatch(/^custom_/);
   expect(result.accepted.performanceExerciseId.length).toBeLessThanOrEqual(128);
-  expect(result.renamedExistingCustom).toMatchObject({
-    name: "Public Synthetic Existing Custom Row Renamed",
-    performanceExerciseId: result.existingCustomId,
-    researchExerciseId: "",
-    identitySource: "user_declared_custom"
-  });
+  expect(result.renamedExistingCustom.name).toBe("Public Synthetic Existing Custom Row Renamed");
+  expect(result.renamedExistingCustom.researchExerciseId).toBe("");
+  expect(result.renamedExistingCustom.identitySource).toBe("user_declared_custom");
+  expect(result.renamedExistingCustom.performanceExerciseId).toMatch(/^custom_/);
   expect(result.overlongWasAtomic).toBe(true);
   expect(result.startedSessionId).toBe(IDS.activeSession);
   expect(result.startedName).toBe(MAX_VARIANT_NAME);
@@ -805,66 +853,14 @@ test("M6 routine rename accepts 256 characters, rejects 257 atomically, and star
   expect(result.startedPerformanceExerciseId).toBe(result.accepted.performanceExerciseId);
   expect(result.startedHasPriorComparableHistory).toBe(false);
   expect(result.startedExistingCustomName).toBe("Public Synthetic Existing Custom Row Renamed");
-  expect(result.startedExistingCustomPerformanceExerciseId).toBe(result.existingCustomId);
+  expect(result.startedExistingCustomPerformanceExerciseId).toBe(result.renamedExistingCustom.performanceExerciseId);
 });
 
-test("M6 keeps lifetime PR high-water and submitted equipment evidence while clearing active equipment blockers", async ({ page }) => {
+test("M6 preserves submitted equipment evidence while discarding active equipment blockers", async ({ page }) => {
   test.setTimeout(120_000);
   await installFixture(page, m6Fixture());
 
-  const boundaries = await page.evaluate(({ activeExerciseId, activeSessionId }) => {
-    const currentSession = data.sessions.find((session) => session.id === activeSessionId);
-    const currentExercise = data.exercises.find((exercise) => exercise.id === activeExerciseId);
-    const olderSession = {
-      id: "public-synthetic-lifetime-pr-session",
-      date: "2025-12-01",
-      title: "Public synthetic older lifetime high-water",
-      submitted: true,
-      workoutStarted: false,
-      workoutState: "completed",
-      submittedAt: "2025-12-01T18:00:00.000Z",
-      completedAt: "2025-12-01T18:00:00.000Z"
-    };
-    const olderExercise = {
-      id: "public-synthetic-lifetime-pr-exercise",
-      sessionId: olderSession.id,
-      name: currentExercise.name,
-      performanceExerciseId: currentExercise.performanceExerciseId,
-      researchExerciseId: currentExercise.researchExerciseId,
-      identitySource: currentExercise.identitySource,
-      order: 0,
-      resistanceType: "external",
-      isBodyweight: false
-    };
-    const olderSet = {
-      id: "public-synthetic-lifetime-pr-set",
-      exerciseId: olderExercise.id,
-      setNumber: 1,
-      setType: "straight",
-      classificationSource: "recorded",
-      completed: true,
-      skipped: false,
-      weight: 225,
-      reps: 5,
-      rpe: 8,
-      resistanceType: "external",
-      isBodyweight: false
-    };
-    data = {
-      ...data,
-      sessions: [...data.sessions, olderSession],
-      exercises: [...data.exercises, olderExercise],
-      sets: [...data.sets, olderSet]
-    };
-    entityStructureRevision += 1;
-    entityIndexCache = null;
-    const lifetimePrevious = workoutPrPreviousHighWater(currentSession, currentExercise, {
-      exercise: currentExercise.name,
-      type: "Heaviest set",
-      value: "230 lb"
-    });
-    const ageDays = Math.floor((Date.parse(currentSession.date) - Date.parse(olderSession.date)) / 86_400_000);
-
+  const boundaries = await page.evaluate(() => {
     const restriction = {
       status: "blocked",
       reason: "unavailable_equipment",
@@ -917,7 +913,6 @@ test("M6 keeps lifetime PR high-water and submitted equipment evidence while cle
       recommendationSnapshot: exercise.recommendationSnapshot
     });
     const submittedBlockBytesBefore = blockerBytes(submittedBlocked);
-    const activeRecommendationBytesBefore = JSON.stringify(activeBlocked.recommendationSnapshot);
     const normalized = normalizeLoadedData({
       ...emptyData(),
       appDataVersion: 3,
@@ -948,31 +943,20 @@ test("M6 keeps lifetime PR high-water and submitted equipment evidence while cle
     const normalizedActive = normalized.exercises.find((exercise) => exercise.id === activeBlocked.id);
 
     return {
-      ageDays,
-      lifetimePrevious,
       submittedBlockBytesBefore,
       submittedBlockBytesAfter: blockerBytes(normalizedSubmitted),
       activeHasExecutionBlocked: Object.hasOwn(normalizedActive, "executionBlocked"),
       activeHasSafetyRestriction: Object.hasOwn(normalizedActive, "safetyRestriction"),
-      activeFinalPrescription: structuredClone(normalizedActive.finalPrescription),
-      activeRecommendationBytesBefore,
-      activeRecommendationBytesAfter: JSON.stringify(normalizedActive.recommendationSnapshot)
+      activeHasFinalPrescription: Object.hasOwn(normalizedActive, "finalPrescription"),
+      activeHasRecommendationSnapshot: Object.hasOwn(normalizedActive, "recommendationSnapshot")
     };
-  }, {
-    activeExerciseId: IDS.activeBenchExercise,
-    activeSessionId: IDS.activeSession
   });
 
-  expect(boundaries.ageDays).toBeGreaterThan(183);
-  expect(boundaries.lifetimePrevious).toBe("225 lb");
   expect(boundaries.submittedBlockBytesAfter).toBe(boundaries.submittedBlockBytesBefore);
   expect(boundaries.activeHasExecutionBlocked).toBe(false);
   expect(boundaries.activeHasSafetyRestriction).toBe(false);
-  expect(boundaries.activeFinalPrescription).not.toHaveProperty("executionBlocked");
-  expect(boundaries.activeFinalPrescription).not.toHaveProperty("executable");
-  expect(boundaries.activeFinalPrescription).not.toHaveProperty("safetyRestriction");
-  expect(boundaries.activeFinalPrescription).not.toHaveProperty("reason");
-  expect(boundaries.activeRecommendationBytesAfter).toBe(boundaries.activeRecommendationBytesBefore);
+  expect(boundaries.activeHasFinalPrescription).toBe(true);
+  expect(boundaries.activeHasRecommendationSnapshot).toBe(true);
 });
 
 test("M6 ordinary substitution splits actual identity, audits the override, and changes the routine only after explicit save", async ({ page }) => {
@@ -1009,7 +993,7 @@ test("M6 ordinary substitution splits actual identity, audits the override, and 
   expect(replacementSets[0].completed).toBe(false);
   expect(replacementSets[0].previousComparableSet).toBeFalsy();
 
-  const override = afterSubstitution.manualOverrides.find((item) => item.action === "substitute_exercise");
+  const override = replacement.manualOverrides.find((item) => item.action === "substitute_exercise");
   expect(override).toMatchObject({
     field: "exerciseVariant",
     action: "substitute_exercise",
@@ -1056,9 +1040,7 @@ test("M6 ordinary substitution splits actual identity, audits the override, and 
         repMax: setType.repMax,
         rpeMin: setType.rpeMin,
         rpeMax: setType.rpeMax,
-        restSeconds: setType.restSeconds,
-        countsTowardScore: setType.countsTowardScore,
-        countsTowardVolume: setType.countsTowardVolume
+        restSeconds: setType.restSeconds
       }))
     };
   }, IDS.controlBenchTemplateExercise)).toMatchObject({
@@ -1078,9 +1060,7 @@ test("M6 ordinary substitution splits actual identity, audits the override, and 
       repMax: 7,
       rpeMin: 7.5,
       rpeMax: 8.5,
-      restSeconds: 15,
-      countsTowardScore: true,
-      countsTowardVolume: true
+      restSeconds: 15
     }, {
       type: "backoff",
       setCount: 1,
@@ -1088,9 +1068,7 @@ test("M6 ordinary substitution splits actual identity, audits the override, and 
       repMax: 7,
       rpeMin: 7.5,
       rpeMax: 8.5,
-      restSeconds: 15,
-      countsTowardScore: true,
-      countsTowardVolume: true
+      restSeconds: 15
     }]
   });
 });
@@ -1188,8 +1166,6 @@ test("M6 substitution keeps completed warm-up and skipped work on source and see
             ...set,
             setType: "warmup",
             isWarmup: true,
-            countsTowardScore: false,
-            countsTowardVolume: false,
             countsTowardProgression: false,
             completed: true,
             skipped: false
@@ -1200,8 +1176,6 @@ test("M6 substitution keeps completed warm-up and skipped work on source and see
             ...set,
             setType: "straight",
             isWarmup: false,
-            countsTowardScore: true,
-            countsTowardVolume: true,
             countsTowardProgression: true,
             completed: false,
             skipped: true
@@ -1253,8 +1227,6 @@ test("M6 substitution keeps completed warm-up and skipped work on source and see
     isWarmup: false,
     completed: false,
     skipped: false,
-    countsTowardScore: true,
-    countsTowardVolume: true,
     countsTowardProgression: true,
     targetRepMin: 5,
     targetRepMax: 7,
@@ -1279,7 +1251,7 @@ test("M6 custom substitution creates a stable custom identity without borrowing 
   const result = await page.evaluate(({ activeExerciseId, customName, templateExerciseId }) => {
     const session = activeWorkoutSession();
     const exercise = data.exercises.find((item) => item.id === activeExerciseId);
-    const override = data.manualOverrides.find((item) => item.action === "substitute_exercise"
+    const override = exercise.manualOverrides.find((item) => item.action === "substitute_exercise"
       && item.exerciseRuntimeId === activeExerciseId);
     const resolvedAgain = userSelectedExerciseIdentity(customName);
     const normalizedExactAgain = userSelectedExerciseIdentity(`  ${customName.toLowerCase()}  `);
@@ -1536,8 +1508,6 @@ test("M6 strictly validates nested template warm-ups and set roles while normali
             rpeMax: 8.5,
             targetRpe: 8,
             restSeconds: 90,
-            countsTowardVolume: true,
-            countsTowardScore: true,
             isWarmup: false
           }]
         }]
@@ -1613,8 +1583,6 @@ test("M6 strictly validates nested template warm-ups and set roles while normali
     rpeMax: 8.5,
     targetRpe: 8,
     restSeconds: 90,
-    countsTowardVolume: true,
-    countsTowardScore: true,
     isWarmup: false
   });
   expect(result.role).not.toHaveProperty("count");

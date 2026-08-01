@@ -52,7 +52,8 @@ assert.match(applyExerciseDefaultTargetsSource, /action: "exercise_default_targe
 assert.doesNotMatch(applyExerciseDefaultTargetsSource, /patchTemplateExercise|setTypes:|warmups:/, "Applying current-workout defaults must not silently mutate the source routine");
 assert.match(workout, /function updateTemplateFromExercise\([\s\S]*patchTemplateExercise\([\s\S]*setTypes: templateSetTypesFromHistory[\s\S]*warmups:/, "The separate explicit routine-save action must persist exact working and warm-up targets");
 assert.doesNotMatch(workout, /standardWorkloadOverride/, "The deleted target-ownership gate must not remain in the active workout writer");
-assert.match(workout, /sessions: data\.sessions\.map\([\s\S]*updatedAt: now[\s\S]*manualOverrides: \[\.\.\.data\.manualOverrides, overrideEntry\]/, "Applying exercise defaults must update the owning active session and its top-level audit ledger");
+assert.match(workout, /sessions: data\.sessions\.map\([\s\S]*updatedAt: now[\s\S]*manualOverrides: \[\.\.\.\(exercise\.manualOverrides \|\| \[\]\), overrideEntry\]/, "Applying exercise defaults must update the owning active session and retain override provenance only on its exercise");
+assert.doesNotMatch(workout, /data\.manualOverrides/, "The deleted global override ledger must not survive beside exercise-owned provenance");
 assert.match(workout, /targetRpeMin > targetRpeMax[\s\S]*Choose an ordered target RPE range from 1 to 10 in 0\.5 steps/, "Shared defaults must reject reversed or off-step target RPE ranges");
 assert.match(workout, /rowTargetRpeMin > rowTargetRpeMax[\s\S]*needs an ordered target RPE range from 1 to 10 in 0\.5 steps/, "Individual targets must reject reversed or off-step target RPE ranges");
 assert.match(workout, /completedWorking[\s\S]*incompleteWorking[\s\S]*set\.completed[\s\S]*desiredIncompletePlan/, "Applying defaults must preserve completed work and rebuild unfinished working rows only");
@@ -72,6 +73,6 @@ assert.match(startTemplate, /stableTargetSnapshot:[\s\S]*resolvedActionId:/, "Th
 assert.doesNotMatch(startTemplate, /coachTargetForTemplateExercise|adjustTargetForRecovery|unifiedPrescriptionSnapshot|prescriptionSnapshotWithTemplateStandard/, "Workout start must not invoke the legacy recommendation or readiness-target pipeline");
 assert.doesNotMatch(startTemplate, /recommendationHistory|recommendationSnapshot:\s*target|applyManualOverride/, "Workout start must not create recommendation snapshots or engine manual overrides");
 assert.match(startTemplate, /delete session\.workoutPrescription/, "Starting a current workout must remove any replaceable draft prescription payload");
-assert.match(foundation, /function resolveWorkoutExceptions\([\s\S]*applyDecisionHandling\(decision, handling\)/, "Explicit user handling of a resolved safety action must remain auditable");
+assert.match(workout, /function handleResolvedActionChoice\([\s\S]*exceptionResolverApi\.applyDecisionHandling\(action, handling\)/, "Explicit user handling of a resolved safety action must remain auditable");
 
 console.log("Active-workout return and standard-workload contracts passed.");

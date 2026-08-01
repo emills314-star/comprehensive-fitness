@@ -8,10 +8,13 @@
       const DB_VERSION = 1;
       const DB_STORE = "state";
       const ACTIVE_HISTORY_MONTHS = 6;
-      const SET_CLASSIFIER_VERSION = 2;
-      const DOMAIN_MIGRATION_VERSION = 3;
+      const SET_CLASSIFIER_VERSION = 3;
+      const DOMAIN_MIGRATION_VERSION = 4;
+      const WORKOUT_DURATION_SEMANTICS_VERSION = "comprehensive-fitness-workout-duration/1.0.0";
+      const READINESS_DEVIATIONS = new Set(["", "usual", "unusually_good", "meaningfully_poor"]);
       const BACKUP_IMPORT_LIMITS = Object.freeze({
         maxFileBytes: 50 * 1024 * 1024,
+        maxRawImportBytes: 10 * 1024 * 1024,
         maxJsonDepth: 32,
         maxObjectKeys: 128,
         maxSessions: 100000,
@@ -19,65 +22,41 @@
         maxSets: 100000,
         maxTemplates: 100000
       });
-      const PERSONAL_EVIDENCE_IMPORT_LIMITS = Object.freeze({
-        maxFileBytes: 8 * 1024 * 1024,
-        maxJsonDepth: 32,
-        maxObjectKeys: 128,
-        maxCoreCollectionItems: 1024,
-        maxStableIdChars: 128,
-        maxNameChars: 256,
-        maxTextChars: 4096
-      });
       const root = document.getElementById("root");
-      const defaultReadinessBaseline = { sleepHours: 7.5, sleepQuality: 4, hrv: "", restingHr: "", soreness: 2, band: 8 };
       const defaultSettings = {
         weightUnit: "lb",
-        trainingGoal: "",
-        trainingGoalSource: "missing_default",
-        trainingGoalDisclosure: "General fitness is used as the disclosed default until a training goal is selected.",
-        nutritionPhase: "",
-        experienceLevel: "",
-        returningAfterGap: null,
-        theme: "light",
-        colorPackage: "signal-garden",
         timerSound: true,
-        workoutCompletionSound: true,
         timerVibration: true,
-        interactionVibration: true,
         timerNotifications: true,
         inAppRestAlerts: true,
         restCompleteSound: "sharp_two_tone",
         restCompleteSoundVolume: 0.85,
         restCompleteAutoDismissMs: 5000,
-        restCompleteLockScreenNotifications: true,
         restCompleteAutoReturnToWorkout: false,
         defaultRestSeconds: 90,
         notificationMessageDetail: "exercise-set",
         autoStartRestTimer: true,
         autoHighlightNextSet: true,
-        autoScrollNextSet: false,
         installGuideDismissed: false,
         setupSoundConfirmed: false,
-        cloudWorkoutSyncConsent: false,
-        workoutCloudSync: false,
-        workoutCloudSyncConsentVersion: 0,
-        readinessBaseline: { ...defaultReadinessBaseline }
+        expectedTemplateId: ""
       };
       let data = emptyData();
       const primaryTabIds = ["today", "progress"];
+      const currentDestinationIds = ["today", "progress", "workout", "routines", "settings"];
       const focusActionAllowlist = new Set([
         "set-tab", "start-template", "start-next-template", "toggle-set", "set-weight", "set-reps", "set-rpe", "set-duration", "set-distance", "reconcile-apply", "reconcile-dismiss", "session-menu", "request-submit-workout", "request-cancel-workout", "request-save-history-edits", "request-cancel-history-edits", "clear-data",
         "resume-active-workout", "finish-active-workout", "discard-active-workout", "log-template-readiness", "log-workout-readiness", "start-workout-with-readiness", "save-workout-readiness",
+        "set-expected-template", "toggle-workout-pause", "handle-resolved-action",
         "open-routines", "open-settings", "close-secondary-context", "close-workout-context",
         "keep-workout", "keep-history-editing", "cancel-clear-data",
         "open-history", "open-progress", "retry-view-render", "focus-workout-exercise",
         "show-chart-point", "close-chart-point",
-        "cancel-template-start", "adjust-template-readiness",
-        "template-readiness-sleep-hours", "template-readiness-sleep-quality", "template-readiness-hrv", "template-readiness-resting-hr",
-        "template-readiness-soreness", "template-readiness-nutrition", "template-readiness-protein", "template-readiness-illness",
+        "cancel-template-start",
+        "template-readiness-deviation", "template-readiness-illness",
         "template-readiness-pain", "template-readiness-affected-muscle", "template-readiness-note",
         "adjust-default-rest",
-        "clear-data-ack", "clear-data-phrase", "sync-before-clear", "export-data", "export-before-clear", "confirm-clear-data", "confirm-cancel-workout",
+        "clear-data-ack", "clear-data-phrase", "export-data", "export-before-clear", "confirm-clear-data", "confirm-cancel-workout",
         "confirm-save-history-edits", "confirm-cancel-history-edits"
       ]);
       const focusDescriptorDataKeys = ["tab", "templateId", "sessionId", "exerciseId", "setId", "field", "chartKey", "chartDate"];
@@ -92,6 +71,7 @@
       let timer = null;
       let activeDraftSequence = 0;
       let timerInterval = 0;
+      let workoutDurationInterval = 0;
       let timerCompleteNotice = null;
       let restCompletionState = null;
       let restNavigationState = null;
@@ -132,7 +112,6 @@
       let activeSetAcknowledged = false;
       let activeSetNotice = "";
       let notificationMessage = "";
-      let syncMessage = "";
       let pushIdentity = null;
       let pushConfig = null;
       let installPromptEvent = null;
@@ -141,11 +120,6 @@
       let pendingControllerReload = false;
       let persistenceReady = false;
       let storagePersistenceStatus = "unsupported";
-      let syncFlushTimer = 0;
-      let syncConsentEpoch = 0;
-      let syncConsentTransition = Promise.resolve();
-      const activeWorkoutSyncOperations = new Set();
-      const activeWorkoutSyncAbortControllers = new Set();
       const restSchedulePromises = new Map();
       const canceledRestScheduleKeys = new Map();
       let pushOperationWriteChain = Promise.resolve();
@@ -153,6 +127,7 @@
       let chartExerciseDraft = "";
       let chartExerciseSearchOpen = false;
       let chartExerciseSearchError = "";
+      let progressDateWindow = "recent";
       let chartExerciseHighlight = 0;
       let recentChartExerciseIds = [];
       const chartPointActivations = new Map();
@@ -245,7 +220,7 @@
             const exerciseId = sessionId + "-exercise-" + exerciseIndex;
             exercises.push({ id: exerciseId, sessionId, name, order: exerciseIndex, resistanceType: "external", restSeconds: 90, primaryMuscle: "", secondaryMuscle: "" });
             for (let setIndex = 0; setIndex < 4; setIndex += 1) {
-              sets.push({ id: exerciseId + "-set-" + setIndex, exerciseId, setNumber: setIndex + 1, sequenceIndex: setIndex, sequence: setIndex, setType: setIndex === 0 ? "top" : "backoff", reps: 8 + (setIndex % 2), weight: 50 + exerciseIndex * 10 + Math.floor(dayOffset / 30) * 2.5, weightUnit: "lb", resistanceType: "external", rpe: 7.5 + (setIndex % 3) * 0.5, completed: true, skipped: false, edited: false, countsTowardScore: true, countsTowardVolume: true, countsTowardProgression: true, targetReps: 9, targetRepMin: 8, targetRepMax: 12, targetRpe: 8, targetRpeMin: 7, targetRpeMax: 9 });
+              sets.push({ id: exerciseId + "-set-" + setIndex, exerciseId, setNumber: setIndex + 1, sequenceIndex: setIndex, sequence: setIndex, setType: setIndex === 0 ? "top" : "backoff", reps: 8 + (setIndex % 2), weight: 50 + exerciseIndex * 10 + Math.floor(dayOffset / 30) * 2.5, weightUnit: "lb", resistanceType: "external", rpe: 7.5 + (setIndex % 3) * 0.5, completed: true, skipped: false, edited: false, countsTowardProgression: true, targetReps: 9, targetRepMin: 8, targetRepMax: 12, targetRpe: 8, targetRpeMin: 7, targetRpeMax: 9 });
             }
           });
         }
@@ -284,11 +259,9 @@
       const templateNumericDrafts = new Map();
       const templateNumericFields = Object.freeze({
         "template-exercise-sets": Object.freeze({ field: "sets", label: "sets", min: 1, max: 100, step: 1, integer: true }),
-        "template-exercise-reps": Object.freeze({ field: "reps", label: "repetitions", min: 1, max: 1000, step: 1, integer: true }),
         "template-exercise-rep-min": Object.freeze({ field: "repMin", label: "minimum repetitions", min: 1, max: 100, step: 1, integer: true }),
         "template-exercise-rep-max": Object.freeze({ field: "repMax", label: "maximum repetitions", min: 1, max: 100, step: 1, integer: true }),
         "template-exercise-rpe": Object.freeze({ field: "targetRpe", label: "target RPE", min: 5, max: 10, step: 0.5, integer: false }),
-        "template-exercise-increment": Object.freeze({ field: "increment", label: "load increment", min: 0.5, max: 10000, step: 0.5, integer: false }),
         "template-exercise-rest": Object.freeze({ field: "restSeconds", label: "rest seconds", min: 15, max: 3600, step: 15, integer: true })
       });
       const recentHistoryDataIssueIds = new Set();
@@ -328,7 +301,7 @@
       };
 
       function emptyData() {
-        return { appDataVersion: 3, sessions: [], exercises: [], sets: [], templates: [], recommendationHistory: [], manualOverrides: [], personalEvidencePackage: null, rawImports: [], migrationAudit: [], dataRevision: 0, settings: { ...defaultSettings } };
+        return { appDataVersion: 3, sessions: [], exercises: [], sets: [], templates: [], rawImports: [], migrationAudit: [], dataRevision: 0, settings: { ...defaultSettings } };
       }
 
       // DOMAIN_INTEGRITY_ENGINE_START
@@ -363,8 +336,9 @@
 
       function normalizeCanonicalSetType(value, isWarmup = false) {
         if (isWarmup) return "warmup";
-        const key = String(value || "straight").toLowerCase().replace(/[^a-z]/g, "");
+        const key = String(value || "").toLowerCase().replace(/[^a-z]/g, "");
         if (["w", "warmup", "warmupset"].includes(key)) return "warmup";
+        if (["working", "work", "workingset", "workset", "straight", "straightset"].includes(key)) return "straight";
         if (["top", "topset"].includes(key)) return "top";
         if (["backoff", "backoffset"].includes(key)) return "backoff";
         if (["d", "drop", "dropset"].includes(key)) return "drop";
@@ -373,7 +347,7 @@
         if (["technique", "techniqueset"].includes(key)) return "technique";
         if (["deload", "deloadset"].includes(key)) return "deload";
         if (["unknown", "review", "reviewrequired"].includes(key)) return "unknown";
-        return "straight";
+        return "unknown";
       }
 
       function setTypeSemantics(set) {
@@ -382,18 +356,17 @@
         return {
           type,
           isWarmup,
-          countsTowardScore: set?.countsTowardScore != null ? Boolean(set.countsTowardScore) : !isWarmup && type !== "unknown",
-          countsTowardVolume: set?.countsTowardVolume != null ? Boolean(set.countsTowardVolume) : !isWarmup && type !== "unknown",
-          countsTowardProgression: set?.countsTowardProgression != null ? Boolean(set.countsTowardProgression) : !isWarmup && type !== "unknown"
+          countsTowardProgression: !isWarmup
+            && type !== "unknown"
+            && (set?.countsTowardProgression != null ? Boolean(set.countsTowardProgression) : true)
         };
       }
 
-      function isWorkingSet(set, purpose = "score") {
+      function isWorkingSet(set, purpose = "actual") {
         const semantics = setTypeSemantics(set);
         if (semantics.isWarmup || semantics.type === "unknown") return false;
-        if (purpose === "volume") return semantics.countsTowardVolume;
         if (purpose === "progression" || purpose === "pr") return semantics.countsTowardProgression;
-        return semantics.countsTowardScore;
+        return true;
       }
 
       function explicitStrongSetType(value) {
@@ -412,15 +385,28 @@
           if (set.manualOverride || set.classificationSource === "manual") {
             result.type = normalizeCanonicalSetType(set.setType, set.isWarmup);
             result.source = "manual";
-            result.confidence = 1;
-            result.reason = "Manual correction preserved.";
+            result.confidence = result.type === "unknown" ? 0 : 1;
+            result.reviewRequired = result.type === "unknown";
+            result.reason = result.type === "unknown" ? "Manual classification is missing or unrecognized and requires review." : "Manual correction preserved.";
             return;
           }
           if (source !== "strong") {
-            result.type = normalizeCanonicalSetType(set.setType, set.isWarmup);
-            result.source = set.classificationSource || "app-explicit";
-            result.confidence = Number(set.classificationConfidence || 1);
-            result.reason = "App-created classification preserved.";
+            const original = set.originalImportedValue && typeof set.originalImportedValue === "object"
+              ? set.originalImportedValue
+              : null;
+            const rawType = original && Object.prototype.hasOwnProperty.call(original, "setType")
+              ? original.setType
+              : set.setType;
+            const rawWarmup = original && Object.prototype.hasOwnProperty.call(original, "isWarmup")
+              ? original.isWarmup
+              : set.isWarmup;
+            result.type = normalizeCanonicalSetType(rawType, rawWarmup);
+            result.source = set.classificationSource || (result.type === "unknown" ? "recorded" : "app-explicit");
+            result.confidence = result.type === "unknown" ? 0 : Number(set.classificationConfidence || 1);
+            result.reviewRequired = result.type === "unknown";
+            result.reason = result.type === "unknown"
+              ? "Recorded set role is missing or unrecognized and requires review."
+              : "App-created classification preserved.";
             return;
           }
           const explicit = explicitStrongSetType(set.originalImportedValue?.setOrder || set.sourceSetType || set.sourceSetOrder);
@@ -434,8 +420,11 @@
           if (set.setType && normalizeCanonicalSetType(set.setType, set.isWarmup) !== "straight" && set.classificationSource !== "inferred") {
             result.type = normalizeCanonicalSetType(set.setType, set.isWarmup);
             result.source = set.classificationSource || "app-explicit";
-            result.confidence = Number(set.classificationConfidence || 0.95);
-            result.reason = "Existing explicit app classification preserved.";
+            result.confidence = result.type === "unknown" ? 0 : Number(set.classificationConfidence || 0.95);
+            result.reviewRequired = result.type === "unknown";
+            result.reason = result.type === "unknown"
+              ? "Existing set role is unrecognized and requires review."
+              : "Existing explicit app classification preserved.";
           }
         });
         if (["bodyweight", "assisted_bodyweight", "duration", "distance"].includes(resistanceType)) {
@@ -530,15 +519,16 @@
             if (classification.type === "drop") report.dropSets += 1;
             if (classification.reviewRequired) report.ambiguous += 1;
             const semantics = setTypeSemantics({ ...original, setType: classification.type, isWarmup: classification.type === "warmup" });
-            const changed = normalizeCanonicalSetType(original.setType, original.isWarmup) !== classification.type || Number(original.sequenceIndex ?? original.sequence ?? -1) !== Number(classification.set.sequenceIndex ?? classification.set.sequence);
+            const changed = original.setType !== classification.type
+              || Boolean(original.isWarmup) !== semantics.isWarmup
+              || Boolean(original.reviewRequired) !== classification.reviewRequired
+              || Number(original.sequenceIndex ?? original.sequence ?? -1) !== Number(classification.set.sequenceIndex ?? classification.set.sequence);
             const migrated = {
               ...original,
               sequenceIndex: classification.set.sequenceIndex ?? classification.set.sequence,
               sequence: classification.set.sequenceIndex ?? classification.set.sequence,
               setType: classification.type,
               isWarmup: semantics.isWarmup,
-              countsTowardScore: semantics.countsTowardScore,
-              countsTowardVolume: semantics.countsTowardVolume,
               countsTowardProgression: semantics.countsTowardProgression,
               classificationSource: classification.source,
               classificationConfidence: classification.confidence,
@@ -642,6 +632,24 @@
         });
       }
 
+      async function writeIndexedValuesAtomically(entries) {
+        if (!Array.isArray(entries) || !entries.length) throw new Error("At least one IndexedDB value is required.");
+        const normalizedEntries = entries.map((entry) => {
+          if (!entry || typeof entry.key !== "string" || !entry.key) throw new Error("Every IndexedDB value requires a key.");
+          return { key: entry.key, value: entry.value };
+        });
+        const db = await openFitnessDb();
+        return new Promise((resolve, reject) => {
+          const transaction = db.transaction(DB_STORE, "readwrite");
+          const store = transaction.objectStore(DB_STORE);
+          const updatedAt = isoNow();
+          normalizedEntries.forEach((entry) => store.put({ ...entry, updatedAt }));
+          transaction.oncomplete = () => { db.close(); resolve(true); };
+          transaction.onerror = () => { db.close(); reject(transaction.error || new Error("Atomic IndexedDB write failed.")); };
+          transaction.onabort = () => { db.close(); reject(transaction.error || new Error("Atomic IndexedDB write was aborted.")); };
+        });
+      }
+
       function todayIso() {
         return localDateIso(new Date());
       }
@@ -686,20 +694,19 @@
       }
 
       function cleanReadinessBaseline(source = {}) {
-        return {
-          sleepHours: source.sleepHours ?? defaultReadinessBaseline.sleepHours,
-          sleepQuality: source.sleepQuality ?? defaultReadinessBaseline.sleepQuality,
-          hrv: source.hrv ?? defaultReadinessBaseline.hrv,
-          restingHr: source.restingHr ?? defaultReadinessBaseline.restingHr,
-          soreness: source.soreness ?? defaultReadinessBaseline.soreness,
-          band: source.band ?? defaultReadinessBaseline.band
-        };
+        const retainedFields = ["sleepHours", "sleepQuality", "hrv", "restingHr", "soreness"];
+        return Object.fromEntries(retainedFields
+          .filter((field) => Object.prototype.hasOwnProperty.call(source, field))
+          .map((field) => [field, source[field]]));
       }
 
       function cleanRecovery(source = {}) {
         const hasExplicitPain = typeof source.pain === "boolean";
-        const legacyAffectedInjury = !hasExplicitPain && Boolean(source.illness) && Boolean(String(source.affectedMuscle || "").trim());
+        const readinessDeviation = READINESS_DEVIATIONS.has(String(source.readinessDeviation || ""))
+          ? String(source.readinessDeviation || "")
+          : "";
         return {
+          readinessDeviation,
           sleepHours: source.sleepHours ?? "",
           sleepQuality: source.sleepQuality ?? "",
           hrv: source.hrv ?? "",
@@ -708,9 +715,90 @@
           nutritionStatus: source.nutritionStatus ?? "",
           proteinStatus: source.proteinStatus ?? "",
           outsideBandNote: source.outsideBandNote ?? "",
-          illness: Boolean(source.illness) && !legacyAffectedInjury,
-          pain: hasExplicitPain ? Boolean(source.pain) : legacyAffectedInjury,
+          illness: Boolean(source.illness),
+          ...(hasExplicitPain ? { pain: Boolean(source.pain) } : {}),
           affectedMuscle: source.affectedMuscle ?? ""
+        };
+      }
+
+      function expectedWorkoutTemplate(model = data) {
+        const templates = Array.isArray(model?.templates) ? model.templates : [];
+        const expectedTemplateId = String(model?.settings?.expectedTemplateId || "");
+        return templates.find((template) => template.id === expectedTemplateId) || null;
+      }
+
+      function workoutDurationTimestamp(value) {
+        const timestamp = Date.parse(String(value || ""));
+        return Number.isFinite(timestamp) ? timestamp : null;
+      }
+
+      function legacyDraftKnownActiveDurationMs(snapshot, savedAt, session) {
+        const sourceSession = { ...(session || {}), ...(snapshot?.session || {}) };
+        const hasRecordedDuration = sourceSession.durationSeconds != null
+          || sourceSession.durationSemanticsVersion != null
+          || sourceSession.activeDurationMs != null
+          || sourceSession.activeDurationStartedAt != null
+          || sourceSession.workoutPausedAt != null;
+        if (hasRecordedDuration) return null;
+        const startedAt = workoutDurationTimestamp(sourceSession.startedAt || session?.startedAt);
+        const knownBoundary = Number.isFinite(savedAt)
+          ? savedAt
+          : workoutDurationTimestamp(snapshot?.savedAt || sourceSession.updatedAt || session?.updatedAt);
+        if (startedAt == null || knownBoundary == null) return null;
+        return Math.max(0, Math.floor(knownBoundary - startedAt));
+      }
+
+      function workoutActiveDurationMs(session, now = Date.now()) {
+        if (session?.durationSemanticsVersion !== WORKOUT_DURATION_SEMANTICS_VERSION) return null;
+        const accumulated = Number(session.activeDurationMs);
+        if (!Number.isSafeInteger(accumulated) || accumulated < 0) return null;
+        const activeSince = workoutDurationTimestamp(session.activeDurationStartedAt);
+        if (activeSince == null || session.workoutPausedAt) return accumulated;
+        return accumulated + Math.max(0, Math.floor(Number(now) - activeSince));
+      }
+
+      function startWorkoutDuration(session, nowIso = isoNow()) {
+        if (!session || isSessionSubmitted(session)) return session;
+        const startedAt = new Date(nowIso).toISOString();
+        if (session.durationSemanticsVersion !== WORKOUT_DURATION_SEMANTICS_VERSION) {
+          const retainedLegacyDurationMs = Number.isFinite(Number(session.durationSeconds))
+            ? Math.max(0, Math.round(Number(session.durationSeconds) * 1000))
+            : 0;
+          return {
+            ...session,
+            durationSemanticsVersion: WORKOUT_DURATION_SEMANTICS_VERSION,
+            activeDurationMs: retainedLegacyDurationMs,
+            activeDurationStartedAt: startedAt,
+            workoutPausedAt: ""
+          };
+        }
+        if (session.activeDurationStartedAt && !session.workoutPausedAt) return session;
+        return {
+          ...session,
+          activeDurationMs: Math.max(0, Number(session.activeDurationMs || 0)),
+          activeDurationStartedAt: startedAt,
+          workoutPausedAt: ""
+        };
+      }
+
+      function pauseWorkoutDuration(session, nowIso = isoNow()) {
+        if (!session || session.durationSemanticsVersion !== WORKOUT_DURATION_SEMANTICS_VERSION) return session;
+        const pausedAt = new Date(nowIso).toISOString();
+        const accumulated = workoutActiveDurationMs(session, Date.parse(pausedAt));
+        return {
+          ...session,
+          activeDurationMs: Math.max(0, Number(accumulated || 0)),
+          activeDurationStartedAt: "",
+          workoutPausedAt: pausedAt
+        };
+      }
+
+      function finalizeWorkoutDurationSession(session, nowIso = isoNow()) {
+        if (!session || session.durationSemanticsVersion !== WORKOUT_DURATION_SEMANTICS_VERSION) return session;
+        const finalized = pauseWorkoutDuration(session, nowIso);
+        return {
+          ...finalized,
+          durationSeconds: Math.max(0, Math.round(Number(finalized.activeDurationMs || 0) / 1000))
         };
       }
 
@@ -720,62 +808,98 @@
 
       function explicitSafetyCandidate(session, recoveryInput) {
         if (!exceptionResolverApi) return null;
-        const recovery = cleanRecovery(recoveryInput);
-        if (!recovery.illness && !recovery.pain) return null;
+        const source = recoveryInput && typeof recoveryInput === "object" ? recoveryInput : {};
+        const hasDirectPain = Object.prototype.hasOwnProperty.call(source, "pain") && source.pain === true;
+        const legacyInferredPain = !Object.prototype.hasOwnProperty.call(source, "pain")
+          && source.illness === true
+          && Boolean(String(source.affectedMuscle || "").trim());
+        const hasDirectIllness = source.illness === true && !legacyInferredPain;
+        if (!hasDirectIllness && !hasDirectPain) return null;
         const evaluatedAt = isoNow();
-        const reasonCode = recovery.illness ? "explicit_illness" : "explicit_pain_or_injury";
-        const sourceReference = `session:${session.id}:recovery.${recovery.illness ? "illness" : "pain"}`;
+        const recordedInputs = [
+          ...(hasDirectIllness ? [{ field: "illness", reasonCode: "explicit_illness" }] : []),
+          ...(hasDirectPain ? [{ field: "pain", reasonCode: "explicit_pain_or_injury" }] : [])
+        ].map((input) => ({
+          ...input,
+          sourceReference: `session:${session.id}:recovery.${input.field}`
+        }));
+        const priorDecisions = Array.isArray(session.resolvedActions) ? session.resolvedActions : [];
+        const clearedBoundaryIndex = priorDecisions.findIndex((decision) => decision?.outcome === "no_action");
+        const priorCurrentSegment = priorDecisions
+          .slice(0, clearedBoundaryIndex < 0 ? priorDecisions.length : clearedBoundaryIndex)
+          .filter((decision) => decision?.outcome === "action");
+        const prior = priorCurrentSegment.find((decision) =>
+          decision?.outcome === "action"
+          && decision.category === "pain_or_illness"
+          && decision.sourceReferences?.some((reference) => recordedInputs.some((input) => input.sourceReference === reference))
+        );
         return {
           candidateVersion: exceptionResolverApi.CANDIDATE_VERSION,
-          candidateId: `candidate-${session.id}-${recovery.illness ? "illness" : "pain"}`,
+          candidateId: `candidate-${session.id}-${recordedInputs.map((input) => input.field).join("-")}`,
           detector: {
             id: "explicit-safety-input",
-            version: "comprehensive-fitness-explicit-safety-input/1.0.0",
-            ruleVersion: "explicit-recorded-input/1.0.0"
+            version: "comprehensive-fitness-explicit-safety-input/1.1.0",
+            ruleVersion: "explicit-recorded-input/1.1.0"
           },
           evaluatedAt,
-          effectiveAt: evaluatedAt,
+          effectiveAt: prior?.effectiveAt || evaluatedAt,
           expiresAt: null,
-          returnCondition: { type: "explicit_input_cleared_or_user_decision" },
+          returnCondition: { type: "input_cleared_or_workout_ended" },
           category: "pain_or_illness",
           explicitSafetyInput: true,
           scope: { type: "session" },
           action: { code: "stop_or_skip_work", parameters: { mode: "stop_or_skip" } },
-          reasonCodes: [reasonCode],
-          sourceReferences: [sourceReference],
-          evidence: [{ sourceReference, provenance: "recorded", required: true }],
+          reasonCodes: recordedInputs.map((input) => input.reasonCode),
+          sourceReferences: recordedInputs.map((input) => input.sourceReference),
+          evidence: recordedInputs.map((input) => ({ sourceReference: input.sourceReference, provenance: "recorded", required: true })),
           qualification: passedExceptionQualification()
         };
       }
 
-      function resolveWorkoutExceptions(session, recoveryInput, options = {}) {
+      function reportExceptionResolverEngineeringError(record) {
+        const code = ["detector_error", "candidate_normalization_error"].includes(record?.code)
+          ? record.code
+          : "candidate_normalization_error";
+        console.error("[CF exception resolver]", Object.freeze({
+          code,
+          module: "exception-resolver",
+          ruleVersion: "candidate-normalization/1.0.0"
+        }));
+      }
+
+      function resolveWorkoutExceptions(session, recoveryInput) {
         if (!exceptionResolverApi) return [];
-        const recovery = cleanRecovery(recoveryInput);
-        const safetyCandidate = explicitSafetyCandidate(session, recovery);
+        const safetyCandidate = explicitSafetyCandidate(session, recoveryInput);
         const evaluatedAt = safetyCandidate?.evaluatedAt || isoNow();
         const sourceReference = safetyCandidate?.sourceReferences?.[0] || "";
         const result = exceptionResolverApi.resolveExceptionCandidates({
           evaluatedAt,
-          candidates: safetyCandidate ? [safetyCandidate] : [],
+          candidates: [safetyCandidate].filter(Boolean),
           priorDecisions: Array.isArray(session.resolvedActions) ? session.resolvedActions : [],
           explicitSafetyObservation: safetyCandidate ? {
             explicit: true,
             observedAt: evaluatedAt,
             sourceReference,
             scope: { type: "session" }
-          } : null
+          } : null,
+          onEngineeringError: reportExceptionResolverEngineeringError
         });
-        const handling = options.useOriginal || options.userContinuedWithAction
-          ? "overridden"
-          : null;
-        return (Array.isArray(result?.decisions) ? result.decisions : []).map((decision) => {
-          if (decision.outcome !== "action" || !handling) return decision;
-          return exceptionResolverApi.applyDecisionHandling(decision, handling);
-        });
+        return Array.isArray(result?.decisions) ? result.decisions : [];
+      }
+
+      function mergeResolvedDecisionHistory(priorDecisions, currentDecisions) {
+        const current = Array.isArray(currentDecisions) ? currentDecisions : [];
+        const currentIds = new Set(current.map((decision) => decision?.decisionId).filter(Boolean));
+        return [
+          ...current,
+          ...(Array.isArray(priorDecisions) ? priorDecisions : []).filter((decision) => !currentIds.has(decision?.decisionId))
+        ].slice(0, 64);
       }
 
       function resolvedActionForVariant(resolvedActions, exerciseVariantId) {
-        const actions = (Array.isArray(resolvedActions) ? resolvedActions : []).filter((decision) => decision?.outcome === "action");
+        const decisions = Array.isArray(resolvedActions) ? resolvedActions : [];
+        if (decisions[0]?.outcome === "no_action") return null;
+        const actions = decisions.filter((decision) => decision?.outcome === "action");
         return actions.find((decision) => decision.scope?.type === "exercise" && decision.scope.exerciseVariantId === exerciseVariantId)
           || actions.find((decision) => decision.scope?.type === "session")
           || null;
@@ -1004,7 +1128,7 @@
           : [];
         const sourceTypes = legacyRoleTypes.length
           ? legacyRoleTypes
-          : Array.isArray(exercise.setTypes) ? exercise.setTypes.filter((item) => item && item.countsTowardScore !== false && !item.isWarmup && normalizeSetTypeCode(item.type || item.setType) !== "warmup") : [];
+          : Array.isArray(exercise.setTypes) ? exercise.setTypes.filter((item) => item && item.countsTowardProgression !== false && !item.isWarmup && normalizeSetTypeCode(item.type || item.setType) !== "warmup") : [];
         const aggregateSetCount = sourceTypes.reduce((sum, item) => sum + Math.max(0, Number(item.setCount || 0)), 0);
         const requestedSetCount = Math.max(1, Math.round(numeric(exercise.sets, aggregateSetCount || 3)));
         const sourceRepMins = sourceTypes.map((item) => Number(item.repMin || 0)).filter((value) => value > 0);
@@ -1028,8 +1152,7 @@
             rpeMin: Math.max(1, stableTargetRpe - 1),
             rpeMax: stableTargetRpe,
             restSeconds: stableRestSeconds,
-            countsTowardScore: true,
-            countsTowardVolume: true
+            countsTowardProgression: true
           };
           const normalized = typeof normalizeTargetSetType === "function"
             ? normalizeTargetSetType(item, fallback)
@@ -1043,8 +1166,7 @@
             rpeMin: Math.max(1, Math.min(10, Number(normalized.rpeMin || Math.max(1, stableTargetRpe - 1)))),
             rpeMax: Math.max(1, Math.min(10, Number(normalized.rpeMax || stableTargetRpe))),
             restSeconds: stableRestSeconds,
-            countsTowardScore: true,
-            countsTowardVolume: true,
+            countsTowardProgression: normalized.countsTowardProgression !== false,
             isWarmup: false
           };
         };
@@ -1059,12 +1181,30 @@
           rpeMin: Math.max(1, stableTargetRpe - 1),
           rpeMax: stableTargetRpe,
           restSeconds: stableRestSeconds,
-          countsTowardScore: true,
-          countsTowardVolume: true
+          countsTowardProgression: true
         }]).map(normalizeType);
         const stableSetCount = setTypes.reduce((sum, item) => sum + Number(item.setCount || 0), 0);
         const explicitRoutineReps = numeric(exercise.reps, Math.round((stableRepMin + stableRepMax) / 2));
-        const { standardWorkloadOverride, standardRoleWorkload, ...retained } = exercise;
+        const {
+          standardWorkloadOverride,
+          standardRoleWorkload,
+          recommendationSnapshot,
+          basePrescription,
+          finalPrescription,
+          originalPrescription,
+          prescription,
+          setPrescription,
+          coachRecommendation,
+          executionBlocked,
+          safetyRestriction,
+          prescriptionConfidence,
+          recommendationVersion,
+          personalDataVersion,
+          researchDatabaseVersion,
+          programTargetContext,
+          appliedTargetContext,
+          ...retained
+        } = exercise;
         return {
           ...retained,
           sets: stableSetCount,
@@ -1085,61 +1225,35 @@
         const legacyStableTargetCount = sourceTemplateExercises.filter((exercise) => exercise.standardWorkloadOverride != null || exercise.standardRoleWorkload != null || !Number(exercise.sets) || !Number(exercise.repMin || exercise.reps) || !Number(exercise.repMax || exercise.reps) || !Number(exercise.targetRpe) || !Number(exercise.restSeconds)).length;
         const legacyEquipmentPreferencePresent = Object.prototype.hasOwnProperty.call(model.settings || {}, "availableEquipment");
         const storedSettings = model.settings || {};
-        const legacyGoal = String(storedSettings.goal || "").trim().toLowerCase();
-        const legacyTrainingStatus = String(storedSettings.trainingStatus || "").trim().toLowerCase();
-        const validTrainingGoals = new Set(["strength", "hypertrophy", "muscular_endurance", "general_fitness"]);
-        const validNutritionPhases = new Set(["deficit", "maintenance", "surplus", "recomposition"]);
-        const validExperienceLevels = new Set(["novice", "intermediate", "advanced"]);
-        const legacyTrainingGoal = ({
-          strength: "strength", hypertrophy: "hypertrophy", endurance: "muscular_endurance",
-          muscular_endurance: "muscular_endurance", general: "general_fitness", general_fitness: "general_fitness",
-          cut: "general_fitness", recomposition: "general_fitness", maintain: "general_fitness", maintenance: "general_fitness", bulk: "general_fitness"
-        })[legacyGoal] || "";
-        const legacyNutritionPhase = ({ cut: "deficit", deficit: "deficit", recomposition: "recomposition", maintain: "maintenance", maintenance: "maintenance", bulk: "surplus", surplus: "surplus" })[legacyGoal] || "";
-        const trainingGoal = validTrainingGoals.has(storedSettings.trainingGoal) ? storedSettings.trainingGoal : legacyTrainingGoal;
-        const nutritionPhase = validNutritionPhases.has(storedSettings.nutritionPhase) ? storedSettings.nutritionPhase : legacyNutritionPhase;
-        const experienceLevel = validExperienceLevels.has(storedSettings.experienceLevel)
-          ? storedSettings.experienceLevel
-          : validExperienceLevels.has(legacyTrainingStatus) ? legacyTrainingStatus : "";
-        const returningAfterGap = typeof storedSettings.returningAfterGap === "boolean" ? storedSettings.returningAfterGap : null;
         const safeSettings = {
           weightUnit: storedSettings.weightUnit,
-          trainingGoal,
-          trainingGoalSource: validTrainingGoals.has(storedSettings.trainingGoal) ? (storedSettings.trainingGoalSource || "explicit") : (storedSettings.trainingGoalSource || "missing_default"),
-          trainingGoalDisclosure: validTrainingGoals.has(storedSettings.trainingGoal) ? (storedSettings.trainingGoalDisclosure || "") : (storedSettings.trainingGoalDisclosure || "General fitness default used because the legacy nutrition goal did not specify a training goal."),
-          nutritionPhase,
-          experienceLevel,
-          returningAfterGap,
-          theme: storedSettings.theme,
-          colorPackage: storedSettings.colorPackage,
           timerSound: storedSettings.timerSound,
-          workoutCompletionSound: storedSettings.workoutCompletionSound,
           timerVibration: storedSettings.timerVibration,
-          interactionVibration: storedSettings.interactionVibration,
           timerNotifications: storedSettings.timerNotifications,
           inAppRestAlerts: storedSettings.inAppRestAlerts,
           restCompleteSound: storedSettings.restCompleteSound,
           restCompleteSoundVolume: storedSettings.restCompleteSoundVolume,
           restCompleteAutoDismissMs: storedSettings.restCompleteAutoDismissMs,
-          restCompleteLockScreenNotifications: storedSettings.restCompleteLockScreenNotifications,
           restCompleteAutoReturnToWorkout: storedSettings.restCompleteAutoReturnToWorkout,
           defaultRestSeconds: storedSettings.defaultRestSeconds,
           notificationMessageDetail: storedSettings.notificationMessageDetail,
           autoStartRestTimer: storedSettings.autoStartRestTimer,
           autoHighlightNextSet: storedSettings.autoHighlightNextSet,
-          autoScrollNextSet: storedSettings.autoScrollNextSet,
           installGuideDismissed: storedSettings.installGuideDismissed,
           setupSoundConfirmed: storedSettings.setupSoundConfirmed,
-          cloudWorkoutSyncConsent: storedSettings.cloudWorkoutSyncConsent === true || (storedSettings.workoutCloudSync === true && Number(storedSettings.workoutCloudSyncConsentVersion || 0) >= 1),
-          workoutCloudSync: storedSettings.workoutCloudSync,
-          workoutCloudSyncConsentVersion: storedSettings.workoutCloudSyncConsentVersion
+          expectedTemplateId: storedSettings.expectedTemplateId
         };
-        model.settings = { ...defaultSettings, ...Object.fromEntries(Object.entries(safeSettings).filter(([, value]) => value != null)), readinessBaseline: cleanReadinessBaseline(storedSettings.readinessBaseline || {}) };
-        model.settings.workoutCloudSync = model.settings.cloudWorkoutSyncConsent === true;
-        model.settings.workoutCloudSyncConsentVersion = model.settings.cloudWorkoutSyncConsent === true ? 1 : 0;
+        model.settings = { ...defaultSettings, ...Object.fromEntries(Object.entries(safeSettings).filter(([, value]) => value != null)) };
+        if (storedSettings.readinessBaseline && typeof storedSettings.readinessBaseline === "object" && !Array.isArray(storedSettings.readinessBaseline)) {
+          const compatibilityBaseline = cleanReadinessBaseline(storedSettings.readinessBaseline);
+          if (Object.keys(compatibilityBaseline).length) model.settings.readinessBaseline = compatibilityBaseline;
+        }
         delete model.settings.availableEquipment;
         delete model.settings.goal;
         delete model.settings.trainingStatus;
+        delete model.settings.cloudWorkoutSyncConsent;
+        delete model.settings.workoutCloudSync;
+        delete model.settings.workoutCloudSyncConsentVersion;
         model.sessions = (Array.isArray(model.sessions) ? model.sessions : []).map((session) => {
           const resolvedActions = (Array.isArray(session.resolvedActions) ? session.resolvedActions : []).filter((action) => {
             if (window.FitnessExceptionResolver?.validateResolvedAction) return window.FitnessExceptionResolver.validateResolvedAction(action)?.valid === true;
@@ -1178,24 +1292,11 @@
             && executionQualityValues.has(exercise.executionQualityAssessment)
             ? exercise.executionQualityAssessment
             : undefined;
-          const blockReason = String(exercise.safetyRestriction?.reason || exercise.finalPrescription?.safetyRestriction?.reason || exercise.finalPrescription?.reason || exercise.recommendationSnapshot?.finalPrescription?.safetyRestriction?.reason || exercise.recommendationSnapshot?.finalPrescription?.reason || "").trim();
-          const equipmentOnlyBlock = blockReason === "unavailable_equipment";
-          let retainedExercise = exercise;
+          let retainedExercise = { ...exercise };
           if (!submittedExercise) {
-            retainedExercise = { ...exercise };
             delete retainedExercise.executionQualityAssessment;
-            if (equipmentOnlyBlock) {
-              delete retainedExercise.executionBlocked;
-              delete retainedExercise.safetyRestriction;
-              if (retainedExercise.finalPrescription && typeof retainedExercise.finalPrescription === "object" && !Array.isArray(retainedExercise.finalPrescription)) {
-                const finalPrescription = { ...retainedExercise.finalPrescription };
-                delete finalPrescription.executionBlocked;
-                delete finalPrescription.executable;
-                delete finalPrescription.safetyRestriction;
-                if (String(finalPrescription.reason || "") === "unavailable_equipment") delete finalPrescription.reason;
-                retainedExercise.finalPrescription = finalPrescription;
-              }
-            }
+            delete retainedExercise.executionBlocked;
+            delete retainedExercise.safetyRestriction;
           }
           return {
             ...retainedExercise,
@@ -1220,10 +1321,13 @@
             return { ...stable, ...(customExerciseProfile ? { customExerciseProfile } : {}), resistanceType, isBodyweight: isBodyweightResistance(resistanceType) };
           })
         }));
+        if (!model.templates.some((template) => template.id === model.settings.expectedTemplateId)) {
+          model.settings.expectedTemplateId = model.templates[0]?.id || "";
+        }
         model.appDataVersion = Math.max(3, Number(model.appDataVersion || 0));
-        model.recommendationHistory = Array.isArray(model.recommendationHistory) ? model.recommendationHistory : [];
-        model.manualOverrides = Array.isArray(model.manualOverrides) ? model.manualOverrides : [];
-        model.personalEvidencePackage = model.personalEvidencePackage && typeof model.personalEvidencePackage === "object" ? model.personalEvidencePackage : null;
+        delete model.recommendationHistory;
+        delete model.manualOverrides;
+        delete model.personalEvidencePackage;
         model.rawImports = Array.isArray(model.rawImports) ? model.rawImports : [];
         model.migrationAudit = Array.isArray(model.migrationAudit) ? model.migrationAudit : [];
         model.dataRevision = Number(model.dataRevision || 0);
@@ -1295,7 +1399,7 @@
         if (!Number.isSafeInteger(revision) || revision < 0) return null;
         const requiredCollectionKeys = ["sessions", "exercises", "sets", "templates"];
         if (requiredCollectionKeys.some((key) => !Array.isArray(value[key]))) return null;
-        const collectionKeys = ["sessions", "exercises", "sets", "templates", "recommendationHistory", "manualOverrides", "rawImports", "migrationAudit"];
+        const collectionKeys = ["sessions", "exercises", "sets", "templates", "recommendationHistory", "rawImports", "migrationAudit"];
         if (collectionKeys.some((key) => Object.prototype.hasOwnProperty.call(value, key) && !Array.isArray(value[key]))) return null;
         if (Object.prototype.hasOwnProperty.call(value, "settings") && (!value.settings || typeof value.settings !== "object" || Array.isArray(value.settings))) return null;
         return { source, value, revision, canonicalContent: null, updatedAt: metadata.updatedAt || null, timestamp: persistenceTimestamp(metadata.updatedAt) };
@@ -1636,7 +1740,6 @@
           if (!appDataPersistenceConflict) {
             try { localStorage.removeItem(STORAGE_KEY); } catch { /* IndexedDB remains primary. */ }
           }
-          queueActiveWorkoutSync();
           recordPerformance("persistence:stableSnapshot", saveStartedAt, { sessions: snapshot.sessions.length, exercises: snapshot.exercises.length, sets: snapshot.sets.length });
           saveRuntime();
           return true;
@@ -1663,7 +1766,6 @@
           if (!appDataPersistenceConflict) {
             try { localStorage.removeItem(STORAGE_KEY); } catch { /* IndexedDB remains primary. */ }
           }
-          queueActiveWorkoutSync();
           recordPerformance("persistence:fullData", saveStartedAt, { sessions: data.sessions.length, exercises: data.exercises.length, sets: data.sets.length });
         }).catch(() => {
           persistenceReady = false;
@@ -1688,19 +1790,20 @@
         }, 1800);
       }
 
-      function activeWorkoutDraftSnapshot() {
+      function activeWorkoutDraftSnapshot(options = {}) {
         const session = activeWorkoutSession();
         if (!session) return null;
         const index = dataEntityIndex();
         const exercises = (index.exerciseIndicesBySession.get(session.id) || []).map((exerciseIndex) => data.exercises[exerciseIndex]);
         const sets = exercises.flatMap((exercise) => (index.setIndicesByExercise.get(exercise.id) || []).map((setIndex) => data.sets[setIndex]));
+        const draftSequence = options.incrementSequence === false ? activeDraftSequence : ++activeDraftSequence;
         return {
           contractVersion: "comprehensive-fitness-active-draft/2.0.0",
           version: 2,
           workoutId: session.id,
           savedAt: isoNow(),
           dataRevision: Number(data.dataRevision || 0),
-          draftSequence: ++activeDraftSequence,
+          draftSequence,
           session,
           exercises,
           sets,
@@ -1725,178 +1828,192 @@
         return true;
       }
 
+      function validateActiveWorkoutDraftEnvelope(snapshot, baseData = data, options = {}) {
+        const isV2 = snapshot?.contractVersion === "comprehensive-fitness-active-draft/2.0.0" && Number(snapshot.version) === 2;
+        const isLegacyV1 = options.allowLegacyV1 !== false && snapshot && snapshot.contractVersion == null && Number(snapshot.version) === 1;
+        if (!isV2 && !isLegacyV1) return null;
+        const savedAt = new Date(snapshot.savedAt || "").getTime();
+        if (!Number.isFinite(savedAt) || savedAt > Date.now() + 5 * 60 * 1000) return null;
+        const existingSession = baseData.sessions.find((item) => item.id === snapshot.workoutId);
+        const session = existingSession || snapshot.session;
+        if (!session || (existingSession && isSessionSubmitted(existingSession))
+          || session.deletedAt || session.trashed || session.canceledAt || session.workoutState === "canceled"
+          || !snapshot.session || snapshot.session.id !== session.id || isSessionSubmitted(snapshot.session)
+          || snapshot.session.deletedAt || snapshot.session.trashed || snapshot.session.canceledAt || snapshot.session.workoutState === "canceled") return null;
+        if ((snapshot.session.title != null && (typeof snapshot.session.title !== "string" || snapshot.session.title.length > 256))
+          || (snapshot.session.notes != null && (typeof snapshot.session.notes !== "string" || snapshot.session.notes.length > 4096))) return null;
+        if (snapshot.session.durationSemanticsVersion != null) {
+          const activeStartedAt = snapshot.session.activeDurationStartedAt
+            ? workoutDurationTimestamp(snapshot.session.activeDurationStartedAt)
+            : null;
+          const pausedAt = snapshot.session.workoutPausedAt
+            ? workoutDurationTimestamp(snapshot.session.workoutPausedAt)
+            : null;
+          if (snapshot.session.durationSemanticsVersion !== WORKOUT_DURATION_SEMANTICS_VERSION
+            || !Number.isSafeInteger(snapshot.session.activeDurationMs)
+            || snapshot.session.activeDurationMs < 0
+            || (snapshot.session.activeDurationStartedAt && activeStartedAt == null)
+            || (snapshot.session.workoutPausedAt && pausedAt == null)
+            || (snapshot.session.activeDurationStartedAt && snapshot.session.workoutPausedAt)) return null;
+        }
+        const sourceRevision = isV2 && Number.isSafeInteger(snapshot.dataRevision) && snapshot.dataRevision >= 0 ? snapshot.dataRevision : null;
+        const currentRevision = Number(baseData.dataRevision || 0);
+        const currentUpdatedAt = Date.parse(session.updatedAt || session.startedAt || "");
+        if (!options.ignoreSourceRevision && sourceRevision != null && sourceRevision < currentRevision) return null;
+        if (!options.ignoreSourceRevision && sourceRevision == null && Number.isFinite(currentUpdatedAt) && savedAt < currentUpdatedAt) return null;
+        if (!Array.isArray(snapshot.exercises) || !snapshot.exercises.length || snapshot.exercises.length > 500 || !Array.isArray(snapshot.sets) || snapshot.sets.length > 10000) return null;
+        const currentExercises = baseData.exercises.filter((exercise) => exercise.sessionId === session.id);
+        const currentExerciseIds = new Set(currentExercises.map((exercise) => exercise.id));
+        const currentSetCount = baseData.sets.filter((set) => currentExerciseIds.has(set.exerciseId)).length;
+        if (!options.ignoreSourceRevision && sourceRevision === currentRevision && (snapshot.exercises.length < currentExercises.length || snapshot.sets.length < currentSetCount)) return null;
+        const validId = (value) => typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(value);
+        const exerciseIds = new Set();
+        const preparedExercises = [];
+        for (const exercise of snapshot.exercises) {
+          if (!exercise || !validId(exercise.id) || exerciseIds.has(exercise.id) || exercise.sessionId !== session.id || typeof exercise.name !== "string" || !exercise.name.trim() || exercise.name.length > 256) return null;
+          if (exercise.notes != null && (typeof exercise.notes !== "string" || exercise.notes.length > 4096)) return null;
+          if (exercise.order != null && (!Number.isInteger(Number(exercise.order)) || Number(exercise.order) < 0)) return null;
+          if (exercise.resistanceType != null && !resistanceTypeValues.includes(exercise.resistanceType)) return null;
+          if (exercise.isBodyweight != null && typeof exercise.isBodyweight !== "boolean") return null;
+          for (const identityField of ["performanceExerciseId", "researchExerciseId", "canonicalExerciseId"]) {
+            if (exercise[identityField] != null && exercise[identityField] !== "" && !validId(exercise[identityField])) return null;
+          }
+          exerciseIds.add(exercise.id);
+          preparedExercises.push({ ...exercise });
+        }
+        const setIds = new Set();
+        const preparedSets = [];
+        const numericSetDomains = {
+          setNumber: { min: 0, integer: true },
+          sequenceIndex: { min: 0, integer: true },
+          sequence: { min: 0, integer: true },
+          setTypeIndex: { min: 0, integer: true },
+          reps: { min: 0, integer: true },
+          weight: { min: 0 },
+          addedLoad: { min: 0 },
+          assistanceLoad: { min: 0 },
+          durationSeconds: { min: 0, integer: true },
+          distance: { min: 0 },
+          rpe: { min: 0, max: 10, step: 0.5 },
+          targetReps: { min: 0, integer: true },
+          targetRepMin: { min: 0, integer: true },
+          targetRepMax: { min: 0, integer: true },
+          targetWeight: { min: 0 },
+          targetRpe: { min: 0, max: 10, step: 0.5 },
+          targetRpeMin: { min: 0, max: 10, step: 0.5 },
+          targetRpeMax: { min: 0, max: 10, step: 0.5 },
+          targetRpeTolerance: { min: 0, max: 10, step: 0.5 },
+          targetRestSeconds: { min: 0, max: 3600, integer: true },
+          originalTargetReps: { min: 0, integer: true },
+          originalTargetWeight: { min: 0 },
+          originalTargetRpe: { min: 0, max: 10, step: 0.5 }
+        };
+        const validSetTypes = new Set(["warmup", "straight", "working", "top", "backoff", "drop", "failure", "amrap", "technique", "deload", "unknown"]);
+        const validClassificationSources = new Set(["manual", "app-explicit", "strong-explicit", "inferred", "recorded"]);
+        const validUndoFields = new Set(["setType", "isWarmup", "countsTowardScore", "countsTowardVolume", "countsTowardProgression", "classificationSource", "classificationConfidence", "manualOverride", "reviewRequired"]);
+        for (const set of snapshot.sets) {
+          if (!set || !validId(set.id) || setIds.has(set.id) || !exerciseIds.has(set.exerciseId)) return null;
+          for (const [field, domain] of Object.entries(numericSetDomains)) {
+            if (set[field] == null || set[field] === "") continue;
+            const numeric = Number(set[field]);
+            const steps = domain.step == null ? 0 : (numeric - domain.min) / domain.step;
+            if (!Number.isFinite(numeric)
+              || numeric < domain.min
+              || (domain.max != null && numeric > domain.max)
+              || (domain.integer && !Number.isInteger(numeric))
+              || (domain.step != null && Math.abs(steps - Math.round(steps)) > 1e-9)) return null;
+          }
+          if (set.setNumber == null || set.setNumber === "") return null;
+          if (set.targetRepMin != null && set.targetRepMax != null && Number(set.targetRepMin) > Number(set.targetRepMax)) return null;
+          if (set.targetRpeMin != null && set.targetRpeMax != null && Number(set.targetRpeMin) > Number(set.targetRpeMax)) return null;
+          if (set.setType != null && !validSetTypes.has(set.setType)) return null;
+          if (set.classificationSource != null && !validClassificationSources.has(set.classificationSource)) return null;
+          for (const field of ["completed", "skipped", "edited", "isWarmup", "isBodyweight", "countsTowardScore", "countsTowardVolume", "countsTowardProgression", "manualOverride", "reviewRequired"]) {
+            if (set[field] != null && typeof set[field] !== "boolean") return null;
+          }
+          if (set.classificationConfidence != null && (!Number.isFinite(Number(set.classificationConfidence)) || Number(set.classificationConfidence) < 0 || Number(set.classificationConfidence) > 1)) return null;
+          if (set.classifierVersion != null && (!Number.isInteger(Number(set.classifierVersion)) || Number(set.classifierVersion) < 1)) return null;
+          if (set.classificationUndo != null) {
+            if (!set.classificationUndo || typeof set.classificationUndo !== "object" || Array.isArray(set.classificationUndo) || Object.keys(set.classificationUndo).some((field) => !validUndoFields.has(field))) return null;
+            if (set.classificationUndo.setType != null && !validSetTypes.has(set.classificationUndo.setType)) return null;
+            if (set.classificationUndo.classificationSource != null && !validClassificationSources.has(set.classificationUndo.classificationSource)) return null;
+            if (set.classificationUndo.classificationConfidence != null && (!Number.isFinite(Number(set.classificationUndo.classificationConfidence)) || Number(set.classificationUndo.classificationConfidence) < 0 || Number(set.classificationUndo.classificationConfidence) > 1)) return null;
+            for (const field of ["isWarmup", "countsTowardScore", "countsTowardVolume", "countsTowardProgression", "manualOverride", "reviewRequired"]) {
+              if (set.classificationUndo[field] != null && typeof set.classificationUndo[field] !== "boolean") return null;
+            }
+          }
+          const canonicalSetType = set.setType === "working" ? "straight" : set.setType;
+          const semantics = setTypeSemantics({ ...set, setType: canonicalSetType });
+          setIds.add(set.id);
+          preparedSets.push({
+            ...set,
+            setType: semantics.type,
+            ...(set.classificationUndo ? { classificationUndo: { ...set.classificationUndo, setType: set.classificationUndo.setType === "working" ? "straight" : set.classificationUndo.setType } } : {}),
+            isWarmup: semantics.isWarmup,
+            countsTowardProgression: semantics.isWarmup ? false : semantics.countsTowardProgression
+          });
+        }
+        let timerSnapshot = null;
+        if (isV2 && snapshot.timer != null) {
+          const source = snapshot.timer;
+          if (!source || source.workoutId !== session.id || !setIds.has(source.setId) || !exerciseIds.has(source.exerciseId)) return null;
+          if (source.pendingNextSetId && !setIds.has(source.pendingNextSetId)) return null;
+          const durationSeconds = Number(source.durationSeconds);
+          const endsAt = Number(source.endsAt);
+          const version = Number(source.version || 1);
+          const remainingSeconds = Number(source.remainingSeconds || 0);
+          const overtimeSeconds = Number(source.overtimeSeconds || 0);
+          const backgroundedAt = Number(source.backgroundedAt || 0);
+          const ownerSet = preparedSets.find((set) => set.id === source.setId);
+          const pendingSet = source.pendingNextSetId ? preparedSets.find((set) => set.id === source.pendingNextSetId) : null;
+          if (!ownerSet || ownerSet.exerciseId !== source.exerciseId
+            || (pendingSet && !exerciseIds.has(pendingSet.exerciseId))
+            || !Number.isSafeInteger(version) || version < 1
+            || !Number.isFinite(durationSeconds) || durationSeconds < 5 || durationSeconds > 3600
+            || !Number.isFinite(endsAt)
+            || !Number.isFinite(remainingSeconds) || remainingSeconds < 0 || remainingSeconds > durationSeconds
+            || !Number.isFinite(overtimeSeconds) || overtimeSeconds < 0
+            || !Number.isFinite(backgroundedAt) || backgroundedAt < 0) return null;
+          timerSnapshot = {
+            id: typeof source.id === "string" && source.id ? source.id : id(),
+            version,
+            workoutId: session.id,
+            exerciseId: source.exerciseId,
+            setId: source.setId,
+            pendingNextSetId: source.pendingNextSetId || "",
+            durationSeconds,
+            remainingSeconds,
+            endsAt,
+            isActive: source.isActive !== false,
+            isPaused: source.isPaused === true,
+            isOvertime: source.isOvertime === true,
+            overtimeSeconds,
+            notificationStatus: String(source.notificationStatus || "disabled").slice(0, 32),
+            serverNotificationId: String(source.serverNotificationId || "").slice(0, 160),
+            backgroundedAt
+          };
+        }
+        const normalized = normalizeLoadedData({
+          ...emptyData(),
+          sessions: [{ ...session, ...snapshot.session, id: session.id, workoutStarted: true, workoutState: "active", submitted: false }],
+          exercises: preparedExercises,
+          sets: preparedSets,
+          settings: baseData.settings
+        });
+        if (normalized.exercises.length !== snapshot.exercises.length || normalized.sets.length !== snapshot.sets.length) return null;
+        const draftSequence = Number.isSafeInteger(snapshot.draftSequence) && snapshot.draftSequence >= 0 ? snapshot.draftSequence : 0;
+        const legacyActiveDurationMs = legacyDraftKnownActiveDurationMs(snapshot, savedAt, session);
+        return { snapshot, savedAt, sourceRevision, draftSequence, legacy: isLegacyV1, legacyActiveDurationMs, session: normalized.sessions[0], exercises: normalized.exercises, sets: normalized.sets, timer: timerSnapshot };
+      }
+
       async function restoreActiveWorkoutDraft() {
         let indexed = null;
         let local = null;
         try { indexed = await readIndexedValue("active-workout-draft"); } catch { /* Fall back below. */ }
         try { local = JSON.parse(localStorage.getItem(ACTIVE_DRAFT_KEY) || "null"); } catch { local = null; }
-        const validateDraft = (snapshot) => {
-          const isV2 = snapshot?.contractVersion === "comprehensive-fitness-active-draft/2.0.0" && Number(snapshot.version) === 2;
-          const isLegacyV1 = snapshot && snapshot.contractVersion == null && Number(snapshot.version) === 1;
-          if (!isV2 && !isLegacyV1) return null;
-          const savedAt = new Date(snapshot.savedAt || "").getTime();
-          if (!Number.isFinite(savedAt) || savedAt > Date.now() + 5 * 60 * 1000) return null;
-          const existingSession = data.sessions.find((item) => item.id === snapshot.workoutId);
-          const session = existingSession || snapshot.session;
-          if (!session || (existingSession && isSessionSubmitted(existingSession))
-            || session.deletedAt || session.trashed || session.canceledAt || session.workoutState === "canceled"
-            || !snapshot.session || snapshot.session.id !== session.id || isSessionSubmitted(snapshot.session)
-            || snapshot.session.deletedAt || snapshot.session.trashed || snapshot.session.canceledAt || snapshot.session.workoutState === "canceled") return null;
-          if ((snapshot.session.title != null && (typeof snapshot.session.title !== "string" || snapshot.session.title.length > 256))
-            || (snapshot.session.notes != null && (typeof snapshot.session.notes !== "string" || snapshot.session.notes.length > 4096))) return null;
-          const sourceRevision = isV2 && Number.isSafeInteger(snapshot.dataRevision) && snapshot.dataRevision >= 0 ? snapshot.dataRevision : null;
-          const currentRevision = Number(data.dataRevision || 0);
-          const currentUpdatedAt = Date.parse(session.updatedAt || session.startedAt || "");
-          if (sourceRevision != null && sourceRevision < currentRevision) return null;
-          if (sourceRevision == null && Number.isFinite(currentUpdatedAt) && savedAt < currentUpdatedAt) return null;
-          if (!Array.isArray(snapshot.exercises) || !snapshot.exercises.length || snapshot.exercises.length > 500 || !Array.isArray(snapshot.sets) || snapshot.sets.length > 10000) return null;
-          const currentExercises = data.exercises.filter((exercise) => exercise.sessionId === session.id);
-          const currentExerciseIds = new Set(currentExercises.map((exercise) => exercise.id));
-          const currentSetCount = data.sets.filter((set) => currentExerciseIds.has(set.exerciseId)).length;
-          if (sourceRevision === currentRevision && (snapshot.exercises.length < currentExercises.length || snapshot.sets.length < currentSetCount)) return null;
-          const validId = (value) => typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(value);
-          const exerciseIds = new Set();
-          const preparedExercises = [];
-          for (const exercise of snapshot.exercises) {
-            if (!exercise || !validId(exercise.id) || exerciseIds.has(exercise.id) || exercise.sessionId !== session.id || typeof exercise.name !== "string" || !exercise.name.trim() || exercise.name.length > 256) return null;
-            if (exercise.notes != null && (typeof exercise.notes !== "string" || exercise.notes.length > 4096)) return null;
-            if (exercise.order != null && (!Number.isInteger(Number(exercise.order)) || Number(exercise.order) < 0)) return null;
-            if (exercise.resistanceType != null && !resistanceTypeValues.includes(exercise.resistanceType)) return null;
-            if (exercise.isBodyweight != null && typeof exercise.isBodyweight !== "boolean") return null;
-            for (const identityField of ["performanceExerciseId", "researchExerciseId", "canonicalExerciseId"]) {
-              if (exercise[identityField] != null && exercise[identityField] !== "" && !validId(exercise[identityField])) return null;
-            }
-            exerciseIds.add(exercise.id);
-            preparedExercises.push({ ...exercise });
-          }
-          const setIds = new Set();
-          const preparedSets = [];
-          const numericSetDomains = {
-            setNumber: { min: 0, integer: true },
-            sequenceIndex: { min: 0, integer: true },
-            sequence: { min: 0, integer: true },
-            setTypeIndex: { min: 0, integer: true },
-            reps: { min: 0, integer: true },
-            weight: { min: 0 },
-            addedLoad: { min: 0 },
-            assistanceLoad: { min: 0 },
-            durationSeconds: { min: 0, integer: true },
-            distance: { min: 0 },
-            rpe: { min: 0, max: 10, step: 0.5 },
-            targetReps: { min: 0, integer: true },
-            targetRepMin: { min: 0, integer: true },
-            targetRepMax: { min: 0, integer: true },
-            targetWeight: { min: 0 },
-            targetRpe: { min: 0, max: 10, step: 0.5 },
-            targetRpeMin: { min: 0, max: 10, step: 0.5 },
-            targetRpeMax: { min: 0, max: 10, step: 0.5 },
-            targetRpeTolerance: { min: 0, max: 10, step: 0.5 },
-            targetRestSeconds: { min: 0, max: 3600, integer: true },
-            originalTargetReps: { min: 0, integer: true },
-            originalTargetWeight: { min: 0 },
-            originalTargetRpe: { min: 0, max: 10, step: 0.5 }
-          };
-          const validSetTypes = new Set(["warmup", "straight", "working", "top", "backoff", "drop", "failure", "amrap", "technique", "deload", "unknown"]);
-          const validClassificationSources = new Set(["manual", "app-explicit", "strong-explicit", "inferred", "recorded"]);
-          const validUndoFields = new Set(["setType", "isWarmup", "countsTowardScore", "countsTowardVolume", "countsTowardProgression", "classificationSource", "classificationConfidence", "manualOverride", "reviewRequired"]);
-          for (const set of snapshot.sets) {
-            if (!set || !validId(set.id) || setIds.has(set.id) || !exerciseIds.has(set.exerciseId)) return null;
-            for (const [field, domain] of Object.entries(numericSetDomains)) {
-              if (set[field] == null || set[field] === "") continue;
-              const numeric = Number(set[field]);
-              const steps = domain.step == null ? 0 : (numeric - domain.min) / domain.step;
-              if (!Number.isFinite(numeric)
-                || numeric < domain.min
-                || (domain.max != null && numeric > domain.max)
-                || (domain.integer && !Number.isInteger(numeric))
-                || (domain.step != null && Math.abs(steps - Math.round(steps)) > 1e-9)) return null;
-            }
-            if (set.setNumber == null || set.setNumber === "") return null;
-            if (set.targetRepMin != null && set.targetRepMax != null && Number(set.targetRepMin) > Number(set.targetRepMax)) return null;
-            if (set.targetRpeMin != null && set.targetRpeMax != null && Number(set.targetRpeMin) > Number(set.targetRpeMax)) return null;
-            if (set.setType != null && !validSetTypes.has(set.setType)) return null;
-            if (set.classificationSource != null && !validClassificationSources.has(set.classificationSource)) return null;
-            for (const field of ["completed", "skipped", "edited", "isWarmup", "isBodyweight", "countsTowardScore", "countsTowardVolume", "countsTowardProgression", "manualOverride", "reviewRequired"]) {
-              if (set[field] != null && typeof set[field] !== "boolean") return null;
-            }
-            if (set.classificationConfidence != null && (!Number.isFinite(Number(set.classificationConfidence)) || Number(set.classificationConfidence) < 0 || Number(set.classificationConfidence) > 1)) return null;
-            if (set.classifierVersion != null && (!Number.isInteger(Number(set.classifierVersion)) || Number(set.classifierVersion) < 1)) return null;
-            if (set.classificationUndo != null) {
-              if (!set.classificationUndo || typeof set.classificationUndo !== "object" || Array.isArray(set.classificationUndo) || Object.keys(set.classificationUndo).some((field) => !validUndoFields.has(field))) return null;
-              if (set.classificationUndo.setType != null && !validSetTypes.has(set.classificationUndo.setType)) return null;
-              if (set.classificationUndo.classificationSource != null && !validClassificationSources.has(set.classificationUndo.classificationSource)) return null;
-              if (set.classificationUndo.classificationConfidence != null && (!Number.isFinite(Number(set.classificationUndo.classificationConfidence)) || Number(set.classificationUndo.classificationConfidence) < 0 || Number(set.classificationUndo.classificationConfidence) > 1)) return null;
-              for (const field of ["isWarmup", "countsTowardScore", "countsTowardVolume", "countsTowardProgression", "manualOverride", "reviewRequired"]) {
-                if (set.classificationUndo[field] != null && typeof set.classificationUndo[field] !== "boolean") return null;
-              }
-            }
-            const canonicalSetType = set.setType === "working" ? "straight" : set.setType;
-            const semantics = setTypeSemantics({ ...set, setType: canonicalSetType });
-            setIds.add(set.id);
-            preparedSets.push({
-              ...set,
-              setType: semantics.type,
-              ...(set.classificationUndo ? { classificationUndo: { ...set.classificationUndo, setType: set.classificationUndo.setType === "working" ? "straight" : set.classificationUndo.setType } } : {}),
-              isWarmup: semantics.isWarmup,
-              countsTowardScore: semantics.isWarmup ? false : semantics.countsTowardScore,
-              countsTowardVolume: semantics.isWarmup ? false : semantics.countsTowardVolume,
-              countsTowardProgression: semantics.isWarmup ? false : semantics.countsTowardProgression
-            });
-          }
-          let timerSnapshot = null;
-          if (isV2 && snapshot.timer != null) {
-            const source = snapshot.timer;
-            if (!source || source.workoutId !== session.id || !setIds.has(source.setId) || !exerciseIds.has(source.exerciseId)) return null;
-            if (source.pendingNextSetId && !setIds.has(source.pendingNextSetId)) return null;
-            const durationSeconds = Number(source.durationSeconds);
-            const endsAt = Number(source.endsAt);
-            const version = Number(source.version || 1);
-            const remainingSeconds = Number(source.remainingSeconds || 0);
-            const overtimeSeconds = Number(source.overtimeSeconds || 0);
-            const backgroundedAt = Number(source.backgroundedAt || 0);
-            const ownerSet = preparedSets.find((set) => set.id === source.setId);
-            const pendingSet = source.pendingNextSetId ? preparedSets.find((set) => set.id === source.pendingNextSetId) : null;
-            if (!ownerSet || ownerSet.exerciseId !== source.exerciseId
-              || (pendingSet && !exerciseIds.has(pendingSet.exerciseId))
-              || !Number.isSafeInteger(version) || version < 1
-              || !Number.isFinite(durationSeconds) || durationSeconds < 5 || durationSeconds > 3600
-              || !Number.isFinite(endsAt)
-              || !Number.isFinite(remainingSeconds) || remainingSeconds < 0 || remainingSeconds > durationSeconds
-              || !Number.isFinite(overtimeSeconds) || overtimeSeconds < 0
-              || !Number.isFinite(backgroundedAt) || backgroundedAt < 0) return null;
-            timerSnapshot = {
-              id: typeof source.id === "string" && source.id ? source.id : id(),
-              version,
-              workoutId: session.id,
-              exerciseId: source.exerciseId,
-              setId: source.setId,
-              pendingNextSetId: source.pendingNextSetId || "",
-              durationSeconds,
-              remainingSeconds,
-              endsAt,
-              isActive: source.isActive !== false,
-              isPaused: source.isPaused === true,
-              isOvertime: source.isOvertime === true,
-              overtimeSeconds,
-              notificationStatus: String(source.notificationStatus || "disabled").slice(0, 32),
-              serverNotificationId: String(source.serverNotificationId || "").slice(0, 160),
-              backgroundedAt
-            };
-          }
-          const normalized = normalizeLoadedData({
-            ...emptyData(),
-            sessions: [{ ...session, ...snapshot.session, id: session.id, workoutStarted: true, workoutState: "active", submitted: false }],
-            exercises: preparedExercises,
-            sets: preparedSets,
-            settings: data.settings
-          });
-          if (normalized.exercises.length !== snapshot.exercises.length || normalized.sets.length !== snapshot.sets.length) return null;
-          const draftSequence = Number.isSafeInteger(snapshot.draftSequence) && snapshot.draftSequence >= 0 ? snapshot.draftSequence : 0;
-          return { snapshot, savedAt, sourceRevision, draftSequence, legacy: isLegacyV1, session: normalized.sessions[0], exercises: normalized.exercises, sets: normalized.sets, timer: timerSnapshot };
-        };
         const candidate = [[indexed, "indexed"], [local, "local"]]
           .map(([snapshot, source]) => {
-            const validated = validateDraft(snapshot);
+            const validated = validateActiveWorkoutDraftEnvelope(snapshot, data);
             return validated ? { ...validated, source } : null;
           })
           .filter(Boolean)
@@ -1909,7 +2026,21 @@
           : Array.isArray(snapshot.session?.resolvedActions) ? snapshot.session.resolvedActions : [])
           .filter((action) => exceptionResolverApi?.validateResolvedAction(action)?.valid === true);
         const loadedSession = data.sessions.find((item) => item.id === snapshot.workoutId);
-        const restoredSession = { ...(loadedSession || {}), ...candidate.session, resolvedActions: restoredResolvedActions, workoutStarted: true, workoutState: "active", submitted: false };
+        const restoredCandidateSession = { ...(loadedSession || {}), ...candidate.session, resolvedActions: restoredResolvedActions, workoutStarted: true, workoutState: "active", submitted: false };
+        const durationSeededSession = candidate.legacyActiveDurationMs != null
+          && restoredCandidateSession.durationSemanticsVersion !== WORKOUT_DURATION_SEMANTICS_VERSION
+          ? {
+              ...restoredCandidateSession,
+              durationSemanticsVersion: WORKOUT_DURATION_SEMANTICS_VERSION,
+              activeDurationMs: candidate.legacyActiveDurationMs,
+              activeDurationStartedAt: "",
+              workoutPausedAt: ""
+            }
+          : restoredCandidateSession;
+        const restoredSession = durationSeededSession.durationSemanticsVersion === WORKOUT_DURATION_SEMANTICS_VERSION
+          && candidate.legacyActiveDurationMs == null
+          ? durationSeededSession
+          : startWorkoutDuration(durationSeededSession);
         data.sessions = data.sessions.some((item) => item.id === snapshot.workoutId)
           ? data.sessions.map((item) => item.id === snapshot.workoutId ? restoredSession : item)
           : [restoredSession, ...data.sessions];
@@ -1996,7 +2127,6 @@
         }
         data = { ...nextData, dataRevision: Number(data?.dataRevision || 0) + 1 };
         if (options.invalidateAnalysis !== false) invalidateCompletedAnalysis();
-        if (previousData.settings !== data.settings) applyTheme();
         if (isEditingHistorySession()) {
           historyEditFlow.dirty = true;
           if (shouldRender) render();
@@ -2008,17 +2138,8 @@
       }
 
       function applyTheme() {
-        const theme = data.settings?.theme === "dark" ? "dark" : "light";
-        const validPackages = new Set(["heritage-atlas", "signal-garden", "alpine-ledger", "training-hall", "harbor-pulse", "prairie-electric", "redwood-circuit", "mediterranean-set", "modern-primary", "night-stadium"]);
-        const colorPackage = validPackages.has(data.settings?.colorPackage) ? data.settings.colorPackage : defaultSettings.colorPackage;
-        document.documentElement.dataset.theme = theme;
-        document.documentElement.dataset.colorPackage = colorPackage;
-        const packageBackgrounds = { "heritage-atlas": "#f5e9c9", "signal-garden": "#fff8e8", "alpine-ledger": "#edf4f1", "training-hall": "#f4ebdd", "harbor-pulse": "#f4e5ce", "prairie-electric": "#f2e2b9", "redwood-circuit": "#f5e9d8", "mediterranean-set": "#f3efd9", "modern-primary": "#f7f5ef", "night-stadium": "#0c1727" };
-        document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "light" ? packageBackgrounds[colorPackage] : "#081015");
-      }
-
-      function themeLabel() {
-        return data.settings.theme === "light" ? "Light" : "Dark";
+        document.documentElement.removeAttribute("data-theme");
+        document.documentElement.removeAttribute("data-color-package");
       }
 
       function createSession(title, options = {}) {
@@ -2028,7 +2149,7 @@
       }
 
       function defaultRecovery() {
-        return cleanRecovery();
+        return cleanRecovery({ illness: false, pain: false });
       }
 
       function sessionRecovery(session) {
@@ -2061,8 +2182,6 @@
           completed: previous?.completed ?? false,
           isWarmup: previous?.isWarmup ?? false,
           setType: normalizeSetTypeCode(previous?.setType, previous?.isWarmup),
-          countsTowardScore: previous?.countsTowardScore ?? !(previous?.isWarmup ?? false),
-          countsTowardVolume: previous?.countsTowardVolume ?? !(previous?.isWarmup ?? false),
           countsTowardProgression: previous?.countsTowardProgression ?? !(previous?.isWarmup ?? false),
           classificationSource: previous?.classificationSource || "app-explicit",
           classificationConfidence: previous?.classificationConfidence ?? 1,
@@ -2561,10 +2680,16 @@
         return resistanceTypeValues.map((type) => '<option value="' + type + '" ' + (type === selected ? 'selected' : '') + '>' + resistanceTypeLabel(type) + '</option>').join('');
       }
 
-      function resistanceLoad(set, type) {
+      function storedResistanceLoad(set, type) {
         if (type === "bodyweight_plus_load") return Number(set?.addedLoad ?? set?.weight ?? 0);
         if (type === "assisted_bodyweight") return Number(set?.assistanceLoad ?? set?.weight ?? 0);
         return Number(set?.weight || 0);
+      }
+
+      function resistanceLoad(set, type, toUnit = data.settings.weightUnit) {
+        const load = storedResistanceLoad(set, type);
+        const fromUnit = set?.weightUnit === "kg" || set?.weightUnit === "lb" ? set.weightUnit : data.settings.weightUnit;
+        return Number(convertWeightValue(load, fromUnit, toUnit));
       }
 
       function formatLoadNumber(value) {
@@ -2574,7 +2699,8 @@
       function roundLoadForUnit(value, unit = data.settings.weightUnit, increment = 0) {
         const numeric = Number(value || 0);
         if (!Number.isFinite(numeric)) return 0;
-        if (unit === "lb") return Math.round(numeric * 2) / 2;
+        const displayUnit = Number(increment) > 0 ? unit : data.settings.weightUnit;
+        if (displayUnit === "lb") return Math.round(numeric * 2) / 2;
         if (Number(increment) > 0) return Number((Math.round(numeric / Number(increment)) * Number(increment)).toFixed(3));
         return Number(numeric.toFixed(3));
       }
@@ -2585,7 +2711,7 @@
 
       function formatResistance(value, exercise = null) {
         const type = inferResistanceType(exercise?.name || "", value || exercise || {}, value ? [value] : []);
-        const unit = value?.weightUnit || data.settings.weightUnit;
+        const unit = data.settings.weightUnit;
         const load = resistanceLoad(value, type);
         if (type === "bodyweight") return "BW";
         if (type === "bodyweight_plus_load") return load > 0 ? "BW + " + displayLoadNumber(load, unit) + " " + unit : "BW";
@@ -2617,55 +2743,20 @@
         };
       }
 
-      const convertibleLoadKeys = new Set([
-        "weight", "targetWeight", "originalTargetWeight", "addedLoad", "assistanceLoad",
-        "increment", "targetLoad", "nextLoad"
-      ]);
-
       function convertWeightValue(value, fromUnit, toUnit) {
         const numeric = Number(value);
         if (!Number.isFinite(numeric) || fromUnit === toUnit) return value;
         const converted = fromUnit === "lb" && toUnit === "kg" ? numeric / 2.2046226218 : numeric * 2.2046226218;
-        return roundLoadForUnit(converted, toUnit);
+        return toUnit === "lb" ? Math.round(converted * 2) / 2 : Number(converted.toFixed(3));
       }
 
       function resistanceLoadInUnit(set, type, toUnit = data.settings.weightUnit) {
-        const load = resistanceLoad(set, type);
-        const fromUnit = set?.weightUnit === "kg" || set?.weightUnit === "lb" ? set.weightUnit : data.settings.weightUnit;
-        return Number(convertWeightValue(load, fromUnit, toUnit));
+        return resistanceLoad(set, type, toUnit);
       }
 
-      function convertWeightFields(value, fromUnit, toUnit, key = "") {
-        if (value == null || fromUnit === toUnit) return value;
-        if (key === "personalEvidencePackage" || key === "rawImports") return value;
-        if (Array.isArray(value)) return value.map((item) => convertWeightFields(item, fromUnit, toUnit));
-        if (typeof value !== "object") return convertibleLoadKeys.has(key) ? convertWeightValue(value, fromUnit, toUnit) : value;
-        const converted = {};
-        const hasExplicitUnitField = Object.prototype.hasOwnProperty.call(value, "weightUnit");
-        Object.entries(value).forEach(([field, item]) => {
-          if (field === "prescribedLoad" && item && typeof item === "object") {
-            converted[field] = { ...item, target: convertWeightValue(item.target, fromUnit, toUnit), previous: convertWeightValue(item.previous, fromUnit, toUnit), unit: item.unit ? toUnit : item.unit };
-          } else if (field === "load" && item && typeof item === "object" && ("from" in item || "to" in item)) {
-            converted[field] = { ...item, from: convertWeightValue(item.from, fromUnit, toUnit), to: convertWeightValue(item.to, fromUnit, toUnit) };
-          } else {
-            converted[field] = convertWeightFields(item, fromUnit, toUnit, field);
-          }
-        });
-        if (hasExplicitUnitField) converted.weightUnit = toUnit;
-        if (converted.recommendationId && converted.checksum && typeof window !== "undefined" && window.ComprehensiveFitnessPrescriptionEngine?.refreshRecommendationChecksum) {
-          return window.ComprehensiveFitnessPrescriptionEngine.refreshRecommendationChecksum(converted);
-        }
-        return converted;
-      }
-
-      function convertAppWeightUnit(model, toUnit) {
-        const fromUnit = model?.settings?.weightUnit === "kg" ? "kg" : "lb";
-        if (!model || !["lb", "kg"].includes(toUnit) || fromUnit === toUnit) return model;
-        const converted = convertWeightFields(model, fromUnit, toUnit);
-        converted.settings = { ...model.settings, weightUnit: toUnit };
-        converted.personalEvidencePackage = model.personalEvidencePackage;
-        converted.rawImports = model.rawImports;
-        return converted;
+      function setAppWeightUnitPreference(model, toUnit) {
+        if (!model || !["lb", "kg"].includes(toUnit) || model.settings?.weightUnit === toUnit) return model;
+        return { ...model, settings: { ...model.settings, weightUnit: toUnit } };
       }
       // RESISTANCE_MODEL_END
 
@@ -2771,7 +2862,7 @@
 
       function stableTargetForTemplateExercise(templateExercise, options = {}) {
         const stable = normalizeStableTemplateExercise(templateExercise);
-        const workingTypes = (stable.setTypes || []).filter((type) => type.countsTowardScore !== false && !type.isWarmup);
+        const workingTypes = (stable.setTypes || []).filter((type) => type.countsTowardProgression !== false && !type.isWarmup);
         const primaryType = workingTypes.find((type) => normalizeSetTypeCode(type.type) === "top")
           || workingTypes.find((type) => normalizeSetTypeCode(type.type) === "straight")
           || workingTypes[0]
@@ -2874,13 +2965,7 @@
 
       function tabFromLocation() {
         const hash = window.location.hash.replace(/^#/, "").toLowerCase();
-        if (["progress-overview", "progress-lifts", "progress-history", "dashboard", "charts"].includes(hash)) return "progress";
-        if (["lift", "workout"].includes(hash)) return "workout";
-        if (["plan", "routines"].includes(hash)) return "routines";
-        if (["more", "data", "settings"].includes(hash)) return "settings";
-        if (primaryTabIds?.includes(hash)) return hash;
-        const legacyView = new URLSearchParams(window.location.search).get("view");
-        return legacyView === "settings" ? "settings" : "today";
+        return currentDestinationIds.includes(hash) ? hash : "today";
       }
 
       function tabUrl(tab) {
@@ -2891,12 +2976,7 @@
       }
 
       function normalizedDestination(tab) {
-        if (["lift", "workout"].includes(tab)) return "workout";
-        if (tab === "today") return "today";
-        if (["dashboard", "charts", "progress"].includes(tab)) return "progress";
-        if (["plan", "routines"].includes(tab)) return "routines";
-        if (["data", "settings", "more"].includes(tab)) return "settings";
-        return "today";
+        return currentDestinationIds.includes(tab) ? tab : "today";
       }
 
       function actionFocusDescriptor(action, dataValues = {}, ordinal = 0) {
@@ -3004,7 +3084,7 @@
         if (templateStartFlow) {
           return actionFocusDescriptor("resume-active-workout");
         }
-        if (optionalReadinessFlow) return actionFocusDescriptor("template-readiness-sleep-hours");
+        if (optionalReadinessFlow) return actionFocusDescriptor("template-readiness-deviation");
         if (cancelWorkoutFlow) return actionFocusDescriptor("keep-workout");
         if (historyEditConfirm) return actionFocusDescriptor("keep-history-editing");
         if (clearDataFlow?.open) return actionFocusDescriptor("cancel-clear-data");

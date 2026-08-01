@@ -8,6 +8,8 @@
   const CANDIDATE_VERSION = "comprehensive-fitness-exception-candidate/1.0.0";
   const CONTRACT_VERSION = "comprehensive-fitness-resolved-action/1.0.0";
   const RESOLVER_VERSION = "comprehensive-fitness-exception-resolver/1.0.0";
+  const ENGINEERING_ERROR_MODULE = "exception-resolver";
+  const CANDIDATE_NORMALIZATION_RULE_VERSION = "candidate-normalization/1.0.0";
   const QUALIFICATION_FIELDS = Object.freeze([
     "identityIntegrity",
     "sourceIntegrity",
@@ -185,12 +187,29 @@
     return { candidateId: text(candidateId) || "unidentified", reason };
   }
 
-  function normalizeCandidate(candidate, resolverEvaluatedAt) {
+  function emitEngineeringError(recordEngineeringError, code) {
+    if (typeof recordEngineeringError !== "function") return;
+    const record = Object.freeze({
+      code: code === "detector_error" ? "detector_error" : "candidate_normalization_error",
+      module: ENGINEERING_ERROR_MODULE,
+      ruleVersion: CANDIDATE_NORMALIZATION_RULE_VERSION
+    });
+    try {
+      recordEngineeringError(record);
+    } catch (_error) {
+      // Engineering reporting is best-effort and must never become a second failure path.
+    }
+  }
+
+  function normalizeCandidate(candidate, resolverEvaluatedAt, recordEngineeringError) {
     let candidateId = "unidentified";
     try {
       if (!isPlainObject(candidate)) return { suppression: suppress(candidateId, "invalid_candidate") };
       candidateId = text(candidate.candidateId) || candidateId;
-      if (candidate.status === "error") return { suppression: suppress(candidateId, "detector_error") };
+      if (candidate.status === "error") {
+        emitEngineeringError(recordEngineeringError, "detector_error");
+        return { suppression: suppress(candidateId, "detector_error") };
+      }
       if (candidate.candidateVersion !== CANDIDATE_VERSION) return { suppression: suppress(candidateId, "unsupported_candidate_version") };
       if (candidateId === "unidentified") return { suppression: suppress(candidateId, "missing_candidate_id") };
       const detectorId = text(candidate.detector?.id);
@@ -243,6 +262,7 @@
       normalized.strictness = ACTION_STRICTNESS[normalized.action.code];
       return { candidate: normalized };
     } catch (_error) {
+      emitEngineeringError(recordEngineeringError, "candidate_normalization_error");
       return { suppression: suppress(candidateId, "candidate_normalization_error") };
     }
   }
@@ -397,8 +417,9 @@
     const normalizedCandidates = [];
     const suppressions = [];
     const seenCandidateIds = new Set();
+    const recordEngineeringError = safeProperty(input, "onEngineeringError");
     rawCandidates.forEach((rawCandidate) => {
-      const normalized = normalizeCandidate(rawCandidate, evaluatedAt);
+      const normalized = normalizeCandidate(rawCandidate, evaluatedAt, recordEngineeringError);
       if (normalized.suppression) {
         suppressions.push(normalized.suppression);
         return;

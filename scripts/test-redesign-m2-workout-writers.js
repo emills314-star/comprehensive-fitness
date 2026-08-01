@@ -108,10 +108,12 @@ assert.deepEqual(
 );
 assert.deepEqual([warmup.targetWeight, warmup.targetRepMin, warmup.targetRpeMax], [95, 5, 4], "Warm-ups must remain outside working-set reconciliation");
 assert.equal(exercise.pendingReconcile, null, "The reconciliation prompt must clear after applying");
-assert.equal(runtime.data.manualOverrides.length, 1, "The existing manual-override audit ledger must record one explicit action");
-assert.equal(runtime.data.manualOverrides[0].field, "remainingSetTargets");
-assert.equal(runtime.data.manualOverrides[0].exerciseId, "synthetic_press_heavy");
-assert.equal("recommendationId" in runtime.data.manualOverrides[0], false, "A new manual edit must not reference legacy recommendation identity");
+assert.equal(exercise.manualOverrides.length, 1, "The owning exercise must record one explicit override action");
+assert.equal(exercise.manualOverrides[0].field, "remainingSetTargets");
+assert.equal(exercise.manualOverrides[0].exerciseId, "synthetic_press_heavy");
+assert.equal("recommendationId" in exercise.manualOverrides[0], false, "A new manual edit must not reference legacy recommendation identity");
+assert.deepEqual(runtime.data.manualOverrides, [], "A legacy fixture ledger may remain inert, but the current writer must not append a duplicate override");
+assert.doesNotMatch(extractFunction(workout, "logWorkoutOverride"), /data\.manualOverrides/, "The current writer must not target the deleted global override ledger");
 assert.deepEqual(runtime.data.recommendationHistory, [{ recommendationId: "legacy-history" }], "Immutable legacy recommendation history must be preserved without a new write");
 assert.deepEqual(runtime.data.sessions[0].workoutPrescription, { legacy: true }, "A legacy historical prescription must be preserved without mutation");
 assert.equal(runtime.lastToast, "Remaining set targets updated from the completed set.");

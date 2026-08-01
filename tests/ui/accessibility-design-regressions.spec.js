@@ -29,7 +29,6 @@ function focusedFixture({ activeWorkout = true, includeHistory = true } = {}) {
     sets: fixture.sets.filter((set) => retainedExerciseIds.has(set.exerciseId)),
     settings: {
       ...fixture.settings,
-      autoScrollNextSet: true,
       autoStartRestTimer: false,
       availableEquipment: ["all"]
     }
@@ -174,7 +173,7 @@ function primaryTab(page, tabId) {
 }
 
 async function openPrimaryTab(page, tabId) {
-  const destination = ({ lift: "workout", dashboard: "progress", charts: "progress", data: "settings", more: "settings", plan: "routines" })[tabId] || tabId;
+  const destination = tabId;
   if (destination === "routines" || destination === "settings") {
     const action = destination === "routines" ? "open-routines" : "open-settings";
     const opener = page.locator(`[data-action="${action}"]`);
@@ -844,7 +843,7 @@ test("optional-readiness dialog owns initial focus, traps both directions, and r
   await expect.soft(page.locator(".brand-bar"), "Opening optional readiness must make the shell header inert").toHaveAttribute("inert", "");
   await expect.soft(page.locator("#main-content"), "Opening optional readiness must make application content inert").toHaveAttribute("inert", "");
   await expect.soft(page.locator(".bottom-nav"), "Opening optional readiness must make tab navigation inert").toHaveAttribute("inert", "");
-  await expectDialogTrap(page, dialog, dialog.getByRole("spinbutton", { name: "Sleep", exact: true }));
+  await expectDialogTrap(page, dialog, dialog.getByRole("radio", { name: "Not entered", exact: true }));
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
   await expect.soft(trigger, "Escape must restore focus to the optional readiness trigger").toBeFocused({ timeout: 1_500 });
@@ -867,12 +866,12 @@ test("optional-readiness dialog owns initial focus, traps both directions, and r
 
 test("dialog initial focus falls back to the first visible enabled control when the preferred action is hidden", async ({ page }) => {
   await installScenario(page, { activeWorkout: false, includeHistory: false });
-  await page.addStyleTag({ content: '[data-action="template-readiness-sleep-hours"] { display: none !important; }' });
+  await page.addStyleTag({ content: '[data-action="template-readiness-deviation"] { display: none !important; }' });
   const trigger = page.locator('[data-action="log-template-readiness"][data-template-id="public-synthetic-template-upper"]');
   await trigger.click();
 
   const dialog = page.getByRole("dialog", { name: "What is different today?", exact: true });
-  const preferred = dialog.locator('[data-action="template-readiness-sleep-hours"]');
+  const preferred = dialog.getByRole("radio", { name: "Not entered", exact: true });
   const fallback = dialog.getByRole("button", { name: "Close daily readiness", exact: true });
   const finalVisibleControl = dialog.getByRole("button", { name: "Start workout", exact: true });
   await expect(dialog).toBeVisible();
@@ -883,43 +882,17 @@ test("dialog initial focus falls back to the first visible enabled control when 
   await expect(finalVisibleControl, "The Tab trap must use the same visible/enabled filtering and skip the hidden nominal action").toBeFocused();
 });
 
-test("optional readiness retains contrast across every package and theme", async ({ page }, testInfo) => {
-  test.setTimeout(180_000);
-  test.skip(testInfo.project.name !== "desktop", "One deterministic Chromium project owns the complete readiness color-package matrix.");
+test("optional readiness retains contrast in the fixed light styling", async ({ page }, testInfo) => {
+  test.setTimeout(90_000);
+  test.skip(testInfo.project.name !== "desktop", "One deterministic Chromium project owns the readiness contrast audit.");
   await installScenario(page, { activeWorkout: false, includeHistory: false, viewport: { width: 390, height: 844 } });
   await page.addScriptTag({ content: AxeBuilder.source });
   await page.locator('[data-action="log-template-readiness"][data-template-id="public-synthetic-template-upper"]').click();
-  const colorPackages = [
-    "heritage-atlas", "signal-garden", "alpine-ledger", "training-hall", "harbor-pulse",
-    "prairie-electric", "redwood-circuit", "mediterranean-set", "modern-primary", "night-stadium"
-  ];
-  const failures = [];
-  const auditSheet = async (surface) => {
-    for (const theme of ["light", "dark"]) {
-      for (const colorPackage of colorPackages) {
-        await page.evaluate(({ colorPackage, theme }) => {
-          document.documentElement.dataset.colorPackage = colorPackage;
-          document.documentElement.dataset.theme = theme;
-        }, { colorPackage, theme });
-        await page.waitForTimeout(150);
-        const violations = await page.evaluate(async () => {
-          const sheet = document.querySelector(".sheet-card");
-          return (await axe.run(sheet, { runOnly: { type: "rule", values: ["color-contrast"] } })).violations;
-        });
-        if (violations.length) {
-          failures.push({
-            colorPackage,
-            surface,
-            theme,
-            targets: violations.flatMap((violation) => violation.nodes.map((node) => node.target.join(" ")))
-          });
-        }
-      }
-    }
-  };
-
-  await auditSheet("readiness");
-  expect(failures, "the optional readiness sheet matrix must clear WCAG text contrast").toEqual([]);
+  const violations = await page.evaluate(async () => {
+    const sheet = document.querySelector(".sheet-card");
+    return (await axe.run(sheet, { runOnly: { type: "rule", values: ["color-contrast"] } })).violations;
+  });
+  expect(violations, "the optional readiness sheet must clear WCAG text contrast").toEqual([]);
 });
 
 test("readiness form targets reflow without clipping at 320 CSS pixels and 200 percent text", async ({ page }, testInfo) => {
@@ -964,7 +937,7 @@ test("readiness form targets reflow without clipping at 320 CSS pixels and 200 p
 
 test("cancel-workout dialog owns safe focus, traps both directions, and restores its trigger after Escape, close, and backdrop", async ({ page }) => {
   await installScenario(page);
-  await openPrimaryTab(page, "lift");
+  await openPrimaryTab(page, "workout");
   const trigger = page.locator(`[data-action="request-cancel-workout"][data-session-id="${ACTIVE_SESSION_ID}"]`);
   const menu = page.locator('[data-action="session-menu"]');
   await expect(trigger).toHaveCount(1);
@@ -972,9 +945,9 @@ test("cancel-workout dialog owns safe focus, traps both directions, and restores
   if (!await trigger.isVisible()) await menu.click();
   await trigger.click();
   let dialog = page.getByRole("dialog", { name: "Cancel this workout?", exact: true });
-  await expect.soft(page.locator(".brand-bar"), "A destructive sheet must make the shell header inert").toHaveAttribute("inert", "");
-  await expect.soft(page.locator("#main-content"), "A destructive sheet must make workout content inert").toHaveAttribute("inert", "");
-  await expect.soft(page.locator(".session-dock"), "A destructive sheet must overlay and make the persistent session dock inert").toHaveAttribute("inert", "");
+  await expect.soft(page.locator(".brand-bar"), "A destructive sheet must make the shell header inert").toHaveJSProperty("inert", true);
+  await expect.soft(page.locator("#main-content"), "A destructive sheet must make workout content inert").toHaveJSProperty("inert", true);
+  await expect.soft(page.locator(".session-dock"), "A destructive sheet must overlay and make the persistent session dock inert").toHaveJSProperty("inert", true);
   await expect.soft(page.locator(".session-dock")).toHaveAttribute("aria-hidden", "true");
   await expectDialogTrap(page, dialog, dialog.getByRole("button", { name: "Keep workout", exact: true }));
   await page.keyboard.press("Escape");
@@ -1020,7 +993,7 @@ test("browser Back guards dirty history edits and reload cannot persist the temp
     timeout: 8_000
   }).toBe(originalSession.title);
 
-  await openPrimaryTab(page, "dashboard");
+  await openPrimaryTab(page, "progress");
   const historyEntry = page.locator(`[data-action="open-session"][data-session-id="${originalSession.id}"]`).first();
   await expect(historyEntry, "Dashboard history must provide the deterministic entry used to create a browser history record").toBeVisible();
   await historyEntry.click();
@@ -1053,7 +1026,7 @@ test("browser Back guards dirty history edits and reload cannot persist the temp
   await expect(page.locator(".history-edit-bar"), "Reload must not resurrect an unconfirmed edit transaction").toHaveCount(0);
   const persistedAfterReload = await readPersistedAppData(page);
   expect(persistedAfterReload.sessions.find((session) => session.id === originalSession.id)?.title).toBe(originalSession.title);
-  await openPrimaryTab(page, "dashboard");
+  await openPrimaryTab(page, "progress");
   await page.locator(`[data-action="open-session"][data-session-id="${originalSession.id}"]`).first().click();
   await expect(page.locator('[data-action="session-title"]'), "Reopening history after reload must show the last explicitly saved value, not the temporary edit").toHaveValue(originalSession.title);
 });
@@ -1068,7 +1041,7 @@ test("external service-worker activation defers reload until history editing end
     timeout: 5_000
   }).toBe(true);
 
-  await openPrimaryTab(page, "dashboard");
+  await openPrimaryTab(page, "progress");
   await page.locator(`[data-action="open-session"][data-session-id="${originalSession.id}"]`).first().click();
   await page.getByRole("button", { name: "Edit History", exact: true }).click();
   await page.locator("summary").filter({ hasText: "Workout details" }).click();
@@ -1121,9 +1094,10 @@ test("entering history edit flushes an unrelated debounced template change befor
   const templateId = "public-synthetic-template-upper";
   const persistedTemplateName = "Unrelated debounced template change";
 
-  await openPrimaryTab(page, "plan");
+  await openPrimaryTab(page, "routines");
+  await page.locator(`[data-action="toggle-template-editor"][data-template-id="${templateId}"]`).click();
   await page.locator(`[data-action="template-name"][data-template-id="${templateId}"]`).fill(persistedTemplateName);
-  await openPrimaryTab(page, "dashboard");
+  await openPrimaryTab(page, "progress");
   await page.locator(`[data-action="open-session"][data-session-id="${originalSession.id}"]`).first().click();
   await page.getByRole("button", { name: "Edit History", exact: true }).click();
   await expect(page.locator(".history-edit-bar"), "Edit mode must begin only after its stable pre-edit snapshot is flushed").toBeVisible();
@@ -1150,9 +1124,10 @@ test("newer local fallback outranks stale readable IndexedDB after a failed pre-
   const newerTemplateName = "Newer fallback template state";
   const staleIndexed = await readPersistedAppData(page);
 
-  await openPrimaryTab(page, "plan");
+  await openPrimaryTab(page, "routines");
+  await page.locator(`[data-action="toggle-template-editor"][data-template-id="${templateId}"]`).click();
   await page.locator(`[data-action="template-name"][data-template-id="${templateId}"]`).fill(newerTemplateName);
-  await openPrimaryTab(page, "dashboard");
+  await openPrimaryTab(page, "progress");
   await page.locator(`[data-action="open-session"][data-session-id="${originalSession.id}"]`).first().click();
   await page.evaluate(() => {
     globalThis.__CF_NATIVE_IDB_OPEN_FOR_FALLBACK__ = IDBFactory.prototype.open;
@@ -1186,7 +1161,7 @@ test("concurrent navigation and mutation abort delayed history-edit startup with
     window.setTimeout = (callback, delay, ...args) => nativeSetTimeout(callback, Number(delay) === 1800 ? 60_000 : delay, ...args);
   });
   await installScenario(page, { activeWorkout: false });
-  await openPrimaryTab(page, "dashboard");
+  await openPrimaryTab(page, "progress");
   await page.locator('[data-action="open-session"][data-session-id="public-synthetic-history-session-00"]').first().click();
   const templateId = "public-synthetic-template-upper";
   const changedTemplateName = "Concurrent mutation durably reconciled";
@@ -1196,7 +1171,8 @@ test("concurrent navigation and mutation abort delayed history-edit startup with
   await expect.poll(() => page.evaluate(() => Boolean(globalThis.__CF_HISTORY_WRITE_QUEUED__)), {
     message: "The edit-start stable snapshot must be waiting behind the deterministic IndexedDB blocker"
   }).toBe(true);
-  await openPrimaryTab(page, "plan");
+  await openPrimaryTab(page, "routines");
+  await page.locator(`[data-action="toggle-template-editor"][data-template-id="${templateId}"]`).click();
   await page.locator(`[data-action="template-name"][data-template-id="${templateId}"]`).fill(changedTemplateName);
   await page.evaluate(() => globalThis.__CF_RELEASE_HISTORY_WRITE__());
 
@@ -1207,7 +1183,8 @@ test("concurrent navigation and mutation abort delayed history-edit startup with
   }).toBe(changedTemplateName);
   await page.reload();
   await expect(page.locator("main.app-main")).toBeVisible({ timeout: 45_000 });
-  await openPrimaryTab(page, "plan");
+  await openPrimaryTab(page, "routines");
+  await page.locator(`[data-action="toggle-template-editor"][data-template-id="${templateId}"]`).click();
   await expect(page.locator(`[data-action="template-name"][data-template-id="${templateId}"]`)).toHaveValue(changedTemplateName);
   await expect(page.locator(".history-edit-bar")).toHaveCount(0);
 });
@@ -1219,14 +1196,15 @@ test("failed current-state reconciliation reports non-durability and keeps in-me
     window.setTimeout = (callback, delay, ...args) => nativeSetTimeout(callback, Number(delay) === 1800 ? 60_000 : delay, ...args);
   });
   await installScenario(page, { activeWorkout: false });
-  await openPrimaryTab(page, "dashboard");
+  await openPrimaryTab(page, "progress");
   await page.locator('[data-action="open-session"][data-session-id="public-synthetic-history-session-00"]').first().click();
   const templateId = "public-synthetic-template-upper";
   const changedTemplateName = "Concurrent mutation currently in memory only";
   await installIndexedWriteBlocker(page);
   await page.getByRole("button", { name: "Edit History", exact: true }).click();
   await expect.poll(() => page.evaluate(() => Boolean(globalThis.__CF_HISTORY_WRITE_QUEUED__))).toBe(true);
-  await openPrimaryTab(page, "plan");
+  await openPrimaryTab(page, "routines");
+  await page.locator(`[data-action="toggle-template-editor"][data-template-id="${templateId}"]`).click();
   await page.locator(`[data-action="template-name"][data-template-id="${templateId}"]`).fill(changedTemplateName);
   await page.evaluate(() => {
     globalThis.__CF_NATIVE_IDB_OPEN_FOR_RECONCILIATION__ = IDBFactory.prototype.open;
@@ -1268,18 +1246,21 @@ test("equal-revision divergent copies preserve the alternate through later norma
 
   await page.reload();
   await expect(page.locator("main.app-main")).toBeVisible({ timeout: 45_000 });
-  await openPrimaryTab(page, "data");
+  await openPrimaryTab(page, "settings");
   const preservedBeforeSave = await page.evaluate((storageKey) => JSON.parse(localStorage.getItem(storageKey) || "null"), STORAGE_KEY);
   expect(preservedBeforeSave.conflictPreserved).toBe(true);
   expect(localFallbackData(preservedBeforeSave).templates.find((template) => template.id === templateId)?.name).toBe(localName);
   await expect(page.locator(".persistence-conflict-note")).toContainText(/conflicting saved app-data copies.*preserved.*export.*clear all/i);
 
-  await page.locator('[data-action="theme-mode"][value="dark"]').check();
+  const alertsGroup = page.locator("details.settings-group").filter({ hasText: "Rest timer and alerts" });
+  await alertsGroup.locator(":scope > summary").click();
+  await alertsGroup.locator('[data-action="default-rest-seconds"]').fill("105");
+  await alertsGroup.locator('[data-action="default-rest-seconds"]').dispatchEvent("change");
   await expect.poll(async () => (await readPersistedAppData(page)).dataRevision).toBeGreaterThan(base.dataRevision);
   const preservedAfterSave = await page.evaluate((storageKey) => JSON.parse(localStorage.getItem(storageKey) || "null"), STORAGE_KEY);
   expect(localFallbackData(preservedAfterSave).templates.find((template) => template.id === templateId)?.name).toBe(localName);
   await page.reload();
-  await openPrimaryTab(page, "data");
+  await openPrimaryTab(page, "settings");
   await expect(page.locator(".persistence-conflict-note")).toBeVisible();
   expect(await page.evaluate((storageKey) => localStorage.getItem(storageKey) !== null, STORAGE_KEY)).toBe(true);
 });
@@ -1302,7 +1283,7 @@ test("confirmed Clear resolves an equal-revision conflict across IndexedDB, fall
 
   await page.reload();
   await expect(page.locator("main.app-main")).toBeVisible({ timeout: 45_000 });
-  await openPrimaryTab(page, "data");
+  await openPrimaryTab(page, "settings");
   await expect(page.locator(".persistence-conflict-note")).toContainText(/conflicting saved app-data copies.*preserved.*clear all/i);
   const dangerSummary = page.locator("details.settings-group > summary").filter({ hasText: "Danger Zone" });
   if (!await dangerSummary.evaluate((element) => element.parentElement.open)) await dangerSummary.click();
@@ -1323,7 +1304,7 @@ test("confirmed Clear resolves an equal-revision conflict across IndexedDB, fall
 
   await page.reload();
   await expect(page.locator("main.app-main")).toBeVisible({ timeout: 45_000 });
-  await openPrimaryTab(page, "data");
+  await openPrimaryTab(page, "settings");
   await expect(page.locator(".persistence-conflict-note"), "The cleared alternate must not return after reload").toHaveCount(0);
   expect(await page.evaluate((storageKey) => localStorage.getItem(storageKey), STORAGE_KEY)).toBeNull();
   const reloaded = await readPersistedAppData(page);
@@ -1349,7 +1330,7 @@ test("revisionless legacy divergence is wrapped and preserved without destructiv
 
   await page.reload();
   await expect(page.locator("main.app-main")).toBeVisible({ timeout: 45_000 });
-  await openPrimaryTab(page, "data");
+  await openPrimaryTab(page, "settings");
   await expect(page.locator(".persistence-conflict-note")).toContainText(/ordering.*unavailable|conflicting saved/i);
   const wrapped = await page.evaluate((storageKey) => JSON.parse(localStorage.getItem(storageKey) || "null"), STORAGE_KEY);
   expect(wrapped.format).toBe("comprehensive-fitness-local-fallback");
@@ -1358,16 +1339,16 @@ test("revisionless legacy divergence is wrapped and preserved without destructiv
   expect((await readPersistedAppData(page)).templates.find((template) => template.id === templateId)?.name).toBe("Revisionless IndexedDB copy");
 });
 
-test("unified progress chart and history retain contrast across every package and theme", async ({ page }, testInfo) => {
-  test.setTimeout(240_000);
-  test.skip(testInfo.project.name !== "desktop", "One deterministic Chromium project owns the complete analysis color-package matrix.");
+test("unified progress chart and history retain contrast in the fixed light styling", async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
+  test.skip(testInfo.project.name !== "desktop", "One deterministic Chromium project owns the progress contrast audit.");
   await installScenario(page, {
     activeWorkout: false,
     fixture: buildAnalyticsEvidenceFixture(),
     viewport: { width: 390, height: 844 }
   });
   await page.addScriptTag({ content: AxeBuilder.source });
-  await openPrimaryTab(page, "charts");
+  await openPrimaryTab(page, "progress");
   await expect(page.locator(".chart-recalculating")).toHaveCount(0, { timeout: 15_000 });
   const search = page.getByRole("combobox", { name: "Search or select exercise" });
   await search.fill("Dumbbell Bench Press");
@@ -1376,18 +1357,11 @@ test("unified progress chart and history retain contrast across every package an
   await expect(page.locator('.chart-card[data-chart-key="performance"]')).toBeVisible();
   await expect(page.locator(".history-view")).toBeVisible();
 
-  const colorPackages = [
-    "heritage-atlas", "signal-garden", "alpine-ledger", "training-hall", "harbor-pulse",
-    "prairie-electric", "redwood-circuit", "mediterranean-set", "modern-primary", "night-stadium"
-  ];
+  const colorPackages = ["signal-garden"];
   const failures = [];
   const auditCurrentSurface = async (surface, selector) => {
-    for (const theme of ["light", "dark"]) {
+    for (const theme of ["light"]) {
       for (const colorPackage of colorPackages) {
-        await page.evaluate(({ colorPackage, theme }) => {
-          document.documentElement.dataset.colorPackage = colorPackage;
-          document.documentElement.dataset.theme = theme;
-        }, { colorPackage, theme });
         await page.waitForTimeout(180);
         const violations = await page.evaluate(async (surfaceSelector) => {
           const surface = document.querySelector(surfaceSelector);
@@ -1421,7 +1395,7 @@ test("unified progress chart and history retain contrast across every package an
     ...entry,
     variants: Array.from(new Set(entry.variants))
   }));
-  expect(failureSummary, "the factual chart and chronological history must clear WCAG text contrast in every package and theme").toEqual([]);
+  expect(failureSummary, "the factual chart and chronological history must clear WCAG text contrast").toEqual([]);
 });
 
 test("unified progress reflows without clipping and retains 44 CSS-pixel actions at 320 pixels and 200 percent text", async ({ page }, testInfo) => {
@@ -1433,7 +1407,7 @@ test("unified progress reflows without clipping and retains 44 CSS-pixel actions
     viewport: { width: 320, height: 720 }
   });
   await page.addStyleTag({ content: "html { font-size: 200% !important; }" });
-  await openPrimaryTab(page, "charts");
+  await openPrimaryTab(page, "progress");
   await expect(page.locator(".chart-recalculating")).toHaveCount(0, { timeout: 15_000 });
   const search = page.getByRole("combobox", { name: "Search or select exercise" });
   await search.fill("Dumbbell Bench Press");
@@ -1441,7 +1415,7 @@ test("unified progress reflows without clipping and retains 44 CSS-pixel actions
   await expect(page.locator(".chart-recalculating")).toHaveCount(0, { timeout: 15_000 });
 
   const measure = async (surface, selector) => page.locator(selector).evaluate((root, surfaceName) => {
-    const targets = [...root.querySelectorAll("button, summary, input, select, [role='button'][tabindex]")]
+    const targets = [...root.querySelectorAll("button, summary, input:not([type='radio']), select, [role='button'][tabindex]")]
       .filter((element) => {
         const style = getComputedStyle(element);
         const rect = element.getBoundingClientRect();
@@ -1486,7 +1460,7 @@ test("unified progress reflows without clipping and retains 44 CSS-pixel actions
 
 test("repeated Lift move, delete, add-set, warm-up, and copy-set controls include their exercise context", async ({ page }) => {
   await installScenario(page);
-  await openPrimaryTab(page, "lift");
+  await openPrimaryTab(page, "workout");
   const cases = [
     ["public-synthetic-active-exercise-1", LONG_EXERCISE_NAMES.chest],
     ["public-synthetic-active-exercise-2", LONG_EXERCISE_NAMES.back],
@@ -1503,9 +1477,7 @@ test("repeated Lift move, delete, add-set, warm-up, and copy-set controls includ
 
   let auditedControls = 0;
   for (const [exerciseId, exerciseName] of cases) {
-    const exerciseField = page.locator(`[data-action="exercise-name"][data-exercise-id="${exerciseId}"]`);
-    await expect(exerciseField).toHaveCount(1);
-    const card = exerciseField.locator("xpath=ancestor::article[contains(concat(' ', normalize-space(@class), ' '), ' exercise-card ')][1]");
+    const card = page.locator(`.exercise-card[aria-label="Exercise: ${exerciseName}"]`);
     await expect(card).toHaveCount(1);
     await card.locator(".exercise-overflow > summary").click();
     await card.locator(".exercise-details > summary").click();
@@ -1548,7 +1520,7 @@ test("set transitions preserve manual scroll and the retired workout-board jump 
     };
   });
   await installScenario(page, { reducedMotion: "reduce", viewport: { width: 320, height: 360 } });
-  await openPrimaryTab(page, "lift");
+  await openPrimaryTab(page, "workout");
   const setTwo = page.locator('[data-action="toggle-set"][data-set-id="public-synthetic-active-exercise-1-set-2"]');
   const setTwoReps = page.locator('[data-action="set-reps"][data-set-id="public-synthetic-active-exercise-1-set-2"]');
   await expect(setTwo).toHaveAttribute("aria-pressed", "false");
@@ -1564,7 +1536,7 @@ test("set transitions preserve manual scroll and the retired workout-board jump 
     "Touching the completion checkmark must release the focused set-entry field before completion"
   ).toBe(false);
   await page.evaluate(() => { globalThis.__SCROLL_INTO_VIEW_AUDIT__ = []; });
-  await setTwo.click();
+  await expect(setTwo).toHaveAttribute("aria-pressed", "true");
   await page.waitForTimeout(250);
   expect(await page.evaluate(() => globalThis.__SCROLL_INTO_VIEW_AUDIT__), "Completing a set must not move the workout viewport").toEqual([]);
 
@@ -1582,7 +1554,7 @@ test("set transitions preserve manual scroll and the retired workout-board jump 
 test("forced-colors mode retains a visible non-shadow focus indicator on navigation and content controls", async ({ page }) => {
   test.setTimeout(90_000);
   await installScenario(page, { forcedColors: "active" });
-  await openPrimaryTab(page, "dashboard");
+  await openPrimaryTab(page, "progress");
   const targets = [primaryTab(page, "progress"), page.getByRole("combobox", { name: "Search or select exercise" })];
   expect(await page.evaluate(() => matchMedia("(forced-colors: active)").matches)).toBe(true);
 
@@ -1653,7 +1625,7 @@ test("Settings controls retain 44 CSS-pixel targets and reflow at 320 pixels wit
   test.skip(testInfo.project.name !== "desktop", "One deterministic Chromium project owns exact Settings increased-text geometry.");
   await installScenario(page, { activeWorkout: false, includeHistory: false, viewport: { width: 320, height: 720 } });
   await page.addStyleTag({ content: "html { font-size: 200% !important; }" });
-  await openPrimaryTab(page, "more");
+  await openPrimaryTab(page, "settings");
   await page.locator("details.settings-group").evaluateAll((groups) => groups.forEach((group) => { group.open = true; }));
 
   const geometry = await page.locator(".settings-view").evaluate((surface) => {
@@ -1697,26 +1669,17 @@ test("Settings controls retain 44 CSS-pixel targets and reflow at 320 pixels wit
   expect.soft(geometry.proxies.filter((target) => target.left < -1 || target.right > 321), "Settings controls must not clip horizontally").toEqual([]);
 });
 
-test("Settings privacy, data, and destructive surfaces retain contrast across every package and theme", async ({ page }, testInfo) => {
-  test.setTimeout(240_000);
-  test.skip(testInfo.project.name !== "desktop", "One deterministic Chromium project owns the complete Settings color-package matrix.");
+test("Settings privacy, data, and destructive surfaces retain contrast in the fixed light styling", async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
+  test.skip(testInfo.project.name !== "desktop", "One deterministic Chromium project owns the Settings contrast audit.");
   await installScenario(page, { activeWorkout: false, includeHistory: false, viewport: { width: 390, height: 844 } });
   await page.addScriptTag({ content: AxeBuilder.source });
-  await openPrimaryTab(page, "more");
+  await openPrimaryTab(page, "settings");
   await page.locator("details.settings-group").evaluateAll((groups) => groups.forEach((group) => { group.open = true; }));
-  const colorPackages = [
-    "heritage-atlas", "signal-garden", "alpine-ledger", "training-hall", "harbor-pulse",
-    "prairie-electric", "redwood-circuit", "mediterranean-set", "modern-primary", "night-stadium"
-  ];
+  const colorPackages = ["signal-garden"];
   const failures = [];
-  for (const theme of ["light", "dark"]) {
+  for (const theme of ["light"]) {
     for (const colorPackage of colorPackages) {
-      await page.evaluate(({ colorPackage, theme }) => {
-        data.settings.colorPackage = colorPackage;
-        data.settings.theme = theme;
-        document.documentElement.dataset.colorPackage = colorPackage;
-        document.documentElement.dataset.theme = theme;
-      }, { colorPackage, theme });
       await page.waitForTimeout(180);
       const violations = await page.evaluate(async () => {
         axe.reset();
@@ -1737,14 +1700,8 @@ test("Settings privacy, data, and destructive surfaces retain contrast across ev
   }
   await page.locator('[data-action="clear-data"]').click();
   await expect(page.locator(".clear-data-sheet")).toBeVisible();
-  for (const theme of ["light", "dark"]) {
+  for (const theme of ["light"]) {
     for (const colorPackage of colorPackages) {
-      await page.evaluate(({ colorPackage, theme }) => {
-        data.settings.colorPackage = colorPackage;
-        data.settings.theme = theme;
-        document.documentElement.dataset.colorPackage = colorPackage;
-        document.documentElement.dataset.theme = theme;
-      }, { colorPackage, theme });
       await page.waitForTimeout(180);
       const violations = await page.evaluate(async () => {
         axe.reset();
@@ -1772,5 +1729,5 @@ test("Settings privacy, data, and destructive surfaces retain contrast across ev
     });
     return summary;
   }, new Map()).values()).map((entry) => ({ ...entry, variants: Array.from(new Set(entry.variants)) }));
-  expect(failureSummary, "Settings must clear WCAG text contrast in every package and theme").toEqual([]);
+  expect(failureSummary, "Settings must clear WCAG text contrast").toEqual([]);
 });

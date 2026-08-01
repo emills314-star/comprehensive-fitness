@@ -52,7 +52,7 @@ test.beforeAll(() => {
   fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
 });
 
-test("legacy Plan redirects to contextual Routines and removed planner paths stay unreachable at 390 by 844", async ({ page }) => {
+test("stale Plan falls back to Today while current Routines remains reachable at 390 by 844", async ({ page }) => {
   test.setTimeout(120_000);
   const consoleErrors = [];
   page.on("console", (message) => {
@@ -62,13 +62,20 @@ test("legacy Plan redirects to contextual Routines and removed planner paths sta
 
   await page.setViewportSize({ width: 390, height: 844 });
   await installFixture(page);
-  await page.goto("/#plan");
-  await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible({ timeout: 45_000 });
+  for (const staleHash of ["plan", "more", "data", "dashboard", "charts", "lift", "progress-overview", "progress-lifts", "progress-history"]) {
+    await page.goto(`/#${staleHash}`);
+    await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible({ timeout: 45_000 });
+    await expect(page).toHaveURL(/#today$/);
+    await expect(page.locator('[data-action="set-tab"][data-tab="today"]')).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("heading", { name: "Today", exact: true })).toBeVisible();
+  }
 
-  await expect(page).toHaveURL(/#routines$/);
-  await expect(page.locator(".templates-view")).toBeVisible();
   await expect(page.locator('[data-action="set-tab"][data-tab="plan"], [data-action="set-tab"][data-tab="more"]')).toHaveCount(0);
   await expect(page.getByRole("navigation", { name: "Main navigation" }).getByRole("button")).toHaveCount(2);
+
+  await page.goto("/#routines");
+  await expect(page).toHaveURL(/#routines$/);
+  await expect(page.locator(".templates-view")).toBeVisible();
   await expect(page.locator('[data-action="start-template"][data-template-id="public-synthetic-m3-routine"]')).toBeVisible();
 
   await expect(page.getByText(/plan your mesocycle|guided planner|mesocycle completed/i)).toHaveCount(0);

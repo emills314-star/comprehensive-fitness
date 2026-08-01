@@ -1,7 +1,22 @@
+      const STRONG_IMPORT_CONTRACT_VERSION = "strong-csv-import/1.0.0";
+      let pendingImport = null;
 
-      function exportData() {
-        const backup = window.FitnessBackupContract.createBackupExport(data);
-        exportText = JSON.stringify(backup, null, 2);
+      function cloneImportSnapshot(value) {
+        return typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+      }
+
+      function collectionCounts(value) {
+        return {
+          sessions: Array.isArray(value?.sessions) ? value.sessions.length : 0,
+          exercises: Array.isArray(value?.exercises) ? value.exercises.length : 0,
+          sets: Array.isArray(value?.sets) ? value.sets.length : 0,
+          templates: Array.isArray(value?.templates) ? value.templates.length : 0
+        };
+      }
+
+      async function exportData() {
+        const activeWorkoutDraft = activeWorkoutDraftSnapshot({ incrementSequence: false });
+        exportText = window.FitnessBackupContract.serializeBackupExport(data, { activeWorkoutDraft });
         if (appDataPersistenceConflict) {
           settingsMessage = "Backup exported from the currently selected app-data copy only. The conflicting alternate local fallback copy remains preserved on this device and is not included in the download.";
         }
@@ -59,10 +74,6 @@
       }
 
       const muscleGroups = ["Chest", "Back", "Quads", "Hamstrings", "Glutes", "Adductors", "Shoulders", "Biceps", "Triceps", "Forearms", "Calves", "Core", "Neck"];
-
-      function readinessBaseline() {
-        return cleanReadinessBaseline(data.settings.readinessBaseline || {});
-      }
 
       function createTemplatesFromStrongSessions(importedSessions, importedExercises, importedSets) {
         const existingTemplateNames = new Set(data.templates.map((template) => template.name.trim().toLowerCase()));
@@ -187,20 +198,49 @@
         return units.size === 1 ? [...units][0] : "";
       }
 
-      function importStrongCsv(text, sourceWeightUnit) {
+      function validateStrongImportCandidate(candidate) {
+        const candidateRevision = candidate.dataRevision;
+        const validated = validateImportedAppData(candidate, BACKUP_IMPORT_LIMITS);
+        validated.dataRevision = candidateRevision;
+        assertCandidateHasRecoverableExport(validated);
+        return validated;
+      }
+
+      function prepareStrongCsvImport(text, sourceWeightUnit, fileName = "Strong CSV") {
         const weightUnit = normalizeStrongImportWeightUnit(sourceWeightUnit);
+        const sourceBytes = new TextEncoder().encode(text).byteLength;
+        if (sourceBytes > BACKUP_IMPORT_LIMITS.maxRawImportBytes) {
+          throw new Error("Strong CSV is too large to retain in a round-trip-safe backup; the maximum size is 10 MiB.");
+        }
         const retainedRawImport = (data.rawImports || []).find((item) => item.source === "strong" && item.originalText === text);
         if (retainedRawImport) {
           const retainedUnit = retainedStrongImportWeightUnit(retainedRawImport);
           if (!retainedUnit) throw new Error("This Strong CSV was already imported before its source weight unit was recorded. No data was changed; keep the retained raw source and review its existing sets before importing again.");
           if (retainedUnit !== weightUnit) throw new Error(`This Strong CSV was already imported as ${retainedUnit}. No data was changed; the same raw source cannot be reinterpreted as ${weightUnit}.`);
-          settingsMessage = `Strong CSV already imported as ${weightUnit}. No data was changed; the raw source backup is already retained.`;
-          render();
-          return;
+          return {
+            kind: "strong",
+            fileName,
+            baseDataRevision: Number(data.dataRevision || 0),
+            candidate: null,
+            noChanges: true,
+            preview: {
+              title: "Strong CSV already imported",
+              mode: "No changes",
+              version: retainedRawImport.importVersion || STRONG_IMPORT_CONTRACT_VERSION,
+              sourceBytes,
+              sourceUnit: weightUnit,
+              counts: { sessions: 0, exercises: 0, sets: 0, templates: 0 },
+              reviewRequired: 0,
+              facts: ["The exact raw source and its weight unit are already retained.", "Apply will perform no write."]
+            },
+            completionMessage: `Strong CSV already imported as ${weightUnit}. No data was changed; the raw source backup is already retained.`
+          };
         }
-        const rows = parseCsv(text).filter((row) => row.Date && row["Exercise Name"] && isStrongWorkSet(row));
+        const parsedRows = parseCsv(text);
+        const rows = parsedRows.filter((row) => row.Date && row["Exercise Name"] && isStrongWorkSet(row));
         if (!rows.length) throw new Error("No Strong workout rows found.");
         const existingSessionIds = new Set(data.sessions.map((session) => session.externalId).filter(Boolean));
+        const duplicateSessionIds = new Set();
         const sessions = [];
         const exercises = [];
         const sets = [];
@@ -216,7 +256,10 @@
           const rawDate = row.Date.trim();
           const workoutName = (row["Workout Name"] || "Strong Workout").trim() || "Strong Workout";
           const sessionExternalId = "strong:" + rawDate + "|" + workoutName;
-          if (existingSessionIds.has(sessionExternalId)) return;
+          if (existingSessionIds.has(sessionExternalId)) {
+            duplicateSessionIds.add(sessionExternalId);
+            return;
+          }
           let session = sessionMap.get(sessionExternalId);
           if (!session) {
             const parsedDate = parseStrongDate(rawDate);
@@ -284,11 +327,43 @@
             data.exercises.filter((exercise) => exercise.source === "strong"),
             data.sets
           );
-          commit({ ...data, templates: [...templates, ...data.templates], rawImports: [...(data.rawImports || []), { id: "strong-backup-" + importStamp, source: "strong", importedAt: isoNow(), originalText: text, weightUnit, sessionExternalIds: [] }] }, false);
-          const audit = auditImportedTemplateHistory(templates);
-          settingsMessage = `Strong workout rows already existed; retained this ${weightUnit} CSV source.` + (templates.length ? " Added " + templates.length + " templates from active workout names." : "") + strongImportAuditMessage(audit);
-          render();
-          return;
+          const candidate = validateStrongImportCandidate({
+            ...data,
+            templates: [...templates, ...data.templates],
+            rawImports: [...(data.rawImports || []), {
+              id: "strong-backup-" + importStamp,
+              source: "strong",
+              importVersion: STRONG_IMPORT_CONTRACT_VERSION,
+              importedAt: isoNow(),
+              originalText: text,
+              weightUnit,
+              sessionExternalIds: []
+            }],
+            dataRevision: nextMonotonicImportRevision()
+          });
+          return {
+            kind: "strong",
+            fileName,
+            baseDataRevision: Number(data.dataRevision || 0),
+            candidate,
+            noChanges: false,
+            newestSessionId: "",
+            templateIds: templates.map((template) => template.id),
+            preview: {
+              title: "Strong CSV ready to apply",
+              mode: "Merge history",
+              version: STRONG_IMPORT_CONTRACT_VERSION,
+              sourceBytes: new TextEncoder().encode(text).byteLength,
+              sourceUnit: weightUnit,
+              counts: { sessions: 0, exercises: 0, sets: 0, templates: templates.length },
+              reviewRequired: 0,
+              facts: [
+                `${duplicateSessionIds.size} workout${duplicateSessionIds.size === 1 ? "" : "s"} already exist and will not be duplicated.`,
+                "The raw CSV and selected source unit will be retained."
+              ]
+            },
+            completionMessage: `Strong workout rows already existed; retained this ${weightUnit} CSV source.` + (templates.length ? " Added " + templates.length + " templates from active workout names." : "")
+          };
         }
         const setsByImportedExercise = new Map();
         sets.forEach((set) => {
@@ -306,8 +381,6 @@
               sequence: classification.set.sequenceIndex ?? classification.set.sequence,
               setType: classification.type,
               isWarmup: semantics.isWarmup,
-              countsTowardScore: semantics.countsTowardScore,
-              countsTowardVolume: semantics.countsTowardVolume,
               countsTowardProgression: semantics.countsTowardProgression,
               classificationSource: classification.source,
               classificationConfidence: classification.confidence,
@@ -319,18 +392,63 @@
           });
         });
         const templates = createTemplatesFromStrongSessions(sessions, exercises, sets);
-        commit({
+        const candidate = validateStrongImportCandidate({
           ...data,
           sessions: [...sessions, ...data.sessions],
           exercises: [...data.exercises, ...exercises],
           sets: [...data.sets, ...sets],
           templates: [...templates, ...data.templates],
-          rawImports: [...(data.rawImports || []), { id: "strong-" + importStamp, source: "strong", importedAt: isoNow(), originalText: text, weightUnit, sessionExternalIds: sessions.map((session) => session.externalId) }]
-        }, false);
-        activeSessionId = sessions.sort((a, b) => b.date.localeCompare(a.date))[0]?.id || activeSessionId;
-        const audit = auditImportedTemplateHistory(templates);
-        settingsMessage = "Imported " + sessions.length + " Strong workouts, " + exercises.length + " exercises, " + sets.length + " sets, and " + templates.length + " templates with source weights in " + weightUnit + "." + strongImportAuditMessage(audit);
-        render();
+          rawImports: [...(data.rawImports || []), {
+            id: "strong-" + importStamp,
+            source: "strong",
+            importVersion: STRONG_IMPORT_CONTRACT_VERSION,
+            importedAt: isoNow(),
+            originalText: text,
+            weightUnit,
+            sessionExternalIds: sessions.map((session) => session.externalId)
+          }],
+          dataRevision: nextMonotonicImportRevision()
+        });
+        const reviewRequired = sets.filter((set) => set.reviewRequired).length;
+        const customIdentityCount = exercises.filter((exercise) => !exercise.researchExerciseId).length;
+        const ignoredRows = Math.max(0, parsedRows.length - rows.length);
+        const facts = [
+          `${reviewRequired} set classification${reviewRequired === 1 ? "" : "s"} need${reviewRequired === 1 ? "s" : ""} review.`,
+          `${customIdentityCount} exercise entr${customIdentityCount === 1 ? "y" : "ies"} will retain a distinct non-research performance identity.`,
+          "The raw CSV, original values, selected source unit, and import version will be retained."
+        ];
+        if (duplicateSessionIds.size) facts.unshift(`${duplicateSessionIds.size} existing workout${duplicateSessionIds.size === 1 ? "" : "s"} will be skipped without duplication.`);
+        if (ignoredRows) facts.push(`${ignoredRows} non-work-set or incomplete row${ignoredRows === 1 ? "" : "s"} will be ignored.`);
+        return {
+          kind: "strong",
+          fileName,
+          baseDataRevision: Number(data.dataRevision || 0),
+          candidate,
+          noChanges: false,
+          newestSessionId: sessions.slice().sort((a, b) => b.date.localeCompare(a.date))[0]?.id || "",
+          templateIds: templates.map((template) => template.id),
+          preview: {
+            title: "Strong CSV ready to apply",
+            mode: "Merge history",
+            version: STRONG_IMPORT_CONTRACT_VERSION,
+            sourceBytes,
+            sourceUnit: weightUnit,
+            counts: { sessions: sessions.length, exercises: exercises.length, sets: sets.length, templates: templates.length },
+            reviewRequired,
+            facts: facts.slice(0, 5)
+          },
+          completionMessage: "Imported " + sessions.length + " Strong workouts, " + exercises.length + " exercises, " + sets.length + " sets, and " + templates.length + " templates with source weights in " + weightUnit + "."
+        };
+      }
+
+      function importStrongCsv(text, sourceWeightUnit, options = {}) {
+        pendingImport = prepareStrongCsvImport(text, sourceWeightUnit, options.fileName || "Strong CSV");
+        settingsMessage = pendingImport.noChanges
+          ? pendingImport.completionMessage
+          : "Preview ready. Review the validated counts and facts, then choose Apply import.";
+        importStatus = { state: "preview", message: settingsMessage };
+        if (options.render !== false) render();
+        return pendingImport.preview;
       }
 
       function validateBackupJsonShape(value, options = {}) {
@@ -360,31 +478,32 @@
       function validateImportedAppData(imported, limits = BACKUP_IMPORT_LIMITS) {
         validateBackupJsonShape(imported, { maxDepth: limits.maxJsonDepth, maxObjectKeys: limits.maxObjectKeys });
         if (!imported || typeof imported !== "object" || Array.isArray(imported)) throw new Error("Backup root must be a JSON object.");
-        const templateNumericDomain = typeof templateNumericFields === "object" ? templateNumericFields : {
+        const templateNumericDomain = {
           "template-exercise-sets": { min: 1, max: 100, step: 1, integer: true },
           "template-exercise-reps": { min: 1, max: 1000, step: 1, integer: true },
           "template-exercise-rep-min": { min: 1, max: 100, step: 1, integer: true },
           "template-exercise-rep-max": { min: 1, max: 100, step: 1, integer: true },
           "template-exercise-rpe": { min: 5, max: 10, step: 0.5, integer: false },
           "template-exercise-increment": { min: 0.5, max: 10000, step: 0.5, integer: false },
-          "template-exercise-rest": { min: 15, max: 3600, step: 15, integer: true }
+          "template-exercise-rest": { min: 15, max: 3600, step: 15, integer: true },
+          ...(typeof templateNumericFields === "object" ? templateNumericFields : {})
         };
         if (Object.prototype.hasOwnProperty.call(imported, "dataRevision")
           && (!Number.isSafeInteger(imported.dataRevision) || imported.dataRevision < 0)) {
           throw new Error("Backup dataRevision must be omitted or a non-negative safe integer.");
         }
         const allowedTopLevelFields = new Set(["appDataVersion", "domainMigrationVersion", "sessions", "exercises", "sets", "templates", "recommendationHistory", "manualOverrides", "personalEvidencePackage", "rawImports", "migrationAudit", "dataRevision", "settings"]);
-        const allowedSessionFields = new Set(["id", "externalId", "source", "date", "title", "isTravel", "notes", "submitted", "workoutStarted", "workoutState", "completedAt", "submittedAt", "startedAt", "createdAt", "updatedAt", "durationSeconds", "templateId", "recovery", "readinessMode", "readinessAdjustments", "usedOriginalTargets", "resolvedActions", "prs", "grade", "gradeVersion", "workoutAnalysis", "workoutPrescription", "adjustmentSummary", "exerciseQualityAnswers", "deletedAt", "trashed", "canceledAt"]);
+        const allowedSessionFields = new Set(["id", "externalId", "source", "date", "title", "isTravel", "notes", "submitted", "workoutStarted", "workoutState", "completedAt", "submittedAt", "startedAt", "createdAt", "updatedAt", "durationSeconds", "durationSemanticsVersion", "activeDurationMs", "activeDurationStartedAt", "workoutPausedAt", "templateId", "recovery", "readinessMode", "readinessAdjustments", "usedOriginalTargets", "resolvedActions", "prs", "grade", "gradeVersion", "workoutAnalysis", "workoutPrescription", "adjustmentSummary", "exerciseQualityAnswers", "deletedAt", "trashed", "canceledAt"]);
         const allowedExerciseFields = new Set(["id", "externalId", "source", "sessionId", "name", "notes", "order", "primaryMuscle", "secondaryMuscle", "restSeconds", "resistanceType", "isBodyweight", "isDeload", "customExerciseProfile", "executionQualityAssessment", "recommendationSnapshot", "basePrescription", "finalPrescription", "coachRecommendation", "executionBlocked", "safetyRestriction", "manualOverrides", "adjusted", "adjustmentReason", "triggerLabels", "canonicalExerciseId", "performanceExerciseId", "researchExerciseId", "identitySource", "identityVersion", "originalPrescription", "prescription", "recommendationVersion", "personalDataVersion", "researchDatabaseVersion", "programTargetContext", "appliedTargetContext", "overrideLocked", "stableTargetSnapshot", "resolvedActionId", "pendingReconcile"]);
         const allowedSetFields = new Set(["id", "exerciseId", "setNumber", "sequenceIndex", "sequence", "setTypeIndex", "setType", "sourceTemplateSetId", "reps", "weight", "weightUnit", "resistanceType", "isBodyweight", "rpe", "completed", "skipped", "edited", "isWarmup", "countsTowardScore", "countsTowardVolume", "countsTowardProgression", "addedLoad", "assistanceLoad", "durationSeconds", "distance", "distanceUnit", "targetReps", "targetRepMin", "targetRepMax", "targetWeight", "targetRpe", "targetRpeMin", "targetRpeMax", "targetRpeTolerance", "targetRestSeconds", "originalTargetReps", "originalTargetWeight", "originalTargetRpe", "setPrescription", "previousComparableSet", "prescriptionReason", "prescriptionMode", "prescriptionConfidence", "validationWarning", "classificationSource", "classificationConfidence", "classifierVersion", "manualOverride", "reviewRequired", "classifiedAt", "classificationUndo", "sourceSetOrder", "originalImportedValue"]);
         const allowedClassificationUndoFields = new Set(["setType", "isWarmup", "countsTowardScore", "countsTowardVolume", "countsTowardProgression", "classificationSource", "classificationConfidence", "manualOverride", "reviewRequired"]);
         const allowedTemplateFields = new Set(["id", "name", "notes", "createdAt", "updatedAt", "exercises", "source"]);
         const allowedTemplateExerciseFields = new Set(["id", "name", "notes", "sets", "reps", "repMin", "repMax", "standardWorkloadOverride", "standardRoleWorkload", "targetRpe", "increment", "restSeconds", "resistanceType", "isBodyweight", "primaryMuscle", "secondaryMuscle", "customExerciseProfile", "warmups", "setTypes", "canonicalExerciseId", "performanceExerciseId", "researchExerciseId", "identitySource", "identityVersion", "recommendationSnapshot"]);
-        const allowedSettingsFields = new Set(["weightUnit", "theme", "colorPackage", "timerSound", "workoutCompletionSound", "timerVibration", "interactionVibration", "timerNotifications", "inAppRestAlerts", "restCompleteSound", "restCompleteSoundVolume", "restCompleteAutoDismissMs", "restCompleteLockScreenNotifications", "restCompleteAutoReturnToWorkout", "defaultRestSeconds", "notificationMessageDetail", "autoStartRestTimer", "autoHighlightNextSet", "autoScrollNextSet", "installGuideDismissed", "setupSoundConfirmed", "cloudWorkoutSyncConsent", "workoutCloudSync", "workoutCloudSyncConsentVersion", "readinessBaseline"]);
-        const allowedRecommendationFields = new Set(["recommendationId", "schemaVersion", "recommendationVersion", "engineVersion", "personalDataVersion", "researchDatabaseVersion", "exerciseId", "muscleGroupId", "exerciseScore", "muscleSpecificScore", "personalEvidenceWeight", "researchEvidenceWeight", "standardGuideline", "readinessAdjustment", "basePrescription", "finalPrescription", "explanation", "evidenceSummary", "confidence", "createdAt", "manualOverrides", "overrideLocked", "checksum", "request", "scores", "versions"]);
+        const allowedSettingsFields = new Set(["weightUnit", "timerSound", "timerVibration", "timerNotifications", "inAppRestAlerts", "restCompleteSound", "restCompleteSoundVolume", "restCompleteAutoDismissMs", "restCompleteAutoReturnToWorkout", "defaultRestSeconds", "notificationMessageDetail", "autoStartRestTimer", "autoHighlightNextSet", "installGuideDismissed", "setupSoundConfirmed", "expectedTemplateId", "readinessBaseline"]);
+        const obsoleteSettingsFields = new Set(["theme", "colorPackage", "workoutCompletionSound", "interactionVibration", "restCompleteLockScreenNotifications", "autoScrollNextSet", "cloudWorkoutSyncConsent", "workoutCloudSync", "workoutCloudSyncConsentVersion"]);
+        const acceptedSettingsFields = new Set([...allowedSettingsFields, ...obsoleteSettingsFields]);
         const allowedCustomProfileFields = new Set(["schemaVersion", "status", "primaryMuscleGroupId", "secondaryMuscleGroupId", "resistanceType", "exerciseStyle", "progressionMetric", "smallestIncrement", "confirmedAt"]);
-        const allowedOverrideFields = new Set(["overrideId", "recommendationId", "sessionId", "workoutId", "exerciseRuntimeId", "replacementExerciseRuntimeId", "exerciseId", "setId", "field", "from", "to", "createdAt", "actor", "reason", "lockedForWorkout", "changes", "previousFinalPrescription", "outcome", "outcomeEvaluation", "action"]);
-        const allowedRawImportFields = new Set(["id", "source", "importedAt", "originalText", "weightUnit", "sessionExternalIds"]);
+        const allowedRawImportFields = new Set(["id", "source", "importVersion", "importedAt", "originalText", "weightUnit", "sessionExternalIds"]);
         const allowedMigrationFields = new Set(["version", "startedAt", "completedAt", "inspected", "changed", "explicitRetained", "manualOverridesPreserved", "warmups", "topSets", "backoffSets", "dropSets", "ambiguous", "templatesReseeded", "changes"]);
         const allowedMigrationChangeFields = new Set(["setId", "exerciseId", "from", "to", "reason", "confidence"]);
         const VALID_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
@@ -543,7 +662,7 @@
         const validateTemplateSetTypes = (setTypes, label) => {
           if (setTypes == null) return [];
           if (!Array.isArray(setTypes) || setTypes.length > 100) throw new Error(`${label} must contain at most 100 set-role records.`);
-          const allowedFields = new Set(["id", "type", "setType", "label", "setCount", "count", "sets", "repMin", "repMax", "exactReps", "rangeSource", "rangeAdjusted", "rpeMin", "rpeMax", "targetRpe", "rpe", "rpeTolerance", "loadRule", "progressionRule", "increment", "loadReductionMin", "loadReductionMax", "dropPercentMin", "dropPercentMax", "restSeconds", "countsTowardVolume", "countsTowardScore", "isWarmup", "historySampleSize"]);
+          const allowedFields = new Set(["id", "type", "setType", "label", "setCount", "count", "sets", "repMin", "repMax", "exactReps", "rangeSource", "rangeAdjusted", "rpeMin", "rpeMax", "targetRpe", "rpe", "rpeTolerance", "loadRule", "progressionRule", "increment", "loadReductionMin", "loadReductionMax", "dropPercentMin", "dropPercentMax", "restSeconds", "countsTowardVolume", "countsTowardScore", "countsTowardProgression", "isWarmup", "historySampleSize"]);
           const validTypes = new Set(["straight", "top", "backoff", "drop", "failure", "amrap", "technique", "deload", "unknown"]);
           const numericDomains = {
             setCount: { min: 0, max: 100, integer: true },
@@ -576,7 +695,7 @@
             if (setType.repMin != null && setType.repMax != null && Number(setType.repMin) > Number(setType.repMax)) throw new Error(`${itemLabel} rep minimum must not exceed its maximum.`);
             if (setType.rpeMin != null && setType.rpeMax != null && Number(setType.rpeMin) > Number(setType.rpeMax)) throw new Error(`${itemLabel} RPE minimum must not exceed its maximum.`);
             if (setType.loadReductionMin != null && setType.loadReductionMax != null && Number(setType.loadReductionMin) > Number(setType.loadReductionMax)) throw new Error(`${itemLabel} load reduction minimum must not exceed its maximum.`);
-            for (const field of ["exactReps", "rangeAdjusted", "countsTowardVolume", "countsTowardScore", "isWarmup"]) {
+            for (const field of ["exactReps", "rangeAdjusted", "countsTowardVolume", "countsTowardScore", "countsTowardProgression", "isWarmup"]) {
               if (setType[field] != null && typeof setType[field] !== "boolean") throw new Error(`${itemLabel} ${field} must be boolean.`);
             }
             for (const field of ["label", "rangeSource", "loadRule", "progressionRule"]) assertText(setType[field], `${itemLabel} ${field}`);
@@ -619,6 +738,28 @@
           assertText(record.notes, `Session ${index + 1} notes`);
           for (const field of ["submitted", "workoutStarted", "isTravel", "trashed"]) if (record[field] != null && typeof record[field] !== "boolean") throw new Error(`Session ${index + 1} ${field} must be boolean.`);
           assertNumericDomain(record.durationSeconds, { min: 0, integer: true }, `Session ${index + 1} durationSeconds`);
+          if (record.durationSemanticsVersion != null) {
+            if (record.durationSemanticsVersion !== WORKOUT_DURATION_SEMANTICS_VERSION) throw new Error(`Session ${index + 1} durationSemanticsVersion is unsupported.`);
+            if (!Number.isSafeInteger(record.activeDurationMs) || record.activeDurationMs < 0) throw new Error(`Session ${index + 1} activeDurationMs must be a non-negative safe integer.`);
+            for (const field of ["activeDurationStartedAt", "workoutPausedAt"]) {
+              if (record[field] != null && record[field] !== "" && (typeof record[field] !== "string" || !Number.isFinite(Date.parse(record[field])))) throw new Error(`Session ${index + 1} ${field} must be blank or a valid timestamp.`);
+            }
+            if (record.activeDurationStartedAt && record.workoutPausedAt) throw new Error(`Session ${index + 1} cannot be active and paused at the same time.`);
+          } else if (record.activeDurationMs != null || record.activeDurationStartedAt != null || record.workoutPausedAt != null) {
+            throw new Error(`Session ${index + 1} duration fields require durationSemanticsVersion.`);
+          }
+          if (record.recovery != null) {
+            const allowedRecoveryFields = new Set(["readinessDeviation", "sleepHours", "sleepQuality", "hrv", "restingHr", "soreness", "nutritionStatus", "proteinStatus", "outsideBandNote", "illness", "pain", "affectedMuscle"]);
+            assertAllowed(record.recovery, allowedRecoveryFields, `Session ${index + 1} recovery`);
+            if (record.recovery.readinessDeviation != null && !["", "usual", "unusually_good", "meaningfully_poor"].includes(record.recovery.readinessDeviation)) throw new Error(`Session ${index + 1} readinessDeviation is invalid.`);
+            for (const field of ["illness", "pain"]) if (record.recovery[field] != null && typeof record.recovery[field] !== "boolean") throw new Error(`Session ${index + 1} recovery ${field} must be boolean.`);
+            for (const field of ["outsideBandNote", "affectedMuscle"]) assertText(record.recovery[field], `Session ${index + 1} recovery ${field}`);
+            assertNumericDomain(record.recovery.sleepHours, { min: 0, max: 14, step: 0.25 }, `Session ${index + 1} recovery sleepHours`);
+            assertNumericDomain(record.recovery.sleepQuality, { min: 1, max: 5, integer: true }, `Session ${index + 1} recovery sleepQuality`);
+            assertNumericDomain(record.recovery.hrv, { min: 0, integer: true }, `Session ${index + 1} recovery hrv`);
+            assertNumericDomain(record.recovery.restingHr, { min: 0, integer: true }, `Session ${index + 1} recovery restingHr`);
+            assertNumericDomain(record.recovery.soreness, { min: 1, max: 5, integer: true }, `Session ${index + 1} recovery soreness`);
+          }
           if (record.exerciseQualityAnswers != null) {
             if (!record.exerciseQualityAnswers || typeof record.exerciseQualityAnswers !== "object" || Array.isArray(record.exerciseQualityAnswers)) throw new Error(`Session ${index + 1} exerciseQualityAnswers must be an object.`);
             Object.entries(record.exerciseQualityAnswers).forEach(([exerciseId, answer]) => {
@@ -754,11 +895,10 @@
         });
         sessions.forEach((session) => { if (session.templateId && !templateIds.has(session.templateId)) throw new Error(`Orphan template reference: ${session.templateId}.`); });
         const settings = imported.settings == null ? {} : imported.settings;
-        assertAllowed(settings, allowedSettingsFields, "Settings");
+        assertAllowed(settings, acceptedSettingsFields, "Settings");
         if (settings.weightUnit != null && !["lb", "kg"].includes(settings.weightUnit)) throw new Error("Settings weightUnit must be lb or kg.");
-        if (settings.theme != null && !["light", "dark"].includes(settings.theme)) throw new Error("Settings theme is invalid.");
-        if (settings.colorPackage != null && !["heritage-atlas", "signal-garden", "alpine-ledger", "training-hall", "harbor-pulse", "prairie-electric", "redwood-circuit", "mediterranean-set", "modern-primary", "night-stadium"].includes(settings.colorPackage)) throw new Error("Settings colorPackage is invalid.");
-        const booleanSettingFields = ["timerSound", "workoutCompletionSound", "timerVibration", "interactionVibration", "timerNotifications", "inAppRestAlerts", "restCompleteLockScreenNotifications", "restCompleteAutoReturnToWorkout", "autoStartRestTimer", "autoHighlightNextSet", "autoScrollNextSet", "installGuideDismissed", "setupSoundConfirmed", "cloudWorkoutSyncConsent"];
+        if (settings.expectedTemplateId != null && settings.expectedTemplateId !== "") assertId(settings.expectedTemplateId, "Settings expected template");
+        const booleanSettingFields = ["timerSound", "timerVibration", "timerNotifications", "inAppRestAlerts", "restCompleteAutoReturnToWorkout", "autoStartRestTimer", "autoHighlightNextSet", "installGuideDismissed", "setupSoundConfirmed"];
         booleanSettingFields.forEach((field) => { if (settings[field] != null && typeof settings[field] !== "boolean") throw new Error(`Settings ${field} must be boolean.`); });
         if (settings.restCompleteSoundVolume != null && (!Number.isFinite(Number(settings.restCompleteSoundVolume)) || Number(settings.restCompleteSoundVolume) < 0 || Number(settings.restCompleteSoundVolume) > 1)) throw new Error("Settings restCompleteSoundVolume must be between 0 and 1.");
         if (settings.restCompleteAutoDismissMs != null && (!Number.isFinite(Number(settings.restCompleteAutoDismissMs)) || Number(settings.restCompleteAutoDismissMs) < 1000 || Number(settings.restCompleteAutoDismissMs) > 60000)) throw new Error("Settings restCompleteAutoDismissMs must be between 1000 and 60000.");
@@ -784,14 +924,11 @@
             return copyAllowed(record, allowedFields);
           });
         };
-        const recommendationHistory = boundedRecords(imported.recommendationHistory, "Recommendation history", MAX_SETS, allowedRecommendationFields);
-        recommendationHistory.forEach((record, index) => assertId(record.recommendationId, `Recommendation history ${index + 1}`));
-        const manualOverrides = boundedRecords(imported.manualOverrides, "Manual override", MAX_SETS, allowedOverrideFields);
-        manualOverrides.forEach((record, index) => assertId(record.overrideId, `Manual override ${index + 1}`));
         const rawImports = boundedRecords(imported.rawImports, "Raw import", 128, allowedRawImportFields);
         rawImports.forEach((record, index) => {
           assertId(record.id, `Raw import ${index + 1}`);
           if (typeof record.source !== "string" || !record.source || record.source.length > 128) throw new Error(`Raw import ${index + 1} source is invalid.`);
+          if (record.importVersion != null && (typeof record.importVersion !== "string" || !record.importVersion || record.importVersion.length > 128)) throw new Error(`Raw import ${index + 1} importVersion is invalid.`);
           if (record.weightUnit != null && !["lb", "kg"].includes(record.weightUnit)) throw new Error(`Raw import ${index + 1} weightUnit must be lb or kg.`);
           if (typeof record.originalText !== "string" || new TextEncoder().encode(record.originalText).byteLength > limits.maxFileBytes) throw new Error(`Raw import ${index + 1} source text exceeds the file limit.`);
           if (!Array.isArray(record.sessionExternalIds) || record.sessionExternalIds.length > MAX_SESSIONS || record.sessionExternalIds.some((value) => typeof value !== "string" || value.length > 128)) throw new Error(`Raw import ${index + 1} session references are invalid.`);
@@ -825,9 +962,6 @@
           exercises,
           sets,
           templates,
-          recommendationHistory,
-          manualOverrides,
-          personalEvidencePackage: imported.personalEvidencePackage == null ? null : cloneJsonValue(imported.personalEvidencePackage),
           rawImports,
           migrationAudit,
           // Imported ordering metadata is validated above for auditability but
@@ -837,92 +971,6 @@
         };
         if (Number.isInteger(imported.domainMigrationVersion)) result.domainMigrationVersion = imported.domainMigrationVersion;
         return result;
-      }
-
-      function validatePersonalEvidenceJsonShape(value, options = {}) {
-        return validateBackupJsonShape(value, {
-          maxDepth: options.maxDepth ?? options.maxJsonDepth ?? PERSONAL_EVIDENCE_IMPORT_LIMITS.maxJsonDepth,
-          maxObjectKeys: options.maxObjectKeys ?? PERSONAL_EVIDENCE_IMPORT_LIMITS.maxObjectKeys
-        });
-      }
-
-      function validatePersonalEvidencePackage(parsed) {
-        validatePersonalEvidenceJsonShape(parsed);
-        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("Personal evidence package must be a JSON object.");
-        const allowedPackageFields = new Set(["schemaVersion", "createdAt", "personalDataVersion", "researchDatabaseVersion", "privacy", "personalData", "personal_data", "importedAt"]);
-        const unknownPackageField = Object.keys(parsed).find((key) => !allowedPackageFields.has(key));
-        if (unknownPackageField) throw new Error(`Personal evidence package contains an unknown field: ${unknownPackageField}.`);
-        if (parsed.schemaVersion !== "personal-evidence-package/1.0.0") throw new Error(`Unsupported personal evidence package schema version: ${parsed.schemaVersion || "missing"}.`);
-        if (parsed.privacy !== "private_local_only_do_not_deploy") throw new Error("Personal evidence package privacy classification is missing or invalid.");
-        const personalData = parsed.personalData || parsed.personal_data;
-        if (!personalData || typeof personalData !== "object" || Array.isArray(personalData)) throw new Error("Personal evidence package is missing personalData.");
-        const allowedPersonalFields = new Set(["exercisePrescriptions", "exerciseScores", "exerciseMuscleScores", "exerciseSessionMetrics", "weeklyMuscleVolumeResponse", "recoveryRules", "muscleGroupSweetSpots", "metadata", "exercise_prescriptions", "exercise_scores", "exercise_muscle_scores", "exercise_session_metrics", "weekly_muscle_volume_response", "recovery_rules", "muscle_group_sweet_spots"]);
-        const unknownPersonalField = Object.keys(personalData).find((key) => !allowedPersonalFields.has(key));
-        if (unknownPersonalField) throw new Error(`Personal evidence data contains an unknown collection or field: ${unknownPersonalField}.`);
-        const canonical = {
-          exercisePrescriptions: personalData.exercisePrescriptions || personalData.exercise_prescriptions,
-          exerciseScores: personalData.exerciseScores || personalData.exercise_scores,
-          exerciseMuscleScores: personalData.exerciseMuscleScores || personalData.exercise_muscle_scores,
-          exerciseSessionMetrics: personalData.exerciseSessionMetrics || personalData.exercise_session_metrics || [],
-          weeklyMuscleVolumeResponse: personalData.weeklyMuscleVolumeResponse || personalData.weekly_muscle_volume_response || [],
-          recoveryRules: personalData.recoveryRules || personalData.recovery_rules || [],
-          muscleGroupSweetSpots: personalData.muscleGroupSweetSpots || personalData.muscle_group_sweet_spots || [],
-          metadata: personalData.metadata || {}
-        };
-        for (const collection of ["exercisePrescriptions", "exerciseScores", "exerciseMuscleScores"]) {
-          if (!Array.isArray(canonical[collection])) throw new Error(`Personal evidence package is missing the required ${collection} collection.`);
-          if (!canonical[collection].length) throw new Error(`Personal evidence ${collection} collection must contain at least one record.`);
-          if (canonical[collection].length > PERSONAL_EVIDENCE_IMPORT_LIMITS.maxCoreCollectionItems) throw new Error(`Personal evidence ${collection} collection exceeds the 1024-record limit.`);
-        }
-        for (const collection of ["exerciseSessionMetrics", "weeklyMuscleVolumeResponse", "recoveryRules", "muscleGroupSweetSpots"]) {
-          if (!Array.isArray(canonical[collection])) throw new Error(`Personal evidence ${collection} must be an array.`);
-          if (canonical[collection].length > PERSONAL_EVIDENCE_IMPORT_LIMITS.maxCoreCollectionItems) throw new Error(`Personal evidence ${collection} collection exceeds the 1024-record limit.`);
-        }
-        const numericFields = new Set(["sample_size", "session_count", "comparable_session_count", "overall_personal_exercise_score", "progression_score", "recovery_efficiency_score", "contribution_weight", "muscle_specific_effectiveness_score", "comparable_sessions", "source_row"]);
-        const stack = [{ value: canonical, key: "personalData" }];
-        while (stack.length) {
-          const current = stack.pop();
-          if (!current.value || typeof current.value !== "object") continue;
-          for (const [key, value] of Object.entries(current.value)) {
-            if (numericFields.has(key) && (typeof value !== "number" || !Number.isFinite(value))) throw new Error(`Personal evidence ${key} must be a finite number.`);
-            if (typeof value === "string") {
-              if (/(?:^|_)(?:id|ids)$|Id$/.test(key)) {
-                if (!value || value.length > PERSONAL_EVIDENCE_IMPORT_LIMITS.maxStableIdChars || !/^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(value)) throw new Error(`Personal evidence identifier ${key} exceeds the 128-character safe ID limit.`);
-              } else if (/name/i.test(key)) {
-                if (value.length > PERSONAL_EVIDENCE_IMPORT_LIMITS.maxNameChars) throw new Error(`Personal evidence name ${key} exceeds the 256-character limit.`);
-              } else if (value.length > PERSONAL_EVIDENCE_IMPORT_LIMITS.maxTextChars) {
-                throw new Error(`Personal evidence text ${key} exceeds the 4096-character limit.`);
-              }
-            } else if (value && typeof value === "object") stack.push({ value, key });
-          }
-        }
-        const canonicalPackage = {
-          schemaVersion: parsed.schemaVersion,
-          createdAt: parsed.createdAt,
-          personalDataVersion: parsed.personalDataVersion,
-          researchDatabaseVersion: parsed.researchDatabaseVersion,
-          privacy: parsed.privacy,
-          personalData: canonical
-        };
-        if (typeof canonicalPackage.createdAt !== "string" || !canonicalPackage.createdAt) throw new Error("Personal evidence package createdAt is required.");
-        if (typeof canonicalPackage.personalDataVersion !== "string" || !canonicalPackage.personalDataVersion || canonicalPackage.personalDataVersion.length > 128) throw new Error("Personal evidence personalDataVersion is missing or invalid.");
-        if (typeof canonicalPackage.researchDatabaseVersion !== "string" || !canonicalPackage.researchDatabaseVersion || canonicalPackage.researchDatabaseVersion.length > 128) throw new Error("Personal evidence researchDatabaseVersion is missing or invalid.");
-        return canonicalPackage;
-      }
-
-      async function personalEvidenceBundleForImport(personalData) {
-        if (!prescriptionApi) throw new Error("The identity compatibility engine is unavailable; personal evidence was not imported.");
-        const researchData = await loadImportValidationResearch();
-        const bundle = prescriptionApi.normalizeEvidenceBundle({ personalData, researchData });
-        const invalidIdentities = [...(bundle.personal.reconciledIdentityByExerciseId || new Map()).entries()].filter(([, identity]) => identity?.invalid);
-        if (invalidIdentities.length) throw new Error(`Personal evidence identity reconciliation conflict for ${invalidIdentities.map(([exerciseId]) => exerciseId).join(", ")}.`);
-        const expectedCounts = [personalData.exercisePrescriptions.length, personalData.exerciseScores.length, personalData.exerciseMuscleScores.length];
-        const normalizedCounts = [bundle.personal.exercisePrescriptions.length, bundle.personal.exerciseScores.length, bundle.personal.exerciseMuscleScores.length];
-        if (expectedCounts.some((count, index) => count !== normalizedCounts[index])) throw new Error("Personal evidence engine validation rejected one or more aggregate rows.");
-        const engine = prescriptionApi.createPrescriptionEngine(bundle);
-        if (!(engine?.evidence?.personal?.reconciledIdentityByExerciseId instanceof Map)) throw new Error("Personal evidence engine construction did not preserve canonical identity reconciliation.");
-        const identityEngine = prescriptionApi.createPrescriptionEngine({ personalData: {}, researchData: { exerciseDatabase: researchData.exerciseDatabase } });
-        return { bundle, engine, identityEngine, exerciseDatabase: researchData.exerciseDatabase };
       }
 
       async function researchOnlyBundleForImport() {
@@ -935,6 +983,33 @@
       }
 
       function validateExecutableRecommendationSnapshot(snapshot, engine, hostExercise, label) {
+        const exactDirectTarget = (exerciseId) => {
+          const relationships = engine?.evidence?.research?.muscleMapsByExercise?.get(exerciseId) || [];
+          const directTargets = relationships.filter((relationship) => {
+            const relationshipType = normalizePrescriptionIdentity(relationship?.relationship_type || relationship?.relationshipType);
+            const loadingRole = normalizePrescriptionIdentity(relationship?.loading_role || relationship?.loadingRole);
+            const fractionalSetCredit = Number(relationship?.fractional_set_credit ?? relationship?.fractionalSetCredit ?? 0);
+            return relationshipType === "direct load"
+              && ["dynamic", "mixed"].includes(loadingRole)
+              && Number.isFinite(fractionalSetCredit)
+              && fractionalSetCredit > 0;
+          });
+          if (directTargets.length !== 1) return {
+            status: "ineligible",
+            exerciseId,
+            reason: directTargets.length ? "ambiguous_dynamic_direct_target" : "no_dynamic_direct_target"
+          };
+          const relationship = directTargets[0];
+          const muscleGroupId = relationship.muscle_group_id || relationship.muscleGroupId;
+          const taxonomyVersion = relationship.taxonomy_version || relationship.taxonomyVersion;
+          if (typeof muscleGroupId !== "string"
+            || !/^mg_[a-z0-9_]+$/.test(muscleGroupId)
+            || typeof taxonomyVersion !== "string"
+            || !taxonomyVersion.trim()) {
+            return { status: "ineligible", exerciseId, reason: "ambiguous_dynamic_direct_target" };
+          }
+          return { status: "resolved", exerciseId, muscleGroupId, taxonomyVersion: taxonomyVersion.trim() };
+        };
         if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) throw new Error(`${label} must be a recommendation snapshot object.`);
         if (!prescriptionApi?.serializeRecommendationSnapshot) throw new Error("Recommendation snapshot validation is unavailable; the backup was not imported.");
         prescriptionApi.serializeRecommendationSnapshot(snapshot);
@@ -959,7 +1034,7 @@
           }
         }
         if (identity?.status === "resolved") {
-          const target = engine.resolveDefaultPrescriptionTarget(canonicalExerciseId);
+          const target = exactDirectTarget(canonicalExerciseId);
           if (target?.status !== "resolved" || target.exerciseId !== canonicalExerciseId || target.muscleGroupId !== snapshotMuscleGroupId) {
             throw new Error(target?.reason || "Snapshot exercise and canonical direct target do not match.");
           }
@@ -1028,11 +1103,18 @@
         return current + 1;
       }
 
+      function assertCandidateHasRecoverableExport(candidate, activeWorkoutDraft = null) {
+        if (!window.FitnessBackupContract?.createBackupExport) throw new Error("The backup export contract is unavailable.");
+        window.FitnessBackupContract.createBackupExport(candidate, { activeWorkoutDraft });
+        return true;
+      }
+
       async function importDataFile(file) {
         if (importInProgress) return;
         importInProgress = true;
+        pendingImport = null;
         importAttempt += 1;
-        importStatus = { state: "importing", message: `Importing ${file.name}...` };
+        importStatus = { state: "importing", message: `Validating ${file.name}...` };
         settingsMessage = importStatus.message;
         render();
         try {
@@ -1041,44 +1123,79 @@
           }
           if (Number(file.size || 0) > BACKUP_IMPORT_LIMITS.maxFileBytes) throw new Error("Backup file is too large; the maximum size is 50 MiB.");
           const text = await file.text();
-          if (new TextEncoder().encode(text).byteLength > BACKUP_IMPORT_LIMITS.maxFileBytes) throw new Error("Backup file is too large; the maximum size is 50 MiB.");
+          const byteLength = new TextEncoder().encode(text).byteLength;
+          if (byteLength > BACKUP_IMPORT_LIMITS.maxFileBytes) throw new Error("Backup file is too large; the maximum size is 50 MiB.");
           if (file.name.toLowerCase().endsWith(".csv") || text.startsWith("Date,Workout Name,Duration,Exercise Name")) {
-            importStrongCsv(text, strongImportWeightUnit);
-            importStatus = { state: "accepted", message: settingsMessage || "Strong import complete." };
+            if (byteLength > BACKUP_IMPORT_LIMITS.maxRawImportBytes) throw new Error("Strong CSV is too large to retain in a round-trip-safe backup; the maximum size is 10 MiB.");
+            importStrongCsv(text, strongImportWeightUnit, { fileName: file.name, render: false });
             return;
           }
           let parsed;
           try { parsed = JSON.parse(text); }
           catch { throw new Error("Backup is not valid JSON."); }
-          const envelope = window.FitnessBackupContract.validateAndSanitizeBackup(parsed, { byteLength: new TextEncoder().encode(text).byteLength });
+          const envelope = window.FitnessBackupContract.validateAndSanitizeBackup(parsed, { byteLength });
           const decodedEnvelope = window.FitnessBackupContract.decodeLegacyBackup(envelope);
-          const { backupSchemaVersion: _validatedBackupSchemaVersion, ...imported } = decodedEnvelope;
+          const {
+            backupSchemaVersion: validatedBackupSchemaVersion,
+            activeWorkoutDraft: sourceActiveWorkoutDraft = null,
+            ...imported
+          } = decodedEnvelope;
           const validated = validateImportedAppData(imported, BACKUP_IMPORT_LIMITS);
-          let preparedEvidence;
-          if (validated.personalEvidencePackage) {
-            const importedPackage = validated.personalEvidencePackage;
-            validated.personalEvidencePackage = { ...validatePersonalEvidencePackage(importedPackage), importedAt: importedPackage.importedAt || isoNow() };
-            preparedEvidence = await personalEvidenceBundleForImport(validated.personalEvidencePackage.personalData);
-          } else {
-            preparedEvidence = await researchOnlyBundleForImport();
-          }
+          const preparedEvidence = await researchOnlyBundleForImport();
           const candidate = normalizeLoadedData(validated);
           candidate.dataRevision = nextMonotonicImportRevision();
           validateImportedExecutableRecommendationSnapshots(candidate, preparedEvidence.engine);
-          await writeIndexedValue("app-data", candidate);
-          try { localStorage.removeItem(STORAGE_KEY); } catch { /* The imported IndexedDB copy has the higher monotonic revision. */ }
-          data = candidate;
-          templateNumericDrafts.clear();
-          installExerciseIdentityCompatibility(preparedEvidence.exerciseDatabase, preparedEvidence.identityEngine);
-          entityStructureRevision += 1;
-          entityIndexCache = null;
-          invalidateCompletedAnalysis();
-          activeSessionId = data.sessions[0]?.id || "";
-          activeWorkoutId = data.sessions.find((session) => sessionHasStarted(session) && !isSessionSubmitted(session))?.id || "";
-          settingsMessage = "Import complete.";
-          importStatus = { state: "accepted", message: settingsMessage };
-          saveRuntime();
+          let activeWorkoutDraft = null;
+          if (sourceActiveWorkoutDraft) {
+            const validatedDraft = validateActiveWorkoutDraftEnvelope(sourceActiveWorkoutDraft, candidate, {
+              allowLegacyV1: false,
+              ignoreSourceRevision: true
+            });
+            if (!validatedDraft) throw new Error("Backup activeWorkoutDraft failed validation; no data was changed.");
+            activeWorkoutDraft = {
+              ...sourceActiveWorkoutDraft,
+              dataRevision: candidate.dataRevision,
+              session: validatedDraft.session,
+              exercises: validatedDraft.exercises,
+              sets: validatedDraft.sets,
+              timer: validatedDraft.timer
+            };
+          }
+          assertCandidateHasRecoverableExport(candidate, activeWorkoutDraft);
+          const counts = collectionCounts(candidate);
+          const reviewRequired = candidate.sets.filter((set) => set.reviewRequired).length;
+          pendingImport = {
+            kind: "backup",
+            fileName: file.name,
+            baseDataRevision: Number(data.dataRevision || 0),
+            candidate,
+            activeWorkoutDraft,
+            replaceActiveWorkoutDraft: true,
+            preparedEvidence,
+            noChanges: false,
+            preview: {
+              title: "Backup ready to apply",
+              mode: "Replace app data",
+              version: validatedBackupSchemaVersion,
+              sourceBytes: byteLength,
+              sourceUnit: "",
+              counts,
+              reviewRequired,
+              facts: [
+                `Validated app data v${candidate.appDataVersion} will replace the selected local copy.`,
+                activeWorkoutDraft
+                  ? `One active workout draft with ${activeWorkoutDraft.exercises.length} exercises and ${activeWorkoutDraft.sets.length} sets will be restored with its timer context.`
+                  : "This backup has no active-workout draft; any existing independent draft will be cleared so it cannot resurrect after replacement.",
+                `${reviewRequired} set classification${reviewRequired === 1 ? "" : "s"} need${reviewRequired === 1 ? "s" : ""} review.`,
+                "Legacy planner, equipment-constraint, recommendation-ledger, and confidence state will not be reactivated."
+              ]
+            },
+            completionMessage: activeWorkoutDraft ? "Import complete. The active workout draft and timer context were restored." : "Import complete."
+          };
+          settingsMessage = "Preview ready. Review the validated counts and recovery facts, then choose Apply import.";
+          importStatus = { state: "preview", message: settingsMessage };
         } catch (error) {
+          pendingImport = null;
           settingsMessage = error instanceof Error ? error.message : "Import failed.";
           importStatus = { state: "rejected", message: settingsMessage };
         } finally {
@@ -1087,30 +1204,180 @@
         }
       }
 
-      async function importPersonalEvidenceFile(file) {
-        try {
-          window.clearTimeout(saveTimer);
-          if (idleSaveHandle && "cancelIdleCallback" in window) window.cancelIdleCallback(idleSaveHandle);
-          idleSaveHandle = 0;
-          if (Number(file?.size || 0) > PERSONAL_EVIDENCE_IMPORT_LIMITS.maxFileBytes) throw new Error("Personal evidence file is too large; the maximum size is 8 MiB.");
-          let parsed;
-          const text = await file.text();
-          if (new TextEncoder().encode(text).byteLength > PERSONAL_EVIDENCE_IMPORT_LIMITS.maxFileBytes) throw new Error("Personal evidence file is too large; the maximum size is 8 MiB.");
-          try { parsed = JSON.parse(text); }
-          catch { throw new Error("Personal evidence file is not valid JSON."); }
-          const validated = validatePersonalEvidencePackage(parsed);
-          const prepared = await personalEvidenceBundleForImport(validated.personalData);
-          const canonicalPackage = { ...validated, importedAt: isoNow() };
-          const candidateData = { ...data, personalEvidencePackage: canonicalPackage, dataRevision: Number(data.dataRevision || 0) + 1 };
-          await writeIndexedValue("app-data", candidateData);
-          data = candidateData;
-          installExerciseIdentityCompatibility(prepared.exerciseDatabase, prepared.identityEngine);
-          const personalRecords = prepared.bundle.personal.exercisePrescriptions.length + prepared.bundle.personal.exerciseScores.length + prepared.bundle.personal.exerciseMuscleScores.length;
-          invalidateCompletedAnalysis();
-          settingsMessage = `Private evidence imported: ${personalRecords} aggregate records, personal version ${validated.personalDataVersion}.`;
+      function discardPendingImport() {
+        if (importInProgress || !pendingImport) return false;
+        pendingImport = null;
+        settingsMessage = "Import preview canceled. No data was changed.";
+        importStatus = { state: "canceled", message: settingsMessage };
+        render();
+        return true;
+      }
+
+      async function applyPendingImport() {
+        if (importInProgress || !pendingImport) return false;
+        const operation = pendingImport;
+        if (appDataPersistenceConflict) {
+          pendingImport = null;
+          settingsMessage = "Import is blocked because the saved app-data copies now disagree. No data was changed.";
+          importStatus = { state: "rejected", message: settingsMessage };
           render();
+          return false;
+        }
+        if (Number(data.dataRevision || 0) !== operation.baseDataRevision) {
+          pendingImport = null;
+          settingsMessage = "Local data changed after this preview. Select the file again to validate a current import.";
+          importStatus = { state: "rejected", message: settingsMessage };
+          render();
+          return false;
+        }
+        importInProgress = true;
+        importStatus = { state: "applying", message: `Applying ${operation.fileName}...` };
+        settingsMessage = importStatus.message;
+        render();
+        if (operation.noChanges) {
+          pendingImport = null;
+          importInProgress = false;
+          settingsMessage = operation.completionMessage;
+          importStatus = { state: "accepted", message: settingsMessage };
+          render();
+          return true;
+        }
+        cancelPendingDataSave();
+        window.clearTimeout(draftSaveTimer);
+        const rollbackData = cloneImportSnapshot(data);
+        const rollbackState = {
+          prescriptionEngine,
+          activeSessionId,
+          activeWorkoutId,
+          timer,
+          activeDraftSequence
+        };
+        let rollbackDraft = null;
+        let rollbackDraftLocal = null;
+        let rollbackDraftLocalCaptured = false;
+        let durableReplacementWritten = false;
+        let rollbackConfirmed = false;
+        let replacementTimerCanceled = false;
+        try {
+          if (operation.replaceActiveWorkoutDraft) {
+            rollbackDraft = await readIndexedValue("active-workout-draft");
+            try {
+              rollbackDraftLocal = localStorage.getItem(ACTIVE_DRAFT_KEY);
+              rollbackDraftLocalCaptured = true;
+            } catch {
+              throw new Error("The existing active-workout recovery copy could not be read for safe replacement.");
+            }
+            try {
+              localStorage.removeItem(ACTIVE_DRAFT_KEY);
+            } catch {
+              throw new Error("The existing active-workout recovery copy could not be prepared for safe replacement.");
+            }
+          }
+          if (operation.kind === "backup" && rollbackState.timer) {
+            const cancellationConfirmed = await cancelRestPush({ ...rollbackState.timer }, "backup-import-replacement");
+            if (!cancellationConfirmed) {
+              throw new Error("The active rest notification could not be canceled, so the backup was not applied.");
+            }
+            replacementTimerCanceled = true;
+          }
+          const writes = [{ key: "app-data", value: operation.candidate }];
+          if (operation.replaceActiveWorkoutDraft) writes.push({ key: "active-workout-draft", value: operation.activeWorkoutDraft || null });
+          await writeIndexedValuesAtomically(writes);
+          durableReplacementWritten = true;
+          data = operation.candidate;
+          if (operation.kind === "backup") {
+            window.clearInterval(timerInterval);
+            timerInterval = 0;
+            releaseTimerWakeLock();
+            timer = null;
+            templateNumericDrafts.clear();
+            if (!installExerciseIdentityCompatibility(operation.preparedEvidence.exerciseDatabase, operation.preparedEvidence.identityEngine)) {
+              throw new Error("The identity compatibility engine could not be installed.");
+            }
+            activeSessionId = data.sessions[0]?.id || "";
+            activeWorkoutId = data.sessions.find((session) => sessionHasStarted(session) && !isSessionSubmitted(session))?.id || "";
+            if (operation.replaceActiveWorkoutDraft) {
+              if (operation.activeWorkoutDraft) localStorage.setItem(ACTIVE_DRAFT_KEY, JSON.stringify(operation.activeWorkoutDraft));
+              else localStorage.removeItem(ACTIVE_DRAFT_KEY);
+            }
+            if (operation.activeWorkoutDraft) {
+              if (!await restoreActiveWorkoutDraft()) throw new Error("The imported active workout draft could not be restored.");
+            }
+          } else {
+            activeSessionId = operation.newestSessionId || activeSessionId;
+          }
+          entityStructureRevision += 1;
+          entityIndexCache = null;
+          invalidateCompletedAnalysis();
+          try { localStorage.removeItem(STORAGE_KEY); } catch { /* The accepted IndexedDB copy remains authoritative. */ }
+          if (operation.kind === "strong") {
+            const templates = data.templates.filter((template) => operation.templateIds.includes(template.id));
+            operation.completionMessage += strongImportAuditMessage(auditImportedTemplateHistory(templates));
+          }
+          pendingImport = null;
+          settingsMessage = operation.completionMessage;
+          importStatus = { state: "accepted", message: settingsMessage };
+          saveRuntime();
+          return true;
         } catch (error) {
-          settingsMessage = error?.message || "The personal evidence package could not be imported.";
+          let indexedRollbackConfirmed = !durableReplacementWritten;
+          if (durableReplacementWritten) {
+            try {
+              const rollbackWrites = [{ key: "app-data", value: rollbackData }];
+              if (operation.replaceActiveWorkoutDraft) rollbackWrites.push({ key: "active-workout-draft", value: rollbackDraft });
+              await writeIndexedValuesAtomically(rollbackWrites);
+              indexedRollbackConfirmed = true;
+            } catch { indexedRollbackConfirmed = false; }
+          }
+          let localDraftRollbackConfirmed = !operation.replaceActiveWorkoutDraft || !rollbackDraftLocalCaptured;
+          if (operation.replaceActiveWorkoutDraft && rollbackDraftLocalCaptured) {
+            try {
+              if (rollbackDraftLocal == null) localStorage.removeItem(ACTIVE_DRAFT_KEY);
+              else localStorage.setItem(ACTIVE_DRAFT_KEY, rollbackDraftLocal);
+              localDraftRollbackConfirmed = true;
+            } catch { localDraftRollbackConfirmed = false; }
+          }
+          rollbackConfirmed = indexedRollbackConfirmed && localDraftRollbackConfirmed;
+          window.clearTimeout(draftSaveTimer);
+          cancelPendingDataSave();
+          data = rollbackData;
+          prescriptionEngine = rollbackState.prescriptionEngine;
+          activeSessionId = rollbackState.activeSessionId;
+          activeWorkoutId = rollbackState.activeWorkoutId;
+          timer = rollbackState.timer;
+          activeDraftSequence = rollbackState.activeDraftSequence;
+          entityStructureRevision += 1;
+          entityIndexCache = null;
+          invalidateCompletedAnalysis();
+          if (replacementTimerCanceled && timer?.isActive && !timer.isPaused && !timer.isOvertime && timer.endsAt > Date.now()) {
+            await scheduleRestPush({ ...timer }).catch(() => undefined);
+          }
+          const reason = error instanceof Error ? error.message : "Import finalization failed.";
+          settingsMessage = durableReplacementWritten
+            ? rollbackConfirmed
+              ? `${reason} The original app data${operation.replaceActiveWorkoutDraft ? " and active draft" : ""} were restored.`
+              : `${reason} Durable rollback could not be confirmed; the original data remains in memory. Export it before reloading.`
+            : rollbackConfirmed
+              ? `${reason} No data was changed.`
+              : `${reason} IndexedDB was not replaced, but the active-draft fallback rollback could not be confirmed. Export the current data before reloading.`;
+          importStatus = { state: "rejected", message: settingsMessage };
+          if (!rollbackConfirmed) pendingImport = null;
+          return false;
+        } finally {
+          importInProgress = false;
           render();
         }
       }
+
+      root.addEventListener("click", (event) => {
+        const target = event.target.closest?.("[data-action]");
+        if (!target) return;
+        if (target.dataset.action === "apply-pending-import") {
+          event.preventDefault();
+          applyPendingImport();
+        }
+        if (target.dataset.action === "cancel-pending-import") {
+          event.preventDefault();
+          discardPendingImport();
+        }
+      });

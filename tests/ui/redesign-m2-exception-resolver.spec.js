@@ -52,8 +52,6 @@ function m2Fixture() {
           rpeMin: 7.5,
           rpeMax: 8.5,
           restSeconds: 180,
-          countsTowardScore: true,
-          countsTowardVolume: true,
           countsTowardProgression: true
         },
         {
@@ -66,8 +64,6 @@ function m2Fixture() {
           rpeMin: 7,
           rpeMax: 8,
           restSeconds: 180,
-          countsTowardScore: true,
-          countsTowardVolume: true,
           countsTowardProgression: true
         }
       ]
@@ -117,8 +113,6 @@ function m2Fixture() {
       completed: true,
       skipped: false,
       isWarmup: false,
-      countsTowardScore: true,
-      countsTowardVolume: true,
       countsTowardProgression: true
     },
     {
@@ -137,8 +131,6 @@ function m2Fixture() {
       completed: true,
       skipped: false,
       isWarmup: false,
-      countsTowardScore: true,
-      countsTowardVolume: true,
       countsTowardProgression: true
     },
     {
@@ -157,8 +149,6 @@ function m2Fixture() {
       completed: true,
       skipped: false,
       isWarmup: false,
-      countsTowardScore: true,
-      countsTowardVolume: true,
       countsTowardProgression: true
     }
   ];
@@ -230,7 +220,7 @@ function activeExercise(page) {
 async function assertStableTargetAndPriorFact(exercise) {
   await expect(exercise).toHaveCount(1);
   await expect(exercise).toHaveAttribute("aria-label", `Exercise: ${EXERCISE_NAME}`);
-  await expect(exercise.getByRole("textbox", { name: `Exercise name: ${EXERCISE_NAME}` })).toHaveValue(EXERCISE_NAME);
+  await expect(exercise.getByRole("heading", { name: EXERCISE_NAME, exact: true })).toBeVisible();
   await expect(exercise.locator(".set-current-editor")).toContainText("3 sets planned");
   await expect(exercise).toContainText("5-7 reps");
   await expect(exercise.getByRole("spinbutton", { name: "Set 1 load" })).toHaveValue("12345.5");
@@ -316,12 +306,15 @@ test("pain or injury entry yields one canonical continued-action card without re
   await expect(actionCard).toHaveCount(1);
   await expect(actionCard).toContainText("Stop or skip this workout");
   await expect(actionCard).toContainText("You recorded pain or an injury concern.");
-  await expect(actionCard).not.toContainText(/diagnos|medical|syndrome|pathology/i);
+  await expect(actionCard).toContainText("This is not a diagnosis");
+  await expect(actionCard).not.toContainText(/syndrome|pathology/i);
   await expect(workout.locator(".recommendation")).toHaveCount(1);
   await expect(workout.locator(".analysis-confidence, .readiness-evidence-summary, .meter[data-conf]")).toHaveCount(0);
 
   const exercise = activeExercise(page);
   await assertStableTargetAndPriorFact(exercise);
+  await actionCard.getByRole("button", { name: "Continue", exact: true }).click();
+  await expect(actionCard).toContainText("Decision to continue recorded.");
   const canonical = await page.evaluate(({ templateId }) => {
     const session = data.sessions.find((item) => item.workoutState === "active" && item.submitted !== true);
     const exercise = data.exercises.find((item) => item.sessionId === session?.id);

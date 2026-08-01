@@ -173,7 +173,7 @@ module.exports = apiHandler(async function handler(req, res) {
   });
   const payload = JSON.stringify({
     title: "Rest complete", body: detail, tag: `fitness-rest-${record.workoutId}`,
-    url: `/?${params.toString()}#lift`, ...navigation
+    url: `/?${params.toString()}#workout`, ...navigation
   });
 
   const confirmation = String(await redis([

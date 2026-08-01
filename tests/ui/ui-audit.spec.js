@@ -112,7 +112,7 @@ test("contextual Routines initial frame stays progressive under large history", 
 test("design-system source does not accumulate one-off styling", async () => {
   const source = fs.readFileSync(path.join(__dirname, "..", "..", "index.html"), "utf8");
   const style = source.match(/<style>([\s\S]*?)<\/style>/)?.[1] || "";
-  const structuralStyle = style.replace(/\[[^\]]*data-color-package[^\]]*\]\s*\{[^}]*\}/g, "");
+  const structuralStyle = style;
   const metrics = {
     hexColors: (structuralStyle.match(/#[0-9a-f]{3,8}\b/gi) || []).length,
     rgbColors: (style.match(/rgba?\(/gi) || []).length,

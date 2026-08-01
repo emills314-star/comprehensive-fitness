@@ -8,8 +8,8 @@ assert.ok(domainMatch, "Domain integrity engine markers were not found");
 
 const domainFactory = new Function(`
   const ACTIVE_HISTORY_MONTHS = 6;
-  const SET_CLASSIFIER_VERSION = 2;
-  const DOMAIN_MIGRATION_VERSION = 2;
+  const SET_CLASSIFIER_VERSION = 3;
+  const DOMAIN_MIGRATION_VERSION = 4;
   const localDateIso = (date) => date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
   const todayIso = () => "2026-07-10";
   const isoNow = () => "2026-07-10T12:00:00Z";
@@ -61,6 +61,17 @@ const bodyweight = engine.classifyImportedExerciseSets([{ id: "bw", reps: 10 }],
 assert.equal(bodyweight.reviewRequired, true, "Bodyweight imports without explicit metadata must avoid barbell inference");
 assert.equal(engine.isWorkingSet({ setType: "warmup" }, "pr"), false);
 assert.equal(engine.isWorkingSet({ setType: "top" }, "pr"), true);
+assert.equal(engine.normalizeCanonicalSetType(), "unknown", "A missing legacy role must remain unknown");
+assert.equal(engine.normalizeCanonicalSetType("unmapped legacy role"), "unknown", "An unrecognized legacy role must remain unknown");
+assert.equal(engine.normalizeCanonicalSetType("working"), "straight", "A known legacy working role must remain mapped");
+assert.equal(engine.normalizeCanonicalSetType("warm-up"), "warmup", "A known legacy warm-up role must remain mapped");
+assert.equal(engine.normalizeCanonicalSetType("back-off"), "backoff", "A known legacy back-off role must remain mapped");
+assert.equal(engine.normalizeCanonicalSetType("drop set"), "drop", "A known legacy drop role must remain mapped");
+assert.equal(engine.isWorkingSet({}, "progression"), false, "A missing role must not enter progression");
+assert.equal(engine.isWorkingSet({ setType: "top", countsTowardScore: false, countsTowardVolume: false }), true, "Legacy score and volume flags must not suppress actual recorded work");
+assert.equal(engine.isWorkingSet({ setType: "warmup", countsTowardScore: true, countsTowardVolume: true }), false, "Legacy score and volume flags must not promote a warm-up to actual work");
+assert.equal(engine.isWorkingSet({ setType: "unknown", countsTowardScore: true, countsTowardVolume: true }), false, "Legacy score and volume flags must not promote an unknown classification to actual work");
+assert.equal(engine.isWorkingSet({ setType: "top", countsTowardProgression: false }, "progression"), false, "The approved progression classification may exclude actual work from progression and PR calculations");
 
 const migrationModel = {
   sessions: [{ id: "s1", source: "strong", title: "Push", date: "2026-04-07", submitted: true }],
@@ -74,6 +85,44 @@ const auditCount = migrationModel.migrationAudit.length;
 assert.equal(migrationModel.sets[0].originalImportedValue.setOrder, "W", "Original Strong set order must remain auditable");
 engine.migrateDomainData(migrationModel);
 assert.equal(migrationModel.migrationAudit.length, auditCount, "Migration must be idempotent");
+
+const conservativeRoleMigration = {
+  domainMigrationVersion: 3,
+  dataRevision: 9,
+  sessions: [{ id: "legacy-session", date: "2026-06-01", submitted: true }],
+  exercises: [{ id: "legacy-exercise", sessionId: "legacy-session", source: "app", name: "Legacy Press", resistanceType: "external" }],
+  sets: [
+    { id: "missing-role", exerciseId: "legacy-exercise", setType: "straight", completed: true, reps: 8, weight: 100, classificationSource: "app-explicit", originalImportedValue: { setType: "", isWarmup: false } },
+    { id: "unmapped-role", exerciseId: "legacy-exercise", setType: "straight", completed: true, reps: 8, weight: 100, classificationSource: "app-explicit", originalImportedValue: { setType: "mystery-role", isWarmup: false } },
+    { id: "working-role", exerciseId: "legacy-exercise", setType: "straight", completed: true, reps: 8, weight: 100, originalImportedValue: { setType: "working", isWarmup: false } },
+    { id: "warmup-role", exerciseId: "legacy-exercise", setType: "warmup", completed: true, reps: 8, weight: 50, originalImportedValue: { setType: "warm-up", isWarmup: false } },
+    { id: "backoff-role", exerciseId: "legacy-exercise", setType: "backoff", completed: true, reps: 10, weight: 90, originalImportedValue: { setType: "back-off", isWarmup: false } },
+    { id: "drop-role", exerciseId: "legacy-exercise", setType: "drop", completed: true, reps: 12, weight: 80, originalImportedValue: { setType: "drop set", isWarmup: false } }
+  ],
+  templates: [],
+  migrationAudit: []
+};
+engine.migrateDomainData(conservativeRoleMigration);
+assert.equal(conservativeRoleMigration.domainMigrationVersion, 4);
+assert.equal(conservativeRoleMigration.dataRevision, 10);
+assert.deepEqual(
+  conservativeRoleMigration.sets.map((item) => item.setType),
+  ["unknown", "unknown", "straight", "warmup", "backoff", "drop"],
+  "Migration must keep only explicitly recognized legacy roles executable"
+);
+assert.deepEqual(
+  conservativeRoleMigration.sets.map((item) => item.reviewRequired),
+  [true, true, false, false, false, false],
+  "Missing and unmapped roles must require review"
+);
+assert.equal(conservativeRoleMigration.sets[1].originalImportedValue.setType, "mystery-role", "Raw legacy role provenance must remain recoverable");
+assert.equal(conservativeRoleMigration.sets[0].countsTowardProgression, false, "Unknown work must be excluded from progression");
+assert.equal(engine.isWorkingSet(conservativeRoleMigration.sets[1], "progression"), false);
+const conservativeAuditCount = conservativeRoleMigration.migrationAudit.length;
+const conservativeBytes = JSON.stringify(conservativeRoleMigration);
+engine.migrateDomainData(conservativeRoleMigration);
+assert.equal(conservativeRoleMigration.migrationAudit.length, conservativeAuditCount, "The conservative role migration must be idempotent");
+assert.equal(JSON.stringify(conservativeRoleMigration), conservativeBytes, "A completed conservative migration must not rewrite historical bytes");
 
 assert.match(html, /function completedAnalysisIndex\(\)[\s\S]*const sessions = activeHistorySessions\(\);[\s\S]*sessionById/, "The canonical active-history index must retain completed source records without deleting the archive");
 assert.doesNotMatch(html, /\/\/ COACH_RECOMMENDATION_ENGINE_START|function coachRecommendationForExercise\(/, "The removed coach recommendation source must not remain live");

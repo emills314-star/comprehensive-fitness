@@ -21,6 +21,18 @@ $obsoleteAnalyticalJson = @(
   "research_database\exports\json\nutrition_strategies.json",
   "research_database\exports\json\manifest.json"
 )
+$obsoletePublicFiles = @(
+  "guided-mesocycle.js",
+  "programming-family-ledger.js",
+  "resources\achievements\badge-controlled-execution.png",
+  "resources\achievements\badge-e1rm-peak.png",
+  "resources\achievements\badge-personal-record.png",
+  "resources\achievements\badge-plan-complete.png",
+  "resources\achievements\badge-progression.png",
+  "resources\achievements\badge-smart-training.png",
+  "resources\achievements\badge-target-precision.png",
+  "resources\achievements\badge-volume-record.png"
+)
 
 New-Item -ItemType Directory -Force -Path $www | Out-Null
 
@@ -37,6 +49,14 @@ foreach ($publicRoot in $nativePublicRoots) {
     if (Test-Path -LiteralPath $resolvedCandidate) { Remove-Item -LiteralPath $resolvedCandidate -Recurse -Force }
   }
   foreach ($relative in $obsoleteAnalyticalJson) {
+    $candidate = Join-Path $publicRoot $relative
+    $resolvedCandidate = [IO.Path]::GetFullPath($candidate)
+    if (-not $resolvedCandidate.StartsWith($resolvedPublicRoot, [StringComparison]::OrdinalIgnoreCase)) {
+      throw "Refusing to prune a path outside the intended public payload root: $resolvedCandidate"
+    }
+    if (Test-Path -LiteralPath $resolvedCandidate -PathType Leaf) { Remove-Item -LiteralPath $resolvedCandidate -Force }
+  }
+  foreach ($relative in $obsoletePublicFiles) {
     $candidate = Join-Path $publicRoot $relative
     $resolvedCandidate = [IO.Path]::GetFullPath($candidate)
     if (-not $resolvedCandidate.StartsWith($resolvedPublicRoot, [StringComparison]::OrdinalIgnoreCase)) {

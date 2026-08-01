@@ -193,9 +193,18 @@ test("supporting candidates are absorbed into one structural action", () => {
 });
 
 test("resolver and detector failure remain silent except for the canonical explicit-safety fallback", () => {
-  const detectorFailure = resolve([{ candidateId: "candidate-detector-error", status: "error" }]);
+  const detectorRecords = [];
+  const detectorFailure = resolve(
+    [{ candidateId: "candidate-detector-error", status: "error" }],
+    { onEngineeringError: (record) => detectorRecords.push(record) }
+  );
   assert.equal(detectorFailure.actions.length, 0);
   assert.equal(suppressionReason(detectorFailure, "candidate-detector-error"), "detector_error");
+  assert.deepEqual(detectorRecords, [{
+    code: "detector_error",
+    module: "exception-resolver",
+    ruleVersion: "candidate-normalization/1.0.0"
+  }]);
 
   const brokenWithoutSafety = { evaluatedAt: EVALUATED_AT, get candidates() { throw new Error("synthetic resolver failure"); } };
   const silent = resolver.resolveExceptionCandidates(brokenWithoutSafety);
@@ -213,6 +222,75 @@ test("resolver and detector failure remain silent except for the canonical expli
   assert.equal(fallback.failureCode, "resolver_error_safety_fallback");
   assert.equal(fallback.sessionDecision.category, "pain_or_illness");
   assert.equal(fallback.sessionDecision.action.code, "stop_or_skip_work");
+});
+
+test("candidate exceptions emit only a deterministic privacy-safe engineering record", () => {
+  const sensitiveFragments = [
+    "Private Person",
+    "private note about pain",
+    "observation-private-8392",
+    "candidate-private-4711",
+    "detector-private-name",
+    "private-detector/9.9.9",
+    "private-person-rule/8.8.8",
+    "317.25"
+  ];
+  const throwingCandidate = candidate({
+    candidateId: "candidate-private-4711",
+    detector: {
+      id: "detector-private-name",
+      version: "private-detector/9.9.9",
+      ruleVersion: "private-person-rule/8.8.8"
+    },
+    sourceReference: "observation-private-8392",
+    sourceReferences: ["observation-private-8392"],
+    evidence: [{ sourceReference: "observation-private-8392", provenance: "recorded", required: true }],
+    privateObservation: {
+      name: "Private Person",
+      note: "private note about pain",
+      value: 317.25
+    }
+  });
+  Object.defineProperty(throwingCandidate, "action", {
+    enumerable: true,
+    get() {
+      throw new Error(sensitiveFragments.join(" | "));
+    }
+  });
+
+  const firstRecords = [];
+  const first = resolve([throwingCandidate], {
+    onEngineeringError: (record) => firstRecords.push(record)
+  });
+  const secondRecords = [];
+  const second = resolve([throwingCandidate, candidate({ candidateId: "candidate-unaffected" })], {
+    onEngineeringError: (record) => secondRecords.push(record)
+  });
+
+  assert.equal(first.actions.length, 0);
+  assert.equal(first.sessionDecision.outcome, "no_action");
+  assert.equal(suppressionReason(first, "candidate-private-4711"), "candidate_normalization_error");
+  assert.equal(Object.hasOwn(first, "engineeringErrors"), false, "engineering records must not enter product result state");
+  assert.equal(second.actions.length, 1, "one broken candidate must not suppress an unaffected candidate");
+  assert.deepEqual(second.absorbedCandidateIds, ["candidate-unaffected"]);
+  assert.deepEqual(firstRecords, [{
+    code: "candidate_normalization_error",
+    module: "exception-resolver",
+    ruleVersion: "candidate-normalization/1.0.0"
+  }]);
+  assert.deepEqual(secondRecords, firstRecords, "the same failure path must emit the same bounded record");
+  assert.deepEqual(Object.keys(firstRecords[0]).sort(), ["code", "module", "ruleVersion"]);
+  assert.equal(Object.isFrozen(firstRecords[0]), true);
+  const serializedRecord = JSON.stringify(firstRecords);
+  sensitiveFragments.forEach((fragment) => {
+    assert.equal(serializedRecord.includes(fragment), false, `engineering record leaked sensitive fragment: ${fragment}`);
+  });
+
+  assert.doesNotThrow(() => resolve([throwingCandidate], {
+    onEngineeringError() {
+      throw new Error("synthetic reporting failure");
+    }
+  }), "engineering reporting must not interfere with workout logging");
 });
 
 test("decision IDs, input digests, handling, and supersession are stable and auditable", () => {
@@ -252,6 +330,22 @@ test("decision IDs, input digests, handling, and supersession are stable and aud
   const cleared = resolve([], { priorDecisions: [changed.sessionDecision] });
   assert.equal(cleared.sessionDecision.outcome, "no_action");
   assert.equal(cleared.sessionDecision.supersedesDecisionId, changed.sessionDecision.decisionId);
+
+  const readdedAt = "2030-01-15T12:10:00.000Z";
+  const readdedCandidate = candidate({
+    candidateId: "candidate-decision-readded",
+    evaluatedAt: readdedAt,
+    effectiveAt: readdedAt,
+    expiresAt: "2030-01-16T12:10:00.000Z"
+  });
+  const readded = resolver.resolveExceptionCandidates({
+    evaluatedAt: readdedAt,
+    candidates: [readdedCandidate],
+    priorDecisions: [cleared.sessionDecision, changed.sessionDecision, accepted]
+  });
+  assert.equal(readded.sessionDecision.outcome, "action");
+  assert.equal(readded.sessionDecision.effectiveAt, readdedAt, "A safety action re-added after a clear boundary must start a new effective interval");
+  assert.notEqual(readded.sessionDecision.effectiveAt, changed.sessionDecision.effectiveAt);
 });
 
 test("candidate actions cannot create a normal prescription or mutate stable targets", () => {

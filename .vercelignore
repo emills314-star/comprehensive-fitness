@@ -2,3 +2,22 @@
 personal_fitness_data/**
 www/private-personal-data/**
 private-personal-data/**
+
+# Never upload local credentials, tool state, generated evidence, or private
+# screenshot-derived design references with a source deployment.
+.env
+.env.*
+.claude/**
+.vercel/**
+.vercel-data/**
+artifacts/**
+docs/design/strong-ui-mockups/**
+
+# Local exports, backups, and databases are not public application assets.
+**/backups/**
+**/exports/**
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+**/*.bak
+**/*.backup

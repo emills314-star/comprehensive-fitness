@@ -31,7 +31,7 @@ assert.match(html, /ACTIVE_DRAFT_KEY = "comprehensive-fitness-active-draft-v1"/,
 assert.match(html, /draftSaveTimer = window\.setTimeout\(persistActiveWorkoutDraft, 120\)/, "Compact draft persistence must be debounced without delaying the visible input");
 assert.match(html, /requestIdleCallback\(saveData, \{ timeout: 1500 \}\)/, "Full-history persistence must move off the immediate input path");
 assert.match(html, /}, 1800\);[\s\S]*function activeWorkoutDraftSnapshot/, "Full data writes must be batched after input settles");
-assert.match(html, /function restoreActiveWorkoutDraft\(\)[\s\S]*snapshot\.sets[\s\S]*workoutState: "active"/, "A compact draft must restore the active workout safely");
+assert.match(html, /function restoreActiveWorkoutDraft\(\)[\s\S]*workoutState: "active"[\s\S]*candidate\.sets/, "A compact draft must restore the active workout safely");
 assert.match(html, /localStorage\.setItem\(ACTIVE_DRAFT_KEY, JSON\.stringify\(snapshot\)\)/, "Immediate-close recovery needs a compact synchronous fallback");
 assert.match(html, /visibilityState === "hidden" && hasActiveWorkout\(\)\) persistActiveWorkoutDraft\(\)/, "Suspending the PWA must persist the latest draft");
 

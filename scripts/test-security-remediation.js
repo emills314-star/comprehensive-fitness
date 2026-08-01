@@ -215,22 +215,13 @@ async function testDurableDeletionTombstone() {
   assert.ok(!deletedKeys.includes(`cf:install:${INSTALLATION_ID}`));
 }
 
-async function testWorkoutRevisionAndRevocationAtomicity() {
-  const securityMock = { authorizeInstallation: async () => ({ active: "1", status: "active", syncConsent: "1" }), checkRateLimit: async () => ({ allowed: true }), rateLimitResponse: () => undefined };
-  const redisMock = { redis: async () => "conflict" };
-  const workout = loadFresh("../api/sync/workout", { "../_lib/security": securityMock, "../_lib/redis": redisMock });
-  const body = {
-    installationId: INSTALLATION_ID, mutationId: "mutation-2", sessionId: "session-1", revision: "2026-07-12T12:00:00.000Z",
-    payload: { session: { id: "session-1" }, exercises: [{ id: "exercise-1", sessionId: "session-1" }], sets: [{ id: "set-1", exerciseId: "exercise-1" }] }
-  };
-  const conflict = response();
-  await workout(request(body), conflict);
-  assert.equal(conflict.statusCode, 409);
-  assert.equal(conflict.body.status, "conflict");
-  const nonCanonical = response();
-  await workout(request({ ...body, revision: "2026-07-12T12:00:00Z" }), nonCanonical);
-  assert.equal(nonCanonical.statusCode, 400, "revision must use canonical millisecond ISO form");
-  assert.match(workout.WORKOUT_COMMIT_SCRIPT, /HGET.*status[\s\S]*active/, "atomic workout commit must recheck active installation status");
+async function testWorkoutCloudCopyIsDisabled() {
+  const workout = require("../api/sync/workout");
+  const disabled = response();
+  await workout(request({ installationId: INSTALLATION_ID, payload: { private: "must-not-be-processed" } }), disabled);
+  assert.equal(disabled.statusCode, 410);
+  assert.equal(disabled.body.status, "disabled");
+  assert.equal(workout.WORKOUT_CLOUD_COPY_DISABLED, true);
 }
 
 async function testCancellationMappingAndVersion() {
@@ -306,14 +297,12 @@ async function testTrustedRateIdentityAndRegistrationOrdering() {
   assert.match(register.REGISTER_INSTALLATION_SCRIPT, /existingStatus[\s\S]*deleting[\s\S]*deleted/, "registration commit must reject deletion tombstones atomically");
 }
 
-function testAllWriteScriptsRecheckRevocation() {
-  const workout = require("../api/sync/workout");
+function testAllPushWriteScriptsRecheckRevocation() {
   const schedule = require("../api/push/schedule");
   const deliver = require("../api/push/deliver");
   const cancel = require("../api/push/cancel");
   const register = require("../api/push/register");
   const scripts = [
-    workout.WORKOUT_COMMIT_SCRIPT,
     schedule.PREPARE_TIMER_SCRIPT,
     schedule.FINALIZE_TIMER_SCRIPT,
     schedule.FAIL_TIMER_SCRIPT,
@@ -339,11 +328,11 @@ async function main() {
   await testTransientPushFailureRetries();
   await testSchedulePersistsBeforePublishAndRecoversFailure();
   await testDurableDeletionTombstone();
-  await testWorkoutRevisionAndRevocationAtomicity();
+  await testWorkoutCloudCopyIsDisabled();
   await testCancellationMappingAndVersion();
   await testTrustedRateIdentityAndRegistrationOrdering();
-  testAllWriteScriptsRecheckRevocation();
-  console.log("Security remediation tests passed (retry delivery, durable deletion, scheduling order, revision conflicts, and trusted rate identity).");
+  testAllPushWriteScriptsRecheckRevocation();
+  console.log("Security remediation tests passed (retry delivery, durable deletion, disabled workout upload, scheduling order, and trusted rate identity).");
 }
 
 main().catch((error) => { console.error(error); process.exitCode = 1; });

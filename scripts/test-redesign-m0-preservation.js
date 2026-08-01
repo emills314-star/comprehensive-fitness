@@ -98,10 +98,17 @@ assert.deepEqual(canonical(legacyV2RoundTrip.sessions[0].workoutPrescription), c
 const draft = readJson(path.join(fixtureRoot, "active-draft-recovery.json"));
 const draftClone = JSON.parse(JSON.stringify(draft));
 assert.deepEqual(draftClone, draft, "Active-draft fixture must be JSON-safe and lossless");
+const draftRoundTrip = backupContract.createBackupExport(currentV3, { activeWorkoutDraft: draftClone });
+assert.deepEqual(canonical(draftRoundTrip.activeWorkoutDraft), canonical(draftClone), "The committed active-draft fixture must satisfy the executable v2 backup contract");
 assert.equal(draftClone.sets.find((set) => !set.completed).rpe, "7.5", "Incomplete decimal RPE must survive draft serialization");
 assert.equal(draftClone.session.activeExerciseId, "synthetic-active-exercise-2");
 assert.deepEqual(draftClone.exercises.map((exercise) => exercise.order), [0, 1]);
-assert.equal(draftClone.timer.state, "running");
+assert.equal(draftClone.timer.workoutId, draftClone.workoutId, "The v2 timer must belong to the recoverable workout");
+assert.equal(draftClone.timer.id, "synthetic-timer");
+assert.equal(draftClone.timer.durationSeconds, 120);
+assert.equal(draftClone.timer.remainingSeconds, 60);
+assert.equal(draftClone.timer.endsAt, Date.parse("2026-07-30T20:01:00.000Z"));
+assert.equal(draftClone.timer.pendingNextSetId, "synthetic-active-set-2");
 assert.equal(draftClone.resolvedActions[0].handling, "overridden", "Active draft recovery must preserve canonical action handling");
 
 const roles = readJson(path.join(fixtureRoot, "set-role-ambiguity.json"));

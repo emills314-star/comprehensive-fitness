@@ -13,8 +13,6 @@ const {
 const ARTIFACT_DIR = path.resolve(__dirname, "..", "..", "artifacts", "ui-audit", "m7");
 const LONG_VARIANT = "Cambered Barbell Bench Press — Extra Long Heavy Competition Variant";
 const LIGHT_VARIANT = "Cambered Barbell Bench Press — Extra Long Light Technique Variant";
-const HEAVY_ID = "custom:cambered-bench-heavy";
-const LIGHT_ID = "custom:cambered-bench-light";
 
 function captureBrowserErrors(page) {
   const errors = [];
@@ -54,7 +52,6 @@ function adaptedWorkoutFixture() {
   activeSession.title = "Public Synthetic Adapted Workout";
   activeSession.notes = "Actual work retained after an in-workout substitution.";
   activeExercise.name = LONG_VARIANT;
-  activeExercise.performanceExerciseId = HEAVY_ID;
   activeExercise.originalExerciseName = "Barbell Bench Press";
   activeExercise.substitution = {
     fromName: "Barbell Bench Press",
@@ -65,7 +62,6 @@ function adaptedWorkoutFixture() {
   historySession.completedAt = "2026-07-01";
   historySession.submittedAt = "2026-07-01T15:00:00.000Z";
   historyExercise.name = LONG_VARIANT;
-  historyExercise.performanceExerciseId = HEAVY_ID;
 
   fixture.exercises = [historyExercise, activeExercise];
   fixture.sets = fixture.sets.filter((set) => [historyExercise.id, activeExercise.id].includes(set.exerciseId));
@@ -150,7 +146,6 @@ function progressFixture() {
     id: `m7-exercise-${index}`,
     sessionId: session.id,
     name: index === 3 ? LIGHT_VARIANT : LONG_VARIANT,
-    performanceExerciseId: index === 3 ? LIGHT_ID : HEAVY_ID,
     resistanceType: index === 4 ? "duration" : "external",
     source: index === 2 ? "strong" : "recorded",
     notes: index === 2 ? "Exercise note: two-second pause on every repetition." : ""
@@ -163,6 +158,7 @@ function progressFixture() {
       setType: "top",
       weight: 400,
       weightUnit: "kg",
+      originalImportedValue: { weight: "400", weightUnit: "kg", reps: "10", rpe: "7.5", setOrder: "1" },
       reps: 10,
       rpe: 7.5,
       source: "recorded"
@@ -258,7 +254,7 @@ test("M7 completes an adapted mobile workout with one concise actual-work result
   await expect(page.locator(".completed-workout-view .notification-prompt")).toHaveCount(0);
   await expect(page.locator(".session-dock")).toHaveCount(0);
   await expect(summary.locator(".workout-grade-mark")).toHaveText(/^[ABCDF]$/);
-  await expect(summary.locator(".workout-grade-version")).toContainText("actual-work-rubric/1.0.0");
+  await expect(summary.locator(".workout-grade-version")).toContainText("actual-work-rubric/1.1.0");
   await expect(summary.locator(".grade-reasons li")).toHaveCount(3);
   expect(await summary.locator(".workout-highlight").count()).toBeLessThanOrEqual(3);
   await expect(summary.locator('[data-action="close-completed-summary"]')).toHaveText("Done");
@@ -278,7 +274,7 @@ test("M7 completes an adapted mobile workout with one concise actual-work result
   expect(stored.completedSets).toBe(2);
   expect(stored.workoutAnalysis).toEqual(expect.objectContaining({
     contractVersion: "comprehensive-fitness-workout-grade/2.0.0",
-    algorithmVersion: "actual-work-rubric/1.0.0",
+    algorithmVersion: "actual-work-rubric/1.1.0",
     sourceSessionId: activeSessionId
   }));
   expect(Object.keys(stored.workoutAnalysis).sort()).toEqual([
@@ -316,7 +312,6 @@ test("M7 completion Progress stays contextual when a baseline workout has no hig
       ...structuredClone(completedExercise),
       id: "m7-skipped-first-exercise",
       name: "Public Synthetic Skipped First Exercise",
-      performanceExerciseId: "custom:skipped-first",
       order: 0
     });
     data.sets.push({
@@ -336,7 +331,11 @@ test("M7 completion Progress stays contextual when a baseline workout has no hig
 
   await expect(page.locator(".completion-highlights")).toHaveCount(0);
   const progress = page.locator('[data-action="open-completion-progress"]');
-  await expect(progress).toHaveAttribute("data-exercise-id", HEAVY_ID);
+  const expectedExerciseId = await page.evaluate(() => {
+    const completedExercise = data.exercises.find((item) => item.sessionId === "m7-heavy-old-session" && item.id !== "m7-skipped-first-exercise");
+    return canonicalExerciseId(completedExercise);
+  });
+  await expect(progress).toHaveAttribute("data-exercise-id", expectedExerciseId);
   await expect(progress).toHaveAttribute("data-resistance-type", "external");
   await progress.click();
   await expect(page.locator(".chart-viewing-summary strong")).toHaveText(LONG_VARIANT);
@@ -408,11 +407,15 @@ test("M7 Progress keeps old history and exact variants while charting one compar
   const selectedHeavyVariant = page.locator(".chart-viewing-summary strong");
   await expect(selectedHeavyVariant).toHaveText(LONG_VARIANT);
   expect(await selectedHeavyVariant.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
-  await expect(page.locator(".chart-viewing-summary .status-pill")).toHaveText("3 sessions");
-  await expect(page.locator('[data-action="show-chart-point"]')).toHaveCount(3);
+  await expect(page.locator(".chart-viewing-summary .status-pill")).toHaveText("2 recent sessions");
+  await expect(page.locator('[data-action="show-chart-point"]')).toHaveCount(2);
   await expect(page.locator(".chart-control-context")).toContainText("top set observations");
   await expect(page.getByText("Public Synthetic Older Heavy Session", { exact: true })).toBeVisible();
   await expect(page.getByText("Public Synthetic Light Variant Session", { exact: true })).toBeVisible();
+  await expect(page.getByRole("radio", { name: "Recent six months" })).toBeChecked();
+  await page.getByRole("radio", { name: "All history" }).click();
+  await expect(page.locator(".chart-viewing-summary .status-pill")).toHaveText("3 sessions");
+  await expect(page.locator('[data-action="show-chart-point"]')).toHaveCount(3);
 
   await page.locator('[data-action="show-chart-point"]').last().click();
   const latestDetail = page.locator(".chart-detail");
@@ -433,7 +436,7 @@ test("M7 Progress keeps old history and exact variants while charting one compar
   await page.locator('[data-action="show-chart-point"]').first().click();
   const importedUnitDetail = page.locator(".chart-detail");
   await expect(importedUnitDetail).toContainText("882 lb");
-  await expect(importedUnitDetail).toContainText("400 kg");
+  await expect(importedUnitDetail).toContainText("Imported: 400 kg");
 
   await search.fill(LONG_VARIANT);
   await page.locator('[data-action="select-chart-exercise"]').filter({ hasText: LONG_VARIANT }).filter({ hasText: "Duration" }).click();

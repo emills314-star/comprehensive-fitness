@@ -45,7 +45,9 @@ assert.doesNotMatch(analysis, /\b(hypertrophyAnalysis|calculateHypertrophyScore|
 
 assert.doesNotMatch(resolver, /weeklyMuscleVolume|fractionalSet|hypertrophyScore|volumeExposure/, "The approved exception resolver must not depend on deleted analytical exposure inputs");
 assert.equal(fs.existsSync(path.join(root, "programming-family-ledger.js")), false, "The obsolete family-volume ledger must be deleted");
-for (const [name, source] of [["index", index], ["service worker", serviceWorker], ["sync", sync], ["verifier", verifier]]) {
+const syncPublicFiles = sync.slice(sync.indexOf("$publicFiles = @("));
+const verifierPublicFiles = verifier.slice(verifier.indexOf("$publicFiles = @("), verifier.indexOf("$obsoleteAnalyticalJson = @("));
+for (const [name, source] of [["index", index], ["service worker", serviceWorker], ["sync public list", syncPublicFiles], ["verifier public list", verifierPublicFiles]]) {
   assert.doesNotMatch(source, /programming-family-ledger/, `${name} must not package the deleted ledger`);
 }
 

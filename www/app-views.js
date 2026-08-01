@@ -56,6 +56,10 @@
             ${renderTimerCompleteNotice()}
           </div>
         `;
+        window.clearInterval(workoutDurationInterval);
+        workoutDurationInterval = shellWorkoutVisible
+          ? window.setInterval(updateWorkoutStatusDom, 1000)
+          : 0;
         root.querySelectorAll("details[data-disclosure-id]").forEach((details) => {
           const disclosureId = details.dataset.disclosureId;
           if (knownDisclosureIds.has(disclosureId)) details.open = openDisclosureIds.has(disclosureId);
@@ -228,7 +232,7 @@
 
       function renderOfflineBanner() {
         if (navigator.onLine !== false) return "";
-        return '<div class="banner offline offline-banner" role="status"><span class="b-copy"><b>Offline</b><span>Workout logging and local changes continue. Notifications and cloud-copy operations wait for a connection.</span></span><span class="b-act" aria-hidden="true">Local mode</span></div>';
+        return '<div class="banner offline offline-banner" role="status"><span class="b-copy"><b>Offline</b><span>Workout logging and local changes continue. Background notifications wait for a connection.</span></span><span class="b-act" aria-hidden="true">Local mode</span></div>';
       }
 
       function navButton(tab, label, iconKey) {
@@ -269,8 +273,10 @@
       }
 
       function renderSessionDock(session, progress, { inert = false } = {}) {
+        const durationPaused = Boolean(session.workoutPausedAt);
         return `<aside class="session-dock" aria-label="Workout session controls" ${inert ? 'inert aria-hidden="true"' : ""}>
           <span class="session-dock-progress"><strong data-session-dock-progress>${progress.completed} of ${progress.total} sets</strong><span class="track" data-session-dock-track aria-label="${progress.completed} of ${progress.total} sets completed">${Array.from({ length: 10 }, (_, index) => '<i class="seg ' + (index < Math.round((progress.completed / Math.max(1, progress.total)) * 10) ? 'filled' : '') + '"></i>').join("")}</span><small data-session-dock-elapsed>${escapeHtml(progress.elapsed)}</small><i class="session-dock-elapsed-rule" aria-hidden="true"></i></span>
+          <button class="secondary-action session-dock-pause" type="button" data-action="toggle-workout-pause" aria-pressed="${durationPaused ? "true" : "false"}">${durationPaused ? "Resume time" : "Pause time"}</button>
           <button class="primary-action session-dock-finish" type="button" data-action="request-submit-workout">Finish</button>
           <details class="session-overflow session-dock-overflow"><summary class="icon-button" data-action="session-menu" aria-label="Workout menu">${icon.more}</summary><div class="session-overflow-menu">
             <button type="button" data-action="log-workout-readiness">${icon.info}<span>Log readiness</span></button>
@@ -376,7 +382,7 @@
             </details>
             ${editingHistory ? '<section class="history-edit-bar"><div><strong>Editing logged workout</strong><span>Changes remain temporary until you confirm Save Edits. The stored historical grade and algorithm version remain unchanged.</span></div><div class="history-edit-actions"><button class="primary-action" type="button" data-action="request-save-history-edits">Save Edits</button><button class="secondary-action" type="button" data-action="request-cancel-history-edits">Cancel Edits</button></div></section>' : ''}
             ${historyReadOnly && completedSummarySessionId !== session.id ? renderCompletedWorkoutSummary(session, { history: true }) : ''}
-            ${historyReadOnly ? '<div class="history-view-actions"><button class="primary-action" type="button" data-action="begin-history-edit">Edit History</button><button class="secondary-action" type="button" data-action="return-lift-home">Return to Lift Home</button></div>' : ''}
+            ${historyReadOnly ? '<div class="history-view-actions"><button class="primary-action" type="button" data-action="begin-history-edit">Edit History</button><button class="secondary-action" type="button" data-action="return-to-today">Return to Today</button></div>' : ''}
               </div>
             </div>
             ${pendingSubmitSessionId === session.id ? renderSubmitConfirmation(session) : ""}
@@ -386,17 +392,18 @@
       }
 
       function resolvedActionForScope(session, scopeType, exercise = null) {
-        const actions = Array.isArray(session?.resolvedActions)
-          ? session.resolvedActions.filter((item) => item?.outcome === "action" && item.scope?.type === scopeType)
-          : [];
-        if (scopeType !== "exercise" || !exercise) return actions[0] || null;
+        const currentDecisions = Array.isArray(session?.resolvedActions) ? session.resolvedActions : [];
+        if (currentDecisions[0]?.outcome === "no_action") return null;
+        const decisions = currentDecisions.filter((item) => item?.scope?.type === scopeType);
+        if (scopeType !== "exercise" || !exercise) return decisions[0]?.outcome === "action" ? decisions[0] : null;
         const identities = new Set([
           exercise.id,
           exercise.performanceExerciseId,
           exercise.researchExerciseId,
           canonicalExerciseId(exercise)
         ].map((value) => String(value || "")).filter(Boolean));
-        return actions.find((item) => identities.has(String(item.scope.exerciseVariantId || ""))) || null;
+        const latest = decisions.find((item) => identities.has(String(item.scope.exerciseVariantId || ""))) || null;
+        return latest?.outcome === "action" ? latest : null;
       }
 
       function renderResolvedAction(resolvedAction, { session = null, exercise = null } = {}) {
@@ -440,6 +447,7 @@
           deload_due: "A time-bounded deload is due.",
           readiness_below_usual: "Today’s readiness is materially below your usual level.",
           poor_readiness: "Today’s readiness is materially below your usual level.",
+          meaningfully_poor_readiness: "You marked today’s readiness as meaningfully poor.",
           material_fatigue: "Comparable recent work shows material fatigue.",
           fatigue: "Comparable recent work shows material fatigue.",
           plateau: "Comparable recent work shows a persistent plateau.",
@@ -460,19 +468,33 @@
         const scope = resolvedAction.scope?.type === "exercise"
           ? exercise?.name || "One exercise"
           : session?.title || "This workout";
-        return '<article class="recommendation resolved-action-card ' + escapeHtml(category || "change") + '" role="status"><span>' + escapeHtml(scope) + '</span><h2>' + escapeHtml(titles[code] || categoryFallbacks[category] || "Adjust today’s workout") + '</h2><p>' + escapeHtml(reason) + '</p></article>';
+        const pending = resolvedAction.handling === "pending";
+        const safetyCopy = category === "pain_or_illness"
+          ? '<p class="resolved-action-caution">This is not a diagnosis, and the app cannot determine whether continuing is safe.</p>'
+          : "";
+        const choices = pending && category === "pain_or_illness"
+          ? '<div class="resolved-action-choices" aria-label="Choose how to handle this warning"><button class="danger-button" type="button" data-action="handle-resolved-action" data-decision-id="' + escapeHtml(resolvedAction.decisionId) + '" data-choice="stop">Stop</button><button class="secondary-action" type="button" data-action="handle-resolved-action" data-decision-id="' + escapeHtml(resolvedAction.decisionId) + '" data-choice="modify">Modify workout</button><button type="button" data-action="handle-resolved-action" data-decision-id="' + escapeHtml(resolvedAction.decisionId) + '" data-choice="continue">Continue</button></div>'
+          : pending && category === "readiness"
+            ? '<div class="resolved-action-choices" aria-label="Choose how to handle this readiness change"><button class="secondary-action" type="button" data-action="handle-resolved-action" data-decision-id="' + escapeHtml(resolvedAction.decisionId) + '" data-choice="lighter">Use lighter work</button><button type="button" data-action="handle-resolved-action" data-decision-id="' + escapeHtml(resolvedAction.decisionId) + '" data-choice="continue">Continue as planned</button></div>'
+            : resolvedAction.handling !== "pending"
+              ? '<small class="resolved-action-handling">' + escapeHtml(category === "pain_or_illness"
+                  ? ({ accepted: "Stop recorded.", modified: "Workout modification recorded.", overridden: "Decision to continue recorded." })[resolvedAction.handling] || "Response recorded."
+                  : ({ accepted: "Lighter work recorded.", overridden: "Decision to continue as planned recorded." })[resolvedAction.handling] || "Response recorded.") + '</small>'
+              : "";
+        return '<article class="recommendation resolved-action-card ' + escapeHtml(category || "change") + '" role="status"><span>' + escapeHtml(scope) + '</span><h2>' + escapeHtml(titles[code] || categoryFallbacks[category] || "Adjust today’s workout") + '</h2><p>' + escapeHtml(reason) + '</p>' + safetyCopy + choices + '</article>';
       }
 
       function renderLiftHome() {
-        const nextTemplate = data.templates[0] || null;
+        const nextTemplate = expectedWorkoutTemplate();
         const running = activeWorkoutSession();
         if (running) {
           const exerciseIds = new Set(data.exercises.filter((exercise) => exercise.sessionId === running.id).map((exercise) => exercise.id));
-          const workSets = data.sets.filter((set) => exerciseIds.has(set.exerciseId) && isWorkingSet(set, "score"));
+          const workSets = data.sets.filter((set) => exerciseIds.has(set.exerciseId) && isWorkingSet(set));
           const completed = workSets.filter((set) => set.completed && !set.skipped).length;
           return `
             <section class="view lift-home-view">
               <div class="workout-heading today-heading"><div><div class="section-kicker">${escapeHtml(new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(new Date(todayIso() + "T12:00:00")))}</div><h1>Today</h1></div><span class="status-pill inside">In progress</span></div>
+              ${renderResolvedAction(resolvedActionForScope(running, "session"), { session: running })}
               <section class="coach-lead today-coach">
                 <div class="section-kicker">Workout in progress</div>
                 <h2>${escapeHtml(running.title || "Current workout")}</h2>
@@ -489,7 +511,6 @@
         return `
           <section class="view lift-home-view">
             <div class="workout-heading today-heading"><div><div class="section-kicker">${escapeHtml(new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(new Date(todayIso() + "T12:00:00")))}${nextTemplate ? " · " + escapeHtml(nextTemplate.name) : ""}</div><h1>Today</h1></div><span class="status-pill inside">${nextTemplate ? "Ready" : "Plan needed"}</span></div>
-            ${renderResolvedAction(resolvedActionForScope(running, "session"), { session: running })}
             <section class="coach-lead today-coach">
               <div class="section-kicker">${nextTemplate ? "Expected workout" : "Next action"}</div>
               <h2>${nextTemplate ? escapeHtml(nextTemplate.name) : "Create your first reusable workout"}</h2>
@@ -507,13 +528,13 @@
         const exercises = activeExercises();
         const running = Boolean(session && session.id === activeWorkoutId && hasActiveWorkout());
         const visibleTimer = timer?.workoutId === session?.id ? timer : null;
-        const workSets = exercises.flatMap((exercise) => setsForExercise(exercise.id).filter((set) => isWorkingSet(set, "score")));
+        const workSets = exercises.flatMap((exercise) => setsForExercise(exercise.id).filter((set) => isWorkingSet(set)));
         const activeSet = data.sets.find((set) => set.id === activeSetId);
         const activeExercise = activeSet ? exercises.find((exercise) => exercise.id === activeSet.exerciseId) : null;
         const waitingSet = visibleTimer ? data.sets.find((set) => set.id === visibleTimer.pendingNextSetId) : null;
         const waitingExercise = waitingSet ? exercises.find((exercise) => exercise.id === waitingSet.exerciseId) : null;
-        const startedAt = new Date(session?.startedAt || Date.now()).getTime();
-        const elapsedMinutes = Math.max(0, Math.floor((Date.now() - startedAt) / 60000));
+        const activeDurationMs = workoutActiveDurationMs(session);
+        const elapsedMinutes = activeDurationMs == null ? null : Math.max(0, Math.floor(activeDurationMs / 60000));
         const remaining = workSets.filter((set) => !set.completed && !set.skipped).length;
         const currentLabel = visibleTimer && waitingSet
           ? "Rest - " + (waitingExercise?.name || "Next set") + " · Set " + (waitingSet.isWarmup ? "WU" : waitingSet.setNumber)
@@ -526,7 +547,9 @@
           total: workSets.length,
           remaining,
           elapsed: running
-            ? (elapsedMinutes < 60 ? elapsedMinutes + "m elapsed" : Math.floor(elapsedMinutes / 60) + "h " + (elapsedMinutes % 60) + "m elapsed")
+            ? elapsedMinutes == null
+              ? "Duration starts when resumed"
+              : (elapsedMinutes < 60 ? elapsedMinutes + "m " + (session.workoutPausedAt ? "paused" : "active") : Math.floor(elapsedMinutes / 60) + "h " + (elapsedMinutes % 60) + "m " + (session.workoutPausedAt ? "paused" : "active"))
             : isSessionSubmitted(session) ? "Workout logged" : "Not started"
         };
       }
@@ -550,10 +573,10 @@
         const exerciseIds = new Set(exercises.map((exercise) => exercise.id));
         const sets = data.sets.filter((set) => exerciseIds.has(set.exerciseId));
         const completed = sets.filter((set) => set.completed && !set.skipped);
-        const started = new Date(session.startedAt || session.createdAt || "").getTime();
-        const ended = new Date(session.submittedAt || session.updatedAt || "").getTime();
-        const measured = Number.isFinite(started) && Number.isFinite(ended) && ended > started ? Math.round((ended - started) / 60000) : 0;
-        const durationMinutes = measured > 0 && measured < 720 ? measured : null;
+        const recordedDurationSeconds = Number(session.durationSeconds);
+        const durationMinutes = Number.isFinite(recordedDurationSeconds) && recordedDurationSeconds > 0
+          ? Math.max(1, Math.round(recordedDurationSeconds / 60))
+          : null;
         return { exercises, sets, completed, durationMinutes, prs: session.prs || [] };
       }
 
@@ -609,7 +632,6 @@
         if (!optionalReadinessFlow) return;
         optionalReadinessFlow = { ...optionalReadinessFlow, draft: cleanRecovery({ ...optionalReadinessFlow.draft, ...patch }) };
         if (shouldRender) render();
-        else syncTemplateReadinessDeltas();
       }
 
       function rangeBar({ low, high, actual, tone = "none" }) {
@@ -623,76 +645,12 @@
         return '<span class="range-bar" data-tone="' + escapeHtml(tone) + '" role="img" aria-label="' + escapeHtml(label) + '" style="--band-start:' + percent(targetLow).toFixed(2) + '%;--band-end:' + percent(targetHigh).toFixed(2) + '%;--actual:' + percent(actualValue).toFixed(2) + '%"><i class="rb-band"></i><i class="rb-mark"></i></span>';
       }
 
-      function pips(completed, total, label = "") {
-        const maximum = Math.max(0, Math.floor(Number(total) || 0));
-        const current = Math.max(0, Math.min(maximum, Math.floor(Number(completed) || 0)));
-        if (!maximum) return "";
-        return '<span class="pips" role="img" aria-label="' + escapeHtml(label || current + " of " + maximum) + '">' + Array.from({ length: maximum }, (_, index) => '<i' + (index < current ? ' class="on"' : '') + '></i>').join("") + '</span>';
-      }
-
-      function sparkline(values, { width = 64, height = 18, tone = "none", label = "Trend" } = {}) {
-        const points = (Array.isArray(values) ? values : []).map(Number).filter(Number.isFinite);
-        if (points.length < 2) return "";
-        const min = Math.min(...points);
-        const max = Math.max(...points);
-        const span = max - min || 1;
-        const coordinates = points.map((value, index) => {
-          const x = index / (points.length - 1) * width;
-          const y = height - ((value - min) / span * (height - 2) + 1);
-          return x.toFixed(2) + "," + y.toFixed(2);
-        }).join(" ");
-        return '<span class="sparkline d ' + escapeHtml(tone) + '"><svg role="img" aria-label="' + escapeHtml(label) + '" viewBox="0 0 ' + width + ' ' + height + '" width="' + width + '" height="' + height + '"><polyline points="' + coordinates + '" /></svg></span>';
-      }
-
       function noData(label = "No recorded data") {
         return '<span class="no-data" title="' + escapeHtml(label) + '" aria-label="' + escapeHtml(label) + '">—</span>';
       }
 
-      function readinessMetricDelta(field, value, baseline = readinessBaseline()) {
-        const numeric = value === "" || value == null ? null : Number(value);
-        const baselineValue = Number(baseline[field]);
-        const unit = field === "sleepHours" ? " h" : field === "hrv" ? " ms" : field === "restingHr" ? " bpm" : field === "sleepQuality" || field === "soreness" ? "/5" : "";
-        if (numeric === null || !Number.isFinite(numeric)) return { text: "Enter today’s value", tone: "none" };
-        if (!Number.isFinite(baselineValue) || ((field === "hrv" || field === "restingHr") && baseline[field] === "")) return { text: "No stored baseline", tone: "none" };
-        const delta = Number((numeric - baselineValue).toFixed(field === "sleepHours" ? 2 : 0));
-        if (delta === 0) return { text: "at usual", tone: "none" };
-        return { text: (delta > 0 ? "+" : "−") + Math.abs(delta) + unit + " vs usual", tone: "none" };
-      }
-
-      function readinessMetricField({ field, label, action, value, min, max, step, unit }) {
-        const baseline = readinessBaseline();
-        const delta = readinessMetricDelta(field, value, baseline);
-        const baselineValue = baseline[field] === "" ? "not set" : baseline[field] + unit;
-        return '<div class="field readiness-field"><div class="f-top"><label class="f-name" for="template-readiness-' + field + '">' + escapeHtml(label) + '</label><span class="f-help">usual ' + escapeHtml(baselineValue) + '</span></div><div class="stepper"><button class="sb" type="button" data-action="adjust-template-readiness" data-field="' + field + '" data-step="' + (-step) + '" aria-label="Decrease ' + escapeHtml(label) + '">−</button><input class="sv" id="template-readiness-' + field + '" type="number" min="' + min + '" max="' + max + '" step="' + step + '" value="' + escapeHtml(value) + '" data-action="' + action + '" aria-label="' + escapeHtml(label) + '" /><button class="sb" type="button" data-action="adjust-template-readiness" data-field="' + field + '" data-step="' + step + '" aria-label="Increase ' + escapeHtml(label) + '">+</button><span class="d ' + delta.tone + '" data-readiness-delta="' + field + '">' + escapeHtml(delta.text) + '</span></div></div>';
-      }
-
       function readinessSegmentedField({ field, label, action, value, options }) {
         return '<fieldset class="field readiness-field"><legend class="f-name">' + escapeHtml(label) + '</legend><div class="segmented" role="radiogroup" aria-label="' + escapeHtml(label) + '">' + options.map(([optionValue, optionLabel]) => '<label><input type="radio" name="template-readiness-' + field + '" value="' + escapeHtml(optionValue) + '" data-action="' + action + '" ' + (String(value) === String(optionValue) ? 'checked' : '') + ' /><span>' + escapeHtml(optionLabel) + '</span></label>').join('') + '</div></fieldset>';
-      }
-
-      function syncTemplateReadinessDeltas() {
-        if (!optionalReadinessFlow) return;
-        const baseline = readinessBaseline();
-        ["sleepHours", "sleepQuality", "hrv", "restingHr", "soreness"].forEach((field) => {
-          const node = root.querySelector('[data-readiness-delta="' + field + '"]');
-          if (!node) return;
-          const delta = readinessMetricDelta(field, optionalReadinessFlow.draft[field], baseline);
-          node.className = "d " + delta.tone;
-          node.textContent = delta.text;
-        });
-      }
-
-      function adjustTemplateReadinessMetric(field, step) {
-        if (!optionalReadinessFlow) return;
-        const domains = { sleepHours: { min: 0, max: 14 }, hrv: { min: 0, max: 400 }, restingHr: { min: 0, max: 240 } };
-        const domain = domains[field];
-        if (!domain) return;
-        const current = Number(optionalReadinessFlow.draft[field] === "" ? readinessBaseline()[field] || domain.min : optionalReadinessFlow.draft[field]);
-        const next = Math.max(domain.min, Math.min(domain.max, Number((current + Number(step || 0)).toFixed(field === "sleepHours" ? 2 : 0))));
-        patchTemplateStartDraft({ [field]: String(next) }, false);
-        const action = field === "sleepHours" ? "template-readiness-sleep-hours" : field === "restingHr" ? "template-readiness-resting-hr" : "template-readiness-hrv";
-        const input = root.querySelector('[data-action="' + action + '"]');
-        if (input) input.value = String(next);
       }
 
       function renderTemplateStartSheet() {
@@ -720,21 +678,13 @@
         if (!optionalReadinessFlow) return "";
         const recovery = optionalReadinessFlow.draft;
         const editingWorkout = Boolean(optionalReadinessFlow.sessionId);
-          const sleepQualityDelta = readinessMetricDelta("sleepQuality", recovery.sleepQuality);
-          const sorenessDelta = readinessMetricDelta("soreness", recovery.soreness);
           return `
             <div class="scrim sheet-backdrop" data-action="cancel-template-start" role="presentation">
               <section class="sheet-card bottom-sheet dialog-sheet readiness-log-sheet" role="dialog" aria-modal="true" aria-labelledby="daily-readiness-title" data-sheet-content>
                 <button class="sheet-close" type="button" data-action="cancel-template-start" aria-label="Close daily readiness">&times;</button>
-                <div><div class="section-kicker">Optional readiness</div><h2 id="daily-readiness-title">What is different today?</h2><p>Enter only what matters. Blank values remain missing and the saved routine stays unchanged.</p></div>
+                <div><div class="section-kicker">Optional readiness</div><h2 id="daily-readiness-title">What is different today?</h2><p>Choose only what you know. Skipping this stays silent and never limits workout logging.</p></div>
                 <div class="readiness-draft">
-                  ${readinessMetricField({ field: "sleepHours", label: "Sleep", action: "template-readiness-sleep-hours", value: recovery.sleepHours, min: 0, max: 14, step: 0.25, unit: " h" })}
-                  ${readinessSegmentedField({ field: "sleepQuality", label: "Sleep quality", action: "template-readiness-sleep-quality", value: recovery.sleepQuality, options: [["", "Not entered"], [1, "1"], [2, "2"], [3, "3"], [4, "4"], [5, "5"]] })}<span class="d ${sleepQualityDelta.tone}" data-readiness-delta="sleepQuality">${escapeHtml(sleepQualityDelta.text)}</span>
-                  ${readinessSegmentedField({ field: "soreness", label: "Soreness", action: "template-readiness-soreness", value: recovery.soreness, options: [["", "Not entered"], [1, "1"], [2, "2"], [3, "3"], [4, "4"], [5, "5"]] })}<span class="d ${sorenessDelta.tone}" data-readiness-delta="soreness">${escapeHtml(sorenessDelta.text)}</span>
-                  ${readinessMetricField({ field: "hrv", label: "HRV", action: "template-readiness-hrv", value: recovery.hrv, min: 0, max: 400, step: 1, unit: " ms" })}
-                  ${readinessMetricField({ field: "restingHr", label: "Resting heart rate", action: "template-readiness-resting-hr", value: recovery.restingHr, min: 0, max: 240, step: 1, unit: " bpm" })}
-                  ${readinessSegmentedField({ field: "nutritionStatus", label: "Nutrition today", action: "template-readiness-nutrition", value: recovery.nutritionStatus, options: [["", "Not entered"], ["on_plan", "On plan"], ["below_plan", "Below plan"], ["low_energy", "Low energy"]] })}
-                  ${readinessSegmentedField({ field: "proteinStatus", label: "Protein target", action: "template-readiness-protein", value: recovery.proteinStatus, options: [["", "Not entered"], ["adequate", "Met"], ["below_target", "Below target"]] })}
+                  ${readinessSegmentedField({ field: "deviation", label: "Readiness today", action: "template-readiness-deviation", value: recovery.readinessDeviation, options: [["", "Not entered"], ["usual", "Usual"], ["unusually_good", "Unusually good"], ["meaningfully_poor", "Meaningfully poor"]] })}
                   <fieldset class="field readiness-field"><legend class="f-name">Illness or pain</legend><div class="readiness-toggle-grid"><label class="toggle-line"><span>Current illness</span><span class="toggle ${recovery.illness ? "on" : ""}"><input type="checkbox" data-action="template-readiness-illness" ${recovery.illness ? "checked" : ""} /><i></i></span></label><label class="toggle-line"><span>Pain or injury</span><span class="toggle ${recovery.pain ? "on" : ""}"><input type="checkbox" data-action="template-readiness-pain" ${recovery.pain ? "checked" : ""} /><i></i></span></label></div></fieldset>
                   <div class="field readiness-field"><label class="f-name" for="template-readiness-area">Affected area</label><select id="template-readiness-area" data-action="template-readiness-affected-muscle"><option value="">Not specified</option>${muscleGroups.map((muscle) => '<option value="' + muscle + '" ' + (recovery.affectedMuscle === muscle ? 'selected' : '') + '>' + muscle + '</option>').join('')}</select></div>
                   <div class="field readiness-field"><label class="f-name" for="template-readiness-note">Optional context</label><textarea id="template-readiness-note" data-action="template-readiness-note" placeholder="Anything outside your normal band">${escapeHtml(recovery.outsideBandNote)}</textarea></div>
@@ -743,10 +693,6 @@
               </section>
             </div>
           `;
-      }
-
-      function prescriptionLine(target) {
-        return target.sets + " set" + (Number(target.sets) === 1 ? "" : "s") + " · " + formatResistance(target) + " × " + target.reps + " reps @ RPE " + target.rpe + (target.restSeconds ? " · " + target.restSeconds + "s rest" : "");
       }
 
       function requestCancelWorkout(source = "workout", requestedSessionId = "") {
@@ -862,7 +808,7 @@
           <div class="sheet-backdrop" data-action="keep-history-editing" role="presentation">
             <section class="bottom-sheet dialog-sheet ${saving ? "" : "destructive-sheet"}" role="dialog" aria-modal="true" aria-labelledby="history-edit-confirm-title" data-sheet-content>
               <button class="sheet-close" type="button" data-action="keep-history-editing" aria-label="Close edit confirmation">&times;</button>
-              <div class="cancel-hero ${saving ? "save" : ""}"><span class="cancel-visual" aria-hidden="true">${saving ? "&#10003;" : "!"}</span><div><div class="section-kicker">Logged workout</div><h2 id="history-edit-confirm-title">${saving ? "Save these history edits?" : "Cancel these edits?"}</h2><p>${saving ? "The revised workout will replace the saved version and update its grade and performance history." : "The original logged workout will be restored. None of the temporary changes will be saved."}</p></div></div>
+              <div class="cancel-hero ${saving ? "save" : ""}"><span class="cancel-visual" aria-hidden="true">${saving ? "&#10003;" : "!"}</span><div><div class="section-kicker">Logged workout</div><h2 id="history-edit-confirm-title">${saving ? "Save these history edits?" : "Cancel these edits?"}</h2><p>${saving ? "The revised workout will replace the saved version. Its stored historical grade and algorithm version remain unchanged." : "The original logged workout will be restored. None of the temporary changes will be saved."}</p></div></div>
               <div class="sheet-actions stacked">
                 <button class="primary-action" type="button" data-action="keep-history-editing">Keep Editing</button>
                 <button class="${saving ? "secondary-action" : "danger-button"}" type="button" data-action="${saving ? "confirm-save-history-edits" : "confirm-cancel-history-edits"}">${saving ? "Save Edits" : "Discard Edits"}</button>
@@ -887,7 +833,7 @@
         return session;
       }
 
-      function returnToLiftHome(message = "") {
+      function returnToToday(message = "") {
         const home = liftHomeSession();
         activeSessionId = home.id;
         viewingHistorySessionId = "";
@@ -909,7 +855,7 @@
         data = { ...data, sessions: data.sessions.map((item) => item.id === sessionId ? updatedSession : item) };
         invalidateCompletedAnalysis();
         historyEditFlow = null;
-        returnToLiftHome("History edits saved. The stored historical grade was preserved.");
+        returnToToday("History edits saved. The stored historical grade was preserved.");
       }
 
       function cancelHistoryEdits() {
@@ -920,7 +866,7 @@
         invalidateCompletedAnalysis();
         historyEditFlow = null;
         applyTheme();
-        returnToLiftHome("History edits canceled.");
+        returnToToday("History edits canceled.");
       }
 
       function showAppToast(message, options = {}) {
@@ -942,15 +888,6 @@
         present(toast);
       }
 
-      async function removeWorkoutFromSyncQueue(sessionId) {
-        try {
-          const queue = await readIndexedValue("sync-queue") || [];
-          await writeIndexedValue("sync-queue", queue.filter((item) => item.sessionId !== sessionId));
-        } catch {
-          return;
-        }
-      }
-
       async function discardActiveWorkout() {
         const session = data.sessions.find((item) => item.id === cancelWorkoutFlow?.sessionId);
         if (!sessionCanBeDiscarded(session)) return;
@@ -964,7 +901,6 @@
           timer = null;
           cancelRestPush(previousTimer, "workout-canceled");
         }
-        await removeWorkoutFromSyncQueue(session.id);
         const discardedActiveWorkout = activeWorkoutId === session.id;
         if (discardedActiveWorkout) {
           activeWorkoutId = "";
@@ -1010,15 +946,15 @@
         const exerciseSets = setsForExercise(exercise.id);
         const warmups = exerciseSets.filter((set) => setTypeSemantics(set).isWarmup);
         const working = exerciseSets.filter((set) => isWorkingSet(set, "progression"));
-        const workingCount = Math.max(1, working.length || Number(exercise.prescription?.sets || 1));
+        const workingCount = Math.max(1, working.length || Number(templateExercise?.sets || 1));
         const repMins = working.map((set) => Number(set.targetRepMin || set.targetReps || set.reps || 0)).filter((value) => value > 0);
         const repMaxes = working.map((set) => Number(set.targetRepMax || set.targetReps || set.reps || 0)).filter((value) => value > 0);
-        const repMin = repMins.length ? Math.min(...repMins) : Number(exercise.prescription?.repLow || exercise.prescription?.reps || 8);
-        const repMax = repMaxes.length ? Math.max(...repMaxes) : Number(exercise.prescription?.repHigh || exercise.prescription?.reps || repMin);
-        const workingRpeMaxes = working.map((set) => Number(set.targetRpeMax ?? set.targetRpe ?? set.setPrescription?.rpeMax ?? set.rpe ?? 0)).filter((value) => value > 0);
-        const targetRpeMax = workingRpeMaxes[0] || Number(templateExercise?.targetRpe || exercise.prescription?.targetRpeMax || exercise.prescription?.targetRpe || exercise.prescription?.rpe || 8);
-        const workingRpeMins = working.map((set) => Number(set.targetRpeMin ?? set.setPrescription?.rpeMin ?? Math.max(1, Number(set.targetRpeMax ?? set.targetRpe ?? set.rpe ?? targetRpeMax) - 1))).filter((value) => value > 0);
-        const targetRpeMin = workingRpeMins[0] || Number(exercise.prescription?.targetRpeMin || Math.max(1, targetRpeMax - 1));
+        const repMin = repMins.length ? Math.min(...repMins) : Number(templateExercise?.repMin || templateExercise?.reps || 8);
+        const repMax = repMaxes.length ? Math.max(...repMaxes) : Number(templateExercise?.repMax || templateExercise?.reps || repMin);
+        const workingRpeMaxes = working.map((set) => Number(set.targetRpeMax ?? set.targetRpe ?? set.rpe ?? 0)).filter((value) => value > 0);
+        const targetRpeMax = workingRpeMaxes[0] || Number(templateExercise?.targetRpe || 8);
+        const workingRpeMins = working.map((set) => Number(set.targetRpeMin ?? Math.max(1, Number(set.targetRpeMax ?? set.targetRpe ?? set.rpe ?? targetRpeMax) - 1))).filter((value) => value > 0);
+        const targetRpeMin = workingRpeMins[0] || Math.max(1, targetRpeMax - 1);
         const workingRests = working.map((set) => Number(set.targetRestSeconds || 0)).filter((value) => value > 0);
         const workingRest = workingRests[0] || Number(exercise.restSeconds || data.settings.defaultRestSeconds || 90);
         const warmupRest = Number(warmups.find((set) => Number(set.targetRestSeconds) > 0)?.targetRestSeconds || Math.min(workingRest, 90));
@@ -1026,8 +962,8 @@
           normalizeSetTypeCode(set.setType, set.isWarmup),
           Number(set.targetRepMin || set.targetReps || set.reps || repMin),
           Number(set.targetRepMax || set.targetReps || set.reps || repMax),
-          Number(set.targetRpeMin ?? set.setPrescription?.rpeMin ?? targetRpeMin),
-          Number(set.targetRpeMax ?? set.targetRpe ?? set.setPrescription?.rpeMax ?? set.rpe ?? targetRpeMax),
+          Number(set.targetRpeMin ?? targetRpeMin),
+          Number(set.targetRpeMax ?? set.targetRpe ?? set.rpe ?? targetRpeMax),
           Number(set.targetRestSeconds || workingRest)
         ].join("|"));
         const individualized = new Set(signatures).size > 1 || working.some((set) => normalizeSetTypeCode(set.setType, set.isWarmup) !== "straight");
@@ -1051,8 +987,8 @@
           const type = scope === "warmup" ? "warmup" : normalizeSetTypeCode(set?.setType, set?.isWarmup);
           const rowRepMin = Number(set?.targetRepMin || set?.targetReps || set?.reps || fallback.repMin);
           const rowRepMax = Number(set?.targetRepMax || set?.targetReps || set?.reps || fallback.repMax);
-          const rowTargetRpeMax = Number(set?.targetRpeMax ?? set?.targetRpe ?? set?.setPrescription?.rpeMax ?? set?.rpe ?? fallback.targetRpeMax);
-          const rowTargetRpeMin = Number(set?.targetRpeMin ?? set?.setPrescription?.rpeMin ?? fallback.targetRpeMin ?? Math.max(1, rowTargetRpeMax - 1));
+          const rowTargetRpeMax = Number(set?.targetRpeMax ?? set?.targetRpe ?? set?.rpe ?? fallback.targetRpeMax);
+          const rowTargetRpeMin = Number(set?.targetRpeMin ?? fallback.targetRpeMin ?? Math.max(1, rowTargetRpeMax - 1));
           const rest = Number(set?.targetRestSeconds || fallback.rest);
           const scopeLabel = scope === "warmup" ? "Warm-up" : "Working";
           return `
@@ -1134,12 +1070,12 @@
         const addSetSafety = guardWorkoutMutation("add-set", { exercise }, false);
         const addWarmupSafety = guardWorkoutMutation("add-warmup-set", { exercise }, false);
         const duplicateSetSafety = guardWorkoutMutation("duplicate-set", { exercise }, false);
-        const firstWorkSet = exerciseSets.find((set) => isWorkingSet(set, "score")) || exerciseSets[0];
+        const firstWorkSet = exerciseSets.find((set) => isWorkingSet(set)) || exerciseSets[0];
         const renderContext = renderSetContext(exercise);
         const setHtml = measurePerformance("lift:setRows", () => exerciseSets.map((set) => renderSet(set, exercise, renderContext)).join(""), { exerciseId: exercise.id, count: exerciseSets.length });
         const optionsHtml = measurePerformance("lift:exerciseOptions", () => renderStandardWorkloadControls(exercise) + renderMuscleSelectors(exercise), { exerciseId: exercise.id });
-        const chipSet = exerciseSets.find((set) => isWorkingSet(set, "score") && !set.completed && !set.skipped) || firstWorkSet;
-        const plannedWorkingSets = exerciseSets.filter((set) => isWorkingSet(set, "score")).length;
+        const chipSet = exerciseSets.find((set) => isWorkingSet(set) && !set.completed && !set.skipped) || firstWorkSet;
+        const plannedWorkingSets = exerciseSets.filter((set) => isWorkingSet(set)).length;
         const chipRestSeconds = Number(chipSet?.targetRestSeconds || exercise.restSeconds || data.settings.defaultRestSeconds || 90);
         const chipTarget = chipSet
           ? plannedWorkingSets + " set" + (plannedWorkingSets === 1 ? "" : "s")
@@ -1192,12 +1128,6 @@
         `;
       }
 
-      function formatPreviousSetPerformance(set, exercise) {
-        if (!set) return "No prior working set found";
-        const date = set.priorSessionDate ? " · " + formatDate(set.priorSessionDate) : "";
-        return formatSetPerformance(set, exercise) + date;
-      }
-
       function setCompletionClock(set) {
         const completedAt = new Date(set?.completedAt || "");
         if (!Number.isFinite(completedAt.getTime())) return "Actual";
@@ -1238,7 +1168,7 @@
         const previousField = setTypeSemantics(set).isWarmup
           ? '<div class="set-field set-previous"><span>Previous</span><strong>' + noData("No comparable warm-up") + '</strong><small>Warm-up</small></div>'
           : previous?.priorSessionId
-            ? '<a class="set-field set-previous set-previous-link" href="#progress-history" data-action="open-session" data-session-id="' + escapeHtml(previous.priorSessionId) + '" data-exercise-id="' + escapeHtml(previous.priorExerciseId || "") + '" data-return-exercise-id="' + escapeHtml(exercise.id) + '" title="Open ' + escapeHtml(previous.priorExerciseName || exercise.name) + ' in the ' + escapeHtml(previousDateLabel) + ' workout"><span>Previous</span><strong>' + escapeHtml(previousSummaryText) + '</strong><small>' + escapeHtml(previousDateLabel) + '</small></a>'
+            ? '<a class="set-field set-previous set-previous-link" href="#progress" data-action="open-session" data-session-id="' + escapeHtml(previous.priorSessionId) + '" data-exercise-id="' + escapeHtml(previous.priorExerciseId || "") + '" data-return-exercise-id="' + escapeHtml(exercise.id) + '" title="Open ' + escapeHtml(previous.priorExerciseName || exercise.name) + ' in the ' + escapeHtml(previousDateLabel) + ' workout"><span>Previous</span><strong>' + escapeHtml(previousSummaryText) + '</strong><small>' + escapeHtml(previousDateLabel) + '</small></a>'
             : '<div class="set-field set-previous"><span>Previous</span><strong>' + noData("No previous workout found") + '</strong><small>No history</small></div>';
         const targetLoad = Number(set.targetWeight ?? set.weight ?? 0);
         const targetLoadText = formatResistance({ ...set, weight: targetLoad, addedLoad: resistanceType === "bodyweight_plus_load" ? targetLoad : set.addedLoad, assistanceLoad: resistanceType === "assisted_bodyweight" ? targetLoad : set.assistanceLoad, resistanceType });
@@ -1289,7 +1219,6 @@
           <div id="set-${set.id}" data-set-state="${visualState}" class="set-block ${visualState === "completed" ? "completed" : ""} ${isNext ? "next-set" : ""} ${isNext && activeSetAcknowledged ? "acknowledged" : ""} ${visualState === "edited" ? "edited-set" : ""} ${visualState === "skipped" ? "skipped-set" : ""} ${isResting ? "resting-set" : ""}">
             ${isLoggedMode ? "" : `<div class="set-heading">
               <span class="set-type-badge type-${escapeHtml(role)}">${escapeHtml(executionLabel.toUpperCase())}${set.manualOverride ? " · CORRECTED" : ""}</span>
-              ${set.validationWarning ? '<span class="set-validation-warning">Review prescription</span>' : ""}
             </div>`}
             ${setBody}
             ${isNext ? '<div class="next-set-banner"><span aria-hidden="true">&#10148;</span><span>' + escapeHtml(activeSetAcknowledged ? "Current set" : activeSetNotice || "Current set") + '</span></div>' : ""}
@@ -1378,11 +1307,4 @@
             <div class="timer-complete-actions"><button type="button" data-action="return-to-rest-workout">Return to Workout</button><button class="mini-button" type="button" data-action="dismiss-timer-notice" aria-label="Dismiss rest complete alert">Dismiss</button></div>
           </div>
         `;
-      }
-
-      function presentationLabel(value) {
-        const key = String(value || "").trim().toLowerCase().replace(/^mg[_-]/, "").replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
-        if (!key) return "Not Available";
-        const mapped = typeof presentationLabels !== "undefined" ? presentationLabels[key] : "";
-        return mapped || key.split("_").filter(Boolean).map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
       }

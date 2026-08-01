@@ -92,7 +92,6 @@ test("workout completion renders one concise grade result without achievement an
     const session = data.sessions[0];
     const exercise = data.exercises.find((item) => item.sessionId === session.id);
     exercise.name = "Cambered Barbell Bench Press — Extra Long Heavy Competition Variant";
-    exercise.performanceExerciseId = "custom:critical-heavy-variant";
     session.workoutAnalysis = {
       contractVersion: "comprehensive-fitness-workout-grade/2.0.0",
       algorithmVersion: "actual-work-rubric/1.0.0",
@@ -148,7 +147,8 @@ test("critical workout lifecycle remains coherent through submission, progress, 
   await templateCard.locator('[data-action="toggle-template-editor"]').click();
   await templateCard.locator('[data-action="template-exercise-name"]').fill(EXERCISE_NAME);
   await templateCard.locator('[data-action="template-exercise-sets"]').fill("2");
-  await templateCard.locator('[data-action="template-exercise-reps"]').fill("8");
+  await templateCard.locator('[data-action="template-exercise-rep-min"]').fill("8");
+  await templateCard.locator('[data-action="template-exercise-rep-max"]').fill("8");
   await templateCard.locator('[data-action="template-exercise-rpe"]').fill("8");
   await templateCard.locator('[data-action="template-exercise-rest"]').fill("90");
   await waitForPersisted(page, (stored) => {
@@ -230,18 +230,19 @@ test("critical workout lifecycle remains coherent through submission, progress, 
 
   const beforeUnitChange = await persistedData(page);
   const originalSet = beforeUnitChange.sets.find((set) => set.exerciseId === activeExercise.id && set.completed);
+  const originalSetBytes = JSON.stringify(originalSet);
   expect(originalSet.weightUnit).toBe("lb");
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await expect(page.getByRole("heading", { name: "App settings.", exact: true })).toBeVisible();
   await page.locator('[data-action="weight-unit"][value="kg"]').check();
-  const kilograms = await waitForPersisted(page, (stored) => stored?.settings?.weightUnit === "kg" && stored.sets.find((set) => set.id === originalSet.id)?.weightUnit === "kg", "lb to kg conversion must persist coherently");
+  const kilograms = await waitForPersisted(page, (stored) => stored?.settings?.weightUnit === "kg", "the kilogram display preference must persist");
   const kilogramSet = kilograms.sets.find((set) => set.id === originalSet.id);
-  expect(kilogramSet.weight).toBeCloseTo(originalSet.weight / 2.2046226218, 2);
+  expect(JSON.stringify(kilogramSet)).toBe(originalSetBytes);
   await expect(page.locator('[data-action="weight-unit"][value="kg"]')).toBeChecked();
 
   await page.locator('[data-action="weight-unit"][value="lb"]').check();
-  const pounds = await waitForPersisted(page, (stored) => stored?.settings?.weightUnit === "lb" && stored.sets.find((set) => set.id === originalSet.id)?.weightUnit === "lb", "kg to lb round trip must persist coherently");
-  expect(pounds.sets.find((set) => set.id === originalSet.id).weight).toBeCloseTo(originalSet.weight, 1);
+  const pounds = await waitForPersisted(page, (stored) => stored?.settings?.weightUnit === "lb", "the pound display preference must persist");
+  expect(JSON.stringify(pounds.sets.find((set) => set.id === originalSet.id))).toBe(originalSetBytes);
   await page.reload();
   await expect(page.locator('[data-action="weight-unit"][value="lb"]')).toBeChecked({ timeout: 45_000 });
   await openProgress(page);

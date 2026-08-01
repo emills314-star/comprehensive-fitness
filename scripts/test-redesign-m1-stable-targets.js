@@ -8,6 +8,8 @@ const { readApplicationContractSource } = require("./read-application-contract-s
 const root = path.resolve(__dirname, "..");
 const source = readApplicationContractSource();
 const foundation = fs.readFileSync(path.join(root, "app-foundation.js"), "utf8");
+const analysis = fs.readFileSync(path.join(root, "app-analysis.js"), "utf8");
+const workout = fs.readFileSync(path.join(root, "app-workout.js"), "utf8");
 const interactions = fs.readFileSync(path.join(root, "app.js"), "utf8");
 const views = fs.readFileSync(path.join(root, "app-views.js"), "utf8");
 const imports = fs.readFileSync(path.join(root, "app-import.js"), "utf8");
@@ -49,20 +51,34 @@ const runtime = new Function(`
   function formatLoadNumber(value) { return String(Number(value)); }
   function roundLoadForUnit(value, unit, increment) { const step = Math.max(0.5, Number(increment || 0.5)); return Math.round(Number(value || 0) / step) * step; }
   function resistanceLoad(value) { return Number(value?.weight || value?.targetWeight || 0); }
+  function roundToIncrement(value, increment) { return Math.max(increment, Math.round(value / increment) * increment); }
   function targetRangeText(low, high) { return Number(low) === Number(high) ? String(Number(high)) : Number(low) + "-" + Number(high); }
   ${extractFunction("progressionProfileForExercise")}
   ${extractFunction("resolveProgrammedRepRange")}
   ${extractFunction("normalizeTargetSetType")}
   ${extractFunction("normalizeStableTemplateExercise")}
-  ${extractFunction("setRoleDefaultsForExercise")}
-  ${extractFunction("roundEquipmentLoad")}
   ${extractFunction("previousComparableSetForRole")}
-  ${extractFunction("resolvedSetTypesForPrescription")}
-  ${extractFunction("setPrescriptionForRole")}
+  ${extractFunction("factualSetPrefillForWorkoutStart")}
   ${extractFunction("workoutMutationSafetyDecision")}
   ${extractFunction("exerciseMatches")}
-  return { normalizeStableTemplateExercise, previousComparableSetForRole, resolvedSetTypesForPrescription, setPrescriptionForRole, workoutMutationSafetyDecision, exerciseMatches };
+  return { normalizeStableTemplateExercise, previousComparableSetForRole, factualSetPrefillForWorkoutStart, workoutMutationSafetyDecision, exerciseMatches };
 `)();
+
+const unitRuntime = new Function("data", `
+  ${extractFunction("roundLoadForUnit")}
+  ${extractFunction("storedResistanceLoad")}
+  ${extractFunction("convertWeightValue")}
+  ${extractFunction("resistanceLoad")}
+  ${extractFunction("setAppWeightUnitPreference")}
+  return { roundLoadForUnit, resistanceLoad, setAppWeightUnitPreference };
+`)({ settings: { weightUnit: "kg" } });
+const storedPounds = { weight: 220, targetWeight: 220, weightUnit: "lb" };
+assert.equal(unitRuntime.roundLoadForUnit(unitRuntime.resistanceLoad(storedPounds, "external"), storedPounds.weightUnit), 99.79, "An active load must display in the preference unit derived from its own stored unit");
+const storedModel = { settings: { weightUnit: "lb" }, sets: [storedPounds], recommendationHistory: [{ checksum: "immutable" }] };
+const displayOnlySwitch = unitRuntime.setAppWeightUnitPreference(storedModel, "kg");
+assert.equal(displayOnlySwitch.settings.weightUnit, "kg");
+assert.equal(displayOnlySwitch.sets, storedModel.sets, "Changing the display preference must not rewrite stored set history");
+assert.equal(displayOnlySwitch.recommendationHistory, storedModel.recommendationHistory, "Changing the display preference must not rewrite historical checksums");
 
 const [legacyHeavy, legacyLight] = fixture.templates[0].exercises;
 const stableHeavy = runtime.normalizeStableTemplateExercise(legacyHeavy);
@@ -86,29 +102,35 @@ assert.equal(runtime.previousComparableSetForRole(prior, "backoff", 0).id, "prio
 assert.equal(runtime.previousComparableSetForRole(prior, "drop", 0), null);
 assert.equal(runtime.exerciseMatches("Synthetic Press — Heavy", "Synthetic Press — Light"), false, "Named variants must retain separate identity and history");
 
-const normal = runtime.setPrescriptionForRole({
-  templateExercise: { name: "Synthetic Press — Heavy", reps: 6, targetRpe: 8.5, restSeconds: 180, increment: 5 },
-  target: { mode: "load-progression", weight: 999, reps: 99, rpe: 10, resistanceType: "external", finalPrescription: { progressionAction: "increase_load" } },
-  setType: { type: "top", setCount: 1, repMin: 5, repMax: 7, rpeMin: 7.5, rpeMax: 8.5, restSeconds: 180 },
-  previousSets: prior
-});
-assert.deepEqual([normal.targetLoad, normal.targetReps, normal.prefillRpe, normal.prefillSource], [100, 8, 8, "prior_comparable_set"], "Normal engine outputs must not replace factual same-role load, rep, or RPE prefills");
+const normal = runtime.factualSetPrefillForWorkoutStart(
+  { name: "Synthetic Press — Heavy", reps: 6, targetRpe: 8.5, restSeconds: 180, increment: 5 },
+  { resistanceType: "external" },
+  { type: "top", setCount: 1, repMin: 5, repMax: 7, rpeMin: 7.5, rpeMax: 8.5, restSeconds: 180 },
+  0,
+  0,
+  prior
+);
+assert.deepEqual([normal.weight, normal.reps, normal.rpe, normal.previousComparableSet.id], [100, 8, 8, "prior-top"], "Stable role rows must prefill only from the factual same-role set");
 
-const routineDefault = runtime.setPrescriptionForRole({
-  templateExercise: { name: "Synthetic Press — Light", reps: 10, targetRpe: 7, restSeconds: 90, increment: 5 },
-  target: { mode: "maintenance", weight: 250, reps: 12, rpe: 9, resistanceType: "external" },
-  setType: { type: "straight", setCount: 3, repMin: 8, repMax: 12, rpeMin: 6, rpeMax: 7, restSeconds: 90 },
-  previousSets: []
-});
-assert.deepEqual([routineDefault.targetLoad, routineDefault.targetReps, routineDefault.prefillRpe, routineDefault.prefillSource], [0, 10, 7, "routine_default"], "Routine defaults may prefill reps and RPE while absent load defaults remain blank");
+const routineDefault = runtime.factualSetPrefillForWorkoutStart(
+  { name: "Synthetic Press — Light", reps: 10, targetRpe: 7, restSeconds: 90, increment: 5 },
+  { resistanceType: "external" },
+  { type: "straight", setCount: 3, repMin: 8, repMax: 12, rpeMin: 6, rpeMax: 7, restSeconds: 90 },
+  0,
+  0,
+  []
+);
+assert.deepEqual([routineDefault.weight, routineDefault.reps, routineDefault.rpe], [0, 10, 7], "Routine defaults may prefill reps and RPE while absent load defaults remain blank");
 
-const exception = runtime.setPrescriptionForRole({
-  templateExercise: { name: "Synthetic Press — Heavy", reps: 6, targetRpe: 8.5, restSeconds: 180, increment: 5 },
-  target: { mode: "light", adjusted: true, weight: 80, reps: 5, rpe: 6.5, resistanceType: "external" },
-  setType: { type: "top", setCount: 1, repMin: 5, repMax: 7, rpeMin: 7.5, rpeMax: 8.5, restSeconds: 180 },
-  previousSets: prior
-});
-assert.deepEqual([exception.targetLoad, exception.targetReps, exception.prefillRpe, exception.rpeMax], [80, 8, 6.5, 6.5], "A temporary exception may lower load and effort without rewriting factual reps");
+const exception = runtime.factualSetPrefillForWorkoutStart(
+  { name: "Synthetic Press — Heavy", reps: 6, targetRpe: 8.5, restSeconds: 180, increment: 5 },
+  { adjusted: true, loadReductionPercent: 20, rpe: 6.5, resistanceType: "external" },
+  { type: "top", setCount: 1, repMin: 5, repMax: 7, rpeMin: 7.5, rpeMax: 8.5, restSeconds: 180, increment: 5 },
+  0,
+  0,
+  prior
+);
+assert.deepEqual([exception.weight, exception.reps, exception.rpe], [80, 8, 6.5], "A temporary exception may lower load and effort without rewriting factual reps");
 
 const equipmentSnapshot = {
   executionBlocked: true,
@@ -119,6 +141,8 @@ assert.equal(runtime.workoutMutationSafetyDecision("add-set", { exercise: equipm
 assert.equal(runtime.workoutMutationSafetyDecision("add-set", { exercise: {}, recovery: { illness: true } }).allowed, true, "M2 must record pain or illness without blocking actual-work logging");
 
 assert.match(foundation, /appDataVersion:\s*3/);
+assert.doesNotMatch(analysis, /setPrescriptionForRole|resolvedSetTypesForPrescription|finalPrescription/, "Active target generation must not retain the superseded prescription fallback");
+assert.doesNotMatch(workout, /data\.manualOverrides/, "Current workout writers must keep override provenance on the exercise instead of a global ledger");
 assert.match(foundation, /discardObsoletePlanningState/, "Loaded legacy settings must cross the isolated discard boundary");
 assert.doesNotMatch(interactions, /settings:\s*\{[^}]*availableEquipment/);
 assert.doesNotMatch(views, /data-action="toggle-mesocycle-equipment"|aria-label="Available Equipment"/);

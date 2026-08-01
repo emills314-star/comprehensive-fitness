@@ -88,26 +88,25 @@ async function writePersistedRecord(page, value, updatedAt) {
 }
 
 async function openPrimaryTab(page, tabId) {
-  if (tabId === "data") {
+  if (tabId === "settings") {
     if (await page.locator(".settings-view").isVisible().catch(() => false)) return;
     await page.locator('[data-action="open-settings"]').click();
     await expect(page).toHaveURL(/#settings$/);
     return;
   }
-  if (tabId === "plan") {
+  if (tabId === "routines") {
     if (await page.locator(".templates-view").isVisible().catch(() => false)) return;
     await page.locator('[data-action="open-routines"]').click();
     await expect(page).toHaveURL(/#routines$/);
     return;
   }
-  const destination = ({ lift: "today", dashboard: "progress", charts: "progress" })[tabId] || tabId;
-  const tab = page.locator(`[data-action="set-tab"][data-tab="${destination}"]`);
+  const tab = page.locator(`[data-action="set-tab"][data-tab="${tabId}"]`);
   await tab.click();
   await expect(tab).toHaveAttribute("aria-current", "page");
 }
 
 async function openBackupGroup(page) {
-  await openPrimaryTab(page, "data");
+  await openPrimaryTab(page, "settings");
   const group = page.locator("details.settings-group").filter({
     has: page.locator("summary", { hasText: "Data and backup" })
   });
@@ -121,6 +120,7 @@ async function armImportAudit(page) {
     globalThis.cancelPendingDataSave?.();
     const persisted = await readIndexedValue("app-data");
     const realWrite = writeIndexedValue;
+    const realAtomicWrite = writeIndexedValuesAtomically;
     const realImport = importDataFile;
     const realScheduleSave = scheduleSave;
     const state = globalThis.__CF_RUNTIME_IMPORT_AUDIT__ = {
@@ -143,6 +143,11 @@ async function armImportAudit(page) {
       if (key === "app-data") state.writesStarted += 1;
       try { return await Reflect.apply(realWrite, this, [key, value]); }
       finally { if (key === "app-data") state.writesSettled += 1; }
+    };
+    writeIndexedValuesAtomically = async function observedRuntimeTrustAtomicWrite(entries) {
+      if (entries.some((entry) => entry.key === "app-data")) state.writesStarted += 1;
+      try { return await Reflect.apply(realAtomicWrite, this, [entries]); }
+      finally { if (entries.some((entry) => entry.key === "app-data")) state.writesSettled += 1; }
     };
     importDataFile = async function observedRuntimeTrustImport(file) {
       state.importsStarted += 1;
@@ -206,6 +211,8 @@ async function importBackup(page, group, value, name) {
     mimeType: "application/json",
     buffer: Buffer.from(JSON.stringify(value), "utf8")
   });
+  await expect.poll(async () => (await readImportStatus(group)).state, { timeout: 20_000 }).toMatch(/^(?:preview|rejected)$/);
+  if ((await readImportStatus(group)).state === "preview") await group.getByRole("button", { name: "Apply import" }).click();
   await expect.poll(async () => {
     const status = await readImportStatus(group);
     return status.attempt > beforeStatus.attempt && /^(?:accepted|rejected)$/.test(status.state);
@@ -250,7 +257,7 @@ async function seedEqualRevisionConflict(page) {
   });
   await page.reload();
   await expect(page.locator("main.app-main")).toBeVisible({ timeout: 45_000 });
-  await openPrimaryTab(page, "data");
+  await openPrimaryTab(page, "settings");
   await expect(page.locator(".persistence-conflict-note")).toBeVisible();
   return { indexed, alternate };
 }
@@ -302,7 +309,7 @@ test("backup import validates revision metadata but always commits on the local 
           if (scenario.verifyNextCommit) {
             const next = await page.evaluate(() => {
               const prior = data.dataRevision;
-              commit({ ...data, settings: { ...data.settings, theme: data.settings.theme === "dark" ? "light" : "dark" } });
+              commit({ ...data, settings: { ...data.settings, defaultRestSeconds: data.settings.defaultRestSeconds === 90 ? 105 : 90 } });
               return { prior, current: data.dataRevision, safe: Number.isSafeInteger(data.dataRevision) };
             });
             expect.soft(next, "MAX_SAFE imported metadata must not poison the next local commit").toEqual({
@@ -324,6 +331,30 @@ test("backup import validates revision metadata but always commits on the local 
         await context.close();
       }
     });
+  }
+});
+
+test("backup import accepts and discards obsolete appearance and generic feedback settings", async ({ browser, baseURL }) => {
+  const legacyKeys = ["theme", "colorPackage", "workoutCompletionSound", "interactionVibration", "restCompleteLockScreenNotifications", "autoScrollNextSet"];
+  const candidate = validFullState();
+  Object.assign(candidate.settings, {
+    theme: { obsolete: true },
+    colorPackage: ["obsolete"],
+    workoutCompletionSound: "obsolete",
+    interactionVibration: 1,
+    restCompleteLockScreenNotifications: null,
+    autoScrollNextSet: "obsolete"
+  });
+  const { context, page } = await createFixturePage(browser, baseURL, validFullState());
+  try {
+    const group = await openBackupGroup(page);
+    const lifecycle = await importBackup(page, group, candidate, "public-synthetic-obsolete-settings.json");
+    expect(lifecycle.state).toBe("accepted");
+    expect(await page.evaluate((keys) => keys.filter((key) => Object.hasOwn(data.settings, key)), legacyKeys)).toEqual([]);
+    const persisted = await readPersistedData(page);
+    expect(legacyKeys.filter((key) => Object.hasOwn(persisted.settings, key))).toEqual([]);
+  } finally {
+    await context.close();
   }
 });
 
@@ -444,212 +475,68 @@ test("equal-revision conflict blocks import, tells the truth about export recove
   });
 });
 
-function activeBackupWithSnapshot(snapshot, options = {}) {
-  const state = validFullState();
-  state.sessions[0] = {
-    ...state.sessions[0],
-    title: options.title || "Public Synthetic Active Snapshot Import",
-    submitted: false,
-    workoutStarted: true,
-    workoutState: "active",
-    completedAt: "",
-    submittedAt: "",
-    startedAt: "2026-07-15T12:00:00.000Z"
+test("submitted embedded snapshots remain immutable while obsolete top-level history is discarded", async ({ browser, baseURL }) => {
+  test.setTimeout(120_000);
+  const historical = {
+    schemaVersion: "prescription-snapshot/public-synthetic-historical",
+    recommendationId: "public-synthetic-immutable-history-snapshot",
+    exerciseId: "ex_barbell_bench_press",
+    muscleGroupId: "mg_pectoralis_major",
+    explanation: { summary: "Public synthetic immutable historical evidence." },
+    finalPrescription: {
+      executable: true,
+      executionBlocked: false,
+      sets: 2,
+      repRange: { min: 8, max: 10, target: 9 },
+      targetRpe: { min: 7, max: 8, target: 8 },
+      restSeconds: { min: 90, max: 150, target: 120 }
+    }
   };
-  state.exercises[0] = {
-    ...state.exercises[0],
-    name: options.exerciseName || "Barbell Bench Press",
-    primaryMuscle: options.primaryMuscle || "Chest",
-    secondaryMuscle: options.secondaryMuscle || "Triceps",
-    recommendationSnapshot: clone(snapshot),
-    basePrescription: clone(snapshot.basePrescription),
-    finalPrescription: clone(snapshot.finalPrescription),
-    canonicalExerciseId: options.canonicalExerciseId || "ex_barbell_bench_press",
-    researchExerciseId: options.researchExerciseId || "ex_barbell_bench_press"
-  };
-  state.sets[0] = { ...state.sets[0], completed: false };
-  state.recommendationHistory = [clone(snapshot)];
-  return state;
-}
-
-async function generateRealSnapshotFixtures(page) {
-  return page.evaluate(async () => {
-    const api = globalThis.ComprehensiveFitnessPrescriptionEngine;
-    if (!api?.deserializeRecommendationSnapshot || !api?.refreshRecommendationChecksum) {
-      throw new Error("The real recommendation serializer API is unavailable.");
-    }
-    const researchData = await loadImportValidationResearch();
-    const validationEngine = api.createPrescriptionEngine({ personalData: {}, researchData });
-    const identity = validationEngine.resolveExerciseIdentity("Barbell Bench Press");
-    const target = validationEngine.resolveDefaultPrescriptionTarget("Barbell Bench Press");
-    if (identity?.status !== "resolved" || target?.status !== "resolved") {
-      throw new Error(`The public Bench Press identity/target fixture did not resolve: ${JSON.stringify({ identity, target })}`);
-    }
-    const valid = validationEngine.prescribeExercise({
-      exerciseId: identity.exerciseId,
-      muscleGroupId: target.muscleGroupId,
-      history: [],
-      availableEquipment: ["all"],
-      trainingGoal: "hypertrophy",
-      experienceLevel: "intermediate",
-      createdAt: "2026-07-15T12:00:00.000Z"
-    });
-    api.deserializeRecommendationSnapshot(valid);
-
-    const staleChecksum = structuredClone(valid);
-    staleChecksum.finalPrescription.workingSets.target = Math.min(20, staleChecksum.finalPrescription.workingSets.target + 1);
-
-    const unknownSchema = structuredClone(valid);
-    unknownSchema.schemaVersion = "99.0.0";
-    const checksumValidUnknownSchema = api.refreshRecommendationChecksum(unknownSchema);
-    if (api.refreshRecommendationChecksum(checksumValidUnknownSchema).checksum !== checksumValidUnknownSchema.checksum) {
-      throw new Error("The unsupported-schema fixture does not carry a stable real checksum.");
-    }
-
-    const targetMismatch = structuredClone(valid);
-    targetMismatch.muscleGroupId = "mg_lats";
-    targetMismatch.basePrescription.muscleGroupId = "mg_lats";
-    targetMismatch.finalPrescription.muscleGroupId = "mg_lats";
-    const checksumValidTargetMismatch = api.refreshRecommendationChecksum(targetMismatch);
-    api.deserializeRecommendationSnapshot(checksumValidTargetMismatch);
-
-    return {
-      valid,
-      staleChecksum,
-      checksumValidUnknownSchema,
-      checksumValidTargetMismatch,
-      identity,
-      target,
-      validBytes: JSON.stringify(valid)
-    };
-  });
-}
-
-test("stored snapshots preserve immutable history but validate every executable active/template boundary atomically", async ({ browser, baseURL }) => {
-  test.setTimeout(480_000);
-  const generator = await createFixturePage(browser, baseURL, buildTemplateLifecycleFixture());
-  let snapshots;
+  const candidate = validFullState();
+  candidate.exercises[0].recommendationSnapshot = clone(historical);
+  candidate.recommendationHistory = [clone(historical)];
+  candidate.manualOverrides = [{ obsoleteTopLevelAudit: "must-not-reactivate" }];
+  const { context, page } = await createFixturePage(browser, baseURL, validFullState());
   try {
-    snapshots = await generateRealSnapshotFixtures(generator.page);
-    const templateControl = await generator.page.evaluate((validSnapshot) => {
-      const beforeBytes = JSON.stringify(validSnapshot);
-      const restored = globalThis.ComprehensiveFitnessPrescriptionEngine.deserializeRecommendationSnapshot(validSnapshot);
+    const group = await openBackupGroup(page);
+    await armImportAudit(page);
+    const lifecycle = await importBackup(page, group, candidate, "public-synthetic-immutable-history.json");
+    const observed = await page.evaluate((exerciseId) => {
+      const exercise = data.exercises.find((item) => item.id === exerciseId);
+      const embeddedReference = exercise.recommendationSnapshot;
+      const exerciseBytes = JSON.stringify(embeddedReference);
+      prescriptionEngine.resolveExerciseIdentity(exercise.name);
+      render();
       return {
-        beforeBytes,
-        afterBytes: JSON.stringify(validSnapshot),
-        checksum: restored.checksum
+        exerciseBytes,
+        exerciseBytesAfterResolver: JSON.stringify(exerciseById(exerciseId).recommendationSnapshot),
+        embeddedReferenceUnchanged: exerciseById(exerciseId).recommendationSnapshot === embeddedReference,
+        obsoleteTopLevelFieldsAbsent: !Object.prototype.hasOwnProperty.call(data, "recommendationHistory")
+          && !Object.prototype.hasOwnProperty.call(data, "manualOverrides"),
+        identityEnginePersonalRows: [
+          prescriptionEngine?.evidence?.personal?.exercisePrescriptions,
+          prescriptionEngine?.evidence?.personal?.exerciseScores,
+          prescriptionEngine?.evidence?.personal?.exerciseMuscleScores
+        ].reduce((count, rows) => count + (Array.isArray(rows) ? rows.length : 0), 0)
       };
-    }, snapshots.valid);
-    expect.soft(templateControl.afterBytes, "on-demand validation must not mutate a checksum-valid legacy snapshot").toBe(templateControl.beforeBytes);
-    expect.soft(templateControl.checksum, "the template control must use a real engine checksum").toMatch(/^[0-9a-f]{8}$/);
+    }, candidate.exercises[0].id);
+    const persisted = await readPersistedData(page);
+    expect.soft(lifecycle.state, "submitted historical snapshots remain importable as immutable evidence").toBe("accepted");
+    expect.soft(observed.exerciseBytes).toBe(JSON.stringify(historical));
+    expect.soft(observed.exerciseBytesAfterResolver, "canonical resolution must not rewrite submitted embedded history").toBe(JSON.stringify(historical));
+    expect.soft(observed.embeddedReferenceUnchanged, "canonical resolution and rendering must retain the embedded historical snapshot reference").toBe(true);
+    expect.soft(observed.obsoleteTopLevelFieldsAbsent, "obsolete top-level recommendation and override domains must not reactivate").toBe(true);
+    expect.soft(Object.prototype.hasOwnProperty.call(persisted, "recommendationHistory"), "obsolete recommendation history must not be written durably").toBe(false);
+    expect.soft(Object.prototype.hasOwnProperty.call(persisted, "manualOverrides"), "obsolete global overrides must not be written durably").toBe(false);
+    expect.soft(JSON.stringify(persisted.exercises.find((item) => item.id === candidate.exercises[0].id)?.recommendationSnapshot), "the submitted embedded snapshot must remain durable byte-for-byte").toBe(JSON.stringify(historical));
+    expect.soft(observed.identityEnginePersonalRows, "Historical evidence must not enrich the normal identity-only runtime").toBe(0);
   } finally {
-    await generator.context.close();
+    await context.close();
   }
-
-  await test.step("submitted historical bytes and reference remain immutable", async () => {
-    const baseline = validFullState();
-    const { context, page } = await createFixturePage(browser, baseURL, baseline);
-    try {
-      const historical = {
-        schemaVersion: "prescription-snapshot/public-synthetic-historical",
-        recommendationId: "public-synthetic-immutable-history-snapshot",
-        exerciseId: "ex_barbell_bench_press",
-        muscleGroupId: "mg_pectoralis_major",
-        explanation: { summary: "Public synthetic immutable historical evidence." },
-        finalPrescription: {
-          executable: true,
-          executionBlocked: false,
-          sets: 2,
-          repRange: { min: 8, max: 10, target: 9 },
-          targetRpe: { min: 7, max: 8, target: 8 },
-          restSeconds: { min: 90, max: 150, target: 120 }
-        }
-      };
-      const candidate = validFullState();
-      candidate.exercises[0].recommendationSnapshot = clone(historical);
-      candidate.recommendationHistory = [clone(historical)];
-      const group = await openBackupGroup(page);
-      await armImportAudit(page);
-      const lifecycle = await importBackup(page, group, candidate, "public-synthetic-immutable-history.json");
-      const observed = await page.evaluate((exerciseId) => {
-        const exercise = data.exercises.find((item) => item.id === exerciseId);
-        return {
-          exerciseBytes: JSON.stringify(exercise.recommendationSnapshot),
-          historyBytes: JSON.stringify(data.recommendationHistory[0]),
-          identityEnginePersonalRows: [
-            prescriptionEngine?.evidence?.personal?.exercisePrescriptions,
-            prescriptionEngine?.evidence?.personal?.exerciseScores,
-            prescriptionEngine?.evidence?.personal?.exerciseMuscleScores
-          ].reduce((count, rows) => count + (Array.isArray(rows) ? rows.length : 0), 0)
-        };
-      }, candidate.exercises[0].id);
-      expect.soft(lifecycle.state, "submitted historical snapshots remain importable as immutable evidence").toBe("accepted");
-      expect.soft(observed.exerciseBytes).toBe(JSON.stringify(historical));
-      expect.soft(observed.historyBytes).toBe(JSON.stringify(historical));
-      expect.soft(observed.identityEnginePersonalRows, "Historical evidence must not enrich the normal identity-only runtime").toBe(0);
-    } finally {
-      await context.close();
-    }
-  });
-
-  const cases = [
-    { name: "real-valid-checksum", snapshot: snapshots.valid, expected: "accepted" },
-    { name: "stale-checksum", snapshot: snapshots.staleChecksum, expected: "rejected" },
-    { name: "unknown-schema", snapshot: snapshots.checksumValidUnknownSchema, expected: "rejected" },
-    {
-      name: "host-exercise-mismatch",
-      snapshot: snapshots.valid,
-      expected: "rejected",
-      options: {
-        exerciseName: "Dumbbell Bench Press",
-        canonicalExerciseId: "ex_dumbbell_bench_press",
-        researchExerciseId: "ex_dumbbell_bench_press"
-      }
-    },
-    { name: "checksum-valid-target-mismatch", snapshot: snapshots.checksumValidTargetMismatch, expected: "rejected" }
-  ];
-
-  for (const scenario of cases) {
-    await test.step(scenario.name, async () => {
-      const { context, page } = await createFixturePage(browser, baseURL, validFullState());
-      try {
-        const candidate = activeBackupWithSnapshot(scenario.snapshot, {
-          title: `Public Synthetic Snapshot ${scenario.name}`,
-          ...(scenario.options || {})
-        });
-        const group = await openBackupGroup(page);
-        await armImportAudit(page);
-        const lifecycle = await importBackup(page, group, candidate, `public-synthetic-snapshot-${scenario.name}.json`);
-        await page.waitForTimeout(100);
-        const audit = await collectImportAudit(page);
-        expect.soft(lifecycle.state, `${scenario.name} import classification`).toBe(scenario.expected);
-        if (scenario.expected === "accepted") {
-          const storedBytes = await page.evaluate((exerciseId) => JSON.stringify(data.exercises.find((item) => item.id === exerciseId)?.recommendationSnapshot), candidate.exercises[0].id);
-          expect.soft(audit.writesStarted, "valid executable snapshot import writes once").toBe(1);
-          expect.soft(audit.writesSettled, "valid executable snapshot write settles once").toBe(1);
-          expect.soft(storedBytes, "valid executable snapshot bytes remain exact").toBe(JSON.stringify(scenario.snapshot));
-        } else {
-          expect.soft(audit.writesStarted, `${scenario.name} must enqueue zero app-data writes`).toBe(0);
-          expect.soft(audit.writesSettled, `${scenario.name} must settle zero app-data writes`).toBe(0);
-          expect.soft(audit.dataReferenceUnchanged, `${scenario.name} must preserve the runtime reference`).toBe(true);
-          expect.soft(audit.dataJsonUnchanged, `${scenario.name} must preserve runtime bytes`).toBe(true);
-          expect.soft(audit.persistedJsonUnchanged, `${scenario.name} must preserve durable bytes`).toBe(true);
-          expect.soft(audit.analysisRevisionUnchanged, `${scenario.name} must preserve the analysis revision`).toBe(true);
-          expect.soft(audit.engineReferenceUnchanged, `${scenario.name} must preserve the engine`).toBe(true);
-          expect.soft(audit.identityCatalogReferenceUnchanged, `${scenario.name} must preserve the identity catalog reference`).toBe(true);
-          expect.soft(audit.identityResolutionUnchanged, `${scenario.name} must preserve known identity resolution`).toBe(true);
-          expect.soft(audit.identityEnginePersonalRows, `${scenario.name} must not activate embedded analytical evidence in the normal runtime`).toBe(0);
-        }
-      } finally {
-        await context.close();
-      }
-    });
-  }
-
 });
 
 async function openTemplateEditor(page) {
-  await openPrimaryTab(page, "plan");
+  await openPrimaryTab(page, "routines");
   const card = page.locator(`.template-card:has([data-template-id="${IDS.controlTemplate}"])`);
   await expect(card).toHaveCount(1);
   await card.locator('[data-action="toggle-template-editor"]').click();
@@ -661,9 +548,9 @@ test("template numeric values share one fail-closed draft, model, import, and de
   test.setTimeout(600_000);
   const uiCases = [
     { name: "empty", action: "template-exercise-sets", property: "sets", value: "", expected: 2 },
-    { name: "negative", action: "template-exercise-reps", property: "reps", value: "-1", expected: 8 },
+    { name: "negative", action: "template-exercise-rep-min", property: "repMin", value: "-1", expected: 8 },
     { name: "fractional-integer", action: "template-exercise-sets", property: "sets", value: "1.5", expected: 2 },
-    { name: "nan-equivalent", action: "template-exercise-increment", property: "increment", value: null, expected: 5, nonFinite: "nan" },
+    { name: "nan-equivalent", action: "template-exercise-rep-max", property: "repMax", value: null, expected: 8, nonFinite: "nan" },
     { name: "infinity-equivalent", action: "template-exercise-rpe", property: "targetRpe", value: null, expected: 8, nonFinite: "infinity" },
     { name: "huge", action: "template-exercise-rest", property: "restSeconds", value: String(Number.MAX_SAFE_INTEGER), expected: 120 }
   ];
@@ -712,12 +599,12 @@ test("template numeric values share one fail-closed draft, model, import, and de
 
   const modelCases = [
     { name: "empty", field: "sets", token: "empty" },
-    { name: "zero", field: "reps", token: "zero" },
-    { name: "negative", field: "reps", token: "negative" },
+    { name: "zero", field: "repMin", token: "zero" },
+    { name: "negative", field: "repMax", token: "negative" },
     { name: "fractional-integer", field: "sets", token: "fractional" },
     { name: "nan", field: "targetRpe", token: "nan" },
-    { name: "infinity", field: "increment", token: "infinity" },
-    { name: "huge", field: "restSeconds", token: "huge" }
+    { name: "infinity", field: "restSeconds", token: "infinity" },
+    { name: "huge", field: "repMax", token: "huge" }
   ];
   for (const scenario of modelCases) {
     await test.step(`direct model ${scenario.name}`, async () => {
@@ -791,12 +678,12 @@ test("template numeric values share one fail-closed draft, model, import, and de
 
   const importCases = [
     { name: "explicit-empty", field: "sets", value: "" },
-    { name: "zero", field: "reps", value: 0 },
-    { name: "negative", field: "reps", value: -1 },
+    { name: "zero", field: "repMin", value: 0 },
+    { name: "negative", field: "repMax", value: -1 },
     { name: "fractional-integer", field: "sets", value: 1.5 },
     { name: "nan-string", field: "targetRpe", value: "NaN" },
-    { name: "infinity-string", field: "increment", value: "Infinity" },
-    { name: "huge", field: "restSeconds", value: Number.MAX_SAFE_INTEGER }
+    { name: "infinity-string", field: "restSeconds", value: "Infinity" },
+    { name: "huge", field: "repMax", value: Number.MAX_SAFE_INTEGER }
   ];
   for (const scenario of importCases) {
     await test.step(`import ${scenario.name}`, async () => {
@@ -874,10 +761,7 @@ async function installFullSubmissionProbe(page) {
       submitWorkout,
       submitWorkoutPrs,
       calculateWorkoutAnalysis,
-      writeIndexedValue,
-      queueActiveWorkoutSync,
-      playWorkoutCompletionSound,
-      performInteractionFeedback
+      writeIndexedValue
     };
     const probe = globalThis.__CF_RUNTIME_SUBMISSION_PROBE__ = {
       beforeRevision: Number(data.dataRevision),
@@ -885,10 +769,7 @@ async function installFullSubmissionProbe(page) {
       prCalls: [],
       analysisCalls: [],
       writesStarted: 0,
-      writesSettled: 0,
-      syncCalls: 0,
-      soundCalls: 0,
-      successFeedbackCalls: 0
+      writesSettled: 0
     };
     submitWorkout = function (...args) {
       probe.attempts.push(args.map(String));
@@ -907,18 +788,6 @@ async function installFullSubmissionProbe(page) {
       if (appData) probe.writesStarted += 1;
       try { return await Reflect.apply(real.writeIndexedValue, this, args); }
       finally { if (appData) probe.writesSettled += 1; }
-    };
-    queueActiveWorkoutSync = function (...args) {
-      probe.syncCalls += 1;
-      return Reflect.apply(real.queueActiveWorkoutSync, this, args);
-    };
-    playWorkoutCompletionSound = function (...args) {
-      probe.soundCalls += 1;
-      return Reflect.apply(real.playWorkoutCompletionSound, this, args);
-    };
-    performInteractionFeedback = function (...args) {
-      if (args[0] === "success") probe.successFeedbackCalls += 1;
-      return Reflect.apply(real.performInteractionFeedback, this, args);
     };
   });
 }
@@ -945,8 +814,8 @@ async function waitForSubmissionProbe(page) {
 test("direct reentry and rapid duplicate UI confirmation produce one complete submission side effect", async ({ browser, baseURL }) => {
   test.setTimeout(300_000);
   const scenarios = [
-    { name: "two-direct-calls-one-task", route: "direct", expectedFeedback: 1 },
-    { name: "two-routed-ui-confirmations-one-task", route: "ui", expectedFeedback: 2 }
+    { name: "two-direct-calls-one-task", route: "direct" },
+    { name: "two-routed-ui-confirmations-one-task", route: "ui" }
   ];
 
   for (const scenario of scenarios) {
@@ -986,9 +855,6 @@ test("direct reentry and rapid duplicate UI confirmation produce one complete su
         expect.soft(result.probe.analysisCalls, `${scenario.name} must calculate analysis once`).toEqual([IDS.activeSession]);
         expect.soft(result.probe.writesStarted, `${scenario.name} must enqueue one app-data write`).toBe(1);
         expect.soft(result.probe.writesSettled, `${scenario.name} must settle one app-data write`).toBe(1);
-        expect.soft(result.probe.syncCalls, `${scenario.name} must enqueue cloud-sync evaluation once`).toBe(1);
-        expect.soft(result.probe.soundCalls, `${scenario.name} must route completion sound once`).toBe(1);
-        expect.soft(result.probe.successFeedbackCalls, `${scenario.name} must not replay completion feedback`).toBe(scenario.expectedFeedback);
         expect.soft(result.revision, `${scenario.name} must create one logical revision`).toBe(result.probe.beforeRevision + 1);
         expect.soft(result.sessionCount, `${scenario.name} must retain one session row`).toBe(1);
         expect.soft(result.submitted, `${scenario.name} must submit the session`).toBe(true);

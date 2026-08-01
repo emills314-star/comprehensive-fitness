@@ -86,7 +86,7 @@ test("M4 Progress is one factual mobile history view with tappable source facts"
   await page.locator('[data-action="select-chart-exercise"]').filter({ hasText: VARIANT }).click();
 
   await expect(page.getByText("Performance trend")).toBeVisible();
-  await expect(page.locator(".chart-viewing-summary .status-pill")).toHaveText("2 sessions");
+  await expect(page.locator(".chart-viewing-summary .status-pill")).toHaveText("2 recent sessions");
   await expect(page.locator('[data-action="show-chart-point"]')).toHaveCount(2);
   await page.locator('[data-action="show-chart-point"]').last().click();
   const detail = page.locator(".chart-detail");

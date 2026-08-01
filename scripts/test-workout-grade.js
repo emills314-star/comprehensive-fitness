@@ -62,10 +62,23 @@ function seedCurrentWorkout(overrides = {}) {
   const session = data.sessions[0];
   const baseline = context.calculateWorkoutAnalysis(session);
   assert.equal(baseline.contractVersion, "comprehensive-fitness-workout-grade/2.0.0");
-  assert.equal(baseline.algorithmVersion, "actual-work-rubric/1.0.0");
+  assert.equal(baseline.algorithmVersion, "actual-work-rubric/1.1.0");
   assert.equal(baseline.letter, "A");
   assert.equal(baseline.sourceSessionId, session.id);
   assert.ok(baseline.reasons.length >= 2 && baseline.reasons.length <= 3);
+
+  data.sets.forEach((item) => { item.targetRpe = 10; });
+  const changedTargetRpe = context.calculateWorkoutAnalysis(session);
+  assert.equal(
+    changedTargetRpe.letter,
+    baseline.letter,
+    "Changing targetRpe alone cannot change a grade for identical actual work"
+  );
+  assert.deepEqual(
+    Array.from(changedTargetRpe.reasons, (reason) => ({ ...reason })),
+    Array.from(baseline.reasons, (reason) => ({ ...reason })),
+    "Changing targetRpe alone cannot change the actual-work grade reasons"
+  );
 
   session.basePrescription = {
     exercises: Array.from({ length: 12 }, (_, index) => ({ order: 12 - index, plannedSets: 20 }))
@@ -92,15 +105,58 @@ function seedCurrentWorkout(overrides = {}) {
 
   data.sets.push(
     set("warmup", "exercise-current", { setType: "warmup", isWarmup: true, weight: 500, reps: 0, rpe: 99 }),
-    set("skipped", "exercise-current", { skipped: true, weight: 500, reps: 0, rpe: 99 })
+    set("skipped", "exercise-current", { skipped: true, weight: 500, reps: 0, rpe: 99 }),
+    set("unknown", "exercise-current", { setType: "unknown", reviewRequired: true, weight: 500, reps: 20, rpe: 10 })
   );
+  context.setTypeSemantics = (item) => {
+    const type = item?.isWarmup || item?.setType === "warmup"
+      ? "warmup"
+      : !item?.setType || item.setType === "unknown"
+        ? "unknown"
+        : item.setType;
+    return { type, isWarmup: type === "warmup", countsTowardProgression: !["warmup", "unknown"].includes(type) };
+  };
   const protectedRoles = context.calculateWorkoutAnalysis(session);
-  assert.equal(protectedRoles.letter, baseline.letter, "Warm-ups and skipped sets must not become grade-qualifying work");
+  assert.equal(protectedRoles.letter, baseline.letter, "Warm-ups, skipped sets, and unknown roles must not become grade-qualifying work");
   assert.deepEqual(
     Array.from(protectedRoles.reasons, (reason) => ({ ...reason })),
     Array.from(baseline.reasons, (reason) => ({ ...reason })),
-    "Warm-ups and skipped sets must not alter grade evidence"
+    "Warm-ups, skipped sets, and unknown roles must not alter grade evidence"
   );
+}
+
+{
+  const recordedEight = seedCurrentWorkout();
+  recordedEight.sets.forEach((item) => {
+    item.rpe = 8;
+    item.targetRpe = 8;
+  });
+  const recordedTen = seedCurrentWorkout();
+  recordedTen.sets.forEach((item) => {
+    item.rpe = 10;
+    item.targetRpe = 8;
+  });
+  const eightHarness = buildGradeHarness(recordedEight);
+  const tenHarness = buildGradeHarness(recordedTen);
+  const eight = eightHarness.context.calculateWorkoutAnalysis(eightHarness.data.sessions[0]);
+  const ten = tenHarness.context.calculateWorkoutAnalysis(tenHarness.data.sessions[0]);
+  assert.equal(ten.letter, eight.letter, "Valid recorded RPE 8 versus 10 must not change the grade solely through target adherence");
+  assert.deepEqual(
+    Array.from(ten.reasons, (reason) => ({ ...reason })),
+    Array.from(eight.reasons, (reason) => ({ ...reason })),
+    "Any valid recorded RPE must count as actual-work completeness rather than prescribed-target coherence"
+  );
+}
+
+{
+  const fixture = seedCurrentWorkout();
+  fixture.sets[1].rpe = null;
+  const { context, data } = buildGradeHarness(fixture);
+  const actionContext = context.canonicalGradeActionContext(data.sessions[0]);
+  const exerciseAnalysis = context.actualWorkExerciseAnalysis(data.sessions[0], data.exercises[0], [], actionContext);
+  assert.equal(exerciseAnalysis.validSets, 2);
+  assert.equal(exerciseAnalysis.rpeLoggedSets, 1);
+  assert.equal(exerciseAnalysis.rpeCoherence, 0.5, "Effort completeness must be the ratio of valid actual observations with valid recorded RPE");
 }
 
 {
@@ -152,16 +208,31 @@ function seedCurrentWorkout(overrides = {}) {
     ]
   });
   const coherentHarness = buildGradeHarness(exceptionFixture);
-  const accepted = coherentHarness.context.calculateWorkoutAnalysis(coherentHarness.data.sessions[1]);
+  const acceptedActionContext = coherentHarness.context.canonicalGradeActionContext(coherentHarness.data.sessions[1]);
+  const acceptedExerciseAnalysis = coherentHarness.context.actualWorkExerciseAnalysis(
+    coherentHarness.data.sessions[1],
+    coherentHarness.data.exercises[1],
+    [],
+    acceptedActionContext
+  );
+  assert.equal(acceptedExerciseAnalysis.comparison.status, "baseline", "Coherently adapted work must not be graded as a regression against prior normal work");
+  assert.match(acceptedExerciseAnalysis.comparison.change, /not compared with prior normal work/i);
 
   exceptionFixture.sessions[1].resolvedActions[0].handling = "ignored";
   const ignoredHarness = buildGradeHarness(exceptionFixture);
   const ignored = ignoredHarness.context.calculateWorkoutAnalysis(ignoredHarness.data.sessions[1]);
+  const ignoredActionContext = ignoredHarness.context.canonicalGradeActionContext(ignoredHarness.data.sessions[1]);
+  const ignoredExerciseAnalysis = ignoredHarness.context.actualWorkExerciseAnalysis(
+    ignoredHarness.data.sessions[1],
+    ignoredHarness.data.exercises[1],
+    [],
+    ignoredActionContext
+  );
+  assert.equal(ignoredExerciseAnalysis.comparison.status, "regression", "Unadapted recorded work remains factually comparable");
 
-  assert.notEqual(
-    ignored.letter,
-    accepted.letter,
-    "Ignoring a pain action must not receive the same effort/regression accommodation as coherently accepting it"
+  assert.ok(
+    acceptedExerciseAnalysis.comparisonGradeFactor > ignoredExerciseAnalysis.comparisonGradeFactor,
+    "Ignoring a pain action must not receive the same regression accommodation as coherently accepting it"
   );
   assert.match(
     ignored.reasons.map((reason) => reason.text).join(" "),
@@ -171,12 +242,68 @@ function seedCurrentWorkout(overrides = {}) {
 }
 
 {
+  const deloadFixture = seedCurrentWorkout({
+    sessions: [
+      { id: "prior", date: "2026-07-01", submitted: true, submittedAt: "2026-07-01T12:00:00.000Z", title: "Prior normal work" },
+      { id: "current", date: "2026-07-31", submitted: false, title: "Current deload" }
+    ],
+    exercises: [
+      { id: "prior-exercise", sessionId: "prior", name: "Barbell Bench Press — Heavy", performanceExerciseId: "bench-heavy", resistanceType: "external" },
+      { id: "exercise-current", sessionId: "current", name: "Barbell Bench Press — Heavy", performanceExerciseId: "bench-heavy", resistanceType: "external", isDeload: true }
+    ],
+    sets: [
+      set("prior-set", "prior-exercise", { weight: 250, reps: 8, rpe: 8 }),
+      set("current-set", "exercise-current", { weight: 150, reps: 8, rpe: 8, setType: "deload" })
+    ]
+  });
+  const { context, data } = buildGradeHarness(deloadFixture);
+  const actionContext = context.canonicalGradeActionContext(data.sessions[1]);
+  const deloadAnalysis = context.actualWorkExerciseAnalysis(data.sessions[1], data.exercises[1], [], actionContext);
+  assert.equal(deloadAnalysis.comparison.status, "baseline");
+  assert.equal(deloadAnalysis.comparison.label, "Adapted work recorded");
+  assert.equal(deloadAnalysis.priorBestSet, null, "A normal prior set must not become the grade comparator for a current deload");
+  assert.match(deloadAnalysis.comparison.change, /not compared with prior normal work/i);
+}
+
+{
+  const staleAuditFixture = seedCurrentWorkout();
+  staleAuditFixture.sessions[0].resolvedActions = [
+    {
+      contractVersion: "comprehensive-fitness-resolved-action/1.0.0",
+      decisionId: "current-clear",
+      outcome: "no_action",
+      category: "none",
+      scope: { type: "session" }
+    },
+    {
+      contractVersion: "comprehensive-fitness-resolved-action/1.0.0",
+      decisionId: "stale-session-action",
+      outcome: "action",
+      category: "pain_or_illness",
+      handling: "accepted",
+      scope: { type: "session" }
+    },
+    {
+      contractVersion: "comprehensive-fitness-resolved-action/1.0.0",
+      decisionId: "stale-exercise-action",
+      outcome: "action",
+      category: "pain_or_illness",
+      handling: "accepted",
+      scope: { type: "exercise", exerciseVariantId: "bench-heavy" }
+    }
+  ];
+  const { context, data } = buildGradeHarness(staleAuditFixture);
+  const actionContext = context.canonicalGradeActionContext(data.sessions[0]);
+  assert.equal(actionContext.actions.length, 0, "A current no-action decision must suppress stale session and exercise actions from grading");
+  assert.equal(data.sessions[0].resolvedActions.length, 3, "Suppression must retain the full decision audit history");
+}
+
+{
   const { context } = buildGradeHarness({ settings: { weightUnit: "lb" } });
   const samePhysicalLoad = context.compareWorkoutPerformance(
     { weight: 220.5, weightUnit: "lb", reps: 8, rpe: 8 },
     { weight: 100, weightUnit: "kg", reps: 8, rpe: 8 },
-    "external",
-    1
+    "external"
   );
   assert.equal(
     samePhysicalLoad.status,
@@ -187,8 +314,7 @@ function seedCurrentWorkout(overrides = {}) {
   const unsupportedEstimate = context.compareWorkoutPerformance(
     { weight: 100, weightUnit: "lb", reps: 50, rpe: 10 },
     { weight: 150, weightUnit: "lb", reps: 5, rpe: 8 },
-    "external",
-    1
+    "external"
   );
   assert.equal(
     unsupportedEstimate.status,
@@ -224,6 +350,31 @@ function seedCurrentWorkout(overrides = {}) {
   assert.equal(JSON.stringify(data.sessions[0]), before, "Reading a historical grade must not mutate its submitted source record");
 }
 
+{
+  const fixture = seedCurrentWorkout();
+  fixture.sessions[0].submitted = true;
+  fixture.sessions[0].workoutAnalysis = {
+    contractVersion: "comprehensive-fitness-workout-grade/2.0.0",
+    algorithmVersion: "actual-work-rubric/1.0.0",
+    letter: "B",
+    reasons: [{ code: "historical", text: "Stored prospective result" }]
+  };
+  const before = JSON.stringify(fixture.sessions[0]);
+  const { context, data } = buildGradeHarness(fixture);
+  const projection = context.workoutAnalysisForSession(data.sessions[0]);
+  assert.deepEqual(
+    { ...projection, gradeReasons: Array.from(projection.gradeReasons) },
+    {
+      grade: "B",
+      gradeVersion: "actual-work-rubric/1.0.0",
+      gradeReasons: ["Stored prospective result"],
+      currentContract: true
+    },
+    "An older stored actual-work algorithm result must remain historical rather than being recalculated"
+  );
+  assert.equal(JSON.stringify(data.sessions[0]), before);
+}
+
 const application = readApplicationContractSource();
 assert.match(
   historySource,
@@ -250,5 +401,10 @@ assert.doesNotMatch(
   /scoreWorkoutGradeMetrics|programRatio|completionRatio|plannedSets|intentAdherence|rangeCompliance|targetRepMatches/,
   "The old prescription-adherence grade algorithm and planned-set penalties must be gone"
 );
+assert.doesNotMatch(
+  engineSource,
+  /set\.targetRpe|stableTargetSnapshot|exercise\.prescription/,
+  "The actual-work grade must not consume target or prescription fields"
+);
 
-console.log("Workout grade contract passed (A–F actual-work grading, adaptation invariance, role protection, missing data, and immutable history).");
+console.log("Workout grade contract passed (A–F actual-work grading, target and adaptation invariance, role protection, missing data, and immutable history).");

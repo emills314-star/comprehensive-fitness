@@ -32,7 +32,7 @@ function functionSource(source, name, nextName) {
 function importValidator() {
   const source = fs.readFileSync(path.join(root, "app-import.js"), "utf8");
   const start = source.indexOf("function validateImportedAppData(");
-  const end = source.indexOf("function validatePersonalEvidenceJsonShape(", start);
+  const end = source.indexOf("async function researchOnlyBundleForImport(", start);
   assert.notEqual(start, -1, "The strict app-data import boundary must exist.");
   assert.notEqual(end, -1, "The strict app-data import boundary must remain isolated.");
   return {
@@ -177,14 +177,9 @@ for (const removedPath of [
 
 const engineSource = fs.readFileSync(path.join(root, "prescription-engine.js"), "utf8");
 assert.doesNotMatch(
-  functionSource(engineSource, "createExercisePrescriptionSnapshot", "createWorkoutPrescription"),
-  /mesocycle/i,
-  "Current recommendation snapshots must not recreate planner linkage."
-);
-assert.doesNotMatch(
-  functionSource(engineSource, "createWorkoutPrescription", "boundIdentity"),
-  /mesocycle/i,
-  "Current workout-prescription requests and writers must not recreate planner linkage."
+  engineSource,
+  /function\s+(?:createExercisePrescriptionSnapshot|createWorkoutPrescription)\b/,
+  "The final compatibility engine must not retain live recommendation or workout-prescription writers."
 );
 assert.doesNotMatch(
   engineSource,

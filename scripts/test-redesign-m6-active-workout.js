@@ -109,6 +109,7 @@ const userSelectedIdentity = functionSource(workout, "userSelectedExerciseIdenti
 const stableCustomIdentity = functionSource(foundation, "stableCustomPerformanceExerciseId");
 const normalizeLoadedData = functionSource(foundation, "normalizeLoadedData");
 const activeDraftSnapshot = functionSource(foundation, "activeWorkoutDraftSnapshot");
+const validateActiveDraft = functionSource(foundation, "validateActiveWorkoutDraftEnvelope");
 const restoreActiveDraft = functionSource(foundation, "restoreActiveWorkoutDraft");
 const updateTemplate = functionSource(workout, "updateTemplateFromExercise");
 const patchTemplateName = functionSource(workout, "patchTemplateExerciseName");
@@ -137,8 +138,9 @@ assert.match(importDataFile, /validateAndSanitizeBackup[\s\S]*decodeLegacyBackup
 assert.match(normalizeLoadedData, /const submittedExercise = submittedSessionIds\.has\(exercise\.sessionId\)[\s\S]*if \(!submittedExercise\)/, "Compatibility cleanup must distinguish mutable active work from immutable submitted history");
 assert.match(normalizeLoadedData, /if \(!submittedExercise\)[\s\S]*delete retainedExercise\.executionQualityAssessment/, "Active exercise normalization must delete the historical-only execution-quality field before re-save");
 assert.match(normalizeLoadedData, /if \(!isSessionSubmitted\(normalizedSession\)\) delete normalizedSession\.exerciseQualityAnswers/, "Active session normalization must delete the historical-only execution-quality answer container");
-assert.match(normalizeLoadedData, /delete retainedExercise\.executionBlocked[\s\S]*delete retainedExercise\.safetyRestriction/, "Mutable active equipment-only blockers must be removed during compatibility normalization");
-assert.match(normalizeLoadedData, /const finalPrescription[\s\S]*delete finalPrescription\.executionBlocked[\s\S]*delete finalPrescription\.executable[\s\S]*delete finalPrescription\.safetyRestriction[\s\S]*delete finalPrescription\.reason/, "The active prescription must delete—not invert—the obsolete equipment-only blocker fields");
+assert.doesNotMatch(normalizeLoadedData, /\?\.finalPrescription|finalPrescription\?\./, "Active normalization must not read the obsolete final-prescription fallback");
+assert.doesNotMatch(normalizeLoadedData, /delete retainedExercise\.(?:recommendationSnapshot|originalPrescription|basePrescription|finalPrescription|prescription|setPrescription|programTargetContext|appliedTargetContext)/, "Active-draft audit and prescription references must survive compatibility normalization");
+assert.doesNotMatch(renderExercise, /recommendationSnapshot|originalPrescription|basePrescription|finalPrescription|programTargetContext|appliedTargetContext/, "Preserved legacy audit references must remain inert in the active logger");
 assert.match(submitWorkoutPrs, /isSessionSubmitted\(item\)[\s\S]*sessionComesBefore\(item,\s*session\)/, "PR comparisons must scan all earlier submitted sessions");
 assert.doesNotMatch(submitWorkoutPrs, /six|6\s*\*\s*30|month|183|180\s*\*\s*24|Date\.now\(\)\s*-/, "Lifetime PR comparisons must not apply the recent six-month display window");
 
@@ -170,6 +172,7 @@ assert.match(addExercise, /setCount < 1[\s\S]*repMin > repMax[\s\S]*targetRpe \*
 assert.match(addExercise, /stableTargetSnapshot:\s*\{\s*sets:\s*setCount,\s*repLow:\s*repMin,\s*repHigh:\s*repMax,\s*rpe:\s*targetRpe,\s*restSeconds\s*\}[\s\S]*Array\.from\(\{\s*length:\s*setCount\s*\}[\s\S]*targetRepMin:\s*repMin[\s\S]*targetRepMax:\s*repMax[\s\S]*targetRpe[\s\S]*targetRestSeconds:\s*restSeconds/, "A new exercise must create target-complete working rows from the visible stable targets");
 assert.match(patchSetValue, /const domains[\s\S]*reps:\s*\{\s*min:\s*0,\s*integer:\s*true[\s\S]*weight:\s*\{\s*min:\s*0[\s\S]*rpe:\s*\{\s*min:\s*0,\s*max:\s*10,\s*step:\s*0\.5[\s\S]*durationSeconds:\s*\{\s*min:\s*0,\s*integer:\s*true[\s\S]*distance:\s*\{\s*min:\s*0/, "Set writers must enforce integer reps/duration, non-negative load/distance, and half-step RPE");
 assert.match(patchSetValue, /if \(invalid\)[\s\S]*return false;[\s\S]*acknowledgeActiveSet\(setId\)/, "Invalid set input must be rejected before acknowledging or mutating the active set");
+assert.match(patchSetValue, /field === "weight"[\s\S]*patch\.weightUnit = data\.settings\.weightUnit/, "Editing a load must store the current display unit on that set");
 assert.match(patchSession, /patch\.title\.length > 256[\s\S]*return false[\s\S]*patch\.notes\.length > 4096[\s\S]*return false/, "Session storage must reject titles over 256 and notes over 4,096 before mutation");
 assert.match(patchExercise, /patch\.notes\.length > 4096[\s\S]*return false/, "Exercise storage must reject notes over 4,096 before mutation");
 assert.match(patchTemplate, /patch\.name\.length > 256[\s\S]*return false[\s\S]*patch\.notes\.length > 4096[\s\S]*return false/, "Routine storage must reject names over 256 and notes over 4,096 before mutation");
@@ -181,8 +184,9 @@ assert.match(startTemplate, /name:\s*templateExercise\.name[\s\S]*exerciseIdenti
 assert.match(startTemplate, /getMostRecentWorkoutSets\(templateExercise\.name[\s\S]*canonicalExerciseId:\s*templateExercise\.performanceExerciseId/, "Routine start must query prior comparable history with the renamed variant identity");
 assert.match(substitute, /completed[\s\S]*incomplete|incomplete[\s\S]*completed/, "Completed source work and incomplete replacement work must be separated");
 assert.match(substitute, /if \(!incompleteIds\.size\)[\s\S]*stableTargetSnapshot[\s\S]*normalizeSetTypeCode\(source\.setType[\s\S]*=== "warmup" \? "straight"/, "Warm-up-only recorded work must seed a non-warm-up replacement set from stable working targets");
-assert.match(substitute, /isWarmup:\s*false[\s\S]*countsTowardScore:\s*true[\s\S]*countsTowardVolume:\s*true[\s\S]*countsTowardProgression:\s*true/, "The seeded replacement row must be an incomplete scoreable working set");
-assert.match(substitute, /data\.manualOverrides/, "The aggregate audit ledger must receive the substitution");
+assert.match(substitute, /isWarmup:\s*false[\s\S]*countsTowardProgression:\s*true/, "The seeded replacement row must be an incomplete progression-eligible working set");
+assert.doesNotMatch(substitute, /countsTowardScore:\s*|countsTowardVolume:\s*/, "New replacement rows must not write obsolete score or volume flags");
+assert.doesNotMatch(substitute, /data\.manualOverrides/, "Substitution must not recreate the obsolete aggregate override ledger");
 assert.match(substitute, /manualOverrides/, "The actual exercise record must receive the substitution audit entry");
 assert.doesNotMatch(substitute, /data\.templates|patchTemplateExercise|updateTemplateFromExercise/, "An ordinary substitution must not mutate routine defaults");
 assert.match(interactions, /action === "update-template-exercise"[\s\S]*updateTemplateFromExercise/, "Routine mutation must remain a separate explicit action");
@@ -210,21 +214,21 @@ assert.match(interactions, /popstate[\s\S]*render/, "Navigation must preserve an
 for (const field of ["session", "exercises", "sets", "timer", "resolvedActions"]) {
   assert.match(activeDraftSnapshot, new RegExp(`\\b${field}\\b`), `The active-draft snapshot must preserve ${field}`);
 }
-assert.match(restoreActiveDraft, /snapshot\.session/, "Draft recovery must restore session title/notes and elapsed facts");
-assert.match(restoreActiveDraft, /snapshot\.exercises/, "Draft recovery must restore exercise order, names, notes, identities, and overrides");
-assert.match(restoreActiveDraft, /snapshot\.sets/, "Draft recovery must restore entered values, roles, targets, and provenance");
-assert.match(restoreActiveDraft, /snapshot\.timer/, "Draft recovery must restore one timer context");
+assert.match(restoreActiveDraft, /candidate\.session/, "Draft recovery must apply the validated session title/notes and elapsed facts");
+assert.match(restoreActiveDraft, /candidate\.exercises/, "Draft recovery must apply validated exercise order, names, notes, identities, and overrides");
+assert.match(restoreActiveDraft, /candidate\.sets/, "Draft recovery must apply validated entered values, roles, targets, and provenance");
+assert.match(restoreActiveDraft, /candidate\.timer/, "Draft recovery must apply one validated timer context");
 assert.match(restoreActiveDraft, /workoutState:\s*"active"/, "Recovered data must remain the one mutable active draft");
-assert.match(restoreActiveDraft, /contractVersion[\s\S]*comprehensive-fitness-active-draft\/2\.0\.0[\s\S]*version/, "Recovery must reject an unknown or malformed draft contract");
-assert.match(restoreActiveDraft, /isLegacyV1[\s\S]*Number\(snapshot\.version\) === 1/, "Recovery must retain the supported timerless legacy-v1 draft path");
-assert.match(restoreActiveDraft, /exercise\.order[\s\S]*Number\.isInteger[\s\S]*Number\(exercise\.order\)\s*<\s*0/, "Recovery must reject invalid exercise order");
-assert.match(restoreActiveDraft, /validSetTypes[\s\S]*set\.setType[\s\S]*return null/, "Recovery must reject an invented set role");
-assert.match(restoreActiveDraft, /validClassificationSources[\s\S]*set\.classificationSource[\s\S]*return null/, "Recovery must reject invented role provenance");
-assert.match(restoreActiveDraft, /numericSetDomains[\s\S]*reps:\s*\{\s*min:\s*0,\s*integer:\s*true[\s\S]*durationSeconds:\s*\{\s*min:\s*0,\s*integer:\s*true[\s\S]*rpe:\s*\{\s*min:\s*0,\s*max:\s*10,\s*step:\s*0\.5/, "Recovery must mirror the integer reps/duration and half-step RPE storage domains");
-assert.match(restoreActiveDraft, /targetRestSeconds:\s*\{\s*min:\s*0,\s*max:\s*3600,\s*integer:\s*true[\s\S]*targetRepMin[\s\S]*targetRepMax[\s\S]*>[\s\S]*targetRpeMin[\s\S]*targetRpeMax[\s\S]*>/, "Recovery must reject excessive target rest and inverted target rep/RPE ranges");
-assert.match(restoreActiveDraft, /snapshot\.session\.title[\s\S]*length > 256[\s\S]*snapshot\.session\.notes[\s\S]*length > 4096[\s\S]*exercise\.notes[\s\S]*length > 4096/, "Recovery must enforce title and note storage limits before replacement");
-assert.match(restoreActiveDraft, /durationSeconds\s*<\s*5[\s\S]*durationSeconds\s*>\s*3600/, "Recovery must reject an invalid timer duration");
-assert.match(restoreActiveDraft, /exerciseIds[\s\S]*setIds[\s\S]*pendingNextSetId/, "Recovery must validate exercise, set, and timer cross-references before replacement");
+assert.match(validateActiveDraft, /contractVersion[\s\S]*comprehensive-fitness-active-draft\/2\.0\.0[\s\S]*version/, "Recovery must reject an unknown or malformed draft contract");
+assert.match(validateActiveDraft, /isLegacyV1[\s\S]*Number\(snapshot\.version\) === 1/, "Recovery must retain the supported timerless legacy-v1 draft path");
+assert.match(validateActiveDraft, /exercise\.order[\s\S]*Number\.isInteger[\s\S]*Number\(exercise\.order\)\s*<\s*0/, "Recovery must reject invalid exercise order");
+assert.match(validateActiveDraft, /validSetTypes[\s\S]*set\.setType[\s\S]*return null/, "Recovery must reject an invented set role");
+assert.match(validateActiveDraft, /validClassificationSources[\s\S]*set\.classificationSource[\s\S]*return null/, "Recovery must reject invented role provenance");
+assert.match(validateActiveDraft, /numericSetDomains[\s\S]*reps:\s*\{\s*min:\s*0,\s*integer:\s*true[\s\S]*durationSeconds:\s*\{\s*min:\s*0,\s*integer:\s*true[\s\S]*rpe:\s*\{\s*min:\s*0,\s*max:\s*10,\s*step:\s*0\.5/, "Recovery must mirror the integer reps/duration and half-step RPE storage domains");
+assert.match(validateActiveDraft, /targetRestSeconds:\s*\{\s*min:\s*0,\s*max:\s*3600,\s*integer:\s*true[\s\S]*targetRepMin[\s\S]*targetRepMax[\s\S]*>[\s\S]*targetRpeMin[\s\S]*targetRpeMax[\s\S]*>/, "Recovery must reject excessive target rest and inverted target rep/RPE ranges");
+assert.match(validateActiveDraft, /snapshot\.session\.title[\s\S]*length > 256[\s\S]*snapshot\.session\.notes[\s\S]*length > 4096[\s\S]*exercise\.notes[\s\S]*length > 4096/, "Recovery must enforce title and note storage limits before replacement");
+assert.match(validateActiveDraft, /durationSeconds\s*<\s*5[\s\S]*durationSeconds\s*>\s*3600/, "Recovery must reject an invalid timer duration");
+assert.match(validateActiveDraft, /exerciseIds[\s\S]*setIds[\s\S]*pendingNextSetId/, "Recovery must validate exercise, set, and timer cross-references before replacement");
 assert.match(restoreActiveDraft, /if \(!candidate\) return false;[\s\S]*data\.sessions\s*=/, "A failed draft candidate must leave the loaded application state untouched");
 
 console.log("Redesign M6 active-workout contracts passed (deletions, identity-safe substitution, shared/overtime rest, and lossless draft recovery).");

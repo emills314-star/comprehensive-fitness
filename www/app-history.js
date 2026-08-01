@@ -48,7 +48,9 @@
       const COHERENT_GRADE_ACTION_HANDLINGS = new Set(["accepted", "modified"]);
 
       function canonicalGradeActionsForSession(session) {
-        return (Array.isArray(session?.resolvedActions) ? session.resolvedActions : []).filter((action) =>
+        const decisions = Array.isArray(session?.resolvedActions) ? session.resolvedActions : [];
+        if (decisions[0]?.outcome === "no_action") return [];
+        return decisions.filter((action) =>
           action?.contractVersion === CANONICAL_GRADE_ACTION_CONTRACT
           && action.outcome === "action"
           && typeof action.decisionId === "string"
@@ -122,7 +124,7 @@
         );
       }
 
-      function compareWorkoutPerformance(currentSet, priorSet, resistanceType, repLow) {
+      function compareWorkoutPerformance(currentSet, priorSet, resistanceType) {
         if (!currentSet) return { status: "incomplete", label: "No completed working set", change: "No completed working set was available for comparison." };
         if (!priorSet) return { status: "baseline", label: "Baseline established", change: "This is the first comparable submitted performance for this lift and resistance type." };
         const currentLoad = resistanceLoadInUnit(currentSet, resistanceType);
@@ -134,11 +136,11 @@
         const sameLoad = Math.abs(currentLoad - priorLoad) < 0.01;
         if (sameLoad && currentReps > priorReps) return { status: "progress", label: "Rep progression", change: "+" + (currentReps - priorReps) + " rep" + (currentReps - priorReps === 1 ? "" : "s") + " at the same resistance." };
         if (sameLoad && currentReps >= priorReps && currentRpe > 0 && priorRpe > 0 && currentRpe <= priorRpe - 0.5) return { status: "progress", label: "Improved efficiency", change: "Matched the prior load and reps at RPE " + currentRpe + " versus " + priorRpe + "." };
-        if (resistanceType === "assisted_bodyweight" && currentLoad < priorLoad && currentReps >= repLow) return { status: "progress", label: "Assistance progression", change: formatLoadNumber(priorLoad - currentLoad) + " " + data.settings.weightUnit + " less assistance while staying in range." };
+        if (resistanceType === "assisted_bodyweight" && currentLoad < priorLoad && currentReps >= priorReps) return { status: "progress", label: "Assistance progression", change: formatLoadNumber(priorLoad - currentLoad) + " " + data.settings.weightUnit + " less assistance while matching or exceeding the prior repetitions." };
         if (["external", "bodyweight_plus_load"].includes(resistanceType) && (currentReps > 12 || priorReps > 12)) {
           return { status: "baseline", label: "Different repetition demand", change: "The repetition demand was outside the supported estimated-performance range, so no derived comparison was applied." };
         }
-        if (!["bodyweight", "duration", "distance", "assisted_bodyweight"].includes(resistanceType) && currentLoad > priorLoad && currentReps >= repLow) return { status: "progress", label: "Load progression", change: "+" + formatLoadNumber(currentLoad - priorLoad) + " " + data.settings.weightUnit + " while remaining in the programmed rep range." };
+        if (!["bodyweight", "duration", "distance", "assisted_bodyweight"].includes(resistanceType) && currentLoad > priorLoad && currentReps >= priorReps) return { status: "progress", label: "Load progression", change: "+" + formatLoadNumber(currentLoad - priorLoad) + " " + data.settings.weightUnit + " while matching or exceeding the prior repetitions." };
         const currentValue = workoutSetPerformanceValue(currentSet, resistanceType);
         const priorValue = workoutSetPerformanceValue(priorSet, resistanceType);
         const changeRatio = priorValue > 0 ? (currentValue - priorValue) / priorValue : 0;
@@ -177,17 +179,14 @@
         const validSets = completedSets.filter((set) => actualWorkSetIsValid(set, exercise));
         const loggedRpeSets = validSets.filter((set) => Number(set.rpe || 0) > 0);
         const resistanceType = resistanceTypeFor(exercise, validSets[0] || completedSets[0]);
-        const repLow = Number(validSets[0]?.targetRepMin || exercise.stableTargetSnapshot?.repMin || exercise.prescription?.repLow || 1);
         const bestSet = bestWorkoutSet(validSets, resistanceType);
-        const priorBestSet = bestWorkoutSet(priorComparableWorkoutSets(session, exercise, resistanceType, bestSet), resistanceType);
-        const comparison = compareWorkoutPerformance(bestSet, priorBestSet, resistanceType, repLow);
         const resolvedAction = canonicalGradeActionForExercise(actionContext, exercise);
         const actionWasCoherentlyHandled = COHERENT_GRADE_ACTION_HANDLINGS.has(resolvedAction?.handling);
-        const coherentRpeCount = loggedRpeSets.filter((set) => {
-          if (actionWasCoherentlyHandled || set.deviationIntent === "one_off") return true;
-          const target = Number(set.targetRpe || exercise.stableTargetSnapshot?.targetRpe || exercise.prescription?.rpe || 0);
-          return target <= 0 || Math.abs(Number(set.rpe) - target) <= 1.5;
-        }).length;
+        const adaptedWork = Boolean(exercise.isDeload || actionWasCoherentlyHandled);
+        const priorBestSet = adaptedWork ? null : bestWorkoutSet(priorComparableWorkoutSets(session, exercise, resistanceType, bestSet), resistanceType);
+        const comparison = adaptedWork && bestSet
+          ? { status: "baseline", label: "Adapted work recorded", change: "This deload or adapted exercise is not compared with prior normal work." }
+          : compareWorkoutPerformance(bestSet, priorBestSet, resistanceType);
         const performanceExerciseId = canonicalExerciseId(exercise);
         return {
           exerciseId: exercise.id,
@@ -198,11 +197,9 @@
           attemptedSets: attemptedSets.length,
           validSets: validSets.length,
           rpeLoggedSets: loggedRpeSets.length,
-          rpeCoherence: loggedRpeSets.length ? coherentRpeCount / loggedRpeSets.length : 0.7,
+          rpeCoherence: validSets.length ? loggedRpeSets.length / validSets.length : 0,
           comparison,
-          comparisonGradeFactor: actionWasCoherentlyHandled && comparison.status === "regression"
-            ? 0.9
-            : ({ progress: 1, stable: 0.9, baseline: 0.9, regression: 0.8, incomplete: 0.4 })[comparison.status] || 0.7,
+          comparisonGradeFactor: ({ progress: 1, stable: 0.9, baseline: 0.9, regression: 0.8, incomplete: 0.4 })[comparison.status] || 0.7,
           bestSet: bestSet ? { id: bestSet.id, text: formatSetPerformance(bestSet, exercise), reps: Number(bestSet.reps || 0), load: resistanceLoadInUnit(bestSet, resistanceType), rpe: Number(bestSet.rpe || 0) } : null,
           priorBestSet: priorBestSet ? { text: formatSetPerformance(priorBestSet, exercise), reps: Number(priorBestSet.reps || 0), load: resistanceLoadInUnit(priorBestSet, resistanceType), rpe: Number(priorBestSet.rpe || 0) } : null,
           prs: prs.filter((pr) => (pr.performanceExerciseId || canonicalExerciseId(pr.exercise)) === performanceExerciseId),
@@ -293,7 +290,7 @@
         const validRatio = completedSets ? validCompletedSets / completedSets : 0;
         const rpeLoggedRatio = completedSets ? rpeLoggedSets / completedSets : 0;
         const attemptedCompletionRatio = attemptedSets ? completedSets / attemptedSets : 0;
-        const effortCoherence = averageWorkoutMetric(results.filter((result) => result.validSets).map((result) => result.rpeCoherence), 0.7);
+        const effortCoherence = validCompletedSets ? rpeLoggedSets / validCompletedSets : 0;
         const comparisonFactor = averageWorkoutMetric(results.filter((result) => result.validSets).map((result) => result.comparisonGradeFactor), 0.7);
         const exceptionHandlingFactor = actionContext.actions.length
           ? actionContext.pendingCount
@@ -321,7 +318,7 @@
         };
         return {
           contractVersion: ACTUAL_WORK_GRADE_VERSION,
-          algorithmVersion: "actual-work-rubric/1.0.0",
+          algorithmVersion: "actual-work-rubric/1.1.0",
           letter: grade,
           reasons: actualWorkGradeReasons(results, metrics, actionContext),
           sourceSessionId: session.id,
@@ -491,7 +488,8 @@
 
       function submitWorkout(sessionId) {
         if (!workoutSubmissionIsAccepted(sessionId)) return;
-        const session = data.sessions.find((item) => item.id === sessionId);
+        const sourceSession = data.sessions.find((item) => item.id === sessionId);
+        const session = finalizeWorkoutDurationSession(startWorkoutDuration(sourceSession));
         workoutSubmissionsInProgress.add(sessionId);
         try {
           if (timer) cancelTimer("workout-ended", false);
@@ -508,8 +506,6 @@
             clearActiveWorkoutDraft();
           }
           commit({ ...data, sessions: data.sessions.map((item) => item.id === session.id ? { ...completedSession, workoutAnalysis } : item) });
-          playWorkoutCompletionSound(prs.length > 0 || workoutAnalysis?.letter === "A");
-          if (workoutAnalysis?.letter === "A" || prs.length > 1) performInteractionFeedback("success");
         } finally {
           workoutSubmissionsInProgress.delete(sessionId);
         }

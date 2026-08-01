@@ -29,8 +29,8 @@ async function installBlankApp(page) {
     localStorage.clear();
     sessionStorage.clear();
     localStorage.setItem("comprehensive-fitness-data-v1", JSON.stringify({
-      appDataVersion: 2, sessions: [], exercises: [], sets: [], templates: [],
-      recommendationHistory: [], manualOverrides: [], personalEvidencePackage: null, rawImports: [], migrationAudit: [], dataRevision: 0,
+      appDataVersion: 3, sessions: [], exercises: [], sets: [], templates: [],
+      rawImports: [], migrationAudit: [], dataRevision: 0,
       settings: { weightUnit: "lb" }
     }));
   });
@@ -51,12 +51,14 @@ async function waitForApp(page) {
 test("Strong CSV unit choice is explicit, durable per record, and duplicate-safe", async ({ page }) => {
   test.setTimeout(120_000);
   await installBlankApp(page);
-  const audit = await page.evaluate((csv) => {
+  const audit = await page.evaluate(async (csv) => {
     data = { ...data, settings: { ...data.settings, weightUnit: "kg" } };
     let missingUnitError = "";
     try { importStrongCsv(csv); } catch (error) { missingUnitError = error.message; }
     const beforeImport = { sessions: data.sessions.length, sets: data.sets.length, rawImports: data.rawImports.length };
-    importStrongCsv(csv, "lb");
+    const firstPreview = importStrongCsv(csv, "lb");
+    const afterPreview = { sessions: data.sessions.length, sets: data.sets.length, rawImports: data.rawImports.length };
+    await applyPendingImport();
     const afterFirst = {
       revision: data.dataRevision,
       sessions: data.sessions.length,
@@ -67,7 +69,8 @@ test("Strong CSV unit choice is explicit, durable per record, and duplicate-safe
     };
     const importedSets = data.sets.filter((set) => data.exercises.some((exercise) => exercise.source === "strong" && exercise.id === set.exerciseId));
     const retained = data.rawImports.find((item) => item.source === "strong" && item.originalText === csv);
-    importStrongCsv(csv, "lb");
+    const duplicatePreview = importStrongCsv(csv, "lb");
+    await applyPendingImport();
     const afterDuplicate = {
       revision: data.dataRevision,
       sessions: data.sessions.length,
@@ -82,6 +85,9 @@ test("Strong CSV unit choice is explicit, durable per record, and duplicate-safe
       missingUnitError,
       conflictingUnitError,
       beforeImport,
+      afterPreview,
+      firstPreview,
+      duplicatePreview,
       afterFirst,
       afterDuplicate,
       appUnit: data.settings.weightUnit,
@@ -89,6 +95,7 @@ test("Strong CSV unit choice is explicit, durable per record, and duplicate-safe
       importedWeights: importedSets.map((set) => set.weight),
       originalUnits: [...new Set(importedSets.map((set) => set.originalImportedValue?.weightUnit))],
       rawUnit: retained?.weightUnit || "",
+      rawVersion: retained?.importVersion || "",
       rawTextPreserved: retained?.originalText === csv
     };
   }, STRONG_CSV);
@@ -96,14 +103,103 @@ test("Strong CSV unit choice is explicit, durable per record, and duplicate-safe
   expect(audit.missingUnitError).toContain("Choose whether the Strong CSV Weight column uses");
   expect(audit.beforeImport.sets).toBe(0);
   expect(audit.beforeImport.rawImports).toBe(0);
+  expect(audit.afterPreview).toEqual(audit.beforeImport);
+  expect(audit.firstPreview).toMatchObject({
+    mode: "Merge history",
+    version: "strong-csv-import/1.0.0",
+    sourceUnit: "lb",
+    counts: { sessions: 2, exercises: 3, sets: 6, templates: 1 }
+  });
+  expect(audit.duplicatePreview).toMatchObject({ mode: "No changes", counts: { sessions: 0, exercises: 0, sets: 0, templates: 0 } });
   expect(audit.appUnit).toBe("kg");
   expect(audit.importedUnits).toEqual(["lb"]);
   expect(audit.originalUnits).toEqual(["lb"]);
   expect(audit.importedWeights).toContain(27.5);
   expect(audit.rawUnit).toBe("lb");
+  expect(audit.rawVersion).toBe("strong-csv-import/1.0.0");
   expect(audit.rawTextPreserved).toBe(true);
   expect(audit.afterDuplicate).toEqual(audit.afterFirst);
   expect(audit.conflictingUnitError).toContain("already imported as lb");
+});
+
+test("Strong CSV file selection shows a bounded preview and explicit Apply before durable change", async ({ page }) => {
+  test.setTimeout(120_000);
+  await installBlankApp(page);
+  await page.locator('[data-action="open-settings"]').click();
+  const group = page.locator("details.settings-group").filter({ has: page.locator("summary", { hasText: "Data and backup" }) });
+  await group.locator("summary").click();
+  await group.locator('[data-action="strong-import-weight-unit"]').selectOption("lb");
+
+  const before = await page.evaluate(() => ({
+    revision: data.dataRevision,
+    sessions: data.sessions.length,
+    sets: data.sets.length,
+    rawImports: data.rawImports.length
+  }));
+  await group.locator('[data-action="import-data"]').setInputFiles({
+    name: "public-synthetic-strong-preview.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from(STRONG_CSV, "utf8")
+  });
+
+  const preview = group.locator("[data-import-preview]");
+  await expect(preview).toBeVisible();
+  await expect(preview).toContainText("Strong CSV ready to apply");
+  await expect(preview).toContainText("2 workouts · 3 exercises · 6 sets · 1 routine");
+  await expect(preview).toContainText("source weights lb");
+  await expect(preview).toContainText("No data has changed");
+  await expect(group.locator('[data-import-status]')).toHaveAttribute("data-import-state", "preview");
+  await expect.poll(() => page.evaluate(() => ({
+    revision: data.dataRevision,
+    sessions: data.sessions.length,
+    sets: data.sets.length,
+    rawImports: data.rawImports.length
+  }))).toEqual(before);
+
+  await preview.getByRole("button", { name: "Apply import" }).click();
+  await expect(group.locator('[data-import-status]')).toHaveAttribute("data-import-state", "accepted");
+  await expect(preview).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => ({
+    sessions: data.sessions.filter((session) => session.source === "strong").length,
+    sets: data.sets.filter((set) => data.exercises.some((exercise) => exercise.source === "strong" && exercise.id === set.exerciseId)).length,
+    rawVersion: data.rawImports.find((item) => item.source === "strong")?.importVersion || ""
+  }))).toEqual({ sessions: 2, sets: 6, rawVersion: "strong-csv-import/1.0.0" });
+  await expect.poll(() => page.evaluate(async () => {
+    const stored = await readIndexedValue("app-data");
+    return stored?.rawImports?.find((item) => item.source === "strong")?.importVersion || "";
+  })).toBe("strong-csv-import/1.0.0");
+});
+
+test("a post-write Strong finalization failure restores the original durable app data", async ({ page }) => {
+  test.setTimeout(120_000);
+  await installBlankApp(page);
+  const result = await page.evaluate(async (csv) => {
+    const before = cloneImportSnapshot(data);
+    const beforePersisted = await readIndexedValue("app-data");
+    importStrongCsv(csv, "lb", { render: false });
+    const realAudit = strongImportAuditMessage;
+    strongImportAuditMessage = () => { throw new Error("Synthetic post-write finalization failure"); };
+    let applied = false;
+    try { applied = await applyPendingImport(); }
+    finally { strongImportAuditMessage = realAudit; }
+    const afterPersisted = await readIndexedValue("app-data");
+    return {
+      applied,
+      status: importStatus.state,
+      message: importStatus.message,
+      liveEqual: JSON.stringify(data) === JSON.stringify(before),
+      durableEqual: JSON.stringify(afterPersisted) === JSON.stringify(beforePersisted)
+    };
+  }, STRONG_CSV);
+  expect(result).toMatchObject({
+    applied: false,
+    status: "rejected",
+    liveEqual: true,
+    durableEqual: true
+  });
+  expect(result.message).toContain("Synthetic post-write finalization failure");
+  expect(result.message).toContain("original app data");
+  expect(result.message).toContain("restored");
 });
 
 test("all configured research-mapped Strong labels resolve through the browser's public identity registry", async ({ page }) => {
@@ -151,8 +247,9 @@ test("Strong-only history starts an editable workout without inventing a researc
   test.setTimeout(120_000);
   await installBlankApp(page);
 
-  const audit = await page.evaluate((csv) => {
+  const audit = await page.evaluate(async (csv) => {
     importStrongCsv(csv, "lb");
+    await applyPendingImport();
     const template = data.templates.find((item) => item.name === "Public Synthetic Strong Upper");
     const exercise = template?.exercises.find((item) => item.name === "Public Synthetic Strong Cable Sweep");
     return {
@@ -164,7 +261,7 @@ test("Strong-only history starts an editable workout without inventing a researc
     };
   }, STRONG_CSV);
   expect(audit.source).toBe("strong");
-  expect(audit.performanceExerciseId).toBe("custom_public_synthetic_strong_cable_sweep");
+  expect(audit.performanceExerciseId).toMatch(/^custom_public_synthetic_strong_cable_sweep_[0-9a-f]{8}$/);
   expect(audit.researchExerciseId).toBe("");
   expect(audit.message).toContain("Verified dated prior workout history and startable set structure for all 2 template exercises");
 
@@ -220,8 +317,9 @@ test("Strong-only history starts an editable workout without inventing a researc
 test("Last time keeps a distinct performance identity separate from the Strong archive", async ({ page }) => {
   test.setTimeout(120_000);
   await installBlankApp(page);
-  const templateId = await page.evaluate(({ csv, exerciseName, templateName }) => {
+  const templateId = await page.evaluate(async ({ csv, exerciseName, templateName }) => {
     importStrongCsv(csv, "lb");
+    await applyPendingImport();
     const imported = data.exercises.find((exercise) => exercise.source === "strong" && exercise.name === exerciseName);
     const template = {
       id: "public-synthetic-archived-template",

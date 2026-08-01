@@ -42,7 +42,7 @@ async function installFixture(page, fixture = buildAnalyticsSettingsFixture()) {
 }
 
 async function openPrimaryTab(page, tabId) {
-  if (tabId === "data") {
+  if (tabId === "settings") {
     if (await page.locator(".settings-view").isVisible().catch(() => false)) return;
     const settingsTrigger = page.locator('[data-action="open-settings"]');
     if (await settingsTrigger.count()) await settingsTrigger.click();
@@ -51,8 +51,7 @@ async function openPrimaryTab(page, tabId) {
     await expect(page.locator(".settings-view")).toBeVisible();
     return;
   }
-  const destination = ({ lift: "today", dashboard: "progress", charts: "progress" })[tabId] || tabId;
-  const target = page.locator(`[data-action="set-tab"][data-tab="${destination}"]`);
+  const target = page.locator(`[data-action="set-tab"][data-tab="${tabId}"]`);
   await target.click();
   await expect(target).toHaveAttribute("aria-current", "page");
 }
@@ -81,7 +80,7 @@ async function persistedAppData(page) {
 
 test("Progress empty state asks for a completed workout without rendering invented history", async ({ page }) => {
   await installFixture(page, buildEmptyAnalyticsSettingsFixture());
-  await openPrimaryTab(page, "charts");
+  await openPrimaryTab(page, "progress");
 
   const empty = page.getByText("Complete a workout to add exercise history.", { exact: true });
   await expect(empty).toContainText("Complete a workout");
@@ -91,7 +90,7 @@ test("Progress empty state asks for a completed workout without rendering invent
 
 test("chart search is case-insensitive and retains the selected lift on no result", async ({ page }) => {
   await installFixture(page);
-  await openPrimaryTab(page, "charts");
+  await openPrimaryTab(page, "progress");
   await waitForCharts(page);
   let input = page.getByRole("combobox", { name: "Search or select exercise" });
   await expect(input).toHaveValue("Barbell Bench Press");
@@ -128,7 +127,7 @@ test("chart search is case-insensitive and retains the selected lift on no resul
 
 test("partial chart search ranks all matches and promotes the most recently selected lift", async ({ page }) => {
   await installFixture(page);
-  await openPrimaryTab(page, "charts");
+  await openPrimaryTab(page, "progress");
   await waitForCharts(page);
 
   let input = page.getByRole("combobox", { name: "Search or select exercise" });
@@ -151,7 +150,7 @@ test("partial chart search ranks all matches and promotes the most recently sele
 
 test("Progress renders one factual performance chart and exposes recorded point details", async ({ page }) => {
   await installFixture(page);
-  await openPrimaryTab(page, "charts");
+  await openPrimaryTab(page, "progress");
   await waitForCharts(page);
 
   const input = page.getByRole("combobox", { name: "Search or select exercise" });
@@ -168,6 +167,14 @@ test("Progress renders one factual performance chart and exposes recorded point 
   await expect(chart.locator("header strong")).toContainText("Best completed");
   const points = chart.locator('[data-action="show-chart-point"]');
   expect(await points.count()).toBeGreaterThan(0);
+  await expect(chart.locator('[data-action="show-chart-point"][tabindex="0"]')).toHaveCount(1);
+  await points.last().focus();
+  if (await points.count() > 1) {
+    await points.last().press("Home");
+    await expect(points.first()).toBeFocused();
+    await points.first().press("End");
+    await expect(points.last()).toBeFocused();
+  }
   await expect(points.last()).toHaveAttribute("aria-label", /Dumbbell Bench Press|Best completed/i);
   await points.last().click();
   const detail = chart.locator(".chart-detail");
@@ -186,76 +193,57 @@ test("Progress renders one factual performance chart and exposes recorded point 
   await expect(points.last()).toBeFocused();
 });
 
-test("Settings converts real loads and persists approved timer, readiness, unit, theme, and color controls without exposing legacy program defaults", async ({ page }) => {
+test("Settings changes the load display preference without rewriting stored loads or retaining legacy program defaults", async ({ page }) => {
   await installFixture(page);
-  await openPrimaryTab(page, "data");
+  await openPrimaryTab(page, "settings");
 
-  const internalCompatibilityDefaults = await page.evaluate(() => ({
-    trainingGoal: data.settings.trainingGoal,
-    nutritionPhase: data.settings.nutritionPhase,
-    experienceLevel: data.settings.experienceLevel,
-    returningAfterGap: data.settings.returningAfterGap
-  }));
+  const obsoleteKeys = ["trainingGoal", "trainingGoalSource", "trainingGoalDisclosure", "nutritionPhase", "experienceLevel", "returningAfterGap", "theme", "colorPackage", "workoutCompletionSound", "interactionVibration", "restCompleteLockScreenNotifications", "autoScrollNextSet"];
+  const normalizedState = await page.evaluate((keys) => ({
+    obsoleteSettings: keys.filter((key) => Object.prototype.hasOwnProperty.call(data.settings, key)),
+    obsoleteCollections: ["manualOverrides", "personalEvidencePackage"].filter((key) => Object.prototype.hasOwnProperty.call(data, key))
+  }), obsoleteKeys);
+  expect(normalizedState).toEqual({ obsoleteSettings: [], obsoleteCollections: [] });
   await expect(page.getByText("Training defaults", { exact: true })).toHaveCount(0);
   for (const action of ["training-goal", "nutrition-phase", "experience-level", "returning-after-gap"]) {
     await expect(page.locator(`[data-action="${action}"]`), `${action} must remain absent from the approved Settings surface`).toHaveCount(0);
   }
-  await page.locator('[data-action="theme-mode"][value="dark"]').check();
-  await page.locator('[data-action="color-package"][value="heritage-atlas"]').check();
+  for (const action of ["theme-mode", "color-package", "workout-completion-sound", "interaction-vibration", "auto-scroll-next"]) {
+    await expect(page.locator(`[data-action="${action}"]`), `${action} must remain absent from minimized Settings`).toHaveCount(0);
+  }
+  await expect(page.locator("html")).not.toHaveAttribute("data-theme");
+  await expect(page.locator("html")).not.toHaveAttribute("data-color-package");
   await page.locator('[data-action="weight-unit"][value="kg"]').check();
   await openSettingsGroup(page, "Rest timer and alerts");
   await setNumericSetting(page, "default-rest-seconds", 150);
-  await openSettingsGroup(page, "Readiness baseline");
-  await setNumericSetting(page, "baseline-sleep-hours", 8);
-  await openSettingsGroup(page, "Readiness baseline");
-  await setNumericSetting(page, "baseline-sleep-quality", 5);
-  await openSettingsGroup(page, "Readiness baseline");
-  await setNumericSetting(page, "baseline-hrv", 62);
-  await openSettingsGroup(page, "Readiness baseline");
-  await setNumericSetting(page, "baseline-resting-hr", 55);
-  await openSettingsGroup(page, "Readiness baseline");
-  await setNumericSetting(page, "baseline-soreness", 1);
-  await openSettingsGroup(page, "Readiness baseline");
-  await setNumericSetting(page, "baseline-band", 10);
 
   const inMemory = await page.evaluate(() => ({
     settings: structuredClone(data.settings),
     firstSet: structuredClone(data.sets[0])
   }));
   expect(inMemory.settings).toMatchObject({
-    theme: "dark",
-    colorPackage: "heritage-atlas",
     weightUnit: "kg",
-    defaultRestSeconds: 150,
-    readinessBaseline: { sleepHours: "8", sleepQuality: "5", hrv: "62", restingHr: "55", soreness: "1", band: "10" }
+    defaultRestSeconds: 150
   });
-  expect({
-    trainingGoal: inMemory.settings.trainingGoal,
-    nutritionPhase: inMemory.settings.nutritionPhase,
-    experienceLevel: inMemory.settings.experienceLevel,
-    returningAfterGap: inMemory.settings.returningAfterGap
-  }, "approved Settings changes must not mutate internal compatibility defaults or present legacy writers").toEqual(internalCompatibilityDefaults);
-  expect(inMemory.firstSet).toMatchObject({ weight: 99.79, weightUnit: "kg", targetWeight: 99.79 });
+  for (const key of obsoleteKeys) expect(inMemory.settings).not.toHaveProperty(key);
+  expect(inMemory.firstSet).toMatchObject({ weight: 220, weightUnit: "lb", targetWeight: 220 });
 
-  await expect.poll(async () => (await persistedAppData(page))?.settings?.readinessBaseline?.band, { timeout: 10_000 }).toBe("10");
+  await expect.poll(async () => (await persistedAppData(page))?.settings?.defaultRestSeconds, { timeout: 10_000 }).toBe(150);
   await page.reload();
   await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible({ timeout: 45_000 });
-  await openPrimaryTab(page, "data");
+  await openPrimaryTab(page, "settings");
 
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await expect(page.locator("html")).toHaveAttribute("data-color-package", "heritage-atlas");
-  await expect(page.locator('[data-action="theme-mode"][value="dark"]')).toBeChecked();
-  await expect(page.locator('[data-action="color-package"][value="heritage-atlas"]')).toBeChecked();
+  await expect(page.locator("html")).not.toHaveAttribute("data-theme");
+  await expect(page.locator("html")).not.toHaveAttribute("data-color-package");
   await expect(page.locator('[data-action="weight-unit"][value="kg"]')).toBeChecked();
   await expect(page.getByText("Training defaults", { exact: true })).toHaveCount(0);
   const restored = await page.evaluate(() => ({ settings: structuredClone(data.settings), firstSet: structuredClone(data.sets[0]) }));
   expect(restored.settings).toMatchObject(inMemory.settings);
-  expect(restored.firstSet).toMatchObject({ weight: 99.79, weightUnit: "kg", targetWeight: 99.79 });
+  expect(restored.firstSet).toMatchObject({ weight: 220, weightUnit: "lb", targetWeight: 220 });
 });
 
-test("contextual Settings numeric controls enforce their import-safe domains and survive reload", async ({ page }) => {
+test("contextual Settings default-rest control enforces its import-safe domain and survives reload", async ({ page }) => {
   await installFixture(page);
-  await openPrimaryTab(page, "data");
+  await openPrimaryTab(page, "settings");
   await openSettingsGroup(page, "Rest timer and alerts");
 
   const control = page.locator('[data-action="default-rest-seconds"]');
@@ -266,63 +254,32 @@ test("contextual Settings numeric controls enforce their import-safe domains and
   expect(await page.evaluate(() => data.settings.defaultRestSeconds)).toBe(900);
   await expect.poll(async () => (await persistedAppData(page))?.settings?.defaultRestSeconds, { timeout: 10_000 }).toBe(900);
 
-  const baselineCases = [
-    ["baseline-sleep-hours", "15", "14", "sleepHours"],
-    ["baseline-sleep-quality", "0", "1", "sleepQuality"],
-    ["baseline-hrv", "-4", "0", "hrv"],
-    ["baseline-resting-hr", "-2", "0", "restingHr"],
-    ["baseline-soreness", "9", "5", "soreness"],
-    ["baseline-band", "99", "20", "band"]
-  ];
-  for (const [action, attempted, expected, field] of baselineCases) {
-    await openSettingsGroup(page, "Readiness baseline");
-    const baselineControl = page.locator(`[data-action="${action}"]`);
-    await baselineControl.fill(attempted);
-    await baselineControl.dispatchEvent("change");
-    await expect(page.locator(`[data-action="${action}"]`)).toHaveValue(expected);
-    expect(await page.evaluate((key) => data.settings.readinessBaseline[key], field)).toBe(expected);
-  }
-  await expect.poll(async () => (await persistedAppData(page))?.settings?.readinessBaseline?.band, { timeout: 10_000 }).toBe("20");
-
   await page.reload();
   await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible({ timeout: 45_000 });
-  await openPrimaryTab(page, "data");
+  await openPrimaryTab(page, "settings");
   await openSettingsGroup(page, "Rest timer and alerts");
   await expect(page.locator('[data-action="default-rest-seconds"]')).toHaveValue("900");
-  await openSettingsGroup(page, "Readiness baseline");
-  await expect(page.locator('[data-action="baseline-sleep-hours"]')).toHaveValue("14");
-  await expect(page.locator('[data-action="baseline-sleep-quality"]')).toHaveValue("1");
-  await expect(page.locator('[data-action="baseline-hrv"]')).toHaveValue("0");
-  await expect(page.locator('[data-action="baseline-resting-hr"]')).toHaveValue("0");
-  await expect(page.locator('[data-action="baseline-soreness"]')).toHaveValue("5");
-  await expect(page.locator('[data-action="baseline-band"]')).toHaveValue("20");
 });
 
-test("all ten color packages are selectable and apply distinct semantic colors", async ({ page }) => {
+test("the fixed light Signal Garden semantic styling is not user-configurable", async ({ page }) => {
   await installFixture(page);
-  await openPrimaryTab(page, "data");
-  await page.locator('[data-action="theme-mode"][value="light"]').check();
-  const selectors = page.locator('[data-action="color-package"]');
-  const packageIds = await selectors.evaluateAll((options) => options.map((option) => option.value));
-  expect(packageIds).toEqual([
-    "heritage-atlas", "signal-garden", "alpine-ledger", "training-hall", "harbor-pulse",
-    "prairie-electric", "redwood-circuit", "mediterranean-set", "modern-primary", "night-stadium"
-  ]);
-  const applied = new Set();
-  for (const packageId of packageIds) {
-    await page.locator(`[data-action="color-package"][value="${packageId}"]`).check();
-    await expect(page.locator("html")).toHaveAttribute("data-color-package", packageId);
-    applied.add(await page.evaluate(() => {
-      const style = getComputedStyle(document.documentElement);
-      return [style.getPropertyValue("--bg"), style.getPropertyValue("--action"), style.getPropertyValue("--success"), style.getPropertyValue("--red")].join("|");
-    }));
-  }
-  expect(applied.size).toBe(10);
+  await openPrimaryTab(page, "settings");
+  await expect(page.getByText("Appearance and units", { exact: true })).toHaveCount(0);
+  await expect(page.locator('[data-action="theme-mode"], [data-action="color-package"]')).toHaveCount(0);
+  expect(await page.evaluate(() => {
+    const style = getComputedStyle(document.documentElement);
+    return {
+      background: style.getPropertyValue("--bg").trim(),
+      action: style.getPropertyValue("--action").trim(),
+      success: style.getPropertyValue("--success").trim(),
+      danger: style.getPropertyValue("--red").trim()
+    };
+  })).toEqual({ background: "#fff", action: "#176fd1", success: "#168a54", danger: "#c83f35" });
 });
 
 test("persistence exhaustion keeps the in-memory setting and immediately surfaces recovery guidance", async ({ page }) => {
   await installFixture(page);
-  await openPrimaryTab(page, "data");
+  await openPrimaryTab(page, "settings");
 
   await page.evaluate((storageKey) => {
     const audit = { appDataPutAborts: 0, localQuotaFailures: 0 };
@@ -352,19 +309,20 @@ test("persistence exhaustion keeps the in-memory setting and immediately surface
   }, STORAGE_KEY);
 
   try {
-    await page.locator('[data-action="theme-mode"][value="dark"]').check();
+    await openSettingsGroup(page, "Rest timer and alerts");
+    await setNumericSetting(page, "default-rest-seconds", 105);
     await expect.poll(() => page.evaluate(() => ({
-      ...globalThis.__CF_PERSISTENCE_FAILURE_AUDIT__,
-      theme: data.settings.theme,
+      persistenceFailuresObserved:
+        globalThis.__CF_PERSISTENCE_FAILURE_AUDIT__.appDataPutAborts > 0
+        && globalThis.__CF_PERSISTENCE_FAILURE_AUDIT__.localQuotaFailures > 0,
+      defaultRestSeconds: data.settings.defaultRestSeconds,
       settingsMessage
     })), { timeout: 10_000 }).toEqual({
-      appDataPutAborts: 1,
-      localQuotaFailures: 1,
-      theme: "dark",
+      persistenceFailuresObserved: true,
+      defaultRestSeconds: 105,
       settingsMessage: "Storage is full on this device. Export a backup, clear old data, or import a smaller file."
     });
     await expect.soft(page.getByText("Storage is full on this device. Export a backup, clear old data, or import a smaller file.", { exact: true }), "The recovery message must render immediately when both persistence layers reject the write").toBeVisible();
-    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   } finally {
     await page.evaluate(() => globalThis.__CF_RESTORE_PERSISTENCE_METHODS__?.()).catch(() => undefined);
   }
@@ -372,7 +330,7 @@ test("persistence exhaustion keeps the in-memory setting and immediately surface
 
 test("Clear All Local App Data supports cancel, exact dual confirmation, defaults, and durable reload clearing", async ({ page }) => {
   await installFixture(page);
-  await openPrimaryTab(page, "data");
+  await openPrimaryTab(page, "settings");
   await openSettingsGroup(page, "Danger Zone");
   const clearButton = page.getByRole("button", { name: /Clear All Local App Data$/ });
   await clearButton.click();
@@ -419,28 +377,16 @@ test("Clear All Local App Data supports cancel, exact dual confirmation, default
     exercises: 0,
     sets: 0,
     templates: 0,
-    theme: "light",
     weightUnit: "lb",
-    trainingGoal: "",
-    nutritionPhase: "",
-    experienceLevel: "",
-    returningAfterGap: null,
-    defaultRestSeconds: 90,
-    readinessBaseline: { sleepHours: 7.5, sleepQuality: 4, hrv: "", restingHr: "", soreness: 2, band: 8 }
+    defaultRestSeconds: 90
   };
   const cleared = await page.evaluate(() => ({
     sessions: data.sessions.length,
     exercises: data.exercises.length,
     sets: data.sets.length,
     templates: data.templates.length,
-    theme: data.settings.theme,
     weightUnit: data.settings.weightUnit,
-    trainingGoal: data.settings.trainingGoal,
-    nutritionPhase: data.settings.nutritionPhase,
-    experienceLevel: data.settings.experienceLevel,
-    returningAfterGap: data.settings.returningAfterGap,
-    defaultRestSeconds: data.settings.defaultRestSeconds,
-    readinessBaseline: structuredClone(data.settings.readinessBaseline)
+    defaultRestSeconds: data.settings.defaultRestSeconds
   }));
   expect(cleared).toEqual(expectedDefaults);
 
@@ -451,14 +397,8 @@ test("Clear All Local App Data supports cancel, exact dual confirmation, default
     exercises: data.exercises.length,
     sets: data.sets.length,
     templates: data.templates.length,
-    theme: data.settings.theme,
     weightUnit: data.settings.weightUnit,
-    trainingGoal: data.settings.trainingGoal,
-    nutritionPhase: data.settings.nutritionPhase,
-    experienceLevel: data.settings.experienceLevel,
-    returningAfterGap: data.settings.returningAfterGap,
-    defaultRestSeconds: data.settings.defaultRestSeconds,
-    readinessBaseline: structuredClone(data.settings.readinessBaseline)
+    defaultRestSeconds: data.settings.defaultRestSeconds
   }));
   expect(reloaded).toEqual(expectedDefaults);
 });
@@ -512,7 +452,7 @@ test("the registered service worker serves the public app shell while the isolat
     await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole("heading", { name: "Today", exact: true })).toBeVisible();
     await expect(page.locator(".offline-banner")).toContainText("Workout logging and local changes continue");
-    await expect(page.locator(".offline-banner")).toContainText("cloud-copy operations wait");
+    await expect(page.locator(".offline-banner")).toContainText("Background notifications wait");
     expect(await page.evaluate(() => ({ online: navigator.onLine, controlled: Boolean(navigator.serviceWorker.controller) }))).toEqual({ online: false, controlled: true });
   } finally {
     if (offlineEnabled) await context.setOffline(false).catch(() => undefined);
@@ -525,13 +465,13 @@ test("Settings states the verified privacy and recoverability boundaries without
     if (navigator.storage) Object.defineProperty(navigator.storage, "persisted", { configurable: true, value: async () => true });
   });
   await installFixture(page);
-  await openPrimaryTab(page, "data");
+  await openPrimaryTab(page, "settings");
   await openSettingsGroup(page, "Data and backup");
 
   const dataGroup = page.locator("details.settings-group").filter({ has: page.locator("summary", { hasText: "Data and backup" }) });
-  await expect(dataGroup).toContainText("active, unsubmitted workout");
-  await expect(dataGroup).toContainText("every associated exercise and set object");
-  await expect(dataGroup).toContainText("Cloud copy is not a backup");
+  await expect(dataGroup).toContainText("Workout history, routines, settings, readiness, and imports stay in this browser");
+  await expect(dataGroup).toContainText("Export is the recoverable copy");
+  await expect(dataGroup).not.toContainText(/cloud copy|cloud-copy|workout upload/i);
   await expect(dataGroup).toContainText("no cloud-history or restore endpoint");
   await expect(dataGroup).toContainText("Granted by this browser");
   await expect(dataGroup).not.toContainText(/Jul \d|days ago|sessions since|MB/i);

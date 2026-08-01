@@ -10,7 +10,8 @@ const { normalizeWorkouts, __test: workoutTest } = require("./personal-fitness/n
 const { confidenceLabel } = require("./personal-fitness/scoring");
 const { validatePersonalFitnessOutputs } = require("./personal-fitness/validator");
 const { assertJsonSafe, parseCsvLine, parseStrongDate, readCsv, readCsvRows } = require("./personal-fitness/utils");
-const { createPrescriptionEngine, loadEvidenceFromFiles } = require("../prescription-engine");
+const { data: researchDatabase } = require("../research_database/source/database");
+const { createPrescriptionEngine } = require("../prescription-engine");
 
 const repositoryRoot = path.resolve(__dirname, "..");
 
@@ -49,7 +50,7 @@ async function main() {
   assert.equal(confidenceLabel(99, 2, 365, { confidence: { insufficient_exposures_max: 2 } }), "Insufficient personal evidence", "Tiny samples cannot receive high confidence");
 
   const loaded = await loadPersonalFitnessConfig(repositoryRoot);
-  const identityEngine = createPrescriptionEngine(loadEvidenceFromFiles(repositoryRoot, { includeSessionMetrics: false, includeWeeklyVolume: false }));
+  const identityEngine = createPrescriptionEngine({ researchData: researchDatabase });
   loaded.aliases.filter((alias) => alias.research_exercise_id).forEach((alias) => {
     const identity = identityEngine.resolveExerciseIdentity(alias.recorded_name);
     assert.equal(identity.status, "resolved", `${alias.recorded_name} must resolve through the public identity registry`);

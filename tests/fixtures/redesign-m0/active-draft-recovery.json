@@ -1,6 +1,10 @@
 {
   "contractVersion": "comprehensive-fitness-active-draft/2.0.0",
+  "version": 2,
+  "workoutId": "synthetic-active-session",
   "savedAt": "2026-07-30T20:00:00.000Z",
+  "dataRevision": 3,
+  "draftSequence": 1,
   "session": {
     "id": "synthetic-active-session",
     "title": "Synthetic Active Workout",
@@ -49,12 +53,22 @@
     }
   ],
   "timer": {
-    "timerId": "synthetic-timer",
+    "id": "synthetic-timer",
+    "version": 1,
+    "workoutId": "synthetic-active-session",
     "exerciseId": "synthetic-active-exercise-1",
     "setId": "synthetic-active-set-1",
-    "targetSeconds": 120,
-    "startedAt": "2026-07-30T19:58:00.000Z",
-    "state": "running"
+    "pendingNextSetId": "synthetic-active-set-2",
+    "durationSeconds": 120,
+    "remainingSeconds": 60,
+    "endsAt": 1785441660000,
+    "isActive": true,
+    "isPaused": false,
+    "isOvertime": false,
+    "overtimeSeconds": 0,
+    "notificationStatus": "disabled",
+    "serverNotificationId": "",
+    "backgroundedAt": 0
   },
   "resolvedActions": [
     {

@@ -1,6 +1,6 @@
 
       function isNumericEditAction(action) {
-        return ["set-reps", "set-weight", "set-rpe", "set-duration", "set-distance", "template-exercise-sets", "template-exercise-reps", "template-exercise-rpe", "template-exercise-increment", "template-exercise-rest", "exercise-rest-seconds", "recovery-sleep-hours", "recovery-hrv", "recovery-resting-hr", "template-readiness-sleep-hours", "template-readiness-hrv", "template-readiness-resting-hr", "baseline-sleep-hours", "baseline-sleep-quality", "baseline-hrv", "baseline-resting-hr", "baseline-soreness", "baseline-band"].includes(action);
+        return ["set-reps", "set-weight", "set-rpe", "set-duration", "set-distance", "template-exercise-sets", "template-exercise-rep-min", "template-exercise-rep-max", "template-exercise-rpe", "template-exercise-rest", "exercise-rest-seconds"].includes(action);
       }
 
       function hasActiveRpeReplacement(target) {
@@ -36,8 +36,6 @@
         return true;
       }
 
-      let lastInteractionFeedbackAt = 0;
-
       function feedbackLevelForAction(action, target) {
         if (!action) return "none";
         if (["confirm-submit-workout", "confirm-save-history-edits"].includes(action)) return "success";
@@ -48,9 +46,9 @@
           const remainingInExercise = data.sets.filter((item) => item.exerciseId === set.exerciseId && !item.isWarmup && !item.completed && !item.skipped && item.id !== set.id).length;
           return remainingInExercise === 0 ? "success" : "medium";
         }
-        if (["start-timer", "skip-timer", "start-template", "start-next-template", "start-workout-with-readiness", "save-workout-readiness", "request-submit-workout", "request-save-history-edits", "begin-history-edit", "save-template", "update-template-exercise", "add-set", "add-warmup-set", "duplicate-set", "reconcile-apply"].includes(action)) return "medium";
+        if (["start-timer", "skip-timer", "start-template", "start-next-template", "start-workout-with-readiness", "save-workout-readiness", "request-submit-workout", "request-save-history-edits", "begin-history-edit", "save-template", "update-template-exercise", "add-set", "add-warmup-set", "duplicate-set", "reconcile-apply", "set-expected-template", "toggle-workout-pause", "handle-resolved-action"].includes(action)) return "medium";
         if (["request-delete-template", "request-cancel-workout", "request-cancel-workout-from-template", "request-cancel-history-edits", "clear-data", "toggle-skip-set"].includes(action)) return "warning";
-        if (["set-tab", "adjust-timer", "select-chart-exercise", "show-chart-point", "open-completion-progress", "exercise-deload", "exercise-resistance-type", "exercise-bodyweight", "set-warmup", "timer-sound", "timer-vibration", "workout-completion-sound", "interaction-vibration", "timer-notifications", "in-app-rest-alerts", "toggle-rest-notifications", "preview-rest-complete-sound", "rest-complete-auto-return"].includes(action)) return "light";
+        if (["set-tab", "adjust-timer", "select-chart-exercise", "show-chart-point", "open-completion-progress", "exercise-deload", "exercise-resistance-type", "exercise-bodyweight", "set-warmup", "timer-sound", "timer-vibration", "timer-notifications", "in-app-rest-alerts", "toggle-rest-notifications", "preview-rest-complete-sound", "rest-complete-auto-return"].includes(action)) return "light";
         return "none";
       }
 
@@ -60,23 +58,12 @@
           "session-title", "session-date", "session-travel", "session-notes",
           "exercise-notes", "exercise-primary-muscle", "exercise-secondary-muscle", "exercise-deload", "exercise-resistance-type", "exercise-bodyweight", "exercise-rest-seconds",
           "set-reps", "set-weight", "set-rpe", "set-duration", "set-distance", "set-warmup",
-          "recovery-sleep-hours", "recovery-sleep-quality", "recovery-hrv", "recovery-resting-hr", "recovery-soreness", "recovery-nutrition", "recovery-protein", "recovery-illness", "recovery-pain", "recovery-affected-muscle", "recovery-outside-note"
+          "recovery-deviation", "recovery-illness", "recovery-pain", "recovery-affected-muscle", "recovery-outside-note"
         ].includes(action);
       }
 
       function historyMutationIsLocked(action) {
         return isSessionSubmitted(activeSession()) && !isEditingHistorySession() && isHistoryWorkoutMutation(action);
-      }
-
-      function performInteractionFeedback(level) {
-        if (!level || level === "none" || data.settings.interactionVibration === false || typeof navigator.vibrate !== "function") return;
-        const now = Date.now();
-        if (now - lastInteractionFeedbackAt < 90) return;
-        lastInteractionFeedbackAt = now;
-        const pattern = ({ light: 10, medium: 22, success: [24, 28, 42], warning: [28, 32, 28], error: [45, 35, 70] })[level];
-        if (pattern) {
-          try { navigator.vibrate(pattern); } catch { /* Visual feedback remains the fallback. */ }
-        }
       }
 
       function releaseSetEntryFocusForCompletion(target) {
@@ -94,6 +81,14 @@
           if (!exercise) return;
           exercise.scrollIntoView({ block: "start", behavior: preferredScrollBehavior() });
           exercise.focus({ preventScroll: true });
+        });
+      }
+
+      function focusRoutineControlAfterRender(action, templateId = "") {
+        window.requestAnimationFrame(() => {
+          const controls = Array.from(root.querySelectorAll(`[data-action="${action}"]`));
+          const control = controls.find((candidate) => !templateId || candidate.dataset.templateId === templateId);
+          control?.focus({ preventScroll: true });
         });
       }
 
@@ -130,8 +125,6 @@
           render();
           return;
         }
-        const interactionAccepted = action !== "confirm-submit-workout" || workoutSubmissionIsAccepted(activeSessionId);
-        if (interactionAccepted) performInteractionFeedback(feedbackLevelForAction(action, target));
         if (action === "skip-content") {
           event.preventDefault();
           const mainContent = document.getElementById("main-content");
@@ -145,12 +138,12 @@
           target.select();
         }
         if (action === "set-tab") {
-          if (target.dataset.tab === "lift" && viewingHistorySessionId && !historyEditFlow) {
-            returnToLiftHome();
+          if (target.dataset.tab === "today" && viewingHistorySessionId && !historyEditFlow) {
+            returnToToday();
             return;
           }
-          if (target.dataset.tab === "lift" && hasActiveWorkout()) activeSessionId = activeWorkoutId;
-          if (historyEditFlow && target.dataset.tab !== "lift") {
+          if (target.dataset.tab === "today" && hasActiveWorkout()) activeSessionId = activeWorkoutId;
+          if (historyEditFlow && target.dataset.tab !== "today") {
             dialogFocusOrigins.history = focusDescriptorForElement(target) || { kind: "main" };
           }
           setActiveTab(target.dataset.tab);
@@ -166,15 +159,14 @@
           focusWorkoutExercise(workoutFocusExerciseId);
         }
         if (action === "open-history") setActiveTab("progress");
-        if (action === "toggle-theme") commit({ ...data, settings: { ...data.settings, theme: data.settings.theme === "light" ? "dark" : "light" } });
-        if (action === "toggle-unit") commit(convertAppWeightUnit(data, data.settings.weightUnit === "lb" ? "kg" : "lb"));
+        if (action === "toggle-unit") commit(setAppWeightUnitPreference(data, data.settings.weightUnit === "lb" ? "kg" : "lb"));
         if (action === "request-notifications") enablePushNotifications();
         if (action === "toggle-rest-notifications") {
           const alerts = restAlertState();
           if (alerts.lockScreenReady) {
             await disablePushNotifications();
           } else {
-            commit({ ...data, settings: { ...data.settings, timerNotifications: true, restCompleteLockScreenNotifications: true } }, false);
+            commit({ ...data, settings: { ...data.settings, timerNotifications: true } }, false);
             await enablePushNotifications();
           }
         }
@@ -189,6 +181,11 @@
         if (action === "dismiss-install-guide") commit({ ...data, settings: { ...data.settings, installGuideDismissed: true } });
         if (action === "apply-update") applyPwaUpdate();
         if (action === "select-chart-exercise") selectChartExercise(target.dataset.exerciseId);
+        if (action === "set-progress-date-window") {
+          progressDateWindow = target.dataset.window === "all" ? "all" : "recent";
+          chartDetailPoint = null;
+          render();
+        }
         if (action === "clear-chart-exercise-search") {
           chartExerciseDraft = "";
           chartExerciseSearchError = "";
@@ -221,10 +218,14 @@
         }
         if (action === "new-session") addSession();
         if (action === "new-template") addTemplate();
+        if (action === "duplicate-template") duplicateTemplate(target.dataset.templateId);
+        if (action === "set-expected-template") setExpectedTemplate(target.dataset.templateId);
+        if (action === "move-template-exercise") moveTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, target.dataset.direction);
         if (action === "toggle-template-editor") {
           const templateId = target.dataset.templateId;
           if (expandedTemplateEditorIds.has(templateId)) expandedTemplateEditorIds.delete(templateId); else expandedTemplateEditorIds.add(templateId);
           render();
+          focusRoutineControlAfterRender("toggle-template-editor", templateId);
         }
         if (action === "reconcile-apply") reconcileCompletedSet(target.dataset.exerciseId, true);
         if (action === "reconcile-dismiss") reconcileCompletedSet(target.dataset.exerciseId, false);
@@ -262,6 +263,12 @@
         if (action === "log-template-readiness") openOptionalReadiness(target.dataset.templateId);
         if (action === "log-workout-readiness") openOptionalReadiness("", activeWorkoutId);
         if (action === "start-template" || action === "start-next-template") startTemplate(target.dataset.templateId, defaultRecovery(), "usual");
+        if (action === "toggle-workout-pause") toggleWorkoutDurationPause(activeWorkoutId);
+        if (action === "handle-resolved-action") {
+          const response = handleResolvedActionChoice(target.dataset.decisionId, target.dataset.choice);
+          if (response?.choice === "stop") pendingSubmitSessionId = activeWorkoutId;
+          render();
+        }
         if (action === "resume-active-workout" || action === "return-active-workout") { templateStartFlow = null; activeSessionId = activeWorkoutId; setActiveTab("workout"); }
         if (action === "finish-active-workout") {
           templateStartFlow = null;
@@ -287,7 +294,6 @@
         if (action === "keep-workout") closeCancelWorkout();
         if (action === "confirm-cancel-workout") discardActiveWorkout();
         if (action === "cancel-template-start") closeOptionalReadiness();
-        if (action === "adjust-template-readiness" && optionalReadinessFlow) adjustTemplateReadinessMetric(target.dataset.field, target.dataset.step);
         if (action === "start-workout-with-readiness" && optionalReadinessFlow?.templateId) startTemplate(optionalReadinessFlow.templateId, optionalReadinessFlow.draft, "daily");
         if (action === "save-workout-readiness" && optionalReadinessFlow?.sessionId) {
           const sessionId = optionalReadinessFlow.sessionId;
@@ -301,16 +307,30 @@
         if (action === "request-delete-template") {
           pendingDeleteTemplateId = target.dataset.templateId;
           render();
+          focusRoutineControlAfterRender("confirm-delete-template", target.dataset.templateId);
         }
         if (action === "cancel-delete-template") {
+          const templateId = pendingDeleteTemplateId;
           pendingDeleteTemplateId = "";
           render();
+          focusRoutineControlAfterRender("request-delete-template", templateId);
         }
         if (action === "confirm-delete-template") {
           const templateId = target.dataset.templateId;
           pendingDeleteTemplateId = "";
           clearTemplateNumericDrafts(templateId);
-          commit({ ...data, templates: data.templates.filter((template) => template.id !== templateId) });
+          const templates = data.templates.filter((template) => template.id !== templateId);
+          commit({
+            ...data,
+            templates,
+            settings: {
+              ...data.settings,
+              expectedTemplateId: data.settings.expectedTemplateId === templateId
+                ? templates[0]?.id || ""
+                : data.settings.expectedTemplateId
+            }
+          });
+          focusRoutineControlAfterRender("request-delete-template");
         }
         if (action === "delete-template-exercise") {
           clearTemplateNumericDrafts(target.dataset.templateId, target.dataset.templateExerciseId);
@@ -334,9 +354,9 @@
         if (action === "delete-set") {
           if (timer?.setId === target.dataset.setId || timer?.pendingNextSetId === target.dataset.setId) cancelTimer("set-deleted", false);
           const removedSet = setById(target.dataset.setId);
-          if (removedSet && isWorkingSet(removedSet, "score")) {
+          if (removedSet && isWorkingSet(removedSet)) {
             const exercise = exerciseById(removedSet.exerciseId);
-            const count = setsForExercise(removedSet.exerciseId).filter((set) => isWorkingSet(set, "score")).length;
+            const count = setsForExercise(removedSet.exerciseId).filter((set) => isWorkingSet(set)).length;
             logWorkoutOverride(exercise, "setCount", count, Math.max(0, count - 1), { action: "delete_set", setId: removedSet.id });
           }
           commit({ ...data, sets: data.sets.filter((set) => set.id !== target.dataset.setId) }, true, { invalidateAnalysis: false, deferPersistence: true });
@@ -351,8 +371,10 @@
         if (action === "update-template-exercise") updateTemplateFromExercise(target.dataset.exerciseId);
         if (action === "request-submit-workout") { pendingSubmitSessionId = activeSessionId; render(); }
         if (action === "cancel-submit-workout") { pendingSubmitSessionId = ""; render(); }
-        if (action === "confirm-submit-workout") submitWorkout(activeSessionId);
-        if (action === "close-completed-summary") returnToLiftHome("Workout saved.");
+        if (action === "confirm-submit-workout") {
+          submitWorkout(activeSessionId);
+        }
+        if (action === "close-completed-summary") returnToToday("Workout saved.");
         if (action === "open-completion-progress") {
           completedSummarySessionId = "";
           const exerciseId = String(target.dataset.exerciseId || "");
@@ -373,24 +395,7 @@
         if (action === "keep-history-editing") closeHistoryEditConfirmation();
         if (action === "confirm-save-history-edits") saveHistoryEdits();
         if (action === "confirm-cancel-history-edits") cancelHistoryEdits();
-        if (action === "return-lift-home") returnToLiftHome();
-        if (action === "add-template-warmup") {
-          const template = data.templates.find((item) => item.id === target.dataset.templateId);
-          const exercise = template?.exercises.find((item) => item.id === target.dataset.templateExerciseId);
-          if ((exercise?.warmups || []).length >= 100) {
-            showAppToast("A routine exercise can contain at most 100 warm-up sets.");
-            return;
-          }
-          const resistanceType = exercise?.resistanceType || inferResistanceType(exercise?.name || "", exercise || {});
-          const warmups = [...(exercise?.warmups || []), { reps: 10, weight: 0, weightUnit: data.settings.weightUnit, resistanceType, isBodyweight: isBodyweightResistance(resistanceType), addedLoad: 0, assistanceLoad: 0, rpe: 5 }];
-          patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { warmups });
-        }
-        if (action === "remove-template-warmup") {
-          const template = data.templates.find((item) => item.id === target.dataset.templateId);
-          const exercise = template?.exercises.find((item) => item.id === target.dataset.templateExerciseId);
-          const warmups = (exercise?.warmups || []).filter((_, index) => index !== Number(target.dataset.warmupIndex));
-          patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { warmups });
-        }
+        if (action === "return-to-today") returnToToday();
         if (action === "start-timer") startTimer(target.dataset.exerciseId, target.dataset.setId);
         if (action === "toggle-timer") toggleTimer();
         if (action === "adjust-timer") adjustTimer(Number(target.dataset.seconds || 0));
@@ -435,7 +440,6 @@
         if (action === "delete-remote-installation") await deleteRemoteInstallationData();
         if (action === "clear-data") await requestClearLocalData();
         if (action === "cancel-clear-data") closeClearDataFlow();
-        if (action === "sync-before-clear") { await flushWorkoutSyncQueue(); clearDataFlow = { ...clearDataFlow, unsynced: await inspectUnsynchronizedData() }; render(); }
         if (action === "confirm-clear-data") await permanentlyClearLocalData();
       });
 
@@ -520,28 +524,16 @@
           const count = Math.max(1, Math.min(20, Number(target.value || 1)));
           form?.querySelectorAll('[data-set-default-row][data-set-scope="working"]').forEach((row, index) => { row.hidden = index >= count; });
         }
-        if (action === "template-exercise-resistance") { const resistanceType = resistanceTypeValues.includes(target.value) ? target.value : "external"; patchTemplateExercise(target.dataset.templateId, target.dataset.templateExerciseId, { resistanceType, isBodyweight: isBodyweightResistance(resistanceType) }); }
-        if (action === "weight-unit") commit(convertAppWeightUnit(data, target.value));
-        if (action === "theme-mode") commit({ ...data, settings: { ...data.settings, theme: target.value } });
-        if (action === "color-package") commit({ ...data, settings: { ...data.settings, colorPackage: target.value } });
-        if (action === "cloud-workout-sync-consent") {
-          const requestedConsent = target.checked === true;
-          target.checked = data.settings.cloudWorkoutSyncConsent === true;
-          target.disabled = true;
-          target.setAttribute("aria-busy", "true");
-          await setCloudWorkoutSyncConsent(requestedConsent);
-        }
+        if (action === "weight-unit") commit(setAppWeightUnitPreference(data, target.value));
         if (action === "timer-sound") commit({ ...data, settings: { ...data.settings, timerSound: target.checked, setupSoundConfirmed: target.checked ? data.settings.setupSoundConfirmed : false } });
         if (action === "rest-complete-sound") commit({ ...data, settings: { ...data.settings, restCompleteSound: target.value } });
         if (action === "rest-complete-volume") commit({ ...data, settings: { ...data.settings, restCompleteSoundVolume: Math.max(0, Math.min(1, Number(target.value ?? 0.85))) } });
         if (action === "rest-complete-dismiss-seconds") commit({ ...data, settings: { ...data.settings, restCompleteAutoDismissMs: Math.max(1000, Math.min(60000, Math.round(Number(target.value || 5) * 1000))) } });
         if (action === "rest-complete-auto-return") commit({ ...data, settings: { ...data.settings, restCompleteAutoReturnToWorkout: target.checked } });
-        if (action === "workout-completion-sound") commit({ ...data, settings: { ...data.settings, workoutCompletionSound: target.checked } });
         if (action === "timer-vibration") commit({ ...data, settings: { ...data.settings, timerVibration: target.checked } });
-        if (action === "interaction-vibration") commit({ ...data, settings: { ...data.settings, interactionVibration: target.checked } });
         if (action === "timer-notifications") {
           if (target.checked) {
-            commit({ ...data, settings: { ...data.settings, timerNotifications: true, restCompleteLockScreenNotifications: true } }, false);
+            commit({ ...data, settings: { ...data.settings, timerNotifications: true } }, false);
             enablePushNotifications();
           } else {
             await disablePushNotifications();
@@ -552,35 +544,16 @@
         if (action === "notification-detail") commit({ ...data, settings: { ...data.settings, notificationMessageDetail: target.value } });
         if (action === "auto-start-rest") commit({ ...data, settings: { ...data.settings, autoStartRestTimer: target.checked } });
         if (action === "auto-highlight-next") commit({ ...data, settings: { ...data.settings, autoHighlightNextSet: target.checked } });
-        if (action === "auto-scroll-next") commit({ ...data, settings: { ...data.settings, autoScrollNextSet: target.checked } });
-        if (action === "recovery-sleep-quality") patchRecovery({ sleepQuality: target.value });
-        if (action === "recovery-soreness") patchRecovery({ soreness: target.value });
-        if (action === "recovery-nutrition") patchRecovery({ nutritionStatus: target.value });
-        if (action === "recovery-protein") patchRecovery({ proteinStatus: target.value });
+        if (action === "recovery-deviation") patchRecovery({ readinessDeviation: target.value });
         if (action === "recovery-illness") patchRecovery({ illness: target.checked });
         if (action === "recovery-pain") patchRecovery({ pain: target.checked });
         if (action === "recovery-affected-muscle") patchRecovery({ affectedMuscle: target.value });
         if (action === "recovery-outside-note") patchRecovery({ outsideBandNote: target.value });
-        if (action === "recovery-sleep-hours") patchRecovery({ sleepHours: target.value });
-        if (action === "recovery-hrv") patchRecovery({ hrv: target.value });
-        if (action === "recovery-resting-hr") patchRecovery({ restingHr: target.value });
-        if (action === "baseline-sleep-hours") patchReadinessBaseline({ sleepHours: target.value });
-        if (action === "baseline-sleep-quality") patchReadinessBaseline({ sleepQuality: target.value });
-        if (action === "baseline-hrv") patchReadinessBaseline({ hrv: target.value });
-        if (action === "baseline-resting-hr") patchReadinessBaseline({ restingHr: target.value });
-        if (action === "baseline-soreness") patchReadinessBaseline({ soreness: target.value });
-        if (action === "baseline-band") patchReadinessBaseline({ band: target.value });
         if (action === "strong-import-weight-unit") strongImportWeightUnit = target.value === "lb" || target.value === "kg" ? target.value : "";
-        if (action === "template-readiness-sleep-quality") patchTemplateStartDraft({ sleepQuality: target.value }, false);
-        if (action === "template-readiness-soreness") patchTemplateStartDraft({ soreness: target.value }, false);
-        if (action === "template-readiness-nutrition") patchTemplateStartDraft({ nutritionStatus: target.value }, false);
-        if (action === "template-readiness-protein") patchTemplateStartDraft({ proteinStatus: target.value }, false);
+        if (action === "template-readiness-deviation") patchTemplateStartDraft({ readinessDeviation: target.value }, false);
         if (action === "template-readiness-illness") patchTemplateStartDraft({ illness: target.checked }, false);
         if (action === "template-readiness-pain") patchTemplateStartDraft({ pain: target.checked }, false);
         if (action === "template-readiness-affected-muscle") patchTemplateStartDraft({ affectedMuscle: target.value }, false);
-        if (action === "template-readiness-sleep-hours") patchTemplateStartDraft({ sleepHours: target.value }, false);
-        if (action === "template-readiness-hrv") patchTemplateStartDraft({ hrv: target.value }, false);
-        if (action === "template-readiness-resting-hr") patchTemplateStartDraft({ restingHr: target.value }, false);
         if (action === "clear-data-ack" && clearDataFlow) { clearDataFlow = { ...clearDataFlow, acknowledged: target.checked }; render(); }
         if (action === "import-data" && target.files[0]) importDataFile(target.files[0]);
       });
@@ -635,18 +608,6 @@
         if (action === "set-rpe") patchSetValue(target.dataset.setId, "rpe", target.value);
         if (action === "set-duration") patchSetValue(target.dataset.setId, "durationSeconds", target.value);
         if (action === "set-distance") patchSetValue(target.dataset.setId, "distance", target.value);
-        if (action === "recovery-sleep-hours") patchRecovery({ sleepHours: target.value });
-        if (action === "recovery-hrv") patchRecovery({ hrv: target.value });
-        if (action === "recovery-resting-hr") patchRecovery({ restingHr: target.value });
-        if (action === "baseline-sleep-hours") patchReadinessBaseline({ sleepHours: target.value });
-        if (action === "baseline-sleep-quality") patchReadinessBaseline({ sleepQuality: target.value });
-        if (action === "baseline-hrv") patchReadinessBaseline({ hrv: target.value });
-        if (action === "baseline-resting-hr") patchReadinessBaseline({ restingHr: target.value });
-        if (action === "baseline-soreness") patchReadinessBaseline({ soreness: target.value });
-        if (action === "baseline-band") patchReadinessBaseline({ band: target.value });
-        if (action === "template-readiness-sleep-hours") patchTemplateStartDraft({ sleepHours: target.value }, false);
-        if (action === "template-readiness-hrv") patchTemplateStartDraft({ hrv: target.value }, false);
-        if (action === "template-readiness-resting-hr") patchTemplateStartDraft({ restingHr: target.value }, false);
       });
 
       root.addEventListener("beforeinput", (event) => {
@@ -721,7 +682,6 @@
             chartExerciseDraft = selectedExerciseName();
             chartExerciseSearchOpen = false;
             chartExerciseSearchError = "No logged exercise matched. The previous lift remains selected.";
-            performInteractionFeedback("error");
             target.value = chartExerciseDraft;
             target.setAttribute("aria-expanded", "false");
             updateExerciseSuggestionList();
@@ -738,7 +698,30 @@
             return;
           }
         }
-        if (target?.dataset.action === "show-chart-point" && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); target.dispatchEvent(new MouseEvent("click", { bubbles: true })); return; }
+        if (target?.dataset.action === "show-chart-point") {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            target.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+            return;
+          }
+          if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) {
+            const points = [...target.closest("svg")?.querySelectorAll('[data-action="show-chart-point"]') || []];
+            const currentIndex = points.indexOf(target);
+            const nextIndex = event.key === "Home"
+              ? 0
+              : event.key === "End"
+                ? points.length - 1
+                : Math.max(0, Math.min(points.length - 1, currentIndex + (event.key === "ArrowLeft" ? -1 : 1)));
+            const nextPoint = points[nextIndex];
+            if (nextPoint) {
+              event.preventDefault();
+              target.setAttribute("tabindex", "-1");
+              nextPoint.setAttribute("tabindex", "0");
+              nextPoint.focus();
+            }
+            return;
+          }
+        }
         if (!target || target.tagName !== "INPUT" || !isNumericEditAction(target.dataset.action)) return;
         if (target.dataset.action === "set-rpe" && event.key === "Backspace" && deleteFromRpeReplacement(target)) {
           event.preventDefault();
@@ -822,19 +805,7 @@
         }
         if (action === "template-name") patchTemplate(target.dataset.templateId, { name: target.value }, false);
         if (action === "template-exercise-name") patchTemplateExerciseName(target.dataset.templateId, target.dataset.templateExerciseId, target.value, false);
-        if (action === "recovery-sleep-hours") patchRecovery({ sleepHours: target.value }, false);
-        if (action === "recovery-hrv") patchRecovery({ hrv: target.value }, false);
-        if (action === "recovery-resting-hr") patchRecovery({ restingHr: target.value }, false);
         if (action === "recovery-outside-note") patchRecovery({ outsideBandNote: target.value }, false);
-        if (action === "baseline-sleep-hours") patchReadinessBaseline({ sleepHours: target.value }, false);
-        if (action === "baseline-sleep-quality") patchReadinessBaseline({ sleepQuality: target.value }, false);
-        if (action === "baseline-hrv") patchReadinessBaseline({ hrv: target.value }, false);
-        if (action === "baseline-resting-hr") patchReadinessBaseline({ restingHr: target.value }, false);
-        if (action === "baseline-soreness") patchReadinessBaseline({ soreness: target.value }, false);
-        if (action === "baseline-band") patchReadinessBaseline({ band: target.value }, false);
-        if (action === "template-readiness-sleep-hours") patchTemplateStartDraft({ sleepHours: target.value }, false);
-        if (action === "template-readiness-hrv") patchTemplateStartDraft({ hrv: target.value }, false);
-        if (action === "template-readiness-resting-hr") patchTemplateStartDraft({ restingHr: target.value }, false);
         if (action === "template-readiness-note") patchTemplateStartDraft({ outsideBandNote: target.value }, false);
         if (action === "clear-data-phrase" && clearDataFlow) {
           clearDataFlow.phrase = target.value;
@@ -965,11 +936,10 @@
         scheduleSave();
         registerPwaServiceWorker();
         fetchPushConfig();
-        reconcileWorkoutSyncConsent();
         reconcilePushRevocation();
-        flushWorkoutSyncQueue();
         flushPendingPushOperations();
         if (pushIdentity?.token && (pushIdentity.status === "deleting" || pushIdentity.deletion?.retryable === true) && navigator.onLine) deleteRemoteInstallationData({ automatic: true });
+        else if (pushIdentity?.token && !pushIdentity.legacyWorkoutCleanupCompletedAt) cleanupLegacyWorkoutCloudData();
       }
 
       boot();
@@ -988,7 +958,11 @@
       window.addEventListener("pagehide", persistBeforeSuspend);
       window.addEventListener("beforeunload", persistBeforeSuspend);
       window.addEventListener("popstate", () => {
+        const rawHash = window.location.hash.replace(/^#/, "").toLowerCase();
         const nextTab = tabFromLocation();
+        if (!currentDestinationIds.includes(rawHash)) {
+          window.history.replaceState({ ...(window.history.state || {}), tab: nextTab }, "", tabUrl(nextTab));
+        }
         if (historyEditFlow && nextTab !== "workout") {
           activeTab = "workout";
           window.history.pushState({ ...(window.history.state || {}), tab: "workout" }, "", tabUrl("workout"));
@@ -1025,11 +999,10 @@
       window.addEventListener("beforeinstallprompt", (event) => { event.preventDefault(); installPromptEvent = event; });
       window.addEventListener("online", () => {
         render();
-        reconcileWorkoutSyncConsent();
         reconcilePushRevocation();
-        flushWorkoutSyncQueue();
         flushPendingPushOperations();
         if (pushIdentity?.token && (pushIdentity.status === "deleting" || pushIdentity.deletion?.retryable === true)) deleteRemoteInstallationData({ automatic: true });
+        else if (pushIdentity?.token && !pushIdentity.legacyWorkoutCleanupCompletedAt) cleanupLegacyWorkoutCloudData();
         if (timer?.isActive && !timer.isPaused && !timer.isOvertime && timer.endsAt > Date.now() && timer.notificationStatus !== "scheduled") scheduleRestPush({ ...timer });
       });
       window.addEventListener("offline", () => render());

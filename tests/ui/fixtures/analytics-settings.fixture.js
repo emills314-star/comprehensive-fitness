@@ -80,15 +80,12 @@ function settingsFixture() {
 
 function emptyModel() {
   return {
-    appDataVersion: 2,
+    appDataVersion: 3,
     domainMigrationVersion: 3,
     sessions: [],
     exercises: [],
     sets: [],
     templates: [],
-    recommendationHistory: [],
-    manualOverrides: [],
-    personalEvidencePackage: null,
     rawImports: [],
     migrationAudit: [],
     dataRevision: 1,

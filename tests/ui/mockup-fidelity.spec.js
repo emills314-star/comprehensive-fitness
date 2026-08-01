@@ -416,11 +416,10 @@ test("m3 start is direct while readiness remains an explicit optional path", asy
     });
   }
 
-  await readiness.getByRole("spinbutton", { name: "Sleep", exact: true }).fill("6");
-  await readiness.getByRole("radiogroup", { name: "Sleep quality", exact: true }).getByRole("radio", { name: "2", exact: true }).check();
-  await readiness.getByRole("radiogroup", { name: "Soreness", exact: true }).getByRole("radio", { name: "4", exact: true }).check();
-  await readiness.getByRole("spinbutton", { name: "HRV", exact: true }).fill("51");
-  await readiness.getByRole("spinbutton", { name: "Resting heart rate", exact: true }).fill("58");
+  await readiness.getByRole("radio", { name: "Meaningfully poor", exact: true }).check();
+  await readiness.getByRole("checkbox", { name: "Pain or injury", exact: true }).check();
+  await readiness.getByLabel("Affected area", { exact: true }).selectOption({ label: "Back" });
+  await readiness.getByLabel("Optional context", { exact: true }).fill("Public synthetic optional readiness context.");
   await expect(readiness.getByRole("button", { name: "Start workout", exact: true })).toBeVisible();
   if (process.env.CF_MOCKUP_REVIEW_DIR) {
     await page.screenshot({
@@ -540,8 +539,6 @@ test("m6 settings, data, and destructive confirmation keep their existing safegu
     });
   }
 
-  const appearance = page.locator("details.settings-group").filter({ hasText: "Appearance and units" });
-  if (await appearance.evaluate((group) => group.open)) await appearance.locator(":scope > summary").click();
   const dataGroup = page.locator("details.settings-group").filter({ hasText: "Data and backup" });
   await dataGroup.locator(":scope > summary").click();
   await dataGroup.evaluate((group) => window.scrollTo(0, group.offsetTop - 12));

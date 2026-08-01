@@ -27,12 +27,13 @@
         return false;
       }
 
-      function renderTemplateNumericInput(template, exercise, action, modelValue, ariaLabel) {
+      function renderTemplateNumericInput(template, exercise, action, modelValue, fieldLabel) {
         const config = templateNumericFields[action];
         const draft = templateNumericDrafts.get(templateNumericDraftKey(template.id, exercise.id, action));
         const invalid = Boolean(draft?.invalid);
         const value = draft ? draft.raw : modelValue;
         const describedBy = invalid ? ` aria-describedby="${templateNumericAlertId(template.id)}"` : "";
+        const ariaLabel = `${fieldLabel} for ${exercise.name}`;
         return `<input type="number" required min="${config.min}" max="${config.max}" step="${config.step}" value="${escapeHtml(value)}" data-action="${action}" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" aria-label="${escapeHtml(ariaLabel)}"${invalid ? ' aria-invalid="true"' : ""}${describedBy} />`;
       }
 
@@ -101,17 +102,24 @@
         templateNumericDrafts.delete(key);
         syncTemplateNumericValidationDom(target);
         const numeric = Number(raw);
-        const current = data.templates.find((template) => template.id === templateId)?.exercises.find((exercise) => exercise.id === exerciseId)?.[config.field];
+        const exercise = data.templates.find((template) => template.id === templateId)?.exercises.find((item) => item.id === exerciseId);
+        const current = exercise?.[config.field];
         if (Number(current) === numeric) return true;
-        const patch = config.field === "reps"
-          ? { reps: numeric, repMin: numeric, repMax: numeric }
-          : { [config.field]: numeric };
+        const nextRepMin = config.field === "repMin" ? numeric : Number(exercise?.repMin || exercise?.reps || 0);
+        const nextRepMax = config.field === "repMax" ? numeric : Number(exercise?.repMax || exercise?.reps || 0);
+        if (nextRepMin > nextRepMax) {
+          templateNumericDrafts.set(key, { templateId, exerciseId, action, raw, invalid: true });
+          syncTemplateNumericValidationDom(target);
+          return true;
+        }
+        const patch = { [config.field]: numeric };
         patchTemplateExercise(templateId, exerciseId, patch, false);
         return true;
       }
 
       function renderTemplateCard(template, running = activeWorkoutSession()) {
         const isActiveTemplate = running?.templateId === template.id;
+        const isExpectedTemplate = data.settings.expectedTemplateId === template.id;
         const emptyTemplate = !Array.isArray(template.exercises) || template.exercises.length === 0;
         const emptyTemplateDescriptionId = "empty-template-" + template.id;
         const startDisabledAttributes = emptyTemplate
@@ -129,13 +137,12 @@
               <div class="template-title">${usesLargeTextReflow()
                 ? '<textarea class="exercise-name autosize-title-field" rows="1" maxlength="256" data-action="template-name" data-template-id="' + template.id + '" aria-label="Template name">' + escapeHtml(template.name) + '</textarea>'
                 : '<input class="exercise-name" value="' + escapeHtml(template.name) + '" maxlength="256" data-action="template-name" data-template-id="' + template.id + '" aria-label="Template name" />'}<small>${template.exercises.length} lifts · ${prescribedSets} prescribed sets · ~${duration} min</small></div>
-              <div class="template-card-actions">${isActiveTemplate ? '<button class="primary-action template-start" type="button" data-action="resume-active-workout">Resume</button>' : '<button class="primary-action template-start" type="button" data-action="start-template" data-template-id="' + template.id + '" ' + startDisabledAttributes + '>Start</button>'}${isActiveTemplate
+              <div class="template-card-actions">${isActiveTemplate ? '<button class="primary-action template-start" type="button" data-action="resume-active-workout">Resume</button>' : '<button class="primary-action template-start" type="button" data-action="start-template" data-template-id="' + template.id + '" ' + startDisabledAttributes + '>Start</button>'}<button class="secondary-action" type="button" data-action="set-expected-template" data-template-id="${template.id}" aria-pressed="${isExpectedTemplate ? "true" : "false"}" ${isExpectedTemplate ? "disabled" : ""}>${isExpectedTemplate ? "Expected workout" : "Set as expected"}</button><button class="icon-button" type="button" data-action="duplicate-template" data-template-id="${template.id}" title="Duplicate routine" aria-label="Duplicate ${escapeHtml(template.name)} routine">${icon.duplicate}</button>${isActiveTemplate
                 ? '<button class="template-delete-button danger" type="button" disabled title="Finish or cancel the active workout before deleting this template" aria-label="Delete unavailable during active workout">' + icon.delete + '</button>'
                 : confirmingDelete
                 ? '<span class="template-delete-confirm"><button class="danger" type="button" data-action="confirm-delete-template" data-template-id="' + template.id + '">Delete</button><button type="button" data-action="cancel-delete-template">Cancel</button></span>'
                 : '<button class="template-delete-button danger" type="button" data-action="request-delete-template" data-template-id="' + template.id + '" title="Delete template" aria-label="Delete ' + escapeHtml(template.name) + ' template">' + icon.delete + '</button>'}</div>
             </div>
-            ${template.baseSessionIntent ? '<p class="template-coach"><strong>Base Session Intent</strong> ' + escapeHtml(template.baseSessionIntent) + '. Today’s readiness may modify load, sets, RPE, rest, or exercise selection before the workout begins.</p>' : ''}
             ${emptyTemplate ? '<p class="template-coach" id="' + escapeHtml(emptyTemplateDescriptionId) + '"><strong>Template needs an exercise.</strong> Add at least one exercise before starting this template.</p>' : ''}
             ${advice ? '<p class="template-coach"><strong>' + escapeHtml(advice.label) + '</strong> ' + escapeHtml(coachLine) + '</p>' : ''}
             <details class="compact-disclosure template-editor" ${editorExpanded ? 'open' : ''}>
@@ -143,25 +150,23 @@
               ${editorExpanded ? `<div class="disclosure-body">
                 ${renderTemplateNumericAlert(template.id)}
                 <ul class="template-list">
-                  ${template.exercises.map((exercise) => `
-                    <li>
-                      <input value="${escapeHtml(exercise.name)}" data-action="template-exercise-name" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" aria-label="Template exercise name" maxlength="256" />
+                  ${template.exercises.map((exercise, exerciseIndex) => `
+                    <li data-template-exercise-id="${exercise.id}">
+                      <input value="${escapeHtml(exercise.name)}" data-action="template-exercise-name" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" aria-label="Exercise name for ${escapeHtml(exercise.name)}" maxlength="256" />
                       <div class="grid two">
-                        <label class="template-meta">Sets${renderTemplateNumericInput(template, exercise, "template-exercise-sets", exercise.sets, "Template exercise sets")}</label>
-                        <label class="template-meta">Reps${renderTemplateNumericInput(template, exercise, "template-exercise-reps", exercise.reps, "Template exercise repetitions")}</label>
+                        <label class="template-meta">Sets${renderTemplateNumericInput(template, exercise, "template-exercise-sets", exercise.sets, "Sets")}</label>
+                        <label class="template-meta">Rep minimum${renderTemplateNumericInput(template, exercise, "template-exercise-rep-min", exercise.repMin || exercise.reps, "Minimum repetitions")}</label>
                       </div>
                       <div class="grid two">
-                        <label class="template-meta">Target RPE${renderTemplateNumericInput(template, exercise, "template-exercise-rpe", exercise.targetRpe || 8, "Template exercise target RPE")}</label>
-                        <label class="template-meta">Load increment${renderTemplateNumericInput(template, exercise, "template-exercise-increment", exercise.increment || progressionProfileForExercise(exercise.name).increment, "Template exercise load increment")}</label>
+                        <label class="template-meta">Rep maximum${renderTemplateNumericInput(template, exercise, "template-exercise-rep-max", exercise.repMax || exercise.reps, "Maximum repetitions")}</label>
+                        <label class="template-meta">Target RPE${renderTemplateNumericInput(template, exercise, "template-exercise-rpe", exercise.targetRpe || 8, "Target RPE")}</label>
                       </div>
-                      <label class="template-meta">Resistance type<select data-action="template-exercise-resistance" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}">${resistanceTypeOptions(exercise.resistanceType || inferResistanceType(exercise.name, exercise))}</select></label>
-                      <label class="template-meta">Rest seconds${renderTemplateNumericInput(template, exercise, "template-exercise-rest", exercise.restSeconds || recommendedRestSeconds(exercise.name, { reps: exercise.reps }), "Template exercise rest seconds")}</label>
-                      <div class="template-warmups"><strong>Warm-ups</strong>${(exercise.warmups || []).map((set, warmupIndex) => '<span>' + escapeHtml(set.reps + ' reps × ' + formatResistance(set, exercise)) + '</span><button class="mini-button" type="button" data-action="remove-template-warmup" data-template-id="' + template.id + '" data-template-exercise-id="' + exercise.id + '" data-warmup-index="' + warmupIndex + '">Remove</button>').join("") || '<span>None yet</span>'}<button class="mini-button" type="button" data-action="add-template-warmup" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}">+ Warm-up</button></div>
-                      <button class="mini-button danger" type="button" data-action="delete-template-exercise" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}">Remove exercise</button>
+                      <label class="template-meta">Rest seconds${renderTemplateNumericInput(template, exercise, "template-exercise-rest", exercise.restSeconds || recommendedRestSeconds(exercise.name, { reps: exercise.reps }), "Rest seconds")}</label>
+                      <div class="template-card-actions template-exercise-actions"><button class="mini-button" type="button" data-action="move-template-exercise" data-direction="up" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" ${exerciseIndex === 0 ? "disabled" : ""} aria-label="Move ${escapeHtml(exercise.name)} earlier">Move up</button><button class="mini-button" type="button" data-action="move-template-exercise" data-direction="down" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" ${exerciseIndex === template.exercises.length - 1 ? "disabled" : ""} aria-label="Move ${escapeHtml(exercise.name)} later">Move down</button><button class="mini-button danger" type="button" data-action="delete-template-exercise" data-template-id="${template.id}" data-template-exercise-id="${exercise.id}" aria-label="Remove ${escapeHtml(exercise.name)}">Remove exercise</button></div>
                     </li>
                   `).join("")}
                 </ul>
-                <button type="button" data-action="add-template-exercise" data-template-id="${template.id}">${icon.add} Exercise</button>
+                <button type="button" data-action="add-template-exercise" data-template-id="${template.id}" aria-label="Add exercise to ${escapeHtml(template.name)}">${icon.add} Exercise</button>
               </div>` : ''}
             </details>
           </article>
@@ -257,68 +262,9 @@
           loadReductionMin: Number(raw.loadReductionMin ?? raw.dropPercentMin ?? fallback.loadReductionMin ?? 0),
           loadReductionMax: Number(raw.loadReductionMax ?? raw.dropPercentMax ?? fallback.loadReductionMax ?? 0),
           restSeconds,
-          countsTowardVolume: raw.countsTowardVolume != null ? Boolean(raw.countsTowardVolume) : !isWarmup,
-          countsTowardScore: raw.countsTowardScore != null ? Boolean(raw.countsTowardScore) : !isWarmup,
+          countsTowardProgression: raw.countsTowardProgression != null ? Boolean(raw.countsTowardProgression) : !isWarmup,
           isWarmup
         };
-      }
-
-      function setRoleDefaultsForExercise(templateExercise, setType, profile, sessionType, targetRpe, restSeconds) {
-        const type = normalizeSetTypeCode(setType);
-        const role = ["top", "backoff", "drop"].includes(type) ? type : "straight";
-        const range = profile.roleRanges?.[role] || [profile.lowerRep, profile.upperRep];
-        const programmedRpe = Number(targetRpe || templateExercise.targetRpe || (profile.kind === "isolation" ? 8.5 : 8));
-        const isReducedSession = ["deload", "light", "technique"].includes(sessionType) || ["deload", "technique"].includes(type);
-        const rpeMax = isReducedSession ? Math.min(programmedRpe || 6.5, 6.5)
-          : role === "backoff" ? Math.max(6, programmedRpe - 0.5)
-            : programmedRpe;
-        const rpeMin = Math.max(1, rpeMax - (role === "top" ? 0.5 : 1));
-        const backoffReduction = profile.backoffReduction || (profile.kind === "isolation" ? [10, 20] : [8, 15]);
-        const reduction = role === "drop" ? [20, 25] : role === "backoff" ? backoffReduction : [0, 0];
-        const roleIncrement = Number(templateExercise.setRoleIncrements?.[role] || templateExercise.increment || profile.increment || 0);
-        const loadRule = role === "backoff"
-          ? "Reduce load " + reduction[0] + "-" + reduction[1] + "% from the top set, rounded to available equipment."
-          : role === "drop" ? "Reduce load " + reduction[0] + "-" + reduction[1] + "% from the preceding working set."
-            : role === "top" ? "Use the primary high-demand working load for this exercise."
-              : "Use the programmed straight-set load across comparable working sets.";
-        const roleProgressionRule = role === "top"
-          ? "Add the next top-set increment after reaching " + Number(range[1] || range[0]) + " reps without exceeding RPE " + targetRangeText(rpeMin, rpeMax) + "."
-          : role === "backoff"
-            ? "Add the next back-off increment after every programmed back-off set reaches " + Number(range[1] || range[0]) + " reps without exceeding RPE " + targetRangeText(rpeMin, rpeMax) + "."
-            : role === "drop"
-              ? "Progress the drop set only after reaching " + Number(range[1] || range[0]) + " controlled reps within RPE " + targetRangeText(rpeMin, rpeMax) + "."
-              : "Add the next increment after the programmed straight sets reach the top of their range within the RPE target.";
-        return {
-          type,
-          repMin: Number(range[0] || profile.lowerRep || 0),
-          repMax: Number(range[1] || profile.upperRep || range[0] || 0),
-          rpeMin,
-          rpeMax,
-          rpeTolerance: 0.5,
-          loadRule,
-          progressionRule: templateExercise.setRoleProgressionRules?.[role] || templateExercise.progressionRule || roleProgressionRule,
-          increment: roleIncrement,
-          loadReductionMin: reduction[0],
-          loadReductionMax: reduction[1],
-          restSeconds: role === "drop" ? Math.min(Number(restSeconds || 60), 60) : Number(restSeconds || 0),
-          countsTowardScore: type !== "warmup",
-          countsTowardVolume: type !== "warmup"
-        };
-      }
-
-      function progressionRuleForTargetSet(type) {
-        const role = normalizeSetTypeCode(type.type || type.setType);
-        const topReps = Number(type.repMax || type.repMin || 0);
-        const rpe = targetRangeText(type.rpeMin, type.rpeMax);
-        if (role === "top") return "Add the next top-set increment after reaching " + topReps + " reps without exceeding RPE " + rpe + ".";
-        if (role === "backoff") return "Add the next back-off increment after every programmed back-off set reaches " + topReps + " reps without exceeding RPE " + rpe + ".";
-        if (role === "drop") return "Progress the drop set only after reaching " + topReps + " controlled reps within RPE " + rpe + ".";
-        return "Add the next increment after the programmed straight sets reach " + topReps + " reps within RPE " + rpe + ".";
-      }
-
-      function roundEquipmentLoad(value, increment) {
-        const step = Math.max(0.01, Number(increment || 1));
-        return roundLoadForUnit(Math.max(0, Math.round(Number(value || 0) / step) * step), data.settings.weightUnit, step);
       }
 
       function previousComparableSetForRole(previousSets, setType, setTypeIndex = 0, workingSetIndex = 0) {
@@ -327,128 +273,6 @@
         return sameRole.find((set) => Number(set.setTypeIndex || 0) === Number(setTypeIndex || 0))
           || sameRole[Number(setTypeIndex || 0)]
           || null;
-      }
-
-      function resolvedSetTypesForPrescription(context, target, templateExercise = {}) {
-        const contextTypes = (context?.setTypes || []).filter((type) => type.countsTowardScore && !type.isWarmup);
-        const savedTypes = (templateExercise.setTypes || []).filter((type) => type.countsTowardScore !== false && !type.isWarmup);
-        const scored = contextTypes.length ? contextTypes : savedTypes;
-        const stableCount = Math.max(1, Number(templateExercise.sets || scored.reduce((sum, type) => sum + Number(type.setCount || 0), 0) || 1));
-        const temporaryException = target?.adjusted === true
-          || target?.safetyAdjustment === true
-          || target?.isDeload === true
-          || ["deload", "light", "technique", "readiness-adjusted", "return", "stop-modify"].includes(String(target?.mode || ""));
-        const requestedExceptionCount = Math.max(1, Number(target.sets || stableCount));
-        const targetCount = temporaryException ? Math.min(stableCount, requestedExceptionCount) : stableCount;
-        if ((!target.finalPrescription || typeof target.finalPrescription !== "object") && ["deload", "light", "technique"].includes(target.mode)) {
-          const source = scored.find((type) => type.type === "straight") || scored[0] || {};
-          const type = target.mode === "deload" ? "deload" : target.mode === "technique" ? "technique" : "straight";
-          return [{ ...source, type, label: setTypeLabels[type], setCount: targetCount, rpeMin: Math.max(1, Number(target.rpe || 6.5) - 1), rpeMax: Number(target.rpe || 6.5), loadReductionMin: 0, loadReductionMax: 0, loadRule: target.mode === "deload" ? "Use the resolved deload load; no top set or intensification technique." : "Use lower-fatigue straight sets for this session." }];
-        }
-        if (!scored.length) {
-          const defaults = setRoleDefaultsForExercise(templateExercise, "straight", progressionProfileForExercise(templateExercise.name), target.mode || "normal", target.rpe, target.restSeconds);
-          return [{ ...defaults, type: "straight", label: setTypeLabels.straight, setCount: targetCount, countsTowardScore: true, countsTowardVolume: true }];
-        }
-        const baseCount = Math.max(1, scored.reduce((sum, type) => sum + Number(type.setCount || 0), 0));
-        let remaining = targetCount;
-        return scored.map((type, index) => {
-          const count = index === scored.length - 1
-            ? remaining
-            : Math.min(remaining, Math.max(0, Math.round(Number(type.setCount || 0) * targetCount / baseCount)));
-          remaining -= count;
-          return { ...type, setCount: count };
-        }).filter((type) => type.setCount > 0);
-      }
-
-      function setPrescriptionForRole(options = {}) {
-        const { templateExercise, target, setType, setTypeIndex = 0, sequenceIndex = 0, workingSetIndex = 0, previousSets = [] } = options;
-        const role = normalizeSetTypeCode(setType.type || setType.setType);
-        const increment = Number(setType.increment || target.increment || templateExercise.increment || progressionProfileForExercise(templateExercise.name).increment || 1);
-        const resistanceType = target.resistanceType || templateExercise.resistanceType || "external";
-        const reductionMin = Number(setType.loadReductionMin || 0);
-        const reductionMax = Number(setType.loadReductionMax || reductionMin || 0);
-        const reduction = (reductionMin + reductionMax) / 2;
-        const assisted = resistanceType === "assisted_bodyweight";
-        const multiplier = reduction > 0 ? (assisted ? 1 + reduction / 100 : 1 - reduction / 100) : 1;
-        const routineDefaultLoad = Number(setType.defaultLoad ?? setType.targetLoad ?? templateExercise.defaultLoad ?? templateExercise.targetLoad ?? templateExercise.weight ?? 0);
-        const plannedTargetLoad = routineDefaultLoad > 0 ? roundEquipmentLoad(routineDefaultLoad * multiplier, increment) : 0;
-        const roleDefaults = setRoleDefaultsForExercise(templateExercise, role, progressionProfileForExercise(templateExercise.name), target.mode || "normal", target.rpe, setType.restSeconds || target.restSeconds);
-        const repRange = resolveProgrammedRepRange(setType, roleDefaults);
-        const repMin = Number(repRange.repMin || target.repLow || 0);
-        const repMax = Number(repRange.repMax || target.repHigh || repMin);
-        const previousComparableSet = previousComparableSetForRole(previousSets, role, setTypeIndex, workingSetIndex);
-        const previousReps = Number(previousComparableSet?.reps || 0);
-        const comparableRoleSets = previousSets.filter((set) => normalizeSetTypeCode(set.setType, set.isWarmup) === role);
-        const routineDefaultReps = Number(setType.defaultReps ?? templateExercise.defaultReps ?? templateExercise.reps ?? 0);
-        const programmedTargetReps = previousReps || routineDefaultReps || 0;
-        const stableRpeMin = Number(setType.rpeMin || Math.max(1, Number(setType.rpeMax || templateExercise.targetRpe || 0) - 1));
-        const stableRpeMax = Number(setType.rpeMax || templateExercise.targetRpe || stableRpeMin);
-        const previousRpe = Number(previousComparableSet?.rpe || 0);
-        const routineDefaultRpe = Number(setType.defaultRpe ?? templateExercise.defaultRpe ?? stableRpeMax);
-        const factualRpe = previousRpe > 0 ? previousRpe : routineDefaultRpe > 0 ? routineDefaultRpe : "";
-        const temporaryException = target?.adjusted === true
-          || target?.safetyAdjustment === true
-          || target?.isDeload === true
-          || ["deload", "light", "technique", "readiness-adjusted", "return", "stop-modify"].includes(String(target?.mode || ""));
-        const exceptionRpe = temporaryException ? Number(target.rpe || 0) : 0;
-        const prefillRpe = exceptionRpe > 0 && Number(factualRpe || 0) > 0 ? Math.min(Number(factualRpe), exceptionRpe) : factualRpe;
-        const rpeMax = exceptionRpe > 0 ? Math.min(stableRpeMax, exceptionRpe) : stableRpeMax;
-        const rpeMin = exceptionRpe > 0 ? Math.min(stableRpeMin, Math.max(1, exceptionRpe - 1)) : stableRpeMin;
-        const expectedRoleCount = Math.max(1, Number(setType.setCount || 1));
-        const qualifyingComparableSets = comparableRoleSets.length >= expectedRoleCount && comparableRoleSets.every((set) => {
-          const reps = Number(set.reps || 0);
-          const rpe = Number(set.rpe || 0);
-          return reps >= repMax && rpe > 0 && rpe <= rpeMax;
-        });
-        const progressionReady = role === "backoff"
-          ? qualifyingComparableSets
-          : role === "top"
-            ? previousComparableSet ? Number(previousComparableSet.reps || 0) >= repMax && Number(previousComparableSet.rpe || 0) > 0 && Number(previousComparableSet.rpe || 0) <= rpeMax : false
-            : qualifyingComparableSets;
-        const previousLoad = previousComparableSet ? resistanceLoad(previousComparableSet, resistanceType) : 0;
-        const factualLoad = previousLoad || plannedTargetLoad;
-        const loadReductionPercent = temporaryException ? Math.max(0, Math.min(100, Number(target.loadReductionPercent || 0))) : 0;
-        const reducedFactualLoad = factualLoad > 0 && loadReductionPercent > 0
-          ? roundEquipmentLoad(factualLoad * (resistanceType === "assisted_bodyweight" ? 1 + loadReductionPercent / 100 : 1 - loadReductionPercent / 100), increment)
-          : 0;
-        const exceptionLoad = temporaryException ? Number(reducedFactualLoad || target.weight || 0) : 0;
-        const targetLoad = exceptionLoad > 0
-          ? factualLoad > 0
-            ? resistanceType === "assisted_bodyweight" ? Math.max(factualLoad, exceptionLoad) : Math.min(factualLoad, exceptionLoad)
-            : exceptionLoad
-          : factualLoad;
-        const targetReps = programmedTargetReps;
-        const candidateNextLoad = resistanceType === "assisted_bodyweight"
-          ? roundEquipmentLoad(Math.max(0, targetLoad - increment), increment)
-          : roundEquipmentLoad(targetLoad + increment, increment);
-        const nextLoad = progressionReady ? candidateNextLoad : targetLoad;
-        const progressionRule = setType.progressionRule || ("Progress after reaching " + repMax + " reps within RPE " + targetRangeText(rpeMin, rpeMax) + " on " + (role === "backoff" ? "the comparable back-off work" : role === "top" ? "the top set" : "the programmed sets") + ".");
-        const roleName = setTypeLabels[role] || "Working set";
-        const prefillSource = previousComparableSet
-          ? "prior_comparable_set"
-          : routineDefaultLoad > 0 || routineDefaultReps > 0
-            ? "routine_default"
-            : temporaryException && exceptionLoad > 0 ? "temporary_exception" : "blank";
-        const reason = prefillSource === "prior_comparable_set"
-          ? "Prefilled from the corresponding " + roleName.toLowerCase() + " in the most recent comparable workout."
-          : prefillSource === "routine_default"
-            ? "Prefilled from the exercise variant's explicit routine default."
-            : prefillSource === "temporary_exception"
-              ? "Prefilled only with the active temporary exception's lower-demand load."
-              : "No comparable prior set or explicit routine default is available, so input remains blank.";
-        return { setType: role, sequenceIndex, setTypeIndex, targetLoad, targetReps, prefillRpe, repMin, repMax, programmedRepMin: repMin, programmedRepMax: repMax, exactReps: repRange.exactReps, rangeSource: repRange.rangeSource, rpeMin, rpeMax, restSeconds: Number(setType.restSeconds || templateExercise.restSeconds || 0), increment, nextLoad, candidateNextLoad, progressionReady, loadRule: setType.loadRule || "", progressionRule, reductionPercent: Math.max(reduction, loadReductionPercent), previousComparableSet, prefillSource, progressionDelta: previousComparableSet ? { load: Number((targetLoad - resistanceLoad(previousComparableSet, resistanceType)).toFixed(4)), reps: targetReps - previousReps } : null, confidence: previousComparableSet ? "high" : routineDefaultLoad > 0 || routineDefaultReps > 0 ? "high" : "low", evidenceConfidence: target.confidence || "low", reason: roleName + ": " + reason };
-      }
-
-      function validateGeneratedSetPrescriptions(prescriptions, resistanceType) {
-        const top = prescriptions.find((item) => item.setType === "top");
-        return prescriptions.map((item) => {
-          if (!top || item.setType !== "backoff") return item;
-          if (Number(top.targetLoad || 0) <= 0) return item;
-          const identical = item.targetLoad === top.targetLoad && item.repMin === top.repMin && item.repMax === top.repMax && item.rpeMin === top.rpeMin && item.rpeMax === top.rpeMax;
-          if (identical) return { ...item, validationWarning: "The preserved back-off role currently has the same factual prefill and stable target as the top set." };
-          const demandReduced = resistanceType === "assisted_bodyweight" ? item.targetLoad > top.targetLoad : item.targetLoad < top.targetLoad;
-          return demandReduced ? item : { ...item, validationWarning: "Back-off demand was not lower than the top set." };
-        });
       }
 
       function templateSetTypesFromHistory(sets, restSeconds = 0) {
@@ -483,8 +307,7 @@
             restSeconds: Number(first.targetRestSeconds || restSeconds || 0),
             loadReductionMin: type === "drop" ? 20 : 0,
             loadReductionMax: type === "drop" ? 25 : 0,
-            countsTowardScore: true,
-            countsTowardVolume: true
+            countsTowardProgression: true
           });
         });
       }
@@ -648,6 +471,7 @@
           ? chartDetailPoint : null;
         const selectedIndex = selected ? chartPoints.findIndex((point) => point.sessionId === selected.sessionId && point.value === selected.value) : -1;
         const selectedPoint = selectedIndex >= 0 ? chartPoints[selectedIndex] : null;
+        const keyboardPointIndex = selectedIndex >= 0 ? selectedIndex : chartPoints.length - 1;
         const grid = [0, 1 / 3, 2 / 3, 1].map((ratio) => {
           const y = plot.top + ratio * plotHeight;
           const value = domainMax - ratio * domainSpread;
@@ -666,12 +490,12 @@
           <div class="chart-card" data-chart-key="${chartKey}">
             <header><strong>${escapeHtml(title)}</strong><span>${chartPoints.length} session${chartPoints.length === 1 ? "" : "s"}</span></header>
             <div class="chart-svg">
-              <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(title)} chart">
+              <svg viewBox="0 0 ${width} ${height}" role="group" aria-label="${escapeHtml(title)} chart. Use Left and Right Arrow keys to review sessions.">
                 <defs><clipPath id="chart-clip-${chartKey}"><rect x="${plot.left - 3}" y="${plot.top - 3}" width="${plotWidth + 6}" height="${plotHeight + 6}" rx="3"></rect></clipPath></defs>
                 ${grid}
                 ${chartSegments}
                 ${selectedPoint ? '<line class="chart-selected-guide" x1="' + selectedPoint.x.toFixed(1) + '" y1="' + selectedPoint.y.toFixed(1) + '" x2="' + selectedPoint.x.toFixed(1) + '" y2="' + (plot.top + plotHeight).toFixed(1) + '"></line>' : ""}
-                ${chartPoints.map((point, index) => { const isSelected = index === selectedIndex; const activationKey = registerChartPointActivation(chartKey, point, scope); return '<g class="chart-point evidenced ' + (isSelected ? 'selected' : '') + '" role="button" tabindex="0" aria-pressed="' + (isSelected ? 'true' : 'false') + '" aria-label="' + escapeHtml(title + ': ' + point.value + ' on ' + formatDate(point.date) + ' in ' + point.sessionTitle) + '" data-action="show-chart-point" data-chart-key="' + chartKey + '" data-chart-date="' + escapeHtml(point.date) + '" data-chart-point-key="' + activationKey + '"><circle class="hit-area" cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="34"></circle><circle class="selected-ring" cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="9"></circle><circle class="visible-point" cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="4.5"></circle></g>'; }).join("")}
+                ${chartPoints.map((point, index) => { const isSelected = index === selectedIndex; const activationKey = registerChartPointActivation(chartKey, point, scope); return '<g class="chart-point evidenced ' + (isSelected ? 'selected' : '') + '" role="button" tabindex="' + (index === keyboardPointIndex ? '0' : '-1') + '" aria-pressed="' + (isSelected ? 'true' : 'false') + '" aria-label="' + escapeHtml(title + ': ' + point.value + ' on ' + formatDate(point.date) + ' in ' + point.sessionTitle) + '" data-action="show-chart-point" data-chart-key="' + chartKey + '" data-chart-date="' + escapeHtml(point.date) + '" data-chart-point-key="' + activationKey + '"><circle class="hit-area" cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="34"></circle><circle class="selected-ring" cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="9"></circle><circle class="visible-point" cx="' + point.x.toFixed(1) + '" cy="' + point.y.toFixed(1) + '" r="4.5"></circle></g>'; }).join("")}
                 ${dateLabels}
               </svg>
             </div>
@@ -689,6 +513,39 @@
       function shortChartDate(dateIso) {
         const date = new Date(dateIso + "T00:00:00");
         return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(date);
+      }
+
+      function recentProgressWindowStart(points) {
+        const latestDate = String(points.at(-1)?.date || "");
+        const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(latestDate);
+        if (!match) return "";
+        const latestYear = Number(match[1]);
+        const latestMonth = Number(match[2]) - 1;
+        const latestDay = Number(match[3]);
+        const monthIndex = latestYear * 12 + latestMonth - 6;
+        const startYear = Math.floor(monthIndex / 12);
+        const startMonth = ((monthIndex % 12) + 12) % 12;
+        const daysInStartMonth = new Date(Date.UTC(startYear, startMonth + 1, 0)).getUTCDate();
+        return [
+          String(startYear).padStart(4, "0"),
+          String(startMonth + 1).padStart(2, "0"),
+          String(Math.min(latestDay, daysInStartMonth)).padStart(2, "0")
+        ].join("-");
+      }
+
+      function progressPointsForDateWindow(points, windowName = progressDateWindow) {
+        if (windowName === "all") return points;
+        const cutoff = recentProgressWindowStart(points);
+        return cutoff ? points.filter((point) => point.date >= cutoff) : points;
+      }
+
+      function originalImportedLoadFact(set) {
+        const original = set?.originalImportedValue;
+        if (!original || !Object.prototype.hasOwnProperty.call(original, "weight")) return "";
+        const rawWeight = String(original.weight ?? "").trim();
+        const weightUnit = String(original.weightUnit || "").trim().toLowerCase();
+        if (!rawWeight || !Number.isFinite(Number(rawWeight)) || !["lb", "kg"].includes(weightUnit)) return "";
+        return `Imported: ${rawWeight} ${weightUnit}`;
       }
 
       function chartPointSessionGroups(point) {
@@ -718,11 +575,13 @@
             const semantics = setTypeSemantics(set);
             const role = setTypeLabels[semantics.type] || (semantics.isWarmup ? "Warm-up set" : "Working set");
             const resistance = formatResistance(set, exercise);
+            const importedLoad = originalImportedLoadFact(set);
             const facts = [
               resistance || "load not recorded",
               Number(set.reps || 0) > 0 ? formatLoadNumber(set.reps) + " reps" : "reps not recorded",
-              Number(set.rpe || 0) > 0 ? "RPE " + formatLoadNumber(set.rpe) : "RPE not recorded"
-            ];
+              Number(set.rpe || 0) > 0 ? "RPE " + formatLoadNumber(set.rpe) : "RPE not recorded",
+              importedLoad
+            ].filter(Boolean);
             return '<div class="row-item chart-set-fact"><span class="ri-copy"><b>Set ' + (Number(set.setNumber) || index + 1) + ' · ' + escapeHtml(role) + '</b><span>' + escapeHtml(facts.join(" · ")) + '</span></span></div>';
           }).join("") + '</div></section>').join("");
       }
@@ -738,13 +597,14 @@
               : " reps";
         const close = '<button class="icon-button" type="button" data-action="close-chart-point" aria-label="Close chart detail">' + icon.close + '</button>';
         const role = best ? setTypeLabels[setTypeSemantics(best).type] || (best.isWarmup ? "Warm-up set" : "Working set") : "";
+        const importedLoad = originalImportedLoadFact(best);
         const notes = [
           point.exerciseNotes ? '<div class="chart-source-note"><strong>Exercise note</strong><span>' + escapeHtml(point.exerciseNotes) + '</span></div>' : "",
           point.sessionNotes ? '<div class="chart-source-note"><strong>Session note</strong><span>' + escapeHtml(point.sessionNotes) + '</span></div>' : "",
           '<div class="chart-source-note"><strong>Source</strong><span>' + escapeHtml(point.source || "Source not recorded") + '</span></div>'
         ].join("");
         return '<article class="chart-detail" role="status"><div class="row split"><div><span class="section-kicker">Selected session · ' + formatDate(point.date) + '</span><strong>' + escapeHtml(title + ' · ' + point.value + unitLabel) + '</strong><span class="chart-detail-exercise">' + escapeHtml(exerciseName) + ' · ' + escapeHtml(point.sessionTitle || "Workout") + '</span></div>' + close + '</div>'
-          + '<div class="rollup chart-point-rollup"><span class="ru"><b>' + (best ? escapeHtml(formatResistance(best, exercise)) : noData("Load unavailable")) + '</b><span>load</span></span><span class="ru"><b>' + (best?.reps ? escapeHtml(best.reps) : noData("Repetitions unavailable")) + '</b><span>reps</span></span><span class="ru"><b>' + (best?.rpe ? escapeHtml(best.rpe) : noData("RPE unavailable")) + '</b><span>RPE</span></span><span class="ru"><b>' + (role ? escapeHtml(role) : noData("Role unavailable")) + '</b><span>role</span></span></div>'
+          + '<div class="rollup chart-point-rollup"><span class="ru"><b>' + (best ? escapeHtml(formatResistance(best, exercise)) : noData("Load unavailable")) + '</b><span>load</span>' + (importedLoad ? '<span class="imported-source-value">' + escapeHtml(importedLoad) + '</span>' : '') + '</span><span class="ru"><b>' + (best?.reps ? escapeHtml(best.reps) : noData("Repetitions unavailable")) + '</b><span>reps</span></span><span class="ru"><b>' + (best?.rpe ? escapeHtml(best.rpe) : noData("RPE unavailable")) + '</b><span>RPE</span></span><span class="ru"><b>' + (role ? escapeHtml(role) : noData("Role unavailable")) + '</b><span>role</span></span></div>'
           + '<div class="chart-source-facts">' + notes + '</div>'
           + '<div><div class="m-label"><span>Recorded sets</span><span>source facts</span></div>' + renderChartPointSetGroups(point) + '</div></article>';
       }
@@ -764,7 +624,8 @@
         if (catalog.length === 0) {
           return '<section class="view charts-view"><div class="screen-heading"><div><div class="section-kicker">Progress</div><h1>Training history</h1></div></div><div class="empty-state">Complete a workout to add exercise history.</div>' + renderHistory() + '</section>';
         }
-        const latestPoint = progress.points.at(-1);
+        const visiblePoints = progressPointsForDateWindow(progress.points);
+        const latestPoint = visiblePoints.at(-1);
         const latestFact = latestPoint?.bestSet
           ? formatSetPerformance(latestPoint.bestSet, exercise) + " · " + formatDate(latestPoint.date)
           : "No comparable completed working set yet.";
@@ -777,13 +638,14 @@
           <section class="view charts-view">
             <div class="screen-heading"><div><div class="section-kicker">Progress</div><h1>Training history</h1></div></div>
             <div class="chart-control-panel" aria-label="Selected lift controls">
-              <div class="chart-viewing-summary"><div><span>Exercise or variant</span><strong>${escapeHtml(selectedName)}</strong><span>${escapeHtml(latestFact)}</span></div><span class="status-pill inside">${progress.points.length} session${progress.points.length === 1 ? "" : "s"}</span></div>
+              <div class="chart-viewing-summary"><div><span>Exercise or variant</span><strong>${escapeHtml(selectedName)}</strong><span>${escapeHtml(latestFact)}</span></div><span class="status-pill inside">${visiblePoints.length} ${progressDateWindow === "all" ? "" : "recent "}session${visiblePoints.length === 1 ? "" : "s"}</span></div>
               <div class="chart-control-field chart-control-lift"><label for="chart-exercise-search">Chart lift</label><div class="chart-search-input"><input id="chart-exercise-search" type="search" data-action="review-exercise-input" role="combobox" aria-autocomplete="list" aria-controls="chart-exercise-suggestions" aria-expanded="${chartExerciseSearchOpen ? 'true' : 'false'}" aria-label="Search or select exercise" autocomplete="off" value="${escapeHtml(chartExerciseDraft || selectedName)}" /><button class="chart-search-clear" type="button" data-action="clear-chart-exercise-search" aria-label="Clear exercise search">×</button></div><div id="chart-exercise-suggestions" class="exercise-suggestions" role="listbox" ${chartExerciseSearchOpen ? '' : 'hidden'}>${renderExerciseSuggestions()}</div><small class="exercise-search-error" role="status" ${chartExerciseSearchError ? '' : 'hidden'}>${escapeHtml(chartExerciseSearchError)}</small></div>
+              <div class="segmented chart-date-window" role="radiogroup" aria-label="Performance chart date range"><label><input type="radio" name="progress-date-window" value="recent" data-action="set-progress-date-window" data-window="recent" ${progressDateWindow === "recent" ? "checked" : ""} /><span>Recent six months</span></label><label><input type="radio" name="progress-date-window" value="all" data-action="set-progress-date-window" data-window="all" ${progressDateWindow === "all" ? "checked" : ""} /><span>All history</span></label></div>
               <p class="chart-control-context">The chart uses ${escapeHtml(comparisonRoleLabel.toLowerCase())} observations from submitted workouts. Named variants and resistance types remain separate.</p>
             </div>
             <section class="screen-section primary-analysis-chart">
               <div class="section-heading"><div><h2>Performance trend</h2><p>Tap a point for its date, load, reps, RPE, role, and workout.</p></div></div>
-              ${renderChart("performance", progress.title, progress.points, "No comparable completed sets yet.", chartPointScope)}
+              ${renderChart("performance", progress.title, visiblePoints, "No comparable completed sets in this date range.", chartPointScope)}
             </section>
             ${renderHistory()}
           </section>
@@ -869,35 +731,23 @@
       }
 
       function renderSettings() {
-        const baseline = readinessBaseline();
         const pushStatus = notificationStatus();
         const migration = data.migrationAudit?.at(-1);
         const reviewSets = data.sets.filter((set) => set.reviewRequired);
         const localClearBlock = localClearBlockReason();
-        const cloudEnabled = data.settings.cloudWorkoutSyncConsent === true;
-        const colorPackages = [
-          ["heritage-atlas", "Heritage Atlas"], ["signal-garden", "Signal Garden"], ["alpine-ledger", "Alpine Ledger"],
-          ["training-hall", "Training Hall"], ["harbor-pulse", "Harbor Pulse"], ["prairie-electric", "Prairie Electric"],
-          ["redwood-circuit", "Redwood Circuit"], ["mediterranean-set", "Mediterranean Set"], ["modern-primary", "Modern Primary"],
-          ["night-stadium", "Night Stadium"]
-        ];
-        const appearance = `
-          <div class="field"><div class="f-top"><span class="f-name">Weight unit</span><span class="f-help">Converts load-bearing app data</span></div>${renderSegmentedSetting("weight-unit", "settings-weight-unit", data.settings.weightUnit, [["lb", "Pounds"], ["kg", "Kilograms"]])}</div>
-          <div class="field"><div class="f-top"><span class="f-name">Theme</span><span class="f-help">Display only</span></div>${renderSegmentedSetting("theme-mode", "settings-theme", data.settings.theme, [["light", "Light"], ["dark", "Dark"]])}</div>
-          <div class="field"><div class="f-top"><span class="f-name">Colour package</span><span class="f-help">10 available</span></div><div class="chiprow color-package-picks">${colorPackages.map(([value, label]) => '<label class="pick" data-color-package="' + value + '"><input type="radio" name="settings-color-package" value="' + value + '" data-action="color-package" ' + (data.settings.colorPackage === value ? 'checked' : '') + ' /><span class="package-swatches" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>' + label + '</span></label>').join('')}</div><span class="f-help">Changes semantic surfaces and state colours without changing training logic.</span></div>`;
+        const units = `
+          <div class="field"><div class="f-top"><span class="f-name">Weight unit</span><span class="f-help">Display preference; recorded sets keep their stored unit</span></div>${renderSegmentedSetting("weight-unit", "settings-weight-unit", data.settings.weightUnit, [["lb", "Pounds"], ["kg", "Kilograms"]])}</div>`;
         const alerts = `
           <div class="alert-settings-list">
             ${renderAlertSetting("timer-notifications", "Lock-screen rest notifications", "Requires permission and an installed Home Screen app.", pushStatus.notificationsEnabled, { stateLabel: pushStatus.permissionStatus === "denied" ? "Permission denied" : pushStatus.lockScreenReady ? "Enabled" : "Needs setup" })}
             ${renderAlertSetting("in-app-rest-alerts", "In-app completion alert", "Shows the tappable Rest complete banner while using the app.", pushStatus.inAppAlertEnabled)}
             ${renderAlertSetting("timer-sound", "Foreground completion sound", "Respects browser audio restrictions and system controls.", pushStatus.foregroundSoundEnabled, { stateLabel: pushStatus.foregroundSoundEnabled ? (pushStatus.soundConfirmed ? "Confirmed" : "Not tested") : "Disabled" })}
             ${renderAlertSetting("timer-vibration", "Browser vibration", "Used only where the browser exposes vibration support.", data.settings.timerVibration !== false, { unavailable: !pushStatus.vibrationSupported, stateLabel: pushStatus.vibrationSupported ? "Enabled" : "Unsupported" })}
-            ${renderAlertSetting("workout-completion-sound", "Workout and PR sound", "Plays only for workout completion and meaningful milestones.", data.settings.workoutCompletionSound !== false)}
           </div>
           <label class="field"><span class="f-top"><span class="f-name">Rest-complete sound</span></span><select data-action="rest-complete-sound"><option value="sharp_two_tone" ${data.settings.restCompleteSound === "sharp_two_tone" ? "selected" : ""}>Sharp two-tone chime (default)</option><option value="clear_bell" ${data.settings.restCompleteSound === "clear_bell" ? "selected" : ""}>Clear bell</option><option value="whistle" ${data.settings.restCompleteSound === "whistle" ? "selected" : ""}>Whistle tone</option></select></label>
           <div class="field"><div class="f-top"><span class="f-name">Rest-complete volume</span><button type="button" data-action="preview-rest-complete-sound">Preview sound</button></div><input type="range" min="0" max="1" step="0.05" value="${Number(data.settings.restCompleteSoundVolume ?? 0.85)}" data-action="rest-complete-volume" aria-label="Rest-complete volume" /></div>
           <label class="field"><span class="f-top"><span class="f-name">Alert auto-dismiss</span><span class="f-help">Seconds</span></span><input type="number" min="1" max="60" step="1" value="${Math.round(Number(data.settings.restCompleteAutoDismissMs || 5000) / 1000)}" data-action="rest-complete-dismiss-seconds" /></label>
           ${renderAlertSetting("rest-complete-auto-return", "Return after alert", "Return to the active workout automatically when the in-app alert dismisses.", data.settings.restCompleteAutoReturnToWorkout === true)}
-          ${renderAlertSetting("interaction-vibration", "Interaction vibration", "Used only where the browser exposes vibration support.", data.settings.interactionVibration !== false)}
           <div class="field"><div class="f-top"><span class="f-name">Default rest duration</span><span class="f-help">Seconds · per-exercise and per-set targets override this</span></div><div class="stepper settings-rest-stepper"><button class="sb" type="button" data-action="adjust-default-rest" data-delta="-15" aria-label="Reduce default rest by 15 seconds">&minus;</button><input class="sv" type="number" min="15" max="900" step="15" value="${Number(data.settings.defaultRestSeconds || 90)}" data-action="default-rest-seconds" aria-label="Default rest duration in seconds" /><button class="sb" type="button" data-action="adjust-default-rest" data-delta="15" aria-label="Increase default rest by 15 seconds">+</button></div></div>
           <div class="field"><div class="f-top"><span class="f-name">Notification detail</span><span class="f-help">Visible lock-screen wording only</span></div>${renderSegmentedSetting("notification-detail", "settings-notification-detail", data.settings.notificationMessageDetail === "private" ? "private" : "exercise-set", [["exercise-set", "Exercise and set"], ["private", "Private body"]])}</div>
           <div class="callout warn notification-privacy-boundary"><b>Private changes the visible notification body only</b><span>The notification service still receives installation and timer identifiers, workout, exercise and set identifiers, the exercise name, the upcoming-set label or number, and the completion time. Private body mode hides those workout details from the visible alert; it does not keep them off the server-side timer record.</span></div>
@@ -906,24 +756,25 @@
           ${"Notification" in window && Notification.permission === "denied" ? '<div class="callout bad"><b>Notification permission denied</b><span>Open system notification settings for Comprehensive Fitness, then enable alerts, sounds, and lock-screen delivery.</span></div>' : ""}
           <div class="m-label"><span>Installed app setup</span><span>${escapeHtml(pushStatus.label)}</span></div>${renderPwaSetup()}
           ${notificationMessage ? '<p class="settings-note">' + escapeHtml(notificationMessage) + '</p>' : ""}`;
-        const readiness = `
-          <div class="callout provisional"><b>Your usual range</b><span>These values are your stored normal averages. Blank metrics remain missing; they are never treated as zero.</span></div>
-          <div class="recovery-inputs">
-            <label class="field"><span class="f-name">Average sleep hours</span><input type="number" min="0" max="14" step="0.25" value="${escapeHtml(baseline.sleepHours)}" data-action="baseline-sleep-hours" /></label>
-            <label class="field"><span class="f-name">Average sleep quality</span><input type="number" min="1" max="5" step="1" value="${escapeHtml(baseline.sleepQuality)}" data-action="baseline-sleep-quality" /></label>
-            <label class="field"><span class="f-name">Average HRV</span><input type="number" min="0" step="1" value="${escapeHtml(baseline.hrv)}" data-action="baseline-hrv" /></label>
-            <label class="field"><span class="f-name">Average resting HR</span><input type="number" min="0" step="1" value="${escapeHtml(baseline.restingHr)}" data-action="baseline-resting-hr" /></label>
-            <label class="field"><span class="f-name">Average soreness</span><input type="number" min="1" max="5" step="1" value="${escapeHtml(baseline.soreness)}" data-action="baseline-soreness" /></label>
-            <label class="field"><span class="f-name">Band tolerance</span><input type="number" min="3" max="20" step="1" value="${escapeHtml(baseline.band)}" data-action="baseline-band" /></label>
-          </div>`;
+        const pendingPreview = pendingImport?.preview || null;
+        const pendingCounts = pendingPreview?.counts || {};
+        const pendingImportPanel = pendingPreview ? `
+          <div class="callout info import-preview" data-import-preview role="region" aria-labelledby="import-preview-title">
+            <b id="import-preview-title">${escapeHtml(pendingPreview.title)}</b>
+            <span>${escapeHtml(pendingPreview.mode)} · ${escapeHtml(pendingPreview.version)} · ${escapeHtml(pendingPreview.sourceBytes)} bytes${pendingPreview.sourceUnit ? " · source weights " + escapeHtml(pendingPreview.sourceUnit) : ""}</span>
+            <span data-import-preview-counts>${escapeHtml(pendingCounts.sessions || 0)} workout${Number(pendingCounts.sessions || 0) === 1 ? "" : "s"} · ${escapeHtml(pendingCounts.exercises || 0)} exercise${Number(pendingCounts.exercises || 0) === 1 ? "" : "s"} · ${escapeHtml(pendingCounts.sets || 0)} set${Number(pendingCounts.sets || 0) === 1 ? "" : "s"} · ${escapeHtml(pendingCounts.templates || 0)} routine${Number(pendingCounts.templates || 0) === 1 ? "" : "s"}</span>
+            <span>${escapeHtml(pendingPreview.reviewRequired || 0)} set classification${Number(pendingPreview.reviewRequired || 0) === 1 ? "" : "s"} require review.</span>
+            <ul>${(pendingPreview.facts || []).slice(0, 5).map((fact) => "<li>" + escapeHtml(fact) + "</li>").join("")}</ul>
+            <span><strong>No data has changed.</strong> Apply uses one durable replacement and restores the prior local copy if finalization fails.</span>
+            <div class="row"><button class="primary-action" type="button" data-action="apply-pending-import" ${importInProgress ? "disabled" : ""}>${pendingImport.noChanges ? "Confirm no changes" : "Apply import"}</button><button type="button" data-action="cancel-pending-import" ${importInProgress ? "disabled" : ""}>Cancel</button></div>
+          </div>` : "";
         const dataAndBackup = `
-          <div class="callout info privacy-boundary"><b>Local by default</b><span>Workout history, templates, settings, readiness, and imported personal evidence stay in this browser unless you explicitly export them or enable the workout cloud copy.</span></div>
-          ${renderAlertSetting("cloud-workout-sync-consent", "Optional workout cloud copy", "Default off. When enabled, the app may transmit the full current session—including an active, unsubmitted workout—and every associated exercise and set object. Server copies expire after 90 days, are write-only, and cannot be restored in the app.", cloudEnabled, { stateLabel: cloudEnabled ? "Enabled" : "Local only" })}
-          <div class="callout bad cloud-not-backup"><b>Cloud copy is not a backup</b><span>There is no cloud-history or restore endpoint. A downloaded app-data export is the only implemented copy that can be imported to recover these records. ${cloudEnabled ? "Cloud copy is currently enabled, but it still cannot restore this app." : "Cloud copy is currently off."}</span></div>
+          <div class="callout info privacy-boundary"><b>Workout data stays local</b><span>Workout history, routines, settings, readiness, and imports stay in this browser unless you explicitly export them. Server-assisted rest notifications retain only their disclosed notification and navigation fields.</span></div>
+          <div class="callout bad cloud-not-backup"><b>Export is the recoverable copy</b><span>The app does not upload workout history and has no cloud-history or restore endpoint. A downloaded app-data export is the only implemented copy that can be imported to recover these records.</span></div>
           <div class="recoverability-list"><div class="m-label"><span>Recoverability</span><span>verified facts</span></div>${renderStoragePersistenceFact()}<div class="row-item"><span class="ri-copy"><b>Recoverable copy</b><span>The app does not record when you last exported. Create and retain a downloaded export yourself.</span></span><span class="ri-val">Export only</span></div></div>
-          ${syncMessage ? '<p class="settings-note">' + escapeHtml(syncMessage) + '</p>' : ''}
           ${importAttempt ? '<p role="status" aria-live="polite" data-import-status data-import-state="' + escapeHtml(importStatus.state) + '" data-import-attempt="' + importAttempt + '">' + escapeHtml(importStatus.message) + '</p>' : ''}
-          ${importInProgress ? '<div class="state-skeleton import-skeleton" role="status" aria-live="polite"><span class="skeleton skeleton-kicker" aria-hidden="true"></span><span class="skeleton skeleton-title" aria-hidden="true"></span><span class="skeleton skeleton-panel" aria-hidden="true"></span><span class="visually-hidden">Importing workout history. Navigation will recover automatically when it finishes.</span></div>' : ""}
+          ${importInProgress ? '<div class="state-skeleton import-skeleton" role="status" aria-live="polite"><span class="skeleton skeleton-kicker" aria-hidden="true"></span><span class="skeleton skeleton-title" aria-hidden="true"></span><span class="skeleton skeleton-panel" aria-hidden="true"></span><span class="visually-hidden">Validating or applying workout history. Navigation will recover automatically when it finishes.</span></div>' : ""}
+          ${pendingImportPanel}
           <button class="primary-action" type="button" data-action="export-data">${icon.download} Export all app data</button>
           ${exportText ? '<textarea class="export-box" readonly aria-label="Exported backup JSON">' + escapeHtml(exportText) + '</textarea>' : ""}
           <label class="field"><span class="f-top"><span class="f-name">Strong CSV source weight unit</span><span class="f-help">Does not change the display unit</span></span><select data-action="strong-import-weight-unit"><option value="" ${!strongImportWeightUnit ? "selected" : ""}>Choose the unit used in the CSV</option><option value="lb" ${strongImportWeightUnit === "lb" ? "selected" : ""}>Pounds (lb)</option><option value="kg" ${strongImportWeightUnit === "kg" ? "selected" : ""}>Kilograms (kg)</option></select></label>
@@ -935,18 +786,17 @@
           <div class="callout bad"><b>High-risk actions</b><span>These actions change or delete stored records. Each destructive path names its scope and requires confirmation.</span></div>
           <div class="row-item"><span class="ri-copy"><b>Clear All Local App Data</b><span>Removes local app records. Retained server records are deleted first; clearing pauses offline or while remote cleanup is unresolved.</span></span><button class="danger-button" type="button" data-action="clear-data" ${localClearBlock ? "disabled" : ""}>Clear All Local App Data</button></div>
           ${localClearBlock ? '<p class="settings-note" role="status">' + escapeHtml(localClearBlock) + '</p>' : ''}
-          <div class="row-item"><span class="ri-copy"><b>Delete Remote Installation Data</b><span>Revokes this installation and removes its remote notification and workout-copy records. Local workouts remain.</span></span><button class="danger-button" type="button" data-action="delete-remote-installation" ${pushIdentity?.token ? "" : "disabled"}>${pushIdentity?.deletion?.retryable ? "Retry Remote Deletion" : "Delete Remote Installation Data"}</button></div>
+          <div class="row-item"><span class="ri-copy"><b>Delete Remote Installation Data</b><span>Revokes this installation and removes its remote notification records plus any legacy workout-copy records. Local workouts remain.</span></span><button class="danger-button" type="button" data-action="delete-remote-installation" ${pushIdentity?.token ? "" : "disabled"}>${pushIdentity?.deletion?.retryable ? "Retry Remote Deletion" : "Delete Remote Installation Data"}</button></div>
           ${pushIdentity?.deletion?.message ? '<p class="settings-note" role="status">' + escapeHtml(pushIdentity.deletion.message) + '</p>' : ''}
           <div class="m-label"><span>Support</span><span>guidance</span></div><p class="settings-note">Progression guidance is informational fitness guidance, not medical advice. Stop if something hurts and use your own judgment.</p><p class="settings-links"><a href="./privacy.html">Privacy Policy</a><a href="./support.html">Support</a></p>`;
         return `
           <section class="view settings-view">
-            <div class="screen-heading"><div><div class="section-kicker">Settings</div><h1>App settings.</h1><p>Timer behavior, readiness defaults, privacy, and data controls.</p></div><button type="button" data-action="open-routines">Routines</button></div>
+            <div class="screen-heading"><div><div class="section-kicker">Settings</div><h1>App settings.</h1><p>Timer behavior, privacy, and data controls.</p></div><button type="button" data-action="open-routines">Routines</button></div>
             ${appDataPersistenceConflict ? '<p class="settings-note persistence-conflict-note" role="status">' + escapeHtml(appDataPersistenceConflict.message) + '</p>' : ""}
             ${settingsMessage ? '<p class="settings-note persistence-status-note" role="status">' + escapeHtml(settingsMessage) + '</p>' : ""}
-            ${renderSettingsGroup("Appearance and units", "Display", appearance, { open: true })}
+            ${renderSettingsGroup("Weight unit", "Display", units, { open: true })}
             ${renderSettingsGroup("Rest timer and alerts", pushStatus.label, alerts)}
-            ${renderSettingsGroup("Readiness baseline", "Your usual", readiness)}
-            ${renderSettingsGroup("Data and backup", "Privacy and recovery", dataAndBackup)}
+            ${renderSettingsGroup("Data and backup", "Privacy and recovery", dataAndBackup, { open: Boolean(pendingImport || importInProgress || importAttempt) })}
             <div id="support-guidance" class="settings-support-anchor">
               ${renderSettingsGroup("Danger Zone", "Support and high-risk actions", danger, { className: "danger-zone", open: false })}
             </div>

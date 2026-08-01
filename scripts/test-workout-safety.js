@@ -40,9 +40,9 @@ assert.match(html, />Discard workout</, "Cancellation must use concise explicit 
 assert.match(html, /function sessionCanBeDiscarded\(session\)/, "Any open legacy or canonical draft must be explicitly discardable");
 assert.match(html, /data-action="request-cancel-workout" data-session-id=/, "The cancel action must identify the visible draft instead of assuming it is canonical");
 assert.match(html, /data\.sessions\.filter\(\(item\) => item\.id !== session\.id\)/, "Cancellation must remove only the selected active session");
-assert.match(html, /removeWorkoutFromSyncQueue\(session\.id\)/, "Canceled drafts must be removed from pending synchronization");
+assert.doesNotMatch(html, /removeWorkoutFromSyncQueue\(/, "Canceled drafts must remain local-only after cloud workout-copy decommissioning");
 assert.match(html, /function patchTemplateStartDraft\([\s\S]*if \(!optionalReadinessFlow\) return;[\s\S]*optionalReadinessFlow = \{[\s\S]*draft: cleanRecovery/ , "The readiness draft writer must be scoped only to the optional readiness flow");
-assert.match(html, /template-readiness-sleep-quality"\) patchTemplateStartDraft\(\{ sleepQuality: target\.value \}, false\)/, "Optional readiness selectors must not rebuild and refocus the sheet while entering metrics");
+assert.match(html, /template-readiness-deviation"\) patchTemplateStartDraft\(\{ readinessDeviation: target\.value \}, false\)/, "The optional categorical readiness selector must not rebuild and refocus the sheet while entering a deviation");
 assert.doesNotMatch(html, /step:\s*["']confirm["']|step:\s*["']review["']|review-template-readiness|start-original-workout/, "Start must not retain confirmation or prescription-review states");
 const mobileFormControlCss = extractBraceBlock(html, "@media (max-width: 719px)");
 assert.match(mobileFormControlCss, /input, select, textarea \{ font-size: max\(16px,\s*1rem\); \}/, "Mobile form controls must prevent iOS focus zoom without overriding larger user text");
@@ -60,10 +60,10 @@ assert.ok(cloneStableIndex >= 0 && cloneStableIndex < persistStableIndex && pers
 assert.match(html, /Save Edits/, "History editing must expose a save action");
 assert.match(html, /Cancel Edits/, "History editing must expose a cancel action");
 assert.match(html, /const editingHistory = isEditingHistorySession\(\);[\s\S]*?if \(!editingHistory\) acknowledgeActiveSet/, "Historical set edits must not start live-workout behavior");
-assert.match(html, /if \(action === "close-completed-summary"\) returnToLiftHome/, "Closing a completed workout must return to the Lift home");
+assert.match(html, /if \(action === "close-completed-summary"\) returnToToday/, "Closing a completed workout must return to Today");
 assert.match(html, /action === "start-template" \|\| action === "start-next-template"[\s\S]*startTemplate\([^;]*defaultRecovery\(\), "usual"\)/, "Start must open the active logger directly with usual readiness");
 assert.doesNotMatch(html, /function explainReadinessAdjustmentChoice\(|Why these levers:/, "The normal flow must not retain the deleted readiness target-mutation explanation");
-assert.match(html, /function renderLiftHome\(\)/, "The idle Lift tab must use a dedicated program home view");
+assert.match(html, /function renderLiftHome\(\)/, "The idle state must use the dedicated Today workout view");
 assert.match(html, /Expected workout[\s\S]*data-action="start-next-template"/, "Today must lead with the expected workout and one primary Start action");
 assert.doesNotMatch(html, /Overall Program Hypertrophy Score|function hypertrophyScoreTone\(|function hypertrophyAnalysis\(/, "Deleted hypertrophy score products must not remain");
 assert.match(html, /\.brand-bar::before/, "The top header background must extend across the full viewport");
@@ -85,6 +85,13 @@ assert.match(html, /previousComparableSet:\s*prefill\.previousComparableSet/, "G
 assert.doesNotMatch(html, /data-action="auto-scroll-next"/, "Workout settings must not offer automatic next-set viewport movement");
 assert.equal((html.match(/scheduleActiveSetScroll\(/g) || []).length, 2, "Set scrolling must exist only as the helper plus explicit exercise navigation");
 assert.doesNotMatch(html, /autoScrollNextSet !== false/, "Set completion and rest transitions must never move the viewport automatically");
-assert.match(html, /autoScrollNextSet: false/, "Legacy imported settings must normalize to manual workout scrolling by default");
+assert.equal((html.match(/autoScrollNextSet/g) || []).length, 1, "Legacy auto-scroll may appear only in the obsolete import discard allowlist");
+for (const obsoleteSetting of ["colorPackage", "workoutCompletionSound", "interactionVibration", "restCompleteLockScreenNotifications"]) {
+  assert.equal((html.match(new RegExp(obsoleteSetting, "g")) || []).length, 1, `${obsoleteSetting} may appear only in the obsolete import discard allowlist`);
+}
+assert.doesNotMatch(html, /data-action="(?:theme-mode|color-package|workout-completion-sound|interaction-vibration)"/, "Settings must not expose removed appearance or generic completion-feedback controls");
+assert.doesNotMatch(html, /\[data-(?:theme|color-package)=/, "The fixed visual system must not retain theme or package selector branches");
+assert.doesNotMatch(html, /function (?:playWorkoutCompletionSound|performInteractionFeedback)\(/, "Removed workout-completion and generic haptic effects must not remain callable");
+assert.match(html, /renderSegmentedSetting\("weight-unit"/, "Settings must retain the weight-unit integrity control");
 
 console.log("Workout safety tests passed (active state, cancellation, readiness, factual progress, and clearing).");

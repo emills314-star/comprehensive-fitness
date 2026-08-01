@@ -5,7 +5,6 @@
       function isIosDevice() {
         return /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
       }
-
       function validPushIdentityCandidate(candidate) {
         return Boolean(candidate && typeof candidate === "object" && !Array.isArray(candidate) && typeof candidate.installationId === "string" && candidate.installationId.trim());
       }
@@ -299,7 +298,7 @@
 
       async function disablePushNotifications(options = {}) {
         const renderNow = options.renderNow !== false;
-        data = { ...data, settings: { ...data.settings, timerNotifications: false, restCompleteLockScreenNotifications: false } };
+        data = { ...data, settings: { ...data.settings, timerNotifications: false } };
         try {
           const registration = await navigator.serviceWorker?.ready;
           const subscription = await registration?.pushManager?.getSubscription?.();
@@ -320,15 +319,10 @@
           return false;
         }
         try {
-          const revokeAll = data.settings.workoutCloudSync !== true;
-          await pushApi(revokeAll ? "/api/installation/revoke" : "/api/push/revoke", { installationId: pushIdentity.installationId });
-          pushIdentity = revokeAll
-            ? { installationId: pushIdentity.installationId, deviceId: pushIdentity.deviceId, token: "", status: "disabled", pushRevocationPending: false, syncRevokedAt: isoNow() }
-            : { ...pushIdentity, status: "disabled", pushRevocationPending: false, pushRevokedAt: isoNow() };
+          await pushApi("/api/push/revoke", { installationId: pushIdentity.installationId });
+          pushIdentity = { ...pushIdentity, status: "disabled", pushRevocationPending: false, pushRevokedAt: isoNow() };
           await persistPushIdentity();
-          notificationMessage = revokeAll
-            ? "Notifications are disabled and the installation credential plus retained cloud data were revoked."
-            : "Notifications are disabled and the push subscription was revoked. Optional workout cloud copy remains independently enabled.";
+          notificationMessage = "Notifications are disabled and the push subscription was revoked.";
           saveData();
           if (renderNow) render();
           return true;
@@ -553,208 +547,55 @@
         render();
       }
 
-      async function clearWorkoutSyncQueue() {
+      async function cleanupLegacyWorkoutCloudData(options = {}) {
         await writeIndexedValue("sync-queue", []).catch(() => undefined);
-        window.clearTimeout(syncFlushTimer);
-        syncFlushTimer = 0;
-      }
-
-      async function ensureInstallationAuthorization() {
-        if (pushIdentity?.token) return true;
-        const result = await pushApi("/api/sync/authorize", {
-          installationId: pushIdentity.installationId,
-          deviceId: pushIdentity.deviceId
-        });
-        pushIdentity = { ...pushIdentity, token: result.token || "" };
-        await persistPushIdentity();
-        return Boolean(pushIdentity.token);
-      }
-
-      async function reconcileWorkoutSyncConsent() {
-        if (data.settings.cloudWorkoutSyncConsent === true) return true;
-        if (["deleting", "deleted"].includes(String(pushIdentity?.status || "")) || ["deleting", "deleted"].includes(String(pushIdentity?.deletion?.status || ""))) return true;
-        if (!pushIdentity?.token || (pushIdentity.syncRevokedAt && !pushIdentity.syncRevocationPending)) return true;
-        return setCloudWorkoutSyncConsent(false, { renderNow: false, reconcile: true });
-      }
-
-      function workoutSyncConsentIsCurrent(epoch = syncConsentEpoch) {
-        return data.settings.cloudWorkoutSyncConsent === true && Number(epoch) === Number(syncConsentEpoch);
-      }
-
-      function trackWorkoutSyncOperation(operation) {
-        activeWorkoutSyncOperations.add(operation);
-        operation.finally(() => activeWorkoutSyncOperations.delete(operation)).catch(() => undefined);
-        return operation;
-      }
-
-      function queueActiveWorkoutSync(expectedEpoch) {
-        const epoch = Number(expectedEpoch ?? (typeof syncConsentEpoch === "number" ? syncConsentEpoch : 0));
-        const consentIsCurrent = () => data.settings.cloudWorkoutSyncConsent === true && (typeof syncConsentEpoch !== "number" || Number(epoch) === Number(syncConsentEpoch));
-        if (!consentIsCurrent()) return Promise.resolve(false);
-        const operation = (async () => {
-          if (!consentIsCurrent()) return false;
-          const session = activeWorkoutSession() || (completedSummarySessionId ? data.sessions.find((item) => item.id === completedSummarySessionId) : null);
-          if (!session || !consentIsCurrent()) return false;
-          const index = dataEntityIndex();
-          const exercises = (index.exerciseIndicesBySession.get(session.id) || []).map((exerciseIndex) => data.exercises[exerciseIndex]);
-          const payload = {
-            session,
-            exercises,
-            sets: exercises.flatMap((exercise) => (index.setIndicesByExercise.get(exercise.id) || []).map((setIndex) => data.sets[setIndex]))
-          };
-          if (!consentIsCurrent()) return false;
-          let queue = [];
-          try { queue = await readIndexedValue("sync-queue") || []; } catch { return false; }
-          if (!consentIsCurrent()) return false;
-          queue = queue.filter((item) => item.sessionId !== session.id);
-          queue.push({ mutationId: id(), sessionId: session.id, revision: isoNow(), payload });
-          if (!consentIsCurrent()) return false;
-          try { await writeIndexedValue("sync-queue", queue); } catch { return false; }
-          if (!consentIsCurrent()) return false;
-          window.clearTimeout(syncFlushTimer);
-          if (!consentIsCurrent()) return false;
-          syncFlushTimer = window.setTimeout(() => {
-            syncFlushTimer = 0;
-            if (consentIsCurrent()) flushWorkoutSyncQueue(epoch);
-          }, 900);
-          if (!consentIsCurrent()) {
-            window.clearTimeout(syncFlushTimer);
-            syncFlushTimer = 0;
-            return false;
-          }
-          return true;
-        })();
-        return typeof trackWorkoutSyncOperation === "function" ? trackWorkoutSyncOperation(operation) : operation;
-      }
-
-      function flushWorkoutSyncQueue(expectedEpoch) {
-        const epoch = Number(expectedEpoch ?? (typeof syncConsentEpoch === "number" ? syncConsentEpoch : 0));
-        const consentIsCurrent = () => data.settings.cloudWorkoutSyncConsent === true && (typeof syncConsentEpoch !== "number" || Number(epoch) === Number(syncConsentEpoch));
-        if (!consentIsCurrent() || !navigator.onLine || !pushIdentity?.token) return Promise.resolve(false);
-        const operation = (async () => {
-          if (!consentIsCurrent()) return false;
-          let queue = [];
-          try { queue = await readIndexedValue("sync-queue") || []; } catch { return false; }
-          if (!consentIsCurrent()) return false;
-          const remaining = [];
-          for (const mutation of queue) {
-            if (!consentIsCurrent()) return false;
-            const controller = typeof AbortController === "function" ? new AbortController() : null;
-            if (controller && typeof activeWorkoutSyncAbortControllers !== "undefined") activeWorkoutSyncAbortControllers.add(controller);
-            try {
-              if (!consentIsCurrent()) {
-                controller?.abort();
-                return false;
-              }
-              await pushApi("/api/sync/workout", { installationId: pushIdentity.installationId, ...mutation }, { signal: controller?.signal });
-              if (!consentIsCurrent()) return false;
-            } catch (error) {
-              if (!consentIsCurrent() || error?.name === "AbortError") return false;
-              remaining.push(mutation);
-            } finally {
-              if (controller && typeof activeWorkoutSyncAbortControllers !== "undefined") activeWorkoutSyncAbortControllers.delete(controller);
-            }
-          }
-          if (!consentIsCurrent()) return false;
-          try { await writeIndexedValue("sync-queue", remaining); } catch { return false; }
-          if (!consentIsCurrent()) return false;
-          return true;
-        })();
-        return typeof trackWorkoutSyncOperation === "function" ? trackWorkoutSyncOperation(operation) : operation;
-      }
-
-      function setCloudWorkoutSyncConsent(consent, options = {}) {
-        const requestedConsent = consent === true;
-        syncConsentEpoch += 1;
-        const epoch = syncConsentEpoch;
-        window.clearTimeout(syncFlushTimer);
-        syncFlushTimer = 0;
-        activeWorkoutSyncAbortControllers.forEach((controller) => controller.abort());
-        const commitConsent = (enabled, shouldRender = options.renderNow !== false) => commit({
-          ...data,
-          settings: {
-            ...data.settings,
-            cloudWorkoutSyncConsent: enabled,
-            workoutCloudSync: enabled,
-            workoutCloudSyncConsentVersion: enabled ? 1 : 0
-          }
-        }, shouldRender);
-        if (!requestedConsent) commitConsent(false);
-        const priorOperations = [...activeWorkoutSyncOperations];
-        const transition = syncConsentTransition.catch(() => undefined).then(async () => {
-          if (priorOperations.length) await Promise.allSettled(priorOperations);
-          if (!requestedConsent) {
-            try { await writeIndexedValue("app-data", data); }
-            catch {
-              settingsMessage = "Workout cloud copy is off in memory, but that choice could not be saved durably. Export a backup and retry before reloading.";
-              if (options.renderNow !== false) render();
-              return false;
-            }
-            try { await clearWorkoutSyncQueue(); }
-            catch {
-              settingsMessage = "Workout upload is off, but the pending upload queue could not be cleared. Keep the app open and try again before clearing local data.";
-              if (options.renderNow !== false) render();
-              return false;
-            }
-            if (!pushIdentity?.token) return true;
-            if (!navigator.onLine) {
-              pushIdentity = { ...pushIdentity, syncRevocationPending: true };
-              await persistPushIdentity();
-              settingsMessage = "Workout cloud copy is off on this device. Reconnect to finish deleting any retained server copy.";
-              if (options.renderNow !== false) render();
-              return false;
-            }
-            try {
-              await pushApi("/api/sync/consent", { installationId: pushIdentity.installationId, enabled: false });
-              pushIdentity = { ...pushIdentity, syncRevokedAt: isoNow(), syncRevocationPending: false };
-              await persistPushIdentity();
-              if (!options.reconcile) settingsMessage = "Workout cloud copy is off and retained workout copies were deleted.";
-              if (options.renderNow !== false) render();
-            } catch {
-              pushIdentity = { ...pushIdentity, syncRevocationPending: true };
-              await persistPushIdentity();
-              settingsMessage = "Workout cloud copy is off locally, but server deletion is still pending. Reconnect and retry before clearing local data.";
-              if (options.renderNow !== false) render();
-              return false;
-            }
-            return true;
-          }
-          if (Number(epoch) !== Number(syncConsentEpoch)) return false;
-          if (!navigator.onLine) {
-            settingsMessage = "Connect to the internet to enable workout cloud copy.";
-            if (options.renderNow !== false) render();
-            return false;
-          }
-          try {
-            await ensureInstallationAuthorization();
-            if (Number(epoch) !== Number(syncConsentEpoch)) return false;
-            await pushApi("/api/sync/consent", { installationId: pushIdentity.installationId, enabled: true });
-          } catch (error) {
-            commitConsent(false);
-            settingsMessage = String(error?.message || "Workout cloud copy could not be enabled.");
-            if (options.renderNow !== false) render();
-            return false;
-          }
-          if (Number(epoch) !== Number(syncConsentEpoch)) return false;
-          pushIdentity = { ...pushIdentity, syncRevokedAt: "", syncRevocationPending: false };
+        if (["deleting", "deleted"].includes(String(pushIdentity?.status || "")) ||
+            ["deleting", "deleted"].includes(String(pushIdentity?.deletion?.status || ""))) {
+          return { status: "installation-deletion-owned", retryable: pushIdentity?.status !== "deleted" };
+        }
+        if (!pushIdentity?.installationId || !pushIdentity?.token) {
+          return { status: "local-cleanup-complete", retryable: false };
+        }
+        const scheduleRetry = (delayMs = 5000) => {
+          if (options.scheduleRetry === false || typeof window?.setTimeout !== "function") return;
+          if (window.__cfLegacyWorkoutCleanupRetryTimer) window.clearTimeout(window.__cfLegacyWorkoutCleanupRetryTimer);
+          window.__cfLegacyWorkoutCleanupRetryTimer = window.setTimeout(() => {
+            window.__cfLegacyWorkoutCleanupRetryTimer = 0;
+            cleanupLegacyWorkoutCloudData({ automatic: true });
+          }, Math.max(1000, Math.min(300000, Number(delayMs || 5000))));
+        };
+        if (!navigator.onLine) {
+          pushIdentity = { ...pushIdentity, legacyWorkoutCleanupPending: true };
           await persistPushIdentity();
-          commitConsent(true, false);
-          try { await writeIndexedValue("app-data", data); }
-          catch {
-            commitConsent(false);
-            settingsMessage = "Workout cloud copy consent could not be saved durably, so uploads remain off.";
-            if (options.renderNow !== false) render();
-            return false;
+          scheduleRetry();
+          return { status: "cleanup-pending", retryable: true };
+        }
+        try {
+          const result = await pushApi("/api/sync/consent", {
+            installationId: pushIdentity.installationId,
+            enabled: false
+          });
+          const pending = result?.status === "cleanup-pending" || result?.cleanupComplete === false;
+          pushIdentity = {
+            ...pushIdentity,
+            legacyWorkoutCleanupPending: pending,
+            legacyWorkoutCleanupCompletedAt: pending ? pushIdentity.legacyWorkoutCleanupCompletedAt || "" : isoNow()
+          };
+          await persistPushIdentity();
+          if (pending) scheduleRetry(result?.retryAfterMs);
+          else if (window.__cfLegacyWorkoutCleanupRetryTimer) {
+            window.clearTimeout(window.__cfLegacyWorkoutCleanupRetryTimer);
+            window.__cfLegacyWorkoutCleanupRetryTimer = 0;
           }
-          if (options.renderNow !== false) render();
-          const queued = await queueActiveWorkoutSync(epoch);
-          if (!workoutSyncConsentIsCurrent(epoch)) return false;
-          settingsMessage = "Workout cloud copy is on. Active workout changes may now be uploaded.";
-          if (options.renderNow !== false) render();
-          return queued;
-        });
-        syncConsentTransition = transition.catch(() => false);
-        return transition;
+          return { status: pending ? "cleanup-pending" : "disabled", retryable: pending };
+        } catch (error) {
+          const statusCode = Number(error?.status || 0);
+          const retryable = !statusCode || statusCode === 429 || statusCode >= 500;
+          pushIdentity = { ...pushIdentity, legacyWorkoutCleanupPending: true };
+          await persistPushIdentity();
+          if (retryable) scheduleRetry(error?.retryAfterMs);
+          return { status: "cleanup-error", retryable };
+        }
       }
 
       function restNavigationPayload(timerSnapshot, nextOverride = null) {
@@ -783,7 +624,7 @@
           notificationId: payload.notificationId || payload.timerId || "",
           timerVersion: String(payload.timerVersion || 1)
         });
-        return "/?" + params.toString() + "#lift";
+        return "/?" + params.toString() + "#workout";
       }
 
       function setRestNavigationState(timerSnapshot, status, nextOverride = null) {
@@ -1093,32 +934,6 @@
             gain.connect(timerAudioContext.destination);
             oscillator.start(now + delay);
             oscillator.stop(now + delay + 0.18);
-          });
-        } catch {
-          return;
-        }
-      }
-
-      function playWorkoutCompletionSound(hasPr = false) {
-        if (data.settings.workoutCompletionSound === false) return;
-        primeTimerAlerts(true);
-        if (!timerAudioContext) return;
-        try {
-          const now = timerAudioContext.currentTime;
-          const notes = hasPr ? [523, 659, 784, 1046] : [523, 659, 784];
-          notes.forEach((frequency, index) => {
-            const delay = index * 0.13;
-            const oscillator = timerAudioContext.createOscillator();
-            const gain = timerAudioContext.createGain();
-            oscillator.type = "sine";
-            oscillator.frequency.value = frequency;
-            gain.gain.setValueAtTime(0.0001, now + delay);
-            gain.gain.exponentialRampToValueAtTime(0.16, now + delay + 0.018);
-            gain.gain.exponentialRampToValueAtTime(0.0001, now + delay + 0.16);
-            oscillator.connect(gain);
-            gain.connect(timerAudioContext.destination);
-            oscillator.start(now + delay);
-            oscillator.stop(now + delay + 0.17);
           });
         } catch {
           return;

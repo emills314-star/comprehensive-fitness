@@ -1,18 +1,10 @@
 
       async function inspectUnsynchronizedData() {
-        let queue = [];
-        const epoch = syncConsentEpoch;
-        const syncConsented = workoutSyncConsentIsCurrent(epoch);
-        if (syncConsented && workoutSyncConsentIsCurrent(epoch)) {
-          try { queue = await readIndexedValue("sync-queue") || []; } catch { queue = []; }
-          if (!workoutSyncConsentIsCurrent(epoch)) queue = [];
-        }
         const draftSessions = data.sessions.filter((session) => !isSessionSubmitted(session) && data.exercises.some((exercise) => exercise.sessionId === session.id));
         const draftIds = new Set(draftSessions.map((session) => session.id));
         const draftExerciseIds = new Set(data.exercises.filter((exercise) => draftIds.has(exercise.sessionId)).map((exercise) => exercise.id));
         const unsavedSetChanges = data.sets.filter((set) => draftExerciseIds.has(set.exerciseId) && (set.edited || set.completed || Number(set.reps || 0) > 0 || Number(set.weight || 0) > 0)).length;
-        const workoutIds = new Set([...queue.map((item) => item.sessionId), ...draftSessions.map((session) => session.id)]);
-        return { queueCount: queue.length, workoutCount: workoutIds.size, setChanges: unsavedSetChanges, canSync: Boolean(workoutSyncConsentIsCurrent(epoch) && navigator.onLine && pushIdentity?.token && queue.length) };
+        return { workoutCount: draftSessions.length, setChanges: unsavedSetChanges };
       }
 
       async function requestClearLocalData() {
@@ -31,21 +23,23 @@
       }
 
       function closeClearDataFlow() {
+        if (clearDataFlow?.pending) return false;
         clearDataFlow = null;
         restoreFocusAfterDialog("clear");
         render();
+        return true;
       }
 
       function renderClearDataSheet() {
         if (!clearDataFlow?.open) return "";
-        const unsynced = clearDataFlow.unsynced || { workoutCount: 0, setChanges: 0, queueCount: 0, canSync: false };
-        const remoteBlock = localClearBlockReason();
+        const unsynced = clearDataFlow.unsynced || { workoutCount: 0, setChanges: 0 };
+        const pending = clearDataFlow.pending === true;
+        const pendingMessage = pending ? clearDataFlow.pendingMessage || "Keep this tab open while local app data is cleared." : "";
+        const remoteBlock = pending ? "" : localClearBlockReason();
         const blockedMessage = remoteBlock || clearDataFlow.blockedMessage || "";
-        const unlocked = clearDataFlow.acknowledged && clearDataFlow.phrase === "CLEAR" && !blockedMessage;
-        const risk = unsynced.workoutCount || unsynced.setChanges || unsynced.queueCount;
-        const sourceCount = Number(prescriptionEngine?.evidence?.research?.manifest?.tables?.research_library?.record_count || 0);
+        const unlocked = clearDataFlow.acknowledged && clearDataFlow.phrase === "CLEAR" && !blockedMessage && !pending;
+        const risk = unsynced.workoutCount || unsynced.setChanges;
         const sessionCount = data.sessions.filter((session) => isSessionSubmitted(session) || data.exercises.some((exercise) => exercise.sessionId === session.id)).length;
-        const personalEvidenceCount = data.personalEvidencePackage ? 1 : 0;
         return `
           <div class="scrim sheet-backdrop" data-action="cancel-clear-data" role="presentation">
             <section class="sheet-card bottom-sheet dialog-sheet destructive-sheet clear-data-sheet" role="dialog" aria-modal="true" aria-labelledby="clear-data-title" data-sheet-content>
@@ -53,30 +47,39 @@
               <div class="diff clear-data-diff">
                 <div class="drow dhead"><span class="plan">Erased</span><span class="act">Outside local storage</span><span class="dlt">Scope</span></div>
                 <div class="drow"><span class="plan"><span class="lbl">Workout records</span><span class="val">${sessionCount} session${sessionCount === 1 ? '' : 's'}, exercises, sets, notes and active timers</span></span><span class="act"><span class="lbl">Downloaded exports</span><span class="val">Files already saved outside this app are not deleted</span></span><span class="dlt"><span class="d none">local</span></span></div>
-                <div class="drow"><span class="plan"><span class="lbl">Routines</span><span class="val">${data.templates.length} routine${data.templates.length === 1 ? '' : 's'}</span></span><span class="act"><span class="lbl">Public research database</span><span class="val">${sourceCount ? sourceCount + ' source records reload with the app' : 'Reloads with the app'}</span></span><span class="dlt"><span class="d none">public</span></span></div>
-                <div class="drow"><span class="plan"><span class="lbl">Personal setup</span><span class="val">Settings, readiness baseline, imports${personalEvidenceCount ? ' and imported personal evidence' : ''}</span></span><span class="act"><span class="lbl">Remote workout copies</span><span class="val">Deleted first; write-only and not recoverable here</span></span><span class="dlt"><span class="d out">erased</span></span></div>
+                <div class="drow"><span class="plan"><span class="lbl">Routines and setup</span><span class="val">${data.templates.length} routine${data.templates.length === 1 ? '' : 's'}, settings, readiness entries and imports</span></span><span class="act"><span class="lbl">Remote installation data</span><span class="val">Notification records and any legacy workout copies are deleted first</span></span><span class="dlt"><span class="d out">erased</span></span></div>
               </div>
+              ${pendingMessage ? '<div class="callout warn" role="status"><b>Local clearing is still running</b><span>' + escapeHtml(pendingMessage) + '</span></div>' : ''}
               ${blockedMessage ? '<div class="callout bad" role="status"><b>Local clearing is paused</b><span>' + escapeHtml(blockedMessage) + '</span></div>' : ''}
-              ${risk ? '<div class="callout warn"><b>Unsynchronized workout changes detected</b><span>This device contains ' + unsynced.workoutCount + ' unsynchronized workout' + (unsynced.workoutCount === 1 ? '' : 's') + ' and ' + unsynced.setChanges + ' unsaved set change' + (unsynced.setChanges === 1 ? '' : 's') + '. This is a cloud-queue and draft count, not a measure of backup coverage.</span>' + (unsynced.canSync ? '<button type="button" data-action="sync-before-clear">Sync now</button>' : '') + '</div>' : ''}
-              <div class="callout bad"><b>Only an exported file can restore local records</b><span>Cloud copy has no read or restore endpoint. The app does not record when you last exported, so it cannot claim how much training is covered by a backup.</span></div>
-              <div class="clear-data-scope"><strong>Remote deletion boundary</strong><span>Retained workout and notification records are deleted before local authorization is removed. The app stops while offline or cleanup is unresolved rather than orphaning server data.</span></div>
-              <label class="toggle-line destructive-ack"><input type="checkbox" data-action="clear-data-ack" ${clearDataFlow.acknowledged ? 'checked' : ''} />I understand that unsynchronized data may be permanently deleted</label>
-              <div class="typed"><label class="t-hint">Type <strong>CLEAR</strong> to continue<input class="t-box" type="text" value="${escapeHtml(clearDataFlow.phrase)}" data-action="clear-data-phrase" autocomplete="off" autocapitalize="characters" aria-label="Type CLEAR to confirm local data deletion" /></label></div>
+              ${risk ? '<div class="callout warn"><b>Unexported workout changes detected</b><span>This device contains ' + unsynced.workoutCount + ' draft workout' + (unsynced.workoutCount === 1 ? '' : 's') + ' and ' + unsynced.setChanges + ' entered set change' + (unsynced.setChanges === 1 ? '' : 's') + '. Export before clearing if you need a recoverable copy.</span></div>' : ''}
+              <div class="callout bad"><b>Only an exported file can restore local records</b><span>The app does not upload workout history and does not record when you last exported, so it cannot claim how much training is covered by a backup.</span></div>
+              <div class="clear-data-scope"><strong>Remote deletion boundary</strong><span>Retained notification records and any legacy workout copies are deleted before local authorization is removed. The app stops while offline or cleanup is unresolved rather than orphaning server data.</span></div>
+              <label class="toggle-line destructive-ack"><input type="checkbox" data-action="clear-data-ack" ${clearDataFlow.acknowledged ? 'checked' : ''} ${pending ? 'disabled' : ''} />I understand that unsynchronized data may be permanently deleted</label>
+              <div class="typed"><label class="t-hint">Type <strong>CLEAR</strong> to continue<input class="t-box" type="text" value="${escapeHtml(clearDataFlow.phrase)}" data-action="clear-data-phrase" autocomplete="off" autocapitalize="characters" aria-label="Type CLEAR to confirm local data deletion" ${pending ? 'disabled' : ''} /></label></div>
               <div class="sheet-actions stacked">
-                <button class="primary-action" type="button" data-action="cancel-clear-data">Keep My Data</button>
-                <button type="button" data-action="export-before-clear">Export first</button>
+                <button class="primary-action" type="button" data-action="cancel-clear-data" ${pending ? 'disabled' : ''}>Keep My Data</button>
+                <button type="button" data-action="export-before-clear" ${pending ? 'disabled' : ''}>Export first</button>
                 <button class="danger-button" type="button" data-action="confirm-clear-data" ${unlocked ? '' : 'disabled'}>Permanently Clear Local Data</button>
               </div>
             </section>
           </div>`;
       }
 
-      function deleteFitnessDatabase() {
-        return new Promise((resolve) => {
+      function deleteFitnessDatabase({ onBlocked } = {}) {
+        return new Promise((resolve, reject) => {
           try {
             const request = indexedDB.deleteDatabase(DB_NAME);
-            request.onsuccess = request.onerror = request.onblocked = () => resolve();
-          } catch { resolve(); }
+            request.onsuccess = () => resolve(true);
+            request.onerror = () => reject(request.error || new Error("IndexedDB deletion failed."));
+            // `blocked` is progress, not a terminal result. The same request
+            // remains queued and can succeed after another tab closes its
+            // connection, so keep this promise pending until success/error.
+            request.onblocked = () => {
+              try { onBlocked?.(); } catch { /* Status rendering must not settle the delete request. */ }
+            };
+          } catch (error) {
+            reject(error);
+          }
         });
       }
 
@@ -88,7 +91,7 @@
       }
 
       async function permanentlyClearLocalData() {
-        if (!clearDataFlow?.acknowledged || clearDataFlow.phrase !== "CLEAR") return;
+        if (!clearDataFlow?.acknowledged || clearDataFlow.phrase !== "CLEAR" || clearDataFlow.pending) return false;
         const remoteBlock = localClearBlockReason();
         if (remoteBlock) {
           clearDataFlow = { ...clearDataFlow, blockedMessage: remoteBlock };
@@ -96,31 +99,37 @@
           render();
           return false;
         }
-        if (data.settings.cloudWorkoutSyncConsent === true || pushIdentity?.syncRevocationPending) {
-          const revoked = await setCloudWorkoutSyncConsent(false, { renderNow: false });
-          if (!revoked) {
-            const blockedMessage = "Server workout deletion is not confirmed yet. Reconnect and retry local clearing so cleanup authorization is preserved.";
-            clearDataFlow = { ...clearDataFlow, blockedMessage };
-            settingsMessage = blockedMessage;
-            render();
-            return false;
-          }
-        }
+        clearDataFlow = {
+          ...clearDataFlow,
+          pending: true,
+          pendingMessage: "Keep this tab open while the app prepares the confirmed clear.",
+          blockedMessage: ""
+        };
+        settingsMessage = "";
+        render();
+        const stopClear = (blockedMessage) => {
+          clearDataFlow = {
+            ...clearDataFlow,
+            pending: false,
+            pendingMessage: "",
+            blockedMessage
+          };
+          settingsMessage = blockedMessage;
+          render();
+          return false;
+        };
         if (pushIdentity?.token) {
           if (!navigator.onLine) {
             const blockedMessage = "Connect to the internet before clearing local data so retained server installation data can be deleted first.";
-            clearDataFlow = { ...clearDataFlow, blockedMessage };
-            settingsMessage = blockedMessage;
-            render();
-            return false;
+            return stopClear(blockedMessage);
           }
-          const remoteDeletion = await deleteRemoteInstallationData({ scheduleRetry: false, automatic: true });
+          let remoteDeletion = null;
+          try {
+            remoteDeletion = await deleteRemoteInstallationData({ scheduleRetry: false, automatic: true });
+          } catch { /* The terminal status below keeps local authorization intact. */ }
           if (remoteDeletion?.status !== "deleted") {
             const blockedMessage = "Remote installation deletion is not confirmed yet. Keep the app open and retry before clearing local authorization.";
-            clearDataFlow = { ...clearDataFlow, blockedMessage };
-            settingsMessage = blockedMessage;
-            render();
-            return false;
+            return stopClear(blockedMessage);
           }
         }
         if (timer) {
@@ -128,10 +137,7 @@
           const cancellationConfirmed = await cancelRestPush(previous, "local-data-cleared");
           if (!cancellationConfirmed) {
             const blockedMessage = "The active rest notification could not be canceled yet. Reconnect and retry local clearing; its durable cancellation record and installation authorization were preserved.";
-            clearDataFlow = { ...clearDataFlow, blockedMessage };
-            settingsMessage = blockedMessage;
-            render();
-            return false;
+            return stopClear(blockedMessage);
           }
           window.clearInterval(timerInterval);
           timerInterval = 0;
@@ -151,8 +157,50 @@
           await subscription?.unsubscribe?.();
         } catch { /* Local cleanup continues. */ }
         try { for (const key of await caches.keys()) if (key.startsWith("comprehensive-fitness")) await caches.delete(key); } catch { /* Cache API is optional. */ }
-        try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(RUNTIME_KEY); localStorage.removeItem(ACTIVE_DRAFT_KEY); localStorage.removeItem(IDENTITY_KEY); } catch { /* IndexedDB cleanup remains primary. */ }
-        await deleteFitnessDatabase();
+        clearDataFlow = { ...clearDataFlow, pendingMessage: "Removing app-owned browser records." };
+        render();
+        const localStorageRemovals = [
+          { key: STORAGE_KEY, remove: () => localStorage.removeItem(STORAGE_KEY) },
+          { key: RUNTIME_KEY, remove: () => localStorage.removeItem(RUNTIME_KEY) },
+          { key: ACTIVE_DRAFT_KEY, remove: () => localStorage.removeItem(ACTIVE_DRAFT_KEY) },
+          { key: IDENTITY_KEY, remove: () => localStorage.removeItem(IDENTITY_KEY) }
+        ];
+        const confirmedRemovedLocalKeys = [];
+        const remainingOrUnverifiedLocalKeys = [];
+        for (const entry of localStorageRemovals) {
+          let wasPresent = false;
+          try { wasPresent = localStorage.getItem(entry.key) !== null; } catch { /* Verification below fails closed. */ }
+          try { entry.remove(); } catch { /* Continue so every app-owned key gets an independent attempt. */ }
+          let absent = false;
+          try { absent = localStorage.getItem(entry.key) === null; } catch { /* An unreadable key is not verified absent. */ }
+          if (!absent) remainingOrUnverifiedLocalKeys.push(entry.key);
+          else if (wasPresent) confirmedRemovedLocalKeys.push(entry.key);
+        }
+        if (remainingOrUnverifiedLocalKeys.length) {
+          const blockedMessage = confirmedRemovedLocalKeys.length
+            ? `Local clearing is incomplete. ${confirmedRemovedLocalKeys.length} app-owned browser record${confirmedRemovedLocalKeys.length === 1 ? " was" : "s were"} removed, but ${remainingOrUnverifiedLocalKeys.length} could not be removed or verified. The workout database was kept so its records remain recoverable; keep this tab open and retry.`
+            : `Local clearing could not safely continue because ${remainingOrUnverifiedLocalKeys.length} app-owned browser record${remainingOrUnverifiedLocalKeys.length === 1 ? " was" : "s were"} not removed or verified. The workout database was kept so its records remain recoverable; keep this tab open and retry.`;
+          return stopClear(blockedMessage);
+        }
+        clearDataFlow = { ...clearDataFlow, pendingMessage: "Removing the local workout database." };
+        render();
+        try {
+          await deleteFitnessDatabase({
+            onBlocked: () => {
+              if (!clearDataFlow?.pending) return;
+              const pendingMessage = "Another Comprehensive Fitness tab still has the workout database open. Close the other tab and keep this one open; this confirmed clear remains queued and will continue automatically.";
+              clearDataFlow = { ...clearDataFlow, pendingMessage };
+              settingsMessage = pendingMessage;
+              render();
+            }
+          });
+        } catch {
+          const localMutation = confirmedRemovedLocalKeys.length
+            ? `${confirmedRemovedLocalKeys.length} app-owned browser record${confirmedRemovedLocalKeys.length === 1 ? " was" : "s were"} removed, but`
+            : "No app-owned browser records remain, but";
+          const blockedMessage = `Local clearing is incomplete. ${localMutation} the workout database could not be deleted because of a terminal storage error. Its workout records remain recoverable; close other Comprehensive Fitness tabs, then retry.`;
+          return stopClear(blockedMessage);
+        }
         appDataPersistenceConflict = null;
         data = emptyData();
         const session = createSession();
@@ -226,9 +274,10 @@
           ...session,
           recovery,
           ...(activeDraft ? {
-            resolvedActions: measurePerformance("workoutUpdate:exceptionResolver", () => resolveWorkoutExceptions({ ...session, recovery }, recovery, {
-              userContinuedWithAction: Boolean(recovery.illness || recovery.pain)
-            }), { workoutId: session.id, hasExplicitSafetyInput: Boolean(recovery.illness || recovery.pain) })
+            resolvedActions: mergeResolvedDecisionHistory(
+              session.resolvedActions,
+              measurePerformance("workoutUpdate:exceptionResolver", () => resolveWorkoutExceptions({ ...session, recovery }, recovery), { workoutId: session.id, hasExplicitSafetyInput: Boolean(recovery.illness || recovery.pain) })
+            )
           } : {}),
           updatedAt: isoNow()
         };
@@ -243,26 +292,56 @@
         else scheduleSave();
       }
 
-      function patchReadinessBaseline(patch, shouldRender = true) {
-        const domains = {
-          sleepHours: { min: 0, max: 14, step: 0.25 },
-          sleepQuality: { min: 1, max: 5, integer: true },
-          hrv: { min: 0, integer: true },
-          restingHr: { min: 0, integer: true },
-          soreness: { min: 1, max: 5, integer: true },
-          band: { min: 3, max: 20, integer: true }
-        };
-        const boundedPatch = Object.fromEntries(Object.entries(patch).map(([field, value]) => {
-          const domain = domains[field];
-          if (!domain) return [field, value];
-          let numeric = Number(value);
-          if (!Number.isFinite(numeric)) numeric = domain.min;
-          numeric = Math.max(domain.min, Math.min(domain.max ?? Number.MAX_SAFE_INTEGER, numeric));
-          if (domain.step) numeric = Math.round(numeric / domain.step) * domain.step;
-          if (domain.integer) numeric = Math.round(numeric);
-          return [field, String(numeric)];
-        }));
-        commit({ ...data, settings: { ...data.settings, readinessBaseline: { ...readinessBaseline(), ...boundedPatch } } }, shouldRender);
+      function setExpectedTemplate(templateId) {
+        if (!data.templates.some((template) => template.id === templateId)) return false;
+        commit({ ...data, settings: { ...data.settings, expectedTemplateId: templateId } });
+        showAppToast("Expected workout updated.", { severity: "success" });
+        return true;
+      }
+
+      function toggleWorkoutDurationPause(sessionId = activeWorkoutId) {
+        const session = data.sessions.find((item) => item.id === sessionId);
+        if (!session || isSessionSubmitted(session) || session.id !== activeWorkoutId) return false;
+        const nextSession = session.workoutPausedAt
+          ? startWorkoutDuration(session)
+          : pauseWorkoutDuration(startWorkoutDuration(session));
+        commit({
+          ...data,
+          sessions: data.sessions.map((item) => item.id === session.id ? { ...nextSession, updatedAt: isoNow() } : item)
+        }, true, { invalidateAnalysis: false, deferPersistence: true });
+        return true;
+      }
+
+      function finalizeWorkoutDuration(sessionId = activeWorkoutId) {
+        const session = data.sessions.find((item) => item.id === sessionId);
+        if (!session || isSessionSubmitted(session)) return false;
+        const nextSession = finalizeWorkoutDurationSession(startWorkoutDuration(session));
+        commit({
+          ...data,
+          sessions: data.sessions.map((item) => item.id === session.id ? { ...nextSession, updatedAt: isoNow() } : item)
+        }, false, { invalidateAnalysis: false, deferPersistence: true });
+        return true;
+      }
+
+      function handleResolvedActionChoice(decisionId, choice) {
+        const session = activeWorkoutSession();
+        const action = session?.resolvedActions?.find((item) => item.decisionId === decisionId && item.outcome === "action");
+        if (!session || !action || action.handling !== "pending") return false;
+        const allowedChoices = action.category === "pain_or_illness"
+          ? { stop: "accepted", modify: "modified", continue: "overridden" }
+          : action.category === "readiness"
+            ? { lighter: "accepted", continue: "overridden" }
+            : {};
+        const handling = allowedChoices[choice];
+        if (!handling) return false;
+        const handled = exceptionResolverApi.applyDecisionHandling(action, handling);
+        commit({
+          ...data,
+          sessions: data.sessions.map((item) => item.id === session.id
+            ? { ...item, resolvedActions: item.resolvedActions.map((decision) => decision.decisionId === decisionId ? handled : decision), updatedAt: isoNow() }
+            : item)
+        }, false, { invalidateAnalysis: false, deferPersistence: true });
+        return { category: action.category, choice, handling };
       }
 
       function readExerciseDefaultPlan(exercise, form) {
@@ -372,8 +451,6 @@
             sourceTemplateSetId: target.sourceTargetId || base.sourceTemplateSetId,
             setType: target.type,
             isWarmup: target.type === "warmup",
-            countsTowardScore: target.type !== "warmup",
-            countsTowardVolume: target.type !== "warmup",
             countsTowardProgression: target.type !== "warmup",
             reps: midpoint,
             rpe: target.targetRpeMax,
@@ -444,8 +521,7 @@
           ...data,
           sessions: data.sessions.map((item) => item.id === session.id ? { ...item, updatedAt: now } : item),
           exercises: data.exercises.map((item) => item.id === exercise.id ? nextExercise : item),
-          sets: [...data.sets.filter((set) => !replacedSetIds.has(set.id)), ...nextWarmups.filter((set) => !set.completed), ...nextIncomplete],
-          manualOverrides: [...data.manualOverrides, overrideEntry]
+          sets: [...data.sets.filter((set) => !replacedSetIds.has(set.id)), ...nextWarmups.filter((set) => !set.completed), ...nextIncomplete]
         }, true, { invalidateAnalysis: false, deferPersistence: true });
         showAppToast("Exercise targets applied to unfinished sets in this workout.");
       }
@@ -612,8 +688,6 @@
               setTypeIndex: 0,
               setType: normalizeSetTypeCode(source.setType, false) === "warmup" ? "straight" : normalizeSetTypeCode(source.setType, false),
               isWarmup: false,
-              countsTowardScore: true,
-              countsTowardVolume: true,
               countsTowardProgression: true,
               reps: source.targetReps ?? "",
               weight: source.targetWeight ?? 0,
@@ -645,8 +719,7 @@
           ...data,
           sessions: data.sessions.map((item) => item.id === session.id ? { ...item, updatedAt: now } : item),
           exercises,
-          sets,
-          manualOverrides: [...data.manualOverrides, overrideEntry]
+          sets
         }, true, { invalidateAnalysis: false, deferPersistence: true });
         showAppToast(hasRecordedWork
           ? `${name} added next; completed work remains under ${exercise.name}.`
@@ -669,24 +742,27 @@
           patchTemplateExercise(templateId, exerciseId, { name: normalizedName, ...identity }, false);
           return;
         }
-        const previousAutoRest = recommendedRestSeconds(exercise.name, { reps: exercise.reps });
-        const restSeconds = !exercise.restSeconds || Number(exercise.restSeconds) === previousAutoRest
-          ? recommendedRestSeconds(normalizedName, { reps: exercise.reps })
-          : exercise.restSeconds;
-        patchTemplateExercise(templateId, exerciseId, { name: normalizedName, restSeconds, ...identity }, shouldRender);
+        patchTemplateExercise(templateId, exerciseId, { name: normalizedName, ...identity }, shouldRender);
       }
 
       function patchSet(setId, patch, shouldRender = true) {
+        const applyPatch = (set) => {
+          const updated = { ...set, ...patch };
+          if (!Object.prototype.hasOwnProperty.call(patch, "setType")) return updated;
+          delete updated.countsTowardScore;
+          delete updated.countsTowardVolume;
+          return updated;
+        };
         if (shouldRender) {
           const set = setById(setId);
           const exercise = set ? exerciseById(set.exerciseId) : null;
           const draftMutation = exercise?.sessionId === activeWorkoutId && !isEditingHistorySession();
-          commit({ ...data, sets: data.sets.map((item) => item.id === setId ? { ...item, ...patch } : item) }, true, { invalidateAnalysis: !draftMutation, deferPersistence: draftMutation });
+          commit({ ...data, sets: data.sets.map((item) => item.id === setId ? applyPatch(item) : item) }, true, { invalidateAnalysis: !draftMutation, deferPersistence: draftMutation });
           return;
         }
         const index = dataEntityIndex().setIndexById.get(setId) ?? -1;
         if (index >= 0) {
-          const updatedSet = { ...data.sets[index], ...patch };
+          const updatedSet = applyPatch(data.sets[index]);
           if (isEditingHistorySession()) {
             const sets = data.sets.slice();
             sets[index] = updatedSet;
@@ -706,20 +782,17 @@
         const setType = normalizeSetTypeCode(requestedType);
         logWorkoutOverride(exerciseById(current.exerciseId), "setStructure", normalizeSetTypeCode(current.setType, current.isWarmup), setType, { setId });
         const isWarmup = setType === "warmup";
-        const semantics = setTypeSemantics({ ...current, setType, isWarmup, countsTowardScore: !isWarmup, countsTowardVolume: !isWarmup, countsTowardProgression: !isWarmup });
         patchSet(setId, {
           setType,
           isWarmup,
-          countsTowardScore: semantics.countsTowardScore,
-          countsTowardVolume: semantics.countsTowardVolume,
-          countsTowardProgression: semantics.countsTowardProgression,
+          countsTowardProgression: !isWarmup,
           classificationSource: "manual",
           classificationConfidence: 1,
           classifierVersion: SET_CLASSIFIER_VERSION,
           manualOverride: true,
           reviewRequired: false,
           classifiedAt: isoNow(),
-          classificationUndo: current.classificationUndo || { setType: current.setType, isWarmup: current.isWarmup, countsTowardScore: current.countsTowardScore, countsTowardVolume: current.countsTowardVolume, countsTowardProgression: current.countsTowardProgression, classificationSource: current.classificationSource, classificationConfidence: current.classificationConfidence, manualOverride: current.manualOverride, reviewRequired: current.reviewRequired }
+          classificationUndo: current.classificationUndo || { setType: current.setType, isWarmup: current.isWarmup, countsTowardProgression: current.countsTowardProgression, classificationSource: current.classificationSource, classificationConfidence: current.classificationConfidence, manualOverride: current.manualOverride, reviewRequired: current.reviewRequired }
         });
         showAppToast("Set type updated. Analysis and template history will use the correction.", { severity: "success", action: "undo-set-type-override", actionLabel: "Undo", setId });
       }
@@ -747,7 +820,6 @@
           lockedForWorkout: true,
           ...details
         };
-        data.manualOverrides = [...data.manualOverrides, entry];
         const exerciseIndex = dataEntityIndex().exerciseIndexById.get(exercise.id);
         if (exerciseIndex != null) data.exercises[exerciseIndex] = { ...data.exercises[exerciseIndex], manualOverrides: [...(data.exercises[exerciseIndex].manualOverrides || []), entry], overrideLocked: true };
         return entry;
@@ -786,6 +858,7 @@
         if (editingHistory) shouldRender = false;
         if (shouldRender) logWorkoutOverride(exercise, field === "weight" ? "load" : field, set?.[`target${field.charAt(0).toUpperCase() + field.slice(1)}`] ?? set?.[field], numeric, { setId });
         const patch = { [field]: numeric, edited: true };
+        if (field === "weight") patch.weightUnit = data.settings.weightUnit;
         if (field === "weight" && resistanceType === "bodyweight_plus_load") patch.addedLoad = numeric;
         if (field === "weight" && resistanceType === "assisted_bodyweight") patch.assistanceLoad = numeric;
         patchSet(setId, patch, shouldRender);
@@ -795,14 +868,15 @@
       function completedSetReconcileState(set, exercise) {
         if (!set || !exercise || setTypeSemantics(set).isWarmup) return null;
         const remainingSets = setsForExercise(exercise.id).filter((item) =>
-          item.id !== set.id && isWorkingSet(item, "score") && !item.completed && !item.skipped
+          item.id !== set.id && isWorkingSet(item) && !item.completed && !item.skipped
         );
         if (!remainingSets.length) return null;
         const fields = [];
         const resistanceType = resistanceTypeFor(exercise, set);
-        const targetWeight = Number(set.targetWeight ?? 0);
+        const storedUnit = set.weightUnit === "kg" || set.weightUnit === "lb" ? set.weightUnit : data.settings.weightUnit;
+        const targetWeight = Number(convertWeightValue(set.targetWeight ?? 0, storedUnit, data.settings.weightUnit));
         const actualWeight = resistanceLoad(set, resistanceType);
-        const increment = Number(exercise.prescription?.increment || progressionProfileForExercise(exercise.name).increment || 0);
+        const increment = Number(progressionProfileForExercise(exercise.name).increment || 0);
         if (resistanceType !== "bodyweight" && targetWeight > 0 && Math.abs(actualWeight - targetWeight) > Math.max(increment, targetWeight * 0.03)) fields.push("load");
         const targetRepMin = Number(set.targetRepMin || set.targetReps || 0);
         const targetRepMax = Number(set.targetRepMax || set.targetReps || 0);
@@ -852,7 +926,7 @@
           targetPatch.targetRpeMax = rpe;
         }
         const remainingSets = setsForExercise(exercise.id).filter((set) =>
-          set.id !== sourceSet.id && isWorkingSet(set, "score") && !set.completed && !set.skipped
+          set.id !== sourceSet.id && isWorkingSet(set) && !set.completed && !set.skipped
         );
         const beforeTargets = remainingSets.map((set) => ({
           setId: set.id,
@@ -1097,6 +1171,7 @@
           session.workoutStarted = true;
           session.workoutState = "active";
           if (!session.startedAt) session.startedAt = isoNow();
+          Object.assign(session, startWorkoutDuration(session));
         }
         commit({ ...data, sessions: data.sessions.map((item) => item.id === session.id ? { ...session, updatedAt: isoNow() } : item), exercises: [...data.exercises, exercise], sets: [...data.sets, ...initialSets] }, true, { invalidateAnalysis: historyCorrection, deferPersistence: !historyCorrection });
       }
@@ -1104,7 +1179,11 @@
       function addTemplate() {
         const template = { id: id(), name: "New Template", notes: "", exercises: [normalizeStableTemplateExercise({ id: id(), name: "Exercise", sets: 3, reps: 8, repMin: 8, repMax: 8, targetRpe: 8, increment: progressionProfileForExercise("Exercise").increment, restSeconds: recommendedRestSeconds("Exercise"), resistanceType: "external", isBodyweight: false, warmups: [] })], createdAt: isoNow(), updatedAt: isoNow() };
         setActiveTab("routines", { renderNow: false });
-        commit({ ...data, templates: [template, ...data.templates] });
+        commit({
+          ...data,
+          templates: [template, ...data.templates],
+          settings: { ...data.settings, expectedTemplateId: data.settings.expectedTemplateId || template.id }
+        });
       }
 
       function patchTemplate(templateId, patch, shouldRender = true) {
@@ -1119,6 +1198,50 @@
           return false;
         }
         commit({ ...data, templates: data.templates.map((template) => template.id === templateId ? { ...template, ...patch, updatedAt: isoNow() } : template) }, shouldRender);
+        return true;
+      }
+
+      function duplicateTemplate(templateId) {
+        const source = data.templates.find((template) => template.id === templateId);
+        if (!source) return false;
+        const now = isoNow();
+        const copy = {
+          ...source,
+          id: id(),
+          name: `${source.name || "Routine"} Copy`,
+          createdAt: now,
+          updatedAt: now,
+          exercises: (source.exercises || []).map((exercise) => ({
+            ...exercise,
+            id: id(),
+            warmups: (exercise.warmups || []).map((warmup) => ({ ...warmup, id: id() })),
+            setTypes: (exercise.setTypes || []).map((setType) => ({ ...setType, id: id() }))
+          }))
+        };
+        const sourceIndex = data.templates.findIndex((template) => template.id === templateId);
+        const templates = data.templates.slice();
+        templates.splice(sourceIndex + 1, 0, copy);
+        expandedTemplateEditorIds.add(copy.id);
+        commit({ ...data, templates });
+        return true;
+      }
+
+      function moveTemplateExercise(templateId, exerciseId, direction) {
+        const step = direction === "up" ? -1 : direction === "down" ? 1 : 0;
+        if (!step) return false;
+        const template = data.templates.find((item) => item.id === templateId);
+        const sourceIndex = template?.exercises.findIndex((exercise) => exercise.id === exerciseId) ?? -1;
+        const destinationIndex = sourceIndex + step;
+        if (!template || sourceIndex < 0 || destinationIndex < 0 || destinationIndex >= template.exercises.length) return false;
+        const exercises = template.exercises.slice();
+        const [moved] = exercises.splice(sourceIndex, 1);
+        exercises.splice(destinationIndex, 0, moved);
+        commit({
+          ...data,
+          templates: data.templates.map((item) => item.id === templateId
+            ? { ...item, exercises, updatedAt: isoNow() }
+            : item)
+        });
         return true;
       }
 
@@ -1140,6 +1263,13 @@
 
       function patchTemplateExercise(templateId, exerciseId, patch, shouldRender = true) {
         assertTemplateExerciseNumericDomain(patch);
+        const currentExercise = data.templates.find((template) => template.id === templateId)?.exercises.find((exercise) => exercise.id === exerciseId);
+        if (!currentExercise) return false;
+        const nextRepMin = Number(Object.prototype.hasOwnProperty.call(patch, "repMin") ? patch.repMin : currentExercise.repMin || currentExercise.reps);
+        const nextRepMax = Number(Object.prototype.hasOwnProperty.call(patch, "repMax") ? patch.repMax : currentExercise.repMax || currentExercise.reps);
+        if (Number.isFinite(nextRepMin) && Number.isFinite(nextRepMax) && nextRepMin > nextRepMax) {
+          throw new RangeError("Template minimum repetitions cannot exceed maximum repetitions.");
+        }
         commit({
           ...data,
           templates: data.templates.map((template) => template.id === templateId
@@ -1151,7 +1281,7 @@
                   const stableFieldsChanged = ["sets", "repMin", "repMax", "targetRpe", "restSeconds"].some((field) => Object.prototype.hasOwnProperty.call(patch, field));
                   if (!stableFieldsChanged || Object.prototype.hasOwnProperty.call(patch, "setTypes")) return normalizeStableTemplateExercise(merged);
                   let setTypes = (Array.isArray(exercise.setTypes) && exercise.setTypes.length ? exercise.setTypes : normalizeStableTemplateExercise(exercise).setTypes)
-                    .filter((type) => type.countsTowardScore !== false && !type.isWarmup)
+                    .filter((type) => type.countsTowardProgression !== false && !type.isWarmup)
                     .map((type) => ({ ...type }));
                   if (Object.prototype.hasOwnProperty.call(patch, "sets")) {
                     const desiredCount = Math.max(1, Number(patch.sets));
@@ -1170,10 +1300,13 @@
                     ...type,
                     ...(Object.prototype.hasOwnProperty.call(patch, "repMin") ? { repMin: Number(patch.repMin) } : {}),
                     ...(Object.prototype.hasOwnProperty.call(patch, "repMax") ? { repMax: Number(patch.repMax) } : {}),
-                    ...(Object.prototype.hasOwnProperty.call(patch, "repMin")
-                      && Object.prototype.hasOwnProperty.call(patch, "repMax")
-                      && Number(patch.repMin) === Number(patch.repMax)
-                      ? { exactReps: true, rangeSource: "routine-exact" }
+                    ...((Object.prototype.hasOwnProperty.call(patch, "repMin") || Object.prototype.hasOwnProperty.call(patch, "repMax"))
+                      ? {
+                          exactReps: Number(Object.prototype.hasOwnProperty.call(patch, "repMin") ? patch.repMin : type.repMin) === Number(Object.prototype.hasOwnProperty.call(patch, "repMax") ? patch.repMax : type.repMax),
+                          rangeSource: Number(Object.prototype.hasOwnProperty.call(patch, "repMin") ? patch.repMin : type.repMin) === Number(Object.prototype.hasOwnProperty.call(patch, "repMax") ? patch.repMax : type.repMax)
+                            ? "routine-exact"
+                            : "routine-range"
+                        }
                       : {}),
                     ...(Object.prototype.hasOwnProperty.call(patch, "targetRpe") ? { rpeMin: Math.max(1, Number(patch.targetRpe) - 1), rpeMax: Number(patch.targetRpe) } : {}),
                     ...(Object.prototype.hasOwnProperty.call(patch, "restSeconds") ? { restSeconds: Number(patch.restSeconds) } : {})
@@ -1184,6 +1317,7 @@
               }
             : template)
         }, shouldRender);
+        return true;
       }
 
       function addTemplateExercise(templateId) {
@@ -1203,12 +1337,16 @@
           return;
         }
         setActiveTab("routines", { renderNow: false });
-        commit({ ...data, templates: [template, ...data.templates] });
+        commit({
+          ...data,
+          templates: [template, ...data.templates],
+          settings: { ...data.settings, expectedTemplateId: data.settings.expectedTemplateId || template.id }
+        });
       }
 
       function stableSetTypesForWorkoutStart(templateExercise, target) {
         const sourceTypes = (templateExercise.setTypes || [])
-          .filter((type) => type.countsTowardScore !== false && !type.isWarmup)
+          .filter((type) => type.countsTowardProgression !== false && !type.isWarmup)
           .map((type) => ({ ...type, type: normalizeSetTypeCode(type.type || type.setType) }));
         const fallback = {
           id: `${templateExercise.id || "exercise"}-stable-1`,
@@ -1219,8 +1357,7 @@
           rpeMin: Math.max(1, Number(templateExercise.targetRpe || 8) - 1),
           rpeMax: Math.max(1, Number(templateExercise.targetRpe || 8)),
           restSeconds: Math.max(0, Number(templateExercise.restSeconds || data.settings.defaultRestSeconds || 90)),
-          countsTowardScore: true,
-          countsTowardVolume: true
+          countsTowardProgression: true
         };
         const stableTypes = sourceTypes.length ? sourceTypes : [fallback];
         const stableCount = stableTypes.reduce((sum, type) => sum + Math.max(1, Number(type.setCount || 1)), 0);
@@ -1243,8 +1380,7 @@
             rpeMin: rpeCeiling ? Math.min(stableRpeMin, Math.max(1, rpeCeiling - 1)) : stableRpeMin,
             rpeMax,
             restSeconds: Math.max(0, Number(type.restSeconds || templateExercise.restSeconds || data.settings.defaultRestSeconds || 90)),
-            countsTowardScore: true,
-            countsTowardVolume: true
+            countsTowardProgression: type.countsTowardProgression !== false
           };
         }).filter((type) => type.setCount > 0);
       }
@@ -1318,10 +1454,7 @@
         session.workoutState = "active";
         session.recovery = cleanRecovery(recovery);
         session.readinessMode = readinessMode;
-        session.resolvedActions = measurePerformance("workoutStart:exceptionResolver", () => resolveWorkoutExceptions(session, recovery, {
-          useOriginal: options.useOriginal === true,
-          userContinuedWithAction: Boolean(recovery.illness || recovery.pain)
-        }), { templateId: template.id, hasExplicitSafetyInput: Boolean(recovery.illness || recovery.pain) });
+        session.resolvedActions = measurePerformance("workoutStart:exceptionResolver", () => resolveWorkoutExceptions(session, recovery), { templateId: template.id, hasExplicitSafetyInput: Boolean(recovery.illness || recovery.pain) });
         const exercises = [];
         const sets = [];
         let adjustedLiftCount = 0;
@@ -1346,7 +1479,7 @@
           exercises.push(exercise);
           const configuredWarmups = templateExercise.warmups || [];
           configuredWarmups.forEach((warmup, warmupIndex) => {
-            sets.push(createSet(exercise.id, warmupIndex + 1, { ...warmup, sequenceIndex: warmupIndex, sequence: warmupIndex, setTypeIndex: warmupIndex, sourceTemplateSetId: warmup.id || templateExercise.id + "-warmup-" + warmupIndex, resistanceType: target.resistanceType || templateResistanceType, completed: false, isWarmup: true, setType: "warmup", countsTowardScore: false, countsTowardVolume: false, countsTowardProgression: false }));
+            sets.push(createSet(exercise.id, warmupIndex + 1, { ...warmup, sequenceIndex: warmupIndex, sequence: warmupIndex, setTypeIndex: warmupIndex, sourceTemplateSetId: warmup.id || templateExercise.id + "-warmup-" + warmupIndex, resistanceType: target.resistanceType || templateResistanceType, completed: false, isWarmup: true, setType: "warmup", countsTowardProgression: false }));
           });
           const previousRoleSets = getMostRecentWorkoutSets(templateExercise.name, {
             excludeSessionId: session.id,
@@ -1364,7 +1497,7 @@
           factualPrefills.forEach((prefill, prefillIndex) => {
             const setNumber = prefillIndex + 1;
             const setType = resolvedTypes.find((type) => normalizeSetTypeCode(type.type) === prefill.setType) || {};
-            sets.push(createSet(exercise.id, setNumber, { sequenceIndex: prefill.sequenceIndex, sequence: prefill.sequenceIndex, setTypeIndex: prefill.setTypeIndex, sourceTemplateSetId: setType.id || templateExercise.id + "-" + prefill.setType + "-" + prefill.setTypeIndex, reps: prefill.reps, weight: prefill.weight, weightUnit: target.weightUnit, resistanceType: target.resistanceType || templateResistanceType, isBodyweight: isBodyweightResistance(resolvedResistanceType), addedLoad: target.resistanceType === "bodyweight_plus_load" ? prefill.weight : target.addedLoad, assistanceLoad: target.resistanceType === "assisted_bodyweight" ? prefill.weight : target.assistanceLoad, rpe: prefill.rpe, completed: false, isWarmup: false, setType: prefill.setType, countsTowardScore: setType.countsTowardScore !== false, countsTowardVolume: setType.countsTowardVolume !== false, targetReps: prefill.reps, targetRepMin: prefill.repMin, targetRepMax: prefill.repMax, targetWeight: prefill.weight, targetRpe: prefill.rpeMax, targetRpeMin: prefill.rpeMin, targetRpeMax: prefill.rpeMax, targetRpeTolerance: setType.rpeTolerance, targetRestSeconds: prefill.restSeconds, originalTargetReps: prefill.reps, originalTargetWeight: prefill.weight, originalTargetRpe: prefill.rpeMax, previousComparableSet: prefill.previousComparableSet }));
+            sets.push(createSet(exercise.id, setNumber, { sequenceIndex: prefill.sequenceIndex, sequence: prefill.sequenceIndex, setTypeIndex: prefill.setTypeIndex, sourceTemplateSetId: setType.id || templateExercise.id + "-" + prefill.setType + "-" + prefill.setTypeIndex, reps: prefill.reps, weight: prefill.weight, weightUnit: target.weightUnit, resistanceType: target.resistanceType || templateResistanceType, isBodyweight: isBodyweightResistance(resolvedResistanceType), addedLoad: target.resistanceType === "bodyweight_plus_load" ? prefill.weight : target.addedLoad, assistanceLoad: target.resistanceType === "assisted_bodyweight" ? prefill.weight : target.assistanceLoad, rpe: prefill.rpe, completed: false, isWarmup: false, setType: prefill.setType, countsTowardProgression: setType.countsTowardProgression !== false, targetReps: prefill.reps, targetRepMin: prefill.repMin, targetRepMax: prefill.repMax, targetWeight: prefill.weight, targetRpe: prefill.rpeMax, targetRpeMin: prefill.rpeMin, targetRpeMax: prefill.rpeMax, targetRpeTolerance: setType.rpeTolerance, targetRestSeconds: prefill.restSeconds, originalTargetReps: prefill.reps, originalTargetWeight: prefill.weight, originalTargetRpe: prefill.rpeMax, previousComparableSet: prefill.previousComparableSet }));
           });
         });
         session.adjustmentSummary = adjustedLiftCount ? adjustedLiftCount + " lift" + (adjustedLiftCount === 1 ? "" : "s") + " adjusted by the resolved exception action." : "";
@@ -1372,6 +1505,7 @@
         delete session.readinessAdjustments;
         delete session.workoutPrescription;
         session.startedAt = isoNow();
+        Object.assign(session, startWorkoutDuration(session, session.startedAt));
         activeSessionId = session.id;
         activeWorkoutId = session.id;
         viewingHistorySessionId = "";
@@ -1401,7 +1535,7 @@
         const exercise = authorization.target.exercise;
         const targetExerciseId = exercise.id;
         const sets = setsForExercise(targetExerciseId);
-        const workingSetCount = sets.filter((set) => isWorkingSet(set, "score")).length;
+        const workingSetCount = sets.filter((set) => isWorkingSet(set)).length;
         if (workingSetCount >= 100) {
           showAppToast("An exercise can contain at most 100 working sets.");
           return;
@@ -1425,7 +1559,7 @@
         const sequenceIndex = warmups.length;
         const priorWarmup = warmups.at(-1);
         const shifted = data.sets.map((set) => set.exerciseId === targetExerciseId && canonicalSetSequence(set) >= sequenceIndex ? { ...set, sequenceIndex: canonicalSetSequence(set) + 1, sequence: canonicalSetSequence(set) + 1 } : set);
-        const warmupSet = createSet(targetExerciseId, warmups.length + 1, { ...(priorWarmup || {}), sequenceIndex, sequence: sequenceIndex, setTypeIndex: warmups.length, completed: false, skipped: false, edited: false, isWarmup: true, setType: "warmup", countsTowardScore: false, countsTowardVolume: false, countsTowardProgression: false, rpe: 5 });
+        const warmupSet = createSet(targetExerciseId, warmups.length + 1, { ...(priorWarmup || {}), sequenceIndex, sequence: sequenceIndex, setTypeIndex: warmups.length, completed: false, skipped: false, edited: false, isWarmup: true, setType: "warmup", countsTowardProgression: false, rpe: 5 });
         const current = data.sets.find((set) => set.id === activeSetId);
         const nextWarmup = warmups.find((set) => !set.completed && !set.skipped) || warmupSet;
         const nextWarmupIndex = nextWarmup.id === warmupSet.id ? warmups.length : warmups.findIndex((set) => set.id === nextWarmup.id);

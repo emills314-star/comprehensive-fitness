@@ -12,9 +12,7 @@ const REQUIRED_PRIVATE_ARTIFACTS = [
 ];
 const PRIVATE_TESTS = [
   "scripts/validate-personal-fitness-data.js",
-  "scripts/test-personal-fitness-data.js",
-  "scripts/test-prescription-engine.js",
-  "scripts/test-prescription-app-integration.js"
+  "scripts/test-personal-fitness-data.js"
 ];
 
 const missing = REQUIRED_PRIVATE_ARTIFACTS.filter((relative) => !fs.existsSync(path.join(ROOT, relative)));

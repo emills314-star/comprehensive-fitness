@@ -58,7 +58,9 @@ assert.match(visibleAction, /You recorded pain or an injury concern/, "The visib
 assert.equal((visibleAction.match(/<article/g) || []).length, 1, "One resolved action must produce one visible action card");
 assert.doesNotMatch(visibleAction, /confidence|evidence|matrix|window|taxonomy/i, "Rendered output must keep internal resolver details hidden");
 
-assert.match(resolvedActionForScopeSource, /return actions\[0\] \|\| null/, "A scope may expose at most one primary action");
+assert.match(resolvedActionForScopeSource, /return decisions\[0\]\?\.outcome === "action" \? decisions\[0\] : null/, "A session scope may expose at most its first current primary action");
+assert.match(resolvedActionForScopeSource, /return latest\?\.outcome === "action" \? latest : null/, "An exercise scope may expose at most one exact current primary action");
+assert.match(resolvedActionForScopeSource, /currentDecisions\[0\]\?\.outcome === "no_action"\) return null/, "The current no-action boundary must suppress retained historical actions");
 assert.match(resolvedActionForScopeSource, /exerciseVariantId/, "Exercise actions must retain exact variant scope");
 assert.match(renderLiftHomeSource, /renderResolvedAction\(resolvedActionForScope\(running, "session"\)/, "Today may show only the canonical session action");
 assert.match(renderWorkoutSource, /renderResolvedAction\(resolvedActionForScope\(session, "session"\)/, "The active workout may show only the canonical session action");
