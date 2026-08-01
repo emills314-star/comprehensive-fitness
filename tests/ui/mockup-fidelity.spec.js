@@ -266,7 +266,7 @@ test("m1 V3 progressive workout retains every functional control in the compact 
   await expect(page.getByRole("button", { name: "Mark set complete" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Finish", exact: true })).toBeVisible();
   await expect(page.locator('.session-dock [aria-label="Workout menu"]')).toBeVisible();
-  await expect(page.locator("[data-workout-rollup]")).toBeVisible();
+  await expect(page.locator("[data-workout-rollup]")).toHaveCount(0);
   await expect(page.locator(".workout-timer-slot > .timer-bar")).toHaveCount(1);
   await expect(page.locator(".set-block .timer-bar")).toHaveCount(0);
   await expect(page.locator(`[data-action="set-weight"][data-set-id="${VISUAL_SET_3_ID}"]`)).toHaveValue("185");
@@ -366,12 +366,27 @@ test("m2 normal workout stays quiet and completion remains directly reachable", 
     invalidateCompletedAnalysis();
     activeTab = "workout";
     activeWorkoutId = "";
+    activeSetId = "";
+    pendingNextSetId = "";
+    timer = null;
     viewingHistorySessionId = "";
     activeSessionId = fixture.sessions[0].id;
     completedSummarySessionId = fixture.sessions[0].id;
+    data.sessions[0].workoutAnalysis = {
+      contractVersion: "comprehensive-fitness-workout-grade/2.0.0",
+      algorithmVersion: "actual-work-rubric/1.0.0",
+      letter: "B",
+      reasons: [
+        { code: "valid_work", text: "Recorded work was complete and valid." },
+        { code: "effort_coherent", text: "Recorded effort matched the completed work." }
+      ],
+      sourceSessionId: fixture.sessions[0].id,
+      resolvedActionDecisionIds: [],
+      createdAt: "2026-07-16T17:00:00.000Z"
+    };
     render();
   }, buildHistoryLifecycleFixture());
-  await expect(page.locator('.completed-summary[aria-label="Post-workout grade and analysis"]')).toBeVisible();
+  await expect(page.locator('.completed-summary[aria-label="Workout completion"]')).toBeVisible();
   await expect(page.getByRole("button", { name: "Done" })).toBeVisible();
   if (process.env.CF_MOCKUP_REVIEW_DIR) {
     await page.screenshot({

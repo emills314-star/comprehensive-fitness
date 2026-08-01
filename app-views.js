@@ -22,8 +22,7 @@
         document.body.classList.toggle("modal-open", modalOpen);
         const viewHtml = measurePerformance("renderView:" + activeTab, renderViewSafely, { tab: activeTab, sessions: data.sessions.length, exercises: data.exercises.length, sets: data.sets.length });
         const shellWorkoutVisible = activeTab === "workout" && hasActiveWorkout() && activeWorkoutId === session.id && !viewingHistorySessionId && !completedSummarySessionId;
-        const shellWorkoutSubmitted = activeTab === "workout" && completedSummarySessionId === session.id && isSessionSubmitted(session);
-        const shellWorkoutDockVisible = shellWorkoutVisible || shellWorkoutSubmitted;
+        const shellWorkoutDockVisible = shellWorkoutVisible;
         const shellTitle = ({ today: "Today", progress: "Progress", routines: "Routines", settings: "Settings", workout: "Workout" })[activeTab] || "Today";
         const shellCurrentContext = shellWorkoutDockVisible ? workoutProgress().current : "";
         const shellActions = activeTab === "routines" || activeTab === "settings"
@@ -32,7 +31,7 @@
             ? '<button class="shell-context-action" type="button" data-action="close-workout-context">Back to Today</button>'
             : '<div class="shell-context-actions"><button type="button" data-action="open-routines">Routines</button><button type="button" data-action="open-settings">Settings</button></div>';
         const shellContext = shellWorkoutDockVisible
-          ? '<div class="shell-context"><h1>' + escapeHtml(session.title || "Workout") + '</h1><span class="shell-session-state">' + escapeHtml(shellWorkoutSubmitted ? "Workout logged" : "In progress") + '</span><small>' + escapeHtml(shellWorkoutSubmitted ? "Session summary" : shellCurrentContext) + '</small></div>' + shellActions
+          ? '<div class="shell-context"><h1>' + escapeHtml(session.title || "Workout") + '</h1><span class="shell-session-state">In progress</span><small>' + escapeHtml(shellCurrentContext) + '</small></div>' + shellActions
           : '<div class="shell-context"><strong>' + escapeHtml(shellTitle) + '</strong></div>' + shellActions;
         const domStartedAt = performanceNow();
         root.innerHTML = `
@@ -45,7 +44,7 @@
             ${renderUpdateBanner()}
             ${appToast ? '<div class="app-toast" data-severity="' + escapeHtml(appToast.severity) + '" role="status" aria-live="polite"><span class="app-toast-icon" aria-hidden="true">' + ({ success: icon.done, warn: icon.warning, error: icon.delete, info: icon.info }[appToast.severity] || icon.info) + '</span><span>' + escapeHtml(appToast.message) + '</span>' + (appToast.action ? '<button type="button" data-action="' + escapeHtml(appToast.action) + '"' + (appToast.setId ? ' data-set-id="' + escapeHtml(appToast.setId) + '"' : '') + '>' + escapeHtml(appToast.actionLabel || "Undo") + '</button>' : '') + '</div>' : ''}
             <main class="app-main" id="main-content" tabindex="-1" ${modalOpen ? 'inert aria-hidden="true"' : ""}>${viewHtml}</main>
-            ${shellWorkoutDockVisible ? renderSessionDock(session, workoutProgress(), { submitted: shellWorkoutSubmitted, inert: modalOpen }) : activeTab === "workout" ? "" : `<nav class="bottom-nav" aria-label="Main navigation" ${modalOpen ? 'inert aria-hidden="true"' : ""}>
+            ${shellWorkoutDockVisible ? renderSessionDock(session, workoutProgress(), { inert: modalOpen }) : activeTab === "workout" ? "" : `<nav class="bottom-nav" aria-label="Main navigation" ${modalOpen ? 'inert aria-hidden="true"' : ""}>
               ${navButton("today", "Today", "workout")}
               ${navButton("progress", "Progress", "review")}
             </nav>`}
@@ -124,8 +123,6 @@
 
       function updateWorkoutStatusDom() {
         const progress = workoutProgress();
-        const rollup = root.querySelector("[data-workout-rollup]");
-        if (rollup) rollup.outerHTML = renderWorkoutRollup();
         const dockCompleted = root.querySelector("[data-session-dock-progress]");
         const dockElapsed = root.querySelector("[data-session-dock-elapsed]");
         if (dockCompleted) dockCompleted.textContent = progress.completed + " of " + progress.total + " sets";
@@ -271,14 +268,12 @@
         }
       }
 
-      function renderSessionDock(session, progress, { submitted = false, inert = false } = {}) {
+      function renderSessionDock(session, progress, { inert = false } = {}) {
         return `<aside class="session-dock" aria-label="Workout session controls" ${inert ? 'inert aria-hidden="true"' : ""}>
           <span class="session-dock-progress"><strong data-session-dock-progress>${progress.completed} of ${progress.total} sets</strong><span class="track" data-session-dock-track aria-label="${progress.completed} of ${progress.total} sets completed">${Array.from({ length: 10 }, (_, index) => '<i class="seg ' + (index < Math.round((progress.completed / Math.max(1, progress.total)) * 10) ? 'filled' : '') + '"></i>').join("")}</span><small data-session-dock-elapsed>${escapeHtml(progress.elapsed)}</small><i class="session-dock-elapsed-rule" aria-hidden="true"></i></span>
-          ${submitted
-            ? '<span class="session-dock-submitted" role="status">Workout logged</span>'
-            : '<button class="primary-action session-dock-finish" type="button" data-action="request-submit-workout">Finish</button>'}
+          <button class="primary-action session-dock-finish" type="button" data-action="request-submit-workout">Finish</button>
           <details class="session-overflow session-dock-overflow"><summary class="icon-button" data-action="session-menu" aria-label="Workout menu">${icon.more}</summary><div class="session-overflow-menu">
-            ${submitted ? "" : '<button type="button" data-action="log-workout-readiness">' + icon.info + '<span>Log readiness</span></button>'}
+            <button type="button" data-action="log-workout-readiness">${icon.info}<span>Log readiness</span></button>
             <button type="button" data-action="save-template">${icon.templates}<span>Save as template</span></button>
             ${sessionCanBeDiscarded(session) ? '<button class="danger" type="button" data-action="request-cancel-workout" data-session-id="' + session.id + '">' + icon.delete + '<span>Cancel workout</span></button>' : ''}
           </div></details>
@@ -316,7 +311,6 @@
           return `
             <section class="view workout-view completed-workout-view">
               ${renderCompletedWorkoutSummary(session)}
-              ${renderNotificationPrompt()}
             </section>
           `;
         }
@@ -342,7 +336,6 @@
             <div class="workout-layout compact-workout-layout">
               <div class="workout-focus-column">
                 ${exerciseHtml}
-            ${historyReadOnly ? "" : renderWorkoutRollup()}
             ${historyReadOnly ? "" : `<details class="compact-disclosure add-exercise-panel">
               <summary>Add exercise <span>${icon.add}</span></summary>
               <div class="disclosure-body">
@@ -381,7 +374,7 @@
               <textarea data-action="session-notes" maxlength="4096" placeholder="Session notes" aria-label="Session notes">${escapeHtml(session.notes)}</textarea>
               </div>
             </details>
-            ${editingHistory ? '<section class="history-edit-bar"><div><strong>Editing logged workout</strong><span>Changes remain temporary until you confirm Save Edits. The workout grade will be recalculated from the revised sets.</span></div><div class="history-edit-actions"><button class="primary-action" type="button" data-action="request-save-history-edits">Save Edits</button><button class="secondary-action" type="button" data-action="request-cancel-history-edits">Cancel Edits</button></div></section>' : ''}
+            ${editingHistory ? '<section class="history-edit-bar"><div><strong>Editing logged workout</strong><span>Changes remain temporary until you confirm Save Edits. The stored historical grade and algorithm version remain unchanged.</span></div><div class="history-edit-actions"><button class="primary-action" type="button" data-action="request-save-history-edits">Save Edits</button><button class="secondary-action" type="button" data-action="request-cancel-history-edits">Cancel Edits</button></div></section>' : ''}
             ${historyReadOnly && completedSummarySessionId !== session.id ? renderCompletedWorkoutSummary(session, { history: true }) : ''}
             ${historyReadOnly ? '<div class="history-view-actions"><button class="primary-action" type="button" data-action="begin-history-edit">Edit History</button><button class="secondary-action" type="button" data-action="return-lift-home">Return to Lift Home</button></div>' : ''}
               </div>
@@ -536,54 +529,6 @@
             ? (elapsedMinutes < 60 ? elapsedMinutes + "m elapsed" : Math.floor(elapsedMinutes / 60) + "h " + (elapsedMinutes % 60) + "m elapsed")
             : isSessionSubmitted(session) ? "Workout logged" : "Not started"
         };
-      }
-
-      function workoutSessionRollup() {
-        const workSets = activeExercises().flatMap((exercise) => setsForExercise(exercise.id).filter((set) => isWorkingSet(set, "score")));
-        const completed = workSets.filter((set) => set.completed && !set.skipped);
-        let actualRpeTotal = 0;
-        let targetRpeTotal = 0;
-        let rpeCount = 0;
-        let adherent = 0;
-        for (const set of completed) {
-          const actualRpe = Number(set.rpe || 0);
-          const targetRpe = Number(set.targetRpe ?? set.targetRpeMax ?? 0);
-          const repMin = Number(set.targetRepMin ?? set.targetReps ?? set.reps ?? 0);
-          const repMax = Number(set.targetRepMax ?? set.targetReps ?? set.reps ?? 0);
-          const actualPerformance = Number(set.resistanceType === "duration" ? set.durationSeconds : set.resistanceType === "distance" ? set.distance : set.reps);
-          const rpeMin = Number(set.targetRpeMin ?? targetRpe);
-          const rpeMax = Number(set.targetRpeMax ?? targetRpe);
-          const repsMatch = Number.isFinite(actualPerformance) && actualPerformance >= repMin && actualPerformance <= repMax;
-          const rpeMatch = actualRpe > 0 && actualRpe >= rpeMin && actualRpe <= rpeMax;
-          if (repsMatch && rpeMatch) adherent += 1;
-          if (actualRpe > 0 && targetRpe > 0) {
-            actualRpeTotal += actualRpe;
-            targetRpeTotal += targetRpe;
-            rpeCount += 1;
-          }
-        }
-        const meanRpe = rpeCount ? actualRpeTotal / rpeCount : null;
-        const targetMeanRpe = rpeCount ? targetRpeTotal / rpeCount : null;
-        const drift = meanRpe !== null && targetMeanRpe !== null ? meanRpe - targetMeanRpe : null;
-        return {
-          completed: completed.length,
-          total: workSets.length,
-          meanRpe,
-          targetMeanRpe,
-          drift,
-          adherence: completed.length ? adherent / completed.length : null
-        };
-      }
-
-      function renderWorkoutRollup() {
-        const rollup = workoutSessionRollup();
-        const rpeText = rollup.meanRpe === null ? "—" : rollup.meanRpe.toFixed(1);
-        const driftText = rollup.drift === null
-          ? "No RPE logged"
-          : (rollup.drift > 0 ? "+" : rollup.drift < 0 ? "−" : "") + Math.abs(rollup.drift).toFixed(1) + " vs " + rollup.targetMeanRpe.toFixed(1);
-        const driftClass = rollup.drift === null ? "none" : Math.abs(rollup.drift) < 0.05 ? "on" : rollup.drift > 0 ? "out" : "under";
-        const adherenceText = rollup.adherence === null ? "—" : Math.round(rollup.adherence * 100) + "%";
-        return '<div class="rollup workout-rollup" data-workout-rollup aria-label="Session roll-up"><span class="ru"><b>' + rpeText + '</b><span class="d ' + driftClass + '">' + escapeHtml(driftText) + '</span></span><span class="ru"><b>' + adherenceText + '</b><span>adherence</span></span></div>';
       }
 
       function renderNotificationPrompt() {
@@ -961,11 +906,10 @@
         const session = data.sessions.find((item) => item.id === sessionId);
         const prs = session ? submitWorkoutPrs(session) : [];
         const updatedSession = session ? { ...session, completedAt: session.date, prs, updatedAt: isoNow() } : null;
-        const workoutAnalysis = updatedSession ? calculateWorkoutAnalysis(updatedSession, { prs }) : null;
-        data = { ...data, sessions: data.sessions.map((item) => item.id === sessionId ? { ...updatedSession, workoutAnalysis } : item) };
+        data = { ...data, sessions: data.sessions.map((item) => item.id === sessionId ? updatedSession : item) };
         invalidateCompletedAnalysis();
         historyEditFlow = null;
-        returnToLiftHome("History edits saved and workout grade recalculated.");
+        returnToLiftHome("History edits saved. The stored historical grade was preserved.");
       }
 
       function cancelHistoryEdits() {

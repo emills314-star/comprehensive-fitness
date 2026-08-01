@@ -82,189 +82,51 @@ async function openProgress(page) {
   await expect(progressTab).toHaveAttribute("aria-current", "page");
 }
 
-test("workout completion renders the full earned achievement strip from verified outcomes", async ({ page }) => {
+test("workout completion renders one concise grade result without achievement analytics", async ({ page }) => {
   test.setTimeout(90_000);
   const browserErrors = collectBrowserErrors(page);
+  await page.setViewportSize({ width: 390, height: 844 });
   await installCleanSyntheticContext(page);
-  const achievementResult = await page.evaluate(() => {
-    const priorSession = {
-      id: "achievement-prior-session",
-      title: "Prior Benchmark",
-      date: "2026-07-12",
-      submitted: true,
-      submittedAt: "2026-07-12T18:00:00.000Z",
-      workoutState: "completed"
+
+  await page.evaluate(() => {
+    const session = data.sessions[0];
+    const exercise = data.exercises.find((item) => item.sessionId === session.id);
+    exercise.name = "Cambered Barbell Bench Press — Extra Long Heavy Competition Variant";
+    exercise.performanceExerciseId = "custom:critical-heavy-variant";
+    session.workoutAnalysis = {
+      contractVersion: "comprehensive-fitness-workout-grade/2.0.0",
+      algorithmVersion: "actual-work-rubric/1.0.0",
+      letter: "A",
+      reasons: [
+        { code: "valid_work", text: "Recorded work was complete and valid." },
+        { code: "effort_coherent", text: "Recorded effort was coherent with the completed work." }
+      ],
+      sourceSessionId: session.id,
+      resolvedActionDecisionIds: [],
+      createdAt: "2026-07-16T15:00:00.000Z"
     };
-    const currentSession = {
-      id: "achievement-current-session",
-      title: "Benchmark Session",
-      date: "2026-07-16",
-      submitted: true,
-      submittedAt: "2026-07-16T18:00:00.000Z",
-      workoutState: "completed",
-      prs: [
-        { exercise: "Barbell Bench Press", type: "Best estimated performance", value: "245.0 e1RM" },
-        { exercise: "Barbell Bench Press", type: "Heaviest load", value: "205 lb × 5" }
-      ]
-    };
-    const priorExercise = {
-      id: "achievement-prior-exercise",
-      sessionId: priorSession.id,
-      name: "Barbell Bench Press",
-      resistanceType: "external",
-      executionQualityAssessment: "controlled"
-    };
-    const currentExercise = {
-      id: "achievement-current-exercise",
-      sessionId: currentSession.id,
-      name: "Barbell Bench Press",
-      resistanceType: "external",
-      executionQualityAssessment: "controlled"
-    };
-    data.sessions.push(priorSession, currentSession);
-    data.exercises.push(priorExercise, currentExercise);
-    data.sets.push(
-      { id: "achievement-prior-set", exerciseId: priorExercise.id, setNumber: 1, setType: "straight", completed: true, reps: 10, weight: 80, rpe: 8 },
-      { id: "achievement-current-set", exerciseId: currentExercise.id, setNumber: 1, setType: "straight", completed: true, reps: 10, weight: 1000, rpe: 8, targetRpe: 8, targetRepMin: 8, targetRepMax: 10 }
-    );
-    entityStructureRevision += 1;
-    entityIndexCache = null;
-    invalidateCompletedAnalysis();
-    currentSession.workoutAnalysis = {
-      version: 1,
-      grade: "A+",
-      internalScore: 98,
-      intent: "Readiness-adjusted training",
-      interpretation: "Exceptional session",
-      rationale: "The adjusted plan was completed precisely",
-      highlights: [{ title: "Performance moved forward", detail: "A new benchmark was established." }],
-      improvements: [],
-      categoryScores: [{ key: "execution", label: "Program execution", earned: 25, possible: 25, reason: "Every target was met." }],
-      exerciseResults: [{
-        exerciseId: currentExercise.id,
-        name: currentExercise.name,
-        resistanceType: "external",
-        isDeload: false,
-        isReadinessAdjusted: true,
-        plannedSets: 1,
-        completedSets: 1,
-        rangeCompliance: 1,
-        rpeCompliance: 1,
-        bestSet: { text: "1,000 lb × 10", reps: 10, load: 1000, rpe: 8 },
-        priorBestSet: { text: "80 lb × 10", reps: 10, load: 80, rpe: 8 },
-        comparison: { status: "progress", label: "Load progression", change: "+920 lb while remaining in range." }
-      }],
-      confidence: "high",
-      metrics: {
-        plannedSets: 1,
-        completedSets: 1,
-        completionRatio: 1,
-        averageRangeCompliance: 1,
-        rpeLoggedRatio: 1,
-        rpeCompliance: 1,
-        progressedExercises: 1
-      },
-      readinessContext: { adjustments: 1, adherence: 1 },
-      deloadContext: { isDeload: false }
-    };
-    const badges = workoutAchievementBadges(currentSession, currentSession.workoutAnalysis);
-    document.querySelector("main.app-main").innerHTML = renderCompletedWorkoutSummary(currentSession);
-    return {
-      keys: badges.map((badge) => badge.key),
-      currentVolume: workoutSessionVolumeLoad(currentSession),
-      priorVolume: workoutSessionVolumeLoad(priorSession),
-      priorExerciseVolume: priorExerciseVolumeHighWater(currentSession, currentExercise),
-      historyIds: activeHistorySessions({ throughDate: currentSession.date }).map((session) => session.id)
-    };
+    document.querySelector("main.app-main").innerHTML = renderCompletedWorkoutSummary(session);
   });
 
-  expect(achievementResult.keys, JSON.stringify(achievementResult)).toEqual([
-    "e1rm_peak",
-    "personal_record",
-    "volume_record",
-    "progression",
-    "plan_complete",
-    "target_precision",
-    "smart_training"
-  ]);
-  const strip = page.locator(".workout-achievements");
-  await expect(strip).toBeVisible();
-  await expect(strip).toContainText("7 earned");
-  const badges = strip.locator(".workout-achievement");
-  await expect(badges).toHaveCount(7);
-  await expect(strip.locator("img")).toHaveCount(7);
-  const interactiveBadges = strip.locator('[data-action="toggle-achievement-detail"]');
-  await expect(interactiveBadges).toHaveCount(6);
-  const planComplete = strip.locator(".workout-achievement.static", { hasText: "Plan Complete" });
-  await expect(planComplete).toHaveCount(1);
-  await expect(planComplete).not.toContainText("View exercise details");
-
-  const e1rmBadge = strip.locator('details.workout-achievement:has([data-achievement-key="e1rm_peak"])');
-  await e1rmBadge.locator("summary").click();
-  await expect(e1rmBadge).toHaveAttribute("open", "");
-  await expect(e1rmBadge.locator(".workout-achievement-detail")).toContainText("Barbell Bench Press");
-  await expect(e1rmBadge.locator(".workout-achievement-detail")).toContainText("245.0 e1RM");
-  await expect(e1rmBadge.locator(".workout-achievement-detail")).toContainText("Previous high-water mark");
-  await expect(e1rmBadge.locator(".workout-achievement-detail")).toContainText("183.7 e1RM");
-
-  const volumeBadge = strip.locator('details.workout-achievement:has([data-achievement-key="volume_record"])');
-  await volumeBadge.locator("summary").focus();
-  await volumeBadge.locator("summary").press("Enter");
-  await expect(volumeBadge).toHaveAttribute("open", "");
-  await expect(volumeBadge.locator(".workout-achievement-detail")).toContainText("10,000 lb");
-  await expect(volumeBadge.locator(".workout-achievement-detail")).toContainText(`${Math.round(achievementResult.priorExerciseVolume).toLocaleString()} lb`);
-  const layout = await strip.evaluate((element) => ({
-    ...(() => {
-      const parseRgb = (value) => (value.match(/\d+(?:\.\d+)?/g) || []).slice(0, 3).map(Number);
-      const luminance = (value) => {
-        const channels = parseRgb(value).map((channel) => {
-          const normalized = channel / 255;
-          return normalized <= 0.03928 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
-        });
-        return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
-      };
-      const contrast = (foreground, background) => {
-        const light = Math.max(luminance(foreground), luminance(background));
-        const dark = Math.min(luminance(foreground), luminance(background));
-        return (light + 0.05) / (dark + 0.05);
-      };
-      const card = element.querySelector(".workout-achievement");
-      const cardBackground = getComputedStyle(card).backgroundColor;
-      const sectionBackground = getComputedStyle(element).backgroundColor;
-      const heading = element.querySelector(".workout-achievements-heading h3");
-      const kicker = element.querySelector(".workout-achievements-heading .section-kicker");
-      const earned = element.querySelector(".workout-achievements-heading > strong");
-      const evidence = element.querySelector("details[open] .workout-achievement-evidence");
-      const evidenceBackground = getComputedStyle(evidence).backgroundColor;
-      return {
-        titleContrast: contrast(getComputedStyle(card.querySelector(".workout-achievement-title")).color, cardBackground),
-        descriptionContrast: contrast(getComputedStyle(card.querySelector(".workout-achievement-description")).color, cardBackground),
-        headingContrast: contrast(getComputedStyle(heading).color, sectionBackground),
-        kickerContrast: contrast(getComputedStyle(kicker).color, sectionBackground),
-        earnedContrast: contrast(getComputedStyle(earned).color, getComputedStyle(earned).backgroundColor),
-        evidenceNameContrast: contrast(getComputedStyle(evidence.querySelector("header strong")).color, evidenceBackground),
-        evidenceLabelContrast: contrast(getComputedStyle(evidence.querySelector("div span")).color, evidenceBackground),
-        evidenceValueContrast: contrast(getComputedStyle(evidence.querySelector("div strong")).color, evidenceBackground)
-      };
-    })(),
-    stripWidth: element.getBoundingClientRect().width,
-    pageWidth: document.documentElement.clientWidth,
-    pageScrollWidth: document.documentElement.scrollWidth,
-    missingImages: [...element.querySelectorAll("img")].filter((image) => !image.complete || image.naturalWidth === 0).length,
-    openDetailWidth: element.querySelector('details[open]')?.getBoundingClientRect().width || 0
+  const summary = page.locator('.completed-summary[aria-label="Workout completion"]');
+  await expect(summary).toBeVisible();
+  await expect(summary.locator(".workout-grade-mark")).toHaveText("A");
+  await expect(summary.locator(".workout-grade-version")).toContainText("actual-work-rubric/1.0.0");
+  await expect(summary.locator(".grade-reasons li")).toHaveCount(2);
+  expect(await summary.locator(".workout-highlight").count()).toBeLessThanOrEqual(3);
+  await expect(summary.locator('[data-action="close-completed-summary"]')).toHaveText("Done");
+  await expect(summary.locator('[data-action="open-completion-progress"]')).toHaveText("Progress");
+  await expect(summary.locator(".workout-achievements, .workout-achievement, [data-action='toggle-achievement-detail']")).toHaveCount(0);
+  await expect(summary).not.toContainText(/plan complete|target precision|the session, diffed|confidence|category score|adherence/i);
+  const geometry = await summary.evaluate((element) => ({
+    width: element.getBoundingClientRect().width,
+    viewport: document.documentElement.clientWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+    smallestAction: Math.min(...[...element.querySelectorAll("button")].map((button) => button.getBoundingClientRect().height))
   }));
-  expect(layout.missingImages).toBe(0);
-  expect(layout.titleContrast).toBeGreaterThanOrEqual(7);
-  expect(layout.descriptionContrast).toBeGreaterThanOrEqual(4.5);
-  expect(layout.headingContrast).toBeGreaterThanOrEqual(7);
-  expect(layout.kickerContrast).toBeGreaterThanOrEqual(4.5);
-  expect(layout.earnedContrast).toBeGreaterThanOrEqual(7);
-  expect(layout.evidenceNameContrast).toBeGreaterThanOrEqual(7);
-  expect(layout.evidenceLabelContrast).toBeGreaterThanOrEqual(4.5);
-  expect(layout.evidenceValueContrast).toBeGreaterThanOrEqual(7);
-  expect(layout.stripWidth).toBeLessThanOrEqual(layout.pageWidth);
-  expect(layout.pageScrollWidth).toBeLessThanOrEqual(layout.pageWidth);
-  expect(layout.openDetailWidth).toBeGreaterThan(layout.stripWidth * 0.8);
+  expect(geometry.width).toBeLessThanOrEqual(geometry.viewport);
+  expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.viewport);
+  expect(geometry.smallestAction).toBeGreaterThanOrEqual(44);
   expect(browserErrors).toEqual([]);
 });
 
@@ -321,7 +183,6 @@ test("critical workout lifecycle remains coherent through submission, progress, 
   await expect(firstWorkingSet.locator('[data-set-mode="logged"]')).toHaveCount(1);
   await expect(completion).toBeFocused();
   await expect(page.locator('[data-session-dock-progress]')).toHaveText("1 of 2 sets");
-  await expect(page.locator('[data-workout-rollup]')).not.toContainText("1/2");
   const timer = page.locator(".workout-timer-slot > .timer-bar");
   await expect(timer, "completing an eligible set must start its rest timer").toBeVisible();
   await expect(firstWorkingSet.locator(".timer-bar"), "the M1 rest strip must not be nested inside a logged set").toHaveCount(0);
@@ -342,11 +203,10 @@ test("critical workout lifecycle remains coherent through submission, progress, 
 
   await page.locator('[data-action="request-submit-workout"]').click();
   await page.locator('[data-action="confirm-submit-workout"]').click();
-  const summary = page.locator('.completed-summary[aria-label="Post-workout grade and analysis"]');
+  const summary = page.locator('.completed-summary[aria-label="Workout completion"]');
   await expect(summary).toBeVisible({ timeout: 45_000 });
   await expect(summary).toContainText("Session logged");
-  await expect(page.locator(".session-dock-submitted")).toHaveText("Workout logged");
-  await expect(page.locator(".session-dock-finish")).toHaveCount(0);
+  await expect(page.locator(".session-dock, .session-dock-submitted, .session-dock-finish")).toHaveCount(0);
   const submitted = await waitForPersisted(page, (stored) => stored?.sessions?.filter((session) => session.id === activeSession.id && session.submitted).length === 1, "confirmed submission must persist exactly one completed session");
   expect(submitted.sets.filter((set) => set.exerciseId === activeExercise.id && set.completed)).toHaveLength(1);
   await page.locator('[data-action="close-completed-summary"]').click();

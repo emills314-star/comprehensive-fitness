@@ -40,7 +40,7 @@ assert.match(analysis, /point\.date/, "Chart detail must retain the workout date
 for (const fact of [/formatResistance\(best, exercise\)/, /best\?\.reps/, /best\?\.rpe/, /setTypeSemantics\(best\)/]) {
   assert.match(analysis, fact, "Chart detail must retain load, reps, RPE, and set-role facts");
 }
-assert.match(analysis, /Named variants remain separate/, "Progress must disclose that variants remain separate");
+assert.match(analysis, /Named variants and resistance types remain separate/, "Progress must disclose that variants and resistance types remain separate");
 assert.doesNotMatch(analysis, /\b(hypertrophyAnalysis|calculateHypertrophyScore|buildHypertrophyWeekAggregates|renderExerciseExpectations|renderHypertrophyScore)\b/, "Deleted score and qualification engines must be absent");
 
 assert.doesNotMatch(resolver, /weeklyMuscleVolume|fractionalSet|hypertrophyScore|volumeExposure/, "The approved exception resolver must not depend on deleted analytical exposure inputs");

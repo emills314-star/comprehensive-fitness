@@ -197,6 +197,16 @@ No M6 transition flag was introduced. Physical-device RPE keyboard behavior, OS 
 
 The recoverable M6 implementation checkpoint is `441b6cb`.
 
+## M7 completion record — Versioned actual-work grade and factual Progress
+
+**Status:** COMPLETE — IMPLEMENTED LOCALLY
+
+The implementation replaces the live adherence/plan grade with one prospective A-F `comprehensive-fitness-workout-grade/2.0.0` record using algorithm `actual-work-rubric/1.0.0`. It preserves legacy grade values/versions without boot, render, import, or history-edit recomputation. Completion is limited to the approved grade/reasons/highlights/exception/actions, while Progress uses exact variant, resistance type, comparable working-set role, normalized display units, and inspectable raw source facts across all submitted history.
+
+Focused contracts, the effective 62/62 public gate, lint, typecheck, production build, workflow/privacy/package verification, root/`www` parity, 4/4 mobile M7, 4/4 desktop M7, and the consolidated 8/8 affected mobile regression gate pass. Fresh 390 × 844 screenshots were inspected. Independent review found and verified corrections for action-handling semantics, exact action scope, mixed units, same-name resistance variants, source provenance, high-repetition estimate bounds, semantic heading structure, and no-highlight Progress context.
+
+The external dependency audit could not reach the npm registry under the environment policy; M7 changes no package metadata and local package/build/runtime gates pass. Pinned Node 22.23.x/npm 10.9.x and physical-device acceptance remain unverified external gates. M8 may begin only after the recoverable M7 checkpoint is recorded.
+
 ## 5. Temporary structure ledger
 
 | Artifact | Introduced | Purpose | Delete gate |

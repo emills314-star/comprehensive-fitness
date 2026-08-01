@@ -115,8 +115,7 @@ const patchTemplateName = functionSource(workout, "patchTemplateExerciseName");
 const startTemplate = functionSource(workout, "startTemplate");
 const validateImport = functionSource(imports, "validateImportedAppData");
 const importDataFile = functionSource(imports, "importDataFile");
-const priorWorkoutPrSets = functionSource(history, "priorWorkoutPrSets");
-const workoutPrPreviousHighWater = functionSource(history, "workoutPrPreviousHighWater");
+const submitWorkoutPrs = functionSource(history, "submitWorkoutPrs");
 
 const deletedPresentationSource = [views, workout, history, interactions, html].join("\n");
 assert.doesNotMatch(deletedPresentationSource, /plate-calculator|plate-diagram|Plate calculator|renderPlateCalculator|isBarbellExercise/, "M6 must delete the plate calculator code, markup, and styles");
@@ -140,8 +139,8 @@ assert.match(normalizeLoadedData, /if \(!submittedExercise\)[\s\S]*delete retain
 assert.match(normalizeLoadedData, /if \(!isSessionSubmitted\(normalizedSession\)\) delete normalizedSession\.exerciseQualityAnswers/, "Active session normalization must delete the historical-only execution-quality answer container");
 assert.match(normalizeLoadedData, /delete retainedExercise\.executionBlocked[\s\S]*delete retainedExercise\.safetyRestriction/, "Mutable active equipment-only blockers must be removed during compatibility normalization");
 assert.match(normalizeLoadedData, /const finalPrescription[\s\S]*delete finalPrescription\.executionBlocked[\s\S]*delete finalPrescription\.executable[\s\S]*delete finalPrescription\.safetyRestriction[\s\S]*delete finalPrescription\.reason/, "The active prescription must delete—not invert—the obsolete equipment-only blocker fields");
-assert.match(priorWorkoutPrSets, /isSessionSubmitted\(candidate\)[\s\S]*sessionComesBefore\(candidate,\s*session\)/, "PR high-water must scan all earlier submitted sessions");
-assert.doesNotMatch(priorWorkoutPrSets + workoutPrPreviousHighWater, /six|6\s*\*\s*30|month|183|180\s*\*\s*24|Date\.now\(\)\s*-/, "Lifetime PR high-water must not apply the recent six-month display window");
+assert.match(submitWorkoutPrs, /isSessionSubmitted\(item\)[\s\S]*sessionComesBefore\(item,\s*session\)/, "PR comparisons must scan all earlier submitted sessions");
+assert.doesNotMatch(submitWorkoutPrs, /six|6\s*\*\s*30|month|183|180\s*\*\s*24|Date\.now\(\)\s*-/, "Lifetime PR comparisons must not apply the recent six-month display window");
 
 assert.match(renderExercise, /escapeHtml\(exercise\.name\)/, "The full actual exercise/variant name must remain visible");
 assert.doesNotMatch(renderExercise, /exercise\.name\.(?:slice|substring)|truncate|text-overflow/, "A meaningful exercise-variant suffix must not be truncated in markup");

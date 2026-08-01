@@ -238,9 +238,9 @@
           date.setDate(date.getDate() - (dayOffset < recentHistoryTitles.length + 1 ? 0 : dayOffset));
           const dateIso = localDateIso(date);
           const sessionId = "perf-session-" + dayOffset;
-          const internalScore = recentHistoryScores[dayOffset] ?? 78 + (dayOffset % 18);
-          const grade = internalScore >= 97 ? "A+" : internalScore >= 93 ? "A" : internalScore >= 90 ? "A-" : internalScore >= 87 ? "B+" : internalScore >= 83 ? "B" : internalScore >= 80 ? "B-" : internalScore >= 77 ? "C+" : internalScore >= 73 ? "C" : internalScore >= 70 ? "C-" : internalScore >= 60 ? "D" : "F";
-          sessions.push({ id: sessionId, date: dateIso, completedAt: dateIso, submitted: true, workoutState: "completed", title: recentHistoryTitles[dayOffset] || (dayOffset % 2 ? "Tuesday - Heavy Push + Calves + Light Quads" : "Sunday - Light Upper + Posterior Chain"), createdAt: dateIso + "T12:00:00.000Z", updatedAt: dateIso + "T13:00:00.000Z", workoutAnalysis: { version: 1, grade, internalScore, intent: "Standard training session", interpretation: "Fixture workout", rationale: "Used for development layout and performance verification.", categoryScores: [], highlights: [], improvements: [], exerciseResults: [], confidence: "moderate", metrics: { completedSets: names.length * 4, rpeLoggedRatio: 1 } } });
+          const gradeScore = recentHistoryScores[dayOffset] ?? 78 + (dayOffset % 18);
+          const letter = gradeScore >= 90 ? "A" : gradeScore >= 80 ? "B" : gradeScore >= 70 ? "C" : gradeScore >= 60 ? "D" : "F";
+          sessions.push({ id: sessionId, date: dateIso, completedAt: dateIso, submitted: true, workoutState: "completed", title: recentHistoryTitles[dayOffset] || (dayOffset % 2 ? "Tuesday - Heavy Push + Calves + Light Quads" : "Sunday - Light Upper + Posterior Chain"), createdAt: dateIso + "T12:00:00.000Z", updatedAt: dateIso + "T13:00:00.000Z", workoutAnalysis: { contractVersion: "comprehensive-fitness-workout-grade/2.0.0", algorithmVersion: "actual-work-rubric/1.0.0", letter, reasons: [{ code: "actual_work", text: names.length * 4 + " valid working sets recorded." }, { code: "logging_validity", text: "Load, repetitions, and RPE are complete for every recorded working set." }], sourceSessionId: sessionId, resolvedActionDecisionIds: [], createdAt: dateIso + "T13:00:00.000Z" } });
           names.forEach((name, exerciseIndex) => {
             const exerciseId = sessionId + "-exercise-" + exerciseIndex;
             exercises.push({ id: exerciseId, sessionId, name, order: exerciseIndex, resistanceType: "external", restSeconds: 90, primaryMuscle: "", secondaryMuscle: "" });
@@ -1389,14 +1389,9 @@
         entityStructureRevision += 1;
         entityIndexCache = null;
         if (needsDomainRecalculation) {
-          const activeIds = activeHistorySessionIds();
-          data.sessions = data.sessions.map((session) => {
-            if (!activeIds.has(session.id)) return session;
-            if (session.workoutAnalysis || session.grade || session.gradeVersion) return session;
-            const prs = submitWorkoutPrs(session);
-            const updated = { ...session, prs };
-            return { ...updated, workoutAnalysis: calculateWorkoutAnalysis(updated, { prs }) };
-          });
+          // Submitted source observations and stored grade versions are immutable.
+          // Migration may rebuild transient indexes, but it never assigns a newer
+          // grade or PR record to an older workout that did not store one.
           invalidateCompletedAnalysis();
         }
         applyTheme();
@@ -2375,8 +2370,10 @@
       }
 
       function estimatedOneRepMax(set) {
-        if (set.weight <= 0 || set.reps <= 0) return 0;
-        return set.weight * (1 + set.reps / 30);
+        const reps = Number(set?.reps || 0);
+        const load = resistanceLoadInUnit(set, "external");
+        if (load <= 0 || reps < 1 || reps > 12) return 0;
+        return load * (1 + reps / 30);
       }
 
       function roundToIncrement(value, increment) {
@@ -2432,20 +2429,20 @@
 
       function exerciseCatalog() {
         if (exerciseCatalogCache?.revision === analysisRevision) return exerciseCatalogCache.items;
-        const analysisIndex = completedAnalysisIndex();
-        const sessions = analysisIndex.sessionById;
+        const sessions = new Map(data.sessions.filter((session) => isSessionSubmitted(session)).map((session) => [session.id, session]));
         const catalog = new Map();
-        analysisIndex.exerciseById.forEach((exercise) => {
-          const id = canonicalExerciseId(exercise);
+        data.exercises.forEach((exercise) => {
+          const canonicalId = canonicalExerciseId(exercise);
           const name = String(exercise?.name || "").trim();
-          if (!id || !name) return;
+          if (!canonicalId || !name) return;
           const session = sessions.get(exercise.sessionId);
-          const current = catalog.get(id) || { id, name, resistanceType: resistanceTypeFor(exercise), lastDate: "", submittedUses: 0 };
-          if (session) {
-            current.submittedUses += 1;
-            if (!current.lastDate || session.date >= current.lastDate) { current.lastDate = session.date; current.name = name; current.resistanceType = resistanceTypeFor(exercise); }
-          }
-          catalog.set(id, current);
+          if (!session) return;
+          const resistanceType = resistanceTypeFor(exercise);
+          const selectionId = canonicalId + "::resistance::" + resistanceType;
+          const current = catalog.get(selectionId) || { id: selectionId, canonicalId, name, resistanceType, lastDate: "", submittedUses: 0 };
+          current.submittedUses += 1;
+          if (!current.lastDate || session.date >= current.lastDate) { current.lastDate = session.date; current.name = name; }
+          catalog.set(selectionId, current);
         });
         const items = Array.from(catalog.values()).sort((a, b) => a.name.localeCompare(b.name));
         exerciseCatalogCache = { revision: analysisRevision, items };
@@ -2477,11 +2474,11 @@
         const exactStructuredId = exactStructuredChartExerciseId(query);
         const recentRank = new Map(recentChartExerciseIds.map((id, index) => [id, index]));
         return exerciseCatalog()
-          .map((exercise) => ({ ...exercise, lexicalName: normalizeChartSearch(exercise.name), lexicalId: normalizeChartSearch(exercise.id) }))
-          .filter((exercise) => !lexicalQuery || exercise.lexicalName.includes(lexicalQuery) || exercise.lexicalId.includes(lexicalQuery) || exercise.id === exactStructuredId)
+          .map((exercise) => ({ ...exercise, lexicalName: normalizeChartSearch(exercise.name), lexicalId: normalizeChartSearch(exercise.canonicalId) }))
+          .filter((exercise) => !lexicalQuery || exercise.lexicalName.includes(lexicalQuery) || exercise.lexicalId.includes(lexicalQuery) || exercise.canonicalId === exactStructuredId)
           .sort((a, b) => {
-            const aExact = a.id === exactStructuredId || a.lexicalName === lexicalQuery ? 0 : a.lexicalName.startsWith(lexicalQuery) || a.lexicalId.startsWith(lexicalQuery) ? 1 : 2;
-            const bExact = b.id === exactStructuredId || b.lexicalName === lexicalQuery ? 0 : b.lexicalName.startsWith(lexicalQuery) || b.lexicalId.startsWith(lexicalQuery) ? 1 : 2;
+            const aExact = a.canonicalId === exactStructuredId || a.lexicalName === lexicalQuery ? 0 : a.lexicalName.startsWith(lexicalQuery) || a.lexicalId.startsWith(lexicalQuery) ? 1 : 2;
+            const bExact = b.canonicalId === exactStructuredId || b.lexicalName === lexicalQuery ? 0 : b.lexicalName.startsWith(lexicalQuery) || b.lexicalId.startsWith(lexicalQuery) ? 1 : 2;
             if (aExact !== bExact) return aExact - bExact;
             const aRecent = recentRank.has(a.id) ? recentRank.get(a.id) : 999;
             const bRecent = recentRank.has(b.id) ? recentRank.get(b.id) : 999;
@@ -2494,7 +2491,7 @@
       function renderExerciseSuggestions(query = chartExerciseDraft) {
         const matches = matchingChartExercises(query);
         if (!matches.length) return '<div class="exercise-search-empty">No matching logged exercise. Keep the current selection or try another name.</div>';
-        return matches.map((exercise, index) => '<button class="exercise-suggestion ' + (index === chartExerciseHighlight ? 'highlighted' : '') + '" type="button" data-action="select-chart-exercise" data-exercise-id="' + escapeHtml(exercise.id) + '"><strong>' + escapeHtml(exercise.name) + '</strong><span>' + exercise.submittedUses + ' submitted workout' + (exercise.submittedUses === 1 ? '' : 's') + (exercise.lastDate ? ' · Last ' + formatDate(exercise.lastDate) : '') + '</span></button>').join('');
+        return matches.map((exercise, index) => '<button class="exercise-suggestion ' + (index === chartExerciseHighlight ? 'highlighted' : '') + '" type="button" data-action="select-chart-exercise" data-exercise-id="' + escapeHtml(exercise.id) + '"><strong>' + escapeHtml(exercise.name) + '</strong><span>' + escapeHtml(resistanceTypeLabel(exercise.resistanceType)) + ' · ' + exercise.submittedUses + ' submitted workout' + (exercise.submittedUses === 1 ? '' : 's') + (exercise.lastDate ? ' · Last ' + formatDate(exercise.lastDate) : '') + '</span></button>').join('');
       }
 
       function updateExerciseSuggestionList() {
@@ -2524,7 +2521,7 @@
         const matches = matchingChartExercises(chartExerciseDraft);
         const exactStructuredId = exactStructuredChartExerciseId(chartExerciseDraft);
         const lexicalQuery = normalizeChartSearch(chartExerciseDraft);
-        const exact = matches.find((exercise) => exercise.id === exactStructuredId || normalizeChartSearch(exercise.name) === lexicalQuery);
+        const exact = matches.find((exercise) => exercise.canonicalId === exactStructuredId || normalizeChartSearch(exercise.name) === lexicalQuery);
         return selectChartExercise((exact || matches[chartExerciseHighlight] || matches[0])?.id || "");
       }
 
@@ -2630,6 +2627,12 @@
         if (!Number.isFinite(numeric) || fromUnit === toUnit) return value;
         const converted = fromUnit === "lb" && toUnit === "kg" ? numeric / 2.2046226218 : numeric * 2.2046226218;
         return roundLoadForUnit(converted, toUnit);
+      }
+
+      function resistanceLoadInUnit(set, type, toUnit = data.settings.weightUnit) {
+        const load = resistanceLoad(set, type);
+        const fromUnit = set?.weightUnit === "kg" || set?.weightUnit === "lb" ? set.weightUnit : data.settings.weightUnit;
+        return Number(convertWeightValue(load, fromUnit, toUnit));
       }
 
       function convertWeightFields(value, fromUnit, toUnit, key = "") {

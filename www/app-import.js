@@ -432,6 +432,26 @@
           if (!Array.isArray(action.reasonCodes) || !Array.isArray(action.sourceReferences)) throw new Error(`${label} reason/source references must be arrays.`);
           if (action.handling != null && !allowedHandling.has(action.handling)) throw new Error(`${label} handling is invalid.`);
         };
+        const assertCurrentWorkoutGrade = (grade, label) => {
+          if (grade == null || grade?.contractVersion !== "comprehensive-fitness-workout-grade/2.0.0") return;
+          const gradeFields = new Set(["contractVersion", "algorithmVersion", "letter", "reasons", "sourceSessionId", "resolvedActionDecisionIds", "createdAt"]);
+          const reasonFields = new Set(["code", "text"]);
+          assertAllowed(grade, gradeFields, label);
+          if (typeof grade.algorithmVersion !== "string" || !grade.algorithmVersion || grade.algorithmVersion.length > 128) throw new Error(`${label} algorithmVersion is invalid.`);
+          if (!["A", "B", "C", "D", "F"].includes(grade.letter)) throw new Error(`${label} letter is invalid.`);
+          assertId(grade.sourceSessionId, `${label} source session`);
+          if (!Array.isArray(grade.reasons) || grade.reasons.length < 2 || grade.reasons.length > 3) throw new Error(`${label} must contain two or three reasons.`);
+          grade.reasons.forEach((reason, reasonIndex) => {
+            assertAllowed(reason, reasonFields, `${label} reason ${reasonIndex + 1}`);
+            if (typeof reason.code !== "string" || !reason.code || reason.code.length > 64) throw new Error(`${label} reason ${reasonIndex + 1} code is invalid.`);
+            if (typeof reason.text !== "string" || !reason.text || reason.text.length > 280) throw new Error(`${label} reason ${reasonIndex + 1} text is invalid.`);
+          });
+          if (grade.resolvedActionDecisionIds != null) {
+            if (!Array.isArray(grade.resolvedActionDecisionIds) || grade.resolvedActionDecisionIds.length > 64) throw new Error(`${label} resolved action references are invalid.`);
+            grade.resolvedActionDecisionIds.forEach((decisionId) => assertId(decisionId, `${label} resolved action`));
+          }
+          if (typeof grade.createdAt !== "string" || !Number.isFinite(Date.parse(grade.createdAt))) throw new Error(`${label} createdAt is invalid.`);
+        };
         const assertTemplateNumericValue = (value, action, label) => {
           const config = templateNumericDomain[action];
           const numeric = Number(value);
@@ -610,6 +630,8 @@
             if (!Array.isArray(record.resolvedActions) || record.resolvedActions.length > 64) throw new Error(`Session ${index + 1} resolvedActions is invalid or exceeds its limit.`);
             record.resolvedActions.forEach((action, actionIndex) => assertResolvedAction(action, `Session ${index + 1} resolved action ${actionIndex + 1}`));
           }
+          assertCurrentWorkoutGrade(record.workoutAnalysis, `Session ${index + 1} workout grade`);
+          if (record.workoutAnalysis?.contractVersion === "comprehensive-fitness-workout-grade/2.0.0" && record.workoutAnalysis.sourceSessionId !== record.id) throw new Error(`Session ${index + 1} workout grade sourceSessionId must match its session.`);
           return copyAllowed(record, allowedSessionFields);
         });
         const exercises = imported.exercises.map((record, index) => {

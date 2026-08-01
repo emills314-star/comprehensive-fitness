@@ -19,8 +19,7 @@ function functionSource(source, name, nextName) {
 }
 
 const renderRoot = functionSource(views, "render", "resizeExerciseNameFields");
-const renderWorkout = functionSource(views, "renderWorkout", "workoutSessionRollup");
-const renderWorkoutRollup = functionSource(views, "renderWorkoutRollup", "renderNotificationPrompt");
+const renderWorkout = functionSource(views, "renderWorkout", "resolvedActionForScope");
 const renderUpdateBanner = functionSource(views, "renderUpdateBanner", "renderOfflineBanner");
 const readinessMetricDelta = functionSource(views, "readinessMetricDelta", "readinessMetricField");
 const renderTemplateStartSheet = functionSource(views, "renderTemplateStartSheet", "prescriptionLine");
@@ -46,7 +45,9 @@ assert.doesNotMatch(renderHistory, /History · \$\{totalSessions\}/, "History co
 assert.doesNotMatch(renderCancelWorkoutSheet, /<h2[^>]*>\$\{completedSets\}/, "the cancel heading must not repeat the diff-owned completed-set count");
 assert.match(renderCancelWorkoutSheet, /completedSets[\s\S]*unsubmitted draft will be permanently removed[\s\S]*Submitted history and routines stay intact/, "destructive copy must concisely distinguish draft loss from preserved records");
 assert.doesNotMatch(renderSettings, /formatTimer\(Number\(data\.settings\.defaultRestSeconds/, "Settings must not restate default rest in a second format");
-assert.match(renderCompletedSummary, /completionHeadline[\s\S]*workout-grade-mark/, "the grade mark must remain the sole visible grade value beside the completion headline");
+assert.match(renderCompletedSummary, /workout-grade-hero[\s\S]*workout-grade-mark/, "the grade mark must remain the sole visible grade value in the completion hero");
+assert.match(renderCompletedSummary, /Why this grade[\s\S]*reasons\.slice\(0, 3\)/, "the completion hero must pair the grade with at most three plain reasons");
+assert.doesNotMatch(renderCompletedSummary, /confidence|categoryScores|internalScore|summary-diff-result|achievement/i, "the concise completion must not expose grade internals, plan adherence, or achievements");
 assert.match(renderLiftHome, /Expected workout[\s\S]*data-action="start-next-template"/, "Today must present the expected workout and one primary Start action");
 assert.doesNotMatch(renderLiftHome, /Stable target|Last time|weekly volume|hypertrophy|confidence|evidence/i, "Today must not restore the deleted analysis preview");
 assert.match(renderResolvedAction, /if \(!resolvedAction \|\| resolvedAction\.outcome !== "action"\) return ""/, "the exception renderer must remain silent unless the canonical resolver produced an action");
@@ -54,7 +55,6 @@ assert.match(renderResolvedAction, /resolvedAction\.action\?\.code[\s\S]*resolve
 assert.doesNotMatch(renderResolvedAction, /confidence|evidence|matrix|training window|qualification/i, "the concise exception card must not expose internal confidence or evidence machinery");
 assert.doesNotMatch(views, /function renderRolePrescriptionDetails\(|function renderUnifiedPrescriptionDetails\(/, "deleted prescription-evidence renderers must not return");
 
-assert.match(renderWorkoutRollup, /rollup\.drift > 0 \? "out" : "under"/, "RPE drift below target must use under, not over");
 assert.match(renderChartPointDetail, /Selected session[\s\S]*chart-point-rollup[\s\S]*load[\s\S]*reps[\s\S]*RPE[\s\S]*role[\s\S]*Recorded sets/, "A selected factual chart point must expose date, load, reps, RPE, role, and source sets");
 assert.match(readinessMetricDelta, /tone: "none"/, "raw readiness differences must remain neutral facts");
 assert.doesNotMatch(readinessMetricDelta, /tone: desirable|stronglyAdverse/, "raw readiness differences must not invent a semantic judgement");

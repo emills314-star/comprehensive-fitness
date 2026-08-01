@@ -3,7 +3,7 @@
 **Product:** Comprehensive Fitness  
 **Primary owner:** Codex  
 **Adversarial reviewer:** Claude Code  
-**Current phase:** Implementation active on `codex/zero-based-redesign`; M0–M6 gates complete locally
+**Current phase:** Implementation paused on `codex/zero-based-redesign`; M0–M6 gates complete locally, M7 browser gate blocked
 **Implementation authorized:** Yes — local implementation only
 
 ## Completed
@@ -68,26 +68,28 @@
 
 ## Current objective
 
-M0 through M6 are complete locally. M2 is checkpointed at `243ed81`; M3 is checkpointed at `3e102e2`; M4 is checkpointed at `576f582`; M5 is checkpointed at `ef71085`; M6 is checkpointed at `441b6cb`.
+M0 through M7 are complete locally. M2 is checkpointed at `243ed81`; M3 is checkpointed at `3e102e2`; M4 is checkpointed at `576f582`; M5 is checkpointed at `ef71085`; M6 is checkpointed at `441b6cb`. The M7 checkpoint is the exact next repository action.
+
+M7 implements the prospective actual-work grade, immutable legacy-grade reader, concise completion, factual highlights, contextual Progress, exact role/variant/resistance charting, normalized display units with raw source facts, and all-history exercise selection. Focused contracts, effective 62/62 public checks, build/package/privacy gates, 4/4 mobile and 4/4 desktop M7 scenarios, 8/8 affected mobile regressions, visual inspection, and final independent review pass.
 
 ## Next actions
 
-1. Re-read the M7 authoritative grade, completion, and progress scope against the M6 implementation state.
-2. Implement only M7 without reactivating deleted scoring, adherence, planner, dashboard, or recommendation paths.
-3. Automated, privacy, migration, independent, target-device, and five-workout human acceptance gates precede any separately authorized publication.
+1. Create the recoverable M7 implementation checkpoint and record its commit.
+2. Re-read the M8 authority and temporary-structure ledger.
+3. Begin only M8 dead-structure deletion and packaging closure.
 
 ## Open issues
 
 - Target-device RPE replacement/completion behavior remains **NEEDS REVIEW**. Browser/mobile automation proves one-edit 7-to-7.5 replacement and immediate completion, but physical-device keyboard behavior is not locally provable.
-- Current numeric fatigue, readiness, plateau, deload, evidence, confidence, and grade thresholds/formulas are not approved. M2 prevents them from producing current actions; M4 removed the normal analytical product paths, while M7 owns remaining legacy grade debt.
+- Current numeric fatigue, readiness, plateau, deload, evidence, and confidence thresholds/formulas are not approved. M2 prevents them from producing current actions, and M4 removed their normal analytical product paths. M7's prospective actual-work grade is separately versioned and does not authorize those recommendation thresholds.
 - Target migration contracts and synthetic baselines exist; M1 runtime normalization is implemented, but a complete real-data export/replay and independent migration verification remain unperformed.
 - Focused browser/PWA/accessibility verification passed through M6; physical-device notification delivery, true OS suspension, pinned-runtime, full independent migration review, and five-workout acceptance remain unverified.
-- M7–M8 product behavior remains incomplete; legacy grade/completion debt remains assigned to M7.
+- M7 dependency audit could not reach the external npm registry under environment policy. M7 changed no package metadata, and its local dependency/build/runtime evidence passed. M8 has not begun.
 - Two broader Strong-history browser assertions disagree with current shared-runtime copy/prior-row resolution; they were not caused by M3 planner-field deletion and remain separately reproducible.
 - Pre-existing uncommitted `.claude/`, `.vercel/`, and `redesign/prompts/` paths must remain preserved.
-- Current code and living docs differ materially from final product intent. They remain accurate as current-state evidence until an authorized implementation updates behavior and documentation together.
+- The M7 implementation and living documents agree. Its checkpoint is pending only so the verified candidate can be recorded as one recoverable milestone revision.
 - Local implementation is authorized. Commit, push, merge, deployment, real-data migration, baseline acceptance, and publication are not authorized or completed.
 
 ## Last verification
 
-M6 completed locally on 2026-07-31: focused M6 mobile 13/13 at 390 x 844; public suite 61/61; app integration 38/38; lint, typecheck, workflows, 33 PWA checks, approved 24-module Vite build, 644-file privacy scan, archive/workbook integrity, runtime-package parity, and three screenshot inspections passed. Physical-device RPE/background/notification behavior remains an external gate. No private personal fitness/health data, production-data migration, deployment, or publication occurred.
+M7 completed locally on 2026-08-01: focused static contracts passed; effective public suite 62/62; typecheck, lint, workflows, privacy, 24-module Vite build, 26-asset PWA verification, and root/`www` parity passed; focused Playwright passed 4/4 mobile and 4/4 desktop; consolidated affected mobile regression passed 8/8; four fresh 390 × 844 screenshots were inspected; and independent review passed after all findings were corrected. Physical-device, pinned-runtime, registry-backed dependency, real-data, hosted, deployment, and publication gates remain unperformed. No private personal fitness/health data or production data was read or mutated.

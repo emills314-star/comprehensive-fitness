@@ -942,8 +942,8 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await page.locator('[data-action="request-submit-workout"]').click();
     await page.locator('[data-action="confirm-submit-workout"]').click();
 
-    await expect(page.locator('[aria-label="Post-workout grade and analysis"]')).toBeVisible({ timeout: 45_000 });
-    await expect(page.locator('.completed-summary[aria-label="Post-workout grade and analysis"]')).toContainText("Session logged");
+    await expect(page.locator('[aria-label="Workout completion"]')).toBeVisible({ timeout: 45_000 });
+    await expect(page.locator('.completed-summary[aria-label="Workout completion"]')).toContainText("Session logged");
     const afterFirst = await waitForPersisted(page, (data) => data.sessions.filter((item) => item.id === IDS.activeSession && item.submitted).length === 1, "the UI confirmation must persist one submitted session");
     await waitForSubmissionWrites(page);
     expect(await submissionProbe(page)).toMatchObject({
@@ -996,7 +996,13 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     expect.soft(after.sets.find((item) => item.id === IDS.activeBenchSet1).completed).toBe(true);
     expect.soft(after.sets.find((item) => item.id === IDS.activeRowSet2).skipped).toBe(true);
     expect.soft(finalSession.workoutAnalysis, "the one stored analysis must remain identical after the retry").toEqual(firstSession.workoutAnalysis);
-    expect.soft(finalSession.workoutAnalysis.metrics.completedSets).toBe(1);
+    expect.soft(finalSession.workoutAnalysis).toMatchObject({
+      contractVersion: "comprehensive-fitness-workout-grade/2.0.0",
+      algorithmVersion: "actual-work-rubric/1.0.0",
+      sourceSessionId: IDS.activeSession
+    });
+    expect.soft(finalSession.workoutAnalysis.reasons.length).toBeGreaterThanOrEqual(2);
+    expect.soft(finalSession.workoutAnalysis.reasons.length).toBeLessThanOrEqual(3);
     expect.soft(after.recommendationHistory, "the existing recommendation record must remain singular and unchanged").toEqual([controlRecommendation]);
     expect.soft(after.manualOverrides, "the existing manual-override record must remain singular and unchanged").toEqual([controlOverride]);
     expect.soft(new Set(after.recommendationHistory.map((item) => item.recommendationId)).size).toBe(after.recommendationHistory.length);
@@ -1042,10 +1048,17 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     expect(browserErrors, "history-discard lifecycle browser errors").toEqual([]);
   });
 
-  test("history edit save persists nested set changes, recalculates derived analysis, creates no duplicates, and survives reload", async ({ page }) => {
+  test("history edit save persists nested set changes, preserves the stored grade, creates no duplicates, and survives reload", async ({ page }) => {
     test.setTimeout(150_000);
     const browserErrors = collectBrowserErrors(page);
-    await installFixture(page, buildHistoryLifecycleFixture());
+    const fixture = buildHistoryLifecycleFixture();
+    const storedHistoricalGrade = {
+      version: 1,
+      grade: "B+",
+      rationale: "Stored public synthetic historical grade."
+    };
+    fixture.sessions.find((item) => item.id === IDS.historySession).workoutAnalysis = structuredClone(storedHistoricalGrade);
+    await installFixture(page, fixture);
     await openSubmittedHistorySession(page);
     await page.locator('[data-action="begin-history-edit"]').click();
     await page.locator("summary").filter({ hasText: "Workout details" }).click();
@@ -1057,16 +1070,13 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await expect(page.getByRole("dialog", { name: "Save these history edits?" })).toBeVisible();
     await page.locator('[data-action="confirm-save-history-edits"]').click();
 
-    const after = await waitForPersisted(page, (data) => data.sessions.find((item) => item.id === IDS.historySession)?.title === EDITED_HISTORY_TITLE && data.sessions.find((item) => item.id === IDS.historySession)?.workoutAnalysis?.version === 1, "saved history edits must persist with recalculated analysis");
+    const after = await waitForPersisted(page, (data) => data.sessions.find((item) => item.id === IDS.historySession)?.title === EDITED_HISTORY_TITLE && data.sets.find((item) => item.id === IDS.historyBenchSet1)?.reps === 11, "saved history edits must persist while retaining the stored grade");
     expect(after.sessions.filter((item) => item.id === IDS.historySession)).toHaveLength(1);
     expect(after.exercises.filter((item) => item.sessionId === IDS.historySession)).toHaveLength(2);
     expect(after.sets.filter((item) => item.exerciseId === IDS.historyBenchExercise)).toHaveLength(2);
     expect(after.sets.find((item) => item.id === IDS.historyBenchSet1).reps).toBe(11);
     const savedAnalysis = after.sessions.find((item) => item.id === IDS.historySession).workoutAnalysis;
-    const savedBenchResult = savedAnalysis.exerciseResults.find((item) => item.exerciseId === IDS.historyBenchExercise);
-    expect(savedAnalysis.metrics.completedSets).toBe(4);
-    expect(savedBenchResult.bestSet).toMatchObject({ id: IDS.historyBenchSet1, reps: 11, load: 145 });
-    expect(savedBenchResult.bestSet.text).toContain("11 reps");
+    expect(savedAnalysis).toEqual(storedHistoricalGrade);
     assertUniqueEntityIds(after);
 
     await reloadAndWait(page);
@@ -1076,15 +1086,13 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     await expect(card).toContainText(EDITED_HISTORY_TITLE);
     await card.click();
     await expect(page.getByRole("heading", { name: EDITED_HISTORY_TITLE, exact: true })).toBeVisible();
-    const result = page.locator(".workout-exercise-result").filter({ hasText: NAMES.bench });
-    await result.locator("summary").click();
-    await expect(result).toContainText("11 reps");
-    await expect(result).toContainText("145 lb");
+    const editedSet = page.locator(`#set-${IDS.historyBenchSet1}`);
+    await expect(editedSet).toContainText("11");
+    await expect(editedSet).toContainText("145 lb");
     const reloaded = await persistedData(page);
     const reloadedSession = reloaded.sessions.find((item) => item.id === IDS.historySession);
-    const reloadedBenchResult = reloadedSession.workoutAnalysis.exerciseResults.find((item) => item.exerciseId === IDS.historyBenchExercise);
     expect(reloaded.sets.find((item) => item.id === IDS.historyBenchSet1).reps).toBe(11);
-    expect(reloadedBenchResult.bestSet).toEqual(savedBenchResult.bestSet);
+    expect(reloadedSession.workoutAnalysis).toEqual(storedHistoricalGrade);
     expect(reloaded.sessions.filter((item) => item.id === IDS.historySession)).toHaveLength(1);
     await page.locator('[data-action="begin-history-edit"]').click();
     await page.locator("summary").filter({ hasText: "Workout details" }).click();
@@ -1094,7 +1102,14 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
 
   test("the first Save Edits click after a numeric history field blur is not swallowed by rerender", async ({ page }) => {
     test.setTimeout(120_000);
-    await installFixture(page, buildHistoryLifecycleFixture());
+    const fixture = buildHistoryLifecycleFixture();
+    const storedHistoricalGrade = {
+      version: 1,
+      grade: "B+",
+      rationale: "Stored public synthetic historical grade."
+    };
+    fixture.sessions.find((item) => item.id === IDS.historySession).workoutAnalysis = structuredClone(storedHistoricalGrade);
+    await installFixture(page, fixture);
     await openSubmittedHistorySession(page);
     await page.locator('[data-action="begin-history-edit"]').click();
     const revisionBeforeEdit = await page.evaluate(() => {
@@ -1124,12 +1139,10 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     const saved = await waitForPersisted(page, (stored) => {
       const set = stored.sets.find((item) => item.id === IDS.historyBenchSet1);
       const analysis = stored.sessions.find((item) => item.id === IDS.historySession)?.workoutAnalysis;
-      const result = analysis?.exerciseResults?.find((item) => item.exerciseId === IDS.historyBenchExercise);
-      return set?.reps === 12 && result?.bestSet?.id === IDS.historyBenchSet1 && result.bestSet.reps === 12;
-    }, "the first Save Edits confirmation must persist the numeric edit and its recalculated analysis", 30_000);
-    const savedResult = saved.sessions.find((item) => item.id === IDS.historySession).workoutAnalysis.exerciseResults.find((item) => item.exerciseId === IDS.historyBenchExercise);
+      return set?.reps === 12 && JSON.stringify(analysis) === JSON.stringify(storedHistoricalGrade);
+    }, "the first Save Edits confirmation must persist the numeric edit without rewriting its stored grade", 30_000);
     expect.soft(saved.sets.find((item) => item.id === IDS.historyBenchSet1).reps).toBe(12);
-    expect.soft(savedResult.bestSet).toMatchObject({ id: IDS.historyBenchSet1, reps: 12, load: 145 });
+    expect.soft(saved.sessions.find((item) => item.id === IDS.historySession).workoutAnalysis).toEqual(storedHistoricalGrade);
     expect.soft(saved.dataRevision, "one real numeric edit must create exactly one logical revision despite input/change/focusout delivery").toBe(revisionBeforeEdit + 1);
     await expect.poll(() => page.evaluate(() => structuredClone(window.__historyFirstClickWriteProbe)), {
       message: "the explicit Save Edits confirmation must route exactly one durable app-data write",
@@ -1141,14 +1154,12 @@ test.describe("template, active-workout, submission, and history lifecycles", ()
     const card = page.locator(`[data-action="open-session"][data-session-id="${IDS.historySession}"]`);
     await expect(card).toHaveCount(1);
     await card.click();
-    const result = page.locator(".workout-exercise-result").filter({ hasText: NAMES.bench });
-    await result.locator("summary").click();
-    await expect(result).toContainText("12 reps");
-    await expect(result).toContainText("145 lb");
+    const editedSet = page.locator(`#set-${IDS.historyBenchSet1}`);
+    await expect(editedSet).toContainText("12");
+    await expect(editedSet).toContainText("145 lb");
     const reloaded = await persistedData(page);
-    const reloadedResult = reloaded.sessions.find((item) => item.id === IDS.historySession).workoutAnalysis.exerciseResults.find((item) => item.exerciseId === IDS.historyBenchExercise);
     expect.soft(reloaded.sets.find((item) => item.id === IDS.historyBenchSet1).reps).toBe(12);
-    expect.soft(reloadedResult.bestSet).toEqual(savedResult.bestSet);
+    expect.soft(reloaded.sessions.find((item) => item.id === IDS.historySession).workoutAnalysis).toEqual(storedHistoricalGrade);
   });
 
   test("browser Back cannot bypass unsaved-history confirmation or persist temporary edits on unload", async ({ page }) => {

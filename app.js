@@ -50,7 +50,7 @@
         }
         if (["start-timer", "skip-timer", "start-template", "start-next-template", "start-workout-with-readiness", "save-workout-readiness", "request-submit-workout", "request-save-history-edits", "begin-history-edit", "save-template", "update-template-exercise", "add-set", "add-warmup-set", "duplicate-set", "reconcile-apply"].includes(action)) return "medium";
         if (["request-delete-template", "request-cancel-workout", "request-cancel-workout-from-template", "request-cancel-history-edits", "clear-data", "toggle-skip-set"].includes(action)) return "warning";
-        if (["set-tab", "adjust-timer", "select-chart-exercise", "show-chart-point", "toggle-achievement-detail", "exercise-deload", "exercise-resistance-type", "exercise-bodyweight", "set-warmup", "timer-sound", "timer-vibration", "workout-completion-sound", "interaction-vibration", "timer-notifications", "in-app-rest-alerts", "toggle-rest-notifications", "preview-rest-complete-sound", "rest-complete-auto-return"].includes(action)) return "light";
+        if (["set-tab", "adjust-timer", "select-chart-exercise", "show-chart-point", "open-completion-progress", "exercise-deload", "exercise-resistance-type", "exercise-bodyweight", "set-warmup", "timer-sound", "timer-vibration", "workout-completion-sound", "interaction-vibration", "timer-notifications", "in-app-rest-alerts", "toggle-rest-notifications", "preview-rest-complete-sound", "rest-complete-auto-return"].includes(action)) return "light";
         return "none";
       }
 
@@ -353,6 +353,20 @@
         if (action === "cancel-submit-workout") { pendingSubmitSessionId = ""; render(); }
         if (action === "confirm-submit-workout") submitWorkout(activeSessionId);
         if (action === "close-completed-summary") returnToLiftHome("Workout saved.");
+        if (action === "open-completion-progress") {
+          completedSummarySessionId = "";
+          const exerciseId = String(target.dataset.exerciseId || "");
+          const resistanceType = String(target.dataset.resistanceType || "");
+          const exercise = exerciseCatalog().find((item) =>
+            (item.canonicalId === exerciseId || item.id === exerciseId)
+            && (!resistanceType || item.resistanceType === resistanceType)
+          );
+          if (exercise) {
+            selectedExerciseId = exercise.id;
+            chartExerciseDraft = exercise.name;
+          }
+          setActiveTab("progress");
+        }
         if (action === "begin-history-edit") await beginHistoryEdit();
         if (action === "request-save-history-edits") requestHistoryEditConfirmation("save");
         if (action === "request-cancel-history-edits") requestHistoryEditConfirmation("cancel");

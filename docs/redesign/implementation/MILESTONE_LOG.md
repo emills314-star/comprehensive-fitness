@@ -543,3 +543,71 @@ No final-document contradiction was found. The current four-tab shell and `confi
 ### Objective completion
 
 **PASS.** Every locally executable M6 acceptance criterion passes. Active logging is materially simpler, factual history and variant separation remain protected, deleted M6 features are absent from current product paths, and no private or production data was changed. The physical-device-only checks remain explicitly unproven external gates and do not block the recoverable local M6 checkpoint.
+
+## M7 — Version completion, grade, and Progress
+
+**Status:** COMPLETE — IMPLEMENTED LOCALLY
+**Started:** 2026-07-31
+**Baseline checkpoint:** `6b9682f`
+**Authority:** Final PRD sections 8–10, dispositions E-04 through E-10, F-01 through F-17, G-01 through G-18, recommendation-contract grade/persistence boundaries, and migration plan M7.
+
+### Exact scope before implementation
+
+- Replace the old adherence/planned-set live grade with one prospective, versioned A–F grade based on actual submitted work, logging completeness/validity, comparable performance, effort coherence, meaningful work attempted, and explicit handling of the canonical exception action.
+- Do not reward obedience to a generated plan or penalize substitution, reordering, legitimate set-count change, or explicit safety/readiness adjustment merely because actual work differs from the original prescription.
+- Preserve every stored historical grade value/version and immutable workout record; never silently regrade history.
+- Keep one consequential Finish confirmation, then present one concise completion state with one grade, two or three plain reasons, at most three meaningful factual progress/PR highlights, the still-relevant canonical exception if any, Done, and contextual Progress.
+- Remove the live legacy grade algorithm, grade confidence/category display, detailed adherence/plan diff, achievement-badge/analytics dump, PR-only presentation, and any temporary grade-comparison path.
+- Retain one coherent Progress destination with chronological complete history, exact exercise/variant selection, one interpretable comparable-performance trend, inspectable point facts, and contextual workout/exercise detail.
+- Ensure recent calculation/default-display windows never delete, archive, or make older history inaccessible.
+- Retain secondary routine management only for basic days, ordered variants, duplication, and stable name/order/exercise/set/range/RPE/rest editing; do not restore program-generation or score systems.
+
+### Affected user data and migration safety
+
+- Submitted workouts, sets, roles/provenance, exact variant identity, order, duration, notes, readiness/rest facts, resolved actions, overrides, PR observations, and immutable snapshots are preservation-critical inputs.
+- Historical `session.grade`, `session.gradeVersion`, and stored `workoutAnalysis.grade`/algorithm version values remain source facts. Only new submissions receive the new grade contract.
+- Chart points must resolve to their exact submitted session/exercise/set facts; working/warm-up role and variant separation remain unchanged.
+- Removing live grade and badge presentation must not delete stored PR arrays, historical grades, or older workout accessibility.
+- M7 uses synthetic fixtures and local browser state only. No production/private fitness data is authorized for migration or mutation.
+
+### Authority/conflict review
+
+- No final-document contradiction is identified. The current adherence-weighted grade, plus/minus bands, confidence/category UI, detailed plan diff, and broad achievement strip are implemented-state evidence explicitly assigned for replacement/deletion in M7.
+- The final contract approves the grade evidence families but no current numeric formula. M7 must introduce and document one prospective deterministic version without claiming its thresholds came from the deleted engine or research evidence.
+
+### Implementation and verification state
+
+- New submissions prospectively write one `comprehensive-fitness-workout-grade/2.0.0` object with algorithm version `actual-work-rubric/1.0.0`, one A-F letter, two or three structured reasons, source-session attribution, resolved-action references, and creation time. No second current grade field is written.
+- The grade uses completed non-warm-up work, logging validity, comparable same-variant/same-role performance, effort coherence, actual attempts, and canonical exception handling. Pending factual prefills do not count as attempted work, and planned set count/order/substitution metadata is not a grade input.
+- Accepted or modified canonical exception actions are treated as coherent handling. Ignored or overridden actions remain explicitly recorded but do not waive high-RPE or regression evidence. An applicable exercise-scoped action takes precedence over a broader session-scoped action for that exercise regardless of stored action order.
+- Submitted legacy `session.grade`/`gradeVersion` and legacy stored `workoutAnalysis.grade` values remain read-only source facts. Missing historical grades display as unavailable and are not silently calculated at boot, render, import, or history-edit time.
+- Completion is reduced to one grade, two or three reasons, at most three factual progress/PR highlights, one current canonical exception when present, Done, and contextual Progress. The old adherence rollup, grade categories/confidence, plan diff, achievement strip, completion notification setup, and submitted-session dock are removed from this state.
+- Progress uses all submitted history for exercise/variant selection, compares one exact working-set role and resistance type at a time, keeps named variants separate, and exposes point date/load/reps/RPE/role/session/notes/source facts.
+- Performance comparisons normalize each recorded load from its source unit into the current display unit while preserving the raw source fact for inspection. Derived estimated-performance comparison is intentionally bounded to 1–12 repetitions; higher-repetition observations remain visible source facts without an unbounded estimate.
+- Exercise selection is keyed by exact performance identity plus resistance type, so same-name variants using external load and duration remain independently selectable. Chart point provenance comes from the selected source set and is never fabricated when absent.
+- Completion Progress chooses the highlighted exact identity/resistance when available; otherwise it chooses the first completed, non-skipped working exercise in the submitted workout. A skipped exercise stored first cannot hijack that context.
+- Focused static contracts passed for adaptation invariance, canonical action scope/handling, missing data, historical immutability, schema shape, unit normalization, high-repetition boundaries, role/variant/resistance separation, concise completion, and all-history access.
+- Final Playwright verification passed 4/4 on mobile at 390 × 844 and 4/4 on desktop for adapted completion, no-highlight contextual Progress, immutable legacy plus/minus grades across reload, mixed-unit history, long variants, same-name multi-resistance selection, comparable-role charting, and inspectable point source facts.
+- The consolidated affected mobile regression gate passed 8/8 across completion/lifecycle, compact normal-workout presentation, submitted-dock removal, routed submission idempotence, and history edit save/discard.
+- Fresh screenshots under `artifacts/ui-audit/m7/` were visually inspected for concise completion, completion-to-Progress, selected point detail, long exercise names, large load/RPE values, exact variant/resistance selection, chronological old history, and touch-sized controls. No achievement/adherence/analytics/notification/submitted-dock completion surface remains.
+- Full public verification passed effectively 62/62. Two sandboxed Git-child-process checks initially failed with environmental `spawn EPERM`; their unchanged focused escalated reruns passed.
+- `npm.cmd run redesign:typecheck`, `npm.cmd run redesign:build` (24 Vite modules), static lint (175 JavaScript and 75 JSON files in the sanitized tracked-source mirror), workflow validation, tracked-source privacy validation (662 files, zero findings), research validation, and runtime syntax checks passed.
+- `npm.cmd run sync:web` synchronized 26 public assets. Root/`www` SHA-256 parity passed for all nine changed runtime/package files, and `npm.cmd run verify:pwa` passed for 26 assets.
+- `git diff --check` passed with line-ending warnings only.
+- SHA-256 parity is confirmed between root and `www/` for all seven application runtime segments, `index.html`, and `sw.js`.
+- Independent review found and drove corrections for ignored/overridden action grading, mixed-unit comparisons, resistance-specific selection, source provenance, no-highlight Progress context, high-repetition estimate bounds, semantic completion heading, exercise-action precedence, and the ordering strength of the UI regression. The final narrow re-review is recorded at the M7 checkpoint gate.
+- Living-document review updated `PROJECT.md`, `ARCHITECTURE.md`, `DECISION_ENGINE.md`, `UI_UX.md`, and `ROADMAP.md` to describe the implemented M7 behavior and to stop describing removed achievements, adherence roll-ups, or submitted-session chrome as current behavior.
+
+### Decisions, assumptions, and deviations
+
+- The grade formula is prospective and versioned; no claim is made that its numeric weights came from the deleted adherence engine or from research evidence.
+- Dependency audit could not reach the external npm registry under the environment policy. M7 changes no package manifest or lockfile, and all local package/build/runtime gates passed; this is recorded as an external environment limitation rather than a functional M7 failure.
+- Verification used Node 24.18.0/npm 11.16.0 instead of the repository-pinned Node 22.23.x/npm 10.9.x.
+- Physical-device keyboard, OS suspension, notification delivery, real private-history replay, five-workout field testing, hosted verification, deployment, push, merge, and publication remain external or later acceptance gates.
+- No private or production fitness data was read, migrated, or mutated.
+
+### Objective completion
+
+**PASS.** New submissions have one versioned actual-work grade; legacy grades remain immutable; completion is concise; exact variants, resistance types, working-set roles, units, provenance, and old history remain trustworthy and inspectable; deleted completion/analytics surfaces are absent; static, public, build, package, privacy, running-app, visual, and independent-review gates pass. M8 may begin after the recoverable M7 checkpoint is recorded.
+
+**Checkpoint:** pending local M7 checkpoint commit.

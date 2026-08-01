@@ -2,7 +2,6 @@
       function isStandalonePwa() {
         return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
       }
-
       function isIosDevice() {
         return /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
       }
@@ -1125,18 +1124,3 @@
           return;
         }
       }
-
-      // WORKOUT_GRADING_ENGINE_START
-      const WORKOUT_GRADE_THRESHOLDS = [
-        { minimum: 97, grade: "A+" },
-        { minimum: 93, grade: "A" },
-        { minimum: 90, grade: "A-" },
-        { minimum: 87, grade: "B+" },
-        { minimum: 83, grade: "B" },
-        { minimum: 80, grade: "B-" },
-        { minimum: 77, grade: "C+" },
-        { minimum: 73, grade: "C" },
-        { minimum: 70, grade: "C-" },
-        { minimum: 60, grade: "D" },
-        { minimum: 0, grade: "F" }
-      ];

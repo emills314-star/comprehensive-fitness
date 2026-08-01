@@ -175,7 +175,7 @@
             || String(right.submittedAt || right.updatedAt || "").localeCompare(String(left.submittedAt || left.updatedAt || "")));
         const rows = sessions.map((session) => {
           const facts = sessionWorkoutFacts(session);
-          const storedGrade = typeof session.workoutAnalysis?.grade === "string" ? session.workoutAnalysis.grade : "";
+          const storedGrade = storedWorkoutGradeProjection(session)?.grade || "";
           const details = [
             formatDate(sessionCompletionDate(session)),
             facts.exercises.length + " exercise" + (facts.exercises.length === 1 ? "" : "s"),
@@ -496,10 +496,16 @@
         const cacheKey = [analysisRevision, canonicalId, options.resistanceType || ""].join("|");
         if (exerciseProgressCache.has(cacheKey)) return exerciseProgressCache.get(cacheKey);
         const sessionById = new Map(data.sessions.filter((session) => isSessionSubmitted(session)).map((session) => [session.id, session]));
-        const scopedExercises = data.exercises.filter((exercise) =>
+        const identityScopedExercises = data.exercises.filter((exercise) =>
           sessionById.has(exercise.sessionId)
           && canonicalExerciseId(exercise) === canonicalId
         );
+        const resistanceType = options.resistanceType || identityScopedExercises
+          .slice()
+          .sort((left, right) => sessionCompletionDate(sessionById.get(right.sessionId)).localeCompare(sessionCompletionDate(sessionById.get(left.sessionId))))
+          .map((exercise) => resistanceTypeFor(exercise))
+          .find(Boolean) || "external";
+        const scopedExercises = identityScopedExercises.filter((exercise) => resistanceTypeFor(exercise) === resistanceType);
         const scopedExerciseIds = new Set(scopedExercises.map((exercise) => exercise.id));
         const setsByExercise = new Map();
         data.sets.forEach((set) => {
@@ -508,7 +514,6 @@
           sets.push(set);
           setsByExercise.set(set.exerciseId, sets);
         });
-        const resistanceType = options.resistanceType || scopedExercises.map((exercise) => resistanceTypeFor(exercise)).find(Boolean) || "external";
         const labels = resistanceType === "external"
           ? { title: "Best completed load", metricType: "load", unit: data.settings.weightUnit }
           : resistanceType === "bodyweight_plus_load"
@@ -520,6 +525,28 @@
                 : resistanceType === "distance"
                   ? { title: "Best completed distance", metricType: "distance", unit: "m" }
                   : { title: "Best completed reps", metricType: "reps", unit: "reps" };
+        const metricValue = (set) => {
+          const load = resistanceLoadInUnit(set, resistanceType);
+          return ["external", "bodyweight_plus_load", "assisted_bodyweight"].includes(resistanceType)
+            ? load
+            : resistanceType === "duration"
+              ? Number(set.durationSeconds || 0)
+              : resistanceType === "distance"
+                ? Number(set.distance || 0)
+                : Number(set.reps || 0);
+        };
+        const newestComparableExercise = scopedExercises.slice().sort((left, right) =>
+          sessionCompletionDate(sessionById.get(right.sessionId)).localeCompare(sessionCompletionDate(sessionById.get(left.sessionId)))
+        )[0];
+        const newestComparableSets = newestComparableExercise
+          ? (setsByExercise.get(newestComparableExercise.id) || []).filter((set) => set.completed && !set.skipped && isWorkingSet(set, "progression"))
+          : [];
+        const newestRepresentativeSet = newestComparableSets.slice().sort((left, right) =>
+          resistanceType === "assisted_bodyweight"
+            ? metricValue(left) - metricValue(right) || Number(right.reps || 0) - Number(left.reps || 0)
+            : metricValue(right) - metricValue(left) || Number(right.reps || 0) - Number(left.reps || 0)
+        )[0];
+        const comparisonRole = newestRepresentativeSet ? normalizeSetTypeCode(newestRepresentativeSet.setType, newestRepresentativeSet.isWarmup) : "";
         const points = scopedExercises.flatMap((exercise) => {
           const session = sessionById.get(exercise.sessionId);
           if (!session) return [];
@@ -527,16 +554,10 @@
             set.completed
             && !set.skipped
             && isWorkingSet(set, "progression")
+            && (!comparisonRole || normalizeSetTypeCode(set.setType, set.isWarmup) === comparisonRole)
           );
           const measured = completedSets.map((set) => {
-            const load = resistanceLoad(set, resistanceType);
-            const value = ["external", "bodyweight_plus_load", "assisted_bodyweight"].includes(resistanceType)
-              ? load
-              : resistanceType === "duration"
-                ? Number(set.durationSeconds || 0)
-                : resistanceType === "distance"
-                  ? Number(set.distance || 0)
-                  : Number(set.reps || 0);
+            const value = metricValue(set);
             return { set, value };
           }).filter((item) => Number.isFinite(item.value) && item.value > 0);
           if (!measured.length) return [];
@@ -550,6 +571,10 @@
             date: completedDate,
             sessionId: session.id,
             sessionTitle: session.title || "Workout",
+            sessionNotes: String(session.notes || ""),
+            exerciseNotes: String(exercise.notes || ""),
+            source: String(best.set.source || exercise.source || session.source || "Source not recorded"),
+            comparisonRole,
             value: Math.round(best.value * 10) / 10,
             metricType: labels.metricType,
             bestSet: best.set,
@@ -559,12 +584,15 @@
               sessionId: session.id,
               sessionTitle: session.title || "Workout",
               sessionDate: completedDate,
-              exerciseName: exercise.name
+              exerciseName: exercise.name,
+              exerciseNotes: String(exercise.notes || ""),
+              sessionNotes: String(session.notes || ""),
+              source: String(set.source || exercise.source || session.source || "Source not recorded")
             }))
           }];
         }).sort((left, right) => left.date.localeCompare(right.date)
           || String(left.sessionId).localeCompare(String(right.sessionId)));
-        const result = { resistanceType, ...labels, points };
+        const result = { resistanceType, comparisonRole, ...labels, points };
         exerciseProgressCache.set(cacheKey, result);
         return result;
       }
@@ -710,8 +738,14 @@
               : " reps";
         const close = '<button class="icon-button" type="button" data-action="close-chart-point" aria-label="Close chart detail">' + icon.close + '</button>';
         const role = best ? setTypeLabels[setTypeSemantics(best).type] || (best.isWarmup ? "Warm-up set" : "Working set") : "";
+        const notes = [
+          point.exerciseNotes ? '<div class="chart-source-note"><strong>Exercise note</strong><span>' + escapeHtml(point.exerciseNotes) + '</span></div>' : "",
+          point.sessionNotes ? '<div class="chart-source-note"><strong>Session note</strong><span>' + escapeHtml(point.sessionNotes) + '</span></div>' : "",
+          '<div class="chart-source-note"><strong>Source</strong><span>' + escapeHtml(point.source || "Source not recorded") + '</span></div>'
+        ].join("");
         return '<article class="chart-detail" role="status"><div class="row split"><div><span class="section-kicker">Selected session · ' + formatDate(point.date) + '</span><strong>' + escapeHtml(title + ' · ' + point.value + unitLabel) + '</strong><span class="chart-detail-exercise">' + escapeHtml(exerciseName) + ' · ' + escapeHtml(point.sessionTitle || "Workout") + '</span></div>' + close + '</div>'
           + '<div class="rollup chart-point-rollup"><span class="ru"><b>' + (best ? escapeHtml(formatResistance(best, exercise)) : noData("Load unavailable")) + '</b><span>load</span></span><span class="ru"><b>' + (best?.reps ? escapeHtml(best.reps) : noData("Repetitions unavailable")) + '</b><span>reps</span></span><span class="ru"><b>' + (best?.rpe ? escapeHtml(best.rpe) : noData("RPE unavailable")) + '</b><span>RPE</span></span><span class="ru"><b>' + (role ? escapeHtml(role) : noData("Role unavailable")) + '</b><span>role</span></span></div>'
+          + '<div class="chart-source-facts">' + notes + '</div>'
           + '<div><div class="m-label"><span>Recorded sets</span><span>source facts</span></div>' + renderChartPointSetGroups(point) + '</div></article>';
       }
 
@@ -725,7 +759,7 @@
         const exercise = selectedExerciseRecord();
         const selectedName = exercise?.name || "";
         const progress = selectedName
-          ? measurePerformance("charts:exercisePerformanceSeries", () => exercisePerformanceSeries(selectedName, { canonicalExerciseId: selectedExerciseId, resistanceType: exercise?.resistanceType }), { exerciseId: selectedExerciseId })
+          ? measurePerformance("charts:exercisePerformanceSeries", () => exercisePerformanceSeries(selectedName, { canonicalExerciseId: exercise?.canonicalId, resistanceType: exercise?.resistanceType }), { exerciseId: selectedExerciseId })
           : { points: [], title: "Performance", unit: "", resistanceType: "external" };
         if (catalog.length === 0) {
           return '<section class="view charts-view"><div class="screen-heading"><div><div class="section-kicker">Progress</div><h1>Training history</h1></div></div><div class="empty-state">Complete a workout to add exercise history.</div>' + renderHistory() + '</section>';
@@ -738,13 +772,14 @@
           exerciseId: selectedExerciseId,
           resistanceType: exercise?.resistanceType || progress.resistanceType
         };
+        const comparisonRoleLabel = progress.comparisonRole ? setTypeLabels[progress.comparisonRole] || "Comparable working set" : "Comparable working set";
         return `
           <section class="view charts-view">
             <div class="screen-heading"><div><div class="section-kicker">Progress</div><h1>Training history</h1></div></div>
             <div class="chart-control-panel" aria-label="Selected lift controls">
               <div class="chart-viewing-summary"><div><span>Exercise or variant</span><strong>${escapeHtml(selectedName)}</strong><span>${escapeHtml(latestFact)}</span></div><span class="status-pill inside">${progress.points.length} session${progress.points.length === 1 ? "" : "s"}</span></div>
               <div class="chart-control-field chart-control-lift"><label for="chart-exercise-search">Chart lift</label><div class="chart-search-input"><input id="chart-exercise-search" type="search" data-action="review-exercise-input" role="combobox" aria-autocomplete="list" aria-controls="chart-exercise-suggestions" aria-expanded="${chartExerciseSearchOpen ? 'true' : 'false'}" aria-label="Search or select exercise" autocomplete="off" value="${escapeHtml(chartExerciseDraft || selectedName)}" /><button class="chart-search-clear" type="button" data-action="clear-chart-exercise-search" aria-label="Clear exercise search">×</button></div><div id="chart-exercise-suggestions" class="exercise-suggestions" role="listbox" ${chartExerciseSearchOpen ? '' : 'hidden'}>${renderExerciseSuggestions()}</div><small class="exercise-search-error" role="status" ${chartExerciseSearchError ? '' : 'hidden'}>${escapeHtml(chartExerciseSearchError)}</small></div>
-              <p class="chart-control-context">The chart uses recorded completed working sets from submitted workouts. Named variants remain separate.</p>
+              <p class="chart-control-context">The chart uses ${escapeHtml(comparisonRoleLabel.toLowerCase())} observations from submitted workouts. Named variants and resistance types remain separate.</p>
             </div>
             <section class="screen-section primary-analysis-chart">
               <div class="section-heading"><div><h2>Performance trend</h2><p>Tap a point for its date, load, reps, RPE, role, and workout.</p></div></div>
@@ -894,7 +929,7 @@
           <label class="field"><span class="f-top"><span class="f-name">Strong CSV source weight unit</span><span class="f-help">Does not change the display unit</span></span><select data-action="strong-import-weight-unit"><option value="" ${!strongImportWeightUnit ? "selected" : ""}>Choose the unit used in the CSV</option><option value="lb" ${strongImportWeightUnit === "lb" ? "selected" : ""}>Pounds (lb)</option><option value="kg" ${strongImportWeightUnit === "kg" ? "selected" : ""}>Kilograms (kg)</option></select></label>
           <label class="import-button">${icon.upload} ${importInProgress ? "importing..." : "Import backup or Strong CSV"}<input type="file" accept=".json,.csv,application/json,text/csv" data-action="import-data" ${importInProgress ? "disabled" : ""} /></label>
           ${migration ? '<div class="callout info"><b>Strong data migration v' + escapeHtml(migration.version) + '</b><span>Inspected ' + escapeHtml(migration.inspected) + ' sets; changed ' + escapeHtml(migration.changed) + '; preserved ' + escapeHtml(migration.manualOverridesPreserved) + ' manual corrections; ' + escapeHtml(migration.ambiguous) + ' sets need review.</span></div>' : ''}
-          <div class="row-item"><span class="ri-copy"><b>Retained source material</b><span>${data.rawImports?.length || 0} raw Strong import${(data.rawImports?.length || 0) === 1 ? '' : 's'} retained. Older completed workouts remain in the retention archive and exports, but outside current analysis.</span></span></div>
+          <div class="row-item"><span class="ri-copy"><b>Retained source material</b><span>${data.rawImports?.length || 0} raw Strong import${(data.rawImports?.length || 0) === 1 ? '' : 's'} retained. Every completed workout remains available in Progress and exports; recent engine windows do not remove source history.</span></span></div>
           ${reviewSets.length ? '<div class="callout warn"><b>Manual review queue · ' + reviewSets.length + '</b><span>Open the submitted workout from History, choose Edit, then select the set type.</span></div>' : ''}`;
         const danger = `
           <div class="callout bad"><b>High-risk actions</b><span>These actions change or delete stored records. Each destructive path names its scope and requires confirmation.</span></div>

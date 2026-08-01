@@ -3,7 +3,7 @@
 ## Metadata
 
 - **Purpose:** Product vision, verified scope, and boundary between current and intended behavior
-- **Last verified:** 2026-07-31
+- **Last verified:** 2026-08-01
 - **Repository:** `codex/zero-based-redesign` working tree
 - **Verification status:** VERIFIED from application code, tests, schemas, configuration, and existing docs; open conflicts are labeled
 - **Related:** [Architecture](ARCHITECTURE.md), [Decision engine](DECISION_ENGINE.md), [UI/UX](UI_UX.md), [Roadmap](ROADMAP.md), [documentation inventory](DOCUMENTATION_INVENTORY.md)
@@ -18,7 +18,7 @@ Read this document before changing product scope, capabilities, target users, wo
 
 Named exercise variants now own the normal working-set count/roles, rep ranges, target-RPE bands, rest defaults, and increments used when a routine starts. Normal recommendation output cannot rewrite those stable targets or supply exact add-load/add-rep prefills. Editable set fields use the corresponding prior set for the same variant and role, an explicit routine default, then blank. A prefilled RPE can be replaced with a decimal value in one focused edit and completed immediately without losing the entry. Global equipment preference state is no longer a product setting or a logging constraint; legacy values are accepted only so old data can be decoded and discarded. Current app-data v3 exports through backup schema v3, while isolated v1/v2 compatibility remains available.
 
-This began as the M1 implementation boundary. M2 through M6 are now implemented locally; M7 remains the completion/grade/Progress milestone.
+This began as the M1 implementation boundary. M2 through M7 are implemented locally. M8 cleanup and final acceptance remain.
 
 ### Planner/mesocycle removal — IMPLEMENTED LOCALLY (M3)
 
@@ -63,8 +63,8 @@ Product principles evidenced in the repository:
 | Workout templates and quick start | **IMPLEMENTED (M5)** | Today directly starts the expected routine with usual readiness; optional readiness is independently available before starting. An existing active draft resolves only through Resume, Finish, or confirmed Discard. Routines are contextual. |
 | Active workout logging | **IMPLEMENTED LOCALLY (M6)** | The full-screen logger shows full exercise/variant names, concise stable targets, role-aware prior facts, clear current/completed/skipped states, and direct load/reps/RPE entry. Add/remove/skip/reorder, notes, ordinary substitution, custom variants, and role correction remain available. One consolidated rest control owns the timer lifecycle, including overtime and draft restoration; duplicate per-set timer buttons, the plate calculator, and the execution-quality questionnaire are removed. |
 | Progression feedback and editable exercise defaults | **IMPLEMENTED LOCALLY (M6)** | Actual repetitions, logged RPE, set-count changes, substitutions, and exercise order remain workout facts without silently rewriting the routine. Active-workout changes apply to the current workout by default; saving the changed exercise back to its source routine is a separate explicit action. Stable performance identity keeps named/custom variants and their prior facts separate. |
-| Submission, history, summaries, and editing | **IMPLEMENTED / M6 NARROWED** | Confirmed submission, PR calculation, stored grade/summary, submitted-only history, and explicit history-edit save/cancel remain. Seven retained achievement types use submitted workout facts: estimated-performance peaks, other PRs, external-load volume records, comparable progression, full plan completion, rep/RPE precision, and successful readiness-adjusted or deload execution. The former Controlled Execution badge and all live execution-quality questions/writers are removed; legacy execution-quality bytes remain import-readable only. |
-| Progress and history | **IMPLEMENTED LOCALLY (M4)** | One factual per-variant performance chart with tappable date/load/reps/RPE/set-role/session detail, plus chronological submitted-workout history. Weekly/fractional volume, fatigue, hypertrophy, scorecard, research, evidence, confidence, and duplicate recommendation views are removed. |
+| Submission, history, summaries, and editing | **IMPLEMENTED LOCALLY (M7)** | Confirmed submission prospectively stores one versioned A-F actual-work grade. Completion contains two or three reasons, at most three factual PR/progress highlights, an applicable canonical exception, Done, and contextual Progress. Legacy grades/versions remain unchanged and missing historical grades are not recalculated. Achievement, adherence, category/confidence, plan-diff, notification-setup, and submitted-dock completion clutter is removed. |
+| Progress and history | **IMPLEMENTED LOCALLY (M7)** | One factual exact-variant/exact-resistance chart compares one working-set role at a time and exposes tappable date/load/reps/RPE/role/session/note/source facts, followed by all chronological submitted-workout history. Display units are normalized while raw source units remain inspectable, and older records remain selectable beyond recent engine windows. |
 | Recovery readiness | **IMPLEMENTED (M5)** | User-entered readiness remains optional and independent before or during the active workout; skipping it does not block Start or logging. |
 | Routine/template facts and exception engine | **IMPLEMENTED / M1–M4 NARROWED** | Named-variant targets, factual same-variant/same-role prepopulation, immutable historical snapshots, and the sole M2 exception resolver remain. Planner/mesocycle and analytical recommendation producers are deleted. Legacy backups decode obsolete fields solely to preserve workout/routine-template/history facts. |
 | Exercise-science database | **IMPLEMENTED / COMPATIBILITY ONLY AT NORMAL BOOT** | Version 3.0.0 remains repository data with source-provenance and validation contracts. M5 normal boot retains only minimum identity compatibility; it does not expose research/evidence UI or analytics surfaces. |
@@ -80,7 +80,7 @@ Product principles evidenced in the repository:
 1. Configure unit, readiness baseline, and notification preferences in contextual Settings.
 2. Identify the expected routine on Today, optionally choose an alternate, and start directly; optional readiness can be recorded before starting or during the workout.
 3. Review factual prior performance and stable targets; log warm-up and working-set load, reps, and RPE; complete or skip sets; and use the consolidated rest control for the current recovery interval.
-4. Request submission, review confirmation, submit, and review the retained completion facts pending the M7 concise-completion replacement.
+4. Request submission, review one concise confirmation, submit, then review the M7 grade, reasons, limited factual highlights, exception, and Done/Progress actions.
 5. Use Progress to inspect the exact variant’s factual performance chart and chronological submitted-workout history.
 6. Optionally import Strong CSV history and compatibility-preserved backup data; direct research/personal-evidence UI is not a current product surface.
 7. Optionally install the PWA and enable backend-assisted rest notifications.
@@ -126,9 +126,9 @@ Do not treat the optional Redis backend as the personal evidence database. It st
 
 ## Zero-based redesign implementation status
 
-- **IMPLEMENTED (M0–M6):** The final redesign package is now the product authority. Stable named-variant targets, factual same-variant/same-role prefills, unrestricted actual-work logging, one versioned canonical exception-action pipeline, planner/mesocycle removal, analytical producer deletion, factual per-variant Progress, the two-destination shell, and the simplified active logger are live locally.
+- **IMPLEMENTED (M0–M7):** The final redesign package is now the product authority. Stable named-variant targets, factual same-variant/same-role prefills, unrestricted actual-work logging, one versioned canonical exception-action pipeline, planner/mesocycle removal, analytical producer deletion, the two-destination shell, simplified active logger, prospective actual-work grade, concise completion, and factual exact-variant Progress are live locally.
 - **IMPLEMENTED (M2):** Ordinary sessions are silent. Direct recorded pain/injury or illness is the only approved live exception rule; it presents one advisory action while preserving logging. Numeric legacy thresholds cannot create a current action.
-- **IMPLEMENTED (M6):** The active logger now centers stable targets, exact prior facts, direct set entry, substitutions/variants, and one rest lifecycle. Workout edits remain local unless the user explicitly saves them to the routine. Plate-calculator, execution-quality, duplicate-timer, equipment-blocking, and app-level exercise-exclusion remnants are absent from the normal runtime. M7–M8 remain to replace completion/grade behavior and perform final integration. The older Dual Track comparison lab is historical design evidence and does not override the final PRD.
+- **IMPLEMENTED LOCALLY (M7):** One prospective actual-work grade, immutable historical-grade projection, concise completion, role/variant/resistance-aware Progress, normalized display units with raw source facts, all-history selection, and inspectable point facts pass static, public, build/package/privacy, mobile/desktop running-app, visual, and independent-review gates. M8 has not begun. The older Dual Track comparison lab is historical design evidence and does not override the final PRD.
 
 ## Blank-slate UI reinvention
 

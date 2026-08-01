@@ -17,9 +17,17 @@
     "letter": { "enum": ["A", "B", "C", "D", "F"] },
     "reasons": {
       "type": "array",
-      "minItems": 1,
+      "minItems": 2,
       "maxItems": 3,
-      "items": { "type": "object" }
+      "items": {
+        "type": "object",
+        "required": ["code", "text"],
+        "properties": {
+          "code": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "text": { "type": "string", "minLength": 1, "maxLength": 280 }
+        },
+        "additionalProperties": false
+      }
     },
     "sourceSessionId": { "type": "string", "minLength": 1 },
     "resolvedActionDecisionIds": {

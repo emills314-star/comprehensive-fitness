@@ -1,258 +1,254 @@
+"use strict";
+
 const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const path = require("node:path");
-const vm = require("node:vm");
+const { buildGradeHarness, engineSource, historySource } = require("./workout-grade-test-harness");
 const { readApplicationContractSource } = require("./read-application-contract-source");
 
-const root = path.resolve(__dirname, "..");
-const html = readApplicationContractSource(root);
-const engineMatch = html.match(/\/\/ WORKOUT_GRADING_ENGINE_START([\s\S]*?)\/\/ WORKOUT_GRADING_ENGINE_END/);
-assert.ok(engineMatch, "Workout grading engine markers must remain available for focused tests");
-
-const context = vm.createContext({ console, Math, Number, String, Array, Object, Set, Map });
-vm.runInContext(engineMatch[1], context);
-const grade = context.workoutLetterGrade;
-const score = context.scoreWorkoutGradeMetrics;
-
-function extractFunction(source, name) {
-  const marker = `function ${name}(`;
-  const start = source.indexOf(marker);
-  assert.notEqual(start, -1, `Missing ${name}`);
-  const bodyStart = source.indexOf("{", start);
-  let depth = 0;
-  for (let index = bodyStart; index < source.length; index += 1) {
-    if (source[index] === "{") depth += 1;
-    if (source[index] === "}") depth -= 1;
-    if (depth === 0) return source.slice(start, index + 1);
-  }
-  assert.fail(`Unclosed ${name}`);
-}
-
-assert.equal(grade(100), "A+");
-assert.equal(grade(97), "A+");
-assert.equal(grade(96), "A");
-assert.equal(grade(93), "A");
-assert.equal(grade(92), "A-");
-assert.equal(grade(90), "A-");
-assert.equal(grade(89), "B+");
-assert.equal(grade(87), "B+");
-assert.equal(grade(86), "B");
-assert.equal(grade(83), "B");
-assert.equal(grade(82), "B-");
-assert.equal(grade(80), "B-");
-assert.equal(grade(79), "C+");
-assert.equal(grade(77), "C+");
-assert.equal(grade(76), "C");
-assert.equal(grade(73), "C");
-assert.equal(grade(72), "C-");
-assert.equal(grade(70), "C-");
-assert.equal(grade(69), "D");
-assert.equal(grade(60), "D");
-assert.equal(grade(59), "F");
-
-function result(status = "stable", rangeCompliance = 1, progressionRatio = 0.9, oneOffCount = 0) {
-  return { comparison: { status }, rangeCompliance, progressionRatio, oneOffCount };
-}
-
-function metrics(overrides = {}) {
-  const results = overrides.results || [result("progress", 1, 1), result("progress", 1, 1)];
-  const completedSets = overrides.completedSets ?? 10;
-  const plannedSets = overrides.plannedSets ?? 10;
+function set(id, exerciseId, overrides = {}) {
   return {
-    results,
-    progressionRatio: overrides.progressionRatio ?? results.reduce((sum, item) => sum + item.progressionRatio, 0) / results.length,
-    programRatio: overrides.programRatio ?? 1,
-    completedSets,
-    plannedSets,
-    loggedRpeCount: overrides.loggedRpeCount ?? completedSets,
-    rpeComplianceWeighted: overrides.rpeComplianceWeighted ?? 1,
-    rpeLoggedRatio: overrides.rpeLoggedRatio ?? 1,
-    completionRatio: overrides.completionRatio ?? completedSets / plannedSets,
-    stabilityRatio: overrides.stabilityRatio ?? 1,
-    adjustedResults: overrides.adjustedResults || [],
-    intentAdherence: overrides.intentAdherence ?? 1,
-    severeFatigueSignals: overrides.severeFatigueSignals ?? 0
+    id,
+    exerciseId,
+    setType: "working",
+    completed: true,
+    skipped: false,
+    weight: 200,
+    reps: 8,
+    rpe: 8,
+    targetRpe: 8,
+    ...overrides
   };
 }
 
-function assertCategoryTotal(scored) {
-  assert.equal(scored.categoryScores.reduce((sum, category) => sum + category.earned, 0), scored.internalScore);
-  assert.equal(scored.grade, grade(scored.internalScore));
+function seedCurrentWorkout(overrides = {}) {
+  return {
+    sessions: [{ id: "current", date: "2026-07-31", submitted: false, title: "Adapted workout" }],
+    exercises: [{
+      id: "exercise-current",
+      sessionId: "current",
+      order: 1,
+      name: "Barbell Bench Press — Heavy",
+      performanceExerciseId: "bench-heavy",
+      resistanceType: "external",
+      stableTargetSnapshot: { repMin: 6, repMax: 10, targetRpe: 8 }
+    }],
+    sets: [
+      set("set-1", "exercise-current"),
+      set("set-2", "exercise-current", { weight: 190, reps: 9, rpe: 8.5, setType: "backoff" })
+    ],
+    ...overrides
+  };
 }
 
-const exceptional = score(metrics());
-assert.equal(exceptional.grade, "A+", "Multiple meaningful improvements with perfect execution should earn A+");
-assertCategoryTotal(exceptional);
+{
+  const { context } = buildGradeHarness();
+  assert.equal(context.workoutLetterGrade(100), "A");
+  assert.equal(context.workoutLetterGrade(90), "A");
+  assert.equal(context.workoutLetterGrade(89), "B");
+  assert.equal(context.workoutLetterGrade(80), "B");
+  assert.equal(context.workoutLetterGrade(79), "C");
+  assert.equal(context.workoutLetterGrade(70), "C");
+  assert.equal(context.workoutLetterGrade(69), "D");
+  assert.equal(context.workoutLetterGrade(60), "D");
+  assert.equal(context.workoutLetterGrade(59), "F");
+  assert.doesNotMatch(
+    engineSource,
+    /["'][A-D][+-]["']/,
+    "The prospective grade must use only the approved A–F scale"
+  );
+}
 
-const perfectWithoutPr = score(metrics({ results: [result("stable", 1, 0.85)], progressionRatio: 0.85 }));
-assert.equal(perfectWithoutPr.grade, "A", "Perfect execution may earn an A without a PR");
-assertCategoryTotal(perfectWithoutPr);
+{
+  const { context, data } = buildGradeHarness(seedCurrentWorkout());
+  const session = data.sessions[0];
+  const baseline = context.calculateWorkoutAnalysis(session);
+  assert.equal(baseline.contractVersion, "comprehensive-fitness-workout-grade/2.0.0");
+  assert.equal(baseline.algorithmVersion, "actual-work-rubric/1.0.0");
+  assert.equal(baseline.letter, "A");
+  assert.equal(baseline.sourceSessionId, session.id);
+  assert.ok(baseline.reasons.length >= 2 && baseline.reasons.length <= 3);
 
-const goodWithLimitation = score(metrics({
-  results: [result("stable", 0.85, 0.8)], progressionRatio: 0.8, programRatio: 0.85,
-  rpeComplianceWeighted: 0.8, completedSets: 9, plannedSets: 10, completionRatio: 0.9,
-  stabilityRatio: 0.8, intentAdherence: 0.9
-}));
-assert.equal(goodWithLimitation.grade, "B", "Good work with one clear limitation should land near B");
-assertCategoryTotal(goodWithLimitation);
+  session.basePrescription = {
+    exercises: Array.from({ length: 12 }, (_, index) => ({ order: 12 - index, plannedSets: 20 }))
+  };
+  session.recommendationSnapshot = { exactLoad: 999, exactReps: 1 };
+  session.readinessAdjustments = [{ targetSets: 1, targetLoad: 20 }];
+  data.exercises[0].order = 99;
+  data.exercises[0].substitutedFrom = "A different planned exercise";
+  data.exercises[0].name = "Long Custom Press Variant — Travel Substitute";
+  data.exercises[0].performanceExerciseId = "custom-travel-press";
+  data.exercises[0].plannedSetCount = 20;
+  data.sets.forEach((item) => {
+    item.plannedOrder = 99;
+    item.originalTargetWeight = 999;
+    item.originalTargetReps = 1;
+  });
+  const adapted = context.calculateWorkoutAnalysis(session);
+  assert.equal(adapted.letter, baseline.letter, "Original plan, reorder, substitution, and planned set-count metadata cannot change the actual-work grade");
+  assert.deepEqual(
+    Array.from(adapted.reasons, (reason) => ({ ...reason })),
+    Array.from(baseline.reasons, (reason) => ({ ...reason })),
+    "Plan divergence cannot leak into the prospective grade reasons"
+  );
 
-const mixedSession = score(metrics({
-  results: [result("stable", 0.72, 0.72)], progressionRatio: 0.72, programRatio: 0.72,
-  rpeComplianceWeighted: 0.7, completedSets: 8, plannedSets: 10, completionRatio: 0.8,
-  stabilityRatio: 0.6, intentAdherence: 0.8
-}));
-assert.equal(mixedSession.grade, "C", "Inconsistent but productive execution should produce a C-range result");
-assertCategoryTotal(mixedSession);
+  data.sets.push(
+    set("warmup", "exercise-current", { setType: "warmup", isWarmup: true, weight: 500, reps: 0, rpe: 99 }),
+    set("skipped", "exercise-current", { skipped: true, weight: 500, reps: 0, rpe: 99 })
+  );
+  const protectedRoles = context.calculateWorkoutAnalysis(session);
+  assert.equal(protectedRoles.letter, baseline.letter, "Warm-ups and skipped sets must not become grade-qualifying work");
+  assert.deepEqual(
+    Array.from(protectedRoles.reasons, (reason) => ({ ...reason })),
+    Array.from(baseline.reasons, (reason) => ({ ...reason })),
+    "Warm-ups and skipped sets must not alter grade evidence"
+  );
+}
 
-const failedSession = score(metrics({
-  results: [result("regression", 0.2, 0.35)], progressionRatio: 0.35, programRatio: 0.3,
-  rpeComplianceWeighted: 0.2, completedSets: 3, plannedSets: 10, completionRatio: 0.3,
-  stabilityRatio: 0.3, intentAdherence: 0.4, severeFatigueSignals: 2
-}));
-assert.equal(failedSession.grade, "F", "Skipped work and excessive fatigue should produce a constructive low grade");
-assertCategoryTotal(failedSession);
+{
+  const fixture = seedCurrentWorkout();
+  fixture.sets.forEach((item) => { item.rpe = null; });
+  const { context, data } = buildGradeHarness(fixture);
+  const missingRpe = context.calculateWorkoutAnalysis(data.sessions[0]);
+  assert.ok(["A", "B", "C", "D"].includes(missingRpe.letter), "Missing RPE must remain unknown evidence rather than invalidating otherwise completed work");
+  assert.match(
+    missingRpe.reasons.map((reason) => reason.text).join(" "),
+    /0 of 2 completed working sets include RPE/,
+    "The grade must explain missing RPE factually"
+  );
+}
 
-const readinessAdjusted = score(metrics({
-  results: [result("stable", 1, 0.95)], progressionRatio: 0.95,
-  adjustedResults: [{}], intentAdherence: 1
-}));
-assert.ok(["A+", "A", "A-"].includes(readinessAdjusted.grade), "Executing a readiness-adjusted plan should remain A-level");
+{
+  const exceptionFixture = seedCurrentWorkout({
+    sessions: [
+      { id: "prior", date: "2026-07-01", submitted: true, submittedAt: "2026-07-01T12:00:00.000Z", title: "Prior benchmark" },
+      {
+        id: "current",
+        date: "2026-07-31",
+        submitted: false,
+        title: "Pain override comparison",
+        resolvedActions: [{
+          contractVersion: "comprehensive-fitness-resolved-action/1.0.0",
+          decisionId: "pain-action",
+          outcome: "action",
+          category: "pain_or_illness",
+          handling: "accepted",
+          scope: { type: "session" }
+        }]
+      }
+    ],
+    exercises: [
+      { id: "prior-exercise", sessionId: "prior", name: "Barbell Bench Press — Heavy", performanceExerciseId: "bench-heavy", resistanceType: "external" },
+      {
+        id: "exercise-current",
+        sessionId: "current",
+        name: "Barbell Bench Press — Heavy",
+        performanceExerciseId: "bench-heavy",
+        resistanceType: "external",
+        stableTargetSnapshot: { repMin: 6, repMax: 10, targetRpe: 8 }
+      }
+    ],
+    sets: [
+      set("prior-set", "prior-exercise", { weight: 250, reps: 8, rpe: 8 }),
+      set("current-set", "exercise-current", { weight: 200, reps: 8, rpe: 10 })
+    ]
+  });
+  const coherentHarness = buildGradeHarness(exceptionFixture);
+  const accepted = coherentHarness.context.calculateWorkoutAnalysis(coherentHarness.data.sessions[1]);
 
-const plannedDeload = score(metrics({
-  results: [result("stable", 1, 0.95)], progressionRatio: 0.95,
-  adjustedResults: [{ isDeload: true }], intentAdherence: 1
-}));
-assert.ok(["A+", "A", "A-"].includes(plannedDeload.grade), "A well-executed deload should remain A-level despite reduced loading");
+  exceptionFixture.sessions[1].resolvedActions[0].handling = "ignored";
+  const ignoredHarness = buildGradeHarness(exceptionFixture);
+  const ignored = ignoredHarness.context.calculateWorkoutAnalysis(ignoredHarness.data.sessions[1]);
 
-const missingRpe = score(metrics({ loggedRpeCount: 0, rpeLoggedRatio: 0, rpeComplianceWeighted: 0 }));
-assert.ok(missingRpe.internalScore < exceptional.internalScore, "Missing RPE must lower certainty and category points");
-assert.ok(missingRpe.internalScore >= 80, "Missing RPE alone must not erase otherwise excellent execution");
+  assert.notEqual(
+    ignored.letter,
+    accepted.letter,
+    "Ignoring a pain action must not receive the same effort/regression accommodation as coherently accepting it"
+  );
+  assert.match(
+    ignored.reasons.map((reason) => reason.text).join(" "),
+    /ignored or overridden/,
+    "The grade reasons must describe an ignored or overridden exception without calling it coherent handling"
+  );
+}
 
-const oneOutlierResults = [result("progress", 1, 1), result("progress", 1, 1), result("stable", 1, 0.9), result("regression", 1, 0.55)];
-const oneOutlier = score(metrics({ results: oneOutlierResults }));
-assert.ok(oneOutlier.internalScore >= 90, "One extreme exercise outlier must not destroy an otherwise strong workout");
+{
+  const { context } = buildGradeHarness({ settings: { weightUnit: "lb" } });
+  const samePhysicalLoad = context.compareWorkoutPerformance(
+    { weight: 220.5, weightUnit: "lb", reps: 8, rpe: 8 },
+    { weight: 100, weightUnit: "kg", reps: 8, rpe: 8 },
+    "external",
+    1
+  );
+  assert.equal(
+    samePhysicalLoad.status,
+    "stable",
+    "Mixed-unit source observations must be normalized before grade comparison"
+  );
 
-const deliberateOneOff = score(metrics({ results: [result("stable", 1, 0.9, 1)] }));
-assert.match(deliberateOneOff.categoryScores.find((category) => category.key === "execution").reason, /1 set was logged as a deliberate one-off/, "The grade rationale must disclose deliberate one-off scoring.");
+  const unsupportedEstimate = context.compareWorkoutPerformance(
+    { weight: 100, weightUnit: "lb", reps: 50, rpe: 10 },
+    { weight: 150, weightUnit: "lb", reps: 5, rpe: 8 },
+    "external",
+    1
+  );
+  assert.equal(
+    unsupportedEstimate.status,
+    "baseline",
+    "High-repetition work must not create an unbounded estimated-performance progression claim"
+  );
+  assert.match(unsupportedEstimate.change, /no derived comparison was applied/i);
+}
 
-assert.match(html, /filter\(\(set\) => isWorkingSet\(set, "score"\)\)/, "Canonical set semantics must exclude warm-ups before grading");
-assert.match(html, /set\.deviationIntent === "one_off" \|\| \(Number\(set\.reps/, "A deliberate one-off must count as compliant with the rep-range grade.");
-assert.match(html, /const setRepBounds = \(set\) => \{[\s\S]*?Number\(set\.targetRepMin[\s\S]*?Number\(set\.targetRepMax[\s\S]*?\{ low: repLow, high: repHigh \}/, "Rep-range grading must prefer the set's own reconciled bounds and fall back to the exercise range.");
-assert.match(html, /rangeMatches = completedSets\.filter\(\(set\) =>[^\n]*setRepBounds\(set\)\.low[^\n]*setRepBounds\(set\)\.high/, "Rep-range compliance must be measured against the reconciled per-set range.");
-assert.match(html, /targetRepMatches = targetRepSets\.filter\(\(set\) =>[^\n]*setRepBounds\(set\)\.high/, "Target-rep compliance must use the reconciled ceiling, not the original exercise range.");
-assert.match(html, /set\.deviationIntent === "one_off" \|\| resistanceType === "bodyweight"/, "A deliberate one-off must count as compliant with the load grade.");
-assert.match(html, /set\.deviationIntent === "one_off" \|\| target <= 0 \|\| Math\.abs\(Number\(set\.rpe/, "A deliberate one-off must count as compliant with the RPE grade.");
-assert.match(html, /const workoutAnalysis = calculateWorkoutAnalysis\(completedSession, \{ prs \}\)/, "Submission must calculate structured workout analysis");
-assert.match(html, /workoutAnalysis \}\s*: item/, "The submitted session must persist its workout analysis");
-assert.match(html, /calculateWorkoutAnalysis\(updatedSession, \{ prs \}\)/, "Saving history edits must recalculate the grade");
-assert.match(html, /workoutAnalysisForSession\(session\)/, "Saved history must render the same analysis");
-assert.match(html, /highlightedExercises\.has/, "Related PR and progression labels must be grouped instead of double counted");
-assert.doesNotMatch(html.match(/function renderCompletedWorkoutSummary[\s\S]*?\n      }/)[0], /internalScore\}\s*\/\s*100|internalScore\s*\+\s*['"] \/ 100/, "The overall workout result must not expose its internal numerical score");
-assert.match(html, /const workoutAchievementAssets = Object\.freeze\(\{[\s\S]*personal_record:[\s\S]*e1rm_peak:[\s\S]*volume_record:[\s\S]*plan_complete:[\s\S]*target_precision:[\s\S]*smart_training:[\s\S]*progression:/, "The completion summary must retain the approved positive-outcome badge artwork map");
-assert.doesNotMatch(html, /controlled_execution|badge-controlled-execution/, "The deleted execution-quality questionnaire must not survive as a completion badge");
-assert.match(html, /<section class="workout-achievements"[\s\S]*Earned this workout[\s\S]*Achievement badges[\s\S]*workout-achievement-grid/, "Earned badges must render as a dedicated completion-summary strip");
-// The earned strip must keep a guaranteed contrast floor across all ten color
-// packages, so it may not derive its colors from the selected package accent.
-// It now reads a dedicated --achv-* palette whose values are declared explicitly
-// per theme rather than mixed from --current/--surface. That preserves the
-// original contrast guarantee and additionally stops the dark themes from
-// rendering a light-on-light strip.
-assert.match(html, /--achv-bg: #142237;[\s\S]*--achv-card: #1b2c44;[\s\S]*--achv-title: #f4f8ff;[\s\S]*--achv-body: #b3c2d6;/, "The dark-theme achievement palette must declare explicit high-contrast values");
-assert.match(html, /\[data-theme="light"\][\s\S]*--achv-bg: #f3f7fc;[\s\S]*--achv-card: #ffffff;[\s\S]*--achv-title: #123d6b;[\s\S]*--achv-body: #435a70;/, "The light-theme achievement palette must declare explicit high-contrast values");
-assert.match(html, /data-color-package="night-stadium"\] \{[^}]*--achv-bg: #142237;[^}]*--achv-title: #f4f8ff;/, "Night Stadium must receive the dark achievement palette because it renders dark under data-theme=light");
-assert.match(html, /\.workout-achievements \{[^}]*background-color: var\(--achv-bg\);[^}]*border: 2px solid var\(--achv-border\);[\s\S]*\.workout-achievement-title \{[^}]*color: var\(--achv-title\);[\s\S]*\.workout-achievement-description \{[^}]*color: var\(--achv-body\);/, "Achievement cards must consume the dedicated contrast-guaranteed palette, never the package accent");
-assert.doesNotMatch(html, /\.workout-achievements \{[^}]*color-mix\(in srgb, var\(--current\)/, "The achievement strip must not derive its surface from the selected package accent");
-// The earned-count pill is held to WCAG AAA (7:1) by the completion-summary
-// browser test. --action only reaches 4.96:1 against white in the default
-// package, so the pill keeps its own deep navy and cream pair.
-assert.match(html, /--achv-pill-bg: #143f6b;[\s\S]*--achv-pill-text: #fff1b8;/, "The earned-count pill must keep explicit AAA-contrast colors");
-assert.match(html, /\.workout-achievements-heading > strong \{[^}]*background: var\(--achv-pill-bg\);[^}]*color: var\(--achv-pill-text\);/, "The earned-count pill must consume its dedicated AAA palette");
-assert.doesNotMatch(html, /\.workout-achievements-heading > strong \{[^}]*var\(--action\)/, "The earned-count pill must not fall back to the package accent, which fails AAA");
-assert.match(html, /function renderWorkoutAchievement[\s\S]*achievement\.key === "plan_complete"[\s\S]*Previous high-water mark[\s\S]*<details class="workout-achievement interactive"/, "Every earned badge except Plan Complete must disclose exercise evidence and a prior high-water mark");
+{
+  const fixture = seedCurrentWorkout();
+  fixture.sessions[0].submitted = true;
+  fixture.sessions[0].workoutAnalysis = {
+    version: 77,
+    algorithmVersion: "legacy-grade/77",
+    grade: "B+",
+    internalScore: 84,
+    rationale: "Stored historical result"
+  };
+  const before = JSON.stringify(fixture.sessions[0]);
+  const { context, data } = buildGradeHarness(fixture);
+  const projection = context.workoutAnalysisForSession(data.sessions[0]);
+  assert.deepEqual(
+    { ...projection, gradeReasons: Array.from(projection.gradeReasons) },
+    {
+      grade: "B+",
+      gradeVersion: "legacy-grade/77",
+      gradeReasons: ["Stored historical result"],
+      currentContract: false
+    },
+    "Legacy plus/minus grades and versions must remain readable without applying the new algorithm"
+  );
+  assert.equal(JSON.stringify(data.sessions[0]), before, "Reading a historical grade must not mutate its submitted source record");
+}
 
-const achievementData = {
-  settings: { weightUnit: "lb" },
-  sessions: [
-    { id: "prior", date: "2026-07-20" },
-    { id: "current", date: "2026-07-24", prs: [
-      { exercise: "Bench Press", type: "Best estimated performance", value: "245 e1RM" },
-      { exercise: "Bench Press", type: "Load record", value: "205 lb" }
-    ] }
-  ],
-  exercises: [
-    { id: "prior-exercise", sessionId: "prior", name: "Bench Press", resistanceType: "external", executionQualityAssessment: "controlled" },
-    { id: "current-exercise", sessionId: "current", name: "Bench Press", resistanceType: "external", executionQualityAssessment: "controlled" }
-  ],
-  sets: [
-    { exerciseId: "prior-exercise", completed: true, reps: 10, load: 80 },
-    { exerciseId: "current-exercise", completed: true, reps: 10, load: 100 }
-  ]
-};
-const achievementFactory = new Function(
-  "data", "workoutAchievementAssets", "canonicalExerciseId", "activeHistorySessions", "sessionComesBefore",
-  "isWorkingSet", "resistanceTypeFor", "resistanceLoad", "setsForExercise", "exerciseMatches", "samePerformanceExercise",
-  "estimatedOneRepMax", "formatLoadNumber", "formatSetPerformance", "bestWorkoutSet",
-  `${extractFunction(html, "workoutExerciseVolumeLoad")}
-   ${extractFunction(html, "workoutSessionVolumeLoad")}
-   ${extractFunction(html, "priorExerciseVolumeHighWater")}
-   ${extractFunction(html, "priorWorkoutPrSets")}
-   ${extractFunction(html, "workoutPrPreviousHighWater")}
-   ${extractFunction(html, "workoutAchievementBadges")}
-   return workoutAchievementBadges;`
+const application = readApplicationContractSource();
+assert.match(
+  historySource,
+  /const workoutAnalysis = calculateWorkoutAnalysis\(completedSession, \{ prs \}\)/,
+  "Submission must calculate one prospective actual-work grade"
 );
-const achievementBadges = achievementFactory(
-  achievementData,
-  {
-    personal_record: "pr.png", e1rm_peak: "e1rm.png", volume_record: "volume.png", plan_complete: "complete.png",
-    target_precision: "precision.png", smart_training: "smart.png", progression: "progress.png"
-  },
-  (value) => String(value || "").toLowerCase().replace(/\W+/g, "-"),
-  () => achievementData.sessions,
-  (candidate, session) => candidate.date < session.date,
-  () => true,
-  (exercise) => exercise?.resistanceType || "external",
-  (set) => set.load,
-  (exerciseId) => achievementData.sets.filter((set) => set.exerciseId === exerciseId),
-  (left, right) => String(left).toLowerCase() === String(right).toLowerCase(),
-  (left, right) => String(left?.name || left).toLowerCase() === String(right?.name || right).toLowerCase(),
-  (set) => set.load * (1 + set.reps / 30),
-  (value) => String(value),
-  (set) => set.load + " lb × " + set.reps,
-  (sets) => [...sets].sort((left, right) => right.load * (1 + right.reps / 30) - left.load * (1 + left.reps / 30))[0] || null
+assert.match(
+  historySource,
+  /workoutAnalysis\s*\}\s*:\s*item/,
+  "Submission must persist the versioned grade with the submitted workout"
 );
-const earnedBadges = achievementBadges(achievementData.sessions[1], {
-  exerciseResults: [{
-    exerciseId: "current-exercise",
-    name: "Bench Press",
-    completedSets: 1,
-    rangeCompliance: 1,
-    rpeCompliance: 1,
-    isReadinessAdjusted: true,
-    isDeload: false,
-    bestSet: { text: "100 lb × 10" },
-    priorBestSet: { text: "80 lb × 10" },
-    comparison: { status: "progress", label: "Load progression" }
-  }],
-  metrics: {
-    progressedExercises: 1,
-    plannedSets: 1,
-    completedSets: 1,
-    completionRatio: 1,
-    averageRangeCompliance: 1,
-    rpeLoggedRatio: 1,
-    rpeCompliance: 1
-  },
-  readinessContext: { adjustments: 1, adherence: 1 }
-});
-const earnedKeys = earnedBadges.map((badge) => badge.key);
-assert.deepEqual(
-  earnedKeys,
-  ["e1rm_peak", "personal_record", "volume_record", "progression", "plan_complete", "target_precision", "smart_training"],
-  "A benchmark workout should earn each distinct positive-outcome badge exactly once"
+assert.doesNotMatch(
+  application,
+  /calculateWorkoutAnalysis\(updatedSession/,
+  "Editing historical source facts must not silently regrade a submitted workout"
 );
-earnedBadges.filter((badge) => badge.key !== "plan_complete").forEach((badge) => {
-  assert.ok(badge.items.length > 0, `${badge.key} must identify at least one contributing exercise`);
-  assert.ok(badge.items.every((item) => item.current && item.previous), `${badge.key} must expose current and prior high-water evidence`);
-});
+assert.doesNotMatch(
+  application,
+  /workoutAchievement|workout-achievement|achievement badge|Earned this workout/i,
+  "Deleted achievement badges and celebration UI must not survive the concise completion"
+);
+assert.doesNotMatch(
+  engineSource,
+  /scoreWorkoutGradeMetrics|programRatio|completionRatio|plannedSets|intentAdherence|rangeCompliance|targetRepMatches/,
+  "The old prescription-adherence grade algorithm and planned-set penalties must be gone"
+);
 
-console.log("Workout grade and achievement badge tests passed (thresholds, intent, persistence, records, precision, and recovery-aware outcomes).");
+console.log("Workout grade contract passed (A–F actual-work grading, adaptation invariance, role protection, missing data, and immutable history).");
