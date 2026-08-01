@@ -53,7 +53,7 @@
         "open-history", "open-progress", "retry-view-render", "focus-workout-exercise",
         "show-chart-point", "close-chart-point",
         "cancel-template-start",
-        "template-readiness-deviation", "template-readiness-illness",
+        "template-readiness-deviation", "template-readiness-soreness", "template-readiness-illness",
         "template-readiness-pain", "template-readiness-affected-muscle", "template-readiness-note",
         "adjust-default-rest",
         "clear-data-ack", "clear-data-phrase", "export-data", "export-before-clear", "confirm-clear-data", "confirm-cancel-workout",

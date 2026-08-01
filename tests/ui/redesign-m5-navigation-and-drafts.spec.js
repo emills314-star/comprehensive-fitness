@@ -155,6 +155,7 @@ test("M5 optional readiness is secondary, single-step, and available during the 
   const readiness = page.getByRole("dialog", { name: "What is different today?", exact: true });
   await expect(readiness).toBeVisible();
   await expect(readiness.locator(".readiness-review-sheet")).toHaveCount(0);
+  await readiness.getByRole("radio", { name: "Unusual", exact: true }).check();
   await readiness.getByRole("checkbox", { name: "Pain or injury", exact: true }).check();
   await readiness.getByLabel("Affected area", { exact: true }).selectOption({ label: "Back" });
   await page.screenshot({
@@ -167,10 +168,15 @@ test("M5 optional readiness is secondary, single-step, and available during the 
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect.poll(() => activeDraftIds(page)).toHaveLength(1);
   const recovery = await page.evaluate(() => activeWorkoutSession()?.recovery);
-  expect(recovery).toMatchObject({ pain: true, affectedMuscle: "Back" });
+  expect(recovery).toMatchObject({ soreness: 3, pain: true, affectedMuscle: "Back" });
 
   await page.locator('[data-action="session-menu"]').click();
   await expect(page.locator('[data-action="log-workout-readiness"]')).toHaveAccessibleName("Log readiness");
+  await page.locator('[data-action="log-workout-readiness"]').click();
+  const activeReadiness = page.getByRole("dialog", { name: "What is different today?", exact: true });
+  await activeReadiness.getByRole("radio", { name: "Very unusual", exact: true }).check();
+  await activeReadiness.locator('[data-action="save-workout-readiness"]').click();
+  await expect.poll(() => page.evaluate(() => activeWorkoutSession()?.recovery?.soreness)).toBe(5);
 });
 
 test("M5 active-draft conflict offers exactly Resume, Finish, or Discard without creating a second draft", async ({ page }) => {

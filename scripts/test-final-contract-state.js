@@ -292,7 +292,8 @@ assert.doesNotMatch(foundation, /function explicitReadinessCandidate/, "No readi
 assert.doesNotMatch(functionSource(foundation, "resolveWorkoutExceptions"), /readinessCandidate|use_lighter_session/, "The current live pipeline is limited to the approved direct safety rule");
 assert.match(functionSource(foundation, "resolveWorkoutExceptions"), /onEngineeringError:\s*reportExceptionResolverEngineeringError/);
 assert.match(foundation, /returnCondition:\s*\{\s*type:\s*"input_cleared_or_workout_ended"\s*\}/);
-assert.doesNotMatch(views, /template-readiness-(?:sleep|hrv|resting|soreness|nutrition|protein)/);
+assert.match(views, /template-readiness-soreness/, "Optional readiness must expose the approved compact unusual-soreness input");
+assert.doesNotMatch(views, /template-readiness-(?:sleep|hrv|resting|nutrition|protein)/);
 assert.doesNotMatch(interactions, /baseline-(?:sleep|hrv|resting|soreness|band)|patchReadinessBaseline/);
 assert.doesNotMatch(analysis, /data-action="baseline-|Readiness baseline/);
 assert.match(views, /data-choice="stop"[\s\S]*data-choice="modify"[\s\S]*data-choice="continue"/);

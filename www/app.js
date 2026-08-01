@@ -551,6 +551,7 @@
         if (action === "recovery-outside-note") patchRecovery({ outsideBandNote: target.value });
         if (action === "strong-import-weight-unit") strongImportWeightUnit = target.value === "lb" || target.value === "kg" ? target.value : "";
         if (action === "template-readiness-deviation") patchTemplateStartDraft({ readinessDeviation: target.value }, false);
+        if (action === "template-readiness-soreness") patchTemplateStartDraft({ soreness: target.value === "" ? "" : Number(target.value) }, false);
         if (action === "template-readiness-illness") patchTemplateStartDraft({ illness: target.checked }, false);
         if (action === "template-readiness-pain") patchTemplateStartDraft({ pain: target.checked }, false);
         if (action === "template-readiness-affected-muscle") patchTemplateStartDraft({ affectedMuscle: target.value }, false);
