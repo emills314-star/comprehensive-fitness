@@ -59,6 +59,7 @@ Do not begin new product work after M8. Do not merge, push, deploy, mutate produ
 - Routines and Settings are contextual.
 - The product has one fixed light presentation.
 - Start is direct and readiness is optional.
+- Optional readiness includes compact unusual-soreness capture before or during the workout and remains silent unless a separately approved rule exists.
 - Stable named-variant targets and factual prior work own the normal logger.
 - Direct explicit pain/injury or illness is the only live exception rule.
 - Numeric fatigue, readiness, plateau, and deload detectors are not active.

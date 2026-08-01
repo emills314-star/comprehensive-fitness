@@ -29,7 +29,7 @@ Implementation clarifications and successor decisions are recorded in `DECISION_
 | M5 | Complete locally | `ef71085` |
 | M6 | Complete locally | `441b6cb` |
 | M7 | Complete locally | `0223b36` |
-| M8 | Complete locally | `10d3bb2` |
+| M8 | Complete locally | `10d3bb2`, final in-scope correction `90934ef` |
 
 Associated documentation checkpoints and detailed evidence are in `implementation/MILESTONE_LOG.md`. The final documentation reconciliation and Codex self-audit checkpoint is `acb1b02`.
 
@@ -40,6 +40,7 @@ Associated documentation checkpoints and detailed evidence are in `implementatio
 - Active workout is full-screen.
 - The presentation is fixed light; theme/color-package settings are removed.
 - Start is direct and readiness is optional.
+- Optional readiness includes compact unusual-soreness capture before or during the workout; it remains silent and non-blocking.
 - Stable named-variant targets and comparable prior facts drive normal logging.
 - Direct explicit pain/injury or illness is the only live exception rule.
 - Numeric fatigue, readiness, plateau, and deload detectors are not active.
@@ -68,6 +69,7 @@ This is a local implementation result, not a publication or physical-device acce
 - Final mobile Playwright evidence is 144 passed and 15 configured skips. Final desktop evidence is 141 passed and 18 configured skips. The documentation sentinel that ran during the concurrent documentation rewrite was repaired and then passed 2/2 across mobile and desktop.
 - `sync:web` and PWA verification passed for 26 public assets. Capacitor synchronized Android and iOS; Windows could not run CocoaPods or `xcodebuild`.
 - Recoverable implementation checkpoint: `10d3bb2`.
+- Final self-audit correction checkpoint: `90934ef` adds the disposition-required compact soreness input without adding a detector or recommendation.
 
 ## Exact next action
 

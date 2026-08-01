@@ -676,6 +676,16 @@ No final-document contradiction was found. The current four-tab shell and `confi
 
 - M8 implementation: `10d3bb2` (`feat(redesign): complete M8 deletion and integration`).
 - M8 documentation reconciliation and final Codex self-audit: `acb1b02` (`docs(redesign): record M8 verification and self-audit`).
+- Final in-scope self-audit correction: `90934ef` (`fix(redesign): add compact soreness readiness input`).
+
+### Final self-audit correction
+
+- The first exhaustive traceability pass correctly rated B-04 PARTIAL because the optional readiness sheet preserved historical soreness values but did not expose the required compact unusual-soreness input.
+- Checkpoint `90934ef` adds one segmented `Soreness today` control using the already-supported bounded values, available both before Start and from the active workout. It remains optional, non-blocking, and silent; it does not create a score, detector, action, target mutation, integration, or new state domain.
+- Focused contract and integration checks passed: final-contract state, M0 preservation, app integration 33/33, exception resolver, backup, and domain integrity.
+- Focused mobile Playwright passed 1/1 at the configured iPhone-class viewport. The test records and restores soreness before Start and during the active workout; the rendered sheet screenshot was inspected for wrapping, selection state, touch sizing, and scrollability.
+- Static lint passed 192 JavaScript and 3,112 JSON files; workflow validation passed; `sync:web` and PWA/native verification passed for all 26 assets; staged/tracked privacy passed.
+- `docs/UI_UX.md` and `docs/DECISION_ENGINE.md` were reviewed and already described optional soreness accurately, so no wording change was required there.
 
 ### Remaining external/unproven gates
 

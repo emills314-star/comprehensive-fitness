@@ -4,8 +4,8 @@
 > **Audit date:** 2026-08-01
 > **Audit type:** Documentation-only Codex self-audit of the frozen M8 candidate
 > **Branch:** `codex/zero-based-redesign`
-> **Implementation checkpoint:** `10d3bb264bac865f955644a1f017c23d029fc457` (`10d3bb2`)
-> **Documentation/self-audit checkpoint:** `acb1b02`
+> **Implementation checkpoint:** `90934ef` (M8 source `10d3bb2` plus the final compact-soreness correction)
+> **Documentation/self-audit baseline:** `acb1b02`, updated here for `90934ef`
 > **Status:** **LOCAL IMPLEMENTATION EVIDENCE COMPLETE; EXTERNAL AND INDEPENDENT RELEASE GATES OPEN**
 > **Publication status:** **NOT AUTHORIZED / NOT PUBLISHED**
 
@@ -36,7 +36,7 @@ A PASS in this report is not publication authorization. No raw personal record, 
 
 The M8 source, generated web package, native public payload, public/private local tests, Chromium browser suites, documentation sentinels, lint, workflows, tracked-file privacy scan, and dependency gates have current passing evidence. The earlier root/`www` divergence and grade-version/documentation mismatch are resolved through D-025 and D-026. D-027 removes workout cloud-copy authorization, upload, UI, and queue writers while retaining notification revocation/deletion and bounded cleanup.
 
-The source candidate at checkpoint `10d3bb2` is **locally review-ready for independent and external acceptance**. It is not approved for publication, and plan-wide acceptance remains incomplete, because all of the following remain open:
+The source candidate at checkpoint `90934ef` is **locally review-ready for independent and external acceptance**. It is not approved for publication, and plan-wide acceptance remains incomplete, because all of the following remain open:
 
 - the repository pins Node `22.23.x` and npm `10.9.x`, while the frozen evidence used Node `24.18.0` and npm `11.16.0`;
 - physical-device decimal RPE, software keyboard, screen reader, notification, lock-screen, haptic/sound, background/suspension, and installed-PWA behavior are not proven;
@@ -57,7 +57,7 @@ The traceability tables use the evidence identifiers below. Each identifier name
 | ID | Implementation location | Automated evidence | Runtime / visual evidence |
 | --- | --- | --- | --- |
 | E-01 Authority/docs | `docs/redesign/final/*`, `docs/redesign/DECISION_LOG.md` D-025-D-027, `docs/PROJECT.md`, `docs/ARCHITECTURE.md`, `docs/DECISION_ENGINE.md`, `docs/UI_UX.md`, `docs/ROADMAP.md`, `docs/redesign/STATUS.md` | Two configured documentation sentinels passed 2/2 through `tests/ui/ui-audit.spec.js` | Documentation strings were exercised in both configured Chromium projects; this is not owner acceptance. |
-| E-02 Shell/Start | `app-foundation.js:45-46,724-728,2964-2979`; `app-views.js:487-614`; `app-analysis.js:2-175`; `app-workout.js:285-300,1431-1513`; `app.js:963+` | `scripts/test-redesign-m5-two-destination-shell.js`; `scripts/test-final-contract-state.js`; `tests/ui/redesign-m5-navigation-and-drafts.spec.js` | Mobile and desktop suites cover two destinations, direct Start, contextual Routines/Settings, Back, one-draft conflict, Resume/Finish/Discard, and confirmed discard. |
+| E-02 Shell/Start/readiness | `app-foundation.js:45-57,697-721,724-728,2964-2979`; `app-views.js:487-692`; `app-analysis.js:2-175`; `app-workout.js:285-300,1431-1513`; `app.js:547-556,963+` | `scripts/test-redesign-m5-two-destination-shell.js`; `scripts/test-final-contract-state.js`; `tests/ui/redesign-m5-navigation-and-drafts.spec.js` | Mobile and desktop suites cover two destinations, direct Start, contextual Routines/Settings, Back, one-draft conflict, Resume/Finish/Discard, and confirmed discard. A post-audit focused mobile case passed 1/1 for compact soreness capture before Start and during the active workout. |
 | E-03 Stable targets/logger | `app-foundation.js:1144-1227,2175-2210,2860-2895`; `app-views.js:312-384,1067-1260`; `app-workout.js:600-765,1080-1170,1280-1513`; `app.js:2-75,620-710` | `scripts/test-redesign-m1-stable-targets.js`; `scripts/test-redesign-m2-workout-writers.js`; `scripts/test-redesign-m6-active-workout.js`; `tests/ui/redesign-m1-stable-targets.spec.js`; `tests/ui/redesign-m6-active-workout.spec.js` | Chromium covers same-role factual prefills, stable targets, add/remove/skip/reorder/substitute/custom work, one-edit `7` to `7.5`, validation, notes, and draft reload. Physical keyboard behavior remains open. |
 | E-04 Timer/notifications | `app-sync.js`; `rest-completion-controller.js`; timer state in `app-foundation.js`/`app-workout.js`; notification controls in `app-analysis.js`; `sw.js`; `api/push/*` | `scripts/test-rest-completion-controller.js`; `scripts/test-service-worker-update-contract.js`; `scripts/test-redesign-m6-active-workout.js`; timer/browser cases in `tests/ui/redesign-m6-active-workout.spec.js` | In-app timer, overtime, reload, skip/finish, unavailable-permission fallback, and route recovery pass in Chromium. Physical background/lock-screen/sound/haptic delivery is not proven. |
 | E-05 Resolver/safety | `exception-resolver.js`; `schemas/redesign-resolved-action.v1.schema.json`; `app-foundation.js:809-904`; `app-workout.js:270-345`; canonical rendering in `app-views.js:420-486` | `scripts/test-redesign-m2-exception-resolver.js` (12 named cases); `scripts/test-final-contract-state.js`; `scripts/test-redesign-m2-workout-writers.js`; `tests/ui/redesign-m2-exception-resolver.spec.js` | Ordinary silence and one direct pain/illness action pass in Chromium; continuing remains loggable and handling is recorded. No numeric fatigue/readiness/plateau/deload detector is live. |
@@ -128,7 +128,7 @@ The low score is not a claim that the final quiet-spotter product is incorrectly
 | §4 Product topology | PASS | E-02 and E-10. | Today/Progress are the only persistent destinations; package parity passes. |
 | §5 Today | PASS | E-02, E-05, E-10. | Expected workout, compact alternatives, optional readiness, Resume, and at most one session action are present. Removed analysis does not run. |
 | §5.1 Start behavior | PASS | E-02. | Direct Start and exact active-conflict actions pass. |
-| §5.2 Readiness behavior | PARTIAL | E-02, E-05, E-09. | Optional deviation/pain/illness/note is non-blocking; structured unusual-soreness entry and objective-metric provenance/consumption are incomplete. |
+| §5.2 Readiness behavior | PARTIAL | E-02, E-05, E-09. | Optional deviation/soreness/pain/illness/note is non-blocking; objective-metric provenance/consumption remains incomplete. |
 | §6.1 Stable variant targets | PASS | E-03. | Separate named/custom identities and stable sets/range/RPE/rest pass. |
 | §6.2 Set row | PARTIAL | E-03. | Chromium one-edit decimal RPE passes; target-device reproduction is explicitly still required. |
 | §6.3 Prior performance | PASS | E-03 and E-07. | Exact identity/resistance/role facts and missing-source handling pass. |
@@ -183,7 +183,7 @@ Every A-H and X identifier appears below. “PASS (conditional)” means the fin
 | B-01 Usual-readiness baseline | KEEP | PASS | E-02/E-05: usual is silent/default and needs no daily acknowledgement. |
 | B-02 Manual readiness | SIMPLIFY | PASS | E-02: compact deviation/pain/illness/note entry is optional before or during work. |
 | B-03 Sleep/HRV/resting-HR | ENGINE ONLY | PARTIAL | E-09 validates and preserves supplied values, but explicit observation provenance and an approved live consumer are not proven; no integration is inferred. |
-| B-04 Soreness input | SIMPLIFY | PARTIAL | E-02 supports general deviation and note, but no distinct compact unusual-soreness control is rendered. |
+| B-04 Soreness input | SIMPLIFY | PASS | E-02: one compact segmented soreness control is available before or during work, persists the existing bounded soreness fact, and creates no action by itself. |
 | B-05 Illness/injury toggle | KEEP | PASS | E-02/E-05: direct illness and pain/injury inputs feed the highest-priority canonical safety action. |
 | B-06 General readiness score | DELETE | PASS | E-10: no user-facing composite readiness score remains. |
 | B-07 Intervention taxonomy | ENGINE ONLY | PASS | E-05: bounded internal category/action vocabulary exists only inside the resolver contract. |
@@ -367,7 +367,7 @@ Every A-H and X identifier appears below. “PASS (conditional)” means the fin
 | §4 Category/action allowlist | PASS | E-05/E-15: permanent categories/actions are bounded; no current numeric threshold is treated as approved. |
 | §5.1 Stable routine inputs | PASS | E-03/E-08: exact variant, stable targets, repeatable workout/day, and order exist as reference facts. |
 | §5.2 Training observations | PARTIAL | E-03/E-07/E-09 cover actual work, roles, order, duration, substitutions, notes, overrides, and snapshots; submitted actual-rest observation is not proven. |
-| §5.3 Readiness/safety observations | PARTIAL | E-02/E-05/E-09 cover deviation, pain/illness, note, and retained objective values; structured soreness and complete objective provenance are incomplete. |
+| §5.3 Readiness/safety observations | PARTIAL | E-02/E-05/E-09 cover deviation, soreness, pain/illness, note, and retained objective values; complete objective provenance remains incomplete. |
 | §5.4 Historical window | PASS | E-07: all history persists and no universal six-week/six-month engine constant is active. |
 | §6.1 identity, §6.3 comparability, §6.4 sufficiency, §6.5 freshness, §6.6 materiality | PASS | E-05/E-07: wrong/ambiguous variant-role data suppresses; active direct input is fresh/material; synthetic qualification boundaries pass. |
 | §6.2 source integrity | PARTIAL | E-09: schema/original-import preservation passes; wider objective/rest provenance is incomplete. |
@@ -442,7 +442,7 @@ Every A-H and X identifier appears below. “PASS (conditional)” means the fin
 | §7.6 final staged-diff/independent privacy/publication review | NOT PROVEN | E-18; no publication action is authorized. |
 | §8 deletion across navigation/UI/compute/state/inputs/schema/package/deps/tests/docs/flags | PASS locally | E-10/E-11. Only bounded historical decoders/fixtures/governance remain. |
 | §9 five-workout conditions 1-8 | NOT PROVEN | E-18: no real workout field test has occurred. |
-| §10 “review-ready” | PARTIAL | Checkpoint `10d3bb2` is locally review-ready for independent/external acceptance; the plan-wide label still awaits physical/PWA performance, real migration verification, current independent final review, documentation-inclusive freeze, and human gates. |
+| §10 “review-ready” | PARTIAL | Checkpoint `90934ef` is locally review-ready for independent/external acceptance; the plan-wide label still awaits physical/PWA performance, real migration verification, current independent final review, documentation-inclusive freeze, and human gates. |
 | §10 “approved for publication” | FAIL | Five-workout/human acceptance and explicit owner authorization are absent. |
 | §10 “published” | FAIL | No authorized deployment/hosted verification of this checkpoint occurred. |
 | §11 non-inference rules | PASS | E-01/E-10: no hidden alternate product, feature addition, destructive data shortcut, or publication inference. |
@@ -459,6 +459,7 @@ Current frozen-candidate evidence supplied by the integration run and reproduced
 - mobile Chromium — **144 passed, 15 configured skipped**.
 - desktop Chromium — **141 passed, 18 configured skipped**.
 - documentation sentinels — **2/2 PASS**.
+- post-audit compact-soreness mobile regression — **1/1 PASS**, including persistence before Start and from the active workout; the rendered 390-class sheet was inspected.
 - lint — **192 JavaScript / 3,112 JSON PASS**.
 - workflow validation — **PASS**.
 - tracked public privacy — **647/647 PASS**.
@@ -469,9 +470,9 @@ Current frozen-candidate evidence supplied by the integration run and reproduced
 ### Final self-audit state
 
 - **Implemented locally:** the zero-based redesign source, tests, generated package, native public payload, documentation reconciliation, and this traceability audit.
-- **Locally review-ready:** source checkpoint `10d3bb2` is ready for the pending independent and external acceptance gates.
+- **Locally review-ready:** source checkpoint `90934ef` is ready for the pending independent and external acceptance gates.
 - **Not objectively complete:** pinned-runtime reproduction, physical/device/accessibility/notification gates, fresh performance measurements, real protected-data migration/independent verifier, current independent final reviewer, immutable release freeze, owner baseline acceptance, and five real workouts.
 - **Not approved for publication:** no explicit authorization exists.
-- **Not published:** no deployment or hosted verification of checkpoint `10d3bb2` occurred.
+- **Not published:** no deployment or hosted verification of checkpoint `90934ef` occurred.
 
 This document changes no product decision, does not reopen fixed-light appearance, contains no private record, and does not inflate either fixed rubric to a target score.
