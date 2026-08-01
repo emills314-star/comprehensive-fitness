@@ -207,6 +207,22 @@ Focused contracts, the effective 62/62 public gate, lint, typecheck, production 
 
 The external dependency audit could not reach the npm registry under the environment policy; M7 changes no package metadata and local package/build/runtime gates pass. Pinned Node 22.23.x/npm 10.9.x and physical-device acceptance remain unverified external gates. The recoverable M7 implementation checkpoint is `0223b36`.
 
+## M8 current execution record
+
+**Status:** COMPLETE LOCALLY; EXTERNAL ACCEPTANCE PENDING
+
+The M8 candidate removes the concept-only React/Vite path, obsolete product assets/tests/schemas, expired redirects/writers, and deleted-feature documentation while retaining the final redesign authority and historical governance evidence.
+
+Current factual clarifications:
+
+- The product is fixed light with Today and Progress as its only persistent destinations.
+- Workout cloud copy is decommissioned. Notification delivery, revocation, installation deletion, and bounded cleanup of residual legacy workout/mutation keys remain.
+- Only direct explicit pain/injury or illness creates a live exception candidate. Optional `meaningfully_poor` readiness remains a stored fact and does not currently create an action.
+- New submissions prospectively use `actual-work-rubric/1.1.0`. The successor algorithm corrects valid-RPE coverage without grading target adherence or changing stored historical grades.
+- Top-level `recommendationHistory`, top-level `manualOverrides`, and `personalEvidencePackage` are retired global planner/evidence collections that decode/discard. Embedded submitted snapshots and resolved actions/handling/overrides attached to their owning workout remain immutable.
+
+M8 implementation and locally executable verification are complete at checkpoint `10d3bb2`. Final public, browser, privacy, package, root/`www`, PWA/native, and documentation gates pass. The traceability self-audit and current independent release review close the local handoff; pinned-runtime, physical-device, hosted, representative protected-data replay, owner baseline, and five-workout gates remain external/unproven and prevent a publication-acceptance claim.
+
 ## 5. Temporary structure ledger
 
 | Artifact | Introduced | Purpose | Delete gate |
@@ -217,7 +233,7 @@ The external dependency audit could not reach the npm registry under the environ
 | M2 detector shadow adapters | M2 | Compare canonical resolver with legacy behavior | Delete at M2 exit |
 | M3 legacy mesocycle decoder | M3 | Import old backups without active mesocycle state | Retain isolated decoder while supported legacy backups require it |
 | M4 removed-compute instrumentation | M4 | Prove Today/Start work is gone | Delete at M4 exit |
-| M5 legacy route redirects | M5 | Bounded navigation compatibility | Delete after documented redirect window, no later than M8 |
+| M5 legacy route redirects | M5 | Bounded navigation compatibility | Removed and verified absent in the M8 source/browser gates |
 | M6 UI migration flag | M6 | Not introduced; the active logger migrated atomically | Satisfied at M6 exit |
 | M7 grade comparison | M7 | Verify prospective grade change | Delete at M7 exit |
 

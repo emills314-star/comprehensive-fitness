@@ -2,433 +2,180 @@
 
 ## Metadata
 
-- **Purpose:** Verified user experience, interaction contracts, and intended UX gaps
-- **Last verified:** 2026-07-31
-- **Repository:** zero-based redesign through M7 at checkpoint `0223b36`
-- **Verification status:** VERIFIED locally through M7, including 390 × 844 completion/Progress states, desktop coverage, affected-flow regression, visual inspection, and independent review. Hosted and physical-device verification remain unverified
+- **Purpose:** Current navigation, screen, copy, interaction, and accessibility contract
+- **Last verified:** 2026-08-01
+- **Status:** **IMPLEMENTED AND VERIFIED LOCALLY THROUGH M8; EXTERNAL ACCEPTANCE GATES OPEN**
+- **Product authority:** [`redesign/final/FINAL_REDESIGN_PRD.md`](redesign/final/FINAL_REDESIGN_PRD.md)
 - **Related:** [Project](PROJECT.md), [architecture](ARCHITECTURE.md), [decision engine](DECISION_ENGINE.md), [roadmap](ROADMAP.md)
 
-## Living-document rule
+## Product shell
 
-Read this document before changing navigation, screens, labels, visual hierarchy, interactions, forms, confirmations, loading/empty/error/success states, accessibility, or responsive behavior. After implementation and UI verification, update the affected workflow and requirement status in the same task and update `ROADMAP.md`. Do not describe intended UI as already present. Every user-facing UI change also requires hosted-site browser verification after deployment: inspect the actual URL at mobile and desktop widths, repeat the affected flow after refresh, check console/runtime errors and stale assets, and record URL, viewport, steps, expected/actual result, and evidence in `docs/WORK_LOG_TEMPLATE.md`. Local source inspection or a successful build is not completion proof.
+Persistent navigation contains exactly:
 
-**IMPLEMENTED — UI intent authority:** this document governs current screen, navigation, state, copy, interaction, and visual intent. `docs/ROADMAP.md` governs migration status, sequencing, and acceptance gates. Dated audit reports and specifications under `docs/audits/` are historical evidence unless this document or the roadmap explicitly promotes a named audit requirement into current intent. When historical prescriptive wording conflicts with these living documents, preserve the historical record, follow the living intent, and report the conflict rather than silently choosing either source.
+1. **Today**
+2. **Progress**
 
-### Zero-based redesign M1 logging integrity — IMPLEMENTED LOCALLY
+Routines and Settings are contextual screens and return to Today. Workout/exercise history is reached contextually from Progress or the active workout. An active workout is full-screen and hides persistent navigation.
 
-Starting a routine now renders the named exercise variant's stable set roles/count, rep range, target-RPE band, and rest without a normal engine rewrite. Load, reps, and RPE use factual same-variant/same-role prior performance, explicit routine defaults, then blank. Full variant names remain present, including meaningful suffixes. Large numeric values remain valid editable number-input values; visual grouping separators are display-only.
+Retired route hashes do not remain as hidden features. They normalize to Today. There is no Dashboard, Plan, More, Insights, Advanced, persistent Routines tab, or persistent Progress subview switcher.
 
-Global equipment preference and exercise-exclusion controls are absent and cannot disable normal workout logging. M3 removed the planner; the former Plan ownership is superseded by M5 contextual Routines. M4 through M6 are implemented locally: the active logger now uses stable-target headers, full variant names, role-aware prior facts, fast inputs, explicit workout-only substitution/routine save, and one consolidated rest lifecycle.
+The production product uses one fixed light presentation. There is no theme selector, color-package selector, or appearance-settings group.
 
-Focused mobile verification at 390 × 844 covers long canonical names, a 1,234.5-lb prior-performance prefill, current/pending/completed states, ordinary completion touch, one-edit replacement of prefilled RPE `7` with `7.5`, and the removed equipment group. RPE replacement does not require a duplicate first digit or manual clear. Completion immediately after entry persists the decimal even when blur rerenders the set row. The current-set options disclosure occupies its own touch row so it cannot intercept the 44 CSS-pixel completion control. Screenshots are stored under `artifacts/ui-audit/m1/`; no replacement visual baseline was accepted.
+## Today
 
-### Zero-based redesign M4 quiet Today and factual Progress — IMPLEMENTED LOCALLY
+The first useful viewport shows:
 
-Today shows the expected workout, its start action, and alternate routines without hypertrophy, weekly/fractional volume, research status, evidence, confidence, program score, or normal plan-preview cards. Progress is one screen: select an exact exercise variant, inspect its factual submitted-performance chart, tap a point for date/load/reps/RPE/set role/source session, and continue into chronological submitted-workout history. The empty state asks for a completed workout; it does not substitute a score or recommendation.
+- the expected routine/workout identity;
+- a concise exercise preview;
+- one primary **Start** action;
+- secondary **Choose another workout**;
+- optional **Log readiness**;
+- **Resume** instead of Start when a draft exists;
+- at most one session exception when the canonical resolver permits it.
 
-The factual Progress view was inspected at 390 × 844 with a long variant name, `1,234.5` load, decimal RPE, populated point detail, and empty history. Distinct variants remain separate. **SUPERSEDED (M5):** the temporary four-destination shell was replaced by the final two-destination navigation.
+Start opens the active logger directly. There is no readiness, prescription-review, or confirmation step before normal Start.
 
-## Experience principles
+If another draft is active, the user receives exactly Resume, Finish, or Discard. Discard opens a concise destructive confirmation and removes only the confirmed draft; it does not silently start the newly requested routine.
 
-### Two-destination navigation and direct Start — IMPLEMENTED LOCALLY (M5)
+## Optional readiness
 
-Persistent bottom navigation exposes exactly Today and Progress. Routines and Settings are contextual screens with **Back to Today** behavior; legacy destinations normalize to those current contexts without becoming tabs. The active workout is full-screen, hides persistent navigation, and exposes a contextual **Back to Today** route. Today shows **Resume** whenever a draft exists.
+Readiness is secondary and skippable before or during the workout. Current inputs support:
 
-The normal Today Start action opens the active logger directly with usual readiness: there is no confirmation, readiness ritual, or prescription-review sheet. **Log readiness** is optional and separate before Start, and remains available from the active workout. A competing start request presents exactly Resume, Finish, and Discard; Discard opens a distinct concise destructive confirmation and never starts the requested workout automatically.
+- usual, unusually good, or meaningfully poor readiness;
+- soreness;
+- explicit pain/injury;
+- explicit illness;
+- affected area when relevant;
+- an optional note.
 
-### Guided mesocycle workflow — SUPERSEDED HISTORICAL RECORD (M3)
+Skipping readiness never blocks Start, logging, timer use, submission, or Progress. Current live advice uses only explicit pain/injury or illness. Meaningfully poor readiness is stored as a factual deviation but does not currently produce a recommendation.
 
-M3 removes the guided workflow, lifecycle views, candidate workspace, planning controls, and mesocycle history from the live UI. The isolated versioned legacy decoder preserves associated workout/routine-template facts without a route, renderer, writer, or active state. The following text is retained solely as historical design/audit evidence.
+## Active workout
 
-**IMPLEMENTED — SUPERSEDED PRESENTATION:** the pre-migration guided builder used pill-like step buttons, independent bordered need cards, and a generic final template review. It already enforced the five dependency-ordered steps, one open day, working-set/move/remove controls, muscle scope, live volume accounting, viability, exception acceptance, and linked-template persistence. The former global equipment preference and its logging constraint were removed in zero-based redesign M1. The remaining planner capabilities and pure planning contract stay active only until the M3 deletion milestone.
+The active screen prioritizes:
 
-**TARGET / IMPLEMENTED LOCALLY:** `design-concepts/m4-mesocycle.html` now governs Setup, Build, the candidate workspace, Check, and Create. The frozen `guide → setup → build → check → create` machine remains progressively unlocked. Its production progress spine uses `.steps`/`.step-label`; setup reuses fields, segmented choices, and steppers with `.chiprow`/`.pick`; Build uses one planned/target/delta spine plus `.day-card`/`.assign`; and candidate selection leads with the current muscle gap. Guide and the durable completion state have no mockup, so they retain their existing information and actions while adopting the shared spacing, roll-up, claim, and step language. No new route, step, persisted field, planning rule, or ledger rule was introduced.
+- complete exercise/variant name;
+- stable set count/roles, rep range, target RPE, and rest;
+- compact comparable prior performance;
+- current set;
+- load, repetitions, and RPE;
+- shared rest state.
 
-Candidate cards keep effectiveness and evidence certainty separate. `candidate.scores.targetMuscleEffectiveness` is the visible 0–100 effectiveness score and `candidate.scores.weightingReason` is the comparable-exposure evidence line. The similarly named `candidate.personalDataConfidence` is the categorical `research_default | low | moderate | high` tier used by the four-level meter; `candidate.scores.personalDataConfidence` is a distinct numeric 0–100 evidence-quality value and must never drive `data-conf`. This one-property naming collision is documented at the production use site because choosing the numeric property would silently misrepresent the evidence tier.
+Current, completed, pending, skipped, and warm-up states are distinguishable without relying on color alone. Meaningful variant suffixes wrap rather than truncate.
 
-Each candidate's “would change the remaining gap to” value is an exact, non-mutating projection. The view creates a temporary draft through the pure `addExercise → volumeLedger → muscleTargetStatuses` path and discards it; it does not approximate the gap or write the real draft. The research adapter supplies weekly target ranges. If the dormant `{6, 10, 14}` compatibility fallback is ever required, its range renders as a level-1 research-default claim with a dashed outline and explicit provisional note; it is never described as research-derived.
+### Inputs
 
-Check ranks unresolved **Blocking**, **Warnings**, then **Advisory** findings. Only `readyToGenerate` unlocks Create, so unresolved blockers alone stop template creation. The closing callout states that viability cannot observe schedule disruption, equipment queues, or how the block will feel. Passed findings remain omitted; accepted non-blocking exceptions remain audited.
+- Load is a numeric entry in the current display unit.
+- Repetitions are integer entry.
+- RPE supports decimal 0.5 values and immediate replacement. A prefilled `7` can become `7.5` in one focused edit without manual clearing or a second tap on `7`.
+- Factual prefill order is comparable prior set, explicit routine default, then blank.
+- Completing a set preserves the value just entered and advances predictably.
+- Touch controls retain the supported minimum target size and set inputs keep a 16 CSS-pixel font floor on mobile to avoid iOS focus zoom.
 
-Create compares stored plans, not execution. When a comparable earlier plan with positive programmed volume exists, both columns append the word **plan** to their complete names (for example, **Block 4 plan** and **Block 5 plan**) and the delta means how programmed volume changed. When none exists, only the current named plan renders. The screen never labels a plan as actual, achieved, logged, or performed. Per-muscle execution volume for a completed mesocycle is not currently a data contract and is tracked separately as planned engine/data work.
+### Actual-work controls
 
-The intentional presentation migration required explicit test reconciliation: selectors for the superseded **Start Planning**, **Create Empty Training Days**, **Weekly Volume & Frequency**, and **Viability Check** copy now target the current labelled actions or structural step surfaces while retaining their dependency, viability, and persistence assertions. M1 updated the former equipment assertions to prove the deleted global control is unreachable. New coverage separately protects the score/confidence naming boundary, exact non-mutating candidate projection, level-1 fallback treatment, plan-only Create language, all-package/two-theme contrast, 44 px targets, focus restoration, and 320 px/200%-text reflow.
+The user can add, remove, or skip a set; reorder exercises; choose what to do next; substitute an exercise; create or name a custom variant; correct set role; and add exercise/session notes.
 
-**IMPLEMENTED — SUPERSEDED FOR THE EVIDENCE & CHANGE MIGRATION:** the current UI is mobile-first, light/dark capable, dense enough for training use, and designed to keep recommendations explainable. The implemented **Quiet Coach workspace** is a top-down structural redesign, not a palette layer over the previous five-tab UI. Rich navy owns primary actions, active navigation, focus, and selected state; success, warning, rest, and destructive colors remain semantically separate. This records verified current behavior; it is not an appearance-preservation instruction while the migration target below is active.
+Changes apply to the current workout by default. Saving a suitable substituted exercise back to the source routine is a separate explicit action. Equipment metadata cannot disable selection, inputs, the timer, or submission.
 
-**IMPLEMENTED — SUPERSEDED STRUCTURE:** the modular layout is structural rather than user-configurable: users cannot drag, resize, or hide modules. Today leads with one coaching decision and quick starts. An active workout is one continuous document containing every exercise and set in program order; completing a set or rest interval updates the current-set highlight without moving the viewport, so the user remains in control of scrolling. An explicit exercise jump may move to the selected card. Readiness, notification state, history, and workout details are supporting disclosures. Plan owns templates and the mesocycle builder. Progress owns Overview, Lifts, and History in one workspace. More owns setup, privacy, data, and application controls. Its facts, actions, safety behavior, and accessibility contracts remain requirements; its Lift and Dashboard appearance does not.
+### Prior performance
 
-Build separates unresolved **Needs Attention** items from a collapsed **Completed** summary. Status copy shows total effective sets first, then direct/fractional detail and frequency. Amber “Needs Frequency” cannot use the success treatment even when volume is within range. Create review uses expandable day cards with order, sets, rep/RPE/rest targets, volume contributions, warnings, and an Edit Day route. Successful creation remains on a persistent **Mesocycle Completed** panel with exact created/updated template counts and next actions; it does not return to Build.
+Previous facts match exact performance identity, resistance type, and comparable set role. Warm-up and unknown-role work do not qualify as progression evidence. Ambiguous or absent prior data is shown as unavailable rather than inferred.
 
-Interaction principles evidenced in code: one canonical active workout; explicit destructive/final actions; immediate visible set updates; preserved drafts; conservative empty states; full recommendation detail on demand; accessible labels/live regions/inert modal backgrounds; and user-controlled overrides with reasons.
+### Rest
 
-### Evidence & Change target design — SUPERSEDED HISTORICAL RECORD (M4)
+One shared rest control appears after completed, non-skipped work. It:
 
-**TARGET:** Lift and Dashboard follow the Evidence & Change composition in `design-concepts/m2-core.html`; the active workout follows only the owner-selected `design-concepts/m1-workout-variants.html` screen `v3-progressive`. The rejected `v1-spine` and `v2-card` variants are not blended into the target.
+- uses the exercise/role rest default;
+- shows remaining time and overtime;
+- supports adjustment and Skip/Finish;
+- survives supported navigation, reload, and active-draft recovery;
+- can schedule a Web Push notification where supported and permitted;
+- remains functional in-app when notifications are unavailable or denied.
 
-During this migration, the target supersedes preservation of the prior Lift and Dashboard appearance. Claims carry confidence, stored and logged facts remain plain ink, and comparison judgments alone spend semantic color. A logged set and a pending/current set use distinct markup shapes: logged work presents plan, actual, and meaningful deviation; pending work presents its target quietly; the current set remains the dominant working surface. Dashboard presents existing planned range, actual volume, and directionally truthful delta without inventing data.
+Physical-device suspension, lock-screen delivery, sound, vibration, and software-keyboard behavior remain device acceptance gates.
 
-**IMPLEMENTED — CAPABILITY PRESERVATION REQUIRED:** the superseded structure remains the verified record of current behavior and source capabilities. Migration may replace its visual hierarchy and markup, but must retain every established fact and action, ten-package/two-theme contrast, 44 CSS-pixel targets at 320 px and 200% text, absence of horizontal overflow and clipping, coherent focus order and keyboard traversal, and destructive confirmation. Pixel appearance becomes protected again only after the owner directly reviews the complete migration artefact set and accepts the replacement baselines once.
+### Recovery
 
-**IMPLEMENTED LOCALLY / REVIEW REQUIRED — M1 V3 fidelity checkpoint:** the active execution surface now follows the raster target `artifacts/design-concepts/m1-workout-variants--v3-progressive.png` as closely as the capability-preservation boundary permits. The sticky active-session header is the visible page heading and carries session identity, in-progress/logged state, and current exercise/set context. The rest timer is one amber, top-level rest/next/countdown strip before the exercise document. The active exercise uses a flat header with editable name, target/confidence chip when evidence exists, and its retained grip/menu controls. Logged sets use compact planned / completion-time actual / RPE-delta rows. The current set is a solid action-blue surface with three equal Load / Reps / RPE entry boxes; an unset RPE renders as a dash without changing its stored zero value. Comparable submitted history remains available as a full-width **Previous** link after the three primary boxes. Pending sets are quiet target rows that name their exercise. This checkpoint changes presentation and DOM placement only; workout state, recommendation data, mutation guards, persistence, focus restoration, submission, and timer behavior are unchanged.
+The active draft retains workout identity, exercises, order, entered set values, roles, notes, duration semantics, timer state, recovery facts, and immutable historical/action references. Browser Back returns to Today without deleting the draft, and Today exposes Resume.
 
-The active logger retains set completion buttons, linked Previous facts, native set options, editable exercise controls, notification setup, Add exercise / Workout details, and one active-session dock. M7 removes that dock and notification setup from the submitted completion state so the result contains only the approved grade, reasons, limited factual highlights, applicable exception, Done, and Progress.
+## Canonical exception presentation
 
-### M-series raster-fidelity pass — IMPLEMENTED LOCALLY / REVIEW REQUIRED
+Ordinary sessions show no recommendation card. A direct pain/injury or illness record may show:
 
-The production surfaces now use the visual hierarchy, spacing, flat ledger rows, semantic color roles, typography, and compact phone composition shown across the selected `artifacts/design-concepts/m1-` through `m9-` raster mockups. M1 uses only V3 progressive; M7 uses only the persistent dock; M9 uses label option A. The other variants remain comparison material and are not blended into production.
+- one plain action;
+- affected scope;
+- one short reason;
+- concise details on request.
 
-- **M2:** Today, Plan, Progress, recommendation evidence, and the completed summary use the mockups' evidence-first plan/last/delta hierarchy, confidence meters, compact template cards, weekly-volume ledger, and focused summary hero. Existing destinations, disclosures, template actions, achievement evidence, and detailed review remain available.
-- **M3:** template confirmation, readiness entry/review, active-workout conflict, and cancellation use compact bottom sheets and explicit change ledgers. Existing two-step readiness behavior, safe conflict recovery, validation, destructive confirmation, and persistence remain unchanged.
-- **M4:** Setup, Build, candidate selection, viability, and Create use the compact five-stage planning spine and ledger treatment while retaining the existing guided-planner state machine, canonical 18-muscle accounting, validation, exception acknowledgement, and idempotent template creation.
-- **M5:** lift analysis, chart-point evidence, session History, and per-exercise History use dense evidence tables, clear score hierarchy, and restrained chart controls. Existing Progress subviews, period controls, disclosure navigation, history editing, and analysis math remain unchanged.
-- **M6:** More, backup/data controls, the danger-zone confirmation, first-run Today, and system-error states use the compact settings and system-state language. Existing browser persistence facts, export/import controls, consent boundaries, typed dual confirmation, error recovery, and first-run template requirements remain unchanged.
-- **M7–M9:** active workouts use the M7 dock; the M8 barbell/calendar/chart/gear glyph family and M9 option-A stacked labels are retained. The active destination is indicated by ink only, without an active-cell border, pill, or fill. Navigation labels and named overflow actions remain present for accessibility and behavior parity.
+The UI does not show confidence, severity, evidence weights, citations, detector lists, internal adjustment objects, or exact normal progression instructions. The warning is non-diagnostic, does not claim that continuing is safe, and does not block logging. Continue/modify/stop handling is explicit and stored on the workout.
 
-**NEEDS REVIEW:** exact literal equivalence is intentionally not claimed where a raster omits production capability or assumes unavailable data. M2 would require merging Progress subviews and adding unsupported template-completion attribution; M3 would require weakening or omitting safer conflict/cancel facts; M4 would require merging the canonical 18-muscle taxonomy into six broad display groups; M5 would require a new standalone per-exercise History route and removal of retained controls; M6 would require a new system-theme setting, direct first-run workout creation, fabricated suggested-load data, or weaker clear-data safeguards. These are functional, data-contract, or safety changes and were not implemented.
+## Completion
 
-### Evidence & Change structural consolidation — SUPERSEDED HISTORICAL RECORD (M4)
+Finish uses one consequential-action confirmation. After submission, the result contains:
 
-Progress weekly volume is one continuous plan | actual | delta table with one shared header and one row per muscle. The muscle name, planned range, logged volume, truthful delta, status pill, and contributing-lift count occur once in that row. Expanding the row reveals only contributing sessions and lifts plus the calendar-window note; the superseded muscle / weekly-target / status hero is removed because it duplicated the row.
+- one stored A-F actual-work grade;
+- two or three factual reasons;
+- at most three meaningful PR/progress highlights;
+- the still-relevant canonical exception, if any;
+- Done and contextual Progress actions.
 
-The active workout keeps V3's three structural set states. A logged set is now one compact row containing its set/type label, plan, actual, meaningful delta, and completion control; it does not emit a separate badge heading or options row. The current-set claim/editor remains visually and vertically dominant, with Previous history following the three primary entry boxes as a compact full-width link, while pending sets remain quiet target lines. Structural set replacement and `data-set-id` focus restoration remain unchanged.
+There is no adherence breakdown, confidence/category presentation, plan-difference ledger, hypertrophy/volume/program score, achievement strip, notification setup, confetti, or active-session dock on the submitted result.
 
-The superseded exercise meta-pill row and standing set-action rail are removed. Resistance type, deload state, and add/warm-up/copy actions remain available inside one 44 CSS-pixel **Exercise details** disclosure; per-set rest remains owned by individual set options and standard-workload editing rather than being repeated in the exercise header and footer. The rest timer now presents one top-level compact rest/next/countdown strip with a thin progress edge before the exercise document; the collapsed strip names the next visible set number. Its native summary remains one named 44 CSS-pixel tap target and its pause, cancel, adjust, and skip controls remain keyboard reachable.
+The current prospective grade writes algorithm `actual-work-rubric/1.1.0`. Stored earlier grades and algorithm versions render unchanged.
 
-Earlier structural-consolidation measurements recorded material height reductions for both Lift and Dashboard. The subsequent M1 fidelity checkpoint changes the Lift composition again, so those historical pixel heights are not treated as current acceptance values. The protected invariant suite continues to verify 44 CSS-pixel targets, focus and keyboard behavior, destructive confirmation, and absence of 320 px / 200%-text overflow. The new M1 visual candidate remains unaccepted pending owner review.
+## Progress
 
-### Replacement application shell
+Progress is one coherent destination:
 
-**IMPLEMENTED locally:** persistent navigation contains only Today and Progress. Routines and Settings are contextual. During an active workout the visible `h1` names the session, the second line names the current exercise/set context, persistent navigation is absent, and one active-session dock owns completed/total progress, elapsed time, **Finish**, and the session menu. That dock is not rendered after submission. The M7 completion state owns only its concise result actions.
+- exercise/variant selection;
+- a recent default or all-history range;
+- one interpretable comparable-performance chart;
+- inspectable chart points;
+- chronological submitted-workout history.
 
-Active exercise cards use one header containing a grip, editable full exercise/variant name, stable target facts, and an overflow menu. Reordering and removal remain named controls inside the overflow. The active-session dock exposes completed/total progress, elapsed time, **Finish**, and the session menu. It is not rendered after submission. Completion owns Done and contextual Progress; Done returns to Today and ordinary navigation. Cancellation retains its safe-focus destructive confirmation.
+A chart point reveals date, raw and display load/unit facts, repetitions, RPE, role, source session, notes, and provenance where present. Exact variants, resistance types, and roles stay separate. Older workouts remain reachable; a recent default never deletes or archives them.
 
-At 320 CSS pixels with 200% text, the dock reflows to two rows: progress and overflow share the first row, while Finish or the submitted status occupies the full second row. Finish keeps the normal type floor, disables mid-word wrapping and hyphenation, and remains a minimum 48 CSS-pixel target.
+There is no Overview/Lifts/History switcher, Dashboard, weekly volume, hypertrophy, fatigue, readiness, evidence, research-status, confidence, scorecard, or PR-only destination.
 
-At viewports no wider than 380 CSS pixels, active-workout controls reserve native block-start and block-end scroll margins for the sticky context header and session dock. This lets browser focus and click scrolling settle a control between both fixed surfaces even at 320 × 360 without introducing an application-driven scroll on set completion.
+## Routines and Settings
 
-Grip and exercise/session overflow glyphs use `--text` rather than quieter contextual ink so their 22 px forms retain AA contrast against their surfaces across every color package and theme.
+Routines is secondary planning UI for the infrequent task of editing:
 
-**SUPERSEDED (M4):** Progress formerly used an Overview/Lifts/History strip. Current Progress has no subview switcher, dashboard, volume, fatigue, score, or recommendation layer; it presents one factual exact-variant chart and chronological history.
+- routine/day names;
+- ordered variants;
+- set count and roles;
+- rep minimum and maximum;
+- target RPE;
+- rest;
+- duplication.
 
-Pain-blocked exercise options list only current catalog-backed substitutes. Applying the explicit pain-free confirmation resolves the selected display name against that exact catalog set; an alias collision or duplicate normalized name is rejected instead of silently choosing another exercise.
+Settings is a secondary utility for:
 
-## Design system
+- lb/kg display preference;
+- timer sound/vibration/notification behavior;
+- import/export;
+- clear local data;
+- remote installation deletion;
+- privacy and support links.
 
-`index.html` is the authoritative implemented design-system source. Theme-level color variables in `:root` and `[data-theme="light"]` define background, panel, line, text, action, current, success, rest, warning, and destructive roles. Ten `[data-color-package]` layers remap those semantic roles while light/dark remains an independent display choice. Truthful `--color-*` aliases map established roles without changing their meaning. `coach-lead`, `active-workout-hero`, `insight-module`, and `progress-workspace-header` provide the shared hierarchy; `ChoiceChip`, `ChoiceTile`, and `DialogSheet` remain compatibility classes over established controls. Superseded `app-module`, `quiet-coach-hero`, and five-tab renderers are removed and guarded by stale-contract tests; session-board/support-drawer presentation is retired from the active Today renderer.
+Settings contains no workout cloud-copy control and no deleted-feature graveyard.
 
-Ten livelier color packages are **IMPLEMENTED** and documented in `docs/design/UI_COLOR_PACKAGES.md`. Signal Garden is the default. Users select and persist a package in **More → Appearance and units → Color package**; the selected package changes cards, action/current, coaching/rest, success, warning, and destructive roles. Every non-Night-Stadium light package now uses a true-white application canvas instead of a tinted paper gradient; Night Stadium remains the intentionally dark package. Two five-screen Strong reference restyle sets remain local under the privacy-ignored `docs/design/strong-ui-mockups/` path because their source screenshots contain personal workout details.
+## Accessibility and responsive contract
 
-### Design scales — IMPLEMENTED (partial migration)
+- Primary verification includes approximately 390 × 844 and wider desktop layouts.
+- Controls remain touch-sized, labelled, keyboard reachable, and focus visible.
+- Dialogs trap focus, restore it sensibly, and make destructive consequences explicit.
+- Active/completed/pending/skipped/warm-up distinctions do not rely on color alone.
+- Long exercise names, large loads/repetition values, decimal RPE, empty states, errors, overrides, completion, and reduced-motion/forced-color behavior are covered by the final verification plan.
+- Code inspection and desktop emulation do not replace rendered inspection or physical-device-only checks.
 
-`:root` now declares explicit type, spacing, radius, elevation, and motion scales alongside the color roles. Before they existed the stylesheet carried 63 distinct `font-size` values, 20 corner radii, and 24 gap values, because each component had been nudged independently rather than composed from a system. **New work must consume a step from these scales instead of introducing another one-off value.**
+M8 browser/a11y execution is complete locally: the final mobile run passed 144 tests with 15 configured skips, the final desktop run passed 141 tests with 18 configured skips, and the repaired documentation sentinel passed 2/2. Owner visual-baseline acceptance, hosted verification, and physical-device acceptance have not been claimed.
 
-| Scale | Steps | Notes |
-| --- | --- | --- |
-| Type | `--fs-data` 11 px, `--fs-micro` 12 px, `--fs-tiny` 13 px, `--fs-small` 14 px, `--fs-base` 16 px, `--fs-lg` 18 px, `--fs-xl` 22 px, `--fs-2xl` 28 px, `--fs-3xl` 36 px | `--fs-data` is the only step below 12 px and is reserved for dense tabular numerals inside the active set grid at phone widths. Every other surface floors at 12 px for gym-light legibility |
-| Spacing | `--sp-1` 2 px through `--sp-9` 32 px | 2 px based so dense grids still land on the system |
-| Radius | `--r-row` 0, `--r-xs` 6, `--r-sm` 8, `--r-md` 12, `--r-lg` 16, `--r-xl` 20, `--r-pill` 999 px | Assigned by component role, not by pixel guess |
-| Elevation | `--el-1`, `--el-2`, `--el-3` | Declared with slash-alpha `hsl()` notation so the source stays inside the audited rgb-color ceiling |
-| Motion | `--dur-fast` 120 ms, `--dur-base` 200 ms, `--dur-slow` 320 ms, `--dur-celebrate` 620 ms; `--ease-out`, `--ease-in-out`, `--ease-spring` | Every consumer must degrade under `prefers-reduced-motion` |
+## Design system and review process
 
-**IMPLEMENTED:** every literal production `font-size` now respects the 12 px floor. `--fs-data` remains the sole smaller step and is consumed only by the two dense active-set-grid selectors (`.set-previous small` and `.workout-view .set-logged .lbl`). The integrity contract fails on any new literal rem/pixel declaration below the floor. Literal values at or above 12 px still coexist with the scale and should continue to move to tokens when their owning component is edited.
+The **Design system** uses the fixed-light semantic roles and shared controls in `index.html`; it does not expose themes or color packages as product settings. The repository's **weekly UI/UX audit** remains an engineering process for navigation, touch targets, focus, responsive layout, and accessibility. **Visual regression** coverage protects current Today, Progress, Routines, Settings, active-workout, and completion states, but generated screenshots are evidence only; no owner baseline acceptance is claimed by M8 documentation.
 
-The interface uses one compact system font stack, sentence-case labels, and uppercase eyebrow labels. Cards use a surface, one semantic border, and at most one status accent. Equivalent actions must reuse the existing primary, secondary, mini, text, destructive, selected, disabled, hover, pressed, and focus-visible patterns. Fixed navigation and transient notices must account for bottom safe-area insets and must not cover the final scrollable content.
+## Historical design records
 
-### Evidence & Change foundation — IMPLEMENTED LOCALLY / REVIEW REQUIRED
-
-The production inline stylesheet now carries the Phase 1 claim/evidence foundation ported from the non-production `design-concepts/merged.css`: confidence meters and chips, claim cards, delta labels, the plan/actual/delta spine, enlarged logging target, rollup, and callout classes. The prototype is not linked, imported, cached, or packaged at runtime. No color token was added.
-
-The visual roles are deliberately separate:
-
-- A **claim** is a prescription or projection and wears only its existing confidence category through fill, border style, weight, and a four-bar meter.
-- A **fact** is stored or logged evidence and remains plain text.
-- A **judgment** is an explicit comparison delta and is the only role in this component family that spends success, warning, current, or destructive hue.
-
-**SUPERSEDED APPEARANCE — capability retained:** the first Evidence & Change prescription surface rendered one fully expanded claim/evidence stack. Its persisted generated rows remain authoritative for executable load and repetition targets, and the exercise-level claim remains their textual owner: it states the exact prepopulated load, repetition target, and role composition. Role evidence retains exact live set counts, Last performed, Next increment, and the progression gate. Missing saved values are still omitted rather than derived or zero-filled.
-
-**IMPLEMENTED LOCALLY — REVIEW REQUIRED:** the whole-app polish run keeps the claim visible but compacts supporting content into three native section disclosures: **Prescription detail**, **Research confidence**, and counted **Evidence**. The same helpers compose analysis and in-workout recommendations. The head carries the complete executable line and one four-level meter; supporting facts remain plain ink. Native `<details>` adds no synthetic `aria-expanded` or `data-action`, the retired `toggle-prescription-rationale` action does not return, and the persisted disclosure registry restores each named section after full rendering. Keyboard focus therefore reaches each native summary in document order without adding an action-driven focus-restoration key.
-
-The source-contract tests inspect the renderers rather than class existence alone. They require the guarded four-category evidence-confidence mapping and confidence/unavailable claim treatment, require the claim to project exact live-row load and repetition targets, require role headings to retain their live set counts, and require role evidence to retain Last performed, Next increment, and the progression gate without restoring a separate role target claim or confidence treatment. `scripts/test-prescription-app-integration.js` independently requires **Today only** in the claim-title path and **Base prescription** in distinct comparison markup, without coupling the contract to their incidental order in source text.
-
-All text outside the two reserved dense-set selectors uses `--fs-micro` or larger. Level 2 continues to use `--muted`. Level 1 derives a higher-contrast version of `--muted-2` with `color-mix(in srgb, var(--muted-2) 70%, var(--text))`, level 3 derives its accent text with `color-mix(in srgb, var(--current) 35%, var(--text))`, and level 4 uses the system action fill with on-action ink. The compact recommendation value is the prescribed fact: levels 1–3 and unavailable claims use plain `--text` while the containing border, surface, and meter carry confidence; level 4 uses `--on-action` against its `--action` fill. This prevents the value from dropping below AA on six warm light packages without breaking the level-4 action pair. The UI audit composites translucent surfaces and checks levels 1–4 at 4.5:1 or better across all ten color packages in dark and light themes for chips, claim title/value/reason copy, projection labels/values/rules, base-comparison copy, role evidence copy, and the unified evidence confidence heading. This is a presentation mapping only; the engine categories and numeric evidence fields are unchanged and are documented in `DECISION_ENGINE.md`.
-
-**IMPLEMENTED:** the owner-selected active-workout layout is V3 progressive disclosure. V1 spine and V2 card are rejected and are not blended into the logger.
-
-### Evidence & Change Phase 3 — SUPERSEDED HISTORICAL RECORD (M4/M7)
-
-This section records the removed dashboard/weekly-volume/plan-comparison presentation. Current Today and Progress behavior is defined by the zero-based redesign sections above and the current requirement table below.
-
-Volume judgments follow direction, not arithmetic sign alone: falling below the planned range is `.under`, landing inside it is `.on`, and exceeding its upper ceiling is `.out` because more volume is undesirable there. `.over` remains reserved for desirable progress such as extra load or repetitions. User-facing Plan copy describes the training choice; the missing completion-rate contract is documented here rather than exposed as implementation rationale in the product.
-
-Today keeps the lead recommendation and the quick-template card as distinct durable focus targets. The lead action uses `start-next-template`; template cards retain `start-template`, so dialog focus restoration can resolve the exact originating control without duplicate action-and-template descriptors.
-
-Protected empty-state visual coverage asserts Today and Dashboard in independent tests. A Today golden mismatch therefore cannot prevent the Dashboard layout, copy, overflow checks, and golden comparison from running in the same matrix.
-
-The implementation preserved all existing `data-action` names. Before changing markup, the source and browser test suites were searched for the affected renderer and class contracts; the completed-summary disclosure behavior remains because history lifecycle tests use it to reach saved evidence. The dormant Plan `volumeFlags = []` and `advice = null` paths remain dormant rather than being silently revived. At the end of Phase 3, chart lines described only the qualifying points the analysis supplied; that phase did not fabricate per-point confidence or “thin week” classifications. The later History & lift analysis migration below supersedes that presentation limitation through an approved series-contract projection while leaving scoring unchanged.
-
-### Evidence & Change — History and lift analysis — SUPERSEDED HISTORICAL RECORD (M4/M7)
-
-**TARGET / IMPLEMENTED LOCALLY:** `design-concepts/m5-analysis.html` governs Lift analysis, selected chart-point detail, session History, and per-exercise History. Lift analysis leads with the selected lift’s primary trend, then exposes hypertrophy score, confidence, exact week accounting, expected-versus-performed role rows, supporting volume, and coaching context. The primary and supporting charts render the engine’s existing weekly classification on every point as `{ weekStart, completedSets, qualifies, isDeload }`. Qualifying points and their connecting segments are solid; non-deload low-data points remain visible as provisional dashed evidence; planned deload weeks remain absent. Captions state evidenced and provisional counts separately rather than calling a mixed series uniformly evidenced.
-
-This chart projection does not change the hypertrophy score. `included`, `skippedDeloadWeeks`, `incompleteWeeks`, `dataPointCount`, and `confidence` remain the authoritative output of the existing score selection and are asserted identical before and after the provisional chart series is built. The selected-point view labels its date bucket instead of calling it one session. When more than one submitted workout contributes on that date, the view states the count explicitly and groups each target-versus-performed set diff under its owning session.
-
-The former weekly roll-up, prescribed-versus-completed diff, hypertrophy score, confidence, and inferred-deload presentation are not current product surfaces. Current Progress is an exact-variant factual chart with inspectable source observations followed by chronological submitted-workout history.
-
-The chart-point action retains the established SVG hit-area, selected-ring, and visible-point structure plus `role="button"`, `tabindex="0"`, and `aria-pressed`. Its hit circle is enlarged so the rendered target remains at least 44 CSS pixels at 320 px with 200% text. `show-chart-point`, `close-chart-point`, and `toggle-hypertrophy-score` are durable focus-restoration actions; closing a point detail returns focus to the same chart/date point after the HTML-string rerender.
-
-The prototype-class audit reconciled a real stylesheet gap rather than treating class names as proof of presentation. The five emitted classes that also exist in `design-concepts/merged.css` but lacked production rules—`.m-label`, `.eyebrow`, `.ex-head`, `.ri-copy`, and `.ri-val`—have token-only production rules. The 43 remaining statically unmatched emitted tokens were reviewed against rendered output: they are state, testing, structural, or companion-selector hooks rather than unstyled visual owners. `.text-action` was the sole ambiguous emitted presentation token and now has an explicit production rule. The integrity contract also rejects the retired Workout Board/support selectors so removed chrome cannot survive as orphan CSS.
-
-The pre-existing performance and target-mapping assertions were explicitly reconciled with the new History and expected-versus-performed markup. They still require the session title to remain primary row copy, the grade to remain a separately labelled fact, missing historical target contexts to remain excluded from compliance, and role-level missing rep targets to remain visibly unscored; they no longer pin the superseded color-coded session-card class names or old literal renderer branch.
-
-### Reward and feedback layer — IMPLEMENTED, M7 NARROWED
-
-The stylesheet previously carried 9 transitions and 2 keyframe animations across 1467 rules, so completing a set was a silent state swap. A presentation-only reward layer now acknowledges effort at the moment it happens:
-
-- Completing a set springs the status cell (`set-complete-pop`) and sweeps a success tint across the row (`set-complete-sweep`).
-- A resting set softly pulses its existing `.timer-progress` bar (`rest-breathe`) while the countdown drains. The digits remain the canonical remaining-time value; the pulse is decorative and no second indicator competes with it.
-- Buttons, action disclosures, volume cards, and toggle rows scale to 0.97 on press.
-
-Every rule in this layer is presentation only. None changes a set value, rest duration, scroll position, grade, or submission. **Set transitions still never invoke programmatic scrolling**, and the global `prefers-reduced-motion` block neutralises durations so each effect degrades to its end state.
-
-### Achievement strip palette — REMOVED IN M7
-
-The achievement strip, artwork, animation, and dedicated palette are removed. Completion retains only the approved grade/reasons, limited factual highlights, applicable exception, Done, and Progress.
-
-Controls should provide a 44 px touch target where layout permits. Equipment `ChoiceChip` controls and Muscle Scope `ChoiceTile` labels meet that contract and expose programmatically named groups. Existing compact controls below 44 px are **NEEDS REVIEW** and must not be copied into new patterns. Text must wrap by default; a redundant narrow-header context may be visibly abbreviated only while its complete value remains in an accessible label and the full screen heading. Motion and programmatic scrolling must honor `prefers-reduced-motion`.
-
-### App mark — IMPLEMENTED
-
-The app mark is **Sleeve**: a loaded bar in profile, two plates a side on a long bare bar, the outer pair gold. It replaces the previous barbell mark, whose `#78d6a3` mint plates predated the blue palette and matched no shipped token. Selected from ten explored directions; the exploration and the rejected round remain under `design-concepts/logo/` and are not loaded by the application.
-
-`resources/icon.svg` is the source of truth. Four SVG variants exist because four consumers need different canvases:
-
-| File | Canvas | Consumers |
-| --- | --- | --- |
-| `icon.svg` | Dark gradient, `rx="220"` | `icon-180/192/512.png`, apple-touch-icon, splash |
-| `icon-maskable.svg` | Dark gradient, full bleed | `icon-maskable-512.png`, `icon-1024.png`, iOS AppIcon, Android legacy launcher PNGs |
-| `icon-foreground.svg` | Transparent, mark at `scale(0.8)` | Android adaptive foreground |
-| `icon-glyph.svg` | None, `currentColor` | In-app use. **PLANNED** — no screen consumes it yet |
-
-Colors are literal because baked PNGs sit outside the custom-property system, but every value is a shipped token: canvas `#16283f`→`#07101d` is `--panel-3`→`--bg`, the bar `#f4f7fa` is `--text`, plates `#4fa3ff` is Night Stadium `--current`, and the outer collar `#f4c84c` is Night Stadium `--amber`. Gold is spent here as a material accent rather than as the rest/warn state token it carries in the interface; that is a deliberate exception confined to the mark.
-
-All art sits inside the circle of radius 396 about (512, 512), inside the 409.6 radius Android reserves for maskable icons, so one geometry survives the rounded-square, circle and squircle masks. The Android adaptive foreground additionally scales to 0.8 because Android only guarantees a 66 dp circle of a 108 dp canvas; at full size the outer plates crop on round masks. `android/.../values/ic_launcher_background.xml` must stay dark (`#0E1B2A`, `--panel`) — the bar is cream and vanishes on the white it held before.
-
-`node scripts/build-icons.js` rasterises all 22 PNGs from those SVGs, so the web, iOS and Android sets cannot drift. It uses the Playwright chromium already pinned for the UI audit rather than adding an image dependency. Editing the mark is: edit the SVGs, re-run the script, `npm run sync:web`, advance `CACHE_NAME` in `sw.js` (the service worker caches the web icons by name, so installed PWAs otherwise keep the old bytes), then `npm run cap:sync`.
-
-The splash composes the rounded mark over `background_color` with the product name below, matching the layout of the placeholder it replaces. Its wordmark is rendered text, so the glyph shapes depend on the font available to the build machine.
-
-## Navigation and screen inventory
-
-**SUPERSEDED HISTORICAL RECORD (M5):** The following four-destination inventory is retained as migration evidence only. Current persistent navigation contains exactly Today and Progress; Routines and Settings are contextual, and the active workout is full-screen without persistent navigation.
-
-Outside an active or just-submitted session, the persistent bottom navigation has four destinations (`primaryTabIds`, `render`). During the active session it is replaced in the same fixed slot by the session dock:
-
-| Tab | Purpose and major screens |
-| --- | --- |
-| Today | Quiet Coach next action, quick starts, a single-column active exercise/set logger, timer, submit confirmation, and completion summary. Readiness is captured before workout start rather than repeated in a bottom-of-workout adjustment panel. |
-| Plan | Routine/template list and template cards only; M3 removes mesocycle planner/candidate pools. |
-| Progress | Overview for weekly volume/fatigue, Lifts for charts/recommendations, and History for submitted sessions and editing. |
-| More | Units, goals/profile, readiness baseline, timers/notifications, PWA setup, workout-upload consent, bounded imports/export, remote deletion, and clear-local-data flow. |
-
-The header exposes the current context, an atomic lb/kg switch, and a light/dark switch. More → Appearance and units exposes the ten-package color selector. Full template access is available from Plan; quick-start cards are a subset. Unit changes convert app-owned load values together while private source evidence remains unchanged and is converted only at the display/prescription boundary.
-
-The first keyboard stop is a hidden-until-focused **Skip to main content** link. `#main-content` is a programmatically focusable route-entry target. Initial load leaves focus alone; an explicit selection of any of the four destinations moves focus into the newly rendered main view. Focus restoration across HTML-string rerenders uses an allowlisted, data-only `data-action` descriptor rather than storing detached nodes or accepting arbitrary selectors. Quick-template cards remain native buttons in the computed accessibility tree.
-
-## Primary workflows
-
-### Template and active workout
-
-1. On Today, start the expected routine directly; an alternate routine remains contextual.
-2. Optionally record a brief readiness deviation before or during the workout. No readiness form or review is required to start or log.
-3. See the full exercise/variant name, stable targets, and role-aware prior facts; enter load, reps, and RPE; complete or skip; add/remove/reorder sets or exercises; substitute; correct a role; and add notes.
-4. Completing an eligible set can start its configured recovery interval. One consolidated rest controller owns countdown, adjustment, finish, overtime, notification, and return behavior.
-5. Request submission, review confirmation, then confirm final submission.
-6. View the M7 concise result: one stored grade with two or three reasons, no more than three factual highlights, any still-applicable canonical exception, Done, and contextual Progress.
-
-If another active draft exists, Start does not replace it. The only choices are Resume, Finish, and Discard; Discard requires concise destructive confirmation.
-
-Optional readiness captures only entered deviations and may yield one canonical advisory action. Missing values remain missing, no confidence/review matrix is shown, and skipping the form preserves direct Start and full logging. A temporary accepted adjustment never rewrites the routine.
-
-Conflict and cancel sheets preserve one-fact/one-place ownership. Cancel states which unsubmitted draft/readiness facts will be removed and which submitted history, routines, and settings remain. Modal rendering keeps the underlying shell inert and `aria-hidden`; the safe action receives initial focus, focus remains trapped, and dismissal restores a durable trigger after rerender.
-
-Routines with no exercises remain editable and persist normally, but direct Start is disabled with an accessible explanation. Workout construction repeats the same guard so stale or programmatic actions cannot create an empty active workout; adding an exercise makes the routine startable again.
-
-Only one active workout is allowed. A competing Start opens the Resume/Finish/Discard conflict without creating a second draft. Confirmed submission is guarded before any calculation with one shared acceptance predicate and a per-session in-progress lock, so double-routed or reentrant confirmation produces one completed workout and one set of effects. Workout edits remain session-specific unless the user explicitly updates the routine.
-
-The active logger is one full-screen workout column. Each exercise leads with its complete name and one concise stable-target header, followed by role-aware prior performance and the current load/reps/RPE controls. Current, completed, skipped, and pending rows remain visually distinct. Internal confidence, evidence, volume, fatigue, and recommendation taxonomies are absent from the normal interface.
-
-When **Previous** opens a submitted workout while another workout remains active, it focuses the exact matching historical exercise. **Return to active session** restores the originating active exercise without editing either session. Exercise options retain the bounded set-count, rep-range, target-RPE, rest, role, substitution, and note controls needed to record actual work. Applying target changes updates the active session and unfinished rows only; a separate **Save today’s targets to routine** action is the sole routine mutation on that exercise surface.
-
-**IMPLEMENTED LOCALLY — REVIEW REQUIRED:** section disclosures use one 26 px trailing caret in both states. The closed state is a neutral outlined downward caret; opening rotates the same indicator 180 degrees and applies the quiet rest-accent fill. Native summaries remain the complete keyboard/touch targets, and menus retain their ellipsis or purpose-built action glyph because they are not section disclosures. Nested disclosure bodies gain a left rule and inset so their hierarchy stays legible. This owner-authorized caret contract supersedes the plus/minus judgment recorded in `docs/work-logs/2026-07-27-design-system-sweep-remediation.md`; that historical record remains unchanged. At phone widths, shared fields reflow to one column and ordinary Min/Max pairs remain side by side. Individual-set pairs use the compact value-first geometry above and stack only below 360 px. Type, rep range, target RPE range, and rest retain readable labels without page-level horizontal scrolling.
-
-Adding or substituting a catalog exercise preserves its exact performance identity and stable targets. A custom named variant requires its name and stable targets, receives a collision-resistant user-owned performance identity, and remains distinct from other punctuation/spacing variants unless an existing exact custom identity is deliberately reused. The live execution-quality questionnaire, completion controls, and Base next-exposure preview are removed.
-
-The active logger implements the accepted V3 progressive-disclosure variant. A completed set is one compact, neutral, read-only **Plan | Actual | Delta** row, the current set is the only full entry editor and the most prominent element, and each later set is a quiet target-only line. Logged plan and actual values are facts and therefore receive no success fill; only a meaningful comparison delta spends semantic colour. An exact RPE match collapses to compact **on** text without repeating a `Delta / 0 RPE` label. These are three distinct markup structures, not presentation states on one row. The current editor's **Previous** cell combines the comparable load × reps @ RPE and its date; when comparable history exists it links to the exact exercise inside the exact submitted session in Progress History. Returning to Today restores the originating exercise and does not replace or submit the active workout. Its heading lays out the target summary and in-flow completion control once; it does not retain the former extra right inset that reserved a second copy of the control and could overflow the target at 320 px under Linux font metrics. Current and pending per-set controls remain behind a 44 px ellipsis disclosure, so Rest, Skip, Remove, and **Progress when** stay available without competing with the target line; a logged row keeps only its completion control and can be reopened by toggling completion. Pending target content uses a bounded two-column grid with the range bar in its own row; at 200% text it becomes one column. This prevents the full-width bar from starving the target text and preserves the pending row’s materially cheaper height. Add-set, add-warm-up, and copy-set actions remain contextual 44 px controls inside **Exercise details**.
-
-**IMPLEMENTED LOCALLY — REVIEW REQUIRED:** completing a working set with a material load, repetition, or RPE deviation shows one exercise-level reconcile strip only when unfinished working sets remain. The strip is a judgment, uses the existing delta tones, and offers 44 px **Apply to remaining** and **Just this set** actions. The first action rewrites unfinished targets through the audited prescription-override path and changes the visible claim to **Adjusted in session** with **locked for this workout**; the second records a deliberate one-off and retains the plan. Both actions are registered focus-restoration keys. The strip states the logged result, the signed deviation, and how many working sets remain, using the shared `·` separator and singular/plural verb agreement. Because a logged row's delta column reports the RPE comparison while its plan column carries the rep-range signal, that column names its metric with an `RPE` label so the two are not read as one judgment. Set options now expose the existing type classifier and **Insert warm-up above** during an active session, including its stored undo state, so a mid-session warm-up correction uses canonical set semantics instead of changing grade inputs by accident.
-
-**IMPLEMENTED LOCALLY (M4/M6):** factual range and point primitives remain only where they support the active set state, session progress, retained completion facts, or exact-variant chart detail. Weekly/guided volume, mesocycle, evidence/confidence, and plate-calculator presentation paths are removed. The factual exercise chart has no fabricated target band.
-
-**IMPLEMENTED LOCALLY:** transient feedback is a queued severity-aware live region with a stable icon vocabulary and an optional touch-sized action. A later notice does not silently replace the current notice; manual set-role correction retains its Undo path. Calculation and import waiting states reuse the shared skeleton treatment.
-
-**IMPLEMENTED LOCALLY — REVIEW REQUIRED:** the consistency sweep aliases the seven numeric-tile selectors to `.stat-tile`, aliases legacy heading/kicker selectors to the screen/section/eyebrow hierarchy, and gives the three highest-traffic empty states an icon plus a relevant next action. These aliases preserve structural and testing hooks while assigning one visual owner. They do not claim that the separate, much larger legacy type-scale migration is complete.
-
-Completing or advancing a set replaces that set block's rendered subtree through `replaceSetBlockDom`; the imperative path captures and restores the focused set control through its stable `data-set-id`. The active dock alone owns completed/total progress. The former mean-RPE/target-drift/adherence roll-up is removed and does not feed the M7 grade.
-
-The earlier lifecycle and density tests assumed every working set permanently exposed the same editable `.set-row` and Previous cell. That contract disagreed with the owner-selected V3 target-only pending mode. The reconciliation preserves the original history and row-count intent by checking Previous on the one current editor, checking the complete set-block count, checking explicit current/pending modes, and verifying the logged structural swap and focus restoration.
-
-The full template/workout/history lifecycle suite is reconciled to the same accepted structure. A newly started template may correctly focus a warm-up whose Previous cell says **Warm-up**; ordered working-set history remains asserted in the always-visible role evidence until a working set becomes current. Geometry comparisons measure the full current editor against a distinct target-only pending row rather than querying inputs that V3 intentionally omits. A Previous link is tested after its owning working set becomes current. Move/remove/add-set/save-template/cancel actions remain end-to-end tested, but their tests first open the exercise or session overflow that now owns those controls; hidden menu items are not treated as standing chrome.
-
-On phone widths, active-set Load, Reps, and RPE inputs retain at least 16 CSS pixels after every compact-layout override, preventing iOS Safari from magnifying the page when a field receives focus. Pressing the set completion checkmark releases the focused entry field before the status turns green, dismissing the entry focus and returning control to the normal workout view without disabling user pinch-to-zoom. Completion still does not scroll or jump the continuous workout document.
-
-Template sets, reps, target RPE, load increment, and rest fields expose native `required` plus exact HTML min/max/step constraints backed by the same domain model used by patches and imports. Empty input therefore has browser `valueMissing` semantics in addition to the connected custom draft error. Invalid raw input stays visible in its connected field, receives `aria-invalid`/`aria-describedby`, and creates one card-level alert; it is not committed, saved, or erased by an unrelated rerender. Correcting the field clears the alert and creates one logical revision even when the browser delivers `input`, `change`, and `focusout`. Deleting the exercise/template, importing, or clearing local data removes any associated transient draft.
-
-### Settings privacy and data controls
-
-- **IMPLEMENTED — Evidence & Change target:** More follows `design-concepts/m6-settings.html` without inventing its unsupported System theme, export history, backup-age arithmetic, or 142-source claim. Six native disclosure groups expose the real inventory: Appearance and units; Training defaults; Rest timer, alerts, and installed-app setup; Readiness baseline; Data and backup; and Danger Zone with support. `.group`, `.state`, `.glyph`, `.skeleton`, and `.banner` join the production component layer; `.field`, `.segmented`, `.toggle`, `.stepper`, `.scrim`, `.sheet-card`, `.row-item`, `.typed`, and existing sheet actions are reused.
-- Lock-screen notifications and cloud workout upload are separate controls. Upload defaults off and is enabled only by its own checkbox. During authorization the control is disabled, marked busy, and restored to its canonical value; it renders enabled only after server consent and the explicit IndexedDB app-data write succeed. Once enabled, it may upload the complete active, unsubmitted session plus every associated exercise and set object, not only submitted history. Turning it off immediately invalidates old upload work, aborts in-flight requests, clears the pending queue, and deletes retained server workout copies. Offline revocation stays visibly pending for retry.
-- Notification **Private body** changes only visible lock-screen wording. Scheduling still sends and temporarily stores installation/timer identifiers, workout/exercise/set identifiers, exercise name, upcoming-set label or number, and completion time. Settings and the Privacy Policy state that boundary directly rather than implying that Private prevents workout fields from reaching the notification service.
-- Backup and personal-evidence import announce an attempt-specific pending, success, or error state in a polite live region. Full app backups accept up to 50 MiB so an exported large history/raw Strong archive remains recoverable; personal-evidence packages retain their separate 8 MiB limit. Invalid, oversized, overly deep/wide, executable-key, duplicate, orphaned, out-of-domain template/set/readiness-baseline, unsafe-revision, or invalid active/template recommendation-snapshot data is rejected before persistence without replacing current data. Snapshot rejection includes stale checksums, unsupported schemas, unresolved/colliding identities, unrelated exact targets, and host-exercise mismatches. Accepted backup revision metadata is rebased to the next local revision rather than trusted.
-- Runtime Settings controls enforce the same persisted domains as backup import. Default rest duration is bounded to 15–900 seconds, and readiness-baseline values enforce their declared ranges, increments, and integer requirements even when typed input bypasses native spinner limits, so a locally created export remains re-importable.
-- When two valid saved copies are conflict-preserved, replacement import is disabled until confirmed Clear All. Export states that it contains the selected copy only and excludes the preserved alternate, so the user is not misled into treating one download as both copies.
-- **Delete Remote Installation Data** is a separate Danger Zone action that preserves local workouts and resumes bounded server cleanup. Confirmed **Clear All Local App Data** also revokes workout consent and deletes the remote installation before discarding its bearer; it pauses offline or while remote cleanup or active-timer cancellation is unresolved. After confirmation it clears both app-data stores, writes fresh defaults, removes the conflict alternate again, and announces success only after the durable write.
-- Exported app JSON remains the only implemented user-managed recovery source. Cloud workout upload is write-only, expires after 90 days, has no read/restore endpoint, and must never be labeled backup, restore, cloud history, or an account. The app does not persist a last-export timestamp, session checkpoint, or export size, so Settings says that it cannot determine backup age or uncovered sessions. The deletion sheet keeps unsynchronized draft/queue arithmetic separate from backup coverage.
-- Storage persistence is read-only presentation. Settings calls `navigator.storage.persisted()` and shows only **Granted**, **Not granted**, or **Unsupported** as plain factual ink; it does not request persistence, judge the browser state through delta hue, or turn a successful IndexedDB write into an eviction guarantee. Research basis reads `manifest.tables.research_library.record_count` and currently shows 48 source records rather than a hard-coded concept value.
-- The clear-data sheet shows erased local facts against material outside local storage. Exact uppercase `CLEAR` plus acknowledgement remain mandatory; the safe action receives initial focus, Tab remains trapped, closing restores the durable trigger, and **Export first** is an allowlisted focus-restoring action. Because the trigger lives inside the grouped Danger Zone disclosure, focus restoration reopens any closed ancestor disclosure before returning focus to that trigger. IndexedDB is primary, but failed-write recovery can temporarily place the complete app-data copy in localStorage, including workout history, settings, and imported personal-evidence aggregates; treat both stores and exports as sensitive same-device data.
-- Offline and update strips are independent `.banner` states. Offline states that local logging continues while network effects wait. Update availability remains a notification rather than an implicit installation. Initial loading uses layout-preserving skeletons; the destination-error `.state` states that stored data is intact and recovery rebuilds presentation indexes only.
-
-### History and progress
-
-Submitted sessions alone appear in chronological Progress history. History cards show a full wrapping session title, separate date, and any exact stored grade value; legacy plus/minus values remain visible without being rewritten. A submitted workout opens read-only. Editing requires explicit mode and Save Edits confirmation, preserves the stored historical grade/version, and does not silently regrade the record. History changes remain an in-memory transaction until explicit Save.
-
-Progress detail is a focus-aware stack. Opening a chart point or submitted session focuses its contextual controls; Back restores the prior Progress context.
-
-Charts are exercise-specific and interactive. Partial search is lexical over the cached catalog/history inventory, remains case-insensitive, shows all matches, and promotes the last explicit choice; it does not run progress analysis for each candidate or each keystroke. Selecting a point opens session-level details and surrounding context (`renderChart`, `renderChartPointDetail`) using an opaque key scoped to that render's exact exercise/window/date/resistance payload rather than recomputing an unscoped point from DOM values. The detail close action keeps its 48 px target above overlapping chart content and a sticky-header-sized scroll margin, so real pointer activation remains possible when a taller Linux-rendered detail must be scrolled into view. Long names wrap in history/templates and suggestion controls; **NEEDS REVIEW:** physical testing should cover every chart axis/selector and very narrow devices.
-
-At 200% text on a 320 CSS-pixel viewport, active set rows reflow from the compact six-column logger into two columns, with Previous spanning the row. Numeric controls suppress decorative spinner chrome, retain their full value area, and progression copy wraps instead of clipping.
-
-Progress has one exercise/variant selector and one interpretable performance trend. It keeps exact variant, resistance type, and comparable working-set role separate; exposes date, load, reps, RPE, role, session, notes, and source for a selected point; and leaves every submitted workout accessible below the chart. It does not expose analysis type, confidence, evidence windows, weekly qualification, volume, fatigue, or recommendation controls. Legacy `#charts`, `#dashboard`, and `#lift` links are compatibility redirects; they are not destinations.
-
-### Mesocycle planner — SUPERSEDED HISTORICAL RECORD (M3)
-
-Plan currently owns routine/template management only. No guided planner, mesocycle route, lifecycle control, candidate pool, portfolio, validation view, or persistent planning state is part of current UI intent. The following record is historical evidence only.
-
-Mesocycles intentionally remain inside Plan with templates instead of becoming another destination. The guided workflow uses five dependency-ordered steps: Guide, Setup, Build, Check, and Create. The former eight-stage automatic planner and Program Slot UI are legacy historical-plan behavior, not the new-plan workflow.
-
-**SUPERSEDED HISTORICAL RECORD (M3):** The former current-mesocycle summary, Planner Review, candidate/portfolio/session validation detail, and muscle-scope draft controls no longer exist. Plan retains routine/template rows and explicit template editing only.
-
-The Muscle Groups in Scope control lists every consolidated available group and defaults to all selected. Unselected controls use a light/transparent neutral surface rather than a heavy filled state. The user may exclude any major or smaller group. The draft confirmation identifies every omission, offers Add to Mesocycle, and requires Keep These Exclusions and Continue before saving the draft as planned. `Why Train This Muscle Group?` uses the research database's anatomical functions plus muscle-family-specific training consequences; it does not repeat a generic omission explanation. Major groups retain a stronger badge, but the UI does not coerce the user after confirmation.
-
-Candidate hierarchy is recommendation badge, exercise name, user-facing role, Predicted Program Effectiveness, Confidence, target muscles, then programming detail. **SUPERSEDED LABEL:** `Why This Recommendation` was the former undivided expandable detail pattern for role, selection reason, progression, deload/rotation, replacement, and score factors. Recommendation card v2 separates that material into **Prescription detail**, **Research confidence**, and counted **Evidence** native disclosures so each fact has one named owner. Internal enum/ID strings must be formatted through `presentationLabel`; raw `mg_*`, snake_case roles, confidence keys, and session IDs are not user copy.
-
-Workout recommendation detail uses the same three-section recommendation-card vocabulary. It shows prior versus today, each material set/load/rep/RPE change, the evidence window, expected duration, and resumption criteria without restoring the superseded `Why This Recommendation` wrapper. Recommendation badges describe the actual delta (`Progress Load`, `Add One Rep`, `Hold`, or fatigue reduction), rather than using generic Progress when the prescription is unchanged. Pound fields and displays never expose floating-point conversion residue and use 0.5-lb increments.
-
-Every active working-set card shows **Previous** from the newest eligible submitted workout with its date. Prior load, reps, and RPE are combined into one compact cell beside the current editable fields. This lookup searches the full submitted archive, not only the six-month analytics window. Matching uses stable performance identity first and exact Strong exercise name when identity provenance changed, while retaining resistance type and keeping differently named variations separate. It then prefers the same set role and role index, followed by the same ordered working-set position so imported Strong classification differences do not turn real history into an empty state. A compact dash is used only when no comparable set exists.
-
-The review shows named session purpose, ordered exercises, roles, sets/reps, direct/indirect volume, target versus actual frequency, high-fatigue compounds, spinal/grip/systemic/local fatigue, duration, placement, substitutions, and severity-labelled findings. Blocking volume, frequency, or consecutive-heavy-pattern findings prevent activation. Historical plans show dates and lifecycle at the bottom of the tab. Never-activated drafts/plans may be deleted after confirmation; completed plans are protected and can be archived. Template cards show `Base Session Intent` only when a stable heavy/light/technique/deload/specialization intent exists and state that today’s readiness may modify execution.
-
-An imported Strong exercise with exact submitted history remains usable when research identity, muscle target, or dynamic-target generation is unavailable. Its card says that the latest imported Strong performance and saved workout structure are being used and that research-based progression is unavailable until mapped; it does not present those non-safety taxonomy gaps as safety warnings. All 23 explicitly research-mapped Strong labels render the ordinary research-backed recommendation instead of an `unknown_exercise_identity` unavailable card, while the remaining custom names keep the explicit history fallback. Alias-backed recommendations retain each exact performance-history identity even when multiple names share one research exercise. **+ Set**, **+ Warm-up**, **Duplicate**, and each row's **Remove** control remain available during the active workout unless a real illness/pain/safety restriction applies. Set-count edits persist with the active workout and change the template only after **Update template from today**.
-
-### Recovery and nutrition
-
-### Legacy automatic mesocycle history — SUPERSEDED HISTORICAL RECORD (M3)
-
-Legacy planning keys may be decoded only to preserve workout/routine-template facts. They have no active UI surface or lifecycle action.
-
-**SUPERSEDED HISTORICAL RECORD (M3):** There is no Historical Mesocycles list, lifecycle action, guided setup, scope control, candidate, or portfolio UI. Legacy keys are decoder-only migration input; they cannot render an active or historical planner surface.
-
-Exercise Assignments provides compact jump navigation and a distinct container explaining where each selected exercise contributes. Selected exercises render first; alternates remain collapsed until requested. Static tags are neutral; blue is reserved for selected or interactive controls. Candidate `Why the Score?` reports real objective, muscle, equipment, evidence, progression, fatigue, redundancy, and stability inputs. Full Program Review renders separate session cards whose headers show exercise and working-set totals. The normal review shows only unresolved Blocking Issues, Recommended Changes, Warnings, and useful Optional Suggestions. Passed checks, unknown-metadata notices, and non-actionable redundancy observations are hidden. Actionable findings expose `Regenerate with Practical Limits`, which reruns the same 18-set, two-exercise-per-muscle, priority, and recovery constraints.
-
-Program Slot summaries use exercise chips, session badges, role/frequency badges, and omit repeated generic rationale. `Compare Details` compares movement, muscles, equipment, stability, progression, fatigue, placement, and score limitations. Missing metadata is omitted or labelled `Metadata Review Needed`. The weekly summary makes direct sets primary, then taxonomy-defined fractional contribution, weighted stimulus, isometric exposure, target, frequency, and taxonomy version. Direct sets count 1.0; verified fractional work counts 0.5 or 0.25; incidental and unknown relationships count zero; isometric exposure is fatigue-only. `Why the Score?` lists the actual muscle relationships and credits rather than inferring targets from an exercise name.
-
-Readiness capture includes sleep, quality, HRV, resting HR, soreness, illness, affected muscle, nutrition/protein status, and an outside-band note. Guidance uses concise states such as “Go as planned,” monitoring/adjustment, lower-fatigue, or rest guidance. Nutrition is a readiness input, not a standalone food-tracking workflow.
-
-## Requirement matrix
-
-| Requirement | Status | Evidence / gap |
-| --- | --- | --- |
-| Warm-up sets in templates and active sessions | **IMPLEMENTED** | Template set roles and active `set-warmup`/type controls; warm-ups excluded from score/volume/progression; rest/warm-up tests. |
-| Exercise-specific work and rest timers | **IMPLEMENTED** | Shared defaults distinguish warm-up and working rest; the nested individual-set editor can assign different rest seconds to every warm-up, working, top/back-off, or drop set. Completing a set starts that exact set’s `targetRestSeconds`, with exercise/template rest as fallback. The foreground controller, optional push, and compact blue rail keep the existing timing lifecycle. “Work timer” as a separate elapsed exercise timer is **NEEDS REVIEW**. |
-| Completed vs pending visual distinction | **IMPLEMENTED** | Set completion classes, check controls, next-set banner, completed-state styling in `renderSet`. |
-| PR detection and recognition | **IMPLEMENTED LOCALLY (M7)** | Submission-time PRs compare exact variants, resistance types, set roles, and normalized units across lifetime submitted history. Completion selects at most three factual PR/progress highlights. Achievement badges, volume/plan/precision pseudo-awards, and celebration assets are removed. |
-| Recovery readiness before active execution | **IMPLEMENTED (M5/M6)** | Readiness is optional, brief, and independently available before or during the workout. It is never required for Start or logging, and there is no mandatory review step. |
-| Concise readiness guidance | **IMPLEMENTED (M2)** | Ordinary cases are silent. A directly recorded pain/illness exception can surface one concise advisory action without blocking the logger or rewriting routine targets. |
-| Complete template list | **IMPLEMENTED** | Templates tab uses all templates; quick start remains intentionally compact. |
-| Explicit workout submission | **IMPLEMENTED** | `request-submit-workout` then `submitWorkout`. |
-| Confirmation before final submission | **IMPLEMENTED** | `renderSubmitConfirmation`; cancellation returns to active workout. |
-| Post-workout result | **IMPLEMENTED LOCALLY (M7)** | `renderCompletedWorkoutSummary` shows one versioned A-F grade, two or three reasons, at most three factual highlights, one applicable exception, Done, and contextual Progress. It contains no achievement strip, category/confidence score, plan diff, notification setup, or submitted dock. |
-| History only after confirmed submission | **IMPLEMENTED** | Canonical history filters submitted/completed states; safety/domain tests. Imported Strong workouts are normalized as submitted history, retain exact performance identity and provenance in generated templates, and are audited across every generated template exercise for dated history, usable set structure, and startable targets. Unmapped Strong-only identities use the explicit non-research history fallback. |
-| Factual progress chart with source detail | **IMPLEMENTED LOCALLY (M7)** | One exact-variant/exact-resistance chart compares one working-set role and exposes point date/load/reps/RPE/role/session/notes/source, followed by all chronological submitted-workout history. Display units are normalized without losing raw source facts, and long selected names wrap outside the search field. |
-| Full visibility for long exercise names | **IMPLEMENTED LOCALLY (M6)** | Full exercise/variant names wrap in the active logger without truncating their stable target or input controls. The 390 × 844 browser fixture covers a deliberately long variant; physical iOS/Android device acceptance remains external and **NOT PROVEN**. |
-| Functional lb/kg controls | **IMPLEMENTED** | Header and Settings use the same atomic converter; sets, targets, template increments, overrides, and snapshots preserve physical meaning and explicit unit provenance. Strong CSV import separately requires the source Weight-column unit, labels imported sets with it, retains it with the immutable raw text, and leaves the display unit unchanged. Same-unit duplicate files are no-ops; conflicting reinterpretation is rejected. Private/raw source packages remain immutable. |
-| Motivating, clean experience | **IMPLEMENTED LOCALLY / EXTERNAL POLISH UNVERIFIED** | Grade color, limited factual recognition, responsive layouts, themes, set completion, and rest feedback remain without an achievement strip or analytics dump. M7 mobile/desktop browser and visual gates pass; subjective five-workout and physical-device polish remain unproven. |
-
-## States and feedback
-
-Privacy/Support return queries and notification/workout deep-link fields are one-shot routing inputs. Once consumed, canonical Today, Plan, Progress, or More navigation removes those fields while retaining unrelated deployment-verification parameters, so reload cannot reopen a stale destination or action.
-
-- **Empty:** Controlled no-template/history/chart messages state which factual record is absent; no analytical score or unrelated recommendation is substituted.
-- **Loading:** Initial persistence/evidence loading occurs before primary use; imports expose attempt-scoped progress/error feedback and remote deletion exposes its continuation state. **IMPLEMENTED LOCALLY — REVIEW REQUIRED:** chart recalculation and import progress now share the layout-preserving `.skeleton` vocabulary; remaining operation-specific loading states have not been migrated wholesale.
-- **Error:** Toasts, accessible import validation, retryable/non-retryable remote-deletion status, API status, persistence fallback, and setup errors are surfaced without exposing secrets. When both persistence layers reject an ordinary change, Settings rerenders the recovery guidance immediately while retaining the in-memory setting.
-- **Success:** Live-region toast and import status, completed controls, timer-complete notice, notification tests, remote-deletion confirmation, submission summary, PR/grade feedback.
-- **Confirmation:** Submit, cancel workout, save/cancel history edits, template deletion, and clear-data flows require explicit action.
-- **History-edit persistence, recovery conflicts, and app updates:** Starting an edit first flushes a cloned stable snapshot so an unrelated debounced template or settings change is retained. Startup compares valid IndexedDB and local fallback copies by revision, canonical content, then reliable persistence time. A newer fallback cannot be shadowed by stale readable IndexedDB. Divergent equal-revision copies with equal or unavailable timing are both preserved; Settings shows an always-visible status that explains the conflict, asks for an export, and identifies confirmed **Clear All Local App Data** as the only destructive resolution. Ordinary saves and reloads do not remove that alternate. Confirmed clearing announces completion and returns to fresh defaults only after persistence succeeds; a reload must not restore either the alternate or the conflict. If navigation or another setting changes while the edit snapshot is being saved, edit mode does not open or roll back the newer state; the app awaits a second save of the current clone. The toast says the current changes were saved only after that succeeds. If both stores fail, it instead says the changes are not durable and tells the user to export or retry before reloading. If a new service-worker controller activates while the edit is starting or active, the app stays in place and the update banner asks the user to Save or Discard. Once the edit is resolved, `Update now` is explicit, saves the current stable state, and refuses to reload if both local persistence layers fail. Active workouts normally defer updates, except when the current destination cannot render; that recovery state exposes the same persistence-gated action rather than requiring the user to cancel or submit the workout first.
-
-## Accessibility and responsive behavior
-
-Implemented foundations include semantic `main`/`nav`, a keyboard-visible skip link, button labels, `aria-current`, `aria-live`, accessible card labels, form labels, keyboard-native controls, inert/hidden background during modal sheets, focusable details, safe-area insets, responsive breakpoints at 720/380/350 px, and wrapping long text.
-
-**IMPLEMENTED:** template-start, cancel-workout, history-edit, and clear-data sheets are labelled modal dialogs. A newly opened dialog verifies that its preferred target is visible, enabled, focusable, and actually received focus; otherwise it falls back to the first visible enabled dialog control. Template start focuses **Log today’s readiness**; readiness entry focuses the sleep-hours field; destructive workout cancellation focuses **Keep Workout**. The same filtered control set traps forward and reverse Tab. Dialogs close on Escape or their backdrop where dismissal is allowed and restore a durable invoking control after rerender. Same-dialog rerenders preserve the focused step control instead of returning to the first action. Repeated Lift controls include exercise context in their accessible names.
-
-**IMPLEMENTED:** all four destinations pass the exact 320 CSS-pixel reflow matrix at ordinary text and at a computed 200% root text size. Large-text mode preserves the normal 320 px Today composition until text is genuinely enlarged, then permits content-driven one-column/wrapping layouts and multiline title editing. On the active workout, current-set inputs, default-target ranges, and individual-set ranges stack to one column when large-text reflow is active; numeric steppers reserve a real value column instead of shrinking Load, RPE, or default values to clipped slivers. Form text keeps a 16 px anti-zoom floor while still scaling with an enlarged root. The Plan quick-template row is the documented keyboard-operable horizontal rail; the active workout is a normal one-column document. Reduced-motion mode converts reachable programmatic scrolling to `auto`, and forced-colors checks require a visible non-shadow focus indicator.
-
-**IMPLEMENTED:** the repository-owned Playwright audit runs axe WCAG A/AA checks, contrast checks, viewport overflow checks, active-navigation assertions, native quick-template roles, clean-install guided-planner entry, dialog/focus restoration and hidden-target fallback, intra-Progress browser Back/Forward restoration, guarded browser Back plus unconfirmed-history reload recovery, revision/timestamp-ranked fallback recovery, equal-revision/revisionless conflict preservation and confirmed conflict clearing across both stores plus reload, concurrent edit-start rejection with successful and failed current-state reconciliation, pre-edit stable-snapshot preservation, active-snapshot fail-closed validation, deferred service-worker activation, failed-update persistence gating, 320 px/200% reflow, reduced-motion and forced-colors checks, contextual-name and target-size assertions, console-error checks, and visual snapshots at a 375 px-class mobile viewport and 1280 px desktop viewport. Dedicated protected Lift/Dashboard goldens additionally cover 320, 390, 640 zoom-equivalent, 768, and 1280 px reference states.
-
-**NEEDS REVIEW:** physical screen-reader walkthroughs, native dynamic-text acceptance beyond the browser reflow contract, physical safe-area/keyboard overlap, haptics, and system permission UI remain device-level work. Timer sound/vibration are configurable; visual status must remain sufficient without them.
-
-## Weekly UI/UX audit and visual regression
-
-`npm run audit:ui` runs the deterministic browser audit in fresh storage for Workout, Dashboard, Templates, Charts, and Settings in mobile and desktop Chromium. It uses one worker because both projects load the full research/personal-evidence adapters and large-history fixture; serial execution prevents resource-contention timeouts from masquerading as UI failures. During the migration-review interval it continues to run accessibility, overflow, console, and source checks but compares ordinary screenshots only when `CF_APPEARANCE_PROTECTION=1`. The accepted `polish-*` component specimens obey the same owner gate: their Windows-captured font rasterization remains available for deliberate local comparison but does not gate `ubuntu-latest` CI when the flag is absent. Enable that flag only after the owner reviews the complete replacement artefact set and accepts the baselines once. Do not use `audit:ui:update` as a way to make a failure pass. HTML output, traces, screenshots, diffs, JSON results, and `weekly-report.md` are written under `artifacts/ui-audit/` and are not product data.
-
-`.github/workflows/weekly-ui-audit.yml` runs every Monday at 13:17 UTC and supports manual dispatch. It uploads the full artifact directory for 30 days and fails visibly after report upload when any build, route, visual, accessibility, layout, console, source-style, or documentation check fails. The automation does not auto-approve baselines or modify application code. New routes and reusable visual states must be added to this suite in the same change that introduces them.
-
-The deterministic mobile/desktop lifecycle now covers UI-created template persistence, readiness, active logging, rest controls, canceled and confirmed submission, completed summary, History/Overview/Lifts, reload persistence, console/page errors, and lb/kg round-trip coherence. Current automated coverage still does not synthesize every modal, data-heavy chart/import failure, offline/service-worker transition, notification permission/disable state, browser engine, or native-only state. Those gaps are **NEEDS REVIEW** and are listed in each weekly report rather than silently passed.
-
-**IMPLEMENTED:** mobile and desktop goldens for all four destinations and the dedicated active-Today/Progress reference matrix were rebuilt from the final source on 2026-07-18 for the Quiet Coach workspace. The active-Today contract now asserts compact single-column workout execution, field-aligned prior performance, native disclosures, and the absence of the retired session board and recovery footer while continuing to cover interaction, privacy, malformed storage, dark theme, narrow, tablet, desktop, and zoom-equivalent states.
-
-## Terminology and copy conventions
-
-**SUPERSEDED TERMINOLOGY:** the pre-migration five-tab shell used “Workout,” “Dashboard,” “Templates,” “Charts,” and “Settings.” It is retained here as historical copy context and must not name the current primary navigation.
-
-Use **Today** and **Progress** for current persistent navigation. Use **Routines** and **Settings** only as contextual secondary screens. Use “working set” versus “warm-up set” precisely. “Today’s readiness” is optional same-day context; it is never a Start requirement. “History” means confirmed submitted workouts. Use lb/kg consistently and show the active unit.
-
-Do not call offline Fitbit export analysis “Fitbit sync,” the nutrition adequacy selector “nutrition tracking,” or installation authorization a user login.
-
-## Blank-slate redesign source of truth
-
-**IMPLEMENTED concept phase:** `docs/design/COMPLETE_REDESIGN_CONCEPTS.md` and the non-production `redesign/` lab define 15 phone-first systems across the same eight screen families and synthetic fixture. Structural uniqueness is enforced across organizing metaphor, navigation topology, primary content unit, workout execution, planning, progress presentation, and interaction grammar; palette changes do not count.
-
-**DECISION:** Dual Track wins on the weighted experience/feasibility evaluation. Its presentation contract is exercise lanes, role-aware set clips, a visible playhead, and a persistent control dock. Phone use is primary; 320 and 390 px must not require page-level horizontal scrolling. Tablet and desktop widen the temporal track and add adjacent planning/analysis without changing action order.
-
-All concepts must expose empty, loading, offline, failure, destructive-confirmation, conflicting-data, and update states. Spatial or gesture-first concepts require visible, keyboard-operable, and screen-reader-equivalent controls. Reduced motion, forced colors, 200% text, focus order, and 320/390/768/1280 layouts are migration gates. Existing route names and component styling remain authoritative only for the legacy shell until cutover.
-
-## Zero-based redesign implementation status
-
-- **IMPLEMENTED (M2):** Ordinary Today shows the expected workout, stable targets, and factual prior performance without a recommendation, confidence, or evidence card.
-- **IMPLEMENTED:** An active exception renders from the persisted canonical action as one plain session action plus at most one materially stricter exercise action. Direct pain/illness copy does not diagnose or claim safety, and the logger remains fully usable when the user continues.
-- **REMOVED:** Today Program pulse, visible Progress score/expectation coaching, legacy recommendation renderers, confidence/evidence presentation, and prospective completion coaching.
-- **VERIFIED:** Mobile 390 × 844 scenarios cover ordinary silence and continued logging after pain entry, including long names, large loads, decimal RPE, stable targets, prior performance, reload recovery, and no horizontal overflow.
-- **IMPLEMENTED LOCALLY (M3):** Guided planning and mesocycle UI/state are removed; the former Plan ownership is superseded by M5 contextual Routines.
-- **IMPLEMENTED LOCALLY (M4):** Remaining dashboard/research, weekly/fractional volume, hypertrophy, score, evidence/confidence, normal plan-preview, and duplicate recommendation surfaces are removed. Progress is factual per-variant performance plus chronological history.
-- **IMPLEMENTED LOCALLY (M5):** Today and Progress are the sole persistent destinations. Routines and Settings are contextual; Start is direct; readiness is optional before/during; and an existing draft can only Resume, Finish, or enter confirmed Discard.
-- **IMPLEMENTED LOCALLY (M6):** Full names, stable targets, role-aware prior facts, direct inputs, substitution/custom variants, explicit routine save, one timer lifecycle, and lossless draft recovery are implemented. Plate calculator, live execution-quality, duplicate timers, and equipment/exclusion blockers are removed.
-- **IMPLEMENTED LOCALLY (M7):** Completion/grade and approved Progress behavior pass static, public, build/package/privacy, mobile/desktop browser, visual, and independent-review gates. M8 has not begun.
-
-### Focused five-direction session mockups
-
-**IMPLEMENTED:** The non-production lab defaults to a five-up screen comparison. A five-tab control changes all five phones together between Inside workout, Change reps & sets, Pick template, Recommendations, and Warning flags. The shortlist is Dual Track, Weekline, Mission Control, Editorial Performance, and Coach Thread; Body Atlas is excluded from this decision set.
-
-Every active-session option must keep elapsed time and Finish visible, show previous performance beside editable load and repetitions, distinguish warm-up from working sets, complete a set with one action, attach rest timing to the completed set, and expose add-set/add-exercise/cancel controls. Today-only edits must not imply a saved-template mutation. Recommendation and warning states must preserve the logger in context and clearly show the affected target or safety hold.
-
-The structures remain distinct: Dual Track places exercise lanes above a logging dock; Weekline embeds the active logger on a past/current/next spine; Mission Control treats exercises as stages feeding a telemetry matrix; Editorial Performance frames a dense set ledger with coaching notes; Coach Thread keeps deterministic guidance above an always-available quick log. Dual Track, Mission Control, and Editorial Performance share Bento Studio’s light canvas and blue action palette. All screens use synthetic data and remain presentation-only.
+`docs/design/COMPLETE_REDESIGN_CONCEPTS.md`, `docs/design/REDESIGN_MIGRATION_BLUEPRINT.md`, Phase 1, and prior raster/mockup records remain historical evidence. They are not current UI authority and do not authorize deleted Plan, Dashboard, More, analytical Progress, theme-package, planner, confidence, or research surfaces.

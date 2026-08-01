@@ -129,7 +129,7 @@ None beyond M0 schemas and synthetic fixtures. M0 does not introduce a productio
 
 ### Affected data and migration safety
 
-- Existing `recommendationHistory`, `manualOverrides`, `workoutPrescription`, per-exercise recommendation snapshots, readiness observations, historical grades, and legacy imported fields remain readable and immutable.
+- At the M2 checkpoint, existing `recommendationHistory`, `manualOverrides`, `workoutPrescription`, per-exercise recommendation snapshots, readiness observations, historical grades, and legacy imported fields remained readable for staged migration. M8 successor decision D-026 narrows permanent preservation to owning-workout snapshots/actions/handling/overrides; retired top-level global planner/evidence collections decode/discard.
 - New current decisions use the versioned resolved-action contract and do not replace or recompute old records.
 - Active drafts must preserve the action visible at evaluation time and the later `accepted`, `modified`, `ignored`, or `overridden` handling.
 - Resolver or detector failure must produce no target mutation and must leave the logger usable; explicit pain/illness alone may use the canonical safety fallback.
@@ -611,3 +611,80 @@ No final-document contradiction was found. The current four-tab shell and `confi
 **PASS.** New submissions have one versioned actual-work grade; legacy grades remain immutable; completion is concise; exact variants, resistance types, working-set roles, units, provenance, and old history remain trustworthy and inspectable; deleted completion/analytics surfaces are absent; static, public, build, package, privacy, running-app, visual, and independent-review gates pass. M8 may begin after the recoverable M7 checkpoint is recorded.
 
 **Checkpoint:** `0223b36` (`feat(redesign): finalize grade and factual progress`).
+
+## M8 — Remove concept scaffolding and dead migration structure
+
+**Status:** COMPLETE — IMPLEMENTED LOCALLY; EXTERNAL ACCEPTANCE PENDING
+**Started:** 2026-08-01
+**Baseline checkpoint:** `0223b36`
+**Branch:** `codex/zero-based-redesign`
+**Authority:** Final disposition X-02 and end-of-migration deletion ledger; migration plan M8; final PRD data-integrity and permanent-exclusion sections.
+
+### Exact milestone scope before implementation
+
+- Remove the concept-only React/Vite gallery, prototype tests/scripts/configuration, and dependencies with no production consumer while preserving the final redesign package, adjudication/audit evidence, prompts/governance records, and historical design decisions.
+- Remove expired legacy route redirects, compatibility writers, adapters, shadow paths, flags, dead code, orphan styles/assets, obsolete tests, stale cache/package entries, and current-intent documentation for deleted systems.
+- Retain only isolated compatibility readers required to preserve supported backups, completed workout history, immutable snapshots, exact variant identity, set roles/provenance, notes, duration, readiness/rest facts, and historical grade/execution-quality values.
+- Reconcile root/`www` packaging, service-worker cache/versioning, native/PWA verification, test discovery, package manifests, and living documentation.
+- Do not extract inline CSS, rewrite the application stack, alter production data, or expand product scope.
+
+### Affected user data and deletion safeguards
+
+- M8 deletes tooling and unreachable migration/product structure, not completed workouts or current app data. No destructive data migration is planned.
+- Backup v1/v2 compatibility, current backup/app-data v3, active-draft v1-to-v2 recovery, immutable historical snapshots/grades, role provenance, and exact exercise/variant identity remain preservation-critical.
+- Synthetic public fixtures remain the only migration evidence used in this milestone. No private or production fitness data will be read, rewritten, or deleted.
+- Every proposed compatibility deletion must first prove it is a writer/redirect/shadow path rather than the isolated reader required by a supported fixture.
+
+### Authority/conflict review
+
+- No authoritative contradiction is identified. M8 explicitly requires concept-toolchain deletion and the end of bounded legacy redirects/temporary coexistence.
+- Owner untracked `.claude/`, `.vercel/`, and `redesign/prompts/` paths are outside the deletion set and must remain untouched.
+
+### Documentation and governance reconciliation — 2026-08-01
+
+- Files reviewed/updated: `CLAUDE.md`; `docs/PROJECT.md`; `docs/ARCHITECTURE.md`; `docs/DECISION_ENGINE.md`; `docs/UI_UX.md`; `docs/ROADMAP.md`; `docs/DOCUMENTATION_INVENTORY.md`; `docs/DAILY_BROWSER_QA.md`; `docs/iphone-pwa-personal-coach-setup.md`; `docs/performance.md`; `docs/push-backend.md`; `docs/training-prescription-data.md`; `docs/redesign/DECISION_LOG.md`; `docs/redesign/STATUS.md`; and both implementation records.
+- Living product/UI documents now describe the fixed-light product with exactly Today and Progress as persistent destinations. Themes/color packages, cloud workout copy, planner/mesocycle, analytical dashboards, evidence/confidence, and numeric exception detectors are not described as live behavior.
+- `exception-resolver.js` remains the sole action authority. Current source creates candidates only for directly recorded pain/injury or illness. Optional `meaningfully_poor` readiness is retained as a factual input and does not produce an action by itself.
+- M8 adds successor decision D-025: new submissions prospectively use `actual-work-rubric/1.1.0`. Version 1.1 corrects valid-RPE coverage while retaining target/adaptation invariance. The M7 checkpoint record above remains accurate for its original `1.0.0` implementation; existing grades are not upgraded.
+- M8 adds preservation decision D-026: top-level `recommendationHistory`, top-level `manualOverrides`, and `personalEvidencePackage` are retired global planner/evidence collections accepted and discarded by compatibility decoding. Embedded submitted snapshots and resolved actions/handling/overrides attached to their owning workout remain immutable.
+- M8 adds service decision D-027: workout cloud-copy authorization/upload and UI/queue writers are removed. Web Push notifications, revocation, installation deletion, and bounded cleanup of residual legacy workout/mutation keys remain.
+- The concept-only React/Vite product path is being removed while design/adjudication/governance documents remain historical evidence.
+- `CLAUDE.md` received one strictly additive zero-based-redesign pointer; its existing content was preserved.
+- Documentation verification: targeted stale-term searches, required UI documentation phrase checks, assigned-file diff review, and `git diff --check` were run. The first diff check found only four trailing spaces in the new status header; they were corrected. Final rerun is recorded by the integration owner with the M8 freeze evidence.
+
+### Final local verification evidence
+
+- Public Node gate: effective 51/51. The aggregate run passed 49 tests; two unchanged research archive/workbook determinism tests were blocked only by sandboxed `spawnSync git EPERM` and passed in their permitted reruns (57 manifest hashes; 19 sheets, 20,788 source cells, and 34 deterministic ZIP entries).
+- Private local gate: 2/2 passed; 59 artifact checks, zero errors, and one preserved-source warning.
+- Static lint: 192 JavaScript files and 3,112 JSON files passed. Type checking is not applicable because the final repository contains no TypeScript source or `tsconfig`.
+- Workflow validation passed. `npm ls --all` completed without an invalid dependency tree.
+- Dependency audits passed: full tree has three moderate development-only advisories and zero high/critical advisories; production has zero advisories at every severity.
+- Tracked privacy passed across 647 files before staging and 580 files at the final implementation stage. Native packaging privacy passed.
+- Final mobile browser gate: 144 passed, 15 configured skips. Final desktop gate: 141 passed, 18 configured skips. The one documentation sentinel that executed during a concurrent documentation rewrite was repaired and passed 2/2 across both projects afterward.
+- Browser coverage includes 390 × 844, 320 CSS pixels with increased text, long names, large values, decimal RPE, empty/error/override/completion states, touch-sized controls, keyboard/focus/dialog behavior, fixed-light contrast, active rest/overtime, reload, draft recovery, import/clear failure boundaries, and absence of deleted destinations and surfaces.
+- `sync:web` synchronized 26 public assets; PWA/native public-only verification passed for all 26. Capacitor synchronized Android and iOS; CocoaPods and `xcodebuild` were unavailable on Windows and were truthfully reported as external tool gaps.
+- `git diff --check`, staged-scope inspection, and the final implementation privacy guard passed. Owner paths `.claude/`, `.vercel/`, and `redesign/prompts/` were not staged or modified.
+- No private or production fitness data was migrated, deleted, uploaded, committed, or used as an unprotected experiment.
+
+### Files changed and features removed
+
+- Runtime, APIs, public package, tests, schemas, package graph, service worker, and native mirrors were reconciled in implementation checkpoint `10d3bb2` (164 files; 7,649 insertions and 30,346 deletions).
+- Removed concept-only React/Vite scaffolding; prototype tests/config; obsolete prescription/recommendation schemas and live analytical test families; achievement/score assets; stale screenshots for deleted Plan/More/Dashboard/analytical surfaces; cloud-workout upload/enable paths; legacy routes/writers/shadow consumers; and obsolete cache/package entries.
+- Retained only the minimum identity, direct-safety resolver, notification delivery/deletion, backup/import compatibility, historical snapshot, grade, and workout-record logic required by the final contracts.
+
+### Recoverable checkpoint
+
+- M8 implementation: `10d3bb2` (`feat(redesign): complete M8 deletion and integration`).
+
+### Remaining external/unproven gates
+
+- Repository-pinned Node 22.23.x/npm 10.9.x.
+- Physical-device decimal-RPE keyboard, suspension/background, Web Push, sound/vibration, and installed-PWA behavior.
+- Current hosted Vercel/Upstash/QStash state.
+- Representative existing-user migration replay and owner acceptance.
+- Five-workout field test and owner visual-baseline acceptance.
+- Merge, push, deployment, production-data mutation, and publication.
+
+### Objective completion
+
+**PASS LOCALLY.** The approved M8 implementation, deletion ledger, locally executable verification, public packaging, and recoverable source checkpoint are complete. The complete redesign is not objectively approved for publication: pinned-runtime, physical-device, hosted-service, representative protected-data replay, owner visual-baseline, five-workout, and external Claude acceptance gates remain unproven.
