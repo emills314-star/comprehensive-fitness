@@ -31,7 +31,7 @@ Implementation clarifications and successor decisions are recorded in `DECISION_
 | M7 | Complete locally | `0223b36` |
 | M8 | Complete locally | `10d3bb2` |
 
-Associated documentation checkpoints and detailed evidence are in `implementation/MILESTONE_LOG.md`.
+Associated documentation checkpoints and detailed evidence are in `implementation/MILESTONE_LOG.md`. The final documentation reconciliation and Codex self-audit checkpoint is `acb1b02`.
 
 ## Current verified product boundary
 
@@ -71,7 +71,7 @@ This is a local implementation result, not a publication or physical-device acce
 
 ## Exact next action
 
-Finish `audits/CODEX_FINAL_SELF_AUDIT.md`, create the documentation checkpoint, obtain the current independent release review, and give Claude Code the final acceptance packet. Do not merge, push, deploy, mutate production data, or accept visual baselines.
+Give Claude Code the authoritative final documents, `audits/ADJUDICATION_MATRIX.md`, `DECISION_LOG.md`, this status, both implementation records, and `audits/CODEX_FINAL_SELF_AUDIT.md` for the required independent acceptance audit. Physical-device, representative protected-data replay, field-test, hosted, and owner-acceptance gates remain separate. Do not merge, push, deploy, mutate production data, or accept visual baselines.
 
 ## Open gates
 

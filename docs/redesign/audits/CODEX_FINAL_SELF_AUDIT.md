@@ -4,7 +4,8 @@
 > **Audit date:** 2026-08-01
 > **Audit type:** Documentation-only Codex self-audit of the frozen M8 candidate
 > **Branch:** `codex/zero-based-redesign`
-> **Implementation checkpoint:** `10d3bb264bac865f955644a1f017c23d029fc457` (`10d3bb2`) plus the documentation-only finalization diff
+> **Implementation checkpoint:** `10d3bb264bac865f955644a1f017c23d029fc457` (`10d3bb2`)
+> **Documentation/self-audit checkpoint:** `acb1b02`
 > **Status:** **LOCAL IMPLEMENTATION EVIDENCE COMPLETE; EXTERNAL AND INDEPENDENT RELEASE GATES OPEN**
 > **Publication status:** **NOT AUTHORIZED / NOT PUBLISHED**
 

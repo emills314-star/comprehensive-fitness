@@ -675,6 +675,7 @@ No final-document contradiction was found. The current four-tab shell and `confi
 ### Recoverable checkpoint
 
 - M8 implementation: `10d3bb2` (`feat(redesign): complete M8 deletion and integration`).
+- M8 documentation reconciliation and final Codex self-audit: `acb1b02` (`docs(redesign): record M8 verification and self-audit`).
 
 ### Remaining external/unproven gates
 
