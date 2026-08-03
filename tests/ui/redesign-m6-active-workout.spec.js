@@ -1723,16 +1723,23 @@ test("M6 replaces RPE 7 with 7.5, enters overtime, and recovers order, notes, va
 
   await page.waitForTimeout(500);
   const beforeReload = await activeState(page);
-  const suspendedTimer = await page.evaluate(() => {
+  const suspendedDraft = await page.evaluate(() => {
     persistBeforeSuspend();
-    return JSON.parse(localStorage.getItem("comprehensive-fitness-active-draft-v1") || "null")?.timer || null;
+    return JSON.parse(localStorage.getItem("comprehensive-fitness-active-draft-v1") || "null");
   });
-  expect(suspendedTimer).toMatchObject({
+  expect(suspendedDraft?.session?.notes).toBe(SESSION_NOTE);
+  expect(suspendedDraft?.timer).toMatchObject({
     id: beforeReload.timer.id,
     workoutId: IDS.activeSession,
     setId: IDS.activeBenchSet1,
     isOvertime: true
   });
+  await expect.poll(() => page.evaluate(async () => {
+    const persistedDraft = await readIndexedValue("active-workout-draft");
+    return persistedDraft?.session?.notes || "";
+  }), {
+    message: "suspend persistence must durably store the edited session note before reload"
+  }).toBe(SESSION_NOTE);
   await page.reload();
   await expect(page.locator(".workout-view")).toBeVisible({ timeout: 45_000 });
   const afterReload = await activeState(page);
