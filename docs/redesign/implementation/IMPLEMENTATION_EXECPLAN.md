@@ -135,13 +135,13 @@ Milestone exit does not authorize publication. M0-M8 may remain locally implemen
 
 ## M2 completion record — Canonical exception resolver
 
-**Status:** IMPLEMENTED LOCALLY; scoped independent recommendation gate approved on 2026-07-31.
+**Status:** IMPLEMENTED LOCALLY; the independent recommendation-logic gate is approved by Claude’s original final acceptance audit §7 and reaffirmed by the 2026-08-02 corrective verification.
 
 The application now has one versioned current exception-action pipeline. Ordinary sessions resolve silently. Direct recorded pain/injury or illness is the sole approved live rule and wins precedence; continuing records an explicit override without blocking actual-work logging. Stable variant targets remain unchanged, active drafts/imports/submitted workouts preserve canonical actions and handling, and prospective grade/completion paths consume the persisted action rather than raw detectors.
 
 Direct detector UI consumers, target-mutating fallbacks, duplicate recommendation writers, legacy/modern recommendation renderers, visible confidence/evidence output, Today Program pulse, Progress score/expectation output, and prospective completion coaching were removed. Legacy snapshots remain compatibility-only. Numeric fatigue, readiness, plateau, deload, grade, evidence, and confidence thresholds are not approved and cannot produce a current action.
 
-Exit evidence is recorded in `MILESTONE_LOG.md`: 59/59 public scripts, focused M2 contracts, lint, typecheck, production build, 41-file web sync, 40-asset PWA verification, privacy scan, 2/2 mobile Playwright scenarios at 390 × 844, and independent recommendation-logic approval passed. The service-worker cache is v96. M2 is recoverable at local checkpoint `243ed81`; M3 may begin.
+Exit evidence is recorded in `MILESTONE_LOG.md`: 59/59 public scripts, focused M2 contracts, lint, typecheck, production build, 41-file web sync, 40-asset PWA verification, privacy scan, and 2/2 mobile Playwright scenarios at 390 × 844 passed. The service-worker cache is v96. M2 is recoverable at local checkpoint `243ed81`. Claude’s original final acceptance audit §7 and the 2026-08-02 corrective verification approve the direct recorded pain/illness rule and concur that numeric fatigue, readiness, plateau, and deload thresholds remain out of scope.
 
 ## M3 completion record — Planner and mesocycle deletion
 

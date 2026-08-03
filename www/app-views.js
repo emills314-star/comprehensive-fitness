@@ -129,8 +129,14 @@
         const progress = workoutProgress();
         const dockCompleted = root.querySelector("[data-session-dock-progress]");
         const dockElapsed = root.querySelector("[data-session-dock-elapsed]");
+        const currentFocusDescription = root.querySelector("[data-current-focus-description]");
+        const currentFocusRemaining = root.querySelector("[data-current-focus-remaining]");
         if (dockCompleted) dockCompleted.textContent = progress.completed + " of " + progress.total + " sets";
         if (dockElapsed) dockElapsed.textContent = progress.elapsed;
+        if (currentFocusDescription) currentFocusDescription.textContent = progress.current;
+        if (currentFocusRemaining) currentFocusRemaining.textContent = progress.remaining
+          ? progress.remaining + " working set" + (progress.remaining === 1 ? " remains" : "s remain")
+          : "Review the session, then submit when it is complete";
         root.querySelectorAll("[data-session-dock-track] .seg").forEach((segment, index) => segment.classList.toggle("filled", index < Math.round((progress.completed / Math.max(1, progress.total)) * 10)));
       }
 
@@ -333,7 +339,7 @@
           <section class="view workout-view ${historyReadOnly ? "history-readonly" : ""} ${editingHistory ? "history-editing" : ""}">
             <section class="active-workout-hero ${activeExecution ? "execution-hero" : ""}">
               ${activeExecution
-                ? '<div class="current-workout-heading"><div class="section-kicker">Current focus</div><strong>' + escapeHtml(progress.current) + '</strong><small>' + (progress.remaining ? progress.remaining + ' working set' + (progress.remaining === 1 ? '' : 's') + ' remain' : 'Review the session, then submit when it is complete') + '</small></div>'
+                ? '<div class="current-workout-heading"><div class="section-kicker">Current focus</div><strong data-current-focus-description>' + escapeHtml(progress.current) + '</strong><small data-current-focus-remaining>' + (progress.remaining ? progress.remaining + ' working set' + (progress.remaining === 1 ? ' remains' : 's remain') : 'Review the session, then submit when it is complete') + '</small></div>'
                 : '<div class="workout-heading"><div><div class="section-kicker">Today</div><h1>' + escapeHtml(session.title || "Workout") + '</h1></div><span class="status-pill ' + (isSessionSubmitted(session) ? 'good' : 'neutral') + '">' + (isSessionSubmitted(session) ? 'Logged' : 'Ready') + '</span></div>'}
             </section>
             ${renderResolvedAction(resolvedActionForScope(session, "session"), { session })}
@@ -685,7 +691,7 @@
                 <div><div class="section-kicker">Optional readiness</div><h2 id="daily-readiness-title">What is different today?</h2><p>Choose only what you know. Skipping this stays silent and never limits workout logging.</p></div>
                 <div class="readiness-draft">
                   ${readinessSegmentedField({ field: "deviation", label: "Readiness today", action: "template-readiness-deviation", value: recovery.readinessDeviation, options: [["", "Not entered"], ["usual", "Usual"], ["unusually_good", "Unusually good"], ["meaningfully_poor", "Meaningfully poor"]] })}
-                  ${readinessSegmentedField({ field: "soreness", label: "Soreness today", action: "template-readiness-soreness", value: recovery.soreness, options: [["", "Not entered"], ["1", "Usual"], ["3", "Unusual"], ["5", "Very unusual"]] })}
+                  ${readinessSegmentedField({ field: "soreness", label: "Soreness today", action: "template-readiness-soreness", value: recovery.soreness, options: [["", "Not recorded"], ["1", "Usual"], ["3", "Unusual"], ["5", "Very unusual"]] })}
                   <fieldset class="field readiness-field"><legend class="f-name">Illness or pain</legend><div class="readiness-toggle-grid"><label class="toggle-line"><span>Current illness</span><span class="toggle ${recovery.illness ? "on" : ""}"><input type="checkbox" data-action="template-readiness-illness" ${recovery.illness ? "checked" : ""} /><i></i></span></label><label class="toggle-line"><span>Pain or injury</span><span class="toggle ${recovery.pain ? "on" : ""}"><input type="checkbox" data-action="template-readiness-pain" ${recovery.pain ? "checked" : ""} /><i></i></span></label></div></fieldset>
                   <div class="field readiness-field"><label class="f-name" for="template-readiness-area">Affected area</label><select id="template-readiness-area" data-action="template-readiness-affected-muscle"><option value="">Not specified</option>${muscleGroups.map((muscle) => '<option value="' + muscle + '" ' + (recovery.affectedMuscle === muscle ? 'selected' : '') + '>' + muscle + '</option>').join('')}</select></div>
                   <div class="field readiness-field"><label class="f-name" for="template-readiness-note">Optional context</label><textarea id="template-readiness-note" data-action="template-readiness-note" placeholder="Anything outside your normal band">${escapeHtml(recovery.outsideBandNote)}</textarea></div>

@@ -281,6 +281,48 @@ test("M6 shows stable full variant targets and preserves historical execution qu
   await captureAuditScreenshot(page, "active-workout-stable-targets");
 });
 
+test("current-focus heading advances after each completed set and remains correct after reload", async ({ page }) => {
+  const fixture = m6Fixture();
+  const exercise = fixture.exercises.find((item) => item.id === IDS.activeBenchExercise);
+  const templateExercise = fixture.templates[0].exercises.find((item) => item.id === IDS.controlBenchTemplateExercise);
+  const secondSet = fixture.sets.find((item) => item.id === IDS.activeBenchSet2);
+  const thirdSetId = "public-synthetic-active-bench-set-3";
+  const removedExerciseIds = new Set(fixture.exercises
+    .filter((item) => item.sessionId === IDS.activeSession && item.id !== IDS.activeBenchExercise)
+    .map((item) => item.id));
+  fixture.exercises = fixture.exercises.filter((item) => !removedExerciseIds.has(item.id));
+  fixture.sets = fixture.sets.filter((item) => !removedExerciseIds.has(item.exerciseId));
+  exercise.stableTargetSnapshot.sets = 3;
+  templateExercise.sets = 3;
+  fixture.sets.push({
+    ...structuredClone(secondSet),
+    id: thirdSetId,
+    setNumber: 3,
+    completed: false,
+    skipped: false,
+    completedAt: null
+  });
+  await installFixture(page, fixture);
+
+  const description = page.locator("[data-current-focus-description]");
+  const remaining = page.locator("[data-current-focus-remaining]");
+  await expect(description).toHaveText(`${LONG_VARIANT_NAME} · Set 1`);
+  await expect(remaining).toHaveText("3 working sets remain");
+
+  await page.locator(`[data-action="toggle-set"][data-set-id="${IDS.activeBenchSet1}"]`).click();
+  await expect(description).toHaveText(`${LONG_VARIANT_NAME} · Set 2`);
+  await expect(remaining).toHaveText("2 working sets remain");
+
+  await page.locator(`[data-action="toggle-set"][data-set-id="${IDS.activeBenchSet2}"]`).click();
+  await expect(description).toHaveText(`${LONG_VARIANT_NAME} · Set 3`);
+  await expect(remaining).toHaveText("1 working set remains");
+
+  await page.reload();
+  await expect(page.locator(".workout-view")).toBeVisible({ timeout: 45_000 });
+  await expect(description).toHaveText(`${LONG_VARIANT_NAME} · Set 3`);
+  await expect(remaining).toHaveText("1 working set remains");
+});
+
 test("M6 Add Exercise rejects invalid visible targets and creates target-complete working rows", async ({ page }) => {
   test.setTimeout(120_000);
   await installFixture(page, m6Fixture());

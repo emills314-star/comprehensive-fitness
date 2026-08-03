@@ -1,12 +1,12 @@
 # Codex final traceability self-audit
 
 > **Product:** Comprehensive Fitness
-> **Audit date:** 2026-08-01
-> **Audit type:** Documentation-only Codex self-audit of the frozen M8 candidate
+> **Audit date:** 2026-08-02
+> **Audit type:** Corrective Codex self-audit of the mutable post-acceptance candidate
 > **Branch:** `codex/zero-based-redesign`
-> **Implementation checkpoint:** `90934ef` (M8 source `10d3bb2` plus the final compact-soreness correction)
-> **Documentation/self-audit baseline:** `acb1b02`, updated here for `90934ef`
-> **Status:** **LOCAL IMPLEMENTATION EVIDENCE COMPLETE; EXTERNAL AND INDEPENDENT RELEASE GATES OPEN**
+> **Implementation checkpoint:** **PENDING OWNER AUTHORIZATION** (audited HEAD `54a972c`; corrective working tree is not immutable)
+> **Documentation/self-audit baseline:** `54a972c`, corrected in the current working tree
+> **Status:** **READY AFTER MINOR CORRECTIONS (corrections applied 2026-08-02) — IMMUTABLE COMMIT AND PINNED-RUNTIME RERUN PENDING**
 > **Publication status:** **NOT AUTHORIZED / NOT PUBLISHED**
 
 ## 1. Scope, method, and non-inference boundary
@@ -36,7 +36,7 @@ A PASS in this report is not publication authorization. No raw personal record, 
 
 The M8 source, generated web package, native public payload, public/private local tests, Chromium browser suites, documentation sentinels, lint, workflows, tracked-file privacy scan, and dependency gates have current passing evidence. The earlier root/`www` divergence and grade-version/documentation mismatch are resolved through D-025 and D-026. D-027 removes workout cloud-copy authorization, upload, UI, and queue writers while retaining notification revocation/deletion and bounded cleanup.
 
-The source candidate at checkpoint `90934ef` is **locally review-ready for independent and external acceptance**. It is not approved for publication, and plan-wide acceptance remains incomplete, because all of the following remain open:
+Claude independently reviewed the corrective uncommitted worktree at HEAD `54a972c` and returned **READY AFTER MINOR CORRECTIONS**. The implementation corrections are verified, but the candidate is not immutable, the decisive pinned-runtime rerun has not occurred, and the desktop full-project gate is contention/race-sensitive. It is not approved for publication, and plan-wide acceptance remains incomplete, because all of the following remain open:
 
 - the repository pins Node `22.23.x` and npm `10.9.x`, while the frozen evidence used Node `24.18.0` and npm `11.16.0`;
 - physical-device decimal RPE, software keyboard, screen reader, notification, lock-screen, haptic/sound, background/suspension, and installed-PWA behavior are not proven;
@@ -66,10 +66,10 @@ The traceability tables use the evidence identifiers below. Each identifier name
 | E-08 Routines/Settings | `app-analysis.js:2-175,716+`; routine writers in `app-workout.js:1170-1430`; settings events in `app.js` | `scripts/test-redesign-m7-grade-progress.js`; `scripts/test-settings-minimization.js`; `tests/ui/redesign-m5-navigation-and-drafts.spec.js`; `tests/ui/analytics-settings-lifecycles.spec.js` | Contextual Routines/Settings, duplicate/edit/reorder, timer controls, import/export, privacy/support, and clear-data flows pass in Chromium. |
 | E-09 Data/migration | `app-foundation.js:303+,1180-1410,1840-2050`; `app-import.js`; `backup-contract.js`; `schemas/redesign-app-data.v3.schema.json`; `schemas/redesign-backup.v3.schema.json`; `schemas/redesign-active-draft.v2.schema.json`; D-026 | `scripts/test-redesign-m0-preservation.js`; `scripts/test-backup-contract.js`; `scripts/test-domain-integrity.js`; `scripts/test-clear-local-data.js`; `tests/ui/runtime-trust-boundaries.spec.js`; `tests/ui/app-integration-accessibility.spec.js` | Synthetic v1-v3 backup/import/round-trip, idempotency, hostile validation, dual-store conflict, independent draft/timer recovery, complete export, and local clear pass. Real protected-data replay remains open. |
 | E-10 Deletion/M8 | Root runtime, package graph, schemas, service worker, API, removed `redesign/`, removed planner/analytics/achievement/test assets | `scripts/test-redesign-m3-planner-removal.js`; `scripts/test-redesign-m4-analytics-removal.js`; `scripts/test-redesign-m4-identity-only-boot.js`; `scripts/test-redesign-m8-deletion.js`; `scripts/test-final-contract-state.js` | No current route, renderer, active default/writer, package/cache reference, or current-intent product path was reproduced for deleted systems. Bounded legacy decoding remains. |
-| E-11 Package/native | `scripts/sync-web.ps1`; `scripts/verify-pwa.ps1`; `www/`; Android/iOS public roots; `sw.js` cache v102+ | `npm run verify:pwa`; native privacy/cache/service-worker tests; `npm run cap:sync` integration record | Root/`www`/native synchronization passed; PWA verification passed 26/26 assets; private directories and obsolete assets are absent. CocoaPods/`xcodebuild` were unavailable. |
-| E-12 Browser/a11y | `playwright.config.js`; `tests/ui/*.spec.js`; fixed-light tokens in `index.html` | Final mobile: 144 passed, 15 configured skipped. Final desktop: 141 passed, 18 configured skipped. Documentation sentinels: 2/2. | Chromium iPhone 13 Mini emulation and 1280x900 desktop cover axe, keyboard/focus/dialogs, 320px/200% text, forced colors, reduced motion, touch targets, responsive overflow, and current screens. No physical screen reader/device claim. |
-| E-13 Quality/test gate | `scripts/run-public-tests.js`; `scripts/run-private-tests.js`; `scripts/lint-static.js`; `scripts/validate-workflows.js`; `.github/workflows/*` | Public effective 51/51 after two unchanged sandbox-only Git-spawn reruns; private 2/2; lint 192 JS/3112 JSON; workflow validation passed | The full public assertions pass, but the installed Node/npm do not match repository pins. |
-| E-14 Privacy/security/dependencies | `.gitignore`; `.vercelignore`; `scripts/check-public-privacy.js`; import validators; CSP/cache/API controls; Android privacy XML | Tracked privacy 647/647; production dependency audit zero vulnerabilities; full tree three moderate development-only findings and no high/critical; security/platform/public tests passed | No private payload appears in the public/native package. Current hosted provider state, already-dispatched pushes, and production rollback remain external. |
+| E-11 Package/native | `scripts/sync-web.ps1`; `scripts/verify-pwa.ps1`; `www/`; Android/iOS public roots; `sw.js` cache v103 | `npm run sync:web`; `npm run verify:pwa`; native privacy/cache/service-worker tests | Root/`www` synchronization and PWA verification passed 26/26 assets; private directories and obsolete assets are absent. Corrective Capacitor sync was not rerun. |
+| E-12 Browser/a11y | `playwright.config.js`; `tests/ui/*.spec.js`; fixed-light tokens in `index.html` | Corrective mobile reproduced: 146 passed, 15 configured skipped, 0 failed. Desktop **NEEDS REVIEW**: Claude reproduced 142 passed/1 failed/18 skipped, then 141 passed/2 failed/18 skipped; all three distinct cases pass in isolation. | Chromium covers the prior matrix plus explicit readiness/soreness labels and Current focus advancement after sets 1 and 2 with reload restoration. Desktop full-project execution is contention/race-sensitive; no physical screen reader/device claim. |
+| E-13 Quality/test gate | `scripts/run-public-tests.js`; `scripts/run-private-tests.js`; `scripts/lint-static.js`; `scripts/validate-workflows.js`; `.github/workflows/*` | Public 51/51; private 2/2; lint 192 JS/3112 JSON; workflow validation passed | The full public assertions pass, but Node 24.18.0/npm 11.16.0 do not match repository pins. |
+| E-14 Privacy/security/dependencies | `.gitignore`; `.vercelignore`; `scripts/check-public-privacy.js`; import validators; CSP/cache/API controls; Android privacy XML | Tracked privacy 581/581; production dependency audit zero vulnerabilities; full tree three moderate development-only findings and no high/critical; security/platform/public tests passed | No private payload appears in the tracked public boundary. Owner-controlled untracked private roots remain present and untouched. |
 | E-15 Science | `research_database/METHODOLOGY.md`; `research_database/EXECUTIVE_SUMMARY.md`; `research_database/exports/json/{progression_rules,research_library,evidence_conclusions}.json` | `scripts/test-science-evidence-contracts.js` 21/21; research validation and archive/workbook gates in the public suite | Numeric plateau/deload/readiness heuristics remain explicitly low/very-low product policy and are not live. Direct pain handling remains non-diagnostic product safety policy. |
 | E-16 Cloud-copy boundary | `app-analysis.js:733+`; `app-import.js:502-503`; `api/sync/{authorize,consent,workout}.js`; notification cleanup in `api/_lib/installation-data.js`; D-027 | `scripts/test-sync-consent.js`; security/platform and clear-data suites; browser Settings/data lifecycles | Workout upload/authorization endpoints return 410 and no UI/queue writer remains. Notification revocation/deletion remains; external service cleanup state is unverified. |
 | E-17 Performance | `scripts/test-performance.js`; `docs/performance.md` | Architectural “removed work stays off Today/Start” assertions pass | No fresh same-fixture, same-device final Today/Start/set/chart/bundle measurement exists. |
@@ -92,7 +92,7 @@ These are Codex self-scores, not the required score-neutral independent final re
 | 7 | Usability and visual consistency | 4 | The fixed-light two-destination product, contextual secondary routes, full-screen logger, concise completion, factual Progress, and responsive current-screen coverage are coherent (E-02, E-03, E-06-E-08, E-12). | 5 withheld because owner replacement-baseline acceptance and physical-device visual review are pending. The fixed-light decision itself is not reopened. |
 | 8 | Accessibility and responsive behavior | 4 | Axe, keyboard, focus, dialogs, labels, touch targets, 320px/200% text, forced colors, reduced motion, chart semantics, and mobile/desktop responsive suites pass (E-12). | 5 withheld because physical screen-reader, native dynamic text, software keyboard, safe-area, and real-device coverage are absent. |
 | 9 | Documentation and developer experience | 4 | Final authority, living docs, D-025-D-027, implementation records, package/test commands, and this exhaustive audit agree with current behavior (E-01). | 5 withheld because pinned-runtime reproduction, macOS native toolchain steps, immutable candidate instructions, and independent final verification remain incomplete. |
-| 10 | Security, observability, and release readiness | 3 | Tracked privacy 647/647, public-only packaging, zero production vulnerabilities, bounded imports/cache/API, D-027 cloud-copy removal, workflows, and deletion controls are meaningful (E-11, E-14, E-16). | 4 and 5 withheld because current hosted/provider state, physical push behavior, independent privacy/release review, immutable release freeze, deployment, rollback, and publication verification are open; three moderate dev-only findings remain. |
+| 10 | Security, observability, and release readiness | 3 | Tracked privacy 581/581, public-only packaging, zero production vulnerabilities, bounded imports/cache/API, D-027 cloud-copy removal, workflows, and deletion controls are meaningful (E-11, E-14, E-16). | 4 and 5 withheld because current hosted/provider state, physical push behavior, immutable release freeze, deployment, rollback, and publication verification are open; three moderate dev-only findings remain. |
 |  | **Total** | **38/50** | Strong local implementation evidence. | Fixed acceptance fails: total is below 45 and categories 6 and 10 are below 4. |
 
 ### 4.2 Workout-recommendation rubric — 27/50
@@ -433,12 +433,12 @@ Every A-H and X identifier appears below. “PASS (conditional)” means the fin
 | §7.1 stable targets, prefills, matching, roles, one draft, timer semantics, backup, grade, resolver, no exact prescription/equipment block, immutable snapshots | PASS locally | E-03-E-09 and public effective 51/51. |
 | §7.2 synthetic preview/import/idempotency/export/comparison/no retired state/interruption | PASS synthetic | E-09. |
 | §7.2 real migration and independent verifier | NOT PROVEN | E-18. |
-| §7.3 two destinations, Start/readiness/conflict/logger/names/states/controls/notes/timer/completion/Progress/Settings/a11y | PASS in configured Chromium | E-12: mobile 144 pass/15 skip; desktop 141 pass/18 skip. |
+| §7.3 two destinations, Start/readiness/conflict/logger/names/states/controls/notes/timer/completion/Progress/Settings/a11y | PARTIAL / NEEDS REVIEW | E-12: corrective mobile 146 pass/15 skip/0 fail; desktop full-project reruns produced 142 pass/1 fail/18 skip and 141 pass/2 fail/18 skip. All three distinct failures pass in isolation and are classified as pre-existing contention/race-sensitive test-design defects. |
 | §7.3 physical screen reader/native accessibility | NOT PROVEN | E-18. |
 | §7.4 cold/cached local load, reload, packaged parity, in-app timer/permission, configured keyboard/scroll/offline routes | PASS locally/configured | E-04/E-11/E-12. |
 | §7.4 installed physical PWA/background/lock-screen/sound/haptic/device RPE/reconnect/SW upgrade matrix | NOT PROVEN | E-18. Source/emulation is explicitly insufficient. |
 | §7.5 Today/Start/set/chart/bundle performance | NOT PROVEN | E-17: removed-work assertions pass, but required final measurements do not exist. |
-| §7.6 synthetic fixtures, tracked/private exclusions, package privacy | PASS locally | E-11/E-14: privacy 647/647 and public/native payload checks pass. |
+| §7.6 synthetic fixtures, tracked/private exclusions, package privacy | PASS locally | E-11/E-14: privacy 581/581 and public/native payload checks pass. |
 | §7.6 final staged-diff/independent privacy/publication review | NOT PROVEN | E-18; no publication action is authorized. |
 | §8 deletion across navigation/UI/compute/state/inputs/schema/package/deps/tests/docs/flags | PASS locally | E-10/E-11. Only bounded historical decoders/fixtures/governance remain. |
 | §9 five-workout conditions 1-8 | NOT PROVEN | E-18: no real workout field test has occurred. |
@@ -456,13 +456,13 @@ Current frozen-candidate evidence supplied by the integration run and reproduced
 - `node scripts/test-redesign-m8-deletion.js` — **PASS**; reproduced.
 - public tests — effective **51/51**; two unchanged tests required separate reruns only because sandbox policy blocked Git child-process spawn, so this report does not misstate the original single command as clean.
 - private local gate — **2/2 PASS**, without exposing private artifacts.
-- mobile Chromium — **144 passed, 15 configured skipped**.
-- desktop Chromium — **141 passed, 18 configured skipped**.
+- corrective mobile Chromium — **146 passed, 15 configured skipped, 0 failed**.
+- corrective desktop Chromium — **NEEDS REVIEW**: Claude reproduced **142 passed, 1 failed, 18 skipped**, then **141 passed, 2 failed, 18 skipped**; all three distinct failures pass in isolation.
 - documentation sentinels — **2/2 PASS**.
 - post-audit compact-soreness mobile regression — **1/1 PASS**, including persistence before Start and from the active workout; the rendered 390-class sheet was inspected.
 - lint — **192 JavaScript / 3,112 JSON PASS**.
 - workflow validation — **PASS**.
-- tracked public privacy — **647/647 PASS**.
+- tracked public privacy — **581/581 PASS**.
 - dependencies — production **0 vulnerabilities**; full tree **3 moderate development-only**, no high/critical.
 - `npm run cap:sync` — **PASS** for web/Android/iOS public payload copy; CocoaPods and `xcodebuild` unavailable.
 - `git diff --check` before this audit edit — **PASS**, with line-ending warnings only.
@@ -476,3 +476,22 @@ Current frozen-candidate evidence supplied by the integration run and reproduced
 - **Not published:** no deployment or hosted verification of checkpoint `90934ef` occurred.
 
 This document changes no product decision, does not reopen fixed-light appearance, contains no private record, and does not inflate either fixed rubric to a target score.
+
+## 10. Corrective-candidate addendum — 2026-08-02
+
+This section supersedes older checkpoint/count statements above where they conflict with the current working tree.
+
+- **Claude corrective finding CF-01 corrected:** the soreness group’s empty option is `Not recorded`; readiness remains `Not entered`. Accessibility tests now locate both values through their named fieldsets and retain the dialog focus-trap assertions. `CF-*` labels in this addendum refer to Claude corrective findings and are distinct from `FINAL_FEATURE_DISPOSITION.md` feature IDs such as feature F-01 through F-17.
+- **Claude corrective finding CF-03 corrected:** `updateWorkoutStatusDom()` refreshes both Current focus text nodes from `workoutProgress()`. A three-set Playwright regression proves advancement after sets 1 and 2 and correct restoration after reload.
+- **Claude corrective finding CF-07 retained as cosmetic dead code:** `const advice = null` and its three unreachable ternaries in `app-analysis.js` are local to `renderTemplateCard()`, have no resolved-action or compatibility role, and can be removed without behavioral effect. The earlier compatibility rationale was a misidentification of required maps in `renderResolvedAction()`.
+- **Excluded Claude findings CF-06 and CF-09 remain omitted:** no optional progress marker or rest capture was added. These labels are not feature-disposition F-06/F-09.
+- **Corrective evidence:** focused Playwright 3/3; public 51/51; protected local 2/2; mobile 146 passed/15 configured skips/0 failures; tracked privacy 581/581; PWA 26/26; lint 192 JavaScript/3,112 JSON; workflows/research/package/dependency gates passed; production dependencies have zero vulnerabilities and the full tree has three moderate development-only findings with no high/critical findings. Desktop remains **NEEDS REVIEW** as described below.
+- **Runtime limitation:** the corrective evidence used Node 24.18.0/npm 11.16.0. It does not satisfy the required Node 22.23.x/npm 10.9.x decisive gate.
+- **Immutable revision limitation:** no candidate commit was created because the current task does not authorize commits. The exact candidate identifier therefore remains pending owner authorization.
+- **Desktop race record:** `runtime-trust-boundaries.spec.js:547`, `private-data-lifecycle-regressions.spec.js:423`, and `template-workout-history-lifecycles.spec.js:1273` flaked only in full-project execution and pass in isolation (6/6 and 30/30). For `private-data-lifecycle-regressions.spec.js:423`, boot-time `cleanupLegacyWorkoutCloudData()` writes `legacyWorkoutCleanupCompletedAt` and `legacyWorkoutCleanupPending` before the test’s exact-equality assertion; the test’s own `/api/sync/consent` stub guarantees successful cleanup. This is a pre-existing M8-era test-design race, not a regression. Do not weaken the assertion merely to force a pass; a future test correction should either tolerate those documented cleanup fields or await cleanup before asserting.
+- **Review-record location:** Claude’s original final acceptance audit and this corrective verification were explicitly returned in conversation rather than written to the repository. Their absence from `docs/redesign/audits/` is intentional, not a missing artifact; persistence is an owner decision.
+- **M2 attribution:** Claude’s original final acceptance audit §7 plus this corrective verification are the independent recommendation-logic review for M2. Claude approves direct recorded pain/illness resolving to one advisory session-scoped `stop_or_skip_work` action and concurs that numeric fatigue, readiness, plateau, and deload thresholds are correctly out of scope.
+
+### Corrective verdict
+
+**READY AFTER MINOR DOCUMENTATION CORRECTIONS.** Claude verified the implementation corrections and found no regression or scope expansion. The candidate remains uncommitted and untested under the pinned runtime, and desktop full-project execution remains **NEEDS REVIEW** for pre-existing contention/race-sensitive tests. External/device testing, protected migration, hosted deployment, baseline acceptance, field testing, merge, push, and publication must not begin.

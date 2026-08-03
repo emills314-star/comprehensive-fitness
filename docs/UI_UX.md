@@ -3,8 +3,8 @@
 ## Metadata
 
 - **Purpose:** Current navigation, screen, copy, interaction, and accessibility contract
-- **Last verified:** 2026-08-01
-- **Status:** **IMPLEMENTED AND VERIFIED LOCALLY THROUGH M8; EXTERNAL ACCEPTANCE GATES OPEN**
+- **Last verified:** 2026-08-02
+- **Status:** **CORRECTED CANDIDATE VERIFIED LOCALLY; INDEPENDENT ACCEPTANCE BLOCKED**
 - **Product authority:** [`redesign/final/FINAL_REDESIGN_PRD.md`](redesign/final/FINAL_REDESIGN_PRD.md)
 - **Related:** [Project](PROJECT.md), [architecture](ARCHITECTURE.md), [decision engine](DECISION_ENGINE.md), [roadmap](ROADMAP.md)
 
@@ -50,6 +50,8 @@ Readiness is secondary and skippable before or during the workout. Current input
 
 Skipping readiness never blocks Start, logging, timer use, submission, or Progress. Current live advice uses only explicit pain/injury or illness. Meaningfully poor readiness is stored as a factual deviation but does not currently produce a recommendation.
 
+The empty readiness choice remains **Not entered**. The empty soreness choice is **Not recorded**, reflecting that soreness is an observation rather than a readiness judgment. Accessibility coverage identifies each radio within its named fieldset and retains the existing dialog focus trap.
+
 ## Active workout
 
 The active screen prioritizes:
@@ -70,6 +72,7 @@ Current, completed, pending, skipped, and warm-up states are distinguishable wit
 - RPE supports decimal 0.5 values and immediate replacement. A prefilled `7` can become `7.5` in one focused edit without manual clearing or a second tap on `7`.
 - Factual prefill order is comparable prior set, explicit routine default, then blank.
 - Completing a set preserves the value just entered and advances predictably.
+- The Current focus description and remaining-set message refresh from the same `workoutProgress()` result after each completion. In a three-set workout they advance after sets 1 and 2 and restore the same current set and remaining count after reload.
 - Touch controls retain the supported minimum target size and set inputs keep a 16 CSS-pixel font floor on mobile to avoid iOS focus zoom.
 
 ### Actual-work controls
@@ -170,7 +173,7 @@ Settings contains no workout cloud-copy control and no deleted-feature graveyard
 - Long exercise names, large loads/repetition values, decimal RPE, empty states, errors, overrides, completion, and reduced-motion/forced-color behavior are covered by the final verification plan.
 - Code inspection and desktop emulation do not replace rendered inspection or physical-device-only checks.
 
-M8 browser/a11y execution is complete locally: the final mobile run passed 144 tests with 15 configured skips, the final desktop run passed 141 tests with 18 configured skips, and the repaired documentation sentinel passed 2/2. Owner visual-baseline acceptance, hosted verification, and physical-device acceptance have not been claimed.
+The dated M8 browser/a11y result was mobile 144 passed/15 configured skips and desktop 141 passed/18 configured skips. The corrective mobile project reproduced cleanly at 146 passed/15 configured skips/0 failures. Corrective desktop is **NEEDS REVIEW**: independent full-project reruns produced one and then two contention-sensitive failures across three tests that pass in isolation. Owner visual-baseline acceptance, hosted verification, and physical-device acceptance have not been claimed.
 
 ## Design system and review process
 

@@ -3,9 +3,9 @@
 ## Metadata
 
 - **Purpose:** Current product scope and verified implementation boundary
-- **Last verified:** 2026-08-01
+- **Last verified:** 2026-08-02
 - **Branch:** `codex/zero-based-redesign`
-- **Status:** **IMPLEMENTED AND VERIFIED LOCALLY THROUGH M8; EXTERNAL ACCEPTANCE GATES OPEN**
+- **Status:** **CORRECTED CANDIDATE VERIFIED LOCALLY; IMMUTABLE/PINNED/CLAUDE GATES OPEN**
 - **Product authority:** [`redesign/final/FINAL_REDESIGN_PRD.md`](redesign/final/FINAL_REDESIGN_PRD.md), [`redesign/final/FINAL_FEATURE_DISPOSITION.md`](redesign/final/FINAL_FEATURE_DISPOSITION.md)
 - **Related:** [Architecture](ARCHITECTURE.md), [decision engine](DECISION_ENGINE.md), [UI/UX](UI_UX.md), [roadmap](ROADMAP.md)
 
@@ -95,14 +95,16 @@ Milestones M0-M8 have recoverable local checkpoints. M8 source, deletion, packag
 
 Still unproven at this point:
 
-- the final complete browser suite after M8;
-- final root/`www` packaging and service-worker parity;
+- an owner-authorized immutable corrective candidate and exact-commit rerun;
 - the repository-pinned Node/npm runtime;
+- fresh Claude corrective approval naming that exact commit;
 - physical-device keyboard, suspension, and notification behavior;
 - representative real-data migration replay;
 - hosted verification;
 - the five-workout field test;
 - publication approval.
+
+The mutable 2026-08-02 corrective working tree has passing unpinned evidence: public 51/51, mobile 146 passed/15 configured skips/0 failures, protected local 2/2, tracked privacy 581/581, and PWA packaging 26/26 at cache v103. Desktop is **NEEDS REVIEW** because independent full-project reruns produced one and then two contention-sensitive failures, although all three distinct cases pass in isolation. These results do not authorize an immutable commit or release any external publication gate.
 
 ## Non-goals and authority
 

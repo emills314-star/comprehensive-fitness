@@ -4,7 +4,7 @@
 - **Primary owner:** Codex
 - **Independent reviewer:** Claude Code at the required checkpoints
 - **Branch:** `codex/zero-based-redesign`
-- **Current phase:** M8 implemented and verified locally; independent/external acceptance pending
+- **Current phase:** Corrective candidate verified locally; immutable freeze and Claude corrective review pending
 - **Implementation authority:** Local implementation and recoverable checkpoints only
 
 ## Product authority
@@ -29,7 +29,7 @@ Implementation clarifications and successor decisions are recorded in `DECISION_
 | M5 | Complete locally | `ef71085` |
 | M6 | Complete locally | `441b6cb` |
 | M7 | Complete locally | `0223b36` |
-| M8 | Complete locally | `10d3bb2`, final in-scope correction `90934ef` |
+| M8 | Complete locally; corrective candidate is uncommitted | `10d3bb2`, prior correction `90934ef`, current commit pending owner authorization |
 
 Associated documentation checkpoints and detailed evidence are in `implementation/MILESTONE_LOG.md`. The final documentation reconciliation and Codex self-audit checkpoint is `acb1b02`.
 
@@ -62,23 +62,26 @@ This is a local implementation result, not a publication or physical-device acce
 ## Verification evidence available
 
 - Focused M0-M7 contracts and their milestone browser evidence are recorded.
-- The public Node gate passed effectively 51/51: 49 passed in the aggregate run and two unchanged research determinism tests passed when rerun outside the sandbox after sandboxed Git child-process creation returned `EPERM`.
+- The 2026-08-02 corrective public Node gate passed 51/51 selected scripts in one permitted run.
 - The private local harness passed 2/2 with 59 artifact checks and one preserved-source warning.
 - Static lint passed 192 JavaScript and 3,112 JSON files; type checking is not applicable because no TypeScript source or `tsconfig` remains.
 - Workflow validation, package-tree integrity, native-package privacy, staged/tracked privacy, PWA packaging, and dependency gates passed. The full dependency tree has three moderate development-only advisories, no high/critical advisories, and the production tree has zero advisories.
-- Final mobile Playwright evidence is 144 passed and 15 configured skips. Final desktop evidence is 141 passed and 18 configured skips. The documentation sentinel that ran during the concurrent documentation rewrite was repaired and then passed 2/2 across mobile and desktop.
+- Corrective mobile Playwright reproduced at 146 passed, 15 configured skips, and zero failures. Corrective desktop is **NEEDS REVIEW**: Claude reproduced 142 passed/1 failed/18 skipped and, on a clean rerun, 141 passed/2 failed/18 skipped. The three distinct failures pass in isolation (6/6 and 30/30) and are assessed as pre-existing contention/race-sensitive test-design defects rather than regressions from the corrections.
 - `sync:web` and PWA verification passed for 26 public assets. Capacitor synchronized Android and iOS; Windows could not run CocoaPods or `xcodebuild`.
 - Recoverable implementation checkpoint: `10d3bb2`.
-- Final self-audit correction checkpoint: `90934ef` adds the disposition-required compact soreness input without adding a detector or recommendation.
+- The current corrective working tree changes the soreness empty label to `Not recorded` while retaining readiness `Not entered`, refreshes Current focus after set completion, and adds three-set advancement/reload coverage. Root/`www` parity and PWA cache v103 pass.
+- **NEEDS REVIEW:** the corrective evidence ran on Node 24.18.0/npm 11.16.0 rather than the required Node 22.23.x/npm 10.9.x, and no immutable candidate commit exists.
 
 ## Exact next action
 
-Give Claude Code the authoritative final documents, `audits/ADJUDICATION_MATRIX.md`, `DECISION_LOG.md`, this status, both implementation records, and `audits/CODEX_FINAL_SELF_AUDIT.md` for the required independent acceptance audit. Physical-device, representative protected-data replay, field-test, hosted, and owner-acceptance gates remain separate. Do not merge, push, deploy, mutate production data, or accept visual baselines.
+Claude’s original final acceptance audit and corrective verification were intentionally returned in conversation rather than stored in the repository. Their absence from `docs/redesign/audits/` is not a missing-artifact defect; persistence is an owner decision. After explicit owner authorization, create the immutable candidate commit from exactly the named 15 files and rerun the decisive gates against it. Stop before physical-device, protected migration, hosted, field-test, merge, push, deployment, baseline acceptance, or publication work.
 
 ## Open gates
 
 - Final migration, recommendation, accessibility, visual, security/privacy, architecture, and release-readiness review.
 - Pinned Node 22.23.x/npm 10.9.x rerun.
+- Owner-authorized immutable candidate commit and exact-commit rerun.
+- Fresh unqualified Claude acceptance naming the exact candidate commit.
 - Physical-device keyboard, background/suspension, notification, sound/vibration, and installed-PWA behavior.
 - Representative real-data migration replay and owner acceptance.
 - Current hosted backend/deployment verification.
@@ -91,4 +94,4 @@ Pre-existing untracked `.claude/`, `.vercel/`, and `redesign/prompts/` directori
 
 ## Publication state
 
-Commit checkpoints are locally authorized by the continuous implementation assignment. Merge, push, deploy, production-data mutation, baseline acceptance, and publication are not authorized or completed.
+No corrective candidate commit is authorized by the current task. Commit, merge, push, deploy, production-data mutation, baseline acceptance, and publication are not authorized or completed.

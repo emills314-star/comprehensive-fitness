@@ -147,7 +147,7 @@ No material contradiction was found in the final documents. Existing fatigue, re
 - Active drafts, imports, and submitted workouts validate and retain versioned resolved actions. Existing historical recommendation snapshots, grades, and legacy fields remain readable without silent recomputation.
 - Today, active workout, completion, and prospective grade consume persisted canonical actions only. Direct detector consumers, target-mutating fallbacks, legacy/modern recommendation renderers, duplicate current recommendation writers, visible confidence/evidence paths, and completion coaching were removed.
 - The interim Today Program pulse and Progress score/expectation renderers were removed because they exposed an unapproved competing recommendation path. Their now-hidden analysis implementation is deletion debt assigned to M4.
-- Independent recommendation-logic review approved the scoped M2 gate and explicitly marked every numeric candidate threshold out of scope.
+- Claude’s original final acceptance audit §7 is the independent recommendation-logic review for M2, and the 2026-08-02 corrective verification reaffirms it. Claude approves the single surviving rule—direct recorded pain/illness resolving to one advisory session-scoped `stop_or_skip_work` action—and concurs that every numeric fatigue, readiness, plateau, and deload threshold is correctly out of scope.
 
 ### Files changed
 
@@ -699,3 +699,12 @@ No final-document contradiction was found. The current four-tab shell and `confi
 ### Objective completion
 
 **PASS LOCALLY.** The approved M8 implementation, deletion ledger, locally executable verification, public packaging, and recoverable source checkpoint are complete. The complete redesign is not objectively approved for publication: pinned-runtime, physical-device, hosted-service, representative protected-data replay, owner visual-baseline, five-workout, and external Claude acceptance gates remain unproven.
+
+### Corrective acceptance work — 2026-08-02
+
+- Corrected soreness empty copy (`Not recorded`) without changing readiness (`Not entered`) or weakening accessibility coverage.
+- Corrected incremental Current focus description/remaining-set refresh and added three-set advancement/reload Playwright coverage.
+- Claude corrective finding CF-07 was retained as cosmetic dead code: `const advice = null` and three unreachable ternaries are local to `renderTemplateCard()` and have no resolved-action, backup, import, schema, migration, or test dependency. The earlier compatibility rationale misidentified required `renderResolvedAction()` maps. `CF-*` here denotes Claude corrective findings, not final feature-disposition IDs.
+- Focused Playwright 3/3; public 51/51; protected local 2/2; full mobile 146 passed/15 configured skips/0 failures; tracked privacy 581/581; PWA 26/26; cache v103. Desktop is **NEEDS REVIEW**: Claude reproduced 142 passed/1 failed/18 skipped and then 141 passed/2 failed/18 skipped; all three distinct failures pass in isolation and are pre-existing contention/race-sensitive test-design defects.
+- Claude’s corrective verdict is **READY AFTER MINOR CORRECTIONS**. Evidence used Node 24.18.0/npm 11.16.0 and no owner-authorized immutable candidate commit exists. The original acceptance audit and corrective verification were intentionally returned in conversation; repository persistence is an owner decision.
+- Mandatory stop remains active before every external/device/migration/hosted/field/merge/push/publication gate.

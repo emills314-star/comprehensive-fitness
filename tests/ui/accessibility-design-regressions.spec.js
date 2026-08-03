@@ -843,7 +843,9 @@ test("optional-readiness dialog owns initial focus, traps both directions, and r
   await expect.soft(page.locator(".brand-bar"), "Opening optional readiness must make the shell header inert").toHaveAttribute("inert", "");
   await expect.soft(page.locator("#main-content"), "Opening optional readiness must make application content inert").toHaveAttribute("inert", "");
   await expect.soft(page.locator(".bottom-nav"), "Opening optional readiness must make tab navigation inert").toHaveAttribute("inert", "");
-  await expectDialogTrap(page, dialog, dialog.getByRole("radio", { name: "Not entered", exact: true }));
+  await expect(dialog.getByRole("group", { name: "Readiness today", exact: true }).getByRole("radio", { name: "Not entered", exact: true })).toHaveCount(1);
+  await expect(dialog.getByRole("group", { name: "Soreness today", exact: true }).getByRole("radio", { name: "Not recorded", exact: true })).toHaveCount(1);
+  await expectDialogTrap(page, dialog, dialog.getByRole("group", { name: "Readiness today", exact: true }).getByRole("radio", { name: "Not entered", exact: true }));
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
   await expect.soft(trigger, "Escape must restore focus to the optional readiness trigger").toBeFocused({ timeout: 1_500 });
@@ -871,7 +873,7 @@ test("dialog initial focus falls back to the first visible enabled control when 
   await trigger.click();
 
   const dialog = page.getByRole("dialog", { name: "What is different today?", exact: true });
-  const preferred = dialog.getByRole("radio", { name: "Not entered", exact: true });
+  const preferred = dialog.getByRole("group", { name: "Readiness today", exact: true }).getByRole("radio", { name: "Not entered", exact: true });
   const fallback = dialog.getByRole("button", { name: "Close daily readiness", exact: true });
   const finalVisibleControl = dialog.getByRole("button", { name: "Start workout", exact: true });
   await expect(dialog).toBeVisible();
