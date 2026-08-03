@@ -1740,6 +1740,13 @@ test("M6 replaces RPE 7 with 7.5, enters overtime, and recovers order, notes, va
   }), {
     message: "suspend persistence must durably store the edited session note before reload"
   }).toBe(SESSION_NOTE);
+  await page.evaluate(() => saveData());
+  await expect.poll(() => page.evaluate(async (sessionId) => {
+    const persistedData = await readIndexedValue("app-data");
+    return persistedData?.sessions?.find((session) => session.id === sessionId)?.notes || "";
+  }, IDS.activeSession), {
+    message: "reload recovery must wait for the full app-data record to converge with the active draft"
+  }).toBe(SESSION_NOTE);
   await page.reload();
   await expect(page.locator(".workout-view")).toBeVisible({ timeout: 45_000 });
   const afterReload = await activeState(page);
