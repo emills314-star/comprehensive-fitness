@@ -32,6 +32,8 @@ RPE entry uses a bounded replacement buffer so a focused prefilled `7` accepts `
 
 Root runtime assets remain source and `www/` remains generated. The 2026-08-02 corrective candidate advances the installed-service-worker cache to `comprehensive-fitness-pwa-v103`; `sync:web` and PWA verification passed for all 26 public assets.
 
+The Vercel source-deployment boundary excludes every export directory by default, then explicitly re-includes only `research_database/exports/json/exercise_database.json` and `exercise_muscle_map.json`. These two public compatibility assets are required by normal identity-only boot and bounded backup validation; all other exports remain excluded.
+
 ### Planner/mesocycle removal boundary — IMPLEMENTED LOCALLY (M3)
 
 `guided-mesocycle.js`, planner-only schemas, active `data.mesocycles`/`activeMesocycleId` state, planner requests, writers, routes, service-worker references, and current runtime tests are removed. The migration boundary contains an isolated, versioned legacy backup decoder: it accepts obsolete planning keys and maps only the workout/routine-template facts needed for historical understanding. It does not recreate an active planner domain, route, writer, renderer, engine branch, or new-record schema. Routine/template management is a contextual secondary surface; Today and Progress are the only persistent destinations.

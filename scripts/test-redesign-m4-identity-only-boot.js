@@ -13,6 +13,7 @@ const imports = fs.readFileSync(path.join(root, "app-import.js"), "utf8");
 const app = fs.readFileSync(path.join(root, "app.js"), "utf8");
 const syncWeb = fs.readFileSync(path.join(root, "scripts", "sync-web.ps1"), "utf8");
 const verifyPwa = fs.readFileSync(path.join(root, "scripts", "verify-pwa.ps1"), "utf8");
+const vercelIgnore = fs.readFileSync(path.join(root, ".vercelignore"), "utf8");
 const exerciseDatabase = require("../research_database/exports/json/exercise_database.json");
 const exerciseMuscleMap = require("../research_database/exports/json/exercise_muscle_map.json");
 
@@ -99,6 +100,21 @@ installFunctions(context, foundation, [
   const verifiedResearchAssets = [...verifiedPublicList.matchAll(/"research_database\\exports\\json\\([^"]+)"/g)].map((match) => match[1]);
   assert.deepEqual(verifiedResearchAssets, ["exercise_database.json", "exercise_muscle_map.json"], "PWA verification must require only the two compatibility assets");
   assert.match(verifyPwa, /Obsolete analytical runtime asset remains packaged/, "PWA verification must reject stale analytical JSON left by an older package");
+  const vercelIgnoreLines = vercelIgnore.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const deployedResearchRules = vercelIgnoreLines.filter((line) => (
+    line === "**/exports/**" || line.includes("research_database/exports")
+  ));
+  assert.deepEqual(
+    deployedResearchRules,
+    [
+      "**/exports/**",
+      "!research_database/exports/",
+      "!research_database/exports/json/",
+      "!research_database/exports/json/exercise_database.json",
+      "!research_database/exports/json/exercise_muscle_map.json"
+    ],
+    "Vercel packaging must use one exact default exclusion plus the contiguous parent-first exception chain for only the two public compatibility assets"
+  );
 
   console.log("M4 identity-only boot and import compatibility tests passed.");
 })().catch((error) => {
